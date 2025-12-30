@@ -840,6 +840,15 @@ void brain_destroy(brain_t brain)
         brain->last_parietal_update_us = 0;
     }
 
+    // -1.2. Cleanup Intuition System (Phase 6 creative/intuitive reasoning)
+    // Intuition is destroyed after parietal (it's part of higher cognition)
+    if (brain->intuition_system) {
+        intuition_system_destroy(brain->intuition_system);
+        brain->intuition_system = NULL;
+        brain->intuition_system_enabled = false;
+        brain->last_intuition_update_us = 0;
+    }
+
     // -1.5. Cleanup Knowledge Graph Reader (self-awareness)
     // KG reader is destroyed after parietal but before medulla
     if (brain->kg_reader) {

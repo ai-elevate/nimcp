@@ -189,6 +189,9 @@ extern void set_error(const char* format, ...);
 // Parietal Lobe subsystem macro (mathematical/scientific reasoning)
 #define init_parietal_subsystem                     nimcp_brain_factory_init_parietal_subsystem
 
+// Intuition System subsystem macro (Phase 6 creative/intuitive reasoning)
+#define init_intuition_subsystem                    nimcp_brain_factory_init_intuition_subsystem
+
 // Dragonfly subsystem macro (bio-inspired target tracking)
 #define init_dragonfly_subsystem                    nimcp_brain_factory_init_dragonfly_subsystem
 
@@ -694,6 +697,20 @@ brain_t brain_create_custom(const brain_config_t* config)
     // - Scientific Reasoning: Hypothesis testing, dimensional analysis
     // - Equation Manipulation: Symbolic math, differentiation
     if (!init_parietal_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // INTUITION SYSTEM (PHASE 6: CREATIVE/INTUITIVE REASONING)
+    // ========================================================================
+    // Initialize Phase 6 intuition integration system:
+    // - Intuitive Reasoning: Pattern-based hunch generation
+    // - Analogical Reasoning: Cross-domain mapping and transfer
+    // - Insight Discovery: Aha! moments and cognitive restructuring
+    // - Hypothesis Generation: Abductive and creative theory formation
+    // - Conceptual Blending: Novel concept synthesis from multiple inputs
+    // - Counterfactual Reasoning: What-if scenario exploration
+    // - Meta-Reasoning: Reasoning about reasoning strategies
+    // BIOLOGICAL: Higher-order cognition through intuitive leaps
+    if (!init_intuition_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // DRAGONFLY SUBSYSTEM (BIO-INSPIRED TARGET TRACKING)

@@ -34,6 +34,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "cognitive/parietal/nimcp_parietal.h"
+#include "cognitive/parietal/nimcp_intuition_integrations.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -444,4 +445,248 @@ int brain_step_parietal(brain_t brain, uint64_t delta_t) {
         brain->last_parietal_update_us += delta_t;
     }
     return result;
+}
+
+//=============================================================================
+// Intuition System Integration (Phase 6 Reasoning Engines)
+//=============================================================================
+
+/**
+ * @brief Connect intuition system to working memory
+ */
+static void connect_intuition_to_working_memory(intuition_system_t* intuition, brain_t brain) {
+    if (!brain->working_memory) {
+        return;
+    }
+
+    working_memory_t* wm = brain->working_memory;
+    int result = intuition_attach_working_memory(intuition, wm);
+    if (result == 0) {
+        fprintf(stderr, "[INTUITION] Connected to working memory\n");
+    }
+}
+
+/**
+ * @brief Connect intuition system to training engine
+ */
+static void connect_intuition_to_training(intuition_system_t* intuition, brain_t brain) {
+    if (!brain->training_ctx || !brain->enable_training_integration) {
+        return;
+    }
+
+    training_engine_t* training = (training_engine_t*)brain->training_ctx;
+    int result = intuition_attach_training(intuition, training);
+    if (result == 0) {
+        fprintf(stderr, "[INTUITION] Connected to training layer\n");
+    }
+}
+
+/**
+ * @brief Connect intuition system to attention
+ */
+static void connect_intuition_to_attention(intuition_system_t* intuition, brain_t brain) {
+    /* Attention system in brain is multihead_attention_t, we need attention_system_t */
+    /* For now, skip this connection - would need attention adapter */
+    (void)intuition;
+    (void)brain;
+    /* TODO: Create attention adapter if needed */
+}
+
+/**
+ * @brief Connect intuition system to executive functions
+ */
+static void connect_intuition_to_executive(intuition_system_t* intuition, brain_t brain) {
+    if (!brain->executive) {
+        return;
+    }
+
+    executive_function_t* exec = (executive_function_t*)brain->executive;
+    int result = intuition_attach_executive(intuition, exec);
+    if (result == 0) {
+        fprintf(stderr, "[INTUITION] Connected to executive functions\n");
+    }
+}
+
+/**
+ * @brief Connect intuition system to emotion system
+ */
+static void connect_intuition_to_emotion(intuition_system_t* intuition, brain_t brain) {
+    if (!brain->emotional_system) {
+        return;
+    }
+
+    emotion_system_t* emotion = (emotion_system_t*)brain->emotional_system;
+    int result = intuition_attach_emotion(intuition, emotion);
+    if (result == 0) {
+        fprintf(stderr, "[INTUITION] Connected to emotion system (gut feelings)\n");
+    }
+}
+
+/**
+ * @brief Connect intuition system to logic gates
+ */
+static void connect_intuition_to_logic(intuition_system_t* intuition, brain_t brain) {
+    if (!brain->logic) {
+        return;
+    }
+
+    logic_gate_network_t* logic = (logic_gate_network_t*)brain->logic;
+    int result = intuition_attach_logic_gates(intuition, logic);
+    if (result == 0) {
+        fprintf(stderr, "[INTUITION] Connected to logic gates (formal validation)\n");
+    }
+}
+
+/**
+ * @brief Connect intuition system to semantic memory
+ */
+static void connect_intuition_to_semantic_memory(intuition_system_t* intuition, brain_t brain) {
+    if (!brain->semantic_memory) {
+        return;
+    }
+
+    semantic_memory_t* semantic = (semantic_memory_t*)brain->semantic_memory;
+    int result = intuition_attach_semantic_memory(intuition, semantic);
+    if (result == 0) {
+        fprintf(stderr, "[INTUITION] Connected to semantic memory\n");
+    }
+}
+
+/**
+ * @brief Initialize intuition system for brain
+ *
+ * Creates and connects the Phase 6 intuition integration system to all
+ * available brain subsystems.
+ *
+ * @param brain Brain instance
+ * @return true on success, false on failure
+ */
+bool nimcp_brain_factory_init_intuition_subsystem(brain_t brain) {
+    if (!brain) {
+        return false;
+    }
+
+    /* Check if intuition is disabled or parietal is disabled */
+    if (!brain->config.enable_intuition_system && !brain->config.enable_parietal) {
+        brain->intuition_system = NULL;
+        brain->intuition_system_enabled = false;
+        brain->last_intuition_update_us = 0;
+        return true;  /* Success - intuition disabled by config */
+    }
+
+    /* If parietal is enabled, default to enabling intuition as well */
+    if (!brain->config.enable_intuition_system && brain->config.enable_parietal) {
+        /* Intuition is implicitly enabled with parietal */
+    } else if (!brain->config.enable_intuition_system) {
+        brain->intuition_system = NULL;
+        brain->intuition_system_enabled = false;
+        brain->last_intuition_update_us = 0;
+        return true;
+    }
+
+    fprintf(stderr, "[INTUITION] Initializing Phase 6 intuition system...\n");
+
+    /* Get default configuration */
+    intuition_system_config_t config = intuition_system_default_config();
+
+    /* Enable engines based on brain config */
+    config.enable_training_integration = brain->enable_training_integration;
+    config.enable_memory_integration = (brain->working_memory != NULL);
+    config.enable_attention_integration = true;
+    config.enable_emotion_integration = (brain->emotional_system != NULL);
+    config.enable_logic_validation = (brain->logic != NULL);
+
+    /* Create intuition system */
+    intuition_system_t* intuition = intuition_system_create_custom(&config);
+    if (!intuition) {
+        fprintf(stderr, "[INTUITION] ERROR: Failed to create intuition system\n");
+        brain->intuition_system = NULL;
+        brain->intuition_system_enabled = false;
+        return false;
+    }
+
+    /* Store in brain */
+    brain->intuition_system = intuition;
+    brain->intuition_system_enabled = true;
+    brain->last_intuition_update_us = 0;
+
+    fprintf(stderr, "[INTUITION] Intuition system created, connecting to subsystems...\n");
+
+    /* ====================================================================== */
+    /* CONNECT TO ALL AVAILABLE SUBSYSTEMS                                    */
+    /* ====================================================================== */
+
+    /* 1. Working Memory - Active hunch manipulation */
+    connect_intuition_to_working_memory(intuition, brain);
+
+    /* 2. Training - Learn from successful/failed intuitions */
+    connect_intuition_to_training(intuition, brain);
+
+    /* 3. Attention - Focus allocation */
+    connect_intuition_to_attention(intuition, brain);
+
+    /* 4. Executive Functions - Strategy guidance */
+    connect_intuition_to_executive(intuition, brain);
+
+    /* 5. Emotion System - Gut feelings */
+    connect_intuition_to_emotion(intuition, brain);
+
+    /* 6. Logic Gates - Formal validation */
+    connect_intuition_to_logic(intuition, brain);
+
+    /* 7. Semantic Memory - Conceptual knowledge */
+    connect_intuition_to_semantic_memory(intuition, brain);
+
+    fprintf(stderr, "[INTUITION] Phase 6 intuition system initialization complete\n");
+    fprintf(stderr, "[INTUITION]   Engines enabled: intuitive, analogical, insight,\n");
+    fprintf(stderr, "[INTUITION]                    hypothesis, blending, counterfactual, meta\n");
+
+    return true;
+}
+
+/**
+ * @brief Get intuition system from brain
+ *
+ * @param brain Brain instance
+ * @return Intuition system handle or NULL if not enabled
+ */
+intuition_system_t* brain_get_intuition_system(brain_t brain) {
+    if (!brain || !brain->intuition_system_enabled) {
+        return NULL;
+    }
+    return brain->intuition_system;
+}
+
+/**
+ * @brief Update intuition system biological state
+ *
+ * Syncs inflammation and fatigue levels with intuition system.
+ *
+ * @param brain Brain instance
+ * @return 0 on success, -1 on error
+ */
+int brain_update_intuition_biological_state(brain_t brain) {
+    if (!brain || !brain->intuition_system_enabled || !brain->intuition_system) {
+        return -1;
+    }
+
+    /* Get inflammation from immune system if available */
+    float inflammation = 0.0f;
+    if (brain->immune_enabled && brain->immune_system) {
+        /* Would query immune system for current inflammation level */
+        /* For now, use a default value */
+        inflammation = 0.1f;
+    }
+
+    /* Get fatigue from sleep system */
+    float fatigue = 0.0f;
+    if (brain->medulla_enabled) {
+        /* Would query medulla for arousal → inverse to fatigue */
+        fatigue = 0.1f;
+    }
+
+    intuition_system_set_inflammation(brain->intuition_system, inflammation);
+    intuition_system_set_fatigue(brain->intuition_system, fatigue);
+
+    return 0;
 }

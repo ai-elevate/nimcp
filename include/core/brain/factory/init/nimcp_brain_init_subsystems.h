@@ -105,6 +105,12 @@ bool nimcp_brain_factory_init_medulla_subsystem(brain_t brain);
 // Provides quantitative and scientific cognition capabilities
 bool nimcp_brain_factory_init_parietal_subsystem(brain_t brain);
 
+// === INTUITION SYSTEM SUBSYSTEM (Phase 6: Creative/Intuitive Reasoning) ===
+// Integration of all 7 Phase 6 reasoning engines:
+// Intuitive, Analogical, Insight, Hypothesis, Blending, Counterfactual, Meta
+// Provides higher-order cognition through intuitive leaps and creative reasoning
+bool nimcp_brain_factory_init_intuition_subsystem(brain_t brain);
+
 // === DRAGONFLY SUBSYSTEM (Bio-inspired Target Tracking) ===
 // Target tracking and interception (TSDN, CSTMD1, prediction, navigation)
 // Provides 95% success rate bio-inspired hunting capabilities

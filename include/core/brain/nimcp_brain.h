@@ -993,6 +993,33 @@ typedef struct {
     uint32_t parietal_subitizing_limit;   /**< Instant recognition limit (default: 4) */
     float parietal_rotation_rate_deg_ms;  /**< Mental rotation speed deg/ms (default: 0.053) */
 
+    // === INTUITION SYSTEM (Phase 6: Creative/Intuitive Reasoning) ===
+    /**
+     * Intuition System for Phase 6 Reasoning Engines
+     *
+     * WHAT: Unified integration of all creative/intuitive reasoning engines
+     * WHY:  Higher-order cognition requires intuitive leaps, not just logical inference
+     * HOW:  Wraps 7 Phase 6 engines with cross-system integration
+     *
+     * Engines:
+     * - Intuitive Reasoning: Pattern-based hunch generation
+     * - Analogical Reasoning: Cross-domain mapping and transfer
+     * - Insight Discovery: Aha! moments and restructuring
+     * - Hypothesis Generation: Abductive and creative theory formation
+     * - Conceptual Blending: Novel concept synthesis
+     * - Counterfactual Reasoning: What-if scenarios
+     * - Meta-Reasoning: Reasoning about reasoning
+     *
+     * Integration:
+     * - Working Memory: Active hunch manipulation
+     * - Training: Learning from successful/failed intuitions
+     * - Attention: Focus allocation for intuitive processing
+     * - Executive: Strategy guidance for reasoning
+     * - Emotion: Gut feelings and affective signals
+     * - Logic Gates: Formal validation of intuitions
+     */
+    bool enable_intuition_system;         /**< Enable Phase 6 intuition system (default: true if parietal enabled) */
+
     // === KNOWLEDGE GRAPH READER (Self-Awareness Infrastructure) ===
     /**
      * Knowledge Graph Reader for Runtime Self-Awareness
