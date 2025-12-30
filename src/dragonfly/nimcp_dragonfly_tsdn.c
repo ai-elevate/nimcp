@@ -110,7 +110,7 @@ void tsdn_config_default(tsdn_config_t* config) {
 
     /* Noise and adaptation */
     config->baseline_noise = 0.02f;    /* Small baseline noise */
-    config->adaptation_rate = 0.1f;    /* Moderate adaptation */
+    config->adaptation_rate = 1.0f;    /* 1 Hz adaptation (biological range 0.5-100 Hz) */
     config->enable_adaptation = true;
 
     /* Gain modulation */

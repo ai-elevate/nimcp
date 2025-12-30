@@ -136,9 +136,9 @@ dragonfly_config_t dragonfly_default_config(void) {
     config.intercept_threshold = 0.5f;    /* meters for success */
     config.pursuit_timeout_s = 30.0f;     /* 30 second max pursuit */
 
-    /* Mode transitions */
-    config.lock_threshold = 0.7f;
-    config.pursue_threshold = 0.8f;
+    /* Mode transitions - lock threshold must be >= pursue threshold */
+    config.lock_threshold = 0.85f;
+    config.pursue_threshold = 0.7f;
     config.abort_threshold = 0.2f;
 
     /* Energy management */
@@ -268,6 +268,9 @@ int dragonfly_system_reset(dragonfly_system_t* system) {
     memset(&system->current_solution, 0, sizeof(system->current_solution));
     memset(&system->current_prediction, 0, sizeof(system->current_prediction));
     memset(&system->current_tsdn, 0, sizeof(system->current_tsdn));
+
+    /* Reset statistics */
+    memset(&system->stats, 0, sizeof(system->stats));
 
     nimcp_mutex_unlock(system->mutex);
     return 0;

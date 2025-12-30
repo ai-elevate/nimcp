@@ -251,10 +251,10 @@ tracking_config_t tracking_default_config(void) {
         .measurement_noise = 1.0f,
         .motion_model = MOTION_MODEL_CONSTANT_VELOCITY,
 
-        /* Size selectivity */
-        .min_target_size = 0.5f,
-        .max_target_size = 20.0f,
-        .optimal_target_size = 3.0f
+        /* Size selectivity - biological range ~1-10 degrees */
+        .min_target_size = 0.01f,   /* ~0.5 degrees in radians */
+        .max_target_size = 0.2f,    /* ~11 degrees in radians */
+        .optimal_target_size = 0.05f /* ~3 degrees in radians */
     };
     return config;
 }
