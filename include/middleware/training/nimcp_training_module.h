@@ -109,7 +109,7 @@ typedef struct {
 
     /* User context */
     void* user_data;                     /**< User-provided context */
-} nimcp_training_config_t;
+} nimcp_training_module_config_t;
 
 /**
  * @brief Training module statistics
@@ -174,7 +174,7 @@ typedef struct nimcp_training_context nimcp_training_context_t;
  *
  * EXAMPLE:
  * ```c
- * nimcp_training_config_t cfg = nimcp_training_default_config();
+ * nimcp_training_module_config_t cfg = nimcp_training_default_config();
  * cfg.type = NIMCP_TRAIN_MOD_STDP;
  * cfg.name = "stdp_plasticity";
  * cfg.enable_security = true;
@@ -184,7 +184,7 @@ typedef struct nimcp_training_context nimcp_training_context_t;
  * ```
  */
 nimcp_training_context_t* nimcp_training_create(
-    const nimcp_training_config_t* config
+    const nimcp_training_module_config_t* config
 );
 
 /**
@@ -215,7 +215,7 @@ void nimcp_training_destroy(nimcp_training_context_t* ctx);
  *
  * @return Default configuration with sensible values
  */
-nimcp_training_config_t nimcp_training_default_config(void);
+nimcp_training_module_config_t nimcp_training_default_config(void);
 
 //=============================================================================
 // Weight Management (Unified Memory Integration)

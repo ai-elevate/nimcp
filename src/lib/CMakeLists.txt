@@ -692,6 +692,62 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_substrate_bridge.c  # Reasoning-substrate integration (inference depth)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/tom/nimcp_tom_substrate_bridge.c  # ToM-substrate integration (mentalizing capacity)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory_substrate_bridge.c  # Working memory-substrate integration (capacity, decay)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_substrate_bridge.c  # Wellbeing-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_gw_substrate_bridge.c  # GW-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_substrate_bridge.c  # Ethics-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_substrate_bridge.c  # Knowledge-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_logic_substrate_bridge.c  # Logic-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_substrate_bridge.c  # Mirror-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_substrate_bridge.c  # Personality-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_substrate_bridge.c  # Self-awareness-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive_substrate_bridge.c  # Predictive-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_substrate_bridge.c  # Curiosity-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bias/nimcp_bias_substrate_bridge.c  # Bias-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/epistemic/nimcp_epistemic_substrate_bridge.c  # Epistemic-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations_substrate_bridge.c  # Explanations-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience_substrate_bridge.c  # Salience-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model_substrate_bridge.c  # Self-model-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake_substrate_bridge.c  # Sleep-wake-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning_substrate_bridge.c  # Meta-learning-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/grief/nimcp_grief_substrate_bridge.c  # Grief-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/joy/nimcp_joy_substrate_bridge.c  # Joy-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/love_loyalty_friendship/nimcp_llf_substrate_bridge.c  # LLF-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health_substrate_bridge.c  # Mental-health-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/remorse/nimcp_remorse_substrate_bridge.c  # Remorse-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/shadow/nimcp_shadow_substrate_bridge.c  # Shadow-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/shadow_emotions/nimcp_shadow_emotions_substrate_bridge.c  # Shadow-emotions-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/autobiographical_memory/nimcp_autobio_substrate_bridge.c  # Autobio-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/analysis/nimcp_analysis_substrate_bridge.c  # Analysis-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotional_tagging/nimcp_emotional_tagging_substrate_bridge.c  # Emotional-tagging-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_recognition/nimcp_emotion_recognition_substrate_bridge.c  # Emotion-recognition-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_substrate_bridge.c  # JEPA-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/symbolic_logic/nimcp_symbolic_logic_substrate_bridge.c  # Symbolic-logic-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_intuition_substrate_bridge.c  # Intuition-substrate integration
+
+    # Cognitive Thalamic Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_gw_thalamic_bridge.c  # GW-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_thalamic_bridge.c  # Ethics-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_thalamic_bridge.c  # Knowledge-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_logic_thalamic_bridge.c  # Logic-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_thalamic_bridge.c  # Mirror-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_thalamic_bridge.c  # Personality-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_thalamic_bridge.c  # Self-awareness-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive_thalamic_bridge.c  # Predictive-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_thalamic_bridge.c  # Curiosity-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience_thalamic_bridge.c  # Salience-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_recognition/nimcp_emotion_recognition_thalamic_bridge.c  # Emotion-recognition-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/autobiographical_memory/nimcp_autobio_thalamic_bridge.c  # Autobio-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake_thalamic_bridge.c  # Sleep-wake-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning_thalamic_bridge.c  # Meta-learning-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_thalamic_bridge.c  # JEPA-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bias/nimcp_bias_thalamic_bridge.c  # Bias-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/grief/nimcp_grief_thalamic_bridge.c  # Grief-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/joy/nimcp_joy_thalamic_bridge.c  # Joy-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/love_loyalty_friendship/nimcp_llf_thalamic_bridge.c  # LLF-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/remorse/nimcp_remorse_thalamic_bridge.c  # Remorse-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/shadow/nimcp_shadow_thalamic_bridge.c  # Shadow-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health_thalamic_bridge.c  # Mental-health-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_intuition_thalamic_bridge.c  # Intuition-thalamic integration
 
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c
@@ -1293,6 +1349,38 @@ set(NIMCP_CORE_SOURCES
 
     # Brain factory KG reader initialization (self-awareness)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_kg_reader.c
+
+    # Core Substrate Bridges - Brain region-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/motor/nimcp_motor_substrate_bridge.c  # Motor-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/sensory/visual/nimcp_visual_substrate_bridge.c  # Visual-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/sensory/auditory/nimcp_auditory_substrate_bridge.c  # Auditory-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/sensory/somatosensory/nimcp_somatosensory_substrate_bridge.c  # Somatosensory-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/hippocampus/nimcp_hippocampus_substrate_bridge.c  # Hippocampus-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cerebellum/nimcp_cerebellum_substrate_bridge.c  # Cerebellum-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brainstem/nimcp_brainstem_substrate_bridge.c  # Brainstem-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/prefrontal/nimcp_prefrontal_substrate_bridge.c  # Prefrontal-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cingulate/nimcp_cingulate_substrate_bridge.c  # Cingulate-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/insula/nimcp_insula_substrate_bridge.c  # Insula-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/temporal/nimcp_temporal_substrate_bridge.c  # Temporal-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/parietal/nimcp_parietal_substrate_bridge.c  # Parietal-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/occipital/nimcp_occipital_substrate_bridge.c  # Occipital-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/hypothalamus/nimcp_hypothalamus_substrate_bridge.c  # Hypothalamus-substrate integration
+
+    # Core Thalamic Bridges - Brain region-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/motor/nimcp_motor_thalamic_bridge.c  # Motor-thalamic integration (VA)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/sensory/visual/nimcp_visual_thalamic_bridge.c  # Visual-thalamic integration (LGN)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/sensory/auditory/nimcp_auditory_thalamic_bridge.c  # Auditory-thalamic integration (MGN)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/sensory/somatosensory/nimcp_somatosensory_thalamic_bridge.c  # Somatosensory-thalamic integration (VPL)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/hippocampus/nimcp_hippocampus_thalamic_bridge.c  # Hippocampus-thalamic integration (Anterior)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cerebellum/nimcp_cerebellum_thalamic_bridge.c  # Cerebellum-thalamic integration (VL)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brainstem/nimcp_brainstem_thalamic_bridge.c  # Brainstem-thalamic integration (Intralaminar)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/prefrontal/nimcp_prefrontal_thalamic_bridge.c  # Prefrontal-thalamic integration (MD)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cingulate/nimcp_cingulate_thalamic_bridge.c  # Cingulate-thalamic integration (Anterior)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/insula/nimcp_insula_thalamic_bridge.c  # Insula-thalamic integration (VMPo)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/temporal/nimcp_temporal_thalamic_bridge.c  # Temporal-thalamic integration (Pulvinar)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/parietal/nimcp_parietal_thalamic_bridge.c  # Parietal-thalamic integration (Pulvinar)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/occipital/nimcp_occipital_thalamic_bridge.c  # Occipital-thalamic integration (LGN)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/hypothalamus/nimcp_hypothalamus_thalamic_bridge.c  # Hypothalamus-thalamic integration (Midline)
 )
 
 # Core library

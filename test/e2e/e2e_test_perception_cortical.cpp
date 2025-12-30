@@ -234,6 +234,7 @@ TEST_F(E2EVisualCorticalTest, DetectHorizontalOrientation) {
 
     visual_cortical_config_t config;
     visual_cortical_default_config(&config);
+    config.num_hypercolumns = 16;  // Use 4x4 grid for adequate patch size
 
     visual_cortical_bridge_t* bridge = visual_cortical_bridge_create(&config, nullptr);
     ASSERT_NE(nullptr, bridge);
@@ -268,6 +269,7 @@ TEST_F(E2EVisualCorticalTest, DetectDiagonalOrientation) {
 
     visual_cortical_config_t config;
     visual_cortical_default_config(&config);
+    config.num_hypercolumns = 16;  // Use 4x4 grid for adequate patch size
 
     visual_cortical_bridge_t* bridge = visual_cortical_bridge_create(&config, nullptr);
     ASSERT_NE(nullptr, bridge);
@@ -298,6 +300,7 @@ TEST_F(E2EVisualCorticalTest, MultipleOrientationDetections) {
 
     visual_cortical_config_t config;
     visual_cortical_default_config(&config);
+    config.num_hypercolumns = 16;  // Use 4x4 grid for adequate patch size
 
     visual_cortical_bridge_t* bridge = visual_cortical_bridge_create(&config, nullptr);
     ASSERT_NE(nullptr, bridge);
@@ -336,6 +339,7 @@ TEST_F(E2EVisualCorticalTest, OrientationMapGeneration) {
 
     visual_cortical_config_t config;
     visual_cortical_default_config(&config);
+    config.num_hypercolumns = 16;  // Use 4x4 grid for adequate patch size
 
     visual_cortical_bridge_t* bridge = visual_cortical_bridge_create(&config, nullptr);
     ASSERT_NE(nullptr, bridge);

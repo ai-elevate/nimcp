@@ -70,7 +70,7 @@ protected:
 
 TEST_F(TrainingModuleIntegrationTest, MultipleModulesShareSecurity) {
     // Create multiple training modules sharing security context
-    nimcp_training_config_t cfg1 = nimcp_training_default_config();
+    nimcp_training_module_config_t cfg1 = nimcp_training_default_config();
     cfg1.type = NIMCP_TRAIN_MOD_STDP;
     cfg1.name = "stdp_module";
     cfg1.enable_security = true;
@@ -78,7 +78,7 @@ TEST_F(TrainingModuleIntegrationTest, MultipleModulesShareSecurity) {
     cfg1.enable_unified_memory = true;
     cfg1.mem_manager = memory;
 
-    nimcp_training_config_t cfg2 = nimcp_training_default_config();
+    nimcp_training_module_config_t cfg2 = nimcp_training_default_config();
     cfg2.type = NIMCP_TRAIN_MOD_BCM;
     cfg2.name = "bcm_module";
     cfg2.enable_security = true;
@@ -112,7 +112,7 @@ TEST_F(TrainingModuleIntegrationTest, MultipleModulesShareSecurity) {
 
 TEST_F(TrainingModuleIntegrationTest, MultipleModulesShareMemory) {
     // Create multiple modules sharing memory manager
-    nimcp_training_config_t cfg = nimcp_training_default_config();
+    nimcp_training_module_config_t cfg = nimcp_training_default_config();
     cfg.enable_security = false;
     cfg.enable_unified_memory = true;
     cfg.mem_manager = memory;
@@ -184,7 +184,7 @@ TEST_F(TrainingModuleIntegrationTest, MultipleModulesShareMemory) {
 
 TEST_F(TrainingModuleIntegrationTest, SharedWeightsAcrossModules) {
     // Create two modules
-    nimcp_training_config_t cfg = nimcp_training_default_config();
+    nimcp_training_module_config_t cfg = nimcp_training_default_config();
     cfg.enable_security = true;
     cfg.security_ctx = security;
     cfg.enable_unified_memory = true;
@@ -242,7 +242,7 @@ TEST_F(TrainingModuleIntegrationTest, SharedWeightsAcrossModules) {
 //=============================================================================
 
 TEST_F(TrainingModuleIntegrationTest, TrustNetworkInteraction) {
-    nimcp_training_config_t cfg = nimcp_training_default_config();
+    nimcp_training_module_config_t cfg = nimcp_training_default_config();
     cfg.type = NIMCP_TRAIN_MOD_STDP;
     cfg.name = "trust_test_module";
     cfg.enable_security = true;
@@ -278,7 +278,7 @@ TEST_F(TrainingModuleIntegrationTest, TrustNetworkInteraction) {
 //=============================================================================
 
 TEST_F(TrainingModuleIntegrationTest, CheckpointWithSecurityIntegration) {
-    nimcp_training_config_t cfg = nimcp_training_default_config();
+    nimcp_training_module_config_t cfg = nimcp_training_default_config();
     cfg.type = NIMCP_TRAIN_MOD_BRAIN_LEARNING;
     cfg.name = "checkpoint_security_test";
     cfg.enable_security = true;
@@ -330,7 +330,7 @@ TEST_F(TrainingModuleIntegrationTest, CheckpointWithSecurityIntegration) {
 //=============================================================================
 
 TEST_F(TrainingModuleIntegrationTest, ConcurrentWeightUpdates) {
-    nimcp_training_config_t cfg = nimcp_training_default_config();
+    nimcp_training_module_config_t cfg = nimcp_training_default_config();
     cfg.type = NIMCP_TRAIN_MOD_STDP;
     cfg.name = "concurrent_test";
     cfg.enable_security = true;
@@ -389,7 +389,7 @@ TEST_F(TrainingModuleIntegrationTest, MultiPhaseTraining) {
     // Simulate training pipeline with different phases
 
     // Phase T1: Homeostatic
-    nimcp_training_config_t cfg1 = nimcp_training_default_config();
+    nimcp_training_module_config_t cfg1 = nimcp_training_default_config();
     cfg1.type = NIMCP_TRAIN_MOD_HOMEOSTATIC;
     cfg1.name = "phase_t1";
     cfg1.phase = NIMCP_TRAIN_PHASE_T1;
@@ -400,7 +400,7 @@ TEST_F(TrainingModuleIntegrationTest, MultiPhaseTraining) {
     ASSERT_EQ(nimcp_training_init(t1), NIMCP_SUCCESS);
 
     // Phase T2: Dendritic
-    nimcp_training_config_t cfg2 = nimcp_training_default_config();
+    nimcp_training_module_config_t cfg2 = nimcp_training_default_config();
     cfg2.type = NIMCP_TRAIN_MOD_DENDRITIC;
     cfg2.name = "phase_t2";
     cfg2.phase = NIMCP_TRAIN_PHASE_T2;
@@ -411,7 +411,7 @@ TEST_F(TrainingModuleIntegrationTest, MultiPhaseTraining) {
     ASSERT_EQ(nimcp_training_init(t2), NIMCP_SUCCESS);
 
     // Phase T3: Predictive
-    nimcp_training_config_t cfg3 = nimcp_training_default_config();
+    nimcp_training_module_config_t cfg3 = nimcp_training_default_config();
     cfg3.type = NIMCP_TRAIN_MOD_PREDICTIVE;
     cfg3.name = "phase_t3";
     cfg3.phase = NIMCP_TRAIN_PHASE_T3;

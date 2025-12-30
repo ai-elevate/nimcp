@@ -75,7 +75,7 @@ protected:
     nimcp_training_context_t* createContext(bool with_security = true,
                                             bool with_memory = true,
                                             bool with_cow = true) {
-        nimcp_training_config_t cfg = nimcp_training_default_config();
+        nimcp_training_module_config_t cfg = nimcp_training_default_config();
         cfg.type = NIMCP_TRAIN_MOD_STDP;
         cfg.name = "test_training_module";
         cfg.enable_security = with_security;

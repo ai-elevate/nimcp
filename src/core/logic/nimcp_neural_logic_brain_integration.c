@@ -16,6 +16,8 @@
 #include "security/nimcp_blood_brain_barrier.h"
 
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/subcortical/nimcp_basal_ganglia_enhanced.h"
+#include "core/brain/subcortical/nimcp_bg_neuromodulators.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -92,7 +94,12 @@ static neuromodulator_system_t get_neuromod_system(brain_t brain) {
  *
  * WHAT: Query current dopamine and acetylcholine concentrations
  * WHY:  Needed for threshold modulation
- * HOW:  Query neuromodulator system, default to 0.5 if unavailable
+ * HOW:  Query BG neuromod system if available, else brain's generic neuromod system
+ *
+ * INTEGRATION: When basal ganglia is enabled, we prefer its neuromodulator levels
+ * because they reflect action selection state, reward prediction errors, and
+ * motivational signals from nucleus accumbens. This creates a feedback loop where
+ * BG's reward-driven learning affects logical reasoning thresholds.
  */
 static void read_neuromodulator_levels(
     brain_t brain,
@@ -114,6 +121,20 @@ static void read_neuromodulator_levels(
         return;
     }
 
+    // PRIORITY 1: Use BG neuromodulator system if available
+    // BG neuromod reflects action selection state, RPE, and NAc motivation
+    if (brain->basal_ganglia_enabled && brain->basal_ganglia) {
+        bg_neuromod_system_t* bg_neuromod = bg_enhanced_get_neuromod(brain->basal_ganglia);
+        if (bg_neuromod) {
+            *da_level = bg_neuromod_get_level(bg_neuromod, BG_NEUROMOD_DOPAMINE);
+            *ach_level = bg_neuromod_get_level(bg_neuromod, BG_NEUROMOD_ACETYLCHOLINE);
+            LOG_DEBUG("read_neuromodulator_levels: using BG neuromod (DA=%.3f, ACh=%.3f)",
+                      *da_level, *ach_level);
+            return;
+        }
+    }
+
+    // PRIORITY 2: Fall back to brain's generic neuromodulator system
     neuromodulator_system_t neuromod = get_neuromod_system(brain);
     if (!neuromod) {
         return;

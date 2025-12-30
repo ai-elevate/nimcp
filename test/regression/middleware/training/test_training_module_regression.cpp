@@ -95,7 +95,7 @@ protected:
     }
 
     nimcp_training_context_t* create_test_module(nimcp_training_module_type_t type) {
-        nimcp_training_config_t config = nimcp_training_default_config();
+        nimcp_training_module_config_t config = nimcp_training_default_config();
         config.type = type;
         config.name = "regression_test";
         config.enable_security = true;
@@ -530,7 +530,7 @@ TEST_F(TrainingModuleRegressionTest, ConfigDefaultsStability) {
     // WHAT: Verify default configuration hasn't changed unexpectedly
     // WHY:  Ensure consistent default behavior
 
-    nimcp_training_config_t config = nimcp_training_default_config();
+    nimcp_training_module_config_t config = nimcp_training_default_config();
     config.type = NIMCP_TRAIN_MOD_STDP;
     config.name = "defaults_test";
     config.security_ctx = security_ctx;

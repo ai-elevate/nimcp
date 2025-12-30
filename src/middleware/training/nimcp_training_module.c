@@ -42,7 +42,7 @@
  */
 struct nimcp_training_context {
     /* Configuration */
-    nimcp_training_config_t config;
+    nimcp_training_module_config_t config;
     nimcp_training_state_t state;
     char name[64];
 
@@ -110,9 +110,9 @@ static const char* state_names[] = {
 // Lifecycle Functions
 //=============================================================================
 
-nimcp_training_config_t nimcp_training_default_config(void)
+nimcp_training_module_config_t nimcp_training_default_config(void)
 {
-    nimcp_training_config_t cfg = {0};
+    nimcp_training_module_config_t cfg = {0};
     cfg.type = NIMCP_TRAIN_MOD_BRAIN_LEARNING;
     cfg.name = "training_module";
     cfg.enable_security = true;
@@ -130,7 +130,7 @@ nimcp_training_config_t nimcp_training_default_config(void)
 }
 
 nimcp_training_context_t* nimcp_training_create(
-    const nimcp_training_config_t* config)
+    const nimcp_training_module_config_t* config)
 {
     nimcp_training_context_t* ctx = nimcp_calloc(1, sizeof(nimcp_training_context_t));
     if (!ctx) {

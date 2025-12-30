@@ -14,6 +14,7 @@ extern "C" {
 #include "portia/nimcp_portia_sensor_fusion.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/time/nimcp_time.h"
 }
 
 class PortiaSensorFusionE2ETest : public ::testing::Test {
@@ -40,10 +41,11 @@ TEST_F(PortiaSensorFusionE2ETest, MultiSensorDataFlow) {
     fusion_ctx_ = portia_fusion_init(&config, nullptr);
     ASSERT_NE(fusion_ctx_, nullptr);
 
-    // Send multiple sensor readings
-    sensor_reading_t visual = {SENSOR_TYPE_VISUAL, 1.0f, 0.9f, 1000, true};
-    sensor_reading_t audio = {SENSOR_TYPE_AUDIO, 0.5f, 0.8f, 1001, true};
-    sensor_reading_t imu = {SENSOR_TYPE_IMU, 0.3f, 0.95f, 1002, true};
+    // Send multiple sensor readings with current timestamps
+    uint64_t now = nimcp_time_monotonic_ms();
+    sensor_reading_t visual = {SENSOR_TYPE_VISUAL, 1.0f, 0.9f, now, true};
+    sensor_reading_t audio = {SENSOR_TYPE_AUDIO, 0.5f, 0.8f, now + 1, true};
+    sensor_reading_t imu = {SENSOR_TYPE_IMU, 0.3f, 0.95f, now + 2, true};
 
     EXPECT_TRUE(portia_fusion_update_sensor(fusion_ctx_, &visual));
     EXPECT_TRUE(portia_fusion_update_sensor(fusion_ctx_, &audio));
@@ -66,12 +68,13 @@ TEST_F(PortiaSensorFusionE2ETest, SensorFailureHandling) {
     fusion_ctx_ = portia_fusion_init(&config, nullptr);
     ASSERT_NE(fusion_ctx_, nullptr);
 
-    // Send one good sensor
-    sensor_reading_t good = {SENSOR_TYPE_VISUAL, 1.0f, 0.9f, 1000, true};
+    // Send one good sensor with current timestamp
+    uint64_t now = nimcp_time_monotonic_ms();
+    sensor_reading_t good = {SENSOR_TYPE_VISUAL, 1.0f, 0.9f, now, true};
     EXPECT_TRUE(portia_fusion_update_sensor(fusion_ctx_, &good));
 
     // Send failed sensor
-    sensor_reading_t failed = {SENSOR_TYPE_AUDIO, 0.0f, 0.0f, 1001, false};
+    sensor_reading_t failed = {SENSOR_TYPE_AUDIO, 0.0f, 0.0f, now + 1, false};
     portia_fusion_update_sensor(fusion_ctx_, &failed);
 
     // Should still process successfully with fallback

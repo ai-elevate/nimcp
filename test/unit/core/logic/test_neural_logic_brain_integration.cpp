@@ -27,6 +27,8 @@ extern "C" {
 #include "core/logic/nimcp_neural_logic_brain_integration.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/nimcp_brain.h"
+#include "core/brain/subcortical/nimcp_basal_ganglia_enhanced.h"
+#include "core/brain/subcortical/nimcp_bg_neuromodulators.h"
 #include "core/neuron_types/nimcp_neural_logic.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "utils/logging/nimcp_logging.h"
@@ -67,13 +69,24 @@ protected:
         return brain_create_neural_logic(brain, &logic_config);
     }
 
-    // Helper: Set neuromodulator levels
+    // Helper: Set neuromodulator levels (both generic and BG neuromod systems)
     void set_neuromodulators(float da, float ach) {
+        // Set generic neuromodulator system
         if (brain->neuromodulator_system) {
             neuromodulator_set_level(brain->neuromodulator_system,
                                      NEUROMOD_DOPAMINE, da);
             neuromodulator_set_level(brain->neuromodulator_system,
                                      NEUROMOD_ACETYLCHOLINE, ach);
+        }
+
+        // Also set BG neuromodulator system if BG is enabled
+        // (neural logic integration prefers BG neuromod when available)
+        if (brain->basal_ganglia_enabled && brain->basal_ganglia) {
+            bg_neuromod_system_t* bg_neuromod = bg_enhanced_get_neuromod(brain->basal_ganglia);
+            if (bg_neuromod) {
+                bg_neuromod_set_level(bg_neuromod, BG_NEUROMOD_DOPAMINE, da);
+                bg_neuromod_set_level(bg_neuromod, BG_NEUROMOD_ACETYLCHOLINE, ach);
+            }
         }
     }
 };
