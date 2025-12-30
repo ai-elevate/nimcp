@@ -38,7 +38,7 @@ protected:
     tsdn_config_t config;
 
     void SetUp() override {
-        config = tsdn_default_config();
+        tsdn_config_default(&config);
     }
 };
 
@@ -267,8 +267,9 @@ TEST(BackwardCompatibilityTest, DefaultConfigReturnsValidConfig) {
 }
 
 TEST(BackwardCompatibilityTest, DefaultTSDNConfigValid) {
-    tsdn_config_t config = tsdn_default_config();
-    EXPECT_TRUE(tsdn_validate_config(&config))
+    tsdn_config_t config;
+    tsdn_config_default(&config);
+    EXPECT_EQ(tsdn_config_validate(&config), 0)
         << "Default TSDN config must be valid";
 }
 

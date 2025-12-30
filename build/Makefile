@@ -10767,6 +10767,110 @@ unit_parietal_orchestrator/fast:
 .PHONY : unit_parietal_orchestrator/fast
 
 #=============================================================================
+# Target rules for targets named unit_parietal_intuitive_reasoning
+
+# Build rule for target.
+unit_parietal_intuitive_reasoning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_intuitive_reasoning
+.PHONY : unit_parietal_intuitive_reasoning
+
+# fast build rule for target.
+unit_parietal_intuitive_reasoning/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_intuitive_reasoning.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_intuitive_reasoning.dir/build
+.PHONY : unit_parietal_intuitive_reasoning/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_analogical_reasoning
+
+# Build rule for target.
+unit_parietal_analogical_reasoning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_analogical_reasoning
+.PHONY : unit_parietal_analogical_reasoning
+
+# fast build rule for target.
+unit_parietal_analogical_reasoning/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_analogical_reasoning.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_analogical_reasoning.dir/build
+.PHONY : unit_parietal_analogical_reasoning/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_insight_discovery
+
+# Build rule for target.
+unit_parietal_insight_discovery: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_insight_discovery
+.PHONY : unit_parietal_insight_discovery
+
+# fast build rule for target.
+unit_parietal_insight_discovery/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_insight_discovery.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_insight_discovery.dir/build
+.PHONY : unit_parietal_insight_discovery/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_hypothesis_generation
+
+# Build rule for target.
+unit_parietal_hypothesis_generation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_hypothesis_generation
+.PHONY : unit_parietal_hypothesis_generation
+
+# fast build rule for target.
+unit_parietal_hypothesis_generation/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_hypothesis_generation.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_hypothesis_generation.dir/build
+.PHONY : unit_parietal_hypothesis_generation/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_conceptual_blending
+
+# Build rule for target.
+unit_parietal_conceptual_blending: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_conceptual_blending
+.PHONY : unit_parietal_conceptual_blending
+
+# fast build rule for target.
+unit_parietal_conceptual_blending/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_conceptual_blending.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_conceptual_blending.dir/build
+.PHONY : unit_parietal_conceptual_blending/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_counterfactual
+
+# Build rule for target.
+unit_parietal_counterfactual: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_counterfactual
+.PHONY : unit_parietal_counterfactual
+
+# fast build rule for target.
+unit_parietal_counterfactual/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_counterfactual.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_counterfactual.dir/build
+.PHONY : unit_parietal_counterfactual/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_meta_reasoning
+
+# Build rule for target.
+unit_parietal_meta_reasoning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_meta_reasoning
+.PHONY : unit_parietal_meta_reasoning
+
+# fast build rule for target.
+unit_parietal_meta_reasoning/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_meta_reasoning.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_meta_reasoning.dir/build
+.PHONY : unit_parietal_meta_reasoning/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_intuition_integrations
+
+# Build rule for target.
+unit_parietal_intuition_integrations: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_intuition_integrations
+.PHONY : unit_parietal_intuition_integrations
+
+# fast build rule for target.
+unit_parietal_intuition_integrations/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_intuition_integrations.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_intuition_integrations.dir/build
+.PHONY : unit_parietal_intuition_integrations/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_bio_async_test
 
 # Build rule for target.
@@ -12182,6 +12286,84 @@ unit_core_brain_subcortical_amygdala_stress_bridge_test: cmake_check_build_syste
 unit_core_brain_subcortical_amygdala_stress_bridge_test/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_stress_bridge_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_stress_bridge_test.dir/build
 .PHONY : unit_core_brain_subcortical_amygdala_stress_bridge_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_amygdala_fep_bridge_test
+
+# Build rule for target.
+unit_core_brain_subcortical_amygdala_fep_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_amygdala_fep_bridge_test
+.PHONY : unit_core_brain_subcortical_amygdala_fep_bridge_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_amygdala_fep_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_fep_bridge_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_amygdala_fep_bridge_test.dir/build
+.PHONY : unit_core_brain_subcortical_amygdala_fep_bridge_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_basal_ganglia_fep_bridge_test
+
+# Build rule for target.
+unit_core_brain_subcortical_basal_ganglia_fep_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_basal_ganglia_fep_bridge_test
+.PHONY : unit_core_brain_subcortical_basal_ganglia_fep_bridge_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_basal_ganglia_fep_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_fep_bridge_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_fep_bridge_test.dir/build
+.PHONY : unit_core_brain_subcortical_basal_ganglia_fep_bridge_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_basal_ganglia_thalamus_bridge_test
+
+# Build rule for target.
+unit_core_brain_subcortical_basal_ganglia_thalamus_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_basal_ganglia_thalamus_bridge_test
+.PHONY : unit_core_brain_subcortical_basal_ganglia_thalamus_bridge_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_basal_ganglia_thalamus_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_thalamus_bridge_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_thalamus_bridge_test.dir/build
+.PHONY : unit_core_brain_subcortical_basal_ganglia_thalamus_bridge_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_basal_ganglia_amygdala_bridge_test
+
+# Build rule for target.
+unit_core_brain_subcortical_basal_ganglia_amygdala_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_basal_ganglia_amygdala_bridge_test
+.PHONY : unit_core_brain_subcortical_basal_ganglia_amygdala_bridge_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_basal_ganglia_amygdala_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_amygdala_bridge_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_amygdala_bridge_test.dir/build
+.PHONY : unit_core_brain_subcortical_basal_ganglia_amygdala_bridge_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_basal_ganglia_training_bridge_test
+
+# Build rule for target.
+unit_core_brain_subcortical_basal_ganglia_training_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_basal_ganglia_training_bridge_test
+.PHONY : unit_core_brain_subcortical_basal_ganglia_training_bridge_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_basal_ganglia_training_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_training_bridge_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_training_bridge_test.dir/build
+.PHONY : unit_core_brain_subcortical_basal_ganglia_training_bridge_test/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_subcortical_basal_ganglia_executive_bridge_test
+
+# Build rule for target.
+unit_core_brain_subcortical_basal_ganglia_executive_bridge_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_subcortical_basal_ganglia_executive_bridge_test
+.PHONY : unit_core_brain_subcortical_basal_ganglia_executive_bridge_test
+
+# fast build rule for target.
+unit_core_brain_subcortical_basal_ganglia_executive_bridge_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_executive_bridge_test.dir/build.make test/unit/core/brain/subcortical/CMakeFiles/unit_core_brain_subcortical_basal_ganglia_executive_bridge_test.dir/build
+.PHONY : unit_core_brain_subcortical_basal_ganglia_executive_bridge_test/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_math_test_complex_math
@@ -20116,10 +20298,16 @@ help:
 	@echo "... unit_core_brain_split_brain_test"
 	@echo "... unit_core_brain_subcortical_amygdala_attention_bridge_test"
 	@echo "... unit_core_brain_subcortical_amygdala_autobio_bridge_test"
+	@echo "... unit_core_brain_subcortical_amygdala_fep_bridge_test"
 	@echo "... unit_core_brain_subcortical_amygdala_stress_bridge_test"
 	@echo "... unit_core_brain_subcortical_amygdala_test"
 	@echo "... unit_core_brain_subcortical_amygdala_training_bridge_test"
+	@echo "... unit_core_brain_subcortical_basal_ganglia_amygdala_bridge_test"
+	@echo "... unit_core_brain_subcortical_basal_ganglia_executive_bridge_test"
+	@echo "... unit_core_brain_subcortical_basal_ganglia_fep_bridge_test"
 	@echo "... unit_core_brain_subcortical_basal_ganglia_test"
+	@echo "... unit_core_brain_subcortical_basal_ganglia_thalamus_bridge_test"
+	@echo "... unit_core_brain_subcortical_basal_ganglia_training_bridge_test"
 	@echo "... unit_core_brain_subcortical_thalamus_test"
 	@echo "... unit_core_brain_test_brain_100_percent_coverage"
 	@echo "... unit_core_brain_test_brain_accessors_and_utilities"
@@ -20359,10 +20547,18 @@ help:
 	@echo "... unit_optimization_test_cross_modal"
 	@echo "... unit_optimization_test_dynamic_adaptation"
 	@echo "... unit_optimization_test_multi_objective"
+	@echo "... unit_parietal_analogical_reasoning"
 	@echo "... unit_parietal_biology"
 	@echo "... unit_parietal_chemistry"
+	@echo "... unit_parietal_conceptual_blending"
+	@echo "... unit_parietal_counterfactual"
 	@echo "... unit_parietal_equation_manipulation"
+	@echo "... unit_parietal_hypothesis_generation"
+	@echo "... unit_parietal_insight_discovery"
+	@echo "... unit_parietal_intuition_integrations"
+	@echo "... unit_parietal_intuitive_reasoning"
 	@echo "... unit_parietal_mathematical_intuition"
+	@echo "... unit_parietal_meta_reasoning"
 	@echo "... unit_parietal_number_sense"
 	@echo "... unit_parietal_orchestrator"
 	@echo "... unit_parietal_scientific_reasoning"

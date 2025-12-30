@@ -72,3 +72,31 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_basal_ganglia_fep_bridge.cpp
     unit
 )
+
+# Test: Basal Ganglia-Thalamus Bridge Tests (motor relay)
+add_test_binary(
+    unit_core_brain_subcortical_basal_ganglia_thalamus_bridge_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_basal_ganglia_thalamus_bridge.cpp
+    unit
+)
+
+# Test: Basal Ganglia-Amygdala Bridge Tests (emotional modulation)
+add_test_binary(
+    unit_core_brain_subcortical_basal_ganglia_amygdala_bridge_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_basal_ganglia_amygdala_bridge.cpp
+    unit
+)
+
+# Test: Basal Ganglia-Training Bridge Tests (plasticity)
+add_test_binary(
+    unit_core_brain_subcortical_basal_ganglia_training_bridge_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_basal_ganglia_training_bridge.cpp
+    unit
+)
+
+# Test: Basal Ganglia-Executive Bridge Tests (goal-directed control)
+add_test_binary(
+    unit_core_brain_subcortical_basal_ganglia_executive_bridge_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_basal_ganglia_executive_bridge.cpp
+    unit
+)

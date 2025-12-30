@@ -4649,6 +4649,30 @@ __/cognitive/nimcp_self_awareness_feedback.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/nimcp_self_awareness_feedback.c.s
 .PHONY : __/cognitive/nimcp_self_awareness_feedback.c.s
 
+__/cognitive/parietal/nimcp_analogical_reasoning.o: __/cognitive/parietal/nimcp_analogical_reasoning.c.o
+.PHONY : __/cognitive/parietal/nimcp_analogical_reasoning.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_analogical_reasoning.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_analogical_reasoning.c.o
+.PHONY : __/cognitive/parietal/nimcp_analogical_reasoning.c.o
+
+__/cognitive/parietal/nimcp_analogical_reasoning.i: __/cognitive/parietal/nimcp_analogical_reasoning.c.i
+.PHONY : __/cognitive/parietal/nimcp_analogical_reasoning.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_analogical_reasoning.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_analogical_reasoning.c.i
+.PHONY : __/cognitive/parietal/nimcp_analogical_reasoning.c.i
+
+__/cognitive/parietal/nimcp_analogical_reasoning.s: __/cognitive/parietal/nimcp_analogical_reasoning.c.s
+.PHONY : __/cognitive/parietal/nimcp_analogical_reasoning.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_analogical_reasoning.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_analogical_reasoning.c.s
+.PHONY : __/cognitive/parietal/nimcp_analogical_reasoning.c.s
+
 __/cognitive/parietal/nimcp_biology.o: __/cognitive/parietal/nimcp_biology.c.o
 .PHONY : __/cognitive/parietal/nimcp_biology.o
 
@@ -4720,6 +4744,54 @@ __/cognitive/parietal/nimcp_civil_engineering.s: __/cognitive/parietal/nimcp_civ
 __/cognitive/parietal/nimcp_civil_engineering.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_civil_engineering.c.s
 .PHONY : __/cognitive/parietal/nimcp_civil_engineering.c.s
+
+__/cognitive/parietal/nimcp_conceptual_blending.o: __/cognitive/parietal/nimcp_conceptual_blending.c.o
+.PHONY : __/cognitive/parietal/nimcp_conceptual_blending.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_conceptual_blending.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_conceptual_blending.c.o
+.PHONY : __/cognitive/parietal/nimcp_conceptual_blending.c.o
+
+__/cognitive/parietal/nimcp_conceptual_blending.i: __/cognitive/parietal/nimcp_conceptual_blending.c.i
+.PHONY : __/cognitive/parietal/nimcp_conceptual_blending.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_conceptual_blending.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_conceptual_blending.c.i
+.PHONY : __/cognitive/parietal/nimcp_conceptual_blending.c.i
+
+__/cognitive/parietal/nimcp_conceptual_blending.s: __/cognitive/parietal/nimcp_conceptual_blending.c.s
+.PHONY : __/cognitive/parietal/nimcp_conceptual_blending.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_conceptual_blending.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_conceptual_blending.c.s
+.PHONY : __/cognitive/parietal/nimcp_conceptual_blending.c.s
+
+__/cognitive/parietal/nimcp_counterfactual.o: __/cognitive/parietal/nimcp_counterfactual.c.o
+.PHONY : __/cognitive/parietal/nimcp_counterfactual.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_counterfactual.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_counterfactual.c.o
+.PHONY : __/cognitive/parietal/nimcp_counterfactual.c.o
+
+__/cognitive/parietal/nimcp_counterfactual.i: __/cognitive/parietal/nimcp_counterfactual.c.i
+.PHONY : __/cognitive/parietal/nimcp_counterfactual.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_counterfactual.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_counterfactual.c.i
+.PHONY : __/cognitive/parietal/nimcp_counterfactual.c.i
+
+__/cognitive/parietal/nimcp_counterfactual.s: __/cognitive/parietal/nimcp_counterfactual.c.s
+.PHONY : __/cognitive/parietal/nimcp_counterfactual.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_counterfactual.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_counterfactual.c.s
+.PHONY : __/cognitive/parietal/nimcp_counterfactual.c.s
 
 __/cognitive/parietal/nimcp_electrical_engineering.o: __/cognitive/parietal/nimcp_electrical_engineering.c.o
 .PHONY : __/cognitive/parietal/nimcp_electrical_engineering.o
@@ -4793,6 +4865,102 @@ __/cognitive/parietal/nimcp_fep_parietal_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_fep_parietal_bridge.c.s
 .PHONY : __/cognitive/parietal/nimcp_fep_parietal_bridge.c.s
 
+__/cognitive/parietal/nimcp_hypothesis_generation.o: __/cognitive/parietal/nimcp_hypothesis_generation.c.o
+.PHONY : __/cognitive/parietal/nimcp_hypothesis_generation.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_hypothesis_generation.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_hypothesis_generation.c.o
+.PHONY : __/cognitive/parietal/nimcp_hypothesis_generation.c.o
+
+__/cognitive/parietal/nimcp_hypothesis_generation.i: __/cognitive/parietal/nimcp_hypothesis_generation.c.i
+.PHONY : __/cognitive/parietal/nimcp_hypothesis_generation.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_hypothesis_generation.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_hypothesis_generation.c.i
+.PHONY : __/cognitive/parietal/nimcp_hypothesis_generation.c.i
+
+__/cognitive/parietal/nimcp_hypothesis_generation.s: __/cognitive/parietal/nimcp_hypothesis_generation.c.s
+.PHONY : __/cognitive/parietal/nimcp_hypothesis_generation.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_hypothesis_generation.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_hypothesis_generation.c.s
+.PHONY : __/cognitive/parietal/nimcp_hypothesis_generation.c.s
+
+__/cognitive/parietal/nimcp_insight_discovery.o: __/cognitive/parietal/nimcp_insight_discovery.c.o
+.PHONY : __/cognitive/parietal/nimcp_insight_discovery.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_insight_discovery.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_insight_discovery.c.o
+.PHONY : __/cognitive/parietal/nimcp_insight_discovery.c.o
+
+__/cognitive/parietal/nimcp_insight_discovery.i: __/cognitive/parietal/nimcp_insight_discovery.c.i
+.PHONY : __/cognitive/parietal/nimcp_insight_discovery.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_insight_discovery.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_insight_discovery.c.i
+.PHONY : __/cognitive/parietal/nimcp_insight_discovery.c.i
+
+__/cognitive/parietal/nimcp_insight_discovery.s: __/cognitive/parietal/nimcp_insight_discovery.c.s
+.PHONY : __/cognitive/parietal/nimcp_insight_discovery.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_insight_discovery.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_insight_discovery.c.s
+.PHONY : __/cognitive/parietal/nimcp_insight_discovery.c.s
+
+__/cognitive/parietal/nimcp_intuition_integrations.o: __/cognitive/parietal/nimcp_intuition_integrations.c.o
+.PHONY : __/cognitive/parietal/nimcp_intuition_integrations.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_intuition_integrations.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_intuition_integrations.c.o
+.PHONY : __/cognitive/parietal/nimcp_intuition_integrations.c.o
+
+__/cognitive/parietal/nimcp_intuition_integrations.i: __/cognitive/parietal/nimcp_intuition_integrations.c.i
+.PHONY : __/cognitive/parietal/nimcp_intuition_integrations.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_intuition_integrations.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_intuition_integrations.c.i
+.PHONY : __/cognitive/parietal/nimcp_intuition_integrations.c.i
+
+__/cognitive/parietal/nimcp_intuition_integrations.s: __/cognitive/parietal/nimcp_intuition_integrations.c.s
+.PHONY : __/cognitive/parietal/nimcp_intuition_integrations.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_intuition_integrations.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_intuition_integrations.c.s
+.PHONY : __/cognitive/parietal/nimcp_intuition_integrations.c.s
+
+__/cognitive/parietal/nimcp_intuitive_reasoning.o: __/cognitive/parietal/nimcp_intuitive_reasoning.c.o
+.PHONY : __/cognitive/parietal/nimcp_intuitive_reasoning.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_intuitive_reasoning.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_intuitive_reasoning.c.o
+.PHONY : __/cognitive/parietal/nimcp_intuitive_reasoning.c.o
+
+__/cognitive/parietal/nimcp_intuitive_reasoning.i: __/cognitive/parietal/nimcp_intuitive_reasoning.c.i
+.PHONY : __/cognitive/parietal/nimcp_intuitive_reasoning.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_intuitive_reasoning.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_intuitive_reasoning.c.i
+.PHONY : __/cognitive/parietal/nimcp_intuitive_reasoning.c.i
+
+__/cognitive/parietal/nimcp_intuitive_reasoning.s: __/cognitive/parietal/nimcp_intuitive_reasoning.c.s
+.PHONY : __/cognitive/parietal/nimcp_intuitive_reasoning.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_intuitive_reasoning.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_intuitive_reasoning.c.s
+.PHONY : __/cognitive/parietal/nimcp_intuitive_reasoning.c.s
+
 __/cognitive/parietal/nimcp_mathematical_intuition.o: __/cognitive/parietal/nimcp_mathematical_intuition.c.o
 .PHONY : __/cognitive/parietal/nimcp_mathematical_intuition.o
 
@@ -4840,6 +5008,30 @@ __/cognitive/parietal/nimcp_mechanical_engineering.s: __/cognitive/parietal/nimc
 __/cognitive/parietal/nimcp_mechanical_engineering.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_mechanical_engineering.c.s
 .PHONY : __/cognitive/parietal/nimcp_mechanical_engineering.c.s
+
+__/cognitive/parietal/nimcp_meta_reasoning.o: __/cognitive/parietal/nimcp_meta_reasoning.c.o
+.PHONY : __/cognitive/parietal/nimcp_meta_reasoning.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_meta_reasoning.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_meta_reasoning.c.o
+.PHONY : __/cognitive/parietal/nimcp_meta_reasoning.c.o
+
+__/cognitive/parietal/nimcp_meta_reasoning.i: __/cognitive/parietal/nimcp_meta_reasoning.c.i
+.PHONY : __/cognitive/parietal/nimcp_meta_reasoning.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_meta_reasoning.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_meta_reasoning.c.i
+.PHONY : __/cognitive/parietal/nimcp_meta_reasoning.c.i
+
+__/cognitive/parietal/nimcp_meta_reasoning.s: __/cognitive/parietal/nimcp_meta_reasoning.c.s
+.PHONY : __/cognitive/parietal/nimcp_meta_reasoning.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_meta_reasoning.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_meta_reasoning.c.s
+.PHONY : __/cognitive/parietal/nimcp_meta_reasoning.c.s
 
 __/cognitive/parietal/nimcp_number_sense.o: __/cognitive/parietal/nimcp_number_sense.c.o
 .PHONY : __/cognitive/parietal/nimcp_number_sense.o
@@ -7865,6 +8057,30 @@ __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.s
 .PHONY : __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.c.s
 
+__/core/brain/subcortical/nimcp_amygdala_fep_bridge.o: __/core/brain/subcortical/nimcp_amygdala_fep_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_fep_bridge.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_amygdala_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_fep_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_fep_bridge.c.o
+
+__/core/brain/subcortical/nimcp_amygdala_fep_bridge.i: __/core/brain/subcortical/nimcp_amygdala_fep_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_fep_bridge.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_amygdala_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_fep_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_fep_bridge.c.i
+
+__/core/brain/subcortical/nimcp_amygdala_fep_bridge.s: __/core/brain/subcortical/nimcp_amygdala_fep_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_fep_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_amygdala_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_amygdala_fep_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_amygdala_fep_bridge.c.s
+
 __/core/brain/subcortical/nimcp_amygdala_stress_bridge.o: __/core/brain/subcortical/nimcp_amygdala_stress_bridge.c.o
 .PHONY : __/core/brain/subcortical/nimcp_amygdala_stress_bridge.o
 
@@ -7936,6 +8152,126 @@ __/core/brain/subcortical/nimcp_basal_ganglia.s: __/core/brain/subcortical/nimcp
 __/core/brain/subcortical/nimcp_basal_ganglia.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia.c.s
 .PHONY : __/core/brain/subcortical/nimcp_basal_ganglia.c.s
+
+__/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.o: __/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c.o
+
+__/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.i: __/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c.i
+
+__/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.s: __/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c.s
+
+__/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.o: __/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c.o
+
+__/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.i: __/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c.i
+
+__/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.s: __/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c.s
+
+__/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.o: __/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c.o
+
+__/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.i: __/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c.i
+
+__/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.s: __/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c.s
+
+__/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.o: __/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c.o
+
+__/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.i: __/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c.i
+
+__/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.s: __/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c.s
+
+__/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.o: __/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.o
+
+# target to build an object file
+__/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c.o
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c.o
+
+__/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.i: __/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.i
+
+# target to preprocess a source file
+__/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c.i
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c.i
+
+__/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.s: __/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c.s
+.PHONY : __/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c.s
 
 __/core/brain/subcortical/nimcp_globus_pallidus.o: __/core/brain/subcortical/nimcp_globus_pallidus.c.o
 .PHONY : __/core/brain/subcortical/nimcp_globus_pallidus.o
@@ -22597,6 +22933,9 @@ help:
 	@echo "... __/cognitive/nimcp_self_awareness_feedback.o"
 	@echo "... __/cognitive/nimcp_self_awareness_feedback.i"
 	@echo "... __/cognitive/nimcp_self_awareness_feedback.s"
+	@echo "... __/cognitive/parietal/nimcp_analogical_reasoning.o"
+	@echo "... __/cognitive/parietal/nimcp_analogical_reasoning.i"
+	@echo "... __/cognitive/parietal/nimcp_analogical_reasoning.s"
 	@echo "... __/cognitive/parietal/nimcp_biology.o"
 	@echo "... __/cognitive/parietal/nimcp_biology.i"
 	@echo "... __/cognitive/parietal/nimcp_biology.s"
@@ -22606,6 +22945,12 @@ help:
 	@echo "... __/cognitive/parietal/nimcp_civil_engineering.o"
 	@echo "... __/cognitive/parietal/nimcp_civil_engineering.i"
 	@echo "... __/cognitive/parietal/nimcp_civil_engineering.s"
+	@echo "... __/cognitive/parietal/nimcp_conceptual_blending.o"
+	@echo "... __/cognitive/parietal/nimcp_conceptual_blending.i"
+	@echo "... __/cognitive/parietal/nimcp_conceptual_blending.s"
+	@echo "... __/cognitive/parietal/nimcp_counterfactual.o"
+	@echo "... __/cognitive/parietal/nimcp_counterfactual.i"
+	@echo "... __/cognitive/parietal/nimcp_counterfactual.s"
 	@echo "... __/cognitive/parietal/nimcp_electrical_engineering.o"
 	@echo "... __/cognitive/parietal/nimcp_electrical_engineering.i"
 	@echo "... __/cognitive/parietal/nimcp_electrical_engineering.s"
@@ -22615,12 +22960,27 @@ help:
 	@echo "... __/cognitive/parietal/nimcp_fep_parietal_bridge.o"
 	@echo "... __/cognitive/parietal/nimcp_fep_parietal_bridge.i"
 	@echo "... __/cognitive/parietal/nimcp_fep_parietal_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_hypothesis_generation.o"
+	@echo "... __/cognitive/parietal/nimcp_hypothesis_generation.i"
+	@echo "... __/cognitive/parietal/nimcp_hypothesis_generation.s"
+	@echo "... __/cognitive/parietal/nimcp_insight_discovery.o"
+	@echo "... __/cognitive/parietal/nimcp_insight_discovery.i"
+	@echo "... __/cognitive/parietal/nimcp_insight_discovery.s"
+	@echo "... __/cognitive/parietal/nimcp_intuition_integrations.o"
+	@echo "... __/cognitive/parietal/nimcp_intuition_integrations.i"
+	@echo "... __/cognitive/parietal/nimcp_intuition_integrations.s"
+	@echo "... __/cognitive/parietal/nimcp_intuitive_reasoning.o"
+	@echo "... __/cognitive/parietal/nimcp_intuitive_reasoning.i"
+	@echo "... __/cognitive/parietal/nimcp_intuitive_reasoning.s"
 	@echo "... __/cognitive/parietal/nimcp_mathematical_intuition.o"
 	@echo "... __/cognitive/parietal/nimcp_mathematical_intuition.i"
 	@echo "... __/cognitive/parietal/nimcp_mathematical_intuition.s"
 	@echo "... __/cognitive/parietal/nimcp_mechanical_engineering.o"
 	@echo "... __/cognitive/parietal/nimcp_mechanical_engineering.i"
 	@echo "... __/cognitive/parietal/nimcp_mechanical_engineering.s"
+	@echo "... __/cognitive/parietal/nimcp_meta_reasoning.o"
+	@echo "... __/cognitive/parietal/nimcp_meta_reasoning.i"
+	@echo "... __/cognitive/parietal/nimcp_meta_reasoning.s"
 	@echo "... __/cognitive/parietal/nimcp_number_sense.o"
 	@echo "... __/cognitive/parietal/nimcp_number_sense.i"
 	@echo "... __/cognitive/parietal/nimcp_number_sense.s"
@@ -22999,6 +23359,9 @@ help:
 	@echo "... __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.o"
 	@echo "... __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.i"
 	@echo "... __/core/brain/subcortical/nimcp_amygdala_autobio_bridge.s"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_fep_bridge.o"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_fep_bridge.i"
+	@echo "... __/core/brain/subcortical/nimcp_amygdala_fep_bridge.s"
 	@echo "... __/core/brain/subcortical/nimcp_amygdala_stress_bridge.o"
 	@echo "... __/core/brain/subcortical/nimcp_amygdala_stress_bridge.i"
 	@echo "... __/core/brain/subcortical/nimcp_amygdala_stress_bridge.s"
@@ -23008,6 +23371,21 @@ help:
 	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia.o"
 	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia.i"
 	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia.s"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.o"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.i"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.s"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.o"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.i"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.s"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.o"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.i"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.s"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.o"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.i"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.s"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.o"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.i"
+	@echo "... __/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.s"
 	@echo "... __/core/brain/subcortical/nimcp_globus_pallidus.o"
 	@echo "... __/core/brain/subcortical/nimcp_globus_pallidus.i"
 	@echo "... __/core/brain/subcortical/nimcp_globus_pallidus.s"

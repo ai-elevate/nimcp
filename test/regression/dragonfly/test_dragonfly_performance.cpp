@@ -60,7 +60,7 @@ protected:
     bool simulate_pursuit(float start_x, float start_y, float start_z,
                          float vel_x, float vel_y, float vel_z,
                          float max_time_s, float intercept_distance) {
-        dragonfly_reset(system);
+        dragonfly_system_reset(system);
 
         float pos[3] = {start_x, start_y, start_z};
         float dt = 0.016f;  // 60 FPS
@@ -163,7 +163,7 @@ TEST_F(DragonflyPerformanceTest, ManeuveringTargetSuccessRate) {
         random_target(x, y, z, vx, vy, vz, 5.0f, 1.0f);
 
         // Simulate with velocity changes (maneuvering)
-        dragonfly_reset(system);
+        dragonfly_system_reset(system);
         float pos[3] = {x, y, z};
         float vel[3] = {vx, vy, vz};
         float dt = 0.016f;
@@ -215,7 +215,7 @@ TEST_F(DragonflyPerformanceTest, EvasiveTargetSuccessRate) {
     int successes = 0;
 
     for (int i = 0; i < NUM_TRIALS; i++) {
-        dragonfly_reset(system);
+        dragonfly_system_reset(system);
         float pos[3] = {20.0f, 0.0f, 0.0f};
         float vel[3] = {-3.0f, 0.0f, 0.0f};
         float dt = 0.016f;
@@ -492,7 +492,7 @@ TEST_F(DragonflyPerformanceTest, ResetClearsState) {
     }
 
     // Reset
-    EXPECT_EQ(dragonfly_reset(system), 0);
+    EXPECT_EQ(dragonfly_system_reset(system), 0);
 
     // Mode should be IDLE after reset
     EXPECT_EQ(dragonfly_get_mode(system), DRAGONFLY_MODE_IDLE);

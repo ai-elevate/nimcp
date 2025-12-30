@@ -10,8 +10,8 @@
  * HOW:  Test edge cases, extreme values, and long-running simulations
  *
  * CRITICAL AREAS:
- * - Kalman filter updates (matrix operations)
  * - TSDN population vector normalization
+ * - Kalman filter updates (prediction)
  * - Interception geometry calculations
  * - IMM model probability updates
  */
@@ -70,81 +70,63 @@ protected:
 //=============================================================================
 
 TEST_F(DragonflyNumericalTest, TSDNPopulationVectorNormalized) {
-    tsdn_t* tsdn = dragonfly_tsdn_create(tsdn_default_config());
+    tsdn_config_t config;
+    tsdn_config_default(&config);
+    tsdn_population_t* tsdn = tsdn_create(&config);
     ASSERT_NE(tsdn, nullptr);
 
     // Process many directions
     for (int i = 0; i < 360; i++) {
         float direction = (float)i * M_PI / 180.0f;
 
-        tsdn_input_t input = {
-            .azimuth_rad = direction,
-            .elevation_rad = 0.0f,
-            .velocity = 2.0f,
-            .size = 0.05f,
-            .contrast = 0.8f
-        };
-        EXPECT_EQ(dragonfly_tsdn_process(tsdn, &input), 0);
-
-        tsdn_output_t output;
-        EXPECT_EQ(dragonfly_tsdn_get_output(tsdn, &output), 0);
+        tsdn_vector_t output = tsdn_encode_direction(tsdn, direction);
 
         // Population vector should be valid
-        EXPECT_TRUE(is_valid_angle(output.direction_rad))
+        EXPECT_TRUE(is_valid_angle(output.direction))
             << "Direction should be valid at input angle " << i;
         EXPECT_TRUE(is_finite_float(output.magnitude))
             << "Magnitude should be finite";
         EXPECT_GE(output.magnitude, 0.0f);
     }
 
-    dragonfly_tsdn_destroy(tsdn);
+    tsdn_destroy(tsdn);
 }
 
 TEST_F(DragonflyNumericalTest, TSDNExtremeSpeeds) {
-    tsdn_t* tsdn = dragonfly_tsdn_create(tsdn_default_config());
+    tsdn_config_t config;
+    tsdn_config_default(&config);
+    tsdn_population_t* tsdn = tsdn_create(&config);
     ASSERT_NE(tsdn, nullptr);
 
-    // Test extreme speeds
-    float speeds[] = {0.0f, 0.001f, 100.0f, 1000.0f};
+    // Test extreme positions (which affects angle computation)
+    float positions[][2] = {
+        {0.001f, 0.0f},    // Very close
+        {1000.0f, 0.0f},   // Very far
+        {100.0f, 0.0f},    // Moderate
+        {0.0f, 0.001f}     // Edge case
+    };
 
-    for (float speed : speeds) {
-        tsdn_input_t input = {
-            .azimuth_rad = 0.5f,
-            .elevation_rad = 0.0f,
-            .velocity = speed,
-            .size = 0.05f,
-            .contrast = 0.8f
-        };
-        EXPECT_EQ(dragonfly_tsdn_process(tsdn, &input), 0);
-
-        tsdn_output_t output;
-        EXPECT_EQ(dragonfly_tsdn_get_output(tsdn, &output), 0);
-        EXPECT_TRUE(is_finite_float(output.direction_rad));
+    for (int i = 0; i < 4; i++) {
+        tsdn_vector_t output = tsdn_encode(tsdn, positions[i][0], positions[i][1]);
+        EXPECT_TRUE(is_finite_float(output.direction));
         EXPECT_TRUE(is_finite_float(output.magnitude));
     }
 
-    dragonfly_tsdn_destroy(tsdn);
+    tsdn_destroy(tsdn);
 }
 
-TEST_F(DragonflyNumericalTest, TSDNZeroContrast) {
-    tsdn_t* tsdn = dragonfly_tsdn_create(tsdn_default_config());
+TEST_F(DragonflyNumericalTest, TSDNOriginEdgeCase) {
+    tsdn_config_t config;
+    tsdn_config_default(&config);
+    tsdn_population_t* tsdn = tsdn_create(&config);
     ASSERT_NE(tsdn, nullptr);
 
-    tsdn_input_t input = {
-        .azimuth_rad = 0.5f,
-        .elevation_rad = 0.0f,
-        .velocity = 2.0f,
-        .size = 0.05f,
-        .contrast = 0.0f  // Zero contrast
-    };
-    EXPECT_EQ(dragonfly_tsdn_process(tsdn, &input), 0);
-
-    tsdn_output_t output;
-    EXPECT_EQ(dragonfly_tsdn_get_output(tsdn, &output), 0);
-    EXPECT_TRUE(is_finite_float(output.direction_rad));
+    // Target at origin - edge case for atan2
+    tsdn_vector_t output = tsdn_encode(tsdn, 0.0f, 0.0f);
+    EXPECT_TRUE(is_finite_float(output.direction));
     EXPECT_TRUE(is_finite_float(output.magnitude));
 
-    dragonfly_tsdn_destroy(tsdn);
+    tsdn_destroy(tsdn);
 }
 
 //=============================================================================
@@ -152,83 +134,78 @@ TEST_F(DragonflyNumericalTest, TSDNZeroContrast) {
 //=============================================================================
 
 TEST_F(DragonflyNumericalTest, PredictionLongDuration) {
-    dragonfly_predictor_t* predictor = dragonfly_predictor_create(
-        prediction_default_config());
+    prediction_config_t config = prediction_default_config();
+    dragonfly_predictor_t* predictor = dragonfly_predictor_create(&config);
     ASSERT_NE(predictor, nullptr);
 
     // Long duration prediction without divergence
     for (int i = 0; i < 10000; i++) {
         float t = i * 0.016f;
-        prediction_input_t input = {
-            .position = {10.0f + t, 5.0f + sinf(t), 0.0f},
-            .timestamp_us = (uint64_t)(t * 1000000)
-        };
-        EXPECT_EQ(dragonfly_predictor_process(predictor, &input), 0);
+        float position[3] = {10.0f + t, 5.0f + sinf(t), 0.0f};
+        float velocity[3] = {1.0f, cosf(t), 0.0f};
 
-        prediction_output_t output;
-        EXPECT_EQ(dragonfly_predictor_get_output(predictor, &output), 0);
+        EXPECT_EQ(dragonfly_predictor_update(predictor, position, velocity, 0.016f), 0);
+
+        predicted_state_t state;
+        EXPECT_EQ(dragonfly_predictor_get_state_at(predictor, 100.0f, &state), 0);
 
         // All outputs should remain finite
-        EXPECT_TRUE(is_finite_float(output.predicted_position[0]))
+        EXPECT_TRUE(is_finite_float(state.position[0]))
             << "X prediction diverged at iteration " << i;
-        EXPECT_TRUE(is_finite_float(output.predicted_position[1]))
+        EXPECT_TRUE(is_finite_float(state.position[1]))
             << "Y prediction diverged at iteration " << i;
-        EXPECT_TRUE(is_finite_float(output.predicted_position[2]))
+        EXPECT_TRUE(is_finite_float(state.position[2]))
             << "Z prediction diverged at iteration " << i;
-        EXPECT_TRUE(is_finite_float(output.predicted_velocity[0]));
-        EXPECT_TRUE(is_finite_float(output.predicted_velocity[1]));
-        EXPECT_TRUE(is_finite_float(output.predicted_velocity[2]));
+        EXPECT_TRUE(is_finite_float(state.velocity[0]));
+        EXPECT_TRUE(is_finite_float(state.velocity[1]));
+        EXPECT_TRUE(is_finite_float(state.velocity[2]));
     }
 
     dragonfly_predictor_destroy(predictor);
 }
 
 TEST_F(DragonflyNumericalTest, PredictionWithJumps) {
-    dragonfly_predictor_t* predictor = dragonfly_predictor_create(
-        prediction_default_config());
+    prediction_config_t config = prediction_default_config();
+    dragonfly_predictor_t* predictor = dragonfly_predictor_create(&config);
     ASSERT_NE(predictor, nullptr);
 
     // Introduce sudden position jumps (simulating lost track)
     for (int i = 0; i < 100; i++) {
         float x = (i % 10 == 0) ? 50.0f : 10.0f + i * 0.1f;  // Jump every 10 frames
+        float position[3] = {x, 5.0f, 0.0f};
+        float velocity[3] = {1.0f, 0.0f, 0.0f};
 
-        prediction_input_t input = {
-            .position = {x, 5.0f, 0.0f},
-            .timestamp_us = (uint64_t)(i * 16000)
-        };
-        EXPECT_EQ(dragonfly_predictor_process(predictor, &input), 0);
+        EXPECT_EQ(dragonfly_predictor_update(predictor, position, velocity, 0.016f), 0);
 
-        prediction_output_t output;
-        EXPECT_EQ(dragonfly_predictor_get_output(predictor, &output), 0);
+        predicted_state_t state;
+        EXPECT_EQ(dragonfly_predictor_get_state_at(predictor, 50.0f, &state), 0);
 
         // Should not diverge even with jumps
-        EXPECT_TRUE(is_finite_float(output.predicted_position[0]));
-        EXPECT_TRUE(is_finite_float(output.confidence));
+        EXPECT_TRUE(is_finite_float(state.position[0]));
+        EXPECT_TRUE(is_finite_float(state.confidence));
     }
 
     dragonfly_predictor_destroy(predictor);
 }
 
 TEST_F(DragonflyNumericalTest, PredictionHighFrequencyOscillation) {
-    dragonfly_predictor_t* predictor = dragonfly_predictor_create(
-        prediction_default_config());
+    prediction_config_t config = prediction_default_config();
+    dragonfly_predictor_t* predictor = dragonfly_predictor_create(&config);
     ASSERT_NE(predictor, nullptr);
 
     // High-frequency oscillation (challenging for Kalman filter)
     for (int i = 0; i < 1000; i++) {
         float t = i * 0.001f;  // 1000 Hz
         float x = 10.0f + 0.5f * sinf(t * 100.0f);  // 100 Hz oscillation
+        float position[3] = {x, 5.0f, 0.0f};
+        float velocity[3] = {50.0f * cosf(t * 100.0f), 0.0f, 0.0f};
 
-        prediction_input_t input = {
-            .position = {x, 5.0f, 0.0f},
-            .timestamp_us = (uint64_t)(t * 1000000)
-        };
-        EXPECT_EQ(dragonfly_predictor_process(predictor, &input), 0);
+        EXPECT_EQ(dragonfly_predictor_update(predictor, position, velocity, 0.001f), 0);
 
-        prediction_output_t output;
-        EXPECT_EQ(dragonfly_predictor_get_output(predictor, &output), 0);
+        predicted_state_t state;
+        EXPECT_EQ(dragonfly_predictor_get_state_at(predictor, 10.0f, &state), 0);
 
-        EXPECT_TRUE(is_finite_float(output.predicted_position[0]));
+        EXPECT_TRUE(is_finite_float(state.position[0]));
     }
 
     dragonfly_predictor_destroy(predictor);
@@ -239,80 +216,92 @@ TEST_F(DragonflyNumericalTest, PredictionHighFrequencyOscillation) {
 //=============================================================================
 
 TEST_F(DragonflyNumericalTest, InterceptionNearOrigin) {
-    dragonfly_interceptor_t* interceptor = dragonfly_interceptor_create(
-        intercept_default_config());
+    intercept_config_t config = intercept_default_config();
+    dragonfly_interceptor_t* interceptor = dragonfly_interceptor_create(&config);
     ASSERT_NE(interceptor, nullptr);
 
     // Target near origin (potential division by zero)
-    intercept_input_t input = {
-        .target_position = {0.001f, 0.001f, 0.0f},
-        .target_velocity = {-0.1f, 0.0f, 0.0f},
-        .self_position = {0.0f, 0.0f, 0.0f},
-        .self_velocity = {0.0f, 0.0f, 0.0f},
-        .max_speed = 10.0f
+    interceptor_state_t self = {
+        .position = {0.0f, 0.0f, 0.0f},
+        .velocity = {0.0f, 0.0f, 0.0f},
+        .max_speed = 10.0f,
+        .max_accel = 5.0f,
+        .max_turn_rate = 3.0f
     };
-    EXPECT_EQ(dragonfly_interceptor_compute(interceptor, &input), 0);
+    target_state_t target = {
+        .position = {0.001f, 0.001f, 0.0f},
+        .velocity = {-0.1f, 0.0f, 0.0f},
+        .acceleration = {0.0f, 0.0f, 0.0f},
+        .confidence = 0.9f
+    };
+    intercept_solution_t solution;
+    EXPECT_EQ(dragonfly_intercept_compute(interceptor, &self, &target, &solution), 0);
 
-    intercept_output_t output;
-    EXPECT_EQ(dragonfly_interceptor_get_output(interceptor, &output), 0);
-
-    EXPECT_TRUE(is_finite_float(output.intercept_point[0]));
-    EXPECT_TRUE(is_finite_float(output.intercept_point[1]));
-    EXPECT_TRUE(is_finite_float(output.intercept_point[2]));
-    EXPECT_TRUE(is_finite_float(output.time_to_intercept_s));
+    EXPECT_TRUE(is_finite_float(solution.intercept_point[0]));
+    EXPECT_TRUE(is_finite_float(solution.intercept_point[1]));
+    EXPECT_TRUE(is_finite_float(solution.intercept_point[2]));
+    EXPECT_TRUE(is_finite_float(solution.intercept_time_s));
 
     dragonfly_interceptor_destroy(interceptor);
 }
 
 TEST_F(DragonflyNumericalTest, InterceptionParallelTrajectories) {
-    dragonfly_interceptor_t* interceptor = dragonfly_interceptor_create(
-        intercept_default_config());
+    intercept_config_t config = intercept_default_config();
+    dragonfly_interceptor_t* interceptor = dragonfly_interceptor_create(&config);
     ASSERT_NE(interceptor, nullptr);
 
     // Parallel trajectories (no intersection)
-    intercept_input_t input = {
-        .target_position = {10.0f, 10.0f, 0.0f},
-        .target_velocity = {1.0f, 0.0f, 0.0f},
-        .self_position = {0.0f, 0.0f, 0.0f},
-        .self_velocity = {1.0f, 0.0f, 0.0f},  // Same direction, parallel
-        .max_speed = 10.0f
+    interceptor_state_t self = {
+        .position = {0.0f, 0.0f, 0.0f},
+        .velocity = {1.0f, 0.0f, 0.0f},  // Same direction, parallel
+        .max_speed = 10.0f,
+        .max_accel = 5.0f,
+        .max_turn_rate = 3.0f
     };
-    int result = dragonfly_interceptor_compute(interceptor, &input);
+    target_state_t target = {
+        .position = {10.0f, 10.0f, 0.0f},
+        .velocity = {1.0f, 0.0f, 0.0f},
+        .acceleration = {0.0f, 0.0f, 0.0f},
+        .confidence = 0.9f
+    };
+    intercept_solution_t solution;
+    int result = dragonfly_intercept_compute(interceptor, &self, &target, &solution);
     // May return error for infeasible, but should not crash
     EXPECT_TRUE(result == 0 || result == -1);
 
-    intercept_output_t output;
-    dragonfly_interceptor_get_output(interceptor, &output);
-
     // Even if infeasible, outputs should be finite
-    EXPECT_TRUE(is_finite_float(output.intercept_point[0]));
-    EXPECT_TRUE(is_finite_float(output.intercept_point[1]));
+    EXPECT_TRUE(is_finite_float(solution.intercept_point[0]));
+    EXPECT_TRUE(is_finite_float(solution.intercept_point[1]));
 
     dragonfly_interceptor_destroy(interceptor);
 }
 
 TEST_F(DragonflyNumericalTest, InterceptionVeryFarTarget) {
-    dragonfly_interceptor_t* interceptor = dragonfly_interceptor_create(
-        intercept_default_config());
+    intercept_config_t config = intercept_default_config();
+    dragonfly_interceptor_t* interceptor = dragonfly_interceptor_create(&config);
     ASSERT_NE(interceptor, nullptr);
 
     // Very far target
-    intercept_input_t input = {
-        .target_position = {10000.0f, 5000.0f, 1000.0f},
-        .target_velocity = {-100.0f, 0.0f, 0.0f},
-        .self_position = {0.0f, 0.0f, 0.0f},
-        .self_velocity = {0.0f, 0.0f, 0.0f},
-        .max_speed = 50.0f
+    interceptor_state_t self = {
+        .position = {0.0f, 0.0f, 0.0f},
+        .velocity = {0.0f, 0.0f, 0.0f},
+        .max_speed = 50.0f,
+        .max_accel = 10.0f,
+        .max_turn_rate = 3.0f
     };
-    dragonfly_interceptor_compute(interceptor, &input);
+    target_state_t target = {
+        .position = {10000.0f, 5000.0f, 1000.0f},
+        .velocity = {-100.0f, 0.0f, 0.0f},
+        .acceleration = {0.0f, 0.0f, 0.0f},
+        .confidence = 0.9f
+    };
+    intercept_solution_t solution;
+    dragonfly_intercept_compute(interceptor, &self, &target, &solution);
 
-    intercept_output_t output;
-    dragonfly_interceptor_get_output(interceptor, &output);
-
-    EXPECT_TRUE(is_finite_float(output.intercept_point[0]));
-    EXPECT_TRUE(is_finite_float(output.intercept_point[1]));
-    EXPECT_TRUE(is_finite_float(output.intercept_point[2]));
-    EXPECT_TRUE(is_finite_float(output.time_to_intercept_s));
+    EXPECT_TRUE(is_finite_float(solution.intercept_point[0]));
+    EXPECT_TRUE(is_finite_float(solution.intercept_point[1]));
+    EXPECT_TRUE(is_finite_float(solution.intercept_point[2]));
+    EXPECT_TRUE(is_finite_float(solution.intercept_time_s));
 
     dragonfly_interceptor_destroy(interceptor);
 }
@@ -337,7 +326,7 @@ TEST_F(DragonflyNumericalTest, SystemLongRunningSimulation) {
             .position = {x, y, 0.0f},
             .size = 0.05f,
             .contrast = 0.8f,
-            .motion_direction_rad = t * 0.5f + M_PI / 2,
+            .motion_direction_rad = t * 0.5f + (float)(M_PI / 2),
             .motion_speed = 2.5f,
             .timestamp_us = (uint64_t)(t * 1000000),
             .id = 1
@@ -370,7 +359,7 @@ TEST_F(DragonflyNumericalTest, SystemExtremePositions) {
     };
 
     for (int i = 0; i < 4; i++) {
-        dragonfly_reset(system);
+        dragonfly_system_reset(system);
 
         dragonfly_detection_t detection = {
             .position = {positions[i][0], positions[i][1], positions[i][2]},

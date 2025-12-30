@@ -52,7 +52,7 @@ protected:
     hunt_episode_t make_episode(bool success, intercept_strategy_t strategy,
                                  float duration, float size, float speed) {
         hunt_episode_t ep = {};
-        ep.outcome = success ? HUNT_SUCCESS : HUNT_FAILURE_ESCAPED;
+        ep.outcome = success ? OUTCOME_SUCCESS : OUTCOME_ESCAPED;
         ep.strategy = strategy;
         ep.pursuit_duration_s = duration;
         ep.target_size = size;
@@ -68,30 +68,30 @@ protected:
 //=============================================================================
 
 TEST_F(LearningTest, DefaultConfig) {
-    learning_config_t config = dragonfly_learning_default_config();
+    learning_config_t config = learning_default_config();
     EXPECT_GT(config.max_episodes, 0u);
-    EXPECT_GT(config.learning_rate, 0.0f);
-    EXPECT_LE(config.learning_rate, 1.0f);
+    EXPECT_GT(config.strategy_learning_rate, 0.0f);
+    EXPECT_LE(config.strategy_learning_rate, 1.0f);
 }
 
 TEST_F(LearningTest, ValidateConfig) {
-    learning_config_t config = dragonfly_learning_default_config();
-    EXPECT_TRUE(dragonfly_learning_validate_config(&config));
+    learning_config_t config = learning_default_config();
+    EXPECT_TRUE(learning_validate_config(&config));
 
     config.max_episodes = 0;
-    EXPECT_FALSE(dragonfly_learning_validate_config(&config));
+    EXPECT_FALSE(learning_validate_config(&config));
 
-    config = dragonfly_learning_default_config();
-    config.learning_rate = 2.0f;  // Invalid
-    EXPECT_FALSE(dragonfly_learning_validate_config(&config));
+    config = learning_default_config();
+    config.strategy_learning_rate = 2.0f;  // Invalid
+    EXPECT_FALSE(learning_validate_config(&config));
 
-    EXPECT_FALSE(dragonfly_learning_validate_config(nullptr));
+    EXPECT_FALSE(learning_validate_config(nullptr));
 }
 
 TEST_F(LearningTest, CreateWithCustomConfig) {
-    learning_config_t config = dragonfly_learning_default_config();
+    learning_config_t config = learning_default_config();
     config.max_episodes = 500;
-    config.learning_rate = 0.05f;
+    config.strategy_learning_rate = 0.05f;
 
     dragonfly_learning_t custom = dragonfly_learning_create(&config);
     ASSERT_NE(custom, nullptr);
@@ -127,7 +127,7 @@ TEST_F(LearningTest, RecordSuccessfulHunt) {
 
 TEST_F(LearningTest, RecordFailedHunt) {
     hunt_episode_t ep = make_episode(false, INTERCEPT_LEAD, 4.0f, 0.03f, 8.0f);
-    ep.failure_reason = FAILURE_TOO_FAST;
+    ep.failure_reason = FAIL_REASON_SPEED;
     EXPECT_EQ(dragonfly_learning_record_episode(learning, &ep), 0);
 }
 
@@ -151,15 +151,15 @@ TEST_F(LearningTest, BeginAndEndHunt) {
     dragonfly_target_info_t target = make_target_info(1, 100, 0, 0, 5, 0, 0, 0.9f);
 
     EXPECT_EQ(dragonfly_learning_begin_hunt(learning, &target, INTERCEPT_PURSUIT), 0);
-    EXPECT_EQ(dragonfly_learning_end_hunt(learning, HUNT_SUCCESS, FAILURE_NONE, 0.1f), 0);
+    EXPECT_EQ(dragonfly_learning_end_hunt(learning, OUTCOME_SUCCESS, FAIL_REASON_UNKNOWN, 0.1f), 0);
 }
 
 TEST_F(LearningTest, HuntWithFailure) {
     dragonfly_target_info_t target = make_target_info(2, 80, 0, 0, 8, 0, 0, 0.8f);
 
     EXPECT_EQ(dragonfly_learning_begin_hunt(learning, &target, INTERCEPT_LEAD), 0);
-    EXPECT_EQ(dragonfly_learning_end_hunt(learning, HUNT_FAILURE_ESCAPED,
-                                           FAILURE_TARGET_ESCAPED, 5.0f), 0);
+    EXPECT_EQ(dragonfly_learning_end_hunt(learning, OUTCOME_ESCAPED,
+                                           FAIL_REASON_EVASION, 5.0f), 0);
 }
 
 //=============================================================================
@@ -200,7 +200,7 @@ TEST_F(LearningTest, GetStrategyStats) {
         dragonfly_learning_record_episode(learning, &ep);
     }
 
-    strategy_learning_t stats;
+    strategy_effectiveness_t stats;
     EXPECT_EQ(dragonfly_learning_get_strategy_stats(learning, INTERCEPT_PURSUIT, &stats), 0);
     EXPECT_GE(stats.attempts, 3u);
 }
@@ -230,7 +230,7 @@ TEST_F(LearningTest, LearnPatternFromFailure) {
     // Create consistent pattern: fast target => failure
     for (int i = 0; i < 10; i++) {
         hunt_episode_t ep = make_episode(false, INTERCEPT_PURSUIT, 4.0f, 0.02f, 12.0f);
-        ep.failure_reason = FAILURE_TOO_FAST;
+        ep.failure_reason = FAIL_REASON_SPEED;
         dragonfly_learning_record_episode(learning, &ep);
     }
 
@@ -272,15 +272,16 @@ TEST_F(LearningTest, GetStats) {
     EXPECT_EQ(stats.episodes_recorded, 0u);
 }
 
-TEST_F(LearningTest, ResetStats) {
+TEST_F(LearningTest, ResetLearning) {
     hunt_episode_t ep = make_episode(true, INTERCEPT_PURSUIT, 2.0f, 0.05f, 4.0f);
     dragonfly_learning_record_episode(learning, &ep);
 
-    EXPECT_EQ(dragonfly_learning_reset_stats(learning), 0);
+    EXPECT_EQ(dragonfly_learning_reset(learning), 0);
 
     learning_stats_t stats;
     dragonfly_learning_get_stats(learning, &stats);
-    // Note: episodes may be retained, just stats reset
+    // After reset, episodes should be cleared
+    EXPECT_EQ(stats.episodes_recorded, 0u);
 }
 
 //=============================================================================

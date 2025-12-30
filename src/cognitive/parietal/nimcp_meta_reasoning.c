@@ -1,0 +1,319 @@
+/**
+ * @file nimcp_meta_reasoning.c
+ * @brief Meta-reasoning engine implementation
+ */
+
+#include "cognitive/parietal/nimcp_meta_reasoning.h"
+#include "utils/memory/nimcp_memory.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+
+struct meta_engine {
+    meta_config_t config;
+    meta_stats_t stats;
+    float inflammation;
+    float fatigue;
+    float strategy_success[8];  /* Success rate per strategy type */
+    uint32_t strategy_uses[8];
+    float calibration_bias;
+    uint32_t next_strategy_id;
+};
+
+static __thread char g_last_error[256] = {0};
+
+static void set_error(const char* msg) {
+    strncpy(g_last_error, msg, sizeof(g_last_error) - 1);
+}
+
+static float apply_mod(const meta_engine_t* e, float v) {
+    float f = 1.0f - e->inflammation * e->config.inflammation_sensitivity * 0.2f
+                   - e->fatigue * e->config.fatigue_sensitivity * 0.3f;
+    return v * fmaxf(0.4f, f);
+}
+
+meta_config_t meta_engine_default_config(void) {
+    return (meta_config_t){
+        .confidence_calibration_strength = 0.5f,
+        .strategy_adaptation_rate = 0.1f,
+        .enable_anomaly_detection = true,
+        .enable_strategy_switching = true,
+        .monitoring_frequency = 5,
+        .inflammation_sensitivity = 1.0f,
+        .fatigue_sensitivity = 1.0f
+    };
+}
+
+meta_engine_t* meta_engine_create(void) {
+    meta_config_t c = meta_engine_default_config();
+    return meta_engine_create_custom(&c);
+}
+
+meta_engine_t* meta_engine_create_custom(const meta_config_t* config) {
+    if (!config) { set_error("NULL config"); return NULL; }
+    meta_engine_t* e = nimcp_calloc(1, sizeof(meta_engine_t));
+    if (!e) return NULL;
+    e->config = *config;
+    e->next_strategy_id = 1;
+
+    /* Initialize strategy success rates */
+    for (int i = 0; i < 8; i++) {
+        e->strategy_success[i] = 0.5f;
+        e->strategy_uses[i] = 0;
+    }
+
+    return e;
+}
+
+void meta_engine_destroy(meta_engine_t* engine) {
+    if (engine) nimcp_free(engine);
+}
+
+meta_strategy_t* meta_select_strategy(meta_engine_t* engine, const meta_problem_t* problem) {
+    if (!engine || !problem) return NULL;
+
+    meta_strategy_t* s = nimcp_calloc(1, sizeof(meta_strategy_t));
+    if (!s) return NULL;
+
+    s->id = engine->next_strategy_id++;
+
+    /* Select best strategy based on past performance and problem features */
+    float best_score = 0;
+    meta_strategy_type_t best_type = META_STRATEGY_ANALYTICAL;
+
+    for (int i = 0; i < 8; i++) {
+        float score = engine->strategy_success[i];
+
+        /* Adjust based on problem difficulty */
+        if (problem->estimated_difficulty > 0.7f && i == META_STRATEGY_INTUITIVE) {
+            score *= 0.8f;  /* Less intuitive for hard problems */
+        }
+        if (problem->estimated_difficulty < 0.3f && i == META_STRATEGY_DIVIDE_CONQUER) {
+            score *= 0.9f;  /* Less divide-and-conquer for easy problems */
+        }
+
+        score = apply_mod(engine, score);
+
+        if (score > best_score) {
+            best_score = score;
+            best_type = (meta_strategy_type_t)i;
+        }
+    }
+
+    s->type = best_type;
+    strncpy(s->name, meta_strategy_name(best_type), sizeof(s->name) - 1);
+    s->suitability = best_score;
+    s->past_success_rate = engine->strategy_success[best_type];
+    s->computational_cost = 0.5f;
+    s->time_estimate = 1.0f + problem->estimated_difficulty * 2.0f;
+
+    engine->stats.strategies_selected++;
+    engine->strategy_uses[best_type]++;
+
+    return s;
+}
+
+int meta_evaluate_strategies(meta_engine_t* engine, const meta_problem_t* problem,
+    meta_strategy_t* strategies, uint32_t max_strategies, uint32_t* num_found) {
+    if (!engine || !problem || !strategies || !num_found) return -1;
+
+    *num_found = 0;
+    for (int i = 0; i < 8 && *num_found < max_strategies; i++) {
+        strategies[*num_found].id = *num_found + 1;
+        strategies[*num_found].type = (meta_strategy_type_t)i;
+        strncpy(strategies[*num_found].name, meta_strategy_name((meta_strategy_type_t)i),
+                sizeof(strategies[*num_found].name) - 1);
+        strategies[*num_found].suitability = apply_mod(engine, engine->strategy_success[i]);
+        strategies[*num_found].past_success_rate = engine->strategy_success[i];
+        strategies[*num_found].computational_cost = 0.3f + 0.1f * i;
+        strategies[*num_found].time_estimate = 1.0f + 0.5f * i;
+        (*num_found)++;
+    }
+
+    return 0;
+}
+
+int meta_switch_strategy(meta_engine_t* engine, meta_reasoning_chain_t* chain,
+    const meta_strategy_t* new_strategy) {
+    if (!engine || !chain || !new_strategy) return -1;
+    if (!engine->config.enable_strategy_switching) return -1;
+
+    /* Update current step with new strategy */
+    if (chain->num_steps > 0) {
+        chain->steps[chain->num_steps - 1].strategy_used = new_strategy->type;
+    }
+
+    engine->stats.strategy_switches++;
+    return 0;
+}
+
+float meta_calibrate_confidence(meta_engine_t* engine, const meta_reasoning_chain_t* chain) {
+    if (!engine || !chain) return 0.5f;
+
+    float calibrated = chain->overall_confidence;
+
+    /* Apply calibration bias learned from experience */
+    calibrated -= engine->calibration_bias;
+    calibrated *= engine->config.confidence_calibration_strength;
+
+    return apply_mod(engine, fmaxf(0.0f, fminf(1.0f, calibrated)));
+}
+
+float meta_estimate_accuracy(meta_engine_t* engine, float stated_confidence) {
+    if (!engine) return stated_confidence;
+
+    /* Adjust for known calibration bias */
+    float adjusted = stated_confidence - engine->calibration_bias;
+    return apply_mod(engine, fmaxf(0.0f, fminf(1.0f, adjusted)));
+}
+
+int meta_update_calibration(meta_engine_t* engine, float prediction, float actual) {
+    if (!engine) return -1;
+
+    float error = prediction - actual;
+    engine->calibration_bias += engine->config.strategy_adaptation_rate * error;
+    engine->calibration_bias = fmaxf(-0.3f, fminf(0.3f, engine->calibration_bias));
+
+    engine->stats.avg_calibration_error =
+        (engine->stats.avg_calibration_error * 0.9f) + (fabsf(error) * 0.1f);
+
+    return 0;
+}
+
+int meta_monitor_reasoning(meta_engine_t* engine, const meta_reasoning_chain_t* chain,
+    meta_anomaly_t* anomalies, uint32_t max_anomalies, uint32_t* num_found) {
+    if (!engine || !chain || !anomalies || !num_found) return -1;
+    if (!engine->config.enable_anomaly_detection) { *num_found = 0; return 0; }
+
+    *num_found = 0;
+
+    /* Check for confidence drops */
+    for (uint32_t i = 1; i < chain->num_steps && *num_found < max_anomalies; i++) {
+        float drop = chain->steps[i-1].confidence - chain->steps[i].confidence;
+        if (drop > 0.3f) {
+            anomalies[*num_found].id = *num_found + 1;
+            anomalies[*num_found].step_number = i;
+            anomalies[*num_found].severity = drop;
+            anomalies[*num_found].is_recoverable = true;
+            snprintf(anomalies[*num_found].description, sizeof(anomalies[*num_found].description),
+                    "Confidence drop at step %u", i);
+            (*num_found)++;
+            engine->stats.anomalies_detected++;
+        }
+    }
+
+    /* Check for stalled progress */
+    if (chain->num_steps > 3 && chain->progress_rate < 0.1f) {
+        if (*num_found < max_anomalies) {
+            anomalies[*num_found].id = *num_found + 1;
+            anomalies[*num_found].step_number = chain->num_steps - 1;
+            anomalies[*num_found].severity = 0.6f;
+            anomalies[*num_found].is_recoverable = true;
+            snprintf(anomalies[*num_found].description, sizeof(anomalies[*num_found].description),
+                    "Progress stalled");
+            (*num_found)++;
+            engine->stats.anomalies_detected++;
+        }
+    }
+
+    return 0;
+}
+
+int meta_get_state(meta_engine_t* engine, const meta_reasoning_chain_t* chain,
+    meta_state_t* state) {
+    if (!engine || !chain || !state) return -1;
+
+    memset(state, 0, sizeof(meta_state_t));
+    state->confidence = meta_calibrate_confidence(engine, chain);
+    state->progress = (chain->num_steps > 0) ?
+                      chain->steps[chain->num_steps - 1].progress : 0;
+
+    return 0;
+}
+
+float meta_estimate_progress(meta_engine_t* engine, const meta_reasoning_chain_t* chain) {
+    if (!engine || !chain || chain->num_steps == 0) return 0;
+    return apply_mod(engine, chain->steps[chain->num_steps - 1].progress);
+}
+
+int meta_learn_from_outcome(meta_engine_t* engine, const meta_problem_t* problem,
+    const meta_strategy_t* strategy, bool success, float performance) {
+    if (!engine || !problem || !strategy) return -1;
+
+    int type = (int)strategy->type;
+    if (type < 0 || type >= 8) return -1;
+
+    /* Update success rate for this strategy */
+    float update = success ? 1.0f : 0.0f;
+    engine->strategy_success[type] =
+        engine->strategy_success[type] * (1.0f - engine->config.strategy_adaptation_rate) +
+        update * engine->config.strategy_adaptation_rate;
+
+    engine->stats.avg_strategy_success =
+        (engine->stats.avg_strategy_success * 0.9f) + (performance * 0.1f);
+
+    if (success) {
+        engine->stats.anomalies_recovered++;
+    }
+
+    return 0;
+}
+
+int meta_learn_from_chain(meta_engine_t* engine, const meta_reasoning_chain_t* chain,
+    bool success) {
+    if (!engine || !chain) return -1;
+
+    /* Update calibration based on overall outcome */
+    meta_update_calibration(engine, chain->overall_confidence, success ? 1.0f : 0.0f);
+
+    return 0;
+}
+
+void meta_free_strategy(meta_strategy_t* strategy) {
+    if (strategy) nimcp_free(strategy);
+}
+
+void meta_free_chain(meta_reasoning_chain_t* chain) {
+    if (!chain) return;
+    if (chain->steps) nimcp_free(chain->steps);
+    nimcp_free(chain);
+}
+
+int meta_set_inflammation(meta_engine_t* engine, float level) {
+    if (!engine) return -1;
+    engine->inflammation = fmaxf(0, fminf(1, level));
+    return 0;
+}
+
+int meta_set_fatigue(meta_engine_t* engine, float level) {
+    if (!engine) return -1;
+    engine->fatigue = fmaxf(0, fminf(1, level));
+    return 0;
+}
+
+int meta_get_stats(const meta_engine_t* engine, meta_stats_t* stats) {
+    if (!engine || !stats) return -1;
+    *stats = engine->stats;
+    return 0;
+}
+
+void meta_reset_stats(meta_engine_t* engine) {
+    if (engine) memset(&engine->stats, 0, sizeof(engine->stats));
+}
+
+const char* meta_get_last_error(void) { return g_last_error; }
+
+const char* meta_strategy_name(meta_strategy_type_t type) {
+    switch (type) {
+        case META_STRATEGY_ANALYTICAL:      return "analytical";
+        case META_STRATEGY_INTUITIVE:       return "intuitive";
+        case META_STRATEGY_ANALOGICAL:      return "analogical";
+        case META_STRATEGY_TRIAL_ERROR:     return "trial_error";
+        case META_STRATEGY_DIVIDE_CONQUER:  return "divide_conquer";
+        case META_STRATEGY_MEANS_ENDS:      return "means_ends";
+        case META_STRATEGY_WORKING_BACKWARD: return "working_backward";
+        case META_STRATEGY_BRAINSTORMING:   return "brainstorming";
+        default:                            return "unknown";
+    }
+}

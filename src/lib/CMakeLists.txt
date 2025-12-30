@@ -176,6 +176,10 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala_autobio_bridge.c  # Amygdala-autobiographical memory integration (emotional tagging, recall reactivation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_amygdala_fep_bridge.c  # Amygdala-FEP integration (threat as prediction error)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.c  # Basal ganglia-FEP integration (action selection as free energy minimization)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c  # Basal ganglia-thalamus motor relay
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c  # Basal ganglia-amygdala emotional modulation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c  # Basal ganglia-training plasticity
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c  # Basal ganglia-executive control
 
     # Multi-modal integration (Phase 8: Unified Architecture)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/integration/nimcp_multimodal_integration.c
