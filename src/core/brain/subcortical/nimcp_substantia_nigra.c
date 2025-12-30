@@ -291,11 +291,11 @@ float snc_get_rpe(const substantia_nigra_t* sn) {
     return rpe;
 }
 
-dopamine_state_t snc_get_state(const substantia_nigra_t* sn) {
+da_firing_state_t snc_get_state(const substantia_nigra_t* sn) {
     if (!sn || sn->part != SN_PART_COMPACTA) return DA_STATE_TONIC;
 
     nimcp_mutex_lock((nimcp_mutex_t*)sn->mutex);
-    dopamine_state_t state = sn->da_state;
+    da_firing_state_t state = sn->da_state;
     nimcp_mutex_unlock((nimcp_mutex_t*)sn->mutex);
 
     return state;
@@ -436,7 +436,7 @@ const char* substantia_nigra_part_name(sn_part_t part) {
     }
 }
 
-const char* dopamine_state_name(dopamine_state_t state) {
+const char* da_firing_state_name(da_firing_state_t state) {
     switch (state) {
         case DA_STATE_TONIC: return "Tonic";
         case DA_STATE_BURST: return "Burst";

@@ -58,13 +58,13 @@ typedef enum {
 } sn_part_t;
 
 /**
- * @brief Dopamine neuron state
+ * @brief Dopamine neuron firing state
  */
 typedef enum {
     DA_STATE_TONIC = 0,     /**< Tonic baseline firing */
     DA_STATE_BURST,         /**< Phasic burst (positive RPE) */
     DA_STATE_PAUSE          /**< Phasic pause (negative RPE) */
-} dopamine_state_t;
+} da_firing_state_t;
 
 //=============================================================================
 // Structures
@@ -76,7 +76,7 @@ typedef enum {
 typedef struct {
     uint32_t id;                /**< Neuron ID */
     float firing_rate;          /**< Current firing rate (Hz) */
-    dopamine_state_t state;     /**< Current state */
+    da_firing_state_t state;    /**< Current state */
     float dopamine_released;    /**< Amount of dopamine released */
     float membrane_potential;   /**< Membrane potential */
 } da_neuron_t;
@@ -129,7 +129,7 @@ typedef struct {
     float dopamine_level;           /**< Current striatal dopamine level */
     float reward_prediction;        /**< Current reward prediction */
     float rpe;                      /**< Reward prediction error */
-    dopamine_state_t da_state;      /**< Current DA neuron state */
+    da_firing_state_t da_state;     /**< Current DA neuron state */
 
     /* SNr specific */
     snr_neuron_t* snr_neurons;      /**< SNr output neurons */
@@ -221,7 +221,7 @@ float snc_get_rpe(const substantia_nigra_t* sn);
  * @param sn SNc instance
  * @return Current dopamine state
  */
-dopamine_state_t snc_get_state(const substantia_nigra_t* sn);
+da_firing_state_t snc_get_state(const substantia_nigra_t* sn);
 
 /**
  * @brief Set reward prediction
@@ -308,11 +308,11 @@ int substantia_nigra_get_stats(const substantia_nigra_t* sn, sn_stats_t* stats);
 const char* substantia_nigra_part_name(sn_part_t part);
 
 /**
- * @brief Get dopamine state name
- * @param state Dopamine state
+ * @brief Get dopamine firing state name
+ * @param state Dopamine firing state
  * @return State name string
  */
-const char* dopamine_state_name(dopamine_state_t state);
+const char* da_firing_state_name(da_firing_state_t state);
 
 #ifdef __cplusplus
 }

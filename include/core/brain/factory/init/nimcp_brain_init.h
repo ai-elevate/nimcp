@@ -90,6 +90,9 @@ bool nimcp_brain_factory_init_homeostatic_plasticity_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_dendritic_computation_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain);
 
+// Enhanced Basal Ganglia (Action Selection & Motor Control)
+bool nimcp_brain_factory_init_basal_ganglia_subsystem(brain_t brain);
+
 // Phase IS-1: BBB Global System Reference Management
 void nimcp_bbb_release_global_system(void);
 

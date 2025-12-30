@@ -170,11 +170,15 @@ struct recovery_executive_internal;
 
 // Parietal Lobe Integration (Mathematical/Scientific Reasoning - Phase 7.2)
 #include "cognitive/parietal/nimcp_parietal.h"
+#include "cognitive/parietal/nimcp_intuition_integrations.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 
 // Dragonfly Integration (Bio-inspired Target Tracking and Interception)
 #include "dragonfly/nimcp_dragonfly.h"
 #include "dragonfly/nimcp_dragonfly_medulla_bridge.h"
+
+// Enhanced Basal Ganglia Integration (Action Selection & Motor Control)
+#include "core/brain/subcortical/nimcp_basal_ganglia_enhanced.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -726,6 +730,29 @@ struct brain_struct {
     bool parietal_enabled;                                // Parietal enabled for this brain
     uint64_t last_parietal_update_us;                     // Last parietal update timestamp
 
+    // === INTUITION SYSTEM INTEGRATION (Phase 6: Creative/Intuitive Reasoning) ===
+    //
+    // The Intuition System wraps all Phase 6 reasoning engines:
+    // - Intuitive Reasoning: Pattern-based hunch generation
+    // - Analogical Reasoning: Cross-domain mapping and transfer
+    // - Insight Discovery: Aha! moments and restructuring
+    // - Hypothesis Generation: Abductive and creative theory formation
+    // - Conceptual Blending: Novel concept synthesis
+    // - Counterfactual Reasoning: What-if scenarios
+    // - Meta-Reasoning: Reasoning about reasoning
+    //
+    // Integrates with:
+    // - Working Memory: Active hunch manipulation
+    // - Training: Learning from successful/failed intuitions
+    // - Attention: Focus allocation for intuitive processing
+    // - Executive Functions: Strategy guidance for reasoning
+    // - Emotion System: Gut feelings and affective signals
+    // - Logic Gates: Formal validation of intuitions
+    //
+    intuition_system_t* intuition_system;                 // Phase 6 intuition integration
+    bool intuition_system_enabled;                        // Intuition system enabled for this brain
+    uint64_t last_intuition_update_us;                    // Last intuition update timestamp
+
     // === KNOWLEDGE GRAPH READER (Self-Awareness Infrastructure) ===
     //
     // The KG Reader provides runtime access to NIMCP's structural self-knowledge:
@@ -779,6 +806,32 @@ struct brain_struct {
     // - Protection Level: Can block or abort hunting (prioritize survival)
     // - Circadian Phase: Diurnal hunters are inactive at night
     dragonfly_medulla_bridge_t dragonfly_medulla_bridge;  // Dragonfly-medulla integration
+
+    // === ENHANCED BASAL GANGLIA INTEGRATION (Action Selection & Motor Control) ===
+    //
+    // The Enhanced Basal Ganglia provides biologically-complete action selection:
+    // - Core BG: Striatum (D1/D2 MSNs), GPe/GPi, STN, SNc/SNr with DA modulation
+    // - Beta Oscillations: 13-30 Hz movement suppression, pathological states
+    // - Multi-Neuromodulators: DA, 5HT, ACh, NE, adenosine interactions
+    // - Hierarchical RL: Options framework with primitive/hierarchical actions
+    // - Model-Based Planning: World model + arbitration with model-free
+    // - Nucleus Accumbens: Wanting/liking, Pavlovian-Instrumental Transfer
+    // - Superior Colliculus: Saccade generation and orienting responses
+    // - Striatal Interneurons: FSI, TAN, LTS timing and modulation
+    // - Cerebellar Coordination: Timing and error sharing with cerebellum
+    // - Outcome Devaluation: Goal-directed vs habitual behavior testing
+    // - Temporal Credit Assignment: TD-lambda eligibility traces
+    //
+    // The basal ganglia integrates with:
+    // - Executive Functions: Goal-directed action selection
+    // - Dragonfly: Motor output for pursuit and interception
+    // - Medulla: Arousal modulation of action thresholds
+    // - Emotional System: Reward/aversion signals to NAc
+    // - FEP Orchestrator: Action as free energy minimization
+    //
+    bg_enhanced_t* basal_ganglia;                         // Enhanced basal ganglia system
+    bool basal_ganglia_enabled;                           // Basal ganglia enabled for this brain
+    uint64_t last_basal_ganglia_update_us;                // Last BG update timestamp
 
     // === FAULT TOLERANCE SUBSYSTEM (Intelligent Recovery with Parietal Integration) ===
     //

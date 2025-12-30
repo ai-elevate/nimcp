@@ -112,6 +112,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_plasticity.h"
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
+#include "core/brain/factory/init/nimcp_brain_init_basal_ganglia.h"
 #include "core/brain/factory/validation/nimcp_brain_validation.h"
 
 #define LOG_MODULE "BRAIN_FACTORY"
@@ -196,6 +197,9 @@ extern void set_error(const char* format, ...);
 
 // Fault Tolerance subsystem macro (intelligent recovery with parietal integration)
 #define init_fault_tolerance_subsystem              nimcp_brain_factory_init_fault_tolerance_subsystem
+
+// Enhanced Basal Ganglia subsystem macro (action selection & motor control)
+#define init_basal_ganglia_subsystem                nimcp_brain_factory_init_basal_ganglia_subsystem
 
 //=============================================================================
 // Main Factory Functions
@@ -711,6 +715,24 @@ brain_t brain_create_custom(const brain_config_t* config)
     // - Metacognitive monitoring: Self-awareness during recovery
     // DEPENDS ON: Parietal lobe (for code analysis), Working memory (fault tracking)
     if (!init_fault_tolerance_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // ENHANCED BASAL GANGLIA (ACTION SELECTION & MOTOR CONTROL)
+    // ========================================================================
+    // Initialize enhanced basal ganglia for biologically-complete action selection:
+    // - Core BG: Striatum (D1/D2 MSNs), GPe/GPi, STN, SNc/SNr with DA modulation
+    // - Beta oscillations: 13-30 Hz movement suppression, pathological states
+    // - Multi-neuromodulators: DA, 5HT, ACh, NE, adenosine interactions
+    // - Hierarchical RL: Options framework with temporal abstraction
+    // - Model-based planning: World model with MB/MF arbitration
+    // - Nucleus accumbens: Wanting/liking, Pavlovian-Instrumental Transfer
+    // - Superior colliculus: Saccade generation and orienting
+    // - Striatal interneurons: FSI, TAN, LTS timing and modulation
+    // - Cerebellar coordination: Timing and error sharing
+    // - Outcome devaluation: Goal-directed vs habitual behavior
+    // BIOLOGICAL: Maps to subcortical action selection loop
+    // DEPENDS ON: Executive (goal-directed), Emotional system (reward), Dragonfly (motor)
+    if (!init_basal_ganglia_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // CORE DIRECTIVES (ETHICAL FOUNDATION)

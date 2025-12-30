@@ -371,7 +371,8 @@ int bg_enhanced_select_action_for_goal(bg_enhanced_t* bge,
 
     /* If model-based is enabled, use it for goal-directed selection */
     if (bge->model_based) {
-        return bg_mb_select_action(bge->model_based, 0, selected_action, NULL);
+        *selected_action = bg_mb_get_planned_action(bge->model_based, 0);
+        return 0;
     }
 
     /* Otherwise use standard selection */
@@ -419,9 +420,11 @@ bool bg_enhanced_in_option(const bg_enhanced_t* bge) {
 int bg_enhanced_get_option_action(bg_enhanced_t* bge, uint32_t state, uint32_t* action) {
     if (!bge || !bge->hrl || !bge->in_option || !action) return -1;
     /* Get active option and its primitive action */
-    bg_option_t* opt = bg_hrl_get_active_option(bge->hrl);
-    if (opt) {
-        *action = opt->initiation_set[0];  /* Use first available action */
+    uint32_t opt_id = bg_hrl_get_active_option(bge->hrl);
+    const bg_option_t* opt = bg_hrl_get_option(bge->hrl, opt_id);
+    if (opt && opt->num_init_states > 0 && opt->initiation_states) {
+        /* For simplicity, use the stored option's current action */
+        *action = bge->current_option;
         return 0;
     }
     return -1;
@@ -509,8 +512,9 @@ float bg_enhanced_get_mb_weight(const bg_enhanced_t* bge) {
 int bg_enhanced_set_mb_weight(bg_enhanced_t* bge, float weight) {
     if (!bge || !bge->model_based) return -1;
     /* Use arbitration mode to influence weight */
-    bg_mb_arbitration_mode_t mode = (weight > 0.7f) ? BG_MB_ARBIT_MB_ONLY :
-                                    (weight < 0.3f) ? BG_MB_ARBIT_MF_ONLY :
+    /* Available modes: FIXED, UNCERTAINTY, RELIABILITY, SPEED_ACCURACY */
+    bg_mb_arbitration_mode_t mode = (weight > 0.7f) ? BG_MB_ARBIT_RELIABILITY :
+                                    (weight < 0.3f) ? BG_MB_ARBIT_SPEED_ACCURACY :
                                     BG_MB_ARBIT_UNCERTAINTY;
     return bg_mb_set_arbitration_mode(bge->model_based, mode);
 }
@@ -556,7 +560,8 @@ int bg_enhanced_coordinate_timing(bg_enhanced_t* bge, uint32_t action_id,
     /* Get timing state and compute adjustment */
     bgcb_timing_state_t timing_state;
     if (bgcb_get_timing_state(bge->cerebellar, &timing_state) == 0) {
-        *timing_adjustment = timing_state.cb_prediction - timing_state.bg_timing;
+        /* Compute adjustment from timing accuracy and sync phase */
+        *timing_adjustment = (1.0f - timing_state.timing_accuracy) * timing_state.sync_phase;
         return 0;
     }
     *timing_adjustment = 0.0f;
@@ -663,14 +668,14 @@ int bg_enhanced_get_stats(const bg_enhanced_t* bge, bg_enhanced_stats_t* stats) 
         bg_hrl_stats_t hrl_stats;
         bg_hrl_get_stats(bge->hrl, &hrl_stats);
         stats->active_options = hrl_stats.active_options;
-        stats->option_completions = hrl_stats.option_terminations;
+        stats->option_completions = hrl_stats.goals_achieved;
     }
 
     /* Model-based stats */
     if (bge->model_based) {
         bg_mb_arbitration_t arbit;
         if (bg_mb_get_arbitration(bge->model_based, &arbit) == 0) {
-            stats->model_based_weight = arbit.mb_weight;
+            stats->model_based_weight = arbit.model_based_weight;
         }
         bg_mb_stats_t mb_stats;
         bg_mb_get_stats(bge->model_based, &mb_stats);
@@ -688,7 +693,7 @@ int bg_enhanced_get_stats(const bg_enhanced_t* bge, bg_enhanced_stats_t* stats) 
 
     /* Interneuron stats */
     if (bge->interneurons) {
-        sint_get_state(bge->interneurons, &stats->interneuron_state);
+        sint_get_stats(bge->interneurons, &stats->interneuron_state);
     }
 
     /* Outcome devaluation stats */

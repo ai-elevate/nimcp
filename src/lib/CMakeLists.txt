@@ -78,6 +78,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_dragonfly.c           # Dragonfly target tracking subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_kg_reader.c           # KG reader for self-awareness
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_fault_tolerance.c    # Fault tolerance with parietal integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_basal_ganglia.c     # Enhanced basal ganglia action selection
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c         # Validation and caching (219 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_rule_learning.c      # Rule learning from examples (inductive learning)
@@ -180,6 +181,19 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c  # Basal ganglia-amygdala emotional modulation
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c  # Basal ganglia-training plasticity
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c  # Basal ganglia-executive control
+
+    # Basal ganglia enhancement modules (Phase BG-ENH)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_beta_oscillations.c    # Beta oscillations and pathological states
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_neuromodulators.c      # Multi-neuromodulator integration (5HT, ACh, NE, adenosine)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_hierarchical_rl.c      # Hierarchical RL with options framework
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_nucleus_accumbens.c       # Nucleus accumbens (motivation, PIT)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_superior_colliculus.c     # Superior colliculus (gaze, orienting)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_model_based.c          # Model-based planning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_striatal_interneurons.c   # Striatal interneurons (FSI, TAN, LTS)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_cerebellar_coord.c     # BG-cerebellar coordination
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_outcome_devaluation.c  # Outcome devaluation (goal vs habit)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_bg_temporal_credit.c      # Temporal credit assignment (TD-lambda)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_basal_ganglia_enhanced.c  # Unified enhanced BG system
 
     # Multi-modal integration (Phase 8: Unified Architecture)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/integration/nimcp_multimodal_integration.c
