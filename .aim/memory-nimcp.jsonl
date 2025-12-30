@@ -457,6 +457,19 @@
 {"type":"entity","name":"Semantic_Memory_Language","entityType":"module","observations":["Word meanings and semantic relationships","Integration with production and comprehension","FEP-based semantic compression"]}
 {"type":"entity","name":"NLP_Immune_Bridge","entityType":"bridge","observations":["Language understanding under inflammatory stress","Comprehension impairment from inflammation"]}
 {"type":"entity","name":"Lateralization_Language","entityType":"module","observations":["Left hemisphere: Broca, Wernicke, temporal language","Right hemisphere: prosody, emotional speech, metaphor","Inter-hemispheric via corpus callosum"]}
+{"type":"entity","name":"Parietal_Reasoning_Modules","entityType":"Module_Group","observations":["Added 7 higher reasoning modules to parietal lobe (commit a8158e11)","Modules: analogical_reasoning, conceptual_blending, counterfactual, hypothesis_generation, insight_discovery, intuitive_reasoning, meta_reasoning","Located in src/cognitive/parietal/ and include/cognitive/parietal/","Provides FEP integration for intuitive reasoning","Unit tests in test/unit/cognitive/parietal/"]}
+{"type":"entity","name":"Analogical_Reasoning_Module","entityType":"Module","observations":["Cross-domain pattern transfer for finding structural similarities","Header: include/cognitive/parietal/nimcp_analogical_reasoning.h","Source: src/cognitive/parietal/nimcp_analogical_reasoning.c","Enables reasoning by analogy across different domains"]}
+{"type":"entity","name":"Conceptual_Blending_Module","entityType":"Module","observations":["Creative synthesis through concept combination","Header: include/cognitive/parietal/nimcp_conceptual_blending.h","Source: src/cognitive/parietal/nimcp_conceptual_blending.c","Supports emergent structure creation from input concepts"]}
+{"type":"entity","name":"Counterfactual_Reasoning_Module","entityType":"Module","observations":["Alternative scenario analysis for 'what if' reasoning","Header: include/cognitive/parietal/nimcp_counterfactual.h","Source: src/cognitive/parietal/nimcp_counterfactual.c","Essential for causal reasoning and planning"]}
+{"type":"entity","name":"Hypothesis_Generation_Module","entityType":"Module","observations":["Scientific inference and hypothesis formation","Header: include/cognitive/parietal/nimcp_hypothesis_generation.h","Source: src/cognitive/parietal/nimcp_hypothesis_generation.c","Supports abductive reasoning and theory construction"]}
+{"type":"entity","name":"Insight_Discovery_Module","entityType":"Module","observations":["Eureka moment detection and sudden understanding","Header: include/cognitive/parietal/nimcp_insight_discovery.h","Source: src/cognitive/parietal/nimcp_insight_discovery.c","Monitors for creative breakthroughs in problem-solving"]}
+{"type":"entity","name":"Intuitive_Reasoning_Module","entityType":"Module","observations":["Fast intuitive judgments with FEP integration","Header: include/cognitive/parietal/nimcp_intuitive_reasoning.h","Source: src/cognitive/parietal/nimcp_intuitive_reasoning.c","Integrates with Free Energy Principle for prediction-based intuition"]}
+{"type":"entity","name":"Meta_Reasoning_Module","entityType":"Module","observations":["Cognitive self-monitoring and reasoning about reasoning","Header: include/cognitive/parietal/nimcp_meta_reasoning.h","Source: src/cognitive/parietal/nimcp_meta_reasoning.c","Enables metacognitive control over reasoning processes"]}
+{"type":"entity","name":"Basal_Ganglia_Integration_Bridges","entityType":"Module_Group","observations":["Added 4 basal ganglia integration bridges (commit a8158e11)","Bridges: amygdala, executive, thalamus, training","Located in src/core/brain/subcortical/","Unit tests in test/unit/core/brain/subcortical/"]}
+{"type":"entity","name":"Basal_Ganglia_Amygdala_Bridge","entityType":"Bridge","observations":["Emotional-motor gating integration","Header: include/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.h","Source: src/core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.c","Connects emotional processing with action selection"]}
+{"type":"entity","name":"Basal_Ganglia_Executive_Bridge","entityType":"Bridge","observations":["Cognitive control integration","Header: include/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.h","Source: src/core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.c","Links executive function with motor planning"]}
+{"type":"entity","name":"Basal_Ganglia_Thalamus_Bridge","entityType":"Bridge","observations":["Sensorimotor coordination","Header: include/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.h","Source: src/core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.c","Coordinates basal ganglia output with thalamic relay"]}
+{"type":"entity","name":"Basal_Ganglia_Training_Bridge","entityType":"Bridge","observations":["Reinforcement learning integration","Header: include/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.h","Source: src/core/brain/subcortical/nimcp_basal_ganglia_training_bridge.c","Connects reward signals with action selection learning"]}
 {"type":"relation","from":"Brain Immune System","to":"NIMCP","relationType":"belongs_to"}
 {"type":"relation","from":"Cytokine Convention","to":"Brain Immune System","relationType":"applies_to"}
 {"type":"relation","from":"NIMCP_Code_Review_Dec2024","to":"LNN_Training_Fix","relationType":"identified_and_fixed"}
@@ -1243,3 +1256,18 @@
 {"type":"relation","from":"Language_Core_System","to":"Plasticity_Core_System","relationType":"triggers"}
 {"type":"relation","from":"Neuromodulator_System","to":"Basal_Ganglia","relationType":"modulates"}
 {"type":"relation","from":"Neuromodulator_System","to":"Language_Core_System","relationType":"modulates"}
+{"type":"relation","from":"Parietal_Reasoning_Modules","to":"Parietal_Lobe_Module","relationType":"extends"}
+{"type":"relation","from":"Analogical_Reasoning_Module","to":"Parietal_Reasoning_Modules","relationType":"belongs_to"}
+{"type":"relation","from":"Conceptual_Blending_Module","to":"Parietal_Reasoning_Modules","relationType":"belongs_to"}
+{"type":"relation","from":"Counterfactual_Reasoning_Module","to":"Parietal_Reasoning_Modules","relationType":"belongs_to"}
+{"type":"relation","from":"Hypothesis_Generation_Module","to":"Parietal_Reasoning_Modules","relationType":"belongs_to"}
+{"type":"relation","from":"Insight_Discovery_Module","to":"Parietal_Reasoning_Modules","relationType":"belongs_to"}
+{"type":"relation","from":"Intuitive_Reasoning_Module","to":"Parietal_Reasoning_Modules","relationType":"belongs_to"}
+{"type":"relation","from":"Meta_Reasoning_Module","to":"Parietal_Reasoning_Modules","relationType":"belongs_to"}
+{"type":"relation","from":"Basal_Ganglia_Amygdala_Bridge","to":"Basal_Ganglia_Integration_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Basal_Ganglia_Executive_Bridge","to":"Basal_Ganglia_Integration_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Basal_Ganglia_Thalamus_Bridge","to":"Basal_Ganglia_Integration_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Basal_Ganglia_Training_Bridge","to":"Basal_Ganglia_Integration_Bridges","relationType":"belongs_to"}
+{"type":"relation","from":"Intuitive_Reasoning_Module","to":"FEP_Orchestrator","relationType":"integrates_with"}
+{"type":"relation","from":"KG_Reader_Module","to":"Self_Awareness_Architecture","relationType":"enables"}
+{"type":"relation","from":"KG_Reader_Module","to":"NIMCP","relationType":"belongs_to"}

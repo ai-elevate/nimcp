@@ -33,30 +33,18 @@ protected:
         }
     }
 
-    obstacle_t make_obstacle(uint32_t id, float x, float y, float z, float radius) {
-        obstacle_t obs = {};
+    detected_obstacle_t make_obstacle(uint32_t id, float x, float y, float z, float size) {
+        detected_obstacle_t obs = {};
         obs.id = id;
         obs.position[0] = x;
         obs.position[1] = y;
         obs.position[2] = z;
-        obs.radius = radius;
-        obs.type = OBSTACLE_STATIC;
+        obs.extent[0] = size;
+        obs.extent[1] = size;
+        obs.extent[2] = size;
+        obs.type = OBSTACLE_STRUCTURE;
+        obs.threat = THREAT_LOW;
         return obs;
-    }
-
-    dragonfly_self_state_t make_self_state(float x, float y, float z,
-                                            float vx, float vy, float vz) {
-        dragonfly_self_state_t self = {};
-        self.position[0] = x;
-        self.position[1] = y;
-        self.position[2] = z;
-        self.velocity[0] = vx;
-        self.velocity[1] = vy;
-        self.velocity[2] = vz;
-        self.max_speed = 15.0f;
-        self.max_accel = 10.0f;
-        self.max_turn_rate = 3.0f;
-        return self;
     }
 };
 
@@ -65,30 +53,30 @@ protected:
 //=============================================================================
 
 TEST_F(CollisionTest, DefaultConfig) {
-    collision_config_t config = dragonfly_collision_default_config();
-    EXPECT_GT(config.detection_range, 0.0f);
-    EXPECT_GT(config.safety_margin, 0.0f);
-    EXPECT_GT(config.critical_ttc_s, 0.0f);
+    collision_config_t config = collision_default_config();
+    EXPECT_GT(config.detection_range_m, 0.0f);
+    EXPECT_GT(config.min_clearance_m, 0.0f);
+    EXPECT_GT(config.ttc_critical_threshold_s, 0.0f);
 }
 
 TEST_F(CollisionTest, ValidateConfig) {
-    collision_config_t config = dragonfly_collision_default_config();
-    EXPECT_TRUE(dragonfly_collision_validate_config(&config));
+    collision_config_t config = collision_default_config();
+    EXPECT_TRUE(collision_validate_config(&config));
 
-    config.detection_range = 0.0f;
-    EXPECT_FALSE(dragonfly_collision_validate_config(&config));
+    config.detection_range_m = 0.0f;
+    EXPECT_FALSE(collision_validate_config(&config));
 
-    config = dragonfly_collision_default_config();
-    config.critical_ttc_s = -1.0f;
-    EXPECT_FALSE(dragonfly_collision_validate_config(&config));
+    config = collision_default_config();
+    config.ttc_critical_threshold_s = -1.0f;
+    EXPECT_FALSE(collision_validate_config(&config));
 
-    EXPECT_FALSE(dragonfly_collision_validate_config(nullptr));
+    EXPECT_FALSE(collision_validate_config(nullptr));
 }
 
 TEST_F(CollisionTest, CreateWithCustomConfig) {
-    collision_config_t config = dragonfly_collision_default_config();
-    config.detection_range = 20.0f;
-    config.safety_margin = 0.5f;
+    collision_config_t config = collision_default_config();
+    config.detection_range_m = 20.0f;
+    config.min_clearance_m = 0.5f;
 
     dragonfly_collision_t custom = dragonfly_collision_create(&config);
     ASSERT_NE(custom, nullptr);
@@ -118,23 +106,23 @@ TEST_F(CollisionTest, Reset) {
 //=============================================================================
 
 TEST_F(CollisionTest, AddObstacle) {
-    obstacle_t obs = make_obstacle(1, 10, 0, 0, 1.0f);
+    detected_obstacle_t obs = make_obstacle(1, 10, 0, 0, 1.0f);
     EXPECT_EQ(dragonfly_collision_add_obstacle(collision, &obs), 0);
 }
 
 TEST_F(CollisionTest, RemoveObstacle) {
-    obstacle_t obs = make_obstacle(1, 10, 0, 0, 1.0f);
+    detected_obstacle_t obs = make_obstacle(1, 10, 0, 0, 1.0f);
     dragonfly_collision_add_obstacle(collision, &obs);
     EXPECT_EQ(dragonfly_collision_remove_obstacle(collision, 1), 0);
 }
 
 TEST_F(CollisionTest, ClearObstacles) {
-    obstacle_t obs1 = make_obstacle(1, 10, 0, 0, 1.0f);
-    obstacle_t obs2 = make_obstacle(2, 20, 0, 0, 1.5f);
+    detected_obstacle_t obs1 = make_obstacle(1, 10, 0, 0, 1.0f);
+    detected_obstacle_t obs2 = make_obstacle(2, 20, 0, 0, 1.5f);
     dragonfly_collision_add_obstacle(collision, &obs1);
     dragonfly_collision_add_obstacle(collision, &obs2);
 
-    EXPECT_EQ(dragonfly_collision_clear_obstacles(collision), 0);
+    EXPECT_EQ(dragonfly_collision_clear(collision), 0);
 }
 
 //=============================================================================
@@ -142,61 +130,59 @@ TEST_F(CollisionTest, ClearObstacles) {
 //=============================================================================
 
 TEST_F(CollisionTest, NoCollisionWhenClear) {
-    dragonfly_self_state_t self = make_self_state(0, 0, 0, 10, 0, 0);
+    float self_pos[3] = {0, 0, 0};
+    float self_vel[3] = {10, 0, 0};
     // No obstacles added
 
-    collision_state_t state;
-    EXPECT_EQ(dragonfly_collision_update(collision, &self, 0.016f), 0);
-    EXPECT_EQ(dragonfly_collision_get_state(collision, &state), 0);
-    EXPECT_FALSE(state.collision_imminent);
+    collision_summary_t summary;
+    EXPECT_EQ(dragonfly_collision_analyze(collision, self_pos, self_vel, &summary), 0);
+    EXPECT_TRUE(summary.path_clear);
 }
 
 TEST_F(CollisionTest, DetectDirectCollision) {
     // Add obstacle directly ahead
-    obstacle_t obs = make_obstacle(1, 5, 0, 0, 1.0f);
+    detected_obstacle_t obs = make_obstacle(1, 5, 0, 0, 1.0f);
     dragonfly_collision_add_obstacle(collision, &obs);
 
     // Moving towards obstacle
-    dragonfly_self_state_t self = make_self_state(0, 0, 0, 15, 0, 0);
+    float self_pos[3] = {0, 0, 0};
+    float self_vel[3] = {15, 0, 0};
 
-    collision_state_t state;
-    dragonfly_collision_update(collision, &self, 0.016f);
-    dragonfly_collision_get_state(collision, &state);
+    collision_summary_t summary;
+    dragonfly_collision_analyze(collision, self_pos, self_vel, &summary);
 
-    EXPECT_TRUE(state.collision_imminent);
-    EXPECT_GT(state.threat_level, 0.0f);
+    EXPECT_FALSE(summary.path_clear);
+    EXPECT_GT(summary.max_threat, THREAT_NONE);
 }
 
 TEST_F(CollisionTest, TTCCalculation) {
     // Obstacle at 10m, moving at 10m/s = 1 second TTC
-    obstacle_t obs = make_obstacle(1, 10, 0, 0, 1.0f);
+    detected_obstacle_t obs = make_obstacle(1, 10, 0, 0, 1.0f);
     dragonfly_collision_add_obstacle(collision, &obs);
 
-    dragonfly_self_state_t self = make_self_state(0, 0, 0, 10, 0, 0);
+    float self_pos[3] = {0, 0, 0};
+    float self_vel[3] = {10, 0, 0};
 
-    dragonfly_collision_update(collision, &self, 0.016f);
+    collision_summary_t summary;
+    dragonfly_collision_analyze(collision, self_pos, self_vel, &summary);
 
-    collision_state_t state;
-    dragonfly_collision_get_state(collision, &state);
-
-    EXPECT_GT(state.min_ttc_s, 0.0f);
-    EXPECT_LT(state.min_ttc_s, 2.0f);  // Should be around 1 second
+    EXPECT_GT(summary.min_ttc_s, 0.0f);
+    EXPECT_LT(summary.min_ttc_s, 2.0f);  // Should be around 1 second
 }
 
 TEST_F(CollisionTest, NoCollisionWhenMovingAway) {
     // Obstacle behind
-    obstacle_t obs = make_obstacle(1, -10, 0, 0, 1.0f);
+    detected_obstacle_t obs = make_obstacle(1, -10, 0, 0, 1.0f);
     dragonfly_collision_add_obstacle(collision, &obs);
 
     // Moving forward (away from obstacle)
-    dragonfly_self_state_t self = make_self_state(0, 0, 0, 10, 0, 0);
+    float self_pos[3] = {0, 0, 0};
+    float self_vel[3] = {10, 0, 0};
 
-    dragonfly_collision_update(collision, &self, 0.016f);
+    collision_summary_t summary;
+    dragonfly_collision_analyze(collision, self_pos, self_vel, &summary);
 
-    collision_state_t state;
-    dragonfly_collision_get_state(collision, &state);
-
-    EXPECT_FALSE(state.collision_imminent);
+    EXPECT_TRUE(summary.path_clear);
 }
 
 //=============================================================================
@@ -204,33 +190,33 @@ TEST_F(CollisionTest, NoCollisionWhenMovingAway) {
 //=============================================================================
 
 TEST_F(CollisionTest, ComputeAvoidanceManeuver) {
-    obstacle_t obs = make_obstacle(1, 5, 0, 0, 1.0f);
+    detected_obstacle_t obs = make_obstacle(1, 5, 0, 0, 1.0f);
     dragonfly_collision_add_obstacle(collision, &obs);
 
-    dragonfly_self_state_t self = make_self_state(0, 0, 0, 10, 0, 0);
-    dragonfly_collision_update(collision, &self, 0.016f);
+    float self_pos[3] = {0, 0, 0};
+    float self_vel[3] = {10, 0, 0};
+    float pursuit_dir[3] = {1, 0, 0};
 
-    avoidance_maneuver_t maneuver;
-    EXPECT_EQ(dragonfly_collision_get_avoidance(collision, &maneuver), 0);
+    avoidance_command_t command;
+    EXPECT_EQ(dragonfly_collision_get_avoidance(collision, self_pos, self_vel,
+                                                  pursuit_dir, &command), 0);
 
-    if (maneuver.avoidance_needed) {
-        // Should have non-zero adjustment
-        float adjustment_mag = sqrtf(
-            maneuver.velocity_adjustment[0] * maneuver.velocity_adjustment[0] +
-            maneuver.velocity_adjustment[1] * maneuver.velocity_adjustment[1] +
-            maneuver.velocity_adjustment[2] * maneuver.velocity_adjustment[2]);
-        EXPECT_GT(adjustment_mag, 0.0f);
+    if (command.action != AVOID_NONE) {
+        // Should have non-zero urgency
+        EXPECT_GT(command.urgency, 0.0f);
     }
 }
 
 TEST_F(CollisionTest, FindSafeDirection) {
-    obstacle_t obs = make_obstacle(1, 5, 0, 0, 1.0f);
+    detected_obstacle_t obs = make_obstacle(1, 5, 0, 0, 1.0f);
     dragonfly_collision_add_obstacle(collision, &obs);
 
-    dragonfly_self_state_t self = make_self_state(0, 0, 0, 10, 0, 0);
-
+    float self_pos[3] = {0, 0, 0};
+    float preferred_dir[3] = {1, 0, 0};
     float safe_dir[3];
-    EXPECT_EQ(dragonfly_collision_find_safe_direction(collision, &self, safe_dir), 0);
+
+    EXPECT_EQ(dragonfly_collision_find_safe_direction(collision, self_pos,
+                                                        preferred_dir, safe_dir), 0);
 
     // Safe direction should not point at obstacle
     // (dot product of safe direction and obstacle direction should be low)
@@ -242,17 +228,17 @@ TEST_F(CollisionTest, FindSafeDirection) {
 
 TEST_F(CollisionTest, EmergencyStopRequired) {
     // Very close obstacle
-    obstacle_t obs = make_obstacle(1, 1, 0, 0, 0.5f);
+    detected_obstacle_t obs = make_obstacle(1, 1, 0, 0, 0.5f);
     dragonfly_collision_add_obstacle(collision, &obs);
 
-    dragonfly_self_state_t self = make_self_state(0, 0, 0, 15, 0, 0);
-    dragonfly_collision_update(collision, &self, 0.016f);
+    float self_pos[3] = {0, 0, 0};
+    float self_vel[3] = {15, 0, 0};
 
-    collision_state_t state;
-    dragonfly_collision_get_state(collision, &state);
+    collision_summary_t summary;
+    dragonfly_collision_analyze(collision, self_pos, self_vel, &summary);
 
-    // Should trigger emergency response
-    EXPECT_GT(state.threat_level, 0.7f);
+    // Should trigger high threat response
+    EXPECT_GE(summary.max_threat, THREAT_HIGH);
 }
 
 //=============================================================================
@@ -264,15 +250,13 @@ TEST_F(CollisionTest, GetStats) {
     EXPECT_EQ(dragonfly_collision_get_stats(collision, &stats), 0);
 }
 
-TEST_F(CollisionTest, ResetStats) {
-    dragonfly_self_state_t self = make_self_state(0, 0, 0, 10, 0, 0);
-    dragonfly_collision_update(collision, &self, 0.016f);
-
-    EXPECT_EQ(dragonfly_collision_reset_stats(collision), 0);
+TEST_F(CollisionTest, StatsAfterOperations) {
+    detected_obstacle_t obs = make_obstacle(1, 10, 0, 0, 1.0f);
+    dragonfly_collision_add_obstacle(collision, &obs);
 
     collision_stats_t stats;
     dragonfly_collision_get_stats(collision, &stats);
-    EXPECT_EQ(stats.updates_processed, 0u);
+    EXPECT_GE(stats.obstacles_detected, 1u);
 }
 
 //=============================================================================
@@ -280,12 +264,14 @@ TEST_F(CollisionTest, ResetStats) {
 //=============================================================================
 
 TEST_F(CollisionTest, NullPointerHandling) {
-    dragonfly_self_state_t self = make_self_state(0, 0, 0, 10, 0, 0);
-    obstacle_t obs = make_obstacle(1, 10, 0, 0, 1.0f);
+    detected_obstacle_t obs = make_obstacle(1, 10, 0, 0, 1.0f);
+    float pos[3] = {0, 0, 0};
+    float vel[3] = {1, 0, 0};
+    collision_summary_t summary;
 
-    EXPECT_EQ(dragonfly_collision_update(nullptr, &self, 0.016f), -1);
-    EXPECT_EQ(dragonfly_collision_update(collision, nullptr, 0.016f), -1);
+    EXPECT_EQ(dragonfly_collision_analyze(nullptr, pos, vel, &summary), -1);
+    EXPECT_EQ(dragonfly_collision_analyze(collision, nullptr, vel, &summary), -1);
     EXPECT_EQ(dragonfly_collision_add_obstacle(nullptr, &obs), -1);
     EXPECT_EQ(dragonfly_collision_add_obstacle(collision, nullptr), -1);
-    EXPECT_EQ(dragonfly_collision_get_state(nullptr, nullptr), -1);
+    EXPECT_EQ(dragonfly_collision_get_stats(nullptr, nullptr), -1);
 }

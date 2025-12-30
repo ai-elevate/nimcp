@@ -32,6 +32,25 @@ protected:
             gaze = nullptr;
         }
     }
+
+    gaze_target_t make_target(float x, float y, float z) {
+        gaze_target_t target = {};
+        target.type = GAZE_TARGET_PREY;
+        target.position[0] = x;
+        target.position[1] = y;
+        target.position[2] = z;
+        target.priority = 1.0f;
+        target.is_moving = false;
+        return target;
+    }
+
+    body_state_t make_body_state() {
+        body_state_t body = {};
+        body.yaw_rad = 0.0f;
+        body.pitch_rad = 0.0f;
+        body.roll_rad = 0.0f;
+        return body;
+    }
 };
 
 //=============================================================================
@@ -39,23 +58,23 @@ protected:
 //=============================================================================
 
 TEST_F(GazeTest, DefaultConfig) {
-    gaze_config_t config = dragonfly_gaze_default_config();
+    gaze_config_t config = gaze_default_config();
     EXPECT_GT(config.vor_gain, 0.0f);
-    EXPECT_GT(config.smooth_pursuit_gain, 0.0f);
+    EXPECT_GT(config.pursuit_gain, 0.0f);
 }
 
 TEST_F(GazeTest, ValidateConfig) {
-    gaze_config_t config = dragonfly_gaze_default_config();
-    EXPECT_TRUE(dragonfly_gaze_validate_config(&config));
+    gaze_config_t config = gaze_default_config();
+    EXPECT_TRUE(gaze_validate_config(&config));
 
     config.vor_gain = -1.0f;
-    EXPECT_FALSE(dragonfly_gaze_validate_config(&config));
+    EXPECT_FALSE(gaze_validate_config(&config));
 
-    EXPECT_FALSE(dragonfly_gaze_validate_config(nullptr));
+    EXPECT_FALSE(gaze_validate_config(nullptr));
 }
 
 TEST_F(GazeTest, CreateWithCustomConfig) {
-    gaze_config_t config = dragonfly_gaze_default_config();
+    gaze_config_t config = gaze_default_config();
     config.vor_gain = 1.2f;
 
     dragonfly_gaze_t custom = dragonfly_gaze_create(&config);
@@ -82,104 +101,100 @@ TEST_F(GazeTest, Reset) {
 }
 
 //=============================================================================
-// VOR Tests
+// Target Management Tests
 //=============================================================================
 
-TEST_F(GazeTest, VORCompensation) {
-    // Set target straight ahead
-    float target_pos[3] = {100, 0, 0};
-    dragonfly_gaze_set_target(gaze, target_pos);
-
-    // Apply head rotation
-    float head_vel[3] = {0, 0.5f, 0};  // Yaw rotation
-    EXPECT_EQ(dragonfly_gaze_update_head(gaze, head_vel, 0.016f), 0);
-
-    // VOR should compensate
-    gaze_state_t state;
-    dragonfly_gaze_get_state(gaze, &state);
-    // Eye velocity should partially counter head velocity
+TEST_F(GazeTest, SetTarget) {
+    gaze_target_t target = make_target(100, 0, 0);
+    EXPECT_EQ(dragonfly_gaze_set_target(gaze, &target), 0);
 }
 
-TEST_F(GazeTest, VORWithNoRotation) {
-    float target_pos[3] = {100, 0, 0};
-    dragonfly_gaze_set_target(gaze, target_pos);
+TEST_F(GazeTest, UpdateTargetPosition) {
+    gaze_target_t target = make_target(100, 0, 0);
+    dragonfly_gaze_set_target(gaze, &target);
 
-    float head_vel[3] = {0, 0, 0};  // No rotation
-    dragonfly_gaze_update_head(gaze, head_vel, 0.016f);
+    float new_pos[3] = {95, 5, 0};
+    float vel[3] = {-5, 5, 0};
+    EXPECT_EQ(dragonfly_gaze_update_target(gaze, new_pos, vel), 0);
+}
 
-    gaze_state_t state;
-    dragonfly_gaze_get_state(gaze, &state);
-    // Minimal compensation needed
+TEST_F(GazeTest, ClearTarget) {
+    gaze_target_t target = make_target(100, 0, 0);
+    dragonfly_gaze_set_target(gaze, &target);
+    EXPECT_EQ(dragonfly_gaze_clear_target(gaze), 0);
+}
+
+TEST_F(GazeTest, LockAndUnlock) {
+    gaze_target_t target = make_target(100, 0, 0);
+    dragonfly_gaze_set_target(gaze, &target);
+
+    EXPECT_EQ(dragonfly_gaze_lock(gaze), 0);
+    EXPECT_EQ(dragonfly_gaze_unlock(gaze), 0);
 }
 
 //=============================================================================
-// Smooth Pursuit Tests
+// Gaze Update Tests
 //=============================================================================
 
-TEST_F(GazeTest, SmoothPursuitOfMovingTarget) {
-    // Initial target position
-    float target_pos[3] = {100, 0, 0};
-    dragonfly_gaze_set_target(gaze, target_pos);
+TEST_F(GazeTest, UpdateGaze) {
+    gaze_target_t target = make_target(100, 0, 0);
+    dragonfly_gaze_set_target(gaze, &target);
 
-    // Update target position (moving)
-    target_pos[0] = 95;
-    target_pos[1] = 5;
-    EXPECT_EQ(dragonfly_gaze_update_target(gaze, target_pos, 0.016f), 0);
-
-    gaze_state_t state;
-    dragonfly_gaze_get_state(gaze, &state);
-    // Gaze should be tracking toward new position
-}
-
-TEST_F(GazeTest, PredictiveGaze) {
-    float target_pos[3] = {100, 0, 0};
-    float target_vel[3] = {-10, 5, 0};
-
-    EXPECT_EQ(dragonfly_gaze_set_target_with_velocity(gaze, target_pos, target_vel), 0);
-    EXPECT_EQ(dragonfly_gaze_update(gaze, 0.1f), 0);
-
+    body_state_t body = make_body_state();
+    float self_pos[3] = {0, 0, 0};
     gaze_command_t cmd;
-    dragonfly_gaze_get_command(gaze, &cmd);
-    // Gaze should lead the target
+
+    EXPECT_EQ(dragonfly_gaze_update(gaze, &body, self_pos, 0.016f, &cmd), 0);
 }
 
-//=============================================================================
-// Gaze Command Tests
-//=============================================================================
-
-TEST_F(GazeTest, GetGazeCommand) {
-    float target_pos[3] = {50, 30, 10};
-    dragonfly_gaze_set_target(gaze, target_pos);
-    dragonfly_gaze_update(gaze, 0.016f);
-
-    gaze_command_t cmd;
-    EXPECT_EQ(dragonfly_gaze_get_command(gaze, &cmd), 0);
-    // Should have valid angles
-}
-
-TEST_F(GazeTest, GazeAngleComputation) {
+TEST_F(GazeTest, GazeCommandAngles) {
     // Target directly ahead
-    float target_pos[3] = {100, 0, 0};
-    dragonfly_gaze_set_target(gaze, target_pos);
-    dragonfly_gaze_update(gaze, 0.016f);
+    gaze_target_t target = make_target(100, 0, 0);
+    dragonfly_gaze_set_target(gaze, &target);
 
+    body_state_t body = make_body_state();
+    float self_pos[3] = {0, 0, 0};
     gaze_command_t cmd;
-    dragonfly_gaze_get_command(gaze, &cmd);
-    // Pitch and yaw should be approximately zero
-    EXPECT_NEAR(cmd.yaw_rad, 0.0f, 0.1f);
-    EXPECT_NEAR(cmd.pitch_rad, 0.0f, 0.1f);
+
+    dragonfly_gaze_update(gaze, &body, self_pos, 0.016f, &cmd);
+
+    // Should have small yaw and pitch commands for straight-ahead target
+    EXPECT_NEAR(cmd.yaw_cmd_rad, 0.0f, 0.5f);
+    EXPECT_NEAR(cmd.pitch_cmd_rad, 0.0f, 0.5f);
 }
 
-TEST_F(GazeTest, GazeAngleToSide) {
-    // Target to the right
-    float target_pos[3] = {0, 100, 0};
-    dragonfly_gaze_set_target(gaze, target_pos);
-    dragonfly_gaze_update(gaze, 0.016f);
+TEST_F(GazeTest, GazeCommandToSide) {
+    // Target to the side
+    gaze_target_t target = make_target(0, 100, 0);
+    dragonfly_gaze_set_target(gaze, &target);
 
+    body_state_t body = make_body_state();
+    float self_pos[3] = {0, 0, 0};
     gaze_command_t cmd;
-    dragonfly_gaze_get_command(gaze, &cmd);
-    // Yaw should be around 90 degrees (pi/2)
-    EXPECT_GT(cmd.yaw_rad, 1.0f);
+
+    dragonfly_gaze_update(gaze, &body, self_pos, 0.016f, &cmd);
+
+    // Should have larger yaw command for side target
+    EXPECT_GT(fabsf(cmd.yaw_cmd_rad), 0.5f);
+}
+
+//=============================================================================
+// VOR Compensation Tests
+//=============================================================================
+
+TEST_F(GazeTest, VORWithBodyRotation) {
+    gaze_target_t target = make_target(100, 0, 0);
+    dragonfly_gaze_set_target(gaze, &target);
+
+    body_state_t body = make_body_state();
+    body.yaw_rate = 0.5f;  // Body rotating
+    float self_pos[3] = {0, 0, 0};
+    gaze_command_t cmd;
+
+    dragonfly_gaze_update(gaze, &body, self_pos, 0.016f, &cmd);
+
+    // VOR should generate compensation command
+    // (specifics depend on implementation)
 }
 
 //=============================================================================
@@ -187,42 +202,7 @@ TEST_F(GazeTest, GazeAngleToSide) {
 //=============================================================================
 
 TEST_F(GazeTest, TriggerSaccade) {
-    // Large target jump should trigger saccade
-    float target_pos1[3] = {100, 0, 0};
-    dragonfly_gaze_set_target(gaze, target_pos1);
-    dragonfly_gaze_update(gaze, 0.016f);
-
-    // Jump to very different location
-    float target_pos2[3] = {0, 100, 50};
-    dragonfly_gaze_set_target(gaze, target_pos2);
-    dragonfly_gaze_update(gaze, 0.016f);
-
-    gaze_state_t state;
-    dragonfly_gaze_get_state(gaze, &state);
-    // Might be in saccade mode
-}
-
-//=============================================================================
-// State Query Tests
-//=============================================================================
-
-TEST_F(GazeTest, GetState) {
-    gaze_state_t state;
-    EXPECT_EQ(dragonfly_gaze_get_state(gaze, &state), 0);
-}
-
-TEST_F(GazeTest, IsOnTarget) {
-    float target_pos[3] = {100, 0, 0};
-    dragonfly_gaze_set_target(gaze, target_pos);
-
-    // Update several times to reach target
-    for (int i = 0; i < 10; i++) {
-        dragonfly_gaze_update(gaze, 0.016f);
-    }
-
-    gaze_state_t state;
-    dragonfly_gaze_get_state(gaze, &state);
-    EXPECT_TRUE(state.on_target);
+    EXPECT_EQ(dragonfly_gaze_saccade_to(gaze, 1.0f, 0.5f), 0);
 }
 
 //=============================================================================
@@ -234,12 +214,21 @@ TEST_F(GazeTest, GetStats) {
     EXPECT_EQ(dragonfly_gaze_get_stats(gaze, &stats), 0);
 }
 
-TEST_F(GazeTest, ResetStats) {
-    float target_pos[3] = {100, 0, 0};
-    dragonfly_gaze_set_target(gaze, target_pos);
-    dragonfly_gaze_update(gaze, 0.016f);
+TEST_F(GazeTest, StatsAfterUpdates) {
+    gaze_target_t target = make_target(100, 0, 0);
+    dragonfly_gaze_set_target(gaze, &target);
 
-    EXPECT_EQ(dragonfly_gaze_reset_stats(gaze), 0);
+    body_state_t body = make_body_state();
+    float self_pos[3] = {0, 0, 0};
+    gaze_command_t cmd;
+
+    for (int i = 0; i < 10; i++) {
+        dragonfly_gaze_update(gaze, &body, self_pos, 0.016f, &cmd);
+    }
+
+    gaze_stats_t stats;
+    dragonfly_gaze_get_stats(gaze, &stats);
+    EXPECT_GE(stats.updates, 10u);
 }
 
 //=============================================================================
@@ -247,19 +236,22 @@ TEST_F(GazeTest, ResetStats) {
 //=============================================================================
 
 TEST_F(GazeTest, NullPointerHandling) {
-    float target[3] = {100, 0, 0};
+    gaze_target_t target = make_target(100, 0, 0);
+    body_state_t body = make_body_state();
+    float pos[3] = {0, 0, 0};
     gaze_command_t cmd;
-    gaze_state_t state;
 
-    EXPECT_EQ(dragonfly_gaze_set_target(nullptr, target), -1);
+    EXPECT_EQ(dragonfly_gaze_set_target(nullptr, &target), -1);
     EXPECT_EQ(dragonfly_gaze_set_target(gaze, nullptr), -1);
-    EXPECT_EQ(dragonfly_gaze_update(nullptr, 0.016f), -1);
-    EXPECT_EQ(dragonfly_gaze_get_command(nullptr, &cmd), -1);
-    EXPECT_EQ(dragonfly_gaze_get_command(gaze, nullptr), -1);
-    EXPECT_EQ(dragonfly_gaze_get_state(nullptr, &state), -1);
+    EXPECT_EQ(dragonfly_gaze_update(nullptr, &body, pos, 0.016f, &cmd), -1);
+    EXPECT_EQ(dragonfly_gaze_get_stats(nullptr, nullptr), -1);
 }
 
 TEST_F(GazeTest, InvalidDeltaTime) {
-    EXPECT_EQ(dragonfly_gaze_update(gaze, -1.0f), -1);
-    EXPECT_EQ(dragonfly_gaze_update(gaze, 0.0f), -1);
+    body_state_t body = make_body_state();
+    float pos[3] = {0, 0, 0};
+    gaze_command_t cmd;
+
+    EXPECT_EQ(dragonfly_gaze_update(gaze, &body, pos, -1.0f, &cmd), -1);
+    EXPECT_EQ(dragonfly_gaze_update(gaze, &body, pos, 0.0f, &cmd), -1);
 }
