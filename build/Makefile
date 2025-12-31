@@ -2031,6 +2031,19 @@ unit_core_brain_test_brain_persistence_integration/fast:
 .PHONY : unit_core_brain_test_brain_persistence_integration/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_brain_test_brain_race_conditions
+
+# Build rule for target.
+unit_core_brain_test_brain_race_conditions: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_test_brain_race_conditions
+.PHONY : unit_core_brain_test_brain_race_conditions
+
+# fast build rule for target.
+unit_core_brain_test_brain_race_conditions/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_test_brain_race_conditions.dir/build.make test/CMakeFiles/unit_core_brain_test_brain_race_conditions.dir/build
+.PHONY : unit_core_brain_test_brain_race_conditions/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_brain_test_brain_resize_bio_async
 
 # Build rule for target.
@@ -8204,19 +8217,6 @@ unit_middleware_training_test_occipital_training_bridge: cmake_check_build_syste
 unit_middleware_training_test_occipital_training_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_occipital_training_bridge.dir/build.make test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_occipital_training_bridge.dir/build
 .PHONY : unit_middleware_training_test_occipital_training_bridge/fast
-
-#=============================================================================
-# Target rules for targets named unit_middleware_training_test_training_enhancements
-
-# Build rule for target.
-unit_middleware_training_test_training_enhancements: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_middleware_training_test_training_enhancements
-.PHONY : unit_middleware_training_test_training_enhancements
-
-# fast build rule for target.
-unit_middleware_training_test_training_enhancements/fast:
-	$(MAKE) $(MAKESILENT) -f test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_training_enhancements.dir/build.make test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_training_enhancements.dir/build
-.PHONY : unit_middleware_training_test_training_enhancements/fast
 
 #=============================================================================
 # Target rules for targets named integration_middleware_middleware_test_middleware_subsystems_integration
@@ -19412,6 +19412,71 @@ unit_training_test_cnn_cortex_bridge/fast:
 .PHONY : unit_training_test_cnn_cortex_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_training_test_meta_hpo
+
+# Build rule for target.
+unit_training_test_meta_hpo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_test_meta_hpo
+.PHONY : unit_training_test_meta_hpo
+
+# fast build rule for target.
+unit_training_test_meta_hpo/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_meta_hpo.dir/build.make test/unit/training/CMakeFiles/unit_training_test_meta_hpo.dir/build
+.PHONY : unit_training_test_meta_hpo/fast
+
+#=============================================================================
+# Target rules for targets named unit_training_test_kd_qat
+
+# Build rule for target.
+unit_training_test_kd_qat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_test_kd_qat
+.PHONY : unit_training_test_kd_qat
+
+# fast build rule for target.
+unit_training_test_kd_qat/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_kd_qat.dir/build.make test/unit/training/CMakeFiles/unit_training_test_kd_qat.dir/build
+.PHONY : unit_training_test_kd_qat/fast
+
+#=============================================================================
+# Target rules for targets named unit_training_test_cl_mtl
+
+# Build rule for target.
+unit_training_test_cl_mtl: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_test_cl_mtl
+.PHONY : unit_training_test_cl_mtl
+
+# fast build rule for target.
+unit_training_test_cl_mtl/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_cl_mtl.dir/build.make test/unit/training/CMakeFiles/unit_training_test_cl_mtl.dir/build
+.PHONY : unit_training_test_cl_mtl/fast
+
+#=============================================================================
+# Target rules for targets named unit_training_test_amp_distributed
+
+# Build rule for target.
+unit_training_test_amp_distributed: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_test_amp_distributed
+.PHONY : unit_training_test_amp_distributed
+
+# fast build rule for target.
+unit_training_test_amp_distributed/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_amp_distributed.dir/build.make test/unit/training/CMakeFiles/unit_training_test_amp_distributed.dir/build
+.PHONY : unit_training_test_amp_distributed/fast
+
+#=============================================================================
+# Target rules for targets named unit_training_test_adv_gs
+
+# Build rule for target.
+unit_training_test_adv_gs: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_test_adv_gs
+.PHONY : unit_training_test_adv_gs
+
+# fast build rule for target.
+unit_training_test_adv_gs/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_adv_gs.dir/build.make test/unit/training/CMakeFiles/unit_training_test_adv_gs.dir/build
+.PHONY : unit_training_test_adv_gs/fast
+
+#=============================================================================
 # Target rules for targets named integration_training_test_cnn_backprop_integration
 
 # Build rule for target.
@@ -21344,6 +21409,7 @@ help:
 	@echo "... unit_core_brain_test_brain_oscillations_real"
 	@echo "... unit_core_brain_test_brain_persistence"
 	@echo "... unit_core_brain_test_brain_persistence_integration"
+	@echo "... unit_core_brain_test_brain_race_conditions"
 	@echo "... unit_core_brain_test_brain_resize_bio_async"
 	@echo "... unit_core_brain_test_brain_save_load_simple"
 	@echo "... unit_core_brain_test_brain_snapshot_operations"
@@ -21529,7 +21595,6 @@ help:
 	@echo "... unit_middleware_training_test_tpb_bio_async"
 	@echo "... unit_middleware_training_test_training_adapters_bio_async"
 	@echo "... unit_middleware_training_test_training_callbacks"
-	@echo "... unit_middleware_training_test_training_enhancements"
 	@echo "... unit_middleware_training_test_training_logic_bridge"
 	@echo "... unit_middleware_training_test_training_module"
 	@echo "... unit_networking_distributed_test_distributed_cognition_refactored"
@@ -21686,8 +21751,13 @@ help:
 	@echo "... unit_swarm_sleep_bridges"
 	@echo "... unit_test_brain_full_simulation"
 	@echo "... unit_test_comprehensive_integration"
+	@echo "... unit_training_test_adv_gs"
+	@echo "... unit_training_test_amp_distributed"
+	@echo "... unit_training_test_cl_mtl"
 	@echo "... unit_training_test_cnn_backprop"
 	@echo "... unit_training_test_cnn_cortex_bridge"
+	@echo "... unit_training_test_kd_qat"
+	@echo "... unit_training_test_meta_hpo"
 	@echo "... unit_utils_algorithms_test_centrality"
 	@echo "... unit_utils_algorithms_test_community_detection"
 	@echo "... unit_utils_algorithms_test_graph_metrics"

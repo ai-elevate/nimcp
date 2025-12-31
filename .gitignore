@@ -46,12 +46,18 @@ Makefile
 *.idb
 *.pdb
 
-# Coverage files
+# Coverage files (gcov/lcov)
 *.gcno
 *.gcda
 *.gcov
 coverage/
 *.info
+lcov.info
+coverage.xml
+coverage-report/
+*.profraw
+*.profdata
+htmlcov/
 
 # Python
 __pycache__/

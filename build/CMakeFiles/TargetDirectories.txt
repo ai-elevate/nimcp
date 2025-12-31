@@ -197,6 +197,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_oscillations_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_persistence.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_persistence_integration.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_race_conditions.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_resize_bio_async.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_save_load_simple.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_snapshot_operations.dir
@@ -770,7 +771,6 @@
 /home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_perception_training_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_cortical_training_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_occipital_training_bridge.dir
-/home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_training_enhancements.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/training/CMakeFiles/rebuild_cache.dir
@@ -3095,6 +3095,11 @@
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_cnn_backprop.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_cnn_cortex_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_meta_hpo.dir
+/home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_kd_qat.dir
+/home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_cl_mtl.dir
+/home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_amp_distributed.dir
+/home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_adv_gs.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/rebuild_cache.dir

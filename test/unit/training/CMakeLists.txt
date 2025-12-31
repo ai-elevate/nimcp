@@ -94,3 +94,153 @@ set_tests_properties(unit_training_test_auto_architecture
         LABELS "unit;training;auto;architecture"
         TIMEOUT 180)
 #]]
+
+# Meta-Learning and HPO Unit Tests
+add_executable(unit_training_test_meta_hpo
+    test_training_enhancements_meta_hpo.cpp
+)
+
+target_include_directories(unit_training_test_meta_hpo PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_training_test_meta_hpo PRIVATE cxx_std_20)
+
+target_link_libraries(unit_training_test_meta_hpo
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_training_test_meta_hpo
+         COMMAND unit_training_test_meta_hpo)
+
+set_tests_properties(unit_training_test_meta_hpo
+    PROPERTIES
+        LABELS "unit;training;meta-learning;hpo;hyperparameter"
+        TIMEOUT 180)
+
+# Knowledge Distillation and QAT Unit Tests
+add_executable(unit_training_test_kd_qat
+    test_training_enhancements_kd_qat.cpp
+)
+
+target_include_directories(unit_training_test_kd_qat PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_training_test_kd_qat PRIVATE cxx_std_20)
+
+target_link_libraries(unit_training_test_kd_qat
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_training_test_kd_qat
+         COMMAND unit_training_test_kd_qat)
+
+set_tests_properties(unit_training_test_kd_qat
+    PROPERTIES
+        LABELS "unit;training;kd;qat;distillation;quantization"
+        TIMEOUT 120)
+
+# Continual Learning and Multi-Task Learning Unit Tests
+add_executable(unit_training_test_cl_mtl
+    test_training_enhancements_cl_mtl.cpp
+)
+
+target_include_directories(unit_training_test_cl_mtl PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_training_test_cl_mtl PRIVATE cxx_std_20)
+
+target_link_libraries(unit_training_test_cl_mtl
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_training_test_cl_mtl
+         COMMAND unit_training_test_cl_mtl)
+
+set_tests_properties(unit_training_test_cl_mtl
+    PROPERTIES
+        LABELS "unit;training;continual-learning;multi-task;cl;mtl"
+        TIMEOUT 180)
+
+# Mixed Precision (AMP) and Distributed Training Unit Tests
+add_executable(unit_training_test_amp_distributed
+    test_training_enhancements_amp_dist.cpp
+)
+
+target_include_directories(unit_training_test_amp_distributed PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_training_test_amp_distributed PRIVATE cxx_std_20)
+
+target_link_libraries(unit_training_test_amp_distributed
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_training_test_amp_distributed
+         COMMAND unit_training_test_amp_distributed)
+
+set_tests_properties(unit_training_test_amp_distributed
+    PROPERTIES
+        LABELS "unit;training;amp;mixed-precision;distributed"
+        TIMEOUT 180)
+
+# Adversarial Training and Gradient Scaling Unit Tests
+add_executable(unit_training_test_adv_gs
+    test_training_enhancements_adv_gs.cpp
+)
+
+target_include_directories(unit_training_test_adv_gs PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_training_test_adv_gs PRIVATE cxx_std_20)
+
+target_link_libraries(unit_training_test_adv_gs
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_training_test_adv_gs
+         COMMAND unit_training_test_adv_gs)
+
+set_tests_properties(unit_training_test_adv_gs
+    PROPERTIES
+        LABELS "unit;training;adversarial;gradient-scaling;adv;gs"
+        TIMEOUT 180)

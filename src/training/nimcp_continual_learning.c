@@ -287,6 +287,24 @@ int cl_start_task(cl_ctx_t* ctx, uint32_t task_id, const char* task_name) {
     return 0;
 }
 
+int cl_get_current_task(const cl_ctx_t* ctx) {
+    if (!ctx) return -1;
+    if (!ctx->in_task) return -1;
+    return (int)ctx->current_task;
+}
+
+uint32_t cl_get_num_tasks(const cl_ctx_t* ctx) {
+    if (!ctx) return 0;
+    /* Return count of completed tasks */
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < ctx->num_tasks; i++) {
+        if (ctx->tasks[i].completed) {
+            count++;
+        }
+    }
+    return count;
+}
+
 int cl_end_task(cl_ctx_t* ctx) {
     if (!ctx || !ctx->in_task) return -1;
 
@@ -353,6 +371,49 @@ int cl_register_params(cl_ctx_t* ctx, nimcp_tensor_t** params, uint32_t num_para
     nimcp_mutex_unlock(ctx->mutex);
 
     return 0;
+}
+
+float cl_ewc_penalty(
+    cl_ctx_t* ctx,
+    const float* current_params,
+    size_t num_params
+) {
+    if (!ctx || !current_params || num_params == 0) return 0.0f;
+    if (cl_get_num_tasks(ctx) == 0) return 0.0f;
+
+    nimcp_mutex_lock(ctx->mutex);
+
+    float penalty = 0.0f;
+    float lambda = ctx->config.ewc.lambda;
+
+    /* Sum penalties over all completed tasks */
+    for (uint32_t t = 0; t < ctx->num_tasks; t++) {
+        task_data_t* task = &ctx->tasks[t];
+        if (!task->completed) continue;
+
+        /* Compute EWC penalty: sum(F_i * (theta_i - theta_ref_i)^2) */
+        size_t param_offset = 0;
+        for (uint32_t p = 0; p < task->num_params; p++) {
+            const float* optimal = task->optimal_params[p];
+            const float* fisher = task->fisher[p];
+
+            if (!optimal || !fisher) continue;
+
+            for (size_t i = 0; i < task->param_sizes[p] && param_offset + i < num_params; i++) {
+                float diff = current_params[param_offset + i] - optimal[i];
+                penalty += fisher[i] * diff * diff;
+            }
+            param_offset += task->param_sizes[p];
+        }
+    }
+
+    nimcp_mutex_unlock(ctx->mutex);
+    return 0.5f * lambda * penalty;
+}
+
+uint32_t cl_replay_buffer_size(const cl_ctx_t* ctx) {
+    if (!ctx) return 0;
+    return ctx->buffer_count;
 }
 
 float cl_compute_penalty(

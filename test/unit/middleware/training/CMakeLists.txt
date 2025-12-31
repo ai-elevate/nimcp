@@ -515,37 +515,3 @@ set_tests_properties(unit_middleware_training_test_occipital_training_bridge
     PROPERTIES
         LABELS "unit;middleware;training;occipital_training"
         TIMEOUT 120)
-
-# Training Layer Enhancements Unit Tests (Phase TL-1)
-# Tests for all 10 training enhancements:
-# - Mixed Precision, Distributed, Knowledge Distillation, QAT
-# - Meta-Learning, HPO, Continual Learning, Multi-Task Learning
-# - Adversarial Training, Gradient Scaling
-add_executable(unit_middleware_training_test_training_enhancements
-    test_training_enhancements.cpp
-)
-
-target_include_directories(unit_middleware_training_test_training_enhancements PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
-)
-
-target_compile_features(unit_middleware_training_test_training_enhancements PRIVATE cxx_std_20)
-
-target_link_libraries(unit_middleware_training_test_training_enhancements
-    PRIVATE
-        GTest::GTest
-        GTest::Main
-        nimcp_middleware
-        nimcp
-        pthread
-        m
-)
-
-add_test(NAME unit_middleware_training_test_training_enhancements
-         COMMAND unit_middleware_training_test_training_enhancements)
-
-set_tests_properties(unit_middleware_training_test_training_enhancements
-    PROPERTIES
-        LABELS "unit;middleware;training;enhancements"
-        TIMEOUT 300)
