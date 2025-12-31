@@ -14,9 +14,7 @@
  * @date 2025
  */
 
-#include "gpu/inference/nimcp_inference_gpu.h"
-#include "gpu/tensor/nimcp_tensor_gpu.h"
-#include "utils/logging/nimcp_logging.h"
+// Standard library headers (no extern "C" conflicts)
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -29,8 +27,14 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+// Include CUDA headers FIRST (before any extern "C" blocks from our headers)
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+
+// Now include our headers (which have extern "C" blocks)
+#include "gpu/inference/nimcp_inference_gpu.h"
+#include "gpu/tensor/nimcp_tensor_gpu.h"
+#include "utils/logging/nimcp_logging.h"
 
 //-----------------------------------------------------------------------------
 // CUDA Kernels

@@ -13,12 +13,14 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
-#include "gpu/snn/nimcp_snn_gpu.h"
-#include "utils/logging/nimcp_logging.h"
-
+// Include CUDA headers FIRST (before any extern "C" blocks from our headers)
 #include <cuda_runtime.h>
 #include <math.h>
 #include <stdlib.h>
+
+// Now include our headers (which have extern "C" blocks)
+#include "gpu/snn/nimcp_snn_gpu.h"
+#include "utils/logging/nimcp_logging.h"
 
 #define LOG_MODULE "SNN_GPU"
 

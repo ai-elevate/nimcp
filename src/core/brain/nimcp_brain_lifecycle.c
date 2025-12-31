@@ -50,6 +50,7 @@
 #include "cognitive/parietal/nimcp_parietal.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "core/brain/factory/init/nimcp_brain_init.h"
+#include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 
 /* Coordinator/Orchestrator headers for cleanup */
 #include "async/nimcp_bio_async_orchestrator.h"
@@ -856,6 +857,12 @@ void brain_destroy(brain_t brain)
         brain->kg_reader = NULL;
         brain->kg_reader_enabled = false;
         memset(brain->kg_file_path, 0, sizeof(brain->kg_file_path));
+    }
+
+    // -1.6. Cleanup Internal Knowledge Graph (runtime CRUD)
+    // Internal KG is destroyed after KG reader but before medulla
+    if (brain->internal_kg) {
+        nimcp_brain_factory_destroy_internal_kg_subsystem(brain);
     }
 
     // -2. Cleanup Medulla Oblongata (brainstem autonomic regulation)

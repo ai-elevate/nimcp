@@ -302,11 +302,9 @@ brain_kg_t* brain_kg_create(const brain_kg_config_t* config) {
 void brain_kg_destroy(brain_kg_t* kg) {
     if (!kg) return;
 
-    /* Free metadata strings */
-    for (uint32_t i = 0; i < kg->node_capacity; i++) {
-        if (kg->nodes[i].in_use) {
-            /* Metadata values are inline, no separate allocation */
-        }
+    /* Free security critical nodes bitmap */
+    if (kg->security.critical_nodes) {
+        nimcp_free(kg->security.critical_nodes);
     }
 
     if (kg->mutex) {

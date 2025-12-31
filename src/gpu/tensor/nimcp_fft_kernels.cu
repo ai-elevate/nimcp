@@ -13,12 +13,14 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
-#include "gpu/tensor/nimcp_tensor_gpu.h"
-#include "utils/logging/nimcp_logging.h"
-
+// Include CUDA headers FIRST to avoid extern "C" conflicts
 #include <cuda_runtime.h>
 #include <cufft.h>
 #include <math.h>
+
+// Then include project headers
+#include "gpu/tensor/nimcp_tensor_gpu.h"
+#include "utils/logging/nimcp_logging.h"
 
 #define LOG_MODULE "FFT_GPU"
 

@@ -15,6 +15,14 @@
  * @version 1.0
  */
 
+// Include CUDA headers FIRST to avoid extern "C" conflicts with C++ operators
+#ifdef NIMCP_ENABLE_CUDA
+#include <cuda_runtime.h>
+#include <cublas_v2.h>
+#include <cufft.h>
+#endif
+
+// Then include project headers (which have extern "C" blocks)
 #include "gpu/context/nimcp_gpu_context.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -30,10 +38,6 @@
 //=============================================================================
 
 #ifdef NIMCP_ENABLE_CUDA
-
-#include <cuda_runtime.h>
-#include <cublas_v2.h>
-#include <cufft.h>
 
 /**
  * @brief Helper to check CUDA errors

@@ -23,13 +23,15 @@
 #ifndef NIMCP_TRAINING_GPU_H
 #define NIMCP_TRAINING_GPU_H
 
+// Include headers with CUDA dependencies BEFORE extern "C" block
+#include "gpu/context/nimcp_gpu_context.h"
+#include "gpu/tensor/nimcp_tensor_gpu.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "common/nimcp_export.h"
-#include "gpu/context/nimcp_gpu_context.h"
-#include "gpu/tensor/nimcp_tensor_gpu.h"
 #include <stdbool.h>
 #include <stdint.h>
 

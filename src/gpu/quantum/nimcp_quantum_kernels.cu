@@ -13,12 +13,15 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
-#include "gpu/quantum/nimcp_quantum_gpu.h"
-#include "utils/logging/nimcp_logging.h"
+// Include CUDA headers FIRST (before any extern "C" blocks from our headers)
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 #include <math.h>
 #include <float.h>
+
+// Now include our headers (which have extern "C" blocks)
+#include "gpu/quantum/nimcp_quantum_gpu.h"
+#include "utils/logging/nimcp_logging.h"
 
 #define LOG_MODULE "QUANTUM_GPU"
 
@@ -1083,11 +1086,11 @@ nimcp_quantum_state_t* nimcp_quantum_state_create(
     nimcp_gpu_context_t* ctx,
     uint32_t n_qubits)
 {
-    (void)ctx;
-    if (n_qubits == 0 || n_qubits > 20) {  // Limit for CPU
+    if (!ctx || n_qubits == 0 || n_qubits > 20) {  // Limit for CPU
         LOG_ERROR("Invalid n_qubits=%u (CPU max 20)", n_qubits);
         return NULL;
     }
+    (void)ctx;  // Context not used in CPU fallback but required for API consistency
 
     nimcp_quantum_state_t* state = (nimcp_quantum_state_t*)calloc(1, sizeof(nimcp_quantum_state_t));
     if (!state) return NULL;
@@ -1140,8 +1143,8 @@ bool nimcp_quantum_state_hadamard_all(
     nimcp_gpu_context_t* ctx,
     nimcp_quantum_state_t* state)
 {
-    (void)ctx;
-    if (!state) return false;
+    if (!ctx || !state) return false;
+    (void)ctx;  // API consistency
 
     float* real = (float*)state->amplitudes_real->data;
     float* imag = (float*)state->amplitudes_imag->data;
@@ -1162,8 +1165,8 @@ bool nimcp_quantum_apply_gate(
     const float gate_real[2][2],
     const float gate_imag[2][2])
 {
-    (void)ctx;
-    if (!state || qubit_idx >= state->n_qubits) return false;
+    if (!ctx || !state || qubit_idx >= state->n_qubits) return false;
+    (void)ctx;  // API consistency
 
     float* real = (float*)state->amplitudes_real->data;
     float* imag = (float*)state->amplitudes_imag->data;

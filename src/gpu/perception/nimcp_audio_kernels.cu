@@ -13,11 +13,14 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
-#include "gpu/tensor/nimcp_tensor_gpu.h"
-#include "utils/logging/nimcp_logging.h"
+// Include CUDA headers FIRST (before any extern "C" blocks from our headers)
 #include <cuda_runtime.h>
 #include <cufft.h>
 #include <math.h>
+
+// Now include our headers (which have extern "C" blocks)
+#include "gpu/tensor/nimcp_tensor_gpu.h"
+#include "utils/logging/nimcp_logging.h"
 
 #define LOG_MODULE "AUDIO_GPU"
 

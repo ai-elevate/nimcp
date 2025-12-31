@@ -13,14 +13,16 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
-#include "gpu/tensor/nimcp_tensor_gpu.h"
-#include "utils/logging/nimcp_logging.h"
-
+// Include CUDA headers FIRST (before any extern "C" blocks from our headers)
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include <cuda_fp16.h>
 #include <math.h>
 #include <float.h>
+
+// Now include our headers (which have extern "C" blocks)
+#include "gpu/tensor/nimcp_tensor_gpu.h"
+#include "utils/logging/nimcp_logging.h"
 
 #define LOG_MODULE "TENSOR_GPU"
 
@@ -1083,7 +1085,8 @@ bool nimcp_gpu_var(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
 
     // Get mean
     float mean_val = 0.0f;
-    nimcp_gpu_tensor_t* mean_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1}, 1, x->precision);
+    size_t one_dim[1] = {1};
+    nimcp_gpu_tensor_t* mean_tensor = nimcp_gpu_tensor_create(ctx, one_dim, 1, x->precision);
     if (!mean_tensor) return false;
 
     nimcp_gpu_mean(ctx, x, mean_tensor, -1, false);
@@ -1130,7 +1133,8 @@ bool nimcp_gpu_norm_l1(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, fl
 
     nimcp_gpu_abs(ctx, x, abs_tensor);
 
-    nimcp_gpu_tensor_t* sum_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1}, 1, x->precision);
+    size_t one_dim[1] = {1};
+    nimcp_gpu_tensor_t* sum_tensor = nimcp_gpu_tensor_create(ctx, one_dim, 1, x->precision);
     nimcp_gpu_sum(ctx, abs_tensor, sum_tensor, -1, false);
     nimcp_gpu_tensor_to_host(sum_tensor, result);
 
@@ -1157,7 +1161,8 @@ bool nimcp_gpu_norm_linf(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, 
 
     nimcp_gpu_abs(ctx, x, abs_tensor);
 
-    nimcp_gpu_tensor_t* max_tensor = nimcp_gpu_tensor_create(ctx, (size_t[]){1}, 1, x->precision);
+    size_t one_dim[1] = {1};
+    nimcp_gpu_tensor_t* max_tensor = nimcp_gpu_tensor_create(ctx, one_dim, 1, x->precision);
     nimcp_gpu_max(ctx, abs_tensor, max_tensor, -1, false);
     nimcp_gpu_tensor_to_host(max_tensor, result);
 

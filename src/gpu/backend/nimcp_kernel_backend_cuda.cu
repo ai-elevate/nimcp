@@ -14,6 +14,12 @@
  * @date 2025
  */
 
+// Include CUDA headers FIRST (before any extern "C" blocks from our headers)
+#ifdef NIMCP_ENABLE_CUDA
+#include <cuda_runtime.h>
+#endif
+
+// Now include our headers (which have extern "C" blocks)
 #include "gpu/backend/nimcp_kernel_backend.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "gpu/training/nimcp_training_gpu.h"
@@ -25,8 +31,6 @@
 #include "utils/logging/nimcp_logging.h"
 
 #ifdef NIMCP_ENABLE_CUDA
-
-#include <cuda_runtime.h>
 
 #define LOG_MODULE "CUDA_BACKEND"
 

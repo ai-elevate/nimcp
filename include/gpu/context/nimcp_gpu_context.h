@@ -47,16 +47,14 @@
 #include "gpu/execution/nimcp_gpu_detect.h"
 #include "gpu/nimcp_execution_mode.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 //=============================================================================
 // Forward Declarations (CUDA types - opaque when not compiling with CUDA)
 //=============================================================================
+// NOTE: CUDA headers MUST be included BEFORE extern "C" block because they
+// contain C++ code (operator overloads in cuda_bf16.hpp etc.) that cannot
+// have C linkage.
 
 #ifdef NIMCP_ENABLE_CUDA
-// Include CUDA headers when compiling with CUDA
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include <cufft.h>
@@ -65,10 +63,13 @@ typedef cudaStream_t nimcp_cuda_stream_t;
 typedef cublasHandle_t nimcp_cublas_handle_t;
 typedef cufftHandle nimcp_cufft_handle_t;
 #else
-// Opaque types for non-CUDA builds
 typedef void* nimcp_cuda_stream_t;
 typedef void* nimcp_cublas_handle_t;
 typedef int nimcp_cufft_handle_t;
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 //=============================================================================

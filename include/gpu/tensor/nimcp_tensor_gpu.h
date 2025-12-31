@@ -23,12 +23,15 @@
 #ifndef NIMCP_TENSOR_GPU_H
 #define NIMCP_TENSOR_GPU_H
 
+// Include GPU context BEFORE extern "C" block - it brings in CUDA headers
+// which contain C++ code that cannot have C linkage
+#include "gpu/context/nimcp_gpu_context.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "common/nimcp_export.h"
-#include "gpu/context/nimcp_gpu_context.h"
 #include "utils/tensor/nimcp_tensor.h"  // CPU tensor library integration
 #include <stdbool.h>
 #include <stdint.h>
