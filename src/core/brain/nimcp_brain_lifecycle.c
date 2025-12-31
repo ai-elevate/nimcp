@@ -865,6 +865,12 @@ void brain_destroy(brain_t brain)
         nimcp_brain_factory_destroy_internal_kg_subsystem(brain);
     }
 
+    // -1.7. Cleanup Mental Health Guardian (background monitoring agent)
+    // Guardian is destroyed after internal KG (uses KG for topology updates)
+    if (brain->mental_health_guardian) {
+        nimcp_brain_factory_destroy_mental_health_guardian_subsystem(brain);
+    }
+
     // -2. Cleanup Medulla Oblongata (brainstem autonomic regulation)
     // Medulla is destroyed late - it provides foundational regulation
     if (brain->medulla) {

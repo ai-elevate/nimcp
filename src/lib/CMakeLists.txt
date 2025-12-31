@@ -102,6 +102,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/information/nimcp_brain_shannon.c   # Shannon information theory (461 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/analysis/nimcp_brain_topology.c     # Topology and community detection (462 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_kg.c                    # Internal runtime knowledge graph (self-awareness)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_kg_helpers.c           # KG helper utilities for module integration
 
     # Hemispheric Brain Architecture (Phase Dec 2024: Two-hemisphere bilateral processing)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_lateralization.c     # Hemisphere specialization profiles
@@ -1635,7 +1636,12 @@ endif()
 
 # Add CUDA libraries if available
 if(CUDAToolkit_FOUND)
-    target_link_libraries(nimcp PUBLIC CUDA::cudart)
+    target_link_libraries(nimcp PUBLIC
+        CUDA::cudart
+        CUDA::cublas
+        CUDA::cufft
+        CUDA::curand
+    )
 endif()
 
 # Add libsodium library if available

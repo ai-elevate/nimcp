@@ -140,6 +140,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
+#include "core/brain/nimcp_brain_kg_helpers.h"
 
 /* Utilities */
 #include "utils/thread/nimcp_thread.h"
@@ -257,6 +258,7 @@ typedef struct {
     uint64_t update_count;                 /**< Total updates */
     uint64_t total_update_time_us;         /**< Cumulative update time (microseconds) */
     bool enabled;                          /**< Whether updates are enabled */
+    brain_kg_node_id_t kg_node_id;         /**< KG node ID for this bridge */
 } fep_bridge_entry_t;
 
 /* ============================================================================
@@ -370,6 +372,10 @@ struct fep_orchestrator {
     /* Runtime state */
     bool bio_async_connected;              /**< Bio-async is connected */
     bool immune_connected;                 /**< Brain immune is connected */
+
+    /* Internal Knowledge Graph integration */
+    kg_module_context_t kg_context;        /**< KG access context */
+    bool kg_connected;                     /**< Internal KG is connected */
 };
 
 /* ============================================================================
@@ -726,6 +732,64 @@ int fep_orchestrator_connect_bio_async(fep_orchestrator_t* orchestrator);
  * @return 0 on success
  */
 int fep_orchestrator_disconnect_bio_async(fep_orchestrator_t* orchestrator);
+
+/**
+ * @brief Connect to internal knowledge graph
+ *
+ * WHAT: Wire orchestrator to brain's internal KG
+ * WHY:  Enable topology-aware bridge discovery and state tracking
+ * HOW:  Initialize KG context, find orchestrator node, cache reference
+ *
+ * @param orchestrator Orchestrator
+ * @param brain Brain instance
+ * @return 0 on success, -1 on error
+ */
+int fep_orchestrator_connect_internal_kg(
+    fep_orchestrator_t* orchestrator,
+    brain_t brain
+);
+
+/**
+ * @brief Disconnect from internal KG
+ *
+ * @param orchestrator Orchestrator
+ * @return 0 on success
+ */
+int fep_orchestrator_disconnect_internal_kg(fep_orchestrator_t* orchestrator);
+
+/**
+ * @brief Get bridges connected to a module via KG
+ *
+ * WHAT: Find bridges that coordinate with a specific module
+ * WHY:  Enable topology-aware coordination queries
+ * HOW:  Query KG for edges from orchestrator to bridges connected to module
+ *
+ * @param orchestrator Orchestrator
+ * @param module_name Name of module to query
+ * @param bridges Output array (caller allocated)
+ * @param max_bridges Array capacity
+ * @return Number of connected bridges
+ */
+uint32_t fep_orchestrator_get_bridges_for_module(
+    const fep_orchestrator_t* orchestrator,
+    const char* module_name,
+    const fep_bridge_entry_t** bridges,
+    uint32_t max_bridges
+);
+
+/**
+ * @brief Get topology summary via KG
+ *
+ * @param orchestrator Orchestrator
+ * @param summary Output buffer
+ * @param summary_size Buffer size
+ * @return Characters written, -1 on error
+ */
+int fep_orchestrator_get_topology_summary(
+    const fep_orchestrator_t* orchestrator,
+    char* summary,
+    size_t summary_size
+);
 
 /* ============================================================================
  * Statistics and Monitoring API

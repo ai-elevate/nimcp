@@ -6,10 +6,12 @@
  */
 
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
+#include "core/brain/nimcp_brain_internal.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
 
 /* ============================================================================
  * String Constants
@@ -811,21 +813,175 @@ int fep_orchestrator_connect_bio_async(fep_orchestrator_t* orchestrator) {
 
 int fep_orchestrator_disconnect_bio_async(fep_orchestrator_t* orchestrator) {
     if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
-    
+
     nimcp_platform_mutex_lock(orchestrator->mutex);
-    
+
     if (orchestrator->bio_async_connected && orchestrator->bio_context) {
         bio_router_unregister_module(orchestrator->bio_context);
         orchestrator->bio_context = NULL;
         orchestrator->bio_async_connected = false;
-        
+
         if (orchestrator->config.enable_logging) {
             NIMCP_LOGGING_INFO("FEP orchestrator disconnected from bio-async router");
         }
     }
-    
+
     nimcp_platform_mutex_unlock(orchestrator->mutex);
     return 0;
+}
+
+/* ============================================================================
+ * Internal Knowledge Graph Integration
+ * ============================================================================ */
+
+int fep_orchestrator_connect_internal_kg(
+    fep_orchestrator_t* orchestrator,
+    brain_t brain)
+{
+    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    /* Initialize KG context */
+    if (kg_module_init(&orchestrator->kg_context, brain, "fep_orchestrator") != 0) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return -1;
+    }
+
+    orchestrator->kg_connected = orchestrator->kg_context.kg_available;
+
+    if (orchestrator->kg_connected) {
+        /* Update node state to active */
+        if (kg_has_node(&orchestrator->kg_context)) {
+            uint64_t admin_token = brain ? brain->internal_kg_admin_token : 0;
+            kg_module_update_state(&orchestrator->kg_context,
+                                   BRAIN_KG_STATE_ACTIVE, admin_token);
+            kg_module_set_ptr(&orchestrator->kg_context, orchestrator, admin_token);
+        }
+
+        if (orchestrator->config.enable_logging) {
+            NIMCP_LOGGING_INFO("FEP orchestrator connected to internal KG");
+        }
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+int fep_orchestrator_disconnect_internal_kg(fep_orchestrator_t* orchestrator) {
+    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    if (orchestrator->kg_connected) {
+        orchestrator->kg_context.kg = NULL;
+        orchestrator->kg_context.kg_available = false;
+        orchestrator->kg_connected = false;
+
+        if (orchestrator->config.enable_logging) {
+            NIMCP_LOGGING_INFO("FEP orchestrator disconnected from internal KG");
+        }
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+uint32_t fep_orchestrator_get_bridges_for_module(
+    const fep_orchestrator_t* orchestrator,
+    const char* module_name,
+    const fep_bridge_entry_t** bridges,
+    uint32_t max_bridges)
+{
+    if (!orchestrator || !module_name || !bridges || max_bridges == 0) {
+        return 0;
+    }
+
+    /* If KG not connected, fall back to searching all bridges by name */
+    fep_orchestrator_t* mutable_orch = (fep_orchestrator_t*)orchestrator;
+    nimcp_platform_mutex_lock(mutable_orch->mutex);
+
+    uint32_t count = 0;
+
+    if (orchestrator->kg_connected && kg_is_available(&orchestrator->kg_context)) {
+        /* Query KG for module node */
+        brain_kg_node_id_t module_node = kg_find_node_safe(
+            &orchestrator->kg_context, module_name);
+
+        if (module_node != BRAIN_KG_INVALID_NODE) {
+            /* Find bridges connected to this module */
+            for (uint32_t i = 0; i < orchestrator->bridge_count && count < max_bridges; i++) {
+                const fep_bridge_entry_t* entry = &orchestrator->bridges[i];
+                if (!entry->enabled) continue;
+
+                /* Check if bridge is connected to module via KG */
+                if (entry->kg_node_id != BRAIN_KG_INVALID_NODE) {
+                    if (brain_kg_are_connected(orchestrator->kg_context.kg,
+                                               entry->kg_node_id, module_node)) {
+                        bridges[count++] = entry;
+                    }
+                }
+            }
+        }
+    } else {
+        /* Fallback: search bridges by name substring */
+        for (uint32_t i = 0; i < orchestrator->bridge_count && count < max_bridges; i++) {
+            const fep_bridge_entry_t* entry = &orchestrator->bridges[i];
+            if (!entry->enabled) continue;
+
+            if (entry->bridge_name && strstr(entry->bridge_name, module_name)) {
+                bridges[count++] = entry;
+            }
+        }
+    }
+
+    nimcp_platform_mutex_unlock(mutable_orch->mutex);
+    return count;
+}
+
+int fep_orchestrator_get_topology_summary(
+    const fep_orchestrator_t* orchestrator,
+    char* summary,
+    size_t summary_size)
+{
+    if (!orchestrator || !summary || summary_size == 0) {
+        return -1;
+    }
+
+    fep_orchestrator_t* mutable_orch = (fep_orchestrator_t*)orchestrator;
+    nimcp_platform_mutex_lock(mutable_orch->mutex);
+
+    int written = 0;
+
+    if (orchestrator->kg_connected && kg_is_available(&orchestrator->kg_context)) {
+        /* Get neighbors via KG */
+        brain_kg_node_list_t* neighbors = kg_get_neighbors_safe(&orchestrator->kg_context);
+        if (neighbors) {
+            written = snprintf(summary, summary_size,
+                "FEP Orchestrator Topology:\n"
+                "  Bridges: %u/%u\n"
+                "  KG Neighbors: %u\n"
+                "  State: %s\n",
+                orchestrator->stats.active_bridges,
+                orchestrator->bridge_count,
+                neighbors->count,
+                orchestrator->state == FEP_ORCHESTRATOR_RUNNING ? "Running" : "Stopped");
+
+            brain_kg_node_list_destroy(neighbors);
+        }
+    } else {
+        written = snprintf(summary, summary_size,
+            "FEP Orchestrator Topology:\n"
+            "  Bridges: %u/%u\n"
+            "  KG: Not connected\n"
+            "  State: %s\n",
+            orchestrator->stats.active_bridges,
+            orchestrator->bridge_count,
+            orchestrator->state == FEP_ORCHESTRATOR_RUNNING ? "Running" : "Stopped");
+    }
+
+    nimcp_platform_mutex_unlock(mutable_orch->mutex);
+    return written;
 }
 
 /* ============================================================================
