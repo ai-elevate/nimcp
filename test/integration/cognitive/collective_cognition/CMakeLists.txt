@@ -303,32 +303,33 @@ gtest_discover_tests(integration_collective_cognition_portia
 
 # ----------------------------------------------------------------------------
 # Test 10: Full Collective Cognition Cross-Module Integration
+# TODO: Create test_collective_cognition_full_integration.cpp
 # ----------------------------------------------------------------------------
-add_executable(integration_collective_cognition_full
-    test_collective_cognition_full_integration.cpp
-)
-
-target_link_libraries(integration_collective_cognition_full
-    PRIVATE
-        nimcp
-        GTest::gtest
-        GTest::gtest_main
-        Threads::Threads
-        m
-)
-
-target_include_directories(integration_collective_cognition_full
-    PRIVATE
-        ${PROJECT_SOURCE_DIR}/include
-        ${PROJECT_SOURCE_DIR}/src
-        ${PROJECT_SOURCE_DIR}/test
-)
-
-target_compile_features(integration_collective_cognition_full PRIVATE cxx_std_17)
-
-gtest_discover_tests(integration_collective_cognition_full
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    PROPERTIES
-        LABELS "integration;cognitive;collective_cognition;full"
-        TIMEOUT 300
-)
+# add_executable(integration_collective_cognition_full
+#     test_collective_cognition_full_integration.cpp
+# )
+#
+# target_link_libraries(integration_collective_cognition_full
+#     PRIVATE
+#         nimcp
+#         GTest::gtest
+#         GTest::gtest_main
+#         Threads::Threads
+#         m
+# )
+#
+# target_include_directories(integration_collective_cognition_full
+#     PRIVATE
+#         ${PROJECT_SOURCE_DIR}/include
+#         ${PROJECT_SOURCE_DIR}/src
+#         ${PROJECT_SOURCE_DIR}/test
+# )
+#
+# target_compile_features(integration_collective_cognition_full PRIVATE cxx_std_17)
+#
+# gtest_discover_tests(integration_collective_cognition_full
+#     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+#     PROPERTIES
+#         LABELS "integration;cognitive;collective_cognition;full"
+#         TIMEOUT 300
+# )

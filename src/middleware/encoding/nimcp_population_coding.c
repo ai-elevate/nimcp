@@ -715,8 +715,14 @@ bool population_coding_compute_synchrony(
 
     nimcp_mutex_lock(&encoder->mutex);
 
-    // WHY: Check if all spike trains are empty
-    // HOW: Fail if all trains have zero spikes (degenerate case)
+    // Initialize result
+    result_out->synchrony_index = 0.0F;
+    result_out->mean_correlation = 0.0F;
+    result_out->peak_lag_ms = 0.0F;
+    result_out->coherence = 0.0F;
+
+    // WHY: Handle empty spike trains as valid edge case
+    // HOW: Return success with zeroed synchrony (no spikes = no synchrony)
     bool has_spikes = false;
     for (uint32_t i = 0; i < num_neurons; i++) {
         if (spike_trains[i] && spike_trains[i]->num_spikes > 0) {
@@ -726,14 +732,8 @@ bool population_coding_compute_synchrony(
     }
     if (!has_spikes) {
         nimcp_mutex_unlock(&encoder->mutex);
-        return false;
+        return true;  // Empty data is valid - return zeroed synchrony
     }
-
-    // Initialize result
-    result_out->synchrony_index = 0.0F;
-    result_out->mean_correlation = 0.0F;
-    result_out->peak_lag_ms = 0.0F;
-    result_out->coherence = 0.0F;
 
     // Sample pairs for large populations (avoid O(n^2) explosion)
     const uint32_t max_pairs = 1000;

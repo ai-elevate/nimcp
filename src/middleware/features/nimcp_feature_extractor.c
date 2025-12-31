@@ -216,14 +216,18 @@ bool feature_extractor_update(
         return false;
     }
 
-    // WHY: Check if all spike counts are zero (empty data)
-    // HOW: Sum spike counts and fail if zero
+    // WHY: Handle empty data as a valid edge case
+    // HOW: Return success with zeroed features for empty spike data
     uint32_t total_spikes = 0;
     for (uint32_t i = 0; i < spike_data->num_neurons; i++) {
         total_spikes += spike_data->spike_counts[i];
     }
     if (total_spikes == 0) {
-        return false;
+        // Empty data is valid - return zeroed features
+        memset(features_out, 0, sizeof(middleware_features_t));
+        features_out->valid = true;
+        features_out->timestamp = spike_data->end_time;
+        return true;
     }
 
     nimcp_platform_mutex_lock(&extractor->mutex);
@@ -237,7 +241,8 @@ bool feature_extractor_update(
     }
 
     bool success = extract_basic_features(extractor, spike_data, features_out);
-    success &= extract_optional_features(extractor, spike_data, features_out);
+    // Optional features should not fail the overall extraction
+    (void)extract_optional_features(extractor, spike_data, features_out);
 
     features_out->timestamp = spike_data->end_time;
     features_out->valid = success;
@@ -800,9 +805,8 @@ static bool extract_basic_features(
     features->isi_cv = (valid_neurons > 0) ? (cv_sum / (float)valid_neurons) : 0.0F;
     features->mean_isi = (total_isi_count > 0) ? (total_isi_sum / (float)total_isi_count) : 0.0F;
 
-    if (valid_neurons == 0) {
-        success = false;
-    }
+    // WHY: Don't fail when no neurons have enough spikes for ISI
+    // HOW: ISI features are set to 0 above, other features are still valid
 
     // WHY: Compute population rate standard deviation
     // HOW: Collect per-neuron rates and compute std

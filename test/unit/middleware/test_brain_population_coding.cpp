@@ -62,7 +62,9 @@ protected:
 
     // Helper: Create spike train
     spike_train_t* create_spike_train(const std::vector<uint64_t>& times) {
-        spike_train_t* train = rate_coding_spike_train_create(times.size());
+        // Use minimum capacity of 1 for empty trains (capacity 0 is invalid)
+        size_t capacity = times.empty() ? 1 : times.size();
+        spike_train_t* train = rate_coding_spike_train_create(capacity);
         if (!train) return nullptr;
 
         for (uint64_t t : times) {

@@ -14264,6 +14264,123 @@ integration_metabolic_cascade/fast:
 .PHONY : integration_metabolic_cascade/fast
 
 #=============================================================================
+# Target rules for targets named integration_collective_cognition_training
+
+# Build rule for target.
+integration_collective_cognition_training: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_collective_cognition_training
+.PHONY : integration_collective_cognition_training
+
+# fast build rule for target.
+integration_collective_cognition_training/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_training.dir/build.make test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_training.dir/build
+.PHONY : integration_collective_cognition_training/fast
+
+#=============================================================================
+# Target rules for targets named integration_collective_cognition_cognitive
+
+# Build rule for target.
+integration_collective_cognition_cognitive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_collective_cognition_cognitive
+.PHONY : integration_collective_cognition_cognitive
+
+# fast build rule for target.
+integration_collective_cognition_cognitive/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_cognitive.dir/build.make test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_cognitive.dir/build
+.PHONY : integration_collective_cognition_cognitive/fast
+
+#=============================================================================
+# Target rules for targets named integration_collective_cognition_logic
+
+# Build rule for target.
+integration_collective_cognition_logic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_collective_cognition_logic
+.PHONY : integration_collective_cognition_logic
+
+# fast build rule for target.
+integration_collective_cognition_logic/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_logic.dir/build.make test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_logic.dir/build
+.PHONY : integration_collective_cognition_logic/fast
+
+#=============================================================================
+# Target rules for targets named integration_collective_cognition_cortex
+
+# Build rule for target.
+integration_collective_cognition_cortex: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_collective_cognition_cortex
+.PHONY : integration_collective_cognition_cortex
+
+# fast build rule for target.
+integration_collective_cognition_cortex/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_cortex.dir/build.make test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_cortex.dir/build
+.PHONY : integration_collective_cognition_cortex/fast
+
+#=============================================================================
+# Target rules for targets named integration_collective_cognition_substrate
+
+# Build rule for target.
+integration_collective_cognition_substrate: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_collective_cognition_substrate
+.PHONY : integration_collective_cognition_substrate
+
+# fast build rule for target.
+integration_collective_cognition_substrate/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_substrate.dir/build.make test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_substrate.dir/build
+.PHONY : integration_collective_cognition_substrate/fast
+
+#=============================================================================
+# Target rules for targets named integration_collective_cognition_thalamic
+
+# Build rule for target.
+integration_collective_cognition_thalamic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_collective_cognition_thalamic
+.PHONY : integration_collective_cognition_thalamic
+
+# fast build rule for target.
+integration_collective_cognition_thalamic/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_thalamic.dir/build.make test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_thalamic.dir/build
+.PHONY : integration_collective_cognition_thalamic/fast
+
+#=============================================================================
+# Target rules for targets named integration_collective_cognition_swarm
+
+# Build rule for target.
+integration_collective_cognition_swarm: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_collective_cognition_swarm
+.PHONY : integration_collective_cognition_swarm
+
+# fast build rule for target.
+integration_collective_cognition_swarm/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_swarm.dir/build.make test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_swarm.dir/build
+.PHONY : integration_collective_cognition_swarm/fast
+
+#=============================================================================
+# Target rules for targets named integration_collective_cognition_cortical_columns
+
+# Build rule for target.
+integration_collective_cognition_cortical_columns: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_collective_cognition_cortical_columns
+.PHONY : integration_collective_cognition_cortical_columns
+
+# fast build rule for target.
+integration_collective_cognition_cortical_columns/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_cortical_columns.dir/build.make test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_cortical_columns.dir/build
+.PHONY : integration_collective_cognition_cortical_columns/fast
+
+#=============================================================================
+# Target rules for targets named integration_collective_cognition_portia
+
+# Build rule for target.
+integration_collective_cognition_portia: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_collective_cognition_portia
+.PHONY : integration_collective_cognition_portia
+
+# fast build rule for target.
+integration_collective_cognition_portia/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_portia.dir/build.make test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_portia.dir/build
+.PHONY : integration_collective_cognition_portia/fast
+
+#=============================================================================
 # Target rules for targets named integration_brain_regions_test_visual_cortex_integration
 
 # Build rule for target.
@@ -20515,6 +20632,15 @@ help:
 	@echo "... integration_cognitive_sleep_test_cognitive_sleep_integration"
 	@echo "... integration_cognitive_wellbeing_enhanced"
 	@echo "... integration_cognitive_working_memory_pe"
+	@echo "... integration_collective_cognition_cognitive"
+	@echo "... integration_collective_cognition_cortex"
+	@echo "... integration_collective_cognition_cortical_columns"
+	@echo "... integration_collective_cognition_logic"
+	@echo "... integration_collective_cognition_portia"
+	@echo "... integration_collective_cognition_substrate"
+	@echo "... integration_collective_cognition_swarm"
+	@echo "... integration_collective_cognition_thalamic"
+	@echo "... integration_collective_cognition_training"
 	@echo "... integration_core_axon_test_integration"
 	@echo "... integration_core_brain_factory_test_factory_integration"
 	@echo "... integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration"
