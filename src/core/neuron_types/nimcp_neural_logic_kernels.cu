@@ -25,9 +25,12 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 
+// Include CUDA headers FIRST to avoid extern "C" conflicts with C++ operators
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-#include "nimcp_neural_logic.h"
+
+// Then include project headers
+#include "core/neuron_types/nimcp_neural_logic.h"
 
 //=============================================================================
 // CUDA Device Constants
@@ -267,13 +270,9 @@ __global__ void kernel_update_logic_neurons(
                 0.5f); // b_threshold
             break;
 
-        case LOGIC_GATE_VARIABLE:
-            // Variables just pass through their bound value
-            output = input_a;
-            break;
-
         default:
-            output = 0.0f;
+            // Unknown gate types (including future VARIABLE type) pass through input_a
+            output = input_a;
             break;
     }
 

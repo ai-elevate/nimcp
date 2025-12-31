@@ -91,11 +91,12 @@ extern "C" {
  * Maps to specialized neuron types (650-699 range)
  */
 typedef enum {
-    LOGIC_GATE_AND     = 0,  /**< Conjunction (∧) - NEURON_LOGIC_AND */
-    LOGIC_GATE_OR      = 1,  /**< Disjunction (∨) - NEURON_LOGIC_OR */
-    LOGIC_GATE_NOT     = 2,  /**< Negation (¬) - NEURON_LOGIC_NOT */
-    LOGIC_GATE_XOR     = 3,  /**< Exclusive OR (⊕) - NEURON_LOGIC_XOR */
-    LOGIC_GATE_IMPLIES = 4,  /**< Implication (→) - NEURON_LOGIC_IMPLIES */
+    LOGIC_GATE_AND      = 0,  /**< Conjunction (∧) - NEURON_LOGIC_AND */
+    LOGIC_GATE_OR       = 1,  /**< Disjunction (∨) - NEURON_LOGIC_OR */
+    LOGIC_GATE_NOT      = 2,  /**< Negation (¬) - NEURON_LOGIC_NOT */
+    LOGIC_GATE_XOR      = 3,  /**< Exclusive OR (⊕) - NEURON_LOGIC_XOR */
+    LOGIC_GATE_IMPLIES  = 4,  /**< Implication (→) - NEURON_LOGIC_IMPLIES */
+    LOGIC_GATE_VARIABLE = 5,  /**< Input variable (pass-through) */
     LOGIC_GATE_COUNT
 } logic_gate_type_t;
 

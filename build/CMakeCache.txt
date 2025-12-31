@@ -511,11 +511,17 @@ NIMCP_ASAN:BOOL=OFF
 //Value Computed by CMake
 NIMCP_BINARY_DIR:STATIC=/home/bbrelin/nimcp/build
 
+//No help, variable specified on the command line.
+NIMCP_BUILD_GPU:UNINITIALIZED=OFF
+
 //Enable code coverage reporting with gcov/lcov
 NIMCP_COVERAGE:BOOL=OFF
 
 //Enable cppcheck during build
 NIMCP_ENABLE_CPPCHECK:BOOL=OFF
+
+//No help, variable specified on the command line.
+NIMCP_ENABLE_CUDA:UNINITIALIZED=OFF
 
 //Enable clang-tidy during build
 NIMCP_ENABLE_LINT:BOOL=OFF

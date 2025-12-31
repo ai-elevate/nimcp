@@ -104,6 +104,7 @@ static nimcp_result_t _schedule_replay_unlocked(NimcpSwarmMemory *memory, const 
 static nimcp_result_t _replay_cycle_unlocked(NimcpSwarmMemory *memory, uint32_t max_replays, uint32_t *replays_performed);
 static nimcp_result_t _distribute_unlocked(NimcpSwarmMemory *memory, const char *memory_id, uint32_t *replicas_created);
 static nimcp_result_t _compress_unlocked(NimcpSwarmMemory *memory, const char *memory_id, NimcpCompressedMemory *compressed);
+static nimcp_result_t _extract_pattern_unlocked(NimcpSwarmMemory *memory, const char *memory_id, uint32_t *pattern_hash);
 
 /* ============================================================================
  * Constants and Configuration
@@ -1065,24 +1066,16 @@ float nimcp_swarm_memory_calculate_replay_priority(
  * Knowledge Distillation Implementation
  * ============================================================================ */
 
-nimcp_result_t nimcp_swarm_memory_compress(
+/**
+ * @brief Internal unlocked version of compress - caller must hold mutex
+ */
+static nimcp_result_t _compress_unlocked(
     NimcpSwarmMemory *memory,
     const char *memory_id,
     NimcpCompressedMemory *compressed)
 {
-    NIMCP_VALIDATE_NOT_NULL(memory);
-    NIMCP_VALIDATE_NOT_NULL(memory_id);
-    NIMCP_VALIDATE_NOT_NULL(compressed);
-
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
-
-    nimcp_platform_mutex_lock(memory->mutex);
-
     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
     if (!entry) {
-        nimcp_platform_mutex_unlock(memory->mutex);
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -1092,7 +1085,6 @@ nimcp_result_t nimcp_swarm_memory_compress(
     nimcp_result_t result = apply_compression(entry->data, entry->data_size,
                                           &compressed_data, &compressed_size);
     if (result != NIMCP_SUCCESS) {
-        nimcp_platform_mutex_unlock(memory->mutex);
         return result;
     }
 
@@ -1119,10 +1111,28 @@ nimcp_result_t nimcp_swarm_memory_compress(
         (memory->stats.avg_compression_ratio * (memory->stats.total_memories - 1) +
          compressed->compression_ratio) / memory->stats.total_memories;
 
-    nimcp_platform_mutex_unlock(memory->mutex);
-
     LOG_DEBUG("Compressed memory: %s (ratio=%.3f)", memory_id, compressed->compression_ratio);
     return NIMCP_SUCCESS;
+}
+
+nimcp_result_t nimcp_swarm_memory_compress(
+    NimcpSwarmMemory *memory,
+    const char *memory_id,
+    NimcpCompressedMemory *compressed)
+{
+    NIMCP_VALIDATE_NOT_NULL(memory);
+    NIMCP_VALIDATE_NOT_NULL(memory_id);
+    NIMCP_VALIDATE_NOT_NULL(compressed);
+
+    if (!memory->is_initialized) {
+        return NIMCP_ERROR;
+    }
+
+    nimcp_platform_mutex_lock(memory->mutex);
+    nimcp_result_t result = _compress_unlocked(memory, memory_id, compressed);
+    nimcp_platform_mutex_unlock(memory->mutex);
+
+    return result;
 }
 
 nimcp_result_t nimcp_swarm_memory_decompress(
@@ -1143,6 +1153,32 @@ nimcp_result_t nimcp_swarm_memory_decompress(
                               decompressed, buffer_size);
 }
 
+/**
+ * @brief Internal unlocked version of extract_pattern - caller must hold mutex
+ */
+static nimcp_result_t _extract_pattern_unlocked(
+    NimcpSwarmMemory *memory,
+    const char *memory_id,
+    uint32_t *pattern_hash)
+{
+    NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
+    if (!entry) {
+        return NIMCP_ERROR_NOT_FOUND;
+    }
+
+    /* Simple hash-based pattern extraction (placeholder) */
+    *pattern_hash = 0;
+    const uint8_t *data = (const uint8_t *)entry->data;
+    for (size_t i = 0; i < entry->data_size; i++) {
+        *pattern_hash = (*pattern_hash * 31) + data[i];
+    }
+
+    memory->compression.pattern_count++;
+
+    LOG_DEBUG("Extracted pattern from memory: %s (hash=0x%08X)", memory_id, *pattern_hash);
+    return NIMCP_SUCCESS;
+}
+
 nimcp_result_t nimcp_swarm_memory_extract_pattern(
     NimcpSwarmMemory *memory,
     const char *memory_id,
@@ -1157,26 +1193,10 @@ nimcp_result_t nimcp_swarm_memory_extract_pattern(
     }
 
     nimcp_platform_mutex_lock(memory->mutex);
-
-    NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
-    if (!entry) {
-        nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
-    }
-
-    /* Simple hash-based pattern extraction (placeholder) */
-    *pattern_hash = 0;
-    const uint8_t *data = (const uint8_t *)entry->data;
-    for (size_t i = 0; i < entry->data_size; i++) {
-        *pattern_hash = (*pattern_hash * 31) + data[i];
-    }
-
-    memory->compression.pattern_count++;
-
+    nimcp_result_t result = _extract_pattern_unlocked(memory, memory_id, pattern_hash);
     nimcp_platform_mutex_unlock(memory->mutex);
 
-    LOG_DEBUG("Extracted pattern from memory: %s (hash=0x%08X)", memory_id, *pattern_hash);
-    return NIMCP_SUCCESS;
+    return result;
 }
 
 /* ============================================================================
@@ -1406,7 +1426,7 @@ nimcp_result_t nimcp_swarm_memory_consolidate(
             for (uint32_t i = 0; i < uncompressed_count; i++) {
                 NimcpCompressedMemory compressed;
                 memset(&compressed, 0, sizeof(compressed));
-                if (nimcp_swarm_memory_compress(memory, uncompressed_ids[i], &compressed) == NIMCP_SUCCESS) {
+                if (_compress_unlocked(memory, uncompressed_ids[i], &compressed) == NIMCP_SUCCESS) {
                     /* Update original entry as compressed */
                     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(
                         memory->memories, uncompressed_ids[i]);
@@ -1745,7 +1765,7 @@ nimcp_result_t nimcp_swarm_memory_abstract_pattern(
     *pattern_hash = 0;
     for (uint32_t i = 0; i < count; i++) {
         uint32_t individual_hash = 0;
-        nimcp_swarm_memory_extract_pattern(memory, memory_ids[i], &individual_hash);
+        _extract_pattern_unlocked(memory, memory_ids[i], &individual_hash);
         *pattern_hash ^= individual_hash;  /* XOR combine */
     }
 

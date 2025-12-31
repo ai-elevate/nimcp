@@ -304,15 +304,15 @@ protected:
     }
 
     void TearDown() override {
-        if (swarm1) {
-            nimcp_swarm_identity_destroy(swarm1);
-        }
-        if (swarm2) {
-            nimcp_swarm_identity_destroy(swarm2);
-        }
+        // Note: Do NOT destroy swarm1/swarm2 manually if they were registered
+        // with the coordinator - the coordinator's swarm_registry has a destructor
+        // that will call nimcp_swarm_identity_destroy automatically
         if (coordinator) {
             nimcp_multi_swarm_destroy(coordinator);
         }
+        // Reset pointers (already freed by coordinator)
+        swarm1 = nullptr;
+        swarm2 = nullptr;
     }
 };
 
