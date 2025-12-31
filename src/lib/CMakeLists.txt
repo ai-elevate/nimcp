@@ -1532,6 +1532,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_cortical_bridge.c  # Occipital-cortical columns integration (hypercolumns)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_logic_bridge.c  # Occipital-logic integration (visual predicates)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_cognitive_bridge.c  # Occipital-cognitive integration (all cognitive modules)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_collective_bridge.c  # Occipital-collective cognition integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/hypothalamus/nimcp_hypothalamus_thalamic_bridge.c  # Hypothalamus-thalamic integration (Midline)
 )
 

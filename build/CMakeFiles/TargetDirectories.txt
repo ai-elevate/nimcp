@@ -1803,6 +1803,7 @@
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_cortical_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_logic_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_cognitive_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_collective_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/occipital/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/occipital/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/occipital/CMakeFiles/rebuild_cache.dir
@@ -2854,6 +2855,7 @@
 /home/bbrelin/nimcp/build/test/unit/portia/CMakeFiles/test_portia_swarm_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/portia/CMakeFiles/test_portia_swarm_logic_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/portia/CMakeFiles/test_portia_logic_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/portia/CMakeFiles/test_portia_collective_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/portia/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/portia/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/portia/CMakeFiles/rebuild_cache.dir

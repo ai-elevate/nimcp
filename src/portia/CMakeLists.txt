@@ -20,6 +20,7 @@ set(PORTIA_SOURCES
     nimcp_portia_planning.c
     nimcp_portia_power.c
     nimcp_portia_deception.c
+    nimcp_portia_collective_bridge.c
 )
 
 # Create Portia library

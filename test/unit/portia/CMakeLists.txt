@@ -276,6 +276,26 @@ set_tests_properties(PortiaMonitoring PROPERTIES
 )
 #]]
 
+# Portia-Collective Bridge Tests
+add_executable(test_portia_collective_bridge
+    test_portia_collective_bridge.cpp
+)
+
+target_link_libraries(test_portia_collective_bridge
+    nimcp_portia
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    pthread
+    m
+)
+
+add_test(NAME PortiaCollectiveBridge COMMAND test_portia_collective_bridge)
+set_tests_properties(PortiaCollectiveBridge PROPERTIES
+    TIMEOUT 60
+    LABELS "unit;portia;collective_bridge"
+)
+
 # ============================================================================
 # Portia-Immune Bridge Tests
 # ============================================================================

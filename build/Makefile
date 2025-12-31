@@ -12808,6 +12808,19 @@ unit_core_brain_regions_occipital_test_nimcp_occipital_cognitive_bridge/fast:
 .PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_cognitive_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_brain_regions_occipital_test_nimcp_occipital_collective_bridge
+
+# Build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_collective_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_occipital_test_nimcp_occipital_collective_bridge
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_collective_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_collective_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_collective_bridge.dir/build.make test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_collective_bridge.dir/build
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_collective_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_brain_regions_parietal_test_nimcp_parietal_adapter
 
 # Build rule for target.
@@ -17826,6 +17839,19 @@ test_portia_logic_bridge/fast:
 .PHONY : test_portia_logic_bridge/fast
 
 #=============================================================================
+# Target rules for targets named test_portia_collective_bridge
+
+# Build rule for target.
+test_portia_collective_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_portia_collective_bridge
+.PHONY : test_portia_collective_bridge
+
+# fast build rule for target.
+test_portia_collective_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/portia/CMakeFiles/test_portia_collective_bridge.dir/build.make test/unit/portia/CMakeFiles/test_portia_collective_bridge.dir/build
+.PHONY : test_portia_collective_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_portia_immune_bridges
 
 # Build rule for target.
@@ -20978,6 +21004,7 @@ help:
 	@echo "... test_portia_accelerator_tier_integration"
 	@echo "... test_portia_attention"
 	@echo "... test_portia_classification"
+	@echo "... test_portia_collective_bridge"
 	@echo "... test_portia_deception"
 	@echo "... test_portia_deception_sensor_integration"
 	@echo "... test_portia_degradation"
@@ -21355,6 +21382,7 @@ help:
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_adapter"
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_audiovisual_bridge"
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_cognitive_bridge"
+	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_collective_bridge"
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_cortical_bridge"
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_logic_bridge"
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge"
