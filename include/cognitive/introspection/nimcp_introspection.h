@@ -47,6 +47,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "core/brain/nimcp_brain.h"
+#include "core/brain/nimcp_brain_kg_helpers.h"
 
 /* Forward declaration for immune system integration */
 struct brain_immune_system;
@@ -842,6 +843,92 @@ bool introspection_connect_immune(introspection_context_t context,
  * THREAD-SAFE: Yes
  */
 struct brain_immune_system* introspection_get_immune(introspection_context_t context);
+
+/* ========================================================================
+ * INTERNAL KNOWLEDGE GRAPH INTEGRATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Connect introspection to internal brain Knowledge Graph
+ * WHY: Enable module topology awareness for self-inspection
+ * HOW: Initialize KG context, cache own node ID
+ *
+ * INTEGRATION EFFECTS:
+ * - Can query which modules are currently ACTIVE in KG
+ * - Can traverse module relationships via KG topology
+ * - Can discover module capabilities from KG node types
+ *
+ * @param context Introspection context
+ * @param brain Brain instance containing internal KG
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool introspection_connect_internal_kg(introspection_context_t context, brain_t brain);
+
+/**
+ * WHAT: Disconnect from internal KG
+ * WHY: Proper cleanup before shutdown
+ * HOW: Clear KG context
+ *
+ * @param context Introspection context
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+void introspection_disconnect_internal_kg(introspection_context_t context);
+
+/**
+ * WHAT: Get all currently ACTIVE modules from KG
+ * WHY: Self-awareness of what modules are running
+ * HOW: Query KG for nodes in BRAIN_KG_STATE_ACTIVE state
+ *
+ * @param context Introspection context
+ * @return Node list of active modules (caller must free), or NULL
+ *
+ * COMPLEXITY: O(n) where n = KG node count
+ * THREAD-SAFE: Yes
+ */
+brain_kg_node_list_t* introspection_get_active_modules(introspection_context_t context);
+
+/**
+ * WHAT: Get module topology from a center point
+ * WHY: Understand which modules are reachable from a given module
+ * HOW: Use KG traversal to find connected nodes
+ *
+ * @param context Introspection context
+ * @param center_name Module name to start from
+ * @param max_depth Maximum traversal depth
+ * @return Node list of reachable modules (caller must free), or NULL
+ *
+ * COMPLEXITY: O(n) where n = reachable nodes
+ * THREAD-SAFE: Yes
+ */
+brain_kg_node_list_t* introspection_get_module_topology(
+    introspection_context_t context,
+    const char* center_name,
+    uint32_t max_depth
+);
+
+/**
+ * WHAT: Check if a set of modules are all active in KG
+ * WHY: Pattern matching - check if module combination is running
+ * HOW: Query KG for each module's state
+ *
+ * @param context Introspection context
+ * @param module_names Array of module names to check
+ * @param count Number of modules
+ * @return true if all are active, false otherwise
+ *
+ * COMPLEXITY: O(k) where k = module count
+ * THREAD-SAFE: Yes
+ */
+bool introspection_is_module_set_active(
+    introspection_context_t context,
+    const char** module_names,
+    uint32_t count
+);
 
 #ifdef __cplusplus
 }

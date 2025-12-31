@@ -141,6 +141,9 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
 
+/* Internal Knowledge Graph integration */
+#include "core/brain/nimcp_brain_kg_helpers.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -317,6 +320,9 @@ typedef struct {
 
     /* User data */
     void* user_data;                            /**< Optional user data */
+
+    /* Internal Knowledge Graph integration */
+    brain_kg_node_id_t kg_node_id;              /**< KG node ID for this module */
 } swarm_module_entry_t;
 
 /* ============================================================================
@@ -427,6 +433,10 @@ struct swarm_module_registry {
     /* Runtime state */
     bool bio_async_connected;                   /**< Bio-async is connected */
     bool brain_connected;                       /**< Swarm brain is connected */
+
+    /* Internal Knowledge Graph integration */
+    kg_module_context_t kg_context;             /**< KG access context */
+    bool kg_connected;                          /**< Internal KG is connected */
 };
 
 /* ============================================================================
@@ -764,6 +774,93 @@ int swarm_registry_connect_brain_immune(
  */
 int swarm_registry_disconnect_brain_immune(
     swarm_module_registry_t* registry
+);
+
+/* ============================================================================
+ * Internal Knowledge Graph Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect to internal brain Knowledge Graph
+ *
+ * WHAT: Initialize KG integration for swarm module topology awareness
+ * WHY:  Enable KG-based discovery, conflict resolution, and dynamic node creation
+ * HOW:  Get KG from brain, find our node, create nodes for registered modules
+ *
+ * @param registry Registry
+ * @param brain Brain instance containing internal KG
+ * @return 0 on success, -1 on error
+ *
+ * @note Call after brain KG is populated
+ * @note Safe to call if KG is disabled (no-op)
+ */
+int swarm_registry_connect_internal_kg(
+    swarm_module_registry_t* registry,
+    brain_t brain
+);
+
+/**
+ * @brief Disconnect from internal KG
+ *
+ * WHAT: Clean up KG integration
+ * WHY:  Proper cleanup before shutdown
+ * HOW:  Clear cached references
+ *
+ * @param registry Registry
+ * @return 0 on success
+ */
+int swarm_registry_disconnect_internal_kg(swarm_module_registry_t* registry);
+
+/**
+ * @brief Create KG node for newly registered module
+ *
+ * WHAT: Create SWARM node in KG for dynamically registered module
+ * WHY:  Modules registered after KG init need nodes too
+ * HOW:  Create node with BRAIN_KG_NODE_SWARM type, update module's kg_node_id
+ *
+ * @param registry Registry
+ * @param module_id Module ID
+ * @return 0 on success, -1 on error
+ *
+ * @note No-op if KG is not connected or module already has node
+ */
+int swarm_registry_create_module_kg_node(
+    swarm_module_registry_t* registry,
+    uint32_t module_id
+);
+
+/**
+ * @brief Resolve conflict using KG topology awareness
+ *
+ * WHAT: Enhanced conflict resolution using KG information
+ * WHY:  KG may have additional context about module relationships
+ * HOW:  Query KG for module priorities, dependencies, prefer central nodes
+ *
+ * @param registry Registry
+ * @param module_ids Array of conflicting module IDs
+ * @param module_count Number of conflicting modules
+ * @param winner_id_out Output: winning module ID
+ * @return 0 on success, -1 on error
+ *
+ * @note Falls back to standard arbitration if KG not connected
+ */
+int swarm_registry_resolve_conflict_topology_aware(
+    swarm_module_registry_t* registry,
+    const uint32_t* module_ids,
+    uint32_t module_count,
+    uint32_t* winner_id_out
+);
+
+/**
+ * @brief Get module's KG node ID
+ *
+ * @param registry Registry
+ * @param module_id Module ID
+ * @return KG node ID or BRAIN_KG_INVALID_NODE if not found
+ */
+brain_kg_node_id_t swarm_registry_get_module_kg_node(
+    const swarm_module_registry_t* registry,
+    uint32_t module_id
 );
 
 /* ============================================================================

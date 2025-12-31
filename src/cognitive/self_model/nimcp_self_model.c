@@ -34,6 +34,10 @@ struct self_model_system {
     // Bio-async integration
     bio_module_context_t bio_ctx;   /**< Bio-async module context */
     bool bio_async_enabled;         /**< Bio-async registration status */
+
+    // Internal Knowledge Graph integration
+    kg_module_context_t kg_context; /**< KG access context */
+    bool kg_connected;              /**< Internal KG is connected */
 };
 
 // ============================================================================
@@ -588,4 +592,195 @@ bool self_model_set_personality(self_model_system_t system,
     nimcp_mutex_unlock(&system->mutex);
 
     return true;
+}
+
+// ============================================================================
+// Internal Knowledge Graph Integration
+// ============================================================================
+
+bool self_model_connect_internal_kg(self_model_system_t system, brain_t brain)
+{
+    if (!system) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&system->mutex);
+
+    /* Initialize KG context */
+    int result = kg_module_init(&system->kg_context, brain, "self_model");
+
+    if (result != 0) {
+        nimcp_mutex_unlock(&system->mutex);
+        return false;
+    }
+
+    /* Check if KG is available */
+    if (!kg_is_available(&system->kg_context)) {
+        system->kg_connected = false;
+        LOG_INFO("KG disabled, self-model graceful degradation");
+        nimcp_mutex_unlock(&system->mutex);
+        return true;  /* Success - just no KG */
+    }
+
+    system->kg_connected = true;
+    LOG_INFO("Self-model connected to internal KG");
+
+    nimcp_mutex_unlock(&system->mutex);
+    return true;
+}
+
+void self_model_disconnect_internal_kg(self_model_system_t system)
+{
+    if (!system) {
+        return;
+    }
+
+    nimcp_mutex_lock(&system->mutex);
+
+    system->kg_context.kg = NULL;
+    system->kg_context.kg_available = false;
+    system->kg_context.self_node_id = BRAIN_KG_INVALID_NODE;
+    system->kg_connected = false;
+
+    LOG_INFO("Self-model disconnected from internal KG");
+
+    nimcp_mutex_unlock(&system->mutex);
+}
+
+bool self_model_update_topology_awareness(self_model_system_t system)
+{
+    if (!system) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&system->mutex);
+
+    /* Check if KG is connected */
+    if (!system->kg_connected || !kg_is_available(&system->kg_context)) {
+        nimcp_mutex_unlock(&system->mutex);
+        return false;
+    }
+
+    /* Query KG for all active nodes */
+    brain_kg_node_list_t* active_nodes = kg_get_nodes_by_state_safe(
+        &system->kg_context,
+        BRAIN_KG_STATE_ACTIVE
+    );
+
+    if (active_nodes) {
+        /* Update self-model's awareness of active modules */
+        /* This could influence self-efficacy, capability assessments, etc. */
+        LOG_INFO("Topology awareness: %u active modules detected", active_nodes->count);
+        brain_kg_node_list_destroy(active_nodes);
+    }
+
+    nimcp_mutex_unlock(&system->mutex);
+    return true;
+}
+
+/* Boundary type values matching the anonymous enum in self_boundary_t */
+#define SELF_BOUNDARY_SELF 0
+#define SELF_BOUNDARY_PART_OF_SELF 1
+#define SELF_BOUNDARY_OTHER 2
+#define SELF_BOUNDARY_UNCERTAIN 3
+
+int self_model_get_boundary_from_kg(
+    self_model_system_t system,
+    const char* entity_name
+)
+{
+    if (!system || !entity_name) {
+        return SELF_BOUNDARY_OTHER;  /* Default to OTHER for safety */
+    }
+
+    nimcp_mutex_lock(&system->mutex);
+
+    /* Check if KG is connected */
+    if (!system->kg_connected || !kg_is_available(&system->kg_context)) {
+        nimcp_mutex_unlock(&system->mutex);
+        return SELF_BOUNDARY_OTHER;  /* Can't determine - default to OTHER */
+    }
+
+    /* Find the entity in KG */
+    brain_kg_node_id_t entity_id = kg_find_node_safe(&system->kg_context, entity_name);
+
+    if (entity_id == BRAIN_KG_INVALID_NODE) {
+        nimcp_mutex_unlock(&system->mutex);
+        return SELF_BOUNDARY_OTHER;  /* Unknown entity */
+    }
+
+    /* Check if entity is connected to self */
+    brain_kg_node_id_t self_id = system->kg_context.self_node_id;
+    if (entity_id == self_id) {
+        nimcp_mutex_unlock(&system->mutex);
+        return SELF_BOUNDARY_SELF;  /* This is the self node */
+    }
+
+    /* Check if connected to self node */
+    bool connected = kg_are_connected_safe(&system->kg_context, entity_id);
+
+    nimcp_mutex_unlock(&system->mutex);
+
+    if (connected) {
+        return SELF_BOUNDARY_PART_OF_SELF;  /* Connected = part of self */
+    }
+
+    return SELF_BOUNDARY_OTHER;  /* Not connected = external */
+}
+
+uint32_t self_model_discover_capabilities_from_kg(self_model_system_t system)
+{
+    if (!system) {
+        return 0;
+    }
+
+    nimcp_mutex_lock(&system->mutex);
+
+    /* Check if KG is connected */
+    if (!system->kg_connected || !kg_is_available(&system->kg_context)) {
+        nimcp_mutex_unlock(&system->mutex);
+        return 0;
+    }
+
+    uint32_t discovered = 0;
+
+    /* Query KG for different node types and infer capabilities */
+    brain_kg_node_list_t* cognitive_nodes = kg_get_nodes_by_type_safe(
+        &system->kg_context,
+        BRAIN_KG_NODE_COGNITIVE
+    );
+
+    if (cognitive_nodes && cognitive_nodes->count > 0) {
+        /* Each cognitive node represents a cognitive capability */
+        LOG_INFO("Discovered %u cognitive capabilities from KG", cognitive_nodes->count);
+        discovered += cognitive_nodes->count;
+        brain_kg_node_list_destroy(cognitive_nodes);
+    }
+
+    brain_kg_node_list_t* coordinator_nodes = kg_get_nodes_by_type_safe(
+        &system->kg_context,
+        BRAIN_KG_NODE_COORDINATOR
+    );
+
+    if (coordinator_nodes && coordinator_nodes->count > 0) {
+        /* Coordination capabilities */
+        LOG_INFO("Discovered %u coordination capabilities from KG", coordinator_nodes->count);
+        discovered += coordinator_nodes->count;
+        brain_kg_node_list_destroy(coordinator_nodes);
+    }
+
+    brain_kg_node_list_t* security_nodes = kg_get_nodes_by_type_safe(
+        &system->kg_context,
+        BRAIN_KG_NODE_SECURITY
+    );
+
+    if (security_nodes && security_nodes->count > 0) {
+        /* Security/protection capabilities */
+        LOG_INFO("Discovered %u security capabilities from KG", security_nodes->count);
+        discovered += security_nodes->count;
+        brain_kg_node_list_destroy(security_nodes);
+    }
+
+    nimcp_mutex_unlock(&system->mutex);
+    return discovered;
 }

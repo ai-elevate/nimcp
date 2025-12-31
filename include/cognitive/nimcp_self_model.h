@@ -48,6 +48,8 @@ LOSOPHICAL FOUNDATIONS:
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "core/brain/nimcp_brain.h"
+#include "core/brain/nimcp_brain_kg_helpers.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -483,6 +485,87 @@ bool self_model_reflect(self_model_system_t system,
  */
 bool self_model_set_personality(self_model_system_t system,
                                  void* personality);
+
+// ============================================================================
+// Internal Knowledge Graph Integration
+// ============================================================================
+
+/**
+ * @brief Connect self-model to internal brain Knowledge Graph
+ *
+ * WHAT: Initialize KG integration for topology-aware self-understanding
+ * WHY:  Self-model can discover capabilities from KG node types
+ * HOW:  Get KG from brain, find our node, enable KG queries
+ *
+ * INTEGRATION EFFECTS:
+ * - Can determine self/other boundary from KG topology
+ * - Can discover capabilities from KG module relationships
+ * - Topology awareness informs self-model boundaries
+ *
+ * @param system Self-model system
+ * @param brain Brain instance containing internal KG
+ * @return true on success, false on error
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+bool self_model_connect_internal_kg(self_model_system_t system, brain_t brain);
+
+/**
+ * @brief Disconnect from internal KG
+ *
+ * @param system Self-model system
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+void self_model_disconnect_internal_kg(self_model_system_t system);
+
+/**
+ * @brief Update topology awareness from KG
+ *
+ * WHAT: Update self-model's understanding of module topology
+ * WHY:  "I" includes awareness of what modules are running
+ * HOW:  Query KG for active modules, update self-model state
+ *
+ * @param system Self-model system
+ * @return true on success
+ *
+ * COMPLEXITY: O(n) where n = KG node count
+ * THREAD-SAFE: Yes
+ */
+bool self_model_update_topology_awareness(self_model_system_t system);
+
+/**
+ * @brief Get self/other boundary from KG topology
+ *
+ * WHAT: Determine boundary classification from KG relationships
+ * WHY:  KG edges can inform what is SELF vs PART_OF_SELF vs OTHER
+ * HOW:  Query outgoing edges from self-model node
+ *
+ * @param system Self-model system
+ * @param entity_name Entity name to check
+ * @return Boundary type: 0=SELF, 1=PART_OF_SELF, 2=OTHER, 3=UNCERTAIN
+ */
+int self_model_get_boundary_from_kg(
+    self_model_system_t system,
+    const char* entity_name
+);
+
+/**
+ * @brief Discover capabilities from KG node types
+ *
+ * WHAT: Infer capabilities from what modules exist in KG
+ * WHY:  Self-model should know what it can do based on structure
+ * HOW:  Query KG for module types, map to capability categories
+ *
+ * @param system Self-model system
+ * @return Number of capabilities discovered
+ *
+ * COMPLEXITY: O(n) where n = KG node count
+ * THREAD-SAFE: Yes
+ */
+uint32_t self_model_discover_capabilities_from_kg(self_model_system_t system);
 
 #ifdef __cplusplus
 }

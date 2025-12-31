@@ -54,6 +54,9 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 
+// Internal Knowledge Graph integration
+#include "core/brain/nimcp_brain_kg_helpers.h"
+
 #define LOG_MODULE "introspection"
 
 // Phase 10.3: Emotional working memory integration
@@ -134,6 +137,10 @@ struct introspection_context_struct {
 
     /* Brain immune system integration */
     struct brain_immune_system* immune_system; /* Connected immune system (optional) */
+
+    /* Internal Knowledge Graph integration */
+    kg_module_context_t kg_context; /* KG access context */
+    bool kg_connected;              /* Internal KG is connected */
 
     /* Thread safety */
     nimcp_mutex_t lock; /* Protects context */
@@ -1989,4 +1996,164 @@ static float compute_cosine_similarity(const float* a, const float* b, uint32_t 
      * HOW: Direct call to nimcp_vector_cosine_similarity
      */
     return nimcp_vector_cosine_similarity(a, b, dimension);
+}
+
+/* ========================================================================
+ * INTERNAL KNOWLEDGE GRAPH INTEGRATION
+ * ======================================================================== */
+
+bool introspection_connect_internal_kg(introspection_context_t context, brain_t brain)
+{
+    if (context == NULL) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&context->lock);
+
+    /* Initialize KG context */
+    int result = kg_module_init(&context->kg_context, brain, "introspection");
+
+    if (result != 0) {
+        nimcp_mutex_unlock(&context->lock);
+        return false;
+    }
+
+    /* Check if KG is available */
+    if (!kg_is_available(&context->kg_context)) {
+        context->kg_connected = false;
+        LOG_INFO(LOG_MODULE, "KG disabled, graceful degradation");
+        nimcp_mutex_unlock(&context->lock);
+        return true;  /* Success - just no KG */
+    }
+
+    context->kg_connected = true;
+    LOG_INFO(LOG_MODULE, "Connected to internal KG");
+
+    nimcp_mutex_unlock(&context->lock);
+    return true;
+}
+
+void introspection_disconnect_internal_kg(introspection_context_t context)
+{
+    if (context == NULL) {
+        return;
+    }
+
+    nimcp_mutex_lock(&context->lock);
+
+    context->kg_context.kg = NULL;
+    context->kg_context.kg_available = false;
+    context->kg_context.self_node_id = BRAIN_KG_INVALID_NODE;
+    context->kg_connected = false;
+
+    LOG_INFO(LOG_MODULE, "Disconnected from internal KG");
+
+    nimcp_mutex_unlock(&context->lock);
+}
+
+brain_kg_node_list_t* introspection_get_active_modules(introspection_context_t context)
+{
+    if (context == NULL) {
+        return NULL;
+    }
+
+    nimcp_mutex_lock(&context->lock);
+
+    /* Check if KG is connected */
+    if (!context->kg_connected || !kg_is_available(&context->kg_context)) {
+        nimcp_mutex_unlock(&context->lock);
+        return NULL;
+    }
+
+    /* Query KG for all nodes in ACTIVE state */
+    brain_kg_node_list_t* active_nodes = kg_get_nodes_by_state_safe(
+        &context->kg_context,
+        BRAIN_KG_STATE_ACTIVE
+    );
+
+    nimcp_mutex_unlock(&context->lock);
+    return active_nodes;
+}
+
+brain_kg_node_list_t* introspection_get_module_topology(
+    introspection_context_t context,
+    const char* center_name,
+    uint32_t max_depth
+)
+{
+    if (context == NULL || center_name == NULL) {
+        return NULL;
+    }
+
+    nimcp_mutex_lock(&context->lock);
+
+    /* Check if KG is connected */
+    if (!context->kg_connected || !kg_is_available(&context->kg_context)) {
+        nimcp_mutex_unlock(&context->lock);
+        return NULL;
+    }
+
+    /* Find the center node */
+    brain_kg_node_id_t center_id = kg_find_node_safe(&context->kg_context, center_name);
+    if (center_id == BRAIN_KG_INVALID_NODE) {
+        nimcp_mutex_unlock(&context->lock);
+        return NULL;
+    }
+
+    /* Create temporary context for center node to use reachable helper */
+    kg_module_context_t center_ctx = context->kg_context;
+    center_ctx.self_node_id = center_id;
+
+    brain_kg_node_list_t* reachable = kg_get_reachable_safe(&center_ctx, max_depth);
+
+    nimcp_mutex_unlock(&context->lock);
+    return reachable;
+}
+
+bool introspection_is_module_set_active(
+    introspection_context_t context,
+    const char** module_names,
+    uint32_t count
+)
+{
+    if (context == NULL || module_names == NULL || count == 0) {
+        return false;
+    }
+
+    nimcp_mutex_lock(&context->lock);
+
+    /* Check if KG is connected */
+    if (!context->kg_connected || !kg_is_available(&context->kg_context)) {
+        nimcp_mutex_unlock(&context->lock);
+        return false;  /* Can't check - assume not active */
+    }
+
+    /* Check each module */
+    for (uint32_t i = 0; i < count; i++) {
+        if (module_names[i] == NULL) {
+            nimcp_mutex_unlock(&context->lock);
+            return false;
+        }
+
+        /* Find the node */
+        brain_kg_node_id_t node_id = kg_find_node_safe(
+            &context->kg_context,
+            module_names[i]
+        );
+
+        if (node_id == BRAIN_KG_INVALID_NODE) {
+            nimcp_mutex_unlock(&context->lock);
+            return false;  /* Module not found */
+        }
+
+        /* Get node and check state */
+        const brain_kg_node_t* node = kg_get_node_safe(&context->kg_context, node_id);
+        if (node == NULL || node->state != BRAIN_KG_STATE_ACTIVE) {
+            nimcp_mutex_unlock(&context->lock);
+            return false;  /* Module not active */
+        }
+    }
+
+    nimcp_mutex_unlock(&context->lock);
+    return true;  /* All modules are active */
 }

@@ -731,6 +731,240 @@ int swarm_registry_disconnect_brain_immune(swarm_module_registry_t* registry) {
 }
 
 /* ============================================================================
+ * Internal Knowledge Graph Integration API
+ * ============================================================================ */
+
+int swarm_registry_connect_internal_kg(
+    swarm_module_registry_t* registry,
+    brain_t brain
+) {
+    if (!registry) return -1;
+
+    nimcp_platform_mutex_lock(registry->mutex);
+
+    /* Initialize KG context */
+    int result = kg_module_init(
+        &registry->kg_context,
+        brain,
+        "swarm_registry"
+    );
+
+    if (result != 0) {
+        nimcp_platform_mutex_unlock(registry->mutex);
+        return -1;
+    }
+
+    /* Check if KG is available */
+    if (!kg_is_available(&registry->kg_context)) {
+        registry->kg_connected = false;
+        NIMCP_LOGGING_DEBUG("Swarm registry KG disabled, graceful degradation");
+        nimcp_platform_mutex_unlock(registry->mutex);
+        return 0;  /* Success - just no KG */
+    }
+
+    registry->kg_connected = true;
+
+    /* Try to find KG nodes for registered modules */
+    for (uint32_t i = 0; i < registry->module_count; i++) {
+        swarm_module_entry_t* entry = &registry->modules[i];
+
+        /* Find node by module name */
+        entry->kg_node_id = kg_find_node_safe(
+            &registry->kg_context,
+            entry->module_name
+        );
+
+        /* Node might not exist yet (dynamic registration) */
+        if (entry->kg_node_id == BRAIN_KG_INVALID_NODE) {
+            NIMCP_LOGGING_DEBUG("Swarm module %s not found in KG (may be dynamic)",
+                entry->module_name);
+        }
+    }
+
+    NIMCP_LOGGING_INFO("Swarm registry connected to internal KG");
+    nimcp_platform_mutex_unlock(registry->mutex);
+    return 0;
+}
+
+int swarm_registry_disconnect_internal_kg(swarm_module_registry_t* registry) {
+    if (!registry) return 0;
+
+    nimcp_platform_mutex_lock(registry->mutex);
+
+    /* Clear all module KG node IDs */
+    for (uint32_t i = 0; i < registry->module_count; i++) {
+        registry->modules[i].kg_node_id = BRAIN_KG_INVALID_NODE;
+    }
+
+    /* Clear context */
+    registry->kg_context.kg = NULL;
+    registry->kg_context.kg_available = false;
+    registry->kg_context.self_node_id = BRAIN_KG_INVALID_NODE;
+    registry->kg_connected = false;
+
+    NIMCP_LOGGING_DEBUG("Swarm registry disconnected from internal KG");
+    nimcp_platform_mutex_unlock(registry->mutex);
+    return 0;
+}
+
+int swarm_registry_create_module_kg_node(
+    swarm_module_registry_t* registry,
+    uint32_t module_id
+) {
+    if (!registry) return -1;
+
+    nimcp_platform_mutex_lock(registry->mutex);
+
+    /* Check if KG is connected */
+    if (!registry->kg_connected || !kg_is_available(&registry->kg_context)) {
+        nimcp_platform_mutex_unlock(registry->mutex);
+        return 0;  /* No-op if KG not connected */
+    }
+
+    /* Find the module */
+    swarm_module_entry_t* entry = NULL;
+    for (uint32_t i = 0; i < registry->module_count; i++) {
+        if (registry->modules[i].module_id == module_id) {
+            entry = &registry->modules[i];
+            break;
+        }
+    }
+
+    if (!entry) {
+        nimcp_platform_mutex_unlock(registry->mutex);
+        return -1;
+    }
+
+    /* Skip if already has KG node */
+    if (entry->kg_node_id != BRAIN_KG_INVALID_NODE) {
+        nimcp_platform_mutex_unlock(registry->mutex);
+        return 0;
+    }
+
+    brain_kg_t* kg = registry->kg_context.kg;
+
+    /* Create the node */
+    entry->kg_node_id = brain_kg_add_node(
+        kg,
+        entry->module_name,
+        BRAIN_KG_NODE_SWARM,
+        "Dynamically registered swarm module"
+    );
+
+    if (entry->kg_node_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_LOGGING_WARN("Failed to create KG node for swarm module %s",
+            entry->module_name);
+        nimcp_platform_mutex_unlock(registry->mutex);
+        return -1;
+    }
+
+    /* Add connection edge from registry to new module */
+    brain_kg_add_edge(
+        kg,
+        registry->kg_context.self_node_id,
+        entry->kg_node_id,
+        BRAIN_KG_EDGE_COORDINATES_WITH,
+        "Registry coordinates swarm module",
+        1.0f
+    );
+
+    NIMCP_LOGGING_DEBUG("Created KG node for swarm module %s", entry->module_name);
+    nimcp_platform_mutex_unlock(registry->mutex);
+    return 0;
+}
+
+int swarm_registry_resolve_conflict_topology_aware(
+    swarm_module_registry_t* registry,
+    const uint32_t* module_ids,
+    uint32_t module_count,
+    uint32_t* winner_id_out
+) {
+    if (!registry || !module_ids || module_count == 0 || !winner_id_out) {
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(registry->mutex);
+
+    /* If KG not connected, fall back to standard resolution */
+    if (!registry->kg_connected || !kg_is_available(&registry->kg_context)) {
+        nimcp_platform_mutex_unlock(registry->mutex);
+        return swarm_registry_resolve_conflict(registry, module_ids,
+                                                module_count, winner_id_out);
+    }
+
+    /* Topology-aware resolution: prefer modules with more connections */
+    uint32_t best_id = 0;
+    uint32_t best_priority = 0;
+    uint32_t best_connectivity = 0;
+
+    for (uint32_t i = 0; i < module_count; i++) {
+        uint32_t mid = module_ids[i];
+
+        /* Find module entry */
+        swarm_module_entry_t* entry = NULL;
+        for (uint32_t j = 0; j < registry->module_count; j++) {
+            if (registry->modules[j].module_id == mid) {
+                entry = &registry->modules[j];
+                break;
+            }
+        }
+        if (!entry || !entry->enabled) continue;
+
+        /* Get connectivity from KG */
+        uint32_t connectivity = 0;
+        if (entry->kg_node_id != BRAIN_KG_INVALID_NODE) {
+            brain_kg_edge_list_t* edges = brain_kg_get_outgoing(
+                registry->kg_context.kg,
+                entry->kg_node_id
+            );
+            if (edges) {
+                connectivity = edges->count;
+                brain_kg_edge_list_destroy(edges);
+            }
+        }
+
+        /* Compare: priority first, then connectivity */
+        bool is_better = false;
+        if (entry->priority > best_priority) {
+            is_better = true;
+        } else if (entry->priority == best_priority && connectivity > best_connectivity) {
+            is_better = true;
+        }
+
+        if (is_better) {
+            best_id = mid;
+            best_priority = entry->priority;
+            best_connectivity = connectivity;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(registry->mutex);
+
+    if (best_id > 0) {
+        *winner_id_out = best_id;
+        registry->stats.conflicts_resolved++;
+        return 0;
+    }
+
+    return -1;
+}
+
+brain_kg_node_id_t swarm_registry_get_module_kg_node(
+    const swarm_module_registry_t* registry,
+    uint32_t module_id
+) {
+    if (!registry) return BRAIN_KG_INVALID_NODE;
+
+    for (uint32_t i = 0; i < registry->module_count; i++) {
+        if (registry->modules[i].module_id == module_id) {
+            return registry->modules[i].kg_node_id;
+        }
+    }
+
+    return BRAIN_KG_INVALID_NODE;
+}
+
+/* ============================================================================
  * Discovery API
  * ============================================================================ */
 

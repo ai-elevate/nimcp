@@ -155,6 +155,7 @@
 /* Integration modules */
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "core/brain/nimcp_brain_kg_helpers.h"
 
 /* Utilities */
 #include "utils/thread/nimcp_thread.h"
@@ -272,6 +273,9 @@ typedef struct {
     uint32_t startup_phase;                /**< Startup phase (0-5) */
     bio_module_id_t* dependencies;         /**< Array of dependency module IDs */
     uint32_t dependency_count;             /**< Number of dependencies */
+
+    /* Knowledge Graph integration */
+    brain_kg_node_id_t kg_node_id;         /**< KG node ID for this module */
 } bio_module_entry_t;
 
 /* ============================================================================
@@ -388,6 +392,10 @@ struct bio_async_orchestrator {
     bool bio_async_connected;              /**< Bio-async is connected */
     bool immune_connected;                 /**< Brain immune is connected */
     uint32_t current_startup_phase;        /**< Current startup phase */
+
+    /* Internal Knowledge Graph integration */
+    kg_module_context_t kg_context;        /**< KG access context */
+    bool kg_connected;                     /**< Internal KG is connected */
 };
 
 /* ============================================================================
@@ -718,6 +726,85 @@ int bio_orchestrator_connect_brain_immune(
  * @return 0 on success
  */
 int bio_orchestrator_disconnect_brain_immune(bio_async_orchestrator_t* orchestrator);
+
+/* ============================================================================
+ * Internal Knowledge Graph Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Connect to internal brain Knowledge Graph
+ *
+ * WHAT: Initialize KG integration for topology awareness
+ * WHY:  Enable KG queries for module dependencies and health sync
+ * HOW:  Get KG from brain, find our node, create nodes for modules
+ *
+ * @param orchestrator Orchestrator
+ * @param brain Brain instance containing internal KG
+ * @return 0 on success, -1 on error
+ *
+ * @note Call after brain KG is populated
+ * @note Safe to call if KG is disabled (no-op)
+ */
+int bio_orchestrator_connect_internal_kg(
+    bio_async_orchestrator_t* orchestrator,
+    brain_t brain
+);
+
+/**
+ * @brief Disconnect from internal KG
+ *
+ * WHAT: Clean up KG integration
+ * WHY:  Proper cleanup before shutdown
+ * HOW:  Clear cached references
+ *
+ * @param orchestrator Orchestrator
+ * @return 0 on success
+ */
+int bio_orchestrator_disconnect_internal_kg(bio_async_orchestrator_t* orchestrator);
+
+/**
+ * @brief Synchronize module health status to KG
+ *
+ * WHAT: Update KG node states based on bio-async health
+ * WHY:  Keep internal KG state consistent with runtime health
+ * HOW:  Map health status to KG node state:
+ *       - HEALTHY → BRAIN_KG_STATE_ACTIVE
+ *       - DEGRADED → BRAIN_KG_STATE_ACTIVE (with degraded metadata)
+ *       - UNHEALTHY/FAILED → BRAIN_KG_STATE_ERROR
+ *
+ * @param orchestrator Orchestrator
+ * @return 0 on success, -1 on error
+ *
+ * @note Call periodically after health checks
+ * @note No-op if KG is not connected
+ */
+int bio_orchestrator_sync_health_to_kg(bio_async_orchestrator_t* orchestrator);
+
+/**
+ * @brief Validate startup ordering using KG topology
+ *
+ * WHAT: Check if startup sequence respects KG dependencies
+ * WHY:  KG may have additional dependency info not in module entries
+ * HOW:  Query KG for DEPENDS_ON edges and verify ordering
+ *
+ * @param orchestrator Orchestrator
+ * @return 0 if valid, -1 if invalid dependencies found
+ *
+ * @note Returns 0 if KG is not connected (graceful degradation)
+ */
+int bio_orchestrator_validate_startup_ordering(bio_async_orchestrator_t* orchestrator);
+
+/**
+ * @brief Get module's KG node ID
+ *
+ * @param orchestrator Orchestrator
+ * @param module_id Module ID
+ * @return KG node ID or BRAIN_KG_INVALID_NODE if not found
+ */
+brain_kg_node_id_t bio_orchestrator_get_module_kg_node(
+    const bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id
+);
 
 /* ============================================================================
  * Statistics and Monitoring API

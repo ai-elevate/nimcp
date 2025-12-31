@@ -694,3 +694,234 @@ const char* bio_module_health_to_string(bio_module_health_t health) {
         default: return "unknown";
     }
 }
+
+/* ============================================================================
+ * Internal Knowledge Graph Integration Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Map bio-module health to KG node state
+ * WHY:  Consistent state representation across systems
+ * HOW:  Direct mapping based on semantics
+ */
+static brain_kg_node_state_t health_to_kg_state(bio_module_health_t health) {
+    switch (health) {
+        case BIO_MODULE_HEALTH_HEALTHY:
+        case BIO_MODULE_HEALTH_DEGRADED:
+            return BRAIN_KG_STATE_ACTIVE;
+        case BIO_MODULE_HEALTH_UNHEALTHY:
+        case BIO_MODULE_HEALTH_FAILED:
+            return BRAIN_KG_STATE_ERROR;
+        case BIO_MODULE_HEALTH_UNKNOWN:
+        default:
+            return BRAIN_KG_STATE_UNKNOWN;
+    }
+}
+
+int bio_orchestrator_connect_internal_kg(
+    bio_async_orchestrator_t* orchestrator,
+    brain_t brain
+) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    /* Initialize KG context */
+    int result = kg_module_init(
+        &orchestrator->kg_context,
+        brain,
+        BIO_ORCHESTRATOR_MODULE_NAME
+    );
+
+    if (result != 0) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return -1;
+    }
+
+    /* Check if KG is available */
+    if (!kg_is_available(&orchestrator->kg_context)) {
+        /* KG disabled - graceful degradation */
+        orchestrator->kg_connected = false;
+        if (orchestrator->config.enable_logging) {
+            NIMCP_LOGGING_DEBUG("Bio-orchestrator KG disabled, graceful degradation");
+        }
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return 0;  /* Success - just no KG */
+    }
+
+    orchestrator->kg_connected = true;
+
+    /* Try to find or create KG nodes for registered modules */
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        bio_module_entry_t* entry = &orchestrator->modules[i];
+
+        /* Find node by module name */
+        entry->kg_node_id = kg_find_node_safe(
+            &orchestrator->kg_context,
+            entry->module_name
+        );
+
+        /* Node might not exist yet (dynamic registration) */
+        if (entry->kg_node_id == BRAIN_KG_INVALID_NODE) {
+            if (orchestrator->config.enable_logging) {
+                NIMCP_LOGGING_DEBUG("Module %s not found in KG (may be dynamic)",
+                    entry->module_name);
+            }
+        }
+    }
+
+    if (orchestrator->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Bio-orchestrator connected to internal KG");
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+int bio_orchestrator_disconnect_internal_kg(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    /* Clear all module KG node IDs */
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        orchestrator->modules[i].kg_node_id = BRAIN_KG_INVALID_NODE;
+    }
+
+    /* Clear context */
+    orchestrator->kg_context.kg = NULL;
+    orchestrator->kg_context.kg_available = false;
+    orchestrator->kg_context.self_node_id = BRAIN_KG_INVALID_NODE;
+    orchestrator->kg_connected = false;
+
+    if (orchestrator->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Bio-orchestrator disconnected from internal KG");
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+int bio_orchestrator_sync_health_to_kg(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    /* Check if KG is connected */
+    if (!orchestrator->kg_connected || !kg_is_available(&orchestrator->kg_context)) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return 0;  /* No-op if KG not connected */
+    }
+
+    brain_kg_t* kg = orchestrator->kg_context.kg;
+    if (!kg) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return 0;
+    }
+
+    /* Sync each module's health to its KG node state */
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        bio_module_entry_t* entry = &orchestrator->modules[i];
+
+        if (entry->kg_node_id == BRAIN_KG_INVALID_NODE) {
+            continue;  /* No KG node for this module */
+        }
+
+        /* Map health to KG state */
+        brain_kg_node_state_t kg_state = health_to_kg_state(entry->health_status);
+
+        /* Update node state (description=NULL to keep current) */
+        brain_kg_update_node(kg, entry->kg_node_id, NULL, kg_state);
+
+        /* Add degraded metadata if applicable */
+        if (entry->health_status == BIO_MODULE_HEALTH_DEGRADED) {
+            brain_kg_add_metadata(
+                kg,
+                entry->kg_node_id,
+                "health_degraded",
+                "true"
+            );
+        }
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+int bio_orchestrator_validate_startup_ordering(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    /* Graceful degradation if KG not connected */
+    if (!orchestrator->kg_connected || !kg_is_available(&orchestrator->kg_context)) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return 0;  /* Assume valid if can't check */
+    }
+
+    bool valid = true;
+
+    /* Check each module's dependencies in KG */
+    for (uint32_t i = 0; i < orchestrator->module_count && valid; i++) {
+        bio_module_entry_t* entry = &orchestrator->modules[i];
+
+        if (entry->kg_node_id == BRAIN_KG_INVALID_NODE) {
+            continue;  /* No KG node - can't validate */
+        }
+
+        /* Get incoming edges to this module's node from KG */
+        brain_kg_edge_list_t* deps = brain_kg_get_incoming(
+            orchestrator->kg_context.kg,
+            entry->kg_node_id
+        );
+        if (!deps) continue;
+
+        /* Check each dependency's startup phase */
+        for (uint32_t j = 0; j < deps->count; j++) {
+            const brain_kg_edge_t* edge = deps->edges[j];
+
+            if (!edge || edge->type != BRAIN_KG_EDGE_DEPENDS_ON) {
+                continue;
+            }
+
+            /* Find the dependency module by its node ID */
+            for (uint32_t k = 0; k < orchestrator->module_count; k++) {
+                if (orchestrator->modules[k].kg_node_id == edge->from) {
+                    /* Dependency found - check startup phase ordering */
+                    if (orchestrator->modules[k].startup_phase > entry->startup_phase) {
+                        if (orchestrator->config.enable_logging) {
+                            NIMCP_LOGGING_WARN(
+                                "Invalid startup order: %s (phase %u) depends on %s (phase %u)",
+                                entry->module_name, entry->startup_phase,
+                                orchestrator->modules[k].module_name,
+                                orchestrator->modules[k].startup_phase
+                            );
+                        }
+                        valid = false;
+                    }
+                    break;
+                }
+            }
+        }
+
+        brain_kg_edge_list_destroy(deps);
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return valid ? 0 : -1;
+}
+
+brain_kg_node_id_t bio_orchestrator_get_module_kg_node(
+    const bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id
+) {
+    if (!orchestrator) return BRAIN_KG_INVALID_NODE;
+
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        if (orchestrator->modules[i].module_id == module_id) {
+            return orchestrator->modules[i].kg_node_id;
+        }
+    }
+
+    return BRAIN_KG_INVALID_NODE;
+}
