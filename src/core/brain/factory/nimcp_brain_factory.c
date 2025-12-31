@@ -199,6 +199,10 @@ extern void set_error(const char* format, ...);
 // Knowledge Graph Reader subsystem macro (self-awareness)
 #define init_kg_reader_subsystem                    nimcp_brain_factory_init_kg_reader_subsystem
 
+// Internal Knowledge Graph subsystem macro (runtime CRUD, security)
+#define init_internal_kg_subsystem                  nimcp_brain_factory_init_internal_kg_subsystem
+#define destroy_internal_kg_subsystem               nimcp_brain_factory_destroy_internal_kg_subsystem
+
 // GPU Context subsystem macro (CUDA kernel acceleration)
 #define init_gpu_subsystem                          nimcp_brain_factory_init_gpu_subsystem
 #define destroy_gpu_subsystem                       nimcp_brain_factory_destroy_gpu_subsystem
@@ -780,6 +784,14 @@ brain_t brain_create_custom(const brain_config_t* config)
     // other subsystems (introspection, self_model, autobiographical) may query.
     // Loads from .aim/memory-nimcp.jsonl or custom path in config.
     if (!init_kg_reader_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // INTERNAL KNOWLEDGE GRAPH (RUNTIME MODULE MAPPING)
+    // ========================================================================
+    // Initialize internal KG - provides in-memory CRUD for dynamic module mapping.
+    // Security features: token-based access control, integrity checks, immune integration.
+    // Complements the static KG reader with a live, mutable module topology graph.
+    if (!init_internal_kg_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // COORDINATOR/ORCHESTRATOR SUBSYSTEMS

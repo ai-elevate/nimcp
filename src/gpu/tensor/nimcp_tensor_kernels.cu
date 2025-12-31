@@ -1740,12 +1740,7 @@ bool nimcp_gpu_transpose(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
                          nimcp_gpu_tensor_t* out) { return false; }
 bool nimcp_gpu_reshape(nimcp_gpu_tensor_t* tensor, const size_t* new_dims, uint32_t new_ndim) { return false; }
 
-bool nimcp_gpu_fft_1d(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
-                      nimcp_gpu_tensor_t* out, bool inverse) { return false; }
-bool nimcp_gpu_fft_2d(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
-                      nimcp_gpu_tensor_t* out, bool inverse) { return false; }
-bool nimcp_gpu_rfft(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp_gpu_tensor_t* out) { return false; }
-bool nimcp_gpu_irfft(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp_gpu_tensor_t* out) { return false; }
+// Note: FFT functions are implemented in nimcp_fft_kernels.cu
 
 // CPU-GPU Tensor Integration Stubs (non-CUDA)
 nimcp_gpu_precision_t nimcp_dtype_to_gpu_precision(nimcp_dtype_t dtype)

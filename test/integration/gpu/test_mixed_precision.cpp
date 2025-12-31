@@ -54,8 +54,8 @@ namespace {
     constexpr size_t LARGE_SIZE = 1024;
 
     // Quantization parameters
-    constexpr int8_t INT8_MIN = -128;
-    constexpr int8_t INT8_MAX = 127;
+    constexpr int8_t QUANT_INT8_MIN = -128;
+    constexpr int8_t QUANT_INT8_MAX = 127;
 }
 
 //=============================================================================

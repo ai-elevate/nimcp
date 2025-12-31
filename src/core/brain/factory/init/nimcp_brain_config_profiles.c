@@ -461,6 +461,9 @@ static void apply_research_profile(brain_config_t* config)
     // Enable KG reader
     config->enable_kg_reader = true;
 
+    // Enable internal runtime KG
+    config->enable_internal_kg = true;
+
     // Disable all lazy init for research mode
     config->lazy_init_mode = false;
     config->lazy_dendrite_init = false;

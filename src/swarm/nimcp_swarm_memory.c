@@ -103,6 +103,7 @@ static nimcp_result_t _apply_forgetting_unlocked(NimcpSwarmMemory *memory, uint3
 static nimcp_result_t _schedule_replay_unlocked(NimcpSwarmMemory *memory, const char *memory_id, float priority);
 static nimcp_result_t _replay_cycle_unlocked(NimcpSwarmMemory *memory, uint32_t max_replays, uint32_t *replays_performed);
 static nimcp_result_t _distribute_unlocked(NimcpSwarmMemory *memory, const char *memory_id, uint32_t *replicas_created);
+static nimcp_result_t _compress_unlocked(NimcpSwarmMemory *memory, const char *memory_id, NimcpCompressedMemory *compressed);
 
 /* ============================================================================
  * Constants and Configuration

@@ -9281,6 +9281,30 @@ __/core/brain/factory/init/nimcp_brain_init_immune_bridge_coordinator.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_immune_bridge_coordinator.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_immune_bridge_coordinator.c.s
 
+__/core/brain/factory/init/nimcp_brain_init_internal_kg.o: __/core/brain/factory/init/nimcp_brain_init_internal_kg.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_internal_kg.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_internal_kg.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_internal_kg.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_internal_kg.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_internal_kg.i: __/core/brain/factory/init/nimcp_brain_init_internal_kg.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_internal_kg.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_internal_kg.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_internal_kg.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_internal_kg.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_internal_kg.s: __/core/brain/factory/init/nimcp_brain_init_internal_kg.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_internal_kg.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_internal_kg.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_internal_kg.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_internal_kg.c.s
+
 __/core/brain/factory/init/nimcp_brain_init_kg_reader.o: __/core/brain/factory/init/nimcp_brain_init_kg_reader.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_kg_reader.o
 
@@ -28864,6 +28888,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_immune_bridge_coordinator.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_immune_bridge_coordinator.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_immune_bridge_coordinator.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_internal_kg.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_internal_kg.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_internal_kg.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_kg_reader.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_kg_reader.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_kg_reader.s"

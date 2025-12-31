@@ -121,6 +121,13 @@ bool nimcp_brain_factory_init_dragonfly_subsystem(brain_t brain);
 // Enables structural introspection: "What modules do I have?" "How am I organized?"
 bool nimcp_brain_factory_init_kg_reader_subsystem(brain_t brain);
 
+// === INTERNAL KNOWLEDGE GRAPH (Runtime Module Mapping) ===
+// In-memory CRUD graph for dynamic module topology with security integration
+// Features: token-based access control, integrity checks, immune system integration
+// Enables real-time self-awareness and adaptive behavior based on module state
+bool nimcp_brain_factory_init_internal_kg_subsystem(brain_t brain);
+void nimcp_brain_factory_destroy_internal_kg_subsystem(brain_t brain);
+
 // === FAULT TOLERANCE SUBSYSTEM (Intelligent Recovery) ===
 // Recovery executive with parietal integration for intelligent code repair
 // Uses software engineering analysis, pattern detection, and spatial reasoning

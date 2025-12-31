@@ -1303,6 +1303,22 @@ typedef struct {
     bool enable_kg_reader;                /**< Enable KG reader for self-awareness (default: true) */
     char kg_file_path[512];               /**< Path to KG file (default: .aim/memory-nimcp.jsonl) */
 
+    /**
+     * Internal Runtime Knowledge Graph
+     *
+     * WHAT: In-memory CRUD graph for dynamic module mapping
+     * WHY:  Enables real-time self-awareness and module topology queries
+     * HOW:  Graph data structure with security (tokens, integrity, immune integration)
+     *
+     * Unlike the KG reader (static, file-based), the internal KG:
+     * - Supports CRUD operations at runtime
+     * - Has token-based access control (READ/WRITE/ADMIN)
+     * - Integrates with immune system for threat reporting
+     * - Verifies integrity with checksums
+     * - Protects critical nodes (core, ethics, immune, BBB)
+     */
+    bool enable_internal_kg;              /**< Enable internal runtime KG (default: true) */
+
     // === DRAGONFLY INTEGRATION (Bio-inspired Target Tracking) ===
     /**
      * Dragonfly-Inspired Target Tracking and Interception

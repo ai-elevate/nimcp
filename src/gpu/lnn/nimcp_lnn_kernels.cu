@@ -1211,7 +1211,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
     if (!layer) return NULL;
 
     layer->n_neurons = cpu_layer->n_neurons;
-    layer->n_inputs = cpu_layer->W_in ? cpu_layer->W_in->shape.dims[1] : 0;
+    layer->n_inputs = cpu_layer->W_in ? nimcp_tensor_shape(cpu_layer->W_in)->dims[1] : 0;
     layer->activation = cpu_layer->neurons ? cpu_layer->neurons[0].activation : LNN_ACTIVATION_TANH;
 
     // Convert CPU tensors to GPU
@@ -2068,7 +2068,7 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
     if (!layer) return NULL;
 
     layer->n_neurons = cpu_layer->n_neurons;
-    layer->n_inputs = cpu_layer->W_in ? cpu_layer->W_in->shape.dims[1] : 0;
+    layer->n_inputs = cpu_layer->W_in ? nimcp_tensor_shape(cpu_layer->W_in)->dims[1] : 0;
     layer->activation = cpu_layer->neurons ? cpu_layer->neurons[0].activation : LNN_ACTIVATION_TANH;
 
     // For CPU mode, we can reference the existing tensors directly or copy
@@ -2076,16 +2076,18 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
     if (cpu_layer->x) {
         layer->x = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->x) {
-            layer->x->data = cpu_layer->x->data;
-            layer->x->numel = cpu_layer->x->shape.dims[0];
+            const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->x);
+            layer->x->data = nimcp_tensor_data(cpu_layer->x);
+            layer->x->numel = shape->dims[0];
         }
     }
 
     if (cpu_layer->dx_dt) {
         layer->dx_dt = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->dx_dt) {
-            layer->dx_dt->data = cpu_layer->dx_dt->data;
-            layer->dx_dt->numel = cpu_layer->dx_dt->shape.dims[0];
+            const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->dx_dt);
+            layer->dx_dt->data = nimcp_tensor_data(cpu_layer->dx_dt);
+            layer->dx_dt->numel = shape->dims[0];
         }
     } else {
         layer->dx_dt = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
@@ -2224,11 +2226,13 @@ bool nimcp_lnn_layer_gpu_to_cpu(
 
     // In CPU mode, data is already shared via pointers
     // Just ensure consistency
-    if (gpu_layer->x && cpu_layer->x && gpu_layer->x->data != cpu_layer->x->data) {
-        memcpy(cpu_layer->x->data, gpu_layer->x->data, gpu_layer->n_neurons * sizeof(float));
+    void* cpu_x_data = cpu_layer->x ? nimcp_tensor_data(cpu_layer->x) : NULL;
+    void* cpu_tau_data = cpu_layer->tau ? nimcp_tensor_data(cpu_layer->tau) : NULL;
+    if (gpu_layer->x && cpu_x_data && gpu_layer->x->data != cpu_x_data) {
+        memcpy(cpu_x_data, gpu_layer->x->data, gpu_layer->n_neurons * sizeof(float));
     }
-    if (gpu_layer->tau && cpu_layer->tau && gpu_layer->tau->data != cpu_layer->tau->data) {
-        memcpy(cpu_layer->tau->data, gpu_layer->tau->data, gpu_layer->n_neurons * sizeof(float));
+    if (gpu_layer->tau && cpu_tau_data && gpu_layer->tau->data != cpu_tau_data) {
+        memcpy(cpu_tau_data, gpu_layer->tau->data, gpu_layer->n_neurons * sizeof(float));
     }
 
     return true;
