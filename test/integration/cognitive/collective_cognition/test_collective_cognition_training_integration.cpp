@@ -18,6 +18,7 @@ extern "C" {
 #include "cognitive/collective_cognition/nimcp_hyperscanning.h"
 #include "cognitive/collective_cognition/nimcp_collective_phi.h"
 #include "cognitive/collective_cognition/nimcp_shared_intentionality.h"
+#include "cognitive/collective_cognition/nimcp_extended_mind.h"
 #include "training/nimcp_meta_learning.h"
 #include "training/nimcp_adversarial_training.h"
 #include "training/nimcp_distributed_training.h"

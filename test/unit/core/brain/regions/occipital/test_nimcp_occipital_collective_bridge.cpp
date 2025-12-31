@@ -355,6 +355,136 @@ TEST_F(OccipitalCollectiveBridgeTest, ResetStatsSucceeds) {
     EXPECT_EQ(stats.joint_targets_created, 0u);
 }
 
+//=============================================================================
+// Bio-Async API Tests (4 tests)
+//=============================================================================
+
+TEST_F(OccipitalCollectiveBridgeTest, ConnectBioAsyncSucceeds) {
+    EXPECT_EQ(occipital_collective_connect_bio_async(bridge), 0);
+}
+
+TEST_F(OccipitalCollectiveBridgeTest, ConnectBioAsyncNullFails) {
+    EXPECT_EQ(occipital_collective_connect_bio_async(nullptr), -1);
+}
+
+TEST_F(OccipitalCollectiveBridgeTest, DisconnectBioAsyncSucceeds) {
+    occipital_collective_connect_bio_async(bridge);
+    EXPECT_EQ(occipital_collective_disconnect_bio_async(bridge), 0);
+}
+
+TEST_F(OccipitalCollectiveBridgeTest, DisconnectBioAsyncNullFails) {
+    EXPECT_EQ(occipital_collective_disconnect_bio_async(nullptr), -1);
+}
+
+//=============================================================================
+// Instance State Tests (3 tests)
+//=============================================================================
+
+TEST_F(OccipitalCollectiveBridgeTest, GetInstanceStateSucceeds) {
+    occipital_collective_update(bridge, 50);
+    uint32_t local_id = occipital_collective_get_local_id(bridge);
+    collective_visual_state_t state;
+    EXPECT_EQ(occipital_collective_get_instance_state(bridge, local_id, &state), 0);
+    EXPECT_EQ(state.instance_id, local_id);
+}
+
+TEST_F(OccipitalCollectiveBridgeTest, GetInstanceStateNotFound) {
+    collective_visual_state_t state;
+    EXPECT_EQ(occipital_collective_get_instance_state(bridge, 99999, &state), -1);
+}
+
+TEST_F(OccipitalCollectiveBridgeTest, GetInstanceStateNullFails) {
+    collective_visual_state_t state;
+    EXPECT_EQ(occipital_collective_get_instance_state(nullptr, 1, &state), -1);
+    EXPECT_EQ(occipital_collective_get_instance_state(bridge, 1, nullptr), -1);
+}
+
+//=============================================================================
+// Boundary Value Tests (6 tests)
+//=============================================================================
+
+TEST_F(OccipitalCollectiveBridgeTest, InitiateAttentionAtOrigin) {
+    uint32_t target_id = 0;
+    EXPECT_EQ(occipital_collective_initiate_attention(bridge, 0.0f, 0.0f, 0.5f, &target_id), 0);
+    EXPECT_NE(target_id, 0u);
+}
+
+TEST_F(OccipitalCollectiveBridgeTest, InitiateAttentionAtMax) {
+    uint32_t target_id = 0;
+    EXPECT_EQ(occipital_collective_initiate_attention(bridge, 1.0f, 1.0f, 1.0f, &target_id), 0);
+    EXPECT_NE(target_id, 0u);
+}
+
+TEST_F(OccipitalCollectiveBridgeTest, ShareFeatureMinConfidence) {
+    shared_visual_feature_t feature;
+    memset(&feature, 0, sizeof(feature));
+    feature.source_area = VISUAL_AREA_V1;
+    feature.confidence = 0.0f;
+    EXPECT_EQ(occipital_collective_share_feature(bridge, &feature), 0);
+}
+
+TEST_F(OccipitalCollectiveBridgeTest, ShareFeatureMaxConfidence) {
+    shared_visual_feature_t feature;
+    memset(&feature, 0, sizeof(feature));
+    feature.source_area = VISUAL_AREA_V1;
+    feature.confidence = 1.0f;
+    EXPECT_EQ(occipital_collective_share_feature(bridge, &feature), 0);
+}
+
+TEST_F(OccipitalCollectiveBridgeTest, MergeFeaturesZeroTolerance) {
+    int merged = occipital_collective_merge_features(bridge, 0.0f);
+    EXPECT_GE(merged, 0);
+}
+
+TEST_F(OccipitalCollectiveBridgeTest, MergeFeaturesLargeTolerance) {
+    // Add two features at same location
+    shared_visual_feature_t f1, f2;
+    memset(&f1, 0, sizeof(f1));
+    memset(&f2, 0, sizeof(f2));
+    f1.source_area = VISUAL_AREA_V1;
+    f1.x = 0.5f;
+    f1.y = 0.5f;
+    f2.source_area = VISUAL_AREA_V1;
+    f2.x = 0.5f;
+    f2.y = 0.5f;
+    occipital_collective_share_feature(bridge, &f1);
+    occipital_collective_share_feature(bridge, &f2);
+
+    int merged = occipital_collective_merge_features(bridge, 1.0f);
+    EXPECT_GE(merged, 1);  // Should merge the two identical features
+}
+
+//=============================================================================
+// Max Capacity Tests (2 tests)
+//=============================================================================
+
+TEST_F(OccipitalCollectiveBridgeTest, MaxTargetsReached) {
+    // Fill up targets
+    for (int i = 0; i < OCCIPITAL_COLLECTIVE_MAX_TARGETS; ++i) {
+        uint32_t id;
+        EXPECT_EQ(occipital_collective_initiate_attention(bridge, 0.5f, 0.5f, 0.5f, &id), 0);
+    }
+    // Next should fail
+    uint32_t id;
+    EXPECT_EQ(occipital_collective_initiate_attention(bridge, 0.5f, 0.5f, 0.5f, &id), -1);
+}
+
+TEST_F(OccipitalCollectiveBridgeTest, FeatureEvictionOnFull) {
+    // Fill up features
+    for (int i = 0; i < OCCIPITAL_COLLECTIVE_MAX_FEATURES + 5; ++i) {
+        shared_visual_feature_t feature;
+        memset(&feature, 0, sizeof(feature));
+        feature.source_area = VISUAL_AREA_V1;
+        feature.confidence = 0.5f;
+        EXPECT_EQ(occipital_collective_share_feature(bridge, &feature), 0);
+    }
+    // Should still work - old features evicted
+    shared_visual_feature_t features[64];
+    uint32_t count = 0;
+    EXPECT_EQ(occipital_collective_get_features(bridge, -1, features, 64, &count), 0);
+    EXPECT_EQ(count, (uint32_t)OCCIPITAL_COLLECTIVE_MAX_FEATURES);
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

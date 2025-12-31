@@ -8,6 +8,10 @@
  */
 
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
+#include "cognitive/collective_cognition/nimcp_hyperscanning.h"
+#include "cognitive/collective_cognition/nimcp_extended_mind.h"
+#include "cognitive/collective_cognition/nimcp_collective_phi.h"
+#include "cognitive/collective_cognition/nimcp_shared_intentionality.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include <string.h>
@@ -471,11 +475,23 @@ collective_cognition_t* collective_cognition_create(
         }
     }
 
-    /* TODO: Create subsystem handles when implemented */
-    cc->hyperscanning = NULL;
-    cc->extended_mind = NULL;
-    cc->phi_system = NULL;
-    cc->intentionality = NULL;
+    /* Create subsystem handles */
+    cc->hyperscanning = hyperscanning_create(&cc->config.hyperscanning);
+    cc->extended_mind = extended_mind_create(&cc->config.extended_mind);
+    cc->phi_system = collective_phi_create(&cc->config.phi);
+    cc->intentionality = shared_intentionality_create(&cc->config.intentionality);
+
+    /* Check for allocation failures - subsystems are optional but recommended */
+    if (!cc->hyperscanning || !cc->extended_mind ||
+        !cc->phi_system || !cc->intentionality) {
+        /* Clean up any successfully created subsystems */
+        if (cc->hyperscanning) hyperscanning_destroy(cc->hyperscanning);
+        if (cc->extended_mind) extended_mind_destroy(cc->extended_mind);
+        if (cc->phi_system) collective_phi_destroy(cc->phi_system);
+        if (cc->intentionality) shared_intentionality_destroy(cc->intentionality);
+        nimcp_free(cc);
+        return NULL;
+    }
 
     cc->initialized = true;
     cc->last_update_us = get_timestamp_us();
@@ -486,7 +502,11 @@ collective_cognition_t* collective_cognition_create(
 void collective_cognition_destroy(collective_cognition_t* cc) {
     if (!cc) return;
 
-    /* TODO: Destroy subsystem handles when implemented */
+    /* Destroy subsystem handles */
+    if (cc->hyperscanning) hyperscanning_destroy(cc->hyperscanning);
+    if (cc->extended_mind) extended_mind_destroy(cc->extended_mind);
+    if (cc->phi_system) collective_phi_destroy(cc->phi_system);
+    if (cc->intentionality) shared_intentionality_destroy(cc->intentionality);
 
     /* Disconnect bio-async if connected */
     if (cc->bio_async_connected) {

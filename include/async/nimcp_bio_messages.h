@@ -424,6 +424,18 @@ typedef enum {
     BIO_MSG_TEMPERATURE_INPUT,                    /**< Temperature sensor input */
     BIO_MSG_STATE_QUERY,                          /**< State query request */
 
+    /* Collective Cognition: Portia bridge messages (0x2E10 - 0x2E1F) */
+    BIO_MSG_PORTIA_COLLECTIVE_TIER_CHANGE = 0x2E11,   /**< Portia tier change broadcast */
+    BIO_MSG_PORTIA_COLLECTIVE_STATE_UPDATE,           /**< Portia state update */
+    BIO_MSG_PORTIA_COLLECTIVE_OFFLOAD_REQUEST,        /**< Portia offload request */
+    BIO_MSG_PORTIA_COLLECTIVE_DEGRADATION,            /**< Portia degradation event */
+
+    /* Collective Cognition: Occipital bridge messages (0x2E20 - 0x2E2F) */
+    BIO_MSG_OCCIPITAL_COLLECTIVE_ATTENTION = 0x2E21,  /**< Joint attention target */
+    BIO_MSG_OCCIPITAL_COLLECTIVE_FEATURE,             /**< Shared visual feature */
+    BIO_MSG_OCCIPITAL_COLLECTIVE_STATE_UPDATE,        /**< Occipital state update */
+    BIO_MSG_OCCIPITAL_COLLECTIVE_GAZE_FOLLOW,         /**< Gaze following event */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;

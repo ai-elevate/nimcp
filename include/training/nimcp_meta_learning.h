@@ -648,6 +648,38 @@ const char* meta_algorithm_name(meta_algorithm_t alg);
  */
 int meta_validate_config(const meta_config_t* config);
 
+//=============================================================================
+// Compatibility Aliases
+//=============================================================================
+
+/**
+ * @brief Type alias for meta_ctx_t (for test compatibility)
+ */
+typedef meta_ctx_t meta_learner_t;
+
+/**
+ * @brief Get default meta-learning configuration (returns struct by value)
+ *
+ * This is a convenience wrapper for meta_default_config().
+ *
+ * @return Default configuration
+ */
+static inline meta_config_t meta_learning_default_config(void) {
+    meta_config_t config;
+    meta_default_config(&config);
+    return config;
+}
+
+/**
+ * @brief Create meta-learner (alias for meta_create)
+ */
+#define meta_learning_create meta_create
+
+/**
+ * @brief Destroy meta-learner (alias for meta_destroy)
+ */
+#define meta_learning_destroy meta_destroy
+
 #ifdef __cplusplus
 }
 #endif
