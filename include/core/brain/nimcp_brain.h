@@ -1319,6 +1319,27 @@ typedef struct {
      */
     bool enable_internal_kg;              /**< Enable internal runtime KG (default: true) */
 
+    // === MENTAL HEALTH GUARDIAN (Independent Monitoring Agent) ===
+    /**
+     * Mental Health Guardian - Independent Monitoring Agent
+     *
+     * WHAT: Background agent that monitors brain mental health in real-time
+     * WHY:  Proactively detect and correct mental health abnormalities
+     * HOW:  Background thread runs disorder detection, applies graduated interventions
+     *
+     * INTERVENTION LEVELS:
+     * - OBSERVE: Log only (severity < 0.3)
+     * - ADJUST: Neuromodulator tweaks (0.3-0.6)
+     * - REGULATE: Homeostatic reset, sleep trigger (0.6-0.8)
+     * - QUARANTINE: Safety-critical isolation (> 0.8)
+     *
+     * INTEGRATION:
+     * - Mental Health Module: Uses disorder detection
+     * - Immune System: Reports severe disorders as threats
+     * - Internal KG: Updates module states
+     */
+    bool enable_mental_health_guardian;   /**< Enable mental health guardian (default: true) */
+
     // === DRAGONFLY INTEGRATION (Bio-inspired Target Tracking) ===
     /**
      * Dragonfly-Inspired Target Tracking and Interception

@@ -128,6 +128,13 @@ bool nimcp_brain_factory_init_kg_reader_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_internal_kg_subsystem(brain_t brain);
 void nimcp_brain_factory_destroy_internal_kg_subsystem(brain_t brain);
 
+// === MENTAL HEALTH GUARDIAN (Independent Monitoring Agent) ===
+// Background agent that monitors brain mental health in real-time
+// Detects disorders, applies graduated interventions (OBSERVE → QUARANTINE)
+// Integrates with immune system for threat reporting and internal KG for topology
+bool nimcp_brain_factory_init_mental_health_guardian_subsystem(brain_t brain);
+void nimcp_brain_factory_destroy_mental_health_guardian_subsystem(brain_t brain);
+
 // === FAULT TOLERANCE SUBSYSTEM (Intelligent Recovery) ===
 // Recovery executive with parietal integration for intelligent code repair
 // Uses software engineering analysis, pattern detection, and spatial reasoning

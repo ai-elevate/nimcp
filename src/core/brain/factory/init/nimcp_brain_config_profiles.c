@@ -464,6 +464,9 @@ static void apply_research_profile(brain_config_t* config)
     // Enable internal runtime KG
     config->enable_internal_kg = true;
 
+    // Enable mental health guardian
+    config->enable_mental_health_guardian = true;
+
     // Disable all lazy init for research mode
     config->lazy_init_mode = false;
     config->lazy_dendrite_init = false;
