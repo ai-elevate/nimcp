@@ -25,6 +25,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -579,6 +580,46 @@ int auto_arch_set_task(auto_arch_context_t* ctx, const auto_arch_task_t* task)
 
     NIMCP_LOGGING_INFO("Set task: type=%d, inputs=%u, outputs=%u",
                       (int)ctx->task.type, ctx->task.n_inputs, ctx->task.n_outputs);
+
+    /* Update n_inputs/n_outputs in existing method-specific architectures */
+    /* This is needed because the init functions run before set_task is called */
+    /* Note: method_ctx is a union, so we must check the search method first */
+
+    switch (ctx->config.search_method) {
+        case AUTO_ARCH_EVOLUTIONARY:
+        case AUTO_ARCH_NEUROEVOLUTION:
+            /* Update evolutionary population */
+            if (ctx->method_ctx.evolutionary.population) {
+                const uint32_t pop_size = ctx->config.population_size;
+                for (uint32_t i = 0; i < pop_size; i++) {
+                    auto_arch_architecture_t* arch = ctx->method_ctx.evolutionary.population[i].arch;
+                    if (arch) {
+                        arch->n_inputs = ctx->task.n_inputs;
+                        arch->n_outputs = ctx->task.n_outputs;
+                        if (arch->layers && arch->n_layers > 0) {
+                            arch->layers[0].n_inputs = ctx->task.n_inputs;
+                        }
+                    }
+                }
+            }
+            break;
+
+        case AUTO_ARCH_PRUNING_BASED:
+            /* Update pruning dense_arch */
+            if (ctx->method_ctx.pruning.dense_arch) {
+                ctx->method_ctx.pruning.dense_arch->n_inputs = ctx->task.n_inputs;
+                ctx->method_ctx.pruning.dense_arch->n_outputs = ctx->task.n_outputs;
+                if (ctx->method_ctx.pruning.dense_arch->layers &&
+                    ctx->method_ctx.pruning.dense_arch->n_layers > 0) {
+                    ctx->method_ctx.pruning.dense_arch->layers[0].n_inputs = ctx->task.n_inputs;
+                }
+            }
+            break;
+
+        default:
+            /* RL-NAS, DARTS, RANDOM, etc. don't need architecture updates */
+            break;
+    }
 
     return 0;
 }
@@ -1137,15 +1178,215 @@ auto_arch_architecture_t* auto_arch_import_lnn(const lnn_config_t* lnn_config)
 int auto_arch_save_json(const auto_arch_architecture_t* arch, const char* filepath)
 {
     if (!arch || !filepath) return -1;
-    /* TODO: Implement JSON serialization */
+
+    FILE* fp = fopen(filepath, "w");
+    if (!fp) return -1;
+
+    /* Write header */
+    fprintf(fp, "{\n");
+    fprintf(fp, "  \"magic\": %u,\n", arch->magic);
+    fprintf(fp, "  \"arch_id\": %lu,\n", arch->arch_id);
+    fprintf(fp, "  \"generation\": %u,\n", arch->generation);
+    fprintf(fp, "  \"parent_id\": %lu,\n", arch->parent_id);
+    fprintf(fp, "  \"network_type\": %d,\n", (int)arch->network_type);
+    fprintf(fp, "  \"n_layers\": %u,\n", arch->n_layers);
+    fprintf(fp, "  \"n_inputs\": %u,\n", arch->n_inputs);
+    fprintf(fp, "  \"n_outputs\": %u,\n", arch->n_outputs);
+    fprintf(fp, "  \"n_parameters\": %lu,\n", arch->n_parameters);
+    fprintf(fp, "  \"n_connections\": %lu,\n", arch->n_connections);
+    fprintf(fp, "  \"avg_sparsity\": %f,\n", arch->avg_sparsity);
+
+    /* Write layers array */
+    fprintf(fp, "  \"layers\": [\n");
+    for (uint32_t i = 0; i < arch->n_layers; i++) {
+        const auto_arch_layer_spec_t* layer = &arch->layers[i];
+        fprintf(fp, "    {\n");
+        fprintf(fp, "      \"layer_id\": %u,\n", layer->layer_id);
+        fprintf(fp, "      \"type\": %d,\n", (int)layer->type);
+        fprintf(fp, "      \"n_neurons\": %u,\n", layer->n_neurons);
+        fprintf(fp, "      \"n_inputs\": %u,\n", layer->n_inputs);
+        fprintf(fp, "      \"activation\": %d,\n", (int)layer->activation);
+        fprintf(fp, "      \"connectivity\": %d,\n", (int)layer->connectivity);
+        fprintf(fp, "      \"sparsity\": %f,\n", layer->sparsity);
+        fprintf(fp, "      \"tau_mem\": %f,\n", layer->tau_mem);
+        fprintf(fp, "      \"tau_syn\": %f,\n", layer->tau_syn);
+        fprintf(fp, "      \"tau_base\": %f\n", layer->tau_base);
+        fprintf(fp, "    }%s\n", (i < arch->n_layers - 1) ? "," : "");
+    }
+    fprintf(fp, "  ]\n");
+    fprintf(fp, "}\n");
+
+    fclose(fp);
     return 0;
+}
+
+/* Helper to skip whitespace and get next non-space character */
+static int skip_ws(FILE* fp) {
+    int c;
+    while ((c = fgetc(fp)) != EOF && (c == ' ' || c == '\t' || c == '\n' || c == '\r'));
+    return c;
+}
+
+/* Helper to read a JSON key (returns 1 if successful) */
+static int read_json_key(FILE* fp, char* buf, size_t bufsize) {
+    int c = skip_ws(fp);
+    if (c != '"') return 0;
+    size_t i = 0;
+    while ((c = fgetc(fp)) != EOF && c != '"' && i < bufsize - 1) {
+        buf[i++] = (char)c;
+    }
+    buf[i] = '\0';
+    if (c != '"') return 0;
+    c = skip_ws(fp);
+    return (c == ':') ? 1 : 0;
+}
+
+/* Helper to read a JSON number (int or float) */
+static int read_json_number(FILE* fp, double* value) {
+    int c = skip_ws(fp);
+    char buf[64];
+    size_t i = 0;
+    if (c == '-' || c == '+' || (c >= '0' && c <= '9')) {
+        buf[i++] = (char)c;
+        while ((c = fgetc(fp)) != EOF && i < sizeof(buf) - 1) {
+            if ((c >= '0' && c <= '9') || c == '.' || c == 'e' || c == 'E' || c == '-' || c == '+') {
+                buf[i++] = (char)c;
+            } else {
+                ungetc(c, fp);
+                break;
+            }
+        }
+    } else {
+        ungetc(c, fp);
+        return 0;
+    }
+    buf[i] = '\0';
+    *value = atof(buf);
+    return 1;
 }
 
 auto_arch_architecture_t* auto_arch_load_json(const char* filepath)
 {
     if (!filepath) return NULL;
-    /* TODO: Implement JSON deserialization */
-    return NULL;
+
+    FILE* fp = fopen(filepath, "r");
+    if (!fp) return NULL;
+
+    auto_arch_architecture_t* arch = (auto_arch_architecture_t*)nimcp_calloc(
+        1, sizeof(auto_arch_architecture_t));
+    if (!arch) {
+        fclose(fp);
+        return NULL;
+    }
+
+    char key[64];
+    double value;
+    int c;
+
+    /* Skip opening brace */
+    c = skip_ws(fp);
+    if (c != '{') {
+        nimcp_free(arch);
+        fclose(fp);
+        return NULL;
+    }
+
+    /* Read key-value pairs */
+    while (1) {
+        if (!read_json_key(fp, key, sizeof(key))) break;
+
+        if (strcmp(key, "magic") == 0) {
+            if (read_json_number(fp, &value)) arch->magic = (uint32_t)value;
+        } else if (strcmp(key, "arch_id") == 0) {
+            if (read_json_number(fp, &value)) arch->arch_id = (uint64_t)value;
+        } else if (strcmp(key, "generation") == 0) {
+            if (read_json_number(fp, &value)) arch->generation = (uint32_t)value;
+        } else if (strcmp(key, "parent_id") == 0) {
+            if (read_json_number(fp, &value)) arch->parent_id = (uint64_t)value;
+        } else if (strcmp(key, "network_type") == 0) {
+            if (read_json_number(fp, &value)) arch->network_type = (auto_arch_network_type_t)(int)value;
+        } else if (strcmp(key, "n_layers") == 0) {
+            if (read_json_number(fp, &value)) arch->n_layers = (uint32_t)value;
+        } else if (strcmp(key, "n_inputs") == 0) {
+            if (read_json_number(fp, &value)) arch->n_inputs = (uint32_t)value;
+        } else if (strcmp(key, "n_outputs") == 0) {
+            if (read_json_number(fp, &value)) arch->n_outputs = (uint32_t)value;
+        } else if (strcmp(key, "n_parameters") == 0) {
+            if (read_json_number(fp, &value)) arch->n_parameters = (uint64_t)value;
+        } else if (strcmp(key, "n_connections") == 0) {
+            if (read_json_number(fp, &value)) arch->n_connections = (uint64_t)value;
+        } else if (strcmp(key, "avg_sparsity") == 0) {
+            if (read_json_number(fp, &value)) arch->avg_sparsity = (float)value;
+        } else if (strcmp(key, "layers") == 0) {
+            /* Allocate layers */
+            if (arch->n_layers > 0) {
+                arch->layers = (auto_arch_layer_spec_t*)nimcp_calloc(
+                    arch->n_layers, sizeof(auto_arch_layer_spec_t));
+                if (!arch->layers) {
+                    nimcp_free(arch);
+                    fclose(fp);
+                    return NULL;
+                }
+            }
+
+            /* Skip to array opening bracket */
+            c = skip_ws(fp);
+            if (c != '[') break;
+
+            /* Read each layer */
+            for (uint32_t i = 0; i < arch->n_layers; i++) {
+                c = skip_ws(fp);
+                if (c != '{') break;
+
+                auto_arch_layer_spec_t* layer = &arch->layers[i];
+
+                /* Read layer properties */
+                while (1) {
+                    if (!read_json_key(fp, key, sizeof(key))) break;
+
+                    if (strcmp(key, "layer_id") == 0) {
+                        if (read_json_number(fp, &value)) layer->layer_id = (uint32_t)value;
+                    } else if (strcmp(key, "type") == 0) {
+                        if (read_json_number(fp, &value)) layer->type = (auto_arch_layer_type_t)(int)value;
+                    } else if (strcmp(key, "n_neurons") == 0) {
+                        if (read_json_number(fp, &value)) layer->n_neurons = (uint32_t)value;
+                    } else if (strcmp(key, "n_inputs") == 0) {
+                        if (read_json_number(fp, &value)) layer->n_inputs = (uint32_t)value;
+                    } else if (strcmp(key, "activation") == 0) {
+                        if (read_json_number(fp, &value)) layer->activation = (lnn_activation_t)(int)value;
+                    } else if (strcmp(key, "connectivity") == 0) {
+                        if (read_json_number(fp, &value)) layer->connectivity = (auto_arch_connectivity_t)(int)value;
+                    } else if (strcmp(key, "sparsity") == 0) {
+                        if (read_json_number(fp, &value)) layer->sparsity = (float)value;
+                    } else if (strcmp(key, "tau_mem") == 0) {
+                        if (read_json_number(fp, &value)) layer->tau_mem = (float)value;
+                    } else if (strcmp(key, "tau_syn") == 0) {
+                        if (read_json_number(fp, &value)) layer->tau_syn = (float)value;
+                    } else if (strcmp(key, "tau_base") == 0) {
+                        if (read_json_number(fp, &value)) layer->tau_base = (float)value;
+                    }
+
+                    /* Skip to comma or closing brace */
+                    c = skip_ws(fp);
+                    if (c == '}') break;
+                    if (c != ',') { ungetc(c, fp); break; }
+                }
+
+                /* Skip to comma or closing bracket */
+                c = skip_ws(fp);
+                if (c == ']') break;
+                if (c != ',') ungetc(c, fp);
+            }
+        }
+
+        /* Skip to comma or closing brace */
+        c = skip_ws(fp);
+        if (c == '}') break;
+        if (c != ',') { ungetc(c, fp); break; }
+    }
+
+    fclose(fp);
+    return arch;
 }
 
 //=============================================================================
@@ -1216,15 +1457,248 @@ void auto_arch_result_destroy(auto_arch_result_t* result)
 int auto_arch_result_save(const auto_arch_result_t* result, const char* filepath)
 {
     if (!result || !filepath) return -1;
-    /* TODO: Implement result serialization */
+
+    FILE* fp = fopen(filepath, "w");
+    if (!fp) return -1;
+
+    fprintf(fp, "{\n");
+    fprintf(fp, "  \"status\": %d,\n", (int)result->status);
+    fprintf(fp, "  \"n_evaluated\": %u,\n", result->n_evaluated);
+    fprintf(fp, "  \"n_pareto\": %u,\n", result->n_pareto);
+
+    /* Best fitness */
+    fprintf(fp, "  \"best_fitness\": {\n");
+    fprintf(fp, "    \"accuracy\": %f,\n", result->best_fitness.accuracy);
+    fprintf(fp, "    \"loss\": %f,\n", result->best_fitness.loss);
+    fprintf(fp, "    \"n_operations\": %lu,\n", result->best_fitness.n_operations);
+    fprintf(fp, "    \"energy_per_inference\": %f,\n", result->best_fitness.energy_per_inference);
+    fprintf(fp, "    \"latency_ms\": %f,\n", result->best_fitness.latency_ms);
+    fprintf(fp, "    \"n_parameters\": %lu,\n", result->best_fitness.n_parameters);
+    fprintf(fp, "    \"sparsity\": %f,\n", result->best_fitness.sparsity);
+    fprintf(fp, "    \"total_fitness\": %f\n", result->best_fitness.total_fitness);
+    fprintf(fp, "  },\n");
+
+    /* Stats */
+    fprintf(fp, "  \"stats\": {\n");
+    fprintf(fp, "    \"total_evaluations\": %u,\n", result->stats.total_evaluations);
+    fprintf(fp, "    \"iterations\": %u,\n", result->stats.iterations);
+    fprintf(fp, "    \"elapsed_time_sec\": %f,\n", result->stats.elapsed_time_sec);
+    fprintf(fp, "    \"best_fitness_so_far\": %f,\n", result->stats.best_fitness_so_far);
+    fprintf(fp, "    \"best_at_iteration\": %u,\n", result->stats.best_at_iteration);
+    fprintf(fp, "    \"improvements\": %u,\n", result->stats.improvements);
+    fprintf(fp, "    \"stagnant_iterations\": %u\n", result->stats.stagnant_iterations);
+    fprintf(fp, "  },\n");
+
+    /* Best architecture - save inline */
+    fprintf(fp, "  \"best_arch\": ");
+    if (result->best_arch) {
+        fprintf(fp, "{\n");
+        fprintf(fp, "    \"magic\": %u,\n", result->best_arch->magic);
+        fprintf(fp, "    \"arch_id\": %lu,\n", result->best_arch->arch_id);
+        fprintf(fp, "    \"generation\": %u,\n", result->best_arch->generation);
+        fprintf(fp, "    \"network_type\": %d,\n", (int)result->best_arch->network_type);
+        fprintf(fp, "    \"n_layers\": %u,\n", result->best_arch->n_layers);
+        fprintf(fp, "    \"n_inputs\": %u,\n", result->best_arch->n_inputs);
+        fprintf(fp, "    \"n_outputs\": %u,\n", result->best_arch->n_outputs);
+        fprintf(fp, "    \"n_parameters\": %lu,\n", result->best_arch->n_parameters);
+        fprintf(fp, "    \"avg_sparsity\": %f,\n", result->best_arch->avg_sparsity);
+        fprintf(fp, "    \"layers\": [\n");
+        for (uint32_t i = 0; i < result->best_arch->n_layers; i++) {
+            const auto_arch_layer_spec_t* layer = &result->best_arch->layers[i];
+            fprintf(fp, "      {\n");
+            fprintf(fp, "        \"layer_id\": %u,\n", layer->layer_id);
+            fprintf(fp, "        \"type\": %d,\n", (int)layer->type);
+            fprintf(fp, "        \"n_neurons\": %u,\n", layer->n_neurons);
+            fprintf(fp, "        \"n_inputs\": %u,\n", layer->n_inputs);
+            fprintf(fp, "        \"activation\": %d,\n", (int)layer->activation);
+            fprintf(fp, "        \"connectivity\": %d,\n", (int)layer->connectivity);
+            fprintf(fp, "        \"sparsity\": %f\n", layer->sparsity);
+            fprintf(fp, "      }%s\n", (i < result->best_arch->n_layers - 1) ? "," : "");
+        }
+        fprintf(fp, "    ]\n");
+        fprintf(fp, "  }\n");
+    } else {
+        fprintf(fp, "null\n");
+    }
+    fprintf(fp, "}\n");
+
+    fclose(fp);
     return 0;
 }
 
 auto_arch_result_t* auto_arch_result_load(const char* filepath)
 {
     if (!filepath) return NULL;
-    /* TODO: Implement result deserialization */
-    return NULL;
+
+    FILE* fp = fopen(filepath, "r");
+    if (!fp) return NULL;
+
+    auto_arch_result_t* result = (auto_arch_result_t*)nimcp_calloc(
+        1, sizeof(auto_arch_result_t));
+    if (!result) {
+        fclose(fp);
+        return NULL;
+    }
+
+    char key[64];
+    double value;
+    int c;
+
+    /* Skip opening brace */
+    c = skip_ws(fp);
+    if (c != '{') {
+        nimcp_free(result);
+        fclose(fp);
+        return NULL;
+    }
+
+    /* Read key-value pairs */
+    while (1) {
+        if (!read_json_key(fp, key, sizeof(key))) break;
+
+        if (strcmp(key, "status") == 0) {
+            if (read_json_number(fp, &value)) result->status = (auto_arch_status_t)(int)value;
+        } else if (strcmp(key, "n_evaluated") == 0) {
+            if (read_json_number(fp, &value)) result->n_evaluated = (uint32_t)value;
+        } else if (strcmp(key, "n_pareto") == 0) {
+            if (read_json_number(fp, &value)) result->n_pareto = (uint32_t)value;
+        } else if (strcmp(key, "best_fitness") == 0) {
+            c = skip_ws(fp);
+            if (c == '{') {
+                while (1) {
+                    if (!read_json_key(fp, key, sizeof(key))) break;
+                    if (strcmp(key, "accuracy") == 0) {
+                        if (read_json_number(fp, &value)) result->best_fitness.accuracy = (float)value;
+                    } else if (strcmp(key, "loss") == 0) {
+                        if (read_json_number(fp, &value)) result->best_fitness.loss = (float)value;
+                    } else if (strcmp(key, "n_operations") == 0) {
+                        if (read_json_number(fp, &value)) result->best_fitness.n_operations = (uint64_t)value;
+                    } else if (strcmp(key, "energy_per_inference") == 0) {
+                        if (read_json_number(fp, &value)) result->best_fitness.energy_per_inference = (float)value;
+                    } else if (strcmp(key, "latency_ms") == 0) {
+                        if (read_json_number(fp, &value)) result->best_fitness.latency_ms = (float)value;
+                    } else if (strcmp(key, "n_parameters") == 0) {
+                        if (read_json_number(fp, &value)) result->best_fitness.n_parameters = (uint64_t)value;
+                    } else if (strcmp(key, "sparsity") == 0) {
+                        if (read_json_number(fp, &value)) result->best_fitness.sparsity = (float)value;
+                    } else if (strcmp(key, "total_fitness") == 0) {
+                        if (read_json_number(fp, &value)) result->best_fitness.total_fitness = (float)value;
+                    }
+                    c = skip_ws(fp);
+                    if (c == '}') break;
+                    if (c != ',') { ungetc(c, fp); break; }
+                }
+            }
+        } else if (strcmp(key, "stats") == 0) {
+            c = skip_ws(fp);
+            if (c == '{') {
+                while (1) {
+                    if (!read_json_key(fp, key, sizeof(key))) break;
+                    if (strcmp(key, "total_evaluations") == 0) {
+                        if (read_json_number(fp, &value)) result->stats.total_evaluations = (uint32_t)value;
+                    } else if (strcmp(key, "iterations") == 0) {
+                        if (read_json_number(fp, &value)) result->stats.iterations = (uint32_t)value;
+                    } else if (strcmp(key, "elapsed_time_sec") == 0) {
+                        if (read_json_number(fp, &value)) result->stats.elapsed_time_sec = (float)value;
+                    } else if (strcmp(key, "best_fitness_so_far") == 0) {
+                        if (read_json_number(fp, &value)) result->stats.best_fitness_so_far = (float)value;
+                    } else if (strcmp(key, "best_at_iteration") == 0) {
+                        if (read_json_number(fp, &value)) result->stats.best_at_iteration = (uint32_t)value;
+                    } else if (strcmp(key, "improvements") == 0) {
+                        if (read_json_number(fp, &value)) result->stats.improvements = (uint32_t)value;
+                    } else if (strcmp(key, "stagnant_iterations") == 0) {
+                        if (read_json_number(fp, &value)) result->stats.stagnant_iterations = (uint32_t)value;
+                    }
+                    c = skip_ws(fp);
+                    if (c == '}') break;
+                    if (c != ',') { ungetc(c, fp); break; }
+                }
+            }
+        } else if (strcmp(key, "best_arch") == 0) {
+            c = skip_ws(fp);
+            if (c == '{') {
+                /* Parse embedded architecture */
+                auto_arch_architecture_t* arch = (auto_arch_architecture_t*)nimcp_calloc(
+                    1, sizeof(auto_arch_architecture_t));
+                if (arch) {
+                    while (1) {
+                        if (!read_json_key(fp, key, sizeof(key))) break;
+                        if (strcmp(key, "magic") == 0) {
+                            if (read_json_number(fp, &value)) arch->magic = (uint32_t)value;
+                        } else if (strcmp(key, "arch_id") == 0) {
+                            if (read_json_number(fp, &value)) arch->arch_id = (uint64_t)value;
+                        } else if (strcmp(key, "generation") == 0) {
+                            if (read_json_number(fp, &value)) arch->generation = (uint32_t)value;
+                        } else if (strcmp(key, "network_type") == 0) {
+                            if (read_json_number(fp, &value)) arch->network_type = (auto_arch_network_type_t)(int)value;
+                        } else if (strcmp(key, "n_layers") == 0) {
+                            if (read_json_number(fp, &value)) arch->n_layers = (uint32_t)value;
+                        } else if (strcmp(key, "n_inputs") == 0) {
+                            if (read_json_number(fp, &value)) arch->n_inputs = (uint32_t)value;
+                        } else if (strcmp(key, "n_outputs") == 0) {
+                            if (read_json_number(fp, &value)) arch->n_outputs = (uint32_t)value;
+                        } else if (strcmp(key, "n_parameters") == 0) {
+                            if (read_json_number(fp, &value)) arch->n_parameters = (uint64_t)value;
+                        } else if (strcmp(key, "avg_sparsity") == 0) {
+                            if (read_json_number(fp, &value)) arch->avg_sparsity = (float)value;
+                        } else if (strcmp(key, "layers") == 0) {
+                            /* Allocate and parse layers */
+                            if (arch->n_layers > 0) {
+                                arch->layers = (auto_arch_layer_spec_t*)nimcp_calloc(
+                                    arch->n_layers, sizeof(auto_arch_layer_spec_t));
+                            }
+                            c = skip_ws(fp);
+                            if (c == '[' && arch->layers) {
+                                for (uint32_t i = 0; i < arch->n_layers; i++) {
+                                    c = skip_ws(fp);
+                                    if (c != '{') break;
+                                    auto_arch_layer_spec_t* layer = &arch->layers[i];
+                                    while (1) {
+                                        if (!read_json_key(fp, key, sizeof(key))) break;
+                                        if (strcmp(key, "layer_id") == 0) {
+                                            if (read_json_number(fp, &value)) layer->layer_id = (uint32_t)value;
+                                        } else if (strcmp(key, "type") == 0) {
+                                            if (read_json_number(fp, &value)) layer->type = (auto_arch_layer_type_t)(int)value;
+                                        } else if (strcmp(key, "n_neurons") == 0) {
+                                            if (read_json_number(fp, &value)) layer->n_neurons = (uint32_t)value;
+                                        } else if (strcmp(key, "n_inputs") == 0) {
+                                            if (read_json_number(fp, &value)) layer->n_inputs = (uint32_t)value;
+                                        } else if (strcmp(key, "activation") == 0) {
+                                            if (read_json_number(fp, &value)) layer->activation = (lnn_activation_t)(int)value;
+                                        } else if (strcmp(key, "connectivity") == 0) {
+                                            if (read_json_number(fp, &value)) layer->connectivity = (auto_arch_connectivity_t)(int)value;
+                                        } else if (strcmp(key, "sparsity") == 0) {
+                                            if (read_json_number(fp, &value)) layer->sparsity = (float)value;
+                                        }
+                                        c = skip_ws(fp);
+                                        if (c == '}') break;
+                                        if (c != ',') { ungetc(c, fp); break; }
+                                    }
+                                    c = skip_ws(fp);
+                                    if (c == ']') break;
+                                    if (c != ',') ungetc(c, fp);
+                                }
+                            }
+                        }
+                        c = skip_ws(fp);
+                        if (c == '}') break;
+                        if (c != ',') { ungetc(c, fp); break; }
+                    }
+                    result->best_arch = arch;
+                }
+            } else if (c == 'n') {
+                /* null */
+                fgetc(fp); fgetc(fp); fgetc(fp); /* skip "ull" */
+            }
+        }
+
+        c = skip_ws(fp);
+        if (c == '}') break;
+        if (c != ',') { ungetc(c, fp); break; }
+    }
+
+    fclose(fp);
+    return result;
 }
 
 //=============================================================================
@@ -1491,25 +1965,35 @@ static auto_arch_architecture_t* evolutionary_step(auto_arch_context_t* ctx,
 
     /* Tournament selection - select 2 parents */
     uint32_t tournament_size = (pop_size > 4) ? 4 : 2;
-    uint32_t parent1_idx = 0, parent2_idx = 1;
+    int parent1_idx = -1, parent2_idx = -1;
     float best_fitness1 = -1e30f, best_fitness2 = -1e30f;
 
     for (uint32_t t = 0; t < tournament_size; t++) {
         uint32_t idx = xorshift64(&ctx->rng_state) % pop_size;
-        if (pop[idx].evaluated && pop[idx].fitness.total_fitness > best_fitness1) {
+        if (pop[idx].arch && pop[idx].evaluated && pop[idx].fitness.total_fitness > best_fitness1) {
             best_fitness2 = best_fitness1;
             parent2_idx = parent1_idx;
             best_fitness1 = pop[idx].fitness.total_fitness;
-            parent1_idx = idx;
-        } else if (pop[idx].evaluated && pop[idx].fitness.total_fitness > best_fitness2) {
+            parent1_idx = (int)idx;
+        } else if (pop[idx].arch && pop[idx].evaluated && pop[idx].fitness.total_fitness > best_fitness2) {
             best_fitness2 = pop[idx].fitness.total_fitness;
-            parent2_idx = idx;
+            parent2_idx = (int)idx;
         }
+    }
+
+    /* If no evaluated parents found, return random architecture */
+    if (parent1_idx < 0) {
+        return auto_arch_random_architecture(ctx);
     }
 
     /* Crossover - uniform crossover of layer specifications */
     auto_arch_architecture_t* child = auto_arch_clone(pop[parent1_idx].arch);
     if (!child) return auto_arch_random_architecture(ctx);
+
+    /* If no second parent, just return mutated first parent */
+    if (parent2_idx < 0 || !pop[parent2_idx].arch) {
+        return child;
+    }
 
     auto_arch_architecture_t* parent2 = pop[parent2_idx].arch;
     uint32_t min_layers = (child->n_layers < parent2->n_layers) ? child->n_layers : parent2->n_layers;

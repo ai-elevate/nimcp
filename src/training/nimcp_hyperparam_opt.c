@@ -1037,17 +1037,23 @@ void hpo_free_params(hpo_params_t* params) {
         return;
     }
 
+    /* Free internal arrays only - params itself may be stack-allocated */
     if (params->param_names) {
         nimcp_free((void*)params->param_names);
+        params->param_names = NULL;
     }
     if (params->param_values) {
         nimcp_free(params->param_values);
+        params->param_values = NULL;
     }
     if (params->param_choices) {
         nimcp_free((void*)params->param_choices);
+        params->param_choices = NULL;
     }
+    params->num_params = 0;
 
-    nimcp_free(params);
+    /* NOTE: Do not free params itself - it may be stack-allocated.
+     * Use hpo_destroy_params() to free a heap-allocated hpo_params_t */
 }
 
 void hpo_free_trial_result(hpo_trial_result_t* result) {
