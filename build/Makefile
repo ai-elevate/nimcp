@@ -14186,6 +14186,19 @@ test_autobiographical_fep_bridge_integration/fast:
 .PHONY : test_autobiographical_fep_bridge_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_substrate_bridges
+
+# Build rule for target.
+integration_cognitive_substrate_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_substrate_bridges
+.PHONY : integration_cognitive_substrate_bridges
+
+# fast build rule for target.
+integration_cognitive_substrate_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/substrate/CMakeFiles/integration_cognitive_substrate_bridges.dir/build.make test/integration/cognitive/substrate/CMakeFiles/integration_cognitive_substrate_bridges.dir/build
+.PHONY : integration_cognitive_substrate_bridges/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_gt_global_workspace
 
 # Build rule for target.
@@ -20697,6 +20710,7 @@ help:
 	@echo "... integration_cognitive_salience_test_salience_fep_bridge_integration"
 	@echo "... integration_cognitive_sleep_bridge"
 	@echo "... integration_cognitive_sleep_test_cognitive_sleep_integration"
+	@echo "... integration_cognitive_substrate_bridges"
 	@echo "... integration_cognitive_wellbeing_enhanced"
 	@echo "... integration_cognitive_working_memory_pe"
 	@echo "... integration_collective_cognition_cognitive"

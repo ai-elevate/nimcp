@@ -2105,6 +2105,7 @@
 /home/bbrelin/nimcp/build/test/integration/cognitive/autobiographical_memory/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/autobiographical_memory/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/autobiographical_memory/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/substrate/CMakeFiles/integration_cognitive_substrate_bridges.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/substrate/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/substrate/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/substrate/CMakeFiles/rebuild_cache.dir

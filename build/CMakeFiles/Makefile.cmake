@@ -1627,6 +1627,7 @@ set(CMAKE_DEPEND_INFO_FILES
   "test/integration/cognitive/CMakeFiles/integration_cognitive_curiosity_enhanced.dir/DependInfo.cmake"
   "test/integration/cognitive/free_energy/CMakeFiles/integration_fep_enhanced.dir/DependInfo.cmake"
   "test/integration/cognitive/autobiographical_memory/CMakeFiles/test_autobiographical_fep_bridge_integration.dir/DependInfo.cmake"
+  "test/integration/cognitive/substrate/CMakeFiles/integration_cognitive_substrate_bridges.dir/DependInfo.cmake"
   "test/integration/cognitive/game_theory/CMakeFiles/integration_cognitive_gt_global_workspace.dir/DependInfo.cmake"
   "test/integration/cognitive/game_theory/CMakeFiles/integration_cognitive_gt_hemispheric.dir/DependInfo.cmake"
   "test/integration/cognitive/parietal/CMakeFiles/integration_cognitive_parietal.dir/DependInfo.cmake"

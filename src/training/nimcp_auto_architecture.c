@@ -23,6 +23,7 @@
 #include "training/nimcp_auto_architecture.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -770,8 +771,142 @@ int auto_arch_evaluate(
 auto_arch_architecture_t* auto_arch_random_architecture(auto_arch_context_t* ctx)
 {
     if (!ctx) return NULL;
-    /* TODO: Implement random architecture generation */
-    return NULL;
+
+    /* Allocate architecture structure */
+    auto_arch_architecture_t* arch = (auto_arch_architecture_t*)nimcp_calloc(
+        1, sizeof(auto_arch_architecture_t));
+    if (!arch) return NULL;
+
+    /* Set identity */
+    arch->arch_id = ctx->next_arch_id++;
+    arch->generation = 0;
+    arch->parent_id = 0;
+    arch->magic = AUTO_ARCH_MAGIC;
+
+    /* Get task parameters */
+    arch->n_inputs = ctx->task.n_inputs;
+    arch->n_outputs = ctx->task.n_outputs;
+
+    /* Random number of layers within constraints */
+    uint32_t min_layers = ctx->config.constraints.min_layers;
+    uint32_t max_layers = ctx->config.constraints.max_layers;
+    if (min_layers == 0) min_layers = 1;
+    if (max_layers == 0) max_layers = 5;
+    if (max_layers > AUTO_ARCH_MAX_LAYERS) max_layers = AUTO_ARCH_MAX_LAYERS;
+
+    uint32_t range = max_layers - min_layers + 1;
+    arch->n_layers = min_layers + (uint32_t)(randf(&ctx->rng_state) * range);
+    if (arch->n_layers > max_layers) arch->n_layers = max_layers;
+
+    /* Allocate layers */
+    arch->layers = (auto_arch_layer_spec_t*)nimcp_calloc(
+        arch->n_layers, sizeof(auto_arch_layer_spec_t));
+    if (!arch->layers) {
+        nimcp_free(arch);
+        return NULL;
+    }
+
+    /* Get neuron count constraints */
+    uint32_t min_neurons = ctx->config.constraints.min_neurons_per_layer;
+    uint32_t max_neurons = ctx->config.constraints.max_neurons_per_layer;
+    if (min_neurons == 0) min_neurons = 8;
+    if (max_neurons == 0) max_neurons = 128;
+
+    uint64_t total_params = 0;
+    uint64_t total_connections = 0;
+    float total_sparsity = 0.0f;
+
+    /* Generate random layers */
+    for (uint32_t i = 0; i < arch->n_layers; i++) {
+        auto_arch_layer_spec_t* layer = &arch->layers[i];
+
+        layer->layer_id = i;
+
+        /* Random layer type - prefer simpler types for now */
+        float type_rand = randf(&ctx->rng_state);
+        if (type_rand < 0.4f) {
+            layer->type = AUTO_ARCH_LAYER_DENSE;
+        } else if (type_rand < 0.7f) {
+            layer->type = AUTO_ARCH_LAYER_SNN_LIF;
+        } else if (type_rand < 0.9f) {
+            layer->type = AUTO_ARCH_LAYER_LNN_LTC;
+        } else {
+            layer->type = AUTO_ARCH_LAYER_RECURRENT;
+        }
+
+        snprintf(layer->name, sizeof(layer->name), "layer_%u", i);
+
+        /* Random neuron count */
+        uint32_t neuron_range = max_neurons - min_neurons + 1;
+        layer->n_neurons = min_neurons + (uint32_t)(randf(&ctx->rng_state) * neuron_range);
+        if (layer->n_neurons > max_neurons) layer->n_neurons = max_neurons;
+
+        /* Input size from previous layer or network input */
+        layer->n_inputs = (i == 0) ? arch->n_inputs : arch->layers[i-1].n_neurons;
+
+        /* Random connectivity pattern */
+        float conn_rand = randf(&ctx->rng_state);
+        if (conn_rand < 0.5f) {
+            layer->connectivity = AUTO_ARCH_CONN_DENSE;
+            layer->sparsity = 0.0f;
+        } else if (conn_rand < 0.8f) {
+            layer->connectivity = AUTO_ARCH_CONN_SPARSE_RANDOM;
+            layer->sparsity = 0.3f + randf(&ctx->rng_state) * 0.5f;
+        } else {
+            layer->connectivity = AUTO_ARCH_CONN_SMALL_WORLD;
+            layer->sparsity = 0.2f + randf(&ctx->rng_state) * 0.3f;
+        }
+
+        /* SNN parameters */
+        layer->neuron_type = NEURON_GENERIC_LIF;
+        layer->tau_mem = 10.0f + randf(&ctx->rng_state) * 20.0f;
+        layer->tau_syn = 5.0f + randf(&ctx->rng_state) * 10.0f;
+        layer->v_thresh = -50.0f + randf(&ctx->rng_state) * 10.0f;
+        layer->v_reset = -70.0f + randf(&ctx->rng_state) * 5.0f;
+        layer->refractory_period = 1.0f + randf(&ctx->rng_state) * 3.0f;
+
+        /* LNN parameters */
+        layer->activation = LNN_ACTIVATION_TANH;
+        layer->tau_base = 50.0f + randf(&ctx->rng_state) * 100.0f;
+        layer->tau_min = 10.0f;
+        layer->tau_max = 200.0f;
+        layer->learn_tau = (randf(&ctx->rng_state) > 0.5f);
+        layer->ode_method = LNN_ODE_EULER;
+
+        /* Regularization */
+        layer->dropout_rate = randf(&ctx->rng_state) * 0.3f;
+        layer->weight_decay = 0.0001f + randf(&ctx->rng_state) * 0.001f;
+
+        /* Skip connections for deeper networks */
+        layer->has_skip = (i >= 2 && randf(&ctx->rng_state) > 0.7f);
+        if (layer->has_skip) {
+            layer->skip_source_layer = (uint32_t)(randf(&ctx->rng_state) * (i - 1));
+        }
+
+        /* Compute layer parameters */
+        uint64_t layer_params = (uint64_t)layer->n_inputs * layer->n_neurons;
+        layer_params += layer->n_neurons; /* bias */
+        float effective_density = 1.0f - layer->sparsity;
+        total_params += (uint64_t)(layer_params * effective_density);
+        total_connections += (uint64_t)(layer->n_inputs * layer->n_neurons * effective_density);
+        total_sparsity += layer->sparsity;
+    }
+
+    /* Set global parameters */
+    arch->network_type = AUTO_ARCH_TYPE_HYBRID_ALL;
+    arch->dt = 1.0f;
+    arch->learning_rate = 0.001f + randf(&ctx->rng_state) * 0.01f;
+    arch->optimizer = NIMCP_OPTIMIZER_ADAM;
+    arch->input_encoding = SNN_ENCODE_RATE;
+    arch->output_decoding = SNN_DECODE_RATE;
+    arch->encoding_time = 50.0f + randf(&ctx->rng_state) * 100.0f;
+
+    /* Set computed properties */
+    arch->n_parameters = total_params;
+    arch->n_connections = total_connections;
+    arch->avg_sparsity = (arch->n_layers > 0) ? total_sparsity / arch->n_layers : 0.0f;
+
+    return arch;
 }
 
 int auto_arch_mutate(auto_arch_architecture_t* arch, float mutation_rate, auto_arch_context_t* ctx)
@@ -787,15 +922,168 @@ auto_arch_architecture_t* auto_arch_crossover(
     auto_arch_context_t* ctx)
 {
     if (!parent1 || !parent2 || !ctx) return NULL;
-    /* TODO: Implement crossover */
-    return NULL;
+    if (!parent1->layers || !parent2->layers) return NULL;
+    if (parent1->n_layers == 0 || parent2->n_layers == 0) return NULL;
+
+    /* Allocate child architecture */
+    auto_arch_architecture_t* child = (auto_arch_architecture_t*)nimcp_calloc(
+        1, sizeof(auto_arch_architecture_t));
+    if (!child) return NULL;
+
+    /* Set identity */
+    child->arch_id = ctx->next_arch_id++;
+    child->generation = (parent1->generation > parent2->generation ?
+                         parent1->generation : parent2->generation) + 1;
+    child->parent_id = parent1->arch_id;
+    child->magic = AUTO_ARCH_MAGIC;
+
+    /* Inherit I/O dimensions from task */
+    child->n_inputs = ctx->task.n_inputs;
+    child->n_outputs = ctx->task.n_outputs;
+
+    /* Crossover strategy: random layer selection from each parent */
+    /* Use layer count from the parent with fewer layers to keep child manageable */
+    uint32_t min_layers = (parent1->n_layers < parent2->n_layers) ?
+                          parent1->n_layers : parent2->n_layers;
+    uint32_t max_layers = (parent1->n_layers > parent2->n_layers) ?
+                          parent1->n_layers : parent2->n_layers;
+
+    /* Child has random number of layers between the two parents */
+    child->n_layers = min_layers + (uint32_t)(randf(&ctx->rng_state) * (max_layers - min_layers + 1));
+    if (child->n_layers < 1) child->n_layers = 1;
+    if (child->n_layers > AUTO_ARCH_MAX_LAYERS) child->n_layers = AUTO_ARCH_MAX_LAYERS;
+
+    /* Allocate layers */
+    child->layers = (auto_arch_layer_spec_t*)nimcp_calloc(
+        child->n_layers, sizeof(auto_arch_layer_spec_t));
+    if (!child->layers) {
+        nimcp_free(child);
+        return NULL;
+    }
+
+    /* Copy layers from parents randomly */
+    uint64_t total_params = 0;
+    uint64_t total_connections = 0;
+    float total_sparsity = 0.0f;
+
+    for (uint32_t i = 0; i < child->n_layers; i++) {
+        /* Choose which parent to copy from */
+        const auto_arch_architecture_t* source_parent;
+        uint32_t source_idx;
+
+        if (randf(&ctx->rng_state) < 0.5f && i < parent1->n_layers) {
+            source_parent = parent1;
+            source_idx = i % parent1->n_layers;
+        } else if (i < parent2->n_layers) {
+            source_parent = parent2;
+            source_idx = i % parent2->n_layers;
+        } else {
+            source_parent = parent1;
+            source_idx = i % parent1->n_layers;
+        }
+
+        /* Copy layer from source parent */
+        child->layers[i] = source_parent->layers[source_idx];
+        child->layers[i].layer_id = i;
+
+        /* Update input size to be consistent with previous layer */
+        if (i == 0) {
+            child->layers[i].n_inputs = child->n_inputs;
+        } else {
+            child->layers[i].n_inputs = child->layers[i-1].n_neurons;
+        }
+
+        /* Deep copy input_layers if present */
+        if (source_parent->layers[source_idx].input_layers &&
+            source_parent->layers[source_idx].n_input_layers > 0) {
+            child->layers[i].input_layers = (uint32_t*)nimcp_malloc(
+                source_parent->layers[source_idx].n_input_layers * sizeof(uint32_t));
+            if (child->layers[i].input_layers) {
+                memcpy(child->layers[i].input_layers,
+                       source_parent->layers[source_idx].input_layers,
+                       source_parent->layers[source_idx].n_input_layers * sizeof(uint32_t));
+            }
+        } else {
+            child->layers[i].input_layers = NULL;
+            child->layers[i].n_input_layers = 0;
+        }
+
+        /* Accumulate stats */
+        uint64_t layer_params = (uint64_t)child->layers[i].n_inputs * child->layers[i].n_neurons;
+        layer_params += child->layers[i].n_neurons;
+        float effective_density = 1.0f - child->layers[i].sparsity;
+        total_params += (uint64_t)(layer_params * effective_density);
+        total_connections += (uint64_t)(child->layers[i].n_inputs * child->layers[i].n_neurons * effective_density);
+        total_sparsity += child->layers[i].sparsity;
+    }
+
+    /* Inherit global parameters from random parent with slight variation */
+    if (randf(&ctx->rng_state) < 0.5f) {
+        child->network_type = parent1->network_type;
+        child->dt = parent1->dt;
+        child->learning_rate = parent1->learning_rate;
+        child->optimizer = parent1->optimizer;
+        child->input_encoding = parent1->input_encoding;
+        child->output_decoding = parent1->output_decoding;
+        child->encoding_time = parent1->encoding_time;
+    } else {
+        child->network_type = parent2->network_type;
+        child->dt = parent2->dt;
+        child->learning_rate = parent2->learning_rate;
+        child->optimizer = parent2->optimizer;
+        child->input_encoding = parent2->input_encoding;
+        child->output_decoding = parent2->output_decoding;
+        child->encoding_time = parent2->encoding_time;
+    }
+
+    /* Set computed properties */
+    child->n_parameters = total_params;
+    child->n_connections = total_connections;
+    child->avg_sparsity = (child->n_layers > 0) ? total_sparsity / child->n_layers : 0.0f;
+
+    return child;
 }
 
 auto_arch_architecture_t* auto_arch_clone(const auto_arch_architecture_t* arch)
 {
     if (!arch) return NULL;
-    /* TODO: Implement deep copy */
-    return NULL;
+
+    /* Allocate new architecture */
+    auto_arch_architecture_t* clone = (auto_arch_architecture_t*)nimcp_calloc(
+        1, sizeof(auto_arch_architecture_t));
+    if (!clone) return NULL;
+
+    /* Copy basic fields */
+    *clone = *arch;
+
+    /* Deep copy layers array */
+    if (arch->n_layers > 0 && arch->layers) {
+        clone->layers = (auto_arch_layer_spec_t*)nimcp_calloc(
+            arch->n_layers, sizeof(auto_arch_layer_spec_t));
+        if (!clone->layers) {
+            nimcp_free(clone);
+            return NULL;
+        }
+
+        /* Copy each layer */
+        for (uint32_t i = 0; i < arch->n_layers; i++) {
+            clone->layers[i] = arch->layers[i];
+
+            /* Deep copy input_layers array if present */
+            if (arch->layers[i].input_layers && arch->layers[i].n_input_layers > 0) {
+                clone->layers[i].input_layers = (uint32_t*)nimcp_malloc(
+                    arch->layers[i].n_input_layers * sizeof(uint32_t));
+                if (clone->layers[i].input_layers) {
+                    memcpy(clone->layers[i].input_layers, arch->layers[i].input_layers,
+                           arch->layers[i].n_input_layers * sizeof(uint32_t));
+                }
+            }
+        }
+    } else {
+        clone->layers = NULL;
+    }
+
+    return clone;
 }
 
 void auto_arch_architecture_destroy(auto_arch_architecture_t* arch)

@@ -1376,6 +1376,250 @@ bool nimcp_gpu_reshape(nimcp_gpu_tensor_t* tensor, const size_t* new_dims, uint3
     return true;
 }
 
+//=============================================================================
+// CPU-GPU Tensor Integration Functions
+//=============================================================================
+
+nimcp_gpu_precision_t nimcp_dtype_to_gpu_precision(nimcp_dtype_t dtype)
+{
+    switch (dtype) {
+        case NIMCP_DTYPE_F32: return NIMCP_GPU_PRECISION_FP32;
+        case NIMCP_DTYPE_F64: return NIMCP_GPU_PRECISION_FP32;  // Downcast to FP32
+        case NIMCP_DTYPE_F16: return NIMCP_GPU_PRECISION_FP16;
+        case NIMCP_DTYPE_BF16: return NIMCP_GPU_PRECISION_BF16;
+        case NIMCP_DTYPE_I8: return NIMCP_GPU_PRECISION_INT8;
+        case NIMCP_DTYPE_I32:
+        case NIMCP_DTYPE_I64:
+        case NIMCP_DTYPE_U8:
+        case NIMCP_DTYPE_BOOL:
+        default: return NIMCP_GPU_PRECISION_FP32;
+    }
+}
+
+nimcp_dtype_t nimcp_gpu_precision_to_dtype(nimcp_gpu_precision_t precision)
+{
+    switch (precision) {
+        case NIMCP_GPU_PRECISION_FP32: return NIMCP_DTYPE_F32;
+        case NIMCP_GPU_PRECISION_FP16: return NIMCP_DTYPE_F16;
+        case NIMCP_GPU_PRECISION_BF16: return NIMCP_DTYPE_BF16;
+        case NIMCP_GPU_PRECISION_INT8: return NIMCP_DTYPE_I8;
+        case NIMCP_GPU_PRECISION_TF32: return NIMCP_DTYPE_F32;
+        default: return NIMCP_DTYPE_F32;
+    }
+}
+
+nimcp_gpu_tensor_t* nimcp_gpu_tensor_from_cpu(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_tensor_t* cpu_tensor)
+{
+    if (!ctx || !cpu_tensor) {
+        LOG_ERROR("Invalid parameters for CPU->GPU tensor conversion");
+        return NULL;
+    }
+
+    // Get CPU tensor properties
+    const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_tensor);
+    if (!shape) {
+        LOG_ERROR("Failed to get CPU tensor shape");
+        return NULL;
+    }
+
+    nimcp_dtype_t dtype = nimcp_tensor_dtype(cpu_tensor);
+    nimcp_gpu_precision_t precision = nimcp_dtype_to_gpu_precision(dtype);
+
+    // Convert dims from uint32_t to size_t
+    size_t dims[NIMCP_TENSOR_MAX_RANK];
+    for (uint32_t i = 0; i < shape->rank; i++) {
+        dims[i] = (size_t)shape->dims[i];
+    }
+
+    // Create GPU tensor
+    nimcp_gpu_tensor_t* gpu_tensor = nimcp_gpu_tensor_create(ctx, dims, shape->rank, precision);
+    if (!gpu_tensor) {
+        LOG_ERROR("Failed to create GPU tensor");
+        return NULL;
+    }
+
+    // Copy data to GPU
+    const void* cpu_data = nimcp_tensor_data_const(cpu_tensor);
+    size_t data_size = shape->numel * nimcp_dtype_size(dtype);
+
+    cudaError_t err = cudaMemcpy(gpu_tensor->data, cpu_data, data_size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {
+        LOG_ERROR("Failed to copy data to GPU: %s", cudaGetErrorString(err));
+        nimcp_gpu_tensor_destroy(gpu_tensor);
+        return NULL;
+    }
+
+    LOG_DEBUG("Converted CPU tensor to GPU: numel=%zu, dtype=%d->precision=%d",
+              shape->numel, dtype, precision);
+
+    return gpu_tensor;
+}
+
+nimcp_tensor_t* nimcp_cpu_tensor_from_gpu(const nimcp_gpu_tensor_t* gpu_tensor)
+{
+    if (!gpu_tensor) {
+        LOG_ERROR("Invalid GPU tensor for GPU->CPU conversion");
+        return NULL;
+    }
+
+    // Convert precision to dtype
+    nimcp_dtype_t dtype = nimcp_gpu_precision_to_dtype(gpu_tensor->precision);
+
+    // Convert dims from size_t to uint32_t
+    uint32_t dims[NIMCP_TENSOR_MAX_RANK];
+    for (uint32_t i = 0; i < gpu_tensor->ndim; i++) {
+        dims[i] = (uint32_t)gpu_tensor->dims[i];
+    }
+
+    // Create CPU tensor
+    nimcp_tensor_t* cpu_tensor = nimcp_tensor_create(dims, gpu_tensor->ndim, dtype);
+    if (!cpu_tensor) {
+        LOG_ERROR("Failed to create CPU tensor");
+        return NULL;
+    }
+
+    // Copy data from GPU
+    void* cpu_data = nimcp_tensor_data(cpu_tensor);
+    size_t data_size = gpu_tensor->numel * gpu_tensor->elem_size;
+
+    cudaError_t err = cudaMemcpy(cpu_data, gpu_tensor->data, data_size, cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) {
+        LOG_ERROR("Failed to copy data from GPU: %s", cudaGetErrorString(err));
+        nimcp_tensor_destroy(cpu_tensor);
+        return NULL;
+    }
+
+    LOG_DEBUG("Converted GPU tensor to CPU: numel=%zu, precision=%d->dtype=%d",
+              gpu_tensor->numel, gpu_tensor->precision, dtype);
+
+    return cpu_tensor;
+}
+
+bool nimcp_gpu_tensor_copy_to_cpu(
+    const nimcp_gpu_tensor_t* gpu_tensor,
+    nimcp_tensor_t* cpu_tensor)
+{
+    if (!gpu_tensor || !cpu_tensor) {
+        LOG_ERROR("Invalid tensors for GPU->CPU copy");
+        return false;
+    }
+
+    // Verify compatible sizes
+    size_t cpu_numel = nimcp_tensor_numel(cpu_tensor);
+    if (cpu_numel != gpu_tensor->numel) {
+        LOG_ERROR("Tensor size mismatch: GPU=%zu, CPU=%zu", gpu_tensor->numel, cpu_numel);
+        return false;
+    }
+
+    void* cpu_data = nimcp_tensor_data(cpu_tensor);
+    size_t data_size = gpu_tensor->numel * gpu_tensor->elem_size;
+
+    cudaError_t err = cudaMemcpy(cpu_data, gpu_tensor->data, data_size, cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) {
+        LOG_ERROR("Failed to copy data from GPU: %s", cudaGetErrorString(err));
+        return false;
+    }
+
+    return true;
+}
+
+bool nimcp_cpu_tensor_copy_to_gpu(
+    const nimcp_tensor_t* cpu_tensor,
+    nimcp_gpu_tensor_t* gpu_tensor)
+{
+    if (!cpu_tensor || !gpu_tensor) {
+        LOG_ERROR("Invalid tensors for CPU->GPU copy");
+        return false;
+    }
+
+    // Verify compatible sizes
+    size_t cpu_numel = nimcp_tensor_numel(cpu_tensor);
+    if (cpu_numel != gpu_tensor->numel) {
+        LOG_ERROR("Tensor size mismatch: CPU=%zu, GPU=%zu", cpu_numel, gpu_tensor->numel);
+        return false;
+    }
+
+    const void* cpu_data = nimcp_tensor_data_const(cpu_tensor);
+    size_t data_size = gpu_tensor->numel * gpu_tensor->elem_size;
+
+    cudaError_t err = cudaMemcpy(gpu_tensor->data, cpu_data, data_size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {
+        LOG_ERROR("Failed to copy data to GPU: %s", cudaGetErrorString(err));
+        return false;
+    }
+
+    return true;
+}
+
+nimcp_tensor_t* nimcp_gpu_accelerate_matmul(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_tensor_t* a,
+    const nimcp_tensor_t* b)
+{
+    if (!ctx || !a || !b) {
+        LOG_ERROR("Invalid parameters for GPU-accelerated matmul");
+        return NULL;
+    }
+
+    // Upload tensors to GPU
+    nimcp_gpu_tensor_t* gpu_a = nimcp_gpu_tensor_from_cpu(ctx, a);
+    nimcp_gpu_tensor_t* gpu_b = nimcp_gpu_tensor_from_cpu(ctx, b);
+
+    if (!gpu_a || !gpu_b) {
+        nimcp_gpu_tensor_destroy(gpu_a);
+        nimcp_gpu_tensor_destroy(gpu_b);
+        return NULL;
+    }
+
+    // Compute output dimensions (M x N from M x K @ K x N)
+    size_t M = gpu_a->dims[gpu_a->ndim - 2];
+    size_t N = gpu_b->dims[gpu_b->ndim - 1];
+    size_t output_dims[] = {M, N};
+
+    nimcp_gpu_tensor_t* gpu_c = nimcp_gpu_tensor_create(ctx, output_dims, 2, gpu_a->precision);
+    if (!gpu_c) {
+        nimcp_gpu_tensor_destroy(gpu_a);
+        nimcp_gpu_tensor_destroy(gpu_b);
+        return NULL;
+    }
+
+    // Perform GPU matmul
+    bool success = nimcp_gpu_gemm(ctx, gpu_a, gpu_b, gpu_c, 1.0f, 0.0f, false, false);
+
+    // Download result
+    nimcp_tensor_t* result = NULL;
+    if (success) {
+        result = nimcp_cpu_tensor_from_gpu(gpu_c);
+    }
+
+    // Cleanup GPU tensors
+    nimcp_gpu_tensor_destroy(gpu_a);
+    nimcp_gpu_tensor_destroy(gpu_b);
+    nimcp_gpu_tensor_destroy(gpu_c);
+
+    return result;
+}
+
+bool nimcp_gpu_tensor_available(void)
+{
+    int device_count = 0;
+    cudaError_t err = cudaGetDeviceCount(&device_count);
+    return (err == cudaSuccess && device_count > 0);
+}
+
+bool nimcp_gpu_tensor_memory_info(
+    nimcp_gpu_context_t* ctx,
+    size_t* free_bytes,
+    size_t* total_bytes)
+{
+    if (!ctx || !free_bytes || !total_bytes) return false;
+
+    cudaError_t err = cudaMemGetInfo(free_bytes, total_bytes);
+    return (err == cudaSuccess);
+}
+
 #else // !NIMCP_ENABLE_CUDA
 
 //=============================================================================
@@ -1502,5 +1746,63 @@ bool nimcp_gpu_fft_2d(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
                       nimcp_gpu_tensor_t* out, bool inverse) { return false; }
 bool nimcp_gpu_rfft(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp_gpu_tensor_t* out) { return false; }
 bool nimcp_gpu_irfft(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp_gpu_tensor_t* out) { return false; }
+
+// CPU-GPU Tensor Integration Stubs (non-CUDA)
+nimcp_gpu_precision_t nimcp_dtype_to_gpu_precision(nimcp_dtype_t dtype)
+{
+    (void)dtype;
+    return NIMCP_GPU_PRECISION_FP32;
+}
+
+nimcp_dtype_t nimcp_gpu_precision_to_dtype(nimcp_gpu_precision_t precision)
+{
+    (void)precision;
+    return NIMCP_DTYPE_F32;
+}
+
+nimcp_gpu_tensor_t* nimcp_gpu_tensor_from_cpu(nimcp_gpu_context_t* ctx, const nimcp_tensor_t* cpu_tensor)
+{
+    (void)ctx; (void)cpu_tensor;
+    LOG_WARN("CUDA not available - cannot create GPU tensor from CPU tensor");
+    return NULL;
+}
+
+nimcp_tensor_t* nimcp_cpu_tensor_from_gpu(const nimcp_gpu_tensor_t* gpu_tensor)
+{
+    (void)gpu_tensor;
+    return NULL;
+}
+
+bool nimcp_gpu_tensor_copy_to_cpu(const nimcp_gpu_tensor_t* gpu_tensor, nimcp_tensor_t* cpu_tensor)
+{
+    (void)gpu_tensor; (void)cpu_tensor;
+    return false;
+}
+
+bool nimcp_cpu_tensor_copy_to_gpu(const nimcp_tensor_t* cpu_tensor, nimcp_gpu_tensor_t* gpu_tensor)
+{
+    (void)cpu_tensor; (void)gpu_tensor;
+    return false;
+}
+
+nimcp_tensor_t* nimcp_gpu_accelerate_matmul(nimcp_gpu_context_t* ctx,
+                                            const nimcp_tensor_t* a, const nimcp_tensor_t* b)
+{
+    (void)ctx; (void)a; (void)b;
+    LOG_WARN("CUDA not available - using CPU tensor matmul instead");
+    // Fall back to CPU tensor matmul
+    return nimcp_tensor_matmul(a, b);
+}
+
+bool nimcp_gpu_tensor_available(void)
+{
+    return false;
+}
+
+bool nimcp_gpu_tensor_memory_info(nimcp_gpu_context_t* ctx, size_t* free_bytes, size_t* total_bytes)
+{
+    (void)ctx; (void)free_bytes; (void)total_bytes;
+    return false;
+}
 
 #endif // NIMCP_ENABLE_CUDA

@@ -37,7 +37,7 @@ extern "C" {
 
 class GPUDetectionTest : public ::testing::Test {
 protected:
-    gpu_capabilities_t caps;
+    gpu_detect_result_t caps;
 
     void SetUp() override {
         memset(&caps, 0, sizeof(caps));

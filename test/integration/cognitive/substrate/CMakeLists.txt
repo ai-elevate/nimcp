@@ -1,43 +1,30 @@
 # Cognitive Substrate Bridges Integration Tests
 # Tests integration of all 8 cognitive substrate bridges with shared neural substrate
 
-# DISABLED: Requires consolidation_substrate_* functions not yet implemented
-message(STATUS "integration_cognitive_substrate_bridges: DISABLED (consolidation substrate bridge not implemented)")
-
-#[[
 add_executable(integration_cognitive_substrate_bridges
     test_cognitive_substrate_bridges_integration.cpp
 )
 
 target_link_libraries(integration_cognitive_substrate_bridges
     PRIVATE
-        GTest::GTest
-        GTest::Main
+        GTest::gtest
+        GTest::gtest_main
         nimcp
+        Threads::Threads
+        m
 )
 
 target_include_directories(integration_cognitive_substrate_bridges
     PRIVATE
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/include/core/neural_substrate
-        ${CMAKE_SOURCE_DIR}/include/cognitive/attention
-        ${CMAKE_SOURCE_DIR}/include/cognitive/emotion
-        ${CMAKE_SOURCE_DIR}/include/cognitive/executive
-        ${CMAKE_SOURCE_DIR}/include/cognitive/introspection
-        ${CMAKE_SOURCE_DIR}/include/cognitive/memory
-        ${CMAKE_SOURCE_DIR}/include/cognitive/reasoning
-        ${CMAKE_SOURCE_DIR}/include/cognitive/tom
-        ${CMAKE_SOURCE_DIR}/include/cognitive/working_memory
-        ${CMAKE_SOURCE_DIR}/include/async
-        ${CMAKE_SOURCE_DIR}/include/utils/thread
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
 )
 
-add_test(NAME integration_cognitive_substrate_bridges
-         COMMAND integration_cognitive_substrate_bridges)
+target_compile_features(integration_cognitive_substrate_bridges PRIVATE cxx_std_17)
 
-set_tests_properties(integration_cognitive_substrate_bridges
+gtest_discover_tests(integration_cognitive_substrate_bridges
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     PROPERTIES
-        LABELS "integration"
+        LABELS "integration;cognitive;substrate"
         TIMEOUT 120
 )
-#]]

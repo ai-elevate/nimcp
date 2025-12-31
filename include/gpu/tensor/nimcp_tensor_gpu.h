@@ -29,6 +29,7 @@ extern "C" {
 
 #include "common/nimcp_export.h"
 #include "gpu/context/nimcp_gpu_context.h"
+#include "utils/tensor/nimcp_tensor.h"  // CPU tensor library integration
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -731,6 +732,139 @@ NIMCP_EXPORT bool nimcp_gpu_irfft(
     nimcp_gpu_context_t* ctx,
     const nimcp_gpu_tensor_t* x,
     nimcp_gpu_tensor_t* out
+);
+
+//=============================================================================
+// CPU-GPU Tensor Integration
+//=============================================================================
+// These functions integrate with the existing nimcp tensor library
+// (utils/tensor/nimcp_tensor.h) to provide seamless CPU<->GPU transfers.
+
+/**
+ * @brief Convert nimcp_dtype_t to nimcp_gpu_precision_t
+ *
+ * WHAT: Map CPU tensor dtype to GPU precision type
+ * WHY:  Enable seamless CPU-GPU tensor conversion
+ * HOW:  Direct mapping of compatible types
+ *
+ * @param dtype CPU tensor data type
+ * @return GPU precision type
+ */
+NIMCP_EXPORT nimcp_gpu_precision_t nimcp_dtype_to_gpu_precision(nimcp_dtype_t dtype);
+
+/**
+ * @brief Convert nimcp_gpu_precision_t to nimcp_dtype_t
+ *
+ * @param precision GPU precision type
+ * @return CPU tensor data type
+ */
+NIMCP_EXPORT nimcp_dtype_t nimcp_gpu_precision_to_dtype(nimcp_gpu_precision_t precision);
+
+/**
+ * @brief Create GPU tensor from CPU tensor
+ *
+ * WHAT: Copy CPU tensor data to GPU memory
+ * WHY:  Enable GPU-accelerated operations on CPU tensors
+ * HOW:  Allocate GPU memory and copy data via cudaMemcpy
+ *
+ * @param ctx GPU context
+ * @param cpu_tensor Source CPU tensor (nimcp_tensor_t from tensor library)
+ * @return GPU tensor with copied data, or NULL on failure
+ */
+NIMCP_EXPORT nimcp_gpu_tensor_t* nimcp_gpu_tensor_from_cpu(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_tensor_t* cpu_tensor
+);
+
+/**
+ * @brief Create CPU tensor from GPU tensor
+ *
+ * WHAT: Copy GPU tensor data back to CPU memory
+ * WHY:  Enable CPU operations on GPU-computed results
+ * HOW:  Allocate CPU tensor and copy data via cudaMemcpy
+ *
+ * @param gpu_tensor Source GPU tensor
+ * @return CPU tensor (nimcp_tensor_t) with copied data, or NULL on failure
+ */
+NIMCP_EXPORT nimcp_tensor_t* nimcp_cpu_tensor_from_gpu(
+    const nimcp_gpu_tensor_t* gpu_tensor
+);
+
+/**
+ * @brief Copy GPU tensor data into existing CPU tensor
+ *
+ * WHAT: Copy GPU data to pre-allocated CPU tensor
+ * WHY:  Avoid allocation when destination already exists
+ * HOW:  cudaMemcpy to existing tensor's data buffer
+ *
+ * @param gpu_tensor Source GPU tensor
+ * @param cpu_tensor Destination CPU tensor (must have matching shape/dtype)
+ * @return true on success, false on failure
+ */
+NIMCP_EXPORT bool nimcp_gpu_tensor_copy_to_cpu(
+    const nimcp_gpu_tensor_t* gpu_tensor,
+    nimcp_tensor_t* cpu_tensor
+);
+
+/**
+ * @brief Copy CPU tensor data into existing GPU tensor
+ *
+ * WHAT: Copy CPU data to pre-allocated GPU tensor
+ * WHY:  Avoid allocation when destination already exists
+ * HOW:  cudaMemcpy from CPU tensor's data buffer
+ *
+ * @param cpu_tensor Source CPU tensor
+ * @param gpu_tensor Destination GPU tensor (must have matching shape/precision)
+ * @return true on success, false on failure
+ */
+NIMCP_EXPORT bool nimcp_cpu_tensor_copy_to_gpu(
+    const nimcp_tensor_t* cpu_tensor,
+    nimcp_gpu_tensor_t* gpu_tensor
+);
+
+/**
+ * @brief Execute tensor operation on GPU, return result as CPU tensor
+ *
+ * WHAT: Convenience function for CPU->GPU->operate->CPU workflow
+ * WHY:  Simplify common pattern of GPU-accelerated operations
+ * HOW:  Upload, execute, download in one call
+ *
+ * Example:
+ * @code
+ * nimcp_tensor_t* result = nimcp_gpu_accelerate_matmul(ctx, a, b);
+ * // result is a CPU tensor with GPU-computed matmul result
+ * @endcode
+ *
+ * @param ctx GPU context
+ * @param a First CPU tensor
+ * @param b Second CPU tensor
+ * @return Result as CPU tensor, or NULL on failure
+ */
+NIMCP_EXPORT nimcp_tensor_t* nimcp_gpu_accelerate_matmul(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_tensor_t* a,
+    const nimcp_tensor_t* b
+);
+
+/**
+ * @brief Check if GPU acceleration is available for tensor operations
+ *
+ * @return true if CUDA is available and context can be created
+ */
+NIMCP_EXPORT bool nimcp_gpu_tensor_available(void);
+
+/**
+ * @brief Get GPU memory info for tensor operations
+ *
+ * @param ctx GPU context
+ * @param free_bytes Output: available GPU memory
+ * @param total_bytes Output: total GPU memory
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_tensor_memory_info(
+    nimcp_gpu_context_t* ctx,
+    size_t* free_bytes,
+    size_t* total_bytes
 );
 
 #ifdef __cplusplus
