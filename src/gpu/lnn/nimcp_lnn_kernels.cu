@@ -14,6 +14,7 @@
 #ifdef NIMCP_ENABLE_CUDA
 
 #include "gpu/lnn/nimcp_lnn_gpu.h"
+#include "utils/tensor/nimcp_tensor.h"
 #include "utils/logging/nimcp_logging.h"
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
@@ -2097,56 +2098,63 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
     if (cpu_layer->tau) {
         layer->tau = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->tau) {
-            layer->tau->data = cpu_layer->tau->data;
-            layer->tau->numel = cpu_layer->tau->shape.dims[0];
+            const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->tau);
+            layer->tau->data = nimcp_tensor_data(cpu_layer->tau);
+            layer->tau->numel = shape->dims[0];
         }
     }
 
     if (cpu_layer->tau_base) {
         layer->tau_base = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->tau_base) {
-            layer->tau_base->data = cpu_layer->tau_base->data;
-            layer->tau_base->numel = cpu_layer->tau_base->shape.dims[0];
+            const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->tau_base);
+            layer->tau_base->data = nimcp_tensor_data(cpu_layer->tau_base);
+            layer->tau_base->numel = shape->dims[0];
         }
     }
 
     if (cpu_layer->W_in) {
         layer->W_in = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->W_in) {
-            layer->W_in->data = cpu_layer->W_in->data;
-            layer->W_in->numel = cpu_layer->W_in->shape.dims[0] * cpu_layer->W_in->shape.dims[1];
+            const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->W_in);
+            layer->W_in->data = nimcp_tensor_data(cpu_layer->W_in);
+            layer->W_in->numel = shape->dims[0] * shape->dims[1];
         }
     }
 
     if (cpu_layer->W_rec) {
         layer->W_rec = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->W_rec) {
-            layer->W_rec->data = cpu_layer->W_rec->data;
-            layer->W_rec->numel = cpu_layer->W_rec->shape.dims[0] * cpu_layer->W_rec->shape.dims[1];
+            const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->W_rec);
+            layer->W_rec->data = nimcp_tensor_data(cpu_layer->W_rec);
+            layer->W_rec->numel = shape->dims[0] * shape->dims[1];
         }
     }
 
     if (cpu_layer->W_tau) {
         layer->W_tau = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->W_tau) {
-            layer->W_tau->data = cpu_layer->W_tau->data;
-            layer->W_tau->numel = cpu_layer->W_tau->shape.dims[0] * cpu_layer->W_tau->shape.dims[1];
+            const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->W_tau);
+            layer->W_tau->data = nimcp_tensor_data(cpu_layer->W_tau);
+            layer->W_tau->numel = shape->dims[0] * shape->dims[1];
         }
     }
 
     if (cpu_layer->b_in) {
         layer->b_in = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->b_in) {
-            layer->b_in->data = cpu_layer->b_in->data;
-            layer->b_in->numel = cpu_layer->b_in->shape.dims[0];
+            const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->b_in);
+            layer->b_in->data = nimcp_tensor_data(cpu_layer->b_in);
+            layer->b_in->numel = shape->dims[0];
         }
     }
 
     if (cpu_layer->b_tau) {
         layer->b_tau = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t));
         if (layer->b_tau) {
-            layer->b_tau->data = cpu_layer->b_tau->data;
-            layer->b_tau->numel = cpu_layer->b_tau->shape.dims[0];
+            const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(cpu_layer->b_tau);
+            layer->b_tau->data = nimcp_tensor_data(cpu_layer->b_tau);
+            layer->b_tau->numel = shape->dims[0];
         }
     }
 
