@@ -295,7 +295,8 @@ int hemisphere_infer(
     }
 
     uint64_t elapsed_us = nimcp_time_get_us() - start_time;
-    hemisphere->stats.total_inferences++;
+    // Use atomic increment for thread-safe stats update
+    __atomic_fetch_add(&hemisphere->stats.total_inferences, 1, __ATOMIC_RELAXED);
     hemisphere->stats.avg_inference_time_ms =
         hemisphere->stats.avg_inference_time_ms * 0.99f +
         (elapsed_us / 1000.0f) * 0.01f;
@@ -351,7 +352,8 @@ float hemisphere_train(
     // This modifies synapses that were recently active based on the reward signal
     brain_apply_reward_learning(hemisphere->brain, reward);
 
-    hemisphere->stats.total_learning_steps++;
+    // Use atomic increment for thread-safe stats update
+    __atomic_fetch_add(&hemisphere->stats.total_learning_steps, 1, __ATOMIC_RELAXED);
 
     nimcp_mutex_unlock(hemisphere->mutex);
     nimcp_free(output);

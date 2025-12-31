@@ -1,0 +1,1081 @@
+/**
+ * @file nimcp_quantization_aware.c
+ * @brief Implementation of Quantization-Aware Training (QAT) for NIMCP
+ *
+ * WHAT: Train models with simulated quantization for efficient deployment
+ * WHY:  Enable INT8/INT4 inference with minimal accuracy loss
+ * HOW:  Fake quantization during training, learn quantization-robust weights
+ *
+ * @author NIMCP Development Team
+ * @date 2025-12-31
+ * @version 1.0.0
+ */
+
+#include "training/nimcp_quantization_aware.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
+#include <string.h>
+#include <math.h>
+#include <float.h>
+#include <stdio.h>
+
+//=============================================================================
+// Internal Structures
+//=============================================================================
+
+/**
+ * @brief Range observer for a tensor
+ */
+typedef struct {
+    char name[128];                  /**< Tensor name */
+    qat_target_t target;             /**< Weight or activation */
+    bool active;                     /**< Whether observer is active */
+
+    /* Range statistics */
+    float min_val;                   /**< Observed minimum */
+    float max_val;                   /**< Observed maximum */
+    float ema_min;                   /**< EMA minimum */
+    float ema_max;                   /**< EMA maximum */
+    uint64_t observation_count;      /**< Number of observations */
+
+    /* Histogram (if using histogram observer) */
+    uint32_t* histogram;             /**< Value histogram */
+    uint32_t num_bins;               /**< Number of histogram bins */
+    float hist_min;                  /**< Histogram range min */
+    float hist_max;                  /**< Histogram range max */
+
+    /* Computed quantization parameters */
+    qat_params_t params;             /**< Quantization parameters */
+    bool params_valid;               /**< Whether params are computed */
+
+    /* Learnable parameters (LSQ) */
+    float learned_scale;             /**< Learned scale parameter */
+    int32_t learned_zero_point;      /**< Learned zero point */
+    float scale_grad;                /**< Accumulated scale gradient */
+} observer_t;
+
+/**
+ * @brief QAT context
+ */
+struct qat_ctx_s {
+    qat_config_t config;             /**< Configuration */
+
+    /* Observers */
+    observer_t observers[QAT_MAX_OBSERVERS]; /**< Registered observers */
+    uint32_t num_observers;          /**< Number of observers */
+    bool observers_frozen;           /**< Observers frozen flag */
+
+    /* Calibration state */
+    bool calibration_complete;       /**< Calibration done */
+    uint32_t calibration_batches;    /**< Calibration batches so far */
+
+    /* Integration handles */
+    void* brain_factory;             /**< Brain factory */
+
+    /* Statistics */
+    qat_stats_t stats;               /**< Runtime statistics */
+
+    /* Thread safety */
+    nimcp_mutex_t* mutex;            /**< Mutex for thread safety */
+};
+
+//=============================================================================
+// Name Strings
+//=============================================================================
+
+static const char* dtype_names[] = {
+    "INT8", "UINT8", "INT4", "INT2", "INT1",
+    "FP8_E4M3", "FP8_E5M2", "FP4"
+};
+
+static const uint32_t dtype_bits[] = {
+    8, 8, 4, 2, 1, 8, 8, 4
+};
+
+static const char* scheme_names[] = {
+    "Symmetric", "Affine", "Power-of-2"
+};
+
+//=============================================================================
+// Forward Declarations
+//=============================================================================
+
+static void compute_scale_zp(float min_val, float max_val, qat_dtype_t dtype,
+                             qat_scheme_t scheme, float* scale, int32_t* zero_point);
+static void get_qmin_qmax(qat_dtype_t dtype, int32_t* qmin, int32_t* qmax);
+static float clamp(float x, float min_val, float max_val);
+
+//=============================================================================
+// Lifecycle API Implementation
+//=============================================================================
+
+int qat_default_config(qat_config_t* config) {
+    if (!config) {
+        return -1;
+    }
+
+    memset(config, 0, sizeof(qat_config_t));
+
+    /* Default: INT8 symmetric */
+    config->default_weight_dtype = QAT_DTYPE_INT8;
+    config->default_activation_dtype = QAT_DTYPE_INT8;
+    config->default_scheme = QAT_SCHEME_SYMMETRIC;
+    config->default_granularity = QAT_GRANULARITY_TENSOR;
+
+    /* Observer: MinMax with EMA */
+    config->observer.method = QAT_OBSERVER_MOVING_AVG;
+    config->observer.ema_decay = QAT_DEFAULT_EMA_DECAY;
+    config->observer.percentile = 0.999f;
+    config->observer.num_bins = 2048;
+    config->observer.calibration_batches = QAT_DEFAULT_CALIBRATION_BATCHES;
+    config->observer.symmetric = true;
+
+    /* Fake quant: STE */
+    config->fake_quant.method = QAT_FAKE_QUANT_STE;
+    config->fake_quant.learn_scale = false;
+    config->fake_quant.learn_zero_point = false;
+    config->fake_quant.initial_scale = 1.0f;
+    config->fake_quant.scale_lr_multiplier = 1.0f;
+    config->fake_quant.grad_scale_factor = 1.0f;
+
+    /* Training schedule */
+    config->warmup_epochs = 0;
+    config->freeze_bn_epochs = 0;
+    config->start_with_calibration = true;
+
+    /* No per-layer configs by default */
+    config->layer_configs = NULL;
+    config->num_layer_configs = 0;
+
+    /* Integration */
+    config->integrate_tensor_layer = true;
+    config->integrate_brain_factory = false;
+
+    /* Debugging */
+    config->verbose = false;
+    config->track_statistics = true;
+
+    return 0;
+}
+
+int qat_int4_config(qat_config_t* config) {
+    int result = qat_default_config(config);
+    if (result != 0) {
+        return result;
+    }
+
+    /* INT4 settings */
+    config->default_weight_dtype = QAT_DTYPE_INT4;
+    config->default_activation_dtype = QAT_DTYPE_INT8;  /* Keep activations INT8 */
+
+    /* Per-channel quantization recommended for INT4 */
+    config->default_granularity = QAT_GRANULARITY_CHANNEL;
+
+    /* LSQ for better INT4 accuracy */
+    config->fake_quant.method = QAT_FAKE_QUANT_LSQ;
+    config->fake_quant.learn_scale = true;
+
+    return 0;
+}
+
+int qat_binary_config(qat_config_t* config) {
+    int result = qat_default_config(config);
+    if (result != 0) {
+        return result;
+    }
+
+    /* Binary settings */
+    config->default_weight_dtype = QAT_DTYPE_INT1;
+    config->default_activation_dtype = QAT_DTYPE_INT1;
+    config->default_scheme = QAT_SCHEME_SYMMETRIC;
+
+    /* STE is standard for binary networks */
+    config->fake_quant.method = QAT_FAKE_QUANT_STE;
+
+    return 0;
+}
+
+qat_ctx_t* qat_create(const qat_config_t* config) {
+    if (!config) {
+        return NULL;
+    }
+
+    /* Validate configuration */
+    if (qat_validate_config(config) != 0) {
+        return NULL;
+    }
+
+    qat_ctx_t* ctx = nimcp_calloc(1, sizeof(qat_ctx_t));
+    if (!ctx) {
+        return NULL;
+    }
+
+    /* Copy configuration */
+    memcpy(&ctx->config, config, sizeof(qat_config_t));
+
+    /* Create mutex */
+    mutex_attr_t attr = {0};
+    attr.type = MUTEX_TYPE_NORMAL;
+    ctx->mutex = nimcp_mutex_create(&attr);
+    if (!ctx->mutex) {
+        nimcp_free(ctx);
+        return NULL;
+    }
+
+    /* Initialize observers */
+    ctx->num_observers = 0;
+    ctx->observers_frozen = false;
+    ctx->calibration_complete = false;
+    ctx->calibration_batches = 0;
+
+    /* Reset statistics */
+    memset(&ctx->stats, 0, sizeof(qat_stats_t));
+
+    if (config->verbose) {
+        printf("[QAT] Created context: weight=%s, activation=%s, scheme=%s\n",
+               qat_dtype_name(config->default_weight_dtype),
+               qat_dtype_name(config->default_activation_dtype),
+               qat_scheme_name(config->default_scheme));
+    }
+
+    return ctx;
+}
+
+void qat_destroy(qat_ctx_t* ctx) {
+    if (!ctx) {
+        return;
+    }
+
+    /* Clean up observers */
+    for (uint32_t i = 0; i < ctx->num_observers; i++) {
+        observer_t* obs = &ctx->observers[i];
+        if (obs->histogram) {
+            nimcp_free(obs->histogram);
+        }
+        if (obs->params.scales) {
+            nimcp_free(obs->params.scales);
+        }
+        if (obs->params.zero_points) {
+            nimcp_free(obs->params.zero_points);
+        }
+    }
+
+    /* Destroy mutex */
+    if (ctx->mutex) {
+        nimcp_mutex_destroy(ctx->mutex);
+    }
+
+    nimcp_free(ctx);
+}
+
+//=============================================================================
+// Observer API Implementation
+//=============================================================================
+
+int qat_register_observer(
+    qat_ctx_t* ctx,
+    const char* name,
+    qat_target_t target
+) {
+    if (!ctx || !name) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+
+    if (ctx->num_observers >= QAT_MAX_OBSERVERS) {
+        nimcp_mutex_unlock(ctx->mutex);
+        return -1;
+    }
+
+    int id = (int)ctx->num_observers;
+    observer_t* obs = &ctx->observers[id];
+
+    memset(obs, 0, sizeof(observer_t));
+    strncpy(obs->name, name, sizeof(obs->name) - 1);
+    obs->target = target;
+    obs->active = true;
+    obs->min_val = FLT_MAX;
+    obs->max_val = -FLT_MAX;
+    obs->ema_min = FLT_MAX;
+    obs->ema_max = -FLT_MAX;
+    obs->observation_count = 0;
+
+    /* Set default params */
+    obs->params.dtype = (target == QAT_TARGET_WEIGHTS) ?
+        ctx->config.default_weight_dtype : ctx->config.default_activation_dtype;
+    obs->params.scheme = ctx->config.default_scheme;
+    obs->params.granularity = ctx->config.default_granularity;
+    obs->params_valid = false;
+
+    /* Initialize histogram if using histogram observer */
+    if (ctx->config.observer.method == QAT_OBSERVER_HISTOGRAM) {
+        obs->num_bins = ctx->config.observer.num_bins;
+        obs->histogram = nimcp_calloc(obs->num_bins, sizeof(uint32_t));
+    }
+
+    /* Initialize LSQ parameters */
+    obs->learned_scale = ctx->config.fake_quant.initial_scale;
+    obs->learned_zero_point = 0;
+
+    ctx->num_observers++;
+
+    if (ctx->config.verbose) {
+        printf("[QAT] Registered observer '%s' for %s (id=%d)\n",
+               name, (target == QAT_TARGET_WEIGHTS) ? "weights" : "activations", id);
+    }
+
+    nimcp_mutex_unlock(ctx->mutex);
+    return id;
+}
+
+int qat_observe(
+    qat_ctx_t* ctx,
+    int observer_id,
+    const nimcp_tensor_t* tensor
+) {
+    if (!ctx || !tensor || observer_id < 0 || observer_id >= (int)ctx->num_observers) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+
+    observer_t* obs = &ctx->observers[observer_id];
+    if (!obs->active || ctx->observers_frozen) {
+        nimcp_mutex_unlock(ctx->mutex);
+        return 0;
+    }
+
+    size_t count = nimcp_tensor_numel(tensor);
+    const float* data = nimcp_tensor_data((nimcp_tensor_t*)tensor);
+
+    if (!data || count == 0) {
+        nimcp_mutex_unlock(ctx->mutex);
+        return -1;
+    }
+
+    /* Update range statistics */
+    float batch_min = FLT_MAX, batch_max = -FLT_MAX;
+    for (size_t i = 0; i < count; i++) {
+        if (data[i] < batch_min) batch_min = data[i];
+        if (data[i] > batch_max) batch_max = data[i];
+    }
+
+    switch (ctx->config.observer.method) {
+        case QAT_OBSERVER_MINMAX:
+            /* Track global min/max */
+            if (batch_min < obs->min_val) obs->min_val = batch_min;
+            if (batch_max > obs->max_val) obs->max_val = batch_max;
+            break;
+
+        case QAT_OBSERVER_MOVING_AVG:
+            /* Exponential moving average */
+            if (obs->observation_count == 0) {
+                obs->ema_min = batch_min;
+                obs->ema_max = batch_max;
+            } else {
+                float decay = ctx->config.observer.ema_decay;
+                obs->ema_min = decay * obs->ema_min + (1.0f - decay) * batch_min;
+                obs->ema_max = decay * obs->ema_max + (1.0f - decay) * batch_max;
+            }
+            obs->min_val = obs->ema_min;
+            obs->max_val = obs->ema_max;
+            break;
+
+        case QAT_OBSERVER_HISTOGRAM:
+            /* Update histogram */
+            if (obs->histogram) {
+                /* Expand histogram range if needed */
+                if (obs->observation_count == 0) {
+                    obs->hist_min = batch_min;
+                    obs->hist_max = batch_max;
+                } else {
+                    if (batch_min < obs->hist_min) obs->hist_min = batch_min;
+                    if (batch_max > obs->hist_max) obs->hist_max = batch_max;
+                }
+
+                float range = obs->hist_max - obs->hist_min;
+                if (range > 1e-8f) {
+                    for (size_t i = 0; i < count; i++) {
+                        float normalized = (data[i] - obs->hist_min) / range;
+                        uint32_t bin = (uint32_t)(normalized * (obs->num_bins - 1));
+                        if (bin >= obs->num_bins) bin = obs->num_bins - 1;
+                        obs->histogram[bin]++;
+                    }
+                }
+
+                /* Compute percentile bounds */
+                uint64_t total = 0;
+                for (uint32_t i = 0; i < obs->num_bins; i++) {
+                    total += obs->histogram[i];
+                }
+
+                float percentile = ctx->config.observer.percentile;
+                uint64_t lower_target = (uint64_t)(total * (1.0f - percentile));
+                uint64_t upper_target = (uint64_t)(total * percentile);
+
+                uint64_t cumsum = 0;
+                uint32_t lower_bin = 0, upper_bin = obs->num_bins - 1;
+                for (uint32_t i = 0; i < obs->num_bins; i++) {
+                    cumsum += obs->histogram[i];
+                    if (cumsum >= lower_target && lower_bin == 0) {
+                        lower_bin = i;
+                    }
+                    if (cumsum >= upper_target) {
+                        upper_bin = i;
+                        break;
+                    }
+                }
+
+                obs->min_val = obs->hist_min + (float)lower_bin / obs->num_bins * range;
+                obs->max_val = obs->hist_min + (float)upper_bin / obs->num_bins * range;
+            }
+            break;
+
+        default:
+            if (batch_min < obs->min_val) obs->min_val = batch_min;
+            if (batch_max > obs->max_val) obs->max_val = batch_max;
+            break;
+    }
+
+    obs->observation_count++;
+
+    /* Update observed range in params */
+    obs->params.observed_min = obs->min_val;
+    obs->params.observed_max = obs->max_val;
+
+    /* Compute quantization parameters */
+    compute_scale_zp(obs->min_val, obs->max_val, obs->params.dtype,
+                     obs->params.scheme, &obs->params.scale, &obs->params.zero_point);
+    obs->params_valid = true;
+
+    nimcp_mutex_unlock(ctx->mutex);
+    return 0;
+}
+
+int qat_get_params(
+    qat_ctx_t* ctx,
+    int observer_id,
+    qat_params_t* params
+) {
+    if (!ctx || !params || observer_id < 0 || observer_id >= (int)ctx->num_observers) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+
+    observer_t* obs = &ctx->observers[observer_id];
+    if (!obs->params_valid) {
+        nimcp_mutex_unlock(ctx->mutex);
+        return -1;
+    }
+
+    memcpy(params, &obs->params, sizeof(qat_params_t));
+
+    /* Override with learned parameters if using LSQ */
+    if (ctx->config.fake_quant.learn_scale) {
+        params->scale = obs->learned_scale;
+    }
+    if (ctx->config.fake_quant.learn_zero_point) {
+        params->zero_point = obs->learned_zero_point;
+    }
+
+    nimcp_mutex_unlock(ctx->mutex);
+    return 0;
+}
+
+int qat_calibrate(qat_ctx_t* ctx) {
+    if (!ctx) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+
+    /* Mark calibration as complete */
+    ctx->calibration_complete = true;
+
+    /* Compute final quantization parameters for all observers */
+    for (uint32_t i = 0; i < ctx->num_observers; i++) {
+        observer_t* obs = &ctx->observers[i];
+        if (obs->active && obs->observation_count > 0) {
+            compute_scale_zp(obs->min_val, obs->max_val, obs->params.dtype,
+                            obs->params.scheme, &obs->params.scale, &obs->params.zero_point);
+            obs->params_valid = true;
+
+            if (ctx->config.verbose) {
+                printf("[QAT] Calibrated '%s': range=[%.4f, %.4f], scale=%.6f, zp=%d\n",
+                       obs->name, obs->min_val, obs->max_val,
+                       obs->params.scale, obs->params.zero_point);
+            }
+        }
+    }
+
+    if (ctx->config.verbose) {
+        printf("[QAT] Calibration complete for %u observers\n", ctx->num_observers);
+    }
+
+    nimcp_mutex_unlock(ctx->mutex);
+    return 0;
+}
+
+int qat_freeze_observers(qat_ctx_t* ctx) {
+    if (!ctx) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+    ctx->observers_frozen = true;
+
+    if (ctx->config.verbose) {
+        printf("[QAT] Observers frozen\n");
+    }
+
+    nimcp_mutex_unlock(ctx->mutex);
+    return 0;
+}
+
+//=============================================================================
+// Fake Quantization API Implementation
+//=============================================================================
+
+int qat_fake_quantize(
+    qat_ctx_t* ctx,
+    nimcp_tensor_t* tensor,
+    const qat_params_t* params
+) {
+    if (!ctx || !tensor || !params) {
+        return -1;
+    }
+
+    size_t count = nimcp_tensor_numel(tensor);
+    float* data = nimcp_tensor_data(tensor);
+
+    if (!data || count == 0) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+
+    float scale = params->scale;
+    int32_t zero_point = params->zero_point;
+
+    /* Get quantization range */
+    int32_t qmin, qmax;
+    get_qmin_qmax(params->dtype, &qmin, &qmax);
+
+    float inv_scale = (scale > 1e-10f) ? 1.0f / scale : 1.0f;
+
+    /* Fake quantize: round(x/scale + zp) then dequantize */
+    for (size_t i = 0; i < count; i++) {
+        /* Quantize */
+        float scaled = data[i] * inv_scale + (float)zero_point;
+        int32_t quantized = (int32_t)roundf(scaled);
+        quantized = (quantized < qmin) ? qmin : ((quantized > qmax) ? qmax : quantized);
+
+        /* Dequantize */
+        data[i] = ((float)quantized - (float)zero_point) * scale;
+    }
+
+    /* Update statistics */
+    ctx->stats.total_steps++;
+
+    nimcp_mutex_unlock(ctx->mutex);
+    return 0;
+}
+
+int qat_fake_quantize_learned(
+    qat_ctx_t* ctx,
+    nimcp_tensor_t* tensor,
+    int observer_id
+) {
+    if (!ctx || !tensor || observer_id < 0 || observer_id >= (int)ctx->num_observers) {
+        return -1;
+    }
+
+    observer_t* obs = &ctx->observers[observer_id];
+    if (!obs->params_valid) {
+        return -1;
+    }
+
+    qat_params_t params;
+    memcpy(&params, &obs->params, sizeof(qat_params_t));
+
+    /* Use learned scale */
+    if (ctx->config.fake_quant.learn_scale) {
+        params.scale = obs->learned_scale;
+    }
+    if (ctx->config.fake_quant.learn_zero_point) {
+        params.zero_point = obs->learned_zero_point;
+    }
+
+    return qat_fake_quantize(ctx, tensor, &params);
+}
+
+int qat_fake_quantize_backward(
+    qat_ctx_t* ctx,
+    const nimcp_tensor_t* grad_output,
+    const nimcp_tensor_t* tensor,
+    const qat_params_t* params,
+    nimcp_tensor_t* grad_input
+) {
+    if (!ctx || !grad_output || !tensor || !params || !grad_input) {
+        return -1;
+    }
+
+    size_t count = nimcp_tensor_numel(grad_output);
+    size_t tensor_count = nimcp_tensor_numel(tensor);
+    size_t grad_input_count = nimcp_tensor_numel(grad_input);
+
+    if (count != tensor_count || count != grad_input_count) {
+        return -1;
+    }
+
+    const float* grad_out_data = nimcp_tensor_data((nimcp_tensor_t*)grad_output);
+    const float* tensor_data = nimcp_tensor_data((nimcp_tensor_t*)tensor);
+    float* grad_in_data = nimcp_tensor_data(grad_input);
+
+    if (!grad_out_data || !tensor_data || !grad_in_data) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+
+    float scale = params->scale;
+    int32_t zero_point = params->zero_point;
+
+    int32_t qmin, qmax;
+    get_qmin_qmax(params->dtype, &qmin, &qmax);
+
+    float lower_bound = ((float)qmin - (float)zero_point) * scale;
+    float upper_bound = ((float)qmax - (float)zero_point) * scale;
+
+    switch (ctx->config.fake_quant.method) {
+        case QAT_FAKE_QUANT_STE:
+            /* Straight-Through Estimator: pass gradient where not clipped */
+            for (size_t i = 0; i < count; i++) {
+                if (tensor_data[i] >= lower_bound && tensor_data[i] <= upper_bound) {
+                    grad_in_data[i] = grad_out_data[i] * ctx->config.fake_quant.grad_scale_factor;
+                } else {
+                    grad_in_data[i] = 0.0f;  /* Zero gradient for clipped values */
+                }
+            }
+            break;
+
+        case QAT_FAKE_QUANT_LSQ:
+            /* LSQ: scaled gradient for quantization levels */
+            {
+                float grad_scale = 1.0f / sqrtf((float)count * (float)qmax);
+                for (size_t i = 0; i < count; i++) {
+                    if (tensor_data[i] < lower_bound) {
+                        grad_in_data[i] = grad_out_data[i] * grad_scale;
+                    } else if (tensor_data[i] > upper_bound) {
+                        grad_in_data[i] = grad_out_data[i] * grad_scale;
+                    } else {
+                        grad_in_data[i] = grad_out_data[i];
+                    }
+                }
+            }
+            break;
+
+        case QAT_FAKE_QUANT_PACT:
+            /* PACT: parameterized clipping activation */
+            for (size_t i = 0; i < count; i++) {
+                if (tensor_data[i] >= 0.0f && tensor_data[i] <= upper_bound) {
+                    grad_in_data[i] = grad_out_data[i];
+                } else if (tensor_data[i] > upper_bound) {
+                    grad_in_data[i] = 0.0f;  /* Gradient goes to alpha param */
+                } else {
+                    grad_in_data[i] = 0.0f;
+                }
+            }
+            break;
+
+        default:
+            /* Default to STE */
+            memcpy(grad_in_data, grad_out_data, count * sizeof(float));
+            break;
+    }
+
+    nimcp_mutex_unlock(ctx->mutex);
+    return 0;
+}
+
+//=============================================================================
+// Quantization Operations Implementation
+//=============================================================================
+
+int qat_quantize(
+    qat_ctx_t* ctx,
+    const nimcp_tensor_t* input,
+    nimcp_tensor_t* output,
+    const qat_params_t* params
+) {
+    if (!ctx || !input || !output || !params) {
+        return -1;
+    }
+
+    size_t count = nimcp_tensor_numel(input);
+    size_t output_count = nimcp_tensor_numel(output);
+
+    if (count != output_count || count == 0) {
+        return -1;
+    }
+
+    const float* input_data = nimcp_tensor_data((nimcp_tensor_t*)input);
+    float* output_data = nimcp_tensor_data(output);
+
+    if (!input_data || !output_data) {
+        return -1;
+    }
+
+    float scale = params->scale;
+    int32_t zero_point = params->zero_point;
+
+    int32_t qmin, qmax;
+    get_qmin_qmax(params->dtype, &qmin, &qmax);
+
+    float inv_scale = (scale > 1e-10f) ? 1.0f / scale : 1.0f;
+
+    /* Quantize: q = clamp(round(x/scale + zp), qmin, qmax) */
+    for (size_t i = 0; i < count; i++) {
+        float scaled = input_data[i] * inv_scale + (float)zero_point;
+        int32_t quantized = (int32_t)roundf(scaled);
+        quantized = (quantized < qmin) ? qmin : ((quantized > qmax) ? qmax : quantized);
+        output_data[i] = (float)quantized;
+    }
+
+    return 0;
+}
+
+int qat_dequantize(
+    qat_ctx_t* ctx,
+    const nimcp_tensor_t* input,
+    nimcp_tensor_t* output,
+    const qat_params_t* params
+) {
+    if (!ctx || !input || !output || !params) {
+        return -1;
+    }
+
+    size_t count = nimcp_tensor_numel(input);
+    size_t output_count = nimcp_tensor_numel(output);
+
+    if (count != output_count || count == 0) {
+        return -1;
+    }
+
+    const float* input_data = nimcp_tensor_data((nimcp_tensor_t*)input);
+    float* output_data = nimcp_tensor_data(output);
+
+    if (!input_data || !output_data) {
+        return -1;
+    }
+
+    float scale = params->scale;
+    int32_t zero_point = params->zero_point;
+
+    /* Dequantize: x = (q - zp) * scale */
+    for (size_t i = 0; i < count; i++) {
+        output_data[i] = (input_data[i] - (float)zero_point) * scale;
+    }
+
+    return 0;
+}
+
+int qat_matmul(
+    qat_ctx_t* ctx,
+    const nimcp_tensor_t* a,
+    const nimcp_tensor_t* b,
+    nimcp_tensor_t* c,
+    const qat_params_t* a_params,
+    const qat_params_t* b_params,
+    const qat_params_t* c_params
+) {
+    if (!ctx || !a || !b || !c || !a_params || !b_params) {
+        return -1;
+    }
+
+    /* For now, perform fake-quantized matmul (FP32 compute with quantization)
+     * In real implementation, would use INT8 GEMM kernels */
+
+    /* Get dimensions (assuming 2D tensors for simplicity) */
+    /* Would need proper tensor shape handling for full implementation */
+
+    size_t a_count = nimcp_tensor_numel(a);
+    size_t b_count = nimcp_tensor_numel(b);
+    size_t c_count = nimcp_tensor_numel(c);
+
+    if (a_count == 0 || b_count == 0 || c_count == 0) {
+        return -1;
+    }
+
+    /* This is a simplified implementation */
+    /* Real QAT matmul would use integer arithmetic with requantization */
+
+    return 0;
+}
+
+//=============================================================================
+// Export API Implementation
+//=============================================================================
+
+int qat_export(
+    qat_ctx_t* ctx,
+    nimcp_tensor_t** weights,
+    uint32_t num_weights,
+    qat_params_t** params,
+    const char* filepath
+) {
+    if (!ctx || !weights || !params || !filepath || num_weights == 0) {
+        return -1;
+    }
+
+    /* Export would serialize quantized weights and parameters */
+    /* For now, just validate inputs */
+
+    if (ctx->config.verbose) {
+        printf("[QAT] Exporting %u quantized weights to %s\n", num_weights, filepath);
+    }
+
+    return 0;
+}
+
+//=============================================================================
+// Integration API Implementation
+//=============================================================================
+
+int qat_connect_brain_factory(qat_ctx_t* ctx, void* brain_factory) {
+    if (!ctx || !brain_factory) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+    ctx->brain_factory = brain_factory;
+    nimcp_mutex_unlock(ctx->mutex);
+
+    return 0;
+}
+
+//=============================================================================
+// Statistics API Implementation
+//=============================================================================
+
+int qat_get_stats(const qat_ctx_t* ctx, qat_stats_t* stats) {
+    if (!ctx || !stats) {
+        return -1;
+    }
+
+    nimcp_mutex_lock((nimcp_mutex_t*)ctx->mutex);
+    memcpy(stats, &ctx->stats, sizeof(qat_stats_t));
+    nimcp_mutex_unlock((nimcp_mutex_t*)ctx->mutex);
+
+    return 0;
+}
+
+void qat_reset_stats(qat_ctx_t* ctx) {
+    if (!ctx) {
+        return;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+    memset(&ctx->stats, 0, sizeof(qat_stats_t));
+    nimcp_mutex_unlock(ctx->mutex);
+}
+
+//=============================================================================
+// Utility Functions Implementation
+//=============================================================================
+
+const char* qat_dtype_name(qat_dtype_t dtype) {
+    if (dtype >= QAT_DTYPE_COUNT) {
+        return "Unknown";
+    }
+    return dtype_names[dtype];
+}
+
+uint32_t qat_dtype_bits(qat_dtype_t dtype) {
+    if (dtype >= QAT_DTYPE_COUNT) {
+        return 0;
+    }
+    return dtype_bits[dtype];
+}
+
+const char* qat_scheme_name(qat_scheme_t scheme) {
+    if (scheme >= QAT_SCHEME_COUNT) {
+        return "Unknown";
+    }
+    return scheme_names[scheme];
+}
+
+int qat_validate_config(const qat_config_t* config) {
+    if (!config) {
+        return -1;
+    }
+
+    /* Validate dtypes */
+    if (config->default_weight_dtype >= QAT_DTYPE_COUNT ||
+        config->default_activation_dtype >= QAT_DTYPE_COUNT) {
+        return -1;
+    }
+
+    /* Validate scheme */
+    if (config->default_scheme >= QAT_SCHEME_COUNT) {
+        return -1;
+    }
+
+    /* Validate granularity */
+    if (config->default_granularity >= QAT_GRANULARITY_COUNT) {
+        return -1;
+    }
+
+    /* Validate observer method */
+    if (config->observer.method >= QAT_OBSERVER_COUNT) {
+        return -1;
+    }
+
+    /* Validate fake quant method */
+    if (config->fake_quant.method >= QAT_FAKE_QUANT_COUNT) {
+        return -1;
+    }
+
+    /* Validate EMA decay */
+    if (config->observer.ema_decay < 0.0f || config->observer.ema_decay > 1.0f) {
+        return -1;
+    }
+
+    return 0;
+}
+
+float qat_compute_mse(
+    const nimcp_tensor_t* original,
+    const nimcp_tensor_t* quantized
+) {
+    if (!original || !quantized) {
+        return 0.0f;
+    }
+
+    size_t count = nimcp_tensor_numel(original);
+    size_t quant_count = nimcp_tensor_numel(quantized);
+
+    if (count != quant_count || count == 0) {
+        return 0.0f;
+    }
+
+    const float* orig_data = nimcp_tensor_data((nimcp_tensor_t*)original);
+    const float* quant_data = nimcp_tensor_data((nimcp_tensor_t*)quantized);
+
+    if (!orig_data || !quant_data) {
+        return 0.0f;
+    }
+
+    float mse = 0.0f;
+    for (size_t i = 0; i < count; i++) {
+        float diff = orig_data[i] - quant_data[i];
+        mse += diff * diff;
+    }
+
+    return mse / (float)count;
+}
+
+//=============================================================================
+// Internal Helper Functions
+//=============================================================================
+
+/**
+ * @brief Get quantization range for dtype
+ */
+static void get_qmin_qmax(qat_dtype_t dtype, int32_t* qmin, int32_t* qmax) {
+    switch (dtype) {
+        case QAT_DTYPE_INT8:
+            *qmin = -128;
+            *qmax = 127;
+            break;
+        case QAT_DTYPE_UINT8:
+            *qmin = 0;
+            *qmax = 255;
+            break;
+        case QAT_DTYPE_INT4:
+            *qmin = -8;
+            *qmax = 7;
+            break;
+        case QAT_DTYPE_INT2:
+            *qmin = -2;
+            *qmax = 1;
+            break;
+        case QAT_DTYPE_INT1:
+            *qmin = -1;
+            *qmax = 1;
+            break;
+        default:
+            *qmin = -128;
+            *qmax = 127;
+            break;
+    }
+}
+
+/**
+ * @brief Compute scale and zero point from observed range
+ */
+static void compute_scale_zp(
+    float min_val,
+    float max_val,
+    qat_dtype_t dtype,
+    qat_scheme_t scheme,
+    float* scale,
+    int32_t* zero_point
+) {
+    int32_t qmin, qmax;
+    get_qmin_qmax(dtype, &qmin, &qmax);
+
+    float range = max_val - min_val;
+    if (range < 1e-8f) {
+        range = 1e-8f;
+    }
+
+    switch (scheme) {
+        case QAT_SCHEME_SYMMETRIC:
+            /* Symmetric: zero_point = 0, scale based on max absolute value */
+            {
+                float max_abs = fmaxf(fabsf(min_val), fabsf(max_val));
+                *scale = max_abs / (float)qmax;
+                *zero_point = 0;
+            }
+            break;
+
+        case QAT_SCHEME_AFFINE:
+            /* Affine: full range utilization */
+            *scale = range / (float)(qmax - qmin);
+            *zero_point = qmin - (int32_t)roundf(min_val / *scale);
+            break;
+
+        case QAT_SCHEME_POWER_OF_TWO:
+            /* Power-of-2 scale for efficient shift operations */
+            {
+                float max_abs = fmaxf(fabsf(min_val), fabsf(max_val));
+                float log_scale = log2f(max_abs / (float)qmax);
+                int32_t exp = (int32_t)ceilf(log_scale);
+                *scale = powf(2.0f, (float)exp);
+                *zero_point = 0;
+            }
+            break;
+
+        default:
+            *scale = range / (float)(qmax - qmin);
+            *zero_point = 0;
+            break;
+    }
+
+    /* Ensure scale is positive */
+    if (*scale < 1e-10f) {
+        *scale = 1e-10f;
+    }
+}
+
+/**
+ * @brief Clamp value to range
+ */
+static float clamp(float x, float min_val, float max_val) {
+    if (x < min_val) return min_val;
+    if (x > max_val) return max_val;
+    return x;
+}

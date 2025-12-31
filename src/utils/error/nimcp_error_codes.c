@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <pthread.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -231,4 +232,102 @@ void nimcp_error_print_detailed(const nimcp_error_info_t* info)
         fprintf(stderr, "Function: %s\n", info->function);
     }
     fprintf(stderr, "====================\n");
+}
+
+//=============================================================================
+// Extended Error Context API (Thread-Local with Formatted Messages)
+//=============================================================================
+
+// Thread-local storage for error context with formatted message buffer
+static pthread_key_t g_error_context_key;
+static pthread_once_t g_error_context_key_once = PTHREAD_ONCE_INIT;
+
+static void error_context_destructor(void* value)
+{
+    if (value) {
+        nimcp_free(value);
+    }
+}
+
+static void create_error_context_key(void)
+{
+    pthread_key_create(&g_error_context_key, error_context_destructor);
+}
+
+static nimcp_error_context_t* get_thread_error_context(void)
+{
+    pthread_once(&g_error_context_key_once, create_error_context_key);
+
+    nimcp_error_context_t* ctx = (nimcp_error_context_t*)pthread_getspecific(g_error_context_key);
+    if (!ctx) {
+        ctx = (nimcp_error_context_t*)nimcp_calloc(1, sizeof(nimcp_error_context_t));
+        pthread_setspecific(g_error_context_key, ctx);
+    }
+    return ctx;
+}
+
+void nimcp_set_error(nimcp_error_t code, const char* format, ...)
+{
+    nimcp_error_context_t* ctx = get_thread_error_context();
+    if (!ctx) return;
+
+    ctx->code = code;
+    ctx->file = NULL;
+    ctx->line = 0;
+    ctx->function = NULL;
+    ctx->timestamp = 0; // Could add timestamp if needed
+
+    if (format) {
+        va_list args;
+        va_start(args, format);
+        vsnprintf(ctx->message, NIMCP_ERROR_MSG_MAX, format, args);
+        va_end(args);
+    } else {
+        snprintf(ctx->message, NIMCP_ERROR_MSG_MAX, "%s", nimcp_error_to_string(code));
+    }
+}
+
+void nimcp_set_error_ex(nimcp_error_t code, const char* file, int line,
+                        const char* func, const char* format, ...)
+{
+    nimcp_error_context_t* ctx = get_thread_error_context();
+    if (!ctx) return;
+
+    ctx->code = code;
+    ctx->file = file;
+    ctx->line = line;
+    ctx->function = func;
+    ctx->timestamp = 0; // Could add timestamp if needed
+
+    if (format) {
+        va_list args;
+        va_start(args, format);
+        vsnprintf(ctx->message, NIMCP_ERROR_MSG_MAX, format, args);
+        va_end(args);
+    } else {
+        snprintf(ctx->message, NIMCP_ERROR_MSG_MAX, "%s", nimcp_error_to_string(code));
+    }
+
+    // Also set the legacy error info for backward compatibility
+    nimcp_error_set(code, file, line, func, ctx->message);
+}
+
+nimcp_error_t nimcp_get_last_error(void)
+{
+    nimcp_error_context_t* ctx = get_thread_error_context();
+    return ctx ? ctx->code : NIMCP_SUCCESS;
+}
+
+const char* nimcp_get_error_message(void)
+{
+    nimcp_error_context_t* ctx = get_thread_error_context();
+    if (!ctx || ctx->message[0] == '\0') {
+        return "";
+    }
+    return ctx->message;
+}
+
+const nimcp_error_context_t* nimcp_get_error_context(void)
+{
+    return get_thread_error_context();
 }

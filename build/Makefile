@@ -8206,6 +8206,19 @@ unit_middleware_training_test_occipital_training_bridge/fast:
 .PHONY : unit_middleware_training_test_occipital_training_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_middleware_training_test_training_enhancements
+
+# Build rule for target.
+unit_middleware_training_test_training_enhancements: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_middleware_training_test_training_enhancements
+.PHONY : unit_middleware_training_test_training_enhancements
+
+# fast build rule for target.
+unit_middleware_training_test_training_enhancements/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_training_enhancements.dir/build.make test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_training_enhancements.dir/build
+.PHONY : unit_middleware_training_test_training_enhancements/fast
+
+#=============================================================================
 # Target rules for targets named integration_middleware_middleware_test_middleware_subsystems_integration
 
 # Build rule for target.
@@ -11053,6 +11066,71 @@ unit_parietal_intuition_integrations/fast:
 .PHONY : unit_parietal_intuition_integrations/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_test_collective_cognition
+
+# Build rule for target.
+unit_cognitive_test_collective_cognition: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_collective_cognition
+.PHONY : unit_cognitive_test_collective_cognition
+
+# fast build rule for target.
+unit_cognitive_test_collective_cognition/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/collective_cognition/CMakeFiles/unit_cognitive_test_collective_cognition.dir/build.make test/unit/cognitive/collective_cognition/CMakeFiles/unit_cognitive_test_collective_cognition.dir/build
+.PHONY : unit_cognitive_test_collective_cognition/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_hyperscanning
+
+# Build rule for target.
+unit_cognitive_test_hyperscanning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_hyperscanning
+.PHONY : unit_cognitive_test_hyperscanning
+
+# fast build rule for target.
+unit_cognitive_test_hyperscanning/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/collective_cognition/CMakeFiles/unit_cognitive_test_hyperscanning.dir/build.make test/unit/cognitive/collective_cognition/CMakeFiles/unit_cognitive_test_hyperscanning.dir/build
+.PHONY : unit_cognitive_test_hyperscanning/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_extended_mind
+
+# Build rule for target.
+unit_cognitive_test_extended_mind: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_extended_mind
+.PHONY : unit_cognitive_test_extended_mind
+
+# fast build rule for target.
+unit_cognitive_test_extended_mind/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/collective_cognition/CMakeFiles/unit_cognitive_test_extended_mind.dir/build.make test/unit/cognitive/collective_cognition/CMakeFiles/unit_cognitive_test_extended_mind.dir/build
+.PHONY : unit_cognitive_test_extended_mind/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_collective_phi
+
+# Build rule for target.
+unit_cognitive_test_collective_phi: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_collective_phi
+.PHONY : unit_cognitive_test_collective_phi
+
+# fast build rule for target.
+unit_cognitive_test_collective_phi/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/collective_cognition/CMakeFiles/unit_cognitive_test_collective_phi.dir/build.make test/unit/cognitive/collective_cognition/CMakeFiles/unit_cognitive_test_collective_phi.dir/build
+.PHONY : unit_cognitive_test_collective_phi/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_shared_intentionality
+
+# Build rule for target.
+unit_cognitive_test_shared_intentionality: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_shared_intentionality
+.PHONY : unit_cognitive_test_shared_intentionality
+
+# fast build rule for target.
+unit_cognitive_test_shared_intentionality/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/collective_cognition/CMakeFiles/unit_cognitive_test_shared_intentionality.dir/build.make test/unit/cognitive/collective_cognition/CMakeFiles/unit_cognitive_test_shared_intentionality.dir/build
+.PHONY : unit_cognitive_test_shared_intentionality/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_bio_async_test
 
 # Build rule for target.
@@ -11675,6 +11753,32 @@ test_protocol_feature_subscription: cmake_check_build_system
 test_protocol_feature_subscription/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/networking/protocol/CMakeFiles/test_protocol_feature_subscription.dir/build.make test/unit/networking/protocol/CMakeFiles/test_protocol_feature_subscription.dir/build
 .PHONY : test_protocol_feature_subscription/fast
+
+#=============================================================================
+# Target rules for targets named test_nimcp_msg_framing
+
+# Build rule for target.
+test_nimcp_msg_framing: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_nimcp_msg_framing
+.PHONY : test_nimcp_msg_framing
+
+# fast build rule for target.
+test_nimcp_msg_framing/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/networking/protocol/CMakeFiles/test_nimcp_msg_framing.dir/build.make test/unit/networking/protocol/CMakeFiles/test_nimcp_msg_framing.dir/build
+.PHONY : test_nimcp_msg_framing/fast
+
+#=============================================================================
+# Target rules for targets named test_nimcp_msg_router
+
+# Build rule for target.
+test_nimcp_msg_router: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_nimcp_msg_router
+.PHONY : test_nimcp_msg_router
+
+# fast build rule for target.
+test_nimcp_msg_router/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/networking/protocol/CMakeFiles/test_nimcp_msg_router.dir/build.make test/unit/networking/protocol/CMakeFiles/test_nimcp_msg_router.dir/build
+.PHONY : test_nimcp_msg_router/fast
 
 #=============================================================================
 # Target rules for targets named test_protocol_integration
@@ -12650,6 +12754,58 @@ unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge: cmake_ch
 unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge.dir/build.make test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge.dir/build
 .PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_occipital_test_nimcp_occipital_audiovisual_bridge
+
+# Build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_audiovisual_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_occipital_test_nimcp_occipital_audiovisual_bridge
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_audiovisual_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_audiovisual_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_audiovisual_bridge.dir/build.make test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_audiovisual_bridge.dir/build
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_audiovisual_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_occipital_test_nimcp_occipital_cortical_bridge
+
+# Build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_cortical_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_occipital_test_nimcp_occipital_cortical_bridge
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_cortical_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_cortical_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_cortical_bridge.dir/build.make test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_cortical_bridge.dir/build
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_cortical_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_occipital_test_nimcp_occipital_logic_bridge
+
+# Build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_logic_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_occipital_test_nimcp_occipital_logic_bridge
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_logic_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_logic_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_logic_bridge.dir/build.make test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_logic_bridge.dir/build
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_logic_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_occipital_test_nimcp_occipital_cognitive_bridge
+
+# Build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_cognitive_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_occipital_test_nimcp_occipital_cognitive_bridge
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_cognitive_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_cognitive_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_cognitive_bridge.dir/build.make test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_cognitive_bridge.dir/build
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_cognitive_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_brain_regions_parietal_test_nimcp_parietal_adapter
@@ -20742,6 +20898,8 @@ help:
 	@echo "... test_neural_logic_quantum_bridge"
 	@echo "... test_neural_logic_real"
 	@echo "... test_neural_symbolic_bridge"
+	@echo "... test_nimcp_msg_framing"
+	@echo "... test_nimcp_msg_router"
 	@echo "... test_nlp_disaster_scenario"
 	@echo "... test_nlp_mode_transitions"
 	@echo "... test_nlp_neural_sync"
@@ -21028,12 +21186,15 @@ help:
 	@echo "... unit_cognitive_test_bio_async"
 	@echo "... unit_cognitive_test_bio_async_registration"
 	@echo "... unit_cognitive_test_cognitive_thalamic_bridges"
+	@echo "... unit_cognitive_test_collective_cognition"
+	@echo "... unit_cognitive_test_collective_phi"
 	@echo "... unit_cognitive_test_consolidation"
 	@echo "... unit_cognitive_test_curiosity_enhanced"
 	@echo "... unit_cognitive_test_curiosity_fep_bridge"
 	@echo "... unit_cognitive_test_curiosity_immune"
 	@echo "... unit_cognitive_test_emotion_tensor"
 	@echo "... unit_cognitive_test_empathetic_response"
+	@echo "... unit_cognitive_test_extended_mind"
 	@echo "... unit_cognitive_test_fault_tolerance"
 	@echo "... unit_cognitive_test_fep_bridges"
 	@echo "... unit_cognitive_test_fractal_cognitive"
@@ -21052,11 +21213,13 @@ help:
 	@echo "... unit_cognitive_test_gt_mechanism"
 	@echo "... unit_cognitive_test_gt_repeated"
 	@echo "... unit_cognitive_test_gt_spatial"
+	@echo "... unit_cognitive_test_hyperscanning"
 	@echo "... unit_cognitive_test_jepa_context"
 	@echo "... unit_cognitive_test_jepa_predictor"
 	@echo "... unit_cognitive_test_meta_controller"
 	@echo "... unit_cognitive_test_phase7_bridges"
 	@echo "... unit_cognitive_test_self_awareness_extended"
+	@echo "... unit_cognitive_test_shared_intentionality"
 	@echo "... unit_cognitive_test_social"
 	@echo "... unit_cognitive_test_working_memory_immune"
 	@echo "... unit_cognitive_theory_of_mind_test_theory_of_mind"
@@ -21125,6 +21288,10 @@ help:
 	@echo "... unit_core_brain_regions_motor_test_nimcp_motor_adapter"
 	@echo "... unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge"
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_adapter"
+	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_audiovisual_bridge"
+	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_cognitive_bridge"
+	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_cortical_bridge"
+	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_logic_bridge"
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge"
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_substrate_bridge"
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge"
@@ -21362,6 +21529,7 @@ help:
 	@echo "... unit_middleware_training_test_tpb_bio_async"
 	@echo "... unit_middleware_training_test_training_adapters_bio_async"
 	@echo "... unit_middleware_training_test_training_callbacks"
+	@echo "... unit_middleware_training_test_training_enhancements"
 	@echo "... unit_middleware_training_test_training_logic_bridge"
 	@echo "... unit_middleware_training_test_training_module"
 	@echo "... unit_networking_distributed_test_distributed_cognition_refactored"

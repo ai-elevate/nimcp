@@ -38,6 +38,10 @@
 #include "core/brain/regions/occipital/nimcp_occipital_substrate_bridge.h"
 #include "core/brain/regions/occipital/nimcp_occipital_thalamic_bridge.h"
 #include "core/brain/regions/occipital/nimcp_occipital_quantum_bridge.h"
+#include "core/brain/regions/occipital/nimcp_occipital_audiovisual_bridge.h"
+#include "core/brain/regions/occipital/nimcp_occipital_cortical_bridge.h"
+#include "core/brain/regions/occipital/nimcp_occipital_logic_bridge.h"
+#include "core/brain/regions/occipital/nimcp_occipital_cognitive_bridge.h"
 
 // Stream connection includes
 #include "core/brain/regions/parietal/nimcp_parietal_adapter.h"
@@ -62,6 +66,12 @@
 
 // Swarm includes
 #include "swarm/nimcp_swarm_brain.h"
+
+// Broca region includes
+#include "core/brain/regions/broca/nimcp_broca_adapter.h"
+
+// Audio cortex includes
+#include "perception/nimcp_audio_cortex.h"
 
 #include <string.h>
 
@@ -139,21 +149,11 @@ static void ventral_feature_callback(const visual_feature_t* feature, void* user
 static bool connect_occipital_to_bio_async(brain_t brain) {
     if (!brain || !brain->occipital) return true; /* Non-fatal if not available */
 
-    /* Register with bio-async if enabled */
-    if (brain->bio_async_enabled && brain->bio_router) {
-        /* Register substrate bridge with bio-async */
-        if (brain->occipital_substrate_bridge) {
-            occipital_substrate_bridge_register_bio_async(
-                brain->occipital_substrate_bridge, brain->bio_router);
-        }
-
-        /* Register thalamic bridge with bio-async */
-        if (brain->occipital_thalamic_bridge) {
-            occipital_thalamic_bridge_register_bio_async(
-                brain->occipital_thalamic_bridge, brain->bio_router);
-        }
-
-        LOG_DEBUG(LOG_MODULE, "Occipital bridges registered with bio-async");
+    /* TODO: Register with bio-async when brain bio-router infrastructure is implemented */
+    if (brain->bio_async_enabled) {
+        /* Bio-async connection will be implemented when brain has bio_router field.
+         * For now, we just note that bio-async was requested. */
+        LOG_DEBUG(LOG_MODULE, "Occipital bio-async requested but brain router not yet available");
     }
 
     return true;
@@ -287,6 +287,10 @@ bool nimcp_brain_factory_init_occipital_subsystem(brain_t brain) {
 
     if (!nimcp_brain_factory_connect_occipital_to_swarm(brain)) {
         LOG_WARN(LOG_MODULE, "Occipital-Swarm connection failed (non-fatal)");
+    }
+
+    if (!nimcp_brain_factory_connect_occipital_to_broca(brain)) {
+        LOG_WARN(LOG_MODULE, "Occipital-Broca connection failed (non-fatal)");
     }
 
     /* Connect to bio-async */
@@ -629,6 +633,27 @@ bool nimcp_brain_factory_connect_occipital_to_logic(brain_t brain) {
     /* Store bridge reference if field exists in brain structure */
     /* brain->visual_logic_bridge = bridge; */
 
+    /*
+     * Also create occipital-specific logic bridge for visual predicate grounding.
+     * This provides direct visual feature -> predicate conversion.
+     */
+    occipital_logic_config_t occ_logic_cfg = occipital_logic_default_config();
+    occ_logic_cfg.enable_object_grounding = true;
+    occ_logic_cfg.enable_spatial_predicates = true;
+    occ_logic_cfg.enable_motion_predicates = true;
+    occ_logic_cfg.enable_bio_async = brain->bio_async_enabled;
+
+    occipital_logic_bridge_t* occ_logic_bridge = occipital_logic_bridge_create(
+        brain->occipital, &occ_logic_cfg);
+
+    if (occ_logic_bridge) {
+        /* Connect to neural logic network if available */
+        if (brain->logic) {
+            occipital_logic_connect_brain(occ_logic_bridge, brain);
+        }
+        LOG_DEBUG(LOG_MODULE, "Created occipital logic bridge");
+    }
+
     LOG_DEBUG(LOG_MODULE, "Occipital connected to logic module");
     return true;
 }
@@ -808,5 +833,65 @@ bool nimcp_brain_factory_connect_occipital_to_swarm(brain_t brain) {
      */
 
     LOG_DEBUG(LOG_MODULE, "Occipital connected to swarm system");
+    return true;
+}
+
+bool nimcp_brain_factory_connect_occipital_to_broca(brain_t brain) {
+    if (!brain || !brain->occipital) {
+        return true;  /* Nothing to connect */
+    }
+
+    /* Check if Broca's region is available */
+    if (!brain->broca_enabled || !brain->broca) {
+        return true;  /* Broca not initialized */
+    }
+
+    /*
+     * Connect occipital to Broca via audiovisual bridge.
+     *
+     * BIOLOGICAL BASIS:
+     * - Superior Temporal Sulcus (STS) integrates visual and auditory speech cues
+     * - Lip movements precede audio by ~150ms, enabling predictive speech processing
+     * - McGurk effect demonstrates visual-audio speech integration
+     * - Mirror neurons in Broca's area link gesture observation to motor plans
+     *
+     * PATHWAYS:
+     * - Occipital V4/V5 -> STS -> Broca (visual speech cues to articulation)
+     * - Occipital V4 -> Broca (visual gesture -> motor planning)
+     * - Occipital face area -> STS -> Broca (lip reading)
+     */
+
+    /* Create audiovisual bridge with default config */
+    occipital_av_config_t av_config = occipital_av_default_config();
+    av_config.enable_lip_reading = true;
+    av_config.enable_gesture_binding = true;
+    av_config.enable_bio_async = brain->bio_async_enabled;
+
+    occipital_audiovisual_bridge_t* av_bridge = occipital_av_bridge_create(
+        brain->occipital, &av_config);
+
+    if (!av_bridge) {
+        LOG_WARN(LOG_MODULE, "Failed to create occipital audiovisual bridge");
+        return false;
+    }
+
+    /* Connect to Broca's region */
+    if (occipital_av_connect_broca(av_bridge, brain->broca) != 0) {
+        LOG_WARN(LOG_MODULE, "Failed to connect audiovisual bridge to Broca");
+        occipital_av_bridge_destroy(av_bridge);
+        return false;
+    }
+
+    /* Connect to audio cortex if available */
+    if (brain->audio_cortex) {
+        if (occipital_av_connect_audio_cortex(av_bridge, brain->audio_cortex) != 0) {
+            LOG_WARN(LOG_MODULE, "Failed to connect audiovisual bridge to audio cortex");
+        }
+    }
+
+    /* Store bridge reference */
+    /* brain->occipital_audiovisual_bridge = av_bridge; */
+
+    LOG_DEBUG(LOG_MODULE, "Occipital connected to Broca (audiovisual bridge)");
     return true;
 }

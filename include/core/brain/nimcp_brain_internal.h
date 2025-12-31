@@ -45,103 +45,86 @@
 #include "security/nimcp_security_integration.h"  // Phase SC-4: Universal Security Integration
 #include "security/nimcp_blood_brain_barrier.h"   // Phase IS-1: BBB Perimeter Defense
 
-// Comprehensive Integration: All Advanced Subsystems
+//=============================================================================
+// COGNITIVE SUBSYSTEMS - Using Aggregate Headers
+// OPTIMIZATION: Replaced 40+ individual cognitive includes with 4 aggregate headers
+//=============================================================================
+#include "cognitive/nimcp_cognitive_core.h"      // Core modules (introspection, ethics, salience, etc.)
+#include "cognitive/nimcp_cognitive_advanced.h"  // Advanced modules (curiosity, theory of mind, etc.)
+#include "cognitive/nimcp_cognitive_emotional.h" // Emotional systems (wellbeing, grief, joy, etc.)
+#include "cognitive/nimcp_cognitive_memory.h"    // Memory systems (engram, consolidation, semantic, etc.)
+
+// Additional cognitive modules not in aggregates
+#include "cognitive/parietal/nimcp_parietal.h"
+#include "cognitive/parietal/nimcp_intuition_integrations.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
+#include "cognitive/free_energy/nimcp_fep_orchestrator.h"
+
+//=============================================================================
+// Glial and Oscillation Systems
+//=============================================================================
 #include "glial/integration/nimcp_glial_integration.h"
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
-#include "cognitive/introspection/nimcp_introspection.h"
-#include "cognitive/introspection/nimcp_connectivity_health.h"  // Phase 1.5.4: Connectivity Health
-#include "cognitive/ethics/nimcp_ethics.h"
-#include "cognitive/salience/nimcp_salience.h"
-#include "cognitive/consolidation/nimcp_consolidation.h"
-#include "cognitive/curiosity/nimcp_curiosity.h"
-#include "cognitive/knowledge/nimcp_knowledge.h"
-#include "cognitive/nimcp_symbolic_logic.h"              // Phase 9.4: Symbolic reasoning
-#include "cognitive/epistemic/nimcp_epistemic_filter.h"  // Phase 9.2: Bias prevention
-#include "cognitive/wellbeing/nimcp_wellbeing.h"        // Phase 9.3: Self-preservation
+
+//=============================================================================
+// Plasticity Subsystem
+//=============================================================================
 #include "plasticity/neuromodulators/nimcp_neuromod_pink_noise.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"
 #include "plasticity/attention/nimcp_attention.h"
-#include "core/neuron_types/nimcp_neural_logic.h"
-
-// Phase T1: Biological Framework Enhancements (Training Pipeline)
 #include "plasticity/homeostatic/nimcp_homeostatic.h"
 #include "plasticity/dendritic/nimcp_dendritic.h"
 #include "plasticity/predictive/nimcp_predictive_coding.h"
-#include "plasticity/nimcp_second_messengers.h"  // cAMP, IP3/DAG, Ca2+, gene expression cascades
-#include "cognitive/nimcp_fractal_cognitive.h"
+#include "plasticity/nimcp_second_messengers.h"
+#include "core/neuron_types/nimcp_neural_logic.h"
 
-// Phase TM-3: Brain-Training Integration (Training Pipeline)
+//=============================================================================
+// Training Pipeline
+//=============================================================================
 #include "middleware/training/nimcp_brain_training_integration.h"
-
-// Phase TPB-1: Training-Plasticity Bridge (connects training pipeline to biological plasticity)
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
-
-// Phase EDP-1: Event-Driven Plasticity (continuous learning from sensory events)
 #include "middleware/training/nimcp_event_driven_plasticity.h"
 
-// Phase 8: Multi-Modal Integration
+//=============================================================================
+// Multi-Modal Integration and Perception
+//=============================================================================
 #include "core/integration/nimcp_multimodal_integration.h"
 #include "perception/nimcp_visual_cortex.h"
 #include "perception/nimcp_audio_cortex.h"
 #include "perception/nimcp_speech_cortex.h"
 #include "nlp/nimcp_nlp.h"
 
-// Brain Regions Architecture
+//=============================================================================
+// Brain Architecture
+//=============================================================================
 #include "core/brain_regions/nimcp_brain_regions.h"
-
-// Universal Event Bus
 #include "core/events/nimcp_event_bus.h"
+#include "core/directives/nimcp_core_directives.h"
+#include "core/medulla/nimcp_medulla.h"
 
-// Phase 10: Advanced Cognitive Architecture
-#include "cognitive/nimcp_working_memory.h"
-#include "cognitive/nimcp_emotional_tagging.h"
-#include "cognitive/nimcp_emotional_system.h"
-#include "cognitive/nimcp_executive.h"
-#include "cognitive/nimcp_sleep_wake.h"
-#include "cognitive/memory/nimcp_engram.h"
-#include "cognitive/memory/nimcp_systems_consolidation.h"
-#include "cognitive/memory/nimcp_wm_transfer.h"
-#include "cognitive/memory/nimcp_semantic_memory.h"
-#include "cognitive/nimcp_mental_health.h"
-#include "cognitive/nimcp_theory_of_mind.h"
-#include "cognitive/nimcp_explanations.h"
-#include "cognitive/nimcp_meta_learning.h"
-#include "cognitive/nimcp_predictive.h"
-#include "cognitive/nimcp_mirror_neurons.h"
-#include "cognitive/global_workspace/nimcp_global_workspace.h"
-#include "cognitive/nimcp_autobiographical_memory.h"
-#include "cognitive/nimcp_self_model.h"
-#include "cognitive/nimcp_personality.h"
-
-// Phase E: Higher-Order Cognitive & Social Systems
-#include "cognitive/nimcp_shadow_emotions.h"
-
-// Fault Tolerance (Recovery Executive with Parietal Integration)
-// NOTE: Forward declaration to avoid header conflicts with diagnostics.h
+// Fault Tolerance (forward declaration to avoid header conflicts)
 struct recovery_executive_internal;
 
-#include "cognitive/nimcp_bias_detection.h"
-#include "cognitive/analysis/nimcp_network_analysis.h"
-#include "cognitive/nimcp_grief_and_loss.h"
-#include "cognitive/nimcp_joy_euphoria.h"
-#include "cognitive/nimcp_remorse_regret.h"
-#include "cognitive/nimcp_love_loyalty_friendship.h"
-
-// Phase C4: Information Theory
+//=============================================================================
+// Information Theory
+//=============================================================================
 #include "information/nimcp_shannon.h"
 #include "utils/quantum/nimcp_quantum_shannon.h"
 #include "information/nimcp_cross_modal.h"
 
-// Phase 11: Quantum Annealing
+//=============================================================================
+// Optimization and Topology
+//=============================================================================
 #include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
-
-// Topology and Community Detection
 #include "core/topology/nimcp_community_detection.h"
 #include "utils/algorithms/nimcp_graph_metrics.h"
 #include "utils/containers/nimcp_graph.h"
 
-// Phase CC-1: Cortical Columns Architecture (Tier 0.65)
+//=============================================================================
+// Cortical Columns Architecture
+//=============================================================================
 #include "core/cortical_columns/nimcp_cortical_column.h"
 #include "core/cortical_columns/nimcp_cortical_layers.h"
 #include "core/cortical_columns/nimcp_columnar_connectivity.h"
@@ -149,41 +132,19 @@ struct recovery_executive_internal;
 #include "core/cortical_columns/nimcp_orientation_columns.h"
 #include "core/cortical_columns/nimcp_feature_hypercolumns.h"
 
-// Phase 2 Middleware: Population coding & spike analysis
+//=============================================================================
+// Middleware and Memory Management
+//=============================================================================
 #include "middleware/brain_integration.h"
-
-// Phase 1.5: Memory pools for hot-path allocations
 #include "utils/memory/nimcp_memory_pool.h"
 
-// Brain Immune System Integration
-#include "cognitive/immune/nimcp_brain_immune.h"
-
-// FEP Orchestrator Integration
-#include "cognitive/free_energy/nimcp_fep_orchestrator.h"
-
-// Core Directives Integration (Ethical Foundation)
-// Uses core/directives which has the full implementation with nested configs
-#include "core/directives/nimcp_core_directives.h"
-
-// Medulla Oblongata Integration (Brainstem Autonomic Regulation)
-#include "core/medulla/nimcp_medulla.h"
-
-// Parietal Lobe Integration (Mathematical/Scientific Reasoning - Phase 7.2)
-#include "cognitive/parietal/nimcp_parietal.h"
-#include "cognitive/parietal/nimcp_intuition_integrations.h"
-#include "cognitive/knowledge/nimcp_kg_reader.h"
-
-// Dragonfly Integration (Bio-inspired Target Tracking and Interception)
+//=============================================================================
+// Specialized Brain Regions
+//=============================================================================
 #include "dragonfly/nimcp_dragonfly.h"
 #include "dragonfly/nimcp_dragonfly_medulla_bridge.h"
-
-// Enhanced Basal Ganglia Integration (Action Selection & Motor Control)
 #include "core/brain/subcortical/nimcp_basal_ganglia_enhanced.h"
-
-// Cerebellum Integration (Motor Coordination, Timing, Error-Based Learning)
 #include "core/brain/internal/nimcp_brain_internal_cerebellum.h"
-
-// Hippocampus Integration (Episodic Memory, Spatial Navigation, Pattern Separation/Completion)
 #include "core/brain/internal/nimcp_brain_internal_hippocampus.h"
 
 #ifdef __cplusplus
@@ -257,9 +218,23 @@ struct brain_struct {
     bool network_is_cached;             // Is network allocated via nimcp_cache?
 
     // Phase 3: Reference counting and read-only optimization
-    uint32_t* network_refcount;         // Pointer to shared refcount (NULL if not shared)
+    //
+    // CONCURRENCY FIX: Use atomic operations for reference counting instead of mutex.
+    // The previous design had a race condition where Thread A could check refcount_mutex
+    // is valid, then Thread B could decrement refcount to 0 and free the mutex,
+    // causing Thread A to use a freed mutex (use-after-free).
+    //
+    // ATOMIC SEMANTICS:
+    // - All refcount operations use __atomic_* builtins with appropriate memory ordering
+    // - ACQUIRE on reads: Ensures subsequent operations see effects of prior decrements
+    // - RELEASE on writes: Ensures prior operations complete before refcount update
+    // - ACQ_REL on CAS: Full barrier for atomic compare-and-swap operations
+    //
+    // THREAD SAFETY: This atomic refcount is safe for concurrent access from multiple
+    // threads without external synchronization. The shared network is destroyed when
+    // refcount reaches 0. Clones should use atomic_fetch_sub() and check result.
+    _Atomic(uint32_t)* network_refcount_atomic;  // Atomic shared refcount (NULL if not shared)
     bool can_use_readonly;              // Can use read-only inference? (true for COW clones)
-    nimcp_platform_mutex_t* refcount_mutex;    // Mutex for refcount updates (shared among clones)
     bool is_snapshot;                   // Is this a snapshot? (preserve stats, don't update from network)
     brain_stats_t snapshot_stats;       // Preserved stats at snapshot time (only used if is_snapshot=true)
 
@@ -633,6 +608,22 @@ struct brain_struct {
     //
     brain_immune_system_t* immune_system;        // Brain immune coordination layer
     bool immune_enabled;                         // Immune system enabled for this brain
+
+    // === COLLECTIVE COGNITION INTEGRATION ===
+    //
+    // Collective Cognition provides distributed consciousness capabilities:
+    // - Hyperscanning: Real-time inter-brain synchronization (EEG-like bands)
+    // - Extended Mind: External tools (databases, LLMs) as cognitive extensions
+    // - Collective Phi: Integrated Information Theory metrics for group consciousness
+    // - Shared Intentionality: Joint goals, we-mode cognition (Tomasello)
+    //
+    // Integrates with:
+    // - Brain Immune: Collective threats trigger swarm-wide immune responses
+    // - Bio-Async: Uses module IDs 0x1220-0x1227 for distributed coordination
+    // - Theory of Mind: Enhanced by we-mode shared intentionality
+    //
+    struct collective_cognition* collective_cognition;  // Collective cognition system
+    bool collective_cognition_enabled;                  // Collective cognition enabled for this brain
 
     // === FEP ORCHESTRATOR INTEGRATION ===
     //

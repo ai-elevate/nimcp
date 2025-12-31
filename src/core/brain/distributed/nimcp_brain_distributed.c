@@ -62,27 +62,9 @@
 
 #define LOG_MODULE "BRAIN_DISTRIBUTED"
 
-//=============================================================================
-// COW Clone Synchronization
-//=============================================================================
-
-/**
- * @brief Global mutex for COW clone first-clone initialization
- *
- * WHAT: Protects the first-clone initialization race condition
- * WHY:  Two threads cloning the same brain simultaneously could both see
- *       network_refcount==NULL and both try to allocate/initialize it
- * HOW:  Use a global mutex to serialize first-clone initialization
- *
- * NOTE: This is only held briefly during refcount initialization, not
- *       during the entire clone operation, to minimize contention.
- */
-static nimcp_platform_mutex_t g_cow_refcount_mutex;
-static nimcp_platform_once_t g_cow_refcount_once = NIMCP_PLATFORM_ONCE_INIT;
-
-static void init_cow_refcount_mutex(void) {
-    nimcp_platform_mutex_init(&g_cow_refcount_mutex, false);
-}
+// NOTE: COW Clone Synchronization is now lock-free using atomic operations.
+// The previous mutex-based approach had a race condition vulnerability.
+// See nimcp_brain_internal.h for the new atomic reference counting design.
 
 //=============================================================================
 // Error Handling
@@ -183,10 +165,9 @@ static brain_t allocate_brain_simple(void)
     brain->original_network = NULL;
     brain->network_is_cached = false;
 
-    // Initialize reference counting fields
-    brain->network_refcount = NULL;
+    // Initialize reference counting fields (atomic operations)
+    brain->network_refcount_atomic = NULL;
     brain->can_use_readonly = false;
-    brain->refcount_mutex = NULL;
 
     // Initialize snapshot fields
     brain->is_snapshot = false;
@@ -317,37 +298,60 @@ brain_t brain_clone_cow(brain_t original)
     clone->owns_network = false;  // Doesn't own network - it's shared
     clone->network_is_cached = false;  // Not using nimcp_cache yet
 
-    // Phase 3: Set up reference counting for shared network
-    // THREAD SAFETY FIX: Use global mutex to prevent race condition when
-    // two threads simultaneously try to create the first clone and both
-    // see network_refcount==NULL. Without this, both would allocate refcount
-    // structures, leading to memory leaks and incorrect reference counts.
-    nimcp_platform_once(&g_cow_refcount_once, init_cow_refcount_mutex);
-    nimcp_platform_mutex_lock(&g_cow_refcount_mutex);
+    // Phase 3: Set up atomic reference counting for shared network
+    //
+    // CONCURRENCY MODEL: Use atomic compare-and-swap for lock-free initialization
+    // of the shared refcount. Only one thread will successfully allocate and
+    // initialize the refcount; other threads will use the already-allocated one.
+    //
+    // MEMORY ORDERING:
+    // - Use ACQ_REL on CAS to ensure proper visibility of the refcount value
+    // - Use ACQUIRE on atomic load to see the latest refcount state
+    // - Use RELEASE on atomic store to make our writes visible to other threads
+    //
+    // ALGORITHM:
+    // 1. Atomically load original's refcount pointer
+    // 2. If NULL, try to CAS in a newly allocated refcount (initialized to 2)
+    // 3. If CAS fails, someone else beat us - free our allocation and use theirs
+    // 4. If non-NULL, atomically increment the existing refcount
 
-    if (!original->network_refcount) {
-        // First clone - original needs to initialize shared refcount
-        original->network_refcount = nimcp_malloc(sizeof(uint32_t));
-        original->refcount_mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
-        if (original->network_refcount && original->refcount_mutex) {
-            *original->network_refcount = 2;  // Original + this clone
-            nimcp_platform_mutex_init(original->refcount_mutex, false);
-            // CRITICAL: Original no longer exclusively owns network - it's now shared
-            original->owns_network = false;
+    _Atomic(uint32_t)* expected = __atomic_load_n(&original->network_refcount_atomic, __ATOMIC_ACQUIRE);
+
+    if (!expected) {
+        // First clone - try to initialize shared refcount atomically
+        _Atomic(uint32_t)* new_refcount = nimcp_malloc(sizeof(_Atomic(uint32_t)));
+        if (new_refcount) {
+            // Initialize to 2 (original + this clone) BEFORE publishing
+            __atomic_store_n(new_refcount, 2, __ATOMIC_RELAXED);
+
+            // Atomically try to set original's refcount pointer
+            // Only one thread will succeed in this CAS
+            _Atomic(uint32_t)* null_ptr = NULL;
+            if (__atomic_compare_exchange_n(&original->network_refcount_atomic,
+                                            &null_ptr, new_refcount,
+                                            false,  // strong CAS
+                                            __ATOMIC_ACQ_REL,
+                                            __ATOMIC_ACQUIRE)) {
+                // CAS succeeded - we initialized the refcount
+                // CRITICAL: Original no longer exclusively owns network - it's now shared
+                original->owns_network = false;
+            } else {
+                // CAS failed - another thread beat us
+                // Free our allocation and use theirs
+                nimcp_free(new_refcount);
+                // Increment the refcount that the other thread set up
+                // BUG FIX: Use the pointer value, not address of pointer
+                __atomic_fetch_add(original->network_refcount_atomic, 1, __ATOMIC_ACQ_REL);
+            }
         }
     } else {
-        // Additional clone - increment existing refcount
-        // Note: We already hold g_cow_refcount_mutex, so safe to access refcount_mutex
-        nimcp_platform_mutex_lock(original->refcount_mutex);
-        (*original->network_refcount)++;
-        nimcp_platform_mutex_unlock(original->refcount_mutex);
+        // Additional clone - atomically increment existing refcount
+        // expected is already _Atomic(uint32_t)*, use it directly
+        __atomic_fetch_add(expected, 1, __ATOMIC_ACQ_REL);
     }
 
-    nimcp_platform_mutex_unlock(&g_cow_refcount_mutex);
-
-    // Clone shares the refcount and mutex with original
-    clone->network_refcount = original->network_refcount;
-    clone->refcount_mutex = original->refcount_mutex;
+    // Clone shares the refcount with original (atomically load the final value)
+    clone->network_refcount_atomic = __atomic_load_n(&original->network_refcount_atomic, __ATOMIC_ACQUIRE);
     clone->can_use_readonly = true;  // Can use read-only inference
 
     // Allocate output labels array (need space for max outputs, not just existing labels)

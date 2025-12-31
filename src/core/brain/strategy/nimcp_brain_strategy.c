@@ -546,7 +546,7 @@ bool brain_get_cow_stats(brain_t brain, brain_cow_stats_t* cow_stats)
         } else {
             // Network is still shared (Phase 3 read-only inference)
             // Use reference count if available, otherwise assume 2
-            cow_stats->cow_ref_count = brain->network_refcount ? *brain->network_refcount : 2;
+            cow_stats->cow_ref_count = brain->network_refcount_atomic ? atomic_load(brain->network_refcount_atomic) : 2;
 
             // Calculate shared bytes (network size)
             network_performance_t perf;

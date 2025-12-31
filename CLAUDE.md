@@ -1,6 +1,10 @@
 # NIMCP Project Memory
 
+**Version**: 2.6.2
+**Last Updated**: 2025-12-31
+
 > **Documentation is modularized.** See `docs/claude/` for detailed documentation.
+> **Master Index**: See `docs/INDEX.md` for complete documentation navigation.
 
 ---
 
@@ -61,14 +65,32 @@ git add -A && git commit --no-verify -m "message" && git push
 
 ## Critical GOTCHAs
 
+### Tensor API
 - `nimcp_tensor_sum()` returns `nimcp_tensor_t*`, not scalar
 - `nimcp_tensor_create(dims, rank, dtype)` requires 3 args (rank, not ndims)
-- Mutex API (use thread layer, not platform layer):
-  - `nimcp_mutex_create(attr)` - allocate and init, returns `nimcp_mutex_t*`
-  - `nimcp_mutex_init(mutex, attr)` - init existing struct
-  - `mutex_attr_t` supports MUTEX_TYPE_NORMAL/RECURSIVE/ERRORCHECK
-- Platform tiers: `PLATFORM_TIER_FULL/MEDIUM/CONSTRAINED/MINIMAL`
+
+### Mutex API (use thread layer, not platform layer)
+- `nimcp_mutex_create(attr)` - allocate and init, returns `nimcp_mutex_t*`
+- `nimcp_mutex_init(mutex, attr)` - init existing struct
+- `mutex_attr_t` supports MUTEX_TYPE_NORMAL/RECURSIVE/ERRORCHECK
+- **Deadlock prevention**: Never call public mutex-locking functions from within locked code - create `*_unlocked()` helpers
+
+### Platform Tiers
+- `PLATFORM_TIER_FULL/MEDIUM/CONSTRAINED/MINIMAL`
+
+### Brain Immune System
 - B cells must be in PLASMA state to produce antibodies
+- State progression: NAIVE -> ACTIVATED -> PLASMA
+
+### Return Value Conventions
 - FEP bridges return `0` for success, `-1` for errors (not NIMCP_OK/NIMCP_ERROR_*)
 - Metabolic modulation: `metabolic_compute_effects()` returns `0` for success, `-1` for errors
-- Deadlock pattern: Never call public mutex-locking functions from within locked code - create `*_unlocked()` helpers
+- Standard NIMCP functions return `nimcp_error_t` codes
+
+### Occipital Lobe Integration (New in 2.6.1)
+- Visual processing requires proper cortical bridge initialization
+- Audiovisual bridge must be configured before cross-modal processing
+- Cognitive bridge connects occipital to higher cognitive functions
+
+### Path Changes (2.6.2)
+- Project path: `/home/bbrelin/nimcp` (NOT `/home/bbrelin/repos/nimcp`)

@@ -166,6 +166,7 @@ extern void set_error(const char* format, ...);
 #define init_global_workspace_subsystem             nimcp_brain_factory_init_global_workspace_subsystem
 #define init_security_subsystem                     nimcp_brain_factory_init_security_subsystem
 #define init_immune_subsystem                       nimcp_brain_factory_init_immune_subsystem
+#define init_collective_cognition_subsystem         nimcp_brain_factory_init_collective_cognition_subsystem
 #define init_homeostatic_plasticity_subsystem       nimcp_brain_factory_init_homeostatic_plasticity_subsystem
 #define init_dendritic_computation_subsystem        nimcp_brain_factory_init_dendritic_computation_subsystem
 #define init_biological_predictive_subsystem        nimcp_brain_factory_init_biological_predictive_subsystem

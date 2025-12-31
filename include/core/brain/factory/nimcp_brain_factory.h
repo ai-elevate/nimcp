@@ -693,6 +693,41 @@ bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t brain);
  */
 bool nimcp_brain_factory_init_immune_subsystem(brain_t brain);
 
+/**
+ * @brief Initialize collective cognition subsystem
+ *
+ * WHAT: Creates distributed consciousness system for multi-brain coordination
+ * WHY:  Enables inter-instance synchronization, shared intentionality, and extended mind
+ * HOW:  Creates collective cognition system and optionally connects to immune system
+ *
+ * COMPONENTS:
+ * - Hyperscanning: Real-time neural synchronization using EEG-like frequency bands
+ *   (delta, theta, alpha, beta, gamma) with phase-locking value (PLV) computation
+ * - Extended Mind: External tools (databases, LLMs, sensors) as cognitive extensions
+ *   following Clark & Chalmers' extended mind thesis
+ * - Collective Phi: Integrated Information Theory (Tononi) metrics for measuring
+ *   collective consciousness level across instances
+ * - Shared Intentionality: Joint goals and we-mode cognition following Tomasello's
+ *   theory of shared intentionality
+ *
+ * INTEGRATION:
+ * - Brain Immune: If enabled, connects for collective threat response
+ *   - Collective threats trigger swarm-wide immune responses
+ *   - Inflammation state shared across collective via hyperscanning
+ * - Bio-Async: Registers with module IDs 0x1220-0x1227
+ * - Theory of Mind: Enhanced by we-mode shared intentionality
+ *
+ * THEORETICAL BASIS:
+ * - Integrated Information Theory (Tononi, 2004, 2014)
+ * - Shared Intentionality (Tomasello, 2005, 2009)
+ * - Extended Mind Thesis (Clark & Chalmers, 1998)
+ * - Inter-brain synchronization (Dumas et al., 2010)
+ *
+ * @param brain Brain instance with config.enable_collective_cognition = true
+ * @return true on success, false on failure
+ */
+bool nimcp_brain_factory_init_collective_cognition_subsystem(brain_t brain);
+
 //=============================================================================
 // Decision Caching (Internal Helpers)
 //=============================================================================

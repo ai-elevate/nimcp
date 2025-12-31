@@ -135,6 +135,95 @@ typedef struct knowledge_system_struct* knowledge_system_t;
  * // Save for later
  * brain_save(brain, "ethics_brain.nimcp");
  * ```
+ *
+ * =============================================================================
+ * THREAD SAFETY AND CONCURRENCY MODEL
+ * =============================================================================
+ *
+ * The NIMCP brain API provides varying levels of thread safety depending on
+ * the operation type. This section documents the concurrency guarantees and
+ * requirements for each category of operations.
+ *
+ * ## Thread-Safe Operations (No External Synchronization Required)
+ *
+ * The following operations are fully thread-safe and can be called concurrently
+ * from multiple threads on the SAME brain instance:
+ *
+ * - brain_decide() - Multiple threads can perform inference concurrently.
+ *   Uses internal mutex-protected caching with timeout protection.
+ * - brain_get_stats() - Read-only statistics access.
+ * - brain_get_config() - Read-only configuration access.
+ * - brain_clone_cow() - Creates COW clone using atomic reference counting.
+ * - brain_get_*() accessor functions - Read-only subsystem access.
+ *
+ * ## Serialized Operations (Internal Synchronization, One-at-a-Time)
+ *
+ * These operations use internal mutexes and will serialize if called
+ * concurrently. Safe to call from multiple threads, but performance may
+ * suffer under high contention:
+ *
+ * - brain_learn_example() - Learning modifies network weights. Internal
+ *   cache mutex ensures consistency, but concurrent learning may see
+ *   interleaved weight updates. For best results, batch learning calls
+ *   or use external synchronization.
+ * - brain_learn_batch() - Same as brain_learn_example(), processes batch
+ *   sequentially.
+ *
+ * ## Requires External Synchronization
+ *
+ * These operations are NOT thread-safe and require caller-provided
+ * synchronization (e.g., external mutex) if called concurrently:
+ *
+ * - brain_create*() - Creation should be single-threaded or externally
+ *   synchronized if creating multiple brains sharing resources.
+ * - brain_destroy() - Must not be called while other threads are using
+ *   the brain. Ensure all operations complete before destruction.
+ * - brain_resize() - Network modification. Exclusive access required.
+ * - brain_save() / brain_load() - File I/O is not thread-safe.
+ * - brain_observe_action() - Mirror neuron updates require serialization.
+ *
+ * ## Concurrent brain_learn and brain_decide Behavior
+ *
+ * When brain_learn_example() and brain_decide() are called concurrently:
+ *
+ * 1. Learning may invalidate cached decisions (cache is cleared after
+ *    weight updates).
+ * 2. Inference during learning may see partially updated weights.
+ * 3. Results are still valid (no crashes/corruption), but may be
+ *    inconsistent - a decision made during learning may differ from
+ *    one made immediately after.
+ *
+ * For applications requiring consistent read-after-write semantics,
+ * use external synchronization:
+ *
+ * ```c
+ * pthread_mutex_lock(&app_mutex);
+ * brain_learn_example(brain, features, label, confidence);
+ * brain_decision_t* decision = brain_decide(brain, features, num);
+ * pthread_mutex_unlock(&app_mutex);
+ * ```
+ *
+ * ## Reference Counting for COW Clones
+ *
+ * Copy-on-Write (COW) clones use lock-free atomic reference counting:
+ * - Multiple clones can be created/destroyed concurrently.
+ * - Shared network is destroyed when last reference is released.
+ * - No mutex required for refcount operations (C11 atomics).
+ * - Writing to a COW clone triggers deep copy (not thread-safe).
+ *
+ * ## Deadlock Protection
+ *
+ * All internal mutex acquisitions use timeout-based locking (5 second
+ * default) to prevent deadlocks. If a mutex cannot be acquired within
+ * the timeout, the operation fails gracefully with an error rather than
+ * blocking indefinitely.
+ *
+ * ## Global Statistics
+ *
+ * Global statistics counters use atomic operations for thread safety.
+ * No external synchronization is required for statistics access.
+ *
+ * =============================================================================
  */
 
 //=============================================================================
@@ -164,6 +253,130 @@ typedef enum {
     BRAIN_TASK_ASSOCIATION,      /**< Association learning (Hebbian) */
     BRAIN_TASK_CUSTOM            /**< Custom task */
 } brain_task_t;
+
+//=============================================================================
+// Configuration Profiles
+//=============================================================================
+
+/**
+ * @brief Pre-defined brain configuration profiles
+ *
+ * WHAT: Configuration profiles replace 90+ boolean flags with semantic presets
+ * WHY:  Simplify brain configuration for common use cases
+ * HOW:  Use brain_config_from_profile() to get a pre-configured brain_config_t
+ *
+ * USAGE:
+ * ```c
+ * brain_config_t config = brain_config_from_profile(BRAIN_CONFIG_STANDARD);
+ * config.size = BRAIN_SIZE_MEDIUM;
+ * config.num_inputs = 128;
+ * config.num_outputs = 10;
+ * strncpy(config.task_name, "my_task", sizeof(config.task_name) - 1);
+ * brain_t brain = brain_create_custom(&config);
+ * ```
+ */
+typedef enum {
+    /**
+     * BRAIN_CONFIG_MINIMAL - Bare minimum for inference
+     * USE CASES: Unit tests, swarm drones, embedded systems, benchmarks
+     * ENABLED: Core neural network, basic learning (STDP/Hebbian), memory pools
+     * DISABLED: All cognitive subsystems, sensory cortices, security
+     * PERFORMANCE: Init <100ms, Memory <10MB, Inference <1ms
+     */
+    BRAIN_CONFIG_MINIMAL = 0,
+
+    /**
+     * BRAIN_CONFIG_STANDARD - Common features for general use
+     * USE CASES: Production applications, basic cognitive features, decision making
+     * ENABLED: MINIMAL + working memory, global workspace, introspection, salience
+     * DISABLED: Sensory cortices, ethics, theory of mind, advanced security
+     * PERFORMANCE: Init <500ms, Memory 20-50MB, Inference 1-5ms
+     */
+    BRAIN_CONFIG_STANDARD,
+
+    /**
+     * BRAIN_CONFIG_COGNITIVE - Full cognitive systems
+     * USE CASES: Consciousness simulation, social cognition, ethical reasoning
+     * ENABLED: STANDARD + theory of mind, mirror neurons, ethics, emotions
+     * DISABLED: Sensory cortices (enable as needed), multi-GPU, quantum features
+     * PERFORMANCE: Init 1-3s, Memory 50-200MB, Inference 5-20ms
+     */
+    BRAIN_CONFIG_COGNITIVE,
+
+    /**
+     * BRAIN_CONFIG_RESEARCH - All features for research
+     * USE CASES: Scientific research, full biological realism, feature exploration
+     * ENABLED: ALL available features including sensory, security, quantum
+     * PERFORMANCE: Init 5-30s, Memory 500MB-5GB, Inference 20-100ms
+     */
+    BRAIN_CONFIG_RESEARCH,
+
+    /**
+     * BRAIN_CONFIG_EMBEDDED - Optimized for constrained devices
+     * USE CASES: IoT devices, edge computing, battery-powered, latency-critical
+     * ENABLED: Core network, basic learning, reduced working memory, lazy init
+     * PERFORMANCE: Init <200ms, Memory <20MB, Inference <2ms
+     */
+    BRAIN_CONFIG_EMBEDDED,
+
+    BRAIN_CONFIG_PROFILE_COUNT  /**< Number of configuration profiles */
+} brain_config_profile_t;
+
+//=============================================================================
+// Glial Cell Ratio Constants (Biological Documentation)
+//=============================================================================
+
+/**
+ * Glial cell to neuron ratios based on biological research
+ *
+ * REFERENCES:
+ * - Azevedo et al. (2009): Human brain has ~1:1 glia-to-neuron ratio
+ * - Herculano-Houzel (2014): Glia/neuron ratio varies by brain region
+ * - von Bartheld et al. (2016): ~86B neurons, ~85B glia in human brain
+ *
+ * ASTROCYTES (ratio = 5): ~20% of glial cells, tripartite synapses
+ * OLIGODENDROCYTES (ratio = 7): ~14% of glial cells, myelin sheaths
+ * MICROGLIA (ratio = 10): ~10% of glial cells, immune response
+ */
+#define GLIA_ASTROCYTE_RATIO            5   /**< neurons/5 = astrocyte count */
+#define GLIA_OLIGODENDROCYTE_RATIO      7   /**< neurons/7 = oligodendrocyte count */
+#define GLIA_MICROGLIA_RATIO            10  /**< neurons/10 = microglia count */
+
+/** Calculate glial cell counts from neuron count */
+#define GLIA_ASTROCYTE_COUNT(n)       ((n) / GLIA_ASTROCYTE_RATIO)
+#define GLIA_OLIGODENDROCYTE_COUNT(n) ((n) / GLIA_OLIGODENDROCYTE_RATIO)
+#define GLIA_MICROGLIA_COUNT(n)       ((n) / GLIA_MICROGLIA_RATIO)
+
+//=============================================================================
+// Configuration Validation Types
+//=============================================================================
+
+/**
+ * @brief Configuration validation error codes
+ */
+typedef enum {
+    BRAIN_CONFIG_OK = 0,              /**< Configuration is valid */
+    BRAIN_CONFIG_ERR_NULL,            /**< NULL config pointer */
+    BRAIN_CONFIG_ERR_INVALID_SIZE,    /**< Invalid brain size */
+    BRAIN_CONFIG_ERR_INVALID_TASK,    /**< Invalid task type */
+    BRAIN_CONFIG_ERR_ZERO_INPUTS,     /**< num_inputs is zero */
+    BRAIN_CONFIG_ERR_ZERO_OUTPUTS,    /**< num_outputs is zero */
+    BRAIN_CONFIG_ERR_LEARNING_RATE,   /**< learning_rate out of range */
+    BRAIN_CONFIG_ERR_SPARSITY,        /**< sparsity_target out of range */
+    BRAIN_CONFIG_ERR_DEPENDENCY,      /**< Feature dependency not met */
+    BRAIN_CONFIG_ERR_INCOMPATIBLE,    /**< Incompatible feature combination */
+    BRAIN_CONFIG_ERR_RESOURCE,        /**< Resource constraints violated */
+} brain_config_error_code_t;
+
+/**
+ * @brief Detailed configuration validation error
+ */
+typedef struct {
+    brain_config_error_code_t code;   /**< Error code */
+    char message[256];                /**< Human-readable error message */
+    const char* field_name;           /**< Name of the invalid field */
+    const char* dependency;           /**< Missing dependency (if ERR_DEPENDENCY) */
+} brain_config_error_t;
 
 //=============================================================================
 // Brain Handle & Configuration
@@ -964,6 +1177,60 @@ typedef struct {
     bool immune_enable_swarm_integration; /**< Integrate with swarm immune if available (default: true) */
     bool immune_enable_bio_async;         /**< Enable cytokine signaling via bio-async (default: true) */
 
+    // === COLLECTIVE COGNITION (Distributed Consciousness) ===
+    /**
+     * Collective Cognition Configuration
+     *
+     * WHAT: Distributed consciousness across multiple brain instances
+     * WHY:  Enables inter-instance synchronization, shared intentionality, and extended mind
+     * HOW:  Implements hyperscanning, IIT metrics (phi), and we-mode cognition
+     *
+     * COMPONENTS:
+     * - Hyperscanning: Real-time neural synchronization (EEG-like frequency bands)
+     * - Extended Mind: External tools (databases, LLMs) as cognitive extensions
+     * - Collective Phi: Integrated Information Theory metrics for group consciousness
+     * - Shared Intentionality: Joint goals, we-mode vs i-mode cognition
+     *
+     * THEORETICAL BASIS:
+     * - Integrated Information Theory (Tononi, 2004, 2014)
+     * - Shared Intentionality (Tomasello, 2005, 2009)
+     * - Extended Mind Thesis (Clark & Chalmers, 1998)
+     * - Inter-brain synchronization (hyperscanning literature)
+     *
+     * INTEGRATION:
+     * - Brain Immune: Collective threats trigger swarm-wide immune responses
+     * - Bio-Async: Uses collective cognition module IDs (0x1220-0x1227)
+     * - Theory of Mind: Enhanced by we-mode shared intentionality
+     *
+     * PERFORMANCE:
+     * - Hyperscanning update: ~5-15µs per instance pair
+     * - Phi computation: ~10-50µs depending on instance count
+     * - Shared goal updates: ~2-10µs per goal
+     */
+    bool enable_collective_cognition;         /**< Enable collective cognition system (default: false) */
+
+    // Collective cognition sizing
+    uint32_t collective_max_instances;        /**< Max brain instances in collective (default: 16) */
+    uint32_t collective_max_extensions;       /**< Max cognitive extensions (default: 32) */
+    uint32_t collective_max_shared_goals;     /**< Max shared goals tracked (default: 64) */
+    uint32_t collective_max_joint_attentions; /**< Max joint attention targets (default: 32) */
+
+    // Hyperscanning configuration
+    float collective_sync_threshold;          /**< Entrainment threshold 0-1 (default: 0.7) */
+    bool collective_enable_leader_detection;  /**< Detect leader-follower dynamics (default: true) */
+
+    // Phi computation configuration
+    uint32_t collective_phi_computation_depth; /**< IIT computation depth 1-4 (default: 2) */
+    float collective_coherence_weight;        /**< Weight of coherence in phi calc (default: 0.3) */
+
+    // Shared intentionality configuration
+    float collective_commitment_threshold;    /**< Min commitment for goal acceptance (default: 0.5) */
+    float collective_we_mode_threshold;       /**< Threshold for we-mode activation (default: 0.6) */
+
+    // Integration enables
+    bool collective_enable_immune_integration; /**< Integrate with brain immune (default: true) */
+    bool collective_enable_bio_async;         /**< Enable bio-async messaging (default: true) */
+
     // === PHASE 7.2: PARIETAL LOBE (Mathematical/Scientific Reasoning) ===
     /**
      * Parietal Lobe Configuration
@@ -1257,6 +1524,157 @@ brain_t brain_create_minimal(const char* task_name, brain_size_t size, brain_tas
  */
 brain_t brain_create_lazy(const char* task_name, brain_size_t size, brain_task_t task,
                           uint32_t num_inputs, uint32_t num_outputs);
+
+//=============================================================================
+// Configuration Profile Functions
+//=============================================================================
+
+/**
+ * @brief Create a brain configuration from a predefined profile
+ *
+ * WHAT: Initialize a brain_config_t with profile-appropriate defaults
+ * WHY:  Simplify configuration - no need to set 90+ flags manually
+ * HOW:  Apply profile-specific settings to all configuration fields
+ *
+ * @param profile The configuration profile to use
+ * @return Initialized brain_config_t with profile defaults
+ *
+ * EXAMPLE:
+ * ```c
+ * brain_config_t config = brain_config_from_profile(BRAIN_CONFIG_STANDARD);
+ * config.size = BRAIN_SIZE_MEDIUM;
+ * config.num_inputs = 128;
+ * config.num_outputs = 10;
+ * strncpy(config.task_name, "my_task", sizeof(config.task_name) - 1);
+ * brain_t brain = brain_create_custom(&config);
+ * ```
+ *
+ * NOTE: You must still set size, num_inputs, num_outputs, and task_name
+ */
+brain_config_t brain_config_from_profile(brain_config_profile_t profile);
+
+/**
+ * @brief Get the name of a configuration profile
+ *
+ * @param profile The profile to get the name for
+ * @return Human-readable profile name (e.g., "STANDARD", "COGNITIVE")
+ */
+const char* brain_config_profile_name(brain_config_profile_t profile);
+
+/**
+ * @brief Get a description of what a profile enables
+ *
+ * @param profile The profile to describe
+ * @return Detailed description string
+ */
+const char* brain_config_profile_description(brain_config_profile_t profile);
+
+//=============================================================================
+// Configuration Validation Functions
+//=============================================================================
+
+/**
+ * @brief Validate a brain configuration
+ *
+ * WHAT: Check configuration for errors and inconsistencies
+ * WHY:  Catch configuration errors before brain creation
+ * HOW:  Validate all fields, check dependencies, verify compatibility
+ *
+ * CHECKS PERFORMED:
+ * - NULL pointer check
+ * - Size and task validity
+ * - Input/output dimensions > 0
+ * - Learning rate in range [0.0, 1.0]
+ * - Sparsity target in range [0.0, 1.0]
+ * - Feature dependencies (e.g., visual_cortex needs multimodal_integration)
+ * - Incompatible combinations (e.g., minimal_mode + heavy features)
+ *
+ * @param config The configuration to validate
+ * @param error  Output: error details if validation fails (can be NULL)
+ * @return true if configuration is valid, false otherwise
+ */
+bool brain_config_validate(const brain_config_t* config, brain_config_error_t* error);
+
+/**
+ * @brief Validate and auto-fix configuration issues where possible
+ *
+ * WHAT: Validate configuration and attempt to fix minor issues
+ * WHY:  Provide a more forgiving configuration experience
+ * HOW:  Enable missing dependencies, clamp values to valid ranges
+ *
+ * @param config The configuration to validate and fix (modified in place)
+ * @param error  Output: error details if unfixable error found (can be NULL)
+ * @return true if configuration is valid (possibly after fixes), false if unfixable
+ */
+bool brain_config_validate_and_fix(brain_config_t* config, brain_config_error_t* error);
+
+//=============================================================================
+// Configuration Builder Pattern Functions
+//=============================================================================
+
+/**
+ * @brief Create a configuration builder starting from a profile
+ *
+ * @param base Base profile to start from
+ * @return Initialized brain_config_t ready for builder modifications
+ */
+brain_config_t brain_config_builder_create(brain_config_profile_t base);
+
+/**
+ * @brief Enable a feature by name
+ *
+ * SUPPORTED FEATURES:
+ * - "working_memory", "theory_of_mind", "ethics", "empathy", "mirror_neurons"
+ * - "global_workspace", "introspection", "salience", "consolidation", "curiosity"
+ * - "visual_cortex", "audio_cortex", "speech_cortex", "multimodal"
+ * - "glial", "oscillations", "myelin", "meta_learning", "predictive"
+ * - "executive", "emotional_tagging", "sleep_wake", "mental_health"
+ * - "logic", "epistemic_filter", "brain_regions", "cortical_columns"
+ * - "attention", "parietal", "dragonfly", "fault_tolerance"
+ * - "bio_security", "bbb_protection", "brain_immune", "security_monitoring"
+ * - "training_integration", "distributed", "collective_cognition"
+ *
+ * @param config The configuration to modify
+ * @param feature Name of the feature to enable
+ * @return Modified configuration (for method chaining)
+ */
+brain_config_t brain_config_builder_enable(brain_config_t config, const char* feature);
+
+/**
+ * @brief Disable a feature by name
+ *
+ * @param config The configuration to modify
+ * @param feature Name of the feature to disable
+ * @return Modified configuration (for method chaining)
+ */
+brain_config_t brain_config_builder_disable(brain_config_t config, const char* feature);
+
+/**
+ * @brief Check if a feature is enabled by name
+ *
+ * @param config The configuration to query
+ * @param feature Name of the feature to check
+ * @return true if the feature is enabled, false otherwise
+ */
+bool brain_config_is_feature_enabled(const brain_config_t* config, const char* feature);
+
+/**
+ * @brief Get list of all enabled features
+ *
+ * @param config The configuration to query
+ * @param buffer Output buffer for feature names (comma-separated)
+ * @param buffer_size Size of the output buffer
+ * @return Number of enabled features
+ */
+uint32_t brain_config_get_enabled_features(const brain_config_t* config,
+                                            char* buffer, size_t buffer_size);
+
+/**
+ * @brief Print configuration summary to stdout
+ *
+ * @param config The configuration to print
+ */
+void brain_config_print_summary(const brain_config_t* config);
 
 /**
  * @brief Destroy brain

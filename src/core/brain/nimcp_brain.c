@@ -948,17 +948,117 @@ static void cache_decision(brain_t brain, const float* features, uint32_t num_fe
 }
 
 /**
- * @brief Clear decision cache (thread-safe)
+ * @brief Maximum wait time for mutex operations (in microseconds)
+ *
+ * WHY: Prevent indefinite blocking on mutex acquisition
+ * HOW: Use timeout-based try-lock with retry loop
+ */
+#define MUTEX_TIMEOUT_US 5000000  // 5 seconds
+
+/**
+ * @brief Attempt to lock mutex with timeout and exponential backoff
+ *
+ * WHAT: Acquires mutex with timeout protection to prevent deadlocks
+ * WHY:  Standard mutex_lock can block indefinitely causing deadlock
+ * HOW:  Use trylock with exponential backoff up to max timeout
+ *
+ * RECOVERY: If lock cannot be acquired within timeout, logs critical error
+ * and returns failure. Caller must handle gracefully (not proceed with
+ * locked resource access).
+ *
+ * @param mutex Mutex to lock
+ * @param timeout_us Maximum time to wait in microseconds
+ * @return 0 on success, -1 on timeout
+ */
+static int mutex_lock_with_timeout(nimcp_platform_mutex_t* mutex, uint64_t timeout_us)
+{
+    if (!mutex) {
+        return -1;
+    }
+
+    uint64_t start_time = nimcp_time_monotonic_us();
+    uint64_t elapsed = 0;
+    uint32_t backoff_us = 100;  // Start with 100 microsecond backoff
+
+    while (elapsed < timeout_us) {
+        // Try to acquire lock without blocking
+        int result = nimcp_platform_mutex_trylock(mutex);
+        if (result == 0) {
+            // Successfully acquired lock
+            return 0;
+        }
+
+        // Lock not available - wait with exponential backoff
+        usleep(backoff_us);
+
+        // Exponential backoff with cap at 10ms
+        backoff_us = (backoff_us * 2 > 10000) ? 10000 : backoff_us * 2;
+
+        elapsed = nimcp_time_monotonic_us() - start_time;
+    }
+
+    // Timeout - log critical error
+    LOG_MODULE_ERROR("BRAIN", "CRITICAL: Mutex lock timeout after %lu us - potential deadlock detected",
+                     (unsigned long)timeout_us);
+    return -1;
+}
+
+/**
+ * @brief Force unlock mutex with recovery logging
+ *
+ * WHAT: Attempts emergency mutex unlock when normal unlock fails
+ * WHY:  Recover from potential deadlock situations
+ * HOW:  Multiple unlock attempts with logging for diagnostics
+ *
+ * WARNING: This should only be called as a last resort when normal
+ * unlock fails. It may indicate a programming error (unlocking mutex
+ * not owned by this thread) or memory corruption.
+ *
+ * @param mutex Mutex to force unlock
+ * @param context Description of where the issue occurred
+ */
+static void force_unlock_with_logging(nimcp_platform_mutex_t* mutex, const char* context)
+{
+    if (!mutex) {
+        return;
+    }
+
+    // Attempt unlock multiple times (some implementations may require it
+    // if mutex was locked recursively or corrupted)
+    for (int attempt = 0; attempt < 3; attempt++) {
+        int result = nimcp_platform_mutex_unlock(mutex);
+        if (result == 0) {
+            LOG_MODULE_WARN("BRAIN", "Emergency unlock succeeded on attempt %d at %s",
+                             attempt + 1, context);
+            return;
+        }
+    }
+
+    // All attempts failed - log critical error
+    LOG_MODULE_ERROR("BRAIN", "CRITICAL: Emergency unlock failed after 3 attempts at %s - "
+                    "system may be in inconsistent state. Consider process restart.",
+                    context);
+
+    // Set error for caller to handle
+    set_error("CRITICAL: Mutex permanently locked at %s - restart recommended", context);
+}
+
+/**
+ * @brief Clear decision cache (thread-safe with deadlock protection)
  *
  * WHAT: Invalidates cached input and decision
  * WHY:  Cache must be cleared after network modifications
- * HOW:  Mutex-protected deallocation of cache structures
+ * HOW:  Timeout-protected mutex acquisition with emergency recovery
  *
  * BIOLOGICAL RATIONALE:
  * Thread-safe cache invalidation mimics synaptic reorganization that
  * invalidates previously stable neural response patterns. When synaptic
  * weights change (learning/pruning), cached neural activations become
  * obsolete, requiring recomputation from modified connectivity.
+ *
+ * CONCURRENCY: Uses timeout-based mutex locking to prevent deadlocks.
+ * If mutex cannot be acquired within MUTEX_TIMEOUT_US, cache is left
+ * in potentially stale state (safe, just suboptimal performance).
  *
  * COMPLEXITY: O(1)
  *
@@ -971,9 +1071,11 @@ void clear_cache(brain_t brain)
         return;
     }
 
-    // Lock cache mutex for thread-safe invalidation
-    if (nimcp_platform_mutex_lock(&brain->cache_mutex) != 0) {
-        set_error("Failed to lock cache mutex during clear_cache");
+    // Lock cache mutex with timeout protection to prevent deadlock
+    if (mutex_lock_with_timeout(&brain->cache_mutex, MUTEX_TIMEOUT_US) != 0) {
+        set_error("Timeout waiting for cache mutex in clear_cache - cache not cleared");
+        // Note: We return here rather than proceeding without lock.
+        // Stale cache is safe (just slower), corrupted cache is not.
         return;
     }
 
@@ -988,12 +1090,11 @@ void clear_cache(brain_t brain)
     }
 
     // Always attempt unlock, even if operations above failed
-    // Store result to check for critical errors
     int unlock_result = nimcp_platform_mutex_unlock(&brain->cache_mutex);
     if (unlock_result != 0) {
-        // CRITICAL: Mutex unlock failed - cache may be permanently locked!
-        // This is a severe error that could deadlock future operations.
-        set_error("CRITICAL: Failed to unlock cache mutex in clear_cache - potential deadlock");
+        // CRITICAL: Mutex unlock failed - attempt emergency recovery
+        LOG_MODULE_ERROR("BRAIN", "CRITICAL: Normal unlock failed in clear_cache - attempting recovery");
+        force_unlock_with_logging(&brain->cache_mutex, "clear_cache");
     }
 }
 
@@ -1092,10 +1193,9 @@ brain_t allocate_brain(void)
     brain->original_network = NULL;
     brain->network_is_cached = false;
 
-    // Phase 3: Initialize reference counting fields
-    brain->network_refcount = NULL;
+    // Phase 3: Initialize reference counting fields (atomic operations)
+    brain->network_refcount_atomic = NULL;
     brain->can_use_readonly = false;
-    brain->refcount_mutex = NULL;
 
     // Community Detection: Initialize fields
     brain->functional_modules = NULL;
@@ -1691,51 +1791,38 @@ void brain_destroy(brain_t brain)
         // Non-fatal if snapshot fails
     }
 
-    // Phase 3: Handle network destruction with reference counting
+    // Phase 3: Handle network destruction with atomic reference counting
+    //
+    // CONCURRENCY MODEL: Lock-free reference counting using C11 atomics
+    // - atomic_fetch_sub returns the PREVIOUS value before decrement
+    // - If previous value was 1, we just decremented to 0 and are the last holder
+    // - No mutex needed - atomics provide the synchronization
+    //
+    // MEMORY ORDERING:
+    // - ACQ_REL on fetch_sub ensures all prior accesses by other threads
+    //   releasing their references are visible, and our cleanup is visible
+    //   to any (impossible) future readers
     if (brain->network) {
         if (brain->owns_network) {
             // Brain owns the network - destroy immediately
             adaptive_network_destroy(brain->network);
-        } else if (brain->network_refcount && brain->refcount_mutex) {
-            // Brain shares network - decrement refcount with proper synchronization
-            //
-            // THREAD SAFETY FIX: The original code had a race condition where:
-            // 1. Thread A checks brain->refcount_mutex is valid
-            // 2. Thread B decrements refcount to 0 and frees mutex
-            // 3. Thread A tries to lock the now-freed mutex -> use-after-free
-            //
-            // FIX: Save local copies of pointers before any synchronization.
-            // The refcount semantics guarantee that if this thread still holds
-            // a reference (refcount > 0), the mutex and refcount memory remain valid.
-            // We hold the lock during the entire check-and-cleanup sequence to
-            // ensure atomicity of the "decrement and conditionally destroy" operation.
-            nimcp_platform_mutex_t* mutex = brain->refcount_mutex;
-            uint32_t* refcount_ptr = brain->network_refcount;
+        } else if (brain->network_refcount_atomic) {
+            // Brain shares network - atomically decrement refcount
+            _Atomic(uint32_t)* refcount_ptr = brain->network_refcount_atomic;
             adaptive_network_t network = brain->network;
 
-            nimcp_platform_mutex_lock(mutex);
-            (*refcount_ptr)--;
-            uint32_t remaining_refs = *refcount_ptr;
+            // Atomically decrement and get previous value
+            // ACQ_REL ensures proper memory ordering with other threads
+            uint32_t prev_refcount = __atomic_fetch_sub(refcount_ptr, 1, __ATOMIC_ACQ_REL);
 
-            if (remaining_refs == 0) {
-                // Last reference - we are the only thread with access to these resources.
-                // All other clones have already completed their brain_destroy() calls
-                // (otherwise refcount would still be > 0).
-                //
-                // IMPORTANT: We must unlock BEFORE destroying the mutex to avoid
-                // undefined behavior. Since refcount is 0, no other thread can be
-                // waiting on or will ever try to acquire this mutex again.
-                nimcp_platform_mutex_unlock(mutex);
-
-                // Safe to destroy now - guaranteed no concurrent access
+            if (prev_refcount == 1) {
+                // We just decremented from 1 to 0 - we are the last holder
+                // All other clones have already completed their brain_destroy() calls.
+                // No synchronization needed - we have exclusive access now.
                 adaptive_network_destroy(network);
-                nimcp_platform_mutex_destroy(mutex);
-                nimcp_free(mutex);
-                nimcp_free(refcount_ptr);
-            } else {
-                // Not last reference - other clones still exist
-                nimcp_platform_mutex_unlock(mutex);
+                nimcp_free((void*)refcount_ptr);
             }
+            // else: prev_refcount > 1, so other clones still exist - just decrement and exit
         }
         // else: Neither owns nor has refcount - strange but safe (network leaked)
     }

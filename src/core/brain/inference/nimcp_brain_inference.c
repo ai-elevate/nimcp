@@ -244,15 +244,24 @@ static void populate_interpretability(brain_t brain, const float* features, uint
 /**
  * @brief Update brain statistics after inference
  *
+ * THREAD SAFETY: Uses atomic operations for counter updates to ensure
+ * thread-safe statistics tracking when multiple threads perform concurrent
+ * inference on the same brain instance.
+ *
  * COMPLEXITY: O(1)
  */
 static void update_inference_stats(brain_t brain, brain_decision_t* decision)
 {
-    brain->stats.total_inferences++;
+    // Use atomic increment for thread-safe stats update
+    uint64_t new_count = __atomic_fetch_add(&brain->stats.total_inferences, 1, __ATOMIC_RELAXED) + 1;
+
+    // Update average inference time using the new count
+    // Note: This calculation is not perfectly atomic, but the result
+    // is a reasonable approximation under concurrent updates
     brain->stats.avg_inference_time_us =
-        (brain->stats.avg_inference_time_us * (brain->stats.total_inferences - 1) +
+        (brain->stats.avg_inference_time_us * (new_count - 1) +
          decision->inference_time_us) /
-        brain->stats.total_inferences;
+        new_count;
     brain->stats.avg_sparsity = decision->sparsity;
 }
 

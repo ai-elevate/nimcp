@@ -1364,6 +1364,11 @@ gtest_discover_tests(unit_cognitive_test_self_awareness_extended
 )
 
 # ============================================================================
+# Collective Cognition Tests
+# ============================================================================
+add_subdirectory(collective_cognition)
+
+# ============================================================================
 # Social Tests
 # ============================================================================
 add_executable(unit_cognitive_test_social

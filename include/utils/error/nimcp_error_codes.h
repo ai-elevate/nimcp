@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -336,6 +337,359 @@ void nimcp_error_print_detailed(const nimcp_error_info_t* info);
             return _err; \
         } \
     } while (0)
+
+//=============================================================================
+// Cleanup Stack Pattern for Guaranteed Resource Cleanup
+//=============================================================================
+
+/**
+ * @brief Maximum number of cleanup handlers in a stack
+ */
+#define NIMCP_CLEANUP_STACK_MAX 32
+
+/**
+ * @brief Cleanup function type
+ *
+ * @param resource Pointer to resource to clean up
+ */
+typedef void (*nimcp_cleanup_fn)(void* resource);
+
+/**
+ * @brief Cleanup stack entry
+ */
+typedef struct nimcp_cleanup_entry {
+    nimcp_cleanup_fn cleanup;    /**< Cleanup function */
+    void* resource;              /**< Resource to clean up */
+    const char* name;            /**< Resource name (for debugging) */
+} nimcp_cleanup_entry_t;
+
+/**
+ * @brief Cleanup stack for guaranteed resource cleanup
+ *
+ * Use this pattern for complex initialization with multiple resources:
+ *
+ * @code
+ * nimcp_cleanup_stack_t cleanup = {0};
+ *
+ * void* res1 = allocate_resource1();
+ * if (!res1) goto cleanup_and_exit;
+ * nimcp_cleanup_push(&cleanup, free, res1, "resource1");
+ *
+ * void* res2 = allocate_resource2();
+ * if (!res2) goto cleanup_and_exit;
+ * nimcp_cleanup_push(&cleanup, free, res2, "resource2");
+ *
+ * // Success - clear stack to prevent cleanup
+ * nimcp_cleanup_clear(&cleanup);
+ * return success_result;
+ *
+ * cleanup_and_exit:
+ *     nimcp_cleanup_execute(&cleanup);
+ *     return error_result;
+ * @endcode
+ */
+typedef struct nimcp_cleanup_stack {
+    nimcp_cleanup_entry_t entries[NIMCP_CLEANUP_STACK_MAX];
+    size_t count;
+} nimcp_cleanup_stack_t;
+
+/**
+ * @brief Initialize a cleanup stack
+ *
+ * @param stack Cleanup stack to initialize
+ */
+static inline void nimcp_cleanup_init(nimcp_cleanup_stack_t* stack) {
+    if (stack) {
+        stack->count = 0;
+    }
+}
+
+/**
+ * @brief Push a cleanup handler onto the stack
+ *
+ * @param stack Cleanup stack
+ * @param cleanup Cleanup function to call
+ * @param resource Resource pointer to pass to cleanup function
+ * @param name Resource name for debugging (can be NULL)
+ * @return true on success, false if stack is full
+ */
+static inline bool nimcp_cleanup_push(nimcp_cleanup_stack_t* stack,
+                                       nimcp_cleanup_fn cleanup,
+                                       void* resource,
+                                       const char* name) {
+    if (!stack || stack->count >= NIMCP_CLEANUP_STACK_MAX) {
+        return false;
+    }
+    nimcp_cleanup_entry_t* entry = &stack->entries[stack->count++];
+    entry->cleanup = cleanup;
+    entry->resource = resource;
+    entry->name = name;
+    return true;
+}
+
+/**
+ * @brief Execute all cleanup handlers in reverse order (LIFO)
+ *
+ * @param stack Cleanup stack to execute
+ */
+static inline void nimcp_cleanup_execute(nimcp_cleanup_stack_t* stack) {
+    if (!stack) return;
+
+    // Execute in reverse order (LIFO)
+    while (stack->count > 0) {
+        stack->count--;
+        nimcp_cleanup_entry_t* entry = &stack->entries[stack->count];
+        if (entry->cleanup && entry->resource) {
+            entry->cleanup(entry->resource);
+        }
+    }
+}
+
+/**
+ * @brief Clear the cleanup stack without executing handlers
+ *
+ * Call this when initialization succeeds and resources should not be cleaned up.
+ *
+ * @param stack Cleanup stack to clear
+ */
+static inline void nimcp_cleanup_clear(nimcp_cleanup_stack_t* stack) {
+    if (stack) {
+        stack->count = 0;
+    }
+}
+
+/**
+ * @brief Pop the last cleanup handler without executing it
+ *
+ * Useful when ownership of a resource is transferred.
+ *
+ * @param stack Cleanup stack
+ * @return Popped entry, or entry with NULL cleanup if stack is empty
+ */
+static inline nimcp_cleanup_entry_t nimcp_cleanup_pop(nimcp_cleanup_stack_t* stack) {
+    nimcp_cleanup_entry_t empty = {NULL, NULL, NULL};
+    if (!stack || stack->count == 0) {
+        return empty;
+    }
+    return stack->entries[--stack->count];
+}
+
+//=============================================================================
+// Extended Error Context API (Thread-Local with Formatted Messages)
+//=============================================================================
+
+/**
+ * @brief Maximum length for error messages
+ */
+#define NIMCP_ERROR_MSG_MAX 512
+
+/**
+ * @brief Thread-local error context with formatted message support
+ */
+typedef struct nimcp_error_context {
+    nimcp_error_t code;                      /**< Error code */
+    char message[NIMCP_ERROR_MSG_MAX];       /**< Formatted error message */
+    const char* file;                        /**< Source file (__FILE__) */
+    int line;                                /**< Source line (__LINE__) */
+    const char* function;                    /**< Function name (__func__) */
+    uint64_t timestamp;                      /**< Time of error (microseconds) */
+} nimcp_error_context_t;
+
+/**
+ * @brief Set thread-local error with formatted message
+ *
+ * @param code Error code
+ * @param format Printf-style format string
+ * @param ... Format arguments
+ *
+ * Example:
+ * @code
+ * nimcp_set_error(NIMCP_ERROR_INVALID_PARAMETER, "Expected size > 0, got %zu", size);
+ * @endcode
+ */
+void nimcp_set_error(nimcp_error_t code, const char* format, ...);
+
+/**
+ * @brief Set error with source location (use NIMCP_ERROR_SET macro instead)
+ *
+ * @param code Error code
+ * @param file Source file name
+ * @param line Source line number
+ * @param func Function name
+ * @param format Message format
+ * @param ... Format arguments
+ */
+void nimcp_set_error_ex(nimcp_error_t code, const char* file, int line,
+                        const char* func, const char* format, ...);
+
+/**
+ * @brief Get last error code (thread-local)
+ *
+ * @return Last error code, or NIMCP_SUCCESS if no error
+ */
+nimcp_error_t nimcp_get_last_error(void);
+
+/**
+ * @brief Get last error message (thread-local)
+ *
+ * @return Error message string, or empty string if no error
+ */
+const char* nimcp_get_error_message(void);
+
+/**
+ * @brief Get full error context (thread-local)
+ *
+ * @return Pointer to error context, or NULL if no context available
+ */
+const nimcp_error_context_t* nimcp_get_error_context(void);
+
+/**
+ * @brief Alias for nimcp_error_to_string for compatibility
+ */
+#define nimcp_error_string nimcp_error_to_string
+
+//=============================================================================
+// Additional Convenience Macros
+//=============================================================================
+
+/**
+ * @brief Set error with automatic file/line/function info and formatted message
+ *
+ * Example:
+ * @code
+ * if (!ptr) {
+ *     NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "Parameter '%s' is NULL", "brain");
+ *     return NIMCP_ERROR_NULL_POINTER;
+ * }
+ * @endcode
+ */
+#define NIMCP_ERROR_SET(code, fmt, ...) \
+    nimcp_set_error_ex((code), __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
+
+/**
+ * @brief Return error code after setting error context with formatted message
+ *
+ * Example:
+ * @code
+ * if (!ptr) {
+ *     NIMCP_ERROR_RETURN(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+ * }
+ * @endcode
+ */
+#define NIMCP_ERROR_RETURN(code, fmt, ...) \
+    do { \
+        NIMCP_ERROR_SET(code, fmt, ##__VA_ARGS__); \
+        return (code); \
+    } while (0)
+
+/**
+ * @brief Check condition and return error if false with formatted message
+ *
+ * Example:
+ * @code
+ * NIMCP_ERROR_CHECK(ptr != NULL, NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+ * NIMCP_ERROR_CHECK(size > 0, NIMCP_ERROR_INVALID_PARAMETER, "size=%zu must be > 0", size);
+ * @endcode
+ */
+#define NIMCP_ERROR_CHECK(cond, code, fmt, ...) \
+    do { \
+        if (!(cond)) { \
+            NIMCP_ERROR_RETURN(code, fmt, ##__VA_ARGS__); \
+        } \
+    } while (0)
+
+//=============================================================================
+// Legacy FEP Bridge Compatibility
+//=============================================================================
+
+/**
+ * @brief Check if error code indicates success (alias for nimcp_error_is_success)
+ */
+static inline bool nimcp_is_ok(nimcp_error_t code) {
+    return (code >= 0 && code < 1000);
+}
+
+/**
+ * @brief Check if error code indicates failure (alias for nimcp_error_is_failure)
+ */
+static inline bool nimcp_is_error(nimcp_error_t code) {
+    return (code >= 1000);
+}
+
+/**
+ * @brief Convert FEP bridge return value to nimcp_error_t
+ *
+ * FEP bridges use 0 for success, -1 for error. This converts to nimcp_error_t.
+ *
+ * @param fep_result FEP bridge return value (0 or -1)
+ * @return NIMCP_SUCCESS if fep_result == 0, NIMCP_ERROR_OPERATION_FAILED otherwise
+ */
+static inline nimcp_error_t nimcp_from_fep_result(int fep_result) {
+    return (fep_result == 0) ? NIMCP_SUCCESS : NIMCP_ERROR_OPERATION_FAILED;
+}
+
+/**
+ * @brief Convert nimcp_error_t to FEP bridge return value
+ *
+ * @param error NIMCP error code
+ * @return 0 if success, -1 if error
+ */
+static inline int nimcp_to_fep_result(nimcp_error_t error) {
+    return nimcp_is_ok(error) ? 0 : -1;
+}
+
+//=============================================================================
+// Result Type Pattern (Optional)
+//=============================================================================
+
+/**
+ * @brief Generic result type macro for functions that return values
+ *
+ * This macro generates a result struct type for a given value type.
+ * The struct contains either the value on success, or an error code on failure.
+ *
+ * Example:
+ * @code
+ * // Define result type for float
+ * NIMCP_DEFINE_RESULT(float, FloatResult);
+ *
+ * // Function returning result
+ * nimcp_FloatResult_t compute_value(int input) {
+ *     if (input < 0) {
+ *         return NIMCP_RESULT_ERR(FloatResult, NIMCP_ERROR_INVALID_PARAMETER);
+ *     }
+ *     return NIMCP_RESULT_OK(FloatResult, (float)input * 2.0f);
+ * }
+ *
+ * // Usage
+ * nimcp_FloatResult_t result = compute_value(5);
+ * if (result.is_ok) {
+ *     printf("Value: %f\n", result.value);
+ * } else {
+ *     printf("Error: %s\n", nimcp_error_string(result.error));
+ * }
+ * @endcode
+ */
+#define NIMCP_DEFINE_RESULT(type, name) \
+    typedef struct nimcp_##name { \
+        bool is_ok; \
+        union { \
+            type value; \
+            nimcp_error_t error; \
+        }; \
+    } nimcp_##name##_t
+
+/**
+ * @brief Create a success result
+ */
+#define NIMCP_RESULT_OK(name, val) \
+    ((nimcp_##name##_t){.is_ok = true, .value = (val)})
+
+/**
+ * @brief Create an error result
+ */
+#define NIMCP_RESULT_ERR(name, err) \
+    ((nimcp_##name##_t){.is_ok = false, .error = (err)})
 
 #ifdef __cplusplus
 }

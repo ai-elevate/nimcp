@@ -23,3 +23,9 @@ add_occipital_test(test_nimcp_occipital_quantum_bridge)
 # Occipital bridge tests
 add_occipital_test(test_nimcp_occipital_substrate_bridge)
 add_occipital_test(test_nimcp_occipital_thalamic_bridge)
+
+# New integration bridge tests
+add_occipital_test(test_nimcp_occipital_audiovisual_bridge)
+add_occipital_test(test_nimcp_occipital_cortical_bridge)
+add_occipital_test(test_nimcp_occipital_logic_bridge)
+add_occipital_test(test_nimcp_occipital_cognitive_bridge)

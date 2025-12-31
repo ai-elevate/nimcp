@@ -1244,15 +1244,13 @@ size_t brain_get_memory_usage(brain_t brain) {
     // WHY:  Thread-safe brains allocate locks
     // HOW:  Count mutexes and add platform overhead
     total_memory += sizeof(nimcp_platform_mutex_t);  // cache_mutex
-    if (brain->refcount_mutex) {
-        total_memory += sizeof(nimcp_platform_mutex_t);  // refcount_mutex
-    }
+    // Note: refcount_mutex removed - now using lock-free atomic operations
 
-    // WHAT: Add COW reference counting overhead
-    // WHY:  Shared networks track reference counts
-    // HOW:  Add refcount variable size if allocated
-    if (brain->network_refcount) {
-        total_memory += sizeof(uint32_t);
+    // WHAT: Add COW atomic reference counting overhead
+    // WHY:  Shared networks track reference counts atomically
+    // HOW:  Add atomic refcount variable size if allocated
+    if (brain->network_refcount_atomic) {
+        total_memory += sizeof(_Atomic(uint32_t));
     }
 
     return total_memory;

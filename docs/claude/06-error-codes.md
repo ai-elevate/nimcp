@@ -2,6 +2,99 @@
 
 NIMCP uses a **stratified error code system** with module-specific ranges. See `/home/bbrelin/nimcp/docs/ERROR_CODE_STRATEGY.md` for full documentation.
 
+**Primary Header**: `include/utils/error/nimcp_error_codes.h`
+
+## Unified Error Handling API
+
+The error handling system provides:
+1. **Thread-local error context** - Detailed error info with formatted messages
+2. **Cleanup stack pattern** - Guaranteed resource cleanup on partial failures
+3. **FEP bridge compatibility** - Conversion between 0/-1 and error codes
+4. **Result type pattern** - Optional type-safe error returns
+
+### Thread-Local Error Context
+
+```c
+#include "utils/error/nimcp_error_codes.h"
+
+// Set error with formatted message
+nimcp_set_error(NIMCP_ERROR_INVALID_PARAMETER, "Expected size > 0, got %zu", size);
+
+// Set error with source location (preferred - use macro)
+NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "Parameter '%s' is NULL", "brain");
+
+// Get last error
+nimcp_error_t code = nimcp_get_last_error();
+const char* msg = nimcp_get_error_message();
+const nimcp_error_context_t* ctx = nimcp_get_error_context();
+
+// Check and return pattern
+NIMCP_ERROR_CHECK(ptr != NULL, NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+NIMCP_ERROR_CHECK(size > 0, NIMCP_ERROR_INVALID_PARAMETER, "size=%zu must be > 0", size);
+```
+
+### Cleanup Stack Pattern
+
+For complex initialization with multiple resources:
+
+```c
+nimcp_cleanup_stack_t cleanup = {0};
+
+void* res1 = allocate_resource1();
+if (!res1) goto cleanup_and_exit;
+nimcp_cleanup_push(&cleanup, free, res1, "resource1");
+
+void* res2 = allocate_resource2();
+if (!res2) goto cleanup_and_exit;
+nimcp_cleanup_push(&cleanup, free, res2, "resource2");
+
+// Success - clear stack to prevent cleanup
+nimcp_cleanup_clear(&cleanup);
+return success_result;
+
+cleanup_and_exit:
+    nimcp_cleanup_execute(&cleanup);  // Executes in reverse order (LIFO)
+    return error_result;
+```
+
+### FEP Bridge Compatibility
+
+FEP bridges use 0 for success, -1 for error. Use these converters:
+
+```c
+// Convert FEP result to nimcp_error_t
+nimcp_error_t err = nimcp_from_fep_result(fep_bridge_call());
+
+// Convert nimcp_error_t to FEP result
+int fep_result = nimcp_to_fep_result(NIMCP_SUCCESS);  // Returns 0
+int fep_error = nimcp_to_fep_result(NIMCP_ERROR_OPERATION_FAILED);  // Returns -1
+```
+
+### Result Type Pattern (Optional)
+
+For functions that return values with possible errors:
+
+```c
+// Define result type
+NIMCP_DEFINE_RESULT(float, FloatResult);
+
+// Function returning result
+nimcp_FloatResult_t compute_value(int input) {
+    if (input < 0) {
+        return NIMCP_RESULT_ERR(FloatResult, NIMCP_ERROR_INVALID_PARAMETER);
+    }
+    return NIMCP_RESULT_OK(FloatResult, (float)input * 2.0f);
+}
+
+// Usage
+nimcp_FloatResult_t result = compute_value(5);
+if (result.is_ok) {
+    printf("Value: %f\n", result.value);
+} else {
+    printf("Error: %s\n", nimcp_error_string(result.error));
+}
+```
+
 ## Error Code Ranges
 
 | Range | Purpose | Examples |

@@ -505,8 +505,8 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
 
     nimcp_free(target);
 
-    // Update statistics
-    brain->stats.total_learning_steps++;
+    // Update statistics (atomic for thread safety)
+    __atomic_fetch_add(&brain->stats.total_learning_steps, 1, __ATOMIC_RELAXED);
 
     // Invalidate cache after learning
     clear_cache(brain);
@@ -1090,8 +1090,8 @@ uint32_t brain_apply_reward_learning(brain_t brain, float reward)
         current_time
     );
 
-    // Update brain stats
-    brain->stats.total_learning_steps++;
+    // Update brain stats (atomic for thread safety)
+    __atomic_fetch_add(&brain->stats.total_learning_steps, 1, __ATOMIC_RELAXED);
 
     brain_clear_error();
     return num_modified;

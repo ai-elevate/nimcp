@@ -31,7 +31,7 @@ CMAKE_AR:FILEPATH=/usr/bin/ar
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_BUILD_TYPE:STRING=Debug
 
 //Enable/Disable color output during build.
 CMAKE_COLOR_MAKEFILE:BOOL=ON
@@ -263,8 +263,14 @@ ENABLE_TSAN:BOOL=OFF
 //The directory containing a CMake configuration file for GTest.
 GTest_DIR:PATH=/home/bbrelin/.local/lib/cmake/GTest
 
+//Enable AddressSanitizer for memory error detection
+NIMCP_ASAN:BOOL=OFF
+
 //Value Computed by CMake
 NIMCP_BINARY_DIR:STATIC=/home/bbrelin/nimcp/build
+
+//Enable code coverage reporting with gcov/lcov
+NIMCP_COVERAGE:BOOL=OFF
 
 //Enable cppcheck during build
 NIMCP_ENABLE_CPPCHECK:BOOL=OFF
@@ -277,6 +283,9 @@ NIMCP_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
 NIMCP_SOURCE_DIR:STATIC=/home/bbrelin/nimcp
+
+//Enable ThreadSanitizer for race detection
+NIMCP_TSAN:BOOL=OFF
 
 //Path to a library.
 OPENSSL_CRYPTO_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libcrypto.so
@@ -409,7 +418,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=237
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=238
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

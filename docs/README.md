@@ -147,22 +147,33 @@ print(f"Prediction: {prediction}")
 
 ## Documentation
 
+### Navigation
+
+| Need | Go To |
+|------|-------|
+| **Master Index** | [INDEX.md](INDEX.md) |
+| **Developer Reference** | [claude/](claude/) |
+| **Tutorials** | [tutorials/](tutorials/) |
+| **FAQ** | [tutorials/FAQ.md](tutorials/FAQ.md) |
+
 ### Getting Started
-- **[Getting Started Guide](docs/GETTING_STARTED.md)** - Step-by-step tutorial
-- **[Quick Reference](docs/QUICK_REFERENCE.md)** - Fast command lookup
-- **[Simple Start](docs/SIMPLE_START.md)** - Minimal examples
+- **[Getting Started Tutorial](tutorials/GETTING_STARTED.md)** - Step-by-step tutorial
+- **[Create Your First Module](tutorials/CREATE_MODULE.md)** - Build your own module
+- **[FAQ](tutorials/FAQ.md)** - Common questions and answers
+- **[Quick Reference](QUICK_REFERENCE.md)** - Fast command lookup
+- **[Simple Start](SIMPLE_START.md)** - Minimal examples
 
 ### Core Documentation
-- **[Architecture Summary](docs/ARCHITECTURE_SUMMARY.md)** - System architecture and design patterns
-- **[API Reference](docs/api/API_REFERENCE.md)** - Complete API documentation
-- **[Build System](docs/BUILD_QUICK_REFERENCE.md)** - Build commands and options
-- **[Cognitive Modules](docs/COGNITIVE_QUICK_REFERENCE.md)** - Guide to cognitive features
+- **[Architecture Summary](ARCHITECTURE_SUMMARY.md)** - System architecture and design patterns
+- **[API Reference](api/API_REFERENCE.md)** - Complete API documentation
+- **[Build System](BUILD_QUICK_REFERENCE.md)** - Build commands and options
+- **[Cognitive Modules](COGNITIVE_QUICK_REFERENCE.md)** - Guide to cognitive features
 
 ### Advanced Topics
-- **[Distributed Copy-on-Write](docs/DISTRIBUTED_COW_README.md)** - Efficient distributed deployment
-- **[Multi-Modal Integration](docs/PHASE_8_7_SYNAPSE_TYPES_REPORT.md)** - Vision, audio, language processing
-- **[Ethical Guidelines](docs/ETHICAL_GUIDELINES.md)** - Responsible AI development
-- **[Security](docs/SECURITY.md)** - Security features and best practices
+- **[Distributed Copy-on-Write](DISTRIBUTED_COW_README.md)** - Efficient distributed deployment
+- **[Multi-Modal Integration](PHASE_8_7_SYNAPSE_TYPES_REPORT.md)** - Vision, audio, language processing
+- **[Ethical Guidelines](ETHICAL_GUIDELINES.md)** - Responsible AI development
+- **[Security](security/SECURITY.md)** - Security features and best practices
 
 ### Examples
 Comprehensive examples in `/home/bbrelin/nimcp/examples/`:

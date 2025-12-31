@@ -20,6 +20,10 @@
  * - Substrate Bridge: ATP/fatigue modulation of visual processing
  * - Thalamic Bridge: LGN routing of visual input signals
  * - Quantum Bridge: Grover-accelerated visual search and feature binding
+ * - Audiovisual Bridge: Lip reading, gesture-speech binding
+ * - Cortical Bridge: Orientation hypercolumns, retinotopic mapping
+ * - Logic Bridge: Visual predicates, scene reasoning
+ * - Cognitive Bridge: Unified connection to all cognitive modules
  *
  * @version Phase O1: Occipital Cortex Brain Integration
  * @author NIMCP Development Team
@@ -262,6 +266,29 @@ bool nimcp_brain_factory_connect_occipital_to_cortical_columns(brain_t brain);
  * @return true on success, false on failure
  */
 bool nimcp_brain_factory_connect_occipital_to_swarm(brain_t brain);
+
+/**
+ * @brief Connect Occipital cortex to Broca's region
+ *
+ * WHAT: Links occipital to Broca for audiovisual speech processing
+ * WHY:  Visual lip reading and gesture recognition inform speech production
+ * HOW:  Creates audiovisual bridge for lip-to-phoneme and gesture-speech binding
+ *
+ * BIOLOGICAL BASIS:
+ * - Superior Temporal Sulcus (STS) integrates visual and auditory speech
+ * - Lip movements precede audio by ~150ms, enabling prediction
+ * - McGurk effect demonstrates visual-audio speech integration
+ * - Mirror neurons in Broca link gesture observation to motor plans
+ *
+ * PATHWAYS:
+ * - Occipital V4/V5 -> STS -> Broca (visual speech cues)
+ * - Occipital face area -> STS -> Broca (lip reading)
+ * - Occipital V5/MT -> Broca (gesture motion -> articulation)
+ *
+ * @param brain Brain instance
+ * @return true on success, false on failure
+ */
+bool nimcp_brain_factory_connect_occipital_to_broca(brain_t brain);
 
 #ifdef __cplusplus
 }

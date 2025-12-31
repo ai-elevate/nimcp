@@ -80,9 +80,8 @@ brain_t nimcp_brain_factory_allocate_brain(void)
     brain->network_is_cached = false;
 
     // Phase 3: Initialize reference counting fields
-    brain->network_refcount = NULL;
+    brain->network_refcount_atomic = NULL;
     brain->can_use_readonly = false;
-    brain->refcount_mutex = NULL;
 
     // Community Detection: Initialize fields
     brain->functional_modules = NULL;

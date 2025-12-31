@@ -401,6 +401,15 @@ int protocol_deserialize_message(const uint8_t* buffer, uint32_t buffer_size, ms
         return -1;
     }
 
+    // Step 2.5: SECURITY - Check buffer contains full payload (prevent buffer overflow)
+    // Validates that buffer_size >= sizeof(msg_header_t) + header->length
+    if (header->length > UINT32_MAX - sizeof(msg_header_t)) {
+        return -1;  // Integer overflow protection
+    }
+    if (buffer_size < sizeof(msg_header_t) + header->length) {
+        return -1;  // Buffer too small for claimed payload
+    }
+
     // Step 3: Check payload size
     if (header->length > payload_size) {
         return -1;
@@ -782,10 +791,15 @@ int event_packet_serialize(const event_packet_t* packet, const void* payload, ui
         return -1;
     }
 
-    // Step 2: Copy packet header
-    memcpy(buffer, packet, sizeof(event_packet_t));
+    // Step 2: SECURITY - Zero reserved/padding fields to prevent memory disclosure
+    event_packet_t packet_copy = *packet;
+    packet_copy.reserved = 0;
+    packet_copy.reserved2 = 0;
 
-    // Step 3: Copy payload if present
+    // Step 3: Copy packet header
+    memcpy(buffer, &packet_copy, sizeof(event_packet_t));
+
+    // Step 4: Copy payload if present
     copy_event_payload(buffer, payload, packet->payload_length);
 
     return sizeof(event_packet_t) + packet->payload_length;
@@ -911,17 +925,21 @@ static bool is_event_version_valid(const event_packet_t* packet)
 }
 
 /**
- * @brief Checks if event has required type flags
+ * @brief Checks if event has valid type flags
  *
- * WHY: Event must be either excitatory or inhibitory (not neither).
- * NOTE: If no flags are set, we treat it as valid (defaults to excitatory in processing).
+ * WHY: SECURITY - Events must have exactly one of E or I flag set.
+ *      Both flags or neither flag is invalid to prevent ambiguous processing.
  *
  * COMPLEXITY: O(1)
  */
 static bool has_required_event_flags(uint8_t flags)
 {
-    // Allow packets with no flags set (will default to excitatory during processing)
-    return true;
+    bool is_excitatory = (flags & EVENT_FLAG_EXCITATORY) != 0;
+    bool is_inhibitory = (flags & EVENT_FLAG_INHIBITORY) != 0;
+
+    // SECURITY: Require exactly one of E or I (XOR check)
+    // Both set = invalid, neither set = invalid
+    return is_excitatory != is_inhibitory;
 }
 
 /**
@@ -1084,10 +1102,15 @@ int control_message_serialize(const control_message_t* msg, const void* params, 
         return -1;
     }
 
-    // Step 3: Copy message header
-    memcpy(buffer, msg, sizeof(control_message_t));
+    // Step 3: SECURITY - Zero reserved/padding fields to prevent memory disclosure
+    control_message_t msg_copy = *msg;
+    msg_copy.reserved = 0;
+    msg_copy.reserved2 = 0;
 
-    // Step 4: Copy parameters if present
+    // Step 4: Copy message header
+    memcpy(buffer, &msg_copy, sizeof(control_message_t));
+
+    // Step 5: Copy parameters if present
     copy_control_params(buffer, params, param_size);
 
     return required_size;

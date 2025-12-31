@@ -25,6 +25,169 @@ if(NOT GTest_FOUND)
 endif()
 
 # ============================================================================
+# Code Coverage Configuration (gcov/lcov)
+# ============================================================================
+# WHAT: Enable code coverage reporting with gcov/lcov
+# WHY:  Track test coverage to identify untested code paths
+# HOW:  Add compiler flags for coverage instrumentation, provide report targets
+#
+# USAGE:
+#   cmake -DNIMCP_COVERAGE=ON ..
+#   make
+#   ctest
+#   make coverage_report
+# ============================================================================
+
+option(NIMCP_COVERAGE "Enable code coverage reporting with gcov/lcov" OFF)
+
+if(NIMCP_COVERAGE)
+    message(STATUS "Code coverage enabled")
+
+    # Check for required tools
+    find_program(GCOV_PATH gcov)
+    find_program(LCOV_PATH lcov)
+    find_program(GENHTML_PATH genhtml)
+
+    if(NOT GCOV_PATH)
+        message(WARNING "gcov not found - coverage reporting will be incomplete")
+    endif()
+
+    if(NOT LCOV_PATH)
+        message(WARNING "lcov not found - coverage report generation disabled")
+    endif()
+
+    if(NOT GENHTML_PATH)
+        message(WARNING "genhtml not found - HTML coverage reports disabled")
+    endif()
+
+    # Add coverage flags globally for test builds
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage -fprofile-arcs -ftest-coverage")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -fprofile-arcs -ftest-coverage")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+
+    # Coverage output directory
+    set(COVERAGE_DIR ${CMAKE_BINARY_DIR}/coverage)
+
+    # Create coverage report target
+    if(LCOV_PATH AND GENHTML_PATH)
+        add_custom_target(coverage_report
+            COMMENT "Generating code coverage report..."
+
+            # Create coverage directory
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${COVERAGE_DIR}
+
+            # Capture coverage data (baseline)
+            COMMAND ${LCOV_PATH} --capture --initial
+                --directory ${CMAKE_BINARY_DIR}
+                --output-file ${COVERAGE_DIR}/coverage_base.info
+                --gcov-tool ${GCOV_PATH}
+                --ignore-errors mismatch
+
+            # Run tests
+            COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure || true
+
+            # Capture coverage data (after tests)
+            COMMAND ${LCOV_PATH} --capture
+                --directory ${CMAKE_BINARY_DIR}
+                --output-file ${COVERAGE_DIR}/coverage_test.info
+                --gcov-tool ${GCOV_PATH}
+                --ignore-errors mismatch
+
+            # Combine baseline and test coverage
+            COMMAND ${LCOV_PATH}
+                --add-tracefile ${COVERAGE_DIR}/coverage_base.info
+                --add-tracefile ${COVERAGE_DIR}/coverage_test.info
+                --output-file ${COVERAGE_DIR}/coverage_total.info
+                --ignore-errors mismatch
+
+            # Remove system and test files from coverage
+            COMMAND ${LCOV_PATH} --remove ${COVERAGE_DIR}/coverage_total.info
+                '/usr/*'
+                '*/test/*'
+                '*/gtest/*'
+                '*/gmock/*'
+                '*/_deps/*'
+                --output-file ${COVERAGE_DIR}/coverage_filtered.info
+                --ignore-errors mismatch
+
+            # Generate HTML report
+            COMMAND ${GENHTML_PATH} ${COVERAGE_DIR}/coverage_filtered.info
+                --output-directory ${COVERAGE_DIR}/html
+                --title "NIMCP Code Coverage Report"
+                --legend
+                --show-details
+                --highlight
+
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        )
+
+        message(STATUS "  Coverage report target: make coverage_report")
+        message(STATUS "  Report location: ${COVERAGE_DIR}/html/index.html")
+    endif()
+
+    # Create coverage clean target
+    add_custom_target(coverage_clean
+        COMMENT "Cleaning coverage data..."
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${COVERAGE_DIR}
+        COMMAND find ${CMAKE_BINARY_DIR} -name "*.gcda" -delete || true
+        COMMAND find ${CMAKE_BINARY_DIR} -name "*.gcno" -delete || true
+        COMMAND find ${CMAKE_BINARY_DIR} -name "*.gcov" -delete || true
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+
+    message(STATUS "  Coverage clean target: make coverage_clean")
+endif()
+
+# ============================================================================
+# ThreadSanitizer Configuration
+# ============================================================================
+# WHAT: Enable ThreadSanitizer for race condition detection
+# WHY:  Identify concurrency bugs in brain operations
+# HOW:  Add TSan compiler flags when enabled
+#
+# USAGE:
+#   cmake -DNIMCP_TSAN=ON ..
+#   make
+#   ctest
+# ============================================================================
+
+option(NIMCP_TSAN "Enable ThreadSanitizer for race detection" OFF)
+
+if(NIMCP_TSAN)
+    message(STATUS "ThreadSanitizer enabled")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=thread -g")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread -g")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread")
+
+    # TSan is incompatible with ASan
+    if(NIMCP_ASAN)
+        message(FATAL_ERROR "Cannot enable both ThreadSanitizer and AddressSanitizer")
+    endif()
+endif()
+
+# ============================================================================
+# AddressSanitizer Configuration
+# ============================================================================
+# WHAT: Enable AddressSanitizer for memory error detection
+# WHY:  Identify memory bugs (buffer overflow, use-after-free, etc.)
+# HOW:  Add ASan compiler flags when enabled
+#
+# USAGE:
+#   cmake -DNIMCP_ASAN=ON ..
+#   make
+#   ctest
+# ============================================================================
+
+option(NIMCP_ASAN "Enable AddressSanitizer for memory error detection" OFF)
+
+if(NIMCP_ASAN)
+    message(STATUS "AddressSanitizer enabled")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+endif()
+
+# ============================================================================
 # Common Test Configuration
 # ============================================================================
 
@@ -1430,4 +1593,3 @@ set_tests_properties(
 
 # Brain integration test - full system integration
 # Note: managed in unit/middleware/CMakeLists.txt
-

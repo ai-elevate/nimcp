@@ -22,3 +22,21 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_protocol_feature_subscription.cpp
     unit
 )
+
+# ============================================================================
+# Collective Cognition Protocol Tests
+# ============================================================================
+
+# Test: Message Framing
+add_test_binary(
+    test_nimcp_msg_framing
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_nimcp_msg_framing.cpp
+    unit
+)
+
+# Test: Message Router
+add_test_binary(
+    test_nimcp_msg_router
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_nimcp_msg_router.cpp
+    unit
+)

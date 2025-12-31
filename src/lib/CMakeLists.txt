@@ -52,6 +52,7 @@ set(NIMCP_CORE_SOURCES
     # Brain initialization - REFACTORED into 5 modular files (2025-12-08)
     # Original nimcp_brain_init.c (4107 lines) has been split into:
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_config.c              # Configuration builders (280 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_config_profiles.c          # Configuration profiles and builder pattern
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_validation.c          # BBB global system (112 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_core.c                # Core initialization (174 lines)
     # Brain subsystems initialization - REFACTORED into 7 SRP modules (2025-12-08)
@@ -80,6 +81,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_fault_tolerance.c    # Fault tolerance with parietal integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_basal_ganglia.c     # Enhanced basal ganglia action selection
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_broca.c            # Broca's region language production
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_collective_cognition.c # Collective cognition subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c         # Validation and caching (219 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_rule_learning.c      # Rule learning from examples (inductive learning)
@@ -835,6 +837,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune_substrate_bridge.c  # Predictive-immune-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness_extended/nimcp_self_awareness_extended_substrate_bridge.c  # Self-awareness-ext-substrate integration
 
+    # Collective Cognition (Distributed Consciousness)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/collective_cognition/nimcp_collective_cognition.c        # Main collective cognition system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/collective_cognition/nimcp_hyperscanning.c              # Inter-brain neural synchronization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/collective_cognition/nimcp_extended_mind.c              # External tools as cognitive extensions
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/collective_cognition/nimcp_collective_phi.c             # IIT metrics for collective consciousness
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/collective_cognition/nimcp_shared_intentionality.c      # Joint goals and we-mode cognition
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/collective_cognition/nimcp_collective_cognition_immune_bridge.c  # Collective-immune integration
+
     # Additional Cognitive Thalamic Bridges (Phase 7: Complete Coverage)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation_thalamic_bridge.c  # Consolidation-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_tensor/nimcp_emotion_tensor_thalamic_bridge.c  # Emotion-tensor-thalamic integration
@@ -880,6 +890,8 @@ set(NIMCP_CORE_SOURCES
     # Networking
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/p2p/nimcp_p2pnode.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/protocol/nimcp_protocol.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/protocol/nimcp_msg_framing.c      # Collective cognition message framing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../networking/protocol/nimcp_msg_router.c       # Collective cognition message routing
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/events/nimcp_events.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/replication/nimcp_replication.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../networking/distributed/nimcp_distributed_cognition.c
@@ -1306,6 +1318,19 @@ set(NIMCP_CORE_SOURCES
     # Training - CNN Training Module (Conv2D, Dense, Pool, BatchNorm, Dropout, full backprop)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cnn_training.c
 
+    # Training Layer Enhancements (Phase TL-1: Advanced Training Infrastructure)
+    # Implements industry-standard training techniques with bio-inspired integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_mixed_precision.c       # AMP: FP16/BF16, dynamic loss scaling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_distributed_training.c  # Distributed & Federated (data/model parallel, FedAvg)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_knowledge_distillation.c # Teacher-student transfer (FitNets, attention, relational)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_quantization_aware.c    # QAT: INT8/INT4, observers, LSQ, STE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_meta_learning.c         # MAML, Reptile, Prototypical Networks
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_hyperparam_opt.c        # HPO: Bayesian TPE, Hyperband, PBT
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_continual_learning.c    # Continual: EWC, MAS, SI, replay buffers
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_multi_task.c            # MTL: GradNorm, PCGrad, CAGrad, uncertainty weighting
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_adversarial_training.c  # Adversarial: PGD, TRADES, AWP, certified defense
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_gradient_scaling.c      # Gradient: surrogates (SNN), layer-wise LR, adaptive clipping
+
     # NOTE: nimcp_training_plasticity_bridge_bioasync_handlers.c is included via #include
     # in nimcp_training_plasticity_bridge.c, not compiled separately (uses internal types)
 
@@ -1503,6 +1528,10 @@ set(NIMCP_CORE_SOURCES
     # NOTE: temporal_thalamic_bridge moved to core/brain/regions/temporal/
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/parietal/nimcp_parietal_thalamic_bridge.c  # Parietal-thalamic integration (Pulvinar)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_thalamic_bridge.c  # Occipital-thalamic integration (LGN)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_audiovisual_bridge.c  # Occipital-audiovisual integration (lip reading, gesture-speech)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_cortical_bridge.c  # Occipital-cortical columns integration (hypercolumns)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_logic_bridge.c  # Occipital-logic integration (visual predicates)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_cognitive_bridge.c  # Occipital-cognitive integration (all cognitive modules)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/hypothalamus/nimcp_hypothalamus_thalamic_bridge.c  # Hypothalamus-thalamic integration (Midline)
 )
 
