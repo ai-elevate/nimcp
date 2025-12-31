@@ -28,7 +28,146 @@
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
 #include "utils/logging/nimcp_logging.h"
 
+/* Bio-async includes */
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_async.h"
+
 #define LOG_MODULE "BRAIN_INIT_COLLECTIVE_COGNITION"
+
+/*=============================================================================
+ * Internal Helper Functions
+ *===========================================================================*/
+
+/**
+ * @brief Message handler for collective cognition consensus requests
+ *
+ * WHAT: Process consensus voting requests from swarm members
+ * WHY:  Enable distributed decision-making across brain instances
+ * HOW:  Evaluate proposal and contribute vote to consensus
+ *
+ * @param msg Consensus request message with proposal details
+ * @param msg_size Message size
+ * @param response_promise Promise for vote response
+ * @param user_data Collective cognition context pointer
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t collective_handle_consensus_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+    (void)msg; (void)msg_size; (void)response_promise; (void)user_data;
+
+    /*
+     * TODO: Full implementation when consensus protocol is finalized
+     *
+     * Implementation would:
+     * 1. Extract proposal from message
+     * 2. Evaluate proposal against local goals/beliefs
+     * 3. Compute vote (support/oppose/abstain) with confidence
+     * 4. Send vote response with justification
+     * 5. Update local belief state based on proposal
+     */
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Message handler for collective cognition broadcast messages
+ *
+ * WHAT: Process broadcast messages for swarm-wide state updates
+ * WHY:  Enable shared awareness across distributed consciousness
+ * HOW:  Update local state based on broadcast content
+ *
+ * @param msg Broadcast message with shared state
+ * @param msg_size Message size
+ * @param response_promise Promise for acknowledgment (may be NULL)
+ * @param user_data Collective cognition context pointer
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t collective_handle_broadcast(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+    (void)msg; (void)msg_size; (void)response_promise; (void)user_data;
+
+    /*
+     * TODO: Full implementation when broadcast protocol is finalized
+     *
+     * Implementation would:
+     * 1. Extract broadcast type and content
+     * 2. Validate sender authority for broadcast type
+     * 3. Update local shared intentionality state
+     * 4. Propagate to relevant subsystems (if needed)
+     * 5. Send acknowledgment if requested
+     */
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Message handler for collective cognition swarm update
+ *
+ * WHAT: Process swarm state synchronization updates
+ * WHY:  Maintain coherent swarm state for collective consciousness
+ * HOW:  Integrate swarm metrics into local phi computation
+ *
+ * @param msg Swarm update message with synchronization data
+ * @param msg_size Message size
+ * @param response_promise Promise for sync acknowledgment (may be NULL)
+ * @param user_data Collective cognition context pointer
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t collective_handle_swarm_update(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+    (void)msg; (void)msg_size; (void)response_promise; (void)user_data;
+
+    /*
+     * TODO: Full implementation when swarm protocol is finalized
+     *
+     * Implementation would:
+     * 1. Extract hyperscanning sync data (phase coherence, frequency bands)
+     * 2. Update collective phi metrics
+     * 3. Adjust local synchronization parameters
+     * 4. Check for leader emergence/change
+     * 5. Update swarm formation state
+     */
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Connect collective cognition to bio-async messaging
+ */
+static bool connect_collective_cognition_to_bio_async(brain_t brain) {
+    if (!brain || !brain->collective_cognition) return true; /* Non-fatal if not available */
+
+    /* Register with bio-async if enabled */
+    if (brain->bio_async_enabled && brain->bio_async_ctx) {
+        /* Register collective cognition module with bio-async router */
+        bio_module_info_t info = {
+            .module_id = BIO_MODULE_BRAIN_COGNITIVE,
+            .module_name = "collective_cognition",
+            .inbox_capacity = 64,
+            .user_data = brain->collective_cognition
+        };
+
+        bio_module_context_t ctx = bio_router_register_module(&info);
+        if (ctx) {
+            /* Register message handlers for collective cognition messages */
+            bio_router_register_handler(ctx, BIO_MSG_SWARM_CONSENSUS_REQUEST,
+                                        collective_handle_consensus_request);
+            bio_router_register_handler(ctx, BIO_MSG_SWARM_CONSENSUS_REACHED,
+                                        collective_handle_broadcast);
+            bio_router_register_handler(ctx, BIO_MSG_SWARM_SIGNAL_UPDATE,
+                                        collective_handle_swarm_update);
+            LOG_DEBUG(LOG_MODULE, "Collective cognition bio-async registered (module_id=0x%04X)",
+                      BIO_MODULE_BRAIN_COGNITIVE);
+        } else {
+            LOG_WARN(LOG_MODULE, "Failed to register collective cognition with bio-async");
+        }
+    }
+
+    return true;
+}
 
 /*=============================================================================
  * Collective Cognition Subsystem Initialization
@@ -111,10 +250,9 @@ bool nimcp_brain_factory_init_collective_cognition_subsystem(brain_t brain)
     brain->collective_cognition = cc;
     brain->collective_cognition_enabled = true;
 
-    /* TODO: Connect to bio-async when brain bio-router infrastructure is implemented */
-    if (brain->config.collective_enable_bio_async && brain->bio_async_enabled) {
-        /* Bio-async connection will be implemented when brain has bio_router field */
-        LOG_DEBUG("Collective cognition bio-async requested but brain router not available");
+    /* Connect to bio-async messaging system */
+    if (!connect_collective_cognition_to_bio_async(brain)) {
+        LOG_WARN(LOG_MODULE, "Collective cognition bio-async connection failed (non-fatal)");
     }
 
     /* Connect to immune system if both are enabled */

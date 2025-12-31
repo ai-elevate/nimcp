@@ -93,6 +93,10 @@ bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain);
 // Enhanced Basal Ganglia (Action Selection & Motor Control)
 bool nimcp_brain_factory_init_basal_ganglia_subsystem(brain_t brain);
 
+// GPU Context Integration (CUDA Kernel Acceleration)
+bool nimcp_brain_factory_init_gpu_subsystem(brain_t brain);
+void nimcp_brain_factory_destroy_gpu_subsystem(brain_t brain);
+
 // Phase IS-1: BBB Global System Reference Management
 void nimcp_bbb_release_global_system(void);
 

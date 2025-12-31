@@ -104,6 +104,11 @@
 #include "core/directives/nimcp_core_directives.h"
 #include "core/medulla/nimcp_medulla.h"
 
+//=============================================================================
+// GPU Context
+//=============================================================================
+#include "gpu/context/nimcp_gpu_context.h"
+
 // Fault Tolerance (forward declaration to avoid header conflicts)
 struct recovery_executive_internal;
 
@@ -233,7 +238,11 @@ struct brain_struct {
     // THREAD SAFETY: This atomic refcount is safe for concurrent access from multiple
     // threads without external synchronization. The shared network is destroyed when
     // refcount reaches 0. Clones should use atomic_fetch_sub() and check result.
+#ifdef __cplusplus
+    volatile uint32_t* network_refcount_atomic;  // Atomic shared refcount (NULL if not shared) - C++ compatible
+#else
     _Atomic(uint32_t)* network_refcount_atomic;  // Atomic shared refcount (NULL if not shared)
+#endif
     bool can_use_readonly;              // Can use read-only inference? (true for COW clones)
     bool is_snapshot;                   // Is this a snapshot? (preserve stats, don't update from network)
     brain_stats_t snapshot_stats;       // Preserved stats at snapshot time (only used if is_snapshot=true)
@@ -1147,6 +1156,31 @@ struct brain_struct {
     struct parietal_quantum_bridge* parietal_cortex_quantum_bridge;      // Quantum-accelerated spatial
     bool parietal_cortex_enabled;                                     // Parietal cortex enabled for this brain
     uint64_t last_parietal_cortex_update_us;                          // Last parietal cortex update timestamp
+
+    // =========================================================================
+    // GPU CONTEXT INTEGRATION (CUDA Kernel Acceleration)
+    // =========================================================================
+    // The GPU Context provides unified GPU resource management for CUDA kernels:
+    // - Device Management: CUDA device selection and configuration
+    // - Stream Management: Compute and transfer streams for async ops
+    // - Library Handles: cuBLAS, cuFFT for accelerated operations
+    // - Memory Tracking: GPU allocation/deallocation tracking
+    //
+    // Integrates with:
+    // - Training: GPU-accelerated gradient computation and optimizer steps
+    // - Inference: Fast forward pass with fused kernels
+    // - SNN: GPU neuron simulation (LIF, Izhikevich)
+    // - CNN: Convolution, pooling for audio/visual/speech processing
+    // - LNN: ODE solvers for Liquid Neural Networks
+    // - Tensor Ops: GEMM, element-wise, reductions, FFT
+    // - Quantum: GPU-accelerated quantum algorithm simulation
+    //
+    // Auto-initialized during brain creation if GPU is available.
+    // Falls back to CPU execution if no GPU or CUDA unavailable.
+    //
+    struct nimcp_gpu_context_s* gpu_ctx;                              // GPU context for CUDA acceleration
+    bool gpu_enabled;                                                 // GPU acceleration enabled for this brain
+    uint64_t last_gpu_sync_us;                                        // Last GPU synchronization timestamp
 };
 
 //=============================================================================

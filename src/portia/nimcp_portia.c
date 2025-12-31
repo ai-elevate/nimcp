@@ -434,8 +434,12 @@ nimcp_error_t portia_init(const portia_config_t* config) {
 
     pthread_mutex_unlock(&g_portia_state_mutex);
 
-    /* Security audit - TODO: Add BBB audit logging when available */
-    /* bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "Portia system initialized successfully"); */
+    /* Security audit: Log Portia initialization via BBB audit system */
+    bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "system_init",
+                  "tier=%d subsystems=%d bio_async=%s",
+                  ctx->tier_manager ? (int)ctx->tier_manager->current_tier : -1,
+                  6,  /* Number of subsystems initialized */
+                  ctx->bio_ctx ? "enabled" : "disabled");
 
     LOG_INFO(LOG_MODULE, "Portia initialization complete");
     return NIMCP_SUCCESS;

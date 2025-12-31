@@ -154,6 +154,24 @@ add_test_binary(
 )
 
 # ============================================================================
+# Iterator and Struct Member Fix Tests (2025-12-31)
+# ============================================================================
+
+# Test: Swarm Memory Iterator Callbacks
+add_test_binary(
+    test_swarm_memory_iterators
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_memory_iterators.cpp
+    unit
+)
+
+# Test: Swarm Multi Conflict Stats
+add_test_binary(
+    test_swarm_multi_conflict_stats
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_multi_conflict_stats.cpp
+    unit
+)
+
+# ============================================================================
 # Subdirectories
 # ============================================================================
 

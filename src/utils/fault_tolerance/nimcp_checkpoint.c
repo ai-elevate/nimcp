@@ -301,6 +301,221 @@ static bool read_checkpoint_header(FILE* fp, checkpoint_header_t* header) {
 // Internal Helper Functions - Brain Serialization
 //=============================================================================
 
+/**
+ * @brief Serialize brain state to a buffer
+ *
+ * WHAT: Convert brain state to a byte buffer for checkpoint storage
+ * WHY:  Enable persistence and recovery of brain state
+ * HOW:  Serialize config, network weights, and stats sequentially
+ *
+ * @param brain Brain to serialize
+ * @param buffer Output buffer (allocated by this function)
+ * @param size Output: size of buffer
+ * @return true on success
+ */
+static bool serialize_brain_state(brain_t brain, uint8_t** buffer, size_t* size) {
+    if (!brain || !buffer || !size) {
+        set_error("serialize_brain_state: NULL parameter");
+        return false;
+    }
+
+    struct brain_struct* b = (struct brain_struct*)brain;
+
+    adaptive_network_t net = b->network;
+    if (!net) {
+        set_error("serialize_brain_state: No network");
+        return false;
+    }
+
+    neural_network_t base_net = adaptive_network_get_base_network(net);
+    if (!base_net) {
+        set_error("serialize_brain_state: No base network");
+        return false;
+    }
+
+    uint32_t num_neurons = adaptive_network_get_neuron_count(net);
+
+    // Estimate buffer size
+    size_t estimated_size = sizeof(brain_config_t) + sizeof(brain_stats_t) + sizeof(uint32_t) +
+                           (num_neurons * (sizeof(uint32_t) + 6 * sizeof(float) + sizeof(uint32_t) +
+                           MAX_SYNAPSES_PER_NEURON * (sizeof(uint32_t) + 3 * sizeof(float))));
+
+    uint8_t* buf = (uint8_t*)nimcp_malloc(estimated_size);
+    if (!buf) {
+        set_error("serialize_brain_state: Allocation failed");
+        return false;
+    }
+
+    size_t offset = 0;
+
+    // Config
+    memcpy(buf + offset, &b->config, sizeof(brain_config_t));
+    offset += sizeof(brain_config_t);
+
+    // Stats
+    memcpy(buf + offset, &b->stats, sizeof(brain_stats_t));
+    offset += sizeof(brain_stats_t);
+
+    // Number of neurons
+    memcpy(buf + offset, &num_neurons, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    // Each neuron
+    for (uint32_t n = 0; n < num_neurons; n++) {
+        neuron_t* neuron = neural_network_get_neuron(base_net, n);
+        if (!neuron) continue;
+
+        memcpy(buf + offset, &neuron->id, sizeof(uint32_t));
+        offset += sizeof(uint32_t);
+        memcpy(buf + offset, &neuron->state, sizeof(float));
+        offset += sizeof(float);
+        memcpy(buf + offset, &neuron->threshold, sizeof(float));
+        offset += sizeof(float);
+        memcpy(buf + offset, &neuron->adaptation, sizeof(float));
+        offset += sizeof(float);
+        memcpy(buf + offset, &neuron->bias, sizeof(float));
+        offset += sizeof(float);
+        memcpy(buf + offset, &neuron->avg_activity, sizeof(float));
+        offset += sizeof(float);
+        memcpy(buf + offset, &neuron->plasticity_rate, sizeof(float));
+        offset += sizeof(float);
+        memcpy(buf + offset, &neuron->num_synapses, sizeof(uint32_t));
+        offset += sizeof(uint32_t);
+
+        for (uint32_t s = 0; s < neuron->num_synapses; s++) {
+            synapse_t* syn = &neuron->synapses[s];
+            memcpy(buf + offset, &syn->target_id, sizeof(uint32_t));
+            offset += sizeof(uint32_t);
+            memcpy(buf + offset, &syn->weight, sizeof(float));
+            offset += sizeof(float);
+            memcpy(buf + offset, &syn->plasticity, sizeof(float));
+            offset += sizeof(float);
+            memcpy(buf + offset, &syn->strength, sizeof(float));
+            offset += sizeof(float);
+        }
+    }
+
+    *buffer = buf;
+    *size = offset;
+    return true;
+}
+
+/**
+ * @brief Deserialize brain state from a buffer
+ */
+static bool deserialize_brain_state(const uint8_t* buffer, size_t size, brain_t* brain) {
+    if (!buffer || size == 0 || !brain) {
+        set_error("deserialize_brain_state: NULL parameter");
+        return false;
+    }
+
+    *brain = NULL;
+    size_t offset = 0;
+
+    if (offset + sizeof(brain_config_t) > size) {
+        set_error("deserialize_brain_state: Buffer too small");
+        return false;
+    }
+    brain_config_t config;
+    memcpy(&config, buffer + offset, sizeof(brain_config_t));
+    offset += sizeof(brain_config_t);
+
+    if (offset + sizeof(brain_stats_t) > size) {
+        set_error("deserialize_brain_state: Buffer too small");
+        return false;
+    }
+    brain_stats_t stats;
+    memcpy(&stats, buffer + offset, sizeof(brain_stats_t));
+    offset += sizeof(brain_stats_t);
+
+    if (offset + sizeof(uint32_t) > size) {
+        set_error("deserialize_brain_state: Buffer too small");
+        return false;
+    }
+    uint32_t num_neurons;
+    memcpy(&num_neurons, buffer + offset, sizeof(uint32_t));
+    offset += sizeof(uint32_t);
+
+    if (num_neurons > MAX_NEURONS) {
+        set_error("deserialize_brain_state: Invalid neuron count");
+        return false;
+    }
+
+    brain_t new_brain = brain_create_custom(&config);
+    if (!new_brain) {
+        set_error("deserialize_brain_state: Failed to create brain");
+        return false;
+    }
+
+    struct brain_struct* b = (struct brain_struct*)new_brain;
+    adaptive_network_t net = b->network;
+    neural_network_t base_net = net ? adaptive_network_get_base_network(net) : NULL;
+
+    if (base_net) {
+        uint32_t available = adaptive_network_get_neuron_count(net);
+        uint32_t to_restore = (num_neurons < available) ? num_neurons : available;
+
+        for (uint32_t n = 0; n < to_restore && offset < size; n++) {
+            if (offset + sizeof(uint32_t) > size) break;
+            uint32_t neuron_id;
+            memcpy(&neuron_id, buffer + offset, sizeof(uint32_t));
+            offset += sizeof(uint32_t);
+
+            neuron_t* neuron = neural_network_get_neuron(base_net, neuron_id);
+            if (!neuron) {
+                offset += 6 * sizeof(float) + sizeof(uint32_t);
+                if (offset <= size) {
+                    uint32_t skip;
+                    memcpy(&skip, buffer + offset - sizeof(uint32_t), sizeof(uint32_t));
+                    offset += skip * (sizeof(uint32_t) + 3 * sizeof(float));
+                }
+                continue;
+            }
+
+            if (offset + 6 * sizeof(float) + sizeof(uint32_t) > size) break;
+            memcpy(&neuron->state, buffer + offset, sizeof(float)); offset += sizeof(float);
+            memcpy(&neuron->threshold, buffer + offset, sizeof(float)); offset += sizeof(float);
+            memcpy(&neuron->adaptation, buffer + offset, sizeof(float)); offset += sizeof(float);
+            memcpy(&neuron->bias, buffer + offset, sizeof(float)); offset += sizeof(float);
+            memcpy(&neuron->avg_activity, buffer + offset, sizeof(float)); offset += sizeof(float);
+            memcpy(&neuron->plasticity_rate, buffer + offset, sizeof(float)); offset += sizeof(float);
+
+            uint32_t num_syn;
+            memcpy(&num_syn, buffer + offset, sizeof(uint32_t));
+            offset += sizeof(uint32_t);
+
+            uint32_t syn_restore = (num_syn < neuron->num_synapses) ? num_syn : neuron->num_synapses;
+            for (uint32_t s = 0; s < syn_restore && offset + sizeof(uint32_t) + 3 * sizeof(float) <= size; s++) {
+                memcpy(&neuron->synapses[s].target_id, buffer + offset, sizeof(uint32_t));
+                offset += sizeof(uint32_t);
+                memcpy(&neuron->synapses[s].weight, buffer + offset, sizeof(float));
+                offset += sizeof(float);
+                memcpy(&neuron->synapses[s].plasticity, buffer + offset, sizeof(float));
+                offset += sizeof(float);
+                memcpy(&neuron->synapses[s].strength, buffer + offset, sizeof(float));
+                offset += sizeof(float);
+            }
+            for (uint32_t s = syn_restore; s < num_syn; s++) {
+                offset += sizeof(uint32_t) + 3 * sizeof(float);
+            }
+        }
+    }
+
+    b->stats = stats;
+    *brain = new_brain;
+    return true;
+}
+
+/**
+ * @brief Compare timestamps for qsort (descending - newest first)
+ */
+static int compare_checkpoint_timestamp_desc(const void* a, const void* b) {
+    const checkpoint_info_t* ca = (const checkpoint_info_t*)a;
+    const checkpoint_info_t* cb = (const checkpoint_info_t*)b;
+    if (ca->timestamp > cb->timestamp) return -1;
+    if (ca->timestamp < cb->timestamp) return 1;
+    return 0;
+}
 
 //=============================================================================
 // Public API - Checkpoint Creation
@@ -344,32 +559,67 @@ bool checkpoint_save_ex(brain_t brain, const char* path, const checkpoint_option
         options = &opts;
     }
 
-    // TODO: Implement actual checkpoint save
-    // For now, just create an empty placeholder file
-    FILE* fp = fopen(path, "wb");
+    // Serialize brain state
+    uint8_t* data_buffer = NULL;
+    size_t data_size = 0;
+    if (!serialize_brain_state(brain, &data_buffer, &data_size)) {
+        return false;
+    }
+
+    // Calculate CRC32
+    uint32_t data_crc = crc32_calculate(data_buffer, data_size);
+
+    // Create temp file for atomic write
+    char temp_path[1024];
+    snprintf(temp_path, sizeof(temp_path), "%s%s", path, TEMP_SUFFIX);
+
+    FILE* fp = fopen(temp_path, "wb");
     if (!fp) {
         set_error("Failed to open checkpoint file: %s", strerror(errno));
+        nimcp_free(data_buffer);
         return false;
     }
 
     // Write header
     checkpoint_header_t header;
-    memset(&header, 0, sizeof(header));  // Zero entire struct including reserved fields
+    memset(&header, 0, sizeof(header));
     memcpy(header.magic, CHECKPOINT_MAGIC, strlen(CHECKPOINT_MAGIC));
     header.version_major = CHECKPOINT_VERSION_MAJOR;
     header.version_minor = CHECKPOINT_VERSION_MINOR;
-    header.flags = options->enable_compression ? CHECKPOINT_FLAG_COMPRESSED : 0;
+    header.flags = options->incremental ? CHECKPOINT_FLAG_INCREMENTAL : 0;
     header.timestamp = (uint64_t)time(NULL);
-    header.data_size = 0;
-    header.crc32 = 0;
+    header.data_size = (uint32_t)data_size;
+    header.crc32 = data_crc;
 
-    if (fwrite(&header, sizeof(header), 1, fp) != 1) {
+    if (!write_full(fp, &header, sizeof(header))) {
         fclose(fp);
-        set_error("Failed to write checkpoint header");
+        unlink(temp_path);
+        nimcp_free(data_buffer);
         return false;
     }
 
+    // Write data
+    if (!write_full(fp, data_buffer, data_size)) {
+        fclose(fp);
+        unlink(temp_path);
+        nimcp_free(data_buffer);
+        return false;
+    }
+
+    fflush(fp);
+    int fd = fileno(fp);
+    if (fd >= 0) (void)fsync(fd);
     fclose(fp);
+    nimcp_free(data_buffer);
+
+    // Atomic rename
+    if (rename(temp_path, path) != 0) {
+        set_error("Failed to rename checkpoint: %s", strerror(errno));
+        unlink(temp_path);
+        return false;
+    }
+
+    NIMCP_LOGGING_INFO("Checkpoint saved: %zu bytes, CRC32=0x%08X", data_size, data_crc);
     return true;
 }
 
@@ -464,7 +714,7 @@ bool checkpoint_load(brain_t* brain, const char* path) {
         return false;
     }
 
-    *brain = NULL;  // Initialize output
+    *brain = NULL;
 
     NIMCP_LOGGING_INFO("Loading checkpoint from: %s", path);
 
@@ -473,24 +723,27 @@ bool checkpoint_load(brain_t* brain, const char* path) {
         return false;
     }
 
-    // Open checkpoint file
     FILE* fp = fopen(path, "rb");
     if (!fp) {
         set_error("Failed to open checkpoint: %s", strerror(errno));
         return false;
     }
 
-    // Read header
     checkpoint_header_t header;
     if (!read_checkpoint_header(fp, &header)) {
         fclose(fp);
         return false;
     }
 
-    // Read data section
+    if (header.data_size == 0) {
+        fclose(fp);
+        set_error("checkpoint_load: Empty checkpoint");
+        return false;
+    }
+
     uint8_t* data = (uint8_t*)nimcp_malloc(header.data_size);
     if (!data) {
-        set_error("Failed to allocate buffer for data");
+        set_error("Failed to allocate buffer");
         fclose(fp);
         return false;
     }
@@ -502,26 +755,23 @@ bool checkpoint_load(brain_t* brain, const char* path) {
     }
     fclose(fp);
 
-    // NOTE: Brain deserialization is not yet implemented.
-    // The checkpoint file format and validation work correctly,
-    // but reconstructing a brain_t from the serialized data
-    // requires implementing the following steps:
-    // 1. Extract config from data buffer
-    // 2. Create brain with config using brain_create()
-    // 3. Restore network weights
-    // 4. Restore subsystems (if present)
-    // 5. Restore stats
-    //
-    // For now, checkpoint_save() and checkpoint_validate() are functional,
-    // allowing checkpoints to be created and validated.
+    // Verify CRC
+    uint32_t crc = crc32_calculate(data, header.data_size);
+    if (crc != header.crc32) {
+        set_error("CRC32 mismatch");
+        nimcp_free(data);
+        return false;
+    }
+
+    // Deserialize
+    if (!deserialize_brain_state(data, header.data_size, brain)) {
+        nimcp_free(data);
+        return false;
+    }
 
     nimcp_free(data);
-    set_error("checkpoint_load: Brain deserialization not implemented. "
-              "Checkpoint file is valid but cannot be restored to a brain_t. "
-              "Use checkpoint_validate() to verify checkpoint integrity.");
-
-    NIMCP_LOGGING_WARN("checkpoint_load: Deserialization not implemented - returning false");
-    return false;
+    NIMCP_LOGGING_INFO("Checkpoint loaded successfully");
+    return true;
 }
 
 //=============================================================================
@@ -611,7 +861,10 @@ bool checkpoint_list(const char* dir, checkpoint_info_t** list, uint32_t* count)
     closedir(d);
     *count = i;
 
-    // TODO: Sort by timestamp (newest first)
+    // Sort by timestamp (newest first)
+    if (i > 1) {
+        qsort(*list, i, sizeof(checkpoint_info_t), compare_checkpoint_timestamp_desc);
+    }
 
     return true;
 }
@@ -644,9 +897,7 @@ bool checkpoint_cleanup_old(const char* dir, uint32_t keep_count) {
         return true;
     }
 
-    // TODO: Sort by timestamp
-    // For now, assume list is already sorted
-
+    // List is already sorted by checkpoint_list (newest first)
     // Delete old checkpoints
     // NOTE: There is an inherent TOCTOU race between checkpoint_list() and unlink().
     // Another process could modify the directory between these operations.
@@ -711,8 +962,7 @@ bool recovery_auto_restore(brain_t* brain, const char* checkpoint_dir) {
         return false;
     }
 
-    // Try to load newest valid checkpoint
-    // TODO: Sort by timestamp first
+    // Try to load newest valid checkpoint (list sorted by timestamp)
     for (uint32_t i = 0; i < count; i++) {
         if (!list[i].is_valid) {
             continue;
@@ -741,14 +991,65 @@ bool recovery_rollback(brain_t brain, const char* checkpoint_path) {
         return false;
     }
 
-    // TODO: Implement in-place rollback
-    // 1. Load checkpoint
-    // 2. Destroy current brain internals
-    // 3. Replace with checkpoint data
-    // 4. Preserve brain handle
+    NIMCP_LOGGING_INFO("In-place rollback from: %s", checkpoint_path);
 
-    set_error("Rollback not yet implemented");
-    return false;
+    // Load checkpoint
+    brain_t restored = NULL;
+    if (!checkpoint_load(&restored, checkpoint_path)) {
+        return false;
+    }
+
+    // Transfer state from restored brain to target
+    struct brain_struct* target = (struct brain_struct*)brain;
+    struct brain_struct* source = (struct brain_struct*)restored;
+
+    adaptive_network_t target_net = target->network;
+    adaptive_network_t source_net = source->network;
+
+    if (!target_net || !source_net) {
+        brain_destroy(restored);
+        set_error("recovery_rollback: Network missing");
+        return false;
+    }
+
+    neural_network_t target_base = adaptive_network_get_base_network(target_net);
+    neural_network_t source_base = adaptive_network_get_base_network(source_net);
+
+    if (!target_base || !source_base) {
+        brain_destroy(restored);
+        set_error("recovery_rollback: Base network missing");
+        return false;
+    }
+
+    uint32_t t_neurons = adaptive_network_get_neuron_count(target_net);
+    uint32_t s_neurons = adaptive_network_get_neuron_count(source_net);
+    uint32_t to_copy = (t_neurons < s_neurons) ? t_neurons : s_neurons;
+
+    for (uint32_t n = 0; n < to_copy; n++) {
+        neuron_t* t = neural_network_get_neuron(target_base, n);
+        neuron_t* s = neural_network_get_neuron(source_base, n);
+        if (!t || !s) continue;
+
+        t->state = s->state;
+        t->threshold = s->threshold;
+        t->adaptation = s->adaptation;
+        t->bias = s->bias;
+        t->avg_activity = s->avg_activity;
+        t->plasticity_rate = s->plasticity_rate;
+
+        uint32_t syn_copy = (t->num_synapses < s->num_synapses) ? t->num_synapses : s->num_synapses;
+        for (uint32_t i = 0; i < syn_copy; i++) {
+            t->synapses[i].weight = s->synapses[i].weight;
+            t->synapses[i].plasticity = s->synapses[i].plasticity;
+            t->synapses[i].strength = s->synapses[i].strength;
+        }
+    }
+
+    target->stats = source->stats;
+    brain_destroy(restored);
+
+    NIMCP_LOGGING_INFO("Rollback complete: %u neurons restored", to_copy);
+    return true;
 }
 
 bool recovery_partial(brain_t* brain, const char* path, int* recovery_level) {
@@ -761,11 +1062,148 @@ bool recovery_partial(brain_t* brain, const char* path, int* recovery_level) {
     *brain = NULL;
     *recovery_level = 0;
 
-    // TODO: Implement partial recovery
-    // Try to salvage what we can from corrupted checkpoint
+    NIMCP_LOGGING_INFO("Partial recovery from: %s", path);
 
-    set_error("Partial recovery not yet implemented");
-    return false;
+    FILE* fp = fopen(path, "rb");
+    if (!fp) {
+        set_error("Failed to open: %s", strerror(errno));
+        return false;
+    }
+
+    checkpoint_header_t header;
+    if (!read_checkpoint_header(fp, &header)) {
+        fclose(fp);
+        return false;
+    }
+    *recovery_level = 1;  // Header valid
+
+    if (header.data_size == 0) {
+        fclose(fp);
+        set_error("Empty checkpoint");
+        return false;
+    }
+
+    uint8_t* data = (uint8_t*)nimcp_malloc(header.data_size);
+    if (!data) {
+        fclose(fp);
+        return false;
+    }
+
+    size_t bytes_read = fread(data, 1, header.data_size, fp);
+    fclose(fp);
+
+    if (bytes_read == 0) {
+        nimcp_free(data);
+        return false;
+    }
+    *recovery_level = 2;  // Some data read
+
+    if (bytes_read == header.data_size) {
+        uint32_t crc = crc32_calculate(data, bytes_read);
+        if (crc == header.crc32) {
+            *recovery_level = 3;  // Full data, valid CRC
+        }
+    }
+
+    // Try to extract config
+    size_t offset = 0;
+    if (offset + sizeof(brain_config_t) > bytes_read) {
+        nimcp_free(data);
+        set_error("Cannot recover config");
+        return false;
+    }
+
+    brain_config_t config;
+    memcpy(&config, data + offset, sizeof(brain_config_t));
+    offset += sizeof(brain_config_t);
+    *recovery_level = 4;  // Config recovered
+
+    brain_stats_t stats = {0};
+    if (offset + sizeof(brain_stats_t) <= bytes_read) {
+        memcpy(&stats, data + offset, sizeof(brain_stats_t));
+        offset += sizeof(brain_stats_t);
+        *recovery_level = 5;  // Stats recovered
+    }
+
+    brain_t new_brain = brain_create_custom(&config);
+    if (!new_brain) {
+        nimcp_free(data);
+        set_error("Failed to create brain");
+        return false;
+    }
+
+    struct brain_struct* b = (struct brain_struct*)new_brain;
+    b->stats = stats;
+
+    // Try to restore neurons
+    if (offset + sizeof(uint32_t) <= bytes_read) {
+        uint32_t num_neurons;
+        memcpy(&num_neurons, data + offset, sizeof(uint32_t));
+        offset += sizeof(uint32_t);
+
+        adaptive_network_t net = b->network;
+        neural_network_t base = net ? adaptive_network_get_base_network(net) : NULL;
+
+        if (base && num_neurons <= MAX_NEURONS) {
+            uint32_t avail = adaptive_network_get_neuron_count(net);
+            uint32_t count = (num_neurons < avail) ? num_neurons : avail;
+            uint32_t restored = 0;
+
+            for (uint32_t n = 0; n < count && offset < bytes_read; n++) {
+                if (offset + sizeof(uint32_t) > bytes_read) break;
+                uint32_t id;
+                memcpy(&id, data + offset, sizeof(uint32_t));
+                offset += sizeof(uint32_t);
+
+                neuron_t* neuron = neural_network_get_neuron(base, id);
+                if (!neuron || offset + 6 * sizeof(float) + sizeof(uint32_t) > bytes_read) {
+                    offset += 6 * sizeof(float) + sizeof(uint32_t);
+                    if (offset <= bytes_read) {
+                        uint32_t skip;
+                        memcpy(&skip, data + offset - sizeof(uint32_t), sizeof(uint32_t));
+                        offset += skip * (sizeof(uint32_t) + 3 * sizeof(float));
+                    }
+                    continue;
+                }
+
+                memcpy(&neuron->state, data + offset, sizeof(float)); offset += sizeof(float);
+                memcpy(&neuron->threshold, data + offset, sizeof(float)); offset += sizeof(float);
+                memcpy(&neuron->adaptation, data + offset, sizeof(float)); offset += sizeof(float);
+                memcpy(&neuron->bias, data + offset, sizeof(float)); offset += sizeof(float);
+                memcpy(&neuron->avg_activity, data + offset, sizeof(float)); offset += sizeof(float);
+                memcpy(&neuron->plasticity_rate, data + offset, sizeof(float)); offset += sizeof(float);
+
+                uint32_t num_syn;
+                memcpy(&num_syn, data + offset, sizeof(uint32_t));
+                offset += sizeof(uint32_t);
+
+                uint32_t syn_restore = (num_syn < neuron->num_synapses) ? num_syn : neuron->num_synapses;
+                for (uint32_t s = 0; s < syn_restore && offset + sizeof(uint32_t) + 3 * sizeof(float) <= bytes_read; s++) {
+                    memcpy(&neuron->synapses[s].target_id, data + offset, sizeof(uint32_t));
+                    offset += sizeof(uint32_t);
+                    memcpy(&neuron->synapses[s].weight, data + offset, sizeof(float));
+                    offset += sizeof(float);
+                    memcpy(&neuron->synapses[s].plasticity, data + offset, sizeof(float));
+                    offset += sizeof(float);
+                    memcpy(&neuron->synapses[s].strength, data + offset, sizeof(float));
+                    offset += sizeof(float);
+                }
+                for (uint32_t s = syn_restore; s < num_syn; s++) {
+                    offset += sizeof(uint32_t) + 3 * sizeof(float);
+                }
+                restored++;
+            }
+
+            if (restored > 0) {
+                *recovery_level = 6;  // Neurons recovered
+            }
+        }
+    }
+
+    nimcp_free(data);
+    *brain = new_brain;
+    NIMCP_LOGGING_INFO("Partial recovery complete (level %d)", *recovery_level);
+    return true;
 }
 
 //=============================================================================

@@ -1,6 +1,6 @@
 # NIMCP Project Memory
 
-**Version**: 2.6.2
+**Version**: 2.6.3
 **Last Updated**: 2025-12-31
 
 > **Documentation is modularized.** See `docs/claude/` for detailed documentation.
@@ -37,6 +37,7 @@
 | Positional Encoding | [modules/positional-encoding.md](docs/claude/modules/positional-encoding.md) |
 | Tensor Integration | [modules/tensor.md](docs/claude/modules/tensor.md) |
 | Metabolic Modulation | [modules/metabolic-modulation.md](docs/claude/modules/metabolic-modulation.md) |
+| Brain Regions Roadmap | [modules/brain-regions-roadmap.md](docs/claude/modules/brain-regions-roadmap.md) |
 
 ---
 

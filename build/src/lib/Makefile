@@ -9185,6 +9185,30 @@ __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.c.s
 
+__/core/brain/factory/init/nimcp_brain_init_gpu.o: __/core/brain/factory/init/nimcp_brain_init_gpu.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_gpu.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_gpu.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_gpu.i: __/core/brain/factory/init/nimcp_brain_init_gpu.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_gpu.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_gpu.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_gpu.s: __/core/brain/factory/init/nimcp_brain_init_gpu.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_gpu.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_gpu.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu.c.s
+
 __/core/brain/factory/init/nimcp_brain_init_hippocampus.o: __/core/brain/factory/init/nimcp_brain_init_hippocampus.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_hippocampus.o
 
@@ -15952,6 +15976,30 @@ __/glial/sleep/nimcp_oligodendrocytes_sleep_bridge.s: __/glial/sleep/nimcp_oligo
 __/glial/sleep/nimcp_oligodendrocytes_sleep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/glial/sleep/nimcp_oligodendrocytes_sleep_bridge.c.s
 .PHONY : __/glial/sleep/nimcp_oligodendrocytes_sleep_bridge.c.s
+
+__/gpu/context/nimcp_gpu_context_stub.o: __/gpu/context/nimcp_gpu_context_stub.c.o
+.PHONY : __/gpu/context/nimcp_gpu_context_stub.o
+
+# target to build an object file
+__/gpu/context/nimcp_gpu_context_stub.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/context/nimcp_gpu_context_stub.c.o
+.PHONY : __/gpu/context/nimcp_gpu_context_stub.c.o
+
+__/gpu/context/nimcp_gpu_context_stub.i: __/gpu/context/nimcp_gpu_context_stub.c.i
+.PHONY : __/gpu/context/nimcp_gpu_context_stub.i
+
+# target to preprocess a source file
+__/gpu/context/nimcp_gpu_context_stub.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/context/nimcp_gpu_context_stub.c.i
+.PHONY : __/gpu/context/nimcp_gpu_context_stub.c.i
+
+__/gpu/context/nimcp_gpu_context_stub.s: __/gpu/context/nimcp_gpu_context_stub.c.s
+.PHONY : __/gpu/context/nimcp_gpu_context_stub.s
+
+# target to generate assembly for a file
+__/gpu/context/nimcp_gpu_context_stub.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/context/nimcp_gpu_context_stub.c.s
+.PHONY : __/gpu/context/nimcp_gpu_context_stub.c.s
 
 __/gpu/execution/nimcp_execution_mode.o: __/gpu/execution/nimcp_execution_mode.c.o
 .PHONY : __/gpu/execution/nimcp_execution_mode.o
@@ -24449,6 +24497,30 @@ __/training/nimcp_adversarial_training.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_adversarial_training.c.s
 .PHONY : __/training/nimcp_adversarial_training.c.s
 
+__/training/nimcp_auto_architecture.o: __/training/nimcp_auto_architecture.c.o
+.PHONY : __/training/nimcp_auto_architecture.o
+
+# target to build an object file
+__/training/nimcp_auto_architecture.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_auto_architecture.c.o
+.PHONY : __/training/nimcp_auto_architecture.c.o
+
+__/training/nimcp_auto_architecture.i: __/training/nimcp_auto_architecture.c.i
+.PHONY : __/training/nimcp_auto_architecture.i
+
+# target to preprocess a source file
+__/training/nimcp_auto_architecture.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_auto_architecture.c.i
+.PHONY : __/training/nimcp_auto_architecture.c.i
+
+__/training/nimcp_auto_architecture.s: __/training/nimcp_auto_architecture.c.s
+.PHONY : __/training/nimcp_auto_architecture.s
+
+# target to generate assembly for a file
+__/training/nimcp_auto_architecture.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_auto_architecture.c.s
+.PHONY : __/training/nimcp_auto_architecture.c.s
+
 __/training/nimcp_cnn_cortex_bridge.o: __/training/nimcp_cnn_cortex_bridge.c.o
 .PHONY : __/training/nimcp_cnn_cortex_bridge.o
 
@@ -28324,6 +28396,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_hippocampus.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_hippocampus.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_hippocampus.s"
@@ -29170,6 +29245,9 @@ help:
 	@echo "... __/glial/sleep/nimcp_oligodendrocytes_sleep_bridge.o"
 	@echo "... __/glial/sleep/nimcp_oligodendrocytes_sleep_bridge.i"
 	@echo "... __/glial/sleep/nimcp_oligodendrocytes_sleep_bridge.s"
+	@echo "... __/gpu/context/nimcp_gpu_context_stub.o"
+	@echo "... __/gpu/context/nimcp_gpu_context_stub.i"
+	@echo "... __/gpu/context/nimcp_gpu_context_stub.s"
 	@echo "... __/gpu/execution/nimcp_execution_mode.o"
 	@echo "... __/gpu/execution/nimcp_execution_mode.i"
 	@echo "... __/gpu/execution/nimcp_execution_mode.s"
@@ -30232,6 +30310,9 @@ help:
 	@echo "... __/training/nimcp_adversarial_training.o"
 	@echo "... __/training/nimcp_adversarial_training.i"
 	@echo "... __/training/nimcp_adversarial_training.s"
+	@echo "... __/training/nimcp_auto_architecture.o"
+	@echo "... __/training/nimcp_auto_architecture.i"
+	@echo "... __/training/nimcp_auto_architecture.s"
 	@echo "... __/training/nimcp_cnn_cortex_bridge.o"
 	@echo "... __/training/nimcp_cnn_cortex_bridge.i"
 	@echo "... __/training/nimcp_cnn_cortex_bridge.s"

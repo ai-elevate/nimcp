@@ -215,11 +215,11 @@ static bool query_disk_windows(system_resources_t* res)
  * NOTE: This is a stub. Full CUDA/OpenCL detection requires linking
  * against those libraries. For now, return safe defaults.
  */
-static bool query_gpu(gpu_capabilities_t* gpu)
+static bool query_gpu(gpu_basic_capabilities_t* gpu)
 {
     // TODO: Implement actual CUDA/OpenCL detection
     // For now, assume no GPU
-    memset(gpu, 0, sizeof(gpu_capabilities_t));
+    memset(gpu, 0, sizeof(gpu_basic_capabilities_t));
 
     gpu->cuda_available = false;
     gpu->opencl_available = false;

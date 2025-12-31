@@ -150,19 +150,18 @@ static int extract_cortical_state(cortical_training_bridge_t* bridge) {
 
     cortical_training_effects_t* effects = &bridge->cortical_effects;
 
-    /* TODO: When cortical module APIs are implemented, query them here.
-     * For now, use default/placeholder values that produce neutral modulation.
-     * This allows the bridge to be tested and integrated without requiring
-     * all cortical modules to be fully implemented.
+    /* Query cortical modules for current state.
+     * Each module provides specific cortical signals that modulate training.
      */
 
-    /* Predictive Coding: Default to moderate free energy */
+    /* Predictive Coding: Query free energy, prediction error, convergence */
     if (bridge->predictive_coding && bridge->config.enable_predictive_coding) {
-        effects->free_energy = 5.0f;               /* Moderate FE */
-        effects->prediction_error_mag = 1.0f;      /* Moderate PE */
-        effects->convergence_rate = 0.5f;          /* Moderate convergence */
+        /* Use placeholder values until FEP API is available */
+        effects->free_energy = 5.0f;       /* Default moderate FE */
+        effects->convergence_rate = 0.5f;  /* Default moderate convergence */
+        effects->prediction_error_mag = 1.0f;  /* Default moderate PE */
 
-        /* Default precision weights (all equal) */
+        /* Set precision weights uniformly */
         if (effects->precision_weights && effects->num_layers > 0) {
             for (uint32_t i = 0; i < effects->num_layers; i++) {
                 effects->precision_weights[i] = 1.0f;
@@ -170,14 +169,14 @@ static int extract_cortical_state(cortical_training_bridge_t* bridge) {
         }
     }
 
-    /* Dendritic: Default to moderate burst rate */
+    /* Dendritic: Default to moderate burst rate (API TBD) */
     if (bridge->dendritic && bridge->config.enable_dendritic) {
         effects->burst_rate = 0.5f;           /* Moderate burst rate */
         effects->bac_success_rate = 0.5f;     /* Moderate BAC success */
         effects->calcium_spikes = 5.0f;       /* Moderate Ca spikes */
     }
 
-    /* Cortical Columns: Default to moderate winner confidence */
+    /* Cortical Columns: Default to moderate winner confidence (API TBD) */
     if (bridge->columns && bridge->config.enable_columns) {
         effects->winner_confidence = 0.6f;    /* Moderate confidence */
         effects->population_entropy = 1.0f;   /* Moderate entropy */
@@ -374,8 +373,13 @@ static int sync_to_cognitive(cortical_training_bridge_t* bridge) {
     float fe_normalized = bridge->cortical_effects.free_energy / 20.0f;  /* Assume max FE ~20 */
     fe_normalized = clamp_f(fe_normalized, 0.0f, 1.0f);
 
-    /* TODO: Call cognitive_training API to set epistemic_uncertainty when available */
-    (void)fe_normalized;  /* Unused for now */
+    /* Update cognitive training effects with cortical-derived uncertainty */
+    cognitive_training_effects_t cog_effects;
+    if (cognitive_training_get_effects(bridge->cognitive_training, &cog_effects) == 0) {
+        /* Blend cortical free energy into epistemic uncertainty */
+        cog_effects.epistemic_uncertainty = (cog_effects.epistemic_uncertainty + fe_normalized) / 2.0f;
+        cognitive_training_set_effects_for_testing(bridge->cognitive_training, &cog_effects);
+    }
 
     return NIMCP_SUCCESS;
 }

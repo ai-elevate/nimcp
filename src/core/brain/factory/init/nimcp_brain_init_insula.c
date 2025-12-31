@@ -37,11 +37,111 @@
 #include "core/brain/regions/insula/nimcp_insula_adapter.h"
 #include "core/brain/regions/insula/nimcp_insula_quantum_bridge.h"
 
+// Bio-async includes
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_async.h"
+
 #include <string.h>
 
 //=============================================================================
 // Internal Helper Functions
 //=============================================================================
+
+/**
+ * @brief Message handler for insula cytokine updates
+ *
+ * WHAT: Process cytokine signals affecting interoceptive awareness
+ * WHY:  Enable immune-interoception integration (sickness behavior)
+ * HOW:  Update insula sensitivity based on cytokine levels
+ *
+ * @param msg Cytokine update message
+ * @param msg_size Message size
+ * @param response_promise Promise for response (may be NULL)
+ * @param user_data Insula adapter pointer
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t insula_handle_cytokine_update(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+    (void)msg; (void)msg_size; (void)response_promise; (void)user_data;
+
+    /*
+     * TODO: Full implementation when cytokine message format is finalized
+     *
+     * Implementation would:
+     * 1. Extract cytokine type and concentration from message
+     * 2. Update insula interoceptive thresholds based on cytokine levels
+     * 3. Modulate body state representation (fatigue, discomfort)
+     * 4. Trigger sickness behavior signals if inflammation is high
+     */
+
+    LOG_TRACE(LOG_MODULE, "Insula received cytokine update (stub)");
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Message handler for insula salience queries
+ *
+ * WHAT: Respond to salience evaluation requests
+ * WHY:  Insula is key node in salience network
+ * HOW:  Compute salience based on interoceptive signals
+ *
+ * @param msg Salience query message
+ * @param msg_size Message size
+ * @param response_promise Promise for response
+ * @param user_data Insula adapter pointer
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t insula_handle_salience_query(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+    (void)msg; (void)msg_size; (void)response_promise; (void)user_data;
+
+    /*
+     * TODO: Full implementation when salience message format is finalized
+     *
+     * Implementation would:
+     * 1. Evaluate current interoceptive signals
+     * 2. Compute salience score based on body state deviation
+     * 3. Send response with salience value and contributing factors
+     * 4. Flag high-salience events for attention system
+     */
+
+    LOG_TRACE(LOG_MODULE, "Insula received salience query (stub)");
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Message handler for insula emotion tensor updates
+ *
+ * WHAT: Process emotion tensor updates for body-emotion integration
+ * WHY:  Insula bridges bodily feelings and emotional states
+ * HOW:  Update interoceptive predictions based on emotion state
+ *
+ * @param msg Emotion tensor update message
+ * @param msg_size Message size
+ * @param response_promise Promise for response (may be NULL)
+ * @param user_data Insula adapter pointer
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t insula_handle_emotion_tensor(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+    (void)msg; (void)msg_size; (void)response_promise; (void)user_data;
+
+    /*
+     * TODO: Full implementation when emotion tensor format is finalized
+     *
+     * Implementation would:
+     * 1. Extract emotion valence/arousal from tensor
+     * 2. Update body state predictions (heart rate, gut feelings)
+     * 3. Modulate interoceptive sensitivity based on emotion
+     * 4. Generate somatic markers for decision-making
+     */
+
+    LOG_TRACE(LOG_MODULE, "Insula received emotion tensor update (stub)");
+    return NIMCP_SUCCESS;
+}
 
 /**
  * @brief Connect Insula to bio-async messaging
@@ -51,10 +151,28 @@ static bool connect_insula_to_bio_async(brain_t brain) {
 
     /* Register with bio-async if enabled */
     if (brain->bio_async_enabled && brain->bio_async_ctx) {
-        /*
-         * TODO: Register Insula message handlers
-         * bio_router_register_module(router, BIO_MODULE_INSULA, brain->insula);
-         */
+        /* Register insula module with bio-async router */
+        bio_module_info_t info = {
+            .module_id = BIO_MODULE_INSULA,
+            .module_name = "insula",
+            .inbox_capacity = 32,
+            .user_data = brain->insula
+        };
+
+        bio_module_context_t ctx = bio_router_register_module(&info);
+        if (ctx) {
+            /* Register message handlers for insula-specific messages */
+            bio_router_register_handler(ctx, BIO_MSG_CYTOKINE_UPDATE,
+                                        insula_handle_cytokine_update);
+            bio_router_register_handler(ctx, BIO_MSG_SALIENCE_QUERY,
+                                        insula_handle_salience_query);
+            bio_router_register_handler(ctx, BIO_MSG_EMOTION_TENSOR_UPDATE,
+                                        insula_handle_emotion_tensor);
+            LOG_DEBUG(LOG_MODULE, "Insula bio-async registered (module_id=0x%04X)",
+                      BIO_MODULE_INSULA);
+        } else {
+            LOG_WARN(LOG_MODULE, "Failed to register insula with bio-async");
+        }
     }
 
     return true;

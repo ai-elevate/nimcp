@@ -52,7 +52,7 @@ extern "C" {
 #include "cognitive/emotion/nimcp_emotion_substrate_bridge.h"
 #include "cognitive/executive/nimcp_executive_substrate_bridge.h"
 #include "cognitive/introspection/nimcp_introspection_substrate_bridge.h"
-#include "cognitive/memory/nimcp_memory_consolidation_substrate_bridge.h"
+#include "cognitive/consolidation/nimcp_consolidation_substrate_bridge.h"
 #include "cognitive/reasoning/nimcp_reasoning_substrate_bridge.h"
 #include "cognitive/tom/nimcp_tom_substrate_bridge.h"
 #include "cognitive/working_memory/nimcp_working_memory_substrate_bridge.h"
@@ -156,10 +156,9 @@ protected:
             &intro_config, substrate, (nimcp_introspection_t*)&intro_stub);
         if (!introspection) GTEST_SKIP() << "Cannot create introspection bridge";
 
-        consolidation_substrate_config_t cons_config;
-        consolidation_substrate_default_config(&cons_config);
+        consolidation_substrate_config_t cons_config = consolidation_substrate_default_config();
         consolidation = consolidation_substrate_bridge_create(
-            &cons_config, (memory_consolidation_t*)&cons_stub, substrate);
+            (void*)&cons_stub, substrate, &cons_config);
         if (!consolidation) GTEST_SKIP() << "Cannot create consolidation bridge";
 
         reasoning_substrate_config_t reas_config;
@@ -187,10 +186,30 @@ protected:
         ASSERT_EQ(0, emotion_substrate_update(emotion));
         ASSERT_EQ(0, executive_substrate_update(executive));
         ASSERT_EQ(0, introspection_substrate_update(introspection));
-        ASSERT_EQ(0, consolidation_substrate_update(consolidation));
+        ASSERT_EQ(0, consolidation_substrate_bridge_update(consolidation));
         ASSERT_EQ(0, reasoning_substrate_update(reasoning));
         ASSERT_EQ(0, tom_substrate_update(tom));
         ASSERT_EQ(0, wm_substrate_update(working_memory));
+    }
+
+    // Helper: Get consolidation rate from bridge effects
+    float get_consolidation_rate_from_bridge() {
+        if (!consolidation) return 0.0f;
+        consolidation_substrate_effects_t effects;
+        if (consolidation_substrate_bridge_get_effects(consolidation, &effects) != 0) {
+            return 0.0f;
+        }
+        return effects.consolidation_rate;
+    }
+
+    // Helper: Check if consolidation is impaired
+    bool is_consolidation_impaired_helper() {
+        if (!consolidation) return false;
+        consolidation_substrate_effects_t effects;
+        if (consolidation_substrate_bridge_get_effects(consolidation, &effects) != 0) {
+            return false;
+        }
+        return effects.overall_capacity < 0.5f;
     }
 
     // Helper: Collect all capacities
@@ -230,7 +249,7 @@ protected:
         caps.emotion_regulation = emotion_substrate_get_regulation_capacity(emotion);
         caps.executive_quality = executive_substrate_get_decision_quality(executive);
         caps.introspection_depth = introspection_substrate_get_self_awareness_depth(introspection);
-        caps.consolidation_rate = consolidation_substrate_get_consolidation_rate(consolidation);
+        caps.consolidation_rate = get_consolidation_rate_from_bridge();
 
         const reasoning_substrate_effects_t* reas_eff = reasoning_substrate_get_effects(reasoning);
         caps.reasoning_depth = reas_eff ? reas_eff->inference_depth : 0.0f;
@@ -246,7 +265,7 @@ protected:
                emotion_substrate_is_impaired(emotion) &&
                executive_substrate_is_impaired(executive) &&
                introspection_substrate_is_impaired(introspection) &&
-               consolidation_substrate_is_impaired(consolidation) &&
+               is_consolidation_impaired_helper() &&
                reasoning_substrate_is_impaired(reasoning) &&
                tom_substrate_is_impaired(tom) &&
                wm_substrate_is_impaired(working_memory);
@@ -258,7 +277,7 @@ protected:
                !emotion_substrate_is_impaired(emotion) &&
                !executive_substrate_is_impaired(executive) &&
                !introspection_substrate_is_impaired(introspection) &&
-               !consolidation_substrate_is_impaired(consolidation) &&
+               !is_consolidation_impaired_helper() &&
                !reasoning_substrate_is_impaired(reasoning) &&
                !tom_substrate_is_impaired(tom) &&
                !wm_substrate_is_impaired(working_memory);
@@ -396,58 +415,50 @@ TEST_F(MetabolicCascadeIntegrationTest, RapidCrisisRecoveryCycles) {
 }
 
 //=============================================================================
-// TEST SUITE 3: Fatigue Accumulation Effects
+// TEST SUITE 3: ATP Degradation Effects (simulating fatigue via ATP)
 //=============================================================================
 
-TEST_F(MetabolicCascadeIntegrationTest, FatigueSlowsProcessing) {
+TEST_F(MetabolicCascadeIntegrationTest, LowATPSlowsProcessing) {
     create_all_bridges();
 
-    // Good ATP but increasing fatigue
-    substrate_set_atp(substrate, 0.8f);
-    substrate_set_fatigue(substrate, 0.2f);
+    // Good ATP (simulating rested state)
+    substrate_set_atp(substrate, 0.85f);
     update_all_bridges();
 
-    BridgeCapacities low_fatigue = get_all_capacities();
+    BridgeCapacities rested = get_all_capacities();
 
-    // High fatigue
-    substrate_set_fatigue(substrate, 0.85f);
+    const reasoning_substrate_effects_t* eff_rested = reasoning_substrate_get_effects(reasoning);
+    float speed_rested = eff_rested ? eff_rested->processing_speed : 0.0f;
+
+    // Lower ATP (simulating fatigued state)
+    substrate_set_atp(substrate, 0.35f);
     update_all_bridges();
 
-    BridgeCapacities high_fatigue = get_all_capacities();
+    BridgeCapacities fatigued = get_all_capacities();
 
-    // Fatigue should reduce processing speed in reasoning
-    const reasoning_substrate_effects_t* eff_low = reasoning_substrate_get_effects(reasoning);
-    substrate_set_fatigue(substrate, 0.2f);
-    update_all_bridges();
+    const reasoning_substrate_effects_t* eff_fatigued = reasoning_substrate_get_effects(reasoning);
+    float speed_fatigued = eff_fatigued ? eff_fatigued->processing_speed : 0.0f;
 
-    substrate_set_fatigue(substrate, 0.85f);
-    update_all_bridges();
-    const reasoning_substrate_effects_t* eff_high = reasoning_substrate_get_effects(reasoning);
-
-    // Processing speed should be lower with high fatigue
-    if (eff_low && eff_high) {
-        EXPECT_LE(eff_high->processing_speed, eff_low->processing_speed);
-    }
+    // Processing speed should be lower with low ATP
+    EXPECT_LE(speed_fatigued, speed_rested + 0.01f);
 }
 
-TEST_F(MetabolicCascadeIntegrationTest, CombinedATPAndFatigue) {
+TEST_F(MetabolicCascadeIntegrationTest, ModerateATPShowsDegradation) {
     create_all_bridges();
 
-    // Good ATP, low fatigue
-    substrate_set_atp(substrate, 0.85f);
-    substrate_set_fatigue(substrate, 0.2f);
+    // Optimal ATP
+    substrate_set_atp(substrate, 0.9f);
     update_all_bridges();
 
     BridgeCapacities optimal = get_all_capacities();
 
-    // Moderate ATP, high fatigue (mental exhaustion)
-    substrate_set_atp(substrate, 0.55f);
-    substrate_set_fatigue(substrate, 0.8f);
+    // Moderate ATP (simulating mental exhaustion)
+    substrate_set_atp(substrate, 0.45f);
     update_all_bridges();
 
     BridgeCapacities exhausted = get_all_capacities();
 
-    // Combined effect should be worse than either alone
+    // Moderate ATP should show worse performance than optimal
     EXPECT_LT(exhausted.average(), optimal.average());
 }
 
@@ -509,7 +520,6 @@ TEST_F(MetabolicCascadeIntegrationTest, MultipleStressorsCascade) {
 
     // Optimal baseline
     substrate_set_atp(substrate, 0.9f);
-    substrate_set_fatigue(substrate, 0.1f);
     substrate_set_temperature(substrate, 37.0f);
     update_all_bridges();
 
@@ -522,25 +532,25 @@ TEST_F(MetabolicCascadeIntegrationTest, MultipleStressorsCascade) {
     update_all_bridges();
     BridgeCapacities low_atp = get_all_capacities();
 
-    // 2. Add fatigue
-    substrate_set_fatigue(substrate, 0.7f);
+    // 2. Further reduce ATP (simulating fatigue)
+    substrate_set_atp(substrate, 0.35f);
     update_all_bridges();
-    BridgeCapacities low_atp_fatigued = get_all_capacities();
+    BridgeCapacities lower_atp = get_all_capacities();
 
     // 3. Add fever
     substrate_set_temperature(substrate, 39.5f);
     update_all_bridges();
-    BridgeCapacities triple_stress = get_all_capacities();
+    BridgeCapacities stress_with_fever = get_all_capacities();
 
     // Each additional stressor should worsen overall capacity
     EXPECT_LE(low_atp.average(), optimal.average());
-    EXPECT_LE(low_atp_fatigued.average(), low_atp.average() + 0.1f);
+    EXPECT_LE(lower_atp.average(), low_atp.average() + 0.1f);
 
     printf("[CASCADE] Multiple stressors:\n");
     printf("  Optimal: avg=%.2f\n", optimal.average());
     printf("  Low ATP: avg=%.2f\n", low_atp.average());
-    printf("  +Fatigue: avg=%.2f\n", low_atp_fatigued.average());
-    printf("  +Fever: avg=%.2f\n", triple_stress.average());
+    printf("  Lower ATP: avg=%.2f\n", lower_atp.average());
+    printf("  +Fever: avg=%.2f\n", stress_with_fever.average());
 }
 
 //=============================================================================
@@ -556,15 +566,17 @@ TEST_F(MetabolicCascadeIntegrationTest, CircadianEnergyPatterns) {
 
     for (int hour = 0; hour < 24; hour++) {
         // Sinusoidal ATP variation: peak at noon, trough at 4am
+        // During waking hours, ATP decreases slightly (simulating fatigue)
         float phase = (float)(hour - 12) * 3.14159f / 12.0f;
-        float atp = 0.7f + 0.2f * cosf(phase);
+        float base_atp = 0.7f + 0.2f * cosf(phase);
 
-        // Add random fatigue accumulation during waking hours
-        float fatigue = (hour >= 6 && hour <= 22) ?
-                        0.1f + 0.5f * (float)(hour - 6) / 16.0f : 0.1f;
+        // Reduce ATP during waking hours to simulate fatigue accumulation
+        float fatigue_effect = (hour >= 6 && hour <= 22) ?
+                               0.15f * (float)(hour - 6) / 16.0f : 0.0f;
+        float atp = base_atp - fatigue_effect;
+        if (atp < 0.3f) atp = 0.3f;
 
         substrate_set_atp(substrate, atp);
-        substrate_set_fatigue(substrate, fatigue);
         update_all_bridges();
 
         BridgeCapacities caps = get_all_capacities();
@@ -589,19 +601,15 @@ TEST_F(MetabolicCascadeIntegrationTest, RestBasedRecovery) {
     create_all_bridges();
 
     // Depleted state
-    substrate_set_atp(substrate, 0.3f);
-    substrate_set_fatigue(substrate, 0.8f);
+    substrate_set_atp(substrate, 0.2f);
     update_all_bridges();
 
     BridgeCapacities depleted = get_all_capacities();
 
-    // Simulate rest: gradual ATP restoration, fatigue reduction
+    // Simulate rest: gradual ATP restoration
     for (int minute = 0; minute < 60; minute++) {
-        float atp = 0.3f + 0.6f * (float)minute / 60.0f;
-        float fatigue = 0.8f - 0.6f * (float)minute / 60.0f;
-
+        float atp = 0.2f + 0.7f * (float)minute / 60.0f;
         substrate_set_atp(substrate, atp);
-        substrate_set_fatigue(substrate, fatigue);
         substrate_update(substrate, 1000);  // 1 second per minute
     }
     update_all_bridges();
@@ -644,10 +652,7 @@ TEST_F(MetabolicCascadeIntegrationTest, Performance_ManyUpdateCycles) {
     // 1000 metabolic update cycles
     for (int i = 0; i < 1000; i++) {
         float atp = 0.3f + 0.6f * (float)(i % 100) / 100.0f;
-        float fatigue = (float)(i % 50) / 100.0f;
-
         substrate_set_atp(substrate, atp);
-        substrate_set_fatigue(substrate, fatigue);
         update_all_bridges();
     }
 

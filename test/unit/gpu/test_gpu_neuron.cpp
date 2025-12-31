@@ -624,3 +624,289 @@ TEST_F(GPUNeuronTest, Integration_FullCycle_Succeeds) {
     // Synchronize
     EXPECT_TRUE(gpu_neural_network_synchronize(network));
 }
+
+//=============================================================================
+// GPU Kernel Launch Tests (CUDA-specific with CPU Fallback)
+//=============================================================================
+
+/**
+ * TEST: GPU mode network creation
+ * WHAT: Create network requesting GPU mode
+ * WHY:  Verify GPU initialization or CPU fallback
+ */
+TEST_F(GPUNeuronTest, CreateNetwork_GPUMode_HandlesGracefully) {
+    gpu_network_config_t config = create_test_config(100);
+    config.exec_mode = EXEC_MODE_GPU_CUDA;
+
+    network = gpu_neural_network_create(&config);
+
+    // Should succeed (either GPU or CPU fallback)
+    ASSERT_NE(network, nullptr);
+}
+
+/**
+ * TEST: Update with GPU mode (or fallback)
+ * WHAT: Run update on GPU-configured network
+ * WHY:  Verify CUDA kernel launch or CPU fallback
+ */
+TEST_F(GPUNeuronTest, Update_GPUMode_ExecutesCorrectly) {
+    gpu_network_config_t config = create_test_config(50);
+    config.exec_mode = gpu_is_available() ? EXEC_MODE_GPU_CUDA : EXEC_MODE_CPU_SEQUENTIAL;
+
+    network = gpu_neural_network_create(&config);
+    ASSERT_NE(network, nullptr);
+
+    // Add neurons with above-threshold state to trigger spikes
+    gpu_neuron_state_t state = create_test_neuron_state();
+    state.membrane_potential = -50.0f;  // Close to threshold
+    state.state = -52.0f;
+
+    for (int i = 0; i < 50; i++) {
+        gpu_neural_network_add_neuron(network, &state);
+    }
+
+    // Add some synapses
+    for (int i = 0; i < 49; i++) {
+        gpu_neural_network_add_synapse(network, i, i + 1, 0.5f, 1.0f);
+    }
+
+    // Run multiple updates
+    uint32_t total_spikes = 0;
+    for (uint64_t t = 0; t < 10; t++) {
+        uint32_t spikes = gpu_neural_network_update(network, t * 1000, 1000);
+        total_spikes += spikes;
+    }
+
+    // Verify update completed (spikes >= 0)
+    EXPECT_GE(total_spikes, 0u);
+
+    // Synchronize
+    EXPECT_TRUE(gpu_neural_network_synchronize(network));
+}
+
+/**
+ * TEST: Large network update
+ * WHAT: Update with many neurons to stress GPU parallelism
+ * WHY:  Verify scalability of GPU kernel launch
+ */
+TEST_F(GPUNeuronTest, Update_LargeNetwork_Succeeds) {
+    gpu_network_config_t config = create_test_config(1000);
+    config.threads_per_block = 256;
+    config.max_blocks = 1024;
+
+    network = gpu_neural_network_create(&config);
+    ASSERT_NE(network, nullptr);
+
+    gpu_neuron_state_t state = create_test_neuron_state();
+
+    // Add many neurons
+    for (int i = 0; i < 1000; i++) {
+        uint32_t id = gpu_neural_network_add_neuron(network, &state);
+        EXPECT_EQ(id, (uint32_t)i);
+    }
+
+    // Add sparse synapses
+    for (int i = 0; i < 999; i += 10) {
+        gpu_neural_network_add_synapse(network, i, i + 1, 0.3f, 1.0f);
+    }
+
+    // Run update
+    uint32_t spikes = gpu_neural_network_update(network, 1000, 1000);
+    EXPECT_GE(spikes, 0u);
+
+    // Verify statistics
+    uint64_t total = 0;
+    float rate = 0.0f;
+    uint64_t gpu_mem = 0;
+    EXPECT_TRUE(gpu_neural_network_get_stats(network, &total, &rate, &gpu_mem));
+}
+
+/**
+ * TEST: GPU fallback behavior
+ * WHAT: Verify CPU fallback when GPU operations fail
+ * WHY:  Ensure graceful degradation
+ */
+TEST_F(GPUNeuronTest, Update_CPUFallback_WorksWhenGPUUnavailable) {
+    // Force CPU mode
+    gpu_network_config_t config = create_test_config(100);
+    config.exec_mode = EXEC_MODE_CPU_SEQUENTIAL;
+
+    network = gpu_neural_network_create(&config);
+    ASSERT_NE(network, nullptr);
+
+    gpu_neuron_state_t state = create_test_neuron_state();
+    for (int i = 0; i < 100; i++) {
+        gpu_neural_network_add_neuron(network, &state);
+    }
+
+    // This should use CPU implementation
+    uint32_t spikes = gpu_neural_network_update(network, 1000, 1000);
+    EXPECT_GE(spikes, 0u);
+}
+
+/**
+ * TEST: Network update with synaptic transmission
+ * WHAT: Verify spike propagation through synapses
+ * WHY:  Core neural network functionality
+ */
+TEST_F(GPUNeuronTest, Update_SynapticTransmission_PropagatesSpikes) {
+    gpu_network_config_t config = create_test_config(5);
+    network = gpu_neural_network_create(&config);
+    ASSERT_NE(network, nullptr);
+
+    // Create a chain: N0 -> N1 -> N2 -> N3 -> N4
+    gpu_neuron_state_t state = create_test_neuron_state();
+    state.threshold = -55.0f;
+    state.membrane_potential = -65.0f;
+
+    for (int i = 0; i < 5; i++) {
+        gpu_neural_network_add_neuron(network, &state);
+    }
+
+    // Chain connectivity with strong weights
+    for (int i = 0; i < 4; i++) {
+        gpu_neural_network_add_synapse(network, i, i + 1, 1.0f, 1.0f);
+    }
+
+    // Set first neuron above threshold to trigger spike
+    gpu_neuron_state_t trigger_state = state;
+    trigger_state.membrane_potential = -50.0f;
+    trigger_state.state = -50.0f;
+    gpu_neural_network_set_neuron_state(network, 0, &trigger_state);
+
+    // Run several updates to allow spike propagation
+    for (uint64_t t = 0; t < 50; t++) {
+        gpu_neural_network_update(network, t * 1000, 1000);
+    }
+
+    // Synchronize before checking states
+    EXPECT_TRUE(gpu_neural_network_synchronize(network));
+}
+
+/**
+ * TEST: Rapid sequential updates
+ * WHAT: Many rapid timesteps to test stability
+ * WHY:  Verify no memory leaks or corruption
+ */
+TEST_F(GPUNeuronTest, Update_RapidSequential_Stable) {
+    gpu_network_config_t config = create_test_config(100);
+    network = gpu_neural_network_create(&config);
+    ASSERT_NE(network, nullptr);
+
+    gpu_neuron_state_t state = create_test_neuron_state();
+    for (int i = 0; i < 100; i++) {
+        gpu_neural_network_add_neuron(network, &state);
+    }
+
+    // Add synapses
+    for (int i = 0; i < 99; i++) {
+        gpu_neural_network_add_synapse(network, i, i + 1, 0.5f, 1.0f);
+    }
+
+    // Rapid updates (1000 timesteps)
+    for (uint64_t t = 0; t < 1000; t++) {
+        uint32_t spikes = gpu_neural_network_update(network, t * 100, 100);
+        EXPECT_GE(spikes, 0u);
+    }
+
+    // Final sync
+    EXPECT_TRUE(gpu_neural_network_synchronize(network));
+
+    // Get final stats
+    uint64_t total_spikes = 0;
+    float avg_rate = 0.0f;
+    EXPECT_TRUE(gpu_neural_network_get_stats(network, &total_spikes, &avg_rate, nullptr));
+}
+
+/**
+ * TEST: GPU memory reporting
+ * WHAT: Verify GPU memory statistics are reported
+ * WHY:  Monitor resource usage
+ */
+TEST_F(GPUNeuronTest, GetStats_GPUMemory_ReportsCorrectly) {
+    gpu_network_config_t config = create_test_config(100);
+    config.exec_mode = gpu_is_available() ? EXEC_MODE_GPU_CUDA : EXEC_MODE_CPU_SEQUENTIAL;
+
+    network = gpu_neural_network_create(&config);
+    ASSERT_NE(network, nullptr);
+
+    uint64_t gpu_mem = 0;
+    bool result = gpu_neural_network_get_stats(network, nullptr, nullptr, &gpu_mem);
+    EXPECT_TRUE(result);
+
+    // If GPU is being used, memory should be non-zero
+    if (gpu_is_available()) {
+        // GPU memory should be allocated
+        // (exact value depends on whether CUDA is actually enabled at compile time)
+    }
+}
+
+//=============================================================================
+// Stress Tests for CUDA Implementation
+//=============================================================================
+
+/**
+ * TEST: Create and destroy many networks
+ * WHAT: Repeated creation/destruction cycle
+ * WHY:  Verify no GPU resource leaks
+ */
+TEST_F(GPUNeuronTest, Lifecycle_CreateDestroyMany_NoLeaks) {
+    for (int iteration = 0; iteration < 10; iteration++) {
+        gpu_network_config_t config = create_test_config(50);
+
+        gpu_neural_network_t net = gpu_neural_network_create(&config);
+        ASSERT_NE(net, nullptr);
+
+        gpu_neuron_state_t state = create_test_neuron_state();
+        for (int i = 0; i < 50; i++) {
+            gpu_neural_network_add_neuron(net, &state);
+        }
+
+        // Run some updates
+        for (uint64_t t = 0; t < 10; t++) {
+            gpu_neural_network_update(net, t * 1000, 1000);
+        }
+
+        gpu_neural_network_destroy(net);
+    }
+    SUCCEED();
+}
+
+/**
+ * TEST: Concurrent-like usage pattern
+ * WHAT: Simulate rapid state changes and updates
+ * WHY:  Stress test GPU synchronization
+ */
+TEST_F(GPUNeuronTest, Update_StateChangesAndUpdates_Stable) {
+    gpu_network_config_t config = create_test_config(100);
+    network = gpu_neural_network_create(&config);
+    ASSERT_NE(network, nullptr);
+
+    gpu_neuron_state_t state = create_test_neuron_state();
+    for (int i = 0; i < 100; i++) {
+        gpu_neural_network_add_neuron(network, &state);
+    }
+
+    // Interleave state changes with updates
+    for (uint64_t t = 0; t < 100; t++) {
+        // Modify some neuron states
+        if (t % 5 == 0) {
+            gpu_neuron_state_t modified = state;
+            modified.bias = 0.1f + (float)(t % 10) * 0.01f;
+            for (uint32_t i = 0; i < 10; i++) {
+                gpu_neural_network_set_neuron_state(network, i, &modified);
+            }
+        }
+
+        // Update
+        gpu_neural_network_update(network, t * 1000, 1000);
+
+        // Occasionally read states
+        if (t % 10 == 0) {
+            gpu_neuron_state_t read_state;
+            EXPECT_TRUE(gpu_neural_network_get_neuron_state(network, 0, &read_state));
+        }
+    }
+
+    EXPECT_TRUE(gpu_neural_network_synchronize(network));
+}

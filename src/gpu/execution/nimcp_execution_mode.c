@@ -35,8 +35,10 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread_pool.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 // Platform-specific includes
 #ifdef __linux__
@@ -66,7 +68,7 @@ struct execution_context_struct {
 
     // CPU resources
     uint32_t cpu_thread_count;
-    void** cpu_threads;
+    nimcp_thread_pool_t* thread_pool;
 
     // GPU resources
     void* gpu_device_ptr;
@@ -79,6 +81,10 @@ struct execution_context_struct {
 
     // Bio-async integration
     bio_module_context_t bio_ctx;
+
+    // Initialization flags
+    bool thread_pool_initialized;
+    bool gpu_initialized;
 };
 
 //=============================================================================
@@ -86,7 +92,11 @@ struct execution_context_struct {
 //=============================================================================
 
 /**
- * @brief Detect CPU capabilities
+ * @brief Detect CPU capabilities with SIMD detection
+ *
+ * WHAT: Query CPU for cores, threads, and SIMD capabilities
+ * WHY:  Need to know CPU resources for execution mode selection
+ * HOW:  Platform APIs for core count + simd_detect module for SIMD
  */
 static bool detect_cpu_capabilities(hardware_capabilities_t* caps)
 {
@@ -97,12 +107,19 @@ static bool detect_cpu_capabilities(hardware_capabilities_t* caps)
     caps->cpu_available = true;
 
     #ifdef __linux__
-    // Linux: Use sysconf
-    caps->cpu_cores = (uint32_t)sysconf(_SC_NPROCESSORS_ONLN);
-    caps->cpu_threads = caps->cpu_cores;  // Simplified
+    // Linux: Use sysconf for CPU core/thread count
+    long nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+    caps->cpu_cores = (nprocs > 0) ? (uint32_t)nprocs : 1;
+    caps->cpu_threads = caps->cpu_cores;
+
+    // Check for hyperthreading by comparing online vs conf
+    long nprocs_conf = sysconf(_SC_NPROCESSORS_CONF);
+    if (nprocs_conf > nprocs && nprocs_conf <= (long)caps->cpu_cores * 2) {
+        caps->cpu_threads = (uint32_t)nprocs_conf;
+    }
 
     #elif defined(_WIN32)
-    // Windows: Use GetSystemInfo
+    // Windows: Use GetSystemInfo for processor count
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
     caps->cpu_cores = sysinfo.dwNumberOfProcessors;
@@ -114,16 +131,22 @@ static bool detect_cpu_capabilities(hardware_capabilities_t* caps)
     caps->cpu_threads = 4;
     #endif
 
-    // TODO: Detect SIMD capabilities (AVX2, AVX512)
-    // For now, assume available on x86-64
-    #if defined(__x86_64__) || defined(_M_X64)
-    caps->cpu_avx2 = true;
-    caps->cpu_avx512 = false;  // Conservative
-    #else
-    caps->cpu_avx2 = false;
-    caps->cpu_avx512 = false;
-    #endif
+    // Use simd_detect module for accurate SIMD capability detection
+    simd_capabilities_t simd_caps;
+    if (simd_detect_capabilities(&simd_caps)) {
+        caps->cpu_avx2 = simd_caps.has_avx2;
+        caps->cpu_avx512 = simd_caps.has_avx512f;
+        LOG_DEBUG("CPU SIMD detection: AVX2=%s, AVX512=%s, vector_width=%u bits",
+                  simd_caps.has_avx2 ? "yes" : "no",
+                  simd_caps.has_avx512f ? "yes" : "no",
+                  simd_caps.max_vector_width);
+    } else {
+        // Fallback to conservative assumptions if simd_detect fails
+        caps->cpu_avx2 = false;
+        caps->cpu_avx512 = false;
+    }
 
+    LOG_DEBUG("CPU detection: cores=%u, threads=%u", caps->cpu_cores, caps->cpu_threads);
     return true;
 }
 
@@ -145,7 +168,7 @@ static bool detect_gpu_capabilities_runtime(hardware_capabilities_t* caps)
     }
 
     // Use runtime GPU detection
-    gpu_capabilities_t gpu_caps;
+    gpu_detect_result_t gpu_caps;
     if (!gpu_detect_capabilities(&gpu_caps)) {
         LOG_DEBUG("Runtime GPU detection failed");
         caps->cuda_available = false;
@@ -194,7 +217,11 @@ static bool detect_gpu_capabilities_runtime(hardware_capabilities_t* caps)
 //=============================================================================
 
 /**
- * @brief Detect network capabilities
+ * @brief Detect network capabilities for distributed computing
+ *
+ * WHAT: Detect MPI and network availability for distributed execution
+ * WHY:  Enable distributed GPU/CPU modes across cluster nodes
+ * HOW:  Environment variable checks for MPI job detection
  */
 static bool detect_network_capabilities(hardware_capabilities_t* caps)
 {
@@ -202,11 +229,70 @@ static bool detect_network_capabilities(hardware_capabilities_t* caps)
         return false;
     }
 
-    // TODO: Implement network detection (MPI, etc.)
-    // For now, assume no distributed capabilities
+    // Default: No distributed capabilities
     caps->network_available = false;
     caps->network_nodes = 1;
     caps->network_bandwidth_mbps = 0;
+
+    // Check for MPI environment variables
+    const char* env_world_size = NULL;
+    uint32_t mpi_world_size = 0;
+
+    // Check OpenMPI environment
+    env_world_size = getenv("OMPI_COMM_WORLD_SIZE");
+    if (env_world_size) {
+        int size = atoi(env_world_size);
+        if (size > 0) {
+            mpi_world_size = (uint32_t)size;
+            LOG_DEBUG("Detected OpenMPI environment: world_size=%u", mpi_world_size);
+        }
+    }
+
+    // Check MPICH/Intel MPI environment
+    if (mpi_world_size == 0) {
+        env_world_size = getenv("PMI_SIZE");
+        if (env_world_size) {
+            int size = atoi(env_world_size);
+            if (size > 0) {
+                mpi_world_size = (uint32_t)size;
+                LOG_DEBUG("Detected MPICH/PMI environment: world_size=%u", mpi_world_size);
+            }
+        }
+    }
+
+    // Check SLURM environment
+    if (mpi_world_size == 0) {
+        env_world_size = getenv("SLURM_NTASKS");
+        if (env_world_size) {
+            int size = atoi(env_world_size);
+            if (size > 0) {
+                mpi_world_size = (uint32_t)size;
+                LOG_DEBUG("Detected SLURM environment: ntasks=%u", mpi_world_size);
+            }
+        }
+    }
+
+    if (mpi_world_size > 1) {
+        caps->network_available = true;
+        caps->network_nodes = mpi_world_size;
+
+        // Check for InfiniBand on Linux
+        #ifdef __linux__
+        if (access("/sys/class/infiniband", F_OK) == 0) {
+            caps->network_bandwidth_mbps = 100000;  // Assume EDR InfiniBand
+            LOG_DEBUG("InfiniBand detected, estimated bandwidth: 100 Gbps");
+        } else {
+            caps->network_bandwidth_mbps = 10000;  // Default to 10GbE
+        }
+        #else
+        caps->network_bandwidth_mbps = 10000;
+        #endif
+
+        LOG_INFO("Network capabilities detected: nodes=%u, bandwidth=%u Mbps",
+                 caps->network_nodes, caps->network_bandwidth_mbps);
+    } else {
+        LOG_DEBUG("No MPI environment detected, distributed mode unavailable");
+    }
 
     return true;
 }
@@ -381,24 +467,92 @@ execution_context_t execution_context_create(const execution_config_t* config)
     }
 
     ctx->active_mode = requested_mode;
+    ctx->thread_pool_initialized = false;
+    ctx->gpu_initialized = false;
 
     // Initialize mode-specific resources
     switch (ctx->active_mode) {
         case EXEC_MODE_GPU_CUDA:
             #ifdef NIMCP_ENABLE_CUDA
-            // Initialize CUDA
             ctx->gpu_device_id = 0;
-            cudaSetDevice(ctx->gpu_device_id);
+            if (cudaSetDevice(ctx->gpu_device_id) == cudaSuccess) {
+                ctx->gpu_initialized = true;
+                LOG_INFO("CUDA execution context initialized (device=%d)", ctx->gpu_device_id);
+            } else {
+                LOG_ERROR("CUDA device selection failed");
+                if (config->auto_fallback) {
+                    ctx->active_mode = EXEC_MODE_CPU_PARALLEL;
+                    // Fall through to CPU_PARALLEL initialization
+                } else {
+                    nimcp_free(ctx);
+                    return NULL;
+                }
+            }
+            if (ctx->active_mode != EXEC_MODE_CPU_PARALLEL) break;
+            #else
+            if (config->auto_fallback) {
+                ctx->active_mode = EXEC_MODE_CPU_PARALLEL;
+            } else {
+                nimcp_free(ctx);
+                return NULL;
+            }
             #endif
-            break;
+            // Fall through if fallback to CPU_PARALLEL
 
         case EXEC_MODE_CPU_PARALLEL:
-            // TODO: Initialize thread pool
-            ctx->cpu_thread_count = config->cpu_threads;
+            {
+                // Initialize thread pool
+                uint32_t num_threads = config->cpu_threads;
+                if (num_threads == 0) {
+                    hardware_capabilities_t hw_caps;
+                    if (execution_detect_capabilities(&hw_caps)) {
+                        num_threads = hw_caps.cpu_threads;
+                    } else {
+                        num_threads = 4;
+                    }
+                }
+                if (num_threads > NIMCP_POOL_MAX_THREADS) {
+                    num_threads = NIMCP_POOL_MAX_THREADS;
+                }
+
+                ctx->thread_pool = nimcp_pool_create(num_threads);
+                if (!ctx->thread_pool) {
+                    LOG_ERROR("Failed to create thread pool with %u threads", num_threads);
+                    if (config->auto_fallback) {
+                        ctx->active_mode = EXEC_MODE_CPU_SEQUENTIAL;
+                        ctx->cpu_thread_count = 1;
+                    } else {
+                        nimcp_free(ctx);
+                        return NULL;
+                    }
+                } else {
+                    ctx->cpu_thread_count = num_threads;
+                    ctx->thread_pool_initialized = true;
+                    LOG_INFO("Thread pool initialized with %u threads", num_threads);
+                }
+            }
+            break;
+
+        case EXEC_MODE_HYBRID:
+            #ifdef NIMCP_ENABLE_CUDA
+            ctx->gpu_device_id = 0;
+            if (cudaSetDevice(ctx->gpu_device_id) == cudaSuccess) {
+                ctx->gpu_initialized = true;
+            }
+            #endif
+            {
+                uint32_t num_threads = config->cpu_threads > 0 ? config->cpu_threads : 4;
+                ctx->thread_pool = nimcp_pool_create(num_threads);
+                if (ctx->thread_pool) {
+                    ctx->cpu_thread_count = num_threads;
+                    ctx->thread_pool_initialized = true;
+                }
+            }
+            LOG_INFO("Hybrid execution context initialized");
             break;
 
         default:
-            // CPU sequential - no special initialization
+            ctx->cpu_thread_count = 1;
             break;
     }
 
@@ -406,7 +560,11 @@ execution_context_t execution_context_create(const execution_config_t* config)
 }
 
 /**
- * @brief Destroy execution context
+ * @brief Destroy execution context and release all resources
+ *
+ * WHAT: Clean up execution context and all associated resources
+ * WHY:  Prevent resource leaks (threads, GPU memory)
+ * HOW:  Synchronize pending work, cleanup resources, free memory
  */
 void execution_context_destroy(execution_context_t ctx)
 {
@@ -414,23 +572,32 @@ void execution_context_destroy(execution_context_t ctx)
         return;
     }
 
+    LOG_DEBUG("Destroying execution context (mode=%d)", ctx->active_mode);
+
     // Synchronize before cleanup
     execution_synchronize(ctx);
 
-    // Cleanup mode-specific resources
-    switch (ctx->active_mode) {
-        case EXEC_MODE_GPU_CUDA:
-            #ifdef NIMCP_ENABLE_CUDA
-            cudaDeviceReset();
-            #endif
-            break;
+    // Cleanup GPU resources if initialized
+    #ifdef NIMCP_ENABLE_CUDA
+    if (ctx->gpu_initialized) {
+        cudaDeviceSynchronize();
+        ctx->gpu_initialized = false;
+    }
+    #endif
 
-        case EXEC_MODE_CPU_PARALLEL:
-            // TODO: Cleanup thread pool
-            break;
+    // Cleanup thread pool if initialized
+    if (ctx->thread_pool_initialized && ctx->thread_pool) {
+        LOG_DEBUG("Destroying thread pool (%u threads)", ctx->cpu_thread_count);
+        nimcp_pool_destroy(ctx->thread_pool);
+        ctx->thread_pool = NULL;
+        ctx->thread_pool_initialized = false;
+    }
 
-        default:
-            break;
+    // Log final statistics
+    if (ctx->total_operations > 0) {
+        double avg_time = ctx->total_time_ms / (double)ctx->total_operations;
+        LOG_INFO("Execution context stats: ops=%lu, total_time=%.2fms, avg=%.3fms/op",
+                 (unsigned long)ctx->total_operations, ctx->total_time_ms, avg_time);
     }
 
     nimcp_free(ctx);
@@ -449,7 +616,196 @@ execution_mode_t execution_context_get_mode(execution_context_t ctx)
 }
 
 /**
+ * @brief Cleanup resources for a specific execution mode
+ *
+ * WHAT: Release resources associated with an execution mode
+ * WHY:  Prevent resource leaks when switching modes
+ * HOW:  Mode-specific cleanup (GPU sync, thread pool shutdown)
+ */
+static void cleanup_mode_resources(execution_context_t ctx, execution_mode_t mode)
+{
+    if (!ctx) {
+        return;
+    }
+
+    LOG_DEBUG("Cleaning up resources for mode %d", mode);
+
+    switch (mode) {
+        case EXEC_MODE_GPU_CUDA:
+        case EXEC_MODE_GPU_ROCM:
+        case EXEC_MODE_GPU_OPENCL:
+            #ifdef NIMCP_ENABLE_CUDA
+            if (ctx->gpu_initialized) {
+                // Synchronize GPU before cleanup
+                cudaDeviceSynchronize();
+                ctx->gpu_initialized = false;
+                LOG_DEBUG("GPU resources cleaned up");
+            }
+            #endif
+            break;
+
+        case EXEC_MODE_CPU_PARALLEL:
+        case EXEC_MODE_HYBRID:
+            if (ctx->thread_pool_initialized && ctx->thread_pool) {
+                LOG_DEBUG("Destroying thread pool (%u threads)", ctx->cpu_thread_count);
+                nimcp_pool_destroy(ctx->thread_pool);
+                ctx->thread_pool = NULL;
+                ctx->thread_pool_initialized = false;
+                ctx->cpu_thread_count = 0;
+            }
+            // For HYBRID mode, also cleanup GPU
+            if (mode == EXEC_MODE_HYBRID) {
+                #ifdef NIMCP_ENABLE_CUDA
+                if (ctx->gpu_initialized) {
+                    cudaDeviceSynchronize();
+                    ctx->gpu_initialized = false;
+                }
+                #endif
+            }
+            break;
+
+        case EXEC_MODE_CPU_SEQUENTIAL:
+        case EXEC_MODE_AUTO:
+        case EXEC_MODE_DISTRIBUTED_CPU:
+        case EXEC_MODE_DISTRIBUTED_GPU:
+        default:
+            // No specific resources to clean up
+            break;
+    }
+}
+
+/**
+ * @brief Initialize resources for a specific execution mode
+ *
+ * WHAT: Allocate and initialize resources for an execution mode
+ * WHY:  Each mode requires specific resources (GPU context, thread pool)
+ * HOW:  Mode-specific initialization with fallback on failure
+ *
+ * @return true on success, false if initialization failed
+ */
+static bool initialize_mode_resources(execution_context_t ctx, execution_mode_t mode)
+{
+    if (!ctx) {
+        return false;
+    }
+
+    LOG_DEBUG("Initializing resources for mode %d", mode);
+
+    switch (mode) {
+        case EXEC_MODE_GPU_CUDA:
+            #ifdef NIMCP_ENABLE_CUDA
+            {
+                ctx->gpu_device_id = 0;  // Default to first device
+                cudaError_t err = cudaSetDevice(ctx->gpu_device_id);
+                if (err == cudaSuccess) {
+                    ctx->gpu_initialized = true;
+                    LOG_INFO("CUDA device %d initialized for mode switch", ctx->gpu_device_id);
+                    return true;
+                } else {
+                    LOG_ERROR("Failed to set CUDA device: %s", cudaGetErrorString(err));
+                    return false;
+                }
+            }
+            #else
+            LOG_ERROR("CUDA not available at compile time");
+            return false;
+            #endif
+
+        case EXEC_MODE_CPU_PARALLEL:
+            {
+                uint32_t num_threads = ctx->config.cpu_threads;
+                if (num_threads == 0) {
+                    // Auto-detect thread count
+                    hardware_capabilities_t hw_caps;
+                    if (execution_detect_capabilities(&hw_caps)) {
+                        num_threads = hw_caps.cpu_threads;
+                    } else {
+                        num_threads = 4;  // Reasonable default
+                    }
+                }
+                if (num_threads > NIMCP_POOL_MAX_THREADS) {
+                    num_threads = NIMCP_POOL_MAX_THREADS;
+                }
+
+                ctx->thread_pool = nimcp_pool_create(num_threads);
+                if (!ctx->thread_pool) {
+                    LOG_ERROR("Failed to create thread pool with %u threads", num_threads);
+                    return false;
+                }
+                ctx->cpu_thread_count = num_threads;
+                ctx->thread_pool_initialized = true;
+                LOG_INFO("Thread pool created with %u threads for mode switch", num_threads);
+                return true;
+            }
+
+        case EXEC_MODE_HYBRID:
+            {
+                // Initialize both GPU and thread pool
+                bool gpu_ok = false;
+                bool pool_ok = false;
+
+                #ifdef NIMCP_ENABLE_CUDA
+                ctx->gpu_device_id = 0;
+                if (cudaSetDevice(ctx->gpu_device_id) == cudaSuccess) {
+                    ctx->gpu_initialized = true;
+                    gpu_ok = true;
+                    LOG_DEBUG("CUDA device initialized for hybrid mode");
+                }
+                #endif
+
+                uint32_t num_threads = ctx->config.cpu_threads > 0 ? ctx->config.cpu_threads : 4;
+                if (num_threads > NIMCP_POOL_MAX_THREADS) {
+                    num_threads = NIMCP_POOL_MAX_THREADS;
+                }
+                ctx->thread_pool = nimcp_pool_create(num_threads);
+                if (ctx->thread_pool) {
+                    ctx->cpu_thread_count = num_threads;
+                    ctx->thread_pool_initialized = true;
+                    pool_ok = true;
+                    LOG_DEBUG("Thread pool created for hybrid mode");
+                }
+
+                // Hybrid mode requires at least one to succeed
+                if (gpu_ok || pool_ok) {
+                    LOG_INFO("Hybrid mode initialized (GPU=%s, CPU pool=%s)",
+                             gpu_ok ? "yes" : "no", pool_ok ? "yes" : "no");
+                    return true;
+                }
+                LOG_ERROR("Failed to initialize hybrid mode resources");
+                return false;
+            }
+
+        case EXEC_MODE_CPU_SEQUENTIAL:
+            ctx->cpu_thread_count = 1;
+            LOG_DEBUG("Sequential CPU mode initialized");
+            return true;
+
+        case EXEC_MODE_GPU_ROCM:
+        case EXEC_MODE_GPU_OPENCL:
+            // ROCm and OpenCL not fully implemented yet
+            LOG_WARN("ROCm/OpenCL mode not fully implemented, using basic init");
+            return true;
+
+        case EXEC_MODE_DISTRIBUTED_CPU:
+        case EXEC_MODE_DISTRIBUTED_GPU:
+            // Distributed modes require MPI/network - basic init only
+            LOG_WARN("Distributed mode initialization is basic only");
+            return true;
+
+        case EXEC_MODE_AUTO:
+        default:
+            // AUTO should have been resolved before calling this
+            LOG_DEBUG("Default/AUTO mode initialization");
+            return true;
+    }
+}
+
+/**
  * @brief Set execution mode
+ *
+ * WHAT: Switch execution context to a different mode
+ * WHY:  Allow dynamic mode switching based on workload or conditions
+ * HOW:  Synchronize, cleanup old resources, initialize new resources
  */
 bool execution_context_set_mode(execution_context_t ctx, execution_mode_t new_mode)
 {
@@ -458,18 +814,53 @@ bool execution_context_set_mode(execution_context_t ctx, execution_mode_t new_mo
         return false;
     }
 
+    // No change needed if already in requested mode
+    if (ctx->active_mode == new_mode) {
+        LOG_DEBUG("Already in mode %d, no switch needed", new_mode);
+        return true;
+    }
+
     // Check if mode is supported
     if (!execution_mode_is_supported(new_mode)) {
+        LOG_WARN("Requested mode %d is not supported on this system", new_mode);
         return false;
     }
 
-    // Synchronize current mode
+    LOG_INFO("Switching execution mode from %d to %d", ctx->active_mode, new_mode);
+
+    // Synchronize current mode before switching
     execution_synchronize(ctx);
 
-    // TODO: Cleanup old mode resources
-    // TODO: Initialize new mode resources
+    // Save old mode for potential rollback
+    execution_mode_t old_mode = ctx->active_mode;
 
+    // Cleanup old mode resources
+    cleanup_mode_resources(ctx, old_mode);
+
+    // Initialize new mode resources
+    if (!initialize_mode_resources(ctx, new_mode)) {
+        LOG_ERROR("Failed to initialize resources for mode %d", new_mode);
+
+        // Attempt to rollback to old mode
+        if (ctx->config.auto_fallback) {
+            LOG_WARN("Attempting rollback to previous mode %d", old_mode);
+            if (initialize_mode_resources(ctx, old_mode)) {
+                ctx->active_mode = old_mode;
+                LOG_INFO("Rollback successful, remaining in mode %d", old_mode);
+            } else {
+                // Last resort: fall back to CPU sequential
+                LOG_WARN("Rollback failed, falling back to CPU sequential");
+                ctx->active_mode = EXEC_MODE_CPU_SEQUENTIAL;
+                ctx->cpu_thread_count = 1;
+            }
+        }
+        return false;
+    }
+
+    // Update active mode
     ctx->active_mode = new_mode;
+    LOG_INFO("Successfully switched to execution mode %d", new_mode);
+
     return true;
 }
 

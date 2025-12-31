@@ -100,6 +100,18 @@ static inline void vec3_sub(float dst[3], const float a[3], const float b[3]) {
 // Internal Structures
 //=============================================================================
 
+#define SWARM_DRAGONFLY_MAX_PEERS 32  /**< Maximum tracked peer positions */
+
+/**
+ * @brief Peer position record for formation tracking
+ */
+typedef struct {
+    uint64_t drone_id;                /**< Peer drone ID */
+    float position[3];                /**< Last known position */
+    uint64_t last_update_us;          /**< Timestamp of last update */
+    bool valid;                       /**< Position data is valid */
+} peer_position_t;
+
 /**
  * @brief Internal target record
  */
@@ -143,6 +155,10 @@ struct swarm_dragonfly_bridge_s {
 
     /* Statistics */
     swarm_dragonfly_bridge_stats_t stats;
+
+    /* Peer position tracking for formation */
+    peer_position_t peer_positions[SWARM_DRAGONFLY_MAX_PEERS];
+    uint32_t num_tracked_peers;
 
     /* Timing */
     uint64_t last_share_time_us;

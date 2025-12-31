@@ -1219,6 +1219,32 @@ add_e2e_test(e2e_test_visual_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_visual_pipeline.cpp
 )
 
+# ============================================================================
+# Swarm Memory Consolidation E2E Test (2025-12-31)
+# ============================================================================
+# WHAT: E2E tests for swarm memory consolidation workflow
+# WHY:  Verify complete memory lifecycle with correct struct members
+# HOW:  Test storage, consolidation, distribution, forgetting
+# REGRESSION: Tests NimcpHippocampusNode->memory_count, payload_size usage
+# ============================================================================
+add_e2e_test(e2e_test_swarm_memory_consolidation
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_swarm_memory_consolidation.cpp
+)
+
+# ============================================================================
+# Brain Initialization Subsystems E2E Test (2025-12-31)
+# ============================================================================
+# WHAT: E2E tests for brain subsystem initialization
+# WHY:  Verify correct struct members and enum values during init
+# HOW:  Test hypothalamus, wellbeing, collective cognition, power management
+# REGRESSION: Tests wellbeing_monitoring_enabled, POWER_EVENT_BATTERY_CRITICAL
+# ============================================================================
+add_e2e_test(e2e_test_brain_initialization_subsystems
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_brain_initialization_subsystems.cpp
+)
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

@@ -199,6 +199,10 @@ extern void set_error(const char* format, ...);
 // Knowledge Graph Reader subsystem macro (self-awareness)
 #define init_kg_reader_subsystem                    nimcp_brain_factory_init_kg_reader_subsystem
 
+// GPU Context subsystem macro (CUDA kernel acceleration)
+#define init_gpu_subsystem                          nimcp_brain_factory_init_gpu_subsystem
+#define destroy_gpu_subsystem                       nimcp_brain_factory_destroy_gpu_subsystem
+
 // Fault Tolerance subsystem macro (intelligent recovery with parietal integration)
 #define init_fault_tolerance_subsystem              nimcp_brain_factory_init_fault_tolerance_subsystem
 
@@ -437,6 +441,10 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Lazy evaluation: Skip heavy subsystems when lazy_*_init flags are set.
     // These will be initialized on-demand when first accessed.
     // ========================================================================
+
+    // GPU Context (auto-init if GPU available - enables CUDA kernel acceleration)
+    // This is initialized first as many subsystems can benefit from GPU acceleration.
+    if (!init_gpu_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // Phase 5/6: Glial integration (heavy - astrocyte/oligodendrocyte networks)
     if (!brain->config.lazy_glial_init) {

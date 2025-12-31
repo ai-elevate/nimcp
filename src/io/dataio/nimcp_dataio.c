@@ -20,6 +20,7 @@
  */
 
 #include "io/dataio/nimcp_dataio.h"
+#include "nimcp.h"  // For nimcp_brain_learn_example, nimcp_status_t
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -31,6 +32,22 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/stat.h>
+
+// Conditional includes for optional backends
+#ifdef HAVE_LIBPQ
+#include <libpq-fe.h>
+#endif
+
+#ifdef HAVE_SQLITE3
+#include <sqlite3.h>
+#endif
+
+// cJSON is optional - only include if available
+#ifdef HAVE_CJSON
+#include "external/cJSON.h"
+#endif
+
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_unified_memory.h"
@@ -433,62 +450,163 @@ static data_source_strategy_t g_csv_strategy = {.source_type = DATA_SOURCE_FILE,
  * WHY: Track database connection and query state
  */
 typedef struct {
-    void* db_conn;                 // Database connection (void* to avoid libpq dependency)
+#ifdef HAVE_LIBPQ
+    PGconn* db_conn;               // Database connection
+    PGresult* result;              // Current result set
+#else
+    void* db_conn;                 // Database connection (void* when libpq unavailable)
     void* result;                  // Current result set
+#endif
+    char connection_string[512];   // Connection string
     char query[1024];              // SQL query
     uint32_t num_feature_columns;  // Number of feature columns
+    uint32_t num_label_columns;    // Number of label columns
     uint32_t current_row;          // Current row in result set
     uint32_t total_rows;           // Total rows in result
+    uint32_t batch_size;           // Rows per batch
 } postgres_context_t;
 
 /**
  * WHAT: Initialize PostgreSQL data source
  * WHY: Connect to database, execute query
  * HOW: Use libpq to connect and execute query
- *
- * NOTE: This is a placeholder implementation
- * REASON: Full PostgreSQL support requires libpq dependency
- * TODO: Implement when libpq is available
  */
 static bool postgres_initialize(void** context, const dataset_config_t* config)
 {
-    dataio_set_error("PostgreSQL backend not yet implemented");
+#ifdef HAVE_LIBPQ
+    if (!context || !config || !config->location[0]) {
+        dataio_set_error("Invalid PostgreSQL configuration");
+        return false;
+    }
+    postgres_context_t* pg_ctx = nimcp_calloc(1, sizeof(postgres_context_t));
+    if (!pg_ctx) {
+        dataio_set_error("Failed to allocate PostgreSQL context");
+        return false;
+    }
+    const char* separator = strchr(config->location, '|');
+    if (!separator) {
+        dataio_set_error("PostgreSQL location must be 'connection_string|query'");
+        nimcp_free(pg_ctx);
+        return false;
+    }
+    size_t conn_len = separator - config->location;
+    if (conn_len >= sizeof(pg_ctx->connection_string)) {
+        dataio_set_error("PostgreSQL connection string too long");
+        nimcp_free(pg_ctx);
+        return false;
+    }
+    strncpy(pg_ctx->connection_string, config->location, conn_len);
+    pg_ctx->connection_string[conn_len] = '\0';
+    strncpy(pg_ctx->query, separator + 1, sizeof(pg_ctx->query) - 1);
+    pg_ctx->num_feature_columns = config->num_feature_columns;
+    pg_ctx->num_label_columns = config->num_label_columns;
+    pg_ctx->batch_size = config->batch_size > 0 ? config->batch_size : 1000;
+    pg_ctx->db_conn = PQconnectdb(pg_ctx->connection_string);
+    if (PQstatus(pg_ctx->db_conn) != CONNECTION_OK) {
+        dataio_set_error("PostgreSQL connection failed: %s", PQerrorMessage(pg_ctx->db_conn));
+        PQfinish(pg_ctx->db_conn);
+        nimcp_free(pg_ctx);
+        return false;
+    }
+    pg_ctx->result = PQexec(pg_ctx->db_conn, pg_ctx->query);
+    if (PQresultStatus(pg_ctx->result) != PGRES_TUPLES_OK) {
+        dataio_set_error("PostgreSQL query failed: %s", PQerrorMessage(pg_ctx->db_conn));
+        PQclear(pg_ctx->result);
+        PQfinish(pg_ctx->db_conn);
+        nimcp_free(pg_ctx);
+        return false;
+    }
+    pg_ctx->total_rows = (uint32_t)PQntuples(pg_ctx->result);
+    pg_ctx->current_row = 0;
+    *context = pg_ctx;
+    return true;
+#else
+    (void)context;
+    (void)config;
+    dataio_set_error("PostgreSQL backend not available (compile with HAVE_LIBPQ)");
     return false;
-
-    // TODO: Implement with libpq
-    // 1. PQconnectdb(config->location)
-    // 2. Execute query
-    // 3. Store result
-    // 4. Return context
+#endif
 }
 
 static void postgres_shutdown(void* context)
 {
-    // TODO: PQfinish, PQclear
+#ifdef HAVE_LIBPQ
+    if (!context) return;
+    postgres_context_t* pg_ctx = (postgres_context_t*)context;
+    if (pg_ctx->result) PQclear(pg_ctx->result);
+    if (pg_ctx->db_conn) PQfinish(pg_ctx->db_conn);
+    nimcp_free(pg_ctx);
+#else
+    (void)context;
+#endif
 }
 
 static bool postgres_next_batch(void* context, data_batch_t* batch)
 {
-    // TODO: Fetch next N rows from result
+#ifdef HAVE_LIBPQ
+    if (!context || !batch) return false;
+    postgres_context_t* pg_ctx = (postgres_context_t*)context;
+    if (pg_ctx->current_row >= pg_ctx->total_rows) {
+        batch->end_of_dataset = true;
+        batch->num_samples = 0;
+        return false;
+    }
+    uint32_t remaining = pg_ctx->total_rows - pg_ctx->current_row;
+    uint32_t batch_size = (remaining < pg_ctx->batch_size) ? remaining : pg_ctx->batch_size;
+    batch->features = nimcp_calloc(batch_size, sizeof(float*));
+    batch->labels = nimcp_calloc(batch_size, sizeof(char*));
+    batch->num_samples = 0;
+    for (uint32_t i = 0; i < batch_size; i++) {
+        uint32_t row_idx = pg_ctx->current_row + i;
+        batch->features[batch->num_samples] = nimcp_calloc(pg_ctx->num_feature_columns, sizeof(float));
+        for (uint32_t col = 0; col < pg_ctx->num_feature_columns; col++) {
+            char* value = PQgetvalue(pg_ctx->result, row_idx, col);
+            batch->features[batch->num_samples][col] = PQgetisnull(pg_ctx->result, row_idx, col) ? 0.0f : (float)atof(value);
+        }
+        uint32_t label_col = pg_ctx->num_feature_columns;
+        char* label_value = PQgetvalue(pg_ctx->result, row_idx, label_col);
+        batch->labels[batch->num_samples] = nimcp_strdup(PQgetisnull(pg_ctx->result, row_idx, label_col) ? "NULL" : label_value);
+        batch->num_samples++;
+    }
+    pg_ctx->current_row += batch->num_samples;
+    if (pg_ctx->current_row >= pg_ctx->total_rows) batch->end_of_dataset = true;
+    return batch->num_samples > 0;
+#else
+    (void)context;
+    (void)batch;
     return false;
+#endif
 }
 
 static bool postgres_reset(void* context)
 {
-    // TODO: Re-execute query
+#ifdef HAVE_LIBPQ
+    if (!context) return false;
+    postgres_context_t* pg_ctx = (postgres_context_t*)context;
+    if (pg_ctx->result) PQclear(pg_ctx->result);
+    pg_ctx->result = PQexec(pg_ctx->db_conn, pg_ctx->query);
+    if (PQresultStatus(pg_ctx->result) != PGRES_TUPLES_OK) return false;
+    pg_ctx->total_rows = (uint32_t)PQntuples(pg_ctx->result);
+    pg_ctx->current_row = 0;
+    return true;
+#else
+    (void)context;
     return false;
+#endif
 }
 
 static uint64_t postgres_get_size(void* context)
 {
-    // TODO: PQntuples
+#ifdef HAVE_LIBPQ
+    if (!context) return 0;
+    postgres_context_t* pg_ctx = (postgres_context_t*)context;
+    return pg_ctx->total_rows;
+#else
+    (void)context;
     return 0;
+#endif
 }
 
-/**
- * WHAT: PostgreSQL backend strategy (placeholder)
- * WHY: Future support for database training
- */
 static data_source_strategy_t g_postgres_strategy = {.source_type = DATA_SOURCE_DATABASE,
                                                      .initialize = postgres_initialize,
                                                      .shutdown = postgres_shutdown,
@@ -497,24 +615,414 @@ static data_source_strategy_t g_postgres_strategy = {.source_type = DATA_SOURCE_
                                                      .get_size = postgres_get_size};
 
 //=============================================================================
+// JSON Backend Implementation (using cJSON)
+//=============================================================================
+
+#ifdef HAVE_CJSON
+
+typedef struct {
+    void* root;  /* cJSON* when available */
+    int total_items;
+    int current_item;
+    uint32_t num_features;
+    uint32_t batch_size;
+    char** feature_names;
+    char* json_buffer;
+} json_context_t;
+
+static bool json_initialize(void** context, const dataset_config_t* config)
+{
+    if (!context || !config || !config->location[0]) {
+        dataio_set_error("Invalid JSON configuration");
+        return false;
+    }
+    json_context_t* json_ctx = nimcp_calloc(1, sizeof(json_context_t));
+    if (!json_ctx) return false;
+    FILE* file = fopen(config->location, "rb");
+    if (!file) {
+        dataio_set_error("Failed to open JSON file '%s'", config->location);
+        nimcp_free(json_ctx);
+        return false;
+    }
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    if (file_size <= 0 || file_size > 100 * 1024 * 1024) {
+        fclose(file);
+        nimcp_free(json_ctx);
+        return false;
+    }
+    json_ctx->json_buffer = nimcp_malloc(file_size + 1);
+    fread(json_ctx->json_buffer, 1, file_size, file);
+    fclose(file);
+    json_ctx->json_buffer[file_size] = '\0';
+    json_ctx->root = cJSON_Parse(json_ctx->json_buffer);
+    if (!json_ctx->root || !cJSON_IsArray(json_ctx->root)) {
+        dataio_set_error("JSON parse error or root not array");
+        nimcp_free(json_ctx->json_buffer);
+        nimcp_free(json_ctx);
+        return false;
+    }
+    json_ctx->total_items = cJSON_GetArraySize(json_ctx->root);
+    json_ctx->current_item = 0;
+    json_ctx->num_features = config->num_feature_columns;
+    json_ctx->batch_size = config->batch_size > 0 ? config->batch_size : 1000;
+    *context = json_ctx;
+    return true;
+}
+
+static void json_shutdown(void* context)
+{
+    if (!context) return;
+    json_context_t* json_ctx = (json_context_t*)context;
+    if (json_ctx->root) cJSON_Delete(json_ctx->root);
+    nimcp_free(json_ctx->json_buffer);
+    nimcp_free(json_ctx);
+}
+
+static bool json_next_batch(void* context, data_batch_t* batch)
+{
+    if (!context || !batch) return false;
+    json_context_t* json_ctx = (json_context_t*)context;
+    if (json_ctx->current_item >= json_ctx->total_items) {
+        batch->end_of_dataset = true;
+        return false;
+    }
+    int remaining = json_ctx->total_items - json_ctx->current_item;
+    uint32_t batch_size = (remaining < (int)json_ctx->batch_size) ? (uint32_t)remaining : json_ctx->batch_size;
+    batch->features = nimcp_calloc(batch_size, sizeof(float*));
+    batch->labels = nimcp_calloc(batch_size, sizeof(char*));
+    batch->num_samples = 0;
+    for (uint32_t i = 0; i < batch_size; i++) {
+        cJSON* item = cJSON_GetArrayItem(json_ctx->root, json_ctx->current_item + i);
+        if (!item) continue;
+        batch->features[batch->num_samples] = nimcp_calloc(json_ctx->num_features, sizeof(float));
+        cJSON* features_array = cJSON_GetObjectItem(item, "features");
+        if (features_array && cJSON_IsArray(features_array)) {
+            int feature_count = cJSON_GetArraySize(features_array);
+            for (uint32_t f = 0; f < json_ctx->num_features && f < (uint32_t)feature_count; f++) {
+                cJSON* feat = cJSON_GetArrayItem(features_array, f);
+                if (feat && cJSON_IsNumber(feat)) batch->features[batch->num_samples][f] = (float)cJSON_GetNumberValue(feat);
+            }
+        }
+        cJSON* label = cJSON_GetObjectItem(item, "label");
+        if (label && cJSON_IsString(label)) batch->labels[batch->num_samples] = nimcp_strdup(cJSON_GetStringValue(label));
+        else batch->labels[batch->num_samples] = nimcp_strdup("unknown");
+        batch->num_samples++;
+    }
+    json_ctx->current_item += batch_size;
+    if (json_ctx->current_item >= json_ctx->total_items) batch->end_of_dataset = true;
+    return batch->num_samples > 0;
+}
+
+static bool json_reset(void* context)
+{
+    if (!context) return false;
+    json_context_t* json_ctx = (json_context_t*)context;
+    json_ctx->current_item = 0;
+    return true;
+}
+
+static uint64_t json_get_size(void* context)
+{
+    if (!context) return 0;
+    json_context_t* json_ctx = (json_context_t*)context;
+    return (uint64_t)json_ctx->total_items;
+}
+
+static data_source_strategy_t g_json_strategy = {
+    .source_type = DATA_SOURCE_FILE,
+    .initialize = json_initialize,
+    .shutdown = json_shutdown,
+    .next_batch = json_next_batch,
+    .reset = json_reset,
+    .get_size = json_get_size
+};
+
+#else /* !HAVE_CJSON */
+
+/* Stub JSON backend when cJSON is not available */
+static bool json_initialize_stub(void** context, const dataset_config_t* config) {
+    (void)context; (void)config;
+    dataio_set_error("JSON format not available - cJSON library not compiled in");
+    return false;
+}
+static void json_shutdown_stub(void* context) { (void)context; }
+static bool json_next_batch_stub(void* context, data_batch_t* batch) {
+    (void)context; (void)batch; return false;
+}
+static bool json_reset_stub(void* context) { (void)context; return false; }
+static uint64_t json_get_size_stub(void* context) { (void)context; return 0; }
+
+static data_source_strategy_t g_json_strategy = {
+    .source_type = DATA_SOURCE_FILE,
+    .initialize = json_initialize_stub,
+    .shutdown = json_shutdown_stub,
+    .next_batch = json_next_batch_stub,
+    .reset = json_reset_stub,
+    .get_size = json_get_size_stub
+};
+
+#endif /* HAVE_CJSON */
+
+//=============================================================================
+// Parquet Backend Implementation (Stub)
+//=============================================================================
+
+static bool parquet_initialize(void** context, const dataset_config_t* config)
+{
+    (void)context;
+    (void)config;
+    dataio_set_error("Parquet format not yet implemented. Convert to CSV/JSON using pandas.");
+    return false;
+}
+
+static void parquet_shutdown(void* context) { (void)context; }
+static bool parquet_next_batch(void* context, data_batch_t* batch) { (void)context; (void)batch; return false; }
+static bool parquet_reset(void* context) { (void)context; return false; }
+static uint64_t parquet_get_size(void* context) { (void)context; return 0; }
+
+static data_source_strategy_t g_parquet_strategy = {
+    .source_type = DATA_SOURCE_FILE,
+    .initialize = parquet_initialize,
+    .shutdown = parquet_shutdown,
+    .next_batch = parquet_next_batch,
+    .reset = parquet_reset,
+    .get_size = parquet_get_size
+};
+
+//=============================================================================
+// SQLite Backend Implementation
+//=============================================================================
+
+typedef struct {
+#ifdef HAVE_SQLITE3
+    sqlite3* db;
+    sqlite3_stmt* stmt;
+#else
+    void* db;
+    void* stmt;
+#endif
+    char filepath[512];
+    char query[1024];
+    uint32_t num_feature_columns;
+    uint32_t num_label_columns;
+    uint32_t batch_size;
+    uint64_t total_rows;
+} sqlite_context_t;
+
+static bool sqlite_initialize(void** context, const dataset_config_t* config)
+{
+#ifdef HAVE_SQLITE3
+    if (!context || !config || !config->location[0]) {
+        dataio_set_error("Invalid SQLite configuration");
+        return false;
+    }
+    sqlite_context_t* sqlite_ctx = nimcp_calloc(1, sizeof(sqlite_context_t));
+    if (!sqlite_ctx) return false;
+    const char* separator = strchr(config->location, '|');
+    if (separator) {
+        size_t path_len = separator - config->location;
+        strncpy(sqlite_ctx->filepath, config->location, path_len);
+        sqlite_ctx->filepath[path_len] = '\0';
+        strncpy(sqlite_ctx->query, separator + 1, sizeof(sqlite_ctx->query) - 1);
+    } else {
+        strncpy(sqlite_ctx->filepath, config->location, sizeof(sqlite_ctx->filepath) - 1);
+        snprintf(sqlite_ctx->query, sizeof(sqlite_ctx->query), "SELECT * FROM data");
+    }
+    sqlite_ctx->num_feature_columns = config->num_feature_columns;
+    sqlite_ctx->num_label_columns = config->num_label_columns;
+    sqlite_ctx->batch_size = config->batch_size > 0 ? config->batch_size : 1000;
+    int rc = sqlite3_open_v2(sqlite_ctx->filepath, &sqlite_ctx->db, SQLITE_OPEN_READONLY, NULL);
+    if (rc != SQLITE_OK) {
+        dataio_set_error("SQLite open failed");
+        nimcp_free(sqlite_ctx);
+        return false;
+    }
+    rc = sqlite3_prepare_v2(sqlite_ctx->db, sqlite_ctx->query, -1, &sqlite_ctx->stmt, NULL);
+    if (rc != SQLITE_OK) {
+        dataio_set_error("SQLite prepare failed");
+        sqlite3_close(sqlite_ctx->db);
+        nimcp_free(sqlite_ctx);
+        return false;
+    }
+    *context = sqlite_ctx;
+    return true;
+#else
+    (void)context;
+    (void)config;
+    dataio_set_error("SQLite backend not available (compile with HAVE_SQLITE3)");
+    return false;
+#endif
+}
+
+static void sqlite_shutdown(void* context)
+{
+#ifdef HAVE_SQLITE3
+    if (!context) return;
+    sqlite_context_t* sqlite_ctx = (sqlite_context_t*)context;
+    if (sqlite_ctx->stmt) sqlite3_finalize(sqlite_ctx->stmt);
+    if (sqlite_ctx->db) sqlite3_close(sqlite_ctx->db);
+    nimcp_free(sqlite_ctx);
+#else
+    (void)context;
+#endif
+}
+
+static bool sqlite_next_batch(void* context, data_batch_t* batch)
+{
+#ifdef HAVE_SQLITE3
+    if (!context || !batch) return false;
+    sqlite_context_t* sqlite_ctx = (sqlite_context_t*)context;
+    batch->features = nimcp_calloc(sqlite_ctx->batch_size, sizeof(float*));
+    batch->labels = nimcp_calloc(sqlite_ctx->batch_size, sizeof(char*));
+    batch->num_samples = 0;
+    for (uint32_t i = 0; i < sqlite_ctx->batch_size; i++) {
+        int rc = sqlite3_step(sqlite_ctx->stmt);
+        if (rc == SQLITE_DONE) { batch->end_of_dataset = true; break; }
+        if (rc != SQLITE_ROW) break;
+        batch->features[batch->num_samples] = nimcp_calloc(sqlite_ctx->num_feature_columns, sizeof(float));
+        for (uint32_t col = 0; col < sqlite_ctx->num_feature_columns; col++) {
+            batch->features[batch->num_samples][col] = (float)sqlite3_column_double(sqlite_ctx->stmt, col);
+        }
+        uint32_t label_col = sqlite_ctx->num_feature_columns;
+        const char* label_text = (const char*)sqlite3_column_text(sqlite_ctx->stmt, label_col);
+        batch->labels[batch->num_samples] = nimcp_strdup(label_text ? label_text : "");
+        batch->num_samples++;
+        sqlite_ctx->total_rows++;
+    }
+    return batch->num_samples > 0;
+#else
+    (void)context;
+    (void)batch;
+    return false;
+#endif
+}
+
+static bool sqlite_reset(void* context)
+{
+#ifdef HAVE_SQLITE3
+    if (!context) return false;
+    sqlite_context_t* sqlite_ctx = (sqlite_context_t*)context;
+    sqlite3_reset(sqlite_ctx->stmt);
+    sqlite_ctx->total_rows = 0;
+    return true;
+#else
+    (void)context;
+    return false;
+#endif
+}
+
+static uint64_t sqlite_get_size(void* context)
+{
+#ifdef HAVE_SQLITE3
+    if (!context) return 0;
+    sqlite_context_t* sqlite_ctx = (sqlite_context_t*)context;
+    return sqlite_ctx->total_rows;
+#else
+    (void)context;
+    return 0;
+#endif
+}
+
+static data_source_strategy_t g_sqlite_strategy = {
+    .source_type = DATA_SOURCE_DATABASE,
+    .initialize = sqlite_initialize,
+    .shutdown = sqlite_shutdown,
+    .next_batch = sqlite_next_batch,
+    .reset = sqlite_reset,
+    .get_size = sqlite_get_size
+};
+
+//=============================================================================
 // Stream Backend Implementation
 //=============================================================================
 
-/**
- * WHAT: Stream context for online learning
- * WHY: Support real-time training from live data
- */
+typedef struct stream_sample {
+    float* features;
+    uint32_t num_features;
+    char* label;
+    struct stream_sample* next;
+} stream_sample_t;
+
 typedef struct {
-    stream_callback_fn_t callback;  // User callback
-    void* user_data;                // User context
-    uint32_t num_features;          // Features per sample
-    bool active;                    // Stream is active
+    stream_callback_fn_t callback;
+    void* user_data;
+    uint32_t num_features;
+    bool active;
+    nimcp_mutex_t queue_lock;
+    nimcp_cond_t queue_cond;
+    stream_sample_t* queue_head;
+    stream_sample_t* queue_tail;
+    uint32_t queue_size;
+    uint32_t max_queue_size;
+    uint64_t samples_received;
+    uint64_t samples_processed;
+    uint64_t samples_dropped;
 } stream_context_t;
 
-/**
- * WHAT: Initialize stream data source
- * WHY: Set up callback for online learning
- */
+static bool stream_push_sample(stream_context_t* ctx, const float* features,
+                               uint32_t num_features, const char* label)
+{
+    if (!ctx || !ctx->active) return false;
+    nimcp_mutex_lock(&ctx->queue_lock);
+    if (ctx->queue_size >= ctx->max_queue_size) {
+        ctx->samples_dropped++;
+        nimcp_mutex_unlock(&ctx->queue_lock);
+        return false;
+    }
+    stream_sample_t* sample = nimcp_calloc(1, sizeof(stream_sample_t));
+    if (!sample) { nimcp_mutex_unlock(&ctx->queue_lock); return false; }
+    sample->features = nimcp_calloc(num_features, sizeof(float));
+    memcpy(sample->features, features, num_features * sizeof(float));
+    sample->num_features = num_features;
+    sample->label = nimcp_strdup(label ? label : "");
+    sample->next = NULL;
+    if (ctx->queue_tail) ctx->queue_tail->next = sample;
+    else ctx->queue_head = sample;
+    ctx->queue_tail = sample;
+    ctx->queue_size++;
+    ctx->samples_received++;
+    nimcp_cond_signal(&ctx->queue_cond);
+    nimcp_mutex_unlock(&ctx->queue_lock);
+    return true;
+}
+
+static stream_sample_t* stream_pop_sample(stream_context_t* ctx, int32_t timeout_ms)
+{
+    if (!ctx) return NULL;
+    nimcp_mutex_lock(&ctx->queue_lock);
+    while (ctx->queue_head == NULL && ctx->active) {
+        if (timeout_ms == 0) { nimcp_mutex_unlock(&ctx->queue_lock); return NULL; }
+        else if (timeout_ms > 0) {
+            if (nimcp_cond_timedwait(&ctx->queue_cond, &ctx->queue_lock, (uint32_t)timeout_ms) == NIMCP_TIMEOUT) {
+                nimcp_mutex_unlock(&ctx->queue_lock);
+                return NULL;
+            }
+        } else {
+            nimcp_cond_wait(&ctx->queue_cond, &ctx->queue_lock);
+        }
+    }
+    if (!ctx->active && ctx->queue_head == NULL) { nimcp_mutex_unlock(&ctx->queue_lock); return NULL; }
+    stream_sample_t* sample = ctx->queue_head;
+    if (sample) {
+        ctx->queue_head = sample->next;
+        if (!ctx->queue_head) ctx->queue_tail = NULL;
+        ctx->queue_size--;
+        ctx->samples_processed++;
+    }
+    nimcp_mutex_unlock(&ctx->queue_lock);
+    return sample;
+}
+
+static void stream_free_sample(stream_sample_t* sample)
+{
+    if (!sample) return;
+    nimcp_free(sample->features);
+    nimcp_free(sample->label);
+    nimcp_free(sample);
+}
+
 static bool stream_initialize(void** context, const dataset_config_t* config)
 {
     dataio_set_error("Use dataset_create_stream() for streaming data");
@@ -523,10 +1031,20 @@ static bool stream_initialize(void** context, const dataset_config_t* config)
 
 static void stream_shutdown(void* context)
 {
-    if (!context)
-        return;
-    stream_context_t* stream_ctx = (stream_context_t*) context;
+    if (!context) return;
+    stream_context_t* stream_ctx = (stream_context_t*)context;
+    nimcp_mutex_lock(&stream_ctx->queue_lock);
     stream_ctx->active = false;
+    nimcp_cond_broadcast(&stream_ctx->queue_cond);
+    nimcp_mutex_unlock(&stream_ctx->queue_lock);
+    stream_sample_t* sample = stream_ctx->queue_head;
+    while (sample) {
+        stream_sample_t* next = sample->next;
+        stream_free_sample(sample);
+        sample = next;
+    }
+    nimcp_cond_destroy(&stream_ctx->queue_cond);
+    nimcp_mutex_destroy(&stream_ctx->queue_lock);
     nimcp_free(stream_ctx);
 }
 
@@ -1200,9 +1718,30 @@ float brain_train_from_dataset_streaming(brain_t brain, dataset_t dataset, uint3
             break;  // End of dataset
         }
 
-        // Train on batch
+        // Train on batch using nimcp_brain_learn_example for each sample
+        // WHAT: Train brain on each sample in the batch
+        // WHY: Implements actual training that was previously stubbed
+        // HOW: Call nimcp_brain_learn_example with features, label, and full confidence
+        uint32_t num_features = dataset->config.num_feature_columns;
         for (uint32_t i = 0; i < batch.num_samples; i++) {
-            // TODO: Train brain
+            nimcp_status_t result = nimcp_brain_learn_example(
+                brain,
+                batch.features[i],
+                num_features,
+                batch.labels[i],
+                1.0F  // Full confidence for training examples
+            );
+            if (result == NIMCP_OK) {
+                // Training succeeded - accumulate for average loss computation
+                // Note: nimcp_brain_learn_example doesn't return loss directly,
+                // so we track success rate instead
+                avg_loss += 1.0F;  // Count successful training
+            }
+        }
+
+        // Normalize avg_loss to represent success rate for this batch
+        if (batch.num_samples > 0) {
+            avg_loss /= (float)batch.num_samples;
         }
 
         dataset_free_batch(&batch);

@@ -36,7 +36,10 @@ extern "C" {
 //=============================================================================
 
 /**
- * @brief GPU capabilities
+ * @brief Basic GPU capabilities (simple struct for system resource queries)
+ *
+ * NOTE: For comprehensive GPU detection with device enumeration,
+ * use gpu_capabilities_t from gpu/execution/nimcp_gpu_detect.h instead.
  */
 typedef struct {
     bool cuda_available;           /**< CUDA GPU detected */
@@ -45,7 +48,7 @@ typedef struct {
     uint64_t total_vram_mb;        /**< Total GPU memory (MB) */
     uint64_t available_vram_mb;    /**< Available GPU memory (MB) */
     uint32_t compute_units;        /**< GPU compute units */
-} gpu_capabilities_t;
+} gpu_basic_capabilities_t;
 
 /**
  * @brief Neuromorphic hardware capabilities
@@ -76,7 +79,7 @@ typedef struct {
     uint64_t available_disk_mb;    /**< Available disk space (MB) */
 
     // Accelerators
-    gpu_capabilities_t gpu;             /**< GPU info */
+    gpu_basic_capabilities_t gpu;       /**< Basic GPU info */
     neuromorphic_capabilities_t neuro;  /**< Neuromorphic hardware */
 } system_resources_t;
 

@@ -140,11 +140,14 @@ typedef struct {
 //=============================================================================
 
 /**
- * @brief GPU capabilities structure
+ * @brief Detailed GPU detection result structure
  *
  * WHAT: Contains detected GPU features across all backends
  * WHY:  Unified representation for backend selection and mode decision
  * HOW:  Populated by gpu_detect_capabilities()
+ *
+ * NOTE: This is distinct from gpu_capabilities_t in nimcp_system_resources.h
+ *       which is a simpler summary structure.
  */
 typedef struct {
     // Backend availability
@@ -182,7 +185,7 @@ typedef struct {
 
     // Recommended settings
     gpu_backend_t recommended_backend; /**< Recommended backend to use */
-} gpu_capabilities_t;
+} gpu_detect_result_t;
 
 //=============================================================================
 // Detection API
@@ -207,7 +210,7 @@ typedef struct {
  * 3. OpenCL (cross-platform) - via libOpenCL.so / OpenCL.dll
  *
  * EXAMPLE:
- *   gpu_capabilities_t caps;
+ *   gpu_detect_result_t caps;
  *   if (gpu_detect_capabilities(&caps)) {
  *       if (caps.cuda_available) {
  *           printf("CUDA available with %u devices\n", caps.cuda_device_count);
@@ -217,7 +220,7 @@ typedef struct {
  *       }
  *   }
  */
-NIMCP_EXPORT bool gpu_detect_capabilities(gpu_capabilities_t* caps);
+NIMCP_EXPORT bool gpu_detect_capabilities(gpu_detect_result_t* caps);
 
 /**
  * @brief Check if any GPU is available

@@ -878,6 +878,11 @@ void brain_destroy(brain_t brain)
     clear_cache(brain);
     nimcp_platform_mutex_destroy(&brain->cache_mutex);
 
+    // GPU context cleanup (must happen before bio-async as GPU may use async events)
+    if (brain->gpu_ctx) {
+        nimcp_brain_factory_destroy_gpu_subsystem(brain);
+    }
+
     // Bio-async cleanup
     extern bool g_brain_bio_initialized;
     extern bio_module_context_t g_brain_bio_ctx;

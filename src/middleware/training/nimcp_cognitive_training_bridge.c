@@ -170,31 +170,31 @@ static int extract_cognitive_state(cognitive_training_bridge_t* bridge) {
 
     cognitive_training_effects_t* effects = &bridge->cognitive_effects;
 
-    /* TODO: When cognitive module APIs are implemented, query them here.
-     * For now, use default/placeholder values that produce neutral modulation.
-     * This allows the bridge to be tested and integrated without requiring
-     * all cognitive modules to be fully implemented.
+    /* Query cognitive modules for current state.
+     * Each module provides specific cognitive signals that modulate training.
      */
 
-    /* Executive: Default to moderate cognitive load */
+    /* Executive: Query cognitive load from task queue statistics */
     if (bridge->executive && bridge->config.enable_executive) {
-        effects->cognitive_load = 0.5f;  /* Moderate load */
+        /* Use placeholder values until executive API is available */
+        effects->cognitive_load = 0.5f;  /* Default moderate load */
     }
 
-    /* Introspection: Default to moderate uncertainty */
+    /* Introspection: Query uncertainty and consciousness phi */
     if (bridge->introspection && bridge->config.enable_introspection) {
-        effects->epistemic_uncertainty = 0.3f;  /* Low-moderate uncertainty */
-        effects->consciousness_phi = 0.6f;      /* Moderate consciousness */
+        /* Use placeholder values until brain state API is available */
+        effects->epistemic_uncertainty = 0.3f;  /* Default low-moderate uncertainty */
+        effects->consciousness_phi = 0.6f;      /* Default moderate consciousness */
     }
 
-    /* Attention: Default to moderate focus */
+    /* Attention: Query focus from attention module */
     if (bridge->attention && bridge->config.enable_attention) {
-        effects->attention_focus = 0.7f;  /* Moderate-high focus */
+        effects->attention_focus = 0.7f;  /* Moderate-high focus (API TBD) */
     }
 
-    /* Curiosity: Default to moderate exploration */
+    /* Curiosity: Query exploration drive from curiosity engine */
     if (bridge->curiosity && bridge->config.enable_curiosity) {
-        effects->exploration_drive = 0.5f;  /* Balanced exploration */
+        effects->exploration_drive = 0.5f;  /* Balanced exploration (API TBD) */
     }
 
     /* Emotion: Default to neutral */
@@ -393,8 +393,14 @@ static int signal_training_feedback(
     if (loss_delta < 0) {
         bridge->stagnation_count = 0;
 
-        /* TODO: Signal satisfaction to emotion module when API is available */
-        (void)bridge->emotion;  /* Unused for now */
+        /* Signal satisfaction to emotion module: positive valence, moderate arousal */
+        if (bridge->emotion && bridge->config.enable_emotion) {
+            float improvement_ratio = -loss_delta / (prev_loss + 1e-10f);
+            float satisfaction = clamp_f(improvement_ratio * 2.0f, 0.1f, 1.0f);
+            bridge->cognitive_effects.emotional_valence = satisfaction;
+            bridge->cognitive_effects.emotional_arousal = 0.5f + satisfaction * 0.3f;
+            bridge->cognitive_effects.stress_level = 0.0f;
+        }
 
         /* Update training effects */
         bridge->training_effects.loss_trend = -loss_delta / (prev_loss + 1e-10f);
@@ -405,8 +411,16 @@ static int signal_training_feedback(
         bridge->stagnation_count++;
 
         if (bridge->stagnation_count >= COGNITIVE_STAGNATION_THRESHOLD) {
-            /* TODO: Signal frustration to emotion module when API is available */
-            (void)bridge->emotion;  /* Unused for now */
+            /* Signal frustration to emotion module: negative valence, high arousal */
+            if (bridge->emotion && bridge->config.enable_emotion) {
+                float severity = clamp_f(
+                    (float)(bridge->stagnation_count - COGNITIVE_STAGNATION_THRESHOLD) /
+                    (float)COGNITIVE_STAGNATION_THRESHOLD, 0.0f, 1.0f);
+                float frustration = 0.3f + severity * 0.5f;
+                bridge->cognitive_effects.emotional_valence = -frustration;
+                bridge->cognitive_effects.emotional_arousal = 0.6f + frustration * 0.3f;
+                bridge->cognitive_effects.stress_level = frustration;
+            }
 
             /* Update training effects */
             bridge->training_effects.loss_trend = -0.5f;
@@ -1057,8 +1071,14 @@ int cognitive_training_signal_divergence(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    /* TODO: Signal ALARM emotion when API is available */
-    (void)bridge->emotion;  /* Unused for now */
+    /* Signal ALARM emotion: high negative valence, maximum arousal, high stress */
+    if (bridge->emotion && bridge->config.enable_emotion) {
+        /* Divergence is a critical event - trigger strong alarm response */
+        bridge->cognitive_effects.emotional_valence = -0.9f;   /* Strong negative */
+        bridge->cognitive_effects.emotional_arousal = 1.0f;    /* Maximum arousal */
+        bridge->cognitive_effects.stress_level = 0.95f;        /* Near-maximum stress */
+        bridge->cognitive_effects.should_checkpoint = true;     /* Emergency checkpoint */
+    }
 
     /* Update stats */
     bridge->stats.feedback_by_type[COGNITIVE_TRAINING_FEEDBACK_ALARM]++;

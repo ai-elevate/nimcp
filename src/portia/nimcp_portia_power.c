@@ -18,6 +18,8 @@
 #include "utils/thread/nimcp_thread.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -97,6 +99,7 @@ typedef struct portia_power_manager_struct {
     // Bio-async
     uint32_t bio_async_module_id;
     bool bio_async_registered;
+    bio_module_context_t bio_module_ctx;  /* Bio-router module context for messaging */
 
     // BBB security
     bbb_system_t bbb;
@@ -217,12 +220,26 @@ portia_power_manager_t portia_power_init(const portia_power_config_t* config) {
              portia_power_get_profile_name(mgr->current_profile),
              mgr->current_status.battery_level_pct);
 
-    // Register with bio-async if enabled
+    /* Register with bio-async if enabled */
     if (mgr->config.enable_bio_async_events) {
-        // Bio-async registration would go here
-        mgr->bio_async_module_id = BIO_MODULE_SYSTEM;
-        mgr->bio_async_registered = true;
-        LOG_DEBUG("[%s] Bio-async events enabled", POWER_MODULE);
+        /* Register power manager module with bio-router */
+        bio_module_info_t module_info = {
+            .module_id = BIO_MODULE_SYSTEM,
+            .module_name = "PortiaPower",
+            .inbox_capacity = 64,
+            .user_data = mgr
+        };
+
+        mgr->bio_module_ctx = bio_router_register_module(&module_info);
+        if (mgr->bio_module_ctx) {
+            mgr->bio_async_module_id = BIO_MODULE_SYSTEM;
+            mgr->bio_async_registered = true;
+            LOG_DEBUG("[%s] Bio-async events enabled and registered", POWER_MODULE);
+        } else {
+            mgr->bio_async_module_id = BIO_MODULE_SYSTEM;
+            mgr->bio_async_registered = false;
+            LOG_WARN("[%s] Bio-async registration failed, events disabled", POWER_MODULE);
+        }
     }
 
     // Start polling thread
@@ -773,7 +790,13 @@ static void send_power_event(portia_power_manager_t mgr, power_event_type_t even
         return;
     }
 
-    // Create power event message
+    /* Guard: Need valid module context for bio-async messaging */
+    if (!mgr->bio_module_ctx) {
+        LOG_WARN("[%s] Bio-async context not available", POWER_MODULE);
+        return;
+    }
+
+    /* Create power event message */
     bio_msg_power_event_t msg = {0};
     bio_msg_init_header(&msg.header, (bio_message_type_t)event,
                        mgr->bio_async_module_id, BIO_MODULE_ALL,
@@ -786,18 +809,26 @@ static void send_power_event(portia_power_manager_t mgr, power_event_type_t even
     msg.temperature_c = status->temperature_c;
     msg.timestamp_us = status->timestamp_us;
 
-    // Send via norepinephrine (alerting channel)
+    /* Send via norepinephrine channel, URGENT for critical events */
     msg.header.channel = BIO_CHANNEL_NOREPINEPHRINE;
     msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+    if (event == POWER_EVENT_BATTERY_CRITICAL || event == POWER_EVENT_THERMAL_WARNING) {
+        msg.header.flags |= BIO_MSG_FLAG_URGENT;
+    }
 
-    // TODO: Send via bio-async system when integrated
-    // nimcp_bio_async_send(&msg);
+    /* Send via bio-router broadcast system */
+    nimcp_error_t err = bio_router_broadcast(mgr->bio_module_ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        LOG_WARN("[%s] Failed to broadcast power event (err=%d)", POWER_MODULE, err);
+        return;
+    }
 
     nimcp_platform_mutex_lock(&mgr->state_mutex);
     mgr->stats.events_sent++;
     nimcp_platform_mutex_unlock(&mgr->state_mutex);
 
-    LOG_DEBUG("[%s] Power event sent: %d", POWER_MODULE, event);
+    LOG_DEBUG("[%s] Power event sent: type=%d, profile=%d->%d, battery=%.1f%%",
+              POWER_MODULE, event, msg.old_profile, msg.new_profile, msg.battery_level_pct);
 }
 
 static void update_discharge_history(discharge_history_t* hist, float rate) {

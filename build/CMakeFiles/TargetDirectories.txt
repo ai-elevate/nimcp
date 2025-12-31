@@ -197,7 +197,6 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_oscillations_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_persistence.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_persistence_integration.dir
-/home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_race_conditions.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_resize_bio_async.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_save_load_simple.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_snapshot_operations.dir
@@ -610,6 +609,8 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_prefrontal_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_somatosensory_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_visual_pipeline.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_swarm_memory_consolidation.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_brain_initialization_subsystems.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/rebuild_cache.dir
@@ -2760,6 +2761,8 @@
 /home/bbrelin/nimcp/build/test/unit/swarm/CMakeFiles/test_swarm_logic_bridge_enhanced.dir
 /home/bbrelin/nimcp/build/test/unit/swarm/CMakeFiles/test_quantum_consensus.dir
 /home/bbrelin/nimcp/build/test/unit/swarm/CMakeFiles/test_swarm_task.dir
+/home/bbrelin/nimcp/build/test/unit/swarm/CMakeFiles/test_swarm_memory_iterators.dir
+/home/bbrelin/nimcp/build/test/unit/swarm/CMakeFiles/test_swarm_multi_conflict_stats.dir
 /home/bbrelin/nimcp/build/test/unit/swarm/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/swarm/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/swarm/CMakeFiles/rebuild_cache.dir
@@ -2955,6 +2958,14 @@
 /home/bbrelin/nimcp/build/test/unit/gpu/immune/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/immune/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/immune/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/integration/CMakeFiles/integration_gpu_test_gpu_cpu_fallback_integration.dir
+/home/bbrelin/nimcp/build/test/integration/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/integration/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/integration/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/integration/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/integration/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/integration/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/integration/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/lnn/CMakeFiles/unit_lnn_test_lnn_config.dir
 /home/bbrelin/nimcp/build/test/unit/lnn/CMakeFiles/unit_lnn_test_lnn_neuron.dir
 /home/bbrelin/nimcp/build/test/unit/lnn/CMakeFiles/unit_lnn_test_lnn_layer.dir
@@ -3113,6 +3124,7 @@
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_cnn_backprop.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_cnn_cortex_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_auto_architecture_nas.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_meta_hpo.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_kd_qat.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_cl_mtl.dir

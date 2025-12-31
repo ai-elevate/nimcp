@@ -1393,6 +1393,18 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/gpu/CMakeLists.txt")
 endif()
 
 # ============================================================================
+# GPU Integration Tests
+# ============================================================================
+# WHAT: GPU/CPU fallback integration tests
+# WHY:  Verify execution mode detection, switching, and graceful fallback
+# HOW:  Test full GPU neural network and execution context lifecycle
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/test_gpu_cpu_fallback_integration.cpp")
+    message(STATUS "Adding GPU integration tests...")
+    add_subdirectory(integration)
+endif()
+
+# ============================================================================
 # LNN Tests
 # ============================================================================
 

@@ -597,38 +597,14 @@ struct auto_arch_config_s {
 };
 
 /**
- * @brief Search result containing best architecture(s)
- *
- * WHAT: Complete results from architecture search
- * WHY:  Provide best architecture(s) and search statistics
- * HOW:  Stores best arch, Pareto frontier, and search history
- */
-struct auto_arch_result_s {
-    /* Best architecture */
-    auto_arch_architecture_t* best_arch; /**< Highest fitness architecture */
-    auto_arch_fitness_t best_fitness;    /**< Fitness of best architecture */
-
-    /* Pareto frontier (multi-objective) */
-    auto_arch_architecture_t** pareto_frontier; /**< Non-dominated archs */
-    auto_arch_fitness_t* pareto_fitness; /**< Fitness for each Pareto arch */
-    uint32_t n_pareto;                   /**< Number of Pareto optimal archs */
-
-    /* Search history */
-    auto_arch_architecture_t** history; /**< All evaluated architectures */
-    auto_arch_fitness_t* history_fitness; /**< Fitness for each arch */
-    uint32_t n_evaluated;               /**< Number of evaluated archs */
-
-    /* Search statistics */
-    auto_arch_stats_t stats;            /**< Search statistics */
-    auto_arch_status_t status;          /**< Final search status */
-};
-
-/**
  * @brief Architecture search statistics
  *
  * WHAT: Statistics about the search process
  * WHY:  Monitor progress and diagnose search issues
  * HOW:  Track evaluations, improvements, convergence, etc.
+ *
+ * NOTE: This struct is defined before auto_arch_result_s because
+ *       auto_arch_result_s contains an embedded auto_arch_stats_t member.
  */
 struct auto_arch_stats_s {
     /* Progress */
@@ -660,6 +636,33 @@ struct auto_arch_stats_s {
     uint64_t total_training_steps;  /**< Total gradient steps */
     float total_training_time_sec;  /**< Total training time */
     float avg_eval_time_sec;        /**< Average evaluation time */
+};
+
+/**
+ * @brief Search result containing best architecture(s)
+ *
+ * WHAT: Complete results from architecture search
+ * WHY:  Provide best architecture(s) and search statistics
+ * HOW:  Stores best arch, Pareto frontier, and search history
+ */
+struct auto_arch_result_s {
+    /* Best architecture */
+    auto_arch_architecture_t* best_arch; /**< Highest fitness architecture */
+    auto_arch_fitness_t best_fitness;    /**< Fitness of best architecture */
+
+    /* Pareto frontier (multi-objective) */
+    auto_arch_architecture_t** pareto_frontier; /**< Non-dominated archs */
+    auto_arch_fitness_t* pareto_fitness; /**< Fitness for each Pareto arch */
+    uint32_t n_pareto;                   /**< Number of Pareto optimal archs */
+
+    /* Search history */
+    auto_arch_architecture_t** history; /**< All evaluated architectures */
+    auto_arch_fitness_t* history_fitness; /**< Fitness for each arch */
+    uint32_t n_evaluated;               /**< Number of evaluated archs */
+
+    /* Search statistics */
+    auto_arch_stats_t stats;            /**< Search statistics */
+    auto_arch_status_t status;          /**< Final search status */
 };
 
 /**
@@ -777,7 +780,7 @@ void auto_arch_destroy(auto_arch_context_t* ctx);
  * @param task Task specification
  * @return 0 on success, negative on error
  */
-int auto_arch_set_task(auto_arch_context_t* ctx, const auto_arch_task_s* task);
+int auto_arch_set_task(auto_arch_context_t* ctx, const auto_arch_task_t* task);
 
 /**
  * @brief Run architecture search

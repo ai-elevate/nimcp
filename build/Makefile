@@ -2031,19 +2031,6 @@ unit_core_brain_test_brain_persistence_integration/fast:
 .PHONY : unit_core_brain_test_brain_persistence_integration/fast
 
 #=============================================================================
-# Target rules for targets named unit_core_brain_test_brain_race_conditions
-
-# Build rule for target.
-unit_core_brain_test_brain_race_conditions: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_test_brain_race_conditions
-.PHONY : unit_core_brain_test_brain_race_conditions
-
-# fast build rule for target.
-unit_core_brain_test_brain_race_conditions/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_test_brain_race_conditions.dir/build.make test/CMakeFiles/unit_core_brain_test_brain_race_conditions.dir/build
-.PHONY : unit_core_brain_test_brain_race_conditions/fast
-
-#=============================================================================
 # Target rules for targets named unit_core_brain_test_brain_resize_bio_async
 
 # Build rule for target.
@@ -7307,6 +7294,32 @@ e2e_test_visual_pipeline: cmake_check_build_system
 e2e_test_visual_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_visual_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_visual_pipeline.dir/build
 .PHONY : e2e_test_visual_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_swarm_memory_consolidation
+
+# Build rule for target.
+e2e_test_swarm_memory_consolidation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_swarm_memory_consolidation
+.PHONY : e2e_test_swarm_memory_consolidation
+
+# fast build rule for target.
+e2e_test_swarm_memory_consolidation/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_swarm_memory_consolidation.dir/build.make test/e2e/CMakeFiles/e2e_test_swarm_memory_consolidation.dir/build
+.PHONY : e2e_test_swarm_memory_consolidation/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_brain_initialization_subsystems
+
+# Build rule for target.
+e2e_test_brain_initialization_subsystems: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_brain_initialization_subsystems
+.PHONY : e2e_test_brain_initialization_subsystems
+
+# fast build rule for target.
+e2e_test_brain_initialization_subsystems/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_brain_initialization_subsystems.dir/build.make test/e2e/CMakeFiles/e2e_test_brain_initialization_subsystems.dir/build
+.PHONY : e2e_test_brain_initialization_subsystems/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -17423,6 +17436,32 @@ test_swarm_task/fast:
 .PHONY : test_swarm_task/fast
 
 #=============================================================================
+# Target rules for targets named test_swarm_memory_iterators
+
+# Build rule for target.
+test_swarm_memory_iterators: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_swarm_memory_iterators
+.PHONY : test_swarm_memory_iterators
+
+# fast build rule for target.
+test_swarm_memory_iterators/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/swarm/CMakeFiles/test_swarm_memory_iterators.dir/build.make test/unit/swarm/CMakeFiles/test_swarm_memory_iterators.dir/build
+.PHONY : test_swarm_memory_iterators/fast
+
+#=============================================================================
+# Target rules for targets named test_swarm_multi_conflict_stats
+
+# Build rule for target.
+test_swarm_multi_conflict_stats: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_swarm_multi_conflict_stats
+.PHONY : test_swarm_multi_conflict_stats
+
+# fast build rule for target.
+test_swarm_multi_conflict_stats/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/swarm/CMakeFiles/test_swarm_multi_conflict_stats.dir/build.make test/unit/swarm/CMakeFiles/test_swarm_multi_conflict_stats.dir/build
+.PHONY : test_swarm_multi_conflict_stats/fast
+
+#=============================================================================
 # Target rules for targets named unit_swarm_sleep_bridges
 
 # Build rule for target.
@@ -18502,6 +18541,19 @@ unit_gpu_immune_multigpu/fast:
 .PHONY : unit_gpu_immune_multigpu/fast
 
 #=============================================================================
+# Target rules for targets named integration_gpu_test_gpu_cpu_fallback_integration
+
+# Build rule for target.
+integration_gpu_test_gpu_cpu_fallback_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_gpu_test_gpu_cpu_fallback_integration
+.PHONY : integration_gpu_test_gpu_cpu_fallback_integration
+
+# fast build rule for target.
+integration_gpu_test_gpu_cpu_fallback_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/CMakeFiles/integration_gpu_test_gpu_cpu_fallback_integration.dir/build.make test/integration/CMakeFiles/integration_gpu_test_gpu_cpu_fallback_integration.dir/build
+.PHONY : integration_gpu_test_gpu_cpu_fallback_integration/fast
+
+#=============================================================================
 # Target rules for targets named unit_lnn_test_lnn_config
 
 # Build rule for target.
@@ -19555,6 +19607,19 @@ unit_training_test_cnn_cortex_bridge/fast:
 .PHONY : unit_training_test_cnn_cortex_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_training_test_auto_architecture_nas
+
+# Build rule for target.
+unit_training_test_auto_architecture_nas: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_test_auto_architecture_nas
+.PHONY : unit_training_test_auto_architecture_nas
+
+# fast build rule for target.
+unit_training_test_auto_architecture_nas/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_auto_architecture_nas.dir/build.make test/unit/training/CMakeFiles/unit_training_test_auto_architecture_nas.dir/build
+.PHONY : unit_training_test_auto_architecture_nas/fast
+
+#=============================================================================
 # Target rules for targets named unit_training_test_meta_hpo
 
 # Build rule for target.
@@ -20495,6 +20560,7 @@ help:
 	@echo "... e2e_test_bio_async_training_pipeline"
 	@echo "... e2e_test_brain_immune_pipeline"
 	@echo "... e2e_test_brain_immune_plasticity_pipeline"
+	@echo "... e2e_test_brain_initialization_subsystems"
 	@echo "... e2e_test_brain_pipeline"
 	@echo "... e2e_test_bridge_pipelines"
 	@echo "... e2e_test_cerebellum_pipeline"
@@ -20563,6 +20629,7 @@ help:
 	@echo "... e2e_test_swarm_consciousness_enhanced_pipeline"
 	@echo "... e2e_test_swarm_consciousness_pipeline"
 	@echo "... e2e_test_swarm_formation"
+	@echo "... e2e_test_swarm_memory_consolidation"
 	@echo "... e2e_test_swarm_threat_response"
 	@echo "... e2e_test_thalamus_pipeline"
 	@echo "... e2e_test_training_logic_pipeline"
@@ -20678,6 +20745,7 @@ help:
 	@echo "... integration_glial_test_myelin_axon_oligo"
 	@echo "... integration_glial_test_myelin_biophysics"
 	@echo "... integration_glial_test_oligodendrocyte"
+	@echo "... integration_gpu_test_gpu_cpu_fallback_integration"
 	@echo "... integration_gpu_test_gpu_execution_mode_integration"
 	@echo "... integration_gpu_test_gpu_integration"
 	@echo "... integration_gpu_test_gpu_neuron_integration"
@@ -21236,8 +21304,10 @@ help:
 	@echo "... test_swarm_logic_bridge_enhanced"
 	@echo "... test_swarm_logic_bridge_enhanced_regression"
 	@echo "... test_swarm_logic_consensus_integration"
+	@echo "... test_swarm_memory_iterators"
 	@echo "... test_swarm_memory_regression"
 	@echo "... test_swarm_module_registry"
+	@echo "... test_swarm_multi_conflict_stats"
 	@echo "... test_swarm_protocol"
 	@echo "... test_swarm_scalability_regression"
 	@echo "... test_swarm_security"
@@ -21563,7 +21633,6 @@ help:
 	@echo "... unit_core_brain_test_brain_oscillations_real"
 	@echo "... unit_core_brain_test_brain_persistence"
 	@echo "... unit_core_brain_test_brain_persistence_integration"
-	@echo "... unit_core_brain_test_brain_race_conditions"
 	@echo "... unit_core_brain_test_brain_resize_bio_async"
 	@echo "... unit_core_brain_test_brain_save_load_simple"
 	@echo "... unit_core_brain_test_brain_snapshot_operations"
@@ -21907,6 +21976,7 @@ help:
 	@echo "... unit_test_comprehensive_integration"
 	@echo "... unit_training_test_adv_gs"
 	@echo "... unit_training_test_amp_distributed"
+	@echo "... unit_training_test_auto_architecture_nas"
 	@echo "... unit_training_test_cl_mtl"
 	@echo "... unit_training_test_cnn_backprop"
 	@echo "... unit_training_test_cnn_cortex_bridge"

@@ -11,3 +11,28 @@ message(STATUS "    - test_quantum_bridge_integration.cpp")
 
 # Subdirectories with their own CMakeLists.txt are now processed by parent
 # test/CMakeLists.txt via direct add_subdirectory() calls
+
+# =============================================================================
+# GPU/CPU Fallback Integration Tests
+# =============================================================================
+# These tests verify GPU detection, execution mode switching, and CPU fallback
+
+macro(add_integration_gpu_test TEST_NAME)
+    add_executable(integration_gpu_${TEST_NAME}
+        ${TEST_NAME}.cpp
+    )
+    target_link_libraries(integration_gpu_${TEST_NAME}
+        PRIVATE
+            GTest::GTest
+            GTest::Main
+            nimcp
+            m
+            pthread
+    )
+    target_compile_features(integration_gpu_${TEST_NAME} PRIVATE cxx_std_20)
+    add_test(NAME integration_gpu_${TEST_NAME}
+             COMMAND integration_gpu_${TEST_NAME})
+endmacro()
+
+# GPU CPU fallback integration tests
+add_integration_gpu_test(test_gpu_cpu_fallback_integration)

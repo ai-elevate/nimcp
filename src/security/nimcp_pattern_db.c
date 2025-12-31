@@ -23,6 +23,7 @@
 #include "security/nimcp_security.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_atomic.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -31,6 +32,9 @@
 #include <regex.h>
 #include <signal.h>
 #include <unistd.h>
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 
 //=============================================================================
 // Internal Constants
@@ -40,6 +44,9 @@
 #define PATTERN_DB_INITIAL_CAPACITY  128
 #define PATTERN_DB_LOAD_FACTOR   0.75f
 #define PATTERN_DB_MAX_REGEX_ERRORS 256
+#define PATTERN_DB_MAX_PATTERN_LENGTH 4096  /* Maximum safe pattern length */
+#define PATTERN_DB_MAX_QUANTIFIER_NESTING 3 /* Maximum allowed nested quantifiers */
+#define PATTERN_DB_MAX_ALTERNATIONS 20      /* Maximum alternations */
 
 //=============================================================================
 // Internal Structures
@@ -57,7 +64,7 @@ typedef struct {
     nimcp_pattern_entry_t entry;
     regex_t compiled_regex;
     bool is_compiled;
-    uint32_t match_count;
+    nimcp_atomic_uint32_t match_count;  /* THREAD SAFETY: atomic for concurrent updates */
     uint64_t total_match_time_us;
     char pattern_copy[NIMCP_PATTERN_MAX_LENGTH];
     char description_copy[NIMCP_PATTERN_MAX_DESCRIPTION];
@@ -71,7 +78,7 @@ typedef struct pattern_snapshot {
     uint32_t pattern_count;
     pattern_slot_t* patterns;
     size_t capacity;
-    uint32_t ref_count;
+    nimcp_atomic_uint32_t ref_count;  /* THREAD SAFETY: atomic for concurrent access */
     struct pattern_snapshot* next;
 } pattern_snapshot_t;
 
@@ -125,52 +132,217 @@ static bool validate_db(nimcp_pattern_db_t db) {
 }
 
 /**
+ * @brief Check if character is a regex quantifier
+ */
+static bool is_quantifier(char c) {
+    return c == '*' || c == '+' || c == '?';
+}
+
+/**
  * @brief Check regex pattern complexity to prevent ReDoS
  *
  * WHAT: Detect potentially dangerous regex patterns
  * WHY:  Prevent exponential backtracking attacks (ReDoS)
- * HOW:  Count nested quantifiers and alternations
+ * HOW:  Detect consecutive quantifiers, nested quantifiers with alternation,
+ *       catastrophic backtracking patterns, and enforce length limits
+ *
+ * REDOS PATTERNS DETECTED:
+ * 1. Consecutive quantifiers: a**, a*+, a+*, a++, a?*, etc.
+ * 2. Nested quantifiers with alternation: (a|b)*, (a*|b)*, etc.
+ * 3. Overlapping repetitions: (a+)+, (a*)+, (.*a)*b, etc.
+ * 4. Pattern length exceeding safe limits
+ * 5. Excessive nesting depth
+ * 6. Excessive alternations in nested groups
  */
 static bool is_regex_safe(const char* pattern) {
     if (!pattern) return false;
 
-    int nested_quantifiers = 0;
-    int max_nesting = 0;
-    int alternations = 0;
-    bool in_group = false;
+    size_t len = strlen(pattern);
 
-    for (const char* p = pattern; *p; p++) {
-        switch (*p) {
+    /* Check maximum pattern length */
+    if (len > PATTERN_DB_MAX_PATTERN_LENGTH) {
+        LOG_MODULE_WARN("pattern_db", "Pattern rejected: length %zu exceeds maximum %d",
+                        len, PATTERN_DB_MAX_PATTERN_LENGTH);
+        return false;
+    }
+
+    /* Empty patterns are safe but useless */
+    if (len == 0) {
+        return true;
+    }
+
+    int group_depth = 0;
+    int max_depth = 0;
+    int alternations_at_depth[16] = {0};  /* Track alternations at each nesting level */
+    int quantifiers_at_depth[16] = {0};   /* Track quantifiers at each nesting level */
+    bool prev_was_quantifier = false;
+    bool escaped = false;
+    bool in_char_class = false;
+
+    for (size_t i = 0; i < len; i++) {
+        char c = pattern[i];
+
+        /* Handle escape sequences */
+        if (escaped) {
+            escaped = false;
+            prev_was_quantifier = false;
+            continue;
+        }
+
+        if (c == '\\') {
+            escaped = true;
+            prev_was_quantifier = false;
+            continue;
+        }
+
+        /* Handle character classes */
+        if (c == '[' && !in_char_class) {
+            in_char_class = true;
+            prev_was_quantifier = false;
+            continue;
+        }
+
+        if (c == ']' && in_char_class) {
+            in_char_class = false;
+            prev_was_quantifier = false;
+            continue;
+        }
+
+        /* Skip processing inside character classes */
+        if (in_char_class) {
+            continue;
+        }
+
+        switch (c) {
             case '(':
-                if (in_group) nested_quantifiers++;
-                in_group = true;
-                if (nested_quantifiers > max_nesting) {
-                    max_nesting = nested_quantifiers;
+                /* Opening group */
+                group_depth++;
+                if (group_depth > max_depth) {
+                    max_depth = group_depth;
                 }
+                if (group_depth >= 16) {
+                    LOG_MODULE_WARN("pattern_db", "Pattern rejected: nesting depth %d exceeds maximum",
+                                    group_depth);
+                    return false;
+                }
+                /* Reset alternation count for this depth */
+                alternations_at_depth[group_depth] = 0;
+                quantifiers_at_depth[group_depth] = 0;
+                prev_was_quantifier = false;
                 break;
+
             case ')':
-                if (nested_quantifiers > 0) nested_quantifiers--;
-                in_group = false;
+                /* Closing group */
+                if (group_depth > 0) {
+                    group_depth--;
+                }
+                prev_was_quantifier = false;
                 break;
+
+            case '|':
+                /* Alternation */
+                if (group_depth > 0 && group_depth < 16) {
+                    alternations_at_depth[group_depth]++;
+
+                    /* Check for excessive alternations in nested groups */
+                    if (alternations_at_depth[group_depth] > PATTERN_DB_MAX_ALTERNATIONS) {
+                        LOG_MODULE_WARN("pattern_db", "Pattern rejected: too many alternations (%d) at depth %d",
+                                        alternations_at_depth[group_depth], group_depth);
+                        return false;
+                    }
+                }
+                prev_was_quantifier = false;
+                break;
+
             case '*':
             case '+':
             case '?':
-                /* Check for nested quantifiers */
-                if (nested_quantifiers > 2) {
-                    return false; /* Too much nesting */
+                /* REDOS CHECK 1: Consecutive quantifiers (a**, a*+, a++) */
+                if (prev_was_quantifier) {
+                    LOG_MODULE_WARN("pattern_db", "Pattern rejected: consecutive quantifiers detected");
+                    return false;
                 }
+
+                /* Track quantifier at current depth */
+                if (group_depth > 0 && group_depth < 16) {
+                    quantifiers_at_depth[group_depth]++;
+                }
+
+                /* REDOS CHECK 2: Check for quantifier immediately after group closing */
+                /* This catches patterns like (a+)+ or (a|b)* which can cause backtracking */
+                if (i > 0 && pattern[i - 1] == ')') {
+                    /* Look back to find the matching group and check for nested quantifiers or alternations */
+                    int depth = 1;
+                    bool has_alternation = false;
+                    bool has_nested_quantifier = false;
+                    bool inner_escaped = false;
+
+                    for (int j = (int)i - 2; j >= 0 && depth > 0; j--) {
+                        char inner_c = pattern[j];
+
+                        if (inner_escaped) {
+                            inner_escaped = false;
+                            continue;
+                        }
+
+                        /* Check for backslash looking backwards */
+                        if (j > 0 && pattern[j - 1] == '\\') {
+                            inner_escaped = true;
+                            continue;
+                        }
+
+                        if (inner_c == ')') {
+                            depth++;
+                        } else if (inner_c == '(') {
+                            depth--;
+                        } else if (depth == 1) {
+                            if (inner_c == '|') {
+                                has_alternation = true;
+                            } else if (is_quantifier(inner_c)) {
+                                has_nested_quantifier = true;
+                            }
+                        }
+                    }
+
+                    /* REDOS CHECK 3: Nested quantifier with alternation */
+                    if (has_alternation && (c == '*' || c == '+')) {
+                        LOG_MODULE_WARN("pattern_db", "Pattern rejected: quantifier on group with alternation (ReDoS risk)");
+                        return false;
+                    }
+
+                    /* REDOS CHECK 4: Nested quantifiers (quantifier on group containing quantifier) */
+                    if (has_nested_quantifier && (c == '*' || c == '+')) {
+                        LOG_MODULE_WARN("pattern_db", "Pattern rejected: nested quantifiers (ReDoS risk)");
+                        return false;
+                    }
+                }
+
+                prev_was_quantifier = true;
                 break;
-            case '|':
-                alternations++;
-                if (alternations > 10) {
-                    return false; /* Too many alternations */
+
+            case '{':
+                /* Range quantifier - check for consecutive */
+                if (prev_was_quantifier) {
+                    LOG_MODULE_WARN("pattern_db", "Pattern rejected: consecutive quantifiers detected (range)");
+                    return false;
                 }
+                /* Skip to closing brace */
+                while (i < len && pattern[i] != '}') {
+                    i++;
+                }
+                prev_was_quantifier = true;
+                break;
+
+            default:
+                prev_was_quantifier = false;
                 break;
         }
     }
 
-    /* Reject patterns with excessive nesting */
-    if (max_nesting > 3) {
+    /* REDOS CHECK 5: Excessive nesting depth overall */
+    if (max_depth > PATTERN_DB_MAX_QUANTIFIER_NESTING) {
+        LOG_MODULE_WARN("pattern_db", "Pattern rejected: max nesting depth %d exceeds limit %d",
+                        max_depth, PATTERN_DB_MAX_QUANTIFIER_NESTING);
         return false;
     }
 
@@ -271,9 +443,8 @@ static nimcp_error_t create_snapshot(nimcp_pattern_db_t db, uint32_t* snapshot_i
 
             // MEMORY SAFETY: ref_count is currently always 1 (no sharing)
             // Protected by write_lock, so no concurrent access.
-            // TODO: If snapshot sharing is added, use nimcp_atomic_uint32_t for ref_count
-            oldest->ref_count--;
-            if (oldest->ref_count == 0) {
+            uint32_t old_ref = nimcp_atomic_fetch_sub_u32(&oldest->ref_count, 1, NIMCP_MEMORY_ORDER_SEQ_CST);
+            if (old_ref == 1) {  // Was 1, now 0
                 for (size_t i = 0; i < oldest->pattern_count; i++) {
                     free_pattern(&oldest->patterns[i]);
                 }
@@ -292,7 +463,7 @@ static nimcp_error_t create_snapshot(nimcp_pattern_db_t db, uint32_t* snapshot_i
     snapshot->version = db->current_version;
     snapshot->pattern_count = db->pattern_count;
     snapshot->capacity = db->capacity;
-    snapshot->ref_count = 1;
+    nimcp_atomic_store_u32(&snapshot->ref_count, 1, NIMCP_MEMORY_ORDER_SEQ_CST);
 
     // Deep copy patterns
     snapshot->patterns = calloc(db->capacity, sizeof(pattern_slot_t));
@@ -425,8 +596,8 @@ void nimcp_pattern_db_destroy(nimcp_pattern_db_t db) {
     while (snapshot) {
         pattern_snapshot_t* next = snapshot->next;
 
-        snapshot->ref_count--;
-        if (snapshot->ref_count == 0) {
+        uint32_t old_ref = nimcp_atomic_fetch_sub_u32(&snapshot->ref_count, 1, NIMCP_MEMORY_ORDER_SEQ_CST);
+        if (old_ref == 1) {  // Was 1, now 0
             for (size_t i = 0; i < snapshot->capacity; i++) {
                 free_pattern(&snapshot->patterns[i]);
             }
@@ -658,6 +829,310 @@ nimcp_error_t nimcp_pattern_db_get(
 }
 
 //=============================================================================
+// Safe JSON Parsing Helpers
+//=============================================================================
+
+/**
+ * @brief Safe string to long conversion with validation
+ *
+ * WHAT: Convert string to long with bounds checking
+ * WHY:  Avoid undefined behavior from atoi/atol on invalid input
+ * HOW:  Use strtol with error checking
+ *
+ * @param str Input string
+ * @param result Output value
+ * @param min Minimum valid value
+ * @param max Maximum valid value
+ * @return true if conversion successful and within bounds
+ */
+static bool safe_strtol(const char* str, long* result, long min, long max) {
+    if (!str || !result) return false;
+
+    /* Skip leading whitespace */
+    while (*str && isspace((unsigned char)*str)) {
+        str++;
+    }
+
+    if (*str == '\0') return false;
+
+    char* endptr;
+    errno = 0;
+    long val = strtol(str, &endptr, 10);
+
+    /* Check for conversion errors */
+    if (errno == ERANGE || val < min || val > max) {
+        return false;
+    }
+
+    /* Check that at least one digit was consumed */
+    if (endptr == str) {
+        return false;
+    }
+
+    *result = val;
+    return true;
+}
+
+/**
+ * @brief Safe string to double conversion with validation
+ *
+ * WHAT: Convert string to double with bounds checking
+ * WHY:  Avoid undefined behavior from atof on invalid input
+ * HOW:  Use strtod with error checking
+ *
+ * @param str Input string
+ * @param result Output value
+ * @return true if conversion successful
+ */
+static bool safe_strtod(const char* str, double* result) {
+    if (!str || !result) return false;
+
+    /* Skip leading whitespace */
+    while (*str && isspace((unsigned char)*str)) {
+        str++;
+    }
+
+    if (*str == '\0') return false;
+
+    char* endptr;
+    errno = 0;
+    double val = strtod(str, &endptr);
+
+    /* Check for conversion errors */
+    if (errno == ERANGE) {
+        return false;
+    }
+
+    /* Check that at least one digit was consumed */
+    if (endptr == str) {
+        return false;
+    }
+
+    *result = val;
+    return true;
+}
+
+/**
+ * @brief Validate and unescape JSON string
+ *
+ * WHAT: Extract and unescape a JSON string value
+ * WHY:  Properly handle escape sequences and prevent buffer overflow
+ * HOW:  Scan for valid escape sequences, validate, and copy with bounds checking
+ *
+ * @param src Start of string value (after opening quote)
+ * @param src_end Maximum position to read from
+ * @param dest Destination buffer
+ * @param dest_size Size of destination buffer
+ * @param chars_consumed Output: number of source characters consumed
+ * @return true if extraction successful
+ */
+static bool json_unescape_string(const char* src, const char* src_end,
+                                  char* dest, size_t dest_size,
+                                  size_t* chars_consumed) {
+    if (!src || !dest || dest_size == 0) return false;
+
+    size_t di = 0;  /* Destination index */
+    const char* p = src;
+
+    while (p < src_end && *p != '"' && di < dest_size - 1) {
+        if (*p == '\\') {
+            /* Handle escape sequences */
+            p++;
+            if (p >= src_end) {
+                /* Unterminated escape */
+                return false;
+            }
+
+            switch (*p) {
+                case '"':  dest[di++] = '"'; break;
+                case '\\': dest[di++] = '\\'; break;
+                case '/':  dest[di++] = '/'; break;
+                case 'b':  dest[di++] = '\b'; break;
+                case 'f':  dest[di++] = '\f'; break;
+                case 'n':  dest[di++] = '\n'; break;
+                case 'r':  dest[di++] = '\r'; break;
+                case 't':  dest[di++] = '\t'; break;
+                case 'u':
+                    /* Unicode escape - validate but store as-is for now */
+                    /* Full Unicode support would require UTF-8 encoding */
+                    if (p + 4 >= src_end) return false;
+                    for (int i = 1; i <= 4; i++) {
+                        if (!isxdigit((unsigned char)p[i])) return false;
+                    }
+                    /* Skip \uXXXX, store as '?' placeholder */
+                    dest[di++] = '?';
+                    p += 4;
+                    break;
+                default:
+                    /* Invalid escape sequence */
+                    LOG_MODULE_WARN("pattern_db", "Invalid JSON escape sequence: \\%c", *p);
+                    return false;
+            }
+        } else if ((unsigned char)*p < 0x20) {
+            /* Control characters must be escaped in JSON */
+            LOG_MODULE_WARN("pattern_db", "Invalid control character in JSON string");
+            return false;
+        } else {
+            dest[di++] = *p;
+        }
+        p++;
+    }
+
+    dest[di] = '\0';
+
+    if (chars_consumed) {
+        *chars_consumed = (size_t)(p - src);
+    }
+
+    return true;
+}
+
+/**
+ * @brief Find JSON key and extract its value bounds
+ *
+ * WHAT: Locate a JSON key and find the bounds of its value
+ * WHY:  Safe extraction of JSON values without buffer overflow
+ * HOW:  Search for key, validate structure, return pointers to value
+ *
+ * @param json_start Start of JSON object
+ * @param json_end End boundary
+ * @param key Key name to find (without quotes)
+ * @param val_start Output: start of value
+ * @param val_end Output: end of value
+ * @return true if key found and value bounds determined
+ */
+static bool json_find_key_value(const char* json_start, const char* json_end,
+                                const char* key,
+                                const char** val_start, const char** val_end) {
+    if (!json_start || !json_end || !key || !val_start || !val_end) return false;
+
+    size_t key_len = strlen(key);
+    char search_key[256];
+    if (key_len + 3 > sizeof(search_key)) return false;
+
+    /* Build search string: "key" */
+    snprintf(search_key, sizeof(search_key), "\"%s\"", key);
+
+    const char* key_pos = strstr(json_start, search_key);
+    if (!key_pos || key_pos >= json_end) return false;
+
+    /* Move past key and find colon */
+    const char* p = key_pos + strlen(search_key);
+    while (p < json_end && isspace((unsigned char)*p)) p++;
+
+    if (p >= json_end || *p != ':') return false;
+    p++;
+
+    /* Skip whitespace after colon */
+    while (p < json_end && isspace((unsigned char)*p)) p++;
+
+    if (p >= json_end) return false;
+
+    *val_start = p;
+
+    /* Find end of value based on type */
+    if (*p == '"') {
+        /* String value - find closing quote */
+        p++;
+        while (p < json_end) {
+            if (*p == '\\' && (p + 1) < json_end) {
+                p += 2;  /* Skip escaped character */
+            } else if (*p == '"') {
+                *val_end = p + 1;
+                return true;
+            } else {
+                p++;
+            }
+        }
+        return false;  /* Unterminated string */
+    } else if (*p == '{') {
+        /* Object - find matching brace */
+        int depth = 1;
+        p++;
+        while (p < json_end && depth > 0) {
+            if (*p == '{') depth++;
+            else if (*p == '}') depth--;
+            p++;
+        }
+        *val_end = p;
+        return depth == 0;
+    } else if (*p == '[') {
+        /* Array - find matching bracket */
+        int depth = 1;
+        p++;
+        while (p < json_end && depth > 0) {
+            if (*p == '[') depth++;
+            else if (*p == ']') depth--;
+            p++;
+        }
+        *val_end = p;
+        return depth == 0;
+    } else {
+        /* Numeric, boolean, or null - find delimiter */
+        while (p < json_end && *p != ',' && *p != '}' && *p != ']' && !isspace((unsigned char)*p)) {
+            p++;
+        }
+        *val_end = p;
+        return true;
+    }
+}
+
+/**
+ * @brief Validate basic JSON structure
+ *
+ * WHAT: Basic validation of JSON structure
+ * WHY:  Catch malformed JSON before detailed parsing
+ * HOW:  Check for balanced braces, brackets, quotes
+ */
+static bool json_validate_basic_structure(const char* json, size_t len) {
+    if (!json || len == 0) return false;
+
+    int brace_depth = 0;
+    int bracket_depth = 0;
+    bool in_string = false;
+    bool escaped = false;
+
+    for (size_t i = 0; i < len; i++) {
+        char c = json[i];
+
+        if (escaped) {
+            escaped = false;
+            continue;
+        }
+
+        if (in_string) {
+            if (c == '\\') {
+                escaped = true;
+            } else if (c == '"') {
+                in_string = false;
+            }
+        } else {
+            switch (c) {
+                case '"':
+                    in_string = true;
+                    break;
+                case '{':
+                    brace_depth++;
+                    break;
+                case '}':
+                    brace_depth--;
+                    if (brace_depth < 0) return false;
+                    break;
+                case '[':
+                    bracket_depth++;
+                    break;
+                case ']':
+                    bracket_depth--;
+                    if (bracket_depth < 0) return false;
+                    break;
+            }
+        }
+    }
+
+    return brace_depth == 0 && bracket_depth == 0 && !in_string;
+}
+
+//=============================================================================
 // Bulk Operations
 //=============================================================================
 
@@ -698,9 +1173,221 @@ nimcp_error_t nimcp_pattern_db_load(
         return NIMCP_INVALID_PARAM;
     }
 
-    // TODO: Implement JSON parsing for pattern file loading
-    // For now, return not implemented
-    return NIMCP_NOT_IMPLEMENTED;
+    FILE* file = fopen(filepath, "r");
+    if (!file) {
+        LOG_MODULE_ERROR("pattern_db", "Failed to open pattern file: %s", filepath);
+        return NIMCP_ERROR;
+    }
+
+    // Create snapshot before import for rollback on error
+    uint32_t snapshot_version;
+    nimcp_error_t err = nimcp_pattern_db_snapshot(db, &snapshot_version);
+    if (err != NIMCP_SUCCESS) {
+        fclose(file);
+        return err;
+    }
+
+    // Read file contents
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    if (file_size <= 0 || file_size > 10 * 1024 * 1024) {  // Max 10MB
+        fclose(file);
+        return NIMCP_INVALID_PARAM;
+    }
+
+    char* content = malloc((size_t)file_size + 1);
+    if (!content) {
+        fclose(file);
+        return NIMCP_NO_MEMORY;
+    }
+
+    size_t read_size = fread(content, 1, (size_t)file_size, file);
+    fclose(file);
+    content[read_size] = '\0';
+
+    /* SECURITY: Validate basic JSON structure before parsing */
+    if (!json_validate_basic_structure(content, read_size)) {
+        LOG_MODULE_ERROR("pattern_db", "Invalid JSON structure in pattern file");
+        free(content);
+        return NIMCP_INVALID_PARAM;
+    }
+
+    /* Safer JSON parsing for pattern database format:
+     * { "patterns": [ { "pattern": "...", "category": N, ... }, ... ] }
+     */
+    uint32_t patterns_loaded = 0;
+    const char* content_end = content + read_size;
+
+    /* Find patterns array */
+    const char* patterns_val_start;
+    const char* patterns_val_end;
+    if (!json_find_key_value(content, content_end, "patterns",
+                             &patterns_val_start, &patterns_val_end)) {
+        LOG_MODULE_ERROR("pattern_db", "No 'patterns' array found in JSON");
+        free(content);
+        return NIMCP_INVALID_PARAM;
+    }
+
+    /* Validate it's an array */
+    if (*patterns_val_start != '[') {
+        LOG_MODULE_ERROR("pattern_db", "'patterns' value is not an array");
+        free(content);
+        return NIMCP_INVALID_PARAM;
+    }
+
+    const char* pos = patterns_val_start + 1;
+    while (pos < patterns_val_end) {
+        /* Find next object */
+        while (pos < patterns_val_end && *pos != '{') {
+            pos++;
+        }
+        if (pos >= patterns_val_end) break;
+
+        const char* obj_start = pos;
+
+        /* Find matching closing brace (handling nested objects) */
+        int depth = 1;
+        pos++;
+        while (pos < patterns_val_end && depth > 0) {
+            if (*pos == '{') depth++;
+            else if (*pos == '}') depth--;
+            pos++;
+        }
+
+        if (depth != 0) {
+            LOG_MODULE_WARN("pattern_db", "Malformed object in patterns array");
+            break;
+        }
+
+        const char* obj_end = pos;
+
+        nimcp_pattern_entry_t entry;
+        memset(&entry, 0, sizeof(entry));
+
+        /* Thread-local buffers to avoid static variable issues */
+        char pattern_buf[NIMCP_PATTERN_MAX_LENGTH];
+        char desc_buf[NIMCP_PATTERN_MAX_DESCRIPTION];
+        pattern_buf[0] = '\0';
+        desc_buf[0] = '\0';
+
+        /* Extract pattern string with safe parsing */
+        const char* val_start;
+        const char* val_end;
+        if (json_find_key_value(obj_start, obj_end, "pattern", &val_start, &val_end)) {
+            if (*val_start == '"') {
+                /* Safely unescape and copy string */
+                if (json_unescape_string(val_start + 1, val_end - 1,
+                                         pattern_buf, sizeof(pattern_buf), NULL)) {
+                    entry.pattern = pattern_buf;
+                }
+            }
+        }
+
+        /* Extract description with safe parsing */
+        if (json_find_key_value(obj_start, obj_end, "description", &val_start, &val_end)) {
+            if (*val_start == '"') {
+                if (json_unescape_string(val_start + 1, val_end - 1,
+                                         desc_buf, sizeof(desc_buf), NULL)) {
+                    entry.description = desc_buf;
+                }
+            }
+        }
+
+        /* Extract category with safe integer parsing */
+        if (json_find_key_value(obj_start, obj_end, "category", &val_start, &val_end)) {
+            long cat_val;
+            if (safe_strtol(val_start, &cat_val, 0, NIMCP_PATTERN_CATEGORY_COUNT - 1)) {
+                entry.category = (nimcp_pattern_category_t)cat_val;
+            } else {
+                /* Default to CUSTOM if invalid */
+                entry.category = NIMCP_PATTERN_CUSTOM;
+            }
+        }
+
+        /* Extract priority with safe integer parsing */
+        if (json_find_key_value(obj_start, obj_end, "priority", &val_start, &val_end)) {
+            long pri_val;
+            if (safe_strtol(val_start, &pri_val, 0, LONG_MAX)) {
+                entry.priority = (uint32_t)(pri_val > UINT32_MAX ? UINT32_MAX : pri_val);
+            }
+        }
+
+        /* Extract weight with safe float parsing */
+        if (json_find_key_value(obj_start, obj_end, "weight", &val_start, &val_end)) {
+            double wgt_val;
+            if (safe_strtod(val_start, &wgt_val)) {
+                /* Clamp weight to valid range */
+                if (wgt_val < 0.0) wgt_val = 0.0;
+                if (wgt_val > 1.0) wgt_val = 1.0;
+                entry.weight = (float)wgt_val;
+            }
+        }
+
+        /* Extract flags with safe integer parsing */
+        if (json_find_key_value(obj_start, obj_end, "flags", &val_start, &val_end)) {
+            long flg_val;
+            if (safe_strtol(val_start, &flg_val, 0, LONG_MAX)) {
+                entry.flags = (uint32_t)(flg_val > UINT32_MAX ? UINT32_MAX : flg_val);
+            }
+        }
+
+        /* Only add pattern if pattern string is valid and non-empty */
+        if (entry.pattern && strlen(entry.pattern) > 0) {
+            nimcp_pattern_id_t id;
+            err = nimcp_pattern_db_add(db, &entry, &id);
+            if (err == NIMCP_SUCCESS) {
+                patterns_loaded++;
+            } else {
+                LOG_MODULE_WARN("pattern_db", "Failed to add pattern from JSON: %s",
+                                entry.pattern);
+            }
+        }
+    }
+
+    free(content);
+
+    if (patterns_loaded == 0) {
+        LOG_MODULE_WARN("pattern_db", "No valid patterns loaded from file");
+        nimcp_pattern_db_rollback(db, snapshot_version);
+        return NIMCP_ERROR;
+    }
+
+    LOG_MODULE_INFO("pattern_db", "Loaded %u patterns from %s", patterns_loaded, filepath);
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Escape string for JSON output
+ */
+static void json_escape_string(const char* input, char* output, size_t output_size) {
+    if (!input || !output || output_size == 0) return;
+
+    size_t out_idx = 0;
+    for (const char* p = input; *p && out_idx < output_size - 1; p++) {
+        switch (*p) {
+            case '"':
+                if (out_idx + 2 < output_size) { output[out_idx++] = '\\'; output[out_idx++] = '"'; }
+                break;
+            case '\\':
+                if (out_idx + 2 < output_size) { output[out_idx++] = '\\'; output[out_idx++] = '\\'; }
+                break;
+            case '\n':
+                if (out_idx + 2 < output_size) { output[out_idx++] = '\\'; output[out_idx++] = 'n'; }
+                break;
+            case '\r':
+                if (out_idx + 2 < output_size) { output[out_idx++] = '\\'; output[out_idx++] = 'r'; }
+                break;
+            case '\t':
+                if (out_idx + 2 < output_size) { output[out_idx++] = '\\'; output[out_idx++] = 't'; }
+                break;
+            default:
+                output[out_idx++] = *p;
+                break;
+        }
+    }
+    output[out_idx] = '\0';
 }
 
 nimcp_error_t nimcp_pattern_db_save(
@@ -711,9 +1398,56 @@ nimcp_error_t nimcp_pattern_db_save(
         return NIMCP_INVALID_PARAM;
     }
 
-    // TODO: Implement JSON serialization for pattern file saving
-    // For now, return not implemented
-    return NIMCP_NOT_IMPLEMENTED;
+    FILE* file = fopen(filepath, "w");
+    if (!file) {
+        LOG_MODULE_ERROR("pattern_db", "Failed to create pattern file: %s", filepath);
+        return NIMCP_ERROR;
+    }
+
+    pthread_rwlock_rdlock(&db->write_lock);
+
+    fprintf(file, "{\n");
+    fprintf(file, "  \"version\": %u,\n", db->current_version);
+    fprintf(file, "  \"pattern_count\": %u,\n", db->pattern_count);
+    fprintf(file, "  \"patterns\": [\n");
+
+    char escaped_pattern[NIMCP_PATTERN_MAX_LENGTH * 2];
+    char escaped_desc[NIMCP_PATTERN_MAX_DESCRIPTION * 2];
+
+    uint32_t written = 0;
+    for (size_t i = 0; i < db->capacity; i++) {
+        if (!db->patterns[i].is_compiled) continue;
+
+        pattern_slot_t* slot = &db->patterns[i];
+
+        json_escape_string(slot->pattern_copy, escaped_pattern, sizeof(escaped_pattern));
+        json_escape_string(slot->description_copy, escaped_desc, sizeof(escaped_desc));
+
+        fprintf(file, "    {\n");
+        fprintf(file, "      \"id\": %u,\n", slot->pattern_id);
+        fprintf(file, "      \"pattern\": \"%s\",\n", escaped_pattern);
+        fprintf(file, "      \"category\": %d,\n", (int)slot->entry.category);
+        fprintf(file, "      \"category_name\": \"%s\",\n", nimcp_pattern_category_name(slot->entry.category));
+        fprintf(file, "      \"priority\": %u,\n", slot->entry.priority);
+        fprintf(file, "      \"weight\": %.4f,\n", (double)slot->entry.weight);
+        fprintf(file, "      \"flags\": %u,\n", slot->entry.flags);
+        fprintf(file, "      \"description\": \"%s\",\n", escaped_desc);
+        uint32_t match_count = nimcp_atomic_load_u32(&slot->match_count, NIMCP_MEMORY_ORDER_RELAXED);
+        fprintf(file, "      \"match_count\": %u,\n", match_count);
+        fprintf(file, "      \"avg_match_time_us\": %.2f\n",
+                match_count > 0 ? (double)slot->total_match_time_us / match_count : 0.0);
+
+        written++;
+        fprintf(file, "    }%s\n", written < db->pattern_count ? "," : "");
+    }
+
+    fprintf(file, "  ]\n}\n");
+
+    pthread_rwlock_unlock(&db->write_lock);
+    fclose(file);
+
+    LOG_MODULE_INFO("pattern_db", "Saved %u patterns to %s", written, filepath);
+    return NIMCP_SUCCESS;
 }
 
 nimcp_error_t nimcp_pattern_db_clear(nimcp_pattern_db_t db) {
@@ -922,7 +1656,7 @@ nimcp_error_t nimcp_pattern_db_match(
             }
 
             // Update pattern statistics
-            slot->match_count++;
+            nimcp_atomic_fetch_add_u32(&slot->match_count, 1, NIMCP_MEMORY_ORDER_RELAXED);
         }
     }
 
@@ -1095,6 +1829,79 @@ const char* nimcp_pattern_category_name(nimcp_pattern_category_t category) {
 // Bio-Async Integration
 //=============================================================================
 
+/**
+ * @brief Handle security event messages
+ */
+static nimcp_error_t pattern_db_handle_security_event(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data
+) {
+    (void)response_promise;
+    if (!msg || msg_size < sizeof(bio_message_header_t) || !user_data) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    nimcp_pattern_db_t db = (nimcp_pattern_db_t)user_data;
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    LOG_MODULE_DEBUG("pattern_db", "Security event from module 0x%04X", header->source_module);
+
+    pthread_rwlock_wrlock(&db->write_lock);
+    db->stats.total_matches++;
+    pthread_rwlock_unlock(&db->write_lock);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle threat detection messages
+ */
+static nimcp_error_t pattern_db_handle_threat_detected(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data
+) {
+    (void)response_promise;
+    if (!msg || msg_size < sizeof(bio_message_header_t) || !user_data) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    nimcp_pattern_db_t db = (nimcp_pattern_db_t)user_data;
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    LOG_MODULE_WARN("pattern_db", "Threat detected from module 0x%04X", header->source_module);
+
+    pthread_rwlock_wrlock(&db->write_lock);
+    db->stats.total_hits++;
+    pthread_rwlock_unlock(&db->write_lock);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle policy update messages
+ */
+static nimcp_error_t pattern_db_handle_policy_update(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data
+) {
+    (void)response_promise;
+    if (!msg || msg_size < sizeof(bio_message_header_t) || !user_data) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    nimcp_pattern_db_t db = (nimcp_pattern_db_t)user_data;
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    LOG_MODULE_INFO("pattern_db", "Policy update from module 0x%04X", header->source_module);
+
+    pthread_rwlock_wrlock(&db->write_lock);
+    db->current_version++;
+    db->stats.current_version = db->current_version;
+    pthread_rwlock_unlock(&db->write_lock);
+
+    return NIMCP_SUCCESS;
+}
+
 uint32_t nimcp_pattern_db_process_inbox(
     nimcp_pattern_db_t db,
     uint32_t max_messages
@@ -1133,7 +1940,15 @@ nimcp_error_t nimcp_pattern_db_register_bio_async(
     db->bio_async_enabled = true;
     db->config.module_id = module_id;
 
-    // TODO: Register message handlers for pattern management
+    // Register message handlers for pattern management
+    bio_router_register_handler(db->bio_ctx, BIO_MSG_SECURITY_EVENT,
+                                 pattern_db_handle_security_event);
+    bio_router_register_handler(db->bio_ctx, BIO_MSG_SECURITY_THREAT_DETECTED,
+                                 pattern_db_handle_threat_detected);
+    bio_router_register_handler(db->bio_ctx, BIO_MSG_SECURITY_POLICY_UPDATE,
+                                 pattern_db_handle_policy_update);
+
+    LOG_MODULE_INFO("pattern_db", "Registered bio-async handlers");
 
     return NIMCP_SUCCESS;
 }

@@ -37,6 +37,10 @@
 #include "core/brain/regions/motor/nimcp_motor_adapter.h"
 #include "core/brain/regions/motor/nimcp_motor_quantum_bridge.h"
 
+// Bio-async includes
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_async.h"
+
 #include <string.h>
 
 // Forward declarations for substrate and thalamic bridges
@@ -82,6 +86,105 @@ extern int motor_thalamic_bridge_reset(motor_thalamic_bridge_t* bridge);
 //=============================================================================
 
 /**
+ * @brief Message handler for motor command requests
+ *
+ * WHAT: Process motor command execution requests from other brain regions
+ * WHY:  Enable coordinated movement initiation from prefrontal/basal ganglia
+ * HOW:  Queue motor command and initiate execution pipeline
+ *
+ * @param msg Motor command request message
+ * @param msg_size Message size
+ * @param response_promise Promise for response (execution result)
+ * @param user_data Motor cortex adapter pointer
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t motor_handle_command_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+    (void)msg; (void)msg_size; (void)response_promise; (void)user_data;
+
+    /*
+     * TODO: Full implementation when motor command format is finalized
+     *
+     * Implementation would:
+     * 1. Validate motor command parameters (target, velocity, duration)
+     * 2. Check motor readiness and inhibition status
+     * 3. Queue command in motor planning buffer
+     * 4. Initiate execution sequence via M1 activation
+     * 5. Send acknowledgment with estimated execution time
+     */
+
+    LOG_TRACE(LOG_MODULE, "Motor cortex received command request (stub)");
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Message handler for motor stop requests
+ *
+ * WHAT: Process emergency stop or inhibition requests
+ * WHY:  Enable rapid motor inhibition from prefrontal/basal ganglia
+ * HOW:  Interrupt current execution and activate motor inhibition
+ *
+ * @param msg Motor stop request message
+ * @param msg_size Message size
+ * @param response_promise Promise for response (stop confirmation)
+ * @param user_data Motor cortex adapter pointer
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t motor_handle_stop_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+    (void)msg; (void)msg_size; (void)response_promise; (void)user_data;
+
+    /*
+     * TODO: Full implementation when motor stop format is finalized
+     *
+     * Implementation would:
+     * 1. Immediately halt current motor execution
+     * 2. Clear pending motor commands from queue
+     * 3. Activate antagonist muscle groups for rapid deceleration
+     * 4. Update motor state to INHIBITED
+     * 5. Send confirmation with stop latency metrics
+     */
+
+    LOG_TRACE(LOG_MODULE, "Motor cortex received stop request (stub)");
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Message handler for cerebellar correction signals
+ *
+ * WHAT: Process real-time motor corrections from cerebellum
+ * WHY:  Enable online motor adjustment for precision movements
+ * HOW:  Apply correction to ongoing motor commands
+ *
+ * @param msg Cerebellar correction message
+ * @param msg_size Message size
+ * @param response_promise Promise for response (may be NULL)
+ * @param user_data Motor cortex adapter pointer
+ * @return NIMCP_SUCCESS or error code
+ */
+static nimcp_error_t motor_handle_cerebellar_correction(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data) {
+    (void)msg; (void)msg_size; (void)response_promise; (void)user_data;
+
+    /*
+     * TODO: Full implementation when cerebellar correction format is finalized
+     *
+     * Implementation would:
+     * 1. Extract correction vector from cerebellar signal
+     * 2. Validate correction is within safe bounds
+     * 3. Apply correction to active motor commands
+     * 4. Update internal forward model with error signal
+     * 5. Optionally trigger motor learning if error is systematic
+     */
+
+    LOG_TRACE(LOG_MODULE, "Motor cortex received cerebellar correction (stub)");
+    return NIMCP_SUCCESS;
+}
+
+/**
  * @brief Connect motor to bio-async messaging
  */
 static bool connect_motor_to_bio_async(brain_t brain) {
@@ -89,10 +192,28 @@ static bool connect_motor_to_bio_async(brain_t brain) {
 
     /* Register with bio-async if enabled */
     if (brain->bio_async_enabled && brain->bio_async_ctx) {
-        /*
-         * TODO: Register motor message handlers
-         * bio_router_register_module(router, BIO_MODULE_MOTOR_CORTEX, brain->motor);
-         */
+        /* Register motor cortex module with bio-async router */
+        bio_module_info_t info = {
+            .module_id = BIO_MODULE_MOTOR_CORTEX,
+            .module_name = "motor_cortex",
+            .inbox_capacity = 64,
+            .user_data = brain->motor
+        };
+
+        bio_module_context_t ctx = bio_router_register_module(&info);
+        if (ctx) {
+            /* Register message handlers for motor-specific messages */
+            bio_router_register_handler(ctx, BIO_MSG_MOTOR_COMMAND_REQUEST,
+                                        motor_handle_command_request);
+            bio_router_register_handler(ctx, BIO_MSG_MOTOR_STOP_REQUEST,
+                                        motor_handle_stop_request);
+            bio_router_register_handler(ctx, BIO_MSG_CEREBELLAR_CORRECTION,
+                                        motor_handle_cerebellar_correction);
+            LOG_DEBUG(LOG_MODULE, "Motor cortex bio-async registered (module_id=0x%04X)",
+                      BIO_MODULE_MOTOR_CORTEX);
+        } else {
+            LOG_WARN(LOG_MODULE, "Failed to register motor cortex with bio-async");
+        }
     }
 
     return true;

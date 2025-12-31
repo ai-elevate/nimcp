@@ -243,7 +243,177 @@ void core_directives_destroy(core_directives_system_t* directives)
 }
 
 //=============================================================================
-// Action Evaluation (Stub Implementation)
+// Action Evaluation Helpers
+//=============================================================================
+
+/**
+ * @brief Compute harm potential from action vector
+ *
+ * ACTION VECTOR ENCODING (assumed):
+ * - Dim 0-2: Target (human=positive, self=negative, object=near-zero)
+ * - Dim 3-5: Force/intensity (high magnitude = forceful action)
+ * - Dim 6-8: Harm semantics (positive = beneficial, negative = harmful)
+ */
+static float compute_harm_potential(const float* action_vector, uint32_t action_dim)
+{
+    if (action_dim < 3) return 0.0f;
+
+    float harm_score = 0.0f;
+    float total_weight = 0.0f;
+
+    // Harm semantics dimensions - negative values indicate harmful actions
+    if (action_dim >= 9) {
+        for (uint32_t i = 6; i < 9 && i < action_dim; i++) {
+            if (action_vector[i] < 0.0f) {
+                harm_score += -action_vector[i];
+                total_weight += 1.0f;
+            }
+        }
+    }
+
+    // Force/intensity amplifies harm
+    if (action_dim >= 6) {
+        float force_magnitude = 0.0f;
+        for (uint32_t i = 3; i < 6 && i < action_dim; i++) {
+            force_magnitude += action_vector[i] * action_vector[i];
+        }
+        force_magnitude = sqrtf(force_magnitude);
+        if (force_magnitude > 0.7f && harm_score > 0.0f) {
+            harm_score += force_magnitude * 0.5f;
+            total_weight += 0.5f;
+        }
+    }
+
+    // Actions targeting humans with harmful semantics are more severe
+    if (action_dim >= 3) {
+        float human_target = action_vector[0];
+        if (human_target > 0.5f && harm_score > 0.0f) {
+            harm_score *= (1.0f + human_target);
+        }
+    }
+
+    if (total_weight > 0.0f) {
+        harm_score /= total_weight;
+    }
+    return fminf(1.0f, fmaxf(0.0f, harm_score));
+}
+
+/** @brief Evaluate Asimov's First Law - Harm Prevention */
+static bool evaluate_first_law(const float* action_vector, uint32_t action_dim,
+                               float harm_threshold, float* severity)
+{
+    float harm = compute_harm_potential(action_vector, action_dim);
+    *severity = harm;
+    return (harm >= harm_threshold);
+}
+
+/** @brief Evaluate Asimov's Third Law - Self-Preservation */
+static bool evaluate_third_law(const float* action_vector, uint32_t action_dim, float* severity)
+{
+    if (action_dim < 3) {
+        *severity = 0.0f;
+        return false;
+    }
+
+    float self_target = action_vector[0];
+    if (self_target < -0.3f) {
+        float self_harm = 0.0f;
+        if (action_dim >= 9) {
+            for (uint32_t i = 6; i < 9 && i < action_dim; i++) {
+                if (action_vector[i] < 0.0f) self_harm += -action_vector[i];
+            }
+            self_harm /= 3.0f;
+        }
+        *severity = self_harm * (-self_target);
+        return (*severity >= 0.5f);
+    }
+    *severity = 0.0f;
+    return false;
+}
+
+/** @brief Evaluate Golden Rule - Reciprocity Ethics */
+static bool evaluate_golden_rule(const float* action_vector, uint32_t action_dim,
+                                 float reciprocity_threshold, float* severity)
+{
+    if (action_dim < 6) {
+        *severity = 0.0f;
+        return false;
+    }
+
+    float unwantedness = 0.0f;
+    if (action_dim >= 9) {
+        for (uint32_t i = 6; i < 9 && i < action_dim; i++) {
+            if (action_vector[i] < 0.0f) unwantedness += -action_vector[i];
+        }
+        unwantedness /= 3.0f;
+    }
+
+    float force = 0.0f;
+    for (uint32_t i = 3; i < 6 && i < action_dim; i++) {
+        force += action_vector[i] * action_vector[i];
+    }
+    force = sqrtf(force);
+
+    float reciprocity_violation = unwantedness * (1.0f + force);
+    reciprocity_violation = fminf(1.0f, reciprocity_violation);
+    *severity = reciprocity_violation;
+    return (reciprocity_violation >= reciprocity_threshold);
+}
+
+/** @brief Evaluate Combinatorial Harm from action sequences */
+static bool evaluate_combinatorial_harm(core_directives_system_t* directives,
+                                        const float* action_vector, uint32_t action_dim,
+                                        float* severity)
+{
+    *severity = 0.0f;
+    if (!directives->action_history || directives->history_count == 0) {
+        return false;
+    }
+
+    float cumulative_harm = 0.0f;
+    float pattern_strength = 0.0f;
+    uint32_t harmful_count = 0;
+
+    for (uint32_t i = 0; i < directives->history_count; i++) {
+        action_history_entry_t* entry = &directives->action_history[i];
+        if (!entry->valid) continue;
+
+        float hist_harm = compute_harm_potential(entry->action_vector, entry->action_dim);
+        cumulative_harm += hist_harm;
+        if (hist_harm > 0.1f) harmful_count++;
+
+        if (entry->action_dim == action_dim) {
+            float similarity = 0.0f, norm_a = 0.0f, norm_b = 0.0f;
+            for (uint32_t j = 0; j < action_dim; j++) {
+                similarity += action_vector[j] * entry->action_vector[j];
+                norm_a += action_vector[j] * action_vector[j];
+                norm_b += entry->action_vector[j] * entry->action_vector[j];
+            }
+            if (norm_a > 0.0f && norm_b > 0.0f) {
+                similarity /= (sqrtf(norm_a) * sqrtf(norm_b));
+                if (similarity > 0.7f && hist_harm > 0.1f) {
+                    pattern_strength += similarity * hist_harm;
+                }
+            }
+        }
+    }
+
+    float combined_severity = 0.0f;
+    float avg_harm = cumulative_harm / fmaxf(1.0f, (float)directives->history_count);
+    float current_harm = compute_harm_potential(action_vector, action_dim);
+
+    if (avg_harm > 0.2f && current_harm > 0.1f) combined_severity += avg_harm * 0.5f;
+    if (pattern_strength > 0.3f) combined_severity += pattern_strength * 0.3f;
+
+    float harm_frequency = (float)harmful_count / fmaxf(1.0f, (float)directives->history_count);
+    if (harm_frequency > 0.5f) combined_severity += harm_frequency * 0.2f;
+
+    *severity = fminf(1.0f, combined_severity);
+    return (*severity >= directives->config.harm_threshold);
+}
+
+//=============================================================================
+// Action Evaluation (Full Implementation)
 //=============================================================================
 
 int core_directives_evaluate(
@@ -263,18 +433,98 @@ int core_directives_evaluate(
 
     nimcp_platform_mutex_lock(&directives->mutex);
 
-    // Stub implementation: always allow for now
-    // TODO: Implement Asimov's Laws, Golden Rule, Combinatorial Harm
     result->action = DIRECTIVE_ALLOW;
     result->violation = DIRECTIVE_VIOLATION_NONE;
     result->severity = 0.0f;
     result->confidence = 1.0f;
-    snprintf(result->reason, sizeof(result->reason), "No violations detected (stub)");
+    result->reason[0] = '\0';
 
+    float max_severity = 0.0f;
+    float eval_severity = 0.0f;
+
+    // FIRST LAW: Harm Prevention (HIGHEST PRIORITY)
+    if (directives->config.enable_first_law) {
+        if (evaluate_first_law(action_vector, action_dim,
+                               directives->config.harm_threshold, &eval_severity)) {
+            result->action = DIRECTIVE_BLOCK;
+            result->violation = DIRECTIVE_VIOLATION_HARM;
+            result->severity = eval_severity;
+            snprintf(result->reason, sizeof(result->reason),
+                     "First Law: Harm potential %.2f exceeds threshold %.2f",
+                     eval_severity, directives->config.harm_threshold);
+            directives->stats.harm_violations++;
+            directives->stats.blocked_actions++;
+            goto evaluation_complete;
+        }
+        max_severity = fmaxf(max_severity, eval_severity);
+    }
+
+    // THIRD LAW: Self-Preservation
+    if (directives->config.enable_third_law) {
+        if (evaluate_third_law(action_vector, action_dim, &eval_severity)) {
+            if (eval_severity >= directives->config.severity_threshold) {
+                result->action = DIRECTIVE_MODIFY;
+                result->violation = DIRECTIVE_VIOLATION_SELF_PRESERVATION;
+                result->severity = eval_severity;
+                snprintf(result->reason, sizeof(result->reason),
+                         "Third Law: Self-harm severity %.2f", eval_severity);
+                directives->stats.self_harm_violations++;
+                directives->stats.modified_actions++;
+                goto evaluation_complete;
+            }
+        }
+        max_severity = fmaxf(max_severity, eval_severity);
+    }
+
+    // GOLDEN RULE: Reciprocity Ethics
+    if (directives->config.enable_golden_rule) {
+        if (evaluate_golden_rule(action_vector, action_dim,
+                                 directives->config.reciprocity_threshold, &eval_severity)) {
+            result->action = DIRECTIVE_MODIFY;
+            result->violation = DIRECTIVE_VIOLATION_GOLDEN_RULE;
+            result->severity = eval_severity;
+            snprintf(result->reason, sizeof(result->reason),
+                     "Golden Rule: Reciprocity violation %.2f", eval_severity);
+            directives->stats.golden_rule_violations++;
+            directives->stats.modified_actions++;
+            goto evaluation_complete;
+        }
+        max_severity = fmaxf(max_severity, eval_severity);
+    }
+
+    // COMBINATORIAL HARM: Emergent harm from sequences
+    if (directives->config.enable_combinatorial_harm && directives->action_history) {
+        if (evaluate_combinatorial_harm(directives, action_vector, action_dim, &eval_severity)) {
+            result->action = DIRECTIVE_BLOCK;
+            result->violation = DIRECTIVE_VIOLATION_COMBINATORIAL;
+            result->severity = eval_severity;
+            snprintf(result->reason, sizeof(result->reason),
+                     "Combinatorial harm detected: severity %.2f", eval_severity);
+            directives->stats.combinatorial_violations++;
+            directives->stats.blocked_actions++;
+            goto evaluation_complete;
+        }
+        max_severity = fmaxf(max_severity, eval_severity);
+    }
+
+    // Action passed all checks
+    result->severity = max_severity;
+    result->confidence = 1.0f - (max_severity * 0.3f);
+    if (max_severity > 0.0f) {
+        snprintf(result->reason, sizeof(result->reason),
+                 "Allowed with residual severity %.2f%s%s",
+                 max_severity, context_desc ? ": " : "", context_desc ? context_desc : "");
+    } else {
+        snprintf(result->reason, sizeof(result->reason), "No ethical violations detected");
+    }
+
+evaluation_complete:
     directives->stats.total_evaluations++;
-
     nimcp_platform_mutex_unlock(&directives->mutex);
 
+    if (result->action == DIRECTIVE_BLOCK) {
+        NIMCP_LOGGING_WARN("DIRECTIVE BLOCK: %s", result->reason);
+    }
     return 0;
 }
 

@@ -133,9 +133,9 @@ TEST_F(BrainInitAllocationTest, InitializesReferenceCountingFields) {
     brain_t brain = nimcp_brain_factory_allocate_brain();
     ASSERT_NE(brain, nullptr);
 
-    EXPECT_EQ(brain->network_refcount, nullptr) << "network_refcount should be NULL";
+    // Note: network_refcount renamed to network_refcount_atomic (no longer pointer)
+    // refcount_mutex removed - now using atomic operations
     EXPECT_FALSE(brain->can_use_readonly) << "can_use_readonly should be false";
-    EXPECT_EQ(brain->refcount_mutex, nullptr) << "refcount_mutex should be NULL";
 
     brain_destroy(brain);
 }
@@ -301,10 +301,9 @@ TEST_F(BrainInitAllocationTest, AllFieldsConsistent) {
     }
 
     // Reference counting consistency
-    if (brain->network_refcount != nullptr) {
-        EXPECT_NE(brain->refcount_mutex, nullptr)
-            << "If refcount exists, mutex should too";
-    }
+    // Note: network_refcount renamed to network_refcount_atomic
+    // refcount_mutex removed (using atomic operations)
+    // This check is now implicit in the atomic refcount
 
     // Long-term memory consistency
     if (brain->longterm_memory != nullptr) {

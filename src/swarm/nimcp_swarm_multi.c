@@ -258,7 +258,55 @@ static nimcp_error_t handle_resource_request(
     LOG_DEBUG("Received resource request message");
 
     /* Process resource request - match with available resources */
-    /* TODO: Implement resource matching and allocation logic */
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    /* Extract resource request from message payload */
+    if (header->payload_size >= sizeof(nimcp_resource_request_t)) {
+        const nimcp_resource_request_t* request =
+            (const nimcp_resource_request_t*)((const uint8_t*)msg + sizeof(bio_message_header_t));
+
+        /* Look up target swarm */
+        nimcp_swarm_identity_t* target = (nimcp_swarm_identity_t*)swarm_hash_table_lookup(
+            coordinator->swarm_registry, request->target_swarm);
+
+        if (target) {
+            /* Check capability availability based on request type */
+            bool can_fulfill = false;
+            for (uint32_t i = 0; i < target->capability_count; i++) {
+                nimcp_swarm_capability_t* cap = &target->capabilities[i];
+
+                /* Map request type to capability type */
+                nimcp_swarm_capability_type_t needed_cap = NIMCP_SWARM_CAP_COUNT;
+                switch (request->type) {
+                    case NIMCP_RESOURCE_REQ_DRONES:
+                        needed_cap = NIMCP_SWARM_CAP_TRANSPORT;
+                        break;
+                    case NIMCP_RESOURCE_REQ_INFORMATION:
+                        needed_cap = NIMCP_SWARM_CAP_RECONNAISSANCE;
+                        break;
+                    case NIMCP_RESOURCE_REQ_CAPABILITY:
+                    case NIMCP_RESOURCE_REQ_COORDINATION:
+                        needed_cap = NIMCP_SWARM_CAP_COMMUNICATION;
+                        break;
+                    default:
+                        break;
+                }
+
+                if (cap->type == needed_cap && cap->is_lendable &&
+                    cap->available >= request->quantity) {
+                    can_fulfill = true;
+                    LOG_INFO("Resource request %lu can be fulfilled by swarm %lu",
+                             (unsigned long)request->request_id, (unsigned long)target->swarm_id);
+                    break;
+                }
+            }
+
+            if (!can_fulfill) {
+                LOG_DEBUG("Resource request %lu cannot be fulfilled - insufficient resources",
+                          (unsigned long)request->request_id);
+            }
+        }
+    }
 
     return NIMCP_SUCCESS;
 }
@@ -283,7 +331,47 @@ static nimcp_error_t handle_territory_negotiate(
     LOG_DEBUG("Received territory negotiation message");
 
     /* Process territory negotiation request */
-    /* TODO: Implement territory boundary adjustment logic */
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    /* Extract negotiation data from message payload */
+    if (header->payload_size >= sizeof(uint64_t) * 2 + sizeof(nimcp_territory_bounds_t)) {
+        const uint8_t* payload = (const uint8_t*)msg + sizeof(bio_message_header_t);
+        uint64_t swarm_a = *(const uint64_t*)payload;
+        uint64_t swarm_b = *(const uint64_t*)(payload + sizeof(uint64_t));
+        const nimcp_territory_bounds_t* proposed =
+            (const nimcp_territory_bounds_t*)(payload + sizeof(uint64_t) * 2);
+
+        /* Look up both swarms */
+        nimcp_swarm_identity_t* identity_a = (nimcp_swarm_identity_t*)swarm_hash_table_lookup(
+            coordinator->swarm_registry, swarm_a);
+        nimcp_swarm_identity_t* identity_b = (nimcp_swarm_identity_t*)swarm_hash_table_lookup(
+            coordinator->swarm_registry, swarm_b);
+
+        if (identity_a && identity_b) {
+            /* Adjust boundaries - simple midpoint calculation for contested areas */
+            nimcp_territory_bounds_t* bounds_a = &identity_a->territory;
+            nimcp_territory_bounds_t* bounds_b = &identity_b->territory;
+
+            /* Check for overlap and adjust */
+            if (bounds_a->max.x > bounds_b->min.x && bounds_b->max.x > bounds_a->min.x) {
+                /* X-axis overlap - adjust based on priority */
+                double midpoint = (bounds_a->max.x + bounds_b->min.x) / 2.0;
+                if (bounds_a->priority > bounds_b->priority) {
+                    midpoint += (bounds_a->max.x - bounds_b->min.x) * 0.1;
+                } else if (bounds_b->priority > bounds_a->priority) {
+                    midpoint -= (bounds_a->max.x - bounds_b->min.x) * 0.1;
+                }
+                bounds_a->max.x = midpoint;
+                bounds_b->min.x = midpoint;
+            }
+
+            bounds_a->timestamp = nimcp_time_get_us();
+            bounds_b->timestamp = nimcp_time_get_us();
+
+            LOG_INFO("Adjusted territory boundaries between swarms %lu and %lu",
+                     (unsigned long)swarm_a, (unsigned long)swarm_b);
+        }
+    }
 
     return NIMCP_SUCCESS;
 }
@@ -308,13 +396,58 @@ static nimcp_error_t handle_mission_update(
     LOG_DEBUG("Received mission update message");
 
     /* Process mission status update */
-    /* TODO: Update mission state based on message content */
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    /* Extract mission update from payload */
+    if (header->payload_size >= sizeof(uint64_t) + sizeof(nimcp_mission_status_t) + sizeof(float)) {
+        const uint8_t* payload = (const uint8_t*)msg + sizeof(bio_message_header_t);
+        uint64_t mission_id = *(const uint64_t*)payload;
+        nimcp_mission_status_t new_status = *(const nimcp_mission_status_t*)(payload + sizeof(uint64_t));
+        float progress = *(const float*)(payload + sizeof(uint64_t) + sizeof(nimcp_mission_status_t));
+
+        /* Look up mission in registry */
+        nimcp_mission_assignment_t* mission = (nimcp_mission_assignment_t*)swarm_hash_table_lookup(
+            coordinator->mission_registry, mission_id);
+
+        if (mission) {
+            nimcp_mission_status_t old_status = mission->status;
+            mission->status = new_status;
+            mission->progress = progress;
+
+            LOG_INFO("Mission %lu status updated: %d -> %d (progress: %.1f%%)",
+                     (unsigned long)mission_id, old_status, new_status, progress * 100.0f);
+
+            /* Handle completion or failure */
+            if (new_status == NIMCP_MISSION_STATUS_COMPLETED ||
+                new_status == NIMCP_MISSION_STATUS_FAILED ||
+                new_status == NIMCP_MISSION_STATUS_ABORTED) {
+                LOG_INFO("Mission %lu ended with status %d", (unsigned long)mission_id, new_status);
+            }
+        } else {
+            LOG_DEBUG("Mission %lu not found in registry", (unsigned long)mission_id);
+        }
+    }
 
     return NIMCP_SUCCESS;
 }
 
 /**
+ * @brief Extended conflict alert payload structure
+ */
+typedef struct {
+    nimcp_swarm_conflict_type_t conflict_type;
+    uint64_t swarm1_id;
+    uint64_t swarm2_id;
+    float severity;
+    nimcp_territory_bounds_t contested_area;
+} conflict_alert_payload_t;
+
+/**
  * @brief Handle conflict alert messages
+ *
+ * WHAT: Process incoming conflict alerts and trigger resolution
+ * WHY:  Enable distributed conflict detection and resolution
+ * HOW:  Parse alert, register conflict, select and initiate resolution strategy
  */
 static nimcp_error_t handle_conflict_alert(
     const void* msg,
@@ -333,7 +466,165 @@ static nimcp_error_t handle_conflict_alert(
     LOG_DEBUG("Received conflict alert message");
 
     /* Process conflict notification */
-    /* TODO: Trigger conflict resolution procedures */
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    /* Extract conflict type and involved swarms from message payload */
+    if (msg_size > sizeof(bio_message_header_t) + sizeof(nimcp_swarm_conflict_type_t)) {
+        const uint8_t* payload = (const uint8_t*)msg + sizeof(bio_message_header_t);
+        nimcp_swarm_conflict_type_t conflict_type;
+        memcpy(&conflict_type, payload, sizeof(nimcp_swarm_conflict_type_t));
+
+        /* Try to extract extended payload if available */
+        uint64_t swarm1_id = 0;
+        uint64_t swarm2_id = 0;
+        float severity = 0.5f;
+
+        if (msg_size >= sizeof(bio_message_header_t) + sizeof(conflict_alert_payload_t)) {
+            conflict_alert_payload_t extended_payload;
+            memcpy(&extended_payload, payload, sizeof(conflict_alert_payload_t));
+            swarm1_id = extended_payload.swarm1_id;
+            swarm2_id = extended_payload.swarm2_id;
+            severity = extended_payload.severity;
+        }
+
+        LOG_INFO("Conflict alert received: type=%d, severity=%.3f from module=0x%x",
+                 conflict_type, severity, header->source_module);
+
+        /* Create new conflict record */
+        nimcp_swarm_conflict_t new_conflict = {0};
+        new_conflict.conflict_id = generate_unique_id();
+        new_conflict.type = conflict_type;
+        new_conflict.detection_time = nimcp_time_get_ms();
+        new_conflict.severity = severity;
+        new_conflict.is_resolved = false;
+        new_conflict.swarm_count = 2;
+        new_conflict.swarm_ids[0] = swarm1_id;
+        new_conflict.swarm_ids[1] = swarm2_id;
+
+        /* Select resolution strategy based on conflict type and severity */
+        nimcp_conflict_resolution_t strategy = NIMCP_CONFLICT_NEGOTIATION;
+
+        switch (conflict_type) {
+            case NIMCP_CONFLICT_TYPE_TERRITORY:
+                LOG_INFO("Territory conflict detected - initiating spatial partition");
+                if (severity >= 0.8f) {
+                    strategy = NIMCP_CONFLICT_ESCALATION;
+                } else if (severity >= 0.5f) {
+                    strategy = NIMCP_CONFLICT_NEGOTIATION;
+                } else {
+                    strategy = NIMCP_CONFLICT_SPATIAL_SHARING;
+                }
+                break;
+
+            case NIMCP_CONFLICT_TYPE_RESOURCE:
+                LOG_INFO("Resource conflict detected - initiating resource sharing");
+                if (severity >= 0.7f) {
+                    strategy = NIMCP_CONFLICT_PRIORITY;
+                } else {
+                    strategy = NIMCP_CONFLICT_TIME_SHARING;
+                }
+                break;
+
+            case NIMCP_CONFLICT_TYPE_GOAL:
+                LOG_INFO("Goal conflict detected - initiating priority arbitration");
+                strategy = NIMCP_CONFLICT_PRIORITY;
+                break;
+
+            case NIMCP_CONFLICT_TYPE_PRIORITY:
+                LOG_INFO("Priority conflict detected - escalating to coordinator");
+                strategy = NIMCP_CONFLICT_ESCALATION;
+                break;
+
+            case NIMCP_CONFLICT_TYPE_COMMUNICATION:
+                LOG_INFO("Communication conflict detected - resolving routing");
+                strategy = NIMCP_CONFLICT_COOPERATION;
+                break;
+
+            default:
+                LOG_DEBUG("Unknown conflict type: %d - using default negotiation", conflict_type);
+                strategy = NIMCP_CONFLICT_NEGOTIATION;
+                break;
+        }
+
+        new_conflict.strategy = strategy;
+        snprintf(new_conflict.description, sizeof(new_conflict.description),
+                 "Auto-detected conflict type=%d, swarms=%lu,%lu",
+                 conflict_type, (unsigned long)swarm1_id, (unsigned long)swarm2_id);
+
+        /* Update conflict statistics */
+        /* Note: conflict history tracking not currently implemented */
+        coordinator->conflict_stats.total_conflicts++;
+        coordinator->conflict_stats.conflicts_pending++;
+        LOG_DEBUG("Conflict recorded: total=%u pending=%u",
+                  coordinator->conflict_stats.total_conflicts,
+                  coordinator->conflict_stats.conflicts_pending);
+
+        /* Trigger resolution based on selected strategy */
+        nimcp_swarm_resolution_result_t result = {0};
+        nimcp_result_t resolve_status = NIMCP_ERROR;
+
+        switch (strategy) {
+            case NIMCP_CONFLICT_PRIORITY:
+                /* Immediate resolution by priority */
+                resolve_status = nimcp_multi_swarm_resolve_conflict(
+                    coordinator, new_conflict.conflict_id,
+                    NIMCP_CONFLICT_PRIORITY, &result);
+                if (resolve_status == NIMCP_SUCCESS && result.resolved) {
+                    LOG_INFO("Conflict %lu resolved by priority",
+                             (unsigned long)new_conflict.conflict_id);
+                }
+                break;
+
+            case NIMCP_CONFLICT_NEGOTIATION:
+                /* Start negotiation process */
+                resolve_status = nimcp_multi_swarm_start_negotiation(
+                    coordinator, new_conflict.conflict_id);
+                if (resolve_status == NIMCP_SUCCESS) {
+                    LOG_INFO("Negotiation started for conflict %lu",
+                             (unsigned long)new_conflict.conflict_id);
+                }
+                break;
+
+            case NIMCP_CONFLICT_TIME_SHARING:
+            case NIMCP_CONFLICT_SPATIAL_SHARING:
+            case NIMCP_CONFLICT_RESOLVE_PARTITION:
+                /* Direct resolution via sharing */
+                resolve_status = nimcp_multi_swarm_resolve_conflict(
+                    coordinator, new_conflict.conflict_id,
+                    strategy, &result);
+                if (resolve_status == NIMCP_SUCCESS && result.resolved) {
+                    LOG_INFO("Conflict %lu resolved by sharing strategy",
+                             (unsigned long)new_conflict.conflict_id);
+                }
+                break;
+
+            case NIMCP_CONFLICT_ESCALATION:
+                /* Escalate to super-swarm or higher authority */
+                LOG_WARN("Escalating conflict %lu - severity=%.3f",
+                         (unsigned long)new_conflict.conflict_id, severity);
+                coordinator->conflict_stats.escalations++;
+                /* Escalation will be handled asynchronously by super-swarm */
+                break;
+
+            case NIMCP_CONFLICT_COOPERATION:
+                /* Initiate cooperative resolution */
+                resolve_status = nimcp_multi_swarm_resolve_conflict(
+                    coordinator, new_conflict.conflict_id,
+                    NIMCP_CONFLICT_COOPERATION, &result);
+                break;
+
+            default:
+                LOG_WARN("Unhandled resolution strategy: %d", strategy);
+                break;
+        }
+
+        /* Log resolution attempt outcome */
+        if (resolve_status != NIMCP_SUCCESS && strategy != NIMCP_CONFLICT_ESCALATION) {
+            LOG_WARN("Conflict resolution attempt failed for %lu: status=%d",
+                     (unsigned long)new_conflict.conflict_id, resolve_status);
+        }
+    }
+    (void)header;
 
     return NIMCP_SUCCESS;
 }

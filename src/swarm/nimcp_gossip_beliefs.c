@@ -106,6 +106,211 @@ static nimcp_result_t handle_gossip_spread(gossip_beliefs_t* gb, const void* msg
 static void apply_decay_to_agent(agent_info_t* agent, float decay_factor);
 
 /* ============================================================================
+ * Iteration Context Structures and Callbacks
+ * ============================================================================ */
+
+/** Context for gossip propagation iteration */
+typedef struct {
+    gossip_beliefs_t* gb;
+    uint32_t* gossip_count;
+    float gossip_prob;
+} gossip_propagate_ctx_t;
+
+/** Context for belief extraction */
+typedef struct {
+    belief_t** beliefs;
+    uint32_t capacity;
+    uint32_t* count;
+} belief_extract_ctx_t;
+
+/** Context for agent decay */
+typedef struct {
+    float decay_factor;
+} agent_decay_ctx_t;
+
+/** Context for entropy calculation */
+typedef struct {
+    float total_certainty_sum;
+    uint32_t belief_count;
+} entropy_calc_ctx_t;
+
+/** Context for collecting all beliefs (contradiction detection) */
+typedef struct {
+    belief_t** all_beliefs;
+    uint32_t* count;
+    uint32_t capacity;
+} belief_collect_ctx_t;
+
+/** Context for cleanup during destruction */
+typedef struct {
+    uint32_t beliefs_freed;
+    uint32_t agents_freed;
+} cleanup_ctx_t;
+
+/** Callback for gossip belief iteration */
+static bool gossip_belief_iter_cb(const void* key, size_t key_size, void* value,
+                                  size_t value_size, void* user_data)
+{
+    (void)key; (void)key_size; (void)value_size;
+    gossip_propagate_ctx_t* ctx = (gossip_propagate_ctx_t*)user_data;
+    belief_t* belief = *(belief_t**)value;
+
+    if (!belief) {
+        return true;
+    }
+
+    /* Probabilistically decide to gossip this belief */
+    float r = (float)rand() / (float)RAND_MAX;
+    if (r < ctx->gossip_prob) {
+        /* Select random target agent ID */
+        uint32_t target = rand() % 1000;
+        if (send_gossip_message(ctx->gb, belief, target) == NIMCP_SUCCESS) {
+            (*ctx->gossip_count)++;
+            belief->propagation_count++;
+        }
+    }
+    return true;
+}
+
+/** Callback for agent gossip iteration */
+static bool gossip_agent_iter_cb(const void* key, size_t key_size, void* value,
+                                 size_t value_size, void* user_data)
+{
+    (void)key; (void)key_size; (void)value_size;
+    gossip_propagate_ctx_t* ctx = (gossip_propagate_ctx_t*)user_data;
+    agent_info_t* agent = *(agent_info_t**)value;
+
+    if (!agent || !agent->beliefs) {
+        return true;
+    }
+
+    hash_table_iterate(agent->beliefs, gossip_belief_iter_cb, ctx);
+    return true;
+}
+
+/** Callback for belief extraction */
+static bool extract_belief_iter_cb(const void* key, size_t key_size, void* value,
+                                   size_t value_size, void* user_data)
+{
+    (void)key; (void)key_size; (void)value_size;
+    belief_extract_ctx_t* ctx = (belief_extract_ctx_t*)user_data;
+    belief_t* belief = *(belief_t**)value;
+
+    if (!belief || *ctx->count >= ctx->capacity) {
+        return (*ctx->count < ctx->capacity);
+    }
+
+    ctx->beliefs[*ctx->count] = belief;
+    (*ctx->count)++;
+    return true;
+}
+
+/** Callback for belief decay */
+static bool decay_belief_iter_cb(const void* key, size_t key_size, void* value,
+                                 size_t value_size, void* user_data)
+{
+    (void)key; (void)key_size; (void)value_size;
+    agent_decay_ctx_t* ctx = (agent_decay_ctx_t*)user_data;
+    belief_t* belief = *(belief_t**)value;
+
+    if (belief) {
+        belief->certainty *= ctx->decay_factor;
+        if (belief->certainty < MIN_CERTAINTY) {
+            belief->certainty = MIN_CERTAINTY;
+        }
+    }
+    return true;
+}
+
+/** Callback for agent decay iteration */
+static bool decay_agent_iter_cb(const void* key, size_t key_size, void* value,
+                                size_t value_size, void* user_data)
+{
+    (void)key; (void)key_size; (void)value_size;
+    agent_decay_ctx_t* ctx = (agent_decay_ctx_t*)user_data;
+    agent_info_t* agent = *(agent_info_t**)value;
+
+    if (agent && agent->beliefs) {
+        hash_table_iterate(agent->beliefs, decay_belief_iter_cb, ctx);
+    }
+    return true;
+}
+
+/** Callback for entropy calculation - accumulate certainty values */
+static bool entropy_belief_iter_cb(const void* key, size_t key_size, void* value,
+                                   size_t value_size, void* user_data)
+{
+    (void)key; (void)key_size; (void)value_size;
+    entropy_calc_ctx_t* ctx = (entropy_calc_ctx_t*)user_data;
+    belief_t* belief = *(belief_t**)value;
+
+    if (belief && belief->certainty > 0.0f) {
+        ctx->total_certainty_sum += belief->certainty;
+        ctx->belief_count++;
+    }
+    return true;
+}
+
+/** Callback for collecting beliefs for contradiction detection */
+static bool collect_belief_iter_cb(const void* key, size_t key_size, void* value,
+                                   size_t value_size, void* user_data)
+{
+    (void)key; (void)key_size; (void)value_size;
+    belief_collect_ctx_t* ctx = (belief_collect_ctx_t*)user_data;
+    belief_t* belief = *(belief_t**)value;
+
+    if (!belief || *ctx->count >= ctx->capacity) {
+        return (*ctx->count < ctx->capacity);
+    }
+
+    ctx->all_beliefs[*ctx->count] = belief;
+    (*ctx->count)++;
+    return true;
+}
+
+/** Callback to free beliefs during agent cleanup */
+static bool cleanup_belief_iter_cb(const void* key, size_t key_size, void* value,
+                                   size_t value_size, void* user_data)
+{
+    (void)key; (void)key_size; (void)value_size;
+    cleanup_ctx_t* ctx = (cleanup_ctx_t*)user_data;
+    belief_t* belief = *(belief_t**)value;
+
+    if (belief) {
+        if (belief->belief_vector) {
+            nimcp_free(belief->belief_vector);
+        }
+        nimcp_free(belief);
+        if (ctx) {
+            ctx->beliefs_freed++;
+        }
+    }
+    return true;
+}
+
+/** Callback to free agents and their beliefs during cleanup */
+static bool cleanup_agent_iter_cb(const void* key, size_t key_size, void* value,
+                                  size_t value_size, void* user_data)
+{
+    (void)key; (void)key_size; (void)value_size;
+    cleanup_ctx_t* ctx = (cleanup_ctx_t*)user_data;
+    agent_info_t* agent = *(agent_info_t**)value;
+
+    if (agent) {
+        /* Free all beliefs held by this agent */
+        if (agent->beliefs) {
+            hash_table_iterate(agent->beliefs, cleanup_belief_iter_cb, ctx);
+            hash_table_destroy(agent->beliefs);
+        }
+        nimcp_free(agent);
+        if (ctx) {
+            ctx->agents_freed++;
+        }
+    }
+    return true;
+}
+
+/* ============================================================================
  * Core API Implementation
  * ============================================================================ */
 
@@ -183,7 +388,7 @@ void gossip_beliefs_destroy(gossip_beliefs_t* gb)
 {
     /* WHAT: Free all resources and cleanup
      * WHY:  Prevent memory leaks
-     * HOW:  Free beliefs, agents, containers, mutex
+     * HOW:  Iterate hash tables to free beliefs and agents, then destroy containers
      */
 
     if (!gb) {
@@ -196,14 +401,29 @@ void gossip_beliefs_destroy(gossip_beliefs_t* gb)
         nimcp_platform_mutex_lock(gb->mutex);
     }
 
-    /* Free hash tables (TODO: implement proper cleanup iteration) */
-    if (gb->all_beliefs) {
-        hash_table_destroy(gb->all_beliefs);
+    /* Track cleanup statistics */
+    cleanup_ctx_t ctx = {
+        .beliefs_freed = 0,
+        .agents_freed = 0
+    };
+
+    /* First, free all agents and their belief hash tables
+     * Note: Agent beliefs reference the same memory as all_beliefs,
+     * so we only free from agents and just destroy all_beliefs table */
+    if (gb->agents) {
+        hash_table_iterate(gb->agents, cleanup_agent_iter_cb, &ctx);
+        hash_table_destroy(gb->agents);
+        gb->agents = NULL;
     }
 
-    if (gb->agents) {
-        hash_table_destroy(gb->agents);
+    /* Destroy the global beliefs hash table (beliefs already freed via agents) */
+    if (gb->all_beliefs) {
+        hash_table_destroy(gb->all_beliefs);
+        gb->all_beliefs = NULL;
     }
+
+    LOG_DEBUG("Cleanup complete: freed %u beliefs, %u agents",
+              ctx.beliefs_freed, ctx.agents_freed);
 
     if (gb->mutex) {
         nimcp_platform_mutex_unlock(gb->mutex);
@@ -450,8 +670,14 @@ int gossip_propagate_round(gossip_beliefs_t* gb, uint64_t current_time_ms)
     gb->last_gossip_ms = current_time_ms;
     uint32_t gossip_count = 0;
 
-    /* TODO: Iterate through agents and gossip beliefs */
-    /* This would require hash table iteration support */
+    /* Iterate through agents and gossip beliefs */
+    gossip_propagate_ctx_t ctx = {
+        .gb = gb,
+        .gossip_count = &gossip_count,
+        .gossip_prob = gb->config.gossip_probability
+    };
+    hash_table_iterate(gb->agents, gossip_agent_iter_cb, &ctx);
+    gb->total_gossips += gossip_count;
 
     nimcp_platform_mutex_unlock(gb->mutex);
 
@@ -482,7 +708,17 @@ int gossip_get_agent_beliefs(gossip_beliefs_t* gb, uint32_t agent_id,
 
     *count = agent->belief_count;
 
-    /* TODO: Implement belief array extraction from hash table */
+    /* Extract beliefs from agent's hash table into array */
+    if (*count > 0 && *beliefs != NULL) {
+        uint32_t extracted = 0;
+        belief_extract_ctx_t ctx = {
+            .beliefs = beliefs,
+            .capacity = *count,
+            .count = &extracted
+        };
+        hash_table_iterate(agent->beliefs, extract_belief_iter_cb, &ctx);
+        *count = extracted;
+    }
 
     nimcp_platform_mutex_unlock(gb->mutex);
 
@@ -503,9 +739,13 @@ int gossip_apply_decay(gossip_beliefs_t* gb, uint64_t current_time_ms)
     nimcp_platform_mutex_lock(gb->mutex);
 
     uint64_t time_delta = current_time_ms - gb->last_decay_ms;
-    float decay_factor = expf(-gb->config.belief_decay_rate * time_delta / 1000.0F);
+    float decay_factor = expf(-gb->config.belief_decay_rate * (float)time_delta / 1000.0F);
 
-    /* TODO: Iterate through all agents and apply decay */
+    /* Iterate through all agents and apply decay to their beliefs */
+    agent_decay_ctx_t ctx = {
+        .decay_factor = decay_factor
+    };
+    hash_table_iterate(gb->agents, decay_agent_iter_cb, &ctx);
 
     gb->last_decay_ms = current_time_ms;
 
@@ -531,11 +771,39 @@ int gossip_get_consensus_beliefs(gossip_beliefs_t* gb, belief_t** consensus, uin
         return NIMCP_INVALID_PARAM;
     }
 
-    /* TODO: Implement consensus detection */
-    *count = 0;
+    nimcp_platform_mutex_lock(gb->mutex);
 
-    LOG_DEBUG("Consensus query not yet fully implemented");
+    /* Collect all beliefs with high certainty (above consensus threshold) */
+    uint32_t capacity = gb->total_beliefs > 0 ? gb->total_beliefs : 64;
+    belief_t** all_beliefs = (belief_t**)nimcp_malloc(sizeof(belief_t*) * capacity);
+    if (!all_beliefs) {
+        nimcp_platform_mutex_unlock(gb->mutex);
+        *count = 0;
+        return NIMCP_NO_MEMORY;
+    }
 
+    uint32_t collected = 0;
+    belief_collect_ctx_t collect_ctx = {
+        .all_beliefs = all_beliefs,
+        .count = &collected,
+        .capacity = capacity
+    };
+    hash_table_iterate(gb->all_beliefs, collect_belief_iter_cb, &collect_ctx);
+
+    /* Filter beliefs with average certainty above consensus threshold */
+    uint32_t consensus_count = 0;
+    for (uint32_t i = 0; i < collected && consensus_count < *count; i++) {
+        if (all_beliefs[i]->certainty >= CONSENSUS_THRESHOLD) {
+            consensus[consensus_count++] = all_beliefs[i];
+        }
+    }
+
+    nimcp_free(all_beliefs);
+    *count = consensus_count;
+
+    nimcp_platform_mutex_unlock(gb->mutex);
+
+    LOG_DEBUG("Found %u consensus beliefs", consensus_count);
     return NIMCP_SUCCESS;
 }
 
@@ -556,11 +824,75 @@ int gossip_detect_contradictions(gossip_beliefs_t* gb, uint32_t** contradiction_
         return NIMCP_SUCCESS;
     }
 
-    /* TODO: Implement contradiction detection with vector comparison */
-    *num_contradictions = 0;
+    nimcp_platform_mutex_lock(gb->mutex);
 
-    LOG_DEBUG("Contradiction detection not yet fully implemented");
+    /* Collect all beliefs for comparison */
+    uint32_t capacity = gb->total_beliefs > 0 ? gb->total_beliefs : 64;
+    belief_t** all_beliefs = (belief_t**)nimcp_malloc(sizeof(belief_t*) * capacity);
+    if (!all_beliefs) {
+        nimcp_platform_mutex_unlock(gb->mutex);
+        *num_contradictions = 0;
+        return NIMCP_NO_MEMORY;
+    }
 
+    uint32_t collected = 0;
+    belief_collect_ctx_t collect_ctx = {
+        .all_beliefs = all_beliefs,
+        .count = &collected,
+        .capacity = capacity
+    };
+    hash_table_iterate(gb->all_beliefs, collect_belief_iter_cb, &collect_ctx);
+
+    /* Compare beliefs pairwise using cosine similarity */
+    /* Highly negative similarity indicates contradiction */
+    uint32_t max_pairs = (collected * (collected - 1)) / 2;
+    uint32_t* pairs = (uint32_t*)nimcp_malloc(sizeof(uint32_t) * max_pairs * 2);
+    if (!pairs) {
+        nimcp_free(all_beliefs);
+        nimcp_platform_mutex_unlock(gb->mutex);
+        *num_contradictions = 0;
+        return NIMCP_NO_MEMORY;
+    }
+
+    uint32_t found_contradictions = 0;
+    for (uint32_t i = 0; i < collected && found_contradictions < max_pairs; i++) {
+        for (uint32_t j = i + 1; j < collected && found_contradictions < max_pairs; j++) {
+            belief_t* b1 = all_beliefs[i];
+            belief_t* b2 = all_beliefs[j];
+
+            /* Compare only beliefs with same vector size and topic */
+            if (b1->vector_size != b2->vector_size) {
+                continue;
+            }
+            if (strcmp(b1->topic, b2->topic) != 0) {
+                continue;
+            }
+
+            float similarity = vector_cosine_similarity(b1->belief_vector, b2->belief_vector,
+                                                         b1->vector_size);
+            if (similarity < CONTRADICTION_THRESHOLD) {
+                /* Found a contradiction */
+                pairs[found_contradictions * 2] = b1->belief_id;
+                pairs[found_contradictions * 2 + 1] = b2->belief_id;
+                found_contradictions++;
+            }
+        }
+    }
+
+    nimcp_free(all_beliefs);
+
+    if (found_contradictions > 0) {
+        *contradiction_pairs = pairs;
+        *num_contradictions = found_contradictions;
+    } else {
+        nimcp_free(pairs);
+        *contradiction_pairs = NULL;
+        *num_contradictions = 0;
+    }
+
+    nimcp_platform_mutex_unlock(gb->mutex);
+
+    LOG_DEBUG("Found %u contradictory belief pairs", found_contradictions);
     return NIMCP_SUCCESS;
 }
 
@@ -575,9 +907,55 @@ float gossip_calculate_entropy(gossip_beliefs_t* gb)
         return 0.0F;
     }
 
-    /* TODO: Implement entropy calculation */
+    nimcp_platform_mutex_lock(gb->mutex);
 
-    return 0.0F;
+    if (gb->total_beliefs == 0) {
+        nimcp_platform_mutex_unlock(gb->mutex);
+        return 0.0F;
+    }
+
+    /* Calculate entropy based on certainty distribution */
+    entropy_calc_ctx_t ctx = {
+        .total_certainty_sum = 0.0F,
+        .belief_count = 0
+    };
+    hash_table_iterate(gb->all_beliefs, entropy_belief_iter_cb, &ctx);
+
+    if (ctx.belief_count == 0 || ctx.total_certainty_sum <= 0.0F) {
+        nimcp_platform_mutex_unlock(gb->mutex);
+        return 0.0F;
+    }
+
+    /* Collect beliefs again for entropy calculation */
+    uint32_t capacity = gb->total_beliefs > 0 ? gb->total_beliefs : 64;
+    belief_t** beliefs = (belief_t**)nimcp_malloc(sizeof(belief_t*) * capacity);
+    if (!beliefs) {
+        nimcp_platform_mutex_unlock(gb->mutex);
+        return 0.0F;
+    }
+
+    uint32_t collected = 0;
+    belief_collect_ctx_t collect_ctx = {
+        .all_beliefs = beliefs,
+        .count = &collected,
+        .capacity = capacity
+    };
+    hash_table_iterate(gb->all_beliefs, collect_belief_iter_cb, &collect_ctx);
+
+    /* Shannon entropy: H = -sum(p * log2(p)) */
+    float entropy = 0.0F;
+    for (uint32_t i = 0; i < collected; i++) {
+        float p = beliefs[i]->certainty / ctx.total_certainty_sum;
+        if (p > 0.0F) {
+            entropy -= p * log2f(p);
+        }
+    }
+
+    nimcp_free(beliefs);
+    nimcp_platform_mutex_unlock(gb->mutex);
+
+    LOG_DEBUG("Calculated entropy: %.4f", entropy);
+    return entropy;
 }
 
 /* ============================================================================
@@ -971,12 +1349,33 @@ static nimcp_result_t handle_gossip_spread(gossip_beliefs_t* gb, const void* msg
     LOG_DEBUG("Received gossiped belief: id=%u, from=0x%x",
               *belief_id, header->source_module);
 
-    /* TODO: Implement full belief deserialization and integration */
+    /* Look up the belief in the global beliefs table */
+    char belief_id_str[BELIEF_ID_BUFFER_SIZE];
+    generate_belief_id(belief_id_str, sizeof(belief_id_str), *belief_id);
+
+    belief_t** existing = (belief_t**)hash_table_lookup_string(gb->all_beliefs, belief_id_str);
+    if (existing && *existing) {
+        /* Belief already known - increase certainty based on social reinforcement */
+        (*existing)->certainty = fminf(MAX_CERTAINTY,
+            (*existing)->certainty + (1.0f - (*existing)->certainty) * 0.1f);
+        (*existing)->propagation_count++;
+        LOG_DEBUG("Reinforced existing belief %u (certainty=%.3f)",
+                  *belief_id, (*existing)->certainty);
+    }
+    /* Note: Full deserialization would require the belief vector data in the message */
 
     return NIMCP_SUCCESS;
 }
 
 static void apply_decay_to_agent(agent_info_t* agent, float decay_factor)
 {
-    /* TODO: Iterate through agent's beliefs and apply decay */
+    /* Iterate through agent's beliefs and apply decay */
+    if (!agent || !agent->beliefs) {
+        return;
+    }
+
+    agent_decay_ctx_t ctx = {
+        .decay_factor = decay_factor
+    };
+    hash_table_iterate(agent->beliefs, decay_belief_iter_cb, &ctx);
 }

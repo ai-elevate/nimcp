@@ -864,6 +864,18 @@ nimcp_error_t nimcp_encrypted_audit_set_rotation_policy(
 // Import/Export Functions
 //=============================================================================
 
+/**
+ * @brief File header for audit log export
+ */
+typedef struct {
+    uint32_t magic;             // AUDIT_FILE_MAGIC
+    uint32_t version;           // AUDIT_FILE_VERSION
+    uint32_t entry_count;       // Number of entries
+    uint32_t key_version;       // Key version used
+    uint64_t export_time_ns;    // Export timestamp
+    uint8_t reserved[32];       // Reserved for future use
+} audit_file_header_t;
+
 nimcp_error_t nimcp_encrypted_audit_export(
     nimcp_encrypted_audit_t audit,
     const char* filepath
@@ -872,8 +884,68 @@ nimcp_error_t nimcp_encrypted_audit_export(
         return NIMCP_INVALID_PARAM;
     }
 
-    // TODO: Implement binary export
-    return NIMCP_NOT_IMPLEMENTED;
+    FILE* file = fopen(filepath, "wb");
+    if (!file) {
+        LOG_MODULE_ERROR("encrypted_audit", "Failed to create export file: %s", filepath);
+        return NIMCP_ERROR;
+    }
+
+    pthread_mutex_lock(&audit->lock);
+
+    // Prepare file header
+    audit_file_header_t header;
+    header.magic = AUDIT_FILE_MAGIC;
+    header.version = AUDIT_FILE_VERSION;
+    /* Compute actual entry count from buffer state */
+    uint32_t actual_entries = (audit->next_entry_id > audit->config.buffer_size) ?
+                              (uint32_t)audit->config.buffer_size :
+                              (uint32_t)(audit->next_entry_id - 1);
+    header.entry_count = actual_entries;
+    header.key_version = audit->current_key->version;
+    header.export_time_ns = get_time_ns();
+    memset(header.reserved, 0, sizeof(header.reserved));
+
+    // Write header
+    if (fwrite(&header, sizeof(header), 1, file) != 1) {
+        pthread_mutex_unlock(&audit->lock);
+        fclose(file);
+        return NIMCP_ERROR;
+    }
+
+    // Write encrypted entries in order
+    uint32_t entries_written = 0;
+    /* Compute how many entries are currently in the buffer */
+    size_t entries_in_buffer = (audit->next_entry_id > audit->config.buffer_size) ?
+                               audit->config.buffer_size :
+                               (audit->next_entry_id > 0 ? audit->next_entry_id - 1 : 0);
+    /* If buffer has wrapped, start from current write position; otherwise start from 0 */
+    size_t start_idx = (audit->next_entry_id > audit->config.buffer_size)
+                       ? (audit->write_index % audit->config.buffer_size)
+                       : 0;
+
+    for (size_t i = 0; i < entries_in_buffer; i++) {
+        size_t idx = (start_idx + i) % audit->config.buffer_size;
+        buffer_slot_t* slot = &audit->buffer[idx];
+
+        if (!slot->in_use || !slot->entry) continue;
+
+        encrypted_entry_t* entry = slot->entry;
+        uint32_t total_size = (uint32_t)(sizeof(encrypted_entry_t) + entry->ciphertext_len);
+
+        if (fwrite(&total_size, sizeof(total_size), 1, file) != 1 ||
+            fwrite(entry, total_size, 1, file) != 1) {
+            pthread_mutex_unlock(&audit->lock);
+            fclose(file);
+            return NIMCP_ERROR;
+        }
+        entries_written++;
+    }
+
+    pthread_mutex_unlock(&audit->lock);
+    fclose(file);
+
+    LOG_MODULE_INFO("encrypted_audit", "Exported %u entries to %s", entries_written, filepath);
+    return NIMCP_SUCCESS;
 }
 
 nimcp_error_t nimcp_encrypted_audit_import(
@@ -884,8 +956,78 @@ nimcp_error_t nimcp_encrypted_audit_import(
         return NIMCP_INVALID_PARAM;
     }
 
-    // TODO: Implement binary import
-    return NIMCP_NOT_IMPLEMENTED;
+    FILE* file = fopen(filepath, "rb");
+    if (!file) {
+        LOG_MODULE_ERROR("encrypted_audit", "Failed to open import file: %s", filepath);
+        return NIMCP_ERROR;
+    }
+
+    // Read and validate header
+    audit_file_header_t header;
+    if (fread(&header, sizeof(header), 1, file) != 1) {
+        fclose(file);
+        return NIMCP_ERROR;
+    }
+
+    if (header.magic != AUDIT_FILE_MAGIC) {
+        LOG_MODULE_ERROR("encrypted_audit", "Invalid file magic: 0x%08X", header.magic);
+        fclose(file);
+        return NIMCP_INVALID_PARAM;
+    }
+
+    if (header.version > AUDIT_FILE_VERSION) {
+        LOG_MODULE_ERROR("encrypted_audit", "Unsupported file version: %u", header.version);
+        fclose(file);
+        return NIMCP_INVALID_PARAM;
+    }
+
+    pthread_mutex_lock(&audit->lock);
+
+    // Read entries
+    uint32_t entries_imported = 0;
+    for (uint32_t i = 0; i < header.entry_count; i++) {
+        uint32_t total_size;
+        if (fread(&total_size, sizeof(total_size), 1, file) != 1) break;
+
+        if (total_size < sizeof(encrypted_entry_t) || total_size > audit->config.max_entry_size + 1024) {
+            LOG_MODULE_WARN("encrypted_audit", "Invalid entry size: %u", total_size);
+            break;
+        }
+
+        // Allocate slot
+        size_t slot_idx = audit->write_index % audit->config.buffer_size;
+        buffer_slot_t* slot = &audit->buffer[slot_idx];
+
+        // Clear old entry if needed
+        if (slot->entry) {
+            free(slot->entry);
+        }
+
+        slot->entry = malloc(total_size);
+        if (!slot->entry) {
+            pthread_mutex_unlock(&audit->lock);
+            fclose(file);
+            return NIMCP_NO_MEMORY;
+        }
+
+        if (fread(slot->entry, total_size, 1, file) != 1) {
+            free(slot->entry);
+            slot->entry = NULL;
+            break;
+        }
+
+        slot->allocated_size = total_size;
+        slot->in_use = true;
+        audit->write_index++;
+        audit->next_entry_id++;
+        entries_imported++;
+    }
+
+    pthread_mutex_unlock(&audit->lock);
+    fclose(file);
+
+    LOG_MODULE_INFO("encrypted_audit", "Imported %u entries from %s", entries_imported, filepath);
+    return NIMCP_SUCCESS;
 }
 
 nimcp_error_t nimcp_encrypted_audit_export_json(
@@ -898,8 +1040,67 @@ nimcp_error_t nimcp_encrypted_audit_export_json(
         return NIMCP_INVALID_PARAM;
     }
 
-    // TODO: Implement JSON export with decryption
-    return NIMCP_NOT_IMPLEMENTED;
+    FILE* file = fopen(filepath, "w");
+    if (!file) {
+        LOG_MODULE_ERROR("encrypted_audit", "Failed to create JSON export file: %s", filepath);
+        return NIMCP_ERROR;
+    }
+
+    // Read all entries (decrypted)
+    nimcp_audit_entry_t* entries = malloc(audit->config.buffer_size * sizeof(nimcp_audit_entry_t));
+    if (!entries) {
+        fclose(file);
+        return NIMCP_NO_MEMORY;
+    }
+
+    size_t entry_count = 0;
+    nimcp_error_t err = nimcp_encrypted_audit_read(audit, entries, audit->config.buffer_size, &entry_count);
+    if (err != NIMCP_SUCCESS) {
+        free(entries);
+        fclose(file);
+        return err;
+    }
+
+    // Write JSON header
+    fprintf(file, "{\n");
+    fprintf(file, "  \"export_time\": %lu,\n", (unsigned long)time(NULL));
+    fprintf(file, "  \"entry_count\": %zu,\n", entry_count);
+    fprintf(file, "  \"key_version\": %u,\n", audit->current_key->version);
+    fprintf(file, "  \"entries\": [\n");
+
+    for (size_t i = 0; i < entry_count; i++) {
+        nimcp_audit_entry_t* e = &entries[i];
+
+        fprintf(file, "    {\n");
+        fprintf(file, "      \"entry_id\": %u,\n", e->entry_id);
+        fprintf(file, "      \"timestamp_ns\": %lu,\n", (unsigned long)e->timestamp_ns);
+        fprintf(file, "      \"severity\": \"%s\",\n", nimcp_audit_severity_name(e->severity));
+        fprintf(file, "      \"category\": \"%s\",\n", nimcp_audit_category_name(e->category));
+        fprintf(file, "      \"key_version\": %u,\n", e->key_version);
+
+        // Escape message for JSON
+        fprintf(file, "      \"message\": \"");
+        for (size_t j = 0; j < NIMCP_AUDIT_MAX_MESSAGE_SIZE && e->message[j]; j++) {
+            char c = e->message[j];
+            if (c == '"') fprintf(file, "\\\"");
+            else if (c == '\\') fprintf(file, "\\\\");
+            else if (c == '\n') fprintf(file, "\\n");
+            else if (c == '\r') fprintf(file, "\\r");
+            else if (c == '\t') fprintf(file, "\\t");
+            else fputc(c, file);
+        }
+        fprintf(file, "\"\n");
+
+        fprintf(file, "    }%s\n", i < entry_count - 1 ? "," : "");
+    }
+
+    fprintf(file, "  ]\n}\n");
+
+    free(entries);
+    fclose(file);
+
+    LOG_MODULE_INFO("encrypted_audit", "Exported %zu entries to JSON: %s", entry_count, filepath);
+    return NIMCP_SUCCESS;
 }
 
 //=============================================================================

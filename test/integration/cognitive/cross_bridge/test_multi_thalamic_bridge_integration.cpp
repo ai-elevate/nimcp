@@ -430,8 +430,9 @@ TEST_F(MultiThalamicBridgeIntegrationTest, AttentionToReasoningPathway) {
 TEST_F(MultiThalamicBridgeIntegrationTest, SalienceToAttentionToMemory) {
     create_all_bridges();
 
-    // Salience detection
-    salience_thalamic_route_salience(salience_bridge, 0.9f, 0.85f);
+    // Salience detection - route with priority
+    float salience_stimulus = 0.85f;
+    salience_thalamic_route_priority(salience_bridge, &salience_stimulus, 0.9f);
 
     // Attention shifts to salient stimulus
     attention_thalamic_request_focus(attention_bridge, 0.9f, 0.9f);

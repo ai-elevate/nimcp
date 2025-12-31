@@ -149,7 +149,7 @@ typedef hipError_t (*hipDriverGetVersion_t)(int*);
 // Static State
 //=============================================================================
 
-static gpu_capabilities_t s_cached_caps = {0};
+static gpu_detect_result_t s_cached_caps = {0};
 static pthread_once_t s_cache_init_once = PTHREAD_ONCE_INIT;
 static pthread_mutex_t s_refresh_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -172,7 +172,7 @@ static void gpu_detect_init_impl(void);
  * WHY:  Runtime detection without compile-time CUDA dependency
  * HOW:  dlopen libcuda.so, call cuInit and device queries
  */
-static void detect_cuda_devices(gpu_capabilities_t* caps)
+static void detect_cuda_devices(gpu_detect_result_t* caps)
 {
     // Guard: Already have CUDA lib from previous detection
     if (s_cuda_lib != NULL) {
@@ -362,7 +362,7 @@ static void detect_cuda_devices(gpu_capabilities_t* caps)
  * WHY:  Cross-platform GPU detection for AMD, Intel, and NVIDIA
  * HOW:  dlopen libOpenCL.so, call clGetPlatformIDs, clGetDeviceIDs
  */
-static void detect_opencl_devices(gpu_capabilities_t* caps)
+static void detect_opencl_devices(gpu_detect_result_t* caps)
 {
     // Guard: Already have OpenCL lib from previous detection
     if (s_opencl_lib != NULL) {
@@ -543,7 +543,7 @@ static void detect_opencl_devices(gpu_capabilities_t* caps)
  * WHY:  Runtime detection for AMD GPUs without compile-time ROCm dependency
  * HOW:  dlopen libamdhip64.so, call hipInit, hipGetDeviceCount
  */
-static void detect_rocm_devices(gpu_capabilities_t* caps)
+static void detect_rocm_devices(gpu_detect_result_t* caps)
 {
     // Guard: Already have ROCm lib from previous detection
     if (s_rocm_lib != NULL) {
@@ -703,7 +703,7 @@ static void detect_rocm_devices(gpu_capabilities_t* caps)
  * WHY:  Simplifies device selection for workloads
  * HOW:  Score based on compute units, memory, and features
  */
-static void determine_best_device(gpu_capabilities_t* caps)
+static void determine_best_device(gpu_detect_result_t* caps)
 {
     caps->best_device_index = -1;
     caps->best_backend = GPU_BACKEND_NONE;
@@ -772,7 +772,7 @@ static void determine_best_device(gpu_capabilities_t* caps)
 static void gpu_detect_init_impl(void)
 {
     // Initialize structure
-    memset(&s_cached_caps, 0, sizeof(gpu_capabilities_t));
+    memset(&s_cached_caps, 0, sizeof(gpu_detect_result_t));
     s_cached_caps.best_device_index = -1;
 
     LOG_INFO("Starting GPU capability detection");
@@ -797,7 +797,7 @@ static void gpu_detect_init_impl(void)
 // Public API Implementation
 //=============================================================================
 
-bool gpu_detect_capabilities(gpu_capabilities_t* caps)
+bool gpu_detect_capabilities(gpu_detect_result_t* caps)
 {
     if (!caps) {
         LOG_ERROR("NULL capabilities pointer");
@@ -808,7 +808,7 @@ bool gpu_detect_capabilities(gpu_capabilities_t* caps)
     pthread_once(&s_cache_init_once, gpu_detect_init_impl);
 
     // Copy cached result to caller's buffer
-    memcpy(caps, &s_cached_caps, sizeof(gpu_capabilities_t));
+    memcpy(caps, &s_cached_caps, sizeof(gpu_detect_result_t));
     return true;
 }
 
@@ -951,7 +951,7 @@ bool gpu_refresh_capabilities(void)
     }
 
     // Re-run detection
-    memset(&s_cached_caps, 0, sizeof(gpu_capabilities_t));
+    memset(&s_cached_caps, 0, sizeof(gpu_detect_result_t));
     s_cached_caps.best_device_index = -1;
 
     detect_cuda_devices(&s_cached_caps);
