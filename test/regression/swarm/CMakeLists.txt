@@ -92,10 +92,8 @@ add_test_binary(
 # Test: Struct Member Regression (2025-12-31)
 # Prevents recurrence of: NimcpHippocampusNode->memories, memory->pattern_index,
 # bio_message_header_t->total_length, coordinator->conflict_history bugs
-# DISABLED: Multiple API mismatches (bio_message_type_t, swarm_memory_register_node, etc.)
-message(STATUS "test_swarm_struct_member_regression: DISABLED (API mismatches)")
-# add_test_binary(
-#     test_swarm_struct_member_regression
-#     ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_struct_member_regression.cpp
-#     regression
-# )
+add_test_binary(
+    test_swarm_struct_member_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_swarm_struct_member_regression.cpp
+    regression
+)

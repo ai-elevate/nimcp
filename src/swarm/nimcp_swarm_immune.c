@@ -511,10 +511,12 @@ nimcp_result_t nimcp_swarm_immune_check_behavior(
 
         baseline = &system->behavior_profiles[system->behavior_profile_count];
         memcpy(baseline, behavior, sizeof(NimcpSwarmBehaviorProfile));
-        baseline->anomaly_score = 0.0F;
+        /* Preserve input anomaly_score for threat detection logic gates */
+        /* Set last_update to current time so NOT-gate checks work correctly */
+        baseline->last_update = get_current_time_ms();
         system->behavior_profile_count++;
 
-        *anomaly_score = 0.0F;
+        *anomaly_score = behavior->anomaly_score;
         nimcp_platform_mutex_unlock(system->mutex);
         return NIMCP_SUCCESS;
     }
@@ -1748,15 +1750,9 @@ nimcp_result_t immune_send_bbb_threat_alert(
         return NIMCP_INVALID_PARAM;
     }
 
-    /* Guard clause: Bio-async not available */
-    if (!immune->bio_ctx) {
-        LOG_DEBUG("Bio-async not available for BBB threat alert");
-        return NIMCP_SUCCESS;
-    }
-
     nimcp_platform_mutex_lock(immune->mutex);
 
-    /* Find threat */
+    /* Find threat first - must exist regardless of bio_ctx availability */
     NimcpSwarmThreat* threat = NULL;
     for (size_t i = 0; i < immune->active_threat_count; i++) {
         if (immune->active_threats[i].id == threat_id) {
@@ -1768,6 +1764,13 @@ nimcp_result_t immune_send_bbb_threat_alert(
     if (!threat) {
         nimcp_platform_mutex_unlock(immune->mutex);
         return NIMCP_NOT_FOUND;
+    }
+
+    /* Guard clause: Bio-async not available - threat exists but can't send alert */
+    if (!immune->bio_ctx) {
+        LOG_DEBUG("Bio-async not available for BBB threat alert");
+        nimcp_platform_mutex_unlock(immune->mutex);
+        return NIMCP_SUCCESS;
     }
 
     /* Validate threat type before array access */

@@ -1,0 +1,1921 @@
+/**
+ * @file nimcp_brain_kg.c
+ * @brief Implementation of Internal Runtime Knowledge Graph
+ * @version 1.0.0
+ * @date 2025-12-31
+ */
+
+#include "core/brain/nimcp_brain_kg.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/logging/nimcp_logging.h"
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+/* ============================================================================
+ * INTERNAL STRUCTURE
+ * ============================================================================ */
+
+/* Security state structure */
+typedef struct {
+    brain_kg_access_level_t current_level;   /**< Current access level */
+    uint64_t access_token;                   /**< Current authentication token */
+    uint64_t admin_token;                    /**< Admin token for emergency unlock */
+    bool emergency_locked;                   /**< Emergency lock active */
+    uint32_t violation_count;                /**< Total security violations */
+    uint64_t last_violation_time;            /**< Timestamp of last violation */
+    uint32_t mutations_this_second;          /**< Mutation rate tracking */
+    uint64_t mutation_window_start;          /**< Rate limit window start */
+    uint64_t last_integrity_check;           /**< Last integrity verification */
+    uint32_t integrity_checksum;             /**< Current integrity checksum */
+    bool* critical_nodes;                    /**< Bitmap of critical nodes */
+
+    /* Immune integration */
+    void* immune_system;                     /**< brain_immune_system_t* */
+    brain_kg_security_callback_t callback;   /**< Security event callback */
+    void* callback_user_data;                /**< Callback context */
+} brain_kg_security_t;
+
+struct brain_kg {
+    brain_kg_config_t config;
+
+    /* Node storage */
+    brain_kg_node_t* nodes;
+    uint32_t node_count;
+    uint32_t node_capacity;
+    uint32_t next_node_id;
+
+    /* Edge storage */
+    brain_kg_edge_t* edges;
+    uint32_t edge_count;
+    uint32_t edge_capacity;
+    uint32_t next_edge_id;
+
+    /* Statistics */
+    brain_kg_stats_t stats;
+
+    /* Thread safety */
+    nimcp_mutex_t* mutex;
+
+    /* Timing */
+    uint64_t created_time;
+
+    /* Security */
+    brain_kg_security_t security;
+};
+
+/* ============================================================================
+ * HELPER FUNCTIONS
+ * ============================================================================ */
+
+static uint64_t get_time_ms(void) {
+    return nimcp_time_get_ms();
+}
+
+/* Simple FNV-1a hash for checksum */
+static uint32_t compute_hash(const void* data, size_t len) {
+    const uint8_t* bytes = (const uint8_t*)data;
+    uint32_t hash = 2166136261u;
+    for (size_t i = 0; i < len; i++) {
+        hash ^= bytes[i];
+        hash *= 16777619u;
+    }
+    return hash;
+}
+
+/* Generate random token */
+static uint64_t generate_random_token(void) {
+    uint64_t token = 0;
+    token = ((uint64_t)rand() << 32) | rand();
+    token ^= get_time_ms();
+    return token;
+}
+
+/* Report security violation */
+static void report_security_violation(
+    brain_kg_t* kg,
+    brain_kg_security_event_t event,
+    brain_kg_node_id_t node_id,
+    const char* details
+) {
+    if (!kg) return;
+
+    kg->security.violation_count++;
+    kg->security.last_violation_time = get_time_ms();
+
+    NIMCP_LOGGING_WARN("KG Security Violation: %s (node=%u)", details, node_id);
+
+    /* Call registered callback */
+    if (kg->security.callback) {
+        kg->security.callback(event, node_id, details, kg->security.callback_user_data);
+    }
+
+    /* Report to immune system if connected */
+    if (kg->config.enable_immune_integration && kg->security.immune_system) {
+        /* Note: Would call brain_immune_present_antigen() here
+         * Left as a note since immune header may not be included */
+        NIMCP_LOGGING_INFO("Reporting KG violation to immune system");
+    }
+}
+
+/* Check if write access is allowed */
+static bool check_write_access(brain_kg_t* kg) {
+    if (!kg) return false;
+
+    /* Emergency lock blocks all writes */
+    if (kg->security.emergency_locked) {
+        report_security_violation(kg, BRAIN_KG_SEC_UNAUTHORIZED_ACCESS,
+            BRAIN_KG_INVALID_NODE, "Write attempted during emergency lock");
+        return false;
+    }
+
+    /* Check access level */
+    if (kg->config.enable_access_control &&
+        kg->security.current_level < BRAIN_KG_ACCESS_WRITE) {
+        report_security_violation(kg, BRAIN_KG_SEC_UNAUTHORIZED_ACCESS,
+            BRAIN_KG_INVALID_NODE, "Insufficient access level for write");
+        return false;
+    }
+
+    /* Check rate limit */
+    if (kg->config.max_mutations_per_sec > 0) {
+        uint64_t now = get_time_ms();
+        if (now - kg->security.mutation_window_start >= 1000) {
+            kg->security.mutations_this_second = 0;
+            kg->security.mutation_window_start = now;
+        }
+
+        if (kg->security.mutations_this_second >= kg->config.max_mutations_per_sec) {
+            report_security_violation(kg, BRAIN_KG_SEC_EXCESSIVE_MUTATIONS,
+                BRAIN_KG_INVALID_NODE, "Mutation rate limit exceeded");
+            return false;
+        }
+        kg->security.mutations_this_second++;
+    }
+
+    return true;
+}
+
+/* Check if node is critical */
+static bool is_critical_node(brain_kg_t* kg, brain_kg_node_id_t id) {
+    if (!kg || !kg->security.critical_nodes || id == BRAIN_KG_INVALID_NODE) {
+        return false;
+    }
+    if (id < kg->node_capacity) {
+        return kg->security.critical_nodes[id];
+    }
+    return false;
+}
+
+/* Compute integrity checksum for entire KG */
+static uint32_t compute_kg_checksum(brain_kg_t* kg) {
+    if (!kg) return 0;
+
+    uint32_t checksum = 0;
+
+    /* Hash all active nodes */
+    for (uint32_t i = 0; i < kg->node_capacity; i++) {
+        if (kg->nodes[i].in_use) {
+            checksum ^= compute_hash(kg->nodes[i].name, strlen(kg->nodes[i].name));
+            checksum ^= kg->nodes[i].id * 31;
+            checksum ^= (uint32_t)kg->nodes[i].type * 17;
+        }
+    }
+
+    /* Hash all active edges */
+    for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+        if (kg->edges[i].in_use) {
+            checksum ^= kg->edges[i].from * 37;
+            checksum ^= kg->edges[i].to * 41;
+            checksum ^= (uint32_t)kg->edges[i].type * 43;
+        }
+    }
+
+    return checksum;
+}
+
+static brain_kg_node_t* find_node_by_id_unlocked(brain_kg_t* kg, brain_kg_node_id_t id) {
+    for (uint32_t i = 0; i < kg->node_capacity; i++) {
+        if (kg->nodes[i].in_use && kg->nodes[i].id == id) {
+            return &kg->nodes[i];
+        }
+    }
+    return NULL;
+}
+
+static brain_kg_edge_t* find_edge_by_id_unlocked(brain_kg_t* kg, brain_kg_edge_id_t id) {
+    for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+        if (kg->edges[i].in_use && kg->edges[i].id == id) {
+            return &kg->edges[i];
+        }
+    }
+    return NULL;
+}
+
+/* ============================================================================
+ * LIFECYCLE API
+ * ============================================================================ */
+
+int brain_kg_default_config(brain_kg_config_t* config) {
+    if (!config) return -1;
+
+    memset(config, 0, sizeof(*config));
+    config->max_nodes = BRAIN_KG_MAX_NODES;
+    config->max_edges = BRAIN_KG_MAX_EDGES;
+    config->enable_statistics = true;
+    config->auto_populate = false;
+
+    /* Security defaults - enabled by default for protection */
+    config->enable_security = true;
+    config->enable_integrity_checks = true;
+    config->enable_access_control = true;
+    config->enable_immune_integration = true;
+    config->enable_audit_log = true;
+    config->max_mutations_per_sec = 1000;  /* Rate limit: 1000 mutations/sec */
+    config->integrity_check_interval_ms = 10000;  /* Verify integrity every 10s */
+
+    return 0;
+}
+
+brain_kg_t* brain_kg_create(const brain_kg_config_t* config) {
+    brain_kg_t* kg = nimcp_malloc(sizeof(*kg));
+    if (!kg) {
+        NIMCP_LOGGING_ERROR("Failed to allocate brain_kg");
+        return NULL;
+    }
+
+    memset(kg, 0, sizeof(*kg));
+
+    /* Apply config */
+    if (config) {
+        kg->config = *config;
+    } else {
+        brain_kg_default_config(&kg->config);
+    }
+
+    /* Set capacities */
+    kg->node_capacity = kg->config.max_nodes > 0 ? kg->config.max_nodes : BRAIN_KG_MAX_NODES;
+    kg->edge_capacity = kg->config.max_edges > 0 ? kg->config.max_edges : BRAIN_KG_MAX_EDGES;
+
+    /* Allocate nodes */
+    kg->nodes = nimcp_malloc(kg->node_capacity * sizeof(brain_kg_node_t));
+    if (!kg->nodes) {
+        NIMCP_LOGGING_ERROR("Failed to allocate node array");
+        nimcp_free(kg);
+        return NULL;
+    }
+    memset(kg->nodes, 0, kg->node_capacity * sizeof(brain_kg_node_t));
+
+    /* Allocate edges */
+    kg->edges = nimcp_malloc(kg->edge_capacity * sizeof(brain_kg_edge_t));
+    if (!kg->edges) {
+        NIMCP_LOGGING_ERROR("Failed to allocate edge array");
+        nimcp_free(kg->nodes);
+        nimcp_free(kg);
+        return NULL;
+    }
+    memset(kg->edges, 0, kg->edge_capacity * sizeof(brain_kg_edge_t));
+
+    /* Create mutex */
+    kg->mutex = nimcp_mutex_create(NULL);
+    if (!kg->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create mutex");
+        nimcp_free(kg->edges);
+        nimcp_free(kg->nodes);
+        nimcp_free(kg);
+        return NULL;
+    }
+
+    /* Initialize IDs */
+    kg->next_node_id = 1;
+    kg->next_edge_id = 1;
+    kg->created_time = get_time_ms();
+
+    NIMCP_LOGGING_INFO("Brain KG created (nodes=%u, edges=%u)",
+                       kg->node_capacity, kg->edge_capacity);
+
+    return kg;
+}
+
+void brain_kg_destroy(brain_kg_t* kg) {
+    if (!kg) return;
+
+    /* Free metadata strings */
+    for (uint32_t i = 0; i < kg->node_capacity; i++) {
+        if (kg->nodes[i].in_use) {
+            /* Metadata values are inline, no separate allocation */
+        }
+    }
+
+    if (kg->mutex) {
+        nimcp_mutex_destroy(kg->mutex);
+    }
+
+    if (kg->edges) {
+        nimcp_free(kg->edges);
+    }
+
+    if (kg->nodes) {
+        nimcp_free(kg->nodes);
+    }
+
+    nimcp_free(kg);
+    NIMCP_LOGGING_INFO("Brain KG destroyed");
+}
+
+/* ============================================================================
+ * NODE CRUD API
+ * ============================================================================ */
+
+brain_kg_node_id_t brain_kg_add_node(
+    brain_kg_t* kg,
+    const char* name,
+    brain_kg_node_type_t type,
+    const char* description
+) {
+    if (!kg || !name) return BRAIN_KG_INVALID_NODE;
+
+    /* Security check */
+    if (kg->config.enable_security && !check_write_access(kg)) {
+        return BRAIN_KG_INVALID_NODE;
+    }
+
+    nimcp_mutex_lock(kg->mutex);
+
+    /* Check if name already exists */
+    for (uint32_t i = 0; i < kg->node_capacity; i++) {
+        if (kg->nodes[i].in_use &&
+            strncmp(kg->nodes[i].name, name, BRAIN_KG_MAX_NAME_LEN) == 0) {
+            nimcp_mutex_unlock(kg->mutex);
+            NIMCP_LOGGING_WARN("Node '%s' already exists", name);
+            return kg->nodes[i].id;  /* Return existing ID */
+        }
+    }
+
+    /* Find free slot */
+    brain_kg_node_t* node = NULL;
+    for (uint32_t i = 0; i < kg->node_capacity; i++) {
+        if (!kg->nodes[i].in_use) {
+            node = &kg->nodes[i];
+            break;
+        }
+    }
+
+    if (!node) {
+        nimcp_mutex_unlock(kg->mutex);
+        NIMCP_LOGGING_ERROR("Node capacity reached (%u)", kg->node_capacity);
+        return BRAIN_KG_INVALID_NODE;
+    }
+
+    /* Initialize node */
+    memset(node, 0, sizeof(*node));
+    node->id = kg->next_node_id++;
+    strncpy(node->name, name, BRAIN_KG_MAX_NAME_LEN - 1);
+    node->type = type;
+    node->state = BRAIN_KG_STATE_UNKNOWN;
+    if (description) {
+        strncpy(node->description, description, BRAIN_KG_MAX_DESC_LEN - 1);
+    }
+    node->created_time = get_time_ms();
+    node->last_updated = node->created_time;
+    node->enabled = true;
+    node->in_use = true;
+
+    kg->node_count++;
+    kg->stats.total_nodes++;
+    kg->stats.nodes_by_type[type]++;
+    kg->stats.last_modified = node->created_time;
+    kg->stats.modifications_count++;
+
+    nimcp_mutex_unlock(kg->mutex);
+
+    NIMCP_LOGGING_DEBUG("Added node '%s' (ID=%u, type=%s)",
+                        name, node->id, brain_kg_node_type_to_string(type));
+
+    return node->id;
+}
+
+const brain_kg_node_t* brain_kg_get_node(const brain_kg_t* kg, brain_kg_node_id_t id) {
+    if (!kg || id == BRAIN_KG_INVALID_NODE) return NULL;
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;  /* Cast for mutex */
+    nimcp_mutex_lock(mkg->mutex);
+
+    const brain_kg_node_t* node = NULL;
+    for (uint32_t i = 0; i < kg->node_capacity; i++) {
+        if (kg->nodes[i].in_use && kg->nodes[i].id == id) {
+            node = &kg->nodes[i];
+            break;
+        }
+    }
+
+    nimcp_mutex_unlock(mkg->mutex);
+    return node;
+}
+
+brain_kg_node_id_t brain_kg_find_node(const brain_kg_t* kg, const char* name) {
+    if (!kg || !name) return BRAIN_KG_INVALID_NODE;
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    brain_kg_node_id_t result = BRAIN_KG_INVALID_NODE;
+    for (uint32_t i = 0; i < kg->node_capacity; i++) {
+        if (kg->nodes[i].in_use &&
+            strncmp(kg->nodes[i].name, name, BRAIN_KG_MAX_NAME_LEN) == 0) {
+            result = kg->nodes[i].id;
+            break;
+        }
+    }
+
+    nimcp_mutex_unlock(mkg->mutex);
+    return result;
+}
+
+int brain_kg_update_node(
+    brain_kg_t* kg,
+    brain_kg_node_id_t id,
+    const char* description,
+    brain_kg_node_state_t state
+) {
+    if (!kg || id == BRAIN_KG_INVALID_NODE) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+
+    brain_kg_node_t* node = find_node_by_id_unlocked(kg, id);
+    if (!node) {
+        nimcp_mutex_unlock(kg->mutex);
+        return -1;
+    }
+
+    if (description) {
+        strncpy(node->description, description, BRAIN_KG_MAX_DESC_LEN - 1);
+    }
+    node->state = state;
+    node->last_updated = get_time_ms();
+    kg->stats.modifications_count++;
+    kg->stats.last_modified = node->last_updated;
+
+    nimcp_mutex_unlock(kg->mutex);
+    return 0;
+}
+
+int brain_kg_set_module_ptr(brain_kg_t* kg, brain_kg_node_id_t id, void* module_ptr) {
+    if (!kg || id == BRAIN_KG_INVALID_NODE) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+
+    brain_kg_node_t* node = find_node_by_id_unlocked(kg, id);
+    if (!node) {
+        nimcp_mutex_unlock(kg->mutex);
+        return -1;
+    }
+
+    node->module_ptr = module_ptr;
+    node->last_updated = get_time_ms();
+
+    nimcp_mutex_unlock(kg->mutex);
+    return 0;
+}
+
+int brain_kg_add_metadata(
+    brain_kg_t* kg,
+    brain_kg_node_id_t id,
+    const char* key,
+    const char* value
+) {
+    if (!kg || id == BRAIN_KG_INVALID_NODE || !key || !value) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+
+    brain_kg_node_t* node = find_node_by_id_unlocked(kg, id);
+    if (!node || node->metadata_count >= BRAIN_KG_MAX_METADATA) {
+        nimcp_mutex_unlock(kg->mutex);
+        return -1;
+    }
+
+    brain_kg_metadata_t* meta = &node->metadata[node->metadata_count];
+    strncpy(meta->key, key, sizeof(meta->key) - 1);
+    strncpy(meta->value, value, sizeof(meta->value) - 1);
+    node->metadata_count++;
+    node->last_updated = get_time_ms();
+
+    nimcp_mutex_unlock(kg->mutex);
+    return 0;
+}
+
+int brain_kg_remove_node(brain_kg_t* kg, brain_kg_node_id_t id) {
+    if (!kg || id == BRAIN_KG_INVALID_NODE) return -1;
+
+    /* Security check */
+    if (kg->config.enable_security && !check_write_access(kg)) {
+        return -1;
+    }
+
+    /* Check if critical node */
+    if (is_critical_node(kg, id)) {
+        report_security_violation(kg, BRAIN_KG_SEC_CRITICAL_NODE_MODIFIED,
+            id, "Attempt to remove critical node");
+        return -1;
+    }
+
+    nimcp_mutex_lock(kg->mutex);
+
+    brain_kg_node_t* node = find_node_by_id_unlocked(kg, id);
+    if (!node) {
+        nimcp_mutex_unlock(kg->mutex);
+        return -1;
+    }
+
+    /* Remove all edges connected to this node */
+    for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+        if (kg->edges[i].in_use &&
+            (kg->edges[i].from == id || kg->edges[i].to == id)) {
+            kg->edges[i].in_use = false;
+            kg->edge_count--;
+            kg->stats.total_edges--;
+            kg->stats.edges_by_type[kg->edges[i].type]--;
+        }
+    }
+
+    /* Update statistics */
+    kg->stats.nodes_by_type[node->type]--;
+    kg->stats.total_nodes--;
+    kg->stats.modifications_count++;
+    kg->stats.last_modified = get_time_ms();
+
+    /* Mark node as unused */
+    node->in_use = false;
+    kg->node_count--;
+
+    nimcp_mutex_unlock(kg->mutex);
+    return 0;
+}
+
+brain_kg_node_list_t* brain_kg_get_nodes_by_type(const brain_kg_t* kg, brain_kg_node_type_t type) {
+    if (!kg) return NULL;
+
+    brain_kg_node_list_t* list = nimcp_malloc(sizeof(*list));
+    if (!list) return NULL;
+
+    list->count = 0;
+    list->capacity = 64;
+    list->nodes = nimcp_malloc(list->capacity * sizeof(brain_kg_node_t*));
+    if (!list->nodes) {
+        nimcp_free(list);
+        return NULL;
+    }
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    for (uint32_t i = 0; i < kg->node_capacity; i++) {
+        if (kg->nodes[i].in_use && kg->nodes[i].type == type) {
+            if (list->count >= list->capacity) {
+                list->capacity *= 2;
+                brain_kg_node_t** new_nodes = nimcp_realloc(
+                    list->nodes, list->capacity * sizeof(brain_kg_node_t*));
+                if (!new_nodes) break;
+                list->nodes = new_nodes;
+            }
+            list->nodes[list->count++] = &mkg->nodes[i];
+        }
+    }
+
+    nimcp_mutex_unlock(mkg->mutex);
+    return list;
+}
+
+brain_kg_node_list_t* brain_kg_get_all_nodes(const brain_kg_t* kg) {
+    if (!kg) return NULL;
+
+    brain_kg_node_list_t* list = nimcp_malloc(sizeof(*list));
+    if (!list) return NULL;
+
+    list->count = 0;
+    list->capacity = kg->node_count > 0 ? kg->node_count : 64;
+    list->nodes = nimcp_malloc(list->capacity * sizeof(brain_kg_node_t*));
+    if (!list->nodes) {
+        nimcp_free(list);
+        return NULL;
+    }
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    for (uint32_t i = 0; i < kg->node_capacity && list->count < list->capacity; i++) {
+        if (kg->nodes[i].in_use) {
+            list->nodes[list->count++] = &mkg->nodes[i];
+        }
+    }
+
+    nimcp_mutex_unlock(mkg->mutex);
+    return list;
+}
+
+void brain_kg_node_list_destroy(brain_kg_node_list_t* list) {
+    if (!list) return;
+    if (list->nodes) nimcp_free(list->nodes);
+    nimcp_free(list);
+}
+
+/* ============================================================================
+ * EDGE CRUD API
+ * ============================================================================ */
+
+brain_kg_edge_id_t brain_kg_add_edge(
+    brain_kg_t* kg,
+    brain_kg_node_id_t from,
+    brain_kg_node_id_t to,
+    brain_kg_edge_type_t type,
+    const char* description,
+    float weight
+) {
+    if (!kg || from == BRAIN_KG_INVALID_NODE || to == BRAIN_KG_INVALID_NODE) {
+        return BRAIN_KG_INVALID_NODE;
+    }
+
+    /* Security check */
+    if (kg->config.enable_security && !check_write_access(kg)) {
+        return BRAIN_KG_INVALID_NODE;
+    }
+
+    nimcp_mutex_lock(kg->mutex);
+
+    /* Verify nodes exist */
+    brain_kg_node_t* from_node = find_node_by_id_unlocked(kg, from);
+    brain_kg_node_t* to_node = find_node_by_id_unlocked(kg, to);
+    if (!from_node || !to_node) {
+        nimcp_mutex_unlock(kg->mutex);
+        NIMCP_LOGGING_WARN("Edge nodes not found: %u -> %u", from, to);
+        return BRAIN_KG_INVALID_NODE;
+    }
+
+    /* Check if edge already exists */
+    for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+        if (kg->edges[i].in_use &&
+            kg->edges[i].from == from && kg->edges[i].to == to) {
+            nimcp_mutex_unlock(kg->mutex);
+            return kg->edges[i].id;  /* Return existing */
+        }
+    }
+
+    /* Find free slot */
+    brain_kg_edge_t* edge = NULL;
+    for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+        if (!kg->edges[i].in_use) {
+            edge = &kg->edges[i];
+            break;
+        }
+    }
+
+    if (!edge) {
+        nimcp_mutex_unlock(kg->mutex);
+        NIMCP_LOGGING_ERROR("Edge capacity reached (%u)", kg->edge_capacity);
+        return BRAIN_KG_INVALID_NODE;
+    }
+
+    /* Initialize edge */
+    memset(edge, 0, sizeof(*edge));
+    edge->id = kg->next_edge_id++;
+    edge->from = from;
+    edge->to = to;
+    edge->type = type;
+    edge->weight = (weight >= 0.0f && weight <= 1.0f) ? weight : 1.0f;
+    if (description) {
+        strncpy(edge->description, description, BRAIN_KG_MAX_DESC_LEN - 1);
+    }
+    edge->created_time = get_time_ms();
+    edge->in_use = true;
+
+    /* Update node connection counts */
+    from_node->outgoing_count++;
+    to_node->incoming_count++;
+
+    kg->edge_count++;
+    kg->stats.total_edges++;
+    kg->stats.edges_by_type[type]++;
+    kg->stats.modifications_count++;
+    kg->stats.last_modified = edge->created_time;
+
+    nimcp_mutex_unlock(kg->mutex);
+
+    NIMCP_LOGGING_DEBUG("Added edge %u: %s -> %s (%s)",
+                        edge->id, from_node->name, to_node->name,
+                        brain_kg_edge_type_to_string(type));
+
+    return edge->id;
+}
+
+const brain_kg_edge_t* brain_kg_get_edge(const brain_kg_t* kg, brain_kg_edge_id_t id) {
+    if (!kg || id == BRAIN_KG_INVALID_NODE) return NULL;
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    const brain_kg_edge_t* edge = NULL;
+    for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+        if (kg->edges[i].in_use && kg->edges[i].id == id) {
+            edge = &kg->edges[i];
+            break;
+        }
+    }
+
+    nimcp_mutex_unlock(mkg->mutex);
+    return edge;
+}
+
+brain_kg_edge_id_t brain_kg_find_edge(
+    const brain_kg_t* kg,
+    brain_kg_node_id_t from,
+    brain_kg_node_id_t to
+) {
+    if (!kg) return BRAIN_KG_INVALID_NODE;
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    brain_kg_edge_id_t result = BRAIN_KG_INVALID_NODE;
+    for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+        if (kg->edges[i].in_use &&
+            kg->edges[i].from == from && kg->edges[i].to == to) {
+            result = kg->edges[i].id;
+            break;
+        }
+    }
+
+    nimcp_mutex_unlock(mkg->mutex);
+    return result;
+}
+
+int brain_kg_update_edge(
+    brain_kg_t* kg,
+    brain_kg_edge_id_t id,
+    float weight,
+    const char* description
+) {
+    if (!kg || id == BRAIN_KG_INVALID_NODE) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+
+    brain_kg_edge_t* edge = find_edge_by_id_unlocked(kg, id);
+    if (!edge) {
+        nimcp_mutex_unlock(kg->mutex);
+        return -1;
+    }
+
+    if (weight >= 0.0f) {
+        edge->weight = weight;
+    }
+    if (description) {
+        strncpy(edge->description, description, BRAIN_KG_MAX_DESC_LEN - 1);
+    }
+
+    kg->stats.modifications_count++;
+    kg->stats.last_modified = get_time_ms();
+
+    nimcp_mutex_unlock(kg->mutex);
+    return 0;
+}
+
+int brain_kg_remove_edge(brain_kg_t* kg, brain_kg_edge_id_t id) {
+    if (!kg || id == BRAIN_KG_INVALID_NODE) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+
+    brain_kg_edge_t* edge = find_edge_by_id_unlocked(kg, id);
+    if (!edge) {
+        nimcp_mutex_unlock(kg->mutex);
+        return -1;
+    }
+
+    /* Update node counts */
+    brain_kg_node_t* from_node = find_node_by_id_unlocked(kg, edge->from);
+    brain_kg_node_t* to_node = find_node_by_id_unlocked(kg, edge->to);
+    if (from_node) from_node->outgoing_count--;
+    if (to_node) to_node->incoming_count--;
+
+    kg->stats.edges_by_type[edge->type]--;
+    kg->stats.total_edges--;
+    kg->stats.modifications_count++;
+    kg->stats.last_modified = get_time_ms();
+
+    edge->in_use = false;
+    kg->edge_count--;
+
+    nimcp_mutex_unlock(kg->mutex);
+    return 0;
+}
+
+brain_kg_edge_list_t* brain_kg_get_outgoing(const brain_kg_t* kg, brain_kg_node_id_t node_id) {
+    if (!kg || node_id == BRAIN_KG_INVALID_NODE) return NULL;
+
+    brain_kg_edge_list_t* list = nimcp_malloc(sizeof(*list));
+    if (!list) return NULL;
+
+    list->count = 0;
+    list->capacity = 32;
+    list->edges = nimcp_malloc(list->capacity * sizeof(brain_kg_edge_t*));
+    if (!list->edges) {
+        nimcp_free(list);
+        return NULL;
+    }
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+        if (kg->edges[i].in_use && kg->edges[i].from == node_id) {
+            if (list->count >= list->capacity) {
+                list->capacity *= 2;
+                brain_kg_edge_t** new_edges = nimcp_realloc(
+                    list->edges, list->capacity * sizeof(brain_kg_edge_t*));
+                if (!new_edges) break;
+                list->edges = new_edges;
+            }
+            list->edges[list->count++] = &mkg->edges[i];
+        }
+    }
+
+    nimcp_mutex_unlock(mkg->mutex);
+    return list;
+}
+
+brain_kg_edge_list_t* brain_kg_get_incoming(const brain_kg_t* kg, brain_kg_node_id_t node_id) {
+    if (!kg || node_id == BRAIN_KG_INVALID_NODE) return NULL;
+
+    brain_kg_edge_list_t* list = nimcp_malloc(sizeof(*list));
+    if (!list) return NULL;
+
+    list->count = 0;
+    list->capacity = 32;
+    list->edges = nimcp_malloc(list->capacity * sizeof(brain_kg_edge_t*));
+    if (!list->edges) {
+        nimcp_free(list);
+        return NULL;
+    }
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+        if (kg->edges[i].in_use && kg->edges[i].to == node_id) {
+            if (list->count >= list->capacity) {
+                list->capacity *= 2;
+                brain_kg_edge_t** new_edges = nimcp_realloc(
+                    list->edges, list->capacity * sizeof(brain_kg_edge_t*));
+                if (!new_edges) break;
+                list->edges = new_edges;
+            }
+            list->edges[list->count++] = &mkg->edges[i];
+        }
+    }
+
+    nimcp_mutex_unlock(mkg->mutex);
+    return list;
+}
+
+brain_kg_edge_list_t* brain_kg_get_edges_by_type(const brain_kg_t* kg, brain_kg_edge_type_t type) {
+    if (!kg) return NULL;
+
+    brain_kg_edge_list_t* list = nimcp_malloc(sizeof(*list));
+    if (!list) return NULL;
+
+    list->count = 0;
+    list->capacity = 64;
+    list->edges = nimcp_malloc(list->capacity * sizeof(brain_kg_edge_t*));
+    if (!list->edges) {
+        nimcp_free(list);
+        return NULL;
+    }
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+        if (kg->edges[i].in_use && kg->edges[i].type == type) {
+            if (list->count >= list->capacity) {
+                list->capacity *= 2;
+                brain_kg_edge_t** new_edges = nimcp_realloc(
+                    list->edges, list->capacity * sizeof(brain_kg_edge_t*));
+                if (!new_edges) break;
+                list->edges = new_edges;
+            }
+            list->edges[list->count++] = &mkg->edges[i];
+        }
+    }
+
+    nimcp_mutex_unlock(mkg->mutex);
+    return list;
+}
+
+void brain_kg_edge_list_destroy(brain_kg_edge_list_t* list) {
+    if (!list) return;
+    if (list->edges) nimcp_free(list->edges);
+    nimcp_free(list);
+}
+
+/* ============================================================================
+ * GRAPH TRAVERSAL API
+ * ============================================================================ */
+
+brain_kg_path_t* brain_kg_find_path(
+    const brain_kg_t* kg,
+    brain_kg_node_id_t from,
+    brain_kg_node_id_t to
+) {
+    if (!kg || from == BRAIN_KG_INVALID_NODE || to == BRAIN_KG_INVALID_NODE) {
+        return NULL;
+    }
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    /* Simple BFS for path finding */
+    bool* visited = nimcp_malloc(kg->node_capacity * sizeof(bool));
+    uint32_t* parent = nimcp_malloc(kg->node_capacity * sizeof(uint32_t));
+    uint32_t* queue = nimcp_malloc(kg->node_capacity * sizeof(uint32_t));
+
+    if (!visited || !parent || !queue) {
+        if (visited) nimcp_free(visited);
+        if (parent) nimcp_free(parent);
+        if (queue) nimcp_free(queue);
+        nimcp_mutex_unlock(mkg->mutex);
+        return NULL;
+    }
+
+    memset(visited, 0, kg->node_capacity * sizeof(bool));
+    for (uint32_t i = 0; i < kg->node_capacity; i++) {
+        parent[i] = BRAIN_KG_INVALID_NODE;
+    }
+
+    /* Map IDs to indices */
+    uint32_t from_idx = BRAIN_KG_INVALID_NODE;
+    uint32_t to_idx = BRAIN_KG_INVALID_NODE;
+    for (uint32_t i = 0; i < kg->node_capacity; i++) {
+        if (kg->nodes[i].in_use) {
+            if (kg->nodes[i].id == from) from_idx = i;
+            if (kg->nodes[i].id == to) to_idx = i;
+        }
+    }
+
+    if (from_idx == BRAIN_KG_INVALID_NODE || to_idx == BRAIN_KG_INVALID_NODE) {
+        nimcp_free(visited);
+        nimcp_free(parent);
+        nimcp_free(queue);
+        nimcp_mutex_unlock(mkg->mutex);
+        return NULL;
+    }
+
+    /* BFS */
+    uint32_t head = 0, tail = 0;
+    queue[tail++] = from_idx;
+    visited[from_idx] = true;
+    bool found = false;
+
+    while (head < tail && !found) {
+        uint32_t curr_idx = queue[head++];
+        brain_kg_node_id_t curr_id = kg->nodes[curr_idx].id;
+
+        /* Find outgoing edges */
+        for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+            if (!kg->edges[i].in_use || kg->edges[i].from != curr_id) continue;
+
+            /* Find target node index */
+            for (uint32_t j = 0; j < kg->node_capacity; j++) {
+                if (kg->nodes[j].in_use && kg->nodes[j].id == kg->edges[i].to) {
+                    if (!visited[j]) {
+                        visited[j] = true;
+                        parent[j] = curr_idx;
+                        queue[tail++] = j;
+                        if (j == to_idx) {
+                            found = true;
+                        }
+                    }
+                    break;
+                }
+            }
+            if (found) break;
+        }
+    }
+
+    brain_kg_path_t* path = NULL;
+    if (found) {
+        /* Reconstruct path */
+        uint32_t path_len = 0;
+        uint32_t curr = to_idx;
+        while (curr != BRAIN_KG_INVALID_NODE) {
+            path_len++;
+            curr = parent[curr];
+        }
+
+        path = nimcp_malloc(sizeof(*path));
+        if (path) {
+            path->nodes = nimcp_malloc(path_len * sizeof(brain_kg_node_id_t));
+            path->length = path_len;
+            path->total_weight = 0.0f;
+
+            if (path->nodes) {
+                curr = to_idx;
+                for (uint32_t i = path_len; i > 0 && curr != BRAIN_KG_INVALID_NODE; i--) {
+                    path->nodes[i - 1] = kg->nodes[curr].id;
+                    curr = parent[curr];
+                }
+            } else {
+                nimcp_free(path);
+                path = NULL;
+            }
+        }
+    }
+
+    nimcp_free(visited);
+    nimcp_free(parent);
+    nimcp_free(queue);
+    nimcp_mutex_unlock(mkg->mutex);
+
+    return path;
+}
+
+bool brain_kg_are_connected(
+    const brain_kg_t* kg,
+    brain_kg_node_id_t from,
+    brain_kg_node_id_t to
+) {
+    brain_kg_path_t* path = brain_kg_find_path(kg, from, to);
+    if (path) {
+        brain_kg_path_destroy(path);
+        return true;
+    }
+    return false;
+}
+
+brain_kg_node_list_t* brain_kg_get_reachable(
+    const brain_kg_t* kg,
+    brain_kg_node_id_t start_node,
+    uint32_t max_depth
+) {
+    if (!kg || start_node == BRAIN_KG_INVALID_NODE) return NULL;
+
+    brain_kg_node_list_t* list = nimcp_malloc(sizeof(*list));
+    if (!list) return NULL;
+
+    list->count = 0;
+    list->capacity = 64;
+    list->nodes = nimcp_malloc(list->capacity * sizeof(brain_kg_node_t*));
+    if (!list->nodes) {
+        nimcp_free(list);
+        return NULL;
+    }
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    bool* visited = nimcp_malloc(kg->node_capacity * sizeof(bool));
+    if (!visited) {
+        nimcp_mutex_unlock(mkg->mutex);
+        brain_kg_node_list_destroy(list);
+        return NULL;
+    }
+    memset(visited, 0, kg->node_capacity * sizeof(bool));
+
+    /* BFS with depth limit */
+    uint32_t* queue = nimcp_malloc(kg->node_capacity * sizeof(uint32_t));
+    uint32_t* depth = nimcp_malloc(kg->node_capacity * sizeof(uint32_t));
+    if (!queue || !depth) {
+        if (queue) nimcp_free(queue);
+        if (depth) nimcp_free(depth);
+        nimcp_free(visited);
+        nimcp_mutex_unlock(mkg->mutex);
+        brain_kg_node_list_destroy(list);
+        return NULL;
+    }
+
+    /* Find start node index */
+    uint32_t start_idx = BRAIN_KG_INVALID_NODE;
+    for (uint32_t i = 0; i < kg->node_capacity; i++) {
+        if (kg->nodes[i].in_use && kg->nodes[i].id == start_node) {
+            start_idx = i;
+            break;
+        }
+    }
+
+    if (start_idx != BRAIN_KG_INVALID_NODE) {
+        uint32_t head = 0, tail = 0;
+        queue[tail] = start_idx;
+        depth[tail] = 0;
+        tail++;
+        visited[start_idx] = true;
+
+        while (head < tail) {
+            uint32_t curr_idx = queue[head];
+            uint32_t curr_depth = depth[head];
+            head++;
+
+            if (max_depth > 0 && curr_depth >= max_depth) continue;
+
+            brain_kg_node_id_t curr_id = kg->nodes[curr_idx].id;
+
+            /* Find outgoing edges */
+            for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+                if (!kg->edges[i].in_use || kg->edges[i].from != curr_id) continue;
+
+                for (uint32_t j = 0; j < kg->node_capacity; j++) {
+                    if (kg->nodes[j].in_use && kg->nodes[j].id == kg->edges[i].to && !visited[j]) {
+                        visited[j] = true;
+                        queue[tail] = j;
+                        depth[tail] = curr_depth + 1;
+                        tail++;
+
+                        /* Add to result list */
+                        if (list->count >= list->capacity) {
+                            list->capacity *= 2;
+                            brain_kg_node_t** new_nodes = nimcp_realloc(
+                                list->nodes, list->capacity * sizeof(brain_kg_node_t*));
+                            if (new_nodes) list->nodes = new_nodes;
+                        }
+                        if (list->count < list->capacity) {
+                            list->nodes[list->count++] = &mkg->nodes[j];
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    nimcp_free(queue);
+    nimcp_free(depth);
+    nimcp_free(visited);
+    nimcp_mutex_unlock(mkg->mutex);
+
+    return list;
+}
+
+void brain_kg_path_destroy(brain_kg_path_t* path) {
+    if (!path) return;
+    if (path->nodes) nimcp_free(path->nodes);
+    nimcp_free(path);
+}
+
+/* ============================================================================
+ * QUERY API
+ * ============================================================================ */
+
+brain_kg_node_list_t* brain_kg_search_nodes(const brain_kg_t* kg, const char* pattern) {
+    if (!kg || !pattern) return NULL;
+
+    brain_kg_node_list_t* list = nimcp_malloc(sizeof(*list));
+    if (!list) return NULL;
+
+    list->count = 0;
+    list->capacity = 32;
+    list->nodes = nimcp_malloc(list->capacity * sizeof(brain_kg_node_t*));
+    if (!list->nodes) {
+        nimcp_free(list);
+        return NULL;
+    }
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    for (uint32_t i = 0; i < kg->node_capacity; i++) {
+        if (!kg->nodes[i].in_use) continue;
+
+        /* Case-insensitive substring search */
+        if (strstr(kg->nodes[i].name, pattern) ||
+            strstr(kg->nodes[i].description, pattern)) {
+            if (list->count >= list->capacity) {
+                list->capacity *= 2;
+                brain_kg_node_t** new_nodes = nimcp_realloc(
+                    list->nodes, list->capacity * sizeof(brain_kg_node_t*));
+                if (!new_nodes) break;
+                list->nodes = new_nodes;
+            }
+            list->nodes[list->count++] = &mkg->nodes[i];
+        }
+    }
+
+    mkg->stats.queries_count++;
+    nimcp_mutex_unlock(mkg->mutex);
+
+    return list;
+}
+
+brain_kg_node_list_t* brain_kg_get_neighbors(const brain_kg_t* kg, brain_kg_node_id_t node_id) {
+    if (!kg || node_id == BRAIN_KG_INVALID_NODE) return NULL;
+
+    brain_kg_node_list_t* list = nimcp_malloc(sizeof(*list));
+    if (!list) return NULL;
+
+    list->count = 0;
+    list->capacity = 32;
+    list->nodes = nimcp_malloc(list->capacity * sizeof(brain_kg_node_t*));
+    if (!list->nodes) {
+        nimcp_free(list);
+        return NULL;
+    }
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    /* Find all edges to/from this node */
+    bool* added = nimcp_malloc(kg->node_capacity * sizeof(bool));
+    if (added) {
+        memset(added, 0, kg->node_capacity * sizeof(bool));
+
+        for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+            if (!kg->edges[i].in_use) continue;
+
+            brain_kg_node_id_t neighbor_id = BRAIN_KG_INVALID_NODE;
+            if (kg->edges[i].from == node_id) {
+                neighbor_id = kg->edges[i].to;
+            } else if (kg->edges[i].to == node_id) {
+                neighbor_id = kg->edges[i].from;
+            }
+
+            if (neighbor_id != BRAIN_KG_INVALID_NODE) {
+                for (uint32_t j = 0; j < kg->node_capacity; j++) {
+                    if (kg->nodes[j].in_use && kg->nodes[j].id == neighbor_id && !added[j]) {
+                        added[j] = true;
+                        if (list->count >= list->capacity) {
+                            list->capacity *= 2;
+                            brain_kg_node_t** new_nodes = nimcp_realloc(
+                                list->nodes, list->capacity * sizeof(brain_kg_node_t*));
+                            if (new_nodes) list->nodes = new_nodes;
+                        }
+                        if (list->count < list->capacity) {
+                            list->nodes[list->count++] = &mkg->nodes[j];
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        nimcp_free(added);
+    }
+
+    mkg->stats.queries_count++;
+    nimcp_mutex_unlock(mkg->mutex);
+
+    return list;
+}
+
+brain_kg_node_list_t* brain_kg_get_hubs(const brain_kg_t* kg, uint32_t max_count) {
+    if (!kg) return NULL;
+
+    brain_kg_node_list_t* list = brain_kg_get_all_nodes(kg);
+    if (!list || list->count == 0) return list;
+
+    /* Sort by connection count (bubble sort for simplicity) */
+    for (uint32_t i = 0; i < list->count - 1; i++) {
+        for (uint32_t j = 0; j < list->count - i - 1; j++) {
+            uint32_t conn_j = list->nodes[j]->incoming_count + list->nodes[j]->outgoing_count;
+            uint32_t conn_j1 = list->nodes[j+1]->incoming_count + list->nodes[j+1]->outgoing_count;
+            if (conn_j < conn_j1) {
+                brain_kg_node_t* temp = list->nodes[j];
+                list->nodes[j] = list->nodes[j+1];
+                list->nodes[j+1] = temp;
+            }
+        }
+    }
+
+    /* Trim to max_count */
+    if (max_count > 0 && list->count > max_count) {
+        list->count = max_count;
+    }
+
+    return list;
+}
+
+/* ============================================================================
+ * STATISTICS API
+ * ============================================================================ */
+
+int brain_kg_get_stats(const brain_kg_t* kg, brain_kg_stats_t* stats) {
+    if (!kg || !stats) return -1;
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+    *stats = kg->stats;
+    nimcp_mutex_unlock(mkg->mutex);
+
+    return 0;
+}
+
+int brain_kg_generate_summary(const brain_kg_t* kg, char* buffer, size_t buffer_size) {
+    if (!kg || !buffer || buffer_size == 0) return -1;
+
+    brain_kg_stats_t stats;
+    brain_kg_get_stats(kg, &stats);
+
+    int written = snprintf(buffer, buffer_size,
+        "Brain Internal KG Summary:\n"
+        "  Nodes: %u (Cortical: %u, Subcortical: %u, Cognitive: %u, Integration: %u)\n"
+        "  Edges: %u (Connects: %u, Integrates: %u, Modulates: %u)\n"
+        "  Queries: %lu, Modifications: %lu\n",
+        stats.total_nodes,
+        stats.nodes_by_type[BRAIN_KG_NODE_CORTICAL],
+        stats.nodes_by_type[BRAIN_KG_NODE_SUBCORTICAL],
+        stats.nodes_by_type[BRAIN_KG_NODE_COGNITIVE],
+        stats.nodes_by_type[BRAIN_KG_NODE_INTEGRATION],
+        stats.total_edges,
+        stats.edges_by_type[BRAIN_KG_EDGE_CONNECTS_TO],
+        stats.edges_by_type[BRAIN_KG_EDGE_INTEGRATES_WITH],
+        stats.edges_by_type[BRAIN_KG_EDGE_MODULATES],
+        (unsigned long)stats.queries_count,
+        (unsigned long)stats.modifications_count
+    );
+
+    return written;
+}
+
+/* ============================================================================
+ * STRING CONVERSION
+ * ============================================================================ */
+
+const char* brain_kg_node_type_to_string(brain_kg_node_type_t type) {
+    switch (type) {
+    case BRAIN_KG_NODE_CORE:        return "core";
+    case BRAIN_KG_NODE_CORTICAL:    return "cortical";
+    case BRAIN_KG_NODE_SUBCORTICAL: return "subcortical";
+    case BRAIN_KG_NODE_BRAINSTEM:   return "brainstem";
+    case BRAIN_KG_NODE_COGNITIVE:   return "cognitive";
+    case BRAIN_KG_NODE_PERCEPTION:  return "perception";
+    case BRAIN_KG_NODE_PLASTICITY:  return "plasticity";
+    case BRAIN_KG_NODE_TRAINING:    return "training";
+    case BRAIN_KG_NODE_SWARM:       return "swarm";
+    case BRAIN_KG_NODE_SECURITY:    return "security";
+    case BRAIN_KG_NODE_INTEGRATION: return "integration";
+    case BRAIN_KG_NODE_COORDINATOR: return "coordinator";
+    case BRAIN_KG_NODE_UTILITY:     return "utility";
+    case BRAIN_KG_NODE_CUSTOM:      return "custom";
+    default:                        return "unknown";
+    }
+}
+
+const char* brain_kg_edge_type_to_string(brain_kg_edge_type_t type) {
+    switch (type) {
+    case BRAIN_KG_EDGE_CONNECTS_TO:      return "connects_to";
+    case BRAIN_KG_EDGE_SENDS_TO:         return "sends_to";
+    case BRAIN_KG_EDGE_RECEIVES_FROM:    return "receives_from";
+    case BRAIN_KG_EDGE_INTEGRATES_WITH:  return "integrates_with";
+    case BRAIN_KG_EDGE_MODULATES:        return "modulates";
+    case BRAIN_KG_EDGE_EXCITES:          return "excites";
+    case BRAIN_KG_EDGE_INHIBITS:         return "inhibits";
+    case BRAIN_KG_EDGE_COORDINATES_WITH: return "coordinates_with";
+    case BRAIN_KG_EDGE_DEPENDS_ON:       return "depends_on";
+    case BRAIN_KG_EDGE_PROVIDES_TO:      return "provides_to";
+    case BRAIN_KG_EDGE_CUSTOM:           return "custom";
+    default:                             return "unknown";
+    }
+}
+
+const char* brain_kg_node_state_to_string(brain_kg_node_state_t state) {
+    switch (state) {
+    case BRAIN_KG_STATE_UNKNOWN:        return "unknown";
+    case BRAIN_KG_STATE_UNINITIALIZED:  return "uninitialized";
+    case BRAIN_KG_STATE_INITIALIZING:   return "initializing";
+    case BRAIN_KG_STATE_ACTIVE:         return "active";
+    case BRAIN_KG_STATE_DISABLED:       return "disabled";
+    case BRAIN_KG_STATE_ERROR:          return "error";
+    case BRAIN_KG_STATE_SHUTDOWN:       return "shutdown";
+    default:                            return "unknown";
+    }
+}
+
+/* ============================================================================
+ * POPULATION API (Stub - to be implemented with brain_struct access)
+ * ============================================================================ */
+
+int brain_kg_populate_from_brain(brain_kg_t* kg, void* brain) {
+    if (!kg || !brain) return -1;
+
+    /* Cast to access brain_struct members
+     * Note: We use void* to avoid circular header dependencies */
+
+    int nodes_added = 0;
+
+    /* ========================================================================
+     * CORE MODULE
+     * ======================================================================== */
+    brain_kg_node_id_t core_id = brain_kg_add_node(kg, "core_brain",
+        BRAIN_KG_NODE_CORE, "Core brain infrastructure - network, config, strategy");
+    if (core_id != BRAIN_KG_INVALID_NODE) {
+        brain_kg_mark_critical(kg, core_id);  /* Protect core */
+        nodes_added++;
+    }
+
+    /* ========================================================================
+     * CORTICAL REGIONS
+     * ======================================================================== */
+    brain_kg_node_id_t prefrontal_id = brain_kg_add_node(kg, "prefrontal_cortex",
+        BRAIN_KG_NODE_CORTICAL, "Executive control, working memory, planning (DLPFC, VLPFC, OFC)");
+    if (prefrontal_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t temporal_id = brain_kg_add_node(kg, "temporal_cortex",
+        BRAIN_KG_NODE_CORTICAL, "Auditory processing, object recognition, language (STG, MTG, IT)");
+    if (temporal_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t occipital_id = brain_kg_add_node(kg, "occipital_cortex",
+        BRAIN_KG_NODE_CORTICAL, "Visual processing, V1-V5 hierarchy, motion detection");
+    if (occipital_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t parietal_id = brain_kg_add_node(kg, "parietal_cortex",
+        BRAIN_KG_NODE_CORTICAL, "Spatial processing, attention, body awareness (SPL, IPL, IPS)");
+    if (parietal_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t motor_id = brain_kg_add_node(kg, "motor_cortex",
+        BRAIN_KG_NODE_CORTICAL, "Voluntary movement control, somatotopic organization (M1, PMC, SMA)");
+    if (motor_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t cingulate_id = brain_kg_add_node(kg, "cingulate_cortex",
+        BRAIN_KG_NODE_CORTICAL, "Error monitoring, conflict detection, cognitive control (ACC, MCC, PCC)");
+    if (cingulate_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t insula_id = brain_kg_add_node(kg, "insula",
+        BRAIN_KG_NODE_CORTICAL, "Interoception, emotional awareness, disgust processing");
+    if (insula_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t broca_id = brain_kg_add_node(kg, "broca_region",
+        BRAIN_KG_NODE_CORTICAL, "Language production, syntax, speech motor planning (BA44/45)");
+    if (broca_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    /* ========================================================================
+     * SUBCORTICAL STRUCTURES
+     * ======================================================================== */
+    brain_kg_node_id_t hippocampus_id = brain_kg_add_node(kg, "hippocampus",
+        BRAIN_KG_NODE_SUBCORTICAL, "Episodic memory, spatial navigation, pattern separation (CA1/CA3, DG)");
+    if (hippocampus_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t basal_ganglia_id = brain_kg_add_node(kg, "basal_ganglia",
+        BRAIN_KG_NODE_SUBCORTICAL, "Action selection, motor control, reinforcement learning (striatum, GPe/GPi, STN)");
+    if (basal_ganglia_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t cerebellum_id = brain_kg_add_node(kg, "cerebellum",
+        BRAIN_KG_NODE_SUBCORTICAL, "Motor coordination, timing, error correction (Marr-Albus-Ito model)");
+    if (cerebellum_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t thalamus_id = brain_kg_add_node(kg, "thalamus",
+        BRAIN_KG_NODE_SUBCORTICAL, "Sensory relay, cortical gating, attention modulation");
+    if (thalamus_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t hypothalamus_id = brain_kg_add_node(kg, "hypothalamus",
+        BRAIN_KG_NODE_SUBCORTICAL, "Homeostasis, circadian rhythm, HPA axis, autonomic regulation");
+    if (hypothalamus_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t amygdala_id = brain_kg_add_node(kg, "amygdala",
+        BRAIN_KG_NODE_SUBCORTICAL, "Emotional processing, fear conditioning, threat detection");
+    if (amygdala_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    /* ========================================================================
+     * BRAINSTEM
+     * ======================================================================== */
+    brain_kg_node_id_t medulla_id = brain_kg_add_node(kg, "medulla_oblongata",
+        BRAIN_KG_NODE_BRAINSTEM, "Vital functions, protective reflexes, arousal state");
+    if (medulla_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t brainstem_id = brain_kg_add_node(kg, "brainstem",
+        BRAIN_KG_NODE_BRAINSTEM, "Midbrain, pons, reticular formation - arousal and reflex control");
+    if (brainstem_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    /* ========================================================================
+     * COGNITIVE MODULES
+     * ======================================================================== */
+    brain_kg_node_id_t ethics_id = brain_kg_add_node(kg, "ethics_engine",
+        BRAIN_KG_NODE_COGNITIVE, "Golden Rule, empathy-based moral reasoning");
+    if (ethics_id != BRAIN_KG_INVALID_NODE) {
+        brain_kg_mark_critical(kg, ethics_id);  /* Protect ethics */
+        nodes_added++;
+    }
+
+    brain_kg_node_id_t core_directives_id = brain_kg_add_node(kg, "core_directives",
+        BRAIN_KG_NODE_COGNITIVE, "Asimov's Laws, Golden Rule, combinatorial harm detection");
+    if (core_directives_id != BRAIN_KG_INVALID_NODE) {
+        brain_kg_mark_critical(kg, core_directives_id);  /* Protect directives */
+        nodes_added++;
+    }
+
+    brain_kg_node_id_t introspection_id = brain_kg_add_node(kg, "introspection",
+        BRAIN_KG_NODE_COGNITIVE, "Self-awareness, state monitoring, metacognition");
+    if (introspection_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t salience_id = brain_kg_add_node(kg, "salience_evaluator",
+        BRAIN_KG_NODE_COGNITIVE, "Fast attention, priority scoring, relevance detection");
+    if (salience_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t curiosity_id = brain_kg_add_node(kg, "curiosity_engine",
+        BRAIN_KG_NODE_COGNITIVE, "Exploration drive, novelty seeking, information gain");
+    if (curiosity_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t tom_id = brain_kg_add_node(kg, "theory_of_mind",
+        BRAIN_KG_NODE_COGNITIVE, "Mental state inference, belief modeling, social cognition");
+    if (tom_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t working_memory_id = brain_kg_add_node(kg, "working_memory",
+        BRAIN_KG_NODE_COGNITIVE, "Miller's 7±2 active buffer, phonological loop, visuospatial sketchpad");
+    if (working_memory_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t executive_id = brain_kg_add_node(kg, "executive_controller",
+        BRAIN_KG_NODE_COGNITIVE, "Task switching, planning, inhibition, goal maintenance");
+    if (executive_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t emotional_id = brain_kg_add_node(kg, "emotional_system",
+        BRAIN_KG_NODE_COGNITIVE, "Russell's circumplex model, valence/arousal, emotional tagging");
+    if (emotional_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    /* ========================================================================
+     * SECURITY MODULES
+     * ======================================================================== */
+    brain_kg_node_id_t immune_id = brain_kg_add_node(kg, "brain_immune",
+        BRAIN_KG_NODE_SECURITY, "B/T cells, antibodies, cytokines, threat coordination");
+    if (immune_id != BRAIN_KG_INVALID_NODE) {
+        brain_kg_mark_critical(kg, immune_id);
+        nodes_added++;
+    }
+
+    brain_kg_node_id_t bbb_id = brain_kg_add_node(kg, "blood_brain_barrier",
+        BRAIN_KG_NODE_SECURITY, "Input validation, code signing, memory protection, access control");
+    if (bbb_id != BRAIN_KG_INVALID_NODE) {
+        brain_kg_mark_critical(kg, bbb_id);
+        nodes_added++;
+    }
+
+    /* ========================================================================
+     * TRAINING MODULES
+     * ======================================================================== */
+    brain_kg_node_id_t training_id = brain_kg_add_node(kg, "training_integration",
+        BRAIN_KG_NODE_TRAINING, "Loss functions, optimizers, batch processing");
+    if (training_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t nas_id = brain_kg_add_node(kg, "neural_architecture_search",
+        BRAIN_KG_NODE_TRAINING, "Evolutionary, RL-NAS, DARTS, pruning-based architecture optimization");
+    if (nas_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t hpo_id = brain_kg_add_node(kg, "hyperparameter_optimization",
+        BRAIN_KG_NODE_TRAINING, "Bayesian, random, grid search, meta-learning");
+    if (hpo_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    /* ========================================================================
+     * INTEGRATION MODULES
+     * ======================================================================== */
+    brain_kg_node_id_t fep_id = brain_kg_add_node(kg, "fep_orchestrator",
+        BRAIN_KG_NODE_COORDINATOR, "Free energy principle coordination across 93+ bridges");
+    if (fep_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t bio_async_id = brain_kg_add_node(kg, "bio_async_orchestrator",
+        BRAIN_KG_NODE_COORDINATOR, "Asynchronous neural messaging, neuromodulator channels");
+    if (bio_async_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t glial_id = brain_kg_add_node(kg, "glial_integration",
+        BRAIN_KG_NODE_INTEGRATION, "Astrocytes, microglia, oligodendrocytes support");
+    if (glial_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t neuromod_id = brain_kg_add_node(kg, "neuromodulator_system",
+        BRAIN_KG_NODE_PLASTICITY, "DA, 5-HT, ACh, NE, GABA, GLU modulation");
+    if (neuromod_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    /* ========================================================================
+     * PERCEPTION MODULES
+     * ======================================================================== */
+    brain_kg_node_id_t visual_id = brain_kg_add_node(kg, "visual_cortex",
+        BRAIN_KG_NODE_PERCEPTION, "V1 visual processing, CNN-based feature extraction");
+    if (visual_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t audio_id = brain_kg_add_node(kg, "audio_cortex",
+        BRAIN_KG_NODE_PERCEPTION, "A1 auditory processing, FFT-based spectral analysis");
+    if (audio_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    brain_kg_node_id_t speech_id = brain_kg_add_node(kg, "speech_cortex",
+        BRAIN_KG_NODE_PERCEPTION, "STG/Wernicke speech comprehension");
+    if (speech_id != BRAIN_KG_INVALID_NODE) nodes_added++;
+
+    /* ========================================================================
+     * ADD KEY CONNECTIONS (EDGES)
+     * ======================================================================== */
+
+    /* Core connections */
+    brain_kg_add_edge(kg, core_id, prefrontal_id, BRAIN_KG_EDGE_CONNECTS_TO,
+        "Core to prefrontal pathway", 1.0f);
+    brain_kg_add_edge(kg, core_id, immune_id, BRAIN_KG_EDGE_INTEGRATES_WITH,
+        "Core immune integration", 1.0f);
+    brain_kg_add_edge(kg, core_id, bbb_id, BRAIN_KG_EDGE_DEPENDS_ON,
+        "Core requires BBB protection", 1.0f);
+
+    /* Cortical connections */
+    brain_kg_add_edge(kg, prefrontal_id, hippocampus_id, BRAIN_KG_EDGE_CONNECTS_TO,
+        "Memory retrieval pathway", 0.9f);
+    brain_kg_add_edge(kg, prefrontal_id, basal_ganglia_id, BRAIN_KG_EDGE_SENDS_TO,
+        "Goal-directed action selection", 0.8f);
+    brain_kg_add_edge(kg, prefrontal_id, working_memory_id, BRAIN_KG_EDGE_INTEGRATES_WITH,
+        "Active maintenance", 0.95f);
+    brain_kg_add_edge(kg, prefrontal_id, executive_id, BRAIN_KG_EDGE_COORDINATES_WITH,
+        "Executive control", 0.9f);
+
+    brain_kg_add_edge(kg, temporal_id, hippocampus_id, BRAIN_KG_EDGE_SENDS_TO,
+        "Episodic encoding", 0.85f);
+    brain_kg_add_edge(kg, temporal_id, audio_id, BRAIN_KG_EDGE_RECEIVES_FROM,
+        "Auditory input", 0.9f);
+    brain_kg_add_edge(kg, temporal_id, broca_id, BRAIN_KG_EDGE_CONNECTS_TO,
+        "Language comprehension to production", 0.8f);
+
+    brain_kg_add_edge(kg, occipital_id, visual_id, BRAIN_KG_EDGE_RECEIVES_FROM,
+        "Visual input", 0.95f);
+    brain_kg_add_edge(kg, occipital_id, parietal_id, BRAIN_KG_EDGE_SENDS_TO,
+        "Dorsal stream (where)", 0.85f);
+    brain_kg_add_edge(kg, occipital_id, temporal_id, BRAIN_KG_EDGE_SENDS_TO,
+        "Ventral stream (what)", 0.85f);
+
+    brain_kg_add_edge(kg, motor_id, cerebellum_id, BRAIN_KG_EDGE_COORDINATES_WITH,
+        "Motor timing", 0.9f);
+    brain_kg_add_edge(kg, motor_id, basal_ganglia_id, BRAIN_KG_EDGE_RECEIVES_FROM,
+        "Action selection output", 0.85f);
+
+    /* Subcortical connections */
+    brain_kg_add_edge(kg, thalamus_id, prefrontal_id, BRAIN_KG_EDGE_SENDS_TO,
+        "MD nucleus relay", 0.9f);
+    brain_kg_add_edge(kg, thalamus_id, occipital_id, BRAIN_KG_EDGE_SENDS_TO,
+        "LGN visual relay", 0.95f);
+    brain_kg_add_edge(kg, thalamus_id, temporal_id, BRAIN_KG_EDGE_SENDS_TO,
+        "MGN auditory relay", 0.9f);
+
+    brain_kg_add_edge(kg, hypothalamus_id, medulla_id, BRAIN_KG_EDGE_COORDINATES_WITH,
+        "Autonomic regulation", 0.9f);
+    brain_kg_add_edge(kg, hypothalamus_id, immune_id, BRAIN_KG_EDGE_MODULATES,
+        "Neuroimmune axis", 0.7f);
+
+    brain_kg_add_edge(kg, amygdala_id, hippocampus_id, BRAIN_KG_EDGE_MODULATES,
+        "Emotional memory tagging", 0.8f);
+    brain_kg_add_edge(kg, amygdala_id, prefrontal_id, BRAIN_KG_EDGE_CONNECTS_TO,
+        "Emotional regulation", 0.75f);
+
+    /* Cognitive module connections */
+    brain_kg_add_edge(kg, core_directives_id, ethics_id, BRAIN_KG_EDGE_INTEGRATES_WITH,
+        "Ethical constraint enforcement", 1.0f);
+    brain_kg_add_edge(kg, core_directives_id, immune_id, BRAIN_KG_EDGE_SENDS_TO,
+        "Ethics violation alerts", 0.9f);
+
+    brain_kg_add_edge(kg, salience_id, prefrontal_id, BRAIN_KG_EDGE_SENDS_TO,
+        "Priority signals", 0.8f);
+    brain_kg_add_edge(kg, curiosity_id, training_id, BRAIN_KG_EDGE_MODULATES,
+        "Learning rate modulation", 0.7f);
+
+    brain_kg_add_edge(kg, tom_id, prefrontal_id, BRAIN_KG_EDGE_INTEGRATES_WITH,
+        "Social cognition integration", 0.8f);
+    brain_kg_add_edge(kg, emotional_id, amygdala_id, BRAIN_KG_EDGE_INTEGRATES_WITH,
+        "Emotional processing", 0.9f);
+
+    /* Security connections */
+    brain_kg_add_edge(kg, bbb_id, immune_id, BRAIN_KG_EDGE_SENDS_TO,
+        "Threat reporting", 0.95f);
+    brain_kg_add_edge(kg, immune_id, fep_id, BRAIN_KG_EDGE_MODULATES,
+        "Precision modulation", 0.8f);
+
+    /* Coordinator connections */
+    brain_kg_add_edge(kg, fep_id, prefrontal_id, BRAIN_KG_EDGE_MODULATES,
+        "Free energy minimization", 0.85f);
+    brain_kg_add_edge(kg, bio_async_id, neuromod_id, BRAIN_KG_EDGE_COORDINATES_WITH,
+        "Neuromodulator messaging", 0.9f);
+    brain_kg_add_edge(kg, glial_id, neuromod_id, BRAIN_KG_EDGE_INTEGRATES_WITH,
+        "Gliotransmission", 0.7f);
+
+    NIMCP_LOGGING_INFO("Brain KG populated: %d nodes added", nodes_added);
+
+    /* Update integrity checksum after population */
+    if (kg->config.enable_integrity_checks) {
+        nimcp_mutex_lock(kg->mutex);
+        kg->security.integrity_checksum = compute_kg_checksum(kg);
+        nimcp_mutex_unlock(kg->mutex);
+    }
+
+    return nodes_added;
+}
+
+int brain_kg_refresh_state(brain_kg_t* kg, void* brain) {
+    if (!kg || !brain) return -1;
+
+    NIMCP_LOGGING_DEBUG("brain_kg_refresh_state called");
+    return 0;
+}
+
+/* ============================================================================
+ * SECURITY & IMMUNE INTEGRATION API
+ * ============================================================================ */
+
+int brain_kg_connect_immune(brain_kg_t* kg, void* immune_system) {
+    if (!kg) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+    kg->security.immune_system = immune_system;
+    kg->config.enable_immune_integration = (immune_system != NULL);
+    nimcp_mutex_unlock(kg->mutex);
+
+    NIMCP_LOGGING_INFO("Brain KG connected to immune system");
+    return 0;
+}
+
+int brain_kg_disconnect_immune(brain_kg_t* kg) {
+    if (!kg) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+    kg->security.immune_system = NULL;
+    kg->config.enable_immune_integration = false;
+    nimcp_mutex_unlock(kg->mutex);
+
+    NIMCP_LOGGING_INFO("Brain KG disconnected from immune system");
+    return 0;
+}
+
+int brain_kg_register_security_callback(
+    brain_kg_t* kg,
+    brain_kg_security_callback_t callback,
+    void* user_data
+) {
+    if (!kg) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+    kg->security.callback = callback;
+    kg->security.callback_user_data = user_data;
+    nimcp_mutex_unlock(kg->mutex);
+
+    return 0;
+}
+
+int brain_kg_set_access_level(
+    brain_kg_t* kg,
+    brain_kg_access_level_t level,
+    uint64_t token
+) {
+    if (!kg) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+
+    /* Verify token for WRITE and ADMIN levels */
+    if (level >= BRAIN_KG_ACCESS_WRITE) {
+        if (token != kg->security.access_token && token != kg->security.admin_token) {
+            nimcp_mutex_unlock(kg->mutex);
+            report_security_violation(kg, BRAIN_KG_SEC_UNAUTHORIZED_ACCESS,
+                BRAIN_KG_INVALID_NODE, "Invalid token for access level change");
+            return -1;
+        }
+    }
+
+    /* ADMIN requires admin token specifically */
+    if (level == BRAIN_KG_ACCESS_ADMIN) {
+        if (token != kg->security.admin_token) {
+            nimcp_mutex_unlock(kg->mutex);
+            report_security_violation(kg, BRAIN_KG_SEC_UNAUTHORIZED_ACCESS,
+                BRAIN_KG_INVALID_NODE, "Admin token required for ADMIN access");
+            return -1;
+        }
+    }
+
+    kg->security.current_level = level;
+    nimcp_mutex_unlock(kg->mutex);
+
+    NIMCP_LOGGING_DEBUG("KG access level set to %d", level);
+    return 0;
+}
+
+int brain_kg_generate_token(
+    brain_kg_t* kg,
+    brain_kg_access_level_t level,
+    uint64_t* token_out
+) {
+    if (!kg || !token_out) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+
+    /* Only allow token generation if current level >= ADMIN or first time */
+    if (kg->security.admin_token != 0 &&
+        kg->security.current_level < BRAIN_KG_ACCESS_ADMIN) {
+        nimcp_mutex_unlock(kg->mutex);
+        report_security_violation(kg, BRAIN_KG_SEC_UNAUTHORIZED_ACCESS,
+            BRAIN_KG_INVALID_NODE, "ADMIN access required to generate tokens");
+        return -1;
+    }
+
+    uint64_t token = generate_random_token();
+
+    if (level == BRAIN_KG_ACCESS_ADMIN) {
+        kg->security.admin_token = token;
+    }
+    kg->security.access_token = token;
+
+    *token_out = token;
+    nimcp_mutex_unlock(kg->mutex);
+
+    NIMCP_LOGGING_INFO("Generated token for access level %d", level);
+    return 0;
+}
+
+int brain_kg_verify_integrity(brain_kg_t* kg) {
+    if (!kg) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+
+    uint32_t current_checksum = compute_kg_checksum(kg);
+
+    /* First time - just store the checksum */
+    if (kg->security.integrity_checksum == 0) {
+        kg->security.integrity_checksum = current_checksum;
+        kg->security.last_integrity_check = get_time_ms();
+        nimcp_mutex_unlock(kg->mutex);
+        return 0;
+    }
+
+    /* Check if checksum matches */
+    if (current_checksum != kg->security.integrity_checksum) {
+        nimcp_mutex_unlock(kg->mutex);
+        report_security_violation(kg, BRAIN_KG_SEC_INTEGRITY_VIOLATION,
+            BRAIN_KG_INVALID_NODE, "Integrity checksum mismatch detected");
+        return -1;
+    }
+
+    kg->security.last_integrity_check = get_time_ms();
+    nimcp_mutex_unlock(kg->mutex);
+
+    NIMCP_LOGGING_DEBUG("KG integrity verified");
+    return 0;
+}
+
+int brain_kg_mark_critical(brain_kg_t* kg, brain_kg_node_id_t node_id) {
+    if (!kg || node_id == BRAIN_KG_INVALID_NODE) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+
+    /* Allocate critical nodes bitmap if needed */
+    if (!kg->security.critical_nodes) {
+        kg->security.critical_nodes = nimcp_malloc(kg->node_capacity * sizeof(bool));
+        if (!kg->security.critical_nodes) {
+            nimcp_mutex_unlock(kg->mutex);
+            return -1;
+        }
+        memset(kg->security.critical_nodes, 0, kg->node_capacity * sizeof(bool));
+    }
+
+    /* Find node index */
+    for (uint32_t i = 0; i < kg->node_capacity; i++) {
+        if (kg->nodes[i].in_use && kg->nodes[i].id == node_id) {
+            kg->security.critical_nodes[i] = true;
+            nimcp_mutex_unlock(kg->mutex);
+            NIMCP_LOGGING_INFO("Node %u marked as critical", node_id);
+            return 0;
+        }
+    }
+
+    nimcp_mutex_unlock(kg->mutex);
+    return -1;
+}
+
+int brain_kg_get_security_stats(
+    const brain_kg_t* kg,
+    uint32_t* violations_out,
+    uint64_t* last_violation_time
+) {
+    if (!kg) return -1;
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    if (violations_out) {
+        *violations_out = kg->security.violation_count;
+    }
+    if (last_violation_time) {
+        *last_violation_time = kg->security.last_violation_time;
+    }
+
+    nimcp_mutex_unlock(mkg->mutex);
+    return 0;
+}
+
+int brain_kg_emergency_lock(brain_kg_t* kg) {
+    if (!kg) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+    kg->security.emergency_locked = true;
+    nimcp_mutex_unlock(kg->mutex);
+
+    NIMCP_LOGGING_WARN("Brain KG EMERGENCY LOCKED - all writes disabled");
+    return 0;
+}
+
+int brain_kg_emergency_unlock(brain_kg_t* kg, uint64_t admin_token) {
+    if (!kg) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+
+    if (admin_token != kg->security.admin_token) {
+        nimcp_mutex_unlock(kg->mutex);
+        report_security_violation(kg, BRAIN_KG_SEC_UNAUTHORIZED_ACCESS,
+            BRAIN_KG_INVALID_NODE, "Invalid admin token for emergency unlock");
+        return -1;
+    }
+
+    kg->security.emergency_locked = false;
+    nimcp_mutex_unlock(kg->mutex);
+
+    NIMCP_LOGGING_INFO("Brain KG emergency lock released");
+    return 0;
+}

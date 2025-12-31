@@ -781,6 +781,29 @@ struct brain_struct {
     bool kg_reader_enabled;                               // KG reader enabled for this brain
     char kg_file_path[512];                               // Path to KG file
 
+    // === INTERNAL RUNTIME KNOWLEDGE GRAPH (Dynamic Module Mapping) ===
+    //
+    // The Internal KG provides in-memory CRUD for real-time module self-awareness:
+    // - Nodes: All brain modules (cortical, subcortical, cognitive, etc.)
+    // - Edges: Connection paths between modules (integrates_with, modulates, etc.)
+    // - Security: Immune integration, access control, integrity verification
+    // - Dynamic: Updated at runtime as modules are enabled/disabled
+    //
+    // This complements the file-based kg_reader with a live, mutable graph
+    // that the brain can query and modify during operation.
+    //
+    // Security features:
+    // - Token-based access control (READ/WRITE/ADMIN levels)
+    // - Integrity checksums with periodic verification
+    // - Critical node protection (core/security modules)
+    // - Immune system integration for threat reporting
+    // - Emergency lock capability
+    // - Rate limiting on mutations
+    //
+    struct brain_kg* internal_kg;                         // Runtime knowledge graph (CRUD)
+    bool internal_kg_enabled;                             // Internal KG enabled for this brain
+    uint64_t internal_kg_admin_token;                     // Admin token for KG operations
+
     // === DRAGONFLY INTEGRATION (Bio-inspired Target Tracking and Interception) ===
     //
     // The Dragonfly module provides bio-inspired target tracking and interception:

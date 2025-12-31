@@ -1245,6 +1245,74 @@ add_e2e_test(e2e_test_brain_initialization_subsystems
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_brain_initialization_subsystems.cpp
 )
 
+# ============================================================================
+# GPU Kernel Pipeline E2E Tests (2025-12-31)
+# ============================================================================
+# WHAT: E2E tests for GPU training, inference, SNN, and LNN pipelines
+# WHY:  Verify complete GPU kernel operations in realistic neural workloads
+# HOW:  Test full training loops, inference batches, SNN spikes, LNN dynamics
+# ============================================================================
+
+# GPU Neural Network Training Pipeline (full forward/backward pass)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_gpu_nn_training_pipeline.cpp)
+    add_e2e_test(e2e_test_gpu_nn_training_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_gpu_nn_training_pipeline.cpp
+    )
+    set_tests_properties(e2e_test_gpu_nn_training_pipeline PROPERTIES
+        LABELS "e2e;gpu;training"
+        TIMEOUT 180
+    )
+endif()
+
+# GPU Inference Pipeline (batched inference with quantization)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_gpu_inference_pipeline.cpp)
+    add_e2e_test(e2e_test_gpu_inference_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_gpu_inference_pipeline.cpp
+    )
+    set_tests_properties(e2e_test_gpu_inference_pipeline PROPERTIES
+        LABELS "e2e;gpu;inference"
+        TIMEOUT 180
+    )
+endif()
+
+# GPU SNN Pipeline (spiking neural network with STDP)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_gpu_snn_pipeline.cpp)
+    add_e2e_test(e2e_test_gpu_snn_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_gpu_snn_pipeline.cpp
+    )
+    set_tests_properties(e2e_test_gpu_snn_pipeline PROPERTIES
+        LABELS "e2e;gpu;snn"
+        TIMEOUT 180
+    )
+endif()
+
+# GPU LNN Pipeline (Liquid Neural Network with ODE solvers)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_gpu_lnn_pipeline.cpp)
+    add_e2e_test(e2e_test_gpu_lnn_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_gpu_lnn_pipeline.cpp
+    )
+    set_tests_properties(e2e_test_gpu_lnn_pipeline PROPERTIES
+        LABELS "e2e;gpu;lnn"
+        TIMEOUT 180
+    )
+endif()
+
+# GPU Training Pipeline (basic training with optimizers)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_gpu_training_pipeline.cpp)
+    add_e2e_test(e2e_test_gpu_training_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_gpu_training_pipeline.cpp
+    )
+    set_tests_properties(e2e_test_gpu_training_pipeline PROPERTIES
+        LABELS "e2e;gpu;training"
+        TIMEOUT 180
+    )
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

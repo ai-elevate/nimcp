@@ -362,10 +362,11 @@ TEST_F(QuantumBridgeIntegrationTest, FullCognitiveLoop) {
         qstdp_activity_stats_t stdp_activity = {
             .mean_weight = intensity,
             .weight_variance = 0.1f,
-            .firing_rate = intensity * 30.0f,
             .ltp_rate = 5.0f,
             .ltd_rate = 2.0f,
-            .ltp_ltd_ratio = 2.5f
+            .ltp_ltd_ratio = 2.5f,
+            .firing_rate = intensity * 30.0f,
+            .sparsity = 0.0f
         };
         stdp_quantum_step(stdp_bridge, &stdp_activity);
     }
@@ -464,10 +465,11 @@ TEST_F(QuantumBridgeIntegrationTest, HighThroughput) {
         qstdp_activity_stats_t stdp_activity = {
             .mean_weight = 0.5f,
             .weight_variance = 0.1f,
-            .firing_rate = 15.0f,
             .ltp_rate = 5.0f,
             .ltd_rate = 2.0f,
-            .ltp_ltd_ratio = 2.5f
+            .ltp_ltd_ratio = 2.5f,
+            .firing_rate = 15.0f,
+            .sparsity = 0.0f
         };
         stdp_quantum_step(stdp_bridge, &stdp_activity);
     }
@@ -491,10 +493,11 @@ TEST_F(QuantumBridgeIntegrationTest, ConcurrentBridgeOperations) {
         qstdp_activity_stats_t stdp_activity = {
             .mean_weight = 0.5f + (float)round * 0.01f,
             .weight_variance = 0.1f,
-            .firing_rate = 15.0f,
             .ltp_rate = 5.0f,
             .ltd_rate = 2.0f,
-            .ltp_ltd_ratio = 2.5f
+            .ltp_ltd_ratio = 2.5f,
+            .firing_rate = 15.0f,
+            .sparsity = 0.0f
         };
         stdp_quantum_step(stdp_bridge, &stdp_activity);
 

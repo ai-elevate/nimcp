@@ -316,10 +316,21 @@ TEST_F(ImmuneThreatLogicTest, ImpliesGateHolds) {
 // ============================================================================
 
 TEST_F(ImmuneThreatLogicTest, LogicResponseHighSeverity) {
-    // Setup: Create high severity threat
+    // Setup: First add a memory cell that matches our threat data
     uint8_t threat_data[64] = {0xDE, 0xAD};
+    NimcpSwarmThreatSignature sig = {};
+    memcpy(sig.pattern, threat_data, 2);
+    sig.pattern_len = 2;
+    sig.match_threshold = 0.5f;  // Low threshold to ensure match
+    sig.type = THREAT_MALICIOUS_DRONE;  // High severity type
+
+    uint32_t cell_id = 0;
+    nimcp_swarm_immune_add_memory_cell(immune, &sig, RESPONSE_ISOLATION, 0.9f, &cell_id);
+
+    // Now detect threat - should match the memory cell and create active threat
     uint32_t threat_id = 0;
     nimcp_swarm_immune_detect_threat(immune, threat_data, 2, 200, &threat_id);
+    ASSERT_NE(threat_id, 0u) << "Threat should be detected with matching memory cell";
 
     immune_response_t response = {};
     nimcp_result_t result = immune_logic_response(immune, threat_id, &response);
@@ -351,9 +362,21 @@ TEST_F(ImmuneThreatLogicTest, LogicResponseNonexistentThreat) {
 // ============================================================================
 
 TEST_F(ImmuneThreatLogicTest, BbbThreatAlertBasic) {
+    // Setup: First add a memory cell that matches our threat data
     uint8_t threat_data[64] = {0xDE, 0xAD};
+    NimcpSwarmThreatSignature sig = {};
+    memcpy(sig.pattern, threat_data, 2);
+    sig.pattern_len = 2;
+    sig.match_threshold = 0.5f;
+    sig.type = THREAT_INJECTION;
+
+    uint32_t cell_id = 0;
+    nimcp_swarm_immune_add_memory_cell(immune, &sig, RESPONSE_ALERT, 0.9f, &cell_id);
+
+    // Now detect threat - should match the memory cell
     uint32_t threat_id = 0;
     nimcp_swarm_immune_detect_threat(immune, threat_data, 2, 200, &threat_id);
+    ASSERT_NE(threat_id, 0u) << "Threat should be detected with matching memory cell";
 
     nimcp_result_t result = immune_send_bbb_threat_alert(
         immune,

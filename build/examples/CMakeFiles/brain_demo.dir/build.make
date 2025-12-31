@@ -94,6 +94,7 @@ examples/brain_demo: examples/CMakeFiles/brain_demo.dir/brain_demo.c.o
 examples/brain_demo: examples/CMakeFiles/brain_demo.dir/build.make
 examples/brain_demo: lib/libnimcp.so.2.6.2
 examples/brain_demo: /usr/lib/x86_64-linux-gnu/libpython3.12.so
+examples/brain_demo: /usr/lib/x86_64-linux-gnu/libcudart.so
 examples/brain_demo: /usr/lib/x86_64-linux-gnu/libssl.so
 examples/brain_demo: /usr/lib/x86_64-linux-gnu/libcrypto.so
 examples/brain_demo: examples/CMakeFiles/brain_demo.dir/link.txt

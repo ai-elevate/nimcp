@@ -2,36 +2,9 @@
 # Tests for SNN/CNN layer construction, forward/backward pass, gradient computation
 
 # SNN Backprop Unit Tests
-# DISABLED: snn_surrogate_t vs snn_surrogate_method_t type mismatch
-message(STATUS "unit_training_test_snn_backprop: DISABLED (enum type mismatch)")
-# add_executable(unit_training_test_snn_backprop
-#     test_snn_backprop.cpp
-# )
-#
-# target_include_directories(unit_training_test_snn_backprop PRIVATE
-#     ${CMAKE_SOURCE_DIR}/include
-#     ${CMAKE_SOURCE_DIR}/src
-# )
-#
-# target_compile_features(unit_training_test_snn_backprop PRIVATE cxx_std_20)
-#
-# target_link_libraries(unit_training_test_snn_backprop
-#     PRIVATE
-#         GTest::GTest
-#         GTest::Main
-#         nimcp_middleware
-#         nimcp
-#         pthread
-#         m
-# )
-#
-# add_test(NAME unit_training_test_snn_backprop
-#          COMMAND unit_training_test_snn_backprop)
-#
-# set_tests_properties(unit_training_test_snn_backprop
-#     PROPERTIES
-#         LABELS "unit;training;snn;backprop;gradient;surrogate"
-#         TIMEOUT 180)
+# DISABLED: snn_surrogate_t and snn_surrogate_method_t have duplicate enum values
+# Needs API refactoring to unify snn/nimcp_snn_types.h and training/nimcp_snn_backprop.h
+message(STATUS "unit_training_test_snn_backprop: DISABLED (duplicate enum definitions in headers)")
 
 # CNN Backprop Unit Tests
 add_executable(unit_training_test_cnn_backprop

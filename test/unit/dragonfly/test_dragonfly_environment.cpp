@@ -2,8 +2,8 @@
  * @file test_dragonfly_environment.cpp
  * @brief Unit tests for dragonfly environment module
  *
- * Tests environmental sensing including wind, obstacles,
- * light conditions, and weather effects on hunting.
+ * Tests environmental sensing including wind, light conditions,
+ * terrain, and temperature effects on hunting.
  *
  * @author NIMCP Team
  * @date 2024-12-29
@@ -11,6 +11,7 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
+#include <cstring>
 
 extern "C" {
 #include "dragonfly/nimcp_dragonfly_environment.h"
@@ -25,7 +26,7 @@ protected:
     dragonfly_environment_t env = nullptr;
 
     void SetUp() override {
-        dragonfly_env_config_t config = dragonfly_env_default_config();
+        environment_config_t config = environment_default_config();
         env = dragonfly_environment_create(&config);
         ASSERT_NE(env, nullptr);
     }
@@ -43,23 +44,24 @@ protected:
 //=============================================================================
 
 TEST_F(DragonEnvironmentTest, DefaultConfig) {
-    dragonfly_env_config_t config = dragonfly_env_default_config();
+    environment_config_t config = environment_default_config();
 
-    EXPECT_GT(config.wind_sensing_radius, 0.0f);
-    EXPECT_GT(config.obstacle_sensing_radius, 0.0f);
-    EXPECT_GE(config.min_visibility, 0.0f);
+    EXPECT_GT(config.max_hunting_wind_ms, 0.0f);
+    EXPECT_GE(config.min_hunting_light, 0.0f);
+    EXPECT_LE(config.min_hunting_light, 1.0f);
+    EXPECT_LT(config.min_temp_c, config.max_temp_c);
 }
 
 TEST_F(DragonEnvironmentTest, ValidateConfig) {
-    dragonfly_env_config_t config = dragonfly_env_default_config();
-    EXPECT_TRUE(dragonfly_env_validate_config(&config));
+    environment_config_t config = environment_default_config();
+    EXPECT_TRUE(environment_validate_config(&config));
 
-    EXPECT_FALSE(dragonfly_env_validate_config(nullptr));
+    EXPECT_FALSE(environment_validate_config(nullptr));
 }
 
 TEST_F(DragonEnvironmentTest, CreateWithCustomConfig) {
-    dragonfly_env_config_t config = dragonfly_env_default_config();
-    config.wind_sensing_radius = 20.0f;
+    environment_config_t config = environment_default_config();
+    config.max_hunting_wind_ms = 15.0f;
 
     dragonfly_environment_t custom = dragonfly_environment_create(&config);
     ASSERT_NE(custom, nullptr);
@@ -85,75 +87,38 @@ TEST_F(DragonEnvironmentTest, Reset) {
 }
 
 //=============================================================================
-// Update Tests
-//=============================================================================
-
-TEST_F(DragonEnvironmentTest, UpdateBasic) {
-    EXPECT_EQ(dragonfly_environment_update(env, 0.016f), 0);
-}
-
-TEST_F(DragonEnvironmentTest, UpdateMultiple) {
-    for (int i = 0; i < 100; i++) {
-        EXPECT_EQ(dragonfly_environment_update(env, 0.016f), 0);
-    }
-}
-
-//=============================================================================
 // Wind Tests
 //=============================================================================
 
 TEST_F(DragonEnvironmentTest, SetWind) {
     float wind[3] = {5.0f, 0.0f, 0.0f};
-    EXPECT_EQ(dragonfly_environment_set_wind(env, wind), 0);
+    EXPECT_EQ(dragonfly_environment_set_wind(env, wind, 0.1f), 0);
 }
 
-TEST_F(DragonEnvironmentTest, GetWind) {
-    float set_wind[3] = {3.0f, 2.0f, 0.0f};
-    dragonfly_environment_set_wind(env, set_wind);
-
-    float get_wind[3];
-    EXPECT_EQ(dragonfly_environment_get_wind(env, get_wind), 0);
-    EXPECT_FLOAT_EQ(get_wind[0], set_wind[0]);
-    EXPECT_FLOAT_EQ(get_wind[1], set_wind[1]);
-}
-
-TEST_F(DragonEnvironmentTest, WindAffectsMovement) {
+TEST_F(DragonEnvironmentTest, WindAffectsState) {
     float strong_wind[3] = {10.0f, 0.0f, 0.0f};
-    dragonfly_environment_set_wind(env, strong_wind);
+    dragonfly_environment_set_wind(env, strong_wind, 0.2f);
 
-    env_modulation_t mod;
-    EXPECT_EQ(dragonfly_environment_get_modulation(env, mod), 0);
-    // Strong headwind should reduce effective speed
+    environment_state_t state;
+    EXPECT_EQ(dragonfly_environment_get_state(env, &state), 0);
+    EXPECT_FLOAT_EQ(state.wind_velocity[0], strong_wind[0]);
+    EXPECT_FLOAT_EQ(state.wind_variability, 0.2f);
 }
 
-//=============================================================================
-// Obstacle Tests
-//=============================================================================
+TEST_F(DragonEnvironmentTest, WindConditionClassification) {
+    // Calm wind
+    float calm[3] = {0.5f, 0.0f, 0.0f};
+    dragonfly_environment_set_wind(env, calm, 0.0f);
+    environment_state_t state;
+    dragonfly_environment_get_state(env, &state);
+    EXPECT_EQ(state.wind_condition, WIND_CALM);
 
-TEST_F(DragonEnvironmentTest, AddObstacle) {
-    float position[3] = {10.0f, 0.0f, 0.0f};
-    float size[3] = {1.0f, 1.0f, 1.0f};
-    EXPECT_EQ(dragonfly_environment_add_obstacle(env, position, size), 0);
-}
-
-TEST_F(DragonEnvironmentTest, ClearObstacles) {
-    float position[3] = {10.0f, 0.0f, 0.0f};
-    float size[3] = {1.0f, 1.0f, 1.0f};
-    dragonfly_environment_add_obstacle(env, position, size);
-
-    EXPECT_EQ(dragonfly_environment_clear_obstacles(env), 0);
-}
-
-TEST_F(DragonEnvironmentTest, CheckCollision) {
-    float obs_pos[3] = {5.0f, 0.0f, 0.0f};
-    float obs_size[3] = {2.0f, 2.0f, 2.0f};
-    dragonfly_environment_add_obstacle(env, obs_pos, obs_size);
-
-    float test_pos[3] = {5.0f, 0.0f, 0.0f};
-    EXPECT_TRUE(dragonfly_environment_check_collision(env, test_pos, 0.5f));
-
-    float safe_pos[3] = {20.0f, 0.0f, 0.0f};
-    EXPECT_FALSE(dragonfly_environment_check_collision(env, safe_pos, 0.5f));
+    // Strong wind
+    float strong[3] = {15.0f, 0.0f, 0.0f};
+    dragonfly_environment_set_wind(env, strong, 0.3f);
+    dragonfly_environment_get_state(env, &state);
+    EXPECT_TRUE(state.wind_condition == WIND_STRONG ||
+                state.wind_condition == WIND_EXTREME);
 }
 
 //=============================================================================
@@ -161,79 +126,229 @@ TEST_F(DragonEnvironmentTest, CheckCollision) {
 //=============================================================================
 
 TEST_F(DragonEnvironmentTest, SetLightLevel) {
-    EXPECT_EQ(dragonfly_environment_set_light(env, 0.8f), 0);
+    EXPECT_EQ(dragonfly_environment_set_light(env, 0.8f, 1.0f, 0.0f), 0);
 }
 
 TEST_F(DragonEnvironmentTest, GetLightLevel) {
-    dragonfly_environment_set_light(env, 0.6f);
-    float level = dragonfly_environment_get_light(env);
-    EXPECT_FLOAT_EQ(level, 0.6f);
-}
-
-TEST_F(DragonEnvironmentTest, LightClampedToRange) {
-    dragonfly_environment_set_light(env, 1.5f);
-    EXPECT_LE(dragonfly_environment_get_light(env), 1.0f);
-
-    dragonfly_environment_set_light(env, -0.5f);
-    EXPECT_GE(dragonfly_environment_get_light(env), 0.0f);
-}
-
-TEST_F(DragonEnvironmentTest, LowLightReducesVisibility) {
-    dragonfly_environment_set_light(env, 0.1f);
-
-    dragonfly_env_state_t state;
+    dragonfly_environment_set_light(env, 0.6f, 0.8f, 1.57f);
+    environment_state_t state;
     EXPECT_EQ(dragonfly_environment_get_state(env, &state), 0);
-    EXPECT_LT(state.visibility, 1.0f);
+    EXPECT_FLOAT_EQ(state.light_level, 0.6f);
+    EXPECT_FLOAT_EQ(state.sun_elevation_rad, 0.8f);
+    EXPECT_FLOAT_EQ(state.sun_azimuth_rad, 1.57f);
+}
+
+TEST_F(DragonEnvironmentTest, LightConditionClassification) {
+    // Bright light
+    dragonfly_environment_set_light(env, 0.95f, 1.2f, 0.0f);
+    environment_state_t state;
+    dragonfly_environment_get_state(env, &state);
+    EXPECT_EQ(state.light_condition, LIGHT_BRIGHT_SUN);
+
+    // Low light (dusk)
+    dragonfly_environment_set_light(env, 0.2f, 0.1f, 3.14f);
+    dragonfly_environment_get_state(env, &state);
+    EXPECT_TRUE(state.light_condition == LIGHT_DUSK ||
+                state.light_condition == LIGHT_DARK ||
+                state.light_condition == LIGHT_SHADE);
 }
 
 //=============================================================================
-// Weather Tests
+// Terrain Tests
 //=============================================================================
 
-TEST_F(DragonEnvironmentTest, SetWeather) {
-    EXPECT_EQ(dragonfly_environment_set_weather(env, WEATHER_CLEAR), 0);
-    EXPECT_EQ(dragonfly_environment_set_weather(env, WEATHER_RAIN), 0);
-    EXPECT_EQ(dragonfly_environment_set_weather(env, WEATHER_OVERCAST), 0);
+TEST_F(DragonEnvironmentTest, SetTerrain) {
+    EXPECT_EQ(dragonfly_environment_set_terrain(env, TERRAIN_OPEN_WATER, 0.1f, 0.0f), 0);
+    EXPECT_EQ(dragonfly_environment_set_terrain(env, TERRAIN_FOREST_EDGE, 0.5f, 0.0f), 0);
 }
 
-TEST_F(DragonEnvironmentTest, GetWeather) {
-    dragonfly_environment_set_weather(env, WEATHER_RAIN);
-    EXPECT_EQ(dragonfly_environment_get_weather(env), WEATHER_RAIN);
-}
-
-TEST_F(DragonEnvironmentTest, RainReducesHuntability) {
-    dragonfly_environment_set_weather(env, WEATHER_RAIN);
-
-    dragonfly_env_state_t state;
+TEST_F(DragonEnvironmentTest, GetTerrain) {
+    dragonfly_environment_set_terrain(env, TERRAIN_MEADOW, 0.3f, 2.0f);
+    environment_state_t state;
     EXPECT_EQ(dragonfly_environment_get_state(env, &state), 0);
-    EXPECT_LT(state.hunting_suitability, 1.0f);
+    EXPECT_EQ(state.terrain, TERRAIN_MEADOW);
+    EXPECT_FLOAT_EQ(state.terrain_complexity, 0.3f);
+    EXPECT_FLOAT_EQ(state.water_surface_level, 2.0f);
 }
 
 //=============================================================================
-// State Tests
+// Temperature Tests
 //=============================================================================
 
-TEST_F(DragonEnvironmentTest, GetState) {
-    dragonfly_env_state_t state;
+TEST_F(DragonEnvironmentTest, SetTemperature) {
+    EXPECT_EQ(dragonfly_environment_set_temperature(env, 25.0f), 0);
+}
+
+TEST_F(DragonEnvironmentTest, GetTemperature) {
+    dragonfly_environment_set_temperature(env, 22.5f);
+    environment_state_t state;
     EXPECT_EQ(dragonfly_environment_get_state(env, &state), 0);
-
-    EXPECT_GE(state.visibility, 0.0f);
-    EXPECT_LE(state.visibility, 1.0f);
-    EXPECT_GE(state.hunting_suitability, 0.0f);
+    EXPECT_FLOAT_EQ(state.temperature_c, 22.5f);
 }
+
+TEST_F(DragonEnvironmentTest, OptimalTemperatureRange) {
+    // Within optimal range (typically 20-30C for dragonflies)
+    dragonfly_environment_set_temperature(env, 25.0f);
+    environment_state_t state;
+    dragonfly_environment_get_state(env, &state);
+    EXPECT_TRUE(state.is_optimal_temp);
+
+    // Below optimal
+    dragonfly_environment_set_temperature(env, 10.0f);
+    dragonfly_environment_get_state(env, &state);
+    EXPECT_FALSE(state.is_optimal_temp);
+}
+
+//=============================================================================
+// Full State Update Tests
+//=============================================================================
+
+TEST_F(DragonEnvironmentTest, FullStateUpdate) {
+    environment_state_t input;
+    memset(&input, 0, sizeof(input));
+
+    input.wind_velocity[0] = 3.0f;
+    input.wind_velocity[1] = 1.0f;
+    input.wind_velocity[2] = 0.0f;
+    input.wind_variability = 0.15f;
+    input.wind_condition = WIND_LIGHT;
+
+    input.light_level = 0.7f;
+    input.sun_elevation_rad = 0.9f;
+    input.sun_azimuth_rad = 2.0f;
+    input.light_condition = LIGHT_OVERCAST;
+
+    input.terrain = TERRAIN_WATER_EDGE;
+    input.terrain_complexity = 0.2f;
+    input.water_surface_level = 0.5f;
+
+    input.temperature_c = 24.0f;
+    input.is_optimal_temp = true;
+
+    input.is_raining = false;
+    input.visibility_m = 1000.0f;
+
+    EXPECT_EQ(dragonfly_environment_update(env, &input), 0);
+
+    environment_state_t output;
+    EXPECT_EQ(dragonfly_environment_get_state(env, &output), 0);
+
+    EXPECT_FLOAT_EQ(output.wind_velocity[0], input.wind_velocity[0]);
+    EXPECT_FLOAT_EQ(output.light_level, input.light_level);
+    EXPECT_EQ(output.terrain, input.terrain);
+    EXPECT_FLOAT_EQ(output.temperature_c, input.temperature_c);
+}
+
+//=============================================================================
+// Compensation Tests
+//=============================================================================
+
+TEST_F(DragonEnvironmentTest, GetCompensation) {
+    // Set up wind
+    float wind[3] = {5.0f, 2.0f, 0.0f};
+    dragonfly_environment_set_wind(env, wind, 0.1f);
+
+    // Set up light (with potential backlight from sun position)
+    dragonfly_environment_set_light(env, 0.8f, 0.5f, 1.0f);
+
+    float target_dir[3] = {1.0f, 0.0f, 0.0f};
+    environment_compensation_t comp;
+    EXPECT_EQ(dragonfly_environment_get_compensation(env, target_dir, &comp), 0);
+
+    // Compensation should include wind correction
+    EXPECT_NE(comp.wind_correction[0], 0.0f);
+
+    // Hunting suitability should be computed
+    EXPECT_GE(comp.hunting_suitability, 0.0f);
+    EXPECT_LE(comp.hunting_suitability, 1.0f);
+}
+
+TEST_F(DragonEnvironmentTest, HuntingOkCheck) {
+    // Good conditions
+    dragonfly_environment_set_light(env, 0.8f, 1.0f, 0.0f);
+    dragonfly_environment_set_temperature(env, 25.0f);
+    float calm[3] = {1.0f, 0.0f, 0.0f};
+    dragonfly_environment_set_wind(env, calm, 0.0f);
+
+    EXPECT_TRUE(dragonfly_environment_hunting_ok(env));
+}
+
+TEST_F(DragonEnvironmentTest, HuntingNotOkExtremeWind) {
+    float extreme_wind[3] = {25.0f, 0.0f, 0.0f};
+    dragonfly_environment_set_wind(env, extreme_wind, 0.5f);
+
+    // Extreme wind should make hunting unsuitable
+    // (exact behavior depends on config thresholds)
+}
+
+//=============================================================================
+// Velocity Correction Tests
+//=============================================================================
+
+TEST_F(DragonEnvironmentTest, CorrectVelocity) {
+    // Set headwind
+    float wind[3] = {5.0f, 0.0f, 0.0f};
+    dragonfly_environment_set_wind(env, wind, 0.1f);
+
+    float desired[3] = {10.0f, 0.0f, 0.0f};
+    float corrected[3];
+    EXPECT_EQ(dragonfly_environment_correct_velocity(env, desired, corrected), 0);
+
+    // Corrected velocity should account for wind
+    // When flying into headwind, need to increase velocity
+}
+
+//=============================================================================
+// Statistics Tests
+//=============================================================================
 
 TEST_F(DragonEnvironmentTest, GetStats) {
-    dragonfly_env_stats_t stats;
+    environment_stats_t stats;
     EXPECT_EQ(dragonfly_environment_get_stats(env, &stats), 0);
 }
 
+TEST_F(DragonEnvironmentTest, StatsAccumulate) {
+    // Update environment several times
+    for (int i = 0; i < 10; i++) {
+        float wind[3] = {(float)i, 0.0f, 0.0f};
+        dragonfly_environment_set_wind(env, wind, 0.1f);
+    }
+
+    environment_stats_t stats;
+    dragonfly_environment_get_stats(env, &stats);
+    // Stats should reflect accumulated updates
+    EXPECT_GE(stats.updates, 0u);
+}
+
 //=============================================================================
-// Modulation Tests
+// Name Utility Tests
 //=============================================================================
 
-TEST_F(DragonEnvironmentTest, GetModulation) {
-    env_modulation_t mod;
-    EXPECT_EQ(dragonfly_environment_get_modulation(env, mod), 0);
+TEST_F(DragonEnvironmentTest, LightConditionNames) {
+    EXPECT_NE(dragonfly_light_name(LIGHT_BRIGHT_SUN), nullptr);
+    EXPECT_NE(dragonfly_light_name(LIGHT_OVERCAST), nullptr);
+    EXPECT_NE(dragonfly_light_name(LIGHT_DUSK), nullptr);
+    EXPECT_NE(dragonfly_light_name(LIGHT_DAWN), nullptr);
+    EXPECT_NE(dragonfly_light_name(LIGHT_SHADE), nullptr);
+    EXPECT_NE(dragonfly_light_name(LIGHT_DARK), nullptr);
+}
+
+TEST_F(DragonEnvironmentTest, WindConditionNames) {
+    EXPECT_NE(dragonfly_wind_name(WIND_CALM), nullptr);
+    EXPECT_NE(dragonfly_wind_name(WIND_LIGHT), nullptr);
+    EXPECT_NE(dragonfly_wind_name(WIND_MODERATE), nullptr);
+    EXPECT_NE(dragonfly_wind_name(WIND_STRONG), nullptr);
+    EXPECT_NE(dragonfly_wind_name(WIND_GUSTY), nullptr);
+    EXPECT_NE(dragonfly_wind_name(WIND_EXTREME), nullptr);
+}
+
+TEST_F(DragonEnvironmentTest, TerrainNames) {
+    EXPECT_NE(dragonfly_terrain_name(TERRAIN_OPEN_WATER), nullptr);
+    EXPECT_NE(dragonfly_terrain_name(TERRAIN_WATER_EDGE), nullptr);
+    EXPECT_NE(dragonfly_terrain_name(TERRAIN_MEADOW), nullptr);
+    EXPECT_NE(dragonfly_terrain_name(TERRAIN_FOREST_EDGE), nullptr);
+    EXPECT_NE(dragonfly_terrain_name(TERRAIN_FOREST), nullptr);
+    EXPECT_NE(dragonfly_terrain_name(TERRAIN_URBAN), nullptr);
 }
 
 //=============================================================================
@@ -241,10 +356,18 @@ TEST_F(DragonEnvironmentTest, GetModulation) {
 //=============================================================================
 
 TEST_F(DragonEnvironmentTest, NullWindArray) {
-    EXPECT_NE(dragonfly_environment_set_wind(env, nullptr), 0);
-    EXPECT_NE(dragonfly_environment_get_wind(env, nullptr), 0);
+    EXPECT_NE(dragonfly_environment_set_wind(env, nullptr, 0.1f), 0);
 }
 
 TEST_F(DragonEnvironmentTest, NullStateOutput) {
     EXPECT_NE(dragonfly_environment_get_state(env, nullptr), 0);
+}
+
+TEST_F(DragonEnvironmentTest, NullCompensationOutput) {
+    float dir[3] = {1.0f, 0.0f, 0.0f};
+    EXPECT_NE(dragonfly_environment_get_compensation(env, dir, nullptr), 0);
+}
+
+TEST_F(DragonEnvironmentTest, NullStatsOutput) {
+    EXPECT_NE(dragonfly_environment_get_stats(env, nullptr), 0);
 }

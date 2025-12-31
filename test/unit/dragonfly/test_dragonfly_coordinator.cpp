@@ -119,10 +119,10 @@ TEST_F(DragonflyCoordinatorTest, SubsystemStatsPropagated) {
     EXPECT_EQ(dragonfly_get_stats(system, &stats), 0);
 
     // TSDN stats should be valid
-    EXPECT_EQ(stats.tsdn_stats.encodings, 0u);
+    EXPECT_EQ(stats.tsdn_stats.encode_calls, 0u);
 
     // Tracker stats should be valid
-    EXPECT_EQ(stats.tracker_stats.targets_tracked, 0u);
+    EXPECT_EQ(stats.tracker_stats.total_observations, 0u);
 
     // Prediction stats should be valid
     EXPECT_EQ(stats.prediction_stats.predictions_made, 0u);
@@ -133,18 +133,18 @@ TEST_F(DragonflyCoordinatorTest, SubsystemStatsPropagated) {
 
 TEST_F(DragonflyCoordinatorTest, ConfigPropagatedToSubsystems) {
     dragonfly_config_t config = dragonfly_default_config();
-    config.tsdn_config.num_neurons = 32;  // Double the neurons
+    config.tsdn_config.gain = 2.0f;  // Custom gain multiplier
     config.prediction_config.enable_imm = true;
-    config.intercept_config.nav_gain = 4.0f;
+    config.intercept_config.pn_gain = 4.0f;  // Proportional navigation gain
 
     dragonfly_system_t* custom = dragonfly_system_create(&config);
     ASSERT_NE(custom, nullptr);
 
     dragonfly_config_t retrieved;
     EXPECT_EQ(dragonfly_get_config(custom, &retrieved), 0);
-    EXPECT_EQ(retrieved.tsdn_config.num_neurons, 32u);
+    EXPECT_FLOAT_EQ(retrieved.tsdn_config.gain, 2.0f);
     EXPECT_TRUE(retrieved.prediction_config.enable_imm);
-    EXPECT_FLOAT_EQ(retrieved.intercept_config.nav_gain, 4.0f);
+    EXPECT_FLOAT_EQ(retrieved.intercept_config.pn_gain, 4.0f);
 
     dragonfly_system_destroy(custom);
 }

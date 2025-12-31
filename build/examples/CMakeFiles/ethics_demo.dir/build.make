@@ -94,6 +94,7 @@ examples/ethics_demo: examples/CMakeFiles/ethics_demo.dir/ethics_demo.c.o
 examples/ethics_demo: examples/CMakeFiles/ethics_demo.dir/build.make
 examples/ethics_demo: lib/libnimcp.so.2.6.2
 examples/ethics_demo: /usr/lib/x86_64-linux-gnu/libpython3.12.so
+examples/ethics_demo: /usr/lib/x86_64-linux-gnu/libcudart.so
 examples/ethics_demo: /usr/lib/x86_64-linux-gnu/libssl.so
 examples/ethics_demo: /usr/lib/x86_64-linux-gnu/libcrypto.so
 examples/ethics_demo: examples/CMakeFiles/ethics_demo.dir/link.txt

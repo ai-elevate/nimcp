@@ -110,6 +110,7 @@ lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/n
 lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/build.make
 lib/python/nimcp.so: lib/libnimcp.so.2.6.2
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libpython3.12.so
+lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcudart.so
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libssl.so
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcrypto.so
 lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/link.txt

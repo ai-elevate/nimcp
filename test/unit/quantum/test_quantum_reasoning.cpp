@@ -618,7 +618,6 @@ TEST_F(QuantumReasoningTest, CheckConsistencyNull) {
 //=============================================================================
 
 TEST_F(QuantumReasoningTest, GetStats) {
-    broca_quantum_stats_t stats;
     qreason_stats_t qstats;
     int ret = qreason_get_stats(reasoner, &qstats);
 

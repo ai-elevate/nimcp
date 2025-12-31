@@ -1405,6 +1405,18 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/test_gpu_cpu_fallback_integra
 endif()
 
 # ============================================================================
+# GPU Integration Tests (Equivalence, Backend Switching, Precision)
+# ============================================================================
+# WHAT: GPU/CPU equivalence, backend switching, mixed precision tests
+# WHY:  Verify GPU operations match CPU results and backend system works correctly
+# HOW:  Test kernel equivalence, backend lifecycle, and precision conversions
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/gpu/CMakeLists.txt")
+    message(STATUS "Adding GPU kernel integration tests...")
+    add_subdirectory(integration/gpu)
+endif()
+
+# ============================================================================
 # LNN Tests
 # ============================================================================
 

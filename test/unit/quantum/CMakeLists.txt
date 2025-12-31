@@ -124,9 +124,6 @@ gtest_discover_tests(unit_quantum_test_quantum_brain_integration
 # ============================================================================
 # Quantum Bridge Integration Tests
 # ============================================================================
-# DISABLED: Uses qstdp_activity_stats_t with incorrect field ordering
-message(STATUS "unit_quantum_test_quantum_bridge_integration: DISABLED (qstdp_activity_stats_t field mismatch)")
-#[[
 add_executable(unit_quantum_test_quantum_bridge_integration
     test_quantum_bridge_integration.cpp
 )
@@ -153,14 +150,10 @@ gtest_discover_tests(unit_quantum_test_quantum_bridge_integration
         LABELS "unit;quantum;bridge;integration"
         TIMEOUT 120
 )
-#]]
 
 # ============================================================================
 # Quantum Reasoning Tests
 # ============================================================================
-# DISABLED: Uses broca_quantum_stats_t which doesn't exist
-message(STATUS "unit_quantum_test_quantum_reasoning: DISABLED (broca_quantum_stats_t not declared)")
-#[[
 add_executable(unit_quantum_test_quantum_reasoning
     test_quantum_reasoning.cpp
 )
@@ -187,7 +180,6 @@ gtest_discover_tests(unit_quantum_test_quantum_reasoning
         LABELS "unit;quantum;reasoning"
         TIMEOUT 120
 )
-#]]
 
 # ============================================================================
 # Quantum SAT Solver Tests

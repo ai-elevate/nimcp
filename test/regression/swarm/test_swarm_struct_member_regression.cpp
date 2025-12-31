@@ -108,7 +108,7 @@ TEST(SwarmStructMemberRegression, MemoryEntryHasIsDistributed) {
 
 // Test 4: bio_message_header_t has payload_size (not total_length)
 TEST(SwarmStructMemberRegression, BioMessageHeaderHasPayloadSize) {
-    bio_message_header_t header = {0};
+    bio_message_header_t header = {};
 
     header.payload_size = 1024;
     EXPECT_EQ(header.payload_size, 1024U);
@@ -160,8 +160,8 @@ protected:
 
 // Regression: sync_with_node should use node->memory_count
 TEST_F(SwarmMemoryRegressionTest, SyncWithNodeUsesMemoryCount) {
-    // Register a node
-    nimcp_swarm_memory_register_node(memory, "regression_node");
+    // Register a node with capacity
+    nimcp_swarm_memory_register_node(memory, "regression_node", 100);
 
     // Sync should work without crashing (was accessing node->memories before)
     uint32_t synced = 0;
@@ -253,7 +253,7 @@ TEST_F(SwarmMemoryRegressionTest, ProcessMessageUsesPayloadSize) {
     struct {
         bio_message_header_t header;
         char payload[128];
-    } msg = {0};
+    } msg = {};
 
     msg.header.type = BIO_MSG_SWARM_MEMORY_SYNC;
     msg.header.payload_size = 64;  // Should use this, not total_length
@@ -266,10 +266,10 @@ TEST_F(SwarmMemoryRegressionTest, ProcessMessageUsesPayloadSize) {
 
 // Regression: select_replication_nodes should use NimcpHippocampusNode
 TEST_F(SwarmMemoryRegressionTest, ReplicationUsesHippocampusNode) {
-    // Register nodes
-    nimcp_swarm_memory_register_node(memory, "repl_node_1");
-    nimcp_swarm_memory_register_node(memory, "repl_node_2");
-    nimcp_swarm_memory_register_node(memory, "repl_node_3");
+    // Register nodes with capacity
+    nimcp_swarm_memory_register_node(memory, "repl_node_1", 100);
+    nimcp_swarm_memory_register_node(memory, "repl_node_2", 100);
+    nimcp_swarm_memory_register_node(memory, "repl_node_3", 100);
 
     // Store a memory
     char memory_id[64];
@@ -279,7 +279,8 @@ TEST_F(SwarmMemoryRegressionTest, ReplicationUsesHippocampusNode) {
                              memory_id);
 
     // Distribute should work (uses NimcpHippocampusNode internally)
-    nimcp_result_t result = nimcp_swarm_memory_distribute(memory, memory_id);
+    uint32_t replica_count = 0;
+    nimcp_result_t result = nimcp_swarm_memory_distribute(memory, memory_id, &replica_count);
 
     // May succeed or fail depending on node state, but shouldn't crash
     SUCCEED();

@@ -727,9 +727,6 @@ gtest_discover_tests(unit_dragonfly_test_immune_bridge
 )
 
 # Environment Tests (Clutter, background, terrain)
-# DISABLED: dragonfly_env_config_t and related API has changed
-message(STATUS "unit_dragonfly_test_environment: DISABLED (outdated environment API)")
-#[[
 add_executable(unit_dragonfly_test_environment
     test_dragonfly_environment.cpp
 )
@@ -757,12 +754,8 @@ gtest_discover_tests(unit_dragonfly_test_environment
         LABELS "unit;dragonfly;environment"
         TIMEOUT 60
 )
-#]]
 
 # Coordinator Tests (Full system coordination)
-# DISABLED: tsdn_stats_t/tracking_stats_t/intercept_config_t field mismatches
-message(STATUS "unit_dragonfly_test_coordinator: DISABLED (outdated struct fields)")
-#[[
 add_executable(unit_dragonfly_test_coordinator
     test_dragonfly_coordinator.cpp
 )
@@ -790,4 +783,3 @@ gtest_discover_tests(unit_dragonfly_test_coordinator
         LABELS "unit;dragonfly;coordinator"
         TIMEOUT 120
 )
-#]]

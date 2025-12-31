@@ -47,6 +47,15 @@ endif()
 # Find GTest for testing
 find_package(GTest)
 
+# Find CUDA Toolkit for GPU acceleration (optional)
+find_package(CUDAToolkit QUIET)
+if(CUDAToolkit_FOUND)
+    message(STATUS "CUDA Toolkit found: ${CUDAToolkit_VERSION}")
+    enable_language(CUDA)
+else()
+    message(STATUS "CUDA Toolkit not found - GPU kernels will be disabled")
+endif()
+
 # Enable testing
 enable_testing()
 

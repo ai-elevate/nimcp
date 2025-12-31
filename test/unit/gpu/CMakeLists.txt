@@ -23,5 +23,25 @@ add_gpu_test(test_execution_mode)
 add_gpu_test(test_gpu_neuron)
 add_gpu_test(test_spike_event)
 
+# CUDA Kernel tests - only built when CUDA toolkit is available
+# These tests require actual CUDA kernel implementations
+if(CUDAToolkit_FOUND)
+    message(STATUS "  Building CUDA kernel unit tests (CUDA toolkit found)")
+
+    # GPU quantum and inference kernel tests
+    add_gpu_test(test_quantum_kernels)
+    add_gpu_test(test_inference_kernels)
+
+    # GPU tensor and training kernel tests
+    add_gpu_test(test_tensor_kernels)
+    add_gpu_test(test_training_kernels)
+
+    # GPU SNN and LNN kernel tests
+    add_gpu_test(test_snn_kernels)
+    add_gpu_test(test_lnn_kernels)
+else()
+    message(STATUS "  Skipping CUDA kernel tests (CUDA toolkit not found)")
+endif()
+
 # Include immune subdirectory tests
 add_subdirectory(immune)

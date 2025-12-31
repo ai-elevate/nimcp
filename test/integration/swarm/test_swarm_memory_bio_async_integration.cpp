@@ -77,7 +77,7 @@ TEST_F(SwarmMemoryBioAsyncIntegrationTest, UsesPayloadSizeNotTotalLength) {
 }
 
 TEST_F(SwarmMemoryBioAsyncIntegrationTest, ZeroPayloadSizeNoPayloadRead) {
-    bio_message_header_t header = {0};
+    bio_message_header_t header = {};
     header.type = BIO_MSG_SWARM_MEMORY_SYNC;
     header.payload_size = 0;
 
@@ -159,7 +159,7 @@ TEST_F(SwarmMemoryBioAsyncIntegrationTest, ConsolidationTriggerConsolidatesMemor
     }
 
     // Send consolidation trigger
-    bio_message_header_t header = {0};
+    bio_message_header_t header = {};
     header.type = BIO_MSG_CONSOLIDATION_TRIGGER;
     header.payload_size = 0;
 
@@ -173,7 +173,7 @@ TEST_F(SwarmMemoryBioAsyncIntegrationTest, ConsolidationTriggerWithEmptyStore) {
     nimcp_swarm_memory_init(empty, nullptr);
     empty->bio_async_enabled = true;
 
-    bio_message_header_t header = {0};
+    bio_message_header_t header = {};
     header.type = BIO_MSG_CONSOLIDATION_TRIGGER;
     header.payload_size = 0;
 
@@ -188,7 +188,7 @@ TEST_F(SwarmMemoryBioAsyncIntegrationTest, ConsolidationTriggerWithEmptyStore) {
 // =============================================================================
 
 TEST_F(SwarmMemoryBioAsyncIntegrationTest, UnknownMessageTypeIgnored) {
-    bio_message_header_t header = {0};
+    bio_message_header_t header = {};
     header.type = (bio_message_type_t)0xDEAD;  // Invalid type
     header.payload_size = 0;
 
@@ -204,7 +204,7 @@ TEST_F(SwarmMemoryBioAsyncIntegrationTest, UnknownMessageTypeIgnored) {
 TEST_F(SwarmMemoryBioAsyncIntegrationTest, DisabledBioAsyncIgnoresMessages) {
     memory->bio_async_enabled = false;
 
-    bio_message_header_t header = {0};
+    bio_message_header_t header = {};
     header.type = BIO_MSG_SWARM_MEMORY_SYNC;
     header.payload_size = 0;
 
@@ -217,7 +217,7 @@ TEST_F(SwarmMemoryBioAsyncIntegrationTest, ReenableBioAsyncWorks) {
     memory->bio_async_enabled = false;
     memory->bio_async_enabled = true;
 
-    bio_message_header_t header = {0};
+    bio_message_header_t header = {};
     header.type = BIO_MSG_CONSOLIDATION_TRIGGER;
     header.payload_size = 0;
 
@@ -235,7 +235,7 @@ TEST_F(SwarmMemoryBioAsyncIntegrationTest, NullMessageReturnsError) {
 }
 
 TEST_F(SwarmMemoryBioAsyncIntegrationTest, NullMemorySystemReturnsError) {
-    bio_message_header_t header = {0};
+    bio_message_header_t header = {};
     header.type = BIO_MSG_SWARM_MEMORY_SYNC;
 
     nimcp_result_t result = nimcp_swarm_memory_process_message(nullptr, &header);
@@ -247,7 +247,7 @@ TEST_F(SwarmMemoryBioAsyncIntegrationTest, UninitializedSystemHandled) {
     // Don't call init
     uninit->bio_async_enabled = true;
 
-    bio_message_header_t header = {0};
+    bio_message_header_t header = {};
     header.type = BIO_MSG_SWARM_MEMORY_SYNC;
 
     nimcp_result_t result = nimcp_swarm_memory_process_message(uninit, &header);
@@ -271,7 +271,7 @@ TEST_F(SwarmMemoryBioAsyncIntegrationTest, ConcurrentMessageProcessing) {
 
     // Process multiple messages in sequence (simulating concurrent arrival)
     for (int i = 0; i < 5; i++) {
-        bio_message_header_t header = {0};
+        bio_message_header_t header = {};
         header.type = (i % 2 == 0) ? BIO_MSG_SWARM_MEMORY_SYNC : BIO_MSG_CONSOLIDATION_TRIGGER;
         header.payload_size = 0;
 

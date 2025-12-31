@@ -94,6 +94,7 @@ examples/event_demo: examples/CMakeFiles/event_demo.dir/event_demo.c.o
 examples/event_demo: examples/CMakeFiles/event_demo.dir/build.make
 examples/event_demo: lib/libnimcp.so.2.6.2
 examples/event_demo: /usr/lib/x86_64-linux-gnu/libpython3.12.so
+examples/event_demo: /usr/lib/x86_64-linux-gnu/libcudart.so
 examples/event_demo: /usr/lib/x86_64-linux-gnu/libssl.so
 examples/event_demo: /usr/lib/x86_64-linux-gnu/libcrypto.so
 examples/event_demo: examples/CMakeFiles/event_demo.dir/link.txt

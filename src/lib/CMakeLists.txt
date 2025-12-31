@@ -100,6 +100,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/pretrained/nimcp_brain_pretrained.c # Pretrained model management (510 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/information/nimcp_brain_shannon.c   # Shannon information theory (461 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/analysis/nimcp_brain_topology.c     # Topology and community detection (462 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_kg.c                    # Internal runtime knowledge graph (self-awareness)
 
     # Hemispheric Brain Architecture (Phase Dec 2024: Two-hemisphere bilateral processing)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_lateralization.c     # Hemisphere specialization profiles
@@ -1246,9 +1247,14 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_gpu_kernels.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/synapse_compute/nimcp_synapse_compute_gpu.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neural_logic_kernels.cu>
+    # Kernel backend CUDA registration (wires CUDA kernels to unified backend interface)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/backend/nimcp_kernel_backend_cuda.cu>
 
     # GPU context stubs (only compiled if CUDA is NOT available)
     $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/context/nimcp_gpu_context_stub.c>
+
+    # Kernel backend CPU implementation (always compiled - provides CPU fallback)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/backend/nimcp_kernel_backend.c
 
     # Note: CUDA compile flags set below per-file
 

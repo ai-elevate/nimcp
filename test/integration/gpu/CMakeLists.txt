@@ -1,0 +1,84 @@
+# ============================================================================
+# GPU Integration Tests CMakeLists.txt
+# ============================================================================
+# WHAT: Integration tests for GPU/CPU equivalence, backend switching, precision
+# WHY:  Verify GPU operations match CPU results and backend system works correctly
+# HOW:  Link against nimcp and GTest, run tests for kernel equivalence
+# ============================================================================
+
+# Helper macro for adding GPU integration tests
+macro(add_gpu_integration_test TEST_NAME)
+    add_executable(integration_gpu_${TEST_NAME}
+        ${TEST_NAME}.cpp
+    )
+    target_link_libraries(integration_gpu_${TEST_NAME}
+        PRIVATE
+            GTest::GTest
+            GTest::Main
+            nimcp
+            m
+            pthread
+    )
+    target_compile_features(integration_gpu_${TEST_NAME} PRIVATE cxx_std_20)
+    target_compile_definitions(integration_gpu_${TEST_NAME} PRIVATE NIMCP_TESTING)
+    add_test(NAME integration_gpu_${TEST_NAME}
+             COMMAND integration_gpu_${TEST_NAME})
+    set_tests_properties(integration_gpu_${TEST_NAME}
+        PROPERTIES LABELS "integration;gpu")
+endmacro()
+
+# =============================================================================
+# CUDA Integration Tests - only built when CUDA toolkit is available
+# =============================================================================
+if(CUDAToolkit_FOUND)
+    message(STATUS "  Building CUDA integration tests (CUDA toolkit found)")
+
+    # =============================================================================
+    # GPU/CPU Equivalence Tests
+    # =============================================================================
+    # WHAT: Verify GPU and CPU kernel implementations produce equivalent results
+    # WHY:  Ensure computation correctness regardless of backend selection
+    # HOW:  Run identical operations on both backends, compare outputs within tolerance
+    add_gpu_integration_test(test_gpu_cpu_equivalence)
+
+    # =============================================================================
+    # Kernel Backend Switching Tests
+    # =============================================================================
+    # WHAT: Test backend initialization, switching, and operation dispatch
+    # WHY:  Ensure seamless transitions between CPU and GPU compute backends
+    # HOW:  Test backend lifecycle, switching, and verify operations work after switch
+    add_gpu_integration_test(test_kernel_backend_switching)
+
+    # =============================================================================
+    # Mixed Precision Tests
+    # =============================================================================
+    # WHAT: Test FP32/FP16/INT8 precision conversions and quantization
+    # WHY:  Mixed precision enables faster inference with acceptable accuracy
+    # HOW:  Test precision conversions, quantization, and calibration functions
+    add_gpu_integration_test(test_mixed_precision)
+    # =============================================================================
+    # Timeout Configuration for CUDA tests
+    # =============================================================================
+    # GPU tests may take longer on systems without GPU acceleration
+    set_tests_properties(
+        integration_gpu_test_gpu_cpu_equivalence
+        integration_gpu_test_mixed_precision
+        PROPERTIES TIMEOUT 180
+    )
+
+    set_tests_properties(
+        integration_gpu_test_kernel_backend_switching
+        PROPERTIES TIMEOUT 90
+    )
+else()
+    message(STATUS "  Skipping CUDA integration tests (CUDA toolkit not found)")
+endif()
+
+# =============================================================================
+# Existing GPU Integration Tests
+# =============================================================================
+# These tests were already present in the directory
+add_gpu_integration_test(test_gpu_integration)
+add_gpu_integration_test(test_gpu_execution_mode_integration)
+add_gpu_integration_test(test_gpu_neuron_integration)
+add_gpu_integration_test(test_gpu_spike_event_integration)
