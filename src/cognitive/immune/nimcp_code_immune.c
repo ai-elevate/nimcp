@@ -129,6 +129,67 @@ static uint64_t get_timestamp_ms(void) {
 }
 
 /**
+ * @brief Compute FNV-1a checksum for data integrity verification
+ *
+ * WHAT: Fast non-cryptographic hash for file integrity
+ * WHY:  Detect corruption in persisted immune memory files
+ * HOW:  FNV-1a algorithm with 32-bit output
+ *
+ * @param data Data buffer to checksum
+ * @param size Size of data in bytes
+ * @return 32-bit checksum value
+ */
+static uint32_t compute_checksum(const void* data, size_t size) {
+    const uint8_t* bytes = (const uint8_t*)data;
+    uint32_t hash = 2166136261U;  /* FNV offset basis */
+
+    for (size_t i = 0; i < size; i++) {
+        hash ^= bytes[i];
+        hash *= 16777619U;  /* FNV prime */
+    }
+
+    return hash;
+}
+
+/**
+ * @brief Compute checksum of file contents from current position to end
+ *
+ * WHAT: Compute checksum of remaining file data
+ * WHY:  Verify integrity of B cells and antibodies
+ * HOW:  Read file in chunks, accumulate checksum, restore position
+ *
+ * @param file File handle positioned after header
+ * @param header_size Size of header to skip in checksum
+ * @return Computed checksum, or 0 on error
+ */
+static uint32_t compute_file_checksum(FILE* file, size_t header_size) {
+    if (!file) return 0;
+
+    /* Save current position */
+    long start_pos = ftell(file);
+    if (start_pos < 0) return 0;
+
+    /* Seek past header */
+    if (fseek(file, (long)header_size, SEEK_SET) != 0) return 0;
+
+    uint32_t hash = 2166136261U;  /* FNV offset basis */
+    uint8_t buffer[4096];
+    size_t bytes_read;
+
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+        for (size_t i = 0; i < bytes_read; i++) {
+            hash ^= buffer[i];
+            hash *= 16777619U;  /* FNV prime */
+        }
+    }
+
+    /* Restore position */
+    fseek(file, start_pos, SEEK_SET);
+
+    return hash;
+}
+
+/**
  * @brief Convert signal to crash type
  */
 static code_crash_type_t signal_to_crash_type(int signal) {
@@ -1877,8 +1938,17 @@ int code_immune_validate_memory_file(const char* filepath, bool verify_checksum)
         return -1;
     }
 
-    /* TODO: Verify checksum if enabled */
-    (void)verify_checksum;
+    /* Verify checksum if enabled */
+    if (verify_checksum && header.checksum != 0) {
+        uint32_t computed = compute_file_checksum(file, sizeof(code_immune_persist_header_t));
+        if (computed != header.checksum) {
+            LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
+                "Checksum mismatch: expected 0x%08X, got 0x%08X",
+                header.checksum, computed);
+            fclose(file);
+            return -1;
+        }
+    }
 
     fclose(file);
     return 0;
@@ -2124,10 +2194,12 @@ int code_immune_save_memory(
         }
     }
 
-    /* Update header with file size */
+    /* Update header with file size and checksum */
     long file_size = ftell(file);
     header.file_size = (uint64_t)file_size;
-    header.checksum = 0; /* TODO: Implement proper checksum */
+
+    /* Compute checksum of data after header */
+    header.checksum = compute_file_checksum(file, sizeof(code_immune_persist_header_t));
 
     /* Rewrite header with updated values */
     fseek(file, 0, SEEK_SET);

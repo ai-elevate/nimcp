@@ -57,7 +57,7 @@ int joy_thalamic_bridge_reset(joy_thalamic_bridge_t* bridge);
 int joy_thalamic_route_pleasure(joy_thalamic_bridge_t* bridge, const joy_thalamic_signal_t* signal);
 int joy_thalamic_route_savoring(joy_thalamic_bridge_t* bridge, const void* experience, float duration);
 int joy_thalamic_set_attention(joy_thalamic_bridge_t* bridge, float attention);
-int joy_thalamic_get_attention(const joy_thalamic_bridge_t* bridge, float* attention);
+int joy_thalamic_get_attention(joy_thalamic_bridge_t* bridge, float* attention);
 
 typedef struct {
     uint64_t pleasures_routed;
@@ -66,7 +66,7 @@ typedef struct {
     float avg_joy_intensity;
 } joy_thalamic_stats_t;
 
-int joy_thalamic_bridge_get_stats(const joy_thalamic_bridge_t* bridge, joy_thalamic_stats_t* stats);
+int joy_thalamic_bridge_get_stats(joy_thalamic_bridge_t* bridge, joy_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

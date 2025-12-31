@@ -8,6 +8,7 @@
 #include "cognitive/immune/nimcp_perception_immune.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/time/nimcp_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -187,7 +188,7 @@ int perception_immune_report_visual_anomaly(
     anomaly->modality = PERCEPTION_VISUAL;
     anomaly->severity = severity;
     anomaly->confidence = confidence;
-    anomaly->timestamp_ms = 0; /* TODO: add timestamp */
+    anomaly->timestamp_ms = nimcp_time_get_ms();
     anomaly->immune_responded = false;
 
     /* Hash features to epitope */

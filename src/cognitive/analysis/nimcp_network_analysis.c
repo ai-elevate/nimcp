@@ -22,6 +22,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/time/nimcp_time.h"
 #include "core/topology/nimcp_community_detection.h"
 #include "utils/algorithms/nimcp_graph_metrics.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
@@ -291,7 +292,7 @@ bool network_analyzer_detect_hubs(network_analyzer_t* analyzer)
 
     analyzer->hubs->num_hubs = hub_struct->num_hubs;
     analyzer->hubs->hub_threshold = analyzer->hub_threshold;
-    analyzer->hubs->timestamp = 0;  // TODO: add timestamp if needed
+    analyzer->hubs->timestamp = nimcp_time_get_ms();
 
     if (hub_struct->num_hubs > 0) {
         analyzer->hubs->hubs = nimcp_calloc(hub_struct->num_hubs, sizeof(hub_neuron_t));

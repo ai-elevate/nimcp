@@ -1,12 +1,26 @@
 /**
  * @file nimcp_shadow_thalamic_bridge.c
  * @brief Shadow-Thalamic Bridge Implementation
+ *
+ * WHAT: Routes shadow/unconscious content signals through the thalamic router
+ * WHY: Shadow integration requires controlled conscious access via thalamic gating
+ * HOW: Packages shadow signals into routed_signal_t and calls thalamic_router_route_signal
  */
 
 #include "cognitive/shadow/nimcp_shadow_thalamic_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
 #include <string.h>
+
+/* Source ID for shadow signals in thalamic routing */
+#define SHADOW_THALAMIC_SOURCE_ID 0x1500
+
+/* Default destination IDs for shadow signals */
+#define SHADOW_DEST_LIMBIC       0x6001
+#define SHADOW_DEST_PREFRONTAL   0x6002
+#define SHADOW_DEST_ACC          0x6003  /* Anterior Cingulate Cortex */
+#define SHADOW_DEST_INSULA       0x6004
 
 struct shadow_thalamic_bridge {
     bridge_base_t base;
@@ -60,29 +74,151 @@ int shadow_thalamic_bridge_reset(shadow_thalamic_bridge_t* bridge) {
     return 0;
 }
 
+/**
+ * @brief Route shadow emergence signal through thalamic router
+ *
+ * WHAT: Package shadow signal and route through thalamic attention mechanism
+ * WHY: Shadow content needs controlled, gradual conscious access
+ * HOW: Create routed_signal_t, apply gradual emergence if enabled, call router
+ */
 int shadow_thalamic_route_emergence(shadow_thalamic_bridge_t* bridge, const shadow_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+
     nimcp_mutex_lock(bridge->base.mutex);
-    if (bridge->config.enable_attention_gating && signal->emergence_strength < bridge->config.min_emergence_threshold) {
+
+    /* Attention gating: filter signals below threshold */
+    if (bridge->config.enable_attention_gating &&
+        signal->emergence_strength < bridge->config.min_emergence_threshold) {
         nimcp_mutex_unlock(bridge->base.mutex);
-        return 0;
+        return 0;  /* Signal gated, not an error */
     }
+
+    /* Route signal through thalamic router if available */
+    if (bridge->router) {
+        /* Define destinations for shadow signals */
+        uint32_t dest_ids[] = {
+            SHADOW_DEST_LIMBIC,
+            SHADOW_DEST_PREFRONTAL,
+            SHADOW_DEST_ACC,
+            SHADOW_DEST_INSULA
+        };
+        uint32_t num_dests = sizeof(dest_ids) / sizeof(dest_ids[0]);
+
+        /* Package signal data: emergence_strength, integration_potential, awareness_level */
+        float signal_data[3] = {
+            signal->emergence_strength,
+            signal->integration_potential,
+            signal->awareness_level
+        };
+
+        /* Apply gradual emergence modulation to attention if enabled */
+        float attention = bridge->attention_weight;
+        if (bridge->config.enable_gradual_emergence) {
+            /* Gradual emergence: attenuate sudden strong signals to prevent overwhelming */
+            float emergence_factor = signal->emergence_strength;
+            if (emergence_factor > 0.7f) {
+                /* Strong emergence gets dampened to allow gradual integration */
+                attention = attention * (0.7f + 0.3f * (1.0f - emergence_factor));
+            }
+        }
+
+        /* Determine priority - shadow signals are typically low/normal priority
+         * to allow conscious processing to prepare */
+        signal_priority_t priority = SIGNAL_PRIORITY_LOW;
+        if (signal->signal_type == SHADOW_SIGNAL_PROJECTION) {
+            /* Projections may need higher priority for conscious recognition */
+            priority = SIGNAL_PRIORITY_NORMAL;
+        } else if (signal->emergence_strength > 0.8f) {
+            priority = SIGNAL_PRIORITY_NORMAL;
+        }
+
+        /* Create routed signal packet */
+        routed_signal_t routed = {
+            .source_id = SHADOW_THALAMIC_SOURCE_ID | signal->signal_type,
+            .dest_ids = dest_ids,
+            .num_dests = num_dests,
+            .signal_data = signal_data,
+            .signal_size = 3,
+            .attention_weight = attention,
+            .priority = priority,
+            .timestamp_ms = nimcp_time_get_ms(),
+            .bypass_queue = false  /* Shadow signals should not bypass queue */
+        };
+
+        /* Route through thalamic router */
+        bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
+        if (!routed_ok) {
+            nimcp_mutex_unlock(bridge->base.mutex);
+            return -1;  /* Routing failed */
+        }
+    }
+
+    /* Update statistics AFTER successful routing */
     bridge->stats.emergences_routed++;
     bridge->stats.avg_emergence_strength = (bridge->stats.avg_emergence_strength * (bridge->stats.emergences_routed - 1) +
                                             signal->emergence_strength) / bridge->stats.emergences_routed;
+
     if (signal->signal_type == SHADOW_SIGNAL_PROJECTION) {
         bridge->stats.projections_detected++;
     }
+
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
+/**
+ * @brief Route shadow integration signal through thalamic router
+ *
+ * WHAT: Route integration readiness through attention-gated pathway
+ * WHY: Integration requires conscious attention and readiness
+ * HOW: Package readiness data, route with appropriate priority
+ */
 int shadow_thalamic_route_integration(shadow_thalamic_bridge_t* bridge, const void* content, float readiness) {
     if (!bridge) return -1;
+
     nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Route through thalamic router if available */
+    if (bridge->router) {
+        uint32_t dest_ids[] = {
+            SHADOW_DEST_PREFRONTAL,
+            SHADOW_DEST_ACC
+        };
+        uint32_t num_dests = sizeof(dest_ids) / sizeof(dest_ids[0]);
+
+        /* Package readiness as signal data */
+        float signal_data[1] = { readiness };
+
+        /* Integration signals get normal priority when threshold met */
+        signal_priority_t priority = SIGNAL_PRIORITY_LOW;
+        if (readiness >= bridge->config.integration_threshold) {
+            priority = SIGNAL_PRIORITY_NORMAL;
+        }
+
+        routed_signal_t routed = {
+            .source_id = SHADOW_THALAMIC_SOURCE_ID | SHADOW_SIGNAL_INTEGRATION,
+            .dest_ids = dest_ids,
+            .num_dests = num_dests,
+            .signal_data = signal_data,
+            .signal_size = 1,
+            .attention_weight = bridge->attention_weight,
+            .priority = priority,
+            .timestamp_ms = nimcp_time_get_ms(),
+            .bypass_queue = false
+        };
+
+        bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
+        if (!routed_ok) {
+            nimcp_mutex_unlock(bridge->base.mutex);
+            return -1;
+        }
+    }
+
+    /* Update statistics after successful routing */
     if (readiness >= bridge->config.integration_threshold) {
         bridge->stats.integrations_achieved++;
     }
+
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
@@ -97,12 +233,16 @@ int shadow_thalamic_set_attention(shadow_thalamic_bridge_t* bridge, float attent
 
 int shadow_thalamic_get_attention(const shadow_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int shadow_thalamic_bridge_get_stats(const shadow_thalamic_bridge_t* bridge, shadow_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }

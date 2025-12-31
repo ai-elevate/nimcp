@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/remorse/nimcp_remorse_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
@@ -19,8 +20,6 @@ struct remorse_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 remorse_substrate_config_t remorse_substrate_default_config(void) {
     remorse_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
@@ -58,13 +57,13 @@ int remorse_substrate_bridge_update(remorse_substrate_bridge_t* bridge) {
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables guilt processing and repair motivation */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.guilt_processing = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.repair_motivation = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.guilt_processing = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.repair_motivation = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Low fatigue enables moral learning and self-forgiveness */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.moral_learning = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.self_forgiveness = clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.moral_learning = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.self_forgiveness = nimcp_clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.guilt_processing + bridge->effects.repair_motivation +
                                         bridge->effects.moral_learning + bridge->effects.self_forgiveness) / 4.0f;

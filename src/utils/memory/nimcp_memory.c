@@ -476,9 +476,19 @@ static void init_if_needed(void)
 
     /* Initialize unified memory manager if not already done
      * Use g_umm_initializing to prevent recursion (per-thread)
+     *
+     * BUG FIX: The guard must be checked FIRST before any other conditions,
+     * and set BEFORE starting UMM creation, to prevent recursive calls from
+     * re-entering during nimcp_calloc calls made by unified_mem_create.
      */
-    if (!g_unified_initialized && !g_unified_manager && !g_umm_initializing) {
-        g_umm_initializing = true;  // Set flag before creating UMM
+    if (g_umm_initializing) {
+        // Already initializing on this thread - return early to prevent recursion
+        // The caller (nimcp_malloc/nimcp_calloc) will fall back to direct malloc
+        return;
+    }
+
+    if (!g_unified_initialized && !g_unified_manager) {
+        g_umm_initializing = true;  // Set guard BEFORE creating UMM (critical!)
         unified_mem_config_t config = unified_mem_default_config();
         config.enable_cow = true;
         config.enable_tracking = true;
@@ -638,8 +648,12 @@ static bool check_memory_guards(void* ptr, size_t size)
  */
 static size_t get_allocation_size(void* ptr)
 {
-    if (!ptr || !g_memory_state.tracking_enabled)
+    if (!ptr)
         return 0;
+
+    // Note: We intentionally DO NOT check tracking_enabled here.
+    // Even if tracking is currently disabled, we need to look up size
+    // for allocations that were made when tracking WAS enabled.
 
     nimcp_mutex_lock(&g_memory_state.lock);
     memory_block_t* current = g_memory_state.blocks;
@@ -693,16 +707,23 @@ static size_t get_allocation_size(void* ptr)
  * WHY: nimcp_free needs to know guard offset to compute real_ptr
  * HOW: Linear search through tracking list
  *
+ * BUG FIX: Always search the tracking list regardless of current tracking_enabled state.
+ * An allocation may have been made when tracking was enabled (with guards), but tracking
+ * could be disabled later. We still need to find the correct guard_size to compute
+ * real_ptr for freeing. The tracking entry was already created at allocation time.
+ *
  * @param ptr User pointer (after guards)
  * @return Guard size in bytes (8, 16, 32, 64) or 0 if not tracked
  */
 static size_t get_guard_size(void* ptr)
 {
-    if (!ptr || !g_memory_state.tracking_enabled) {
-        fprintf(stderr, "[DEBUG] get_guard_size: ptr=%p tracking_enabled=%d\n",
-                ptr, g_memory_state.tracking_enabled);
-        return 0;  // No guards if not tracked
+    if (!ptr) {
+        return 0;
     }
+
+    // Note: We intentionally DO NOT check tracking_enabled here.
+    // Even if tracking is currently disabled, we need to look up guard_size
+    // for allocations that were made when tracking WAS enabled.
 
     nimcp_mutex_lock(&g_memory_state.lock);
     memory_block_t* current = g_memory_state.blocks;
@@ -775,8 +796,12 @@ static size_t get_guard_size(void* ptr)
  */
 static uint64_t get_allocation_lifetime_ms(void* ptr)
 {
-    if (!ptr || !g_memory_state.tracking_enabled)
+    if (!ptr)
         return 0;
+
+    // Note: We intentionally DO NOT check tracking_enabled here.
+    // Even if tracking is currently disabled, we need to look up lifetime
+    // for allocations that were made when tracking WAS enabled.
 
     nimcp_mutex_lock(&g_memory_state.lock);
     memory_block_t* current = g_memory_state.blocks;
@@ -872,6 +897,16 @@ static void update_memory_patterns(size_t size, bool is_alloc, uint64_t lifetime
 
     // New pattern (only create on allocation)
     if (is_alloc) {
+        // DESIGN NOTE: We intentionally use raw malloc() here for internal
+        // tracking structures. Using nimcp_malloc() would cause infinite
+        // recursion: nimcp_malloc -> track_allocation -> update_memory_patterns
+        // -> nimcp_malloc -> ...
+        //
+        // These internal allocations are freed in nimcp_memory_cleanup() and
+        // nimcp_memory_reset_state() using raw free().
+        //
+        // This is consistent with track_allocation() at line ~933 which also
+        // uses raw malloc() for memory_block_t structures.
         pattern = (size_pattern_t*) malloc(sizeof(size_pattern_t));
         if (pattern) {
             pattern->allocation_size = size;
@@ -1031,8 +1066,12 @@ static void track_allocation_with_handle(void* ptr, size_t size, unified_mem_han
  */
 static unified_mem_handle_t get_umm_handle(void* ptr)
 {
-    if (!g_memory_state.tracking_enabled || !ptr)
+    if (!ptr)
         return NULL;
+
+    // Note: We intentionally DO NOT check tracking_enabled here.
+    // Even if tracking is currently disabled, we need to look up handle
+    // for allocations that were made when tracking WAS enabled.
 
     unified_mem_handle_t handle = NULL;
 
@@ -1188,11 +1227,18 @@ static bool check_double_free(void* ptr)
         // NOTE: Pointer not in tracking list - could be:
         // 1. Actual double-free (already freed)
         // 2. Allocated via non-tracked path (different allocator)
-        // 3. Tracking list bug (entry never added or incorrectly removed)
-        // IMPORTANT: Return true to PREVENT the free from proceeding
-        // This avoids crashes from actual double-frees
-        fprintf(stderr, "[MEMORY] Warning: Pointer %p not in tracking list (possible double-free or untracked allocation)\n", ptr);
-        return true;  // Block the free to prevent crash
+        // 3. Allocated when tracking was disabled
+        // 4. Tracking list bug (entry never added or incorrectly removed)
+        //
+        // BUG FIX: We cannot distinguish between these cases, so we log a
+        // warning but ALLOW the free to proceed. Blocking the free causes
+        // false positives for case 2 and 3, leading to memory leaks.
+        // The warning still provides diagnostic value for debugging.
+        if (g_memory_state.debug_output) {
+            fprintf(stderr, "[MEMORY] Warning: Pointer %p not in tracking list "
+                    "(may be untracked allocation or double-free)\n", ptr);
+        }
+        return false;  // Allow the free (avoid false positives)
     }
 
     return false;  // Pointer found in tracking list, safe to free

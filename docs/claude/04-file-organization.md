@@ -9,6 +9,7 @@ include/
 ├── plasticity/attention/  # Multihead attention with PE
 ├── cognitive/introspection/  # Consciousness metrics, temporal patterns, ensemble uncertainty
 ├── cognitive/immune/      # Brain immune system (B/T cells, antibodies, cytokines)
+├── cognitive/common/      # Shared utilities (metabolic modulation, clamp functions)
 ├── cognitive/             # Working memory, emotion-attention
 ├── middleware/            # Sequence detector, circular buffer, population coding
 ├── perception/            # Speech cortex

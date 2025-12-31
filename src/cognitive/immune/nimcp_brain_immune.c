@@ -1509,12 +1509,21 @@ int brain_immune_produce_antibody(
     uint32_t* antibody_id
 ) {
     if (!system) return -1;
-    if (system->antibody_count >= system->antibody_capacity) return -1;
-
-    brain_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
-    if (!b_cell || b_cell->state != B_CELL_PLASMA) return -1;
 
     nimcp_mutex_lock(system->mutex);
+
+    /* Check capacity inside lock to avoid race */
+    if (system->antibody_count >= system->antibody_capacity) {
+        nimcp_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    /* Find and validate B cell inside critical section */
+    brain_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
+    if (!b_cell || b_cell->state != B_CELL_PLASMA) {
+        nimcp_mutex_unlock(system->mutex);
+        return -1;
+    }
 
     brain_antibody_t* antibody = &system->antibodies[system->antibody_count];
     memset(antibody, 0, sizeof(*antibody));
@@ -1567,8 +1576,14 @@ int brain_immune_produce_antibody(
 int brain_immune_execute_antibody(brain_immune_system_t* system, uint32_t antibody_id) {
     if (!system) return -1;
 
+    nimcp_mutex_lock(system->mutex);
+
+    /* Find and validate antibody inside critical section */
     brain_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
-    if (!antibody || !antibody->active) return -1;
+    if (!antibody || !antibody->active) {
+        nimcp_mutex_unlock(system->mutex);
+        return -1;
+    }
 
     /* Get associated antigen for BBB coordination */
     brain_antigen_t* antigen = find_antigen_by_id(system, antibody->target_antigen_id);
@@ -1579,27 +1594,37 @@ int brain_immune_execute_antibody(brain_immune_system_t* system, uint32_t antibo
         antibody->swarm_response_id = 1;  /* Placeholder */
     }
 
-    /* Coordinate BBB action if antigen came from BBB */
-    if (antigen && antigen->source == ANTIGEN_SOURCE_BBB && system->bbb_system) {
+    /* Copy data needed after unlock */
+    bbb_action_t bbb_action = antibody->bbb_action;
+    brain_antibody_class_t ab_class = antibody->ab_class;
+    NimcpSwarmResponseType swarm_response = antibody->swarm_response;
+    uint32_t source_node_id = antigen ? antigen->source_node_id : 0;
+    bool antigen_from_bbb = antigen && antigen->source == ANTIGEN_SOURCE_BBB;
+    void* bbb_system = system->bbb_system;
+    bool enable_logging = system->config.enable_logging;
+
+    nimcp_mutex_unlock(system->mutex);
+
+    /* Coordinate BBB action if antigen came from BBB (outside lock - BBB has own locking) */
+    if (antigen_from_bbb && bbb_system) {
         /* BBB action is already stored in antibody->bbb_action */
         /* Execute coordinated BBB action based on antibody class */
-        if (antibody->ab_class == ANTIBODY_IGG || antibody->ab_class == ANTIBODY_IGE) {
+        if (ab_class == ANTIBODY_IGG || ab_class == ANTIBODY_IGE) {
             /* For mature/emergency antibodies, ensure BBB takes strong action */
-            if (antibody->bbb_action == BBB_ACTION_LOG ||
-                antibody->bbb_action == BBB_ACTION_BLOCK) {
+            if (bbb_action == BBB_ACTION_LOG || bbb_action == BBB_ACTION_BLOCK) {
                 /* Escalate to quarantine for high-affinity antibody responses */
-                if (antigen->source_node_id != 0) {
-                    void* threat_addr = (void*)(uintptr_t)antigen->source_node_id;
-                    bbb_quarantine_region(system->bbb_system, threat_addr, 1);
+                if (source_node_id != 0) {
+                    void* threat_addr = (void*)(uintptr_t)source_node_id;
+                    bbb_quarantine_region(bbb_system, threat_addr, 1);
                 }
             }
         }
     }
 
-    if (system->config.enable_logging) {
+    if (enable_logging) {
         LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
             "Antibody %u executed response type %d with BBB action %d",
-            antibody_id, antibody->swarm_response, antibody->bbb_action);
+            antibody_id, swarm_response, bbb_action);
     }
 
     return 0;
@@ -1615,13 +1640,20 @@ int brain_immune_neutralize(
 ) {
     if (!system) return -1;
 
+    nimcp_mutex_lock(system->mutex);
+
+    /* Find and validate inside critical section */
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
-    if (!antigen) return -1;
+    if (!antigen) {
+        nimcp_mutex_unlock(system->mutex);
+        return -1;
+    }
 
     brain_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
-    if (!antibody) return -1;
-
-    nimcp_mutex_lock(system->mutex);
+    if (!antibody) {
+        nimcp_mutex_unlock(system->mutex);
+        return -1;
+    }
 
     antigen->neutralized = true;
     antigen->response_count++;
@@ -1742,15 +1774,19 @@ int brain_immune_release_cytokine(
     brain_immune_cytokine_cb_t callback = system->on_cytokine;
     void* callback_data = system->callback_user_data;
     bio_module_context_t bio_ctx = system->bio_context;
+
+    /* Set delivered flag BEFORE unlock to prevent race condition */
+    /* (checking target_region == 0 means broadcast) */
+    if (bio_ctx && target_region == 0) {
+        cytokine->delivered = true;
+    }
+
     brain_cytokine_t cytokine_copy = *cytokine;
 
     nimcp_mutex_unlock(system->mutex);
 
-    /* Send bio-async message if connected */
-    if (bio_ctx && target_region == 0) {
-        /* Broadcast - would construct and send bio message here */
-        cytokine->delivered = true;
-    }
+    /* Bio-async message sending would happen here (outside lock) */
+    /* The delivered flag was already set inside the critical section */
 
     /* Trigger callback with copied data */
     if (callback) {

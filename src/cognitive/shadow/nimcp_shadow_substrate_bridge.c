@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/shadow/nimcp_shadow_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
@@ -19,8 +20,6 @@ struct shadow_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 shadow_substrate_config_t shadow_substrate_default_config(void) {
     shadow_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
@@ -58,13 +57,13 @@ int shadow_substrate_bridge_update(shadow_substrate_bridge_t* bridge) {
     float atp = metabolic.atp_level, fatigue = 1.0f - metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables repression strength - low ATP weakens repression */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.repression_strength = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.integration_capacity = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.repression_strength = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.integration_capacity = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Fatigue raises awareness threshold and increases projection */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.awareness_threshold = clamp_f(0.5f - fatigue * 0.3f * bridge->config.fatigue_sensitivity, 0.2f, 0.8f);
-        bridge->effects.projection_tendency = clamp_f(fatigue * 0.6f * bridge->config.fatigue_sensitivity, 0.0f, 0.8f);
+        bridge->effects.awareness_threshold = nimcp_clamp_f(0.5f - fatigue * 0.3f * bridge->config.fatigue_sensitivity, 0.2f, 0.8f);
+        bridge->effects.projection_tendency = nimcp_clamp_f(fatigue * 0.6f * bridge->config.fatigue_sensitivity, 0.0f, 0.8f);
     }
     bridge->effects.overall_capacity = (bridge->effects.repression_strength + bridge->effects.integration_capacity) / 2.0f;
     bridge->update_count++;

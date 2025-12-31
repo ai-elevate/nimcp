@@ -246,23 +246,28 @@ set_tests_properties(
 #   PROPERTIES TIMEOUT 120
 # )
 
-set_tests_properties(
-  integration_test_brain_oscillations_integration
-  PROPERTIES TIMEOUT 90
-)
+# Set properties only if tests exist
+if(TARGET integration_test_brain_oscillations_integration)
+  set_tests_properties(
+    integration_test_brain_oscillations_integration
+    PROPERTIES TIMEOUT 90
+  )
+endif()
 
 # Brain API tests require extended timeout due to heavyweight brain initialization
 # Each brain creation initializes 50+ subsystems (neural network, cognitive systems,
 # plasticity mechanisms, immune system, ethics, etc.)
 # See: BRAIN_API_TEST_TIMEOUT_ANALYSIS.md for detailed analysis
-set_tests_properties(
-  unit_api_test_api_brain_lifecycle
-  unit_api_test_api_brain_cow
-  unit_api_test_api_brain_operations
-  unit_api_test_api_brain_persistence
-  unit_api_test_api_brain_snapshots
-  PROPERTIES TIMEOUT 180
-)
+if(TARGET unit_api_test_api_brain_lifecycle)
+  set_tests_properties(
+    unit_api_test_api_brain_lifecycle
+    unit_api_test_api_brain_cow
+    unit_api_test_api_brain_operations
+    unit_api_test_api_brain_persistence
+    unit_api_test_api_brain_snapshots
+    PROPERTIES TIMEOUT 180
+  )
+endif()
 
 # ============================================================================
 # Test Execution Instructions
@@ -914,6 +919,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/brain_regions")
     add_subdirectory(integration/core/brain_regions)
 endif()
 
+# Brain regions integration tests (direct, not under core)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/brain_regions")
+    message(STATUS "Adding brain regions integration tests (Occipital, Signal Propagation)...")
+    add_subdirectory(integration/brain_regions)
+endif()
+
 # ============================================================================
 # Glial Tests (Microglia, Oligodendrocytes)
 # ============================================================================
@@ -1210,12 +1221,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/portia")
 endif()
 
 # ============================================================================
-# GPU Immune Tests
+# GPU Unit Tests
 # ============================================================================
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/gpu/immune/CMakeLists.txt")
-    message(STATUS "Adding GPU immune unit tests...")
-    add_subdirectory(unit/gpu/immune)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/gpu/CMakeLists.txt")
+    message(STATUS "Adding GPU unit tests...")
+    add_subdirectory(unit/gpu)
 endif()
 
 # ============================================================================

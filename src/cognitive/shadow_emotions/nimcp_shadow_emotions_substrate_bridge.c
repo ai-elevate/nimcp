@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/shadow_emotions/nimcp_shadow_emotions_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
@@ -19,8 +20,6 @@ struct shadow_emotions_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 shadow_emotions_substrate_config_t shadow_emotions_substrate_default_config(void) {
     shadow_emotions_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
@@ -58,13 +57,13 @@ int shadow_emotions_substrate_bridge_update(shadow_emotions_substrate_bridge_t* 
     float atp = metabolic.atp_level, fatigue = 1.0f - metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables suppression and regulation - low ATP allows emergence */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.suppression_strength = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.regulation_capacity = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.suppression_strength = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.regulation_capacity = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Fatigue lowers emergence threshold and reduces integration */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.emergence_threshold = clamp_f(0.5f - fatigue * 0.3f * bridge->config.fatigue_sensitivity, 0.2f, 0.8f);
-        bridge->effects.integration_ability = clamp_f((1.0f - fatigue) * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.emergence_threshold = nimcp_clamp_f(0.5f - fatigue * 0.3f * bridge->config.fatigue_sensitivity, 0.2f, 0.8f);
+        bridge->effects.integration_ability = nimcp_clamp_f((1.0f - fatigue) * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.suppression_strength + bridge->effects.regulation_capacity +
                                         bridge->effects.integration_ability) / 3.0f;

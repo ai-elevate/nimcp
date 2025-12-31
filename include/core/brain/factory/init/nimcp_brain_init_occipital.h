@@ -188,6 +188,81 @@ bool nimcp_brain_factory_connect_occipital_to_training(brain_t brain);
  */
 bool nimcp_brain_factory_connect_occipital_to_immune(brain_t brain);
 
+/**
+ * @brief Connect Occipital cortex to logic module
+ *
+ * WHAT: Links occipital to symbolic/neural logic for visual reasoning
+ * WHY:  Visual perception informs logical reasoning (object grounding)
+ * HOW:  Creates visual-logic bridge for perception-to-predicate conversion
+ *
+ * BIOLOGICAL BASIS:
+ * - Inferotemporal cortex links visual features to semantic concepts
+ * - Prefrontal cortex integrates visual evidence with logical reasoning
+ * - Top-down attention from logic modulates visual processing
+ *
+ * PATHWAYS:
+ * - Visual -> Logic: Feature extraction, object recognition -> predicate grounding
+ * - Logic -> Visual: Conclusion-based attention guidance, expectation priming
+ *
+ * @param brain Brain instance
+ * @return true on success, false on failure
+ */
+bool nimcp_brain_factory_connect_occipital_to_logic(brain_t brain);
+
+/**
+ * @brief Connect Occipital cortex to cognitive modules
+ *
+ * WHAT: Links occipital to salience, curiosity, introspection, attention
+ * WHY:  Cognitive systems modulate and are informed by visual processing
+ * HOW:  Registers callbacks for visual novelty, salience, attention
+ *
+ * INTEGRATED MODULES:
+ * - Salience: Visual salience detection for attention guidance
+ * - Curiosity: Novel visual stimuli drive exploration
+ * - Introspection: Visual processing state for self-awareness
+ * - Attention: Visual attention allocation and gating
+ * - Global Workspace: Conscious visual awareness broadcasting
+ *
+ * @param brain Brain instance
+ * @return true on success, false on failure
+ */
+bool nimcp_brain_factory_connect_occipital_to_cognitive(brain_t brain);
+
+/**
+ * @brief Connect Occipital cortex to cortical columns
+ *
+ * WHAT: Links occipital to cortical column architecture
+ * WHY:  V1 is organized in orientation columns and hypercolumns
+ * HOW:  Creates columnar organization for orientation selectivity
+ *
+ * BIOLOGICAL BASIS:
+ * - V1 hypercolumns: Complete orientation coverage (0-180 degrees)
+ * - Orientation columns: ~0.5mm spacing, ~15-20 degree intervals
+ * - Ocular dominance columns: Left/right eye preference
+ * - Color blobs: CO-rich regions for color processing
+ *
+ * @param brain Brain instance
+ * @return true on success, false on failure
+ */
+bool nimcp_brain_factory_connect_occipital_to_cortical_columns(brain_t brain);
+
+/**
+ * @brief Connect Occipital cortex to swarm system
+ *
+ * WHAT: Links occipital to swarm intelligence for distributed visual processing
+ * WHY:  Complex visual scenes benefit from parallel distributed processing
+ * HOW:  Registers visual processing nodes with swarm coordination
+ *
+ * APPLICATIONS:
+ * - Distributed object detection: Multiple swarm nodes process scene regions
+ * - Consensus perception: Aggregate visual interpretations across nodes
+ * - Fault-tolerant vision: Visual processing continues if nodes fail
+ *
+ * @param brain Brain instance
+ * @return true on success, false on failure
+ */
+bool nimcp_brain_factory_connect_occipital_to_swarm(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

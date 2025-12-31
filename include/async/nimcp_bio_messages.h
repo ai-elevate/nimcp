@@ -135,6 +135,10 @@ typedef enum {
     BIO_MSG_CURIOSITY_SIGNAL,
     BIO_MSG_DECISION_REQUEST,
     BIO_MSG_DECISION_RESPONSE,
+    BIO_MSG_GOAL_EVAL_REQUEST,              /**< Prefrontal: goal evaluation request */
+    BIO_MSG_GOAL_EVAL_RESULT,               /**< Prefrontal: goal evaluation result */
+    BIO_MSG_INHIBITION_CHECK,               /**< Prefrontal: inhibition check request */
+    BIO_MSG_INHIBITION_RESULT,              /**< Prefrontal: inhibition result */
     BIO_MSG_CONSOLIDATION_TRIGGER,
     BIO_MSG_MIRROR_NEURON_ACTIVATION,
     BIO_MSG_AGENT_BELIEF_UPDATE,        /**< Theory of Mind: Agent belief changed */
@@ -224,6 +228,10 @@ typedef enum {
     BIO_MSG_VISUAL_INPUT = 0x0800,
     BIO_MSG_VISUAL_FEATURE_DETECTED,
     BIO_MSG_VISUAL_ATTENTION_SHIFT,
+    BIO_MSG_VISUAL_INPUT_REQUEST,           /**< Occipital: request visual processing */
+    BIO_MSG_VISUAL_FEATURES_READY,          /**< Occipital: features extracted ready */
+    BIO_MSG_VISUAL_FEATURE_QUERY,           /**< Occipital: query specific feature */
+    BIO_MSG_ATTENTION_MODULATION,           /**< Occipital: attention modulation request */
     BIO_MSG_AUDIO_INPUT,
     BIO_MSG_AUDIO_FEATURE_DETECTED,
     BIO_MSG_AUDIO_ATTENTION_SHIFT,
@@ -241,6 +249,9 @@ typedef enum {
     BIO_MSG_PHONOLOGICAL_ENCODE_RESULT,
     BIO_MSG_MOTOR_COMMAND_REQUEST,
     BIO_MSG_MOTOR_COMMAND_RESULT,
+    BIO_MSG_MOTOR_STOP_REQUEST,             /**< Motor cortex: stop movement request */
+    BIO_MSG_BG_ACTION_SELECTION,            /**< Basal ganglia: action selection result */
+    BIO_MSG_CEREBELLAR_CORRECTION,          /**< Cerebellum: motor correction signal */
     BIO_MSG_UTTERANCE_PRODUCTION_REQUEST,
     BIO_MSG_UTTERANCE_PRODUCTION_COMPLETE,
     BIO_MSG_SPEECH_FEEDBACK,
@@ -537,6 +548,7 @@ typedef enum {
     BIO_MODULE_INSULA,                       /**< Insular cortex interoception */
     BIO_MODULE_PARIETAL_CORTEX,              /**< Parietal cortex spatial processing */
     BIO_MODULE_TEMPORAL_CORTEX,              /**< Temporal cortex auditory/semantic processing */
+    BIO_MODULE_OCCIPITAL,                    /**< Occipital cortex visual processing */
 
     /* Cognitive modules */
     BIO_MODULE_INTROSPECTION = 0x0200,
@@ -2365,6 +2377,41 @@ typedef struct {
     float error_magnitude;          /**< Error size */
     bool requires_correction;       /**< Needs speech repair */
 } bio_msg_speech_feedback_t;
+
+/**
+ * @brief Basal ganglia action selection result
+ *
+ * WHAT: Message sent when basal ganglia completes action selection
+ * WHY:  Motor cortex needs to know which action to execute and with what vigor
+ * HOW:  BG sends selected action ID and parameters to motor cortex
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t action_id;             /**< Selected action identifier */
+    float vigor;                    /**< Movement vigor/strength [0-1] */
+    float confidence;               /**< Selection confidence [0-1] */
+    float expected_value;           /**< Expected reward value */
+    float urgency;                  /**< Movement urgency [0-1] */
+    bool is_habit;                  /**< True if habitual selection */
+    uint8_t operating_mode;         /**< 0=goal-directed, 1=habitual, 2=exploratory */
+} bio_msg_bg_action_selection_t;
+
+/**
+ * @brief Cerebellar motor correction signal
+ *
+ * WHAT: Message sent by cerebellum to correct ongoing movements
+ * WHY:  Real-time error correction for smooth, accurate movements
+ * HOW:  Cerebellum sends timing and amplitude corrections to motor cortex
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t effector_id;           /**< Target effector/muscle group */
+    float timing_correction_ms;     /**< Timing adjustment in milliseconds */
+    float amplitude_correction;     /**< Amplitude/gain adjustment [0-2] */
+    float predicted_error;          /**< Predicted execution error */
+    float coordination_weight;      /**< Multi-joint coordination factor */
+    float phase_correction;         /**< Phase alignment correction */
+} bio_msg_cerebellar_correction_t;
 
 /*=============================================================================
  * NEURAL LINK PROTOCOL (NLP) NETWORKING MESSAGES

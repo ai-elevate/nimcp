@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/meta_learning/nimcp_meta_learning_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
@@ -19,8 +20,6 @@ struct meta_learning_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 meta_learning_substrate_config_t meta_learning_substrate_default_config(void) {
     meta_learning_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
@@ -57,12 +56,12 @@ int meta_learning_substrate_bridge_update(meta_learning_substrate_bridge_t* brid
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.learning_rate_adapt = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.plasticity_level = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.learning_rate_adapt = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.plasticity_level = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.strategy_flexibility = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.transfer_capacity = clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.strategy_flexibility = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.transfer_capacity = nimcp_clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.learning_rate_adapt + bridge->effects.strategy_flexibility +
                                         bridge->effects.transfer_capacity + bridge->effects.plasticity_level) / 4.0f;

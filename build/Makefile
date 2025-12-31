@@ -1628,123 +1628,6 @@ unit_core_brain_factory_init_test_brain_init_subsystems_part2/fast:
 .PHONY : unit_core_brain_factory_init_test_brain_init_subsystems_part2/fast
 
 #=============================================================================
-# Target rules for targets named unit_core_brain_regions_cerebellum_test_cerebellum_bridges
-
-# Build rule for target.
-unit_core_brain_regions_cerebellum_test_cerebellum_bridges: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_cerebellum_test_cerebellum_bridges
-.PHONY : unit_core_brain_regions_cerebellum_test_cerebellum_bridges
-
-# fast build rule for target.
-unit_core_brain_regions_cerebellum_test_cerebellum_bridges/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_regions_cerebellum_test_cerebellum_bridges.dir/build.make test/CMakeFiles/unit_core_brain_regions_cerebellum_test_cerebellum_bridges.dir/build
-.PHONY : unit_core_brain_regions_cerebellum_test_cerebellum_bridges/fast
-
-#=============================================================================
-# Target rules for targets named unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter
-
-# Build rule for target.
-unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter
-.PHONY : unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter
-
-# fast build rule for target.
-unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter.dir/build.make test/CMakeFiles/unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter.dir/build
-.PHONY : unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter/fast
-
-#=============================================================================
-# Target rules for targets named unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter
-
-# Build rule for target.
-unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter
-.PHONY : unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter
-
-# fast build rule for target.
-unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter.dir/build.make test/CMakeFiles/unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter.dir/build
-.PHONY : unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter/fast
-
-#=============================================================================
-# Target rules for targets named unit_core_brain_regions_motor_test_nimcp_motor_adapter
-
-# Build rule for target.
-unit_core_brain_regions_motor_test_nimcp_motor_adapter: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_motor_test_nimcp_motor_adapter
-.PHONY : unit_core_brain_regions_motor_test_nimcp_motor_adapter
-
-# fast build rule for target.
-unit_core_brain_regions_motor_test_nimcp_motor_adapter/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_regions_motor_test_nimcp_motor_adapter.dir/build.make test/CMakeFiles/unit_core_brain_regions_motor_test_nimcp_motor_adapter.dir/build
-.PHONY : unit_core_brain_regions_motor_test_nimcp_motor_adapter/fast
-
-#=============================================================================
-# Target rules for targets named unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge
-
-# Build rule for target.
-unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge
-.PHONY : unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge
-
-# fast build rule for target.
-unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge.dir/build.make test/CMakeFiles/unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge.dir/build
-.PHONY : unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge/fast
-
-#=============================================================================
-# Target rules for targets named unit_core_brain_regions_occipital_test_nimcp_occipital_adapter
-
-# Build rule for target.
-unit_core_brain_regions_occipital_test_nimcp_occipital_adapter: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_occipital_test_nimcp_occipital_adapter
-.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_adapter
-
-# fast build rule for target.
-unit_core_brain_regions_occipital_test_nimcp_occipital_adapter/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_adapter.dir/build.make test/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_adapter.dir/build
-.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_adapter/fast
-
-#=============================================================================
-# Target rules for targets named unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge
-
-# Build rule for target.
-unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge
-.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge
-
-# fast build rule for target.
-unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge.dir/build.make test/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge.dir/build
-.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge/fast
-
-#=============================================================================
-# Target rules for targets named unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter
-
-# Build rule for target.
-unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter
-.PHONY : unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter
-
-# fast build rule for target.
-unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter.dir/build.make test/CMakeFiles/unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter.dir/build
-.PHONY : unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter/fast
-
-#=============================================================================
-# Target rules for targets named unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge
-
-# Build rule for target.
-unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge
-.PHONY : unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge
-
-# fast build rule for target.
-unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge.dir/build.make test/CMakeFiles/unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge.dir/build
-.PHONY : unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge/fast
-
-#=============================================================================
 # Target rules for targets named unit_core_brain_test_brain_100_percent_coverage
 
 # Build rule for target.
@@ -2601,123 +2484,6 @@ unit_gpu_spike_event_unit_spike_event_test_amplitude_validation: cmake_check_bui
 unit_gpu_spike_event_unit_spike_event_test_amplitude_validation/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_gpu_spike_event_unit_spike_event_test_amplitude_validation.dir/build.make test/CMakeFiles/unit_gpu_spike_event_unit_spike_event_test_amplitude_validation.dir/build
 .PHONY : unit_gpu_spike_event_unit_spike_event_test_amplitude_validation/fast
-
-#=============================================================================
-# Target rules for targets named unit_gpu_test_execution_mode
-
-# Build rule for target.
-unit_gpu_test_execution_mode: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_execution_mode
-.PHONY : unit_gpu_test_execution_mode
-
-# fast build rule for target.
-unit_gpu_test_execution_mode/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_gpu_test_execution_mode.dir/build.make test/CMakeFiles/unit_gpu_test_execution_mode.dir/build
-.PHONY : unit_gpu_test_execution_mode/fast
-
-#=============================================================================
-# Target rules for targets named unit_gpu_test_gpu_neuron
-
-# Build rule for target.
-unit_gpu_test_gpu_neuron: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_gpu_neuron
-.PHONY : unit_gpu_test_gpu_neuron
-
-# fast build rule for target.
-unit_gpu_test_gpu_neuron/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_gpu_test_gpu_neuron.dir/build.make test/CMakeFiles/unit_gpu_test_gpu_neuron.dir/build
-.PHONY : unit_gpu_test_gpu_neuron/fast
-
-#=============================================================================
-# Target rules for targets named unit_gpu_test_gpu_neuron_comprehensive
-
-# Build rule for target.
-unit_gpu_test_gpu_neuron_comprehensive: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_gpu_neuron_comprehensive
-.PHONY : unit_gpu_test_gpu_neuron_comprehensive
-
-# fast build rule for target.
-unit_gpu_test_gpu_neuron_comprehensive/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_gpu_test_gpu_neuron_comprehensive.dir/build.make test/CMakeFiles/unit_gpu_test_gpu_neuron_comprehensive.dir/build
-.PHONY : unit_gpu_test_gpu_neuron_comprehensive/fast
-
-#=============================================================================
-# Target rules for targets named unit_gpu_test_gpu_neuron_real
-
-# Build rule for target.
-unit_gpu_test_gpu_neuron_real: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_gpu_neuron_real
-.PHONY : unit_gpu_test_gpu_neuron_real
-
-# fast build rule for target.
-unit_gpu_test_gpu_neuron_real/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_gpu_test_gpu_neuron_real.dir/build.make test/CMakeFiles/unit_gpu_test_gpu_neuron_real.dir/build
-.PHONY : unit_gpu_test_gpu_neuron_real/fast
-
-#=============================================================================
-# Target rules for targets named unit_gpu_test_multigpu_comprehensive
-
-# Build rule for target.
-unit_gpu_test_multigpu_comprehensive: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_multigpu_comprehensive
-.PHONY : unit_gpu_test_multigpu_comprehensive
-
-# fast build rule for target.
-unit_gpu_test_multigpu_comprehensive/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_gpu_test_multigpu_comprehensive.dir/build.make test/CMakeFiles/unit_gpu_test_multigpu_comprehensive.dir/build
-.PHONY : unit_gpu_test_multigpu_comprehensive/fast
-
-#=============================================================================
-# Target rules for targets named unit_gpu_test_multigpu_mock
-
-# Build rule for target.
-unit_gpu_test_multigpu_mock: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_multigpu_mock
-.PHONY : unit_gpu_test_multigpu_mock
-
-# fast build rule for target.
-unit_gpu_test_multigpu_mock/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_gpu_test_multigpu_mock.dir/build.make test/CMakeFiles/unit_gpu_test_multigpu_mock.dir/build
-.PHONY : unit_gpu_test_multigpu_mock/fast
-
-#=============================================================================
-# Target rules for targets named unit_gpu_test_network_detect
-
-# Build rule for target.
-unit_gpu_test_network_detect: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_network_detect
-.PHONY : unit_gpu_test_network_detect
-
-# fast build rule for target.
-unit_gpu_test_network_detect/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_gpu_test_network_detect.dir/build.make test/CMakeFiles/unit_gpu_test_network_detect.dir/build
-.PHONY : unit_gpu_test_network_detect/fast
-
-#=============================================================================
-# Target rules for targets named unit_gpu_test_simd_detect
-
-# Build rule for target.
-unit_gpu_test_simd_detect: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_simd_detect
-.PHONY : unit_gpu_test_simd_detect
-
-# fast build rule for target.
-unit_gpu_test_simd_detect/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_gpu_test_simd_detect.dir/build.make test/CMakeFiles/unit_gpu_test_simd_detect.dir/build
-.PHONY : unit_gpu_test_simd_detect/fast
-
-#=============================================================================
-# Target rules for targets named unit_gpu_test_spike_event
-
-# Build rule for target.
-unit_gpu_test_spike_event: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_spike_event
-.PHONY : unit_gpu_test_spike_event
-
-# fast build rule for target.
-unit_gpu_test_spike_event/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_gpu_test_spike_event.dir/build.make test/CMakeFiles/unit_gpu_test_spike_event.dir/build
-.PHONY : unit_gpu_test_spike_event/fast
 
 #=============================================================================
 # Target rules for targets named unit_information_test_quantum_shannon
@@ -5162,149 +4928,6 @@ integration_plasticity_structural_test_structural_integration: cmake_check_build
 integration_plasticity_structural_test_structural_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_plasticity_structural_test_structural_integration.dir/build.make test/CMakeFiles/integration_plasticity_structural_test_structural_integration.dir/build
 .PHONY : integration_plasticity_structural_test_structural_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_test_brain_factory_integration
-
-# Build rule for target.
-integration_test_brain_factory_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_brain_factory_integration
-.PHONY : integration_test_brain_factory_integration
-
-# fast build rule for target.
-integration_test_brain_factory_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_brain_factory_integration.dir/build.make test/CMakeFiles/integration_test_brain_factory_integration.dir/build
-.PHONY : integration_test_brain_factory_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_test_brain_oscillations_integration
-
-# Build rule for target.
-integration_test_brain_oscillations_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_brain_oscillations_integration
-.PHONY : integration_test_brain_oscillations_integration
-
-# fast build rule for target.
-integration_test_brain_oscillations_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_brain_oscillations_integration.dir/build.make test/CMakeFiles/integration_test_brain_oscillations_integration.dir/build
-.PHONY : integration_test_brain_oscillations_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_test_brain_resize_integration
-
-# Build rule for target.
-integration_test_brain_resize_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_brain_resize_integration
-.PHONY : integration_test_brain_resize_integration
-
-# fast build rule for target.
-integration_test_brain_resize_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_brain_resize_integration.dir/build.make test/CMakeFiles/integration_test_brain_resize_integration.dir/build
-.PHONY : integration_test_brain_resize_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_test_config_brain_integration
-
-# Build rule for target.
-integration_test_config_brain_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_config_brain_integration
-.PHONY : integration_test_config_brain_integration
-
-# fast build rule for target.
-integration_test_config_brain_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_config_brain_integration.dir/build.make test/CMakeFiles/integration_test_config_brain_integration.dir/build
-.PHONY : integration_test_config_brain_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_test_cross_bridge_integration
-
-# Build rule for target.
-integration_test_cross_bridge_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_cross_bridge_integration
-.PHONY : integration_test_cross_bridge_integration
-
-# fast build rule for target.
-integration_test_cross_bridge_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_cross_bridge_integration.dir/build.make test/CMakeFiles/integration_test_cross_bridge_integration.dir/build
-.PHONY : integration_test_cross_bridge_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_test_kdtree_brain_integration
-
-# Build rule for target.
-integration_test_kdtree_brain_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_kdtree_brain_integration
-.PHONY : integration_test_kdtree_brain_integration
-
-# fast build rule for target.
-integration_test_kdtree_brain_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_kdtree_brain_integration.dir/build.make test/CMakeFiles/integration_test_kdtree_brain_integration.dir/build
-.PHONY : integration_test_kdtree_brain_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_test_network_analyzer_quantum_routing
-
-# Build rule for target.
-integration_test_network_analyzer_quantum_routing: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_network_analyzer_quantum_routing
-.PHONY : integration_test_network_analyzer_quantum_routing
-
-# fast build rule for target.
-integration_test_network_analyzer_quantum_routing/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_network_analyzer_quantum_routing.dir/build.make test/CMakeFiles/integration_test_network_analyzer_quantum_routing.dir/build
-.PHONY : integration_test_network_analyzer_quantum_routing/fast
-
-#=============================================================================
-# Target rules for targets named integration_test_neural_logic_circuits
-
-# Build rule for target.
-integration_test_neural_logic_circuits: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_neural_logic_circuits
-.PHONY : integration_test_neural_logic_circuits
-
-# fast build rule for target.
-integration_test_neural_logic_circuits/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_neural_logic_circuits.dir/build.make test/CMakeFiles/integration_test_neural_logic_circuits.dir/build
-.PHONY : integration_test_neural_logic_circuits/fast
-
-#=============================================================================
-# Target rules for targets named integration_test_quantum_bridge_integration
-
-# Build rule for target.
-integration_test_quantum_bridge_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_quantum_bridge_integration
-.PHONY : integration_test_quantum_bridge_integration
-
-# fast build rule for target.
-integration_test_quantum_bridge_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_quantum_bridge_integration.dir/build.make test/CMakeFiles/integration_test_quantum_bridge_integration.dir/build
-.PHONY : integration_test_quantum_bridge_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_test_substrate_bridge_integration
-
-# Build rule for target.
-integration_test_substrate_bridge_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_substrate_bridge_integration
-.PHONY : integration_test_substrate_bridge_integration
-
-# fast build rule for target.
-integration_test_substrate_bridge_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_substrate_bridge_integration.dir/build.make test/CMakeFiles/integration_test_substrate_bridge_integration.dir/build
-.PHONY : integration_test_substrate_bridge_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_test_thalamic_bridge_integration
-
-# Build rule for target.
-integration_test_thalamic_bridge_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_thalamic_bridge_integration
-.PHONY : integration_test_thalamic_bridge_integration
-
-# fast build rule for target.
-integration_test_thalamic_bridge_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_thalamic_bridge_integration.dir/build.make test/CMakeFiles/integration_test_thalamic_bridge_integration.dir/build
-.PHONY : integration_test_thalamic_bridge_integration/fast
 
 #=============================================================================
 # Target rules for targets named integration_utils_quantum_test_quantum_walk_integration
@@ -8568,6 +8191,19 @@ unit_middleware_training_test_cortical_training_bridge: cmake_check_build_system
 unit_middleware_training_test_cortical_training_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_cortical_training_bridge.dir/build.make test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_cortical_training_bridge.dir/build
 .PHONY : unit_middleware_training_test_cortical_training_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_middleware_training_test_occipital_training_bridge
+
+# Build rule for target.
+unit_middleware_training_test_occipital_training_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_middleware_training_test_occipital_training_bridge
+.PHONY : unit_middleware_training_test_occipital_training_bridge
+
+# fast build rule for target.
+unit_middleware_training_test_occipital_training_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_occipital_training_bridge.dir/build.make test/unit/middleware/training/CMakeFiles/unit_middleware_training_test_occipital_training_bridge.dir/build
+.PHONY : unit_middleware_training_test_occipital_training_bridge/fast
 
 #=============================================================================
 # Target rules for targets named integration_middleware_middleware_test_middleware_subsystems_integration
@@ -12834,6 +12470,32 @@ unit_core_brain_regions_brainstem_test_nimcp_brain_init_brainstem/fast:
 .PHONY : unit_core_brain_regions_brainstem_test_nimcp_brain_init_brainstem/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter
+
+# Build rule for target.
+unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter
+.PHONY : unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter
+
+# fast build rule for target.
+unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/cerebellum/CMakeFiles/unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter.dir/build.make test/unit/core/brain/regions/cerebellum/CMakeFiles/unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter.dir/build
+.PHONY : unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_cerebellum_test_cerebellum_bridges
+
+# Build rule for target.
+unit_core_brain_regions_cerebellum_test_cerebellum_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_cerebellum_test_cerebellum_bridges
+.PHONY : unit_core_brain_regions_cerebellum_test_cerebellum_bridges
+
+# fast build rule for target.
+unit_core_brain_regions_cerebellum_test_cerebellum_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/cerebellum/CMakeFiles/unit_core_brain_regions_cerebellum_test_cerebellum_bridges.dir/build.make test/unit/core/brain/regions/cerebellum/CMakeFiles/unit_core_brain_regions_cerebellum_test_cerebellum_bridges.dir/build
+.PHONY : unit_core_brain_regions_cerebellum_test_cerebellum_bridges/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_brain_regions_cingulate_test_nimcp_cingulate_adapter
 
 # Build rule for target.
@@ -12860,6 +12522,19 @@ unit_core_brain_regions_cingulate_test_nimcp_cingulate_quantum_bridge/fast:
 .PHONY : unit_core_brain_regions_cingulate_test_nimcp_cingulate_quantum_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter
+
+# Build rule for target.
+unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter
+.PHONY : unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter
+
+# fast build rule for target.
+unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/hippocampus/CMakeFiles/unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter.dir/build.make test/unit/core/brain/regions/hippocampus/CMakeFiles/unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter.dir/build
+.PHONY : unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_adapter
 
 # Build rule for target.
@@ -12873,6 +12548,110 @@ unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_adapter/fast:
 .PHONY : unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_adapter/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_brain_regions_insula_test_nimcp_insula_adapter
+
+# Build rule for target.
+unit_core_brain_regions_insula_test_nimcp_insula_adapter: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_insula_test_nimcp_insula_adapter
+.PHONY : unit_core_brain_regions_insula_test_nimcp_insula_adapter
+
+# fast build rule for target.
+unit_core_brain_regions_insula_test_nimcp_insula_adapter/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/insula/CMakeFiles/unit_core_brain_regions_insula_test_nimcp_insula_adapter.dir/build.make test/unit/core/brain/regions/insula/CMakeFiles/unit_core_brain_regions_insula_test_nimcp_insula_adapter.dir/build
+.PHONY : unit_core_brain_regions_insula_test_nimcp_insula_adapter/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_insula_test_nimcp_insula_quantum_bridge
+
+# Build rule for target.
+unit_core_brain_regions_insula_test_nimcp_insula_quantum_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_insula_test_nimcp_insula_quantum_bridge
+.PHONY : unit_core_brain_regions_insula_test_nimcp_insula_quantum_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_insula_test_nimcp_insula_quantum_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/insula/CMakeFiles/unit_core_brain_regions_insula_test_nimcp_insula_quantum_bridge.dir/build.make test/unit/core/brain/regions/insula/CMakeFiles/unit_core_brain_regions_insula_test_nimcp_insula_quantum_bridge.dir/build
+.PHONY : unit_core_brain_regions_insula_test_nimcp_insula_quantum_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_motor_test_nimcp_motor_adapter
+
+# Build rule for target.
+unit_core_brain_regions_motor_test_nimcp_motor_adapter: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_motor_test_nimcp_motor_adapter
+.PHONY : unit_core_brain_regions_motor_test_nimcp_motor_adapter
+
+# fast build rule for target.
+unit_core_brain_regions_motor_test_nimcp_motor_adapter/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/motor/CMakeFiles/unit_core_brain_regions_motor_test_nimcp_motor_adapter.dir/build.make test/unit/core/brain/regions/motor/CMakeFiles/unit_core_brain_regions_motor_test_nimcp_motor_adapter.dir/build
+.PHONY : unit_core_brain_regions_motor_test_nimcp_motor_adapter/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge
+
+# Build rule for target.
+unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge
+.PHONY : unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/motor/CMakeFiles/unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge.dir/build.make test/unit/core/brain/regions/motor/CMakeFiles/unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge.dir/build
+.PHONY : unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_occipital_test_nimcp_occipital_adapter
+
+# Build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_adapter: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_occipital_test_nimcp_occipital_adapter
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_adapter
+
+# fast build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_adapter/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_adapter.dir/build.make test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_adapter.dir/build
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_adapter/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge
+
+# Build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge.dir/build.make test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge.dir/build
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_occipital_test_nimcp_occipital_substrate_bridge
+
+# Build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_substrate_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_occipital_test_nimcp_occipital_substrate_bridge
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_substrate_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_substrate_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_substrate_bridge.dir/build.make test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_substrate_bridge.dir/build
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_substrate_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge
+
+# Build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge.dir/build.make test/unit/core/brain/regions/occipital/CMakeFiles/unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge.dir/build
+.PHONY : unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_brain_regions_parietal_test_nimcp_parietal_adapter
 
 # Build rule for target.
@@ -12884,6 +12663,32 @@ unit_core_brain_regions_parietal_test_nimcp_parietal_adapter: cmake_check_build_
 unit_core_brain_regions_parietal_test_nimcp_parietal_adapter/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/parietal/CMakeFiles/unit_core_brain_regions_parietal_test_nimcp_parietal_adapter.dir/build.make test/unit/core/brain/regions/parietal/CMakeFiles/unit_core_brain_regions_parietal_test_nimcp_parietal_adapter.dir/build
 .PHONY : unit_core_brain_regions_parietal_test_nimcp_parietal_adapter/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter
+
+# Build rule for target.
+unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter
+.PHONY : unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter
+
+# fast build rule for target.
+unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/prefrontal/CMakeFiles/unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter.dir/build.make test/unit/core/brain/regions/prefrontal/CMakeFiles/unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter.dir/build
+.PHONY : unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge
+
+# Build rule for target.
+unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge
+.PHONY : unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/prefrontal/CMakeFiles/unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge.dir/build.make test/unit/core/brain/regions/prefrontal/CMakeFiles/unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge.dir/build
+.PHONY : unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_brain_regions_temporal_test_nimcp_temporal_adapter
@@ -14238,6 +14043,58 @@ integration_cognitive_parietal/fast:
 .PHONY : integration_cognitive_parietal/fast
 
 #=============================================================================
+# Target rules for targets named integration_thalamic_substrate_bridges
+
+# Build rule for target.
+integration_thalamic_substrate_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_thalamic_substrate_bridges
+.PHONY : integration_thalamic_substrate_bridges
+
+# fast build rule for target.
+integration_thalamic_substrate_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/cross_bridge/CMakeFiles/integration_thalamic_substrate_bridges.dir/build.make test/integration/cognitive/cross_bridge/CMakeFiles/integration_thalamic_substrate_bridges.dir/build
+.PHONY : integration_thalamic_substrate_bridges/fast
+
+#=============================================================================
+# Target rules for targets named integration_multi_thalamic_bridges
+
+# Build rule for target.
+integration_multi_thalamic_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_multi_thalamic_bridges
+.PHONY : integration_multi_thalamic_bridges
+
+# fast build rule for target.
+integration_multi_thalamic_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/cross_bridge/CMakeFiles/integration_multi_thalamic_bridges.dir/build.make test/integration/cognitive/cross_bridge/CMakeFiles/integration_multi_thalamic_bridges.dir/build
+.PHONY : integration_multi_thalamic_bridges/fast
+
+#=============================================================================
+# Target rules for targets named integration_bio_async_cross_bridge
+
+# Build rule for target.
+integration_bio_async_cross_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_bio_async_cross_bridge
+.PHONY : integration_bio_async_cross_bridge
+
+# fast build rule for target.
+integration_bio_async_cross_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/cross_bridge/CMakeFiles/integration_bio_async_cross_bridge.dir/build.make test/integration/cognitive/cross_bridge/CMakeFiles/integration_bio_async_cross_bridge.dir/build
+.PHONY : integration_bio_async_cross_bridge/fast
+
+#=============================================================================
+# Target rules for targets named integration_metabolic_cascade
+
+# Build rule for target.
+integration_metabolic_cascade: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_metabolic_cascade
+.PHONY : integration_metabolic_cascade
+
+# fast build rule for target.
+integration_metabolic_cascade/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/cross_bridge/CMakeFiles/integration_metabolic_cascade.dir/build.make test/integration/cognitive/cross_bridge/CMakeFiles/integration_metabolic_cascade.dir/build
+.PHONY : integration_metabolic_cascade/fast
+
+#=============================================================================
 # Target rules for targets named integration_brain_regions_test_visual_cortex_integration
 
 # Build rule for target.
@@ -14249,6 +14106,32 @@ integration_brain_regions_test_visual_cortex_integration: cmake_check_build_syst
 integration_brain_regions_test_visual_cortex_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/core/brain_regions/CMakeFiles/integration_brain_regions_test_visual_cortex_integration.dir/build.make test/integration/core/brain_regions/CMakeFiles/integration_brain_regions_test_visual_cortex_integration.dir/build
 .PHONY : integration_brain_regions_test_visual_cortex_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_brain_regions_test_signal_propagation_integration
+
+# Build rule for target.
+integration_brain_regions_test_signal_propagation_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_brain_regions_test_signal_propagation_integration
+.PHONY : integration_brain_regions_test_signal_propagation_integration
+
+# fast build rule for target.
+integration_brain_regions_test_signal_propagation_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/brain_regions/CMakeFiles/integration_brain_regions_test_signal_propagation_integration.dir/build.make test/integration/brain_regions/CMakeFiles/integration_brain_regions_test_signal_propagation_integration.dir/build
+.PHONY : integration_brain_regions_test_signal_propagation_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_brain_regions_test_occipital_integration
+
+# Build rule for target.
+integration_brain_regions_test_occipital_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_brain_regions_test_occipital_integration
+.PHONY : integration_brain_regions_test_occipital_integration
+
+# fast build rule for target.
+integration_brain_regions_test_occipital_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/brain_regions/CMakeFiles/integration_brain_regions_test_occipital_integration.dir/build.make test/integration/brain_regions/CMakeFiles/integration_brain_regions_test_occipital_integration.dir/build
+.PHONY : integration_brain_regions_test_occipital_integration/fast
 
 #=============================================================================
 # Target rules for targets named unit_glial_oligodendrocytes_enhanced
@@ -18229,6 +18112,71 @@ regression_portia_logic_bridge/fast:
 .PHONY : regression_portia_logic_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_gpu_test_simd_detect
+
+# Build rule for target.
+unit_gpu_test_simd_detect: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_simd_detect
+.PHONY : unit_gpu_test_simd_detect
+
+# fast build rule for target.
+unit_gpu_test_simd_detect/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_simd_detect.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_simd_detect.dir/build
+.PHONY : unit_gpu_test_simd_detect/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_network_detect
+
+# Build rule for target.
+unit_gpu_test_network_detect: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_network_detect
+.PHONY : unit_gpu_test_network_detect
+
+# fast build rule for target.
+unit_gpu_test_network_detect/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_network_detect.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_network_detect.dir/build
+.PHONY : unit_gpu_test_network_detect/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_execution_mode
+
+# Build rule for target.
+unit_gpu_test_execution_mode: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_execution_mode
+.PHONY : unit_gpu_test_execution_mode
+
+# fast build rule for target.
+unit_gpu_test_execution_mode/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_execution_mode.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_execution_mode.dir/build
+.PHONY : unit_gpu_test_execution_mode/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_gpu_neuron
+
+# Build rule for target.
+unit_gpu_test_gpu_neuron: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_gpu_neuron
+.PHONY : unit_gpu_test_gpu_neuron
+
+# fast build rule for target.
+unit_gpu_test_gpu_neuron/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_gpu_neuron.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_gpu_neuron.dir/build
+.PHONY : unit_gpu_test_gpu_neuron/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_spike_event
+
+# Build rule for target.
+unit_gpu_test_spike_event: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_spike_event
+.PHONY : unit_gpu_test_spike_event
+
+# fast build rule for target.
+unit_gpu_test_spike_event/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_spike_event.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_spike_event.dir/build
+.PHONY : unit_gpu_test_spike_event/fast
+
+#=============================================================================
 # Target rules for targets named unit_gpu_immune_execution
 
 # Build rule for target.
@@ -20272,9 +20220,12 @@ help:
 	@echo "... integration_async_test_glial_wave_propagation"
 	@echo "... integration_async_test_phase_synchronization"
 	@echo "... integration_async_test_predictive_coding"
+	@echo "... integration_bio_async_cross_bridge"
 	@echo "... integration_brain_bio_async_test"
 	@echo "... integration_brain_coordinator_test"
 	@echo "... integration_brain_persistence_test"
+	@echo "... integration_brain_regions_test_occipital_integration"
+	@echo "... integration_brain_regions_test_signal_propagation_integration"
 	@echo "... integration_brain_regions_test_visual_cortex_integration"
 	@echo "... integration_cognitive_bio_async_test"
 	@echo "... integration_cognitive_consolidation_test_systems_consolidation_integration"
@@ -20368,6 +20319,7 @@ help:
 	@echo "... integration_jepa_full"
 	@echo "... integration_jepa_visual_speech"
 	@echo "... integration_lib_cognitive_test_hierarchical_integration"
+	@echo "... integration_metabolic_cascade"
 	@echo "... integration_middleware_bio_async"
 	@echo "... integration_middleware_controller"
 	@echo "... integration_middleware_middleware_test_middleware_subsystems_integration"
@@ -20399,6 +20351,7 @@ help:
 	@echo "... integration_middleware_training_test_training_callbacks_integration"
 	@echo "... integration_middleware_training_test_training_logic_bridge_integration"
 	@echo "... integration_middleware_training_test_training_module_integration"
+	@echo "... integration_multi_thalamic_bridges"
 	@echo "... integration_networking_test_protocol_metrics_integration"
 	@echo "... integration_neuron_types_bio_async_test"
 	@echo "... integration_nlp_test_nlp_multimodal"
@@ -20457,17 +20410,7 @@ help:
 	@echo "... integration_snn_test_integration"
 	@echo "... integration_swarm_immune_bridges"
 	@echo "... integration_swarm_sleep_bridges"
-	@echo "... integration_test_brain_factory_integration"
-	@echo "... integration_test_brain_oscillations_integration"
-	@echo "... integration_test_brain_resize_integration"
-	@echo "... integration_test_config_brain_integration"
-	@echo "... integration_test_cross_bridge_integration"
-	@echo "... integration_test_kdtree_brain_integration"
-	@echo "... integration_test_network_analyzer_quantum_routing"
-	@echo "... integration_test_neural_logic_circuits"
-	@echo "... integration_test_quantum_bridge_integration"
-	@echo "... integration_test_substrate_bridge_integration"
-	@echo "... integration_test_thalamic_bridge_integration"
+	@echo "... integration_thalamic_substrate_bridges"
 	@echo "... integration_training_test_cnn_backprop_integration"
 	@echo "... integration_training_test_cnn_cortex_integration"
 	@echo "... integration_utils_containers_test_queue_integration"
@@ -21177,10 +21120,14 @@ help:
 	@echo "... unit_core_brain_regions_cingulate_test_nimcp_cingulate_quantum_bridge"
 	@echo "... unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter"
 	@echo "... unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_adapter"
+	@echo "... unit_core_brain_regions_insula_test_nimcp_insula_adapter"
+	@echo "... unit_core_brain_regions_insula_test_nimcp_insula_quantum_bridge"
 	@echo "... unit_core_brain_regions_motor_test_nimcp_motor_adapter"
 	@echo "... unit_core_brain_regions_motor_test_nimcp_motor_quantum_bridge"
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_adapter"
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge"
+	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_substrate_bridge"
+	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge"
 	@echo "... unit_core_brain_regions_parietal_test_nimcp_parietal_adapter"
 	@echo "... unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter"
 	@echo "... unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge"
@@ -21330,10 +21277,6 @@ help:
 	@echo "... unit_gpu_spike_event_unit_spike_event_test_amplitude_validation"
 	@echo "... unit_gpu_test_execution_mode"
 	@echo "... unit_gpu_test_gpu_neuron"
-	@echo "... unit_gpu_test_gpu_neuron_comprehensive"
-	@echo "... unit_gpu_test_gpu_neuron_real"
-	@echo "... unit_gpu_test_multigpu_comprehensive"
-	@echo "... unit_gpu_test_multigpu_mock"
 	@echo "... unit_gpu_test_network_detect"
 	@echo "... unit_gpu_test_simd_detect"
 	@echo "... unit_gpu_test_spike_event"
@@ -21410,6 +21353,7 @@ help:
 	@echo "... unit_middleware_training_test_gradient_manager"
 	@echo "... unit_middleware_training_test_loss_functions"
 	@echo "... unit_middleware_training_test_lr_scheduler"
+	@echo "... unit_middleware_training_test_occipital_training_bridge"
 	@echo "... unit_middleware_training_test_optimizers"
 	@echo "... unit_middleware_training_test_perception_training_bridge"
 	@echo "... unit_middleware_training_test_plasticity_bridge"

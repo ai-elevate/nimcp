@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/mental_health/nimcp_mental_health_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
@@ -19,8 +20,6 @@ struct mental_health_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 mental_health_substrate_config_t mental_health_substrate_default_config(void) {
     mental_health_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
@@ -58,13 +57,13 @@ int mental_health_substrate_bridge_update(mental_health_substrate_bridge_t* brid
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP fundamentally underpins mental health and resilience */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.resilience_level = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.wellbeing_level = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.resilience_level = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.wellbeing_level = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Low fatigue enables coping and stability */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.coping_capacity = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.emotional_stability = clamp_f(metabolic_cap * 0.95f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.coping_capacity = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.emotional_stability = nimcp_clamp_f(metabolic_cap * 0.95f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.resilience_level + bridge->effects.coping_capacity +
                                         bridge->effects.emotional_stability + bridge->effects.wellbeing_level) / 4.0f;

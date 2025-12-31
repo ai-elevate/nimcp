@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/global_workspace/nimcp_gw_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -28,10 +29,6 @@ struct gw_substrate_bridge {
         float avg_coherence;
     } stats;
 };
-
-static float clamp_f(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 gw_substrate_config_t gw_substrate_default_config(void) {
     gw_substrate_config_t cfg = {
@@ -79,13 +76,13 @@ int gw_substrate_bridge_update(gw_substrate_bridge_t* bridge) {
     float min_cap = bridge->config.min_capacity;
 
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.broadcast_reach = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.processing_depth = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.broadcast_reach = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.processing_depth = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.coherence = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.ignition_threshold = clamp_f(0.3f + (1.0f - metabolic_cap) * 0.4f, 0.3f, 0.7f);
+        bridge->effects.coherence = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.ignition_threshold = nimcp_clamp_f(0.3f + (1.0f - metabolic_cap) * 0.4f, 0.3f, 0.7f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.broadcast_reach +

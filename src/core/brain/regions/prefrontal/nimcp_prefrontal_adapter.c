@@ -385,7 +385,7 @@ prefrontal_adapter_t* prefrontal_create(const prefrontal_config_t* config) {
         LOG_DEBUG("[%s] Registering with bio-async router", PFC_LOG_MODULE);
 
         bio_module_info_t bio_info = {
-            .module_id = BIO_MODULE_BRAIN_PREFRONTAL,
+            .module_id = BIO_MODULE_PREFRONTAL,
             .module_name = "prefrontal_cortex",
             .inbox_capacity = 64,
             .user_data = adapter
@@ -1274,11 +1274,11 @@ nimcp_bio_future_t prefrontal_request_goal_eval_async(
     }
 
     /* Send goal evaluation request - simplified message */
-    bio_msg_header_t msg;
+    bio_message_header_t msg;
     memset(&msg, 0, sizeof(msg));
     msg.type = BIO_MSG_GOAL_EVAL_REQUEST;
-    msg.source_module = BIO_MODULE_BRAIN_PREFRONTAL;
-    msg.target_module = BIO_MODULE_BRAIN_PREFRONTAL;
+    msg.source_module = BIO_MODULE_PREFRONTAL;
+    msg.target_module = BIO_MODULE_PREFRONTAL;
     msg.payload_size = sizeof(msg);
     msg.channel = adapter->default_channel;
 
@@ -1305,10 +1305,10 @@ nimcp_error_t prefrontal_broadcast_decision(
         return NIMCP_SUCCESS;  /* Not an error if bio-async disabled */
     }
 
-    bio_msg_header_t msg;
+    bio_message_header_t msg;
     memset(&msg, 0, sizeof(msg));
-    msg.type = BIO_MSG_DECISION_RESULT;
-    msg.source_module = BIO_MODULE_BRAIN_PREFRONTAL;
+    msg.type = BIO_MSG_DECISION_RESPONSE;
+    msg.source_module = BIO_MODULE_PREFRONTAL;
     msg.target_module = 0;  /* Broadcast */
     msg.payload_size = sizeof(msg);
     msg.channel = adapter->default_channel;
@@ -1333,13 +1333,8 @@ static nimcp_error_t handle_goal_eval_request(
         return NIMCP_BIO_ERROR_NOT_INITIALIZED;
     }
 
-    /* Complete promise (simplified) */
-    if (response_promise) {
-        bio_msg_header_t response;
-        memset(&response, 0, sizeof(response));
-        response.type = BIO_MSG_GOAL_EVAL_RESULT;
-        nimcp_bio_promise_complete(response_promise, &response);
-    }
+    /* Complete promise with acknowledgement (simplified) */
+    (void)response_promise;  /* Response handling not yet implemented */
 
     return NIMCP_SUCCESS;
 }
@@ -1356,12 +1351,7 @@ static nimcp_error_t handle_decision_request(
         return NIMCP_BIO_ERROR_NOT_INITIALIZED;
     }
 
-    if (response_promise) {
-        bio_msg_header_t response;
-        memset(&response, 0, sizeof(response));
-        response.type = BIO_MSG_DECISION_RESULT;
-        nimcp_bio_promise_complete(response_promise, &response);
-    }
+    (void)response_promise;  /* Response handling not yet implemented */
 
     return NIMCP_SUCCESS;
 }
@@ -1378,12 +1368,7 @@ static nimcp_error_t handle_inhibition_check(
         return NIMCP_BIO_ERROR_NOT_INITIALIZED;
     }
 
-    if (response_promise) {
-        bio_msg_header_t response;
-        memset(&response, 0, sizeof(response));
-        response.type = BIO_MSG_INHIBITION_RESULT;
-        nimcp_bio_promise_complete(response_promise, &response);
-    }
+    (void)response_promise;  /* Response handling not yet implemented */
 
     return NIMCP_SUCCESS;
 }

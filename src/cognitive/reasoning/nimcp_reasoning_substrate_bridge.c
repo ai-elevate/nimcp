@@ -8,6 +8,8 @@
  * WHY:  Reasoning processes depend on metabolic resources (ATP, oxygen, glucose)
  * HOW:  Monitors substrate state, computes reasoning modulation, applies effects
  *
+ * Uses shared metabolic modulation utilities from nimcp_metabolic_modulation.h
+ *
  * BIOLOGICAL BASIS:
  * - Prefrontal cortex (PFC) and parietal networks drive abstract reasoning
  * - Reasoning requires sustained neural firing → high ATP consumption
@@ -18,6 +20,7 @@
  */
 
 #include "cognitive/reasoning/nimcp_reasoning_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
@@ -28,22 +31,8 @@
 #include <math.h>
 
 /* ============================================================================
- * Helper Functions
+ * Helper Functions (using shared nimcp_clamp_f from nimcp_metabolic_modulation.h)
  * ============================================================================ */
-
-/**
- * @brief Clamp float value to range [min, max]
- *
- * WHAT: Restricts value to specified range
- * WHY:  Prevent invalid modulation factors
- * HOW:  Return min if value < min, max if value > max, else value
- */
-static inline float clamp_float(float value, float min, float max)
-{
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Compute inference depth factor from substrate state
@@ -71,7 +60,7 @@ static float compute_inference_depth(float atp_level, float metabolic_capacity)
     float depth = atp_level * metabolic_capacity * 1.2f;
 
     /* Clamp to valid range: minimum 0.2 (basic reasoning), maximum 1.0 (full depth) */
-    return clamp_float(depth, 0.2f, 1.0f);
+    return nimcp_clamp_f(depth, 0.2f, 1.0f);
 }
 
 /**
@@ -100,7 +89,7 @@ static float compute_logical_accuracy(float metabolic_capacity, float physical_c
     float accuracy = (metabolic_capacity + physical_capacity) / 2.0f;
 
     /* Clamp to valid range: minimum 0.3 (error-prone), maximum 1.0 (highly accurate) */
-    return clamp_float(accuracy, 0.3f, 1.0f);
+    return nimcp_clamp_f(accuracy, 0.3f, 1.0f);
 }
 
 /**
@@ -132,7 +121,7 @@ static float compute_processing_speed(float atp_level, float temperature)
     float speed = atp_level * temp_factor;
 
     /* Clamp to valid range: minimum 0.3 (very slow), maximum 1.5 (enhanced) */
-    return clamp_float(speed, 0.3f, 1.5f);
+    return nimcp_clamp_f(speed, 0.3f, 1.5f);
 }
 
 /**
@@ -158,7 +147,7 @@ static float compute_abstraction_capacity(float metabolic_capacity)
     float capacity = metabolic_capacity * 0.9f;
 
     /* Clamp to valid range: minimum 0.2 (concrete only), maximum 1.0 (full abstraction) */
-    return clamp_float(capacity, 0.2f, 1.0f);
+    return nimcp_clamp_f(capacity, 0.2f, 1.0f);
 }
 
 /**

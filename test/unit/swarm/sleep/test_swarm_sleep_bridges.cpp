@@ -85,8 +85,8 @@ TEST_F(SwarmBrainSleepBridgeTest, DefaultConfigInitializesCorrectly) {
     EXPECT_TRUE(config.enable_coord_modulation);
 }
 
-TEST_F(SwarmBrainSleepBridgeTest, DISABLED_CreateAndDestroy) {
-    // Disabled: requires full system mock infrastructure
+TEST_F(SwarmBrainSleepBridgeTest, CreateAndDestroy) {
+    // Re-enabled: mock sleep system provides adequate infrastructure
     swarm_brain_sleep_config_t config;
     swarm_brain_sleep_default_config(&config);
     swarm_brain_sleep_bridge_t bridge = swarm_brain_sleep_bridge_create(&config, (sleep_system_t)1);
@@ -101,7 +101,7 @@ TEST_F(SwarmBrainSleepBridgeTest, CoordFactorVariesWithSleep) {
     EXPECT_LT(deep, awake);
 }
 
-TEST_F(SwarmBrainSleepBridgeTest, DISABLED_GetEffectsWorks) {
+TEST_F(SwarmBrainSleepBridgeTest, GetEffectsWorks) {
     swarm_brain_sleep_config_t config;
     swarm_brain_sleep_default_config(&config);
     swarm_brain_sleep_bridge_t bridge = swarm_brain_sleep_bridge_create(&config, (sleep_system_t)1);
@@ -131,7 +131,7 @@ protected:
     }
 };
 
-TEST_F(SwarmConsciousnessSleepBridgeTest, DISABLED_CreateAndDestroy) {
+TEST_F(SwarmConsciousnessSleepBridgeTest, CreateAndDestroy) {
     swarm_consciousness_sleep_config_t config;
     swarm_consciousness_sleep_default_config(&config);
     swarm_consciousness_sleep_bridge_t bridge = swarm_consciousness_sleep_bridge_create(&config, (sleep_system_t)1);
@@ -164,7 +164,7 @@ protected:
     }
 };
 
-TEST_F(SwarmConsensusSleepBridgeTest, DISABLED_CreateAndDestroy) {
+TEST_F(SwarmConsensusSleepBridgeTest, CreateAndDestroy) {
     swarm_consensus_sleep_config_t config;
     swarm_consensus_sleep_default_config(&config);
     swarm_consensus_sleep_bridge_t bridge = swarm_consensus_sleep_bridge_create(&config, (sleep_system_t)1);
@@ -194,7 +194,7 @@ protected:
     }
 };
 
-TEST_F(SwarmEmergenceSleepBridgeTest, DISABLED_CreateAndDestroy) {
+TEST_F(SwarmEmergenceSleepBridgeTest, CreateAndDestroy) {
     swarm_emergence_sleep_config_t config;
     swarm_emergence_sleep_default_config(&config);
     swarm_emergence_sleep_bridge_t bridge = swarm_emergence_sleep_bridge_create(&config, (sleep_system_t)1);
@@ -224,7 +224,7 @@ protected:
     }
 };
 
-TEST_F(SwarmFlockingSleepBridgeTest, DISABLED_CreateAndDestroy) {
+TEST_F(SwarmFlockingSleepBridgeTest, CreateAndDestroy) {
     swarm_flocking_sleep_config_t config;
     swarm_flocking_sleep_default_config(&config);
     swarm_flocking_sleep_bridge_t bridge = swarm_flocking_sleep_bridge_create(&config, (sleep_system_t)1);
@@ -255,7 +255,7 @@ protected:
     }
 };
 
-TEST_F(SwarmImmuneSleepBridgeTest, DISABLED_CreateAndDestroy) {
+TEST_F(SwarmImmuneSleepBridgeTest, CreateAndDestroy) {
     swarm_immune_sleep_config_t config;
     swarm_immune_sleep_default_config(&config);
     swarm_immune_sleep_bridge_t bridge = swarm_immune_sleep_bridge_create(&config, (sleep_system_t)1);
@@ -291,7 +291,7 @@ protected:
     }
 };
 
-TEST_F(SwarmMemorySleepBridgeTest, DISABLED_CreateAndDestroy) {
+TEST_F(SwarmMemorySleepBridgeTest, CreateAndDestroy) {
     swarm_memory_sleep_config_t config;
     swarm_memory_sleep_default_config(&config);
     swarm_memory_sleep_bridge_t bridge = swarm_memory_sleep_bridge_create(&config, (sleep_system_t)1);
@@ -326,7 +326,7 @@ protected:
     }
 };
 
-TEST_F(SwarmPheromoneSleepBridgeTest, DISABLED_CreateAndDestroy) {
+TEST_F(SwarmPheromoneSleepBridgeTest, CreateAndDestroy) {
     swarm_pheromone_sleep_config_t config;
     swarm_pheromone_sleep_default_config(&config);
     swarm_pheromone_sleep_bridge_t bridge = swarm_pheromone_sleep_bridge_create(&config, (sleep_system_t)1);
@@ -356,7 +356,7 @@ protected:
     }
 };
 
-TEST_F(SwarmQuorumSleepBridgeTest, DISABLED_CreateAndDestroy) {
+TEST_F(SwarmQuorumSleepBridgeTest, CreateAndDestroy) {
     swarm_quorum_sleep_config_t config;
     swarm_quorum_sleep_default_config(&config);
     swarm_quorum_sleep_bridge_t bridge = swarm_quorum_sleep_bridge_create(&config, (sleep_system_t)1);
@@ -391,7 +391,7 @@ protected:
     }
 };
 
-TEST_F(SwarmSignalSleepBridgeTest, DISABLED_CreateAndDestroy) {
+TEST_F(SwarmSignalSleepBridgeTest, CreateAndDestroy) {
     swarm_signal_sleep_config_t config;
     swarm_signal_sleep_default_config(&config);
     swarm_signal_sleep_bridge_t bridge = swarm_signal_sleep_bridge_create(&config, (sleep_system_t)1);
@@ -430,7 +430,7 @@ protected:
     }
 };
 
-TEST_F(SwarmSleepBridgeCrossIntegrationTest, DISABLED_AllBridgesCanBeCreated) {
+TEST_F(SwarmSleepBridgeCrossIntegrationTest, AllBridgesCanBeCreated) {
     swarm_brain_sleep_config_t brain_cfg;
     swarm_brain_sleep_default_config(&brain_cfg);
     swarm_brain_sleep_bridge_t brain = swarm_brain_sleep_bridge_create(&brain_cfg, (sleep_system_t)1);
@@ -452,7 +452,7 @@ TEST_F(SwarmSleepBridgeCrossIntegrationTest, DISABLED_AllBridgesCanBeCreated) {
     swarm_memory_sleep_bridge_destroy(mem);
 }
 
-TEST_F(SwarmSleepBridgeCrossIntegrationTest, DISABLED_StateTransitionsUpdateEffects) {
+TEST_F(SwarmSleepBridgeCrossIntegrationTest, StateTransitionsUpdateEffects) {
     swarm_memory_sleep_config_t config;
     swarm_memory_sleep_default_config(&config);
     swarm_memory_sleep_bridge_t bridge = swarm_memory_sleep_bridge_create(&config, (sleep_system_t)1);

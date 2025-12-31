@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/fault_tolerance/nimcp_fault_tolerance_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -25,10 +26,6 @@ struct fault_tolerance_substrate_bridge {
     bool bio_async_connected;
     uint64_t update_count;
 };
-
-static float clamp_f(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 fault_tolerance_substrate_config_t fault_tolerance_substrate_default_config(void) {
     fault_tolerance_substrate_config_t cfg = {
@@ -105,16 +102,16 @@ int fault_tolerance_substrate_bridge_update(fault_tolerance_substrate_bridge_t* 
 
     if (bridge->config.enable_atp_modulation) {
         /* Detection sensitivity requires stable ATP for continuous monitoring */
-        bridge->effects.detection_sensitivity = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.detection_sensitivity = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         /* Redundancy maintenance is ATP-intensive */
-        bridge->effects.redundancy_capacity = clamp_f(atp * 0.9f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.redundancy_capacity = nimcp_clamp_f(atp * 0.9f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
         /* Recovery speed decreases with fatigue */
-        bridge->effects.recovery_speed = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.recovery_speed = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
         /* Monitoring depth narrows under metabolic stress */
-        bridge->effects.monitoring_depth = clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.monitoring_depth = nimcp_clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.detection_sensitivity +

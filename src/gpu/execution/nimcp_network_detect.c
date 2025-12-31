@@ -170,7 +170,8 @@ static uint32_t get_interface_speed(const char* ifname)
     uint32_t speed = 0;
     if (ioctl(sock, SIOCETHTOOL, &ifr) >= 0) {
         speed = ethtool_cmd_speed(&edata);
-        if (speed == (uint16_t)(-1) || speed == 0) {
+        /* Unknown speed returns -1 as uint16_t or uint32_t */
+        if (speed == (uint16_t)(-1) || speed == (uint32_t)(-1) || speed == 0) {
             speed = 0;
         }
     }

@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/explanations/nimcp_explanations_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
@@ -19,8 +20,6 @@ struct explanations_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 explanations_substrate_config_t explanations_substrate_default_config(void) {
     explanations_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
@@ -57,12 +56,12 @@ int explanations_substrate_bridge_update(explanations_substrate_bridge_t* bridge
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.explanation_depth = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.abstraction_level = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.explanation_depth = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.abstraction_level = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.coherence_quality = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.integration_breadth = clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.coherence_quality = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.integration_breadth = nimcp_clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.explanation_depth + bridge->effects.coherence_quality +
                                         bridge->effects.abstraction_level + bridge->effects.integration_breadth) / 4.0f;

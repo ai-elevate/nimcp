@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/autobiographical_memory/nimcp_autobio_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
@@ -19,8 +20,6 @@ struct autobio_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 autobio_substrate_config_t autobio_substrate_default_config(void) {
     autobio_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
@@ -58,13 +57,13 @@ int autobio_substrate_bridge_update(autobio_substrate_bridge_t* bridge) {
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables vivid recall and detail resolution */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.recall_vividness = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.detail_resolution = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.recall_vividness = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.detail_resolution = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Low fatigue enables temporal accuracy and coherence */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.temporal_accuracy = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.narrative_coherence = clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.temporal_accuracy = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.narrative_coherence = nimcp_clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.recall_vividness + bridge->effects.detail_resolution +
                                         bridge->effects.temporal_accuracy + bridge->effects.narrative_coherence) / 4.0f;

@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/immune/nimcp_brain_immune_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -25,10 +26,6 @@ struct brain_immune_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 brain_immune_substrate_config_t brain_immune_substrate_default_config(void) {
     brain_immune_substrate_config_t cfg = {
@@ -81,16 +78,16 @@ int brain_immune_substrate_bridge_update(brain_immune_substrate_bridge_t* bridge
 
     if (bridge->config.enable_atp_modulation) {
         /* Response strength scales with ATP (immune activation is costly) */
-        bridge->effects.response_strength = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.response_strength = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
         /* Antibody production is ATP-intensive */
-        bridge->effects.antibody_production = clamp_f(atp * 0.9f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.antibody_production = nimcp_clamp_f(atp * 0.9f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
         /* Memory formation requires sustained resources */
-        bridge->effects.memory_formation = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.memory_formation = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
         /* Cytokine regulation is vulnerable to metabolic stress */
-        bridge->effects.cytokine_regulation = clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.cytokine_regulation = nimcp_clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.response_strength +

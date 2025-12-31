@@ -26,6 +26,7 @@
  */
 
 #include "cognitive/introspection/nimcp_introspection_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
@@ -250,7 +251,7 @@ introspection_substrate_bridge_t* introspection_substrate_bridge_create(
     bridge->base.bio_ctx = NULL;
 
     /* Create mutex for thread safety */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    bridge->base.mutex = nimcp_mutex_create(NULL);
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for introspection substrate bridge");
         nimcp_free(bridge);

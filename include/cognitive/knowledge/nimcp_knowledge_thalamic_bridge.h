@@ -57,7 +57,7 @@ int knowledge_thalamic_bridge_reset(knowledge_thalamic_bridge_t* bridge);
 int knowledge_thalamic_route_retrieval(knowledge_thalamic_bridge_t* bridge, const knowledge_thalamic_signal_t* signal);
 int knowledge_thalamic_route_inference(knowledge_thalamic_bridge_t* bridge, const void* inference, float confidence);
 int knowledge_thalamic_set_attention(knowledge_thalamic_bridge_t* bridge, float attention);
-int knowledge_thalamic_get_attention(const knowledge_thalamic_bridge_t* bridge, float* attention);
+int knowledge_thalamic_get_attention(knowledge_thalamic_bridge_t* bridge, float* attention);
 
 typedef struct {
     uint64_t retrievals_routed;
@@ -66,7 +66,7 @@ typedef struct {
     float avg_retrieval_strength;
 } knowledge_thalamic_stats_t;
 
-int knowledge_thalamic_bridge_get_stats(const knowledge_thalamic_bridge_t* bridge, knowledge_thalamic_stats_t* stats);
+int knowledge_thalamic_bridge_get_stats(knowledge_thalamic_bridge_t* bridge, knowledge_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

@@ -485,3 +485,33 @@ set_tests_properties(unit_middleware_training_test_cortical_training_bridge
     PROPERTIES
         LABELS "unit;middleware;training;cortical_training"
         TIMEOUT 120)
+
+# Occipital-Training Bridge Unit Tests (Phase OTB-1)
+add_executable(unit_middleware_training_test_occipital_training_bridge
+    test_nimcp_occipital_training_bridge.cpp
+)
+
+target_include_directories(unit_middleware_training_test_occipital_training_bridge PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_middleware_training_test_occipital_training_bridge PRIVATE cxx_std_20)
+
+target_link_libraries(unit_middleware_training_test_occipital_training_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp_middleware
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME unit_middleware_training_test_occipital_training_bridge
+         COMMAND unit_middleware_training_test_occipital_training_bridge)
+
+set_tests_properties(unit_middleware_training_test_occipital_training_bridge
+    PROPERTIES
+        LABELS "unit;middleware;training;occipital_training"
+        TIMEOUT 120)

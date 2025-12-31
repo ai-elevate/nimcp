@@ -1504,7 +1504,7 @@ nimcp_bio_future_t occipital_request_lgn_input_async(occipital_adapter_t* adapte
     LOG_DEBUG(OCCIPITAL_LOG_MODULE, "Requesting LGN input");
 
     /* Create visual input request message */
-    bio_msg_header_t msg;
+    bio_message_header_t msg;
     memset(&msg, 0, sizeof(msg));
 
     msg.type = BIO_MSG_VISUAL_INPUT_REQUEST;
@@ -1538,7 +1538,7 @@ nimcp_error_t occipital_broadcast_features(occipital_adapter_t* adapter,
     LOG_INFO(OCCIPITAL_LOG_MODULE, "Broadcasting features (edges=%u, motions=%u)",
              result->edge_count, result->motion_vector_count);
 
-    bio_msg_header_t msg;
+    bio_message_header_t msg;
     memset(&msg, 0, sizeof(msg));
 
     msg.type = BIO_MSG_VISUAL_FEATURES_READY;

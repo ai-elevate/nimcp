@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/epistemic/nimcp_epistemic_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
@@ -19,8 +20,6 @@ struct epistemic_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 epistemic_substrate_config_t epistemic_substrate_default_config(void) {
     epistemic_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
@@ -57,12 +56,12 @@ int epistemic_substrate_bridge_update(epistemic_substrate_bridge_t* bridge) {
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.evidence_integration = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.source_evaluation = clamp_f(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.evidence_integration = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.source_evaluation = nimcp_clamp_f(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.belief_updating = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.certainty_calibration = clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.belief_updating = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.certainty_calibration = nimcp_clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.evidence_integration + bridge->effects.belief_updating +
                                         bridge->effects.certainty_calibration + bridge->effects.source_evaluation) / 4.0f;

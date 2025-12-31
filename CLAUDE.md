@@ -32,6 +32,7 @@
 | Introspection | [modules/introspection.md](docs/claude/modules/introspection.md) |
 | Positional Encoding | [modules/positional-encoding.md](docs/claude/modules/positional-encoding.md) |
 | Tensor Integration | [modules/tensor.md](docs/claude/modules/tensor.md) |
+| Metabolic Modulation | [modules/metabolic-modulation.md](docs/claude/modules/metabolic-modulation.md) |
 
 ---
 
@@ -69,4 +70,5 @@ git add -A && git commit --no-verify -m "message" && git push
 - Platform tiers: `PLATFORM_TIER_FULL/MEDIUM/CONSTRAINED/MINIMAL`
 - B cells must be in PLASMA state to produce antibodies
 - FEP bridges return `0` for success, `-1` for errors (not NIMCP_OK/NIMCP_ERROR_*)
+- Metabolic modulation: `metabolic_compute_effects()` returns `0` for success, `-1` for errors
 - Deadlock pattern: Never call public mutex-locking functions from within locked code - create `*_unlocked()` helpers

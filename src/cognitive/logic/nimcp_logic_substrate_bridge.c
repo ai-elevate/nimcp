@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/logic/nimcp_logic_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -22,10 +23,6 @@ struct logic_substrate_bridge {
     bool bio_async_connected;
     uint64_t update_count;
 };
-
-static float clamp_f(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 logic_substrate_config_t logic_substrate_default_config(void) {
     logic_substrate_config_t cfg = {
@@ -73,13 +70,13 @@ int logic_substrate_bridge_update(logic_substrate_bridge_t* bridge) {
     float min_cap = bridge->config.min_capacity;
 
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.inference_depth = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.logical_accuracy = clamp_f(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.abstraction_capacity = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.inference_depth = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.logical_accuracy = nimcp_clamp_f(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.abstraction_capacity = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.processing_speed = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.processing_speed = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.inference_depth +

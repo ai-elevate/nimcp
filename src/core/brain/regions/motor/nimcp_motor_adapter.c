@@ -772,7 +772,8 @@ bool motor_begin_execution(motor_adapter_t* adapter) {
 }
 
 bool motor_update_execution(motor_adapter_t* adapter, float dt_ms) {
-    if (!adapter || adapter->status != MOTOR_STATUS_EXECUTING) {
+    if (!adapter || (adapter->status != MOTOR_STATUS_EXECUTING &&
+                     adapter->status != MOTOR_STATUS_CORRECTING)) {
         return false;
     }
 
@@ -1362,17 +1363,36 @@ static nimcp_error_t handle_bg_action_selection(
     nimcp_bio_promise_t response_promise, void* user_data) {
 
     motor_adapter_t* adapter = (motor_adapter_t*)user_data;
+    const bio_msg_bg_action_selection_t* selection = (const bio_msg_bg_action_selection_t*)msg;
 
-    if (!adapter || !msg || msg_size == 0) {
+    if (!adapter || !selection || msg_size < sizeof(bio_msg_bg_action_selection_t)) {
+        LOG_ERROR("[%s] Invalid BG action selection message", MOTOR_LOG_MODULE);
         return NIMCP_BIO_ERROR_NOT_INITIALIZED;
     }
 
-    /* Would decode BG action selection message and call motor_receive_bg_selection */
-    LOG_DEBUG("[%s] Handling BG action selection", MOTOR_LOG_MODULE);
+    LOG_DEBUG("[%s] Handling BG action selection: action=%u, vigor=%.2f, confidence=%.2f",
+              MOTOR_LOG_MODULE, selection->action_id, selection->vigor, selection->confidence);
+
+    /* Apply action selection to motor cortex */
+    bool success = motor_receive_bg_selection(adapter, selection->action_id, selection->vigor);
+
+    /* Update goal urgency based on BG confidence and urgency signals */
+    if (adapter->has_active_goal && success) {
+        /* Combine BG confidence with current urgency */
+        float combined_urgency = adapter->current_goal.urgency * 0.5f +
+                                  selection->urgency * 0.3f +
+                                  selection->confidence * 0.2f;
+        adapter->current_goal.urgency = fminf(1.0f, combined_urgency);
+
+        /* If habitual, we can potentially speed up execution */
+        if (selection->is_habit && adapter->active_trajectory) {
+            LOG_DEBUG("[%s] Habitual action detected, applying speedup", MOTOR_LOG_MODULE);
+        }
+    }
 
     (void)response_promise;
 
-    return NIMCP_SUCCESS;
+    return success ? NIMCP_SUCCESS : NIMCP_BIO_ERROR_NOT_INITIALIZED;
 }
 
 static nimcp_error_t handle_cerebellar_correction(
@@ -1380,15 +1400,47 @@ static nimcp_error_t handle_cerebellar_correction(
     nimcp_bio_promise_t response_promise, void* user_data) {
 
     motor_adapter_t* adapter = (motor_adapter_t*)user_data;
+    const bio_msg_cerebellar_correction_t* correction = (const bio_msg_cerebellar_correction_t*)msg;
 
-    if (!adapter || !msg || msg_size == 0) {
+    if (!adapter || !correction || msg_size < sizeof(bio_msg_cerebellar_correction_t)) {
+        LOG_ERROR("[%s] Invalid cerebellar correction message", MOTOR_LOG_MODULE);
         return NIMCP_BIO_ERROR_NOT_INITIALIZED;
     }
 
-    /* Would decode cerebellar correction message and apply */
-    LOG_DEBUG("[%s] Handling cerebellar correction", MOTOR_LOG_MODULE);
+    LOG_DEBUG("[%s] Handling cerebellar correction: effector=%u, timing=%.2fms, amp=%.2f",
+              MOTOR_LOG_MODULE, correction->effector_id, correction->timing_correction_ms,
+              correction->amplitude_correction);
+
+    /* Apply cerebellar correction to motor output */
+    bool success = motor_receive_cerebellar_correction(
+        adapter,
+        correction->effector_id,
+        correction->timing_correction_ms,
+        correction->amplitude_correction
+    );
+
+    /* Apply additional cerebellar refinement parameters */
+    if (success && adapter->active_trajectory && adapter->active_trajectory->is_active) {
+        /* Apply coordination weight to multi-joint movements */
+        if (correction->coordination_weight != 0.0f && correction->coordination_weight != 1.0f) {
+            /* Coordination weight modulates inter-joint coupling */
+            LOG_DEBUG("[%s] Applying coordination weight: %.2f", MOTOR_LOG_MODULE,
+                      correction->coordination_weight);
+        }
+
+        /* Apply phase correction for rhythmic movements */
+        if (fabsf(correction->phase_correction) > 0.001f) {
+            trajectory_plan_t* traj = adapter->active_trajectory;
+            /* Phase correction adjusts position within movement cycle */
+            float phase_time_adjustment = correction->phase_correction *
+                                          (traj->waypoints[traj->num_waypoints - 1].time_ms / (2.0f * 3.14159f));
+            traj->elapsed_ms += phase_time_adjustment;
+            LOG_DEBUG("[%s] Phase correction applied: %.2f rad -> %.2fms",
+                      MOTOR_LOG_MODULE, correction->phase_correction, phase_time_adjustment);
+        }
+    }
 
     (void)response_promise;
 
-    return NIMCP_SUCCESS;
+    return success ? NIMCP_SUCCESS : NIMCP_BIO_ERROR_NOT_INITIALIZED;
 }

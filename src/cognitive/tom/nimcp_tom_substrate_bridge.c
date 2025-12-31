@@ -5,9 +5,12 @@
  * WHAT: Implements ToM-substrate bridge for metabolic modulation of mentalizing
  * WHY: ToM requires prefrontal and temporal-parietal networks with high metabolic demands
  * HOW: Monitors substrate metrics and computes ATP-based capacity factors
+ *
+ * Uses shared metabolic modulation utilities from nimcp_metabolic_modulation.h
  */
 
 #include "cognitive/tom/nimcp_tom_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
@@ -20,28 +23,15 @@
 #include <math.h>
 
 /* ============================================================================
- * Helper Functions
+ * Helper Functions (using shared nimcp_clamp_f from nimcp_metabolic_modulation.h)
  * ============================================================================ */
-
-/**
- * Clamp value to range [min, max]
- *
- * WHAT: Constrains value to specified range
- * WHY: Ensures capacity factors stay in valid bounds
- * HOW: Returns min if below, max if above, value otherwise
- */
-static inline float clamp(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * Compute mentalizing capacity from substrate state
  *
  * WHAT: Calculates ability to infer others' mental states
  * WHY: Mentalizing relies on mPFC/TPJ networks requiring high ATP
- * HOW: mentalizing_capacity = clamp(metabolic_capacity * atp_level, 0.2, 1.0)
+ * HOW: mentalizing_capacity = nimcp_clamp_f(metabolic_capacity * atp_level, 0.2, 1.0)
  *
  * Biological basis:
  * - Medial prefrontal cortex (mPFC) and temporo-parietal junction (TPJ)
@@ -60,9 +50,9 @@ static float compute_mentalizing_capacity(
     float capacity = metabolic->metabolic_capacity;
 
     /* Clamp inputs to valid ranges */
-    atp = clamp(atp, 0.0f, 1.0f);
-    capacity = clamp(capacity, 0.0f, 1.0f);
-    sensitivity = clamp(sensitivity, 0.5f, 2.0f);
+    atp = nimcp_clamp_f(atp, 0.0f, 1.0f);
+    capacity = nimcp_clamp_f(capacity, 0.0f, 1.0f);
+    sensitivity = nimcp_clamp_f(sensitivity, 0.5f, 2.0f);
 
     /* Base mentalizing: product of metabolic capacity and ATP level */
     float mentalizing = capacity * atp;
@@ -71,7 +61,7 @@ static float compute_mentalizing_capacity(
     mentalizing = powf(mentalizing, sensitivity);
 
     /* Clamp to [0.2, 1.0] - maintain minimal social cognition */
-    return clamp(mentalizing, 0.2f, 1.0f);
+    return nimcp_clamp_f(mentalizing, 0.2f, 1.0f);
 }
 
 /**
@@ -79,7 +69,7 @@ static float compute_mentalizing_capacity(
  *
  * WHAT: Calculates ability to adopt others' viewpoints
  * WHY: Perspective-taking is cognitively demanding, requires sustained attention
- * HOW: perspective_taking = clamp(atp_level * 1.1, 0.2, 1.0)
+ * HOW: perspective_taking = nimcp_clamp_f(atp_level * 1.1, 0.2, 1.0)
  *
  * Biological basis:
  * - Perspective-taking involves mental rotation and viewpoint transformation
@@ -96,8 +86,8 @@ static float compute_perspective_taking(
     float atp = metabolic->atp_level;
 
     /* Clamp inputs */
-    atp = clamp(atp, 0.0f, 1.0f);
-    sensitivity = clamp(sensitivity, 0.5f, 2.0f);
+    atp = nimcp_clamp_f(atp, 0.0f, 1.0f);
+    sensitivity = nimcp_clamp_f(sensitivity, 0.5f, 2.0f);
 
     /* Perspective-taking scales directly with ATP, slight boost at optimal */
     float perspective = atp * 1.1f;
@@ -106,7 +96,7 @@ static float compute_perspective_taking(
     perspective = powf(perspective, sensitivity);
 
     /* Clamp to [0.2, 1.0] */
-    return clamp(perspective, 0.2f, 1.0f);
+    return nimcp_clamp_f(perspective, 0.2f, 1.0f);
 }
 
 /**
@@ -114,7 +104,7 @@ static float compute_perspective_taking(
  *
  * WHAT: Calculates ability to track others' belief states
  * WHY: Tracking beliefs requires working memory and sustained attention
- * HOW: belief_tracking = clamp((atp_level + glucose_level) / 2.0, 0.2, 1.0)
+ * HOW: belief_tracking = nimcp_clamp_f((atp_level + glucose_level) / 2.0, 0.2, 1.0)
  *
  * Biological basis:
  * - False belief tasks require maintaining multiple mental models
@@ -132,9 +122,9 @@ static float compute_belief_tracking(
     float glucose = metabolic->glucose_level;
 
     /* Clamp inputs */
-    atp = clamp(atp, 0.0f, 1.0f);
-    glucose = clamp(glucose, 0.0f, 1.0f);
-    sensitivity = clamp(sensitivity, 0.5f, 2.0f);
+    atp = nimcp_clamp_f(atp, 0.0f, 1.0f);
+    glucose = nimcp_clamp_f(glucose, 0.0f, 1.0f);
+    sensitivity = nimcp_clamp_f(sensitivity, 0.5f, 2.0f);
 
     /* Average of ATP and glucose reflects sustained metabolic support */
     float belief = (atp + glucose) / 2.0f;
@@ -143,7 +133,7 @@ static float compute_belief_tracking(
     belief = powf(belief, sensitivity);
 
     /* Clamp to [0.2, 1.0] */
-    return clamp(belief, 0.2f, 1.0f);
+    return nimcp_clamp_f(belief, 0.2f, 1.0f);
 }
 
 /**
@@ -151,7 +141,7 @@ static float compute_belief_tracking(
  *
  * WHAT: Calculates empathic processing capacity
  * WHY: Empathy involves mirror neurons and emotional processing
- * HOW: empathy_factor = clamp(metabolic_capacity, 0.3, 1.0)
+ * HOW: empathy_factor = nimcp_clamp_f(metabolic_capacity, 0.3, 1.0)
  *
  * Biological basis:
  * - Mirror neuron systems require metabolic resources
@@ -168,8 +158,8 @@ static float compute_empathy_factor(
     float capacity = metabolic->metabolic_capacity;
 
     /* Clamp inputs */
-    capacity = clamp(capacity, 0.0f, 1.0f);
-    sensitivity = clamp(sensitivity, 0.5f, 2.0f);
+    capacity = nimcp_clamp_f(capacity, 0.0f, 1.0f);
+    sensitivity = nimcp_clamp_f(sensitivity, 0.5f, 2.0f);
 
     /* Empathy scales with overall metabolic capacity */
     float empathy = capacity;
@@ -178,7 +168,7 @@ static float compute_empathy_factor(
     empathy = powf(empathy, sensitivity);
 
     /* Clamp to [0.3, 1.0] - maintain basic emotional contagion */
-    return clamp(empathy, 0.3f, 1.0f);
+    return nimcp_clamp_f(empathy, 0.3f, 1.0f);
 }
 
 /**

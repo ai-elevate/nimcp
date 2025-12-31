@@ -8,6 +8,8 @@
  */
 
 #include "cognitive/consolidation/nimcp_consolidation_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -21,14 +23,12 @@ struct consolidation_substrate_bridge {
     neural_substrate_t* substrate;
     consolidation_substrate_config_t config;
     consolidation_substrate_effects_t effects;
+    bio_module_context_t ctx;
     bio_router_t* router;
     bool bio_async_connected;
     uint64_t update_count;
+    float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 consolidation_substrate_config_t consolidation_substrate_default_config(void) {
     consolidation_substrate_config_t cfg = {
@@ -105,15 +105,15 @@ int consolidation_substrate_bridge_update(consolidation_substrate_bridge_t* brid
 
     if (bridge->config.enable_atp_modulation) {
         /* Consolidation rate heavily dependent on ATP for protein synthesis */
-        bridge->effects.consolidation_rate = clamp_f(atp * 1.2f * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.protein_synthesis = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.consolidation_rate = nimcp_clamp_f(atp * 1.2f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.protein_synthesis = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
         /* Encoding fidelity decreases with fatigue */
-        bridge->effects.encoding_fidelity = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.encoding_fidelity = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
         /* Priority threshold increases (more selective) under metabolic stress */
-        bridge->effects.priority_threshold = clamp_f(1.0f - (metabolic_cap * 0.3f), min_cap, 1.0f);
+        bridge->effects.priority_threshold = nimcp_clamp_f(1.0f - (metabolic_cap * 0.3f), min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.consolidation_rate +
@@ -135,12 +135,94 @@ int consolidation_substrate_bridge_get_effects(const consolidation_substrate_bri
 
 int consolidation_substrate_bridge_apply_effects(consolidation_substrate_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    if (!bridge->bio_async_connected || !bridge->ctx) {
+        return 0;
+    }
+
+    substrate_metabolic_state_t metabolic;
+    float atp_level = 1.0f, fatigue_level = 0.0f;
+    if (bridge->substrate && substrate_get_metabolic_state(bridge->substrate, &metabolic) == 0) {
+        atp_level = metabolic.atp_level;
+        fatigue_level = 1.0f - metabolic.metabolic_capacity;
+    }
+
+    bio_msg_substrate_modulation_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header, BIO_MSG_SUBSTRATE_MODULATION,
+                        BIO_MODULE_SUBSTRATE_CONSOLIDATION, 0, sizeof(msg));
+    msg.header.channel = BIO_CHANNEL_ACETYLCHOLINE;  /* Consolidation uses acetylcholine */
+
+    msg.bridge_module_id = BIO_MODULE_SUBSTRATE_CONSOLIDATION;
+    msg.processing_capacity = bridge->effects.consolidation_rate;
+    msg.overall_capacity = bridge->effects.overall_capacity;
+    msg.effect_values[0] = bridge->effects.consolidation_rate;
+    msg.effect_values[1] = bridge->effects.encoding_fidelity;
+    msg.effect_values[2] = bridge->effects.priority_threshold;
+    msg.effect_values[3] = bridge->effects.protein_synthesis;
+    msg.atp_level = atp_level;
+    msg.fatigue_level = fatigue_level;
+    msg.update_count = bridge->update_count;
+    msg.critical_low = (atp_level < bridge->config.min_capacity);
+
+    bio_router_broadcast(bridge->ctx, &msg, sizeof(msg));
+
+    float delta = bridge->effects.overall_capacity - bridge->prev_overall_capacity;
+    if (delta < -0.1f || delta > 0.1f) {
+        bio_msg_substrate_capacity_update_t update_msg;
+        memset(&update_msg, 0, sizeof(update_msg));
+        bio_msg_init_header(&update_msg.header, BIO_MSG_SUBSTRATE_CAPACITY_UPDATE,
+                            BIO_MODULE_SUBSTRATE_CONSOLIDATION, 0, sizeof(update_msg));
+        update_msg.bridge_module_id = BIO_MODULE_SUBSTRATE_CONSOLIDATION;
+        update_msg.old_capacity = bridge->prev_overall_capacity;
+        update_msg.new_capacity = bridge->effects.overall_capacity;
+        update_msg.delta = delta;
+        update_msg.significant_change = true;
+        bio_router_broadcast(bridge->ctx, &update_msg, sizeof(update_msg));
+    }
+
+    if (msg.critical_low) {
+        bio_msg_substrate_atp_critical_t alert;
+        memset(&alert, 0, sizeof(alert));
+        bio_msg_init_header(&alert.header, BIO_MSG_SUBSTRATE_ATP_CRITICAL,
+                            BIO_MODULE_SUBSTRATE_CONSOLIDATION, 0, sizeof(alert));
+        alert.header.channel = BIO_CHANNEL_NOREPINEPHRINE;
+        alert.bridge_module_id = BIO_MODULE_SUBSTRATE_CONSOLIDATION;
+        alert.atp_level = atp_level;
+        alert.threshold = bridge->config.min_capacity;
+        alert.min_capacity = bridge->config.min_capacity;
+        bio_router_broadcast(bridge->ctx, &alert, sizeof(alert));
+    }
+
+    bridge->prev_overall_capacity = bridge->effects.overall_capacity;
     return 0;
 }
 
 int consolidation_substrate_bridge_register_bio_async(consolidation_substrate_bridge_t* bridge, bio_router_t* router) {
     if (!bridge) return -1;
+
+    if (bridge->bio_async_connected && bridge->ctx) {
+        bio_router_unregister_module(bridge->ctx);
+        bridge->ctx = NULL;
+        bridge->bio_async_connected = false;
+    }
+
+    if (!router) {
+        bridge->router = NULL;
+        return 0;
+    }
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_SUBSTRATE_CONSOLIDATION,
+        .module_name = "consolidation_substrate_bridge",
+        .inbox_capacity = 16,
+        .user_data = bridge
+    };
+
+    bridge->ctx = bio_router_register_module(&info);
+    if (bridge->ctx) {
+        bridge->bio_async_connected = true;
+    }
     bridge->router = router;
-    bridge->bio_async_connected = (router != NULL);
     return 0;
 }

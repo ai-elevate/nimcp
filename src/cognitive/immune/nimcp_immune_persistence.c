@@ -148,6 +148,44 @@ static uint32_t compute_checksum(const uint8_t* data, size_t len) {
 }
 
 /**
+ * @brief Compute checksum of file contents from current position
+ *
+ * WHAT: Compute checksum of remaining file data
+ * WHY:  Verify integrity of persisted immune data
+ * HOW:  Read file in chunks, accumulate checksum, restore position
+ *
+ * @param file File handle positioned after header
+ * @param header_size Size of header to skip in checksum
+ * @return Computed checksum, or 0 on error
+ */
+static uint32_t compute_file_checksum(FILE* file, size_t header_size) {
+    if (!file) return 0;
+
+    /* Save current position */
+    long start_pos = ftell(file);
+    if (start_pos < 0) return 0;
+
+    /* Seek past header */
+    if (fseek(file, (long)header_size, SEEK_SET) != 0) return 0;
+
+    uint32_t checksum = 0xFFFFFFFF;
+    uint8_t buffer[4096];
+    size_t bytes_read;
+
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+        for (size_t i = 0; i < bytes_read; i++) {
+            checksum ^= buffer[i];
+            checksum = (checksum << 1) | (checksum >> 31);
+        }
+    }
+
+    /* Restore position */
+    fseek(file, start_pos, SEEK_SET);
+
+    return checksum;
+}
+
+/**
  * @brief Write header to file
  */
 static int write_header(FILE* file, const immune_persistence_header_t* header) {
@@ -447,7 +485,9 @@ int immune_persistence_save(
     /* Update header with file size and checksum */
     long file_size = ftell(file);
     header.file_size = (uint64_t)file_size;
-    header.checksum = 0; /* TODO: Implement proper checksum */
+
+    /* Compute checksum of data after header */
+    header.checksum = compute_file_checksum(file, sizeof(immune_persistence_header_t));
 
     /* Rewrite header with updated values */
     fseek(file, 0, SEEK_SET);

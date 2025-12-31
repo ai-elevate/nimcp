@@ -13,6 +13,9 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "core/brain/persistence/nimcp_brain_persistence.h"
+#include "core/brain/nimcp_brain_state.h"
+#include "plasticity/adaptive/nimcp_adaptive.h"
+#include "core/neuralnet/nimcp_neuralnet_core.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -222,8 +225,54 @@ static recovery_status_t action_clear_nan(brain_t brain)
 
     LOG_INFO("Recovery: Clearing NaN/Inf from weights");
 
-    // TODO: Implement weight scanning and NaN clearing
-    // For now, just return success (would need brain internal access)
+    /* Get the adaptive network from the brain */
+    adaptive_network_t network = brain_get_network(brain);
+    if (!network) {
+        LOG_WARN("Recovery: Could not get network from brain");
+        g_recovery_stats.immediate_recoveries++;
+        return RECOVERY_PARTIAL;
+    }
+
+    /* Get the base neural network for direct synapse access */
+    neural_network_t base_net = adaptive_network_get_base_network(network);
+    if (!base_net) {
+        LOG_WARN("Recovery: Could not get base network");
+        g_recovery_stats.immediate_recoveries++;
+        return RECOVERY_PARTIAL;
+    }
+
+    /* Get neuron count */
+    uint32_t num_neurons = adaptive_network_get_neuron_count(network);
+    uint32_t nan_cleared = 0;
+    uint32_t inf_cleared = 0;
+
+    /* Iterate through all neurons and their synapses */
+    for (uint32_t n = 0; n < num_neurons; n++) {
+        neuron_t* neuron = neural_network_get_neuron(base_net, n);
+        if (!neuron || !neuron->synapses) continue;
+
+        for (uint32_t s = 0; s < neuron->num_synapses; s++) {
+            float weight = neuron->synapses[s].weight;
+
+            /* Check for NaN */
+            if (isnan(weight)) {
+                neuron->synapses[s].weight = 0.0f;
+                nan_cleared++;
+            }
+            /* Check for Inf */
+            else if (isinf(weight)) {
+                neuron->synapses[s].weight = 0.0f;
+                inf_cleared++;
+            }
+        }
+    }
+
+    if (nan_cleared > 0 || inf_cleared > 0) {
+        LOG_INFO("Recovery: Cleared %u NaN and %u Inf values from weights",
+                 nan_cleared, inf_cleared);
+    } else {
+        LOG_INFO("Recovery: No NaN/Inf values found in weights");
+    }
 
     g_recovery_stats.immediate_recoveries++;
     return RECOVERY_SUCCESS;

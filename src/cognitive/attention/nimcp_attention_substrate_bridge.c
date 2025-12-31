@@ -12,6 +12,8 @@
  *       effects (focus capacity, shifting efficiency, filter strength, vigilance),
  *       and applies modulation to attention system.
  *
+ * Uses shared metabolic modulation utilities from nimcp_metabolic_modulation.h
+ *
  * BIOLOGICAL BASIS:
  * - Frontoparietal attention networks consume significant ATP during sustained focus
  * - ATP depletion reduces attention span and increases distractibility
@@ -21,6 +23,7 @@
  */
 
 #include "cognitive/attention/nimcp_attention_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -30,21 +33,8 @@
 #include <string.h>
 
 /* ============================================================================
- * Helper Functions
+ * Helper Functions (using shared nimcp_clamp_f from nimcp_metabolic_modulation.h)
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- * WHAT: Constrain value to [min, max]
- * WHY:  Prevent runaway modulation
- * HOW:  Standard clamping
- */
-static float clamp_f(float value, float min, float max)
-{
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Compute Q10-based temperature scaling factor
@@ -281,7 +271,7 @@ int attention_substrate_update(attention_substrate_bridge_t* bridge)
 
     if (bridge->config.enable_focus_modulation) {
         float atp_factor = metabolic.atp_level * bridge->config.atp_sensitivity;
-        bridge->effects.focus_capacity = clamp_f(atp_factor, 0.2f, 1.0f);
+        bridge->effects.focus_capacity = nimcp_clamp_f(atp_factor, 0.2f, 1.0f);
     } else {
         bridge->effects.focus_capacity = 1.0f;
     }
@@ -316,12 +306,12 @@ int attention_substrate_update(attention_substrate_bridge_t* bridge)
         if (physical.temperature > SUBSTRATE_HYPERTHERMIA_THRESHOLD) {
             /* Above 40°C → impaired switching */
             float hyperthermia_penalty = (physical.temperature - SUBSTRATE_HYPERTHERMIA_THRESHOLD) / 5.0f;
-            temp_factor *= (1.0f - clamp_f(hyperthermia_penalty, 0.0f, 0.5f));
+            temp_factor *= (1.0f - nimcp_clamp_f(hyperthermia_penalty, 0.0f, 0.5f));
         }
 
         /* Combine metabolic capacity and temperature */
         float shifting = metabolic.metabolic_capacity * temp_factor;
-        bridge->effects.shifting_efficiency = clamp_f(shifting, 0.3f, 1.0f);
+        bridge->effects.shifting_efficiency = nimcp_clamp_f(shifting, 0.3f, 1.0f);
     } else {
         bridge->effects.shifting_efficiency = 1.0f;
     }
@@ -343,7 +333,7 @@ int attention_substrate_update(attention_substrate_bridge_t* bridge)
     if (bridge->config.enable_filter_modulation) {
         /* Filtering is expensive (1.2x ATP factor models high prefrontal cost) */
         float filter_factor = metabolic.atp_level * 1.2f * bridge->config.atp_sensitivity;
-        bridge->effects.filter_strength = clamp_f(filter_factor, 0.2f, 1.0f);
+        bridge->effects.filter_strength = nimcp_clamp_f(filter_factor, 0.2f, 1.0f);
     } else {
         bridge->effects.filter_strength = 1.0f;
     }
@@ -364,7 +354,7 @@ int attention_substrate_update(attention_substrate_bridge_t* bridge)
      * ======================================================================== */
 
     float vigilance = metabolic.metabolic_capacity * physical.physical_capacity;
-    bridge->effects.vigilance_factor = clamp_f(vigilance, 0.2f, 1.0f);
+    bridge->effects.vigilance_factor = nimcp_clamp_f(vigilance, 0.2f, 1.0f);
 
     /* ========================================================================
      * IMPAIRMENT DETECTION

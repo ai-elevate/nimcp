@@ -18,6 +18,7 @@
  */
 
 #include "gpu/nimcp_gpu_neuron.h"
+#include "gpu/execution/nimcp_gpu_detect.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -80,47 +81,32 @@ struct gpu_neural_network_struct {
 };
 
 //=============================================================================
-// GPU Detection
+// GPU Detection (delegated to nimcp_gpu_detect module)
 //=============================================================================
 
-NIMCP_EXPORT bool gpu_is_available(void)
-{
-#ifdef NIMCP_ENABLE_CUDA
-    int device_count = 0;
-    cudaError_t err = cudaGetDeviceCount(&device_count);
-    return (err == cudaSuccess && device_count > 0);
-#else
-    return false;
-#endif
-}
+// NOTE: gpu_is_available() and gpu_get_device_count() are now provided by
+// the nimcp_gpu_detect module which does runtime GPU detection.
+// See include/gpu/execution/nimcp_gpu_detect.h
 
-NIMCP_EXPORT uint32_t gpu_get_device_count(void)
-{
-#ifdef NIMCP_ENABLE_CUDA
-    int device_count = 0;
-    cudaGetDeviceCount(&device_count);
-    return (uint32_t)device_count;
-#else
-    return 0;
-#endif
-}
-
+/**
+ * @brief Get device name for a specific GPU (legacy compatibility wrapper)
+ *
+ * WHAT: Returns the name of a GPU device
+ * WHY:  Backward compatibility with existing code
+ * HOW:  Delegates to gpu_get_device_info from nimcp_gpu_detect
+ */
 NIMCP_EXPORT bool gpu_get_device_name(uint32_t device_id, char* name, size_t max_len)
 {
     if (!name || max_len == 0) {
         return false;
     }
 
-#ifdef NIMCP_ENABLE_CUDA
-    struct cudaDeviceProp props;
-    cudaError_t err = cudaGetDeviceProperties(&props, (int)device_id);
-    if (err == cudaSuccess) {
-        snprintf(name, max_len, "%s", props.name);
+    // Use runtime GPU detection
+    gpu_device_info_t info;
+    if (gpu_get_device_info(device_id, &info)) {
+        snprintf(name, max_len, "%s", info.name);
         return true;
     }
-#else
-    (void)device_id;  // Unused in CPU fallback
-#endif
 
     snprintf(name, max_len, "CPU Fallback");
     return false;

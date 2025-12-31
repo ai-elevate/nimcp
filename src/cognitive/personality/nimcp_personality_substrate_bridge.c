@@ -5,9 +5,12 @@
  * WHAT: Links personality traits to metabolic state
  * WHY: Personality expression varies with energy and fatigue levels
  * HOW: Monitors ATP/fatigue; modulates trait expression, self-regulation, consistency
+ *
+ * Uses shared metabolic modulation utilities from nimcp_metabolic_modulation.h
  */
 
 #include "cognitive/personality/nimcp_personality_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -19,16 +22,13 @@ struct personality_substrate_bridge {
     neural_substrate_t* substrate;
     personality_substrate_config_t config;
     personality_substrate_effects_t effects;
+    metabolic_modulation_config_t metabolic_config;  /* Shared metabolic config */
     bio_module_context_t ctx;
     bio_router_t* router;
     bool bio_async_connected;
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 personality_substrate_config_t personality_substrate_default_config(void) {
     personality_substrate_config_t cfg = {
@@ -52,6 +52,24 @@ personality_substrate_bridge_t* personality_substrate_bridge_create(void* person
     bridge->substrate = substrate;
     bridge->config = config ? *config : personality_substrate_default_config();
 
+    /* Initialize shared metabolic config with personality-specific multipliers */
+    metabolic_effect_multipliers_t personality_mult = {
+        .atp_primary_mult = 1.0f,
+        .atp_secondary_mult = 1.05f,  /* Personality uses 1.05 for trait consistency */
+        .fatigue_primary_mult = 1.0f,
+        .fatigue_secondary_mult = 0.9f
+    };
+    bridge->metabolic_config = metabolic_config_from_fields(
+        bridge->config.enable_atp_modulation,
+        bridge->config.enable_fatigue_modulation,
+        bridge->config.enable_bio_async,
+        bridge->config.atp_sensitivity,
+        bridge->config.fatigue_sensitivity,
+        bridge->config.min_capacity,
+        &personality_mult
+    );
+
+    /* Initialize effects to full capacity */
     bridge->effects.self_regulation = 1.0f;
     bridge->effects.trait_consistency = 1.0f;
     bridge->effects.stress_resilience = 1.0f;
@@ -75,26 +93,24 @@ int personality_substrate_bridge_update(personality_substrate_bridge_t* bridge) 
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
 
-    float atp = metabolic.atp_level;
-    float metabolic_cap = metabolic.metabolic_capacity;
-    float min_cap = bridge->config.min_capacity;
+    /* Use shared metabolic computation */
+    metabolic_input_t input = {
+        .atp_level = metabolic.atp_level,
+        .metabolic_capacity = metabolic.metabolic_capacity
+    };
+    metabolic_effects_t generic_effects;
+    metabolic_effects_init_full(&generic_effects);
 
-    /* ATP depletion reduces self-control (ego depletion) */
-    if (bridge->config.enable_atp_modulation) {
-        bridge->effects.self_regulation = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.trait_consistency = clamp_f(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+    if (metabolic_compute_effects(&input, &bridge->metabolic_config, &generic_effects) == 0) {
+        /* Map generic effects to personality-specific effect names */
+        /* ATP depletion reduces self-control (ego depletion) */
+        bridge->effects.self_regulation = generic_effects.primary_atp;
+        bridge->effects.trait_consistency = generic_effects.secondary_atp;
+        /* Fatigue increases impulsivity, reduces agreeableness */
+        bridge->effects.stress_resilience = generic_effects.primary_fatigue;
+        bridge->effects.social_energy = generic_effects.secondary_fatigue;
+        bridge->effects.overall_capacity = generic_effects.overall_capacity;
     }
-
-    /* Fatigue increases impulsivity, reduces agreeableness */
-    if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.stress_resilience = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.social_energy = clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-    }
-
-    bridge->effects.overall_capacity = (bridge->effects.self_regulation +
-                                        bridge->effects.trait_consistency +
-                                        bridge->effects.stress_resilience +
-                                        bridge->effects.social_energy) / 4.0f;
 
     bridge->update_count++;
     return 0;

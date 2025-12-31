@@ -53,6 +53,8 @@ extern "C" {
 #define QREASON_MAX_LITERALS     8      /**< Maximum literals per clause */
 #define QREASON_MAX_RULES        64     /**< Maximum inference rules */
 #define QREASON_DEFAULT_SEED     98765  /**< Default random seed */
+#define QREASON_QUANTUM_VAR_LIMIT 16    /**< Maximum variables for quantum solver */
+#define QREASON_MIN_SAT_PROB     0.01f  /**< Minimum satisfaction probability threshold */
 
 /* Ternary truth values */
 #define QREASON_FALSE    (-1)
@@ -125,6 +127,14 @@ typedef struct {
 } qreason_qstate_t;
 
 /**
+ * WHAT: Solver method used
+ */
+typedef enum {
+    QREASON_METHOD_QUANTUM,     /**< Quantum/Grover-inspired solver */
+    QREASON_METHOD_CLASSICAL    /**< Classical DPLL fallback */
+} qreason_method_t;
+
+/**
  * WHAT: Reasoning result
  */
 typedef struct {
@@ -134,6 +144,9 @@ typedef struct {
     float satisfaction_prob;    /**< Probability of satisfaction */
     uint32_t grover_iterations; /**< Iterations used */
     uint32_t inferences_made;   /**< Forward chaining steps */
+    qreason_method_t method;    /**< Solver method used (quantum or classical) */
+    uint32_t dpll_decisions;    /**< DPLL decision count (classical only) */
+    uint32_t unit_propagations; /**< Unit propagations performed (classical only) */
 } qreason_result_t;
 
 /**
@@ -528,6 +541,270 @@ static inline float qreason_satisfaction_probability(
 }
 
 //=============================================================================
+// Classical DPLL SAT Solver (Fallback)
+//=============================================================================
+
+/**
+ * WHAT: Internal state for DPLL solver
+ */
+typedef struct {
+    qreason_truth_t assignment[QREASON_MAX_VARIABLES];
+    bool assigned[QREASON_MAX_VARIABLES];
+    uint32_t decision_level[QREASON_MAX_VARIABLES];
+    uint32_t n_variables;
+    uint32_t decisions;
+    uint32_t propagations;
+} qreason_dpll_state_t;
+
+/**
+ * WHAT: Check if a clause is satisfied under current assignment
+ * @return 1 if satisfied, 0 if unsatisfied, -1 if unit, -2 if unresolved
+ */
+static inline int qreason_dpll_clause_status(
+    const qreason_clause_t* clause,
+    const qreason_dpll_state_t* state,
+    uint32_t* unit_var,
+    bool* unit_negated
+) {
+    uint32_t unassigned_count = 0;
+    uint32_t last_unassigned_idx = 0;
+
+    for (uint32_t i = 0; i < clause->n_literals; i++) {
+        uint32_t var = clause->literals[i].variable;
+        bool negated = clause->literals[i].negated;
+
+        if (!state->assigned[var]) {
+            unassigned_count++;
+            last_unassigned_idx = i;
+        } else {
+            /* Check if this literal satisfies the clause */
+            bool var_true = (state->assignment[var] == QREASON_TRUE);
+            if (negated ? !var_true : var_true) {
+                return 1;  /* Satisfied */
+            }
+        }
+    }
+
+    if (unassigned_count == 0) {
+        return 0;  /* Unsatisfied (conflict) */
+    } else if (unassigned_count == 1) {
+        /* Unit clause - return the unit literal info */
+        if (unit_var) {
+            *unit_var = clause->literals[last_unassigned_idx].variable;
+        }
+        if (unit_negated) {
+            *unit_negated = clause->literals[last_unassigned_idx].negated;
+        }
+        return -1;  /* Unit */
+    }
+
+    return -2;  /* Unresolved (multiple unassigned) */
+}
+
+/**
+ * WHAT: Perform unit propagation (Boolean Constraint Propagation)
+ * WHY:  Forced assignments from unit clauses
+ *
+ * @return true if no conflict, false if conflict detected
+ */
+static inline bool qreason_dpll_unit_propagate(
+    const qreason_cnf_t* cnf,
+    qreason_dpll_state_t* state,
+    uint32_t decision_level
+) {
+    bool changed = true;
+
+    while (changed) {
+        changed = false;
+
+        for (uint32_t c = 0; c < cnf->n_clauses; c++) {
+            uint32_t unit_var;
+            bool unit_negated;
+            int status = qreason_dpll_clause_status(
+                &cnf->clauses[c], state, &unit_var, &unit_negated
+            );
+
+            if (status == 0) {
+                /* Conflict - clause is falsified */
+                return false;
+            } else if (status == -1) {
+                /* Unit clause - propagate */
+                state->assignment[unit_var] = unit_negated ? QREASON_FALSE : QREASON_TRUE;
+                state->assigned[unit_var] = true;
+                state->decision_level[unit_var] = decision_level;
+                state->propagations++;
+                changed = true;
+            }
+        }
+    }
+
+    return true;
+}
+
+/**
+ * WHAT: Check if all clauses are satisfied
+ */
+static inline bool qreason_dpll_all_satisfied(
+    const qreason_cnf_t* cnf,
+    const qreason_dpll_state_t* state
+) {
+    for (uint32_t c = 0; c < cnf->n_clauses; c++) {
+        int status = qreason_dpll_clause_status(&cnf->clauses[c], state, NULL, NULL);
+        if (status != 1) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * WHAT: Find the next unassigned variable for branching
+ * HOW:  Simple heuristic - pick first unassigned variable
+ *
+ * @return Variable index, or UINT32_MAX if all assigned
+ */
+static inline uint32_t qreason_dpll_pick_variable(
+    const qreason_cnf_t* cnf,
+    const qreason_dpll_state_t* state
+) {
+    /* Simple heuristic: first unassigned variable */
+    for (uint32_t v = 0; v < cnf->n_variables; v++) {
+        if (!state->assigned[v]) {
+            return v;
+        }
+    }
+    return UINT32_MAX;
+}
+
+/**
+ * WHAT: Recursive DPLL solver core
+ */
+static inline bool qreason_dpll_solve_recursive(
+    const qreason_cnf_t* cnf,
+    qreason_dpll_state_t* state,
+    uint32_t decision_level,
+    uint32_t max_decisions
+) {
+    /* Check decision limit to avoid infinite loops on hard instances */
+    if (state->decisions > max_decisions) {
+        return false;
+    }
+
+    /* Unit propagation */
+    if (!qreason_dpll_unit_propagate(cnf, state, decision_level)) {
+        return false;  /* Conflict */
+    }
+
+    /* Check if all clauses are satisfied */
+    if (qreason_dpll_all_satisfied(cnf, state)) {
+        return true;
+    }
+
+    /* Pick a variable to branch on */
+    uint32_t branch_var = qreason_dpll_pick_variable(cnf, state);
+    if (branch_var == UINT32_MAX) {
+        /* All variables assigned but not all satisfied = conflict */
+        return false;
+    }
+
+    state->decisions++;
+
+    /* Try assigning TRUE first */
+    qreason_dpll_state_t saved_state = *state;
+
+    state->assignment[branch_var] = QREASON_TRUE;
+    state->assigned[branch_var] = true;
+    state->decision_level[branch_var] = decision_level + 1;
+
+    if (qreason_dpll_solve_recursive(cnf, state, decision_level + 1, max_decisions)) {
+        return true;
+    }
+
+    /* Backtrack and try FALSE */
+    *state = saved_state;
+    state->decisions++;  /* Count backtrack as another decision */
+
+    state->assignment[branch_var] = QREASON_FALSE;
+    state->assigned[branch_var] = true;
+    state->decision_level[branch_var] = decision_level + 1;
+
+    return qreason_dpll_solve_recursive(cnf, state, decision_level + 1, max_decisions);
+}
+
+/**
+ * WHAT: Classical DPLL SAT solver (fallback for quantum solver)
+ * WHY:  Provides solution when quantum solver cannot handle the problem
+ *
+ * ALGORITHM: DPLL with unit propagation
+ * - Unit propagation forces assignments from unit clauses
+ * - Backtracking search explores assignment space
+ * - Simple variable selection heuristic
+ *
+ * @param cnf CNF formula to solve
+ * @param result Output: result with satisfying assignment
+ * @return 0 on success, -1 on error
+ */
+static inline int qreason_classical_solve_sat(
+    const qreason_cnf_t* cnf,
+    qreason_result_t* result
+) {
+    if (!cnf || !result) return -1;
+
+    /* Initialize result */
+    memset(result, 0, sizeof(qreason_result_t));
+    result->method = QREASON_METHOD_CLASSICAL;
+
+    /* Handle trivial cases */
+    if (cnf->n_variables == 0 || cnf->n_clauses == 0) {
+        result->satisfiable = true;
+        result->satisfaction_prob = 1.0f;
+        return 0;
+    }
+
+    /* Check for empty clauses (immediately unsatisfiable) */
+    for (uint32_t c = 0; c < cnf->n_clauses; c++) {
+        if (cnf->clauses[c].n_literals == 0) {
+            result->satisfiable = false;
+            result->satisfaction_prob = 0.0f;
+            return 0;
+        }
+    }
+
+    /* Initialize DPLL state */
+    qreason_dpll_state_t state;
+    memset(&state, 0, sizeof(state));
+    state.n_variables = cnf->n_variables;
+
+    /* Set all assignments to UNKNOWN initially */
+    for (uint32_t v = 0; v < QREASON_MAX_VARIABLES; v++) {
+        state.assignment[v] = QREASON_UNKNOWN;
+    }
+
+    /* Max decisions: limit to prevent exponential blowup on hard instances */
+    uint32_t max_decisions = 100000;
+
+    /* Run DPLL */
+    bool sat = qreason_dpll_solve_recursive(cnf, &state, 0, max_decisions);
+
+    /* Copy results */
+    result->satisfiable = sat;
+    result->satisfaction_prob = sat ? 1.0f : 0.0f;
+    result->dpll_decisions = state.decisions;
+    result->unit_propagations = state.propagations;
+    result->grover_iterations = 0;
+
+    if (sat) {
+        for (uint32_t v = 0; v < cnf->n_variables; v++) {
+            result->assignment[v] = state.assignment[v];
+            /* Classical solver provides definite answer */
+            result->confidences[v] = 1.0f;
+        }
+    }
+
+    return 0;
+}
+
+//=============================================================================
 // Core Reasoning Functions
 //=============================================================================
 
@@ -593,28 +870,19 @@ static inline uint32_t qreason_forward_chain(
 }
 
 /**
- * WHAT: Solve SAT using Grover-inspired search
- * WHY:  Find satisfying assignment for CNF formula
+ * WHAT: Solve SAT using quantum (Grover-inspired) solver
+ * WHY:  Internal function for quantum-only solving
  *
- * @param ctx Reasoner context
+ * @param internal Internal context
  * @param cnf CNF formula
  * @param result Output: result with assignment
  * @return 0 on success, -1 on error
  */
-static inline int qreason_solve_sat(
-    qreason_t ctx,
+static inline int qreason_quantum_solve_sat_internal(
+    qreason_internal_t* internal,
     const qreason_cnf_t* cnf,
     qreason_result_t* result
 ) {
-    if (!ctx || !cnf || !result) return -1;
-    qreason_internal_t* internal = (qreason_internal_t*)ctx;
-
-    if (cnf->n_variables == 0 || cnf->n_clauses == 0) {
-        result->satisfiable = true;
-        result->satisfaction_prob = 1.0f;
-        return 0;
-    }
-
     /* Initialize quantum state */
     qreason_qstate_init(&internal->qstate, cnf->n_variables);
 
@@ -661,10 +929,123 @@ static inline int qreason_solve_sat(
     result->satisfaction_prob = qreason_satisfaction_probability(&internal->qstate, cnf);
     result->satisfiable = (result->satisfaction_prob > 0.0f);
     result->grover_iterations = iterations;
+    result->method = QREASON_METHOD_QUANTUM;
+    result->dpll_decisions = 0;
+    result->unit_propagations = 0;
+
+    return 0;
+}
+
+/**
+ * WHAT: Solve SAT using Grover-inspired search with classical fallback
+ * WHY:  Find satisfying assignment for CNF formula
+ *
+ * FALLBACK CONDITIONS:
+ * 1. Variables exceed QREASON_QUANTUM_VAR_LIMIT (16) - quantum state too large
+ * 2. Quantum satisfaction probability below QREASON_MIN_SAT_PROB threshold
+ * 3. Quantum solver returns unsatisfiable - try classical for confirmation
+ *
+ * @param ctx Reasoner context
+ * @param cnf CNF formula
+ * @param result Output: result with assignment
+ * @return 0 on success, -1 on error
+ */
+static inline int qreason_solve_sat(
+    qreason_t ctx,
+    const qreason_cnf_t* cnf,
+    qreason_result_t* result
+) {
+    if (!ctx || !cnf || !result) return -1;
+    qreason_internal_t* internal = (qreason_internal_t*)ctx;
+
+    /* Initialize result */
+    memset(result, 0, sizeof(qreason_result_t));
+
+    /* Handle trivial cases */
+    if (cnf->n_variables == 0 || cnf->n_clauses == 0) {
+        result->satisfiable = true;
+        result->satisfaction_prob = 1.0f;
+        result->method = QREASON_METHOD_QUANTUM;
+        return 0;
+    }
+
+    /*
+     * FALLBACK CONDITION 1: Variables exceed quantum limit
+     * The quantum solver is limited to 16 qubits (65K states).
+     * For larger problems, use classical DPLL directly.
+     */
+    if (cnf->n_variables > QREASON_QUANTUM_VAR_LIMIT) {
+        int ret = qreason_classical_solve_sat(cnf, result);
+
+        /* Update statistics */
+        internal->queries_performed++;
+        if (result->satisfiable) {
+            internal->satisfiable_count++;
+        } else {
+            internal->unsatisfiable_count++;
+        }
+
+        return ret;
+    }
+
+    /* Try quantum solver first */
+    int quantum_ret = qreason_quantum_solve_sat_internal(internal, cnf, result);
+
+    if (quantum_ret != 0) {
+        /*
+         * FALLBACK CONDITION 2: Quantum solver returned error
+         * Fall back to classical solver.
+         */
+        int ret = qreason_classical_solve_sat(cnf, result);
+
+        /* Update statistics */
+        internal->queries_performed++;
+        if (result->satisfiable) {
+            internal->satisfiable_count++;
+        } else {
+            internal->unsatisfiable_count++;
+        }
+
+        return ret;
+    }
+
+    /*
+     * FALLBACK CONDITION 3: Quantum satisfaction probability below threshold
+     * When quantum solver finds very low probability, the result may be unreliable.
+     * Use classical solver for definitive answer.
+     */
+    if (result->satisfaction_prob < QREASON_MIN_SAT_PROB && !result->satisfiable) {
+        qreason_result_t classical_result;
+        int classical_ret = qreason_classical_solve_sat(cnf, &classical_result);
+
+        if (classical_ret == 0) {
+            /* Use classical result if it found a solution */
+            if (classical_result.satisfiable) {
+                *result = classical_result;
+            }
+            /* If classical also says unsatisfiable, keep quantum result but
+             * update statistics - now we're confident it's truly unsatisfiable */
+        }
+    }
+
+    /*
+     * FALLBACK CONDITION 4: Quantum says unsatisfiable but we want confirmation
+     * Classical DPLL can definitively prove unsatisfiability.
+     * Only do this check for small formulas to avoid performance hit.
+     */
+    if (!result->satisfiable && cnf->n_variables <= 12 && cnf->n_clauses <= 32) {
+        qreason_result_t classical_result;
+        int classical_ret = qreason_classical_solve_sat(cnf, &classical_result);
+
+        if (classical_ret == 0 && classical_result.satisfiable) {
+            /* Classical found a solution that quantum missed! Use it. */
+            *result = classical_result;
+        }
+    }
 
     /* Update statistics */
     internal->queries_performed++;
-    internal->total_grover_iterations += iterations;
+    internal->total_grover_iterations += result->grover_iterations;
     if (result->satisfiable) {
         internal->satisfiable_count++;
     } else {

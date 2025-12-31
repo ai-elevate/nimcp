@@ -7,9 +7,12 @@
  * WHAT: Bidirectional integration between neural substrate and working memory
  * WHY: Working memory capacity and maintenance critically depend on metabolic state
  * HOW: ATP and temperature modulate capacity, decay rates, and encoding strength
+ *
+ * Uses shared metabolic modulation utilities from nimcp_metabolic_modulation.h
  */
 
 #include "cognitive/working_memory/nimcp_working_memory_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -18,22 +21,8 @@
 #include <string.h>
 
 /* ============================================================================
- * Helper Functions
+ * Helper Functions (using shared nimcp_clamp_f from nimcp_metabolic_modulation.h)
  * ============================================================================ */
-
-/**
- * @brief Clamp value to range
- *
- * WHAT: Constrain value to [min, max]
- * WHY: Prevent runaway modulation
- * HOW: Standard clamping
- */
-static float clamp_f(float value, float min, float max)
-{
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Compute Q10-based temperature scaling for decay rate
@@ -376,7 +365,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
         capacity_factor = 1.0f - (1.0f - capacity_factor) * bridge->config.atp_sensitivity;
 
         /* Clamp to valid range */
-        bridge->effects.capacity_factor = clamp_f(capacity_factor, 0.0f, 1.0f);
+        bridge->effects.capacity_factor = nimcp_clamp_f(capacity_factor, 0.0f, 1.0f);
     } else {
         bridge->effects.capacity_factor = 1.0f;
     }
@@ -403,7 +392,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
         float decay_mod = 1.0f + (temp_factor - 1.0f) * bridge->config.temperature_sensitivity;
 
         /* Clamp to reasonable range [0.5 - 2.0] */
-        bridge->effects.decay_rate_mod = clamp_f(decay_mod, 0.5f, 2.0f);
+        bridge->effects.decay_rate_mod = nimcp_clamp_f(decay_mod, 0.5f, 2.0f);
     } else {
         bridge->effects.decay_rate_mod = 1.0f;
     }
@@ -418,7 +407,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
      * ======================================================================== */
     if (bridge->config.enable_refresh_modulation) {
         /* ATP directly affects refresh efficiency */
-        bridge->effects.refresh_efficiency = clamp_f(
+        bridge->effects.refresh_efficiency = nimcp_clamp_f(
             metabolic.atp_level,
             0.2f,  /* Minimum refresh efficiency */
             1.0f   /* Maximum refresh efficiency */
@@ -439,7 +428,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
     bridge->effects.encoding_strength = (
         metabolic.metabolic_capacity + physical.physical_capacity
     ) / 2.0f;
-    bridge->effects.encoding_strength = clamp_f(
+    bridge->effects.encoding_strength = nimcp_clamp_f(
         bridge->effects.encoding_strength,
         0.0f,
         1.0f

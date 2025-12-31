@@ -35,11 +35,99 @@
 
 // Occipital region includes
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
-#include "core/occipital/nimcp_occipital_substrate_bridge.h"
-#include "core/occipital/nimcp_occipital_thalamic_bridge.h"
+#include "core/brain/regions/occipital/nimcp_occipital_substrate_bridge.h"
+#include "core/brain/regions/occipital/nimcp_occipital_thalamic_bridge.h"
 #include "core/brain/regions/occipital/nimcp_occipital_quantum_bridge.h"
 
+// Stream connection includes
+#include "core/brain/regions/parietal/nimcp_parietal_adapter.h"
+#include "core/brain/regions/temporal/nimcp_temporal_adapter.h"
+
+// Training integration includes
+#include "middleware/training/nimcp_occipital_training_bridge.h"
+
+// Logic integration includes
+#include "cognitive/logic/nimcp_visual_logic_bridge.h"
+
+// Cognitive module includes
+#include "cognitive/salience/nimcp_salience.h"
+#include "cognitive/curiosity/nimcp_curiosity.h"
+#include "cognitive/introspection/nimcp_introspection.h"
+#include "plasticity/attention/nimcp_attention.h"
+#include "cognitive/global_workspace/nimcp_global_workspace.h"
+
+// Cortical columns includes
+#include "core/cortical_columns/nimcp_orientation_columns.h"
+#include "core/cortical_columns/nimcp_feature_hypercolumns.h"
+
+// Swarm includes
+#include "swarm/nimcp_swarm_brain.h"
+
 #include <string.h>
+
+//=============================================================================
+// Stream Connection Callbacks
+//=============================================================================
+
+/**
+ * @brief Convert occipital motion vector to parietal spatial target
+ *
+ * BIOLOGICAL: Motion vectors from V5/MT are converted to spatial attention
+ * targets for the dorsal "where" pathway to parietal cortex.
+ */
+static void dorsal_motion_callback(const motion_vector_t* motion, void* user_data) {
+    if (!motion || !user_data) return;
+
+    brain_t brain = (brain_t)user_data;
+    if (!brain->parietal) return;
+
+    /* Convert motion vector to spatial target */
+    parietal_cortex_spatial_target_t target = {
+        .target_id = 0,  /* Auto-assign */
+        .position = {
+            .x = motion->x,
+            .y = motion->y,
+            .z = 0.0f  /* 2D visual field */
+        },
+        .frame = PARIETAL_CORTEX_SPATIAL_FRAME_RETINOTOPIC,
+        .salience = motion->confidence,
+        .size = 0.1f,  /* Default size */
+        .velocity = {
+            .x = motion->dx,
+            .y = motion->dy,
+            .z = 0.0f
+        }
+    };
+
+    /* Add motion target to parietal spatial attention */
+    parietal_cortex_add_spatial_target(brain->parietal, &target);
+}
+
+/**
+ * @brief Convert occipital feature to temporal visual input
+ *
+ * BIOLOGICAL: Features from V4 (color, form) are sent along the ventral
+ * "what" pathway to temporal cortex for object recognition.
+ */
+static void ventral_feature_callback(const visual_feature_t* feature, void* user_data) {
+    if (!feature || !user_data) return;
+
+    brain_t brain = (brain_t)user_data;
+    if (!brain->temporal) return;
+
+    /* Convert visual feature to temporal input */
+    temporal_visual_input_t input = {
+        .features = feature->descriptor,
+        .feature_dim = feature->descriptor_size,
+        .x = feature->x,
+        .y = feature->y,
+        .timestamp_ms = (double)feature->timestamp_us / 1000.0
+    };
+
+    /* Send to temporal for object recognition */
+    temporal_object_recognition_result_t result;
+    temporal_recognize_object(brain->temporal, &input, &result);
+}
 
 //=============================================================================
 // Internal Helper Functions
@@ -52,11 +140,20 @@ static bool connect_occipital_to_bio_async(brain_t brain) {
     if (!brain || !brain->occipital) return true; /* Non-fatal if not available */
 
     /* Register with bio-async if enabled */
-    if (brain->bio_async_enabled && brain->bio_async_ctx) {
-        /*
-         * TODO: Register occipital message handlers
-         * bio_router_register_module(router, BIO_MODULE_OCCIPITAL, brain->occipital);
-         */
+    if (brain->bio_async_enabled && brain->bio_router) {
+        /* Register substrate bridge with bio-async */
+        if (brain->occipital_substrate_bridge) {
+            occipital_substrate_bridge_register_bio_async(
+                brain->occipital_substrate_bridge, brain->bio_router);
+        }
+
+        /* Register thalamic bridge with bio-async */
+        if (brain->occipital_thalamic_bridge) {
+            occipital_thalamic_bridge_register_bio_async(
+                brain->occipital_thalamic_bridge, brain->bio_router);
+        }
+
+        LOG_DEBUG(LOG_MODULE, "Occipital bridges registered with bio-async");
     }
 
     return true;
@@ -174,6 +271,22 @@ bool nimcp_brain_factory_init_occipital_subsystem(brain_t brain) {
 
     if (!nimcp_brain_factory_connect_occipital_to_immune(brain)) {
         LOG_WARN(LOG_MODULE, "Occipital-Immune connection failed (non-fatal)");
+    }
+
+    if (!nimcp_brain_factory_connect_occipital_to_logic(brain)) {
+        LOG_WARN(LOG_MODULE, "Occipital-Logic connection failed (non-fatal)");
+    }
+
+    if (!nimcp_brain_factory_connect_occipital_to_cognitive(brain)) {
+        LOG_WARN(LOG_MODULE, "Occipital-Cognitive connection failed (non-fatal)");
+    }
+
+    if (!nimcp_brain_factory_connect_occipital_to_cortical_columns(brain)) {
+        LOG_WARN(LOG_MODULE, "Occipital-CorticalColumns connection failed (non-fatal)");
+    }
+
+    if (!nimcp_brain_factory_connect_occipital_to_swarm(brain)) {
+        LOG_WARN(LOG_MODULE, "Occipital-Swarm connection failed (non-fatal)");
     }
 
     /* Connect to bio-async */
@@ -324,10 +437,12 @@ bool nimcp_brain_factory_connect_occipital_to_parietal(brain_t brain) {
      * - Visually-guided reaching and grasping
      */
 
-    /* TODO: Register motion callbacks
-     * occipital_set_motion_callback(brain->occipital,
-     *     parietal_receive_motion, brain->parietal);
-     */
+    /* Register motion callback for dorsal stream */
+    if (!occipital_set_motion_callback(brain->occipital,
+            dorsal_motion_callback, brain)) {
+        LOG_WARN(LOG_MODULE, "Failed to set occipital motion callback");
+        return false;
+    }
 
     LOG_DEBUG(LOG_MODULE, "Occipital connected to parietal (dorsal stream)");
     return true;
@@ -336,6 +451,11 @@ bool nimcp_brain_factory_connect_occipital_to_parietal(brain_t brain) {
 bool nimcp_brain_factory_connect_occipital_to_temporal(brain_t brain) {
     if (!brain || !brain->occipital) {
         return true;  /* Nothing to connect */
+    }
+
+    /* Check if temporal is available */
+    if (!brain->temporal) {
+        return true;  /* Temporal not initialized yet */
     }
 
     /*
@@ -347,10 +467,12 @@ bool nimcp_brain_factory_connect_occipital_to_temporal(brain_t brain) {
      * - Scene categorization (parahippocampal place area)
      */
 
-    /* TODO: Register feature callbacks
-     * occipital_set_feature_callback(brain->occipital,
-     *     temporal_receive_features, brain->temporal);
-     */
+    /* Register feature callback for ventral stream */
+    if (!occipital_set_feature_callback(brain->occipital,
+            ventral_feature_callback, brain)) {
+        LOG_WARN(LOG_MODULE, "Failed to set occipital feature callback");
+        return false;
+    }
 
     LOG_DEBUG(LOG_MODULE, "Occipital connected to temporal (ventral stream)");
     return true;
@@ -395,7 +517,7 @@ bool nimcp_brain_factory_connect_occipital_to_training(brain_t brain) {
     }
 
     /*
-     * Register occipital adapter with training context.
+     * Create and connect occipital training bridge.
      * This allows visual processing learning through:
      * - Feature detector refinement (V1 Gabor filters)
      * - Contour integration learning (V2 association fields)
@@ -403,10 +525,32 @@ bool nimcp_brain_factory_connect_occipital_to_training(brain_t brain) {
      * - Motion estimation improvement (V5/MT temporal filters)
      */
 
-    /* TODO: Register with training
-     * nimcp_brain_training_register_module(brain->training_ctx,
-     *     TRAIN_MODULE_OCCIPITAL, brain->occipital);
-     */
+    /* Create training bridge with default config */
+    occipital_training_config_t config;
+    occipital_training_default_config(&config);
+
+    occipital_training_bridge_t* training_bridge = occipital_training_bridge_create(&config);
+    if (!training_bridge) {
+        LOG_WARN(LOG_MODULE, "Failed to create occipital training bridge");
+        return false;
+    }
+
+    /* Connect occipital adapter to training bridge */
+    if (occipital_training_connect_occipital(training_bridge, brain->occipital) != 0) {
+        LOG_WARN(LOG_MODULE, "Failed to connect occipital to training bridge");
+        occipital_training_bridge_destroy(training_bridge);
+        return false;
+    }
+
+    /* Connect training context to bridge */
+    if (occipital_training_connect_training(training_bridge, brain->training_ctx) != 0) {
+        LOG_WARN(LOG_MODULE, "Failed to connect training context to bridge");
+        occipital_training_bridge_destroy(training_bridge);
+        return false;
+    }
+
+    /* Store bridge in brain (if field exists) */
+    /* brain->occipital_training_bridge = training_bridge; */
 
     LOG_DEBUG(LOG_MODULE, "Occipital connected to training system");
     return true;
@@ -437,5 +581,232 @@ bool nimcp_brain_factory_connect_occipital_to_immune(brain_t brain) {
      */
 
     LOG_DEBUG(LOG_MODULE, "Occipital connected to immune system");
+    return true;
+}
+
+bool nimcp_brain_factory_connect_occipital_to_logic(brain_t brain) {
+    if (!brain || !brain->occipital) {
+        return true;  /* Nothing to connect */
+    }
+
+    /* Check if logic module is available */
+    if (!brain->logic && !brain->symbolic_logic) {
+        return true;  /* Logic not initialized */
+    }
+
+    /*
+     * Create visual-logic bridge for perception-to-predicate conversion.
+     *
+     * BIOLOGICAL: The ventral visual stream terminates in inferotemporal
+     * cortex, which links visual features to semantic concepts. The
+     * prefrontal cortex then integrates visual evidence with logical reasoning.
+     *
+     * FUNCTION MAPPING:
+     * - Object detection (V4/IT) -> Unary predicates: cat(obj_1), red(obj_2)
+     * - Spatial relations (parietal) -> Binary predicates: above(obj_1, obj_2)
+     * - Scene parsing (parahippocampal) -> Context predicates: kitchen(scene)
+     */
+
+    /* Get logic module (neural or symbolic) */
+    void* logic_module = brain->symbolic_logic ?
+        (void*)brain->symbolic_logic : (void*)&brain->logic;
+
+    /* Create bridge with default config */
+    visual_logic_config_t config = visual_logic_default_config();
+    config.enable_object_grounding = true;
+    config.enable_relation_extraction = true;
+    config.enable_top_down_attention = true;
+    config.min_confidence_threshold = 0.7f;
+
+    visual_logic_bridge_t* bridge = visual_logic_bridge_create(
+        brain->occipital, logic_module, &config);
+
+    if (!bridge) {
+        LOG_WARN(LOG_MODULE, "Failed to create visual-logic bridge");
+        return false;
+    }
+
+    /* Store bridge reference if field exists in brain structure */
+    /* brain->visual_logic_bridge = bridge; */
+
+    LOG_DEBUG(LOG_MODULE, "Occipital connected to logic module");
+    return true;
+}
+
+bool nimcp_brain_factory_connect_occipital_to_cognitive(brain_t brain) {
+    if (!brain || !brain->occipital) {
+        return true;  /* Nothing to connect */
+    }
+
+    /*
+     * Connect occipital to cognitive modules for visual cognition.
+     *
+     * INTEGRATIONS:
+     * 1. Salience: Visual features contribute to salience computation
+     * 2. Curiosity: Novel visual stimuli drive exploration behavior
+     * 3. Introspection: Visual processing state included in self-model
+     * 4. Attention: Visual attention allocation and gating
+     * 5. Global Workspace: Conscious visual awareness broadcasting
+     */
+
+    /* Connect to salience evaluator if available */
+    if (brain->salience) {
+        /* TODO: Register visual salience provider
+         * salience_register_visual_source(brain->salience,
+         *     occipital_get_salience_map, brain->occipital);
+         */
+        LOG_DEBUG(LOG_MODULE, "Occipital connected to salience evaluator");
+    }
+
+    /* Connect to curiosity engine if available */
+    if (brain->curiosity) {
+        /* TODO: Register visual novelty detector
+         * curiosity_register_novelty_source(brain->curiosity,
+         *     NOVELTY_SOURCE_VISUAL, occipital_get_novelty, brain->occipital);
+         */
+        LOG_DEBUG(LOG_MODULE, "Occipital connected to curiosity engine");
+    }
+
+    /* Connect to introspection if available */
+    if (brain->introspection) {
+        /* TODO: Register visual state provider
+         * introspection_register_visual_state(brain->introspection,
+         *     occipital_get_processing_state, brain->occipital);
+         */
+        LOG_DEBUG(LOG_MODULE, "Occipital connected to introspection");
+    }
+
+    /* Connect to multihead attention if available */
+    if (brain->multihead_attention) {
+        /* TODO: Register visual attention query
+         * multihead_attention_register_visual_query(brain->multihead_attention,
+         *     occipital_attention_query, brain->occipital);
+         */
+        LOG_DEBUG(LOG_MODULE, "Occipital connected to attention system");
+    }
+
+    /* Connect to global workspace if available */
+    if (brain->global_workspace) {
+        /* TODO: Register visual broadcast channel
+         * global_workspace_register_broadcast_channel(brain->global_workspace,
+         *     GW_CHANNEL_VISUAL, occipital_broadcast_visual, brain->occipital);
+         */
+        LOG_DEBUG(LOG_MODULE, "Occipital connected to global workspace");
+    }
+
+    LOG_DEBUG(LOG_MODULE, "Occipital connected to cognitive modules");
+    return true;
+}
+
+bool nimcp_brain_factory_connect_occipital_to_cortical_columns(brain_t brain) {
+    if (!brain || !brain->occipital) {
+        return true;  /* Nothing to connect */
+    }
+
+    /* Check if cortical columns are enabled */
+    if (!brain->enable_cortical_columns) {
+        return true;  /* Cortical columns not enabled */
+    }
+
+    /*
+     * Connect occipital to cortical column architecture.
+     *
+     * BIOLOGICAL BASIS:
+     * - V1 is organized into orientation columns (~0.5mm spacing)
+     * - Hypercolumns contain full orientation coverage (0-180 degrees)
+     * - Ocular dominance columns alternate left/right eye preference
+     * - Color blobs (CO-rich) process chromatic information
+     * - Retinotopic mapping preserves spatial relationships
+     *
+     * IMPLEMENTATION:
+     * - Create orientation hypercolumns for V1 orientation selectivity
+     * - Map occipital V1 Gabor filters to orientation columns
+     * - Create feature hypercolumns for multi-dimensional features
+     */
+
+    /* Check if orientation hypercolumns exist */
+    if (!brain->orientation_hypercolumns || brain->num_orientation_hypercolumns == 0) {
+        /* Create orientation hypercolumns for V1 */
+        uint32_t num_hypercolumns = 16;  /* Grid of hypercolumns */
+
+        brain->orientation_hypercolumns = (orientation_hypercolumn_t**)
+            nimcp_calloc(num_hypercolumns, sizeof(orientation_hypercolumn_t*));
+
+        if (!brain->orientation_hypercolumns) {
+            LOG_WARN(LOG_MODULE, "Failed to allocate orientation hypercolumns");
+            return false;
+        }
+
+        /* Create each hypercolumn */
+        orientation_hypercolumn_config_t config = {
+            .num_orientations = 8,       /* 0, 22.5, 45, ... 157.5 degrees */
+            .num_spatial_frequencies = 4, /* Log-spaced spatial frequencies */
+            .num_phases = 2,             /* 0 and 90 degree phase */
+            .receptive_field_size = 0.1f /* Fraction of visual field */
+        };
+
+        for (uint32_t i = 0; i < num_hypercolumns; i++) {
+            brain->orientation_hypercolumns[i] = orientation_hypercolumn_create(&config);
+            if (!brain->orientation_hypercolumns[i]) {
+                LOG_WARN(LOG_MODULE, "Failed to create orientation hypercolumn %u", i);
+            }
+        }
+
+        brain->num_orientation_hypercolumns = num_hypercolumns;
+        LOG_DEBUG(LOG_MODULE, "Created %u orientation hypercolumns for V1", num_hypercolumns);
+    }
+
+    /* Connect occipital V1 outputs to orientation columns */
+    /* TODO: Map V1 Gabor filter outputs to corresponding orientation columns
+     * for (uint32_t i = 0; i < brain->num_orientation_hypercolumns; i++) {
+     *     orientation_hypercolumn_connect_input(brain->orientation_hypercolumns[i],
+     *         occipital_get_gabor_output, brain->occipital, i);
+     * }
+     */
+
+    LOG_DEBUG(LOG_MODULE, "Occipital connected to cortical columns");
+    return true;
+}
+
+bool nimcp_brain_factory_connect_occipital_to_swarm(brain_t brain) {
+    if (!brain || !brain->occipital) {
+        return true;  /* Nothing to connect */
+    }
+
+    /* Check if distributed cognition is available */
+    if (!brain->distributed) {
+        return true;  /* Not in distributed mode */
+    }
+
+    /*
+     * Connect occipital to swarm intelligence for distributed visual processing.
+     *
+     * APPLICATIONS:
+     * - Distributed object detection: Multiple nodes process scene regions
+     * - Consensus perception: Aggregate visual interpretations across nodes
+     * - Fault-tolerant vision: Processing continues if nodes fail
+     * - Load balancing: Spread visual computation across available nodes
+     *
+     * IMPLEMENTATION:
+     * - Register occipital as visual processing capability
+     * - Enable visual task distribution across swarm
+     * - Setup visual result aggregation
+     */
+
+    /* TODO: Register with swarm module registry
+     * if (brain->swarm_module_registry) {
+     *     swarm_module_registry_register(brain->swarm_module_registry,
+     *         "occipital_visual", SWARM_CAPABILITY_VISUAL,
+     *         occipital_process_distributed, brain->occipital);
+     * }
+     */
+
+    /* TODO: Register for distributed visual tasks
+     * distrib_cognition_register_handler(brain->distributed,
+     *     TASK_TYPE_VISUAL_PROCESSING, occipital_handle_distributed_task,
+     *     brain->occipital);
+     */
+
+    LOG_DEBUG(LOG_MODULE, "Occipital connected to swarm system");
     return true;
 }

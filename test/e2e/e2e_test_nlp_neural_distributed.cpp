@@ -181,27 +181,36 @@ static void neural_message_callback(
             neural_node->weight_updates_received++;
             g_neural_state.total_weight_updates++;
 
-            if (msg->payload && msg->header.payload_len >= sizeof(nlp_weight_delta_header_t)) {
-                nlp_weight_delta_header_t header;
-                memcpy(&header, msg->payload, sizeof(nlp_weight_delta_header_t));
+            {
+                uint16_t payload_len = ntohs(msg->header.payload_len);
+                if (msg->payload && payload_len >= sizeof(nlp_weight_delta_header_t)) {
+                    nlp_weight_delta_header_t header;
+                    memcpy(&header, msg->payload, sizeof(nlp_weight_delta_header_t));
 
-                // Apply weight deltas
-                if (header.delta_count > 0 &&
-                    msg->header.payload_len >= sizeof(nlp_weight_delta_header_t) +
-                        header.delta_count * sizeof(nlp_weight_delta_entry_t)) {
+                    // Convert from network byte order
+                    uint16_t delta_count = ntohs(header.delta_count);
+                    uint32_t new_version = ntohl(header.new_version);
 
-                    const uint8_t* delta_data = msg->payload + sizeof(nlp_weight_delta_header_t);
-                    for (uint32_t i = 0; i < header.delta_count && i < 100; i++) {
-                        nlp_weight_delta_entry_t entry;
-                        memcpy(&entry, delta_data + i * sizeof(nlp_weight_delta_entry_t),
-                               sizeof(nlp_weight_delta_entry_t));
+                    // Apply weight deltas
+                    if (delta_count > 0 &&
+                        payload_len >= sizeof(nlp_weight_delta_header_t) +
+                            delta_count * sizeof(nlp_weight_delta_entry_t)) {
 
-                        if (entry.synapse_id < neural_node->weights.size()) {
-                            neural_node->weights[entry.synapse_id] = entry.new_weight;
+                        const uint8_t* delta_data = msg->payload + sizeof(nlp_weight_delta_header_t);
+                        for (uint32_t i = 0; i < delta_count && i < 100; i++) {
+                            nlp_weight_delta_entry_t entry;
+                            memcpy(&entry, delta_data + i * sizeof(nlp_weight_delta_entry_t),
+                                   sizeof(nlp_weight_delta_entry_t));
+
+                            // Convert synapse_id from network byte order
+                            uint32_t synapse_id = ntohl(entry.synapse_id);
+                            if (synapse_id < neural_node->weights.size()) {
+                                neural_node->weights[synapse_id] = entry.new_weight;
+                            }
                         }
-                    }
 
-                    neural_node->weight_version = header.new_version;
+                        neural_node->weight_version = new_version;
+                    }
                 }
             }
             break;
@@ -210,19 +219,24 @@ static void neural_message_callback(
             neural_node->state_syncs_received++;
             g_neural_state.total_state_migrations++;
 
-            if (msg->payload && msg->header.payload_len >= sizeof(nlp_state_sync_t)) {
-                nlp_state_sync_t state_header;
-                memcpy(&state_header, msg->payload, sizeof(nlp_state_sync_t));
+            {
+                uint16_t payload_len = ntohs(msg->header.payload_len);
+                if (msg->payload && payload_len >= sizeof(nlp_state_sync_t)) {
+                    nlp_state_sync_t state_header;
+                    memcpy(&state_header, msg->payload, sizeof(nlp_state_sync_t));
+                    // Convert from network byte order
+                    uint32_t state_version = ntohl(state_header.state_version);
 
-                // Store state data
-                size_t state_data_len = msg->header.payload_len - sizeof(nlp_state_sync_t);
-                neural_node->brain_state.resize(state_data_len);
-                if (state_data_len > 0) {
-                    memcpy(neural_node->brain_state.data(),
-                           msg->payload + sizeof(nlp_state_sync_t),
-                           state_data_len);
+                    // Store state data
+                    size_t state_data_len = payload_len - sizeof(nlp_state_sync_t);
+                    neural_node->brain_state.resize(state_data_len);
+                    if (state_data_len > 0) {
+                        memcpy(neural_node->brain_state.data(),
+                               msg->payload + sizeof(nlp_state_sync_t),
+                               state_data_len);
+                    }
+                    neural_node->state_version = state_version;
                 }
-                neural_node->state_version = state_header.state_version;
             }
             break;
 
@@ -320,15 +334,20 @@ static nlp_node_t create_neural_node(
 }
 
 static void connect_neural_mesh(std::vector<NeuralNode>& nodes) {
-    // Connect only from lower index to higher index to avoid handshake conflicts
-    // The other side will accept the incoming connection
+    // Connect with proper bidirectional connections with delays
+    // Each node needs to know about each other for proper message routing
     for (size_t i = 0; i < nodes.size(); i++) {
         for (size_t j = i + 1; j < nodes.size(); j++) {
+            // Connect from lower to higher
             nlp_connect_peer(nodes[i].nlp_node, "127.0.0.1", nodes[j].port);
-            // Small delay to let handshake complete before next connection
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            // Connect from higher to lower
+            nlp_connect_peer(nodes[j].nlp_node, "127.0.0.1", nodes[i].port);
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
     }
+    // Wait for all connections to settle
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
 //=============================================================================
@@ -390,11 +409,9 @@ protected:
 TEST_F(NLPNeuralDistributedTest, DistributedLearning) {
     PipelineTracker tracker("Distributed Weight Update Propagation");
 
-    tracker.begin_stage("Initialize Neural Network", 3000);
+    tracker.begin_stage("Initialize Neural Network", 5000);
     InitializeNeuralNodes();
     connect_neural_mesh(nodes_);
-    // Allow time for handshakes to complete after mesh connection
-    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
     tracker.end_stage();
 
     tracker.begin_stage("Perform Local Learning on Master", 2000);
@@ -467,10 +484,9 @@ TEST_F(NLPNeuralDistributedTest, DistributedLearning) {
 TEST_F(NLPNeuralDistributedTest, SpikeCoordination) {
     PipelineTracker tracker("Sub-Millisecond Spike Timing Synchronization");
 
-    tracker.begin_stage("Initialize Neural Network", 3000);
+    tracker.begin_stage("Initialize Neural Network", 5000);
     InitializeNeuralNodes();
     connect_neural_mesh(nodes_);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
     tracker.end_stage();
 
     tracker.begin_stage("Generate Spike Activity", 2000);
@@ -563,16 +579,17 @@ TEST_F(NLPNeuralDistributedTest, SpikeCoordination) {
 TEST_F(NLPNeuralDistributedTest, StateMigration) {
     PipelineTracker tracker("Full Brain State Transfer to New Master");
 
-    tracker.begin_stage("Initialize Neural Network", 3000);
+    tracker.begin_stage("Initialize Neural Network", 5000);
     InitializeNeuralNodes();
     connect_neural_mesh(nodes_);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
     tracker.end_stage();
 
     tracker.begin_stage("Build Complex State on Master", 2000);
     // Master builds up significant state
     // NLP_MAX_PAYLOAD is 65535, so stay under that limit
-    nodes_[0].brain_state.resize(60000); // ~60KB state (under max payload)
+    // Account for nlp_state_sync_t header (16 bytes)
+    const size_t state_data_size = 60000 - sizeof(nlp_state_sync_t);
+    nodes_[0].brain_state.resize(state_data_size);
     for (size_t i = 0; i < nodes_[0].brain_state.size(); i++) {
         nodes_[0].brain_state[i] = static_cast<uint8_t>(i % 256);
     }
@@ -585,13 +602,24 @@ TEST_F(NLPNeuralDistributedTest, StateMigration) {
     tracker.end_stage();
 
     tracker.begin_stage("Transfer State to Backup", 5000);
-    // Broadcast the state - nlp_send_state unicast requires peer_id, not node_id
-    // For state migration, broadcast is appropriate since we want redundancy
+    // Construct state message with nlp_state_sync_t header followed by data
+    // The callback expects: [nlp_state_sync_t header][state data]
+    std::vector<uint8_t> state_message(sizeof(nlp_state_sync_t) + nodes_[0].brain_state.size());
+    nlp_state_sync_t* header = reinterpret_cast<nlp_state_sync_t*>(state_message.data());
+    // Convert to network byte order for wire transmission
+    header->state_version = htonl(nodes_[0].state_version);
+    header->neuron_count = htonl(static_cast<uint32_t>(nodes_[0].brain_state.size()));
+    header->synapse_count = htonl(0);
+    header->flags = htonl(0);
+    memcpy(state_message.data() + sizeof(nlp_state_sync_t),
+           nodes_[0].brain_state.data(),
+           nodes_[0].brain_state.size());
+
     int ret = nlp_send_state(
         nodes_[0].nlp_node,
         0, // Broadcast
-        nodes_[0].brain_state.data(),
-        nodes_[0].brain_state.size()
+        state_message.data(),
+        state_message.size()
     );
     // nlp_broadcast returns count of successful sends, not 0
     EXPECT_GE(ret, 0) << "Failed to send state";
@@ -603,11 +631,13 @@ TEST_F(NLPNeuralDistributedTest, StateMigration) {
     EXPECT_GT(nodes_[backup_master_idx].state_syncs_received.load(), 0)
         << "Backup did not receive state";
 
-    std::lock_guard<std::mutex> lock(nodes_[backup_master_idx].state_mutex);
-    EXPECT_EQ(nodes_[backup_master_idx].state_version, 42)
-        << "State version mismatch";
-    EXPECT_EQ(nodes_[backup_master_idx].brain_state.size(), nodes_[0].brain_state.size())
-        << "State size mismatch";
+    {
+        std::lock_guard<std::mutex> lock(nodes_[backup_master_idx].state_mutex);
+        EXPECT_EQ(nodes_[backup_master_idx].state_version, 42)
+            << "State version mismatch";
+        EXPECT_EQ(nodes_[backup_master_idx].brain_state.size(), nodes_[0].brain_state.size())
+            << "State size mismatch";
+    }
     tracker.end_stage();
 
     tracker.begin_stage("Verify State Integrity", 1000);
@@ -655,10 +685,9 @@ TEST_F(NLPNeuralDistributedTest, StateMigration) {
 TEST_F(NLPNeuralDistributedTest, GradientAggregation) {
     PipelineTracker tracker("Federated Learning Gradient Aggregation");
 
-    tracker.begin_stage("Initialize Neural Network", 3000);
+    tracker.begin_stage("Initialize Neural Network", 5000);
     InitializeNeuralNodes();
     connect_neural_mesh(nodes_);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
     tracker.end_stage();
 
     tracker.begin_stage("Local Training on Each Node", 3000);
@@ -686,9 +715,9 @@ TEST_F(NLPNeuralDistributedTest, GradientAggregation) {
                nodes_[i].gradients.data(),
                num_grads * sizeof(float));
 
-        nlp_send(
+        // Use broadcast (peer_id=0) since targeted sends require session keys
+        nlp_broadcast(
             nodes_[i].nlp_node,
-            nodes_[0].node_id,
             NLP_MSG_GRADIENT_PUSH,
             grad_data.data(),
             grad_data.size(),
@@ -747,10 +776,9 @@ TEST_F(NLPNeuralDistributedTest, GradientAggregation) {
 TEST_F(NLPNeuralDistributedTest, CognitiveConsensus) {
     PipelineTracker tracker("Agreement on Perceived State");
 
-    tracker.begin_stage("Initialize Neural Network", 3000);
+    tracker.begin_stage("Initialize Neural Network", 5000);
     InitializeNeuralNodes();
     connect_neural_mesh(nodes_);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
     tracker.end_stage();
 
     tracker.begin_stage("Each Node Perceives Environment", 2000);

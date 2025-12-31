@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/sleep_wake/nimcp_sleep_wake_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
@@ -19,8 +20,6 @@ struct sleep_wake_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 sleep_wake_substrate_config_t sleep_wake_substrate_default_config(void) {
     sleep_wake_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
@@ -58,13 +57,13 @@ int sleep_wake_substrate_bridge_update(sleep_wake_substrate_bridge_t* bridge) {
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP depletion increases sleep pressure */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.arousal_level = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.recovery_rate = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.arousal_level = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.recovery_rate = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Fatigue directly drives sleep pressure */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.sleep_pressure = clamp_f((1.0f - metabolic_cap) * bridge->config.fatigue_sensitivity, 0.0f, 1.0f);
-        bridge->effects.circadian_phase = clamp_f((1.0f - (1.0f - metabolic_cap) * 0.3f), 0.5f, 1.0f);
+        bridge->effects.sleep_pressure = nimcp_clamp_f((1.0f - metabolic_cap) * bridge->config.fatigue_sensitivity, 0.0f, 1.0f);
+        bridge->effects.circadian_phase = nimcp_clamp_f((1.0f - (1.0f - metabolic_cap) * 0.3f), 0.5f, 1.0f);
     }
     bridge->effects.overall_capacity = bridge->effects.arousal_level;
     bridge->update_count++;

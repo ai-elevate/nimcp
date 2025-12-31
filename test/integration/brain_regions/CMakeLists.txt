@@ -17,3 +17,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_signal_propagation_integration.cpp
     integration
 )
+
+# Occipital cortex integration tests
+add_test_binary(
+    integration_brain_regions_test_occipital_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_occipital_integration.cpp
+    integration
+)

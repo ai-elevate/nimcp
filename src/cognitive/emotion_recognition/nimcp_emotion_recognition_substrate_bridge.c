@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/emotion_recognition/nimcp_emotion_recognition_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
@@ -19,8 +20,6 @@ struct emotion_recognition_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 emotion_recognition_substrate_config_t emotion_recognition_substrate_default_config(void) {
     emotion_recognition_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
@@ -58,13 +57,13 @@ int emotion_recognition_substrate_bridge_update(emotion_recognition_substrate_br
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables recognition accuracy and subtle sensitivity */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.recognition_accuracy = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.subtle_sensitivity = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.recognition_accuracy = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.subtle_sensitivity = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Low fatigue enables detection speed and context integration */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.detection_speed = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.context_integration = clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.detection_speed = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.context_integration = nimcp_clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.recognition_accuracy + bridge->effects.detection_speed +
                                         bridge->effects.subtle_sensitivity + bridge->effects.context_integration) / 4.0f;

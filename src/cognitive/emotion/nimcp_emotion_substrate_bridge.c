@@ -16,10 +16,12 @@
  */
 
 #include "cognitive/emotion/nimcp_emotion_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
 #include <string.h>
 #include <math.h>
 
@@ -333,7 +335,7 @@ emotion_substrate_bridge_t* emotion_substrate_bridge_create(
     bridge->stats.max_reactivity_threshold = 0.0f;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    bridge->base.mutex = nimcp_mutex_create(NULL);
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for emotion substrate bridge");
         nimcp_free(bridge);
@@ -548,7 +550,7 @@ int emotion_substrate_update(emotion_substrate_bridge_t* bridge) {
     update_statistics(bridge, &bridge->effects);
 
     /* Update timestamp */
-    bridge->stats.last_update_time = 0; /* TODO: get actual timestamp */
+    bridge->stats.last_update_time = nimcp_time_get_ms();
 
     /* Unlock */
     nimcp_mutex_unlock(bridge->base.mutex);

@@ -206,6 +206,22 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.c         # Temporal thalamic bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_temporal.c                  # Temporal factory init
 
+    # Insula - Interoception, emotional awareness, social emotions (Phase I1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/insula/nimcp_insula_adapter.c                     # Insula core adapter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/insula/nimcp_insula_quantum_bridge.c              # Insula quantum bridge
+
+    # Motor Cortex - Motor control, movement planning (Phase M1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/motor/nimcp_motor_adapter.c                       # Motor cortex core adapter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/motor/nimcp_motor_quantum_bridge.c                # Motor quantum bridge
+
+    # Occipital Cortex - Visual processing (Phase O1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_adapter.c               # Occipital cortex core adapter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_quantum_bridge.c        # Occipital quantum bridge
+
+    # Prefrontal Cortex - Executive function, decision-making (Phase PF1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_adapter.c             # Prefrontal cortex core adapter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.c      # Prefrontal quantum bridge
+
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_brain_region_predictive.c  # DISABLED: needs API updates  # Predictive coding brain region extension - DISABLED: needs refactoring
 
     # Subcortical brain structures (basal ganglia, thalamus, etc.)
@@ -582,6 +598,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/integration/nimcp_glial_integration_fep_bridge.c
     # Middleware FEP Bridges (Extended)
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_training_module_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_occipital_training_bridge.c  # Occipital-training integration
     # Plasticity FEP Bridges (Extended)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromodulators_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/nimcp_second_messengers_fep_bridge.c
@@ -727,6 +744,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_bio_async.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_immune.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../lnn/nimcp_lnn_parallel.c
+
+    # Cognitive Common Utilities (Shared across substrate bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/common/nimcp_metabolic_modulation.c  # Shared metabolic modulation utilities
 
     # Cognitive Substrate Bridges (Phase 6)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_attention_substrate_bridge.c  # Attention-substrate integration (focus, shifting, filtering)
@@ -881,6 +901,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/serialization/nimcp_serialization.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/serialization/nimcp_network_serialization.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../io/serialization/nimcp_encryption.c
+    # Model Loading - Pre-trained model loading and validation (Phase ML-1)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../io/model/nimcp_model_loader.c  # DISABLED: adaptive_neuron_t type issues
 
     # Security - Core and Phase SC-1: Security Coverage Framework (Tier 0.7)
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security.c
@@ -1173,6 +1195,8 @@ set(NIMCP_CORE_SOURCES
     # GPU Support (CPU fallback when CUDA unavailable)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/execution/nimcp_execution_mode.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/execution/nimcp_simd_detect.c  # SIMD capability detection (AVX2/AVX-512/NEON)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/execution/nimcp_gpu_detect.c   # Runtime GPU detection (CUDA/OpenCL/ROCm)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/execution/nimcp_network_detect.c  # Network/MPI capability detection
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/spike_event/nimcp_spike_event.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_gpu_neuron.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/nimcp_multigpu.c
@@ -1462,7 +1486,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/insula/nimcp_insula_substrate_bridge.c  # Insula-substrate integration
     # NOTE: temporal_substrate_bridge moved to core/brain/regions/temporal/
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/parietal/nimcp_parietal_substrate_bridge.c  # Parietal-substrate integration
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/occipital/nimcp_occipital_substrate_bridge.c  # Occipital-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_substrate_bridge.c  # Occipital-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/hypothalamus/nimcp_hypothalamus_substrate_bridge.c  # Hypothalamus-substrate integration
 
     # Core Thalamic Bridges - Brain region-thalamic integration
@@ -1478,7 +1502,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/insula/nimcp_insula_thalamic_bridge.c  # Insula-thalamic integration (VMPo)
     # NOTE: temporal_thalamic_bridge moved to core/brain/regions/temporal/
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/parietal/nimcp_parietal_thalamic_bridge.c  # Parietal-thalamic integration (Pulvinar)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/occipital/nimcp_occipital_thalamic_bridge.c  # Occipital-thalamic integration (LGN)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_thalamic_bridge.c  # Occipital-thalamic integration (LGN)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/hypothalamus/nimcp_hypothalamus_thalamic_bridge.c  # Hypothalamus-thalamic integration (Midline)
 )
 

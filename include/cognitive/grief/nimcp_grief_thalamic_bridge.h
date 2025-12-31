@@ -57,7 +57,7 @@ int grief_thalamic_bridge_reset(grief_thalamic_bridge_t* bridge);
 int grief_thalamic_route_loss(grief_thalamic_bridge_t* bridge, const grief_thalamic_signal_t* signal);
 int grief_thalamic_route_processing(grief_thalamic_bridge_t* bridge, const void* stage, float progress);
 int grief_thalamic_set_attention(grief_thalamic_bridge_t* bridge, float attention);
-int grief_thalamic_get_attention(const grief_thalamic_bridge_t* bridge, float* attention);
+int grief_thalamic_get_attention(grief_thalamic_bridge_t* bridge, float* attention);
 
 typedef struct {
     uint64_t losses_processed;
@@ -66,7 +66,7 @@ typedef struct {
     float avg_grief_intensity;
 } grief_thalamic_stats_t;
 
-int grief_thalamic_bridge_get_stats(const grief_thalamic_bridge_t* bridge, grief_thalamic_stats_t* stats);
+int grief_thalamic_bridge_get_stats(grief_thalamic_bridge_t* bridge, grief_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

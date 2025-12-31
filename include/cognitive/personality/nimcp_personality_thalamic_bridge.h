@@ -57,7 +57,7 @@ int personality_thalamic_bridge_reset(personality_thalamic_bridge_t* bridge);
 int personality_thalamic_route_trait(personality_thalamic_bridge_t* bridge, const personality_thalamic_signal_t* signal);
 int personality_thalamic_route_regulation(personality_thalamic_bridge_t* bridge, const void* regulation, float effort);
 int personality_thalamic_set_attention(personality_thalamic_bridge_t* bridge, float attention);
-int personality_thalamic_get_attention(const personality_thalamic_bridge_t* bridge, float* attention);
+int personality_thalamic_get_attention(personality_thalamic_bridge_t* bridge, float* attention);
 
 typedef struct {
     uint64_t traits_expressed;
@@ -66,7 +66,7 @@ typedef struct {
     float avg_trait_activation;
 } personality_thalamic_stats_t;
 
-int personality_thalamic_bridge_get_stats(const personality_thalamic_bridge_t* bridge, personality_thalamic_stats_t* stats);
+int personality_thalamic_bridge_get_stats(personality_thalamic_bridge_t* bridge, personality_thalamic_stats_t* stats);
 
 #ifdef __cplusplus
 }

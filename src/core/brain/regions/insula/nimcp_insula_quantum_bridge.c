@@ -244,7 +244,7 @@ int insula_quantum_integrate_interoception(
 
         /* Update intero state */
         bridge->intero_states[i].amplitude_real = amp;
-        bridge->intero_states[i].probability = amp * amp;
+        bridge->intero_states[i].confidence = amp * amp;
         bridge->intero_states[i].collapsed = true;
     }
 

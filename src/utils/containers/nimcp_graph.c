@@ -33,6 +33,7 @@
 #include "utils/containers/nimcp_min_heap.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/time/nimcp_time.h"
 
 /* Internal helper functions */
 
@@ -591,7 +592,7 @@ bool nimcp_graph_update_coordinates(NimcpGraph* graph, uint32_t vertex_idx, floa
     graph->vertices[vertex_idx].x = x;
     graph->vertices[vertex_idx].y = y;
     graph->vertices[vertex_idx].z = z;
-    graph->vertices[vertex_idx].last_updated = 0;  // TODO: Add timestamp
+    graph->vertices[vertex_idx].last_updated = nimcp_time_get_ms();
 
     nimcp_mutex_unlock(&graph->lock);
     return true;

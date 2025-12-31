@@ -3,9 +3,12 @@
  * @brief Substrate-Wellbeing Integration Bridge Implementation
  * @version 1.0.0
  * @date 2025-12-12
+ *
+ * Uses shared metabolic modulation utilities from nimcp_metabolic_modulation.h
  */
 
 #include "cognitive/wellbeing/nimcp_wellbeing_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/error/nimcp_error_codes.h"

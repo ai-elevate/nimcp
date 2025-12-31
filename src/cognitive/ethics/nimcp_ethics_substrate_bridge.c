@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/ethics/nimcp_ethics_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -22,10 +23,6 @@ struct ethics_substrate_bridge {
     bool bio_async_connected;
     uint64_t update_count;
 };
-
-static float clamp_f(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 ethics_substrate_config_t ethics_substrate_default_config(void) {
     ethics_substrate_config_t cfg = {
@@ -73,13 +70,13 @@ int ethics_substrate_bridge_update(ethics_substrate_bridge_t* bridge) {
     float min_cap = bridge->config.min_capacity;
 
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.moral_clarity = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.bias_resistance = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.moral_clarity = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.bias_resistance = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
 
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.deliberation_depth = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.empathy_capacity = clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.deliberation_depth = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.empathy_capacity = nimcp_clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
 
     bridge->effects.overall_capacity = (bridge->effects.moral_clarity +

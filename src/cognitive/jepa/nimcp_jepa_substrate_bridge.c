@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/jepa/nimcp_jepa_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
@@ -19,8 +20,6 @@ struct jepa_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 jepa_substrate_config_t jepa_substrate_default_config(void) {
     jepa_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
@@ -58,13 +57,13 @@ int jepa_substrate_bridge_update(jepa_substrate_bridge_t* bridge) {
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables longer prediction horizons and better model precision */
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.prediction_horizon = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.model_precision = clamp_f(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.prediction_horizon = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.model_precision = nimcp_clamp_f(atp * 1.05f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     /* Low fatigue enables quality embeddings and update rate */
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.embedding_quality = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.update_rate = clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.embedding_quality = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.update_rate = nimcp_clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.prediction_horizon + bridge->effects.model_precision +
                                         bridge->effects.embedding_quality + bridge->effects.update_rate) / 4.0f;

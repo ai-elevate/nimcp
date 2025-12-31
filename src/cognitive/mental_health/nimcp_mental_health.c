@@ -1361,16 +1361,17 @@ const char* severity_to_string(disorder_severity_t severity)
 }
 
 /**
- * @brief Get last error message (not currently implemented)
+ * @brief Get last error message from thread-local storage
  *
- * @return Error message string
+ * @return Error message string (thread-local, never NULL)
  *
- * @note Currently uses global error system, not per-module
+ * WHAT: Return thread-local error message
+ * WHY:  Thread-safe error reporting without locks
+ * HOW:  Uses __thread storage class specifier
  */
 const char* mental_health_get_last_error(void)
 {
-    // TODO: Implement thread-local error storage
-    return "Error information available via global error system";
+    return last_error[0] != '\0' ? last_error : "No error";
 }
 
 // =============================================================================

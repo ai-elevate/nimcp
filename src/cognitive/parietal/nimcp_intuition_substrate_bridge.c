@@ -7,6 +7,7 @@
  */
 
 #include "cognitive/parietal/nimcp_intuition_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 
@@ -20,8 +21,6 @@ struct intuition_substrate_bridge {
     bool bio_async_connected;
     uint64_t update_count;
 };
-
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 intuition_substrate_config_t intuition_substrate_default_config(void) {
     intuition_substrate_config_t cfg = {
@@ -107,16 +106,16 @@ int intuition_substrate_bridge_update(intuition_substrate_bridge_t* bridge) {
         if (atp >= INTUITION_ATP_OPTIMAL_THRESHOLD) {
             bridge->effects.insight_depth = 1.0f;
         } else if (atp >= INTUITION_ATP_REDUCED_THRESHOLD) {
-            bridge->effects.insight_depth = clamp_f(0.6f + (atp - 0.5f) * 2.0f, min_cap, 1.0f);
+            bridge->effects.insight_depth = nimcp_clamp_f(0.6f + (atp - 0.5f) * 2.0f, min_cap, 1.0f);
         } else {
-            bridge->effects.insight_depth = clamp_f(atp_factor, min_cap, 0.6f);
+            bridge->effects.insight_depth = nimcp_clamp_f(atp_factor, min_cap, 0.6f);
         }
 
-        bridge->effects.intuition_accuracy = clamp_f(atp_factor * 1.05f, min_cap, 1.0f);
-        bridge->effects.abstraction_capacity = clamp_f(atp_factor * 1.1f, min_cap, 1.0f);
-        bridge->effects.creative_leap_potential = clamp_f(atp_factor * 0.95f, min_cap, 1.0f);
-        bridge->effects.counterfactual_capacity = clamp_f(atp_factor, min_cap, 1.0f);
-        bridge->effects.meta_reasoning_depth = clamp_f(atp_factor * 1.05f, min_cap, 1.0f);
+        bridge->effects.intuition_accuracy = nimcp_clamp_f(atp_factor * 1.05f, min_cap, 1.0f);
+        bridge->effects.abstraction_capacity = nimcp_clamp_f(atp_factor * 1.1f, min_cap, 1.0f);
+        bridge->effects.creative_leap_potential = nimcp_clamp_f(atp_factor * 0.95f, min_cap, 1.0f);
+        bridge->effects.counterfactual_capacity = nimcp_clamp_f(atp_factor, min_cap, 1.0f);
+        bridge->effects.meta_reasoning_depth = nimcp_clamp_f(atp_factor * 1.05f, min_cap, 1.0f);
     }
 
     /* Fatigue modulation - primarily affects processing speed */
@@ -128,11 +127,11 @@ int intuition_substrate_bridge_update(intuition_substrate_bridge_t* bridge) {
         if (fatigue < INTUITION_FATIGUE_MILD_THRESHOLD) {
             bridge->effects.processing_speed = 1.0f;
         } else if (fatigue < INTUITION_FATIGUE_MODERATE_THRESHOLD) {
-            bridge->effects.processing_speed = clamp_f(0.8f - (fatigue - 0.4f) * 0.5f, min_cap, 1.0f);
+            bridge->effects.processing_speed = nimcp_clamp_f(0.8f - (fatigue - 0.4f) * 0.5f, min_cap, 1.0f);
         } else if (fatigue < INTUITION_FATIGUE_SEVERE_THRESHOLD) {
-            bridge->effects.processing_speed = clamp_f(0.6f - (fatigue - 0.6f) * 0.5f, min_cap, 0.8f);
+            bridge->effects.processing_speed = nimcp_clamp_f(0.6f - (fatigue - 0.6f) * 0.5f, min_cap, 0.8f);
         } else {
-            bridge->effects.processing_speed = clamp_f(fatigue_factor * 0.5f, min_cap, 0.5f);
+            bridge->effects.processing_speed = nimcp_clamp_f(fatigue_factor * 0.5f, min_cap, 0.5f);
         }
     }
 

@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/bias/nimcp_bias_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
@@ -19,8 +20,6 @@ struct bias_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
 
 bias_substrate_config_t bias_substrate_default_config(void) {
     bias_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
@@ -57,12 +56,12 @@ int bias_substrate_bridge_update(bias_substrate_bridge_t* bridge) {
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     if (bridge->config.enable_atp_modulation) {
-        bridge->effects.bias_detection = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.correction_strength = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.bias_detection = nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
+        bridge->effects.correction_strength = nimcp_clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
     }
     if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.metacognitive_oversight = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.heuristic_resistance = clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.metacognitive_oversight = nimcp_clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
+        bridge->effects.heuristic_resistance = nimcp_clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
     }
     bridge->effects.overall_capacity = (bridge->effects.bias_detection + bridge->effects.correction_strength +
                                         bridge->effects.metacognitive_oversight + bridge->effects.heuristic_resistance) / 4.0f;

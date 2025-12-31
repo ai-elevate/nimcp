@@ -101,3 +101,36 @@ CYTOKINE_IFN_GAMMA_* (not BRAIN_CYTOKINE_IFN_GAMMA_*)
 **GOTCHA**: `brain_t` creation is heavyweight (initializes 50+ subsystems). Hemisphere tests are resource-intensive.
 
 **GOTCHA**: Use `brain_decide()` for inference, `brain_apply_reward_learning()` for training. Simple `brain_update/infer/train` don't exist.
+
+---
+
+## Metabolic Modulation API (`include/cognitive/common/nimcp_metabolic_modulation.h`)
+
+Shared utilities for ATP/fatigue-based modulation across substrate bridges.
+
+```c
+// Clamp utilities (replace static clamp_f in each bridge)
+float nimcp_clamp_f(float value, float min_val, float max_val);
+
+// Get default config
+metabolic_modulation_config_t cfg = metabolic_modulation_default_config();
+
+// Build config from bridge-specific fields
+metabolic_modulation_config_t cfg = metabolic_config_from_fields(
+    enable_atp, enable_fatigue, enable_bio_async,
+    atp_sensitivity, fatigue_sensitivity, min_capacity,
+    NULL  // NULL for default multipliers
+);
+
+// Compute effects in bridge update
+metabolic_input_t input = { .atp_level = atp, .metabolic_capacity = cap };
+metabolic_effects_t effects;
+metabolic_effects_init_full(&effects);
+metabolic_compute_effects(&input, &cfg, &effects);  // Returns 0 on success
+```
+
+**GOTCHA**: `metabolic_compute_effects()` returns `0` for success, `-1` for errors (not NIMCP_OK/NIMCP_ERROR_*)
+
+**GOTCHA**: Always call `metabolic_effects_init_full()` before `metabolic_compute_effects()` to ensure defaults
+
+See [modules/metabolic-modulation.md](modules/metabolic-modulation.md) for full documentation.

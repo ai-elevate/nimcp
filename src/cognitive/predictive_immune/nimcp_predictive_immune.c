@@ -8,6 +8,7 @@
 #include "cognitive/nimcp_predictive_immune.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/time/nimcp_time.h"
 #include "async/nimcp_bio_router.h"
 #include <string.h>
 #include <math.h>
@@ -211,7 +212,7 @@ nimcp_result_t predictive_immune_start(predictive_immune_system_t* system) {
     if (system->running) return NIMCP_SUCCESS;
 
     system->running = true;
-    system->start_time = 0; /* TODO: get timestamp */
+    system->start_time = nimcp_time_get_ms();
 
     NIMCP_LOGGING_INFO("Started predictive-immune integration");
 

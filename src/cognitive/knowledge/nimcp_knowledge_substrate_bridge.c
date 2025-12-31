@@ -5,9 +5,12 @@
  * WHAT: Links knowledge/semantic memory to metabolic state
  * WHY: Semantic retrieval requires temporal-parietal resources
  * HOW: Monitors ATP/fatigue; modulates retrieval fluency, accuracy, integration
+ *
+ * Uses shared metabolic modulation utilities from nimcp_metabolic_modulation.h
  */
 
 #include "cognitive/knowledge/nimcp_knowledge_substrate_bridge.h"
+#include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -19,16 +22,13 @@ struct knowledge_substrate_bridge {
     neural_substrate_t* substrate;
     knowledge_substrate_config_t config;
     knowledge_substrate_effects_t effects;
+    metabolic_modulation_config_t metabolic_config;  /* Shared metabolic config */
     bio_module_context_t ctx;
     bio_router_t* router;
     bool bio_async_connected;
     uint64_t update_count;
     float prev_overall_capacity;
 };
-
-static float clamp_f(float v, float min, float max) {
-    return v < min ? min : (v > max ? max : v);
-}
 
 knowledge_substrate_config_t knowledge_substrate_default_config(void) {
     knowledge_substrate_config_t cfg = {
@@ -52,6 +52,24 @@ knowledge_substrate_bridge_t* knowledge_substrate_bridge_create(void* knowledge,
     bridge->substrate = substrate;
     bridge->config = config ? *config : knowledge_substrate_default_config();
 
+    /* Initialize shared metabolic config with knowledge-specific multipliers */
+    metabolic_effect_multipliers_t knowledge_mult = {
+        .atp_primary_mult = 1.0f,
+        .atp_secondary_mult = 1.1f,
+        .fatigue_primary_mult = 1.0f,
+        .fatigue_secondary_mult = 0.95f  /* Knowledge uses 0.95 for consolidation */
+    };
+    bridge->metabolic_config = metabolic_config_from_fields(
+        bridge->config.enable_atp_modulation,
+        bridge->config.enable_fatigue_modulation,
+        bridge->config.enable_bio_async,
+        bridge->config.atp_sensitivity,
+        bridge->config.fatigue_sensitivity,
+        bridge->config.min_capacity,
+        &knowledge_mult
+    );
+
+    /* Initialize effects to full capacity */
     bridge->effects.retrieval_speed = 1.0f;
     bridge->effects.retrieval_accuracy = 1.0f;
     bridge->effects.consolidation_rate = 1.0f;
@@ -75,24 +93,23 @@ int knowledge_substrate_bridge_update(knowledge_substrate_bridge_t* bridge) {
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
 
-    float atp = metabolic.atp_level;
-    float metabolic_cap = metabolic.metabolic_capacity;
-    float min_cap = bridge->config.min_capacity;
+    /* Use shared metabolic computation */
+    metabolic_input_t input = {
+        .atp_level = metabolic.atp_level,
+        .metabolic_capacity = metabolic.metabolic_capacity
+    };
+    metabolic_effects_t generic_effects;
+    metabolic_effects_init_full(&generic_effects);
 
-    if (bridge->config.enable_atp_modulation) {
-        bridge->effects.retrieval_accuracy = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.association_strength = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
+    if (metabolic_compute_effects(&input, &bridge->metabolic_config, &generic_effects) == 0) {
+        /* Map generic effects to knowledge-specific effect names */
+        /* Note: Knowledge swaps ATP/fatigue primary roles from standard pattern */
+        bridge->effects.retrieval_accuracy = generic_effects.primary_atp;
+        bridge->effects.association_strength = generic_effects.secondary_atp;
+        bridge->effects.retrieval_speed = generic_effects.primary_fatigue;
+        bridge->effects.consolidation_rate = generic_effects.secondary_fatigue;
+        bridge->effects.overall_capacity = generic_effects.overall_capacity;
     }
-
-    if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.retrieval_speed = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.consolidation_rate = clamp_f(metabolic_cap * 0.95f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-    }
-
-    bridge->effects.overall_capacity = (bridge->effects.retrieval_speed +
-                                        bridge->effects.retrieval_accuracy +
-                                        bridge->effects.consolidation_rate +
-                                        bridge->effects.association_strength) / 4.0f;
 
     bridge->update_count++;
     return 0;

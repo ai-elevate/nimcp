@@ -35,8 +35,11 @@ reasoning_thalamic_bridge_t* reasoning_thalamic_bridge_create(
 ) {
     reasoning_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(reasoning_thalamic_bridge_t));
     if (!bridge) return NULL;
-    bridge->base.mutex = nimcp_platform_mutex_create();
-    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (!bridge->base.mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
 
     bridge->reasoning = reasoning;
     bridge->router = router;
@@ -49,16 +52,18 @@ reasoning_thalamic_bridge_t* reasoning_thalamic_bridge_create(
 
 void reasoning_thalamic_bridge_destroy(reasoning_thalamic_bridge_t* bridge) {
     if (!bridge) return;
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+    }
     nimcp_free(bridge);
 }
 
 int reasoning_thalamic_bridge_reset(reasoning_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -67,7 +72,7 @@ int reasoning_thalamic_route_signal(
     const reasoning_thalamic_signal_t* signal
 ) {
     if (!bridge || !signal) return -1;
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->config.enable_attention_gating) {
         float effective_urgency = signal->reasoning_urgency * bridge->attention_weight;
@@ -79,7 +84,7 @@ int reasoning_thalamic_route_signal(
 
         if (effective_urgency < bridge->config.min_urgency_threshold) {
             bridge->stats.signals_gated++;
-            nimcp_platform_mutex_unlock(bridge->base.mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
@@ -101,7 +106,7 @@ int reasoning_thalamic_route_signal(
             bridge->stats.conclusions++;
             break;
         default:
-            nimcp_platform_mutex_unlock(bridge->base.mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
     }
 
@@ -115,7 +120,7 @@ int reasoning_thalamic_route_signal(
             (bridge->stats.avg_confidence * (total - 1) + signal->confidence) / total;
     }
 
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -163,17 +168,17 @@ int reasoning_thalamic_route_conclusion(
 
 int reasoning_thalamic_set_attention(reasoning_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int reasoning_thalamic_get_attention(const reasoning_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -182,8 +187,8 @@ int reasoning_thalamic_bridge_get_stats(
     reasoning_thalamic_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
-    nimcp_platform_mutex_lock(bridge->base.mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_platform_mutex_unlock(bridge->base.mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }

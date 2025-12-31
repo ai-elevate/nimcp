@@ -23,6 +23,8 @@
 #define LOG_MODULE_ID 0x0900
 
 #include "gpu/nimcp_execution_mode.h"
+#include "gpu/execution/nimcp_gpu_detect.h"
+#include "gpu/execution/nimcp_simd_detect.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -126,51 +128,65 @@ static bool detect_cpu_capabilities(hardware_capabilities_t* caps)
 }
 
 //=============================================================================
-// GPU Detection (CUDA)
+// GPU Detection (via runtime GPU detection module)
 //=============================================================================
 
 /**
- * @brief Detect CUDA GPU capabilities
+ * @brief Detect GPU capabilities using runtime detection
+ *
+ * WHAT: Detects CUDA, OpenCL, and ROCm at runtime
+ * WHY:  Works without compile-time dependencies
+ * HOW:  Uses gpu_detect module for runtime library loading
  */
-static bool detect_cuda_capabilities(hardware_capabilities_t* caps)
+static bool detect_gpu_capabilities_runtime(hardware_capabilities_t* caps)
 {
     if (!caps) {
         return false;
     }
 
-    #ifdef NIMCP_ENABLE_CUDA
-    int device_count = 0;
-    cudaError_t err = cudaGetDeviceCount(&device_count);
-
-    if (err != cudaSuccess || device_count == 0) {
+    // Use runtime GPU detection
+    gpu_capabilities_t gpu_caps;
+    if (!gpu_detect_capabilities(&gpu_caps)) {
+        LOG_DEBUG("Runtime GPU detection failed");
         caps->cuda_available = false;
+        caps->rocm_available = false;
+        caps->opencl_available = false;
         caps->gpu_count = 0;
+        caps->gpu_compute_units = 0;
+        caps->gpu_memory_mb = 0;
+        caps->gpu_compute_capability = 0;
         return false;
     }
 
-    caps->cuda_available = true;
-    caps->gpu_count = (uint32_t)device_count;
+    // Map GPU detection results to hardware capabilities
+    caps->cuda_available = gpu_caps.cuda_available;
+    caps->rocm_available = gpu_caps.rocm_available;
+    caps->opencl_available = gpu_caps.opencl_available;
+    caps->gpu_count = gpu_caps.device_count;
 
-    // Get properties of first GPU
-    struct cudaDeviceProp prop;
-    err = cudaGetDeviceProperties(&prop, 0);
-
-    if (err == cudaSuccess) {
-        caps->gpu_compute_units = (uint32_t)prop.multiProcessorCount;
-        caps->gpu_memory_mb = (uint64_t)(prop.totalGlobalMem / (1024 * 1024));
-        caps->gpu_compute_capability = (uint32_t)(prop.major * 10 + prop.minor);
+    // Get details from best device if available
+    if (gpu_caps.best_device_index >= 0) {
+        gpu_device_info_t* best = &gpu_caps.devices[gpu_caps.best_device_index];
+        caps->gpu_compute_units = best->compute_units;
+        caps->gpu_memory_mb = (uint64_t)(best->total_memory_bytes / (1024 * 1024));
+        caps->gpu_compute_capability = best->compute_capability_major * 10 + best->compute_capability_minor;
+    } else if (gpu_caps.device_count > 0) {
+        // Use first device as fallback
+        caps->gpu_compute_units = gpu_caps.devices[0].compute_units;
+        caps->gpu_memory_mb = (uint64_t)(gpu_caps.devices[0].total_memory_bytes / (1024 * 1024));
+        caps->gpu_compute_capability = gpu_caps.devices[0].compute_capability_major * 10 +
+                                       gpu_caps.devices[0].compute_capability_minor;
+    } else {
+        caps->gpu_compute_units = 0;
+        caps->gpu_memory_mb = 0;
+        caps->gpu_compute_capability = 0;
     }
 
-    return true;
-    #else
-    // CUDA not available at compile time
-    caps->cuda_available = false;
-    caps->gpu_count = 0;
-    caps->gpu_compute_units = 0;
-    caps->gpu_memory_mb = 0;
-    caps->gpu_compute_capability = 0;
-    return false;
-    #endif
+    LOG_DEBUG("GPU detection: cuda=%d, rocm=%d, opencl=%d, devices=%u, memory=%lu MB",
+              caps->cuda_available, caps->rocm_available, caps->opencl_available,
+              caps->gpu_count, (unsigned long)caps->gpu_memory_mb);
+
+    return (gpu_caps.device_count > 0);
 }
 
 //=============================================================================
@@ -217,13 +233,28 @@ bool execution_detect_capabilities(hardware_capabilities_t* caps)
 
     // Detect each capability
     detect_cpu_capabilities(caps);
-    detect_cuda_capabilities(caps);
+    detect_gpu_capabilities_runtime(caps);
     detect_network_capabilities(caps);
 
-    // Determine recommended mode
+    // Detect SIMD capabilities
+    simd_capabilities_t simd_caps;
+    if (simd_detect_capabilities(&simd_caps)) {
+        caps->cpu_avx2 = simd_caps.has_avx2;
+        caps->cpu_avx512 = simd_caps.has_avx512f;
+        LOG_DEBUG("SIMD detected: AVX2=%d, AVX512=%d, width=%u",
+                  simd_caps.has_avx2, simd_caps.has_avx512f, simd_caps.max_vector_width);
+    }
+
+    // Determine recommended mode based on available backends
     if (caps->cuda_available && caps->gpu_count > 0) {
         caps->recommended_mode = EXEC_MODE_GPU_CUDA;
         LOG_INFO("Detected CUDA-capable GPU (count=%u), recommending GPU mode", caps->gpu_count);
+    } else if (caps->rocm_available && caps->gpu_count > 0) {
+        caps->recommended_mode = EXEC_MODE_GPU_ROCM;
+        LOG_INFO("Detected ROCm-capable GPU (count=%u), recommending ROCm mode", caps->gpu_count);
+    } else if (caps->opencl_available && caps->gpu_count > 0) {
+        caps->recommended_mode = EXEC_MODE_GPU_OPENCL;
+        LOG_INFO("Detected OpenCL-capable GPU (count=%u), recommending OpenCL mode", caps->gpu_count);
     } else if (caps->cpu_threads >= 4) {
         caps->recommended_mode = EXEC_MODE_CPU_PARALLEL;
         LOG_INFO("Detected multi-core CPU (threads=%u), recommending parallel mode", caps->cpu_threads);

@@ -23,6 +23,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/time/nimcp_time.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -319,7 +320,7 @@ int core_directives_record_action(
         entry->context_desc[0] = '\0';
     }
 
-    entry->timestamp_us = 0; // TODO: Get actual timestamp
+    entry->timestamp_us = nimcp_time_get_us();
     entry->valid = true;
 
     // Update circular buffer

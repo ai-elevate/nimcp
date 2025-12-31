@@ -76,6 +76,9 @@ add_subdirectory(game_theory)
 # Parietal Lobe Integration
 add_subdirectory(parietal)
 
+# Cross-Bridge Integration (thalamic-substrate, bio-async, metabolic cascade)
+add_subdirectory(cross_bridge)
+
 # Curiosity - FEP Bridge Integration Test
 add_executable(integration_cognitive_curiosity_fep_bridge
     curiosity/test_curiosity_fep_bridge_integration.cpp

@@ -2109,7 +2109,14 @@ static int nlp_process_message(nlp_node_t node, const uint8_t* data, size_t len,
             if (node->message_callback && peer) {
                 nlp_message_t msg;
                 memcpy(&msg.header, &header, sizeof(header));
-                msg.payload = decrypted;
+                // Use decrypted payload if available, otherwise raw payload
+                if (decrypted) {
+                    msg.payload = decrypted;
+                } else if (payload_len > 0) {
+                    msg.payload = (uint8_t*)(data + NLP_HEADER_SIZE);
+                } else {
+                    msg.payload = NULL;
+                }
                 memcpy(msg.auth_tag, data + len - NLP_TAG_SIZE, NLP_TAG_SIZE);
 
                 node->message_callback(node, peer, &msg, node->user_data);
