@@ -15,8 +15,12 @@
  * - Feature sharing (6 tests)
  * - Query API (6 tests)
  * - Statistics (3 tests)
+ * - Bio-Async API (4 tests)
+ * - Instance State (3 tests)
+ * - Boundary Value (6 tests)
+ * - Max Capacity (2 tests)
  *
- * TOTAL: 38 tests
+ * TOTAL: 53 tests
  *
  * @author NIMCP Development Team
  * @date 2025-12-31

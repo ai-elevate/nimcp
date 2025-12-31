@@ -15,8 +15,12 @@
  * - Degradation coordination (4 tests)
  * - Query API (5 tests)
  * - Statistics (3 tests)
+ * - Bio-Async API (4 tests)
+ * - Remote Tier Handling (3 tests)
+ * - Instance State (3 tests)
+ * - Boundary Value (4 tests)
  *
- * TOTAL: 34 tests
+ * TOTAL: 48 tests
  *
  * @author NIMCP Development Team
  * @date 2025-12-31
@@ -275,6 +279,90 @@ TEST_F(PortiaCollectiveBridgeTest, ResetStatsSucceeds) {
     portia_collective_reset_stats(bridge);
     portia_collective_get_stats(bridge, &stats);
     EXPECT_EQ(stats.tier_broadcasts, 0u);
+}
+
+//=============================================================================
+// Bio-Async API Tests (4 tests)
+//=============================================================================
+
+TEST_F(PortiaCollectiveBridgeTest, ConnectBioAsyncSucceeds) {
+    EXPECT_EQ(portia_collective_connect_bio_async(bridge), 0);
+}
+
+TEST_F(PortiaCollectiveBridgeTest, ConnectBioAsyncNullFails) {
+    EXPECT_EQ(portia_collective_connect_bio_async(nullptr), -1);
+}
+
+TEST_F(PortiaCollectiveBridgeTest, DisconnectBioAsyncSucceeds) {
+    portia_collective_connect_bio_async(bridge);
+    EXPECT_EQ(portia_collective_disconnect_bio_async(bridge), 0);
+}
+
+TEST_F(PortiaCollectiveBridgeTest, DisconnectBioAsyncNullFails) {
+    EXPECT_EQ(portia_collective_disconnect_bio_async(nullptr), -1);
+}
+
+//=============================================================================
+// Remote Tier Handling Tests (3 tests)
+//=============================================================================
+
+TEST_F(PortiaCollectiveBridgeTest, HandleRemoteTierSucceeds) {
+    EXPECT_EQ(portia_collective_handle_remote_tier(bridge, 12345, 2), 0);
+}
+
+TEST_F(PortiaCollectiveBridgeTest, HandleRemoteTierNullFails) {
+    EXPECT_EQ(portia_collective_handle_remote_tier(nullptr, 12345, 2), -1);
+}
+
+TEST_F(PortiaCollectiveBridgeTest, HandleRemoteTierIgnoresSelf) {
+    uint32_t local_id = portia_collective_get_local_id(bridge);
+    EXPECT_EQ(portia_collective_handle_remote_tier(bridge, local_id, 2), 0);
+}
+
+//=============================================================================
+// Instance State Tests (3 tests)
+//=============================================================================
+
+TEST_F(PortiaCollectiveBridgeTest, GetInstanceStateSucceeds) {
+    portia_collective_update(bridge, 100);
+    uint32_t local_id = portia_collective_get_local_id(bridge);
+    collective_instance_state_t state;
+    EXPECT_EQ(portia_collective_get_instance_state(bridge, local_id, &state), 0);
+    EXPECT_EQ(state.instance_id, local_id);
+}
+
+TEST_F(PortiaCollectiveBridgeTest, GetInstanceStateNotFound) {
+    collective_instance_state_t state;
+    EXPECT_EQ(portia_collective_get_instance_state(bridge, 99999, &state), -1);
+}
+
+TEST_F(PortiaCollectiveBridgeTest, GetInstanceStateNullFails) {
+    collective_instance_state_t state;
+    EXPECT_EQ(portia_collective_get_instance_state(nullptr, 1, &state), -1);
+    EXPECT_EQ(portia_collective_get_instance_state(bridge, 1, nullptr), -1);
+}
+
+//=============================================================================
+// Boundary Value Tests (4 tests)
+//=============================================================================
+
+TEST_F(PortiaCollectiveBridgeTest, BroadcastTierZero) {
+    EXPECT_EQ(portia_collective_broadcast_tier(bridge, 0), 0);
+}
+
+TEST_F(PortiaCollectiveBridgeTest, BroadcastTierMax) {
+    EXPECT_EQ(portia_collective_broadcast_tier(bridge, 3), 0);
+}
+
+TEST_F(PortiaCollectiveBridgeTest, RequestOffloadZeroComplexity) {
+    uint32_t target = 0;
+    // No other instances, should fail
+    EXPECT_EQ(portia_collective_request_offload(bridge, 0.0f, &target), -1);
+}
+
+TEST_F(PortiaCollectiveBridgeTest, RequestOffloadMaxComplexity) {
+    uint32_t target = 0;
+    EXPECT_EQ(portia_collective_request_offload(bridge, 1.0f, &target), -1);
 }
 
 int main(int argc, char** argv) {

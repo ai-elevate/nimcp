@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/thread/nimcp_thread.h"
 
 #include <string.h>
 #include <math.h>
@@ -26,6 +27,9 @@
 //=============================================================================
 
 struct occipital_collective_bridge {
+    /* Thread safety */
+    nimcp_mutex_t* mutex;
+
     /* Configuration */
     occipital_collective_config_t config;
 
@@ -117,6 +121,14 @@ occipital_collective_bridge_t* occipital_collective_create(
         return NULL;
     }
 
+    /* Create mutex for thread safety */
+    bridge->mutex = nimcp_mutex_create(NULL);
+    if (!bridge->mutex) {
+        LOG_ERROR("Failed to create mutex for occipital-collective bridge");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     /* Apply configuration */
     if (config) {
         bridge->config = *config;
@@ -167,6 +179,12 @@ void occipital_collective_destroy(occipital_collective_bridge_t* bridge) {
         occipital_collective_disconnect_bio_async(bridge);
     }
 
+    /* Destroy mutex */
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_free(bridge->mutex);
+    }
+
     LOG_INFO("Occipital-collective bridge destroyed (local_id=%u)", bridge->local_instance_id);
 
     nimcp_free(bridge);
@@ -174,6 +192,8 @@ void occipital_collective_destroy(occipital_collective_bridge_t* bridge) {
 
 int occipital_collective_reset(occipital_collective_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
 
     /* Reset targets and features */
     memset(bridge->targets, 0, sizeof(bridge->targets));
@@ -199,6 +219,8 @@ int occipital_collective_reset(occipital_collective_bridge_t* bridge) {
     /* Reset timing */
     bridge->last_update_ms = nimcp_time_get_ms();
     bridge->last_broadcast_ms = 0;
+
+    nimcp_mutex_unlock(bridge->mutex);
 
     LOG_DEBUG("Occipital-collective bridge reset");
 

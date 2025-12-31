@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/thread/nimcp_thread.h"
 
 #include <string.h>
 
@@ -54,6 +55,9 @@ struct portia_collective_bridge {
     /* State flags */
     bool initialized;
     bool bio_async_connected;
+
+    /* Thread safety */
+    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -93,6 +97,14 @@ portia_collective_bridge_t* portia_collective_create(
     portia_collective_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR("Failed to allocate portia-collective bridge");
+        return NULL;
+    }
+
+    /* Create mutex for thread safety */
+    bridge->mutex = nimcp_mutex_create(NULL);
+    if (!bridge->mutex) {
+        LOG_ERROR("Failed to create mutex for portia-collective bridge");
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -136,6 +148,12 @@ void portia_collective_destroy(portia_collective_bridge_t* bridge) {
         portia_collective_disconnect_bio_async(bridge);
     }
 
+    /* Destroy mutex */
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_free(bridge->mutex);
+    }
+
     LOG_INFO("Portia-collective bridge destroyed (local_id=%u)", bridge->local_instance_id);
 
     nimcp_free(bridge);
@@ -143,6 +161,8 @@ void portia_collective_destroy(portia_collective_bridge_t* bridge) {
 
 int portia_collective_reset(portia_collective_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
 
     /* Reset collective state */
     memset(bridge->instances, 0, sizeof(bridge->instances));
@@ -156,6 +176,8 @@ int portia_collective_reset(portia_collective_bridge_t* bridge) {
     /* Reset timing */
     bridge->last_update_ms = nimcp_time_get_ms();
     bridge->last_broadcast_ms = 0;
+
+    nimcp_mutex_unlock(bridge->mutex);
 
     LOG_DEBUG("Portia-collective bridge reset");
 
