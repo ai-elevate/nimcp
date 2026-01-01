@@ -68,6 +68,8 @@ static size_t get_elem_size(nimcp_gpu_precision_t precision)
         case NIMCP_GPU_PRECISION_BF16: return sizeof(__nv_bfloat16);
         case NIMCP_GPU_PRECISION_INT8: return sizeof(int8_t);
         case NIMCP_GPU_PRECISION_TF32: return sizeof(float);
+        case NIMCP_GPU_PRECISION_UINT32: return sizeof(uint32_t);
+        case NIMCP_GPU_PRECISION_INT32: return sizeof(int32_t);
         default: return sizeof(float);
     }
 }

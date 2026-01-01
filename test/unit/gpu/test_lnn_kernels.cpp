@@ -25,11 +25,14 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
+// GPU headers include CUDA headers that cannot be in extern "C" blocks
 #include "gpu/lnn/nimcp_lnn_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
+
+extern "C" {
 #include "lnn/nimcp_lnn_types.h"
+#include "utils/tensor/nimcp_tensor.h"
 }
 
 //=============================================================================
@@ -151,8 +154,7 @@ protected:
     nimcp_gpu_tensor_t* create_int_tensor(const uint32_t* data, size_t size) {
         if (!gpu_available) return nullptr;
         size_t dims[1] = {size};
-        // Note: Using INT8 as placeholder - actual implementation may vary
-        return nimcp_gpu_tensor_from_host(ctx, data, dims, 1, NIMCP_GPU_PRECISION_INT8);
+        return nimcp_gpu_tensor_from_host(ctx, data, dims, 1, NIMCP_GPU_PRECISION_UINT32);
     }
 
     /**
@@ -165,12 +167,15 @@ protected:
 
     /**
      * @brief Create mock CPU LNN layer for testing GPU layer creation
+     * @param n_neurons Number of neurons (default: SMALL_N_NEURONS)
+     * @param n_inputs Number of inputs (default: DEFAULT_N_INPUTS)
      */
-    lnn_layer_t* create_mock_cpu_layer() {
+    lnn_layer_t* create_mock_cpu_layer(size_t n_neurons = SMALL_N_NEURONS,
+                                        size_t n_inputs = DEFAULT_N_INPUTS) {
         lnn_layer_t* layer = static_cast<lnn_layer_t*>(calloc(1, sizeof(lnn_layer_t)));
         if (!layer) return nullptr;
 
-        layer->n_neurons = SMALL_N_NEURONS;
+        layer->n_neurons = n_neurons;
         layer->ode_method = LNN_ODE_RK4;
         layer->dt = DEFAULT_DT;
 
@@ -184,10 +189,61 @@ protected:
                 layer->neurons[i].x = 0.0f;
                 layer->neurons[i].tau_base = DEFAULT_TAU_BASE;
                 layer->neurons[i].tau_current = DEFAULT_TAU_BASE;
-                layer->neurons[i].n_inputs = DEFAULT_N_INPUTS;
+                layer->neurons[i].n_inputs = n_inputs;
                 layer->neurons[i].activation = LNN_ACTIVATION_TANH;
             }
         }
+
+        // Dimension arrays (uint32_t for tensor API)
+        uint32_t state_dims[] = {(uint32_t)n_neurons};
+        uint32_t w_in_dims[] = {(uint32_t)n_neurons, (uint32_t)n_inputs};
+        uint32_t w_rec_dims[] = {(uint32_t)n_neurons, (uint32_t)n_neurons};
+
+        // Create state tensor x [n_neurons] - zero initialized
+        layer->x = nimcp_tensor_zeros(state_dims, 1, NIMCP_DTYPE_F32);
+
+        // Create dx_dt tensor [n_neurons] - zero initialized
+        layer->dx_dt = nimcp_tensor_zeros(state_dims, 1, NIMCP_DTYPE_F32);
+
+        // Create tau tensor [n_neurons] - filled with tau base
+        layer->tau = nimcp_tensor_full(state_dims, 1, NIMCP_DTYPE_F32, DEFAULT_TAU_BASE);
+
+        // Create tau_base tensor [n_neurons] - filled with tau base
+        layer->tau_base = nimcp_tensor_full(state_dims, 1, NIMCP_DTYPE_F32, DEFAULT_TAU_BASE);
+
+        // Create W_in weight matrix [n_neurons, n_inputs]
+        layer->W_in = nimcp_tensor_zeros(w_in_dims, 2, NIMCP_DTYPE_F32);
+        if (layer->W_in) {
+            // Initialize with small random-like values (deterministic for testing)
+            float* data = static_cast<float*>(nimcp_tensor_data(layer->W_in));
+            if (data) {
+                for (size_t i = 0; i < n_neurons * n_inputs; i++) {
+                    data[i] = 0.1f * ((float)(i % 10) - 5.0f) / 5.0f;
+                }
+            }
+        }
+
+        // Create W_rec recurrent weight matrix [n_neurons, n_neurons]
+        layer->W_rec = nimcp_tensor_zeros(w_rec_dims, 2, NIMCP_DTYPE_F32);
+        if (layer->W_rec) {
+            // Add small diagonal for stability
+            float* data = static_cast<float*>(nimcp_tensor_data(layer->W_rec));
+            if (data) {
+                for (size_t i = 0; i < n_neurons; i++) {
+                    data[i * n_neurons + i] = 0.1f;
+                }
+            }
+        }
+
+        // Create b_in bias [n_neurons] - zero initialized
+        layer->b_in = nimcp_tensor_zeros(state_dims, 1, NIMCP_DTYPE_F32);
+
+        // Create W_tau weight matrix for tau modulation [n_neurons, n_inputs + n_neurons]
+        uint32_t w_tau_dims[] = {(uint32_t)n_neurons, (uint32_t)(n_inputs + n_neurons)};
+        layer->W_tau = nimcp_tensor_zeros(w_tau_dims, 2, NIMCP_DTYPE_F32);
+
+        // Create b_tau bias [n_neurons] - zero initialized
+        layer->b_tau = nimcp_tensor_zeros(state_dims, 1, NIMCP_DTYPE_F32);
 
         return layer;
     }
@@ -198,6 +254,15 @@ protected:
     void free_mock_cpu_layer(lnn_layer_t* layer) {
         if (!layer) return;
         if (layer->neurons) free(layer->neurons);
+        if (layer->x) nimcp_tensor_destroy(layer->x);
+        if (layer->dx_dt) nimcp_tensor_destroy(layer->dx_dt);
+        if (layer->tau) nimcp_tensor_destroy(layer->tau);
+        if (layer->tau_base) nimcp_tensor_destroy(layer->tau_base);
+        if (layer->W_in) nimcp_tensor_destroy(layer->W_in);
+        if (layer->W_rec) nimcp_tensor_destroy(layer->W_rec);
+        if (layer->W_tau) nimcp_tensor_destroy(layer->W_tau);
+        if (layer->b_in) nimcp_tensor_destroy(layer->b_in);
+        if (layer->b_tau) nimcp_tensor_destroy(layer->b_tau);
         free(layer);
     }
 };
@@ -747,9 +812,9 @@ TEST_F(LNNKernelTest, SparseMatVec_CorrectResult) {
     size_t col_dims[1] = {5};
 
     nimcp_gpu_tensor_t* row_ptr = nimcp_gpu_tensor_from_host(
-        ctx, row_ptr_data.data(), row_dims, 1, NIMCP_GPU_PRECISION_INT8);
+        ctx, row_ptr_data.data(), row_dims, 1, NIMCP_GPU_PRECISION_UINT32);
     nimcp_gpu_tensor_t* col_idx = nimcp_gpu_tensor_from_host(
-        ctx, col_idx_data.data(), col_dims, 1, NIMCP_GPU_PRECISION_INT8);
+        ctx, col_idx_data.data(), col_dims, 1, NIMCP_GPU_PRECISION_UINT32);
     nimcp_gpu_tensor_t* values = create_tensor_from_data(values_data.data(), 5);
 
     if (!row_ptr || !col_idx || !values) {
@@ -803,9 +868,9 @@ TEST_F(LNNKernelTest, SparseMatVec_WithAlpha_Scales) {
     size_t col_dims[1] = {3};
 
     nimcp_gpu_tensor_t* row_ptr = nimcp_gpu_tensor_from_host(
-        ctx, row_ptr_data.data(), row_dims, 1, NIMCP_GPU_PRECISION_INT8);
+        ctx, row_ptr_data.data(), row_dims, 1, NIMCP_GPU_PRECISION_UINT32);
     nimcp_gpu_tensor_t* col_idx = nimcp_gpu_tensor_from_host(
-        ctx, col_idx_data.data(), col_dims, 1, NIMCP_GPU_PRECISION_INT8);
+        ctx, col_idx_data.data(), col_dims, 1, NIMCP_GPU_PRECISION_UINT32);
     nimcp_gpu_tensor_t* values = create_tensor_from_data(values_data.data(), 3);
 
     if (!row_ptr || !col_idx || !values) {
@@ -857,15 +922,15 @@ TEST_F(LNNKernelTest, SparseAdd_ProducesSum) {
     size_t col_dims[1] = {3};
 
     nimcp_gpu_tensor_t* A_row_ptr = nimcp_gpu_tensor_from_host(
-        ctx, row_ptr_data.data(), row_dims, 1, NIMCP_GPU_PRECISION_INT8);
+        ctx, row_ptr_data.data(), row_dims, 1, NIMCP_GPU_PRECISION_UINT32);
     nimcp_gpu_tensor_t* A_col_idx = nimcp_gpu_tensor_from_host(
-        ctx, col_idx_data.data(), col_dims, 1, NIMCP_GPU_PRECISION_INT8);
+        ctx, col_idx_data.data(), col_dims, 1, NIMCP_GPU_PRECISION_UINT32);
     nimcp_gpu_tensor_t* A_vals = create_tensor_from_data(A_values.data(), 3);
 
     nimcp_gpu_tensor_t* B_row_ptr = nimcp_gpu_tensor_from_host(
-        ctx, row_ptr_data.data(), row_dims, 1, NIMCP_GPU_PRECISION_INT8);
+        ctx, row_ptr_data.data(), row_dims, 1, NIMCP_GPU_PRECISION_UINT32);
     nimcp_gpu_tensor_t* B_col_idx = nimcp_gpu_tensor_from_host(
-        ctx, col_idx_data.data(), col_dims, 1, NIMCP_GPU_PRECISION_INT8);
+        ctx, col_idx_data.data(), col_dims, 1, NIMCP_GPU_PRECISION_UINT32);
     nimcp_gpu_tensor_t* B_vals = create_tensor_from_data(B_values.data(), 3);
 
     if (!A_row_ptr || !A_col_idx || !A_vals ||
@@ -875,9 +940,9 @@ TEST_F(LNNKernelTest, SparseAdd_ProducesSum) {
 
     // Output tensors
     nimcp_gpu_tensor_t* C_row_ptr = nimcp_gpu_tensor_from_host(
-        ctx, row_ptr_data.data(), row_dims, 1, NIMCP_GPU_PRECISION_INT8);
+        ctx, row_ptr_data.data(), row_dims, 1, NIMCP_GPU_PRECISION_UINT32);
     nimcp_gpu_tensor_t* C_col_idx = nimcp_gpu_tensor_from_host(
-        ctx, col_idx_data.data(), col_dims, 1, NIMCP_GPU_PRECISION_INT8);
+        ctx, col_idx_data.data(), col_dims, 1, NIMCP_GPU_PRECISION_UINT32);
     nimcp_gpu_tensor_t* C_vals = create_zero_tensor(3);
 
     bool result = nimcp_gpu_sparse_add(ctx,
@@ -1274,27 +1339,13 @@ TEST_F(LNNKernelTest, Integration_ForwardBackward) {
 TEST_F(LNNKernelTest, LargeScale_LNNSimulation) {
     RequireGPU();
 
-    // Create larger layer
-    lnn_layer_t* cpu_layer = static_cast<lnn_layer_t*>(calloc(1, sizeof(lnn_layer_t)));
+    // Create larger layer using helper (with proper tensor initialization)
+    lnn_layer_t* cpu_layer = create_mock_cpu_layer(LARGE_N_NEURONS, DEFAULT_N_INPUTS);
     ASSERT_NE(cpu_layer, nullptr);
-
-    cpu_layer->n_neurons = LARGE_N_NEURONS;
-    cpu_layer->ode_method = LNN_ODE_RK4;
-    cpu_layer->dt = DEFAULT_DT;
-    cpu_layer->neurons = static_cast<lnn_neuron_t*>(
-        calloc(cpu_layer->n_neurons, sizeof(lnn_neuron_t)));
-
-    if (cpu_layer->neurons) {
-        for (uint32_t i = 0; i < cpu_layer->n_neurons; i++) {
-            cpu_layer->neurons[i].tau_base = DEFAULT_TAU_BASE;
-            cpu_layer->neurons[i].n_inputs = DEFAULT_N_INPUTS;
-        }
-    }
 
     nimcp_lnn_layer_gpu_t* layer = nimcp_lnn_layer_gpu_create(ctx, cpu_layer);
     if (!layer) {
-        free(cpu_layer->neurons);
-        free(cpu_layer);
+        free_mock_cpu_layer(cpu_layer);
         GTEST_SKIP() << "GPU layer creation not supported";
     }
 
@@ -1323,8 +1374,7 @@ TEST_F(LNNKernelTest, LargeScale_LNNSimulation) {
 
     nimcp_gpu_tensor_destroy(input);
     nimcp_lnn_layer_gpu_destroy(layer);
-    free(cpu_layer->neurons);
-    free(cpu_layer);
+    free_mock_cpu_layer(cpu_layer);
 }
 
 /**

@@ -25,11 +25,10 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// GPU headers include CUDA headers that cannot be in extern "C" blocks
 #include "gpu/quantum/nimcp_quantum_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
-}
 
 //=============================================================================
 // Test Fixture

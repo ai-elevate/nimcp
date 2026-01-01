@@ -18,6 +18,7 @@
 #define NIMCP_BRAIN_INIT_SUBSYSTEMS_H
 
 #include "core/brain/nimcp_brain.h"
+#include "cognitive/mental_health/nimcp_mental_health_guardian.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -134,6 +135,12 @@ void nimcp_brain_factory_destroy_internal_kg_subsystem(brain_t brain);
 // Integrates with immune system for threat reporting and internal KG for topology
 bool nimcp_brain_factory_init_mental_health_guardian_subsystem(brain_t brain);
 void nimcp_brain_factory_destroy_mental_health_guardian_subsystem(brain_t brain);
+
+// Brain accessor functions for mental health guardian
+mental_health_guardian_t* brain_get_mental_health_guardian(brain_t brain);
+bool brain_start_mental_health_guardian(brain_t brain);
+bool brain_stop_mental_health_guardian(brain_t brain);
+bool brain_get_mental_health_guardian_status(brain_t brain, mental_health_guardian_status_t* status);
 
 // === FAULT TOLERANCE SUBSYSTEM (Intelligent Recovery) ===
 // Recovery executive with parietal integration for intelligent code repair

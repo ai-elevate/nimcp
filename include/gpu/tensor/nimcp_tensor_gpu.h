@@ -49,7 +49,9 @@ typedef enum {
     NIMCP_GPU_PRECISION_FP16 = 1,   /**< Half precision (16-bit float) */
     NIMCP_GPU_PRECISION_BF16 = 2,   /**< Brain float (16-bit) */
     NIMCP_GPU_PRECISION_INT8 = 3,   /**< Quantized 8-bit integer */
-    NIMCP_GPU_PRECISION_TF32 = 4    /**< Tensor Float 32 (Ampere+) */
+    NIMCP_GPU_PRECISION_TF32 = 4,   /**< Tensor Float 32 (Ampere+) */
+    NIMCP_GPU_PRECISION_UINT32 = 5, /**< Unsigned 32-bit integer (for indices) */
+    NIMCP_GPU_PRECISION_INT32 = 6   /**< Signed 32-bit integer */
 } nimcp_gpu_precision_t;
 
 /**

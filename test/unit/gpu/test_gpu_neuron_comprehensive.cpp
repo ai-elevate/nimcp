@@ -30,9 +30,8 @@
 #include <algorithm>
 #include <chrono>
 
-extern "C" {
+// GPU headers include CUDA headers that cannot be in extern "C" blocks
 #include "gpu/nimcp_gpu_neuron.h"
-}
 
 //=============================================================================
 // Test Constants

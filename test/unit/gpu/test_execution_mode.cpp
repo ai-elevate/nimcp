@@ -26,9 +26,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// GPU headers include CUDA headers that cannot be in extern "C" blocks
 #include "gpu/nimcp_execution_mode.h"
-}
 
 //=============================================================================
 // Test Fixture

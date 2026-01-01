@@ -28,12 +28,11 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
+// GPU headers include CUDA headers that cannot be in extern "C" blocks
 #include "gpu/training/nimcp_training_gpu.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/nimcp_execution_mode.h"
-}
 
 //=============================================================================
 // Test Constants

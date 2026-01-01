@@ -27,11 +27,10 @@
 #include <random>
 #include <algorithm>
 
-extern "C" {
+// GPU headers include CUDA headers that cannot be in extern "C" blocks
 #include "gpu/inference/nimcp_inference_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
-}
 
 //=============================================================================
 // Test Fixture
@@ -1155,12 +1154,22 @@ TEST_F(InferenceKernelTest, SessionDestroy_Null_DoesNotCrash) {
  * TEST: Session CUDA graph capture
  * WHAT: Test CUDA graph capture workflow
  * WHY:  Graph capture reduces kernel launch overhead
+ *
+ * NOTE: CUDA graph capture does NOT allow memory allocations during capture.
+ *       All tensors must be pre-allocated before calling begin_capture().
  */
 TEST_F(InferenceKernelTest, SessionGraphCapture_Workflow) {
     skipIfNoGPU();
 
     session = nimcp_infer_session_create(ctx, NIMCP_INFER_FP32, 1024 * 1024);
     ASSERT_NE(session, nullptr);
+
+    // Pre-allocate all tensors BEFORE capture begins
+    // CUDA graph capture does not allow memory allocations
+    size_t dims[2] = {4, 8};
+    nimcp_gpu_tensor_t* tensor = createTensor(dims, 2);
+    ASSERT_NE(tensor, nullptr);
+    fillRandom(tensor);  // Initialize data before capture
 
     // Begin capture
     bool begin_result = nimcp_infer_session_begin_capture(session);
@@ -1169,10 +1178,7 @@ TEST_F(InferenceKernelTest, SessionGraphCapture_Workflow) {
         GTEST_SKIP() << "CUDA graph capture not supported";
     }
 
-    // Perform some operations (would be captured)
-    size_t dims[2] = {4, 8};
-    nimcp_gpu_tensor_t* tensor = createTensor(dims, 2);
-    fillRandom(tensor);
+    // Perform compute operations only (no memory allocations during capture)
     nimcp_gpu_infer_activation_inplace(ctx, tensor, 0);  // ReLU
 
     // End capture
