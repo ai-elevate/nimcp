@@ -49,6 +49,7 @@
 #include <stdint.h>
 #include "common/nimcp_export.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
+#include "utils/tensor/nimcp_tensor.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -102,7 +103,7 @@ typedef enum {
 //=============================================================================
 
 /**
- * @brief Global neuromodulator concentrations
+ * @brief Global neuromodulator concentrations (tensor-based)
  *
  * WHAT: System-wide "chemical bath" that affects all neurons
  * WHY:  Models volume transmission - slow, diffuse signaling
@@ -110,24 +111,156 @@ typedef enum {
  *
  * BIOLOGICAL: Like cerebrospinal fluid concentrations
  * RANGE: All values 0.0 to 1.0 (normalized)
+ *
+ * TENSOR FORMAT:
+ * - concentrations: [NEUROMOD_COUNT] - All neuromodulator levels in single tensor
+ * - decay_rates: [NEUROMOD_COUNT] - Decay time constants per modulator
+ *
+ * BACKWARD COMPATIBILITY:
+ * - Scalar accessors (dopamine, serotonin, etc.) provided via helper functions
+ * - Legacy code can use neuromodulator_pool_get_dopamine(), etc.
  */
 typedef struct {
-    float dopamine;      /**< Current DA level (0-1) */
-    float serotonin;     /**< Current 5-HT level (0-1) */
-    float acetylcholine; /**< Current ACh level (0-1) */
-    float norepinephrine;/**< Current NE level (0-1) */
+    /**
+     * @brief Tensor holding all neuromodulator concentrations
+     * Shape: [NEUROMOD_COUNT], dtype: NIMCP_DTYPE_F32
+     * Index mapping:
+     *   [0] = dopamine
+     *   [1] = serotonin
+     *   [2] = acetylcholine
+     *   [3] = norepinephrine
+     *   [4] = gaba
+     *   [5] = glutamate
+     */
+    nimcp_tensor_t* concentrations;
 
-    // Fast neurotransmitters (local, not global)
-    float gaba;          /**< GABA tone (0-1) */
-    float glutamate;     /**< Glutamate tone (0-1) */
+    /**
+     * @brief Tensor holding decay time constants
+     * Shape: [NEUROMOD_COUNT], dtype: NIMCP_DTYPE_F32
+     */
+    nimcp_tensor_t* decay_rates;
 
-    // Dynamics
-    float decay_rates[NEUROMOD_COUNT]; /**< Decay time constants */
-    uint64_t last_update;               /**< Last update timestamp */
+    /**
+     * @brief Last update timestamp (microseconds)
+     */
+    uint64_t last_update;
+
+    /**
+     * @brief Flag indicating if tensors are owned (should be freed on destroy)
+     */
+    bool owns_tensors;
 } neuromodulator_pool_t;
 
 /**
- * @brief Receptor densities per neuron
+ * @brief Create neuromodulator pool with tensor storage
+ *
+ * WHAT: Allocates tensors for concentrations and decay rates
+ * WHY:  Initialize pool with proper tensor memory
+ * HOW:  Creates [NEUROMOD_COUNT] tensors for each field
+ *
+ * @return Initialized pool (call neuromodulator_pool_destroy to free)
+ */
+neuromodulator_pool_t neuromodulator_pool_create(void);
+
+/**
+ * @brief Destroy neuromodulator pool and free tensor memory
+ *
+ * WHAT: Frees tensor resources in pool
+ * WHY:  Proper cleanup of tensor memory
+ *
+ * @param pool Pool to destroy
+ */
+void neuromodulator_pool_destroy(neuromodulator_pool_t* pool);
+
+/**
+ * @brief Get dopamine concentration from pool
+ *
+ * WHAT: Accessor for dopamine level (backward compatibility)
+ * WHY:  Allows legacy code to work with tensor-based pool
+ *
+ * @param pool Neuromodulator pool
+ * @return Dopamine concentration (0-1)
+ */
+float neuromodulator_pool_get_dopamine(const neuromodulator_pool_t* pool);
+
+/**
+ * @brief Get serotonin concentration from pool
+ */
+float neuromodulator_pool_get_serotonin(const neuromodulator_pool_t* pool);
+
+/**
+ * @brief Get acetylcholine concentration from pool
+ */
+float neuromodulator_pool_get_acetylcholine(const neuromodulator_pool_t* pool);
+
+/**
+ * @brief Get norepinephrine concentration from pool
+ */
+float neuromodulator_pool_get_norepinephrine(const neuromodulator_pool_t* pool);
+
+/**
+ * @brief Get GABA concentration from pool
+ */
+float neuromodulator_pool_get_gaba(const neuromodulator_pool_t* pool);
+
+/**
+ * @brief Get glutamate concentration from pool
+ */
+float neuromodulator_pool_get_glutamate(const neuromodulator_pool_t* pool);
+
+/**
+ * @brief Set dopamine concentration in pool
+ *
+ * @param pool Neuromodulator pool
+ * @param value New dopamine concentration (0-1)
+ */
+void neuromodulator_pool_set_dopamine(neuromodulator_pool_t* pool, float value);
+
+/**
+ * @brief Set serotonin concentration in pool
+ */
+void neuromodulator_pool_set_serotonin(neuromodulator_pool_t* pool, float value);
+
+/**
+ * @brief Set acetylcholine concentration in pool
+ */
+void neuromodulator_pool_set_acetylcholine(neuromodulator_pool_t* pool, float value);
+
+/**
+ * @brief Set norepinephrine concentration in pool
+ */
+void neuromodulator_pool_set_norepinephrine(neuromodulator_pool_t* pool, float value);
+
+/**
+ * @brief Set GABA concentration in pool
+ */
+void neuromodulator_pool_set_gaba(neuromodulator_pool_t* pool, float value);
+
+/**
+ * @brief Set glutamate concentration in pool
+ */
+void neuromodulator_pool_set_glutamate(neuromodulator_pool_t* pool, float value);
+
+/**
+ * @brief Get concentration by neuromodulator type
+ *
+ * @param pool Neuromodulator pool
+ * @param type Neuromodulator type enum
+ * @return Concentration value (0-1)
+ */
+float neuromodulator_pool_get_by_type(const neuromodulator_pool_t* pool, neuromodulator_type_t type);
+
+/**
+ * @brief Set concentration by neuromodulator type
+ *
+ * @param pool Neuromodulator pool
+ * @param type Neuromodulator type enum
+ * @param value New concentration (0-1)
+ */
+void neuromodulator_pool_set_by_type(neuromodulator_pool_t* pool, neuromodulator_type_t type, float value);
+
+/**
+ * @brief Receptor densities per neuron (tensor-based)
  *
  * WHAT: How sensitive each neuron is to each neuromodulator
  * WHY:  Different brain regions have different receptor distributions
@@ -135,29 +268,144 @@ typedef struct {
  *
  * BIOLOGICAL: Like receptor expression levels
  * RANGE: 0.0 = no receptors, 1.0 = maximum density
+ *
+ * TENSOR FORMAT:
+ * - densities: [RECEPTOR_COUNT] - All receptor densities in single tensor
+ *   Index mapping:
+ *     [0] = D1 receptor density
+ *     [1] = D2 receptor density
+ *     [2] = 5-HT1A receptor density
+ *     [3] = 5-HT2A receptor density
+ *     [4] = Nicotinic ACh receptor density
+ *     [5] = Muscarinic ACh receptor density
+ *     [6] = α1-adrenergic receptor density
+ *     [7] = α2-adrenergic receptor density
+ *     [8] = β-adrenergic receptor density
+ *
+ * BACKWARD COMPATIBILITY:
+ * - Legacy accessors provided for common receptor types
  */
 typedef struct {
-    float d1_density;         /**< D1 receptor density */
-    float d2_density;         /**< D2 receptor density */
-    float serotonin_density;  /**< 5-HT receptor density */
-    float nicotinic_density;  /**< Nicotinic ACh receptor density */
-    float alpha_density;      /**< α-adrenergic receptor density */
-    float beta_density;       /**< β-adrenergic receptor density */
+    /**
+     * @brief Tensor holding all receptor densities
+     * Shape: [RECEPTOR_COUNT], dtype: NIMCP_DTYPE_F32
+     */
+    nimcp_tensor_t* densities;
+
+    /**
+     * @brief Flag indicating if tensor is owned (should be freed on destroy)
+     */
+    bool owns_tensor;
 } receptor_profile_t;
 
 /**
- * @brief Neuromodulation effects on a synapse
+ * @brief Create receptor profile with tensor storage
+ *
+ * WHAT: Allocates tensor for receptor densities
+ * WHY:  Initialize profile with proper tensor memory
+ *
+ * @return Initialized profile (call receptor_profile_destroy to free)
+ */
+receptor_profile_t receptor_profile_create(void);
+
+/**
+ * @brief Destroy receptor profile and free tensor memory
+ *
+ * @param profile Profile to destroy
+ */
+void receptor_profile_destroy(receptor_profile_t* profile);
+
+/**
+ * @brief Get receptor density by type
+ *
+ * @param profile Receptor profile
+ * @param type Receptor type enum
+ * @return Density value (0-1)
+ */
+float receptor_profile_get_density(const receptor_profile_t* profile, receptor_type_t type);
+
+/**
+ * @brief Set receptor density by type
+ *
+ * @param profile Receptor profile
+ * @param type Receptor type enum
+ * @param value New density (0-1)
+ */
+void receptor_profile_set_density(receptor_profile_t* profile, receptor_type_t type, float value);
+
+/* Backward compatibility accessors for common receptor types */
+float receptor_profile_get_d1_density(const receptor_profile_t* profile);
+float receptor_profile_get_d2_density(const receptor_profile_t* profile);
+float receptor_profile_get_serotonin_density(const receptor_profile_t* profile);
+float receptor_profile_get_nicotinic_density(const receptor_profile_t* profile);
+float receptor_profile_get_alpha_density(const receptor_profile_t* profile);
+float receptor_profile_get_beta_density(const receptor_profile_t* profile);
+
+void receptor_profile_set_d1_density(receptor_profile_t* profile, float value);
+void receptor_profile_set_d2_density(receptor_profile_t* profile, float value);
+void receptor_profile_set_serotonin_density(receptor_profile_t* profile, float value);
+void receptor_profile_set_nicotinic_density(receptor_profile_t* profile, float value);
+void receptor_profile_set_alpha_density(receptor_profile_t* profile, float value);
+void receptor_profile_set_beta_density(receptor_profile_t* profile, float value);
+
+/**
+ * @brief Neuromodulation effects on a synapse (tensor-based)
  *
  * WHAT: How neuromodulators change synaptic behavior
  * WHY:  Gates plasticity and transmission strength
  * HOW:  Computed from global levels × local receptors
+ *
+ * TENSOR FORMAT:
+ * - effects: [4] tensor containing:
+ *   [0] = learning_rate_multiplier (0-2)
+ *   [1] = transmission_gain (0-2)
+ *   [2] = excitability_shift (-0.5 to +0.5)
+ *   [3] = attention_weight (0-1)
  */
 typedef struct {
-    float learning_rate_multiplier;  /**< Scales plasticity (0-2) */
-    float transmission_gain;         /**< Scales synaptic strength (0-2) */
-    float excitability_shift;        /**< Shifts firing threshold (-0.5 to +0.5) */
-    float attention_weight;          /**< Attention modulation (0-1) */
+    /**
+     * @brief Tensor holding all modulation effects
+     * Shape: [4], dtype: NIMCP_DTYPE_F32
+     */
+    nimcp_tensor_t* effects;
+
+    /**
+     * @brief Flag indicating if tensor is owned
+     */
+    bool owns_tensor;
 } modulation_effects_t;
+
+/* Effect tensor indices */
+#define MODULATION_EFFECT_LEARNING_RATE    0
+#define MODULATION_EFFECT_TRANSMISSION     1
+#define MODULATION_EFFECT_EXCITABILITY     2
+#define MODULATION_EFFECT_ATTENTION        3
+#define MODULATION_EFFECT_COUNT            4
+
+/**
+ * @brief Create modulation effects with tensor storage
+ *
+ * @return Initialized effects (call modulation_effects_destroy to free)
+ */
+modulation_effects_t modulation_effects_create(void);
+
+/**
+ * @brief Destroy modulation effects and free tensor memory
+ *
+ * @param effects Effects to destroy
+ */
+void modulation_effects_destroy(modulation_effects_t* effects);
+
+/* Backward compatibility accessors */
+float modulation_effects_get_learning_rate_multiplier(const modulation_effects_t* effects);
+float modulation_effects_get_transmission_gain(const modulation_effects_t* effects);
+float modulation_effects_get_excitability_shift(const modulation_effects_t* effects);
+float modulation_effects_get_attention_weight(const modulation_effects_t* effects);
+
+void modulation_effects_set_learning_rate_multiplier(modulation_effects_t* effects, float value);
+void modulation_effects_set_transmission_gain(modulation_effects_t* effects, float value);
+void modulation_effects_set_excitability_shift(modulation_effects_t* effects, float value);
+void modulation_effects_set_attention_weight(modulation_effects_t* effects, float value);
 
 //=============================================================================
 // Neuromodulator System

@@ -895,7 +895,8 @@ void nimcp_infer_session_destroy(nimcp_infer_session_t* session)
         cudaFree(session->workspace);
     }
     if (session->cuda_graph) {
-        cudaGraphDestroy((cudaGraph_t)session->cuda_graph);
+        // cuda_graph is actually a cudaGraphExec_t, not cudaGraph_t
+        cudaGraphExecDestroy((cudaGraphExec_t)session->cuda_graph);
     }
     free(session);
 }

@@ -310,8 +310,10 @@ TEST_F(SNNKernelTest, LIFForward_StrongInput_GeneratesSpikes) {
     // Set voltage just below threshold
     nimcp_gpu_fill(ctx, state->v, -56.0f);  // Just below -55 threshold
 
-    // Strong input current
-    nimcp_gpu_tensor_t* input = create_filled_tensor(SMALL_N_NEURONS, 20.0f);
+    // Strong input current - needs to be ~35+ to overcome exponential decay
+    // with tau_mem=20ms, dt=1ms: alpha=0.95, so (1-alpha)*(v_rest+i) needs to push v over threshold
+    // With v=-56, v_rest=-65, threshold=-55: need i >= 30 to spike
+    nimcp_gpu_tensor_t* input = create_filled_tensor(SMALL_N_NEURONS, 40.0f);
     ASSERT_NE(input, nullptr);
 
     // Forward pass

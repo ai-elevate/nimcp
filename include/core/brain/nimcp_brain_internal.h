@@ -105,9 +105,10 @@
 #include "core/medulla/nimcp_medulla.h"
 
 //=============================================================================
-// GPU Context
+// GPU Context and Substrate
 //=============================================================================
 #include "gpu/context/nimcp_gpu_context.h"
+#include "gpu/substrate/nimcp_substrate_gpu.h"
 
 // Fault Tolerance (forward declaration to avoid header conflicts)
 struct recovery_executive_internal;
@@ -1207,6 +1208,23 @@ struct brain_struct {
     struct nimcp_gpu_context_s* gpu_ctx;                              // GPU context for CUDA acceleration
     bool gpu_enabled;                                                 // GPU acceleration enabled for this brain
     uint64_t last_gpu_sync_us;                                        // Last GPU synchronization timestamp
+
+    //=========================================================================
+    // GPU Neural Substrate Context (Unified GPU Substrate Processing)
+    //=========================================================================
+    //
+    // Unified GPU acceleration for all neural substrate components:
+    // - Axons: Signal propagation, refractory dynamics, myelination effects
+    // - Dendrites: Cable equation, NMDA spikes, calcium dynamics, bAP
+    // - Myelin: G-ratio, conduction velocity, activity-dependent plasticity
+    // - Neuromodulators: DA/5HT/ACh/NE dynamics, phasic-tonic, receptor effects
+    // - Glial: Astrocyte calcium waves, microglia activation, OPC differentiation
+    // - Metabolic: ATP/oxygen/glucose constraints, fatigue modeling
+    //
+    // Auto-initialized during brain creation if GPU is available.
+    // Provides tensor-based batch operations for large-scale simulations.
+    //
+    struct substrate_gpu_context* substrate_gpu_ctx;                  // Unified substrate GPU context
 };
 
 //=============================================================================

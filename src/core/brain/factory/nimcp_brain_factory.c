@@ -158,6 +158,7 @@ extern void set_error(const char* format, ...);
 #define init_axon_subsystem                         nimcp_brain_factory_init_axon_subsystem
 #define init_dendrite_subsystem                     nimcp_brain_factory_init_dendrite_subsystem
 #define init_cortical_columns_subsystem             nimcp_brain_factory_init_cortical_columns_subsystem
+#define init_substrate_gpu_subsystem                nimcp_brain_factory_init_substrate_gpu_subsystem
 #define init_ethics_engine_subsystem                nimcp_brain_factory_init_ethics_engine_subsystem
 #define init_empathy_network_subsystem              nimcp_brain_factory_init_empathy_network_subsystem
 #define init_empathetic_response_subsystem          nimcp_brain_factory_init_empathetic_response_subsystem
@@ -480,6 +481,10 @@ brain_t brain_create_custom(const brain_config_t* config)
         if (!init_neuromodulator_system(brain)) { brain_destroy(brain); return NULL; }
         if (!init_spatial_neuromod_system(brain)) { brain_destroy(brain); return NULL; }
     }
+
+    // Phase GPU-1: Unified GPU Neural Substrate (depends on GPU context, brain regions, neuromod)
+    // Initializes GPU tensors for axons, dendrites, myelin, neuromodulators, glial, metabolic
+    if (!init_substrate_gpu_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // Phase 8.9: Neural logic gates
     if (!init_symbolic_logic_subsystem(brain)) { brain_destroy(brain); return NULL; }

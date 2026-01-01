@@ -1987,6 +1987,7 @@ set(CMAKE_DEPEND_INFO_FILES
   "test/unit/gpu/CMakeFiles/unit_gpu_test_training_kernels.dir/DependInfo.cmake"
   "test/unit/gpu/CMakeFiles/unit_gpu_test_snn_kernels.dir/DependInfo.cmake"
   "test/unit/gpu/CMakeFiles/unit_gpu_test_lnn_kernels.dir/DependInfo.cmake"
+  "test/unit/gpu/CMakeFiles/unit_gpu_test_substrate_gpu.dir/DependInfo.cmake"
   "test/unit/gpu/immune/CMakeFiles/unit_gpu_immune_execution.dir/DependInfo.cmake"
   "test/unit/gpu/immune/CMakeFiles/unit_gpu_immune_multigpu.dir/DependInfo.cmake"
   "test/unit/gpu/cognitive/CMakeFiles/unit_gpu_cognitive_test_broca_gpu.dir/DependInfo.cmake"

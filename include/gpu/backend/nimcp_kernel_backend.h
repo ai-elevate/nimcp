@@ -421,6 +421,220 @@ typedef struct nimcp_inference_ops {
 } nimcp_inference_ops_t;
 
 //=============================================================================
+// Neural Substrate Operations Interface
+//=============================================================================
+/**
+ * @brief Unified interface for neural substrate GPU/CPU operations
+ *
+ * WHAT: Common interface for axon, dendrite, myelin, neuromodulator, and glial ops
+ * WHY:  Enables runtime backend selection without separate GPU modules
+ * HOW:  Strategy pattern with tensor-based parameters for all operations
+ *
+ * DESIGN: All parameters are tensors to enable:
+ * - Batch processing across populations
+ * - Automatic GPU acceleration
+ * - Gradient computation for learning
+ */
+typedef struct nimcp_substrate_ops {
+    //=========================================================================
+    // Axon Operations
+    //=========================================================================
+
+    /** @brief Propagate signals along axons with myelination effects */
+    nimcp_kernel_error_t (*axon_propagate)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* input_signals,    /**< [N_axons] input spikes */
+        const nimcp_gpu_tensor_t* velocities,       /**< [N_axons] conduction velocity */
+        const nimcp_gpu_tensor_t* myelination,      /**< [N_axons] myelin factor 0-1 */
+        const nimcp_gpu_tensor_t* lengths,          /**< [N_axons] axon lengths */
+        nimcp_gpu_tensor_t* output_signals,         /**< [N_axons] propagated signals */
+        nimcp_gpu_tensor_t* delays,                 /**< [N_axons] computed delays */
+        float dt);
+
+    /** @brief Update axon refractory states */
+    nimcp_kernel_error_t (*axon_refractory)(
+        nimcp_gpu_context_t* ctx,
+        nimcp_gpu_tensor_t* refractory_state,       /**< [N_axons] refractory timers */
+        const nimcp_gpu_tensor_t* spikes,           /**< [N_axons] new spikes */
+        float refractory_period,
+        float dt);
+
+    //=========================================================================
+    // Dendrite Operations
+    //=========================================================================
+
+    /** @brief Cable equation integration for dendritic segments */
+    nimcp_kernel_error_t (*dendrite_cable_integrate)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* inputs,           /**< [N_dend, N_seg] synaptic inputs */
+        const nimcp_gpu_tensor_t* cable_Rm,         /**< [N_dend] membrane resistance */
+        const nimcp_gpu_tensor_t* cable_Cm,         /**< [N_dend] membrane capacitance */
+        const nimcp_gpu_tensor_t* cable_Ra,         /**< [N_dend] axial resistance */
+        nimcp_gpu_tensor_t* voltages,               /**< [N_dend, N_seg] segment voltages */
+        float dt);
+
+    /** @brief NMDA spike detection and amplification */
+    nimcp_kernel_error_t (*dendrite_nmda)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* voltages,         /**< [N_dend, N_seg] segment voltages */
+        const nimcp_gpu_tensor_t* mg_block,         /**< [N_dend] Mg2+ block factor */
+        nimcp_gpu_tensor_t* nmda_current,           /**< [N_dend, N_seg] NMDA currents */
+        nimcp_gpu_tensor_t* nmda_spikes,            /**< [N_dend] detected NMDA spikes */
+        float nmda_threshold);
+
+    /** @brief Calcium dynamics in dendritic spines */
+    nimcp_kernel_error_t (*dendrite_calcium)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* nmda_current,     /**< [N_spines] NMDA calcium influx */
+        const nimcp_gpu_tensor_t* vgcc_current,     /**< [N_spines] VGCC calcium influx */
+        nimcp_gpu_tensor_t* calcium,                /**< [N_spines] calcium concentration */
+        nimcp_gpu_tensor_t* calcium_decay,          /**< [N_spines] decay state */
+        float tau_calcium,
+        float dt);
+
+    /** @brief Backpropagating action potential */
+    nimcp_kernel_error_t (*dendrite_bap)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* soma_spike,       /**< [N_neurons] somatic spikes */
+        const nimcp_gpu_tensor_t* attenuation,      /**< [N_dend, N_seg] distance attenuation */
+        nimcp_gpu_tensor_t* bap_signal,             /**< [N_dend, N_seg] bAP amplitude */
+        float bap_velocity,
+        float dt);
+
+    //=========================================================================
+    // Myelin Sheath Operations
+    //=========================================================================
+
+    /** @brief Compute optimal G-ratio (Rushton's formula) */
+    nimcp_kernel_error_t (*myelin_g_ratio)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* axon_diameter,    /**< [N_axons] axon diameters */
+        const nimcp_gpu_tensor_t* fiber_diameter,   /**< [N_axons] total fiber diameters */
+        nimcp_gpu_tensor_t* g_ratio,                /**< [N_axons] computed G-ratios */
+        nimcp_gpu_tensor_t* is_optimal);            /**< [N_axons] optimality flags */
+
+    /** @brief Saltatory conduction velocity calculation */
+    nimcp_kernel_error_t (*myelin_conduction_velocity)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* g_ratio,          /**< [N_axons] G-ratios */
+        const nimcp_gpu_tensor_t* internode_length, /**< [N_axons] internode lengths */
+        const nimcp_gpu_tensor_t* temperature,      /**< [1] or [N_axons] temperature */
+        nimcp_gpu_tensor_t* velocity);              /**< [N_axons] conduction velocities */
+
+    /** @brief Activity-dependent myelination plasticity */
+    nimcp_kernel_error_t (*myelin_plasticity)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* activity,         /**< [N_axons] neural activity */
+        const nimcp_gpu_tensor_t* oligodendrocyte_signal, /**< [N_axons] OL signals */
+        nimcp_gpu_tensor_t* myelin_thickness,       /**< [N_axons] myelin thickness */
+        nimcp_gpu_tensor_t* sheath_length,          /**< [N_axons] sheath lengths */
+        float learning_rate,
+        float dt);
+
+    //=========================================================================
+    // Neuromodulator Operations
+    //=========================================================================
+
+    /** @brief Update neuromodulator concentrations with decay */
+    nimcp_kernel_error_t (*neuromod_decay)(
+        nimcp_gpu_context_t* ctx,
+        nimcp_gpu_tensor_t* concentrations,         /**< [N_pools, N_types] DA,5HT,ACh,NE */
+        const nimcp_gpu_tensor_t* decay_rates,      /**< [N_types] per-type decay rates */
+        float dt);
+
+    /** @brief Process neuromodulator release events */
+    nimcp_kernel_error_t (*neuromod_release)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* release_sites,    /**< [N_events] release site IDs */
+        const nimcp_gpu_tensor_t* release_types,    /**< [N_events] neuromod types */
+        const nimcp_gpu_tensor_t* release_amounts,  /**< [N_events] release amounts */
+        nimcp_gpu_tensor_t* concentrations,         /**< [N_pools, N_types] updated */
+        uint32_t n_events);
+
+    /** @brief Compute synaptic modulation from neuromodulator levels */
+    nimcp_kernel_error_t (*neuromod_effect)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* concentrations,   /**< [N_pools, N_types] levels */
+        const nimcp_gpu_tensor_t* receptor_density, /**< [N_synapses, N_types] densities */
+        nimcp_gpu_tensor_t* modulation);            /**< [N_synapses] modulation factor */
+
+    /** @brief Phasic-tonic neuromodulator dynamics */
+    nimcp_kernel_error_t (*neuromod_phasic_tonic)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* phasic_input,     /**< [N_pools, N_types] phasic bursts */
+        nimcp_gpu_tensor_t* tonic_level,            /**< [N_pools, N_types] tonic baseline */
+        nimcp_gpu_tensor_t* total_level,            /**< [N_pools, N_types] combined */
+        float tonic_tau,
+        float phasic_decay,
+        float dt);
+
+    //=========================================================================
+    // Glial Cell Operations
+    //=========================================================================
+
+    /** @brief Astrocyte calcium wave propagation */
+    nimcp_kernel_error_t (*astrocyte_calcium_wave)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* ip3_levels,       /**< [N_astro] IP3 concentrations */
+        const nimcp_gpu_tensor_t* gap_junctions,    /**< [N_astro, N_neighbors] connectivity */
+        nimcp_gpu_tensor_t* calcium,                /**< [N_astro] calcium levels */
+        nimcp_gpu_tensor_t* wave_front,             /**< [N_astro] wave propagation state */
+        float diffusion_rate,
+        float dt);
+
+    /** @brief Astrocyte gliotransmitter release */
+    nimcp_kernel_error_t (*astrocyte_release)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* calcium,          /**< [N_astro] calcium levels */
+        const nimcp_gpu_tensor_t* threshold,        /**< [N_astro] release thresholds */
+        nimcp_gpu_tensor_t* glutamate_release,      /**< [N_astro] glutamate released */
+        nimcp_gpu_tensor_t* atp_release);           /**< [N_astro] ATP released */
+
+    /** @brief Microglia activation state update */
+    nimcp_kernel_error_t (*microglia_activation)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* damage_signals,   /**< [N_micro] ATP/cytokine levels */
+        const nimcp_gpu_tensor_t* anti_inflam,      /**< [N_micro] anti-inflammatory */
+        nimcp_gpu_tensor_t* activation_state,       /**< [N_micro] M0/M1/M2 state */
+        nimcp_gpu_tensor_t* phagocytic_activity,    /**< [N_micro] phagocytosis rate */
+        float activation_threshold,
+        float dt);
+
+    /** @brief Oligodendrocyte precursor differentiation */
+    nimcp_kernel_error_t (*oligodendrocyte_differentiation)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* activity_signal,  /**< [N_opc] neural activity */
+        const nimcp_gpu_tensor_t* growth_factors,   /**< [N_opc] PDGF, FGF levels */
+        nimcp_gpu_tensor_t* differentiation_state,  /**< [N_opc] OPC->OL progress */
+        nimcp_gpu_tensor_t* myelin_production,      /**< [N_opc] myelin output rate */
+        float dt);
+
+    //=========================================================================
+    // Metabolic Operations
+    //=========================================================================
+
+    /** @brief Compute metabolic effects on neural activity */
+    nimcp_kernel_error_t (*metabolic_effects)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* atp_levels,       /**< [N_regions] ATP availability */
+        const nimcp_gpu_tensor_t* oxygen_levels,    /**< [N_regions] oxygen levels */
+        const nimcp_gpu_tensor_t* glucose_levels,   /**< [N_regions] glucose levels */
+        nimcp_gpu_tensor_t* capacity,               /**< [N_regions] metabolic capacity */
+        nimcp_gpu_tensor_t* fatigue);               /**< [N_regions] fatigue factor */
+
+    /** @brief Update metabolic state based on activity */
+    nimcp_kernel_error_t (*metabolic_update)(
+        nimcp_gpu_context_t* ctx,
+        const nimcp_gpu_tensor_t* neural_activity,  /**< [N_regions] activity levels */
+        nimcp_gpu_tensor_t* atp_levels,             /**< [N_regions] ATP (consumed) */
+        nimcp_gpu_tensor_t* lactate_levels,         /**< [N_regions] lactate (produced) */
+        float consumption_rate,
+        float recovery_rate,
+        float dt);
+
+} nimcp_substrate_ops_t;
+
+//=============================================================================
 // Unified Kernel Backend
 //=============================================================================
 
@@ -440,6 +654,7 @@ typedef struct nimcp_kernel_backend {
     nimcp_lnn_ops_t lnn;               /**< LNN operations */
     nimcp_quantum_ops_t quantum;       /**< Quantum operations */
     nimcp_inference_ops_t inference;   /**< Inference operations */
+    nimcp_substrate_ops_t substrate;   /**< Neural substrate operations */
 } nimcp_kernel_backend_t;
 
 //=============================================================================

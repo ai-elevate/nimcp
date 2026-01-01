@@ -1,12 +1,18 @@
 /**
  * @file nimcp_neural_logic_evaluation.c
  * @brief MODULE 2: Neural Logic Evaluation Implementation
- * @version 3.0.0
- * @date 2025-11-20
+ * @version 4.0.0
+ * @date 2025-12-31
  *
  * WHAT: Evaluation interface for logic gates with event publishing
  * WHY:  Single Responsibility: Execute logic operations and notify observers
  * HOW:  Wrapper around neural_logic_evaluate() with event bus integration
+ *
+ * VERSION 4.0.0 CHANGES:
+ * - Refactored to use nimcp_tensor_t for variable-arity logic gates
+ * - Removed fixed-size input arrays (was limited to 4 inputs)
+ * - Added tensor-based batch evaluation for GPU acceleration
+ * - Support for N-ary logic gates (AND_N, OR_N, etc.)
  *
  * @author NIMCP Development Team
  */
@@ -22,6 +28,7 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/tensor/nimcp_tensor.h"
 #include <string.h>
 
 // === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
@@ -34,37 +41,64 @@
 #define LOG_MODULE "neural_logic_evaluation"
 #define BIO_MODULE_ID 0x0138
 
-
-//=============================================================================
-// Event Payload Structures
-//=============================================================================
-
-/**
- * @brief Event payload for EVENT_LOGIC_GATE_EVALUATED
- *
- * WHAT: Data structure published when logic gate is evaluated
- * WHY:  Notify observers of logic operations for monitoring and learning
- * HOW:  Packed struct with gate ID, inputs, output, timestamp
- */
-typedef struct {
-    uint32_t gate_id;           // Logic gate neuron ID
-    uint32_t num_inputs;        // Number of inputs
-    float inputs[4];            // Input values (max 4 for complex gates)
-    float output;               // Output value [0,1]
-    uint64_t timestamp_us;      // Evaluation timestamp
-    uint64_t eval_time_us;      // Evaluation duration
-} logic_gate_evaluated_event_t;
-
 //=============================================================================
 // Helper Functions
 //=============================================================================
 
 /**
- * @brief Publish logic gate evaluation event
+ * @brief Publish logic gate evaluation event (tensor-based)
  *
  * WHAT: Send EVENT_LOGIC_GATE_EVALUATED to event bus
  * WHY:  Notify observers of successful logic evaluation
- * HOW:  Pack payload, call event_bus_publish()
+ * HOW:  Clone input tensor, pack payload, call event_bus_publish()
+ *
+ * MEMORY: Creates a clone of the input tensor for the event payload.
+ *         Event subscribers are responsible for destroying the tensor
+ *         after processing, or the event system will destroy it on timeout.
+ */
+static void publish_gate_evaluated_event_tensor(
+    brain_t brain,
+    uint32_t gate_id,
+    const nimcp_tensor_t* inputs,
+    uint32_t num_inputs,
+    float output,
+    uint64_t eval_time_us
+) {
+    // Guard: NULL brain or no event bus
+    if (!brain || !brain->event_bus) {
+        return;
+    }
+
+    // WHAT: Pack event payload with tensor
+    // WHY:  Encapsulate evaluation details for subscribers
+    // HOW:  Clone tensor for event ownership
+
+    logic_gate_evaluated_event_t payload = {0};
+    payload.gate_id = gate_id;
+    payload.num_inputs = num_inputs;
+    payload.output = output;
+    payload.timestamp_us = 0;  // Timestamp set by event bus
+    payload.eval_time_us = eval_time_us;
+
+    // Clone input tensor for event (event takes ownership)
+    payload.inputs_tensor = nimcp_tensor_clone(inputs);
+    if (!payload.inputs_tensor) {
+        LOG_WARN("publish_gate_evaluated_event_tensor: failed to clone inputs tensor");
+        // Continue without tensor - event still useful
+    }
+
+    // Publish event
+    brain_event_t event = event_create(EVENT_LOGIC_GATE_EVALUATED, EVENT_PRIORITY_LOW, "neural_logic");
+    event_set_data(&event, &payload, sizeof(payload));
+    event_bus_publish(brain->event_bus, &event);
+}
+
+/**
+ * @brief Publish logic gate evaluation event (legacy float array)
+ *
+ * WHAT: Send EVENT_LOGIC_GATE_EVALUATED to event bus
+ * WHY:  Backward compatibility with existing code using float arrays
+ * HOW:  Convert float array to tensor, then use tensor version
  */
 static void publish_gate_evaluated_event(
     brain_t brain,
@@ -79,26 +113,83 @@ static void publish_gate_evaluated_event(
         return;
     }
 
-    // WHAT: Pack event payload
-    // WHY:  Encapsulate evaluation details for subscribers
-    // HOW:  Fill struct, clamp inputs to max 4
-
-    logic_gate_evaluated_event_t payload = {0};
-    payload.gate_id = gate_id;
-    payload.num_inputs = num_inputs < 4 ? num_inputs : 4;
-    payload.output = output;
-    payload.timestamp_us = 0;  // Timestamp set by event bus
-    payload.eval_time_us = eval_time_us;
-
-    // Copy inputs (up to 4)
-    for (uint32_t i = 0; i < payload.num_inputs; i++) {
-        payload.inputs[i] = inputs[i];
+    // Guard: NULL inputs
+    if (!inputs || num_inputs == 0) {
+        return;
     }
 
-    // Publish event
-    brain_event_t event = event_create(EVENT_LOGIC_GATE_EVALUATED, EVENT_PRIORITY_LOW, "neural_logic");
-    event_set_data(&event, &payload, sizeof(payload));
-    event_bus_publish(brain->event_bus, &event);
+    // WHAT: Create tensor from float array
+    // WHY:  Use unified tensor-based event structure
+    // HOW:  Create 1D F32 tensor, copy data, publish
+
+    uint32_t dims[] = {num_inputs};
+    nimcp_tensor_t* inputs_tensor = nimcp_tensor_from_data(
+        inputs, dims, 1, NIMCP_DTYPE_F32, true  // copy=true
+    );
+
+    if (inputs_tensor) {
+        publish_gate_evaluated_event_tensor(brain, gate_id, inputs_tensor, num_inputs, output, eval_time_us);
+        nimcp_tensor_destroy(inputs_tensor);
+    }
+}
+
+//=============================================================================
+// Batch Result Lifecycle
+//=============================================================================
+
+logic_batch_result_t* logic_batch_result_create(
+    uint32_t num_gates,
+    uint32_t total_inputs
+) {
+    // Guard: zero gates
+    if (num_gates == 0) {
+        LOG_ERROR("logic_batch_result_create: num_gates is zero");
+        return NULL;
+    }
+
+    // Allocate result structure
+    logic_batch_result_t* result = (logic_batch_result_t*)nimcp_calloc(1, sizeof(logic_batch_result_t));
+    if (!result) {
+        LOG_ERROR("logic_batch_result_create: failed to allocate result");
+        return NULL;
+    }
+
+    result->num_gates = num_gates;
+
+    // Create tensors for batch data
+    uint32_t gate_dims[] = {num_gates};
+    uint32_t input_dims[] = {total_inputs};
+
+    result->gate_ids = nimcp_tensor_zeros(gate_dims, 1, NIMCP_DTYPE_I32);
+    result->all_inputs = nimcp_tensor_zeros(input_dims, 1, NIMCP_DTYPE_F32);
+    result->input_offsets = nimcp_tensor_zeros(gate_dims, 1, NIMCP_DTYPE_I32);
+    result->inputs_per_gate = nimcp_tensor_zeros(gate_dims, 1, NIMCP_DTYPE_I32);
+    result->outputs = nimcp_tensor_zeros(gate_dims, 1, NIMCP_DTYPE_F32);
+
+    // Check all allocations succeeded
+    if (!result->gate_ids || !result->all_inputs || !result->input_offsets ||
+        !result->inputs_per_gate || !result->outputs) {
+        LOG_ERROR("logic_batch_result_create: failed to allocate tensors");
+        logic_batch_result_destroy(result);
+        return NULL;
+    }
+
+    result->total_eval_time_us = 0;
+    return result;
+}
+
+void logic_batch_result_destroy(logic_batch_result_t* result) {
+    if (!result) {
+        return;
+    }
+
+    nimcp_tensor_destroy(result->gate_ids);
+    nimcp_tensor_destroy(result->all_inputs);
+    nimcp_tensor_destroy(result->input_offsets);
+    nimcp_tensor_destroy(result->inputs_per_gate);
+    nimcp_tensor_destroy(result->outputs);
+
+    nimcp_free(result);
 }
 
 //=============================================================================
@@ -176,6 +267,104 @@ bool brain_evaluate_logic_gate(
 
     LOG_DEBUG("brain_evaluate_logic_gate: gate=%u, output=%.3f, time=%llu μs",
               gate_id, *output, (unsigned long long)eval_time_us);
+
+    return true;
+}
+
+//=============================================================================
+// MODULE 2.2: Tensor-Based Logic Gate Evaluation
+//=============================================================================
+
+bool brain_evaluate_logic_gate_tensor(
+    brain_t brain,
+    uint32_t gate_id,
+    const nimcp_tensor_t* inputs,
+    float* output
+) {
+    // WHAT: Validate all inputs with guard clauses
+    // WHY:  Prevent NULL derefs and invalid operations
+    // HOW:  Early returns with error logging
+
+    // Guard: NULL brain
+    if (!nimcp_validate_pointer(brain, "brain")) {
+        LOG_ERROR("brain_evaluate_logic_gate_tensor: NULL brain");
+        return false;
+    }
+
+    // Guard: no logic network attached
+    if (!brain_has_neural_logic(brain)) {
+        LOG_ERROR("brain_evaluate_logic_gate_tensor: brain has no logic network");
+        return false;
+    }
+
+    // Guard: NULL inputs tensor
+    if (!nimcp_validate_pointer(inputs, "inputs")) {
+        LOG_ERROR("brain_evaluate_logic_gate_tensor: NULL inputs tensor");
+        return false;
+    }
+
+    // Guard: NULL output
+    if (!nimcp_validate_pointer(output, "output")) {
+        LOG_ERROR("brain_evaluate_logic_gate_tensor: NULL output");
+        return false;
+    }
+
+    // Guard: tensor must be 1D
+    if (nimcp_tensor_rank(inputs) != 1) {
+        LOG_ERROR("brain_evaluate_logic_gate_tensor: inputs must be 1D tensor, got rank %u",
+                  nimcp_tensor_rank(inputs));
+        return false;
+    }
+
+    // Guard: tensor must be F32
+    if (nimcp_tensor_dtype(inputs) != NIMCP_DTYPE_F32) {
+        LOG_ERROR("brain_evaluate_logic_gate_tensor: inputs must be F32, got %s",
+                  nimcp_dtype_name(nimcp_tensor_dtype(inputs)));
+        return false;
+    }
+
+    // Guard: tensor must have elements
+    size_t num_inputs = nimcp_tensor_numel(inputs);
+    if (num_inputs == 0) {
+        LOG_ERROR("brain_evaluate_logic_gate_tensor: inputs tensor is empty");
+        return false;
+    }
+
+    // WHAT: Extract data pointer and call legacy evaluate
+    // WHY:  Reuse existing neural_logic_evaluate implementation
+    // HOW:  Get contiguous data pointer from tensor
+
+    const float* inputs_data = (const float*)nimcp_tensor_data_const(inputs);
+    if (!inputs_data) {
+        LOG_ERROR("brain_evaluate_logic_gate_tensor: failed to get tensor data");
+        return false;
+    }
+
+    neural_logic_network_t network = brain_get_neural_logic(brain);
+
+    bool success = neural_logic_evaluate(
+        network,
+        gate_id,
+        inputs_data,
+        (uint32_t)num_inputs,
+        output
+    );
+
+    uint64_t eval_time_us = 0;  // Timing not available
+
+    if (!success) {
+        LOG_ERROR("brain_evaluate_logic_gate_tensor: evaluation failed for gate %u", gate_id);
+        return false;
+    }
+
+    // WHAT: Publish evaluation event with tensor
+    // WHY:  Enable monitoring, learning, and debugging
+    // HOW:  Send EVENT_LOGIC_GATE_EVALUATED with tensor payload
+
+    publish_gate_evaluated_event_tensor(brain, gate_id, inputs, (uint32_t)num_inputs, *output, eval_time_us);
+
+    LOG_DEBUG("brain_evaluate_logic_gate_tensor: gate=%u, num_inputs=%zu, output=%.3f",
+              gate_id, num_inputs, *output);
 
     return true;
 }
@@ -389,6 +578,174 @@ bool brain_evaluate_logic_gates_batch(
     if (success) {
         LOG_DEBUG("brain_evaluate_logic_gates_batch: evaluated %u gates", num_gates);
     }
+    return success;
+}
+
+//=============================================================================
+// MODULE 2.3: Tensor-Based Batch Evaluation (GPU-Optimized)
+//=============================================================================
+
+/**
+ * @brief CPU fallback for tensor-based batch gate evaluation
+ *
+ * WHAT: Sequential evaluation using tensor data
+ * WHY:  Fallback when GPU unavailable
+ * HOW:  Extract tensor data, loop through gates
+ */
+static bool evaluate_gates_batch_tensor_cpu(
+    brain_t brain,
+    const nimcp_tensor_t* gate_ids_tensor,
+    const nimcp_tensor_t* inputs_tensor,
+    const nimcp_tensor_t* offsets_tensor,
+    const nimcp_tensor_t* counts_tensor,
+    logic_batch_result_t* result
+) {
+    // Get raw pointers from tensors
+    const int32_t* gate_ids = (const int32_t*)nimcp_tensor_data_const(gate_ids_tensor);
+    const float* all_inputs = (const float*)nimcp_tensor_data_const(inputs_tensor);
+    const int32_t* offsets = (const int32_t*)nimcp_tensor_data_const(offsets_tensor);
+    const int32_t* counts = (const int32_t*)nimcp_tensor_data_const(counts_tensor);
+    float* outputs = (float*)nimcp_tensor_data(result->outputs);
+
+    if (!gate_ids || !all_inputs || !offsets || !counts || !outputs) {
+        LOG_ERROR("evaluate_gates_batch_tensor_cpu: failed to get tensor data");
+        return false;
+    }
+
+    size_t num_gates = nimcp_tensor_numel(gate_ids_tensor);
+
+    // WHAT: Sequential evaluation of gates on CPU
+    // WHY:  Fallback when GPU unavailable
+    // HOW:  Loop through gates, create temp tensor for each evaluation
+
+    for (size_t i = 0; i < num_gates; i++) {
+        uint32_t gate_id = (uint32_t)gate_ids[i];
+        uint32_t offset = (uint32_t)offsets[i];
+        uint32_t num_inputs = (uint32_t)counts[i];
+
+        // Create temp tensor for this gate's inputs
+        uint32_t dims[] = {num_inputs};
+        nimcp_tensor_t* gate_inputs = nimcp_tensor_from_data(
+            &all_inputs[offset], dims, 1, NIMCP_DTYPE_F32, false  // no copy, just view
+        );
+
+        if (!gate_inputs) {
+            LOG_ERROR("evaluate_gates_batch_tensor_cpu: failed to create input tensor at index %zu", i);
+            return false;
+        }
+
+        // Evaluate gate
+        float output = 0.0f;
+        bool success = brain_evaluate_logic_gate_tensor(brain, gate_id, gate_inputs, &output);
+
+        nimcp_tensor_destroy(gate_inputs);
+
+        if (!success) {
+            LOG_ERROR("evaluate_gates_batch_tensor_cpu: failed at gate %u (index %zu)", gate_id, i);
+            return false;
+        }
+
+        outputs[i] = output;
+    }
+
+    return true;
+}
+
+bool brain_evaluate_logic_gates_batch_tensor(
+    brain_t brain,
+    const nimcp_tensor_t* gate_ids_tensor,
+    const nimcp_tensor_t* inputs_tensor,
+    const nimcp_tensor_t* offsets_tensor,
+    const nimcp_tensor_t* counts_tensor,
+    logic_batch_result_t* result
+) {
+    // WHAT: Validate all inputs with guard clauses
+    // WHY:  Prevent NULL derefs and invalid operations
+    // HOW:  Early returns with error logging
+
+    // Guard: NULL brain
+    if (!nimcp_validate_pointer(brain, "brain")) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: NULL brain");
+        return false;
+    }
+
+    // Guard: no logic network attached
+    if (!brain_has_neural_logic(brain)) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: brain has no logic network");
+        return false;
+    }
+
+    // Guard: NULL tensors
+    if (!nimcp_validate_pointer(gate_ids_tensor, "gate_ids_tensor") ||
+        !nimcp_validate_pointer(inputs_tensor, "inputs_tensor") ||
+        !nimcp_validate_pointer(offsets_tensor, "offsets_tensor") ||
+        !nimcp_validate_pointer(counts_tensor, "counts_tensor")) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: NULL tensor(s)");
+        return false;
+    }
+
+    // Guard: NULL result
+    if (!nimcp_validate_pointer(result, "result")) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: NULL result");
+        return false;
+    }
+
+    // Guard: tensor rank must be 1 for all batch tensors
+    if (nimcp_tensor_rank(gate_ids_tensor) != 1 ||
+        nimcp_tensor_rank(inputs_tensor) != 1 ||
+        nimcp_tensor_rank(offsets_tensor) != 1 ||
+        nimcp_tensor_rank(counts_tensor) != 1) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: all tensors must be 1D");
+        return false;
+    }
+
+    // Guard: gate_ids, offsets, counts must be I32
+    if (nimcp_tensor_dtype(gate_ids_tensor) != NIMCP_DTYPE_I32 ||
+        nimcp_tensor_dtype(offsets_tensor) != NIMCP_DTYPE_I32 ||
+        nimcp_tensor_dtype(counts_tensor) != NIMCP_DTYPE_I32) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: gate_ids/offsets/counts must be I32");
+        return false;
+    }
+
+    // Guard: inputs must be F32
+    if (nimcp_tensor_dtype(inputs_tensor) != NIMCP_DTYPE_F32) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: inputs must be F32");
+        return false;
+    }
+
+    // Guard: consistent sizes
+    size_t num_gates = nimcp_tensor_numel(gate_ids_tensor);
+    if (nimcp_tensor_numel(offsets_tensor) != num_gates ||
+        nimcp_tensor_numel(counts_tensor) != num_gates) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: size mismatch in batch tensors");
+        return false;
+    }
+
+    // Guard: result outputs tensor must match
+    if (!result->outputs || nimcp_tensor_numel(result->outputs) != num_gates) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: result outputs size mismatch");
+        return false;
+    }
+
+    // WHAT: Evaluate gates in batch
+    // WHY:  GPU acceleration when available, CPU fallback otherwise
+    // HOW:  Check GPU availability, launch appropriate path
+
+    // TODO: Add GPU path when CUDA kernel launcher is integrated
+    // For now, use CPU fallback
+    bool success = evaluate_gates_batch_tensor_cpu(
+        brain,
+        gate_ids_tensor,
+        inputs_tensor,
+        offsets_tensor,
+        counts_tensor,
+        result
+    );
+
+    if (success) {
+        LOG_DEBUG("brain_evaluate_logic_gates_batch_tensor: evaluated %zu gates", num_gates);
+    }
+
     return success;
 }
 

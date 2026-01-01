@@ -65,6 +65,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "security/nimcp_security.h"
+#include "utils/tensor/nimcp_tensor.h"
 #include <math.h>
 #include <string.h>
 #include <stdatomic.h>
@@ -1098,6 +1099,11 @@ bool neuromodulator_get_levels(neuromodulator_system_t system, neuromodulator_po
      */
     if (!system || !pool) return false;
 
+    /* Ensure pool has tensor storage */
+    if (!pool->concentrations) {
+        *pool = neuromodulator_pool_create();
+    }
+
     /* WHAT: Acquire read lock for consistent snapshot using NIMCP platform
      * WHY:  Prevent reading while update() is modifying concentrations
      * PERFORMANCE: Read lock allows multiple concurrent readers
@@ -1106,22 +1112,25 @@ bool neuromodulator_get_levels(neuromodulator_system_t system, neuromodulator_po
      */
     nimcp_platform_rwlock_rdlock(&system->rwlock);
 
-    /* WHAT: Copy concentrations to output struct
+    /* WHAT: Copy concentrations to output tensor
      * WHY:  Prevents direct manipulation of internal state
      * NOTE: Copy happens under lock for consistency
      */
-    pool->dopamine = system->concentrations[NEUROMOD_DOPAMINE];
-    pool->serotonin = system->concentrations[NEUROMOD_SEROTONIN];
-    pool->acetylcholine = system->concentrations[NEUROMOD_ACETYLCHOLINE];
-    pool->norepinephrine = system->concentrations[NEUROMOD_NOREPINEPHRINE];
-    pool->gaba = system->concentrations[NEUROMOD_GABA];
-    pool->glutamate = system->concentrations[NEUROMOD_GLUTAMATE];
+    neuromodulator_pool_set_dopamine(pool, system->concentrations[NEUROMOD_DOPAMINE]);
+    neuromodulator_pool_set_serotonin(pool, system->concentrations[NEUROMOD_SEROTONIN]);
+    neuromodulator_pool_set_acetylcholine(pool, system->concentrations[NEUROMOD_ACETYLCHOLINE]);
+    neuromodulator_pool_set_norepinephrine(pool, system->concentrations[NEUROMOD_NOREPINEPHRINE]);
+    neuromodulator_pool_set_gaba(pool, system->concentrations[NEUROMOD_GABA]);
+    neuromodulator_pool_set_glutamate(pool, system->concentrations[NEUROMOD_GLUTAMATE]);
 
-    /* WHAT: Copy decay rates and timestamp
+    /* WHAT: Copy decay rates to tensor
      * WHY:  Useful for computing time-to-baseline
      * NOTE: These are read-only after initialization, but included for completeness
      */
-    memcpy(pool->decay_rates, system->decay_times, sizeof(pool->decay_rates));
+    for (uint32_t i = 0; i < NEUROMOD_COUNT; i++) {
+        uint32_t idx[1] = {i};
+        nimcp_tensor_set(pool->decay_rates, idx, system->decay_times[i]);
+    }
     pool->last_update = system->last_update_time;
 
     /* WHAT: Release read lock using NIMCP platform
@@ -1758,17 +1767,24 @@ bool neuromodulator_compute_effects(neuromodulator_system_t system,
      *
      * BIOLOGICAL: Each receptor type has specific effect on plasticity
      */
-    effects->learning_rate_multiplier = 1.0F +
-        receptors->d1_density * da * 0.5F -           // D1: Enhances plasticity
-        receptors->d2_density * da * 0.3F +           // D2: Suppresses plasticity
-        receptors->nicotinic_density * ach * 0.4F +   // nACh: Attention/encoding
-        receptors->beta_density * ne * 0.3F -         // β: Arousal/consolidation
-        receptors->serotonin_density * serotonin * 0.2F; // 5-HT: Inhibits
+    float d1_dens = receptor_profile_get_d1_density(receptors);
+    float d2_dens = receptor_profile_get_d2_density(receptors);
+    float nic_dens = receptor_profile_get_nicotinic_density(receptors);
+    float beta_dens = receptor_profile_get_beta_density(receptors);
+    float ser_dens = receptor_profile_get_serotonin_density(receptors);
+    float alpha_dens = receptor_profile_get_alpha_density(receptors);
+
+    float lr_mult = 1.0F +
+        d1_dens * da * 0.5F -           // D1: Enhances plasticity
+        d2_dens * da * 0.3F +           // D2: Suppresses plasticity
+        nic_dens * ach * 0.4F +         // nACh: Attention/encoding
+        beta_dens * ne * 0.3F -         // β: Arousal/consolidation
+        ser_dens * serotonin * 0.2F;    // 5-HT: Inhibits
 
     /* WHAT: Clamp multiplier to reasonable range [0, 2]
      * WHY:  Prevent runaway plasticity or complete suppression
      */
-    effects->learning_rate_multiplier = clamp(effects->learning_rate_multiplier, 0.0F, 2.0F);
+    modulation_effects_set_learning_rate_multiplier(effects, clamp(lr_mult, 0.0F, 2.0F));
 
     /* WHAT: Compute synaptic transmission gain
      * WHY:  Attention modulates signal amplification
@@ -1780,12 +1796,12 @@ bool neuromodulator_compute_effects(neuromodulator_system_t system,
      *        NE × α × 0.3 (arousal amplification) -
      *        5-HT × 0.2 (behavioral inhibition)
      */
-    effects->transmission_gain = 1.0F +
-        ach * receptors->nicotinic_density * 0.5F +
-        ne * receptors->alpha_density * 0.3F -
-        serotonin * receptors->serotonin_density * 0.2F;
+    float t_gain = 1.0F +
+        ach * nic_dens * 0.5F +
+        ne * alpha_dens * 0.3F -
+        serotonin * ser_dens * 0.2F;
 
-    effects->transmission_gain = clamp(effects->transmission_gain, 0.1F, 2.0F);
+    modulation_effects_set_transmission_gain(effects, clamp(t_gain, 0.1F, 2.0F));
 
     /* WHAT: Compute excitability shift (threshold modulation)
      * WHY:  Arousal changes firing threshold
@@ -1797,11 +1813,11 @@ bool neuromodulator_compute_effects(neuromodulator_system_t system,
      *
      * RANGE: [-0.5, +0.5] to prevent extreme shifts
      */
-    effects->excitability_shift =
-        -ne * receptors->alpha_density * 0.3F +  // Negative = lower threshold
-        serotonin * receptors->serotonin_density * 0.2F;  // Positive = raise threshold
+    float e_shift =
+        -ne * alpha_dens * 0.3F +       // Negative = lower threshold
+        serotonin * ser_dens * 0.2F;    // Positive = raise threshold
 
-    effects->excitability_shift = clamp(effects->excitability_shift, -0.5F, 0.5F);
+    modulation_effects_set_excitability_shift(effects, clamp(e_shift, -0.5F, 0.5F));
 
     /* WHAT: Compute attention weight
      * WHY:  Determines importance for working memory / consolidation
@@ -1809,11 +1825,11 @@ bool neuromodulator_compute_effects(neuromodulator_system_t system,
      *
      * FORMULA: attention = ACh × 0.7 + NE × 0.3
      */
-    effects->attention_weight =
-        ach * receptors->nicotinic_density * 0.7F +
-        ne * receptors->alpha_density * 0.3F;
+    float att_weight =
+        ach * nic_dens * 0.7F +
+        ne * alpha_dens * 0.3F;
 
-    effects->attention_weight = clamp(effects->attention_weight, 0.0F, 1.0F);
+    modulation_effects_set_attention_weight(effects, clamp(att_weight, 0.0F, 1.0F));
 
     return true;
 }
@@ -1826,7 +1842,7 @@ float neuromodulator_modulate_learning_rate(float base_learning_rate,
      */
     if (!effects) return base_learning_rate;
 
-    return base_learning_rate * effects->learning_rate_multiplier;
+    return base_learning_rate * modulation_effects_get_learning_rate_multiplier(effects);
 }
 
 float neuromodulator_modulate_transmission(float base_weight, const modulation_effects_t* effects) {
@@ -1836,7 +1852,7 @@ float neuromodulator_modulate_transmission(float base_weight, const modulation_e
      */
     if (!effects) return base_weight;
 
-    return base_weight * effects->transmission_gain;
+    return base_weight * modulation_effects_get_transmission_gain(effects);
 }
 
 float neuromodulator_modulate_threshold(float base_threshold, const modulation_effects_t* effects) {
@@ -1846,7 +1862,7 @@ float neuromodulator_modulate_threshold(float base_threshold, const modulation_e
      */
     if (!effects) return base_threshold;
 
-    return base_threshold + effects->excitability_shift;
+    return base_threshold + modulation_effects_get_excitability_shift(effects);
 }
 
 //=============================================================================
@@ -1858,14 +1874,15 @@ receptor_profile_t neuromodulator_profile_cortical_excitatory(void) {
      * WHY:  Based on immunohistochemistry data from prefrontal cortex
      * BIOLOGICAL: Pyramidal cells express high D1, moderate ACh, some NE
      */
-    receptor_profile_t profile = {
-        .d1_density = 0.7F,          // High D1 (enhances plasticity)
-        .d2_density = 0.2F,          // Low D2
-        .serotonin_density = 0.3F,   // Moderate 5-HT
-        .nicotinic_density = 0.5F,   // Moderate nACh (attention)
-        .alpha_density = 0.4F,       // Moderate α (arousal)
-        .beta_density = 0.5F         // Moderate β (consolidation)
-    };
+    receptor_profile_t profile = receptor_profile_create();
+
+    receptor_profile_set_d1_density(&profile, 0.7F);          /* High D1 (enhances plasticity) */
+    receptor_profile_set_d2_density(&profile, 0.2F);          /* Low D2 */
+    receptor_profile_set_serotonin_density(&profile, 0.3F);   /* Moderate 5-HT */
+    receptor_profile_set_nicotinic_density(&profile, 0.5F);   /* Moderate nACh (attention) */
+    receptor_profile_set_alpha_density(&profile, 0.4F);       /* Moderate alpha (arousal) */
+    receptor_profile_set_beta_density(&profile, 0.5F);        /* Moderate beta (consolidation) */
+
     return profile;
 }
 
@@ -1874,14 +1891,15 @@ receptor_profile_t neuromodulator_profile_cortical_inhibitory(void) {
      * WHY:  Parvalbumin+ interneurons have distinct receptor expression
      * BIOLOGICAL: High D2, moderate 5-HT, low ACh
      */
-    receptor_profile_t profile = {
-        .d1_density = 0.2F,
-        .d2_density = 0.8F,          // High D2 (suppresses plasticity)
-        .serotonin_density = 0.6F,   // High 5-HT (inhibitory)
-        .nicotinic_density = 0.2F,   // Low nACh
-        .alpha_density = 0.3F,
-        .beta_density = 0.3F
-    };
+    receptor_profile_t profile = receptor_profile_create();
+
+    receptor_profile_set_d1_density(&profile, 0.2F);
+    receptor_profile_set_d2_density(&profile, 0.8F);          /* High D2 (suppresses plasticity) */
+    receptor_profile_set_serotonin_density(&profile, 0.6F);   /* High 5-HT (inhibitory) */
+    receptor_profile_set_nicotinic_density(&profile, 0.2F);   /* Low nACh */
+    receptor_profile_set_alpha_density(&profile, 0.3F);
+    receptor_profile_set_beta_density(&profile, 0.3F);
+
     return profile;
 }
 
@@ -1890,14 +1908,15 @@ receptor_profile_t neuromodulator_profile_hippocampal(void) {
      * WHY:  Hippocampus is critical for encoding, high ACh sensitivity
      * BIOLOGICAL: Very high nACh and mACh for memory formation
      */
-    receptor_profile_t profile = {
-        .d1_density = 0.6F,
-        .d2_density = 0.2F,
-        .serotonin_density = 0.5F,
-        .nicotinic_density = 0.9F,   // Very high ACh (memory encoding)
-        .alpha_density = 0.4F,
-        .beta_density = 0.7F         // High β (consolidation)
-    };
+    receptor_profile_t profile = receptor_profile_create();
+
+    receptor_profile_set_d1_density(&profile, 0.6F);
+    receptor_profile_set_d2_density(&profile, 0.2F);
+    receptor_profile_set_serotonin_density(&profile, 0.5F);
+    receptor_profile_set_nicotinic_density(&profile, 0.9F);   /* Very high ACh (memory encoding) */
+    receptor_profile_set_alpha_density(&profile, 0.4F);
+    receptor_profile_set_beta_density(&profile, 0.7F);        /* High beta (consolidation) */
+
     return profile;
 }
 
@@ -1906,14 +1925,15 @@ receptor_profile_t neuromodulator_profile_striatal(void) {
      * WHY:  Striatum is primary dopamine target (motor/reward)
      * BIOLOGICAL: Highest dopamine receptor density in brain
      */
-    receptor_profile_t profile = {
-        .d1_density = 0.9F,          // Very high D1 (direct pathway)
-        .d2_density = 0.9F,          // Very high D2 (indirect pathway)
-        .serotonin_density = 0.4F,
-        .nicotinic_density = 0.3F,
-        .alpha_density = 0.2F,
-        .beta_density = 0.3F
-    };
+    receptor_profile_t profile = receptor_profile_create();
+
+    receptor_profile_set_d1_density(&profile, 0.9F);          /* Very high D1 (direct pathway) */
+    receptor_profile_set_d2_density(&profile, 0.9F);          /* Very high D2 (indirect pathway) */
+    receptor_profile_set_serotonin_density(&profile, 0.4F);
+    receptor_profile_set_nicotinic_density(&profile, 0.3F);
+    receptor_profile_set_alpha_density(&profile, 0.2F);
+    receptor_profile_set_beta_density(&profile, 0.3F);
+
     return profile;
 }
 
@@ -1922,14 +1942,15 @@ receptor_profile_t neuromodulator_profile_amygdala(void) {
      * WHY:  Amygdala processes threat/emotion, high NE sensitivity
      * BIOLOGICAL: High NE (threat), DA (valence), 5-HT (anxiety)
      */
-    receptor_profile_t profile = {
-        .d1_density = 0.7F,          // High DA (valence coding)
-        .d2_density = 0.3F,
-        .serotonin_density = 0.8F,   // High 5-HT (anxiety modulation)
-        .nicotinic_density = 0.4F,
-        .alpha_density = 0.9F,       // Very high NE (threat detection)
-        .beta_density = 0.7F
-    };
+    receptor_profile_t profile = receptor_profile_create();
+
+    receptor_profile_set_d1_density(&profile, 0.7F);          /* High DA (valence coding) */
+    receptor_profile_set_d2_density(&profile, 0.3F);
+    receptor_profile_set_serotonin_density(&profile, 0.8F);   /* High 5-HT (anxiety modulation) */
+    receptor_profile_set_nicotinic_density(&profile, 0.4F);
+    receptor_profile_set_alpha_density(&profile, 0.9F);       /* Very high NE (threat detection) */
+    receptor_profile_set_beta_density(&profile, 0.7F);
+
     return profile;
 }
 
@@ -2011,10 +2032,10 @@ float neuromodulator_get_learning_weight(neuromodulator_system_t system,
     /* WHAT: Weight by receptor expression
      * WHY:  Same global concentration affects neurons differently
      */
-    float da_effect = da * receptors->d1_density;
-    float ach_effect = ach * receptors->nicotinic_density;
-    float serotonin_effect = serotonin * receptors->serotonin_density;
-    float ne_effect = ne * receptors->beta_density;
+    float da_effect = da * receptor_profile_get_d1_density(receptors);
+    float ach_effect = ach * receptor_profile_get_nicotinic_density(receptors);
+    float serotonin_effect = serotonin * receptor_profile_get_serotonin_density(receptors);
+    float ne_effect = ne * receptor_profile_get_beta_density(receptors);
 
     float weight =
         0.3F * da_effect +                    // Reward enhances learning
@@ -2121,4 +2142,291 @@ sleep_state_t neuromodulator_get_sleep_state(neuromodulator_system_t system) {
     nimcp_platform_rwlock_unlock(&system->rwlock);
 
     return state;
+}
+
+//=============================================================================
+// Tensor-Based Neuromodulator Pool Functions
+//=============================================================================
+
+neuromodulator_pool_t neuromodulator_pool_create(void) {
+    neuromodulator_pool_t pool = {0};
+
+    uint32_t dims[1] = {NEUROMOD_COUNT};
+    pool.concentrations = nimcp_tensor_zeros(dims, 1, NIMCP_DTYPE_F32);
+    pool.decay_rates = nimcp_tensor_zeros(dims, 1, NIMCP_DTYPE_F32);
+    pool.last_update = 0;
+    pool.owns_tensors = true;
+
+    return pool;
+}
+
+void neuromodulator_pool_destroy(neuromodulator_pool_t* pool) {
+    if (!pool) return;
+    if (!pool->owns_tensors) return;
+
+    if (pool->concentrations) {
+        nimcp_tensor_destroy(pool->concentrations);
+        pool->concentrations = NULL;
+    }
+    if (pool->decay_rates) {
+        nimcp_tensor_destroy(pool->decay_rates);
+        pool->decay_rates = NULL;
+    }
+}
+
+float neuromodulator_pool_get_dopamine(const neuromodulator_pool_t* pool) {
+    if (!pool || !pool->concentrations) return 0.0f;
+    uint32_t idx[1] = {NEUROMOD_DOPAMINE};
+    return (float)nimcp_tensor_get(pool->concentrations, idx);
+}
+
+float neuromodulator_pool_get_serotonin(const neuromodulator_pool_t* pool) {
+    if (!pool || !pool->concentrations) return 0.0f;
+    uint32_t idx[1] = {NEUROMOD_SEROTONIN};
+    return (float)nimcp_tensor_get(pool->concentrations, idx);
+}
+
+float neuromodulator_pool_get_acetylcholine(const neuromodulator_pool_t* pool) {
+    if (!pool || !pool->concentrations) return 0.0f;
+    uint32_t idx[1] = {NEUROMOD_ACETYLCHOLINE};
+    return (float)nimcp_tensor_get(pool->concentrations, idx);
+}
+
+float neuromodulator_pool_get_norepinephrine(const neuromodulator_pool_t* pool) {
+    if (!pool || !pool->concentrations) return 0.0f;
+    uint32_t idx[1] = {NEUROMOD_NOREPINEPHRINE};
+    return (float)nimcp_tensor_get(pool->concentrations, idx);
+}
+
+float neuromodulator_pool_get_gaba(const neuromodulator_pool_t* pool) {
+    if (!pool || !pool->concentrations) return 0.0f;
+    uint32_t idx[1] = {NEUROMOD_GABA};
+    return (float)nimcp_tensor_get(pool->concentrations, idx);
+}
+
+float neuromodulator_pool_get_glutamate(const neuromodulator_pool_t* pool) {
+    if (!pool || !pool->concentrations) return 0.0f;
+    uint32_t idx[1] = {NEUROMOD_GLUTAMATE};
+    return (float)nimcp_tensor_get(pool->concentrations, idx);
+}
+
+void neuromodulator_pool_set_dopamine(neuromodulator_pool_t* pool, float value) {
+    if (!pool || !pool->concentrations) return;
+    uint32_t idx[1] = {NEUROMOD_DOPAMINE};
+    nimcp_tensor_set(pool->concentrations, idx, value);
+}
+
+void neuromodulator_pool_set_serotonin(neuromodulator_pool_t* pool, float value) {
+    if (!pool || !pool->concentrations) return;
+    uint32_t idx[1] = {NEUROMOD_SEROTONIN};
+    nimcp_tensor_set(pool->concentrations, idx, value);
+}
+
+void neuromodulator_pool_set_acetylcholine(neuromodulator_pool_t* pool, float value) {
+    if (!pool || !pool->concentrations) return;
+    uint32_t idx[1] = {NEUROMOD_ACETYLCHOLINE};
+    nimcp_tensor_set(pool->concentrations, idx, value);
+}
+
+void neuromodulator_pool_set_norepinephrine(neuromodulator_pool_t* pool, float value) {
+    if (!pool || !pool->concentrations) return;
+    uint32_t idx[1] = {NEUROMOD_NOREPINEPHRINE};
+    nimcp_tensor_set(pool->concentrations, idx, value);
+}
+
+void neuromodulator_pool_set_gaba(neuromodulator_pool_t* pool, float value) {
+    if (!pool || !pool->concentrations) return;
+    uint32_t idx[1] = {NEUROMOD_GABA};
+    nimcp_tensor_set(pool->concentrations, idx, value);
+}
+
+void neuromodulator_pool_set_glutamate(neuromodulator_pool_t* pool, float value) {
+    if (!pool || !pool->concentrations) return;
+    uint32_t idx[1] = {NEUROMOD_GLUTAMATE};
+    nimcp_tensor_set(pool->concentrations, idx, value);
+}
+
+float neuromodulator_pool_get_by_type(const neuromodulator_pool_t* pool, neuromodulator_type_t type) {
+    if (!pool || !pool->concentrations) return 0.0f;
+    if (type >= NEUROMOD_COUNT) return 0.0f;
+    uint32_t idx[1] = {(uint32_t)type};
+    return (float)nimcp_tensor_get(pool->concentrations, idx);
+}
+
+void neuromodulator_pool_set_by_type(neuromodulator_pool_t* pool, neuromodulator_type_t type, float value) {
+    if (!pool || !pool->concentrations) return;
+    if (type >= NEUROMOD_COUNT) return;
+    uint32_t idx[1] = {(uint32_t)type};
+    nimcp_tensor_set(pool->concentrations, idx, value);
+}
+
+//=============================================================================
+// Tensor-Based Receptor Profile Functions
+//=============================================================================
+
+receptor_profile_t receptor_profile_create(void) {
+    receptor_profile_t profile = {0};
+
+    uint32_t dims[1] = {RECEPTOR_COUNT};
+    profile.densities = nimcp_tensor_zeros(dims, 1, NIMCP_DTYPE_F32);
+    profile.owns_tensor = true;
+
+    return profile;
+}
+
+void receptor_profile_destroy(receptor_profile_t* profile) {
+    if (!profile) return;
+    if (!profile->owns_tensor) return;
+
+    if (profile->densities) {
+        nimcp_tensor_destroy(profile->densities);
+        profile->densities = NULL;
+    }
+}
+
+float receptor_profile_get_density(const receptor_profile_t* profile, receptor_type_t type) {
+    if (!profile || !profile->densities) return 0.0f;
+    if (type >= RECEPTOR_COUNT) return 0.0f;
+    uint32_t idx[1] = {(uint32_t)type};
+    return (float)nimcp_tensor_get(profile->densities, idx);
+}
+
+void receptor_profile_set_density(receptor_profile_t* profile, receptor_type_t type, float value) {
+    if (!profile || !profile->densities) return;
+    if (type >= RECEPTOR_COUNT) return;
+    uint32_t idx[1] = {(uint32_t)type};
+    nimcp_tensor_set(profile->densities, idx, value);
+}
+
+float receptor_profile_get_d1_density(const receptor_profile_t* profile) {
+    return receptor_profile_get_density(profile, RECEPTOR_D1);
+}
+
+float receptor_profile_get_d2_density(const receptor_profile_t* profile) {
+    return receptor_profile_get_density(profile, RECEPTOR_D2);
+}
+
+float receptor_profile_get_serotonin_density(const receptor_profile_t* profile) {
+    return receptor_profile_get_density(profile, RECEPTOR_5HT1A);
+}
+
+float receptor_profile_get_nicotinic_density(const receptor_profile_t* profile) {
+    return receptor_profile_get_density(profile, RECEPTOR_NICOTINIC);
+}
+
+float receptor_profile_get_alpha_density(const receptor_profile_t* profile) {
+    return receptor_profile_get_density(profile, RECEPTOR_ALPHA1);
+}
+
+float receptor_profile_get_beta_density(const receptor_profile_t* profile) {
+    return receptor_profile_get_density(profile, RECEPTOR_BETA);
+}
+
+void receptor_profile_set_d1_density(receptor_profile_t* profile, float value) {
+    receptor_profile_set_density(profile, RECEPTOR_D1, value);
+}
+
+void receptor_profile_set_d2_density(receptor_profile_t* profile, float value) {
+    receptor_profile_set_density(profile, RECEPTOR_D2, value);
+}
+
+void receptor_profile_set_serotonin_density(receptor_profile_t* profile, float value) {
+    receptor_profile_set_density(profile, RECEPTOR_5HT1A, value);
+}
+
+void receptor_profile_set_nicotinic_density(receptor_profile_t* profile, float value) {
+    receptor_profile_set_density(profile, RECEPTOR_NICOTINIC, value);
+}
+
+void receptor_profile_set_alpha_density(receptor_profile_t* profile, float value) {
+    receptor_profile_set_density(profile, RECEPTOR_ALPHA1, value);
+}
+
+void receptor_profile_set_beta_density(receptor_profile_t* profile, float value) {
+    receptor_profile_set_density(profile, RECEPTOR_BETA, value);
+}
+
+//=============================================================================
+// Tensor-Based Modulation Effects Functions
+//=============================================================================
+
+modulation_effects_t modulation_effects_create(void) {
+    modulation_effects_t effects = {0};
+
+    uint32_t dims[1] = {MODULATION_EFFECT_COUNT};
+    effects.effects = nimcp_tensor_zeros(dims, 1, NIMCP_DTYPE_F32);
+    effects.owns_tensor = true;
+
+    /* Initialize default values */
+    if (effects.effects) {
+        uint32_t idx[1];
+        idx[0] = MODULATION_EFFECT_LEARNING_RATE;
+        nimcp_tensor_set(effects.effects, idx, 1.0);  /* Default multiplier = 1 */
+        idx[0] = MODULATION_EFFECT_TRANSMISSION;
+        nimcp_tensor_set(effects.effects, idx, 1.0);  /* Default gain = 1 */
+        idx[0] = MODULATION_EFFECT_EXCITABILITY;
+        nimcp_tensor_set(effects.effects, idx, 0.0);  /* Default shift = 0 */
+        idx[0] = MODULATION_EFFECT_ATTENTION;
+        nimcp_tensor_set(effects.effects, idx, 0.5);  /* Default attention = 0.5 */
+    }
+
+    return effects;
+}
+
+void modulation_effects_destroy(modulation_effects_t* effects) {
+    if (!effects) return;
+    if (!effects->owns_tensor) return;
+
+    if (effects->effects) {
+        nimcp_tensor_destroy(effects->effects);
+        effects->effects = NULL;
+    }
+}
+
+float modulation_effects_get_learning_rate_multiplier(const modulation_effects_t* effects) {
+    if (!effects || !effects->effects) return 1.0f;
+    uint32_t idx[1] = {MODULATION_EFFECT_LEARNING_RATE};
+    return (float)nimcp_tensor_get(effects->effects, idx);
+}
+
+float modulation_effects_get_transmission_gain(const modulation_effects_t* effects) {
+    if (!effects || !effects->effects) return 1.0f;
+    uint32_t idx[1] = {MODULATION_EFFECT_TRANSMISSION};
+    return (float)nimcp_tensor_get(effects->effects, idx);
+}
+
+float modulation_effects_get_excitability_shift(const modulation_effects_t* effects) {
+    if (!effects || !effects->effects) return 0.0f;
+    uint32_t idx[1] = {MODULATION_EFFECT_EXCITABILITY};
+    return (float)nimcp_tensor_get(effects->effects, idx);
+}
+
+float modulation_effects_get_attention_weight(const modulation_effects_t* effects) {
+    if (!effects || !effects->effects) return 0.5f;
+    uint32_t idx[1] = {MODULATION_EFFECT_ATTENTION};
+    return (float)nimcp_tensor_get(effects->effects, idx);
+}
+
+void modulation_effects_set_learning_rate_multiplier(modulation_effects_t* effects, float value) {
+    if (!effects || !effects->effects) return;
+    uint32_t idx[1] = {MODULATION_EFFECT_LEARNING_RATE};
+    nimcp_tensor_set(effects->effects, idx, value);
+}
+
+void modulation_effects_set_transmission_gain(modulation_effects_t* effects, float value) {
+    if (!effects || !effects->effects) return;
+    uint32_t idx[1] = {MODULATION_EFFECT_TRANSMISSION};
+    nimcp_tensor_set(effects->effects, idx, value);
+}
+
+void modulation_effects_set_excitability_shift(modulation_effects_t* effects, float value) {
+    if (!effects || !effects->effects) return;
+    uint32_t idx[1] = {MODULATION_EFFECT_EXCITABILITY};
+    nimcp_tensor_set(effects->effects, idx, value);
+}
+
+void modulation_effects_set_attention_weight(modulation_effects_t* effects, float value) {
+    if (!effects || !effects->effects) return;
+    uint32_t idx[1] = {MODULATION_EFFECT_ATTENTION};
+    nimcp_tensor_set(effects->effects, idx, value);
 }

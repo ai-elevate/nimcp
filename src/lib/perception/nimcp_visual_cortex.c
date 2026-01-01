@@ -723,13 +723,11 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
     cortex->enable_memory = config->enable_memory;
     cortex->brain = NULL;  // Initialize neuromodulator brain reference
 
-    // Initialize phasic/tonic neuromodulator states
+    // Initialize phasic/tonic neuromodulator states using proper API
     for (uint32_t i = 0; i < NUM_NEUROMOD_TYPES; i++) {
-        cortex->neuromod_states[i].phasic_burst = 0.0F;
-        cortex->neuromod_states[i].tonic_level = 0.5F;  // Baseline
-        cortex->neuromod_states[i].burst_decay_tau = 0.2F;  // Fast decay (200ms)
-        cortex->neuromod_states[i].homeostatic_tau = 10.0F;   // Slow homeostatic regulation (10s)
-        cortex->neuromod_states[i].burst_start_time_us = 0;
+        cortex->neuromod_states[i] = phasic_tonic_state_create();
+        phasic_tonic_set_phasic_burst(&cortex->neuromod_states[i], 0.0F);
+        phasic_tonic_set_tonic_level(&cortex->neuromod_states[i], 0.5F);  // Baseline
     }
 
     // Initialize receptor expression profiles (biologically plausible defaults)
@@ -1733,20 +1731,27 @@ static void update_neuromod_decay(phasic_tonic_state_t* state, float dt_sec)
 {
     // Exponential decay: level(t+dt) = level(t) * exp(-dt/tau)
     // Approximation: level *= (1 - dt/tau) for small dt
-    float phasic_decay_rate = 1.0F / state->burst_decay_tau;  // Convert tau to rate
-    float tonic_decay_rate = 1.0F / state->homeostatic_tau;    // Convert tau to rate
+    float phasic_decay_rate = 1.0F / phasic_tonic_get_burst_decay_tau(state);  // Convert tau to rate
+    float tonic_decay_rate = 1.0F / phasic_tonic_get_homeostatic_tau(state);    // Convert tau to rate
 
-    state->phasic_burst *= (1.0F - phasic_decay_rate * dt_sec);
+    float phasic = phasic_tonic_get_phasic_burst(state);
+    phasic *= (1.0F - phasic_decay_rate * dt_sec);
 
     // Tonic level moves toward target with homeostatic regulation
-    float tonic_error = state->tonic_target - state->tonic_level;
-    state->tonic_level += tonic_error * tonic_decay_rate * dt_sec;
+    float tonic = phasic_tonic_get_tonic_level(state);
+    float tonic_error = phasic_tonic_get_tonic_target(state) - tonic;
+    tonic += tonic_error * tonic_decay_rate * dt_sec;
 
     // Clamp to valid ranges
-    if (state->phasic_burst < 0.0F) state->phasic_burst = 0.0F;
-    if (state->phasic_burst > state->max_burst_amplitude) state->phasic_burst = state->max_burst_amplitude;
-    if (state->tonic_level < state->tonic_min) state->tonic_level = state->tonic_min;
-    if (state->tonic_level > state->tonic_max) state->tonic_level = state->tonic_max;
+    float max_burst = phasic_tonic_get_max_burst_amplitude(state);
+    float tonic_min = phasic_tonic_get_tonic_min(state);
+    float tonic_max = phasic_tonic_get_tonic_max(state);
+
+    phasic = fminf(fmaxf(phasic, 0.0F), max_burst);
+    tonic = fminf(fmaxf(tonic, tonic_min), tonic_max);
+
+    phasic_tonic_set_phasic_burst(state, phasic);
+    phasic_tonic_set_tonic_level(state, tonic);
 }
 
 /**
@@ -1774,10 +1779,8 @@ bool visual_cortex_trigger_phasic_burst(
 
     // Add to phasic level (capped at 1.0)
     phasic_tonic_state_t* state = &cortex->neuromod_states[neuromod_type];
-    state->phasic_burst += amount;
-    if (state->phasic_burst > 1.0F) {
-        state->phasic_burst = 1.0F;
-    }
+    float phasic = phasic_tonic_get_phasic_burst(state) + amount;
+    phasic_tonic_set_phasic_burst(state, fminf(phasic, 1.0F));
 
     return true;
 }
@@ -1806,7 +1809,7 @@ bool visual_cortex_set_tonic_level(
     }
 
     // Set tonic level directly
-    cortex->neuromod_states[neuromod_type].tonic_level = level;
+    phasic_tonic_set_tonic_level(&cortex->neuromod_states[neuromod_type], level);
     return true;
 }
 
@@ -1865,9 +1868,9 @@ bool visual_cortex_compute_neuromod_effects(
     const phasic_tonic_state_t* ach_state = &cortex->neuromod_states[NEUROMOD_TYPE_ACETYLCHOLINE];
     const phasic_tonic_state_t* ne_state = &cortex->neuromod_states[NEUROMOD_TYPE_NOREPINEPHRINE];
 
-    float da_effective = dopamine_level + PHASIC_WEIGHT * da_state->phasic_burst + TONIC_WEIGHT * da_state->tonic_level;
-    float ach_effective = ach_level + PHASIC_WEIGHT * ach_state->phasic_burst + TONIC_WEIGHT * ach_state->tonic_level;
-    float ne_effective = ne_level + PHASIC_WEIGHT * ne_state->phasic_burst + TONIC_WEIGHT * ne_state->tonic_level;
+    float da_effective = dopamine_level + PHASIC_WEIGHT * phasic_tonic_get_phasic_burst(da_state) + TONIC_WEIGHT * phasic_tonic_get_tonic_level(da_state);
+    float ach_effective = ach_level + PHASIC_WEIGHT * phasic_tonic_get_phasic_burst(ach_state) + TONIC_WEIGHT * phasic_tonic_get_tonic_level(ach_state);
+    float ne_effective = ne_level + PHASIC_WEIGHT * phasic_tonic_get_phasic_burst(ne_state) + TONIC_WEIGHT * phasic_tonic_get_tonic_level(ne_state);
 
     // Clamp to [0, 1]
     da_effective = fminf(da_effective, 1.0F);

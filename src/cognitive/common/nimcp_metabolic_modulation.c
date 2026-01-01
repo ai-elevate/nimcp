@@ -5,10 +5,17 @@
  * WHAT: Implements common metabolic modulation functions for substrate bridges
  * WHY: Eliminates code duplication across 80+ substrate bridge implementations
  * HOW: Centralizes clamp utilities and metabolic effect computation
+ *
+ * TENSOR SUPPORT (v2.7.0):
+ * - Tensor-based batch processing for multiple brain regions
+ * - SIMD-accelerated operations via nimcp_tensor_t
+ * - Backward-compatible scalar API preserved
  */
 
 #include "cognitive/common/nimcp_metabolic_modulation.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stddef.h>
+#include <math.h>
 
 /* ============================================================================
  * Default Configuration
@@ -149,4 +156,355 @@ metabolic_modulation_config_t metabolic_config_from_fields(
         .multipliers = multipliers ? *multipliers : metabolic_default_multipliers()
     };
     return cfg;
+}
+
+/* ============================================================================
+ * Tensor-Based Structure Creation/Destruction
+ * ============================================================================ */
+
+metabolic_effects_tensor_t* metabolic_effects_tensor_create(uint32_t batch_size) {
+    if (batch_size == 0) return NULL;
+
+    metabolic_effects_tensor_t* effects = nimcp_calloc(1, sizeof(metabolic_effects_tensor_t));
+    if (!effects) return NULL;
+
+    /* Create tensor with shape [batch_size, METABOLIC_EFFECT_COUNT] */
+    uint32_t dims[2] = { batch_size, METABOLIC_EFFECT_COUNT };
+    uint32_t rank = (batch_size == 1) ? 1 : 2;
+    uint32_t* dim_ptr = (batch_size == 1) ? &dims[1] : dims;
+
+    effects->effects = nimcp_tensor_zeros(dim_ptr, rank, NIMCP_DTYPE_F32);
+    if (!effects->effects) {
+        nimcp_free(effects);
+        return NULL;
+    }
+
+    effects->batch_size = batch_size;
+    effects->owns_tensor = true;
+
+    return effects;
+}
+
+void metabolic_effects_tensor_destroy(metabolic_effects_tensor_t* effects) {
+    if (!effects) return;
+
+    if (effects->owns_tensor && effects->effects) {
+        nimcp_tensor_destroy(effects->effects);
+    }
+    nimcp_free(effects);
+}
+
+metabolic_input_tensor_t* metabolic_input_tensor_create(uint32_t batch_size) {
+    if (batch_size == 0) return NULL;
+
+    metabolic_input_tensor_t* input = nimcp_calloc(1, sizeof(metabolic_input_tensor_t));
+    if (!input) return NULL;
+
+    uint32_t dims[1] = { batch_size };
+
+    input->atp_levels = nimcp_tensor_zeros(dims, 1, NIMCP_DTYPE_F32);
+    if (!input->atp_levels) {
+        nimcp_free(input);
+        return NULL;
+    }
+
+    input->metabolic_capacities = nimcp_tensor_zeros(dims, 1, NIMCP_DTYPE_F32);
+    if (!input->metabolic_capacities) {
+        nimcp_tensor_destroy(input->atp_levels);
+        nimcp_free(input);
+        return NULL;
+    }
+
+    input->batch_size = batch_size;
+    return input;
+}
+
+void metabolic_input_tensor_destroy(metabolic_input_tensor_t* input) {
+    if (!input) return;
+
+    nimcp_tensor_destroy(input->atp_levels);
+    nimcp_tensor_destroy(input->metabolic_capacities);
+    nimcp_free(input);
+}
+
+metabolic_multipliers_tensor_t* metabolic_multipliers_tensor_create(uint32_t batch_size) {
+    if (batch_size == 0) return NULL;
+
+    metabolic_multipliers_tensor_t* mult = nimcp_calloc(1, sizeof(metabolic_multipliers_tensor_t));
+    if (!mult) return NULL;
+
+    /* Shape: [batch_size, 4] for the 4 multiplier types */
+    uint32_t dims[2] = { batch_size, 4 };
+    uint32_t rank = (batch_size == 1) ? 1 : 2;
+    uint32_t* dim_ptr = (batch_size == 1) ? &dims[1] : dims;
+
+    mult->multipliers = nimcp_tensor_ones(dim_ptr, rank, NIMCP_DTYPE_F32);
+    if (!mult->multipliers) {
+        nimcp_free(mult);
+        return NULL;
+    }
+
+    mult->batch_size = batch_size;
+    return mult;
+}
+
+void metabolic_multipliers_tensor_destroy(metabolic_multipliers_tensor_t* mult) {
+    if (!mult) return;
+
+    nimcp_tensor_destroy(mult->multipliers);
+    nimcp_free(mult);
+}
+
+/* ============================================================================
+ * Tensor Initialization Functions
+ * ============================================================================ */
+
+int metabolic_multipliers_tensor_init_default(metabolic_multipliers_tensor_t* mult) {
+    if (!mult || !mult->multipliers) return -1;
+
+    /* Default multipliers: [1.0, 1.1, 1.0, 0.9] */
+    const float defaults[4] = { 1.0f, 1.1f, 1.0f, 0.9f };
+
+    for (uint32_t i = 0; i < mult->batch_size; i++) {
+        for (uint32_t j = 0; j < 4; j++) {
+            size_t flat_idx = (mult->batch_size == 1) ? j : (i * 4 + j);
+            if (nimcp_tensor_set_flat(mult->multipliers, flat_idx, defaults[j]) != 0) {
+                return -1;
+            }
+        }
+    }
+    return 0;
+}
+
+int metabolic_multipliers_tensor_set_region(
+    metabolic_multipliers_tensor_t* mult,
+    uint32_t region_idx,
+    float atp_primary,
+    float atp_secondary,
+    float fatigue_primary,
+    float fatigue_secondary
+) {
+    if (!mult || !mult->multipliers) return -1;
+    if (region_idx >= mult->batch_size) return -1;
+
+    float values[4] = { atp_primary, atp_secondary, fatigue_primary, fatigue_secondary };
+
+    for (uint32_t j = 0; j < 4; j++) {
+        size_t flat_idx = (mult->batch_size == 1) ? j : (region_idx * 4 + j);
+        if (nimcp_tensor_set_flat(mult->multipliers, flat_idx, values[j]) != 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+int metabolic_effects_tensor_init_full(metabolic_effects_tensor_t* effects) {
+    if (!effects || !effects->effects) return -1;
+
+    size_t numel = nimcp_tensor_numel(effects->effects);
+    for (size_t i = 0; i < numel; i++) {
+        if (nimcp_tensor_set_flat(effects->effects, i, 1.0) != 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+/* ============================================================================
+ * Tensor Effect Computation
+ * ============================================================================ */
+
+/**
+ * @brief Helper: Compute and clamp a single effect value
+ */
+static float compute_clamped_effect(float input_val, float sensitivity, float mult, float min_cap) {
+    float value = input_val * mult * sensitivity;
+    return nimcp_clamp_f(value, min_cap, 1.0f);
+}
+
+int metabolic_compute_effects_tensor(
+    const metabolic_input_tensor_t* input,
+    const metabolic_modulation_config_t* config,
+    const metabolic_multipliers_tensor_t* multipliers,
+    metabolic_effects_tensor_t* effects
+) {
+    if (!input || !config || !effects) return -1;
+    if (!input->atp_levels || !input->metabolic_capacities || !effects->effects) return -1;
+
+    uint32_t batch = input->batch_size;
+    if (batch != effects->batch_size) return -1;
+
+    /* Use default multipliers if none provided */
+    metabolic_effect_multipliers_t default_mult = metabolic_default_multipliers();
+
+    for (uint32_t i = 0; i < batch; i++) {
+        float atp = (float)nimcp_tensor_get_flat(input->atp_levels, i);
+        float cap = (float)nimcp_tensor_get_flat(input->metabolic_capacities, i);
+        float min = config->min_capacity;
+
+        /* Get multipliers for this region */
+        float mult_atp_p, mult_atp_s, mult_fat_p, mult_fat_s;
+        if (multipliers && multipliers->multipliers) {
+            size_t base = (multipliers->batch_size == 1) ? 0 : (i * 4);
+            mult_atp_p = (float)nimcp_tensor_get_flat(multipliers->multipliers, base + 0);
+            mult_atp_s = (float)nimcp_tensor_get_flat(multipliers->multipliers, base + 1);
+            mult_fat_p = (float)nimcp_tensor_get_flat(multipliers->multipliers, base + 2);
+            mult_fat_s = (float)nimcp_tensor_get_flat(multipliers->multipliers, base + 3);
+        } else {
+            mult_atp_p = default_mult.atp_primary_mult;
+            mult_atp_s = default_mult.atp_secondary_mult;
+            mult_fat_p = default_mult.fatigue_primary_mult;
+            mult_fat_s = default_mult.fatigue_secondary_mult;
+        }
+
+        /* Compute effect indices for this region */
+        size_t base_idx = (effects->batch_size == 1) ? 0 : (i * METABOLIC_EFFECT_COUNT);
+
+        /* ATP modulation */
+        float primary_atp = 1.0f, secondary_atp = 1.0f;
+        if (config->enable_atp_modulation) {
+            primary_atp = compute_clamped_effect(atp, config->atp_sensitivity, mult_atp_p, min);
+            secondary_atp = compute_clamped_effect(atp, config->atp_sensitivity, mult_atp_s, min);
+        }
+        nimcp_tensor_set_flat(effects->effects, base_idx + METABOLIC_IDX_PRIMARY_ATP, primary_atp);
+        nimcp_tensor_set_flat(effects->effects, base_idx + METABOLIC_IDX_SECONDARY_ATP, secondary_atp);
+
+        /* Fatigue modulation */
+        float primary_fatigue = 1.0f, secondary_fatigue = 1.0f;
+        if (config->enable_fatigue_modulation) {
+            primary_fatigue = compute_clamped_effect(cap, config->fatigue_sensitivity, mult_fat_p, min);
+            secondary_fatigue = compute_clamped_effect(cap, config->fatigue_sensitivity, mult_fat_s, min);
+        }
+        nimcp_tensor_set_flat(effects->effects, base_idx + METABOLIC_IDX_PRIMARY_FATIGUE, primary_fatigue);
+        nimcp_tensor_set_flat(effects->effects, base_idx + METABOLIC_IDX_SECONDARY_FATIGUE, secondary_fatigue);
+
+        /* Overall capacity = average of 4 effects */
+        float overall = (primary_atp + secondary_atp + primary_fatigue + secondary_fatigue) / 4.0f;
+        nimcp_tensor_set_flat(effects->effects, base_idx + METABOLIC_IDX_OVERALL_CAPACITY, overall);
+    }
+
+    return 0;
+}
+
+int metabolic_compute_overall_capacity_tensor(metabolic_effects_tensor_t* effects) {
+    if (!effects || !effects->effects) return -1;
+
+    for (uint32_t i = 0; i < effects->batch_size; i++) {
+        size_t base_idx = (effects->batch_size == 1) ? 0 : (i * METABOLIC_EFFECT_COUNT);
+
+        float sum = 0.0f;
+        for (int j = 0; j < 4; j++) {
+            sum += (float)nimcp_tensor_get_flat(effects->effects, base_idx + j);
+        }
+        nimcp_tensor_set_flat(effects->effects, base_idx + METABOLIC_IDX_OVERALL_CAPACITY, sum / 4.0f);
+    }
+
+    return 0;
+}
+
+/* ============================================================================
+ * Tensor/Scalar Conversion Functions
+ * ============================================================================ */
+
+int metabolic_effects_tensor_to_scalar(
+    const metabolic_effects_tensor_t* tensor_effects,
+    uint32_t region_idx,
+    metabolic_effects_t* scalar_effects
+) {
+    if (!tensor_effects || !tensor_effects->effects || !scalar_effects) return -1;
+    if (region_idx >= tensor_effects->batch_size) return -1;
+
+    size_t base_idx = (tensor_effects->batch_size == 1) ? 0 : (region_idx * METABOLIC_EFFECT_COUNT);
+
+    scalar_effects->primary_atp = (float)nimcp_tensor_get_flat(
+        tensor_effects->effects, base_idx + METABOLIC_IDX_PRIMARY_ATP);
+    scalar_effects->secondary_atp = (float)nimcp_tensor_get_flat(
+        tensor_effects->effects, base_idx + METABOLIC_IDX_SECONDARY_ATP);
+    scalar_effects->primary_fatigue = (float)nimcp_tensor_get_flat(
+        tensor_effects->effects, base_idx + METABOLIC_IDX_PRIMARY_FATIGUE);
+    scalar_effects->secondary_fatigue = (float)nimcp_tensor_get_flat(
+        tensor_effects->effects, base_idx + METABOLIC_IDX_SECONDARY_FATIGUE);
+    scalar_effects->overall_capacity = (float)nimcp_tensor_get_flat(
+        tensor_effects->effects, base_idx + METABOLIC_IDX_OVERALL_CAPACITY);
+
+    return 0;
+}
+
+int metabolic_effects_scalar_to_tensor(
+    metabolic_effects_tensor_t* tensor_effects,
+    uint32_t region_idx,
+    const metabolic_effects_t* scalar_effects
+) {
+    if (!tensor_effects || !tensor_effects->effects || !scalar_effects) return -1;
+    if (region_idx >= tensor_effects->batch_size) return -1;
+
+    size_t base_idx = (tensor_effects->batch_size == 1) ? 0 : (region_idx * METABOLIC_EFFECT_COUNT);
+
+    nimcp_tensor_set_flat(tensor_effects->effects,
+        base_idx + METABOLIC_IDX_PRIMARY_ATP, scalar_effects->primary_atp);
+    nimcp_tensor_set_flat(tensor_effects->effects,
+        base_idx + METABOLIC_IDX_SECONDARY_ATP, scalar_effects->secondary_atp);
+    nimcp_tensor_set_flat(tensor_effects->effects,
+        base_idx + METABOLIC_IDX_PRIMARY_FATIGUE, scalar_effects->primary_fatigue);
+    nimcp_tensor_set_flat(tensor_effects->effects,
+        base_idx + METABOLIC_IDX_SECONDARY_FATIGUE, scalar_effects->secondary_fatigue);
+    nimcp_tensor_set_flat(tensor_effects->effects,
+        base_idx + METABOLIC_IDX_OVERALL_CAPACITY, scalar_effects->overall_capacity);
+
+    return 0;
+}
+
+float metabolic_effects_tensor_get(
+    const metabolic_effects_tensor_t* effects,
+    uint32_t region_idx,
+    metabolic_effect_index_t effect_idx
+) {
+    if (!effects || !effects->effects) return NAN;
+    if (region_idx >= effects->batch_size) return NAN;
+    if (effect_idx >= METABOLIC_EFFECT_COUNT) return NAN;
+
+    size_t base_idx = (effects->batch_size == 1) ? 0 : (region_idx * METABOLIC_EFFECT_COUNT);
+    return (float)nimcp_tensor_get_flat(effects->effects, base_idx + effect_idx);
+}
+
+int metabolic_effects_tensor_set(
+    metabolic_effects_tensor_t* effects,
+    uint32_t region_idx,
+    metabolic_effect_index_t effect_idx,
+    float value
+) {
+    if (!effects || !effects->effects) return -1;
+    if (region_idx >= effects->batch_size) return -1;
+    if (effect_idx >= METABOLIC_EFFECT_COUNT) return -1;
+
+    size_t base_idx = (effects->batch_size == 1) ? 0 : (region_idx * METABOLIC_EFFECT_COUNT);
+    return nimcp_tensor_set_flat(effects->effects, base_idx + effect_idx, value);
+}
+
+metabolic_input_tensor_t* metabolic_input_tensor_from_scalar(
+    float atp_level,
+    float metabolic_capacity
+) {
+    metabolic_input_tensor_t* input = metabolic_input_tensor_create(1);
+    if (!input) return NULL;
+
+    nimcp_tensor_set_flat(input->atp_levels, 0, atp_level);
+    nimcp_tensor_set_flat(input->metabolic_capacities, 0, metabolic_capacity);
+
+    return input;
+}
+
+int metabolic_input_tensor_set_region(
+    metabolic_input_tensor_t* input,
+    uint32_t region_idx,
+    float atp_level,
+    float metabolic_capacity
+) {
+    if (!input || !input->atp_levels || !input->metabolic_capacities) return -1;
+    if (region_idx >= input->batch_size) return -1;
+
+    nimcp_tensor_set_flat(input->atp_levels, region_idx, atp_level);
+    nimcp_tensor_set_flat(input->metabolic_capacities, region_idx, metabolic_capacity);
+
+    return 0;
 }

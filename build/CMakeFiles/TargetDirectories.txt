@@ -2968,6 +2968,7 @@
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_training_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_snn_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_lnn_kernels.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_substrate_gpu.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/rebuild_cache.dir

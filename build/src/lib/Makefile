@@ -9737,6 +9737,30 @@ __/core/brain/factory/init/nimcp_brain_init_structural.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_structural.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_structural.c.s
 
+__/core/brain/factory/init/nimcp_brain_init_substrate_gpu.o: __/core/brain/factory/init/nimcp_brain_init_substrate_gpu.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_substrate_gpu.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_substrate_gpu.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_substrate_gpu.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_substrate_gpu.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_substrate_gpu.i: __/core/brain/factory/init/nimcp_brain_init_substrate_gpu.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_substrate_gpu.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_substrate_gpu.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_substrate_gpu.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_substrate_gpu.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_substrate_gpu.s: __/core/brain/factory/init/nimcp_brain_init_substrate_gpu.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_substrate_gpu.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_substrate_gpu.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_substrate_gpu.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_substrate_gpu.c.s
+
 __/core/brain/factory/init/nimcp_brain_init_subsystems.o: __/core/brain/factory/init/nimcp_brain_init_subsystems.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_subsystems.o
 
@@ -16744,6 +16768,78 @@ __/gpu/spike_event/nimcp_spike_event.s: __/gpu/spike_event/nimcp_spike_event.c.s
 __/gpu/spike_event/nimcp_spike_event.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/spike_event/nimcp_spike_event.c.s
 .PHONY : __/gpu/spike_event/nimcp_spike_event.c.s
+
+__/gpu/substrate/nimcp_substrate_cpu.o: __/gpu/substrate/nimcp_substrate_cpu.c.o
+.PHONY : __/gpu/substrate/nimcp_substrate_cpu.o
+
+# target to build an object file
+__/gpu/substrate/nimcp_substrate_cpu.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/substrate/nimcp_substrate_cpu.c.o
+.PHONY : __/gpu/substrate/nimcp_substrate_cpu.c.o
+
+__/gpu/substrate/nimcp_substrate_cpu.i: __/gpu/substrate/nimcp_substrate_cpu.c.i
+.PHONY : __/gpu/substrate/nimcp_substrate_cpu.i
+
+# target to preprocess a source file
+__/gpu/substrate/nimcp_substrate_cpu.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/substrate/nimcp_substrate_cpu.c.i
+.PHONY : __/gpu/substrate/nimcp_substrate_cpu.c.i
+
+__/gpu/substrate/nimcp_substrate_cpu.s: __/gpu/substrate/nimcp_substrate_cpu.c.s
+.PHONY : __/gpu/substrate/nimcp_substrate_cpu.s
+
+# target to generate assembly for a file
+__/gpu/substrate/nimcp_substrate_cpu.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/substrate/nimcp_substrate_cpu.c.s
+.PHONY : __/gpu/substrate/nimcp_substrate_cpu.c.s
+
+__/gpu/substrate/nimcp_substrate_gpu.o: __/gpu/substrate/nimcp_substrate_gpu.c.o
+.PHONY : __/gpu/substrate/nimcp_substrate_gpu.o
+
+# target to build an object file
+__/gpu/substrate/nimcp_substrate_gpu.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/substrate/nimcp_substrate_gpu.c.o
+.PHONY : __/gpu/substrate/nimcp_substrate_gpu.c.o
+
+__/gpu/substrate/nimcp_substrate_gpu.i: __/gpu/substrate/nimcp_substrate_gpu.c.i
+.PHONY : __/gpu/substrate/nimcp_substrate_gpu.i
+
+# target to preprocess a source file
+__/gpu/substrate/nimcp_substrate_gpu.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/substrate/nimcp_substrate_gpu.c.i
+.PHONY : __/gpu/substrate/nimcp_substrate_gpu.c.i
+
+__/gpu/substrate/nimcp_substrate_gpu.s: __/gpu/substrate/nimcp_substrate_gpu.c.s
+.PHONY : __/gpu/substrate/nimcp_substrate_gpu.s
+
+# target to generate assembly for a file
+__/gpu/substrate/nimcp_substrate_gpu.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/substrate/nimcp_substrate_gpu.c.s
+.PHONY : __/gpu/substrate/nimcp_substrate_gpu.c.s
+
+__/gpu/substrate/nimcp_substrate_kernels.o: __/gpu/substrate/nimcp_substrate_kernels.cu.o
+.PHONY : __/gpu/substrate/nimcp_substrate_kernels.o
+
+# target to build an object file
+__/gpu/substrate/nimcp_substrate_kernels.cu.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/substrate/nimcp_substrate_kernels.cu.o
+.PHONY : __/gpu/substrate/nimcp_substrate_kernels.cu.o
+
+__/gpu/substrate/nimcp_substrate_kernels.i: __/gpu/substrate/nimcp_substrate_kernels.cu.i
+.PHONY : __/gpu/substrate/nimcp_substrate_kernels.i
+
+# target to preprocess a source file
+__/gpu/substrate/nimcp_substrate_kernels.cu.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/substrate/nimcp_substrate_kernels.cu.i
+.PHONY : __/gpu/substrate/nimcp_substrate_kernels.cu.i
+
+__/gpu/substrate/nimcp_substrate_kernels.s: __/gpu/substrate/nimcp_substrate_kernels.cu.s
+.PHONY : __/gpu/substrate/nimcp_substrate_kernels.s
+
+# target to generate assembly for a file
+__/gpu/substrate/nimcp_substrate_kernels.cu.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/substrate/nimcp_substrate_kernels.cu.s
+.PHONY : __/gpu/substrate/nimcp_substrate_kernels.cu.s
 
 __/gpu/synapse_compute/nimcp_synapse_compute_gpu.o: __/gpu/synapse_compute/nimcp_synapse_compute_gpu.cu.o
 .PHONY : __/gpu/synapse_compute/nimcp_synapse_compute_gpu.o
@@ -29161,6 +29257,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_structural.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_structural.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_structural.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_substrate_gpu.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_substrate_gpu.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_substrate_gpu.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_subsystems.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_subsystems.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_subsystems.s"
@@ -30037,6 +30136,15 @@ help:
 	@echo "... __/gpu/spike_event/nimcp_spike_event.o"
 	@echo "... __/gpu/spike_event/nimcp_spike_event.i"
 	@echo "... __/gpu/spike_event/nimcp_spike_event.s"
+	@echo "... __/gpu/substrate/nimcp_substrate_cpu.o"
+	@echo "... __/gpu/substrate/nimcp_substrate_cpu.i"
+	@echo "... __/gpu/substrate/nimcp_substrate_cpu.s"
+	@echo "... __/gpu/substrate/nimcp_substrate_gpu.o"
+	@echo "... __/gpu/substrate/nimcp_substrate_gpu.i"
+	@echo "... __/gpu/substrate/nimcp_substrate_gpu.s"
+	@echo "... __/gpu/substrate/nimcp_substrate_kernels.o"
+	@echo "... __/gpu/substrate/nimcp_substrate_kernels.i"
+	@echo "... __/gpu/substrate/nimcp_substrate_kernels.s"
 	@echo "... __/gpu/synapse_compute/nimcp_synapse_compute_gpu.o"
 	@echo "... __/gpu/synapse_compute/nimcp_synapse_compute_gpu.i"
 	@echo "... __/gpu/synapse_compute/nimcp_synapse_compute_gpu.s"

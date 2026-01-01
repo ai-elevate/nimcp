@@ -579,6 +579,28 @@ bool nimcp_gpu_spike_propagate(
     return true;
 }
 
+/**
+ * Sparse spike propagation kernel
+ * Only sums weights for neurons that actually spiked
+ */
+__global__ void kernel_spike_propagate_sparse(
+    const uint32_t* spike_indices, size_t n_spikes,
+    const float* weights, float* output,
+    size_t n_pre, size_t n_post)
+{
+    size_t post_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (post_idx >= n_post) return;
+
+    float sum = 0.0f;
+    for (size_t i = 0; i < n_spikes; i++) {
+        uint32_t pre_idx = spike_indices[i];
+        if (pre_idx < n_pre) {
+            sum += weights[pre_idx * n_post + post_idx];
+        }
+    }
+    output[post_idx] += sum;
+}
+
 bool nimcp_gpu_spike_propagate_sparse(
     nimcp_gpu_context_t* ctx,
     const uint32_t* spike_indices,
@@ -586,9 +608,27 @@ bool nimcp_gpu_spike_propagate_sparse(
     const nimcp_gpu_tensor_t* weights,
     nimcp_gpu_tensor_t* output)
 {
-    // TODO: Implement sparse spike propagation for efficiency
-    LOG_WARN("Sparse spike propagation not yet implemented");
-    return false;
+    if (!ctx || !weights || !output) return false;
+    if (n_spikes == 0) return true;  // No spikes, nothing to do
+    if (!spike_indices) return false;
+
+    // Infer dimensions from weight matrix (n_pre x n_post)
+    size_t n_pre = weights->dims[0];
+    size_t n_post = weights->dims[1];
+
+    // Copy spike indices to GPU
+    uint32_t* d_indices = NULL;
+    cudaMalloc(&d_indices, n_spikes * sizeof(uint32_t));
+    cudaMemcpy(d_indices, spike_indices, n_spikes * sizeof(uint32_t), cudaMemcpyHostToDevice);
+
+    kernel_spike_propagate_sparse<<<GRID_SIZE(n_post), BLOCK_SIZE>>>(
+        d_indices, n_spikes,
+        (const float*)weights->data, (float*)output->data,
+        n_pre, n_post);
+
+    CUDA_CHECK(cudaGetLastError());
+    cudaFree(d_indices);
+    return true;
 }
 
 //=============================================================================
@@ -784,11 +824,16 @@ bool nimcp_gpu_spike_rate(
 {
     if (!ctx || !spikes || !rates || n_timesteps == 0) return false;
 
-    // Compute mean spikes per neuron over timesteps
-    // Assuming spikes is (timesteps, neurons)
-    size_t n_neurons = rates->numel;
-
-    nimcp_gpu_mean(ctx, spikes, rates, 0, false);
+    // For 1D spikes tensor (single timestep), rate = spikes / n_timesteps
+    // For 2D spikes tensor (timesteps x neurons), mean along axis 0
+    if (spikes->ndim == 1) {
+        // Single timestep: rate = spikes / n_timesteps
+        float scale = 1.0f / (float)n_timesteps;
+        nimcp_gpu_mul_scalar(ctx, spikes, scale, rates);
+    } else {
+        // Multiple timesteps: compute mean along time axis
+        nimcp_gpu_mean(ctx, spikes, rates, 0, false);
+    }
 
     return true;
 }

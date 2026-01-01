@@ -692,21 +692,27 @@ bool nlp_network_get_neuromodulator_levels(
     }
 
     // Get neuromodulator pool
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     bool success = neuromodulator_get_levels(network->neuromodulators, &pool);
     if (!success) {
         LOG_ERROR(LOG_MODULE, "Failed to get neuromodulator levels");
+        neuromodulator_pool_destroy(&pool);
         return false;
     }
 
     // Extract individual levels if requested
-    if (dopamine) *dopamine = pool.dopamine;
-    if (serotonin) *serotonin = pool.serotonin;
-    if (acetylcholine) *acetylcholine = pool.acetylcholine;
-    if (norepinephrine) *norepinephrine = pool.norepinephrine;
+    if (dopamine) *dopamine = neuromodulator_pool_get_dopamine(&pool);
+    if (serotonin) *serotonin = neuromodulator_pool_get_serotonin(&pool);
+    if (acetylcholine) *acetylcholine = neuromodulator_pool_get_acetylcholine(&pool);
+    if (norepinephrine) *norepinephrine = neuromodulator_pool_get_norepinephrine(&pool);
 
     LOG_DEBUG(LOG_MODULE, "Neuromodulator levels: DA=%f, 5HT=%f, ACh=%f, NE=%f",
-                     pool.dopamine, pool.serotonin, pool.acetylcholine, pool.norepinephrine);
+                     neuromodulator_pool_get_dopamine(&pool),
+                     neuromodulator_pool_get_serotonin(&pool),
+                     neuromodulator_pool_get_acetylcholine(&pool),
+                     neuromodulator_pool_get_norepinephrine(&pool));
+
+    neuromodulator_pool_destroy(&pool);
     return true;
 }
 

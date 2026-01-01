@@ -113,12 +113,15 @@ int neuromod_fep_bridge_update(neuromod_fep_bridge_t* bridge, uint64_t delta_ms)
             bridge->stats.da_releases++;
         }
 
-        neuromodulator_pool_t pool;
+        neuromodulator_pool_t pool = neuromodulator_pool_create();
         if (neuromodulator_get_levels(bridge->neuromod_system, &pool)) {
-            bridge->neuromod_effects.da_level = pool.dopamine;
-            bridge->neuromod_effects.ach_level = pool.acetylcholine;
-            bridge->neuromod_effects.learning_rate_modulation = 1.0f + 0.5f * pool.dopamine;
+            float da = neuromodulator_pool_get_dopamine(&pool);
+            float ach = neuromodulator_pool_get_acetylcholine(&pool);
+            bridge->neuromod_effects.da_level = da;
+            bridge->neuromod_effects.ach_level = ach;
+            bridge->neuromod_effects.learning_rate_modulation = 1.0f + 0.5f * da;
         }
+        neuromodulator_pool_destroy(&pool);
 
         bridge->stats.total_updates++;
         bridge->stats.avg_da_level = (bridge->stats.avg_da_level * (bridge->stats.total_updates - 1) + bridge->neuromod_effects.da_level) / bridge->stats.total_updates;

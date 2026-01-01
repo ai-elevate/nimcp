@@ -18671,6 +18671,19 @@ unit_gpu_test_lnn_kernels/fast:
 .PHONY : unit_gpu_test_lnn_kernels/fast
 
 #=============================================================================
+# Target rules for targets named unit_gpu_test_substrate_gpu
+
+# Build rule for target.
+unit_gpu_test_substrate_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_substrate_gpu
+.PHONY : unit_gpu_test_substrate_gpu
+
+# fast build rule for target.
+unit_gpu_test_substrate_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_substrate_gpu.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_substrate_gpu.dir/build
+.PHONY : unit_gpu_test_substrate_gpu/fast
+
+#=============================================================================
 # Target rules for targets named unit_gpu_immune_execution
 
 # Build rule for target.
@@ -22208,6 +22221,7 @@ help:
 	@echo "... unit_gpu_test_simd_detect"
 	@echo "... unit_gpu_test_snn_kernels"
 	@echo "... unit_gpu_test_spike_event"
+	@echo "... unit_gpu_test_substrate_gpu"
 	@echo "... unit_gpu_test_tensor_kernels"
 	@echo "... unit_gpu_test_training_kernels"
 	@echo "... unit_information_test_quantum_shannon"

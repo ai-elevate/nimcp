@@ -20,6 +20,18 @@
 #define LOG_MODULE "KERNEL_BACKEND"
 
 //=============================================================================
+// External Substrate Operations Tables
+//=============================================================================
+
+// CPU substrate ops (from nimcp_substrate_cpu.c)
+extern nimcp_substrate_ops_t nimcp_cpu_substrate_ops;
+
+#ifdef NIMCP_ENABLE_CUDA
+// CUDA substrate ops (from nimcp_substrate_kernels.cu)
+extern nimcp_substrate_ops_t nimcp_cuda_substrate_ops;
+#endif
+
+//=============================================================================
 // Global Backend State
 //=============================================================================
 
@@ -1132,6 +1144,9 @@ static void init_cpu_backend(void)
     g_cpu_backend.inference.quantize_int8 = cpu_quantize_int8;
     g_cpu_backend.inference.dequantize_int8 = cpu_dequantize_int8;
     g_cpu_backend.inference.matmul_int8 = cpu_matmul_int8;
+
+    // Substrate operations (axons, dendrites, myelin, neuromodulators, glial, metabolic)
+    g_cpu_backend.substrate = nimcp_cpu_substrate_ops;
 
     LOG_INFO("CPU kernel backend initialized");
 }

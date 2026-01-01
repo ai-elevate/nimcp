@@ -155,9 +155,12 @@ static void update_phasic_tonic(phasic_tonic_state_t* state, float dt)
     if (!state) return;
 
     // Exponential decay toward tonic baseline
-    float decay_rate = 1.0F / state->burst_decay_tau;  // Convert tau to rate
+    float burst_decay_tau = phasic_tonic_get_burst_decay_tau(state);
+    float decay_rate = 1.0F / burst_decay_tau;  // Convert tau to rate
     float decay_factor = expf(-decay_rate * dt);
-    state->phasic_burst = state->phasic_burst * decay_factor + state->tonic_level * (1.0F - decay_factor);
+    float phasic = phasic_tonic_get_phasic_burst(state);
+    float tonic = phasic_tonic_get_tonic_level(state);
+    phasic_tonic_set_phasic_burst(state, phasic * decay_factor + tonic * (1.0F - decay_factor));
 }
 
 /**
@@ -176,8 +179,9 @@ static void trigger_phasic_burst(phasic_tonic_state_t* state, float burst_amount
 {
     if (!state) return;
 
-    state->phasic_burst += burst_amount;
-    if (state->phasic_burst > 1.0F) state->phasic_burst = 1.0F;
+    float phasic = phasic_tonic_get_phasic_burst(state) + burst_amount;
+    if (phasic > 1.0F) phasic = 1.0F;
+    phasic_tonic_set_phasic_burst(state, phasic);
 }
 
 /**
@@ -199,7 +203,7 @@ static float get_effective_ach(const phasic_tonic_state_t* ach_state,
     if (!ach_state || !receptors) return 0.0F;
 
     // Average of phasic and tonic
-    float ach_level = (ach_state->phasic_burst + ach_state->tonic_level) * 0.5F;
+    float ach_level = (phasic_tonic_get_phasic_burst(ach_state) + phasic_tonic_get_tonic_level(ach_state)) * 0.5F;
 
     // M4 receptors primarily sharpen frequency tuning
     float m4_effect = ach_level * receptors->m2_density;
@@ -229,7 +233,7 @@ static float get_effective_ne(const phasic_tonic_state_t* ne_state,
     if (!ne_state || !receptors) return 0.0F;
 
     // Average of phasic and tonic
-    float ne_level = (ne_state->phasic_burst + ne_state->tonic_level) * 0.5F;
+    float ne_level = (phasic_tonic_get_phasic_burst(ne_state) + phasic_tonic_get_tonic_level(ne_state)) * 0.5F;
 
     // α1 receptors enhance onset detection
     float alpha1_effect = ne_level * receptors->alpha1_density;
@@ -545,18 +549,16 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
     // Initialize neuromodulation
     cortex->brain = NULL;
 
-    // Initialize phasic/tonic neuromodulator states
+    // Initialize phasic/tonic neuromodulator states using proper API
     // ACh: Fast phasic bursts for attention (decay ~500ms)
-    cortex->ach_state.phasic_burst = 0.0F;
-    cortex->ach_state.tonic_level = 0.3F;  // Baseline attention
-    cortex->ach_state.burst_decay_tau = 0.5F;  // 500ms decay time constant
-    cortex->ach_state.burst_start_time_us = 0;
+    cortex->ach_state = phasic_tonic_state_create();
+    phasic_tonic_set_phasic_burst(&cortex->ach_state, 0.0F);
+    phasic_tonic_set_tonic_level(&cortex->ach_state, 0.3F);  // Baseline attention
 
     // NE: Moderate phasic bursts for arousal (decay ~1s)
-    cortex->ne_state.phasic_burst = 0.0F;
-    cortex->ne_state.tonic_level = 0.3F;  // Baseline arousal
-    cortex->ne_state.burst_decay_tau = 1.0F;  // 1s decay time constant
-    cortex->ne_state.burst_start_time_us = 0;
+    cortex->ne_state = phasic_tonic_state_create();
+    phasic_tonic_set_phasic_burst(&cortex->ne_state, 0.0F);
+    phasic_tonic_set_tonic_level(&cortex->ne_state, 0.3F);  // Baseline arousal
 
     // Initialize receptor expression (auditory cortex typical values)
     // ACh receptors: Using M2 density for frequency selectivity
@@ -1601,8 +1603,10 @@ static void update_neuromodulator_states(audio_cortex_t* cortex, float dt)
             float global_ne = neuromodulator_get_level(neuromod, NEUROMOD_NOREPINEPHRINE);
 
             // Detect sudden changes (trigger phasic burst)
-            float ach_change = global_ach - cortex->ach_state.tonic_level;
-            float ne_change = global_ne - cortex->ne_state.tonic_level;
+            float ach_tonic = phasic_tonic_get_tonic_level(&cortex->ach_state);
+            float ne_tonic = phasic_tonic_get_tonic_level(&cortex->ne_state);
+            float ach_change = global_ach - ach_tonic;
+            float ne_change = global_ne - ne_tonic;
 
             if (fabsf(ach_change) > 0.3F) {
                 // Sudden change - trigger phasic burst
@@ -1614,14 +1618,14 @@ static void update_neuromodulator_states(audio_cortex_t* cortex, float dt)
 
             // Slowly sync tonic to global (time constant ~5s)
             float sync_rate = 0.2F;  // 20% per second
-            cortex->ach_state.tonic_level += ach_change * sync_rate * dt;
-            cortex->ne_state.tonic_level += ne_change * sync_rate * dt;
+            float new_ach_tonic = ach_tonic + ach_change * sync_rate * dt;
+            float new_ne_tonic = ne_tonic + ne_change * sync_rate * dt;
 
-            // Clamp to valid range
-            if (cortex->ach_state.tonic_level > 1.0F) cortex->ach_state.tonic_level = 1.0F;
-            if (cortex->ach_state.tonic_level < 0.0F) cortex->ach_state.tonic_level = 0.0F;
-            if (cortex->ne_state.tonic_level > 1.0F) cortex->ne_state.tonic_level = 1.0F;
-            if (cortex->ne_state.tonic_level < 0.0F) cortex->ne_state.tonic_level = 0.0F;
+            // Clamp to valid range and set
+            new_ach_tonic = fminf(fmaxf(new_ach_tonic, 0.0F), 1.0F);
+            new_ne_tonic = fminf(fmaxf(new_ne_tonic, 0.0F), 1.0F);
+            phasic_tonic_set_tonic_level(&cortex->ach_state, new_ach_tonic);
+            phasic_tonic_set_tonic_level(&cortex->ne_state, new_ne_tonic);
         }
     }
 
@@ -1655,8 +1659,8 @@ void audio_cortex_set_brain(audio_cortex_t* cortex, brain_t brain)
     if (brain) {
         neuromodulator_system_t neuromod = brain_get_neuromodulator_system(brain);
         if (neuromod) {
-            cortex->ach_state.tonic_level = neuromodulator_get_level(neuromod, NEUROMOD_ACETYLCHOLINE);
-            cortex->ne_state.tonic_level = neuromodulator_get_level(neuromod, NEUROMOD_NOREPINEPHRINE);
+            phasic_tonic_set_tonic_level(&cortex->ach_state, neuromodulator_get_level(neuromod, NEUROMOD_ACETYLCHOLINE));
+            phasic_tonic_set_tonic_level(&cortex->ne_state, neuromodulator_get_level(neuromod, NEUROMOD_NOREPINEPHRINE));
         }
     }
 }

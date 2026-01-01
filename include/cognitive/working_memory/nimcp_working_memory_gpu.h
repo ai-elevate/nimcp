@@ -18,13 +18,22 @@
  * 3. Zero-copy integration when data already on GPU
  * 4. Prepares for future extensions (larger associative buffers)
  *
- * @version 1.0
+ * REFACTORED (2026-01-01):
+ * ========================
+ * - Added tensor-based API variants for zero-copy GPU integration
+ * - Original host-pointer API retained for backward compatibility
+ *
+ * @version 1.1
  * @author NIMCP Development Team - Phase 2.3 GPU Integration
- * @date 2025
+ * @date 2025-2026
  */
 
 #ifndef NIMCP_WORKING_MEMORY_GPU_H
 #define NIMCP_WORKING_MEMORY_GPU_H
+
+// Include GPU headers before extern "C" (they may contain C++ code)
+#include "gpu/context/nimcp_gpu_context.h"
+#include "gpu/tensor/nimcp_tensor_gpu.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -34,7 +43,7 @@ extern "C" {
 #endif
 
 //=============================================================================
-// Core GPU Decay Functions
+// Core GPU Decay Functions (Legacy Host Pointer API)
 //=============================================================================
 
 /**
@@ -133,6 +142,84 @@ int nimcp_gpu_working_memory_count_below_threshold(
     const float* salience,
     float min_salience,
     uint32_t num_items,
+    uint32_t* count
+);
+
+//=============================================================================
+// Tensor-Based API (New in v1.1)
+//=============================================================================
+
+/**
+ * @brief Apply working memory decay using GPU tensors
+ *
+ * WHAT: GPU decay using nimcp_gpu_tensor_t for salience
+ * WHY:  Zero-copy integration when data already on GPU
+ * HOW:  Direct kernel launch on tensor data pointers
+ *
+ * This variant is useful when working memory salience is already on GPU
+ * from prior cognitive operations (e.g., after attention processing).
+ *
+ * TENSOR REQUIREMENTS:
+ * - salience: FP32 tensor
+ * - timestamps_low: UINT32 tensor (lower 32 bits of timestamps)
+ * - timestamps_high: UINT32 tensor (upper 32 bits of timestamps)
+ *
+ * @param ctx GPU context
+ * @param salience GPU tensor for salience values (FP32, modified in-place)
+ * @param timestamps_low GPU tensor for lower 32 bits of timestamps (UINT32)
+ * @param timestamps_high GPU tensor for upper 32 bits of timestamps (UINT32)
+ * @param current_time Current time in milliseconds
+ * @param decay_tau_ms Decay time constant
+ * @param min_salience Minimum salience threshold
+ * @return true on success, false on failure
+ */
+bool nimcp_gpu_working_memory_decay_tensor(
+    nimcp_gpu_context_t* ctx,
+    nimcp_gpu_tensor_t* salience,
+    const nimcp_gpu_tensor_t* timestamps_low,
+    const nimcp_gpu_tensor_t* timestamps_high,
+    uint64_t current_time,
+    float decay_tau_ms,
+    float min_salience
+);
+
+/**
+ * @brief Apply working memory decay with raw 64-bit timestamp pointer
+ *
+ * WHAT: GPU decay with salience tensor and raw timestamp device pointer
+ * WHY:  Most efficient when timestamps are already in 64-bit format on device
+ * HOW:  Direct kernel launch with no timestamp conversion
+ *
+ * @param ctx GPU context
+ * @param salience GPU tensor for salience values (FP32, modified in-place)
+ * @param d_timestamps Device pointer to 64-bit timestamps
+ * @param current_time Current time in milliseconds
+ * @param decay_tau_ms Decay time constant
+ * @param min_salience Minimum salience threshold
+ * @return true on success, false on failure
+ */
+bool nimcp_gpu_working_memory_decay_tensor_raw_timestamps(
+    nimcp_gpu_context_t* ctx,
+    nimcp_gpu_tensor_t* salience,
+    const uint64_t* d_timestamps,
+    uint64_t current_time,
+    float decay_tau_ms,
+    float min_salience
+);
+
+/**
+ * @brief Count items below threshold using GPU tensor
+ *
+ * @param ctx GPU context
+ * @param salience GPU tensor for salience values (FP32, read-only)
+ * @param min_salience Minimum salience threshold
+ * @param count Output: count of items below threshold
+ * @return true on success, false on failure
+ */
+bool nimcp_gpu_working_memory_count_below_threshold_tensor(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* salience,
+    float min_salience,
     uint32_t* count
 );
 

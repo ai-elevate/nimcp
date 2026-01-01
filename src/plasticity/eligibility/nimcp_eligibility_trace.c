@@ -458,7 +458,7 @@ bool eligibility_is_in_burst(
     // WHY: Fallback if burst state not explicitly tracked
     // HOW: Compare total_concentration to threshold
     // NOTE: Baseline ~0.05 normalized, burst ~0.8+, threshold 0.3 = 6x baseline
-    if (phasic_tonic->total_concentration >= config->min_burst_concentration) {
+    if (phasic_tonic_get_total_concentration(phasic_tonic) >= config->min_burst_concentration) {
         return true;
     }
 
@@ -514,7 +514,7 @@ float eligibility_consolidate_on_burst(
         // WHY: Bursts provide protein synthesis signal for LTP
         // HOW: learning_rate × burst_lr_multiplier × trace × reward × dopamine
         float burst_lr = config->learning_rate * config->burst_lr_multiplier;
-        float dopamine_concentration = phasic_tonic->total_concentration;
+        float dopamine_concentration = phasic_tonic_get_total_concentration(phasic_tonic);
 
         float delta_w = burst_lr * trace->trace * reward;
 
@@ -545,7 +545,7 @@ float eligibility_consolidate_on_burst(
         // HOW: Same as eligibility_apply_reward()
 
         float dopamine_concentration = phasic_tonic ?
-            phasic_tonic->total_concentration : 1.0F;  // Default to 1.0 if no phasic-tonic
+            phasic_tonic_get_total_concentration(phasic_tonic) : 1.0F;  // Default to 1.0 if no phasic-tonic
 
         float delta_w = config->learning_rate * trace->trace * reward;
 

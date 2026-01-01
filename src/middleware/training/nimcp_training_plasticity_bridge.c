@@ -772,22 +772,25 @@ static void tpb_update_neuromod_from_rpe(tpb_context_t* ctx, float rpe)
     float da_delta = rpe * ctx->config.rpe_to_da_gain;
 
     /* Get current levels */
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(ctx->neuromod_system, &pool);
 
     /* Update dopamine */
-    float new_da = pool.dopamine + da_delta;
+    float new_da = neuromodulator_pool_get_dopamine(&pool) + da_delta;
     if (new_da > 1.0F) new_da = 1.0F;
     if (new_da < 0.0F) new_da = 0.0F;
 
     /* Also update norepinephrine for arousal on large RPE */
     float ne_delta = fabsf(rpe) * 0.2F;  /* Arousal from any prediction error */
-    float new_ne = pool.norepinephrine + ne_delta;
+    float new_ne = neuromodulator_pool_get_norepinephrine(&pool) + ne_delta;
     if (new_ne > 1.0F) new_ne = 1.0F;
 
     /* Apply updates */
     neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_DOPAMINE, new_da);
     neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_NOREPINEPHRINE, new_ne);
+
+    /* Cleanup pool tensors */
+    neuromodulator_pool_destroy(&pool);
 }
 
 //=============================================================================
@@ -1046,16 +1049,17 @@ static float tpb_apply_stdp_rule(tpb_context_t* ctx, uint32_t region_id,
 
     /* Apply three-factor modulation if enabled */
     if (region->enable_three_factor && ctx->neuromod_system) {
-        neuromodulator_pool_t pool;
+        neuromodulator_pool_t pool = neuromodulator_pool_create();
         neuromodulator_get_levels(ctx->neuromod_system, &pool);
 
         /* DA modulation: high DA amplifies, low DA suppresses */
-        float da_factor = 0.5F + pool.dopamine * region->da_sensitivity;
+        float da_factor = 0.5F + neuromodulator_pool_get_dopamine(&pool) * region->da_sensitivity;
 
         /* ACh modulation: attention focus */
-        float ach_factor = 0.8F + pool.acetylcholine * region->ach_sensitivity * 0.4F;
+        float ach_factor = 0.8F + neuromodulator_pool_get_acetylcholine(&pool) * region->ach_sensitivity * 0.4F;
 
         weight_change *= da_factor * ach_factor;
+        neuromodulator_pool_destroy(&pool);
     }
 
     return weight_change * region->base_learning_rate;
@@ -1071,11 +1075,12 @@ static float tpb_apply_bcm_rule(tpb_context_t* ctx, uint32_t region_id,
 
     /* Apply neuromodulation */
     if (region->enable_three_factor && ctx->neuromod_system) {
-        neuromodulator_pool_t pool;
+        neuromodulator_pool_t pool = neuromodulator_pool_create();
         neuromodulator_get_levels(ctx->neuromod_system, &pool);
 
-        float da_factor = 0.5F + pool.dopamine * region->da_sensitivity;
+        float da_factor = 0.5F + neuromodulator_pool_get_dopamine(&pool) * region->da_sensitivity;
         weight_change *= da_factor;
+        neuromodulator_pool_destroy(&pool);
     }
 
     nimcp_mutex_lock(&ctx->stats_mutex);
@@ -1101,11 +1106,17 @@ nimcp_result_t tpb_get_modulated_lr(tpb_context_t* ctx, uint32_t region_id,
         return NIMCP_SUCCESS;
     }
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(ctx->neuromod_system, &pool);
 
     float lr_multiplier = 1.0F;
     tpb_lr_modulation_config_t* mod_cfg = &ctx->config.lr_modulation;
+
+    /* Get current neuromodulator levels */
+    float dopamine = neuromodulator_pool_get_dopamine(&pool);
+    float acetylcholine = neuromodulator_pool_get_acetylcholine(&pool);
+    float serotonin = neuromodulator_pool_get_serotonin(&pool);
+    float norepinephrine = neuromodulator_pool_get_norepinephrine(&pool);
 
     /* Get region-specific sensitivities */
     float da_sens = 1.0F, ach_sens = 1.0F, ht5_sens = 1.0F, ne_sens = 1.0F;
@@ -1120,29 +1131,29 @@ nimcp_result_t tpb_get_modulated_lr(tpb_context_t* ctx, uint32_t region_id,
 
     switch (mod_cfg->mode) {
         case TPB_NEUROMOD_DA_PRIMARY:
-            lr_multiplier = 0.5F + pool.dopamine * da_sens;
+            lr_multiplier = 0.5F + dopamine * da_sens;
             break;
 
         case TPB_NEUROMOD_ACH_PRIMARY:
-            lr_multiplier = 0.5F + pool.acetylcholine * ach_sens;
+            lr_multiplier = 0.5F + acetylcholine * ach_sens;
             break;
 
         case TPB_NEUROMOD_5HT_PRIMARY:
             /* 5-HT modulates patience - inverse relationship with LR */
-            lr_multiplier = 1.5F - pool.serotonin * ht5_sens;
+            lr_multiplier = 1.5F - serotonin * ht5_sens;
             break;
 
         case TPB_NEUROMOD_NE_PRIMARY:
-            lr_multiplier = 0.5F + pool.norepinephrine * ne_sens;
+            lr_multiplier = 0.5F + norepinephrine * ne_sens;
             break;
 
         case TPB_NEUROMOD_BALANCED:
         case TPB_NEUROMOD_CUSTOM:
             /* Use region sensitivities with normalized weights */
-            lr_multiplier = mod_cfg->da_weight * pool.dopamine * da_sens +
-                           mod_cfg->ach_weight * pool.acetylcholine * ach_sens +
-                           mod_cfg->ht5_weight * (1.0F - pool.serotonin) * ht5_sens +
-                           mod_cfg->ne_weight * pool.norepinephrine * ne_sens;
+            lr_multiplier = mod_cfg->da_weight * dopamine * da_sens +
+                           mod_cfg->ach_weight * acetylcholine * ach_sens +
+                           mod_cfg->ht5_weight * (1.0F - serotonin) * ht5_sens +
+                           mod_cfg->ne_weight * norepinephrine * ne_sens;
             /* Center around 1.0 by adding baseline */
             lr_multiplier = 0.5F + lr_multiplier;
             break;
@@ -1174,6 +1185,7 @@ nimcp_result_t tpb_get_modulated_lr(tpb_context_t* ctx, uint32_t region_id,
     ctx->stats.avg_lr_multiplier = ctx->stats.avg_lr_multiplier * ((n - 1.0F) / n) + lr_multiplier / n;
     nimcp_mutex_unlock(&ctx->stats_mutex);
 
+    neuromodulator_pool_destroy(&pool);
     return NIMCP_SUCCESS;
 }
 
@@ -1192,14 +1204,15 @@ nimcp_result_t tpb_get_neuromod_levels(tpb_context_t* ctx, float* da_out,
         return NIMCP_SUCCESS;
     }
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     neuromodulator_get_levels(ctx->neuromod_system, &pool);
 
-    if (da_out) *da_out = pool.dopamine;
-    if (ach_out) *ach_out = pool.acetylcholine;
-    if (ht5_out) *ht5_out = pool.serotonin;
-    if (ne_out) *ne_out = pool.norepinephrine;
+    if (da_out) *da_out = neuromodulator_pool_get_dopamine(&pool);
+    if (ach_out) *ach_out = neuromodulator_pool_get_acetylcholine(&pool);
+    if (ht5_out) *ht5_out = neuromodulator_pool_get_serotonin(&pool);
+    if (ne_out) *ne_out = neuromodulator_pool_get_norepinephrine(&pool);
 
+    neuromodulator_pool_destroy(&pool);
     return NIMCP_SUCCESS;
 }
 
@@ -1322,10 +1335,11 @@ nimcp_result_t tpb_update_bcm(tpb_context_t* ctx, bcm_synapse_t* synapse,
 
     /* Apply neuromodulation */
     if (ctx->neuromod_system) {
-        neuromodulator_pool_t pool;
+        neuromodulator_pool_t pool = neuromodulator_pool_create();
         neuromodulator_get_levels(ctx->neuromod_system, &pool);
-        float da_factor = 0.5F + pool.dopamine;
+        float da_factor = 0.5F + neuromodulator_pool_get_dopamine(&pool);
         weight_change *= da_factor;
+        neuromodulator_pool_destroy(&pool);
     }
 
     /* Apply to synapse */
@@ -1651,22 +1665,24 @@ static tcb_action_t tpb_on_weights_updated(const tcb_event_t* event)
 
     /* Modulate neuromodulators based on gradient norm */
     if (ctx->neuromod_system && event->metrics.gradient_norm > 0.0F) {
-        neuromodulator_pool_t pool;
+        neuromodulator_pool_t pool = neuromodulator_pool_create();
         neuromodulator_get_levels(ctx->neuromod_system, &pool);
 
-        /* Large gradient → boost NE (arousal) */
+        /* Large gradient -> boost NE (arousal) */
         if (event->metrics.gradient_norm > 10.0F) {
-            float new_ne = pool.norepinephrine + 0.1F;
+            float new_ne = neuromodulator_pool_get_norepinephrine(&pool) + 0.1F;
             if (new_ne > 1.0F) new_ne = 1.0F;
             neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_NOREPINEPHRINE, new_ne);
         }
 
-        /* Small gradient → boost ACh (exploration) */
+        /* Small gradient -> boost ACh (exploration) */
         if (event->metrics.gradient_norm < 0.01F) {
-            float new_ach = pool.acetylcholine + 0.1F;
+            float new_ach = neuromodulator_pool_get_acetylcholine(&pool) + 0.1F;
             if (new_ach > 1.0F) new_ach = 1.0F;
             neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_ACETYLCHOLINE, new_ach);
         }
+
+        neuromodulator_pool_destroy(&pool);
     }
 
     return TCB_ACTION_CONTINUE;

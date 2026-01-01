@@ -1,20 +1,30 @@
 /**
  * @file nimcp_fep_learning_gpu.h
  * @brief GPU-accelerated FEP Learning API
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-01-01
  *
  * WHAT: GPU acceleration for FEP learning operations
  * WHY:  Matrix operations benefit greatly from GPU parallelism
  * HOW:  CUDA kernels for matvec, gradient, and batch updates
+ *
+ * REFACTORED (2026-01-01):
+ * ========================
+ * - Internal storage now uses nimcp_gpu_tensor_t
+ * - Uses nimcp_gpu_gemv for matrix-vector operations
+ * - Added tensor-based API for zero-copy GPU integration
+ * - Context accessors for direct tensor manipulation
  */
 
 #ifndef NIMCP_FEP_LEARNING_GPU_H
 #define NIMCP_FEP_LEARNING_GPU_H
 
+// Include GPU headers before extern "C" (they may contain C++ code)
+#include "gpu/context/nimcp_gpu_context.h"
+#include "gpu/tensor/nimcp_tensor_gpu.h"
+
 #include <stdint.h>
 #include <stdbool.h>
-#include "gpu/context/nimcp_gpu_context.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,11 +32,23 @@ extern "C" {
 
 /**
  * @brief Opaque GPU context for FEP learning
+ *
+ * Internal storage now uses nimcp_gpu_tensor_t for all matrices and vectors.
  */
 typedef struct fep_learning_gpu_context_s fep_learning_gpu_context_t;
 
+//=============================================================================
+// Context Lifecycle
+//=============================================================================
+
 /**
  * @brief Create GPU context for FEP learning
+ *
+ * Allocates GPU tensors for all matrices and vectors needed for learning:
+ * - Transition matrix A [state_dim x state_dim]
+ * - Likelihood matrix B [obs_dim x state_dim] (if obs_dim > 0)
+ * - Gradient and velocity buffers for momentum
+ * - Intermediate state and prediction vectors
  *
  * @param gpu_ctx Main GPU context
  * @param state_dim State dimension
@@ -43,12 +65,20 @@ fep_learning_gpu_context_t* fep_learning_gpu_create(
 /**
  * @brief Destroy FEP learning GPU context
  *
+ * Frees all GPU tensors and host memory.
+ *
  * @param ctx Context to destroy (NULL safe)
  */
 void fep_learning_gpu_destroy(fep_learning_gpu_context_t* ctx);
 
+//=============================================================================
+// Transition Matrix Operations
+//=============================================================================
+
 /**
  * @brief Upload transition matrix to GPU
+ *
+ * Copies the transition matrix from host to the internal GPU tensor.
  *
  * @param ctx FEP learning GPU context
  * @param A Transition matrix (dim x dim, row-major)
@@ -62,6 +92,8 @@ int fep_learning_gpu_upload_transition(
 
 /**
  * @brief Download transition matrix from GPU
+ *
+ * Copies the transition matrix from internal GPU tensor to host.
  *
  * @param ctx FEP learning GPU context
  * @param A Output buffer for matrix
@@ -77,9 +109,9 @@ int fep_learning_gpu_download_transition(
  * @brief GPU-accelerated transition learning step
  *
  * Performs one step of gradient descent on the transition matrix A:
- *   prediction = A * state_t
+ *   prediction = A * state_t        (uses nimcp_gpu_gemv)
  *   error = state_t1 - prediction
- *   grad = -error ⊗ state_t^T + lambda * A
+ *   grad = -error x state_t^T + lambda * A
  *   A = A - lr * grad  (with optional momentum)
  *
  * @param ctx FEP learning GPU context
@@ -122,6 +154,10 @@ int fep_learn_transition_batch_gpu(
     float lambda,
     float momentum,
     float* avg_loss_out);
+
+//=============================================================================
+// Likelihood Matrix Operations
+//=============================================================================
 
 /**
  * @brief Upload likelihood matrix to GPU
@@ -173,6 +209,70 @@ int fep_learn_likelihood_gpu(
     float lambda,
     float momentum,
     float* loss_out);
+
+//=============================================================================
+// Tensor-Based API (New in v1.1)
+//=============================================================================
+
+/**
+ * @brief Get the transition matrix tensor from context
+ *
+ * Returns a pointer to the internal GPU tensor storing the transition matrix.
+ * This allows direct manipulation when the matrix is already on GPU.
+ *
+ * @param ctx FEP learning GPU context
+ * @return Transition matrix tensor [state_dim x state_dim], or NULL if not initialized
+ *
+ * @note The returned tensor is owned by the context; do not destroy it.
+ */
+nimcp_gpu_tensor_t* fep_learning_gpu_get_transition_tensor(
+    fep_learning_gpu_context_t* ctx);
+
+/**
+ * @brief Get the likelihood matrix tensor from context
+ *
+ * @param ctx FEP learning GPU context
+ * @return Likelihood matrix tensor [obs_dim x state_dim], or NULL if not available
+ *
+ * @note The returned tensor is owned by the context; do not destroy it.
+ */
+nimcp_gpu_tensor_t* fep_learning_gpu_get_likelihood_tensor(
+    fep_learning_gpu_context_t* ctx);
+
+/**
+ * @brief Perform transition learning with tensors already on GPU
+ *
+ * Use this when state vectors are already on GPU to avoid host-device transfers.
+ * This is the most efficient path when integrating with other GPU operations.
+ *
+ * @param ctx FEP learning GPU context
+ * @param state_t Current state tensor (already on GPU, FP32, [state_dim])
+ * @param state_t1 Next state tensor (already on GPU, FP32, [state_dim])
+ * @param lr Learning rate
+ * @param lambda L2 regularization
+ * @param momentum Momentum coefficient
+ * @return true on success, false on failure
+ *
+ * EXAMPLE:
+ * @code
+ * // State vectors already on GPU from attention processing
+ * nimcp_gpu_tensor_t* state_t = attention_get_output_tensor(attn_ctx);
+ * nimcp_gpu_tensor_t* state_t1 = attention_get_next_output_tensor(attn_ctx);
+ *
+ * bool ok = fep_learn_transition_tensor(fep_ctx, state_t, state_t1, 0.01f, 0.001f, 0.9f);
+ * @endcode
+ */
+bool fep_learn_transition_tensor(
+    fep_learning_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* state_t,
+    const nimcp_gpu_tensor_t* state_t1,
+    float lr,
+    float lambda,
+    float momentum);
+
+//=============================================================================
+// Utility Functions
+//=============================================================================
 
 /**
  * @brief Check if GPU should be used for FEP learning

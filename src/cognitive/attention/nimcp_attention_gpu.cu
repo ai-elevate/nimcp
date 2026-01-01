@@ -21,9 +21,15 @@
  * - Multi-head attention with many channels
  * - Real-time precision modulation updates
  *
- * @version 1.0
+ * REFACTORED (2026-01-01):
+ * ========================
+ * - Updated to use nimcp_gpu_tensor_t throughout
+ * - Leverages GPU tensor API for element-wise operations where appropriate
+ * - Maintains custom kernels for fused precision-weighting operations
+ *
+ * @version 1.1
  * @author NIMCP Development Team
- * @date 2025
+ * @date 2025-2026
  */
 
 #ifdef NIMCP_ENABLE_CUDA
@@ -53,7 +59,7 @@
 #define WARP_SIZE 32
 
 //=============================================================================
-// Precision-Weighted Gain Modulation Kernel
+// Precision-Weighted Gain Modulation Kernels
 //=============================================================================
 
 /**
@@ -69,21 +75,24 @@
  * - base_gain: Baseline attention gain (from attention system state)
  * - output: Precision-weighted attended signal
  *
+ * NOTE: Kernel uses raw float* for device memory access. Tensor metadata
+ *       (dims, numel) is validated in the wrapper function.
+ *
  * @param output Output buffer for precision-weighted signal
  * @param input Input signal buffer
  * @param precision Per-element precision values from FEP system
  * @param base_gain Baseline attention gain scalar
- * @param dim Number of elements to process
+ * @param numel Number of elements to process
  */
 __global__ void kernel_attention_precision_weight(
-    float* output,
-    const float* input,
-    const float* precision,
+    float* __restrict__ output,
+    const float* __restrict__ input,
+    const float* __restrict__ precision,
     float base_gain,
-    uint32_t dim
+    size_t numel
 ) {
-    uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= dim) return;
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= numel) return;
 
     output[idx] = input[idx] * base_gain * precision[idx];
 }
@@ -101,19 +110,19 @@ __global__ void kernel_attention_precision_weight(
  * @param base_gain Baseline attention gain scalar
  * @param min_val Minimum output value (prevents underflow)
  * @param max_val Maximum output value (prevents overflow)
- * @param dim Number of elements to process
+ * @param numel Number of elements to process
  */
 __global__ void kernel_attention_precision_weight_clamped(
-    float* output,
-    const float* input,
-    const float* precision,
+    float* __restrict__ output,
+    const float* __restrict__ input,
+    const float* __restrict__ precision,
     float base_gain,
     float min_val,
     float max_val,
-    uint32_t dim
+    size_t numel
 ) {
-    uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= dim) return;
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= numel) return;
 
     float result = input[idx] * base_gain * precision[idx];
     output[idx] = fminf(fmaxf(result, min_val), max_val);
@@ -134,18 +143,18 @@ __global__ void kernel_attention_precision_weight_clamped(
  * @param precision Per-element precision values
  * @param base_gain Baseline attention gain (1.5 for high precision, 0.5 for low)
  * @param precision_sensitivity Scaling factor for precision effect [0-1]
- * @param dim Number of elements to process
+ * @param numel Number of elements to process
  */
 __global__ void kernel_attention_precision_weight_adaptive(
-    float* output,
-    const float* input,
-    const float* precision,
+    float* __restrict__ output,
+    const float* __restrict__ input,
+    const float* __restrict__ precision,
     float base_gain,
     float precision_sensitivity,
-    uint32_t dim
+    size_t numel
 ) {
-    uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= dim) return;
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= numel) return;
 
     // Compute adaptive gain modifier: blend base_gain with precision_sensitivity
     float adaptive_gain = 1.0f + (base_gain - 1.0f) * precision_sensitivity;
@@ -162,22 +171,22 @@ __global__ void kernel_attention_precision_weight_adaptive(
  * @param output Output buffer [batch_size x head_dim]
  * @param input Input signal buffer [batch_size x head_dim]
  * @param precision Precision values [batch_size x head_dim] or [head_dim] if shared
- * @param base_gains Per-head base gain values [batch_size] or scalar if uniform
+ * @param base_gains Per-head base gain values [batch_size]
  * @param batch_size Number of attention heads
  * @param head_dim Dimension of each head
  * @param shared_precision If true, precision is shared across all heads
  */
 __global__ void kernel_attention_precision_weight_batched(
-    float* output,
-    const float* input,
-    const float* precision,
-    const float* base_gains,
+    float* __restrict__ output,
+    const float* __restrict__ input,
+    const float* __restrict__ precision,
+    const float* __restrict__ base_gains,
     uint32_t batch_size,
     uint32_t head_dim,
     bool shared_precision
 ) {
-    uint32_t total_elements = batch_size * head_dim;
-    uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t total_elements = (size_t)batch_size * head_dim;
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= total_elements) return;
 
     uint32_t batch_idx = idx / head_dim;
@@ -187,6 +196,35 @@ __global__ void kernel_attention_precision_weight_batched(
     float prec = shared_precision ? precision[elem_idx] : precision[idx];
 
     output[idx] = input[idx] * gain * prec;
+}
+
+//=============================================================================
+// Helper: Validate tensor compatibility
+//=============================================================================
+
+static bool validate_tensor_compatibility(
+    const nimcp_gpu_tensor_t* a,
+    const nimcp_gpu_tensor_t* b,
+    const char* op_name
+) {
+    if (!a || !b) {
+        LOG_ERROR("%s: NULL tensor parameter", op_name);
+        return false;
+    }
+
+    if (a->numel != b->numel) {
+        LOG_ERROR("%s: tensor element count mismatch (a=%zu, b=%zu)",
+                  op_name, a->numel, b->numel);
+        return false;
+    }
+
+    if (a->precision != NIMCP_GPU_PRECISION_FP32 ||
+        b->precision != NIMCP_GPU_PRECISION_FP32) {
+        LOG_ERROR("%s: only FP32 precision currently supported", op_name);
+        return false;
+    }
+
+    return true;
 }
 
 //=============================================================================
@@ -200,7 +238,12 @@ extern "C" {
  *
  * WHAT: C wrapper for GPU precision weighting kernel
  * WHY:  Enable C code to invoke GPU-accelerated precision weighting
- * HOW:  Configure grid/block, launch kernel, check for errors
+ * HOW:  Validate tensors, configure grid/block, launch kernel
+ *
+ * TENSOR REQUIREMENTS:
+ * - All tensors must have same numel (total element count)
+ * - All tensors must be FP32 precision
+ * - Tensors must be on GPU (have valid device data pointers)
  *
  * @param ctx GPU context
  * @param output GPU tensor for output
@@ -216,25 +259,35 @@ bool nimcp_gpu_attention_precision_weight(
     const nimcp_gpu_tensor_t* precision,
     float base_gain
 ) {
-    if (!ctx || !output || !input || !precision) {
-        LOG_ERROR("Null parameter in attention precision weight");
+    if (!ctx) {
+        LOG_ERROR("Null GPU context in attention precision weight");
         return false;
     }
 
-    if (input->numel != precision->numel || input->numel != output->numel) {
-        LOG_ERROR("Tensor dimension mismatch: input=%zu, precision=%zu, output=%zu",
-                  input->numel, precision->numel, output->numel);
+    if (!output || !output->data) {
+        LOG_ERROR("Invalid output tensor in attention precision weight");
         return false;
     }
 
-    uint32_t dim = (uint32_t)input->numel;
+    if (!validate_tensor_compatibility(input, precision, "attention_precision_weight")) {
+        return false;
+    }
 
-    kernel_attention_precision_weight<<<GRID_SIZE(dim), BLOCK_SIZE>>>(
-        (float*)output->data,
-        (const float*)input->data,
-        (const float*)precision->data,
+    if (input->numel != output->numel) {
+        LOG_ERROR("Output tensor size mismatch: expected %zu, got %zu",
+                  input->numel, output->numel);
+        return false;
+    }
+
+    size_t numel = input->numel;
+
+    // Launch kernel with tensor data pointers
+    kernel_attention_precision_weight<<<GRID_SIZE(numel), BLOCK_SIZE>>>(
+        static_cast<float*>(output->data),
+        static_cast<const float*>(input->data),
+        static_cast<const float*>(precision->data),
         base_gain,
-        dim
+        numel
     );
 
     CUDA_CHECK(cudaGetLastError());
@@ -262,26 +315,35 @@ bool nimcp_gpu_attention_precision_weight_clamped(
     float min_val,
     float max_val
 ) {
-    if (!ctx || !output || !input || !precision) {
-        LOG_ERROR("Null parameter in attention precision weight clamped");
+    if (!ctx) {
+        LOG_ERROR("Null GPU context in attention precision weight clamped");
         return false;
     }
 
-    if (input->numel != precision->numel || input->numel != output->numel) {
-        LOG_ERROR("Tensor dimension mismatch");
+    if (!output || !output->data) {
+        LOG_ERROR("Invalid output tensor");
         return false;
     }
 
-    uint32_t dim = (uint32_t)input->numel;
+    if (!validate_tensor_compatibility(input, precision, "attention_precision_weight_clamped")) {
+        return false;
+    }
 
-    kernel_attention_precision_weight_clamped<<<GRID_SIZE(dim), BLOCK_SIZE>>>(
-        (float*)output->data,
-        (const float*)input->data,
-        (const float*)precision->data,
+    if (input->numel != output->numel) {
+        LOG_ERROR("Output tensor size mismatch");
+        return false;
+    }
+
+    size_t numel = input->numel;
+
+    kernel_attention_precision_weight_clamped<<<GRID_SIZE(numel), BLOCK_SIZE>>>(
+        static_cast<float*>(output->data),
+        static_cast<const float*>(input->data),
+        static_cast<const float*>(precision->data),
         base_gain,
         min_val,
         max_val,
-        dim
+        numel
     );
 
     CUDA_CHECK(cudaGetLastError());
@@ -307,25 +369,34 @@ bool nimcp_gpu_attention_precision_weight_adaptive(
     float base_gain,
     float precision_sensitivity
 ) {
-    if (!ctx || !output || !input || !precision) {
-        LOG_ERROR("Null parameter in attention precision weight adaptive");
+    if (!ctx) {
+        LOG_ERROR("Null GPU context in attention precision weight adaptive");
         return false;
     }
 
-    if (input->numel != precision->numel || input->numel != output->numel) {
-        LOG_ERROR("Tensor dimension mismatch");
+    if (!output || !output->data) {
+        LOG_ERROR("Invalid output tensor");
         return false;
     }
 
-    uint32_t dim = (uint32_t)input->numel;
+    if (!validate_tensor_compatibility(input, precision, "attention_precision_weight_adaptive")) {
+        return false;
+    }
 
-    kernel_attention_precision_weight_adaptive<<<GRID_SIZE(dim), BLOCK_SIZE>>>(
-        (float*)output->data,
-        (const float*)input->data,
-        (const float*)precision->data,
+    if (input->numel != output->numel) {
+        LOG_ERROR("Output tensor size mismatch");
+        return false;
+    }
+
+    size_t numel = input->numel;
+
+    kernel_attention_precision_weight_adaptive<<<GRID_SIZE(numel), BLOCK_SIZE>>>(
+        static_cast<float*>(output->data),
+        static_cast<const float*>(input->data),
+        static_cast<const float*>(precision->data),
         base_gain,
         precision_sensitivity,
-        dim
+        numel
     );
 
     CUDA_CHECK(cudaGetLastError());
@@ -355,14 +426,25 @@ bool nimcp_gpu_attention_precision_weight_batched(
     uint32_t head_dim,
     bool shared_precision
 ) {
-    if (!ctx || !output || !input || !precision || !base_gains) {
-        LOG_ERROR("Null parameter in attention precision weight batched");
+    if (!ctx) {
+        LOG_ERROR("Null GPU context in batched attention precision weight");
         return false;
     }
 
-    uint32_t total_elements = batch_size * head_dim;
+    if (!output || !input || !precision || !base_gains) {
+        LOG_ERROR("Null tensor parameter in attention precision weight batched");
+        return false;
+    }
+
+    if (!output->data || !input->data || !precision->data || !base_gains->data) {
+        LOG_ERROR("Invalid tensor data pointer");
+        return false;
+    }
+
+    size_t total_elements = (size_t)batch_size * head_dim;
     if (input->numel != total_elements || output->numel != total_elements) {
-        LOG_ERROR("Tensor dimension mismatch for batched operation");
+        LOG_ERROR("Tensor dimension mismatch for batched operation: expected %zu elements",
+                  total_elements);
         return false;
     }
 
@@ -372,11 +454,19 @@ bool nimcp_gpu_attention_precision_weight_batched(
         return false;
     }
 
+    // Validate precision tensor size
+    size_t expected_prec_size = shared_precision ? head_dim : total_elements;
+    if (precision->numel < expected_prec_size) {
+        LOG_ERROR("Precision tensor too small: need %zu, have %zu",
+                  expected_prec_size, precision->numel);
+        return false;
+    }
+
     kernel_attention_precision_weight_batched<<<GRID_SIZE(total_elements), BLOCK_SIZE>>>(
-        (float*)output->data,
-        (const float*)input->data,
-        (const float*)precision->data,
-        (const float*)base_gains->data,
+        static_cast<float*>(output->data),
+        static_cast<const float*>(input->data),
+        static_cast<const float*>(precision->data),
+        static_cast<const float*>(base_gains->data),
         batch_size,
         head_dim,
         shared_precision

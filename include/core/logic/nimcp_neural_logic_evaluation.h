@@ -1,12 +1,18 @@
 /**
  * @file nimcp_neural_logic_evaluation.h
  * @brief MODULE 2: Neural Logic Evaluation - Evaluate Logic Gates Through Brain
- * @version 3.0.0
- * @date 2025-11-20
+ * @version 4.0.0
+ * @date 2025-12-31
  *
  * WHAT: Evaluation interface for logic gates with event publishing
  * WHY:  Single Responsibility: Execute logic operations and notify observers
  * HOW:  Wrapper around neural_logic_evaluate() with event bus integration
+ *
+ * VERSION 4.0.0 CHANGES:
+ * - Refactored to use nimcp_tensor_t for variable-arity logic gates
+ * - Removed fixed-size input arrays (was limited to 4 inputs)
+ * - Added tensor-based batch evaluation for GPU acceleration
+ * - Support for N-ary logic gates (AND_N, OR_N, etc.)
  *
  * SINGLE RESPONSIBILITY PRINCIPLE (SRP):
  * - SOLE RESPONSIBILITY: Evaluate logic gates and publish evaluation events
@@ -23,11 +29,81 @@
 #include <stdbool.h>
 #include "core/neuron_types/nimcp_neural_logic.h"
 #include "core/brain/nimcp_brain.h"
+#include "utils/tensor/nimcp_tensor.h"
 #include "common/nimcp_export.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+//=============================================================================
+// Tensor-Based Logic Gate Event Structure
+//=============================================================================
+
+/**
+ * @brief Event payload for EVENT_LOGIC_GATE_EVALUATED (tensor-based)
+ *
+ * WHAT: Data structure published when logic gate is evaluated
+ * WHY:  Support variable-arity logic gates (not limited to 4 inputs)
+ * HOW:  Uses nimcp_tensor_t for inputs, allowing any number of inputs
+ *
+ * MEMORY OWNERSHIP:
+ * - inputs_tensor: Owned by event system, cloned from evaluation inputs
+ * - Destroyed when event is consumed or times out
+ *
+ * EXAMPLE:
+ * ```c
+ * // AND gate with 8 inputs
+ * uint32_t dims[] = {8};
+ * nimcp_tensor_t* inputs = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+ * // ... fill inputs ...
+ * // Event will contain copy of this tensor
+ * ```
+ */
+typedef struct {
+    uint32_t gate_id;               /**< Logic gate neuron ID */
+    uint32_t num_inputs;            /**< Number of inputs (tensor size) */
+    nimcp_tensor_t* inputs_tensor;  /**< Input values as 1D tensor [num_inputs] */
+    float output;                   /**< Output value [0,1] */
+    uint64_t timestamp_us;          /**< Evaluation timestamp */
+    uint64_t eval_time_us;          /**< Evaluation duration */
+} logic_gate_evaluated_event_t;
+
+/**
+ * @brief Batch evaluation result (tensor-based)
+ *
+ * WHAT: Results from batch gate evaluation
+ * WHY:  Efficient GPU batch processing with tensor storage
+ * HOW:  Stores all inputs/outputs as tensors for GPU transfer
+ */
+typedef struct {
+    uint32_t num_gates;             /**< Number of gates evaluated */
+    nimcp_tensor_t* gate_ids;       /**< Gate IDs as 1D tensor [num_gates] (I32) */
+    nimcp_tensor_t* all_inputs;     /**< Flattened inputs [total_inputs] (F32) */
+    nimcp_tensor_t* input_offsets;  /**< Input offsets per gate [num_gates] (I32) */
+    nimcp_tensor_t* inputs_per_gate;/**< Input counts per gate [num_gates] (I32) */
+    nimcp_tensor_t* outputs;        /**< Outputs [num_gates] (F32) */
+    uint64_t total_eval_time_us;    /**< Total batch evaluation time */
+} logic_batch_result_t;
+
+/**
+ * @brief Create batch result structure
+ *
+ * @param num_gates Number of gates to evaluate
+ * @param total_inputs Total number of inputs across all gates
+ * @return Allocated batch result, or NULL on failure
+ */
+NIMCP_EXPORT logic_batch_result_t* logic_batch_result_create(
+    uint32_t num_gates,
+    uint32_t total_inputs
+);
+
+/**
+ * @brief Destroy batch result and free tensors
+ *
+ * @param result Batch result to destroy (NULL-safe)
+ */
+NIMCP_EXPORT void logic_batch_result_destroy(logic_batch_result_t* result);
 
 //=============================================================================
 // MODULE 2: Neural Logic Evaluation API
@@ -82,6 +158,46 @@ NIMCP_EXPORT bool brain_evaluate_logic_gate(
     uint32_t gate_id,
     const float* inputs,
     uint32_t num_inputs,
+    float* output
+);
+
+/**
+ * @brief Evaluate logic gate using tensor inputs (variable-arity)
+ *
+ * WHAT: Execute logic gate evaluation with tensor-based inputs
+ * WHY:  Support N-ary logic gates (AND with 8+ inputs, etc.)
+ * HOW:  Validate inputs -> extract tensor data -> evaluate -> publish event
+ *
+ * @param brain Brain instance with attached logic network
+ * @param gate_id Logic gate neuron ID
+ * @param inputs Input tensor (1D, F32) with variable number of inputs
+ * @param output Output value [0,1] (OUT parameter)
+ * @return true on success, false on failure
+ *
+ * TENSOR REQUIREMENTS:
+ * - Must be 1D tensor (rank 1)
+ * - Must be F32 dtype
+ * - Size determines number of inputs (no limit)
+ *
+ * N-ARY GATE BEHAVIOR:
+ * - AND_N: Output = 1 if ALL inputs >= threshold
+ * - OR_N: Output = 1 if ANY input >= threshold
+ * - MAJORITY: Output = 1 if >50% inputs >= threshold
+ *
+ * EXAMPLE:
+ * ```c
+ * // 8-input AND gate
+ * uint32_t dims[] = {8};
+ * nimcp_tensor_t* inputs = nimcp_tensor_ones(dims, 1, NIMCP_DTYPE_F32);
+ * float output;
+ * brain_evaluate_logic_gate_tensor(brain, and8_gate_id, inputs, &output);
+ * nimcp_tensor_destroy(inputs);
+ * ```
+ */
+NIMCP_EXPORT bool brain_evaluate_logic_gate_tensor(
+    brain_t brain,
+    uint32_t gate_id,
+    const nimcp_tensor_t* inputs,
     float* output
 );
 
@@ -246,6 +362,54 @@ NIMCP_EXPORT bool brain_evaluate_logic_gates_batch(
     const float* all_inputs,
     const uint32_t* inputs_per_gate,
     float* outputs
+);
+
+/**
+ * @brief Batch evaluate logic gates using tensors (GPU-optimized)
+ *
+ * WHAT: Evaluate multiple logic gates in parallel with tensor I/O
+ * WHY:  Maximum GPU efficiency with tensor-based memory management
+ * HOW:  Transfer tensors to GPU -> batch kernel -> transfer results back
+ *
+ * @param brain Brain instance with attached logic network
+ * @param gate_ids_tensor 1D tensor of gate IDs [num_gates] (I32)
+ * @param inputs_tensor 1D tensor of all inputs flattened [total_inputs] (F32)
+ * @param offsets_tensor 1D tensor of input offsets [num_gates] (I32)
+ * @param counts_tensor 1D tensor of input counts [num_gates] (I32)
+ * @param result Pre-allocated batch result structure (outputs filled in)
+ * @return true on success, false on failure
+ *
+ * TENSOR LAYOUT:
+ * - gate_ids_tensor: [gate0_id, gate1_id, ...]
+ * - inputs_tensor: [gate0_in0, gate0_in1, gate1_in0, ...]
+ * - offsets_tensor: [0, 2, 5, ...] (cumulative offsets)
+ * - counts_tensor: [2, 3, 2, ...] (inputs per gate)
+ *
+ * GPU OPTIMIZATION:
+ * - All tensors transferred as single GPU allocation
+ * - Coalesced memory access pattern
+ * - 256 threads per block for optimal occupancy
+ *
+ * EXAMPLE:
+ * ```c
+ * // Evaluate 3 gates with variable inputs
+ * uint32_t gate_dims[] = {3};
+ * nimcp_tensor_t* gate_ids = nimcp_tensor_create(gate_dims, 1, NIMCP_DTYPE_I32);
+ * // ... fill gate_ids, inputs, offsets, counts ...
+ *
+ * logic_batch_result_t* result = logic_batch_result_create(3, 7);
+ * brain_evaluate_logic_gates_batch_tensor(brain, gate_ids, inputs, offsets, counts, result);
+ * // Access result->outputs tensor
+ * logic_batch_result_destroy(result);
+ * ```
+ */
+NIMCP_EXPORT bool brain_evaluate_logic_gates_batch_tensor(
+    brain_t brain,
+    const nimcp_tensor_t* gate_ids_tensor,
+    const nimcp_tensor_t* inputs_tensor,
+    const nimcp_tensor_t* offsets_tensor,
+    const nimcp_tensor_t* counts_tensor,
+    logic_batch_result_t* result
 );
 
 /**

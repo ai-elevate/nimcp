@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "utils/tensor/nimcp_tensor.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,46 +32,131 @@ extern "C" {
 // ============================================================================
 
 /**
- * @brief Phasic-tonic neuromodulator system state
+ * @brief Phasic-tonic neuromodulator system state (tensor-based)
  *
  * Models dual-mode release:
  * - Tonic: Sustained baseline concentration (motivation, mood)
  * - Phasic: Transient bursts (learning signals, salience)
+ *
+ * TENSOR FORMAT:
+ * - tonic_params: [5] tensor - tonic state parameters
+ *   [0] = tonic_level (current baseline, µM)
+ *   [1] = tonic_target (homeostatic setpoint, µM)
+ *   [2] = tonic_min (minimum, µM)
+ *   [3] = tonic_max (maximum, µM)
+ *   [4] = homeostatic_tau (time constant, seconds)
+ *
+ * - phasic_params: [4] tensor - phasic burst parameters
+ *   [0] = phasic_burst (current burst amplitude, µM)
+ *   [1] = burst_decay_tau (decay time constant, seconds)
+ *   [2] = burst_amplitude_scale (scaling factor)
+ *   [3] = burst_threshold (minimum to trigger)
+ *
+ * - burst_limits: [2] tensor - burst amplitude limits
+ *   [0] = max_burst_amplitude (µM)
+ *   [1] = min_burst_amplitude (µM)
+ *
+ * - autoreceptor_params: [2] tensor - feedback parameters
+ *   [0] = autoreceptor_sensitivity [0-1]
+ *   [1] = feedback_tau (seconds)
+ *
+ * - output: [2] tensor - current output state
+ *   [0] = total_concentration (tonic + phasic)
+ *   [1] = release_rate (µM/s)
  */
 typedef struct {
-    // === Tonic (Baseline) State ===
-    float tonic_level;              /**< Current baseline concentration (µM) */
-    float tonic_target;             /**< Homeostatic setpoint (µM) */
-    float tonic_min;                /**< Minimum tonic level (µM) */
-    float tonic_max;                /**< Maximum tonic level (µM) */
-    float homeostatic_tau;          /**< Time constant for homeostatic regulation (seconds) */
+    // === Tensor-based state ===
+    nimcp_tensor_t* tonic_params;       /**< Tonic state parameters [5] */
+    nimcp_tensor_t* phasic_params;      /**< Phasic burst parameters [4] */
+    nimcp_tensor_t* burst_limits;       /**< Burst amplitude limits [2] */
+    nimcp_tensor_t* autoreceptor_params;/**< Autoreceptor feedback [2] */
+    nimcp_tensor_t* output;             /**< Current output [2] */
 
-    // === Phasic (Burst) State ===
-    float phasic_burst;             /**< Current burst amplitude (µM) */
-    float burst_decay_tau;          /**< Burst decay time constant (seconds) */
+    // === Non-tensor state (timestamps and flags) ===
     bool in_burst_state;            /**< Currently in burst mode */
     uint64_t burst_start_time_us;   /**< Burst start timestamp (microseconds) */
     uint32_t burst_duration_ms;     /**< Burst duration (milliseconds) */
-
-    // === Burst Generation Parameters ===
-    float burst_amplitude_scale;    /**< Scaling factor for burst amplitude */
-    float max_burst_amplitude;      /**< Maximum burst amplitude (µM) */
-    float min_burst_amplitude;      /**< Minimum burst amplitude to trigger (µM) */
-    float burst_threshold;          /**< Signal threshold for burst triggering */
-
-    // === Autoreceptor Feedback ===
-    float autoreceptor_sensitivity; /**< Negative feedback strength [0-1] */
-    float feedback_tau;             /**< Feedback time constant (seconds) */
-
-    // === Current Output ===
-    float total_concentration;      /**< tonic_level + phasic_burst */
-    float release_rate;             /**< Current release rate (µM/s) */
 
     // === Statistics (for monitoring) ===
     uint32_t burst_count;           /**< Number of bursts triggered */
     uint64_t last_burst_time_us;    /**< Last burst timestamp */
     float avg_inter_burst_interval; /**< Average time between bursts (seconds) */
+
+    // === Ownership flag ===
+    bool owns_tensors;              /**< Whether tensors should be freed on destroy */
 } phasic_tonic_state_t;
+
+/* Tensor indices for tonic_params */
+#define PHASIC_TONIC_IDX_TONIC_LEVEL      0
+#define PHASIC_TONIC_IDX_TONIC_TARGET     1
+#define PHASIC_TONIC_IDX_TONIC_MIN        2
+#define PHASIC_TONIC_IDX_TONIC_MAX        3
+#define PHASIC_TONIC_IDX_HOMEOSTATIC_TAU  4
+
+/* Tensor indices for phasic_params */
+#define PHASIC_TONIC_IDX_PHASIC_BURST     0
+#define PHASIC_TONIC_IDX_BURST_DECAY_TAU  1
+#define PHASIC_TONIC_IDX_BURST_AMP_SCALE  2
+#define PHASIC_TONIC_IDX_BURST_THRESHOLD  3
+
+/* Tensor indices for burst_limits */
+#define PHASIC_TONIC_IDX_MAX_BURST_AMP    0
+#define PHASIC_TONIC_IDX_MIN_BURST_AMP    1
+
+/* Tensor indices for autoreceptor_params */
+#define PHASIC_TONIC_IDX_AUTO_SENSITIVITY 0
+#define PHASIC_TONIC_IDX_FEEDBACK_TAU     1
+
+/* Tensor indices for output */
+#define PHASIC_TONIC_IDX_TOTAL_CONC       0
+#define PHASIC_TONIC_IDX_RELEASE_RATE     1
+
+/**
+ * @brief Create phasic-tonic state with tensor storage
+ *
+ * WHAT: Allocates tensors for phasic-tonic state
+ * WHY:  Initialize state with proper tensor memory
+ *
+ * @return Initialized state (call phasic_tonic_state_destroy to free)
+ */
+phasic_tonic_state_t phasic_tonic_state_create(void);
+
+/**
+ * @brief Destroy phasic-tonic state and free tensor memory
+ *
+ * @param state State to destroy
+ */
+void phasic_tonic_state_destroy(phasic_tonic_state_t* state);
+
+/* Backward compatibility accessors for tonic parameters */
+float phasic_tonic_get_tonic_level(const phasic_tonic_state_t* state);
+float phasic_tonic_get_tonic_target(const phasic_tonic_state_t* state);
+float phasic_tonic_get_tonic_min(const phasic_tonic_state_t* state);
+float phasic_tonic_get_tonic_max(const phasic_tonic_state_t* state);
+float phasic_tonic_get_homeostatic_tau(const phasic_tonic_state_t* state);
+
+void phasic_tonic_set_tonic_level(phasic_tonic_state_t* state, float value);
+
+/* Backward compatibility accessors for phasic parameters */
+float phasic_tonic_get_phasic_burst(const phasic_tonic_state_t* state);
+float phasic_tonic_get_burst_decay_tau(const phasic_tonic_state_t* state);
+float phasic_tonic_get_burst_amplitude_scale(const phasic_tonic_state_t* state);
+float phasic_tonic_get_burst_threshold(const phasic_tonic_state_t* state);
+float phasic_tonic_get_max_burst_amplitude(const phasic_tonic_state_t* state);
+float phasic_tonic_get_min_burst_amplitude(const phasic_tonic_state_t* state);
+
+void phasic_tonic_set_phasic_burst(phasic_tonic_state_t* state, float value);
+
+/* Backward compatibility accessors for autoreceptor parameters */
+float phasic_tonic_get_autoreceptor_sensitivity(const phasic_tonic_state_t* state);
+float phasic_tonic_get_feedback_tau(const phasic_tonic_state_t* state);
+
+/* Backward compatibility accessors for output */
+float phasic_tonic_get_total_concentration(const phasic_tonic_state_t* state);
+float phasic_tonic_get_release_rate_value(const phasic_tonic_state_t* state);
+
+void phasic_tonic_set_total_concentration(phasic_tonic_state_t* state, float value);
+void phasic_tonic_set_release_rate_value(phasic_tonic_state_t* state, float value);
 
 /**
  * @brief Configuration for phasic-tonic system initialization

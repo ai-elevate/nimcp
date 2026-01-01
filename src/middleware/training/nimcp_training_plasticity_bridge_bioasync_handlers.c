@@ -137,15 +137,18 @@ static nimcp_error_t tpb_handle_weight_update_request(
 
     /* Apply neuromodulation */
     if (ctx->neuromod_system && region_id < ctx->num_regions) {
-        neuromodulator_pool_t pool;
+        neuromodulator_pool_t pool = neuromodulator_pool_create();
         neuromodulator_get_levels(ctx->neuromod_system, &pool);
 
-        /* Three-factor learning: Hebbian × Timing × Reward */
-        float da_factor = 0.5f + pool.dopamine * ctx->regions[region_id].da_sensitivity;
+        /* Three-factor learning: Hebbian x Timing x Reward */
+        float da_level = neuromodulator_pool_get_dopamine(&pool);
+        float da_factor = 0.5f + da_level * ctx->regions[region_id].da_sensitivity;
         weight_delta *= da_factor;
 
         LOG_TRACE("[%s] Applied neuromodulation: DA=%.3f, factor=%.3f",
-                  TPB_LOG_MODULE, pool.dopamine, da_factor);
+                  TPB_LOG_MODULE, da_level, da_factor);
+
+        neuromodulator_pool_destroy(&pool);
     }
 
     /* Compute new weight (assuming old_weight in delta field for simplicity) */
@@ -228,12 +231,13 @@ static nimcp_error_t tpb_handle_region_config_query(
 
         /* Get current neuromodulator levels */
         if (ctx->neuromod_system) {
-            neuromodulator_pool_t pool;
+            neuromodulator_pool_t pool = neuromodulator_pool_create();
             neuromodulator_get_levels(ctx->neuromod_system, &pool);
-            response.dopamine_level = pool.dopamine;
-            response.serotonin_level = pool.serotonin;
-            response.norepinephrine_level = pool.norepinephrine;
-            response.acetylcholine_level = pool.acetylcholine;
+            response.dopamine_level = neuromodulator_pool_get_dopamine(&pool);
+            response.serotonin_level = neuromodulator_pool_get_serotonin(&pool);
+            response.norepinephrine_level = neuromodulator_pool_get_norepinephrine(&pool);
+            response.acetylcholine_level = neuromodulator_pool_get_acetylcholine(&pool);
+            neuromodulator_pool_destroy(&pool);
         } else {
             response.dopamine_level = 0.5f;
             response.serotonin_level = 0.5f;
@@ -391,15 +395,18 @@ static nimcp_error_t tpb_handle_loss_computed(
     if (ctx->neuromod_system) {
         float da_delta = rpe * ctx->config.rpe_to_da_gain;
         if (fabsf(da_delta) > 0.01f) {  /* Threshold to avoid noise */
-            neuromodulator_pool_t pool;
+            neuromodulator_pool_t pool = neuromodulator_pool_create();
             neuromodulator_get_levels(ctx->neuromod_system, &pool);
-            float new_da = pool.dopamine + da_delta;
+            float old_da = neuromodulator_pool_get_dopamine(&pool);
+            float new_da = old_da + da_delta;
             if (new_da > 1.0f) new_da = 1.0f;
             if (new_da < 0.0f) new_da = 0.0f;
             neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_DOPAMINE, new_da);
 
-            LOG_INFO("[%s] Dopamine modulated: %.3f → %.3f (RPE=%.4f)",
-                     TPB_LOG_MODULE, pool.dopamine, new_da, rpe);
+            LOG_INFO("[%s] Dopamine modulated: %.3f -> %.3f (RPE=%.4f)",
+                     TPB_LOG_MODULE, old_da, new_da, rpe);
+
+            neuromodulator_pool_destroy(&pool);
         }
     }
 

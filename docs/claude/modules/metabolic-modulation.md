@@ -276,3 +276,267 @@ To migrate an existing substrate bridge to use shared utilities:
 - Always call `metabolic_effects_init_full()` before `metabolic_compute_effects()` to ensure defaults
 - Effects are clamped to `[min_capacity, 1.0]`, not `[0, 1]`
 - Pass `NULL` for multipliers parameter to use defaults (not an empty struct)
+
+---
+
+## Tensor-Based API (v2.7.0)
+
+For batch processing across multiple brain regions, use the tensor-based API which provides SIMD-accelerated operations via `nimcp_tensor_t`.
+
+### Tensor Types
+
+#### `metabolic_effect_index_t`
+
+Indices for accessing effect values in tensors:
+
+```c
+typedef enum {
+    METABOLIC_IDX_PRIMARY_ATP = 0,
+    METABOLIC_IDX_SECONDARY_ATP = 1,
+    METABOLIC_IDX_PRIMARY_FATIGUE = 2,
+    METABOLIC_IDX_SECONDARY_FATIGUE = 3,
+    METABOLIC_IDX_OVERALL_CAPACITY = 4,
+    METABOLIC_EFFECT_COUNT = 5
+} metabolic_effect_index_t;
+```
+
+#### `metabolic_effects_tensor_t`
+
+Tensor-based effects for batch processing:
+
+```c
+typedef struct metabolic_effects_tensor {
+    nimcp_tensor_t* effects;  // Shape: [batch, 5] or [5]
+    uint32_t batch_size;      // Number of regions
+    bool owns_tensor;         // True if struct owns tensor memory
+} metabolic_effects_tensor_t;
+```
+
+#### `metabolic_input_tensor_t`
+
+Tensor-based input for batch computation:
+
+```c
+typedef struct metabolic_input_tensor {
+    nimcp_tensor_t* atp_levels;         // Shape: [batch]
+    nimcp_tensor_t* metabolic_capacities; // Shape: [batch]
+    uint32_t batch_size;
+} metabolic_input_tensor_t;
+```
+
+#### `metabolic_multipliers_tensor_t`
+
+Per-region multipliers:
+
+```c
+typedef struct metabolic_multipliers_tensor {
+    nimcp_tensor_t* multipliers;  // Shape: [batch, 4] or [4]
+    uint32_t batch_size;
+} metabolic_multipliers_tensor_t;
+```
+
+### Tensor Functions
+
+#### Creation/Destruction
+
+```c
+// Create structures
+metabolic_effects_tensor_t* metabolic_effects_tensor_create(uint32_t batch_size);
+metabolic_input_tensor_t* metabolic_input_tensor_create(uint32_t batch_size);
+metabolic_multipliers_tensor_t* metabolic_multipliers_tensor_create(uint32_t batch_size);
+
+// Destroy structures (NULL-safe)
+void metabolic_effects_tensor_destroy(metabolic_effects_tensor_t* effects);
+void metabolic_input_tensor_destroy(metabolic_input_tensor_t* input);
+void metabolic_multipliers_tensor_destroy(metabolic_multipliers_tensor_t* mult);
+```
+
+#### Initialization
+
+```c
+// Initialize effects to 1.0
+int metabolic_effects_tensor_init_full(metabolic_effects_tensor_t* effects);
+
+// Initialize multipliers to defaults [1.0, 1.1, 1.0, 0.9]
+int metabolic_multipliers_tensor_init_default(metabolic_multipliers_tensor_t* mult);
+
+// Set multipliers for specific region
+int metabolic_multipliers_tensor_set_region(
+    metabolic_multipliers_tensor_t* mult,
+    uint32_t region_idx,
+    float atp_primary,
+    float atp_secondary,
+    float fatigue_primary,
+    float fatigue_secondary
+);
+```
+
+#### Computation
+
+```c
+// Batch compute effects for all regions
+int metabolic_compute_effects_tensor(
+    const metabolic_input_tensor_t* input,
+    const metabolic_modulation_config_t* config,
+    const metabolic_multipliers_tensor_t* multipliers,  // NULL for defaults
+    metabolic_effects_tensor_t* effects
+);
+
+// Compute overall capacity (mean of first 4 effects)
+int metabolic_compute_overall_capacity_tensor(metabolic_effects_tensor_t* effects);
+```
+
+#### Tensor/Scalar Conversion
+
+```c
+// Extract single region to scalar struct
+int metabolic_effects_tensor_to_scalar(
+    const metabolic_effects_tensor_t* tensor_effects,
+    uint32_t region_idx,
+    metabolic_effects_t* scalar_effects
+);
+
+// Copy scalar to tensor region
+int metabolic_effects_scalar_to_tensor(
+    metabolic_effects_tensor_t* tensor_effects,
+    uint32_t region_idx,
+    const metabolic_effects_t* scalar_effects
+);
+```
+
+#### Element Access
+
+```c
+// Get/set individual effect values
+float metabolic_effects_tensor_get(
+    const metabolic_effects_tensor_t* effects,
+    uint32_t region_idx,
+    metabolic_effect_index_t effect_idx
+);
+
+int metabolic_effects_tensor_set(
+    metabolic_effects_tensor_t* effects,
+    uint32_t region_idx,
+    metabolic_effect_index_t effect_idx,
+    float value
+);
+
+// Convenience: create input from scalar values
+metabolic_input_tensor_t* metabolic_input_tensor_from_scalar(
+    float atp_level,
+    float metabolic_capacity
+);
+
+// Set input for specific region
+int metabolic_input_tensor_set_region(
+    metabolic_input_tensor_t* input,
+    uint32_t region_idx,
+    float atp_level,
+    float metabolic_capacity
+);
+```
+
+### Tensor Usage Pattern
+
+#### Batch Processing Multiple Brain Regions
+
+```c
+#include "cognitive/common/nimcp_metabolic_modulation.h"
+
+// Example: Process 8 brain regions in batch
+int process_brain_regions(brain_t* brain) {
+    const uint32_t NUM_REGIONS = 8;
+
+    // Create tensor structures
+    metabolic_input_tensor_t* input = metabolic_input_tensor_create(NUM_REGIONS);
+    metabolic_effects_tensor_t* effects = metabolic_effects_tensor_create(NUM_REGIONS);
+    metabolic_multipliers_tensor_t* mult = metabolic_multipliers_tensor_create(NUM_REGIONS);
+
+    if (!input || !effects || !mult) {
+        metabolic_input_tensor_destroy(input);
+        metabolic_effects_tensor_destroy(effects);
+        metabolic_multipliers_tensor_destroy(mult);
+        return -1;
+    }
+
+    // Initialize multipliers with defaults, then customize specific regions
+    metabolic_multipliers_tensor_init_default(mult);
+    metabolic_multipliers_tensor_set_region(mult, 3, 1.0f, 1.15f, 1.0f, 0.85f);  // Region 3: custom
+
+    // Populate input from each region
+    for (uint32_t i = 0; i < NUM_REGIONS; i++) {
+        brain_region_t* region = brain_get_region(brain, i);
+        metabolic_input_tensor_set_region(input, i,
+            region->atp_level,
+            region->metabolic_capacity
+        );
+    }
+
+    // Batch compute all effects (SIMD-accelerated)
+    metabolic_modulation_config_t config = metabolic_modulation_default_config();
+    metabolic_compute_effects_tensor(input, &config, mult, effects);
+
+    // Extract results for each region
+    for (uint32_t i = 0; i < NUM_REGIONS; i++) {
+        brain_region_t* region = brain_get_region(brain, i);
+        metabolic_effects_t scalar;
+        metabolic_effects_tensor_to_scalar(effects, i, &scalar);
+
+        // Apply effects to region
+        region->processing_capacity = scalar.overall_capacity;
+    }
+
+    // Cleanup
+    metabolic_input_tensor_destroy(input);
+    metabolic_effects_tensor_destroy(effects);
+    metabolic_multipliers_tensor_destroy(mult);
+
+    return 0;
+}
+```
+
+#### Single-Region with Tensor API (Migration Path)
+
+```c
+// Easy migration from scalar to tensor API
+int my_bridge_update_tensor(my_bridge_t* bridge) {
+    // Create single-region input from scalar values
+    metabolic_input_tensor_t* input = metabolic_input_tensor_from_scalar(
+        metabolic.atp_level,
+        metabolic.metabolic_capacity
+    );
+
+    metabolic_effects_tensor_t* effects = metabolic_effects_tensor_create(1);
+
+    if (!input || !effects) {
+        metabolic_input_tensor_destroy(input);
+        metabolic_effects_tensor_destroy(effects);
+        return -1;
+    }
+
+    // Compute using tensor API
+    metabolic_compute_effects_tensor(input, &bridge->metabolic_config, NULL, effects);
+
+    // Extract to scalar for existing code
+    metabolic_effects_t scalar;
+    metabolic_effects_tensor_to_scalar(effects, 0, &scalar);
+
+    bridge->effects.my_effect_1 = scalar.primary_atp;
+    bridge->effects.my_effect_2 = scalar.secondary_atp;
+    // ...
+
+    metabolic_input_tensor_destroy(input);
+    metabolic_effects_tensor_destroy(effects);
+
+    return 0;
+}
+```
+
+### Tensor API GOTCHAs
+
+- All tensor functions return `0` for success, `-1` for errors (consistent with scalar API)
+- `metabolic_effects_tensor_get()` returns `NAN` on error
+- Batch size must match between input and effects tensors
+- When `batch_size == 1`, tensors use rank-1 shape `[5]` instead of `[1, 5]`
+- Pass `NULL` for multipliers to use defaults across all regions
+- Always destroy tensor structures after use to avoid memory leaks

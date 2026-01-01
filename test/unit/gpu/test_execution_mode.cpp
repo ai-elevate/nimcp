@@ -324,19 +324,29 @@ TEST_F(ExecutionModeTest, ModeSupported_InvalidMode) {
 /**
  * TEST: Small network recommendation
  * WHAT: Verify mode recommendation for small networks (< 1K neurons)
- * WHY:  Small networks run efficiently on CPU
- * HOW:  Request mode for 100 neurons, expect CPU sequential
+ * WHY:  GPU-first policy: GPU preferred when available, regardless of size
+ * HOW:  Request mode for 100 neurons, expect GPU if available
  */
 TEST_F(ExecutionModeTest, RecommendMode_SmallNetwork) {
     execution_mode_t mode = execution_get_recommended_mode(100, 10);
-    EXPECT_EQ(mode, EXEC_MODE_CPU_SEQUENTIAL);
+
+    hardware_capabilities_t caps;
+    execution_detect_capabilities(&caps);
+
+    if (caps.cuda_available) {
+        EXPECT_EQ(mode, EXEC_MODE_GPU_CUDA);
+    } else if (caps.cpu_threads >= 4) {
+        EXPECT_EQ(mode, EXEC_MODE_CPU_PARALLEL);
+    } else {
+        EXPECT_EQ(mode, EXEC_MODE_CPU_SEQUENTIAL);
+    }
 }
 
 /**
  * TEST: Medium network recommendation
  * WHAT: Verify mode for medium networks (1K-10K neurons)
- * WHY:  Medium networks benefit from parallelism
- * HOW:  Request mode for 5000 neurons, expect CPU parallel
+ * WHY:  GPU-first policy: GPU preferred when available, regardless of size
+ * HOW:  Request mode for 5000 neurons, expect GPU if available
  */
 TEST_F(ExecutionModeTest, RecommendMode_MediumNetwork) {
     execution_mode_t mode = execution_get_recommended_mode(5000, 100);
@@ -344,7 +354,9 @@ TEST_F(ExecutionModeTest, RecommendMode_MediumNetwork) {
     hardware_capabilities_t caps;
     execution_detect_capabilities(&caps);
 
-    if (caps.cpu_threads >= 4) {
+    if (caps.cuda_available) {
+        EXPECT_EQ(mode, EXEC_MODE_GPU_CUDA);
+    } else if (caps.cpu_threads >= 4) {
         EXPECT_EQ(mode, EXEC_MODE_CPU_PARALLEL);
     } else {
         EXPECT_EQ(mode, EXEC_MODE_CPU_SEQUENTIAL);
@@ -394,12 +406,22 @@ TEST_F(ExecutionModeTest, RecommendMode_VeryLargeNetwork) {
 /**
  * TEST: Edge case - zero neurons
  * WHAT: Verify behavior with zero neurons
- * WHY:  Edge case should not crash
- * HOW:  Request mode for 0 neurons
+ * WHY:  GPU-first policy applies even for zero neurons (edge case)
+ * HOW:  Request mode for 0 neurons, expect GPU if available
  */
 TEST_F(ExecutionModeTest, RecommendMode_ZeroNeurons) {
     execution_mode_t mode = execution_get_recommended_mode(0, 0);
-    EXPECT_EQ(mode, EXEC_MODE_CPU_SEQUENTIAL);
+
+    hardware_capabilities_t caps;
+    execution_detect_capabilities(&caps);
+
+    if (caps.cuda_available) {
+        EXPECT_EQ(mode, EXEC_MODE_GPU_CUDA);
+    } else if (caps.cpu_threads >= 4) {
+        EXPECT_EQ(mode, EXEC_MODE_CPU_PARALLEL);
+    } else {
+        EXPECT_EQ(mode, EXEC_MODE_CPU_SEQUENTIAL);
+    }
 }
 
 /**
@@ -924,13 +946,22 @@ TEST_F(ExecutionModeTest, Config_DefaultGPUCUDA) {
 /**
  * TEST: Get optimal config for small network
  * WHAT: Verify execution_get_optimal_config() for small network
- * WHY:  Auto-optimization should select appropriate mode
- * HOW:  Get config for 100 neurons, verify CPU sequential
+ * WHY:  GPU-first policy: GPU preferred when available, regardless of size
+ * HOW:  Get config for 100 neurons, verify GPU if available
  */
 TEST_F(ExecutionModeTest, Config_OptimalSmall) {
     execution_config_t config = execution_get_optimal_config(100);
 
-    EXPECT_EQ(config.mode, EXEC_MODE_CPU_SEQUENTIAL);
+    hardware_capabilities_t caps;
+    execution_detect_capabilities(&caps);
+
+    if (caps.cuda_available) {
+        EXPECT_EQ(config.mode, EXEC_MODE_GPU_CUDA);
+    } else if (caps.cpu_threads >= 4) {
+        EXPECT_EQ(config.mode, EXEC_MODE_CPU_PARALLEL);
+    } else {
+        EXPECT_EQ(config.mode, EXEC_MODE_CPU_SEQUENTIAL);
+    }
 }
 
 /**

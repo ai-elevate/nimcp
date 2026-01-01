@@ -71,6 +71,31 @@ extern cudaError_t launch_update_variable_bindings(
     uint32_t threads_per_block,
     cudaStream_t stream
 );
+
+// N-ary and tensor-compatible batch evaluation kernel launchers
+extern cudaError_t launch_evaluate_gates_batch_nary(
+    const logic_neuron_state_t* neurons_device,
+    const uint32_t* gate_ids_device,
+    const float* inputs_device,
+    const uint32_t* input_offsets_device,
+    const uint32_t* inputs_per_gate_device,
+    float* outputs_device,
+    uint32_t num_gates,
+    uint32_t threads_per_block,
+    cudaStream_t stream
+);
+
+extern cudaError_t launch_evaluate_gates_batch_tensor(
+    const logic_neuron_state_t* neurons_device,
+    const int32_t* gate_ids_device,
+    const float* inputs_device,
+    const int32_t* input_offsets_device,
+    const int32_t* inputs_per_gate_device,
+    float* outputs_device,
+    uint32_t num_gates,
+    uint32_t threads_per_block,
+    cudaStream_t stream
+);
 #endif
 
 //=============================================================================

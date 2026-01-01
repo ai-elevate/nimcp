@@ -913,6 +913,10 @@ extern "C" void init_cuda_backend_ops(nimcp_kernel_backend_t* backend)
     backend->inference.dequantize_int8 = cuda_dequantize_int8;
     backend->inference.matmul_int8 = cuda_matmul_int8;
 
+    // Substrate operations (axons, dendrites, myelin, neuromodulators, glial, metabolic)
+    extern nimcp_substrate_ops_t nimcp_cuda_substrate_ops;
+    backend->substrate = nimcp_cuda_substrate_ops;
+
     LOG_INFO("CUDA backend operations registered successfully");
 }
 

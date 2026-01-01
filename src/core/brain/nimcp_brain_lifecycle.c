@@ -891,6 +891,11 @@ void brain_destroy(brain_t brain)
     clear_cache(brain);
     nimcp_platform_mutex_destroy(&brain->cache_mutex);
 
+    // GPU Substrate cleanup (must happen before GPU context is destroyed)
+    if (brain->substrate_gpu_ctx) {
+        nimcp_brain_factory_destroy_substrate_gpu_subsystem(brain);
+    }
+
     // GPU context cleanup (must happen before bio-async as GPU may use async events)
     if (brain->gpu_ctx) {
         nimcp_brain_factory_destroy_gpu_subsystem(brain);

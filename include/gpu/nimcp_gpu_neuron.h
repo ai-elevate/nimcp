@@ -45,7 +45,7 @@
  *
  * @author NIMCP Development Team
  * @date 2025
- * @version 2.6 (GPU P2P)
+ * @version 2.8.0 (Tensor-based GPU)
  */
 
 #ifndef NIMCP_GPU_NEURON_H
@@ -135,11 +135,24 @@ typedef struct __attribute__((aligned(16))) {
 /**
  * @brief GPU neural network (opaque handle)
  *
+ * TENSOR-BASED ARCHITECTURE (v2.8.0):
+ * - Neuron states: nimcp_gpu_tensor_t [N_neurons x 8] (float32)
+ * - Neuron metadata: nimcp_gpu_tensor_t [N_neurons x 8] (uint32)
+ * - Synapse data: nimcp_gpu_tensor_t [N_synapses x 4] (float32)
+ * - Spike queue: nimcp_gpu_tensor_t [capacity x 4] (float32)
+ *
  * CONTAINS:
- * - Neuron states (GPU memory)
- * - Synapse connectivity (GPU memory)
- * - Spike event queues (GPU memory)
- * - Execution context
+ * - Neuron states (GPU tensor memory)
+ * - Synapse connectivity (GPU tensor memory)
+ * - Spike event queues (GPU tensor memory)
+ * - GPU context for stream/device management
+ * - Host-side copies for CPU access
+ *
+ * BENEFITS:
+ * - Better memory coalescing on GPU
+ * - Unified tensor API for memory management
+ * - Enables batch operations via cuBLAS
+ * - Consistent with nimcp_tensor_gpu.h API
  */
 typedef struct gpu_neural_network_struct* gpu_neural_network_t;
 

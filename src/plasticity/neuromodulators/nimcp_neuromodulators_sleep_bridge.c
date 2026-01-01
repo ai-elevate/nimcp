@@ -329,8 +329,9 @@ int neuromod_sleep_apply_modulation(neuromod_sleep_bridge_t bridge) {
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current baseline levels */
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = neuromodulator_pool_create();
     if (!neuromodulator_get_levels(bridge->neuromod_system, &pool)) {
+        neuromodulator_pool_destroy(&pool);
         nimcp_platform_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_WARN("neuromod_sleep_apply_modulation: failed to get levels");
         return -1;
@@ -339,10 +340,12 @@ int neuromod_sleep_apply_modulation(neuromod_sleep_bridge_t bridge) {
     /* Apply modulation factors to each neuromodulator */
     /* Note: We modulate the levels, not override them completely */
     /* This preserves event-driven changes while applying sleep modulation */
-    float modulated_ach = pool.acetylcholine * bridge->effects.ach_factor;
-    float modulated_ne = pool.norepinephrine * bridge->effects.ne_factor;
-    float modulated_da = pool.dopamine * bridge->effects.da_factor;
-    float modulated_5ht = pool.serotonin * bridge->effects.serotonin_factor;
+    float modulated_ach = neuromodulator_pool_get_acetylcholine(&pool) * bridge->effects.ach_factor;
+    float modulated_ne = neuromodulator_pool_get_norepinephrine(&pool) * bridge->effects.ne_factor;
+    float modulated_da = neuromodulator_pool_get_dopamine(&pool) * bridge->effects.da_factor;
+    float modulated_5ht = neuromodulator_pool_get_serotonin(&pool) * bridge->effects.serotonin_factor;
+
+    neuromodulator_pool_destroy(&pool);
 
     /* Clamp to valid range */
     modulated_ach = fminf(fmaxf(modulated_ach, 0.0f), 1.0f);

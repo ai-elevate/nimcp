@@ -85,6 +85,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_broca.c            # Broca's region language production
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_collective_cognition.c # Collective cognition subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_gpu.c              # GPU context auto-initialization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_substrate_gpu.c   # GPU substrate subsystem initialization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/validation/nimcp_brain_validation.c         # Validation and caching (219 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_brain_learning.c     # Training, backpropagation, batch processing (947 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_rule_learning.c      # Rule learning from examples (inductive learning)
@@ -1268,6 +1269,13 @@ set(NIMCP_CORE_SOURCES
 
     # Kernel backend CPU implementation (always compiled - provides CPU fallback)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/backend/nimcp_kernel_backend.c
+
+    # Neural substrate GPU operations (CUDA kernels for axon/dendrite/myelin/neuromodulator/glial/metabolic)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/substrate/nimcp_substrate_kernels.cu>
+    # Neural substrate CPU fallback operations (always compiled)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/substrate/nimcp_substrate_cpu.c
+    # Neural substrate GPU context management (always compiled - wraps backend ops)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/substrate/nimcp_substrate_gpu.c
 
     # Note: CUDA compile flags set below per-file
 

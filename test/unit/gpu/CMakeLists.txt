@@ -39,6 +39,9 @@ if(CUDAToolkit_FOUND)
     # GPU SNN and LNN kernel tests
     add_gpu_test(test_snn_kernels)
     add_gpu_test(test_lnn_kernels)
+
+    # GPU Neural Substrate kernel tests (axon, dendrite, myelin, neuromod, glial, metabolic)
+    add_gpu_test(test_substrate_gpu)
 else()
     message(STATUS "  Skipping CUDA kernel tests (CUDA toolkit not found)")
 endif()

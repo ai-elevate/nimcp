@@ -68,7 +68,7 @@ nimcp_grover_config_t nimcp_grover_default_config(uint32_t n_qubits)
     nimcp_grover_config_t config;
     config.n_qubits = n_qubits;
     config.marked_states = NULL;
-    config.n_marked = 1;
+    config.n_marked = 0;  // User must set marked states
     config.optimal_iterations = nimcp_grover_optimal_iterations(n_qubits, 1);
     config.success_probability = 0.0f;  // Computed during search
     return config;
@@ -348,7 +348,7 @@ bool nimcp_quantum_measure(
     uint32_t* measured_state,
     float* probability)
 {
-    if (!ctx || !state || !measured_state) return false;
+    if (!ctx || !state) return false;
 
     // Compute probabilities
     float* d_probs;
@@ -377,7 +377,10 @@ bool nimcp_quantum_measure(
         }
     }
 
-    *measured_state = result;
+    // Return measured state if pointer provided
+    if (measured_state) {
+        *measured_state = result;
+    }
     if (probability) {
         *probability = h_probs[result];
     }
@@ -766,8 +769,7 @@ bool nimcp_ising_model_set_params(
     const float* J,
     const float* h)
 {
-    (void)ctx;
-    if (!model || !J || !h) return false;
+    if (!ctx || !model || !J || !h) return false;
 
     CUDA_CHECK(cudaMemcpy(model->J->data, J,
                           model->n_spins * model->n_spins * sizeof(float),
@@ -1050,7 +1052,7 @@ nimcp_grover_config_t nimcp_grover_default_config(uint32_t n_qubits)
     nimcp_grover_config_t config;
     config.n_qubits = n_qubits;
     config.marked_states = NULL;
-    config.n_marked = 1;
+    config.n_marked = 0;  // User must set marked states
     config.optimal_iterations = nimcp_grover_optimal_iterations(n_qubits, 1);
     config.success_probability = 0.0f;
     return config;
@@ -1230,7 +1232,7 @@ bool nimcp_quantum_measure(
     float* probability)
 {
     (void)ctx;
-    if (!state || !measured_state) return false;
+    if (!state) return false;
 
     float* real = (float*)state->amplitudes_real->data;
     float* imag = (float*)state->amplitudes_imag->data;
@@ -1239,18 +1241,25 @@ bool nimcp_quantum_measure(
     float r = (float)rand() / (float)RAND_MAX;
     float cumsum = 0.0f;
     uint32_t result = 0;
+    float result_prob = 0.0f;
 
     for (uint32_t i = 0; i < state->n_states; i++) {
         float prob = real[i] * real[i] + imag[i] * imag[i];
         cumsum += prob;
         if (r <= cumsum) {
             result = i;
-            if (probability) *probability = prob;
+            result_prob = prob;
             break;
         }
     }
 
-    *measured_state = result;
+    // Return measured state if pointer provided
+    if (measured_state) {
+        *measured_state = result;
+    }
+    if (probability) {
+        *probability = result_prob;
+    }
 
     // Collapse state
     memset(real, 0, state->n_states * sizeof(float));
@@ -1415,8 +1424,7 @@ bool nimcp_ising_model_set_params(
     const float* J,
     const float* h)
 {
-    (void)ctx;
-    if (!model || !J || !h) return false;
+    if (!ctx || !model || !J || !h) return false;
 
     memcpy(model->J->data, J, model->n_spins * model->n_spins * sizeof(float));
     memcpy(model->h->data, h, model->n_spins * sizeof(float));
