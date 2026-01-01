@@ -861,6 +861,34 @@ extern "C" bool myelin_gpu_reset(myelin_gpu_context_t* ctx) {
 }
 
 //=============================================================================
+// API Implementation: CPU Network Integration
+//=============================================================================
+
+extern "C" bool myelin_gpu_init_from_cpu(
+    myelin_gpu_context_t* ctx,
+    const myelin_sheath_network_t* cpu_network
+) {
+    if (!ctx || !cpu_network) return false;
+
+    // TODO: Implement when myelin_sheath_network_t is fully defined
+    // This would extract data from the CPU network structure and upload to GPU tensors
+    LOG_WARN("myelin_gpu_init_from_cpu not yet fully implemented");
+    return false;
+}
+
+extern "C" bool myelin_gpu_download_to_cpu(
+    const myelin_gpu_context_t* ctx,
+    myelin_sheath_network_t* cpu_network
+) {
+    if (!ctx || !cpu_network) return false;
+
+    // TODO: Implement when myelin_sheath_network_t is fully defined
+    // This would download GPU tensors back to the CPU network structure
+    LOG_WARN("myelin_gpu_download_to_cpu not yet fully implemented");
+    return false;
+}
+
+//=============================================================================
 // API Implementation: Data Upload
 //=============================================================================
 
@@ -1110,6 +1138,141 @@ extern "C" bool myelin_gpu_apply_blocks(myelin_gpu_context_t* ctx, uint64_t seed
 extern "C" bool myelin_gpu_set_temperature(myelin_gpu_context_t* ctx, float temperature_c) {
     if (!ctx) return false;
     ctx->config.temperature_c = temperature_c;
+    return true;
+}
+
+extern "C" bool myelin_gpu_compute_g_efficiency(
+    myelin_gpu_context_t* ctx,
+    nimcp_gpu_tensor_t* efficiency_out
+) {
+    if (!ctx || ctx->n_axons == 0) return false;
+
+    // Use output tensor or temp buffer
+    nimcp_gpu_tensor_t* output = efficiency_out ? efficiency_out : ctx->temp_buffer_1d;
+
+    kernel_g_ratio_efficiency<<<GRID_SIZE(ctx->n_axons), BLOCK_SIZE, 0, ctx->stream>>>(
+        (float*)ctx->g_ratios->data,
+        (float*)ctx->g_ratios->data,  // Use same as optimal (computed from diameter)
+        (float*)output->data,
+        ctx->n_axons
+    );
+
+    ctx->kernel_launches++;
+    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    return true;
+}
+
+extern "C" bool myelin_gpu_compute_attenuation(
+    myelin_gpu_context_t* ctx,
+    nimcp_gpu_tensor_t* attenuation_out
+) {
+    if (!ctx || ctx->n_axons == 0) return false;
+
+    uint32_t total = ctx->n_axons * ctx->n_internodes;
+    nimcp_gpu_tensor_t* output = attenuation_out ? attenuation_out : ctx->temp_buffer_2d;
+
+    kernel_attenuation<<<GRID_SIZE(total), BLOCK_SIZE, 0, ctx->stream>>>(
+        (float*)ctx->internode_lengths->data,
+        (float*)ctx->space_constants->data,
+        (float*)output->data,
+        ctx->n_axons,
+        ctx->n_internodes
+    );
+
+    ctx->kernel_launches++;
+    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    return true;
+}
+
+extern "C" bool myelin_gpu_compute_segment_velocities(myelin_gpu_context_t* ctx) {
+    if (!ctx || ctx->n_axons == 0) return false;
+
+    uint32_t total = ctx->n_axons * ctx->n_internodes;
+
+    // Compute per-segment velocities (without aggregation)
+    kernel_saltatory_velocity<<<GRID_SIZE(total), BLOCK_SIZE, 0, ctx->stream>>>(
+        (float*)ctx->axon_diameters->data,
+        (float*)ctx->internode_lengths->data,
+        (float*)ctx->space_constants->data,
+        (float*)ctx->g_ratios->data,
+        (float*)ctx->compaction_scores->data,
+        (float*)ctx->integrity->data,
+        (float*)ctx->num_lamellae->data,
+        (float*)ctx->segment_velocities->data,
+        (float*)ctx->propagation_delays->data,
+        ctx->n_axons,
+        ctx->n_internodes
+    );
+
+    ctx->kernel_launches++;
+    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    return true;
+}
+
+extern "C" bool myelin_gpu_compute_delays(myelin_gpu_context_t* ctx) {
+    if (!ctx || ctx->n_axons == 0) return false;
+
+    // Delays are computed as part of segment velocities
+    // This just ensures they are current
+    return myelin_gpu_compute_segment_velocities(ctx);
+}
+
+extern "C" bool myelin_gpu_compute_total_delays(
+    myelin_gpu_context_t* ctx,
+    nimcp_gpu_tensor_t* total_delays_out
+) {
+    if (!ctx || ctx->n_axons == 0) return false;
+
+    nimcp_gpu_tensor_t* output = total_delays_out ? total_delays_out : ctx->temp_buffer_1d;
+
+    // Use aggregation kernel (second output is total delays)
+    size_t shared_mem = 2 * BLOCK_SIZE * sizeof(float);
+    kernel_aggregate_velocities<<<ctx->n_axons, BLOCK_SIZE, shared_mem, ctx->stream>>>(
+        (float*)ctx->segment_velocities->data,
+        (float*)ctx->internode_lengths->data,
+        (float*)ctx->propagation_delays->data,
+        (float*)ctx->conduction_velocities->data,  // Also updates velocities
+        (float*)output->data,
+        ctx->n_axons,
+        ctx->n_internodes
+    );
+
+    ctx->kernel_launches++;
+    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    return true;
+}
+
+extern "C" bool myelin_gpu_update_activity_ema(
+    myelin_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* activity,
+    float dt
+) {
+    if (!ctx || !activity || ctx->n_axons == 0) return false;
+
+    // EMA alpha based on time constant (tau = 1.0 second)
+    float tau = 1.0f;
+    float alpha = 1.0f - expf(-dt / tau);
+
+    kernel_update_activity_ema<<<GRID_SIZE(ctx->n_axons), BLOCK_SIZE, 0, ctx->stream>>>(
+        (float*)activity->data,
+        (float*)ctx->activity_ema->data,
+        alpha,
+        ctx->n_axons
+    );
+
+    ctx->kernel_launches++;
+    CUDA_CHECK(cudaStreamSynchronize(ctx->stream));
+    return true;
+}
+
+extern "C" bool myelin_gpu_compute_statistics(myelin_gpu_context_t* ctx) {
+    if (!ctx || ctx->n_axons == 0) return false;
+
+    // Compute all mean values
+    myelin_gpu_get_mean_g_ratio(ctx);
+    myelin_gpu_get_mean_velocity(ctx);
+    myelin_gpu_get_mean_integrity(ctx);
+
     return true;
 }
 

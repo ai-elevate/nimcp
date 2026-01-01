@@ -26,6 +26,10 @@
 #include <memory>
 #include <map>
 
+// Include headers that may transitively include C++ templates outside extern "C"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "core/neuron_types/nimcp_neural_logic.h"
+
 extern "C" {
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -33,8 +37,6 @@ extern "C" {
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_pretrained.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
-#include "core/neuron_types/nimcp_neural_logic.h"
-#include "utils/memory/nimcp_unified_memory.h"
 #include "utils/error/nimcp_error_codes.h"
 }
 

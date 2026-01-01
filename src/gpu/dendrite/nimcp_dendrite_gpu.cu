@@ -728,7 +728,6 @@ extern "C" bool dendrite_gpu_upload_segments(
     }
 
     // Upload to GPU tensors
-    nimcp_gpu_tensor_to_host(ctx->segment_voltages, h_voltages);
     CUDA_CHECK(cudaMemcpy(ctx->segment_voltages->data, h_voltages,
                           total * sizeof(float), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(ctx->segment_lengths->data, h_lengths,
@@ -919,6 +918,8 @@ extern "C" bool dendrite_gpu_update_calcium(
     if (!ctx) return false;
 
     uint32_t total_spines = ctx->num_dendrites * ctx->num_spines;
+    if (total_spines == 0) return true;  // No spines to update
+
     cudaStream_t stream = (cudaStream_t)ctx->stream;
 
     kernel_dendrite_calcium<<<GRID_SIZE(total_spines), BLOCK_SIZE, 0, stream>>>(
@@ -966,7 +967,8 @@ extern "C" bool dendrite_gpu_apply_stdp(
     uint32_t num_events,
     uint64_t timestamp
 ) {
-    if (!ctx || !events || num_events == 0) return false;
+    if (!ctx) return false;
+    if (!events || num_events == 0) return true;  // No-op is valid
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
 
@@ -1104,6 +1106,8 @@ extern "C" bool dendrite_gpu_decay_traces(
     if (!ctx) return false;
 
     uint32_t total_spines = ctx->num_dendrites * ctx->num_spines;
+    if (total_spines == 0) return true;  // No traces to decay
+
     cudaStream_t stream = (cudaStream_t)ctx->stream;
 
     kernel_decay_traces<<<GRID_SIZE(total_spines), BLOCK_SIZE, 0, stream>>>(

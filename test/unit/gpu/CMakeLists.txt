@@ -46,6 +46,33 @@ if(CUDAToolkit_FOUND)
 
     # GPU Neural Substrate kernel tests (axon, dendrite, myelin, neuromod, glial, metabolic)
     add_gpu_test(test_substrate_gpu)
+
+    # GPU Axon module tests
+    add_gpu_test(test_axon_gpu)
+
+    # GPU Dendrite module tests
+    add_gpu_test(test_dendrite_gpu)
+
+    # GPU Myelin module tests
+    add_gpu_test(test_myelin_gpu)
+
+    # GPU Brain Oscillation kernel tests (PLV, PLI, PAC, coherence, FFT)
+    add_gpu_test(test_oscillations_kernels)
+
+    # GPU Memory Consolidation kernel tests (hippocampal replay, systems consolidation, engrams)
+    add_gpu_test(test_memory_consolidation_kernels)
+
+    # GPU Knowledge Graph kernel tests (BFS/DFS traversal, similarity, hyperbolic space)
+    add_gpu_test(test_knowledge_graph_kernels)
+
+    # GPU Synaptic Transmission kernel tests (Tsodyks-Markram, receptor kinetics)
+    add_gpu_test(test_synapse_kernels)
+
+    # GPU Dragonfly Vision kernel tests (target tracking, optical flow, STMD)
+    add_gpu_test(test_dragonfly_vision_kernels)
+
+    # GPU Plasticity kernel tests (STDP, BCM, homeostatic, STP, calcium dynamics)
+    add_gpu_test(test_plasticity_kernels)
 else()
     message(STATUS "  Skipping CUDA kernel tests (CUDA toolkit not found)")
 endif()

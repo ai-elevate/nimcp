@@ -1257,6 +1257,8 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/cognitive/nimcp_jepa_gpu.cu>
     # Broca's region GPU kernels (lexical lookup, phoneme encoding, motor planning)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/cognitive/nimcp_broca_gpu.cu>
+    # Memory consolidation GPU kernels (hippocampal replay, systems consolidation, engram operations)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/memory/nimcp_memory_consolidation_kernels.cu>
     # Existing CUDA kernels
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_gpu_kernels.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/synapse_compute/nimcp_synapse_compute_gpu.cu>
@@ -1276,6 +1278,15 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/substrate/nimcp_substrate_cpu.c
     # Neural substrate GPU context management (always compiled - wraps backend ops)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/substrate/nimcp_substrate_gpu.c
+
+    # GPU Axon module (CUDA kernels for axon signal propagation and myelination)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/axon/nimcp_axon_gpu.cu>
+
+    # GPU Dendrite module (CUDA kernels for dendritic computation, calcium, STDP)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/dendrite/nimcp_dendrite_gpu.cu>
+
+    # GPU Myelin module (CUDA kernels for myelin sheath biophysics)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/glial/nimcp_myelin_gpu.cu>
 
     # Note: CUDA compile flags set below per-file
 

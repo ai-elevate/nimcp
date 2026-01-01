@@ -356,6 +356,274 @@ bool multihead_attention_get_alibi_bias(multihead_attention_t mha,
                                        uint32_t seq_length,
                                        float* bias_out);
 
+//=============================================================================
+// Hard Ternary Attention API
+//=============================================================================
+
+#include "utils/ternary/nimcp_ternary_types.h"
+
+/**
+ * @brief Ternary attention states
+ *
+ * WHAT: Discrete attention states for hard attention mechanisms
+ * WHY:  Enable interpretable, discrete attention decisions
+ * HOW:  Map soft attention weights to {FOCUS, NEUTRAL, SUPPRESS}
+ *
+ * BIOLOGICAL BASIS:
+ * - Winner-take-all circuits in cortex
+ * - Lateral inhibition creates discrete selection
+ * - Attentional blink: finite capacity attention
+ */
+#ifndef TERNARY_ATTENTION_STATE_DEFINED
+#define TERNARY_ATTENTION_STATE_DEFINED
+typedef enum {
+    ATTENTION_SUPPRESS = -1,         /**< Actively suppress (inhibition) */
+    ATTENTION_NEUTRAL = 0,           /**< Neutral, no modulation */
+    ATTENTION_FOCUS = 1              /**< Active focus (enhancement) */
+} ternary_attention_state_t;
+#endif
+
+/**
+ * @brief Configuration for hard ternary attention
+ */
+typedef struct {
+    float focus_threshold;           /**< Threshold for FOCUS state (default: 0.7) */
+    float suppress_threshold;        /**< Threshold for SUPPRESS state (default: 0.3) */
+    bool use_top_k;                  /**< Use top-k selection instead of threshold */
+    uint32_t top_k;                  /**< Number of items to focus on */
+    float focus_gain;                /**< Gain multiplier for focused items */
+    float suppress_gain;             /**< Gain multiplier for suppressed items (< 1) */
+    bool temperature_annealing;      /**< Use temperature annealing during training */
+    float initial_temperature;       /**< Starting temperature (high = soft) */
+    float final_temperature;         /**< Ending temperature (low = hard) */
+    uint32_t annealing_steps;        /**< Steps over which to anneal */
+} ternary_attention_config_t;
+
+/**
+ * @brief Ternary attention statistics
+ */
+typedef struct {
+    uint64_t n_focus;                /**< Count of FOCUS decisions */
+    uint64_t n_neutral;              /**< Count of NEUTRAL decisions */
+    uint64_t n_suppress;             /**< Count of SUPPRESS decisions */
+    float focus_ratio;               /**< Fraction of focused items */
+    float suppress_ratio;            /**< Fraction of suppressed items */
+    float sparsity;                  /**< Attention sparsity (1 - focus_ratio) */
+    float avg_temperature;           /**< Average temperature used */
+} ternary_attention_stats_t;
+
+/**
+ * @brief Ternary attention context (opaque)
+ */
+typedef struct ternary_attention_ctx_s ternary_attention_ctx_t;
+
+/**
+ * @brief Get default ternary attention configuration
+ *
+ * DEFAULTS:
+ * - focus_threshold: 0.7
+ * - suppress_threshold: 0.3
+ * - use_top_k: false
+ * - focus_gain: 1.5
+ * - suppress_gain: 0.1
+ *
+ * @param config Configuration to initialize
+ * @return 0 on success, negative on error
+ */
+int ternary_attention_default_config(ternary_attention_config_t* config);
+
+/**
+ * @brief Create ternary attention context
+ *
+ * @param config Configuration
+ * @return Context or NULL on failure
+ */
+ternary_attention_ctx_t* ternary_attention_create(
+    const ternary_attention_config_t* config
+);
+
+/**
+ * @brief Destroy ternary attention context
+ *
+ * @param ctx Context to destroy
+ */
+void ternary_attention_destroy(ternary_attention_ctx_t* ctx);
+
+/**
+ * @brief Convert soft attention weights to hard ternary states
+ *
+ * WHAT: Discretize continuous attention to {FOCUS, NEUTRAL, SUPPRESS}
+ * WHY:  Enable discrete, interpretable attention decisions
+ * HOW:
+ *   - attention > focus_threshold => FOCUS
+ *   - attention < suppress_threshold => SUPPRESS
+ *   - otherwise => NEUTRAL
+ *
+ * COMPARISON (standard hard attention):
+ * - Luong et al. (2015): Local vs Global attention
+ * - Xu et al. (2015): Hard attention via reinforcement learning
+ * - NIMCP: Ternary hard attention with three states
+ *
+ * BIOLOGICAL BASIS:
+ * - Prefrontal cortex biases visual cortex via gain modulation
+ * - Three states match excitation/neutral/inhibition in neural circuits
+ *
+ * @param ctx Ternary attention context
+ * @param soft_attention Input soft attention weights [seq_length]
+ * @param seq_length Sequence length
+ * @param ternary_out Output ternary states [seq_length]
+ * @return 0 on success, negative on error
+ */
+int ternary_attention_discretize(
+    ternary_attention_ctx_t* ctx,
+    const float* soft_attention,
+    uint32_t seq_length,
+    ternary_attention_state_t* ternary_out
+);
+
+/**
+ * @brief Apply ternary attention modulation to values
+ *
+ * WHAT: Modulate values based on ternary attention states
+ * WHY:  Apply discrete attention decisions to data
+ * HOW:
+ *   - FOCUS: value *= focus_gain
+ *   - NEUTRAL: value unchanged
+ *   - SUPPRESS: value *= suppress_gain (near zero)
+ *
+ * @param ctx Ternary attention context
+ * @param values Input values [seq_length x dim]
+ * @param ternary_attention Ternary attention states [seq_length]
+ * @param seq_length Sequence length
+ * @param dim Feature dimension
+ * @param output Output modulated values [seq_length x dim]
+ * @return 0 on success, negative on error
+ */
+int ternary_attention_apply(
+    ternary_attention_ctx_t* ctx,
+    const float* values,
+    const ternary_attention_state_t* ternary_attention,
+    uint32_t seq_length,
+    uint32_t dim,
+    float* output
+);
+
+/**
+ * @brief Compute straight-through gradient for ternary attention
+ *
+ * WHAT: Gradient estimator for discrete attention decisions
+ * WHY:  Enable backprop through hard attention
+ * HOW:  Use straight-through estimator (pass gradient through unchanged)
+ *
+ * @param ctx Ternary attention context
+ * @param grad_output Upstream gradient [seq_length x dim]
+ * @param soft_attention Original soft attention [seq_length]
+ * @param seq_length Sequence length
+ * @param dim Feature dimension
+ * @param grad_attention Output gradient for attention weights [seq_length]
+ * @return 0 on success, negative on error
+ */
+int ternary_attention_backward(
+    ternary_attention_ctx_t* ctx,
+    const float* grad_output,
+    const float* soft_attention,
+    uint32_t seq_length,
+    uint32_t dim,
+    float* grad_attention
+);
+
+/**
+ * @brief Update temperature for annealing schedule
+ *
+ * WHAT: Decrease temperature over training to harden attention
+ * WHY:  Start soft for exploration, end hard for discrete decisions
+ * HOW:  Linear or exponential decay from initial to final temperature
+ *
+ * @param ctx Ternary attention context
+ * @param step Current training step
+ */
+void ternary_attention_update_temperature(
+    ternary_attention_ctx_t* ctx,
+    uint32_t step
+);
+
+/**
+ * @brief Get current temperature
+ *
+ * @param ctx Ternary attention context
+ * @return Current temperature value
+ */
+float ternary_attention_get_temperature(const ternary_attention_ctx_t* ctx);
+
+/**
+ * @brief Get ternary attention statistics
+ *
+ * @param ctx Ternary attention context
+ * @param stats Output statistics
+ * @return 0 on success, negative on error
+ */
+int ternary_attention_get_stats(
+    const ternary_attention_ctx_t* ctx,
+    ternary_attention_stats_t* stats
+);
+
+/**
+ * @brief Sparse top-k ternary attention
+ *
+ * WHAT: Select top-k items to focus on, suppress others
+ * WHY:  Enforce attention sparsity for interpretability
+ * HOW:
+ *   - Sort by attention weights
+ *   - Top k get FOCUS
+ *   - Bottom n-k get SUPPRESS (optionally some NEUTRAL)
+ *
+ * @param soft_attention Input soft attention [seq_length]
+ * @param seq_length Sequence length
+ * @param k Number of items to focus on
+ * @param ternary_out Output ternary states [seq_length]
+ * @return 0 on success, negative on error
+ */
+int ternary_attention_top_k(
+    const float* soft_attention,
+    uint32_t seq_length,
+    uint32_t k,
+    ternary_attention_state_t* ternary_out
+);
+
+/**
+ * @brief Convert ternary attention state to gain multiplier
+ *
+ * @param state Ternary attention state
+ * @param config Attention configuration
+ * @return Gain multiplier
+ */
+static inline float ternary_attention_state_to_gain(
+    ternary_attention_state_t state,
+    const ternary_attention_config_t* config
+) {
+    switch (state) {
+        case ATTENTION_FOCUS:    return config ? config->focus_gain : 1.5f;
+        case ATTENTION_SUPPRESS: return config ? config->suppress_gain : 0.1f;
+        case ATTENTION_NEUTRAL:
+        default:                 return 1.0f;
+    }
+}
+
+/**
+ * @brief Get string name for ternary attention state
+ *
+ * @param state Attention state
+ * @return String name
+ */
+static inline const char* ternary_attention_state_name(ternary_attention_state_t state) {
+    switch (state) {
+        case ATTENTION_SUPPRESS: return "SUPPRESS";
+        case ATTENTION_NEUTRAL:  return "NEUTRAL";
+        case ATTENTION_FOCUS:    return "FOCUS";
+        default:                 return "INVALID";
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif

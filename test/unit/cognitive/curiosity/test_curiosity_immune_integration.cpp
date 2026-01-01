@@ -10,9 +10,11 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
+// Include header that transitively includes C++ CUDA templates outside extern "C"
+#include "cognitive/immune/nimcp_brain_immune.h"
+
 extern "C" {
 #include "cognitive/curiosity/nimcp_curiosity.h"
-#include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/immune/nimcp_curiosity_immune_bridge.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
