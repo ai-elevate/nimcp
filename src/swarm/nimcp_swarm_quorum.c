@@ -96,6 +96,13 @@ static void init_signal_molecule(
     signal->hysteresis_high = MIN(1.0, threshold + hysteresis_width / 2.0);
 }
 
+/* Forward declaration for unlocked helpers */
+static int check_vote_consistency_unlocked(
+    nimcp_swarm_quorum_t* quorum,
+    uint32_t* contradicting_agents,
+    uint32_t* count
+);
+
 /**
  * @brief Find commitment by drone ID
  */
@@ -1171,7 +1178,8 @@ int quorum_validate_with_logic(
         uint32_t contradicting_agents[256];
         uint32_t contradiction_count = 0;
 
-        int consistency = quorum_check_vote_consistency(
+        /* Use unlocked version since we already hold quorum->mutex */
+        int consistency = check_vote_consistency_unlocked(
             quorum,
             contradicting_agents,
             &contradiction_count
@@ -1195,25 +1203,20 @@ int quorum_validate_with_logic(
 }
 
 /**
- * @brief Check vote consistency using XOR logic
+ * @brief Internal unlocked helper for vote consistency check
  *
- * WHAT: Detects contradicting votes among agents
- * WHY:  Identifies Byzantine behavior or conflicting opinions
+ * WHAT: Core logic for detecting contradicting votes (no locking)
+ * WHY:  Allows use from already-locked contexts to prevent deadlock
  * HOW:  Uses XOR gate to detect mutually exclusive votes
+ *
+ * REQUIRES: Caller must hold quorum->mutex
  */
-int quorum_check_vote_consistency(
+static int check_vote_consistency_unlocked(
     nimcp_swarm_quorum_t* quorum,
     uint32_t* contradicting_agents,
     uint32_t* count
 ) {
-    if (!quorum || !contradicting_agents || !count) {
-        LOG_ERROR("Invalid parameters for consistency check");
-        return -1;
-    }
-
     *count = 0;
-
-    nimcp_platform_mutex_lock(quorum->mutex);
 
     /* Define mutually exclusive signal pairs (XOR constraints) */
     struct {
@@ -1253,13 +1256,36 @@ int quorum_check_vote_consistency(
     }
 
     int result = (*count > 0) ? 1 : 0;
-    nimcp_platform_mutex_unlock(quorum->mutex);
 
     if (result == 1) {
         LOG_WARN("Consistency check found %u contradicting agents", *count);
     } else {
         LOG_DEBUG("Consistency check passed: no contradictions found");
     }
+
+    return result;
+}
+
+/**
+ * @brief Check vote consistency using XOR logic
+ *
+ * WHAT: Detects contradicting votes among agents
+ * WHY:  Identifies Byzantine behavior or conflicting opinions
+ * HOW:  Uses XOR gate to detect mutually exclusive votes
+ */
+int quorum_check_vote_consistency(
+    nimcp_swarm_quorum_t* quorum,
+    uint32_t* contradicting_agents,
+    uint32_t* count
+) {
+    if (!quorum || !contradicting_agents || !count) {
+        LOG_ERROR("Invalid parameters for consistency check");
+        return -1;
+    }
+
+    nimcp_platform_mutex_lock(quorum->mutex);
+    int result = check_vote_consistency_unlocked(quorum, contradicting_agents, count);
+    nimcp_platform_mutex_unlock(quorum->mutex);
 
     return result;
 }

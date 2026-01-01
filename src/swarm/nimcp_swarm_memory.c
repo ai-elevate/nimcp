@@ -98,6 +98,7 @@ static inline void *nimcp_replay_heap_extract(nimcp_min_heap_t *heap) {
  * Forward Declarations for Unlocked Helper Functions
  * ============================================================================ */
 
+static nimcp_result_t _access_unlocked(NimcpSwarmMemory *memory, const char *memory_id);
 static nimcp_result_t _rehearse_unlocked(NimcpSwarmMemory *memory, const char *memory_id);
 static nimcp_result_t _apply_forgetting_unlocked(NimcpSwarmMemory *memory, uint32_t *forgotten_count);
 static nimcp_result_t _schedule_replay_unlocked(NimcpSwarmMemory *memory, const char *memory_id, float priority);
@@ -757,12 +758,40 @@ nimcp_result_t nimcp_swarm_memory_retrieve(
         memcpy(out_data, entry->data, entry->data_size);
     }
 
-    /* Update access tracking */
-    nimcp_swarm_memory_access(memory, memory_id);
+    /* Update access tracking - use unlocked version since we hold mutex */
+    _access_unlocked(memory, memory_id);
 
     nimcp_platform_mutex_unlock(memory->mutex);
 
     LOG_DEBUG("Retrieved memory: %s", memory_id);
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Internal unlocked helper for access tracking
+ *
+ * WHAT: Updates access tracking without acquiring the mutex
+ * WHY:  Allows use from already-locked contexts to prevent deadlock
+ * HOW:  Directly updates entry's access tracking fields
+ *
+ * REQUIRES: Caller must hold memory->mutex
+ */
+static nimcp_result_t _access_unlocked(
+    NimcpSwarmMemory *memory,
+    const char *memory_id)
+{
+    NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
+    if (!entry) {
+        return NIMCP_ERROR_NOT_FOUND;
+    }
+
+    /* Update access tracking */
+    entry->last_accessed = nimcp_time_get_us();
+    entry->access_count++;
+
+    /* Boost strength slightly on access */
+    entry->strength = fminf(1.0F, entry->strength + 0.01F);
+
     return NIMCP_SUCCESS;
 }
 
@@ -778,23 +807,10 @@ nimcp_result_t nimcp_swarm_memory_access(
     }
 
     nimcp_platform_mutex_lock(memory->mutex);
-
-    NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
-    if (!entry) {
-        nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
-    }
-
-    /* Update access tracking */
-    entry->last_accessed = nimcp_time_get_us();
-    entry->access_count++;
-
-    /* Boost strength slightly on access */
-    entry->strength = fminf(1.0F, entry->strength + 0.01F);
-
+    nimcp_result_t result = _access_unlocked(memory, memory_id);
     nimcp_platform_mutex_unlock(memory->mutex);
 
-    return NIMCP_SUCCESS;
+    return result;
 }
 
 /* ============================================================================

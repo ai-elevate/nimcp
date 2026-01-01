@@ -149,6 +149,8 @@ TEST_F(QuorumLogicTest, XorGateClearWinner) {
     logic_cfg.gate_type = LOGIC_GATE_XOR;
     logic_cfg.min_agents = 5;
     logic_cfg.confidence_threshold = 0.5f;
+    /* XOR tests for exclusive winner, not vote consistency */
+    logic_cfg.require_consistency = false;
 
     int result = quorum_validate_with_logic(quorum, &logic_cfg);
     EXPECT_EQ(result, 1) << "Clear winner should pass XOR validation";
@@ -166,6 +168,8 @@ TEST_F(QuorumLogicTest, XorGateTied) {
     quorum_logic_default_config(&logic_cfg);
     logic_cfg.gate_type = LOGIC_GATE_XOR;
     logic_cfg.confidence_threshold = 0.3f;
+    /* XOR tests for exclusive winner, not vote consistency */
+    logic_cfg.require_consistency = false;
 
     int result = quorum_validate_with_logic(quorum, &logic_cfg);
     EXPECT_EQ(result, 0) << "Tied vote should fail XOR validation";
