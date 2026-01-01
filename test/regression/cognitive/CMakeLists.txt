@@ -50,29 +50,9 @@ gtest_discover_tests(regression_cognitive_working_memory_pe_test
         LABELS "regression;cognitive;working_memory;positional_encoding"
 )
 
-# Add subdirectories for specialized regression tests
-add_subdirectory(logic)
-add_subdirectory(introspection)
-add_subdirectory(fault_tolerance)
-add_subdirectory(memory)
-add_subdirectory(reasoning)
-add_subdirectory(bio_async)
-add_subdirectory(consolidation)
-add_subdirectory(emotions)
-add_subdirectory(emotion_tensor)
-add_subdirectory(ethics)
-add_subdirectory(executive)
-add_subdirectory(global_workspace)
-add_subdirectory(grief)
-add_subdirectory(joy)
-add_subdirectory(mirror_neurons)
-add_subdirectory(free_energy)
-add_subdirectory(substrate)
-add_subdirectory(curiosity)
-add_subdirectory(jepa)
-add_subdirectory(game_theory)
-# Brain Immune System tests - Added via test/CMakeLists.txt to avoid duplicate
-# add_subdirectory(immune)
+# Subdirectories are added from test/CMakeLists.txt to avoid duplicate targets
+# when regression/cognitive is included as a subdirectory.
+# See test/CMakeLists.txt for the individual subdirectory includes.
 
 # ============================================================================
 # Cognitive Bridge Completeness Tests
@@ -134,4 +114,39 @@ gtest_discover_tests(regression_cognitive_thalamic_routing
     PROPERTIES
         LABELS "regression;cognitive;thalamic;routing"
         TIMEOUT 180
+)
+
+# ============================================================================
+# Mental Health Guardian Intervention Regression Tests (Phase 10.5.1)
+# ============================================================================
+# WHAT: Tests to ensure intervention level thresholds work correctly
+# WHY:  Prevent regressions in graduated intervention logic
+# HOW:  Test boundary conditions and level transitions
+
+add_executable(regression_cognitive_guardian_intervention
+    test_guardian_intervention_regression.cpp
+)
+
+target_link_libraries(regression_cognitive_guardian_intervention
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_cognitive_guardian_intervention
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_cognitive_guardian_intervention PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_cognitive_guardian_intervention
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;mental_health;guardian;intervention"
+        TIMEOUT 120
 )

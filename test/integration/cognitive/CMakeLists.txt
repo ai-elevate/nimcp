@@ -82,6 +82,9 @@ add_subdirectory(cross_bridge)
 # Collective Cognition Integration Tests
 add_subdirectory(collective_cognition)
 
+# Mental Health Guardian Integration Tests (Phase 10.5.1)
+add_subdirectory(mental_health)
+
 # Curiosity - FEP Bridge Integration Test
 add_executable(integration_cognitive_curiosity_fep_bridge
     curiosity/test_curiosity_fep_bridge_integration.cpp

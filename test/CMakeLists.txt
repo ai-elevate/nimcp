@@ -1074,6 +1074,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive")
 endif()
 
 # ============================================================================
+# Cognitive Regression Tests (General)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/CMakeLists.txt")
+    message(STATUS "Adding cognitive regression tests (general)...")
+    add_subdirectory(regression/cognitive)
+endif()
+
+# ============================================================================
 # Brain Regions Integration Tests
 # ============================================================================
 

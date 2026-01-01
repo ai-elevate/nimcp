@@ -1313,6 +1313,24 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_gpu_training_pipeline.cpp)
     )
 endif()
 
+# ============================================================================
+# Mental Health Guardian E2E Tests (Phase 10.5.1)
+# ============================================================================
+# WHAT: Full lifecycle tests for guardian in complete brain context
+# WHY:  Verify guardian works correctly in production-like scenarios
+# HOW:  Test full brain lifecycle with guardian monitoring
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_mental_health_guardian_e2e.cpp)
+    add_e2e_test(e2e_test_mental_health_guardian
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_mental_health_guardian_e2e.cpp
+    )
+    set_tests_properties(e2e_test_mental_health_guardian PROPERTIES
+        LABELS "e2e;cognitive;mental_health;guardian"
+        TIMEOUT 180
+    )
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")
