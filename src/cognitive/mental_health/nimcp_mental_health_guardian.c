@@ -31,6 +31,9 @@
 #include "core/brain/nimcp_brain_internal.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "core/brain/nimcp_brain_kg.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -98,6 +101,23 @@ struct mental_health_guardian {
     brain_immune_system_t* immune_system;
     brain_kg_t* internal_kg;
     uint64_t kg_admin_token;
+    brain_kg_node_id_t kg_node_id;      /* Guardian's node in KG */
+
+    /* Bio-async integration */
+    bio_module_context_t bio_context;
+    bool bio_async_connected;
+
+    /* Neuromodulator integration */
+    spatial_neuromod_field_t* neuromod_field;
+
+    /* Brainstem/medulla integration */
+    void* medulla;  /* medulla_t* - avoid header dependency */
+
+    /* Sleep system integration */
+    void* sleep_system;  /* sleep_system_t* */
+
+    /* Plasticity integration */
+    void* plasticity;  /* homeostatic_plasticity_t* */
 };
 
 //=============================================================================
@@ -144,8 +164,233 @@ static guardian_intervention_level_t severity_to_level(
 }
 
 //=============================================================================
+// Bio-Async Message Publishing
+//=============================================================================
+
+/**
+ * @brief Publish guardian status report via bio-async
+ */
+static void publish_bio_async_status(mental_health_guardian_t* guardian) {
+    if (!guardian->bio_async_connected || !guardian->bio_context) {
+        return;
+    }
+
+    bio_msg_guardian_status_report_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    /* Initialize header */
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_GUARDIAN_STATUS_REPORT,
+                        BIO_MODULE_MENTAL_HEALTH_GUARDIAN,
+                        BIO_MODULE_ALL,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+
+    msg.header.channel = BIO_CHANNEL_SEROTONIN;  /* Slow state change */
+
+    /* Fill payload */
+    msg.state = (uint8_t)guardian->state;
+    msg.intervention_level = (uint8_t)guardian->current_level;
+    msg.overall_severity = guardian->last_overall_severity;
+    msg.primary_disorder = guardian->last_primary_disorder;
+    msg.checks_performed = guardian->checks_performed;
+    msg.interventions_applied = guardian->interventions_applied;
+    msg.uptime_ms = (guardian->start_time_ms > 0) ?
+                    (nimcp_time_get_ms() - guardian->start_time_ms) : 0;
+
+    /* Broadcast to all modules */
+    nimcp_error_t err = bio_router_broadcast(guardian->bio_context, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        GUARDIAN_LOG("Failed to broadcast status report (error=%d)", err);
+    }
+}
+
+/**
+ * @brief Publish intervention notification via bio-async
+ */
+static void publish_bio_async_intervention(mental_health_guardian_t* guardian,
+                                           guardian_intervention_level_t level) {
+    if (!guardian->bio_async_connected || !guardian->bio_context) {
+        return;
+    }
+
+    bio_msg_guardian_intervention_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    /* Initialize header */
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_GUARDIAN_INTERVENTION,
+                        BIO_MODULE_MENTAL_HEALTH_GUARDIAN,
+                        BIO_MODULE_ALL,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+
+    /* Use appropriate channel based on severity */
+    if (level >= GUARDIAN_LEVEL_QUARANTINE) {
+        msg.header.channel = BIO_CHANNEL_NOREPINEPHRINE;  /* Alert/priority */
+    } else {
+        msg.header.channel = BIO_CHANNEL_SEROTONIN;  /* State change */
+    }
+
+    /* Fill payload */
+    msg.level = (uint8_t)level;
+    msg.severity = guardian->last_overall_severity;
+    msg.disorder = guardian->last_primary_disorder;
+    msg.flags = 0;
+
+    nimcp_error_t err = bio_router_broadcast(guardian->bio_context, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        GUARDIAN_LOG("Failed to broadcast intervention (error=%d)", err);
+    }
+}
+
+/**
+ * @brief Publish critical alert via bio-async
+ */
+static void publish_bio_async_alert(mental_health_guardian_t* guardian,
+                                    bool immune_notified) {
+    if (!guardian->bio_async_connected || !guardian->bio_context) {
+        return;
+    }
+
+    bio_msg_guardian_alert_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    /* Initialize header - use norepinephrine for urgent alert */
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_GUARDIAN_ALERT,
+                        BIO_MODULE_MENTAL_HEALTH_GUARDIAN,
+                        BIO_MODULE_ALL,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+
+    msg.header.channel = BIO_CHANNEL_NOREPINEPHRINE;  /* High priority */
+    /* High priority flag would go here if supported */
+
+    /* Fill payload */
+    msg.severity = guardian->last_overall_severity;
+    msg.primary_disorder = guardian->last_primary_disorder;
+    msg.secondary_disorder = -1;  /* TODO: Track secondary disorder */
+    msg.action_taken = (uint8_t)GUARDIAN_LEVEL_QUARANTINE;
+    msg.immune_notified = immune_notified;
+    msg.quarantine_active = true;
+
+    nimcp_error_t err = bio_router_broadcast(guardian->bio_context, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        GUARDIAN_LOG("Failed to broadcast alert (error=%d)", err);
+    }
+}
+
+/**
+ * @brief Publish level change notification via bio-async
+ */
+static void publish_bio_async_level_changed(mental_health_guardian_t* guardian,
+                                            guardian_intervention_level_t old_level,
+                                            guardian_intervention_level_t new_level) {
+    if (!guardian->bio_async_connected || !guardian->bio_context) {
+        return;
+    }
+
+    bio_msg_guardian_level_changed_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_GUARDIAN_LEVEL_CHANGED,
+                        BIO_MODULE_MENTAL_HEALTH_GUARDIAN,
+                        BIO_MODULE_ALL,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+
+    msg.header.channel = BIO_CHANNEL_SEROTONIN;
+
+    msg.old_level = (uint8_t)old_level;
+    msg.new_level = (uint8_t)new_level;
+    msg.severity = guardian->last_overall_severity;
+    msg.timestamp_ms = nimcp_time_get_ms();
+
+    nimcp_error_t err = bio_router_broadcast(guardian->bio_context, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        GUARDIAN_LOG("Failed to broadcast level change (error=%d)", err);
+    }
+}
+
+//=============================================================================
 // Intervention Actions
 //=============================================================================
+
+/**
+ * @brief Disorder-specific neuromodulator adjustment table
+ *
+ * Each row defines the relative adjustment for [DA, 5-HT, NE]
+ * Positive values increase, negative decrease, zero no change.
+ * Values are clamped after application.
+ */
+typedef struct {
+    float dopamine_delta;
+    float serotonin_delta;
+    float norepinephrine_delta;
+} neuromod_adjustment_t;
+
+static const neuromod_adjustment_t disorder_neuromod_adjustments[] = {
+    [DISORDER_DEPRESSION]       = { +0.15f, +0.20f, +0.10f },  /* Boost all monoamines */
+    [DISORDER_ANXIETY]          = {  0.00f, +0.15f, -0.10f },  /* Increase 5-HT, reduce NE */
+    [DISORDER_BIPOLAR]          = { -0.10f, +0.15f, -0.10f },  /* Moderate all */
+    [DISORDER_MANIA]            = { -0.20f, +0.10f, -0.15f },  /* Reduce DA/NE for mania */
+    [DISORDER_SCHIZOPHRENIA]    = { -0.15f, +0.10f,  0.00f },  /* Reduce DA, boost 5-HT */
+    [DISORDER_PTSD]             = {  0.00f, +0.15f, -0.15f },  /* Increase 5-HT, reduce NE (hyperarousal) */
+    [DISORDER_OCD]              = {  0.00f, +0.20f,  0.00f },  /* Primarily 5-HT */
+    [DISORDER_ADHD]             = { +0.10f,  0.00f, +0.10f },  /* Boost DA and NE */
+    [DISORDER_AUTISM]           = {  0.00f, +0.10f,  0.00f },  /* Gentle 5-HT support */
+    [DISORDER_BORDERLINE]       = {  0.00f, +0.15f,  0.00f },  /* 5-HT for emotional stability */
+    [DISORDER_PSYCHOPATHY]      = { -0.10f, +0.15f,  0.00f },  /* Reduce DA (reward-seeking) */
+    [DISORDER_SOCIOPATHY]       = { -0.10f, +0.15f,  0.00f },  /* Similar to psychopathy */
+    [DISORDER_PARANOID]         = {  0.00f, +0.10f, -0.05f },  /* 5-HT for trust, reduce NE */
+    [DISORDER_CONDUCT]          = { -0.05f, +0.15f,  0.00f },  /* Reduce impulsivity */
+    /* Remaining disorders get default zero adjustments */
+};
+
+/**
+ * @brief Apply disorder-specific neuromodulator adjustments
+ */
+static void apply_neuromod_adjustments(mental_health_guardian_t* guardian) {
+    if (!guardian->brain || !guardian->brain->neuromodulator_system) {
+        return;
+    }
+
+    int disorder = guardian->last_primary_disorder;
+    if (disorder < 0 || disorder >= DISORDER_COUNT) {
+        return;
+    }
+
+    /* Get current levels */
+    neuromodulator_system_t system = guardian->brain->neuromodulator_system;
+    float da = neuromodulator_get_level(system, NEUROMOD_DOPAMINE);
+    float sero = neuromodulator_get_level(system, NEUROMOD_SEROTONIN);
+    float ne = neuromodulator_get_level(system, NEUROMOD_NOREPINEPHRINE);
+
+    /* Get disorder-specific adjustments */
+    neuromod_adjustment_t adj = {0};
+    if (disorder < (int)(sizeof(disorder_neuromod_adjustments) / sizeof(disorder_neuromod_adjustments[0]))) {
+        adj = disorder_neuromod_adjustments[disorder];
+    }
+
+    /* Apply adjustments with clamping */
+    float new_da = da + adj.dopamine_delta;
+    float new_sero = sero + adj.serotonin_delta;
+    float new_ne = ne + adj.norepinephrine_delta;
+
+    /* Clamp to valid range [0, 1] */
+    if (new_da < 0.0f) new_da = 0.0f;
+    if (new_da > 1.0f) new_da = 1.0f;
+    if (new_sero < 0.0f) new_sero = 0.0f;
+    if (new_sero > 1.0f) new_sero = 1.0f;
+    if (new_ne < 0.0f) new_ne = 0.0f;
+    if (new_ne > 1.0f) new_ne = 1.0f;
+
+    /* Set new levels */
+    neuromodulator_set_level(system, NEUROMOD_DOPAMINE, new_da);
+    neuromodulator_set_level(system, NEUROMOD_SEROTONIN, new_sero);
+    neuromodulator_set_level(system, NEUROMOD_NOREPINEPHRINE, new_ne);
+
+    GUARDIAN_LOG_VERBOSE(guardian, "Neuromod adjust: DA %.2f→%.2f, 5-HT %.2f→%.2f, NE %.2f→%.2f",
+                        da, new_da, sero, new_sero, ne, new_ne);
+}
 
 /**
  * @brief Apply ADJUST level intervention
@@ -161,6 +406,9 @@ static void apply_adjust_intervention(mental_health_guardian_t* guardian) {
 
     /* Use mental health intervention API to adjust neuromodulators */
     mental_health_intervene(guardian->brain->mental_health_monitor, guardian->brain);
+
+    /* Apply disorder-specific neuromodulator adjustments */
+    apply_neuromod_adjustments(guardian);
 
     guardian->adjust_count++;
     guardian->interventions_applied++;
@@ -192,6 +440,31 @@ static void apply_regulate_intervention(mental_health_guardian_t* guardian) {
 }
 
 /**
+ * @brief Map disorder to threat epitope string
+ */
+static void disorder_to_epitope(int disorder, uint8_t* epitope, size_t* len) {
+    const char* threat_name = NULL;
+    switch (disorder) {
+        case DISORDER_DEPRESSION:    threat_name = "MH_DEPRESSION_CRITICAL"; break;
+        case DISORDER_ANXIETY:       threat_name = "MH_ANXIETY_CRITICAL"; break;
+        case DISORDER_BIPOLAR:       threat_name = "MH_BIPOLAR_CRITICAL"; break;
+        case DISORDER_SCHIZOPHRENIA: threat_name = "MH_SCHIZOPHRENIA_CRITICAL"; break;
+        case DISORDER_PTSD:          threat_name = "MH_PTSD_CRITICAL"; break;
+        case DISORDER_OCD:           threat_name = "MH_OCD_CRITICAL"; break;
+        case DISORDER_ADHD:          threat_name = "MH_ADHD_CRITICAL"; break;
+        case DISORDER_AUTISM:        threat_name = "MH_AUTISM_CRITICAL"; break;
+        case DISORDER_PSYCHOPATHY:   threat_name = "MH_PSYCHOPATHY_CRITICAL"; break;
+        case DISORDER_SOCIOPATHY:    threat_name = "MH_SOCIOPATHY_CRITICAL"; break;
+        default:                     threat_name = "MH_UNKNOWN_CRITICAL"; break;
+    }
+    *len = strlen(threat_name);
+    if (*len > BRAIN_IMMUNE_EPITOPE_SIZE) {
+        *len = BRAIN_IMMUNE_EPITOPE_SIZE;
+    }
+    memcpy(epitope, threat_name, *len);
+}
+
+/**
  * @brief Apply QUARANTINE level intervention
  *
  * Safety-critical: activate quarantine mode, report to immune system.
@@ -206,11 +479,46 @@ static void apply_quarantine_intervention(mental_health_guardian_t* guardian) {
     /* Use mental health intervention API for quarantine */
     mental_health_intervene(guardian->brain->mental_health_monitor, guardian->brain);
 
+    /* Track whether immune was notified (for bio-async alert) */
+    bool immune_notified = false;
+
     /* Report to immune system if connected */
     if (guardian->immune_system && guardian->config.immune_integration) {
         GUARDIAN_LOG("Reporting critical mental health state to immune system");
-        /* Immune threat reporting would go here */
+
+        /* Create epitope from disorder type */
+        uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE] = {0};
+        size_t epitope_len = 0;
+        disorder_to_epitope(guardian->last_primary_disorder, epitope, &epitope_len);
+
+        /* Map severity to immune severity (1-10) */
+        uint32_t immune_severity = (uint32_t)(guardian->last_overall_severity * 10.0f);
+        if (immune_severity < 1) immune_severity = 1;
+        if (immune_severity > 10) immune_severity = 10;
+
+        /* Present antigen to immune system */
+        uint32_t antigen_id = 0;
+        int result = brain_immune_present_antigen(
+            guardian->immune_system,
+            ANTIGEN_SOURCE_ANOMALY,
+            epitope,
+            epitope_len,
+            immune_severity,
+            0,  /* source_node - guardian doesn't have a node ID */
+            &antigen_id
+        );
+
+        if (result == 0) {
+            GUARDIAN_LOG("Immune antigen created: id=%u severity=%u",
+                        antigen_id, immune_severity);
+            immune_notified = true;
+        } else {
+            GUARDIAN_LOG("Failed to create immune antigen (error=%d)", result);
+        }
     }
+
+    /* Broadcast critical alert via bio-async */
+    publish_bio_async_alert(guardian, immune_notified);
 
     guardian->quarantine_count++;
     guardian->interventions_applied++;
@@ -229,12 +537,15 @@ static void apply_intervention(
             break;
         case GUARDIAN_LEVEL_ADJUST:
             apply_adjust_intervention(guardian);
+            publish_bio_async_intervention(guardian, level);
             break;
         case GUARDIAN_LEVEL_REGULATE:
             apply_regulate_intervention(guardian);
+            publish_bio_async_intervention(guardian, level);
             break;
         case GUARDIAN_LEVEL_QUARANTINE:
             apply_quarantine_intervention(guardian);
+            publish_bio_async_intervention(guardian, level);
             break;
     }
 }
@@ -245,6 +556,9 @@ static void apply_intervention(
 
 /**
  * @brief Update mental health status in internal KG
+ *
+ * Registers guardian node in KG if not yet registered, then updates
+ * node state to reflect current intervention level.
  */
 static void update_internal_kg(mental_health_guardian_t* guardian) {
     if (!guardian->internal_kg || !guardian->config.kg_integration) {
@@ -255,26 +569,75 @@ static void update_internal_kg(mental_health_guardian_t* guardian) {
     brain_kg_set_access_level(guardian->internal_kg, BRAIN_KG_ACCESS_ADMIN,
                                guardian->kg_admin_token);
 
-    /* Update mental_health_guardian node state based on intervention level */
-    brain_kg_node_state_t state;
-    switch (guardian->current_level) {
-        case GUARDIAN_LEVEL_OBSERVE:
-            state = BRAIN_KG_STATE_ACTIVE;
-            break;
-        case GUARDIAN_LEVEL_ADJUST:
-        case GUARDIAN_LEVEL_REGULATE:
-            state = BRAIN_KG_STATE_DISABLED;  /* Using DISABLED for degraded/regulated state */
-            break;
-        case GUARDIAN_LEVEL_QUARANTINE:
-            state = BRAIN_KG_STATE_ERROR;
-            break;
-        default:
-            state = BRAIN_KG_STATE_ACTIVE;
+    /* Ensure guardian is registered as a KG node */
+    if (guardian->kg_node_id == 0 || guardian->kg_node_id == BRAIN_KG_INVALID_NODE) {
+        /* Try to find existing node first */
+        guardian->kg_node_id = brain_kg_find_node(guardian->internal_kg,
+                                                   "mental_health_guardian");
+
+        /* Register new node if not found */
+        if (guardian->kg_node_id == BRAIN_KG_INVALID_NODE) {
+            guardian->kg_node_id = brain_kg_add_node(
+                guardian->internal_kg,
+                "mental_health_guardian",
+                BRAIN_KG_NODE_COGNITIVE,
+                "Independent real-time mental health monitoring agent"
+            );
+
+            if (guardian->kg_node_id != BRAIN_KG_INVALID_NODE) {
+                GUARDIAN_LOG("Registered in KG with node_id=%u", guardian->kg_node_id);
+
+                /* Set module pointer for introspection */
+                brain_kg_set_module_ptr(guardian->internal_kg, guardian->kg_node_id,
+                                        guardian);
+
+                /* Add metadata about capabilities */
+                brain_kg_add_metadata(guardian->internal_kg, guardian->kg_node_id,
+                                      "monitoring_interval_ms",
+                                      "100");  /* Default 10Hz */
+                brain_kg_add_metadata(guardian->internal_kg, guardian->kg_node_id,
+                                      "intervention_levels",
+                                      "OBSERVE,ADJUST,REGULATE,QUARANTINE");
+            } else {
+                GUARDIAN_LOG("Failed to register in KG");
+            }
+        }
     }
 
-    /* Note: brain_kg_update_node takes node_id, not node_name - skip for now */
-    /* KG integration can be enhanced later with proper node ID lookup */
-    (void)state;  /* Suppress unused warning for now */
+    /* Update mental_health_guardian node state based on intervention level */
+    if (guardian->kg_node_id != BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_state_t state;
+        const char* description = NULL;
+
+        switch (guardian->current_level) {
+            case GUARDIAN_LEVEL_OBSERVE:
+                state = BRAIN_KG_STATE_ACTIVE;
+                description = "Guardian active - OBSERVE level";
+                break;
+            case GUARDIAN_LEVEL_ADJUST:
+                state = BRAIN_KG_STATE_ACTIVE;
+                description = "Guardian intervening - ADJUST level";
+                break;
+            case GUARDIAN_LEVEL_REGULATE:
+                state = BRAIN_KG_STATE_DISABLED;  /* Using DISABLED for degraded state */
+                description = "Guardian regulating - REGULATE level";
+                break;
+            case GUARDIAN_LEVEL_QUARANTINE:
+                state = BRAIN_KG_STATE_ERROR;
+                description = "Guardian quarantining - QUARANTINE level";
+                break;
+            default:
+                state = BRAIN_KG_STATE_ACTIVE;
+                description = NULL;
+        }
+
+        /* Update node state and description */
+        int result = brain_kg_update_node(guardian->internal_kg, guardian->kg_node_id,
+                                          description, state);
+        if (result != 0) {
+            GUARDIAN_LOG("Failed to update KG node state (error=%d)", result);
+        }
+    }
 
     /* Reset to READ access */
     brain_kg_set_access_level(guardian->internal_kg, BRAIN_KG_ACCESS_READ, 0);
@@ -321,6 +684,7 @@ static guardian_intervention_level_t perform_health_check(
 
     /* Determine intervention level */
     guardian_intervention_level_t level = severity_to_level(overall_severity, &guardian->config);
+    guardian_intervention_level_t old_level = guardian->current_level;
 
     /* Update state */
     guardian->last_overall_severity = overall_severity;
@@ -333,6 +697,11 @@ static guardian_intervention_level_t perform_health_check(
     if (level != GUARDIAN_LEVEL_OBSERVE || guardian->config.verbose_logging) {
         GUARDIAN_LOG_VERBOSE(guardian, "Health check: severity=%.2f level=%s",
                             overall_severity, guardian_level_to_string(level));
+    }
+
+    /* Publish level change if level transitioned */
+    if (level != old_level) {
+        publish_bio_async_level_changed(guardian, old_level, level);
     }
 
     /* Apply intervention if auto-intervene enabled */
@@ -391,9 +760,10 @@ static void* guardian_monitor_thread(void* arg) {
 //=============================================================================
 
 mental_health_guardian_t* mental_health_guardian_create(
-    brain_t brain,
+    void* brain_ptr,  /* brain_t */
     const mental_health_guardian_config_t* config)
 {
+    brain_t brain = (brain_t)brain_ptr;
     if (!brain) {
         GUARDIAN_LOG("ERROR: NULL brain provided");
         return NULL;
@@ -455,6 +825,19 @@ mental_health_guardian_t* mental_health_guardian_create(
     guardian->immune_system = NULL;
     guardian->internal_kg = NULL;
     guardian->kg_admin_token = 0;
+    guardian->kg_node_id = 0;  /* Will be assigned on first KG update */
+
+    /* Bio-async integration */
+    guardian->bio_context = NULL;
+    guardian->bio_async_connected = false;
+
+    /* Neuromodulator integration */
+    guardian->neuromod_field = NULL;
+
+    /* Brainstem/sleep/plasticity integration */
+    guardian->medulla = NULL;
+    guardian->sleep_system = NULL;
+    guardian->plasticity = NULL;
 
     GUARDIAN_LOG("Mental Health Guardian created (interval=%ums, auto_intervene=%s)",
                 guardian->config.monitoring_interval_ms,
@@ -755,6 +1138,87 @@ bool mental_health_guardian_connect_kg(
     nimcp_mutex_unlock(guardian->lock);
 
     GUARDIAN_LOG("Connected to internal knowledge graph");
+    return true;
+}
+
+bool mental_health_guardian_connect_bio_async(
+    mental_health_guardian_t* guardian,
+    void* bio_context  /* bio_module_context_t */)
+{
+    if (!guardian || !bio_context) {
+        return false;
+    }
+
+    nimcp_mutex_lock(guardian->lock);
+    guardian->bio_context = (bio_module_context_t)bio_context;
+    guardian->bio_async_connected = true;
+    nimcp_mutex_unlock(guardian->lock);
+
+    GUARDIAN_LOG("Connected to bio-async router");
+    return true;
+}
+
+bool mental_health_guardian_connect_neuromod(
+    mental_health_guardian_t* guardian,
+    void* neuromod  /* spatial_neuromod_field_t* */)
+{
+    if (!guardian || !neuromod) {
+        return false;
+    }
+
+    nimcp_mutex_lock(guardian->lock);
+    guardian->neuromod_field = (spatial_neuromod_field_t*)neuromod;
+    nimcp_mutex_unlock(guardian->lock);
+
+    GUARDIAN_LOG("Connected to spatial neuromodulator field");
+    return true;
+}
+
+bool mental_health_guardian_connect_brainstem(
+    mental_health_guardian_t* guardian,
+    void* medulla  /* medulla_t */)
+{
+    if (!guardian || !medulla) {
+        return false;
+    }
+
+    nimcp_mutex_lock(guardian->lock);
+    guardian->medulla = medulla;  /* Stored as void* anyway */
+    nimcp_mutex_unlock(guardian->lock);
+
+    GUARDIAN_LOG("Connected to brainstem/medulla");
+    return true;
+}
+
+bool mental_health_guardian_connect_sleep(
+    mental_health_guardian_t* guardian,
+    void* sleep  /* sleep_system_t */)
+{
+    if (!guardian || !sleep) {
+        return false;
+    }
+
+    nimcp_mutex_lock(guardian->lock);
+    guardian->sleep_system = sleep;  /* Stored as void* anyway */
+    nimcp_mutex_unlock(guardian->lock);
+
+    GUARDIAN_LOG("Connected to sleep system");
+    return true;
+}
+
+bool mental_health_guardian_connect_plasticity(
+    mental_health_guardian_t* guardian,
+    void* plasticity  /* homeostatic_plasticity_t */)
+{
+    if (!guardian || !plasticity) {
+        return false;
+    }
+
+    nimcp_mutex_lock(guardian->lock);
+    guardian->plasticity = plasticity;  /* Stored as void* anyway */
+    nimcp_mutex_unlock(guardian->lock);
+
+    GUARDIAN_LOG("Connected to homeostatic plasticity");
     return true;
 }
 

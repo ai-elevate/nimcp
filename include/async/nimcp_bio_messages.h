@@ -162,6 +162,13 @@ typedef enum {
     BIO_MSG_EMOTION_TENSOR_CONTRADICTION,       /**< Contradictory emotions detected */
     BIO_MSG_EMOTION_SWARM_SYNC,                 /**< Sync tensor with swarm contagion */
 
+    /* Mental Health Guardian messages (0x03A0 - 0x03AF) */
+    BIO_MSG_GUARDIAN_STATUS_REPORT = 0x03A0,    /**< Guardian status broadcast */
+    BIO_MSG_GUARDIAN_INTERVENTION,              /**< Guardian intervention notification */
+    BIO_MSG_GUARDIAN_ALERT,                     /**< Guardian alert (critical condition) */
+    BIO_MSG_GUARDIAN_LEVEL_CHANGED,             /**< Guardian intervention level changed */
+    BIO_MSG_GUARDIAN_METRICS_UPDATE,            /**< Guardian metrics update */
+
     /* Glial messages (0x0400 - 0x04FF) */
     BIO_MSG_ASTROCYTE_CALCIUM_WAVE = 0x0400,
     BIO_MSG_ASTROCYTE_GLUTAMATE_UPTAKE,
@@ -626,6 +633,7 @@ typedef enum {
 
     /* Wellbeing submodules (0x0278-0x027F) */
     BIO_MODULE_WELLBEING_MENTAL_HEALTH = 0x0278,
+    BIO_MODULE_MENTAL_HEALTH_GUARDIAN = 0x0279,     /**< Mental health guardian agent */
 
     /* Emotion modules (0x0320 - 0x032F) */
     BIO_MODULE_EMOTIONS = 0x0320,
@@ -2817,6 +2825,87 @@ typedef struct {
     float threshold;                /**< Alert threshold */
     float capacity_reduction;       /**< Amount of capacity reduction */
 } bio_msg_substrate_fatigue_alert_t;
+
+/*=============================================================================
+ * MENTAL HEALTH GUARDIAN MESSAGES
+ *============================================================================*/
+
+/**
+ * @brief Guardian status report broadcast
+ *
+ * Sent periodically or on state changes to notify other modules
+ * of guardian status and mental health severity.
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint8_t state;                  /**< guardian_state_t */
+    uint8_t intervention_level;     /**< guardian_intervention_level_t */
+    float overall_severity;         /**< Current overall severity [0-1] */
+    int32_t primary_disorder;       /**< Primary detected disorder (-1 if none) */
+    uint64_t checks_performed;      /**< Total health checks performed */
+    uint64_t interventions_applied; /**< Total interventions applied */
+    uint64_t uptime_ms;             /**< Guardian uptime in milliseconds */
+} bio_msg_guardian_status_report_t;
+
+/**
+ * @brief Guardian intervention notification
+ *
+ * Sent when an intervention is applied at any level.
+ * Allows other modules to react to mental health interventions.
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint8_t level;                  /**< Intervention level applied */
+    float severity;                 /**< Severity that triggered intervention */
+    int32_t disorder;               /**< Disorder being addressed */
+    uint32_t flags;                 /**< Intervention flags */
+} bio_msg_guardian_intervention_t;
+
+/**
+ * @brief Guardian alert (critical condition)
+ *
+ * Broadcast when quarantine-level intervention is triggered.
+ * High-priority alert for all listening modules.
+ */
+typedef struct {
+    bio_message_header_t header;
+    float severity;                 /**< Critical severity level */
+    int32_t primary_disorder;       /**< Critical disorder detected */
+    int32_t secondary_disorder;     /**< Secondary disorder (if any) */
+    uint8_t action_taken;           /**< Action already taken by guardian */
+    bool immune_notified;           /**< Whether immune system was notified */
+    bool quarantine_active;         /**< Whether quarantine is currently active */
+} bio_msg_guardian_alert_t;
+
+/**
+ * @brief Guardian level changed notification
+ *
+ * Sent when intervention level transitions (e.g., OBSERVE → ADJUST).
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint8_t old_level;              /**< Previous intervention level */
+    uint8_t new_level;              /**< New intervention level */
+    float severity;                 /**< Severity that caused transition */
+    uint64_t timestamp_ms;          /**< Time of transition */
+} bio_msg_guardian_level_changed_t;
+
+/**
+ * @brief Guardian metrics update
+ *
+ * Periodic broadcast of guardian metrics for monitoring systems.
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t observe_count;         /**< Times at OBSERVE level */
+    uint64_t adjust_count;          /**< Times at ADJUST level */
+    uint64_t regulate_count;        /**< Times at REGULATE level */
+    uint64_t quarantine_count;      /**< Times at QUARANTINE level */
+    uint64_t checks_performed;      /**< Total checks */
+    uint64_t interventions_applied; /**< Total interventions */
+    float avg_severity;             /**< Average severity (rolling) */
+    float max_severity;             /**< Maximum severity seen */
+} bio_msg_guardian_metrics_update_t;
 
 /*=============================================================================
  * MESSAGE UTILITIES

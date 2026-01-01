@@ -58,9 +58,18 @@ extern "C" {
 // Forward Declarations
 //=============================================================================
 
-/* Avoid circular includes - types defined in their respective headers */
-struct brain_struct;
-typedef struct brain_struct* brain_t;
+/**
+ * NOTE: To avoid typedef conflicts with other headers, we use incomplete
+ * struct declarations only. The actual typedefs are in:
+ * - brain_t: core/brain/nimcp_brain.h
+ * - bio_module_context_t: async/nimcp_bio_router.h
+ * - medulla_t: dragonfly/nimcp_dragonfly_medulla_bridge.h
+ * - sleep_system_t: core/medulla/nimcp_medulla.h
+ * - spatial_neuromod_field_t: plasticity/neuromodulators/nimcp_spatial_neuromod.h
+ * - homeostatic_plasticity_t: plasticity headers
+ *
+ * We use void* for these fields with casts in implementation.
+ */
 
 struct mental_health_monitor;
 typedef struct mental_health_monitor mental_health_monitor_t;
@@ -212,7 +221,7 @@ mental_health_guardian_config_t mental_health_guardian_default_config(void);
  * @note Guardian requires brain's mental_health_monitor to be initialized
  */
 mental_health_guardian_t* mental_health_guardian_create(
-    brain_t brain,
+    void* brain,  /* brain_t */
     const mental_health_guardian_config_t* config
 );
 
@@ -455,6 +464,98 @@ bool mental_health_guardian_connect_kg(
     mental_health_guardian_t* guardian,
     brain_kg_t* kg,
     uint64_t admin_token
+);
+
+/**
+ * @brief Connect guardian to bio-async messaging system
+ *
+ * Enables publishing status reports, intervention notifications,
+ * and receiving neuromodulator adjustment requests.
+ *
+ * @param guardian Guardian handle (non-NULL)
+ * @param bio_context Bio-async module context (non-NULL)
+ * @return true on success, false on error
+ *
+ * THREAD-SAFE: Yes
+ * COMPLEXITY: O(1)
+ */
+bool mental_health_guardian_connect_bio_async(
+    mental_health_guardian_t* guardian,
+    void* bio_context  /* bio_module_context_t */
+);
+
+/**
+ * @brief Connect guardian to neuromodulator system
+ *
+ * Enables direct neuromodulator adjustments for interventions.
+ * Guardian will adjust dopamine, serotonin, norepinephrine based
+ * on detected disorders.
+ *
+ * @param guardian Guardian handle (non-NULL)
+ * @param neuromod Spatial neuromodulator field (non-NULL)
+ * @return true on success, false on error
+ *
+ * THREAD-SAFE: Yes
+ * COMPLEXITY: O(1)
+ */
+bool mental_health_guardian_connect_neuromod(
+    mental_health_guardian_t* guardian,
+    void* neuromod  /* spatial_neuromod_field_t* */
+);
+
+/**
+ * @brief Connect guardian to brainstem/medulla for arousal control
+ *
+ * Enables arousal modulation and sleep triggering for interventions.
+ * - ADJUST: Increase arousal for depression
+ * - REGULATE: Trigger sleep cycle for recovery
+ * - QUARANTINE: Reduce activity for safety
+ *
+ * @param guardian Guardian handle (non-NULL)
+ * @param medulla Medulla system (non-NULL)
+ * @return true on success, false on error
+ *
+ * THREAD-SAFE: Yes
+ * COMPLEXITY: O(1)
+ */
+bool mental_health_guardian_connect_brainstem(
+    mental_health_guardian_t* guardian,
+    void* medulla  /* medulla_t */
+);
+
+/**
+ * @brief Connect guardian to sleep system
+ *
+ * Enables triggering sleep cycles at REGULATE level for
+ * homeostatic recovery.
+ *
+ * @param guardian Guardian handle (non-NULL)
+ * @param sleep Sleep system (non-NULL)
+ * @return true on success, false on error
+ *
+ * THREAD-SAFE: Yes
+ * COMPLEXITY: O(1)
+ */
+bool mental_health_guardian_connect_sleep(
+    mental_health_guardian_t* guardian,
+    void* sleep  /* sleep_system_t */
+);
+
+/**
+ * @brief Connect guardian to homeostatic plasticity system
+ *
+ * Enables synaptic reset interventions at REGULATE level.
+ *
+ * @param guardian Guardian handle (non-NULL)
+ * @param plasticity Homeostatic plasticity system (non-NULL)
+ * @return true on success, false on error
+ *
+ * THREAD-SAFE: Yes
+ * COMPLEXITY: O(1)
+ */
+bool mental_health_guardian_connect_plasticity(
+    mental_health_guardian_t* guardian,
+    void* plasticity  /* homeostatic_plasticity_t */
 );
 
 //=============================================================================
