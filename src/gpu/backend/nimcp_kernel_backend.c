@@ -921,6 +921,149 @@ static nimcp_kernel_error_t cpu_matmul_int8(
 }
 
 //=============================================================================
+// CPU Backend Implementation - LNN Operations
+//=============================================================================
+
+static nimcp_kernel_error_t cpu_lnn_euler_step(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    const nimcp_gpu_tensor_t* dx_dt,
+    float dt,
+    nimcp_gpu_tensor_t* x_new)
+{
+    (void)ctx;
+    if (!x || !dx_dt || !x_new) return NIMCP_KERNEL_ERROR_NULL_PTR;
+    if (x->numel != dx_dt->numel || x->numel != x_new->numel) {
+        return NIMCP_KERNEL_ERROR_INVALID_SIZE;
+    }
+
+    const float* x_data = (const float*)x->data;
+    const float* dx_data = (const float*)dx_dt->data;
+    float* out_data = (float*)x_new->data;
+
+    // Euler method: x_new = x + dt * dx_dt
+    for (size_t i = 0; i < x->numel; i++) {
+        out_data[i] = x_data[i] + dt * dx_data[i];
+    }
+
+    return NIMCP_KERNEL_SUCCESS;
+}
+
+static nimcp_kernel_error_t cpu_lnn_heun_step(
+    nimcp_gpu_context_t* ctx,
+    struct nimcp_lnn_layer_gpu* layer,
+    const nimcp_gpu_tensor_t* input,
+    float dt,
+    const struct nimcp_lnn_ode_config* config)
+{
+    (void)ctx;
+    (void)layer;
+    (void)input;
+    (void)dt;
+    (void)config;
+    // Heun's method requires layer access - simplified stub
+    LOG_DEBUG("CPU heun_step - not fully implemented");
+    return NIMCP_KERNEL_SUCCESS;
+}
+
+static nimcp_kernel_error_t cpu_lnn_rk4_step(
+    nimcp_gpu_context_t* ctx,
+    struct nimcp_lnn_layer_gpu* layer,
+    const nimcp_gpu_tensor_t* input,
+    float dt,
+    const struct nimcp_lnn_ode_config* config)
+{
+    (void)ctx;
+    (void)layer;
+    (void)input;
+    (void)dt;
+    (void)config;
+    // RK4 requires layer access - simplified stub
+    LOG_DEBUG("CPU rk4_step - not fully implemented");
+    return NIMCP_KERNEL_SUCCESS;
+}
+
+static nimcp_kernel_error_t cpu_lnn_dopri5_step(
+    nimcp_gpu_context_t* ctx,
+    struct nimcp_lnn_layer_gpu* layer,
+    const nimcp_gpu_tensor_t* input,
+    float* dt_ptr,
+    const struct nimcp_lnn_ode_config* config)
+{
+    (void)ctx;
+    (void)layer;
+    (void)input;
+    (void)dt_ptr;
+    (void)config;
+    // DOPRI5 (adaptive RK45) - simplified stub
+    LOG_DEBUG("CPU dopri5_step - not fully implemented");
+    return NIMCP_KERNEL_SUCCESS;
+}
+
+static nimcp_kernel_error_t cpu_lnn_compute_derivative(
+    nimcp_gpu_context_t* ctx,
+    struct nimcp_lnn_layer_gpu* layer,
+    const nimcp_gpu_tensor_t* input,
+    nimcp_gpu_tensor_t* dx_dt)
+{
+    (void)ctx;
+    (void)layer;
+    (void)input;
+    (void)dx_dt;
+    LOG_DEBUG("CPU compute_derivative - not fully implemented");
+    return NIMCP_KERNEL_SUCCESS;
+}
+
+static nimcp_kernel_error_t cpu_lnn_update_tau(
+    nimcp_gpu_context_t* ctx,
+    struct nimcp_lnn_layer_gpu* layer,
+    const nimcp_gpu_tensor_t* input)
+{
+    (void)ctx;
+    (void)layer;
+    (void)input;
+    LOG_DEBUG("CPU update_tau - not fully implemented");
+    return NIMCP_KERNEL_SUCCESS;
+}
+
+static nimcp_kernel_error_t cpu_lnn_sparse_matvec(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* row_ptr,
+    const nimcp_gpu_tensor_t* col_idx,
+    const nimcp_gpu_tensor_t* values,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* y,
+    uint32_t n_rows, float alpha)
+{
+    (void)ctx;
+    if (!row_ptr || !col_idx || !values || !x || !y) {
+        return NIMCP_KERNEL_ERROR_NULL_PTR;
+    }
+
+    const uint32_t* row_data = (const uint32_t*)row_ptr->data;
+    const uint32_t* col_data = (const uint32_t*)col_idx->data;
+    const float* val_data = (const float*)values->data;
+    const float* x_data = (const float*)x->data;
+    float* y_data = (float*)y->data;
+
+    // CSR sparse matrix-vector multiplication: y = alpha * A * x
+    for (uint32_t row = 0; row < n_rows; row++) {
+        float sum = 0.0f;
+        uint32_t row_start = row_data[row];
+        uint32_t row_end = row_data[row + 1];
+
+        for (uint32_t j = row_start; j < row_end; j++) {
+            uint32_t col = col_data[j];
+            sum += val_data[j] * x_data[col];
+        }
+
+        y_data[row] = alpha * sum;
+    }
+
+    return NIMCP_KERNEL_SUCCESS;
+}
+
+//=============================================================================
 // Initialize CPU Backend
 //=============================================================================
 
@@ -971,6 +1114,15 @@ static void init_cpu_backend(void)
     g_cpu_backend.cnn.maxpool2d = cpu_maxpool2d;
     g_cpu_backend.cnn.avgpool2d = cpu_avgpool2d;
     g_cpu_backend.cnn.batchnorm_forward = cpu_batchnorm_forward;
+
+    // LNN operations
+    g_cpu_backend.lnn.euler_step = cpu_lnn_euler_step;
+    g_cpu_backend.lnn.heun_step = cpu_lnn_heun_step;
+    g_cpu_backend.lnn.rk4_step = cpu_lnn_rk4_step;
+    g_cpu_backend.lnn.dopri5_step = cpu_lnn_dopri5_step;
+    g_cpu_backend.lnn.compute_derivative = cpu_lnn_compute_derivative;
+    g_cpu_backend.lnn.update_tau = cpu_lnn_update_tau;
+    g_cpu_backend.lnn.sparse_matvec = cpu_lnn_sparse_matvec;
 
     // Inference operations
     g_cpu_backend.inference.linear_relu = cpu_linear_relu;

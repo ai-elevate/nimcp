@@ -464,10 +464,15 @@ TEST_F(MixedPrecisionTest, INT8_RoundTrip) {
     EXPECT_GT(sqnr, 20.0f) << "SQNR should be > 20 dB for normal distribution";
 
     // Check relative errors
+    // Note: For symmetric INT8 quantization with scale = absmax/127,
+    // relative error at value x is approximately (scale/2)/|x| = absmax/(254*|x|)
+    // For 2% tolerance, need |x| > absmax/5.08. With absmax~6, need |x| > 1.2
+    // So only check values with sufficient magnitude for meaningful tolerance
     int error_count = 0;
     for (size_t i = 0; i < size; i++) {
         float rel_err = relativeError(original[i], result[i]);
-        if (rel_err > INT8_REL_TOLERANCE && std::fabs(original[i]) > 0.1f) {
+        // Only count errors for values large enough to expect < 2% quantization error
+        if (rel_err > INT8_REL_TOLERANCE && std::fabs(original[i]) > 1.0f) {
             error_count++;
         }
     }

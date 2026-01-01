@@ -124,21 +124,68 @@ __global__ void kernel_lif_forward(
     spikes[idx] = spike;
 }
 
+/**
+ * Simplified LIF kernel when synaptic current buffer is not available.
+ * Uses input directly as current (no synaptic filtering).
+ */
+__global__ void kernel_lif_forward_simple(
+    float* __restrict__ v,
+    float* __restrict__ spikes,
+    const float* __restrict__ input,
+    float tau_mem, float v_thresh, float v_reset, float v_rest,
+    float dt, bool hard_reset, size_t n)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n) return;
+
+    // Decay factor for membrane
+    float alpha_mem = expf(-dt / tau_mem);
+
+    // Update membrane potential (input used directly as current)
+    float membrane = v[idx];
+    membrane = alpha_mem * membrane + (1.0f - alpha_mem) * (v_rest + input[idx]);
+
+    // Check for spike
+    float spike = 0.0f;
+    if (membrane >= v_thresh) {
+        spike = 1.0f;
+        if (hard_reset) {
+            membrane = v_reset;
+        } else {
+            membrane = membrane - (v_thresh - v_reset);
+        }
+    }
+
+    v[idx] = membrane;
+    spikes[idx] = spike;
+}
+
 bool nimcp_gpu_lif_forward(
     nimcp_gpu_context_t* ctx,
     nimcp_lif_state_t* state,
     const nimcp_gpu_tensor_t* input)
 {
     if (!ctx || !state || !input) return false;
+    if (!state->v || !state->spikes) return false;
 
     size_t n = state->v->numel;
     const nimcp_lif_params_t* p = &state->params;
 
-    kernel_lif_forward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (float*)state->v->data, (float*)state->i_syn->data,
-        (float*)state->spikes->data, (const float*)input->data,
-        p->tau_mem, p->tau_syn, p->v_thresh, p->v_reset, p->v_rest,
-        p->dt, p->hard_reset, n);
+    if (state->i_syn != NULL) {
+        // Full LIF with synaptic current integration
+        kernel_lif_forward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (float*)state->v->data, (float*)state->i_syn->data,
+            (float*)state->spikes->data, (const float*)input->data,
+            p->tau_mem, p->tau_syn, p->v_thresh, p->v_reset, p->v_rest,
+            p->dt, p->hard_reset, n);
+    } else {
+        // Simplified LIF without synaptic current (input used directly)
+        kernel_lif_forward_simple<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            (float*)state->v->data, (float*)state->spikes->data,
+            (const float*)input->data,
+            p->tau_mem, p->v_thresh, p->v_reset, p->v_rest,
+            p->dt, p->hard_reset, n);
+    }
 
     CUDA_CHECK(cudaGetLastError());
     return true;
@@ -347,27 +394,23 @@ __global__ void kernel_izhikevich_forward(
     float recovery = u[idx];
     float I = input[idx];
 
-    // Euler integration (can do 2 steps for stability)
-    for (int substep = 0; substep < 2; substep++) {
-        float dt_half = dt * 0.5f;
-
-        // dv/dt = 0.04*v^2 + 5*v + 140 - u + I
-        float dv = 0.04f * membrane * membrane + 5.0f * membrane + 140.0f - recovery + I;
-
-        // du/dt = a*(b*v - u)
-        float du = a * (b * membrane - recovery);
-
-        membrane += dt_half * dv;
-        recovery += dt_half * du;
-    }
-
-    // Spike detection and reset
+    // Spike detection and reset FIRST (standard Izhikevich order)
     float spike = 0.0f;
     if (membrane >= v_thresh) {
         spike = 1.0f;
         membrane = c;
         recovery = recovery + d;
     }
+
+    // Euler integration
+    // dv/dt = 0.04*v^2 + 5*v + 140 - u + I
+    float dv = (0.04f * membrane * membrane + 5.0f * membrane + 140.0f - recovery + I) * dt;
+
+    // du/dt = a*(b*v - u)
+    float du = a * (b * membrane - recovery) * dt;
+
+    membrane += dv;
+    recovery += du;
 
     v[idx] = membrane;
     u[idx] = recovery;

@@ -30,6 +30,7 @@
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include <cuda_fp16.h>
 
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/inference/nimcp_inference_gpu.h"
@@ -152,6 +153,34 @@ __global__ void kernel_dequantize_int8(
 
     int32_t val = (int32_t)input[idx];
     output[idx] = scale * (float)(val - zero_point);
+}
+
+/**
+ * @brief FP32 to FP16 conversion kernel
+ */
+__global__ void kernel_fp32_to_fp16(
+    const float* __restrict__ input,
+    half* __restrict__ output,
+    size_t n)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n) return;
+
+    output[idx] = __float2half(input[idx]);
+}
+
+/**
+ * @brief FP16 to FP32 conversion kernel
+ */
+__global__ void kernel_fp16_to_fp32(
+    const half* __restrict__ input,
+    float* __restrict__ output,
+    size_t n)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n) return;
+
+    output[idx] = __half2float(input[idx]);
 }
 
 /**
@@ -315,6 +344,37 @@ __global__ void kernel_rmsnorm(
 /**
  * @brief Calibration kernel - compute min/max
  */
+/**
+ * @brief Atomic min for floats using CAS loop
+ * Handles negative floats correctly unlike naive __float_as_int approach
+ */
+__device__ void atomicMinFloat(float* addr, float value) {
+    int* addr_as_int = (int*)addr;
+    int old = *addr_as_int;
+    int assumed;
+    do {
+        assumed = old;
+        float old_val = __int_as_float(assumed);
+        if (old_val <= value) return;  // Already smaller
+        old = atomicCAS(addr_as_int, assumed, __float_as_int(value));
+    } while (assumed != old);
+}
+
+/**
+ * @brief Atomic max for floats using CAS loop
+ */
+__device__ void atomicMaxFloat(float* addr, float value) {
+    int* addr_as_int = (int*)addr;
+    int old = *addr_as_int;
+    int assumed;
+    do {
+        assumed = old;
+        float old_val = __int_as_float(assumed);
+        if (old_val >= value) return;  // Already larger
+        old = atomicCAS(addr_as_int, assumed, __float_as_int(value));
+    } while (assumed != old);
+}
+
 __global__ void kernel_compute_minmax(
     const float* input,
     float* min_val,
@@ -352,10 +412,10 @@ __global__ void kernel_compute_minmax(
         __syncthreads();
     }
 
-    // Write to global memory atomically
+    // Write to global memory atomically (correct for floats)
     if (tid == 0) {
-        atomicMin((int*)min_val, __float_as_int(s_min[0]));
-        atomicMax((int*)max_val, __float_as_int(s_max[0]));
+        atomicMinFloat(min_val, s_min[0]);
+        atomicMaxFloat(max_val, s_max[0]);
     }
 }
 
@@ -641,6 +701,9 @@ bool nimcp_gpu_infer_calibrate(
         (float*)tensor->data, d_min, d_max, n
     );
 
+    // Synchronize stream before copying results
+    cudaStreamSynchronize(ctx->compute_stream);
+
     // Copy results back
     cudaMemcpy(&h_min, d_min, sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(&h_max, d_max, sizeof(float), cudaMemcpyDeviceToHost);
@@ -889,8 +952,85 @@ bool nimcp_gpu_infer_convert_precision(
     nimcp_gpu_tensor_t* output,
     nimcp_infer_precision_t target_precision)
 {
-    LOG_DEBUG("Precision conversion - requires type-specific kernels");
-    return false;
+    if (!ctx || !input || !output) {
+        LOG_ERROR("NULL parameter in precision conversion");
+        return false;
+    }
+
+    if (input->numel != output->numel) {
+        LOG_ERROR("Input/output size mismatch: %zu vs %zu", input->numel, output->numel);
+        return false;
+    }
+
+    size_t n = input->numel;
+    int threads = 256;
+    int blocks = (n + threads - 1) / threads;
+    cudaStream_t stream = ctx->compute_stream;
+
+    // Determine conversion path
+    nimcp_gpu_precision_t src_prec = input->precision;
+    nimcp_gpu_precision_t dst_prec = output->precision;
+
+    // Map NIMCP_INFER precision to NIMCP_GPU precision for validation
+    nimcp_gpu_precision_t target_gpu_prec;
+    switch (target_precision) {
+        case NIMCP_INFER_FP32:
+            target_gpu_prec = NIMCP_GPU_PRECISION_FP32;
+            break;
+        case NIMCP_INFER_FP16:
+            target_gpu_prec = NIMCP_GPU_PRECISION_FP16;
+            break;
+        case NIMCP_INFER_BF16:
+            target_gpu_prec = NIMCP_GPU_PRECISION_BF16;
+            break;
+        case NIMCP_INFER_INT8:
+            target_gpu_prec = NIMCP_GPU_PRECISION_INT8;
+            break;
+        default:
+            LOG_ERROR("Unsupported target precision: %d", target_precision);
+            return false;
+    }
+
+    // Verify output tensor has correct precision
+    if (dst_prec != target_gpu_prec) {
+        LOG_ERROR("Output tensor precision mismatch: expected %d, got %d",
+                  target_gpu_prec, dst_prec);
+        return false;
+    }
+
+    // Perform conversion
+    if (src_prec == NIMCP_GPU_PRECISION_FP32 && dst_prec == NIMCP_GPU_PRECISION_FP16) {
+        // FP32 -> FP16
+        kernel_fp32_to_fp16<<<blocks, threads, 0, stream>>>(
+            (const float*)input->data,
+            (half*)output->data,
+            n);
+    } else if (src_prec == NIMCP_GPU_PRECISION_FP16 && dst_prec == NIMCP_GPU_PRECISION_FP32) {
+        // FP16 -> FP32
+        kernel_fp16_to_fp32<<<blocks, threads, 0, stream>>>(
+            (const half*)input->data,
+            (float*)output->data,
+            n);
+    } else if (src_prec == dst_prec) {
+        // Same precision - just copy
+        size_t elem_size = (src_prec == NIMCP_GPU_PRECISION_FP32) ? sizeof(float) :
+                           (src_prec == NIMCP_GPU_PRECISION_FP16) ? sizeof(half) :
+                           sizeof(int8_t);
+        cudaMemcpyAsync(output->data, input->data, n * elem_size,
+                        cudaMemcpyDeviceToDevice, stream);
+    } else {
+        LOG_ERROR("Unsupported conversion: %d -> %d", src_prec, dst_prec);
+        return false;
+    }
+
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        LOG_ERROR("CUDA error in precision conversion: %s", cudaGetErrorString(err));
+        return false;
+    }
+
+    LOG_DEBUG("Converted %zu elements from precision %d to %d", n, src_prec, dst_prec);
+    return true;
 }
 
 nimcp_infer_precision_t nimcp_gpu_infer_recommended_precision(nimcp_gpu_context_t* ctx)

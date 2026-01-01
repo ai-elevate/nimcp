@@ -284,11 +284,13 @@ static nimcp_kernel_error_t cuda_sgd_step(
 {
     // Create temporary optimizer state for the step
     nimcp_optim_state_t state;
+    memset(&state, 0, sizeof(state));  // Zero-initialize to avoid undefined values
     state.type = (momentum > 0.0f) ? NIMCP_OPTIM_SGD_MOMENTUM : NIMCP_OPTIM_SGD;
     state.m = velocity;
     state.v = NULL;
     state.lr = learning_rate;
     state.momentum = momentum;
+    state.weight_decay = 0.0f;
     state.nesterov = false;
     state.t = 1;
 
