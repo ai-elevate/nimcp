@@ -77,6 +77,9 @@
 /* Matrix operations */
 #include "nimcp_ternary_matrix.h"
 
+/* N-dimensional tensor operations */
+#include "nimcp_ternary_nd.h"
+
 /* Type conversions (float, double, probabilistic) */
 #include "nimcp_ternary_convert.h"
 

@@ -70,6 +70,7 @@ typedef enum {
     AMP_DTYPE_TF32,                 /**< TensorFloat-32 (Ampere+ GPUs) */
     AMP_DTYPE_FP8_E4M3,             /**< FP8 e4m3 (Hopper+ forward pass) */
     AMP_DTYPE_FP8_E5M2,             /**< FP8 e5m2 (Hopper+ backward pass) */
+    AMP_DTYPE_TERNARY,              /**< Ternary {-1, 0, +1} extreme quantization */
     AMP_DTYPE_COUNT
 } amp_dtype_t;
 
@@ -641,6 +642,340 @@ int amp_cast(
  * @return 0 if valid, negative error code
  */
 int amp_validate_config(const amp_config_t* config);
+
+//=============================================================================
+// Ternary Precision API
+//=============================================================================
+
+/**
+ * @brief Ternary precision configuration
+ *
+ * WHAT: Configuration for ternary {-1, 0, +1} extreme quantization
+ * WHY:  Maximum memory efficiency with ~32x compression vs FP32
+ * HOW:  Threshold-based ternarization with learned scaling
+ *
+ * BIOLOGICAL GROUNDING:
+ * - Synaptic weights discretize to LTP/baseline/LTD states
+ * - Action potentials are all-or-nothing with refractory period
+ * - Neural coding efficiency maximized with sparse ternary representations
+ *
+ * COMPARISON:
+ * - BinaryConnect (Courbariaux 2015): Binary {-1, +1} weights
+ * - Ternary Weight Networks (Li 2016): Adds zero state
+ * - Trained Ternary Quantization (Zhu 2016): Learned thresholds
+ */
+typedef struct {
+    float threshold_ratio;           /**< Threshold as ratio of max value (default: 0.5) */
+    bool use_learned_threshold;      /**< Learn threshold during training */
+    float positive_scale;            /**< Scale for +1 values */
+    float negative_scale;            /**< Scale for -1 values */
+    bool symmetric_thresholds;       /**< Use same threshold for +/- */
+    bool use_ste;                    /**< Straight-through estimator for backprop */
+    float ste_clip_value;            /**< Gradient clipping value for STE */
+    bool layer_wise_thresholds;      /**< Different thresholds per layer */
+    bool channel_wise_thresholds;    /**< Different thresholds per channel */
+} amp_ternary_config_t;
+
+/**
+ * @brief Ternary precision statistics
+ *
+ * WHAT: Statistics for ternary precision training
+ * WHY:  Monitor sparsity, threshold adaptation, and gradient health
+ */
+typedef struct {
+    uint64_t total_elements;         /**< Total elements processed */
+    uint64_t positive_count;         /**< Elements quantized to +1 */
+    uint64_t zero_count;             /**< Elements quantized to 0 */
+    uint64_t negative_count;         /**< Elements quantized to -1 */
+    float sparsity_ratio;            /**< Fraction of zero elements */
+    float current_threshold;         /**< Current threshold value */
+    float avg_positive_scale;        /**< Average positive scale */
+    float avg_negative_scale;        /**< Average negative scale */
+    float compression_ratio;         /**< Effective compression ratio */
+} amp_ternary_stats_t;
+
+/**
+ * @brief Get default ternary precision configuration
+ *
+ * WHAT: Initialize ternary config with sensible defaults
+ * WHY:  Easy setup for ternary training
+ * HOW:  Based on Trained Ternary Quantization (Zhu et al.)
+ *
+ * DEFAULTS:
+ * - threshold_ratio: 0.5 (ternarize at half of max value)
+ * - use_ste: true (straight-through estimator)
+ * - symmetric_thresholds: true
+ *
+ * @param config Configuration to initialize
+ * @return 0 on success, negative on error
+ */
+static inline int amp_ternary_default_config(amp_ternary_config_t* config) {
+    if (!config) return -1;
+
+    config->threshold_ratio = 0.5f;
+    config->use_learned_threshold = true;
+    config->positive_scale = 1.0f;
+    config->negative_scale = 1.0f;
+    config->symmetric_thresholds = true;
+    config->use_ste = true;
+    config->ste_clip_value = 1.0f;
+    config->layer_wise_thresholds = true;
+    config->channel_wise_thresholds = false;
+
+    return 0;
+}
+
+/**
+ * @brief Get ternary-optimized AMP configuration
+ *
+ * WHAT: Configuration optimized for ternary training
+ * WHY:  Convenience for setting up ternary-based mixed precision
+ * HOW:  Sets compute_dtype to TERNARY, configures scaling for stability
+ *
+ * @param config AMP configuration to initialize
+ * @return 0 on success, negative on error
+ */
+int amp_ternary_config(amp_config_t* config);
+
+/**
+ * @brief Create ternary precision context
+ *
+ * WHAT: Allocate context for ternary precision training
+ * WHY:  Manage ternary quantization state
+ * HOW:  Create scaling parameters, threshold state
+ *
+ * @param amp_ctx Parent AMP context
+ * @param ternary_config Ternary configuration
+ * @return 0 on success, negative on error
+ */
+int amp_enable_ternary(
+    amp_ctx_t* amp_ctx,
+    const amp_ternary_config_t* ternary_config
+);
+
+/**
+ * @brief Disable ternary precision mode
+ *
+ * WHAT: Return to standard mixed precision
+ * WHY:  Allow switching between ternary and standard modes
+ *
+ * @param amp_ctx AMP context
+ * @return 0 on success
+ */
+int amp_disable_ternary(amp_ctx_t* amp_ctx);
+
+/**
+ * @brief Check if ternary mode is enabled
+ *
+ * @param amp_ctx AMP context
+ * @return true if ternary mode active
+ */
+bool amp_is_ternary(const amp_ctx_t* amp_ctx);
+
+/**
+ * @brief Ternarize tensor in-place
+ *
+ * WHAT: Convert FP32 tensor to ternary {-1, 0, +1} representation
+ * WHY:  Apply extreme quantization for memory efficiency
+ * HOW:  Apply threshold, quantize to ternary, store scales
+ *
+ * Algorithm (Trained Ternary Quantization):
+ * 1. Compute threshold: t = threshold_ratio * max(|W|)
+ * 2. Ternarize: w_t = +1 if w > t, -1 if w < -t, 0 otherwise
+ * 3. Compute scales: s+ = mean(w where w > t), s- = mean(|w| where w < -t)
+ * 4. Full-precision equivalent: W_approx = s+ * (w_t == +1) + s- * (w_t == -1)
+ *
+ * @param amp_ctx AMP context
+ * @param tensor Tensor to ternarize (modified in place)
+ * @param threshold_out Output: computed threshold
+ * @param scale_pos_out Output: positive scale factor
+ * @param scale_neg_out Output: negative scale factor
+ * @return 0 on success, negative on error
+ */
+int amp_ternarize_tensor(
+    amp_ctx_t* amp_ctx,
+    nimcp_tensor_t* tensor,
+    float* threshold_out,
+    float* scale_pos_out,
+    float* scale_neg_out
+);
+
+/**
+ * @brief Ternarize weights array
+ *
+ * WHAT: Convert FP32 weights to ternary representation
+ * WHY:  Memory-efficient weight storage
+ * HOW:  Threshold-based ternarization with scaling
+ *
+ * @param amp_ctx AMP context
+ * @param weights FP32 weights (modified in place to ternary values)
+ * @param count Number of weights
+ * @param threshold_out Output: computed threshold
+ * @param scale_pos_out Output: positive scale
+ * @param scale_neg_out Output: negative scale
+ * @return 0 on success
+ */
+int amp_ternarize_weights(
+    amp_ctx_t* amp_ctx,
+    float* weights,
+    size_t count,
+    float* threshold_out,
+    float* scale_pos_out,
+    float* scale_neg_out
+);
+
+/**
+ * @brief Dequantize ternary to full precision
+ *
+ * WHAT: Convert ternary {-1, 0, +1} back to scaled FP32
+ * WHY:  Reconstruct approximate full-precision for computation
+ * HOW:  Apply learned scales to ternary values
+ *
+ * @param amp_ctx AMP context
+ * @param ternary_weights Ternary weights (as int8 or float {-1,0,+1})
+ * @param output FP32 output buffer
+ * @param count Number of weights
+ * @param scale_pos Positive scale
+ * @param scale_neg Negative scale
+ * @return 0 on success
+ */
+int amp_dequantize_ternary(
+    amp_ctx_t* amp_ctx,
+    const float* ternary_weights,
+    float* output,
+    size_t count,
+    float scale_pos,
+    float scale_neg
+);
+
+/**
+ * @brief Compute ternary gradients with STE
+ *
+ * WHAT: Backpropagate through ternary quantization
+ * WHY:  Enable training of ternary networks
+ * HOW:  Straight-Through Estimator passes gradients through
+ *
+ * STE Algorithm:
+ * - Forward: apply ternarization
+ * - Backward: gradient passes through unchanged (clipped if configured)
+ *
+ * @param amp_ctx AMP context
+ * @param grad_output Gradient from upstream
+ * @param original_weights Original FP32 weights before ternarization
+ * @param grad_input Output gradient (same shape as grad_output)
+ * @param count Number of elements
+ * @param threshold Ternarization threshold
+ * @return 0 on success
+ */
+int amp_ternary_backward(
+    amp_ctx_t* amp_ctx,
+    const float* grad_output,
+    const float* original_weights,
+    float* grad_input,
+    size_t count,
+    float threshold
+);
+
+/**
+ * @brief Update ternary threshold
+ *
+ * WHAT: Adjust ternarization threshold based on training
+ * WHY:  Learned thresholds improve accuracy
+ * HOW:  Gradient-based update of threshold parameter
+ *
+ * @param amp_ctx AMP context
+ * @param current_threshold Current threshold
+ * @param gradient Gradient w.r.t. threshold
+ * @param learning_rate Learning rate
+ * @return Updated threshold value
+ */
+float amp_update_ternary_threshold(
+    amp_ctx_t* amp_ctx,
+    float current_threshold,
+    float gradient,
+    float learning_rate
+);
+
+/**
+ * @brief Get optimal ternary threshold
+ *
+ * WHAT: Compute optimal threshold for given weight distribution
+ * WHY:  Minimize quantization error
+ * HOW:  Analytical solution based on weight statistics
+ *
+ * @param weights Weight array
+ * @param count Number of weights
+ * @param ratio Threshold ratio parameter
+ * @return Optimal threshold value
+ */
+float amp_compute_optimal_ternary_threshold(
+    const float* weights,
+    size_t count,
+    float ratio
+);
+
+/**
+ * @brief Get ternary precision statistics
+ *
+ * WHAT: Retrieve ternary-specific training statistics
+ * WHY:  Monitor sparsity and quantization quality
+ *
+ * @param amp_ctx AMP context
+ * @param stats Output statistics
+ * @return 0 on success
+ */
+int amp_get_ternary_stats(
+    const amp_ctx_t* amp_ctx,
+    amp_ternary_stats_t* stats
+);
+
+/**
+ * @brief Reset ternary statistics
+ *
+ * @param amp_ctx AMP context
+ */
+void amp_reset_ternary_stats(amp_ctx_t* amp_ctx);
+
+/**
+ * @brief Pack ternary weights for storage
+ *
+ * WHAT: Compress ternary weights to 2 bits per weight
+ * WHY:  Achieve 16x compression vs FP32
+ * HOW:  Pack 16 ternary values per uint32
+ *
+ * Encoding: 00 = -1, 01 = 0, 10 = +1, 11 = reserved
+ *
+ * @param ternary_weights Ternary weights (as float {-1,0,+1})
+ * @param count Number of weights
+ * @param packed Output: packed representation
+ * @param packed_size Size of packed buffer (must be >= (count + 15) / 16 * 4)
+ * @return Number of bytes written
+ */
+size_t amp_pack_ternary(
+    const float* ternary_weights,
+    size_t count,
+    uint32_t* packed,
+    size_t packed_size
+);
+
+/**
+ * @brief Unpack ternary weights
+ *
+ * WHAT: Decompress packed ternary to float {-1,0,+1}
+ * WHY:  Restore ternary for computation
+ *
+ * @param packed Packed ternary weights
+ * @param packed_size Size of packed buffer in bytes
+ * @param output Output float buffer
+ * @param count Number of weights to unpack
+ * @return Number of weights unpacked
+ */
+size_t amp_unpack_ternary(
+    const uint32_t* packed,
+    size_t packed_size,
+    float* output,
+    size_t count
+);
 
 #ifdef __cplusplus
 }

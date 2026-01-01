@@ -20,9 +20,6 @@ BUILD_NETWORKING_IMMUNE_TESTS:BOOL=OFF
 //Build NLP immune tests (requires API fixes)
 BUILD_NLP_IMMUNE_TESTS:BOOL=OFF
 
-//No help, variable specified on the command line.
-BUILD_TESTING:UNINITIALIZED=ON
-
 //Path to a program.
 CLANG_TIDY_EXE:FILEPATH=/usr/bin/clang-tidy
 
@@ -34,7 +31,7 @@ CMAKE_AR:FILEPATH=/usr/bin/ar
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=Debug
+CMAKE_BUILD_TYPE:STRING=
 
 //Enable/Disable color output during build.
 CMAKE_COLOR_MAKEFILE:BOOL=ON
@@ -514,17 +511,11 @@ NIMCP_ASAN:BOOL=OFF
 //Value Computed by CMake
 NIMCP_BINARY_DIR:STATIC=/home/bbrelin/nimcp/build
 
-//No help, variable specified on the command line.
-NIMCP_BUILD_COGNITIVE:UNINITIALIZED=ON
-
 //Enable code coverage reporting with gcov/lcov
 NIMCP_COVERAGE:BOOL=OFF
 
 //Enable cppcheck during build
 NIMCP_ENABLE_CPPCHECK:BOOL=OFF
-
-//No help, variable specified on the command line.
-NIMCP_ENABLE_CUDA:UNINITIALIZED=ON
 
 //Enable clang-tidy during build
 NIMCP_ENABLE_LINT:BOOL=OFF
@@ -681,7 +672,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=246
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=249
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

@@ -2356,6 +2356,32 @@ unit_core_synapse_types_test_synapse_types_real/fast:
 .PHONY : unit_core_synapse_types_test_synapse_types_real/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_synapse_types_test_synapse_types_ternary
+
+# Build rule for target.
+unit_core_synapse_types_test_synapse_types_ternary: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_synapse_types_test_synapse_types_ternary
+.PHONY : unit_core_synapse_types_test_synapse_types_ternary
+
+# fast build rule for target.
+unit_core_synapse_types_test_synapse_types_ternary/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_synapse_types_test_synapse_types_ternary.dir/build.make test/CMakeFiles/unit_core_synapse_types_test_synapse_types_ternary.dir/build
+.PHONY : unit_core_synapse_types_test_synapse_types_ternary/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_topology_test_community_detection_ternary
+
+# Build rule for target.
+unit_core_topology_test_community_detection_ternary: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_topology_test_community_detection_ternary
+.PHONY : unit_core_topology_test_community_detection_ternary
+
+# fast build rule for target.
+unit_core_topology_test_community_detection_ternary/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_topology_test_community_detection_ternary.dir/build.make test/CMakeFiles/unit_core_topology_test_community_detection_ternary.dir/build
+.PHONY : unit_core_topology_test_community_detection_ternary/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_topology_test_fractal_topology_metrics
 
 # Build rule for target.
@@ -7346,6 +7372,110 @@ e2e_gpu_test_e2e_dragonfly_hunting_gpu: cmake_check_build_system
 e2e_gpu_test_e2e_dragonfly_hunting_gpu/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_dragonfly_hunting_gpu.dir/build.make test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_dragonfly_hunting_gpu.dir/build
 .PHONY : e2e_gpu_test_e2e_dragonfly_hunting_gpu/fast
+
+#=============================================================================
+# Target rules for targets named e2e_gpu_test_e2e_stress_test_gpu
+
+# Build rule for target.
+e2e_gpu_test_e2e_stress_test_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_gpu_test_e2e_stress_test_gpu
+.PHONY : e2e_gpu_test_e2e_stress_test_gpu
+
+# fast build rule for target.
+e2e_gpu_test_e2e_stress_test_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_stress_test_gpu.dir/build.make test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_stress_test_gpu.dir/build
+.PHONY : e2e_gpu_test_e2e_stress_test_gpu/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_ternary_neural_network
+
+# Build rule for target.
+e2e_test_ternary_neural_network: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_ternary_neural_network
+.PHONY : e2e_test_ternary_neural_network
+
+# fast build rule for target.
+e2e_test_ternary_neural_network/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/ternary/CMakeFiles/e2e_test_ternary_neural_network.dir/build.make test/e2e/ternary/CMakeFiles/e2e_test_ternary_neural_network.dir/build
+.PHONY : e2e_test_ternary_neural_network/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_ternary_lnn_simulation
+
+# Build rule for target.
+e2e_test_ternary_lnn_simulation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_ternary_lnn_simulation
+.PHONY : e2e_test_ternary_lnn_simulation
+
+# fast build rule for target.
+e2e_test_ternary_lnn_simulation/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/ternary/CMakeFiles/e2e_test_ternary_lnn_simulation.dir/build.make test/e2e/ternary/CMakeFiles/e2e_test_ternary_lnn_simulation.dir/build
+.PHONY : e2e_test_ternary_lnn_simulation/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_ternary_cortical_processing
+
+# Build rule for target.
+e2e_test_ternary_cortical_processing: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_ternary_cortical_processing
+.PHONY : e2e_test_ternary_cortical_processing
+
+# fast build rule for target.
+e2e_test_ternary_cortical_processing/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/ternary/CMakeFiles/e2e_test_ternary_cortical_processing.dir/build.make test/e2e/ternary/CMakeFiles/e2e_test_ternary_cortical_processing.dir/build
+.PHONY : e2e_test_ternary_cortical_processing/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_ternary_attention_system
+
+# Build rule for target.
+e2e_test_ternary_attention_system: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_ternary_attention_system
+.PHONY : e2e_test_ternary_attention_system
+
+# fast build rule for target.
+e2e_test_ternary_attention_system/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/ternary/CMakeFiles/e2e_test_ternary_attention_system.dir/build.make test/e2e/ternary/CMakeFiles/e2e_test_ternary_attention_system.dir/build
+.PHONY : e2e_test_ternary_attention_system/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_ternary_swarm_consensus
+
+# Build rule for target.
+e2e_test_ternary_swarm_consensus: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_ternary_swarm_consensus
+.PHONY : e2e_test_ternary_swarm_consensus
+
+# fast build rule for target.
+e2e_test_ternary_swarm_consensus/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/ternary/CMakeFiles/e2e_test_ternary_swarm_consensus.dir/build.make test/e2e/ternary/CMakeFiles/e2e_test_ternary_swarm_consensus.dir/build
+.PHONY : e2e_test_ternary_swarm_consensus/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_ternary_mixed_precision_training
+
+# Build rule for target.
+e2e_test_ternary_mixed_precision_training: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_ternary_mixed_precision_training
+.PHONY : e2e_test_ternary_mixed_precision_training
+
+# fast build rule for target.
+e2e_test_ternary_mixed_precision_training/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/ternary/CMakeFiles/e2e_test_ternary_mixed_precision_training.dir/build.make test/e2e/ternary/CMakeFiles/e2e_test_ternary_mixed_precision_training.dir/build
+.PHONY : e2e_test_ternary_mixed_precision_training/fast
+
+#=============================================================================
+# Target rules for targets named ternary_e2e_tests
+
+# Build rule for target.
+ternary_e2e_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ternary_e2e_tests
+.PHONY : ternary_e2e_tests
+
+# fast build rule for target.
+ternary_e2e_tests/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/ternary/CMakeFiles/ternary_e2e_tests.dir/build.make test/e2e/ternary/CMakeFiles/ternary_e2e_tests.dir/build
+.PHONY : ternary_e2e_tests/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -14147,6 +14277,149 @@ unit_utils_ternary_test_ternary_core/fast:
 .PHONY : unit_utils_ternary_test_ternary_core/fast
 
 #=============================================================================
+# Target rules for targets named integration_ternary_test_neuralnet_ternary_integration
+
+# Build rule for target.
+integration_ternary_test_neuralnet_ternary_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_ternary_test_neuralnet_ternary_integration
+.PHONY : integration_ternary_test_neuralnet_ternary_integration
+
+# fast build rule for target.
+integration_ternary_test_neuralnet_ternary_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/ternary/CMakeFiles/integration_ternary_test_neuralnet_ternary_integration.dir/build.make test/integration/ternary/CMakeFiles/integration_ternary_test_neuralnet_ternary_integration.dir/build
+.PHONY : integration_ternary_test_neuralnet_ternary_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_ternary_test_sparse_ternary_integration
+
+# Build rule for target.
+integration_ternary_test_sparse_ternary_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_ternary_test_sparse_ternary_integration
+.PHONY : integration_ternary_test_sparse_ternary_integration
+
+# fast build rule for target.
+integration_ternary_test_sparse_ternary_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/ternary/CMakeFiles/integration_ternary_test_sparse_ternary_integration.dir/build.make test/integration/ternary/CMakeFiles/integration_ternary_test_sparse_ternary_integration.dir/build
+.PHONY : integration_ternary_test_sparse_ternary_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_ternary_test_lnn_ternary_integration
+
+# Build rule for target.
+integration_ternary_test_lnn_ternary_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_ternary_test_lnn_ternary_integration
+.PHONY : integration_ternary_test_lnn_ternary_integration
+
+# fast build rule for target.
+integration_ternary_test_lnn_ternary_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/ternary/CMakeFiles/integration_ternary_test_lnn_ternary_integration.dir/build.make test/integration/ternary/CMakeFiles/integration_ternary_test_lnn_ternary_integration.dir/build
+.PHONY : integration_ternary_test_lnn_ternary_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_ternary_test_attention_ternary_integration
+
+# Build rule for target.
+integration_ternary_test_attention_ternary_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_ternary_test_attention_ternary_integration
+.PHONY : integration_ternary_test_attention_ternary_integration
+
+# fast build rule for target.
+integration_ternary_test_attention_ternary_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/ternary/CMakeFiles/integration_ternary_test_attention_ternary_integration.dir/build.make test/integration/ternary/CMakeFiles/integration_ternary_test_attention_ternary_integration.dir/build
+.PHONY : integration_ternary_test_attention_ternary_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_ternary_test_training_ternary_integration
+
+# Build rule for target.
+integration_ternary_test_training_ternary_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_ternary_test_training_ternary_integration
+.PHONY : integration_ternary_test_training_ternary_integration
+
+# fast build rule for target.
+integration_ternary_test_training_ternary_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/ternary/CMakeFiles/integration_ternary_test_training_ternary_integration.dir/build.make test/integration/ternary/CMakeFiles/integration_ternary_test_training_ternary_integration.dir/build
+.PHONY : integration_ternary_test_training_ternary_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_ternary_test_swarm_ternary_integration
+
+# Build rule for target.
+integration_ternary_test_swarm_ternary_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_ternary_test_swarm_ternary_integration
+.PHONY : integration_ternary_test_swarm_ternary_integration
+
+# fast build rule for target.
+integration_ternary_test_swarm_ternary_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/ternary/CMakeFiles/integration_ternary_test_swarm_ternary_integration.dir/build.make test/integration/ternary/CMakeFiles/integration_ternary_test_swarm_ternary_integration.dir/build
+.PHONY : integration_ternary_test_swarm_ternary_integration/fast
+
+#=============================================================================
+# Target rules for targets named test_ternary_memory_regression
+
+# Build rule for target.
+test_ternary_memory_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_ternary_memory_regression
+.PHONY : test_ternary_memory_regression
+
+# fast build rule for target.
+test_ternary_memory_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/ternary/CMakeFiles/test_ternary_memory_regression.dir/build.make test/regression/ternary/CMakeFiles/test_ternary_memory_regression.dir/build
+.PHONY : test_ternary_memory_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_ternary_accuracy_regression
+
+# Build rule for target.
+test_ternary_accuracy_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_ternary_accuracy_regression
+.PHONY : test_ternary_accuracy_regression
+
+# fast build rule for target.
+test_ternary_accuracy_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/ternary/CMakeFiles/test_ternary_accuracy_regression.dir/build.make test/regression/ternary/CMakeFiles/test_ternary_accuracy_regression.dir/build
+.PHONY : test_ternary_accuracy_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_ternary_performance_regression
+
+# Build rule for target.
+test_ternary_performance_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_ternary_performance_regression
+.PHONY : test_ternary_performance_regression
+
+# fast build rule for target.
+test_ternary_performance_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/ternary/CMakeFiles/test_ternary_performance_regression.dir/build.make test/regression/ternary/CMakeFiles/test_ternary_performance_regression.dir/build
+.PHONY : test_ternary_performance_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_ternary_conversion_regression
+
+# Build rule for target.
+test_ternary_conversion_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_ternary_conversion_regression
+.PHONY : test_ternary_conversion_regression
+
+# fast build rule for target.
+test_ternary_conversion_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/ternary/CMakeFiles/test_ternary_conversion_regression.dir/build.make test/regression/ternary/CMakeFiles/test_ternary_conversion_regression.dir/build
+.PHONY : test_ternary_conversion_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_ternary_backward_compat_regression
+
+# Build rule for target.
+test_ternary_backward_compat_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_ternary_backward_compat_regression
+.PHONY : test_ternary_backward_compat_regression
+
+# fast build rule for target.
+test_ternary_backward_compat_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/ternary/CMakeFiles/test_ternary_backward_compat_regression.dir/build.make test/regression/ternary/CMakeFiles/test_ternary_backward_compat_regression.dir/build
+.PHONY : test_ternary_backward_compat_regression/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_emotion_integration
 
 # Build rule for target.
@@ -18788,6 +19061,136 @@ unit_gpu_test_substrate_gpu/fast:
 .PHONY : unit_gpu_test_substrate_gpu/fast
 
 #=============================================================================
+# Target rules for targets named unit_gpu_test_axon_gpu
+
+# Build rule for target.
+unit_gpu_test_axon_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_axon_gpu
+.PHONY : unit_gpu_test_axon_gpu
+
+# fast build rule for target.
+unit_gpu_test_axon_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_axon_gpu.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_axon_gpu.dir/build
+.PHONY : unit_gpu_test_axon_gpu/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_dendrite_gpu
+
+# Build rule for target.
+unit_gpu_test_dendrite_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_dendrite_gpu
+.PHONY : unit_gpu_test_dendrite_gpu
+
+# fast build rule for target.
+unit_gpu_test_dendrite_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_dendrite_gpu.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_dendrite_gpu.dir/build
+.PHONY : unit_gpu_test_dendrite_gpu/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_myelin_gpu
+
+# Build rule for target.
+unit_gpu_test_myelin_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_myelin_gpu
+.PHONY : unit_gpu_test_myelin_gpu
+
+# fast build rule for target.
+unit_gpu_test_myelin_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_myelin_gpu.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_myelin_gpu.dir/build
+.PHONY : unit_gpu_test_myelin_gpu/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_oscillations_kernels
+
+# Build rule for target.
+unit_gpu_test_oscillations_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_oscillations_kernels
+.PHONY : unit_gpu_test_oscillations_kernels
+
+# fast build rule for target.
+unit_gpu_test_oscillations_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_oscillations_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_oscillations_kernels.dir/build
+.PHONY : unit_gpu_test_oscillations_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_memory_consolidation_kernels
+
+# Build rule for target.
+unit_gpu_test_memory_consolidation_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_memory_consolidation_kernels
+.PHONY : unit_gpu_test_memory_consolidation_kernels
+
+# fast build rule for target.
+unit_gpu_test_memory_consolidation_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_memory_consolidation_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_memory_consolidation_kernels.dir/build
+.PHONY : unit_gpu_test_memory_consolidation_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_knowledge_graph_kernels
+
+# Build rule for target.
+unit_gpu_test_knowledge_graph_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_knowledge_graph_kernels
+.PHONY : unit_gpu_test_knowledge_graph_kernels
+
+# fast build rule for target.
+unit_gpu_test_knowledge_graph_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_knowledge_graph_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_knowledge_graph_kernels.dir/build
+.PHONY : unit_gpu_test_knowledge_graph_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_synapse_kernels
+
+# Build rule for target.
+unit_gpu_test_synapse_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_synapse_kernels
+.PHONY : unit_gpu_test_synapse_kernels
+
+# fast build rule for target.
+unit_gpu_test_synapse_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_synapse_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_synapse_kernels.dir/build
+.PHONY : unit_gpu_test_synapse_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_dragonfly_vision_kernels
+
+# Build rule for target.
+unit_gpu_test_dragonfly_vision_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_dragonfly_vision_kernels
+.PHONY : unit_gpu_test_dragonfly_vision_kernels
+
+# fast build rule for target.
+unit_gpu_test_dragonfly_vision_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_dragonfly_vision_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_dragonfly_vision_kernels.dir/build
+.PHONY : unit_gpu_test_dragonfly_vision_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_plasticity_kernels
+
+# Build rule for target.
+unit_gpu_test_plasticity_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_plasticity_kernels
+.PHONY : unit_gpu_test_plasticity_kernels
+
+# fast build rule for target.
+unit_gpu_test_plasticity_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_plasticity_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_plasticity_kernels.dir/build
+.PHONY : unit_gpu_test_plasticity_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_portia_kernels
+
+# Build rule for target.
+unit_gpu_test_portia_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_portia_kernels
+.PHONY : unit_gpu_test_portia_kernels
+
+# fast build rule for target.
+unit_gpu_test_portia_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_portia_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_portia_kernels.dir/build
+.PHONY : unit_gpu_test_portia_kernels/fast
+
+#=============================================================================
 # Target rules for targets named unit_gpu_immune_execution
 
 # Build rule for target.
@@ -21117,6 +21520,7 @@ help:
 	@echo "... run_bench_benchmark_complex_fft"
 	@echo "... run_bench_benchmark_complex_pac_detection"
 	@echo "... run_bench_benchmark_complex_vs_real_oscillations"
+	@echo "... ternary_e2e_tests"
 	@echo "... test_portia_integration"
 	@echo "... bench_benchmark_complex_fft"
 	@echo "... bench_benchmark_complex_pac_detection"
@@ -21139,6 +21543,7 @@ help:
 	@echo "... e2e_gpu_test_e2e_cognitive_processing_gpu"
 	@echo "... e2e_gpu_test_e2e_dragonfly_hunting_gpu"
 	@echo "... e2e_gpu_test_e2e_learning_pipeline_gpu"
+	@echo "... e2e_gpu_test_e2e_stress_test_gpu"
 	@echo "... e2e_gpu_test_e2e_swarm_simulation_gpu"
 	@echo "... e2e_test_amygdala_pipeline"
 	@echo "... e2e_test_asymmetric_swarm"
@@ -21229,6 +21634,12 @@ help:
 	@echo "... e2e_test_swarm_formation"
 	@echo "... e2e_test_swarm_memory_consolidation"
 	@echo "... e2e_test_swarm_threat_response"
+	@echo "... e2e_test_ternary_attention_system"
+	@echo "... e2e_test_ternary_cortical_processing"
+	@echo "... e2e_test_ternary_lnn_simulation"
+	@echo "... e2e_test_ternary_mixed_precision_training"
+	@echo "... e2e_test_ternary_neural_network"
+	@echo "... e2e_test_ternary_swarm_consensus"
 	@echo "... e2e_test_thalamus_pipeline"
 	@echo "... e2e_test_training_logic_pipeline"
 	@echo "... e2e_test_unified_training_integration"
@@ -21459,6 +21870,12 @@ help:
 	@echo "... integration_snn_test_integration"
 	@echo "... integration_swarm_immune_bridges"
 	@echo "... integration_swarm_sleep_bridges"
+	@echo "... integration_ternary_test_attention_ternary_integration"
+	@echo "... integration_ternary_test_lnn_ternary_integration"
+	@echo "... integration_ternary_test_neuralnet_ternary_integration"
+	@echo "... integration_ternary_test_sparse_ternary_integration"
+	@echo "... integration_ternary_test_swarm_ternary_integration"
+	@echo "... integration_ternary_test_training_ternary_integration"
 	@echo "... integration_thalamic_substrate_bridges"
 	@echo "... integration_training_test_cnn_backprop_integration"
 	@echo "... integration_training_test_cnn_cortex_integration"
@@ -21932,6 +22349,11 @@ help:
 	@echo "... test_symbolic_logic"
 	@echo "... test_symbolic_logic_attachment"
 	@echo "... test_symbolic_logic_real"
+	@echo "... test_ternary_accuracy_regression"
+	@echo "... test_ternary_backward_compat_regression"
+	@echo "... test_ternary_conversion_regression"
+	@echo "... test_ternary_memory_regression"
+	@echo "... test_ternary_performance_regression"
 	@echo "... test_unification_engine"
 	@echo "... test_working_memory_reasoning"
 	@echo "... unit_api_test_api_brain_cow"
@@ -22287,6 +22709,8 @@ help:
 	@echo "... unit_core_synapse_types_test_synapse_compute_real"
 	@echo "... unit_core_synapse_types_test_synapse_embeddings"
 	@echo "... unit_core_synapse_types_test_synapse_types_real"
+	@echo "... unit_core_synapse_types_test_synapse_types_ternary"
+	@echo "... unit_core_topology_test_community_detection_ternary"
 	@echo "... unit_core_topology_test_fractal_topology_metrics"
 	@echo "... unit_core_topology_test_fractal_topology_real"
 	@echo "... unit_core_topology_topology_tests"
@@ -22350,18 +22774,28 @@ help:
 	@echo "... unit_gpu_immune_execution"
 	@echo "... unit_gpu_immune_multigpu"
 	@echo "... unit_gpu_spike_event_unit_spike_event_test_amplitude_validation"
+	@echo "... unit_gpu_test_axon_gpu"
+	@echo "... unit_gpu_test_dendrite_gpu"
+	@echo "... unit_gpu_test_dragonfly_vision_kernels"
 	@echo "... unit_gpu_test_execution_mode"
 	@echo "... unit_gpu_test_gpu_neuron"
 	@echo "... unit_gpu_test_inference_kernels"
+	@echo "... unit_gpu_test_knowledge_graph_kernels"
 	@echo "... unit_gpu_test_lnn_kernels"
 	@echo "... unit_gpu_test_lnn_ode_kernels"
+	@echo "... unit_gpu_test_memory_consolidation_kernels"
+	@echo "... unit_gpu_test_myelin_gpu"
 	@echo "... unit_gpu_test_network_detect"
+	@echo "... unit_gpu_test_oscillations_kernels"
+	@echo "... unit_gpu_test_plasticity_kernels"
+	@echo "... unit_gpu_test_portia_kernels"
 	@echo "... unit_gpu_test_quantum_kernels"
 	@echo "... unit_gpu_test_simd_detect"
 	@echo "... unit_gpu_test_snn_kernels"
 	@echo "... unit_gpu_test_spike_event"
 	@echo "... unit_gpu_test_substrate_gpu"
 	@echo "... unit_gpu_test_swarm_kernels"
+	@echo "... unit_gpu_test_synapse_kernels"
 	@echo "... unit_gpu_test_tensor_kernels"
 	@echo "... unit_gpu_test_training_kernels"
 	@echo "... unit_information_test_quantum_shannon"

@@ -407,29 +407,15 @@ int lnn_layer_compute_tau(lnn_layer_t* layer, const nimcp_tensor_t* input)
 {
     if (!layer || !input) return LNN_ERROR_NULL_POINTER;
 
-    /* Compute input transformation: h_in = W_in @ input + b_in */
-    nimcp_tensor_t* h_in = nimcp_tensor_mv(layer->W_in, input);
-    if (!h_in) return LNN_ERROR_OPERATION_FAILED;
-
-    nimcp_tensor_t* h_in_biased = nimcp_tensor_add(h_in, layer->b_in);
-    nimcp_tensor_destroy(h_in);
-    if (!h_in_biased) return LNN_ERROR_OPERATION_FAILED;
-
-    /* Compute recurrent transformation: h_rec = W_rec @ x */
-    nimcp_tensor_t* h_rec = nimcp_tensor_mv(layer->W_rec, layer->x);
-    if (!h_rec) {
-        nimcp_tensor_destroy(h_in_biased);
-        return LNN_ERROR_OPERATION_FAILED;
-    }
-
-    /* Concatenate [h_in; h_rec] for tau computation */
-    nimcp_tensor_t* tensors[2] = {h_in_biased, h_rec};
+    /* Concatenate [input; x] for tau computation
+     * W_tau is [n_neurons, n_inputs + n_neurons] so we need input vector
+     * of size (n_inputs + n_neurons).
+     */
+    nimcp_tensor_t* tensors[2] = {(nimcp_tensor_t*)input, layer->x};
     nimcp_tensor_t* tau_input = nimcp_tensor_cat(tensors, 2, 0);
-    nimcp_tensor_destroy(h_in_biased);
-    nimcp_tensor_destroy(h_rec);
     if (!tau_input) return LNN_ERROR_OPERATION_FAILED;
 
-    /* Compute tau modulation: tau_logits = W_tau @ [h_in; h_rec] + b_tau */
+    /* Compute tau modulation: tau_logits = W_tau @ [input; x] + b_tau */
     nimcp_tensor_t* tau_logits = nimcp_tensor_mv(layer->W_tau, tau_input);
     nimcp_tensor_destroy(tau_input);
     if (!tau_logits) return LNN_ERROR_OPERATION_FAILED;

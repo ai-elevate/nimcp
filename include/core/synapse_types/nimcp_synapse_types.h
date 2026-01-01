@@ -59,6 +59,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
+#include "utils/ternary/nimcp_ternary.h"  // Ternary modulation support
 
 #ifdef __cplusplus
 extern "C" {
@@ -246,6 +247,14 @@ typedef struct dopamine_state_t {
     float tau_d2;           /**< D2 time constant (ms), typically 100 ms */
     float modulation;       /**< Net modulation factor [-1,1] (D1-D2 competition) */
     float baseline;         /**< Baseline dopamine level [0,1] */
+
+    // NIMCP 2.10: Ternary modulation mode
+    // WHAT: Discrete modulation states for efficient decision-making
+    // WHY:  Many dopamine signals are binary/ternary (reward/neutral/punishment)
+    // HOW:  Threshold continuous modulation to discrete state
+    trit_t ternary_modulation;      /**< Discrete modulation {LTD=-1, STABLE=0, LTP=+1} */
+    bool use_ternary_modulation;    /**< Use ternary instead of continuous modulation */
+    float ternary_threshold;        /**< Threshold for ternary quantization (default 0.3) */
 } dopamine_state_t;
 
 /**
@@ -271,6 +280,14 @@ typedef struct serotonin_state_t {
     float tau_ht2a;         /**< 5-HT2A time constant (ms), typically 300 ms */
     float modulation;       /**< Net modulation factor [-1,1] */
     float baseline;         /**< Baseline serotonin level [0,1] */
+
+    // NIMCP 2.10: Ternary modulation mode
+    // WHAT: Discrete mood states for efficient emotional processing
+    // WHY:  Mood regulation often involves discrete states (low/normal/elevated)
+    // HOW:  Threshold continuous modulation to discrete state
+    trit_t ternary_modulation;      /**< Discrete modulation {DEPRESSIVE=-1, NEUTRAL=0, ELEVATED=+1} */
+    bool use_ternary_modulation;    /**< Use ternary instead of continuous modulation */
+    float ternary_threshold;        /**< Threshold for ternary quantization (default 0.3) */
 } serotonin_state_t;
 
 /**
@@ -674,6 +691,127 @@ bool synapse_type_is_inhibitory(synapse_type_t type);
  * @return true if modulatory (dopamine, serotonin, ACh)
  */
 bool synapse_type_is_modulatory(synapse_type_t type);
+
+//=============================================================================
+// Ternary Modulation Functions (NIMCP 2.10)
+//=============================================================================
+
+/**
+ * @brief Enable ternary modulation for dopamine state
+ *
+ * WHAT: Switch dopamine state to discrete modulation mode
+ * WHY:  Efficient reward processing with discrete states
+ * HOW:  Set flag and quantize current modulation
+ *
+ * @param state Dopamine state to modify
+ * @param threshold Quantization threshold (default 0.3)
+ */
+void dopamine_enable_ternary_modulation(dopamine_state_t* state, float threshold);
+
+/**
+ * @brief Disable ternary modulation for dopamine state
+ *
+ * WHAT: Switch dopamine state back to continuous modulation
+ * WHY:  Enable fine-grained modulation adjustments
+ * HOW:  Clear flag, modulation remains continuous
+ *
+ * @param state Dopamine state to modify
+ */
+void dopamine_disable_ternary_modulation(dopamine_state_t* state);
+
+/**
+ * @brief Update ternary modulation from continuous value
+ *
+ * WHAT: Quantize continuous modulation to ternary
+ * WHY:  Keep ternary state synchronized with continuous dynamics
+ * HOW:  Apply threshold-based quantization
+ *
+ * @param state Dopamine state
+ */
+void dopamine_update_ternary_modulation(dopamine_state_t* state);
+
+/**
+ * @brief Get effective modulation (ternary or continuous)
+ *
+ * WHAT: Return modulation value regardless of mode
+ * WHY:  Unified interface for synapse computation
+ * HOW:  Check use_ternary_modulation flag
+ *
+ * @param state Dopamine state
+ * @return Effective modulation value [-1, 1]
+ */
+float dopamine_get_effective_modulation(const dopamine_state_t* state);
+
+/**
+ * @brief Enable ternary modulation for serotonin state
+ *
+ * WHAT: Switch serotonin state to discrete modulation mode
+ * WHY:  Efficient mood processing with discrete states
+ * HOW:  Set flag and quantize current modulation
+ *
+ * @param state Serotonin state to modify
+ * @param threshold Quantization threshold (default 0.3)
+ */
+void serotonin_enable_ternary_modulation(serotonin_state_t* state, float threshold);
+
+/**
+ * @brief Disable ternary modulation for serotonin state
+ *
+ * WHAT: Switch serotonin state back to continuous modulation
+ * WHY:  Enable fine-grained modulation adjustments
+ * HOW:  Clear flag, modulation remains continuous
+ *
+ * @param state Serotonin state to modify
+ */
+void serotonin_disable_ternary_modulation(serotonin_state_t* state);
+
+/**
+ * @brief Update ternary modulation from continuous value
+ *
+ * WHAT: Quantize continuous modulation to ternary
+ * WHY:  Keep ternary state synchronized with continuous dynamics
+ * HOW:  Apply threshold-based quantization
+ *
+ * @param state Serotonin state
+ */
+void serotonin_update_ternary_modulation(serotonin_state_t* state);
+
+/**
+ * @brief Get effective modulation (ternary or continuous)
+ *
+ * WHAT: Return modulation value regardless of mode
+ * WHY:  Unified interface for synapse computation
+ * HOW:  Check use_ternary_modulation flag
+ *
+ * @param state Serotonin state
+ * @return Effective modulation value [-1, 1]
+ */
+float serotonin_get_effective_modulation(const serotonin_state_t* state);
+
+/**
+ * @brief Convert continuous modulation to ternary
+ *
+ * WHAT: Quantize modulation value to {-1, 0, +1}
+ * WHY:  Utility for all neuromodulatory systems
+ * HOW:  Threshold-based quantization
+ *
+ * @param modulation Continuous modulation [-1, 1]
+ * @param threshold Quantization threshold
+ * @return Ternary modulation
+ */
+trit_t modulation_to_ternary(float modulation, float threshold);
+
+/**
+ * @brief Convert ternary modulation to continuous
+ *
+ * WHAT: Expand ternary to continuous value
+ * WHY:  Interface with continuous computations
+ * HOW:  Map {-1, 0, +1} to {-1.0, 0.0, +1.0}
+ *
+ * @param ternary_modulation Ternary modulation
+ * @return Continuous modulation value
+ */
+float ternary_to_modulation(trit_t ternary_modulation);
 
 #ifdef __cplusplus
 }

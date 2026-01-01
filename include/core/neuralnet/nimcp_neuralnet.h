@@ -8,6 +8,7 @@
 #include "core/neuron_types/nimcp_neuron_types.h"  // Phase 8.7: Specialized neuron types
 #include "plasticity/stp/nimcp_stp.h"
 #include "plasticity/bcm/nimcp_bcm.h"  // Phase 11: BCM homeostatic plasticity
+#include "utils/ternary/nimcp_ternary.h"  // Ternary weight support
 
 // Forward declare neuron_t so we can use it in function pointers before it's fully defined
 // NOTE: neuron_t is defined below as typedef struct { ... } neuron_t;
@@ -231,9 +232,18 @@ typedef struct synapse_t {
     uint16_t embedding_dim;        /**< Embedding dimension (0 = no embedding, typically 128-512) */
     float semantic_relevance;      /**< Cached relevance score (0-1) for current context */
 
+    // ENHANCEMENT 2: Ternary Weight Support (NIMCP 2.10)
+    // WHAT: Optional ternary weight representation for memory efficiency
+    // WHY:  20x memory savings for synaptic weight matrices (600 bytes -> 1.6 bits)
+    // HOW:  Ternary weight {-1, 0, +1} stored alongside float for optional use
+    trit_t ternary_weight;         /**< Ternary weight {-1, 0, +1} (TRIT_INHIBITORY, TRIT_SILENT, TRIT_EXCITATORY) */
+    bool use_ternary_weight;       /**< Use ternary weight instead of float weight */
+    float ternary_scale;           /**< Scale factor for ternary dequantization (default 1.0) */
+
     // PERFORMANCE NOTE: Function pointers add 24 bytes per synapse (on 64-bit)
     // Type system adds ~40 bytes per synapse (type enum + union state)
     // Semantic embeddings add ~512 bytes per synapse (128D * 4 bytes)
+    // Ternary weights add ~4 bytes per synapse (trit + bool + scale)
     // For 100K synapses: 2.4 MB (functions) + 4.0 MB (types) + 51.2 MB (embeddings) = 57.6 MB overhead
     // Total synapse size: ~600 bytes/synapse with embeddings. Cost justified for intelligent routing.
 } synapse_t;
@@ -348,6 +358,16 @@ typedef struct {
 
     // Bio-async integration
     bool enable_bio_async;             /**< Enable bio-async communication */
+
+    // NIMCP 2.10: Ternary Weight Configuration
+    // WHAT: Enable ternary weight representation for synapses
+    // WHY:  Memory efficiency for large networks (20x savings)
+    // HOW:  Store ternary weights {-1, 0, +1} with optional scale factor
+    bool enable_ternary_weights;       /**< Enable ternary weight mode for new synapses */
+    float ternary_threshold;           /**< Threshold for float->ternary conversion (default 0.3) */
+    float ternary_positive_scale;      /**< Scale for +1 weights (default 1.0) */
+    float ternary_negative_scale;      /**< Scale for -1 weights (default -1.0) */
+    ternary_pack_mode_t ternary_pack_mode;  /**< Packing mode for ternary weight matrices */
 } network_config_t;
 
 /**
@@ -655,6 +675,168 @@ float synapse_compute_relevance(synapse_t *synapse, const float *context_embeddi
  * @param synapse Synapse to cleanup
  */
 void synapse_destroy_embedding(synapse_t *synapse);
+
+//=============================================================================
+// ENHANCEMENT 2: Ternary Weight API (NIMCP 2.10)
+//=============================================================================
+
+/**
+ * @brief Ternary weight matrix for network-level storage
+ *
+ * WHAT: Efficient storage of ternary weights for entire network
+ * WHY:  20x memory savings vs float weight storage
+ * HOW:  Packed ternary matrix indexed by source/target neuron IDs
+ *
+ * MEMORY COMPARISON (10K neurons, 1M synapses):
+ * - Float weights: 1M * 4 bytes = 4 MB
+ * - Ternary unpacked: 1M * 1 byte = 1 MB
+ * - Ternary base-243: 1M * 0.2 bytes = 200 KB
+ */
+typedef struct {
+    trit_matrix_t* weights;        /**< Ternary weight matrix [source x target] */
+    float positive_scale;          /**< Scale for +1 weights */
+    float negative_scale;          /**< Scale for -1 weights */
+    float threshold;               /**< Quantization threshold */
+    uint32_t num_neurons;          /**< Matrix dimension */
+    bool is_sparse;                /**< Use sparse representation */
+} ternary_weight_matrix_t;
+
+/**
+ * @brief Create ternary weight matrix for network
+ *
+ * WHAT: Allocate ternary weight storage for network
+ * WHY:  Enable memory-efficient weight representation
+ * HOW:  Create packed trit matrix with specified dimensions
+ *
+ * @param num_neurons Number of neurons (matrix is num_neurons x num_neurons)
+ * @param pack_mode Packing mode for storage efficiency
+ * @return Ternary weight matrix or NULL on failure
+ *
+ * COMPLEXITY: O(N^2) allocation
+ */
+ternary_weight_matrix_t* ternary_weight_matrix_create(
+    uint32_t num_neurons,
+    ternary_pack_mode_t pack_mode
+);
+
+/**
+ * @brief Destroy ternary weight matrix
+ *
+ * @param twm Matrix to destroy
+ */
+void ternary_weight_matrix_destroy(ternary_weight_matrix_t* twm);
+
+/**
+ * @brief Convert float weight to ternary
+ *
+ * WHAT: Quantize continuous weight to {-1, 0, +1}
+ * WHY:  Prepare weight for ternary storage
+ * HOW:  Threshold-based quantization
+ *
+ * @param weight Float weight value
+ * @param threshold Quantization threshold (values with |weight| < threshold -> 0)
+ * @return Ternary weight
+ */
+trit_t synapse_weight_to_ternary(float weight, float threshold);
+
+/**
+ * @brief Convert ternary weight to float
+ *
+ * WHAT: Dequantize ternary weight to continuous value
+ * WHY:  Enable computation with ternary-stored weights
+ * HOW:  Map {-1, 0, +1} to {-scale, 0, +scale}
+ *
+ * @param ternary_weight Ternary weight value
+ * @param positive_scale Scale for +1 weights
+ * @param negative_scale Scale for -1 weights
+ * @return Float weight value
+ */
+float synapse_ternary_to_weight(trit_t ternary_weight, float positive_scale, float negative_scale);
+
+/**
+ * @brief Enable ternary mode for synapse
+ *
+ * WHAT: Convert synapse from float to ternary weight mode
+ * WHY:  Reduce memory footprint of individual synapse
+ * HOW:  Quantize current weight, set use_ternary_weight flag
+ *
+ * @param synapse Synapse to convert
+ * @param threshold Quantization threshold
+ * @param scale Scale factor for dequantization
+ * @return true on success
+ */
+bool synapse_enable_ternary_weight(synapse_t* synapse, float threshold, float scale);
+
+/**
+ * @brief Disable ternary mode for synapse
+ *
+ * WHAT: Convert synapse back to float weight mode
+ * WHY:  Allow fine-grained weight adjustments
+ * HOW:  Dequantize ternary weight to float, clear flag
+ *
+ * @param synapse Synapse to convert
+ * @return true on success
+ */
+bool synapse_disable_ternary_weight(synapse_t* synapse);
+
+/**
+ * @brief Get effective weight (handles ternary/float transparently)
+ *
+ * WHAT: Return weight value regardless of storage mode
+ * WHY:  Unified interface for synapse computation
+ * HOW:  Check use_ternary_weight, return appropriate value
+ *
+ * @param synapse Synapse to query
+ * @return Effective weight value
+ */
+float synapse_get_effective_weight(const synapse_t* synapse);
+
+/**
+ * @brief Set effective weight (handles ternary/float transparently)
+ *
+ * WHAT: Set weight value regardless of storage mode
+ * WHY:  Unified interface for synapse learning
+ * HOW:  If ternary mode, quantize; otherwise set float
+ *
+ * @param synapse Synapse to modify
+ * @param weight New weight value
+ * @param threshold Threshold for ternary quantization (if in ternary mode)
+ */
+void synapse_set_effective_weight(synapse_t* synapse, float weight, float threshold);
+
+/**
+ * @brief Export network weights to ternary matrix
+ *
+ * WHAT: Create ternary weight matrix from network
+ * WHY:  Enable efficient storage/transmission of learned weights
+ * HOW:  Iterate synapses, quantize to ternary matrix
+ *
+ * @param network Neural network
+ * @param threshold Quantization threshold
+ * @param pack_mode Packing mode
+ * @return Ternary weight matrix or NULL on failure
+ */
+ternary_weight_matrix_t* neural_network_export_ternary_weights(
+    neural_network_t network,
+    float threshold,
+    ternary_pack_mode_t pack_mode
+);
+
+/**
+ * @brief Import ternary weights to network
+ *
+ * WHAT: Load ternary weights into network synapses
+ * WHY:  Restore network from compact representation
+ * HOW:  Dequantize ternary values, set synapse weights
+ *
+ * @param network Neural network
+ * @param twm Ternary weight matrix
+ * @return Number of weights imported, -1 on error
+ */
+int neural_network_import_ternary_weights(
+    neural_network_t network,
+    const ternary_weight_matrix_t* twm
+);
 
 #ifdef __cplusplus
 }

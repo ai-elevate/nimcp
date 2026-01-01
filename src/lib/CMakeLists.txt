@@ -1288,6 +1288,33 @@ set(NIMCP_CORE_SOURCES
     # GPU Myelin module (CUDA kernels for myelin sheath biophysics)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/glial/nimcp_myelin_gpu.cu>
 
+    # Neuromodulator GPU kernels (dopamine, serotonin, acetylcholine, norepinephrine dynamics)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuromodulators/nimcp_neuromodulator_kernels.cu>
+    # Emotion GPU kernels (amygdala, OFC, NAcc, ACC - limbic system)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/emotion/nimcp_emotion_kernels.cu>
+    # Reasoning GPU kernels (propositional logic, rule engine, CSP, causal inference)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/reasoning/nimcp_reasoning_kernels.cu>
+    # Metalearning GPU kernels (MAML, Reptile, ProtoNets, memory-augmented meta-learning)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/metalearning/nimcp_metalearning_kernels.cu>
+    # Portia GPU kernels (spider-inspired vision, salience, attention, spatial cognition)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/portia/nimcp_portia_kernels.cu>
+    # Sleep GPU kernels (NREM/REM consolidation, synaptic homeostasis, memory replay)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/sleep/nimcp_sleep_kernels.cu>
+    # Brain regions GPU kernels (cortical columns, PFC, motor, parietal cortex)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/regions/nimcp_regions_kernels.cu>
+    # Oscillations GPU kernels (neural oscillations, cross-frequency coupling)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/oscillations/nimcp_oscillations_kernels.cu>
+    # Plasticity GPU kernels (STDP, BCM, homeostatic plasticity)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/plasticity/nimcp_plasticity_kernels.cu>
+    # Knowledge graph GPU kernels (graph embedding, relation inference)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/knowledge/nimcp_knowledge_graph_kernels.cu>
+    # Swarm GPU kernels (collective intelligence, pheromone trails, flocking)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/swarm/nimcp_swarm_kernels.cu>
+    # Dragonfly vision GPU kernels (TSDN, target tracking, interception)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/dragonfly/nimcp_dragonfly_vision_kernels.cu>
+    # Synapse GPU kernels (synaptic transmission, plasticity, modulation)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/synapse/nimcp_synapse_kernels.cu>
+
     # Note: CUDA compile flags set below per-file
 
     # Python bindings

@@ -61,7 +61,7 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
     network->train_mode = config->train_mode;
     network->is_training = false;
 
-    // Copy configuration
+    // Deep copy configuration (shallow copy would leave shared pointers)
     network->config = (lnn_config_t*)nimcp_calloc(1, sizeof(lnn_config_t));
     if (!network->config) {
         NIMCP_LOGGING_ERROR("lnn_network_create: Failed to allocate config");
@@ -69,6 +69,20 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
         return NULL;
     }
     memcpy(network->config, config, sizeof(lnn_config_t));
+
+    // Deep copy layer_configs if present
+    if (config->layer_configs && config->n_layers > 0) {
+        network->config->layer_configs = (lnn_layer_config_t*)nimcp_calloc(
+            config->n_layers, sizeof(lnn_layer_config_t));
+        if (!network->config->layer_configs) {
+            NIMCP_LOGGING_ERROR("lnn_network_create: Failed to allocate layer configs");
+            nimcp_free(network->config);
+            nimcp_free(network);
+            return NULL;
+        }
+        memcpy(network->config->layer_configs, config->layer_configs,
+               config->n_layers * sizeof(lnn_layer_config_t));
+    }
 
     // Allocate layer array
     network->layers = (lnn_layer_t**)nimcp_calloc(network->n_layers, sizeof(lnn_layer_t*));

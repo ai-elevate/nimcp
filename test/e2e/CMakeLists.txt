@@ -1406,6 +1406,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)
 endif()
 
+# Include Ternary E2E test subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/ternary/CMakeLists.txt)
+    add_subdirectory(ternary)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

@@ -73,6 +73,27 @@ if(CUDAToolkit_FOUND)
 
     # GPU Plasticity kernel tests (STDP, BCM, homeostatic, STP, calcium dynamics)
     add_gpu_test(test_plasticity_kernels)
+
+    # GPU Neuromodulator kernel tests (dopamine, serotonin, acetylcholine, norepinephrine)
+    add_gpu_test(test_neuromodulator_kernels)
+
+    # GPU Emotion kernel tests (amygdala, OFC, NAcc, ACC - limbic system)
+    add_gpu_test(test_emotion_kernels)
+
+    # GPU Reasoning kernel tests (logic, rule engine, CSP, causal inference)
+    add_gpu_test(test_reasoning_kernels)
+
+    # GPU Metalearning kernel tests (MAML, Reptile, ProtoNets)
+    add_gpu_test(test_metalearning_kernels)
+
+    # GPU Portia kernel tests (spider vision, attention, spatial cognition)
+    add_gpu_test(test_portia_kernels)
+
+    # GPU Sleep kernel tests (NREM/REM consolidation, homeostasis, replay)
+    add_gpu_test(test_sleep_kernels)
+
+    # GPU Brain Regions kernel tests (cortical columns, PFC, motor, parietal)
+    add_gpu_test(test_regions_kernels)
 else()
     message(STATUS "  Skipping CUDA kernel tests (CUDA toolkit not found)")
 endif()

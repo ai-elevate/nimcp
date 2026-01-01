@@ -1065,6 +1065,24 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/ternary")
 endif()
 
 # ============================================================================
+# Ternary Integration Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/ternary")
+    message(STATUS "Adding ternary integration tests...")
+    add_subdirectory(integration/ternary)
+endif()
+
+# ============================================================================
+# Ternary Regression Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/ternary")
+    message(STATUS "Adding ternary representation regression tests...")
+    add_subdirectory(regression/ternary)
+endif()
+
+# ============================================================================
 # Cognitive Integration Tests (General)
 # ============================================================================
 

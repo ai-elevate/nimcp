@@ -1079,3 +1079,317 @@ static float clamp(float x, float min_val, float max_val) {
     if (x > max_val) return max_val;
     return x;
 }
+
+//=============================================================================
+// Ternary Quantization Implementation
+//=============================================================================
+
+int qat_ternary_default_config(qat_ternary_config_t* config) {
+    if (!config) {
+        return -1;
+    }
+
+    memset(config, 0, sizeof(qat_ternary_config_t));
+
+    config->threshold_ratio = 0.7f;
+    config->use_learned_threshold = false;
+    config->initial_threshold = 0.0f;
+    config->symmetric = true;
+    config->use_ste = true;
+    config->ste_gradient_scale = 1.0f;
+    config->normalize_weights = true;
+
+    return 0;
+}
+
+qat_ctx_t* qat_ternary_create(const qat_ternary_config_t* ternary_config) {
+    if (!ternary_config) {
+        return NULL;
+    }
+
+    /* Create base QAT config with ternary dtype */
+    qat_config_t base_config;
+    if (qat_default_config(&base_config) != 0) {
+        return NULL;
+    }
+
+    /* Set ternary-specific settings */
+    base_config.default_weight_dtype = QAT_DTYPE_TERNARY;
+    base_config.default_activation_dtype = QAT_DTYPE_INT8;  /* Keep activations INT8 */
+    base_config.default_scheme = QAT_SCHEME_SYMMETRIC;
+
+    /* Use STE for fake quantization */
+    base_config.fake_quant.method = QAT_FAKE_QUANT_STE;
+    base_config.fake_quant.grad_scale_factor = ternary_config->ste_gradient_scale;
+
+    return qat_create(&base_config);
+}
+
+int qat_ternarize(
+    qat_ctx_t* ctx,
+    nimcp_tensor_t* tensor,
+    const qat_ternary_config_t* ternary_config,
+    qat_ternary_params_t* params
+) {
+    if (!ctx || !tensor || !ternary_config || !params) {
+        return -1;
+    }
+
+    size_t count = nimcp_tensor_numel(tensor);
+    float* data = nimcp_tensor_data(tensor);
+
+    if (!data || count == 0) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+
+    /* Initialize parameters */
+    memset(params, 0, sizeof(qat_ternary_params_t));
+
+    /* Compute mean absolute value for threshold */
+    float sum_abs = 0.0f;
+    float max_abs = 0.0f;
+    for (size_t i = 0; i < count; i++) {
+        float abs_val = fabsf(data[i]);
+        sum_abs += abs_val;
+        if (abs_val > max_abs) {
+            max_abs = abs_val;
+        }
+    }
+    float mean_abs = sum_abs / (float)count;
+
+    /* Compute threshold */
+    float threshold;
+    if (ternary_config->use_learned_threshold && ternary_config->initial_threshold > 0.0f) {
+        threshold = ternary_config->initial_threshold;
+    } else {
+        threshold = ternary_config->threshold_ratio * mean_abs;
+    }
+
+    /* Normalize weights if configured */
+    float* normalized = data;
+    float norm_factor = 1.0f;
+    if (ternary_config->normalize_weights && max_abs > 1e-8f) {
+        norm_factor = max_abs;
+        /* Scale threshold accordingly */
+        threshold = threshold / max_abs;
+    }
+
+    /* Ternarize: apply threshold-based quantization */
+    float sum_positive = 0.0f;
+    float sum_negative = 0.0f;
+    uint64_t n_positive = 0;
+    uint64_t n_negative = 0;
+    uint64_t n_zero = 0;
+
+    for (size_t i = 0; i < count; i++) {
+        float w = ternary_config->normalize_weights ? (data[i] / norm_factor) : data[i];
+
+        if (w > threshold) {
+            sum_positive += w;
+            n_positive++;
+        } else if (w < -threshold) {
+            sum_negative += fabsf(w);
+            n_negative++;
+        } else {
+            n_zero++;
+        }
+    }
+
+    /* Compute scale factors (mean of non-zero values in each direction) */
+    float scale_positive = (n_positive > 0) ? (sum_positive / (float)n_positive) : 1.0f;
+    float scale_negative = (n_negative > 0) ? (sum_negative / (float)n_negative) : 1.0f;
+
+    /* Apply symmetric scaling if configured */
+    if (ternary_config->symmetric) {
+        float avg_scale = (scale_positive + scale_negative) / 2.0f;
+        scale_positive = avg_scale;
+        scale_negative = avg_scale;
+    }
+
+    /* Denormalize scales */
+    if (ternary_config->normalize_weights) {
+        scale_positive *= norm_factor;
+        scale_negative *= norm_factor;
+        threshold *= norm_factor;
+    }
+
+    /* Apply ternarization to tensor data */
+    for (size_t i = 0; i < count; i++) {
+        float w = data[i];
+
+        if (w > threshold) {
+            data[i] = scale_positive;  /* +1 * scale */
+        } else if (w < -threshold) {
+            data[i] = -scale_negative;  /* -1 * scale */
+        } else {
+            data[i] = 0.0f;  /* 0 */
+        }
+    }
+
+    /* Store parameters */
+    params->positive_scale = scale_positive;
+    params->negative_scale = scale_negative;
+    params->threshold = threshold;
+    params->learned_threshold = threshold;
+    params->n_positive = n_positive;
+    params->n_zero = n_zero;
+    params->n_negative = n_negative;
+    params->sparsity = (float)n_zero / (float)count;
+
+    /* Update statistics */
+    ctx->stats.total_steps++;
+
+    if (ctx->config.verbose) {
+        printf("[QAT-Ternary] Ternarized tensor: +1=%lu, 0=%lu, -1=%lu (sparsity=%.2f%%)\n",
+               (unsigned long)n_positive, (unsigned long)n_zero, (unsigned long)n_negative,
+               params->sparsity * 100.0f);
+    }
+
+    nimcp_mutex_unlock(ctx->mutex);
+    return 0;
+}
+
+int qat_ternary_backward(
+    qat_ctx_t* ctx,
+    const nimcp_tensor_t* grad_output,
+    const nimcp_tensor_t* original_weights,
+    const qat_ternary_config_t* ternary_config,
+    nimcp_tensor_t* grad_input
+) {
+    if (!ctx || !grad_output || !original_weights || !ternary_config || !grad_input) {
+        return -1;
+    }
+
+    size_t count = nimcp_tensor_numel(grad_output);
+    size_t weight_count = nimcp_tensor_numel(original_weights);
+    size_t grad_count = nimcp_tensor_numel(grad_input);
+
+    if (count != weight_count || count != grad_count || count == 0) {
+        return -1;
+    }
+
+    const float* grad_out_data = nimcp_tensor_data((nimcp_tensor_t*)grad_output);
+    const float* weight_data = nimcp_tensor_data((nimcp_tensor_t*)original_weights);
+    float* grad_in_data = nimcp_tensor_data(grad_input);
+
+    if (!grad_out_data || !weight_data || !grad_in_data) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(ctx->mutex);
+
+    if (ternary_config->use_ste) {
+        /* Straight-Through Estimator: pass gradient unchanged */
+        /* This is the standard approach for ternary networks */
+        float scale = ternary_config->ste_gradient_scale;
+
+        for (size_t i = 0; i < count; i++) {
+            grad_in_data[i] = grad_out_data[i] * scale;
+        }
+    } else {
+        /* Alternative: clipped gradient (zero gradient for values outside clip range) */
+        /* Compute threshold from weights */
+        float sum_abs = 0.0f;
+        for (size_t i = 0; i < count; i++) {
+            sum_abs += fabsf(weight_data[i]);
+        }
+        float mean_abs = sum_abs / (float)count;
+        float threshold = ternary_config->threshold_ratio * mean_abs;
+
+        /* Clipped STE: zero gradient for values far from zero */
+        float clip_bound = threshold * 2.0f;  /* Allow some margin */
+
+        for (size_t i = 0; i < count; i++) {
+            if (fabsf(weight_data[i]) <= clip_bound) {
+                grad_in_data[i] = grad_out_data[i] * ternary_config->ste_gradient_scale;
+            } else {
+                grad_in_data[i] = 0.0f;
+            }
+        }
+    }
+
+    nimcp_mutex_unlock(ctx->mutex);
+    return 0;
+}
+
+int qat_compute_optimal_ternary_threshold(
+    const nimcp_tensor_t* tensor,
+    float* threshold_out,
+    float* scale_out
+) {
+    if (!tensor || !threshold_out || !scale_out) {
+        return -1;
+    }
+
+    size_t count = nimcp_tensor_numel(tensor);
+    const float* data = nimcp_tensor_data((nimcp_tensor_t*)tensor);
+
+    if (!data || count == 0) {
+        return -1;
+    }
+
+    /* Compute statistics */
+    float sum = 0.0f;
+    float sum_sq = 0.0f;
+    float max_abs = 0.0f;
+
+    for (size_t i = 0; i < count; i++) {
+        float abs_val = fabsf(data[i]);
+        sum += abs_val;
+        sum_sq += abs_val * abs_val;
+        if (abs_val > max_abs) {
+            max_abs = abs_val;
+        }
+    }
+
+    float mean_abs = sum / (float)count;
+    float std_abs = sqrtf(sum_sq / (float)count - mean_abs * mean_abs);
+
+    /* Optimal threshold approximation based on Ternary Weight Networks paper:
+     * threshold ~= 0.7 * mean(|W|)
+     * This minimizes quantization error for typical weight distributions
+     */
+    float threshold = 0.7f * mean_abs;
+
+    /* Refine threshold based on variance:
+     * If high variance, use slightly higher threshold to increase sparsity
+     */
+    if (std_abs > mean_abs * 0.5f) {
+        threshold = mean_abs;  /* Higher threshold for high-variance weights */
+    }
+
+    /* Compute optimal scale as mean of non-zero ternarized values */
+    float sum_positive = 0.0f;
+    uint64_t n_positive = 0;
+
+    for (size_t i = 0; i < count; i++) {
+        if (fabsf(data[i]) > threshold) {
+            sum_positive += fabsf(data[i]);
+            n_positive++;
+        }
+    }
+
+    float scale = (n_positive > 0) ? (sum_positive / (float)n_positive) : 1.0f;
+
+    *threshold_out = threshold;
+    *scale_out = scale;
+
+    return 0;
+}
+
+int qat_get_ternary_stats(
+    const qat_ctx_t* ctx,
+    qat_ternary_params_t* params
+) {
+    if (!ctx || !params) {
+        return -1;
+    }
+
+    /* This would retrieve stored ternary statistics from the context */
+    /* For now, just clear the params as statistics are computed per-ternarization */
+    memset(params, 0, sizeof(qat_ternary_params_t));
+
+    return 0;
+}

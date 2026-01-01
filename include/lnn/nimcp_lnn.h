@@ -24,11 +24,11 @@
 #ifndef NIMCP_LNN_H
 #define NIMCP_LNN_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/* Include all LNN module headers */
+/*
+ * Include all LNN module headers OUTSIDE of extern "C" block.
+ * Each header has its own extern "C" guards as needed.
+ * This prevents issues with C++ templates in CUDA headers.
+ */
 #include "lnn/nimcp_lnn_types.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "lnn/nimcp_lnn_config.h"
@@ -42,6 +42,10 @@ extern "C" {
 #include "lnn/nimcp_lnn_bio_async.h"
 #include "lnn/nimcp_lnn_immune.h"
 #include "lnn/nimcp_lnn_parallel.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Library version */
 #define LNN_VERSION_MAJOR 1

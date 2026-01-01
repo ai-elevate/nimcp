@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "utils/ternary/nimcp_ternary.h"  // Ternary attention mode
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,8 +54,35 @@ extern "C" {
 typedef enum {
     ATTENTION_MODE_TOPDOWN,      // Explicit attention control
     ATTENTION_MODE_BOTTOMUP,     // Salience-driven attention
-    ATTENTION_MODE_MIXED         // Combination of both
+    ATTENTION_MODE_MIXED,        // Combination of both
+    ATTENTION_MODE_TERNARY       // NIMCP 2.10: Discrete ternary attention
 } attention_mode_t;
+
+/**
+ * @brief Ternary attention state values for gate targets (NIMCP 2.10)
+ *
+ * WHAT: Discrete attention states for efficient gating
+ * WHY:  Many attention decisions are naturally ternary (suppress/neutral/focus)
+ * HOW:  Map continuous attention to {-1, 0, +1}
+ *
+ * BIOLOGICAL BASIS:
+ * - Prefrontal cortex often gates information in binary/ternary fashion
+ * - Pulvinar nucleus provides discrete attention signals
+ * - Attentional blink suggests discrete attention windows
+ *
+ * STATES:
+ * - SUPPRESS (-1): Actively inhibit this target (attention away)
+ * - NEUTRAL (0): No attention modulation (baseline)
+ * - FOCUS (+1): Actively enhance this target (attention toward)
+ *
+ * NOTE: Uses trit_t values from ternary types for consistency:
+ * - TRIT_NEGATIVE (-1) = SUPPRESS
+ * - TRIT_UNKNOWN (0) = NEUTRAL
+ * - TRIT_POSITIVE (+1) = FOCUS
+ */
+#define TERNARY_ATTENTION_SUPPRESS TRIT_NEGATIVE
+#define TERNARY_ATTENTION_NEUTRAL TRIT_UNKNOWN
+#define TERNARY_ATTENTION_FOCUS TRIT_POSITIVE
 
 /**
  * @brief Attention target
@@ -66,6 +94,10 @@ typedef struct {
     float combined_weight;       // Final attention weight [0, 1]
     bool in_spotlight;           // Within attention focus
     uint64_t last_update_ms;     // Last weight update time
+
+    // NIMCP 2.10: Ternary attention support
+    trit_t ternary_state;        // Discrete attention {SUPPRESS, NEUTRAL, FOCUS}
+    bool use_ternary;            // Use ternary instead of continuous
 } attention_target_t;
 
 /**
@@ -90,6 +122,13 @@ typedef struct {
     float topdown_weight;                // Top-down influence [0, 1]
     float bottomup_weight;               // Bottom-up influence [0, 1]
     float inhibition_strength;           // Lateral inhibition strength
+
+    // NIMCP 2.10: Ternary attention configuration
+    bool enable_ternary_mode;            // Enable ternary attention mode
+    float ternary_focus_threshold;       // Threshold for FOCUS state (default 0.7)
+    float ternary_suppress_threshold;    // Threshold for SUPPRESS state (default 0.3)
+    float ternary_focus_gain;            // Gain multiplier for focused targets (default 2.0)
+    float ternary_suppress_gain;         // Gain multiplier for suppressed targets (default 0.2)
 } attention_gate_config_t;
 
 /**
@@ -236,6 +275,121 @@ bool attention_gate_get_stats(const attention_gate_t* gate,
  * @brief Get default configuration
  */
 attention_gate_config_t attention_gate_default_config(void);
+
+//=============================================================================
+// Ternary Attention API (NIMCP 2.10)
+//=============================================================================
+
+/**
+ * @brief Set ternary attention state for target
+ *
+ * WHAT: Directly set discrete attention state
+ * WHY:  Efficient attention control with discrete states
+ * HOW:  Set ternary_state, enable use_ternary flag
+ *
+ * @param gate Gate handle
+ * @param source_id Source identifier
+ * @param target_id Target identifier
+ * @param state Ternary attention state {SUPPRESS, NEUTRAL, FOCUS}
+ * @return true on success, false on error
+ */
+bool attention_gate_set_ternary_state(attention_gate_t* gate,
+                                       uint32_t source_id,
+                                       uint32_t target_id,
+                                       trit_t state);
+
+/**
+ * @brief Get ternary attention state for target
+ *
+ * WHAT: Retrieve discrete attention state
+ * WHY:  Query current ternary attention
+ * HOW:  Return ternary_state from target
+ *
+ * @param gate Gate handle
+ * @param source_id Source identifier
+ * @param target_id Target identifier
+ * @param state Output: ternary attention state
+ * @return true on success, false if target not found
+ */
+bool attention_gate_get_ternary_state(const attention_gate_t* gate,
+                                       uint32_t source_id,
+                                       uint32_t target_id,
+                                       trit_t* state);
+
+/**
+ * @brief Convert all targets to ternary attention mode
+ *
+ * WHAT: Batch convert continuous attention to ternary
+ * WHY:  Switch entire gate to discrete mode
+ * HOW:  Quantize combined_weight using thresholds
+ *
+ * @param gate Gate handle
+ * @return Number of targets converted
+ */
+uint32_t attention_gate_convert_to_ternary(attention_gate_t* gate);
+
+/**
+ * @brief Convert all targets back to continuous attention mode
+ *
+ * WHAT: Batch convert ternary attention to continuous
+ * WHY:  Switch back to fine-grained control
+ * HOW:  Map ternary states to weight values
+ *
+ * @param gate Gate handle
+ * @return Number of targets converted
+ */
+uint32_t attention_gate_convert_to_continuous(attention_gate_t* gate);
+
+/**
+ * @brief Apply ternary attention gain modulation
+ *
+ * WHAT: Modulate input signal based on ternary attention
+ * WHY:  Efficient attention-based gating
+ * HOW:  Multiply by gain based on ternary state
+ *
+ * @param gate Gate handle
+ * @param source_id Source identifier
+ * @param target_id Target identifier
+ * @param input Input signal value
+ * @return Modulated output signal
+ *
+ * ALGORITHM:
+ * - SUPPRESS: output = input * suppress_gain (default 0.2)
+ * - NEUTRAL: output = input * 1.0 (no change)
+ * - FOCUS: output = input * focus_gain (default 2.0)
+ */
+float attention_gate_apply_ternary_modulation(const attention_gate_t* gate,
+                                               uint32_t source_id,
+                                               uint32_t target_id,
+                                               float input);
+
+/**
+ * @brief Get ternary attention distribution
+ *
+ * WHAT: Count targets in each ternary state
+ * WHY:  Analyze attention allocation
+ * HOW:  Count SUPPRESS, NEUTRAL, FOCUS targets
+ *
+ * @param gate Gate handle
+ * @param n_suppress Output: count of suppressed targets
+ * @param n_neutral Output: count of neutral targets
+ * @param n_focus Output: count of focused targets
+ */
+void attention_gate_get_ternary_distribution(const attention_gate_t* gate,
+                                              uint32_t* n_suppress,
+                                              uint32_t* n_neutral,
+                                              uint32_t* n_focus);
+
+/**
+ * @brief Update ternary states from continuous weights
+ *
+ * WHAT: Synchronize ternary states with continuous weights
+ * WHY:  Keep ternary states consistent after weight updates
+ * HOW:  Requantize using config thresholds
+ *
+ * @param gate Gate handle
+ */
+void attention_gate_update_ternary_states(attention_gate_t* gate);
 
 #ifdef __cplusplus
 }

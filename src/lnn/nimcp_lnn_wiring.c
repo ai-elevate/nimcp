@@ -878,12 +878,21 @@ lnn_wiring_t* lnn_wiring_create(lnn_wiring_type_t type, uint32_t n_neurons, floa
             return lnn_wiring_create_full(n_neurons);
 
         case LNN_WIRING_NCP:
-            /* For NCP, need specific neuron counts - use default split */
+            /* For NCP, need specific neuron counts - use default split.
+             * NCP requires at least 8 neurons (minimum 1 per group × 4 groups + slack).
+             * For small networks, fall back to full connectivity.
+             */
             {
-                uint32_t n_sensory = n_neurons / 4;
-                uint32_t n_inter = n_neurons / 2;
-                uint32_t n_command = n_neurons / 8;
+                if (n_neurons < 8) {
+                    NIMCP_LOGGING_WARN("NCP wiring requires >= 8 neurons, using full connectivity");
+                    return lnn_wiring_create_full(n_neurons);
+                }
+                /* Ensure each group has at least 1 neuron */
+                uint32_t n_sensory = (n_neurons / 4) > 0 ? (n_neurons / 4) : 1;
+                uint32_t n_inter = (n_neurons / 2) > 0 ? (n_neurons / 2) : 1;
+                uint32_t n_command = (n_neurons / 8) > 0 ? (n_neurons / 8) : 1;
                 uint32_t n_motor = n_neurons - n_sensory - n_inter - n_command;
+                if (n_motor == 0) n_motor = 1;
                 return lnn_wiring_create_ncp(n_sensory, n_inter, n_command, n_motor);
             }
 

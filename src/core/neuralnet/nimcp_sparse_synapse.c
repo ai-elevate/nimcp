@@ -1568,3 +1568,287 @@ int sparse_synapse_remove_with_metadata(
     // Remove handle
     return sparse_synapse_remove(handle_pool, storage, index);
 }
+
+//=============================================================================
+// Ternary-Aware Sparse Synapse Operations (NIMCP 2.10)
+//=============================================================================
+
+/**
+ * @brief Add synapse with ternary weight
+ */
+int sparse_synapse_add_ternary(
+    sparse_synapse_pool_t pool,
+    sparse_synapse_storage_t* storage,
+    uint32_t target_neuron_id,
+    trit_t ternary_weight
+) {
+    if (!validate_pool(pool) || !validate_storage(storage)) {
+        return -1;
+    }
+
+    // First add with zero float weight
+    int result = sparse_synapse_add(pool, storage, target_neuron_id, 0.0f);
+    if (result != 0) {
+        return result;
+    }
+
+    // Get the newly added handle and set ternary fields
+    uint32_t count = sparse_synapse_count(storage);
+    if (count == 0) {
+        return -1;
+    }
+
+    synapse_handle_t* handle = sparse_synapse_get(storage, count - 1);
+    if (handle == NULL) {
+        return -1;
+    }
+
+    handle->ternary_weight = ternary_weight;
+    handle->use_ternary_weight = 1;
+
+    return 0;
+}
+
+/**
+ * @brief Get effective weight from handle (ternary or float)
+ */
+float sparse_synapse_get_effective_weight(
+    const synapse_handle_t* handle,
+    float positive_scale,
+    float negative_scale
+) {
+    if (handle == NULL) {
+        return 0.0f;
+    }
+
+    if (handle->use_ternary_weight) {
+        if (handle->ternary_weight == TRIT_POSITIVE) {
+            return positive_scale;
+        } else if (handle->ternary_weight == TRIT_NEGATIVE) {
+            return negative_scale;
+        }
+        return 0.0f;
+    }
+
+    return handle->weight;
+}
+
+/**
+ * @brief Set weight with automatic ternary quantization
+ */
+void sparse_synapse_set_weight(
+    synapse_handle_t* handle,
+    float weight,
+    float threshold,
+    bool enable_ternary
+) {
+    if (handle == NULL) {
+        return;
+    }
+
+    if (enable_ternary) {
+        if (weight >= threshold) {
+            handle->ternary_weight = TRIT_POSITIVE;
+        } else if (weight <= -threshold) {
+            handle->ternary_weight = TRIT_NEGATIVE;
+        } else {
+            handle->ternary_weight = TRIT_UNKNOWN;
+        }
+        handle->use_ternary_weight = 1;
+    } else {
+        handle->weight = weight;
+        handle->use_ternary_weight = 0;
+    }
+}
+
+/**
+ * @brief Convert storage to ternary weights
+ */
+uint32_t sparse_synapse_convert_to_ternary(
+    sparse_synapse_storage_t* storage,
+    float threshold
+) {
+    if (!validate_storage(storage)) {
+        return 0;
+    }
+
+    uint32_t converted = 0;
+    uint32_t total = storage->embedded_count + storage->overflow_count;
+
+    // Process embedded synapses
+    for (uint32_t i = 0; i < storage->embedded_count; i++) {
+        synapse_handle_t* handle = &storage->embedded[i];
+
+        // Quantize float weight to ternary
+        if (handle->weight >= threshold) {
+            handle->ternary_weight = TRIT_POSITIVE;
+        } else if (handle->weight <= -threshold) {
+            handle->ternary_weight = TRIT_NEGATIVE;
+        } else {
+            handle->ternary_weight = TRIT_UNKNOWN;
+        }
+        handle->use_ternary_weight = 1;
+        converted++;
+    }
+
+    // Process overflow synapses
+    for (uint32_t i = 0; i < storage->overflow_count; i++) {
+        synapse_handle_t* handle = &storage->overflow[i];
+
+        if (handle->weight >= threshold) {
+            handle->ternary_weight = TRIT_POSITIVE;
+        } else if (handle->weight <= -threshold) {
+            handle->ternary_weight = TRIT_NEGATIVE;
+        } else {
+            handle->ternary_weight = TRIT_UNKNOWN;
+        }
+        handle->use_ternary_weight = 1;
+        converted++;
+    }
+
+    return converted;
+}
+
+/**
+ * @brief Convert storage back to float weights
+ */
+uint32_t sparse_synapse_convert_to_float(
+    sparse_synapse_storage_t* storage,
+    float positive_scale,
+    float negative_scale
+) {
+    if (!validate_storage(storage)) {
+        return 0;
+    }
+
+    uint32_t converted = 0;
+
+    // Process embedded synapses
+    for (uint32_t i = 0; i < storage->embedded_count; i++) {
+        synapse_handle_t* handle = &storage->embedded[i];
+
+        if (handle->use_ternary_weight) {
+            if (handle->ternary_weight == TRIT_POSITIVE) {
+                handle->weight = positive_scale;
+            } else if (handle->ternary_weight == TRIT_NEGATIVE) {
+                handle->weight = negative_scale;
+            } else {
+                handle->weight = 0.0f;
+            }
+            handle->use_ternary_weight = 0;
+            converted++;
+        }
+    }
+
+    // Process overflow synapses
+    for (uint32_t i = 0; i < storage->overflow_count; i++) {
+        synapse_handle_t* handle = &storage->overflow[i];
+
+        if (handle->use_ternary_weight) {
+            if (handle->ternary_weight == TRIT_POSITIVE) {
+                handle->weight = positive_scale;
+            } else if (handle->ternary_weight == TRIT_NEGATIVE) {
+                handle->weight = negative_scale;
+            } else {
+                handle->weight = 0.0f;
+            }
+            handle->use_ternary_weight = 0;
+            converted++;
+        }
+    }
+
+    return converted;
+}
+
+/**
+ * @brief Get ternary weight statistics for storage
+ */
+void sparse_synapse_ternary_stats(
+    const sparse_synapse_storage_t* storage,
+    uint32_t* n_positive,
+    uint32_t* n_zero,
+    uint32_t* n_negative,
+    uint32_t* n_ternary_enabled
+) {
+    uint32_t pos = 0, zero = 0, neg = 0, ternary = 0;
+
+    if (validate_storage(storage)) {
+        // Process embedded synapses
+        for (uint32_t i = 0; i < storage->embedded_count; i++) {
+            const synapse_handle_t* handle = &storage->embedded[i];
+            if (handle->use_ternary_weight) {
+                ternary++;
+                if (handle->ternary_weight == TRIT_POSITIVE) pos++;
+                else if (handle->ternary_weight == TRIT_NEGATIVE) neg++;
+                else zero++;
+            }
+        }
+
+        // Process overflow synapses
+        for (uint32_t i = 0; i < storage->overflow_count; i++) {
+            const synapse_handle_t* handle = &storage->overflow[i];
+            if (handle->use_ternary_weight) {
+                ternary++;
+                if (handle->ternary_weight == TRIT_POSITIVE) pos++;
+                else if (handle->ternary_weight == TRIT_NEGATIVE) neg++;
+                else zero++;
+            }
+        }
+    }
+
+    if (n_positive) *n_positive = pos;
+    if (n_zero) *n_zero = zero;
+    if (n_negative) *n_negative = neg;
+    if (n_ternary_enabled) *n_ternary_enabled = ternary;
+}
+
+/**
+ * @brief Ternary-aware dot product for sparse synapses
+ */
+float sparse_synapse_ternary_dot(
+    const sparse_synapse_storage_t* storage,
+    const float* inputs,
+    float positive_scale,
+    float negative_scale
+) {
+    if (!validate_storage(storage) || inputs == NULL) {
+        return 0.0f;
+    }
+
+    float sum = 0.0f;
+
+    // Process embedded synapses
+    for (uint32_t i = 0; i < storage->embedded_count; i++) {
+        const synapse_handle_t* handle = &storage->embedded[i];
+        float input_val = inputs[handle->target_neuron_id];
+
+        if (handle->use_ternary_weight) {
+            if (handle->ternary_weight == TRIT_POSITIVE) {
+                sum += input_val * positive_scale;
+            } else if (handle->ternary_weight == TRIT_NEGATIVE) {
+                sum += input_val * negative_scale;
+            }
+            // TRIT_UNKNOWN contributes 0
+        } else {
+            sum += input_val * handle->weight;
+        }
+    }
+
+    // Process overflow synapses
+    for (uint32_t i = 0; i < storage->overflow_count; i++) {
+        const synapse_handle_t* handle = &storage->overflow[i];
+        float input_val = inputs[handle->target_neuron_id];
+
+        if (handle->use_ternary_weight) {
+            if (handle->ternary_weight == TRIT_POSITIVE) {
+                sum += input_val * positive_scale;
+            } else if (handle->ternary_weight == TRIT_NEGATIVE) {
+                sum += input_val * negative_scale;
+            }
+        } else {
+            sum += input_val * handle->weight;
+        }
+    }
+
+    return sum;
+}

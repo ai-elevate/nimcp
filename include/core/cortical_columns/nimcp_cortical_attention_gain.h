@@ -585,6 +585,285 @@ bool cortical_attention_is_bio_async_connected(
     const cortical_attention_gain_t* attention
 );
 
+/* ============================================================================
+ * Ternary Gain Modulation API
+ * ============================================================================ */
+
+/**
+ * @brief Ternary gain state
+ *
+ * WHAT: Discrete gain levels for efficient cortical computation
+ * WHY:  Simplifies gain control to three biologically-relevant states
+ * HOW:  SUPPRESSED reduces activity, BASELINE maintains, AMPLIFIED enhances
+ *
+ * BIOLOGICAL BASIS:
+ * - Attention modulates cortical gain in discrete modes
+ * - Inhibitory networks create suppressed states
+ * - Feedforward/feedback balance determines baseline
+ * - Cholinergic neuromodulation enables amplification
+ */
+typedef enum {
+    CORTICAL_GAIN_SUPPRESSED = -1,   /**< Active suppression (inhibition dominant) */
+    CORTICAL_GAIN_BASELINE = 0,      /**< Neutral/default gain */
+    CORTICAL_GAIN_AMPLIFIED = 1      /**< Enhanced gain (attention focus) */
+} ternary_cortical_gain_t;
+
+/**
+ * @brief Ternary gain configuration
+ *
+ * WHAT: Configuration for discrete ternary gain control
+ * WHY:  Simplify continuous gain to discrete states
+ * HOW:  Thresholds determine state transitions, gains set modulation strength
+ */
+typedef struct {
+    float amplify_threshold;         /**< Attention threshold for amplification (default: 0.6) */
+    float suppress_threshold;        /**< Attention threshold for suppression (default: 0.3) */
+    float amplified_gain;            /**< Gain when amplified (default: 2.0) */
+    float baseline_gain;             /**< Gain when baseline (default: 1.0) */
+    float suppressed_gain;           /**< Gain when suppressed (default: 0.5) */
+    bool use_hysteresis;             /**< Prevent rapid state changes */
+    float hysteresis_margin;         /**< Hysteresis margin (default: 0.05) */
+    bool per_layer;                  /**< Apply different ternary gains per layer */
+    float layer_23_boost;            /**< Extra amplification for L2/3 (default: 1.2) */
+} ternary_gain_config_t;
+
+/**
+ * @brief Ternary gain statistics
+ *
+ * WHAT: Runtime statistics for ternary gain system
+ * WHY:  Monitor state distribution and transitions
+ */
+typedef struct {
+    uint64_t total_updates;          /**< Total gain update calls */
+    uint32_t suppressed_count;       /**< Columns in suppressed state */
+    uint32_t baseline_count;         /**< Columns in baseline state */
+    uint32_t amplified_count;        /**< Columns in amplified state */
+    uint32_t state_transitions;      /**< Total state transitions */
+    float avg_gain_applied;          /**< Average gain across columns */
+} ternary_gain_stats_t;
+
+/**
+ * @brief Get default ternary gain configuration
+ *
+ * WHAT: Provide sensible defaults for ternary gain
+ * WHY:  Easy initialization
+ * HOW:  Set biologically-plausible thresholds and gains
+ *
+ * @param config Output configuration
+ * @return 0 on success, -1 on error
+ */
+static inline int ternary_gain_default_config(ternary_gain_config_t* config) {
+    if (!config) return -1;
+
+    config->amplify_threshold = 0.6f;
+    config->suppress_threshold = 0.3f;
+    config->amplified_gain = 2.0f;
+    config->baseline_gain = 1.0f;
+    config->suppressed_gain = 0.5f;
+    config->use_hysteresis = true;
+    config->hysteresis_margin = 0.05f;
+    config->per_layer = true;
+    config->layer_23_boost = 1.2f;
+
+    return 0;
+}
+
+/**
+ * @brief Enable ternary gain mode
+ *
+ * WHAT: Switch attention system to ternary gain mode
+ * WHY:  Simplify continuous gain to discrete states
+ * HOW:  Store ternary config, enable ternary processing
+ *
+ * @param attention Attention system
+ * @param config Ternary configuration (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int cortical_attention_enable_ternary(
+    cortical_attention_gain_t* attention,
+    const ternary_gain_config_t* config
+);
+
+/**
+ * @brief Disable ternary gain mode
+ *
+ * WHAT: Return to continuous gain mode
+ * WHY:  Allow switching between discrete and continuous
+ * HOW:  Clear ternary config, disable ternary processing
+ *
+ * @param attention Attention system
+ * @return 0 on success
+ */
+int cortical_attention_disable_ternary(cortical_attention_gain_t* attention);
+
+/**
+ * @brief Check if ternary mode is enabled
+ *
+ * @param attention Attention system
+ * @return true if ternary mode active
+ */
+bool cortical_attention_is_ternary(const cortical_attention_gain_t* attention);
+
+/**
+ * @brief Compute ternary gain state for minicolumn
+ *
+ * WHAT: Determine discrete gain state from continuous attention
+ * WHY:  Map continuous attention to discrete gain level
+ * HOW:  Apply thresholds with optional hysteresis
+ *
+ * @param attention Attention system
+ * @param minicolumn_idx Minicolumn index
+ * @param attention_value Continuous attention value [0,1]
+ * @return Ternary gain state
+ */
+ternary_cortical_gain_t cortical_attention_compute_ternary_state(
+    const cortical_attention_gain_t* attention,
+    uint32_t minicolumn_idx,
+    float attention_value
+);
+
+/**
+ * @brief Apply ternary gain to activation
+ *
+ * WHAT: Modulate activation using discrete ternary gain
+ * WHY:  Efficient attention-based modulation
+ * HOW:  Look up ternary state, apply corresponding gain
+ *
+ * @param attention Attention system
+ * @param minicolumn_idx Minicolumn index
+ * @param activation Current activation
+ * @return Gain-modulated activation
+ */
+float cortical_attention_apply_ternary_gain(
+    const cortical_attention_gain_t* attention,
+    uint32_t minicolumn_idx,
+    float activation
+);
+
+/**
+ * @brief Get ternary state for minicolumn
+ *
+ * WHAT: Query current ternary gain state
+ * WHY:  Access discrete state for external processing
+ * HOW:  Return cached ternary state
+ *
+ * @param attention Attention system
+ * @param minicolumn_idx Minicolumn index
+ * @return Current ternary gain state
+ */
+ternary_cortical_gain_t cortical_attention_get_ternary_state(
+    const cortical_attention_gain_t* attention,
+    uint32_t minicolumn_idx
+);
+
+/**
+ * @brief Update all ternary gain states
+ *
+ * WHAT: Recompute ternary states for all minicolumns
+ * WHY:  Batch update after attention changes
+ * HOW:  Apply thresholds to all continuous attention values
+ *
+ * @param attention Attention system
+ * @return 0 on success
+ */
+int cortical_attention_update_ternary_states(
+    cortical_attention_gain_t* attention
+);
+
+/**
+ * @brief Get ternary gain statistics
+ *
+ * WHAT: Retrieve ternary-specific statistics
+ * WHY:  Monitor state distribution
+ * HOW:  Count columns in each state
+ *
+ * @param attention Attention system
+ * @param stats Output statistics
+ * @return 0 on success
+ */
+int cortical_attention_get_ternary_stats(
+    const cortical_attention_gain_t* attention,
+    ternary_gain_stats_t* stats
+);
+
+/**
+ * @brief Convert ternary gain to float
+ *
+ * WHAT: Get gain multiplier for ternary state
+ * WHY:  Convert discrete state to continuous gain
+ * HOW:  Look up gain value from config
+ *
+ * @param attention Attention system
+ * @param state Ternary gain state
+ * @return Gain multiplier value
+ */
+float cortical_attention_ternary_to_gain(
+    const cortical_attention_gain_t* attention,
+    ternary_cortical_gain_t state
+);
+
+/**
+ * @brief Convert attention value to ternary
+ *
+ * WHAT: Discretize continuous attention to ternary state
+ * WHY:  Standalone conversion without context
+ * HOW:  Apply configured thresholds
+ *
+ * @param config Ternary configuration
+ * @param attention_value Continuous attention [0,1]
+ * @return Ternary gain state
+ */
+static inline ternary_cortical_gain_t ternary_gain_from_attention(
+    const ternary_gain_config_t* config,
+    float attention_value
+) {
+    if (!config) {
+        /* Use default thresholds */
+        if (attention_value >= 0.6f) return CORTICAL_GAIN_AMPLIFIED;
+        if (attention_value <= 0.3f) return CORTICAL_GAIN_SUPPRESSED;
+        return CORTICAL_GAIN_BASELINE;
+    }
+
+    if (attention_value >= config->amplify_threshold) {
+        return CORTICAL_GAIN_AMPLIFIED;
+    }
+    if (attention_value <= config->suppress_threshold) {
+        return CORTICAL_GAIN_SUPPRESSED;
+    }
+    return CORTICAL_GAIN_BASELINE;
+}
+
+/**
+ * @brief Get gain value for ternary state
+ *
+ * WHAT: Convert ternary state to gain multiplier
+ * WHY:  Apply discrete state to activations
+ * HOW:  Look up configured gain value
+ *
+ * @param config Ternary configuration
+ * @param state Ternary gain state
+ * @return Gain multiplier
+ */
+static inline float ternary_gain_to_value(
+    const ternary_gain_config_t* config,
+    ternary_cortical_gain_t state
+) {
+    if (!config) {
+        /* Use default gains */
+        switch (state) {
+            case CORTICAL_GAIN_AMPLIFIED:  return 2.0f;
+            case CORTICAL_GAIN_SUPPRESSED: return 0.5f;
+            default:                        return 1.0f;
+        }
+    }
+
+    switch (state) {
+        case CORTICAL_GAIN_AMPLIFIED:  return config->amplified_gain;
+        case CORTICAL_GAIN_SUPPRESSED: return config->suppressed_gain;
+        default:                        return config->baseline_gain;
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif

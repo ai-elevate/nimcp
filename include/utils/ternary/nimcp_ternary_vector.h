@@ -442,6 +442,27 @@ static inline void trit_vector_count(const trit_vector_t* vec,
 }
 
 /**
+ * @brief Get memory size of a ternary vector in bytes
+ *
+ * @param vec Input vector
+ * @return Memory size in bytes (data + overhead)
+ */
+static inline size_t trit_vector_memory_size(const trit_vector_t* vec) {
+    if (!vec || vec->magic != TERNARY_MAGIC) return 0;
+
+    size_t data_size;
+    if (vec->pack_mode == TERNARY_PACK_NONE) {
+        data_size = vec->length * sizeof(trit_t);
+    } else if (vec->pack_mode == TERNARY_PACK_2BIT) {
+        data_size = (vec->length + 3) / 4;  // 4 trits per byte
+    } else {
+        data_size = (vec->length + 4) / 5;  // 5 trits per byte
+    }
+
+    return sizeof(trit_vector_t) + data_size;
+}
+
+/**
  * @brief Compute dot product of two vectors
  *
  * @param a First vector

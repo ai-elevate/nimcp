@@ -708,3 +708,116 @@ bool synapse_type_is_modulatory(synapse_type_t type) {
             type == SYNAPSE_SEROTONIN ||
             type == SYNAPSE_ACETYLCHOLINE);
 }
+
+//=============================================================================
+// Ternary Modulation Functions (NIMCP 2.10)
+//=============================================================================
+
+/**
+ * @brief Convert continuous modulation to ternary
+ */
+trit_t modulation_to_ternary(float modulation, float threshold) {
+    if (modulation >= threshold) {
+        return TRIT_POSITIVE;
+    } else if (modulation <= -threshold) {
+        return TRIT_NEGATIVE;
+    }
+    return TRIT_UNKNOWN;
+}
+
+/**
+ * @brief Convert ternary modulation to continuous
+ */
+float ternary_to_modulation(trit_t ternary_modulation) {
+    return (float)ternary_modulation;
+}
+
+/**
+ * @brief Enable ternary modulation for dopamine state
+ */
+void dopamine_enable_ternary_modulation(dopamine_state_t* state, float threshold) {
+    if (!state) return;
+
+    state->ternary_threshold = threshold;
+    state->use_ternary_modulation = true;
+    dopamine_update_ternary_modulation(state);
+}
+
+/**
+ * @brief Disable ternary modulation for dopamine state
+ */
+void dopamine_disable_ternary_modulation(dopamine_state_t* state) {
+    if (!state) return;
+
+    state->use_ternary_modulation = false;
+}
+
+/**
+ * @brief Update ternary modulation from continuous value
+ */
+void dopamine_update_ternary_modulation(dopamine_state_t* state) {
+    if (!state) return;
+
+    state->ternary_modulation = modulation_to_ternary(
+        state->modulation,
+        state->ternary_threshold
+    );
+}
+
+/**
+ * @brief Get effective modulation (ternary or continuous)
+ */
+float dopamine_get_effective_modulation(const dopamine_state_t* state) {
+    if (!state) return 0.0f;
+
+    if (state->use_ternary_modulation) {
+        return ternary_to_modulation(state->ternary_modulation);
+    }
+
+    return state->modulation;
+}
+
+/**
+ * @brief Enable ternary modulation for serotonin state
+ */
+void serotonin_enable_ternary_modulation(serotonin_state_t* state, float threshold) {
+    if (!state) return;
+
+    state->ternary_threshold = threshold;
+    state->use_ternary_modulation = true;
+    serotonin_update_ternary_modulation(state);
+}
+
+/**
+ * @brief Disable ternary modulation for serotonin state
+ */
+void serotonin_disable_ternary_modulation(serotonin_state_t* state) {
+    if (!state) return;
+
+    state->use_ternary_modulation = false;
+}
+
+/**
+ * @brief Update ternary modulation from continuous value
+ */
+void serotonin_update_ternary_modulation(serotonin_state_t* state) {
+    if (!state) return;
+
+    state->ternary_modulation = modulation_to_ternary(
+        state->modulation,
+        state->ternary_threshold
+    );
+}
+
+/**
+ * @brief Get effective modulation (ternary or continuous)
+ */
+float serotonin_get_effective_modulation(const serotonin_state_t* state) {
+    if (!state) return 0.0f;
+
+    if (state->use_ternary_modulation) {
+        return ternary_to_modulation(state->ternary_modulation);
+    }
+
+    return state->modulation;
+}

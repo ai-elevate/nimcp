@@ -100,6 +100,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "utils/ternary/nimcp_ternary.h"  // Ternary weight support
 
 #ifdef __cplusplus
 extern "C" {
@@ -161,10 +162,10 @@ extern "C" {
 #define SPARSE_SYNAPSE_NO_METADATA UINT32_MAX
 
 /**
- * @brief Synapse handle (12 bytes)
+ * @brief Synapse handle (16 bytes with ternary, 12 bytes without)
  *
  * WHAT: Lightweight synapse reference with optional link to full metadata
- * WHY:  Reduces memory from 600 bytes → 12 bytes for simple synapses
+ * WHY:  Reduces memory from 600 bytes -> 12-16 bytes for simple synapses
  * HOW:  Store target ID, weight, and metadata index; lookup full data on-demand
  *
  * DESIGN RATIONALE:
@@ -179,7 +180,7 @@ extern "C" {
  * Full synapse data available via metadata_index for advanced features.
  *
  * DUAL-LAYER ARCHITECTURE:
- * Layer 1 (Handles - always present): 12 bytes/synapse
+ * Layer 1 (Handles - always present): 12-16 bytes/synapse
  *   - Fast forward propagation
  *   - O(1) target lookup, O(1) weight access
  *   - 50x reduction vs full synapse_t
@@ -189,10 +190,10 @@ extern "C" {
  *   - Allocated only when needed (5% of synapses)
  *   - Linked via metadata_index
  *
- * MEMORY LAYOUT (12 bytes, tightly packed):
- * ┌────────────────────────┬────────────────────────┬────────────────────────┐
- * │ target_neuron_id (4B)  │ weight (4B float)      │ metadata_index (4B)    │
- * └────────────────────────┴────────────────────────┴────────────────────────┘
+ * MEMORY LAYOUT (16 bytes with ternary, tightly packed):
+ * ┌────────────────────────┬────────────────────────┬────────────────────────┬─────────────────────┐
+ * │ target_neuron_id (4B)  │ weight (4B float)      │ metadata_index (4B)    │ ternary fields (4B) │
+ * └────────────────────────┴────────────────────────┴────────────────────────┴─────────────────────┘
  *
  * USAGE PATTERN:
  * ```c
@@ -207,6 +208,14 @@ typedef struct {
     uint32_t target_neuron_id;  /**< Target neuron index in network */
     float weight;               /**< Synaptic weight (strength) */
     uint32_t metadata_index;    /**< Index into synapse metadata pool (SPARSE_SYNAPSE_NO_METADATA = none) */
+
+    // NIMCP 2.10: Ternary weight support for sparse synapses
+    // WHAT: Optional ternary weight field for memory efficiency
+    // WHY:  When combined with packed storage, reduces weight from 4B to 0.2B
+    // HOW:  Set use_ternary_weight=true to use ternary_weight instead of weight
+    trit_t ternary_weight;      /**< Ternary weight {-1, 0, +1} */
+    uint8_t use_ternary_weight; /**< Use ternary weight (1) or float weight (0) */
+    uint8_t reserved[2];        /**< Padding for alignment */
 } synapse_handle_t;
 
 /**
@@ -851,6 +860,162 @@ NIMCP_EXPORT int sparse_synapse_remove_with_metadata(
     synapse_metadata_pool_t metadata_pool,
     sparse_synapse_storage_t* storage,
     uint32_t index
+);
+
+//=============================================================================
+// Ternary-Aware Sparse Synapse Operations (NIMCP 2.10)
+//=============================================================================
+
+/**
+ * @brief Add synapse with ternary weight
+ *
+ * WHAT: Add synapse handle using ternary weight for storage efficiency
+ * WHY:  Memory savings when weights are naturally ternary (LTD/stable/LTP)
+ * HOW:  Store ternary weight, set use_ternary_weight flag
+ *
+ * @param pool Pool handle for overflow allocation
+ * @param storage Storage to add to
+ * @param target_neuron_id Target neuron index
+ * @param ternary_weight Ternary weight {-1, 0, +1}
+ * @return 0 on success, -1 on failure
+ *
+ * COMPLEXITY: O(1) amortized
+ * THREAD SAFETY: Caller must synchronize access to storage
+ */
+NIMCP_EXPORT int sparse_synapse_add_ternary(
+    sparse_synapse_pool_t pool,
+    sparse_synapse_storage_t* storage,
+    uint32_t target_neuron_id,
+    trit_t ternary_weight
+);
+
+/**
+ * @brief Get effective weight from handle (ternary or float)
+ *
+ * WHAT: Retrieve weight value regardless of storage mode
+ * WHY:  Unified interface for synapse computation
+ * HOW:  Check use_ternary_weight flag, return appropriate value
+ *
+ * @param handle Synapse handle
+ * @param positive_scale Scale for +1 ternary weights (default 1.0)
+ * @param negative_scale Scale for -1 ternary weights (default -1.0)
+ * @return Effective weight value
+ *
+ * COMPLEXITY: O(1)
+ */
+NIMCP_EXPORT float sparse_synapse_get_effective_weight(
+    const synapse_handle_t* handle,
+    float positive_scale,
+    float negative_scale
+);
+
+/**
+ * @brief Set weight with automatic ternary quantization
+ *
+ * WHAT: Set weight with optional quantization to ternary
+ * WHY:  Enable transparent ternary mode switching
+ * HOW:  If use_ternary enabled, quantize; otherwise store float
+ *
+ * @param handle Synapse handle
+ * @param weight Weight value
+ * @param threshold Threshold for ternary quantization
+ * @param enable_ternary Whether to use ternary storage
+ *
+ * COMPLEXITY: O(1)
+ */
+NIMCP_EXPORT void sparse_synapse_set_weight(
+    synapse_handle_t* handle,
+    float weight,
+    float threshold,
+    bool enable_ternary
+);
+
+/**
+ * @brief Convert storage to ternary weights
+ *
+ * WHAT: Quantize all float weights in storage to ternary
+ * WHY:  Batch conversion for memory optimization
+ * HOW:  Iterate all handles, apply threshold-based quantization
+ *
+ * @param storage Storage to convert
+ * @param threshold Quantization threshold
+ * @return Number of synapses converted
+ *
+ * COMPLEXITY: O(n) where n = synapse count
+ */
+NIMCP_EXPORT uint32_t sparse_synapse_convert_to_ternary(
+    sparse_synapse_storage_t* storage,
+    float threshold
+);
+
+/**
+ * @brief Convert storage back to float weights
+ *
+ * WHAT: Dequantize all ternary weights to float
+ * WHY:  Enable fine-grained weight adjustments after ternary storage
+ * HOW:  Iterate all handles, dequantize ternary to float with scales
+ *
+ * @param storage Storage to convert
+ * @param positive_scale Scale for +1 weights
+ * @param negative_scale Scale for -1 weights
+ * @return Number of synapses converted
+ *
+ * COMPLEXITY: O(n) where n = synapse count
+ */
+NIMCP_EXPORT uint32_t sparse_synapse_convert_to_float(
+    sparse_synapse_storage_t* storage,
+    float positive_scale,
+    float negative_scale
+);
+
+/**
+ * @brief Get ternary weight statistics for storage
+ *
+ * WHAT: Count distribution of ternary weights
+ * WHY:  Analyze sparsity and weight distribution
+ * HOW:  Iterate handles, count {-1, 0, +1} occurrences
+ *
+ * @param storage Storage to analyze
+ * @param n_positive Output: count of +1 weights
+ * @param n_zero Output: count of 0 weights
+ * @param n_negative Output: count of -1 weights
+ * @param n_ternary_enabled Output: count using ternary mode
+ *
+ * COMPLEXITY: O(n)
+ */
+NIMCP_EXPORT void sparse_synapse_ternary_stats(
+    const sparse_synapse_storage_t* storage,
+    uint32_t* n_positive,
+    uint32_t* n_zero,
+    uint32_t* n_negative,
+    uint32_t* n_ternary_enabled
+);
+
+/**
+ * @brief Ternary-aware dot product for sparse synapses
+ *
+ * WHAT: Compute weighted sum using ternary or float weights
+ * WHY:  Efficient forward pass with mixed weight types
+ * HOW:  Sum input * effective_weight for all synapses
+ *
+ * @param storage Sparse synapse storage
+ * @param inputs Input activations indexed by target_neuron_id
+ * @param positive_scale Scale for +1 ternary weights
+ * @param negative_scale Scale for -1 ternary weights
+ * @return Weighted sum
+ *
+ * COMPLEXITY: O(n) where n = synapse count
+ *
+ * USAGE:
+ * ```c
+ * float output = sparse_synapse_ternary_dot(&neuron->synapses, input_activations, 1.0f, -1.0f);
+ * ```
+ */
+NIMCP_EXPORT float sparse_synapse_ternary_dot(
+    const sparse_synapse_storage_t* storage,
+    const float* inputs,
+    float positive_scale,
+    float negative_scale
 );
 
 #ifdef __cplusplus

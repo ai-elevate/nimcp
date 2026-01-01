@@ -71,6 +71,7 @@ typedef enum {
     QAT_DTYPE_FP8_E4M3,              /**< 8-bit floating point e4m3 */
     QAT_DTYPE_FP8_E5M2,              /**< 8-bit floating point e5m2 */
     QAT_DTYPE_FP4,                   /**< 4-bit floating point */
+    QAT_DTYPE_TERNARY,               /**< Ternary: {-1, 0, +1} values */
     QAT_DTYPE_COUNT
 } qat_dtype_t;
 
@@ -609,6 +610,157 @@ int qat_validate_config(const qat_config_t* config);
 float qat_compute_mse(
     const nimcp_tensor_t* original,
     const nimcp_tensor_t* quantized
+);
+
+//=============================================================================
+// Ternary Quantization API
+//=============================================================================
+
+/**
+ * @brief Ternary quantization configuration
+ *
+ * WHAT: Configuration for ternary weight quantization
+ * WHY:  Extreme compression with {-1, 0, +1} values
+ * HOW:  Threshold-based ternarization with learned thresholds
+ *
+ * BIOLOGICAL BASIS:
+ * - Synaptic weights discretize to LTD/STABLE/LTP states
+ * - Binary/ternary coding in sensory systems
+ * - Energy-efficient spiking with discrete states
+ */
+typedef struct {
+    float threshold_ratio;           /**< Threshold as ratio of max (default: 0.7) */
+    bool use_learned_threshold;      /**< Learn threshold during training */
+    float initial_threshold;         /**< Initial threshold value */
+    bool symmetric;                  /**< Use symmetric thresholds */
+    bool use_ste;                    /**< Use straight-through estimator */
+    float ste_gradient_scale;        /**< STE gradient scaling factor */
+    bool normalize_weights;          /**< Normalize weights before ternarization */
+} qat_ternary_config_t;
+
+/**
+ * @brief Ternary quantization parameters
+ */
+typedef struct {
+    float positive_scale;            /**< Scale for +1 values */
+    float negative_scale;            /**< Scale for -1 values */
+    float threshold;                 /**< Current threshold value */
+    float learned_threshold;         /**< Learned threshold (if enabled) */
+    uint64_t n_positive;             /**< Count of +1 values */
+    uint64_t n_zero;                 /**< Count of 0 values */
+    uint64_t n_negative;             /**< Count of -1 values */
+    float sparsity;                  /**< Ratio of zero values */
+} qat_ternary_params_t;
+
+/**
+ * @brief Get default ternary configuration
+ *
+ * DEFAULTS:
+ * - threshold_ratio: 0.7
+ * - use_ste: true
+ * - symmetric: true
+ * - normalize_weights: true
+ *
+ * @param config Configuration to initialize
+ * @return 0 on success, negative on error
+ */
+int qat_ternary_default_config(qat_ternary_config_t* config);
+
+/**
+ * @brief Create ternary QAT context
+ *
+ * @param ternary_config Ternary-specific configuration
+ * @return QAT context configured for ternary, or NULL on failure
+ */
+qat_ctx_t* qat_ternary_create(const qat_ternary_config_t* ternary_config);
+
+/**
+ * @brief Ternarize tensor weights
+ *
+ * WHAT: Convert floating-point weights to ternary {-1, 0, +1}
+ * WHY:  Extreme compression (1.58 bits/weight) with learned scaling
+ * HOW:
+ *   - Compute threshold from weight statistics
+ *   - Map to: +1 if w > threshold, -1 if w < -threshold, 0 otherwise
+ *   - Multiply by learned scale factors
+ *
+ * MATHEMATICAL FORMULATION:
+ *   t = threshold_ratio * mean(|w|)
+ *   w_ternary[i] = {
+ *       +scale_p  if w[i] > t
+ *       0         if |w[i]| <= t
+ *       -scale_n  if w[i] < -t
+ *   }
+ *
+ * @param ctx QAT context
+ * @param tensor Input/output tensor (modified in place)
+ * @param ternary_config Ternary configuration
+ * @param params Output: computed ternary parameters
+ * @return 0 on success, negative on error
+ */
+int qat_ternarize(
+    qat_ctx_t* ctx,
+    nimcp_tensor_t* tensor,
+    const qat_ternary_config_t* ternary_config,
+    qat_ternary_params_t* params
+);
+
+/**
+ * @brief Compute ternary gradients with straight-through estimator
+ *
+ * WHAT: Gradient for backward pass through ternarization
+ * WHY:  Enable gradient flow through discrete ternarization
+ * HOW:  STE passes gradients through unchanged for ternarized values
+ *
+ * COMPARISON (PyTorch equivalent):
+ * ```python
+ * # Forward: w_tern = ternarize(w)
+ * # Backward: grad_w = grad_tern (straight-through)
+ * ```
+ *
+ * @param ctx QAT context
+ * @param grad_output Upstream gradient
+ * @param original_weights Original FP32 weights
+ * @param ternary_config Ternary configuration
+ * @param grad_input Output gradient (same shape as weights)
+ * @return 0 on success, negative on error
+ */
+int qat_ternary_backward(
+    qat_ctx_t* ctx,
+    const nimcp_tensor_t* grad_output,
+    const nimcp_tensor_t* original_weights,
+    const qat_ternary_config_t* ternary_config,
+    nimcp_tensor_t* grad_input
+);
+
+/**
+ * @brief Compute optimal ternary threshold
+ *
+ * WHAT: Find threshold that minimizes quantization error
+ * WHY:  Better threshold -> better accuracy
+ * HOW:  Analytical solution based on weight distribution
+ *
+ * @param tensor Weight tensor
+ * @param threshold_out Output: optimal threshold
+ * @param scale_out Output: optimal scale factor
+ * @return 0 on success, negative on error
+ */
+int qat_compute_optimal_ternary_threshold(
+    const nimcp_tensor_t* tensor,
+    float* threshold_out,
+    float* scale_out
+);
+
+/**
+ * @brief Get ternary quantization statistics
+ *
+ * @param ctx QAT context
+ * @param params Ternary parameters with statistics
+ * @return 0 on success, negative on error
+ */
+int qat_get_ternary_stats(
+    const qat_ctx_t* ctx,
+    qat_ternary_params_t* params
 );
 
 #ifdef __cplusplus

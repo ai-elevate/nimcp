@@ -1241,6 +1241,272 @@ int32_t swarm_memory_find_similar_patterns(
 );
 
 /* ============================================================================
+ * Ternary Confidence API
+ * ============================================================================ */
+
+/**
+ * @brief Ternary confidence level for memory traces
+ *
+ * WHAT: Discrete confidence states for memory and pattern reliability
+ * WHY:  Simplifies continuous confidence to actionable decision states
+ * HOW:  Maps to memory retrieval behavior (certain, uncertain, unreliable)
+ *
+ * BIOLOGICAL BASIS:
+ * - Hippocampal pattern completion strength varies discretely
+ * - Memory familiarity vs recollection distinction
+ * - Confidence-based memory selection in prefrontal cortex
+ */
+typedef enum {
+    SWARM_CONFIDENCE_UNRELIABLE = -1,   /**< Low confidence: pattern/memory unreliable */
+    SWARM_CONFIDENCE_UNCERTAIN = 0,     /**< Medium confidence: needs verification */
+    SWARM_CONFIDENCE_CERTAIN = 1        /**< High confidence: reliable for decisions */
+} ternary_swarm_confidence_t;
+
+/**
+ * @brief Ternary confidence configuration
+ *
+ * WHAT: Configuration for ternary confidence discretization
+ * WHY:  Customize confidence thresholds for different use cases
+ */
+typedef struct {
+    float certain_threshold;            /**< Confidence >= this is CERTAIN (default: 0.8) */
+    float uncertain_threshold;          /**< Confidence >= this is UNCERTAIN (default: 0.4) */
+    bool enable_for_patterns;           /**< Apply to pattern confidence (default: true) */
+    bool enable_for_memories;           /**< Apply to memory strength (default: true) */
+    bool enable_for_predictions;        /**< Apply to prediction confidence (default: true) */
+    bool decay_aware;                   /**< Consider decay when computing confidence */
+    float decay_penalty;                /**< Penalty for old memories (default: 0.1) */
+} ternary_confidence_config_t;
+
+/**
+ * @brief Ternary confidence statistics
+ *
+ * WHAT: Statistics for ternary confidence distribution
+ * WHY:  Monitor confidence distribution across memory system
+ */
+typedef struct {
+    uint32_t certain_count;             /**< Memories/patterns in CERTAIN state */
+    uint32_t uncertain_count;           /**< Memories/patterns in UNCERTAIN state */
+    uint32_t unreliable_count;          /**< Memories/patterns in UNRELIABLE state */
+    float avg_raw_confidence;           /**< Average raw confidence value */
+    uint32_t transitions_up;            /**< Transitions from lower to higher confidence */
+    uint32_t transitions_down;          /**< Transitions from higher to lower confidence */
+} ternary_confidence_stats_t;
+
+/**
+ * @brief Get default ternary confidence configuration
+ *
+ * WHAT: Provide sensible defaults for ternary confidence
+ * WHY:  Easy initialization with biologically-plausible values
+ *
+ * @param config Output configuration
+ * @return 0 on success, -1 on error
+ */
+static inline int ternary_confidence_default_config(ternary_confidence_config_t* config) {
+    if (!config) return -1;
+
+    config->certain_threshold = 0.8f;
+    config->uncertain_threshold = 0.4f;
+    config->enable_for_patterns = true;
+    config->enable_for_memories = true;
+    config->enable_for_predictions = true;
+    config->decay_aware = true;
+    config->decay_penalty = 0.1f;
+
+    return 0;
+}
+
+/**
+ * @brief Convert continuous confidence to ternary state
+ *
+ * WHAT: Discretize confidence value to ternary level
+ * WHY:  Simplify confidence for decision-making
+ *
+ * @param config Ternary configuration (NULL for defaults)
+ * @param confidence Continuous confidence value [0,1]
+ * @return Ternary confidence level
+ */
+static inline ternary_swarm_confidence_t ternary_confidence_from_value(
+    const ternary_confidence_config_t* config,
+    float confidence
+) {
+    float certain_thresh = config ? config->certain_threshold : 0.8f;
+    float uncertain_thresh = config ? config->uncertain_threshold : 0.4f;
+
+    if (confidence >= certain_thresh) {
+        return SWARM_CONFIDENCE_CERTAIN;
+    }
+    if (confidence >= uncertain_thresh) {
+        return SWARM_CONFIDENCE_UNCERTAIN;
+    }
+    return SWARM_CONFIDENCE_UNRELIABLE;
+}
+
+/**
+ * @brief Convert ternary state to representative confidence
+ *
+ * WHAT: Get typical confidence value for ternary state
+ * WHY:  Interface with systems expecting continuous confidence
+ *
+ * @param state Ternary confidence level
+ * @return Representative confidence value
+ */
+static inline float ternary_confidence_to_value(ternary_swarm_confidence_t state) {
+    switch (state) {
+        case SWARM_CONFIDENCE_CERTAIN:    return 0.9f;
+        case SWARM_CONFIDENCE_UNCERTAIN:  return 0.6f;
+        default:                          return 0.2f;
+    }
+}
+
+/**
+ * @brief Enable ternary confidence mode
+ *
+ * WHAT: Switch swarm memory to use ternary confidence
+ * WHY:  Simplify confidence-based decisions
+ *
+ * @param memory Swarm memory system
+ * @param config Ternary configuration (NULL for defaults)
+ * @return NIMCP_OK on success
+ */
+nimcp_result_t swarm_memory_enable_ternary_confidence(
+    NimcpSwarmMemory* memory,
+    const ternary_confidence_config_t* config
+);
+
+/**
+ * @brief Disable ternary confidence mode
+ *
+ * WHAT: Return to continuous confidence mode
+ * WHY:  Allow switching between discrete and continuous
+ *
+ * @param memory Swarm memory system
+ * @return NIMCP_OK on success
+ */
+nimcp_result_t swarm_memory_disable_ternary_confidence(NimcpSwarmMemory* memory);
+
+/**
+ * @brief Check if ternary confidence is enabled
+ *
+ * @param memory Swarm memory system
+ * @return true if ternary confidence active
+ */
+bool swarm_memory_is_ternary_confidence(const NimcpSwarmMemory* memory);
+
+/**
+ * @brief Get ternary confidence for memory entry
+ *
+ * WHAT: Query discretized confidence for a memory
+ * WHY:  Access ternary state for decision-making
+ *
+ * @param memory Swarm memory system
+ * @param memory_id Memory identifier
+ * @return Ternary confidence level
+ */
+ternary_swarm_confidence_t swarm_memory_get_ternary_confidence(
+    NimcpSwarmMemory* memory,
+    const char* memory_id
+);
+
+/**
+ * @brief Get ternary confidence for pattern
+ *
+ * WHAT: Query discretized confidence for a pattern
+ * WHY:  Access ternary state for pattern-based decisions
+ *
+ * @param memory Swarm memory system
+ * @param pattern_id Pattern identifier
+ * @return Ternary confidence level
+ */
+ternary_swarm_confidence_t swarm_memory_get_pattern_ternary_confidence(
+    NimcpSwarmMemory* memory,
+    uint32_t pattern_id
+);
+
+/**
+ * @brief Filter memories by ternary confidence
+ *
+ * WHAT: Get all memories at specific confidence level
+ * WHY:  Batch retrieval based on confidence state
+ *
+ * @param memory Swarm memory system
+ * @param level Target confidence level
+ * @param memory_ids Output: array of memory IDs (caller allocates)
+ * @param max_count Maximum IDs to return
+ * @return Number of memories found
+ */
+uint32_t swarm_memory_filter_by_ternary_confidence(
+    NimcpSwarmMemory* memory,
+    ternary_swarm_confidence_t level,
+    char** memory_ids,
+    uint32_t max_count
+);
+
+/**
+ * @brief Filter patterns by ternary confidence
+ *
+ * WHAT: Get all patterns at specific confidence level
+ * WHY:  Batch retrieval based on pattern reliability
+ *
+ * @param memory Swarm memory system
+ * @param level Target confidence level
+ * @param pattern_ids Output: array of pattern IDs (caller allocates)
+ * @param max_count Maximum IDs to return
+ * @return Number of patterns found
+ */
+uint32_t swarm_memory_filter_patterns_by_ternary_confidence(
+    NimcpSwarmMemory* memory,
+    ternary_swarm_confidence_t level,
+    uint32_t* pattern_ids,
+    uint32_t max_count
+);
+
+/**
+ * @brief Get ternary confidence statistics
+ *
+ * WHAT: Retrieve distribution of confidence levels
+ * WHY:  Monitor memory system health and confidence distribution
+ *
+ * @param memory Swarm memory system
+ * @param stats Output statistics
+ * @return NIMCP_OK on success
+ */
+nimcp_result_t swarm_memory_get_ternary_confidence_stats(
+    const NimcpSwarmMemory* memory,
+    ternary_confidence_stats_t* stats
+);
+
+/**
+ * @brief Apply ternary-based forgetting
+ *
+ * WHAT: Remove memories based on ternary confidence threshold
+ * WHY:  Efficient cleanup of unreliable memories
+ *
+ * @param memory Swarm memory system
+ * @param min_level Minimum confidence level to retain
+ * @return Number of memories removed
+ */
+uint32_t swarm_memory_ternary_forget(
+    NimcpSwarmMemory* memory,
+    ternary_swarm_confidence_t min_level
+);
+
+/**
+ * @brief Consolidate using ternary confidence
+ *
+ * WHAT: Prioritize consolidation based on ternary confidence
+ * WHY:  Focus resources on uncertain memories needing strengthening
+ *
+ * @param memory Swarm memory system
+ * @param prioritize_uncertain If true, consolidate UNCERTAIN first
+ * @return Number of memories consolidated
+ */
+uint32_t swarm_memory_ternary_consolidate(
+    NimcpSwarmMemory* memory,
+    bool prioritize_uncertain
+);
+
+/* ============================================================================
  * Utility Functions
  * ============================================================================ */
 

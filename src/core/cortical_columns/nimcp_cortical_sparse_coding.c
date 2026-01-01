@@ -957,3 +957,344 @@ bool cortical_sparse_is_bio_async_connected(
 
     return system->bio_async_enabled;
 }
+
+/* ============================================================================
+ * Ternary Sparse Coding API (NIMCP 2.10)
+ * ============================================================================ */
+
+/**
+ * @brief Quantize activations to ternary sparse code
+ */
+int cortical_sparse_quantize_to_ternary(
+    cortical_sparse_coding_system_t* system,
+    const float* activations,
+    uint32_t num_activations,
+    trit_t* ternary_output
+) {
+    /* Guard clause: validate parameters */
+    if (!system || !activations || !ternary_output) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (num_activations == 0) {
+        return NIMCP_ERROR_INVALID;
+    }
+
+    float pos_thresh = system->config.ternary_positive_threshold;
+    float neg_thresh = system->config.ternary_negative_threshold;
+
+    /* Quantize each activation to ternary */
+    for (uint32_t i = 0; i < num_activations; i++) {
+        if (activations[i] >= pos_thresh) {
+            ternary_output[i] = TRIT_POSITIVE;
+        } else if (activations[i] <= -neg_thresh) {
+            ternary_output[i] = TRIT_NEGATIVE;
+        } else {
+            ternary_output[i] = TRIT_UNKNOWN;
+        }
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Dequantize ternary sparse code to continuous
+ */
+int cortical_sparse_dequantize_from_ternary(
+    cortical_sparse_coding_system_t* system,
+    const trit_t* ternary_input,
+    uint32_t num_activations,
+    float scale,
+    float* continuous_output
+) {
+    /* Guard clause: validate parameters */
+    if (!system || !ternary_input || !continuous_output) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (num_activations == 0) {
+        return NIMCP_ERROR_INVALID;
+    }
+
+    /* Dequantize each ternary value to continuous */
+    for (uint32_t i = 0; i < num_activations; i++) {
+        continuous_output[i] = (float)ternary_input[i] * scale;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Enforce sparsity and return ternary output
+ */
+int cortical_sparse_enforce_sparsity_ternary(
+    cortical_sparse_coding_system_t* system,
+    const float* activations,
+    uint32_t num_activations,
+    trit_t* ternary_output
+) {
+    /* Guard clause: validate parameters */
+    if (!system || !activations || !ternary_output) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (num_activations == 0) {
+        return NIMCP_ERROR_INVALID;
+    }
+
+    /* First apply sparsity enforcement to get sparse continuous activations */
+    float* sparse_activations = nimcp_malloc(num_activations * sizeof(float));
+    if (!sparse_activations) {
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    /* Copy activations for modification */
+    memcpy(sparse_activations, activations, num_activations * sizeof(float));
+
+    /* Apply sparsity based on method */
+    switch (system->config.sparsity_method) {
+        case SPARSITY_METHOD_K_WTA: {
+            /* K-WTA: Keep only top k activations */
+            uint32_t k = system->config.k_winners;
+            if (k > num_activations) k = num_activations;
+
+            /* Find k-th largest value (simple approach) */
+            float threshold = 0.0f;
+            for (uint32_t pass = 0; pass < k; pass++) {
+                float max_val = -1e30f;
+                uint32_t max_idx = 0;
+                for (uint32_t i = 0; i < num_activations; i++) {
+                    if (sparse_activations[i] > max_val) {
+                        max_val = sparse_activations[i];
+                        max_idx = i;
+                    }
+                }
+                if (pass == k - 1) {
+                    threshold = max_val;
+                }
+                sparse_activations[max_idx] = -1e30f;  /* Mark as processed */
+            }
+
+            /* Restore and threshold */
+            memcpy(sparse_activations, activations, num_activations * sizeof(float));
+            for (uint32_t i = 0; i < num_activations; i++) {
+                if (sparse_activations[i] < threshold) {
+                    sparse_activations[i] = 0.0f;
+                }
+            }
+            break;
+        }
+
+        case SPARSITY_METHOD_THRESHOLD:
+        default: {
+            /* Simple threshold */
+            float thresh = system->config.target_sparsity;
+            for (uint32_t i = 0; i < num_activations; i++) {
+                if (fabsf(sparse_activations[i]) < thresh) {
+                    sparse_activations[i] = 0.0f;
+                }
+            }
+            break;
+        }
+    }
+
+    /* Now quantize to ternary */
+    int result = cortical_sparse_quantize_to_ternary(
+        system, sparse_activations, num_activations, ternary_output
+    );
+
+    nimcp_free(sparse_activations);
+    return result;
+}
+
+/**
+ * @brief Get ternary active set indices
+ */
+int cortical_sparse_get_ternary_active_set(
+    const trit_t* ternary_activations,
+    uint32_t num_activations,
+    uint32_t* active_indices,
+    uint32_t max_active,
+    uint32_t* num_active
+) {
+    /* Guard clause: validate parameters */
+    if (!ternary_activations || !active_indices || !num_active) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < num_activations && count < max_active; i++) {
+        if (ternary_activations[i] != TRIT_UNKNOWN) {
+            active_indices[count++] = i;
+        }
+    }
+
+    *num_active = count;
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Compute ternary sparse code sparsity
+ */
+float cortical_sparse_compute_ternary_sparsity(
+    const trit_t* ternary_activations,
+    uint32_t num_activations
+) {
+    if (!ternary_activations || num_activations == 0) {
+        return 0.0f;
+    }
+
+    uint32_t zero_count = 0;
+    for (uint32_t i = 0; i < num_activations; i++) {
+        if (ternary_activations[i] == TRIT_UNKNOWN) {
+            zero_count++;
+        }
+    }
+
+    return (float)zero_count / (float)num_activations;
+}
+
+/**
+ * @brief Get ternary activation distribution
+ */
+void cortical_sparse_get_ternary_distribution(
+    const trit_t* ternary_activations,
+    uint32_t num_activations,
+    uint32_t* n_negative,
+    uint32_t* n_zero,
+    uint32_t* n_positive
+) {
+    uint32_t neg = 0, zero = 0, pos = 0;
+
+    if (ternary_activations) {
+        for (uint32_t i = 0; i < num_activations; i++) {
+            switch (ternary_activations[i]) {
+                case TRIT_POSITIVE:
+                    pos++;
+                    break;
+                case TRIT_NEGATIVE:
+                    neg++;
+                    break;
+                default:
+                    zero++;
+                    break;
+            }
+        }
+    }
+
+    if (n_negative) *n_negative = neg;
+    if (n_zero) *n_zero = zero;
+    if (n_positive) *n_positive = pos;
+}
+
+/**
+ * @brief Create packed ternary vector from activations
+ */
+trit_vector_t* cortical_sparse_create_ternary_vector(
+    cortical_sparse_coding_system_t* system,
+    const float* activations,
+    uint32_t num_activations
+) {
+    if (!system || !activations || num_activations == 0) {
+        return NULL;
+    }
+
+    /* Create ternary vector with configured pack mode */
+    trit_vector_t* vec = trit_vector_create(
+        num_activations,
+        system->config.ternary_pack_mode
+    );
+    if (!vec) {
+        return NULL;
+    }
+
+    /* Quantize and store activations */
+    float pos_thresh = system->config.ternary_positive_threshold;
+    float neg_thresh = system->config.ternary_negative_threshold;
+
+    for (uint32_t i = 0; i < num_activations; i++) {
+        trit_t trit;
+        if (activations[i] >= pos_thresh) {
+            trit = TRIT_POSITIVE;
+        } else if (activations[i] <= -neg_thresh) {
+            trit = TRIT_NEGATIVE;
+        } else {
+            trit = TRIT_UNKNOWN;
+        }
+        trit_vector_set(vec, i, trit);
+    }
+
+    return vec;
+}
+
+/**
+ * @brief Ternary sparse dot product
+ */
+float cortical_sparse_ternary_dot(
+    const trit_t* ternary_code,
+    uint32_t num_elements,
+    const float* values
+) {
+    if (!ternary_code || !values) {
+        return 0.0f;
+    }
+
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < num_elements; i++) {
+        /* ternary_code[i] is -1, 0, or +1 */
+        sum += values[i] * (float)ternary_code[i];
+    }
+
+    return sum;
+}
+
+/**
+ * @brief Enable ternary mode for sparse coding system
+ */
+int cortical_sparse_enable_ternary_mode(
+    cortical_sparse_coding_system_t* system,
+    float positive_threshold,
+    float negative_threshold,
+    ternary_pack_mode_t pack_mode
+) {
+    if (!system) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    system->config.enable_ternary_coefficients = true;
+    system->config.ternary_positive_threshold = positive_threshold;
+    system->config.ternary_negative_threshold = negative_threshold;
+    system->config.ternary_pack_mode = pack_mode;
+
+    NIMCP_LOGGING_INFO("Ternary mode enabled (pos_thresh=%.3f, neg_thresh=%.3f)",
+                       positive_threshold, negative_threshold);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Disable ternary mode for sparse coding system
+ */
+int cortical_sparse_disable_ternary_mode(
+    cortical_sparse_coding_system_t* system
+) {
+    if (!system) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    system->config.enable_ternary_coefficients = false;
+
+    NIMCP_LOGGING_INFO("Ternary mode disabled");
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Check if ternary mode is enabled
+ */
+bool cortical_sparse_is_ternary_mode(
+    const cortical_sparse_coding_system_t* system
+) {
+    if (!system) {
+        return false;
+    }
+
+    return system->config.enable_ternary_coefficients;
+}

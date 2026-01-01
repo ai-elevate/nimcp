@@ -2402,6 +2402,26 @@ working_memory_t* brain_get_working_memory(brain_t brain)
 }
 
 /**
+ * @brief Get executive controller from brain
+ *
+ * WHAT: Retrieve pointer to brain's executive control subsystem
+ * WHY:  Allow cognitive modules to access executive function stats
+ * HOW:  Return brain->executive field (NULL if not enabled)
+ *
+ * BIOLOGICAL BASIS: Prefrontal cortex executive functions (Miller & Cohen, 2001)
+ *
+ * @param brain Brain instance
+ * @return Executive controller pointer or NULL if not enabled/invalid brain
+ */
+executive_controller_t* brain_get_executive(brain_t brain)
+{
+    if (!brain) {
+        return NULL;
+    }
+    return brain->executive;
+}
+
+/**
  * @brief Get global workspace from brain
  *
  * WHAT: Retrieve pointer to brain's global workspace subsystem

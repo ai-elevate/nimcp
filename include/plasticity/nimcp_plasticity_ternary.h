@@ -298,6 +298,328 @@ static inline const char* trit_plasticity_name(trit_plasticity_t p) {
     }
 }
 
+//=============================================================================
+// Discrete Ternary STDP Weight Updates
+//=============================================================================
+
+/**
+ * @brief Configuration for discrete ternary STDP
+ *
+ * WHAT: Parameters for ternary weight updates
+ * WHY:  Enable discrete STDP with configurable step sizes
+ * HOW:  Fixed step sizes with optional multiplicative/additive modes
+ */
+typedef struct {
+    float ltp_step;               /**< Weight increase per LTP event */
+    float ltd_step;               /**< Weight decrease per LTD event */
+    float weight_min;             /**< Minimum weight bound */
+    float weight_max;             /**< Maximum weight bound */
+    bool multiplicative;          /**< Use multiplicative update (weight-dependent) */
+    float tau_plus;               /**< LTP time constant (ms) */
+    float tau_minus;              /**< LTD time constant (ms) */
+    float dead_zone;              /**< Minimum timing for plasticity (ms) */
+    bool soft_bounds;             /**< Use soft (exponential) bounds */
+} trit_stdp_config_t;
+
+/**
+ * @brief Ternary STDP context for tracking state
+ */
+typedef struct {
+    trit_stdp_config_t config;    /**< Configuration */
+    trit_plasticity_stats_t stats;/**< Running statistics */
+    float mean_weight;            /**< Running mean weight */
+    uint64_t update_count;        /**< Total updates applied */
+} trit_stdp_ctx_t;
+
+/**
+ * @brief Get default ternary STDP configuration
+ *
+ * DEFAULTS:
+ * - ltp_step: 0.01 (1% increase)
+ * - ltd_step: 0.01 (1% decrease)
+ * - weight_min: 0.0
+ * - weight_max: 1.0
+ * - tau_plus: 20.0 ms
+ * - tau_minus: 20.0 ms
+ * - dead_zone: 1.0 ms
+ *
+ * @param config Configuration to initialize
+ */
+static inline void trit_stdp_default_config(trit_stdp_config_t* config) {
+    if (!config) return;
+
+    config->ltp_step = 0.01f;
+    config->ltd_step = 0.01f;
+    config->weight_min = 0.0f;
+    config->weight_max = 1.0f;
+    config->multiplicative = false;
+    config->tau_plus = 20.0f;
+    config->tau_minus = 20.0f;
+    config->dead_zone = 1.0f;
+    config->soft_bounds = false;
+}
+
+/**
+ * @brief Initialize ternary STDP context
+ *
+ * @param ctx Context to initialize
+ * @param config Configuration (NULL for defaults)
+ */
+static inline void trit_stdp_init(
+    trit_stdp_ctx_t* ctx,
+    const trit_stdp_config_t* config
+) {
+    if (!ctx) return;
+
+    if (config) {
+        ctx->config = *config;
+    } else {
+        trit_stdp_default_config(&ctx->config);
+    }
+
+    ctx->stats.n_ltp = 0;
+    ctx->stats.n_stable = 0;
+    ctx->stats.n_ltd = 0;
+    ctx->stats.ltp_ratio = 0.0f;
+    ctx->stats.ltd_ratio = 0.0f;
+    ctx->mean_weight = 0.5f;
+    ctx->update_count = 0;
+}
+
+/**
+ * @brief Apply discrete ternary weight update
+ *
+ * WHAT: Update weight based on ternary plasticity direction
+ * WHY:  Discrete updates enable efficient hardware implementation
+ * HOW:  Add/subtract fixed step, respecting bounds
+ *
+ * MODES:
+ * - Additive: w += step (or w -= step)
+ * - Multiplicative: w += step * (w_max - w) for LTP
+ *                   w -= step * (w - w_min) for LTD
+ *
+ * @param weight Current weight (modified in place)
+ * @param direction Ternary plasticity direction
+ * @param config STDP configuration
+ * @return New weight value
+ */
+static inline float trit_stdp_apply(
+    float weight,
+    trit_plasticity_t direction,
+    const trit_stdp_config_t* config
+) {
+    if (!config) return weight;
+
+    float new_weight = weight;
+
+    switch (direction) {
+        case TRIT_PLASTICITY_LTP:
+            if (config->multiplicative) {
+                /* Multiplicative: step proportional to distance from max */
+                new_weight += config->ltp_step * (config->weight_max - weight);
+            } else if (config->soft_bounds) {
+                /* Soft bounds: exponential approach */
+                float headroom = config->weight_max - weight;
+                new_weight += config->ltp_step * headroom / config->weight_max;
+            } else {
+                /* Additive: fixed step */
+                new_weight += config->ltp_step;
+            }
+            break;
+
+        case TRIT_PLASTICITY_LTD:
+            if (config->multiplicative) {
+                /* Multiplicative: step proportional to distance from min */
+                new_weight -= config->ltd_step * (weight - config->weight_min);
+            } else if (config->soft_bounds) {
+                /* Soft bounds: exponential approach */
+                float headroom = weight - config->weight_min;
+                new_weight -= config->ltd_step * headroom / config->weight_max;
+            } else {
+                /* Additive: fixed step */
+                new_weight -= config->ltd_step;
+            }
+            break;
+
+        case TRIT_PLASTICITY_STABLE:
+        default:
+            /* No change */
+            break;
+    }
+
+    /* Apply hard bounds */
+    if (new_weight < config->weight_min) new_weight = config->weight_min;
+    if (new_weight > config->weight_max) new_weight = config->weight_max;
+
+    return new_weight;
+}
+
+/**
+ * @brief Process spike pair and update weight
+ *
+ * WHAT: Full STDP pipeline from spike timing to weight update
+ * WHY:  Convenience function for common use case
+ * HOW:  Compute direction from timing, then apply update
+ *
+ * @param weight Current weight (modified)
+ * @param dt_ms Spike timing difference (t_post - t_pre)
+ * @param ctx STDP context (modified with statistics)
+ * @return New weight value
+ */
+static inline float trit_stdp_process_pair(
+    float weight,
+    float dt_ms,
+    trit_stdp_ctx_t* ctx
+) {
+    if (!ctx) return weight;
+
+    /* Compute ternary direction from timing */
+    trit_plasticity_t direction = trit_stdp_compute(
+        dt_ms,
+        ctx->config.tau_plus,
+        ctx->config.tau_minus,
+        ctx->config.dead_zone
+    );
+
+    /* Apply update */
+    float new_weight = trit_stdp_apply(weight, direction, &ctx->config);
+
+    /* Update statistics */
+    if (direction == TRIT_PLASTICITY_LTP) {
+        ctx->stats.n_ltp++;
+    } else if (direction == TRIT_PLASTICITY_LTD) {
+        ctx->stats.n_ltd++;
+    } else {
+        ctx->stats.n_stable++;
+    }
+    ctx->update_count++;
+
+    /* Update running mean */
+    float alpha = 0.001f;
+    ctx->mean_weight = (1.0f - alpha) * ctx->mean_weight + alpha * new_weight;
+
+    return new_weight;
+}
+
+/**
+ * @brief Batch process multiple synapses with ternary STDP
+ *
+ * WHAT: Apply ternary STDP to array of weights
+ * WHY:  Efficient vectorized processing
+ * HOW:  Iterate and apply per-synapse updates
+ *
+ * @param weights Array of weights (modified in place)
+ * @param directions Array of ternary directions
+ * @param n_synapses Number of synapses
+ * @param config STDP configuration
+ * @param stats Output: batch statistics (optional)
+ */
+static inline void trit_stdp_batch_apply(
+    float* weights,
+    const trit_plasticity_t* directions,
+    size_t n_synapses,
+    const trit_stdp_config_t* config,
+    trit_plasticity_stats_t* stats
+) {
+    if (!weights || !directions || !config || n_synapses == 0) return;
+
+    trit_plasticity_stats_t local_stats = {0};
+
+    for (size_t i = 0; i < n_synapses; i++) {
+        weights[i] = trit_stdp_apply(weights[i], directions[i], config);
+
+        /* Count events */
+        if (directions[i] == TRIT_PLASTICITY_LTP) {
+            local_stats.n_ltp++;
+        } else if (directions[i] == TRIT_PLASTICITY_LTD) {
+            local_stats.n_ltd++;
+        } else {
+            local_stats.n_stable++;
+        }
+    }
+
+    /* Compute ratios */
+    local_stats.ltp_ratio = (float)local_stats.n_ltp / (float)n_synapses;
+    local_stats.ltd_ratio = (float)local_stats.n_ltd / (float)n_synapses;
+
+    if (stats) {
+        *stats = local_stats;
+    }
+}
+
+/**
+ * @brief Convert weight array to ternary representation
+ *
+ * WHAT: Quantize continuous weights to ternary {-1, 0, +1}
+ * WHY:  Extreme compression for ternary neural networks
+ * HOW:  Threshold-based ternarization
+ *
+ * @param weights Input floating-point weights
+ * @param ternary_out Output ternary weights
+ * @param n_weights Number of weights
+ * @param threshold Threshold for non-zero assignment
+ * @param scale Output: computed scale factor
+ */
+static inline void trit_weights_ternarize(
+    const float* weights,
+    trit_t* ternary_out,
+    size_t n_weights,
+    float threshold,
+    float* scale
+) {
+    if (!weights || !ternary_out || n_weights == 0) return;
+
+    /* Compute statistics for scaling */
+    float sum_pos = 0.0f, sum_neg = 0.0f;
+    size_t n_pos = 0, n_neg = 0;
+
+    for (size_t i = 0; i < n_weights; i++) {
+        if (weights[i] > threshold) {
+            ternary_out[i] = TRIT_POSITIVE;
+            sum_pos += weights[i];
+            n_pos++;
+        } else if (weights[i] < -threshold) {
+            ternary_out[i] = TRIT_NEGATIVE;
+            sum_neg += -weights[i];
+            n_neg++;
+        } else {
+            ternary_out[i] = TRIT_UNKNOWN;
+        }
+    }
+
+    /* Compute scale as mean of absolute non-zero values */
+    if (scale) {
+        float total = sum_pos + sum_neg;
+        size_t count = n_pos + n_neg;
+        *scale = (count > 0) ? (total / (float)count) : 1.0f;
+    }
+}
+
+/**
+ * @brief Reconstruct continuous weights from ternary
+ *
+ * WHAT: Convert ternary weights back to floating-point
+ * WHY:  Enable forward pass with ternarized weights
+ * HOW:  Multiply ternary by scale factor
+ *
+ * @param ternary_weights Input ternary weights
+ * @param weights_out Output floating-point weights
+ * @param n_weights Number of weights
+ * @param scale Scale factor
+ */
+static inline void trit_weights_dequantize(
+    const trit_t* ternary_weights,
+    float* weights_out,
+    size_t n_weights,
+    float scale
+) {
+    if (!ternary_weights || !weights_out || n_weights == 0) return;
+
+    for (size_t i = 0; i < n_weights; i++) {
+        weights_out[i] = (float)ternary_weights[i] * scale;
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -1038,10 +1038,22 @@ static void collect_cognitive_markers(behavioral_markers_t* markers, brain_t bra
         markers->repetitive_behaviors = 0;
     }
 
-    // Executive stats require brain_get_executive() accessor (not yet available)
-    // Use placeholder values until accessor is implemented
-    markers->impulse_control_failures = 0;
-    markers->task_switching_difficulty = 0.2F;
+    // Executive function markers from prefrontal cortex
+    executive_controller_t* exec = brain_get_executive(brain);
+    if (exec) {
+        executive_stats_t exec_stats;
+        if (executive_get_stats(exec, &exec_stats)) {
+            markers->impulse_control_failures = exec_stats.inhibitions;
+            // Normalize switch cost: 200ms+ is severe difficulty (1.0)
+            markers->task_switching_difficulty = fminf(exec_stats.avg_switch_cost_ms / 200.0F, 1.0F);
+        } else {
+            markers->impulse_control_failures = 0;
+            markers->task_switching_difficulty = 0.2F;
+        }
+    } else {
+        markers->impulse_control_failures = 0;
+        markers->task_switching_difficulty = 0.2F;
+    }
 
     // =========================================================================
     // THEORY OF MIND MARKERS (Phase 10.6 Integration)
@@ -1117,13 +1129,63 @@ static void collect_performance_markers(behavioral_markers_t* markers, brain_t b
         return;
     }
 
-    // TODO: Collect from brain processing statistics
-    // For now, use placeholder values
-    markers->decision_latency_avg = 0.0F;
-    markers->decision_accuracy = 0.8F;  // Assume reasonable default
-    markers->engagement_level = 0.7F;
-    markers->task_completion_rate = 85;
-    markers->avoidance_rate = 0.1F;
+    // Get executive function statistics for performance metrics
+    executive_controller_t* exec = brain_get_executive(brain);
+    if (exec) {
+        executive_stats_t exec_stats;
+        if (executive_get_stats(exec, &exec_stats)) {
+            // Decision latency from task switching cost
+            markers->decision_latency_avg = exec_stats.avg_switch_cost_ms;
+
+            // Task completion rate from completed vs total
+            if (exec_stats.total_tasks > 0) {
+                markers->task_completion_rate = (uint32_t)(
+                    (exec_stats.completed_tasks * 100) / exec_stats.total_tasks);
+            } else {
+                markers->task_completion_rate = 100;  // No tasks = no failures
+            }
+
+            // Avoidance rate from aborted tasks
+            if (exec_stats.total_tasks > 0) {
+                markers->avoidance_rate = (float)exec_stats.aborted_tasks /
+                                          (float)exec_stats.total_tasks;
+            } else {
+                markers->avoidance_rate = 0.0F;
+            }
+
+            // Decision accuracy from inhibition rate (higher inhibition = better accuracy)
+            markers->decision_accuracy = 0.5F + (exec_stats.inhibition_rate * 0.5F);
+        } else {
+            // Stats unavailable - use defaults
+            markers->decision_latency_avg = 0.0F;
+            markers->decision_accuracy = 0.8F;
+            markers->task_completion_rate = 85;
+            markers->avoidance_rate = 0.1F;
+        }
+    } else {
+        // No executive controller - use defaults
+        markers->decision_latency_avg = 0.0F;
+        markers->decision_accuracy = 0.8F;
+        markers->task_completion_rate = 85;
+        markers->avoidance_rate = 0.1F;
+    }
+
+    // Engagement level from working memory utilization
+    working_memory_t* wm = brain_get_working_memory(brain);
+    if (wm) {
+        working_memory_stats_t wm_stats;
+        working_memory_get_stats(wm, &wm_stats);
+        if (wm_stats.capacity > 0) {
+            markers->engagement_level = (float)wm_stats.current_size /
+                                        (float)wm_stats.capacity;
+        } else {
+            markers->engagement_level = 0.7F;
+        }
+    } else {
+        markers->engagement_level = 0.7F;
+    }
+
+    // Decision variance placeholder (would need historical tracking)
     markers->decision_variance = 0.2F;
 }
 

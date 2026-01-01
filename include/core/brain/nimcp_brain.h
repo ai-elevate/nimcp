@@ -1868,6 +1868,18 @@ bool brain_get_utilization_metrics(brain_t brain, float* utilization, float* sat
 working_memory_t* brain_get_working_memory(brain_t brain);
 
 /**
+ * @brief Get executive controller from brain
+ *
+ * WHAT: Retrieve pointer to brain's executive control subsystem
+ * WHY:  Allow cognitive modules to access executive function stats
+ * HOW:  Return brain->executive field
+ *
+ * @param brain Brain instance
+ * @return Executive controller pointer or NULL if not enabled
+ */
+executive_controller_t* brain_get_executive(brain_t brain);
+
+/**
  * @brief Get global workspace from brain
  *
  * WHAT: Retrieve pointer to brain's global workspace subsystem

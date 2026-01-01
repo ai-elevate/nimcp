@@ -1832,3 +1832,299 @@ size_t attention_head_get_cow_savings(attention_head_t head)
 
     return page_cow_view_get_memory_saved(head->cow_view);
 }
+
+//=============================================================================
+// Hard Ternary Attention Implementation
+//=============================================================================
+
+/**
+ * @brief Internal structure for ternary attention context
+ */
+struct ternary_attention_ctx_s {
+    ternary_attention_config_t config;
+    ternary_attention_stats_t stats;
+    float current_temperature;
+    uint32_t current_step;
+};
+
+int ternary_attention_default_config(ternary_attention_config_t* config)
+{
+    if (!config) {
+        return -1;
+    }
+
+    memset(config, 0, sizeof(ternary_attention_config_t));
+
+    config->focus_threshold = 0.7f;
+    config->suppress_threshold = 0.3f;
+    config->use_top_k = false;
+    config->top_k = 5;
+    config->focus_gain = 1.5f;
+    config->suppress_gain = 0.1f;
+    config->temperature_annealing = false;
+    config->initial_temperature = 1.0f;
+    config->final_temperature = 0.01f;
+    config->annealing_steps = 10000;
+
+    return 0;
+}
+
+ternary_attention_ctx_t* ternary_attention_create(
+    const ternary_attention_config_t* config)
+{
+    if (!config) {
+        return NULL;
+    }
+
+    ternary_attention_ctx_t* ctx = nimcp_calloc(1, sizeof(ternary_attention_ctx_t));
+    if (!ctx) {
+        return NULL;
+    }
+
+    memcpy(&ctx->config, config, sizeof(ternary_attention_config_t));
+    memset(&ctx->stats, 0, sizeof(ternary_attention_stats_t));
+    ctx->current_temperature = config->initial_temperature;
+    ctx->current_step = 0;
+
+    return ctx;
+}
+
+void ternary_attention_destroy(ternary_attention_ctx_t* ctx)
+{
+    if (ctx) {
+        nimcp_free(ctx);
+    }
+}
+
+int ternary_attention_discretize(
+    ternary_attention_ctx_t* ctx,
+    const float* soft_attention,
+    uint32_t seq_length,
+    ternary_attention_state_t* ternary_out)
+{
+    if (!ctx || !soft_attention || !ternary_out || seq_length == 0) {
+        return -1;
+    }
+
+    float focus_thresh = ctx->config.focus_threshold;
+    float suppress_thresh = ctx->config.suppress_threshold;
+
+    /* Temperature scaling: adjust thresholds based on temperature */
+    if (ctx->config.temperature_annealing && ctx->current_temperature > 0.01f) {
+        float temp_scale = 1.0f / ctx->current_temperature;
+        /* As temperature decreases, thresholds become more extreme */
+        focus_thresh = 0.5f + (focus_thresh - 0.5f) * temp_scale;
+        suppress_thresh = 0.5f - (0.5f - suppress_thresh) * temp_scale;
+        /* Clamp to valid range */
+        if (focus_thresh > 0.99f) focus_thresh = 0.99f;
+        if (suppress_thresh < 0.01f) suppress_thresh = 0.01f;
+    }
+
+    /* Use top-k if configured */
+    if (ctx->config.use_top_k) {
+        return ternary_attention_top_k(soft_attention, seq_length,
+                                       ctx->config.top_k, ternary_out);
+    }
+
+    /* Threshold-based discretization */
+    uint64_t n_focus = 0, n_neutral = 0, n_suppress = 0;
+
+    for (uint32_t i = 0; i < seq_length; i++) {
+        float attn = soft_attention[i];
+
+        if (attn >= focus_thresh) {
+            ternary_out[i] = ATTENTION_FOCUS;
+            n_focus++;
+        } else if (attn <= suppress_thresh) {
+            ternary_out[i] = ATTENTION_SUPPRESS;
+            n_suppress++;
+        } else {
+            ternary_out[i] = ATTENTION_NEUTRAL;
+            n_neutral++;
+        }
+    }
+
+    /* Update statistics */
+    ctx->stats.n_focus += n_focus;
+    ctx->stats.n_neutral += n_neutral;
+    ctx->stats.n_suppress += n_suppress;
+
+    uint64_t total = ctx->stats.n_focus + ctx->stats.n_neutral + ctx->stats.n_suppress;
+    if (total > 0) {
+        ctx->stats.focus_ratio = (float)ctx->stats.n_focus / (float)total;
+        ctx->stats.suppress_ratio = (float)ctx->stats.n_suppress / (float)total;
+        ctx->stats.sparsity = 1.0f - ctx->stats.focus_ratio;
+    }
+
+    return 0;
+}
+
+int ternary_attention_apply(
+    ternary_attention_ctx_t* ctx,
+    const float* values,
+    const ternary_attention_state_t* ternary_attention,
+    uint32_t seq_length,
+    uint32_t dim,
+    float* output)
+{
+    if (!ctx || !values || !ternary_attention || !output ||
+        seq_length == 0 || dim == 0) {
+        return -1;
+    }
+
+    float focus_gain = ctx->config.focus_gain;
+    float suppress_gain = ctx->config.suppress_gain;
+
+    for (uint32_t t = 0; t < seq_length; t++) {
+        float gain;
+
+        switch (ternary_attention[t]) {
+            case ATTENTION_FOCUS:
+                gain = focus_gain;
+                break;
+            case ATTENTION_SUPPRESS:
+                gain = suppress_gain;
+                break;
+            case ATTENTION_NEUTRAL:
+            default:
+                gain = 1.0f;
+                break;
+        }
+
+        /* Apply gain to all features at this position */
+        const float* input_vec = values + (t * dim);
+        float* output_vec = output + (t * dim);
+
+        for (uint32_t d = 0; d < dim; d++) {
+            output_vec[d] = input_vec[d] * gain;
+        }
+    }
+
+    return 0;
+}
+
+int ternary_attention_backward(
+    ternary_attention_ctx_t* ctx,
+    const float* grad_output,
+    const float* soft_attention,
+    uint32_t seq_length,
+    uint32_t dim,
+    float* grad_attention)
+{
+    if (!ctx || !grad_output || !soft_attention || !grad_attention ||
+        seq_length == 0 || dim == 0) {
+        return -1;
+    }
+
+    /* Straight-through estimator: sum gradient over features */
+    for (uint32_t t = 0; t < seq_length; t++) {
+        float grad_sum = 0.0f;
+
+        /* Sum gradients across feature dimension */
+        const float* grad_vec = grad_output + (t * dim);
+        for (uint32_t d = 0; d < dim; d++) {
+            grad_sum += grad_vec[d];
+        }
+
+        /* Pass through: gradient for attention is sum of output gradients */
+        grad_attention[t] = grad_sum;
+    }
+
+    return 0;
+}
+
+void ternary_attention_update_temperature(
+    ternary_attention_ctx_t* ctx,
+    uint32_t step)
+{
+    if (!ctx || !ctx->config.temperature_annealing) {
+        return;
+    }
+
+    ctx->current_step = step;
+
+    if (step >= ctx->config.annealing_steps) {
+        ctx->current_temperature = ctx->config.final_temperature;
+        return;
+    }
+
+    /* Linear annealing */
+    float progress = (float)step / (float)ctx->config.annealing_steps;
+    float temp_range = ctx->config.initial_temperature - ctx->config.final_temperature;
+    ctx->current_temperature = ctx->config.initial_temperature - (progress * temp_range);
+
+    /* Update stats */
+    ctx->stats.avg_temperature = ctx->current_temperature;
+}
+
+float ternary_attention_get_temperature(const ternary_attention_ctx_t* ctx)
+{
+    if (!ctx) {
+        return 1.0f;
+    }
+    return ctx->current_temperature;
+}
+
+int ternary_attention_get_stats(
+    const ternary_attention_ctx_t* ctx,
+    ternary_attention_stats_t* stats)
+{
+    if (!ctx || !stats) {
+        return -1;
+    }
+
+    memcpy(stats, &ctx->stats, sizeof(ternary_attention_stats_t));
+    return 0;
+}
+
+int ternary_attention_top_k(
+    const float* soft_attention,
+    uint32_t seq_length,
+    uint32_t k,
+    ternary_attention_state_t* ternary_out)
+{
+    if (!soft_attention || !ternary_out || seq_length == 0) {
+        return -1;
+    }
+
+    /* Clamp k to valid range */
+    if (k > seq_length) {
+        k = seq_length;
+    }
+    if (k == 0) {
+        k = 1;
+    }
+
+    /* Find k-th largest value using partial sort approach */
+    /* Simple O(n*k) algorithm suitable for small k */
+    float* values_copy = nimcp_malloc(seq_length * sizeof(float));
+    if (!values_copy) {
+        return -1;
+    }
+
+    memcpy(values_copy, soft_attention, seq_length * sizeof(float));
+
+    /* Initialize all to SUPPRESS */
+    for (uint32_t i = 0; i < seq_length; i++) {
+        ternary_out[i] = ATTENTION_SUPPRESS;
+    }
+
+    /* Find top-k and mark as FOCUS */
+    for (uint32_t round = 0; round < k; round++) {
+        float max_val = -1e30f;
+        uint32_t max_idx = 0;
+
+        for (uint32_t i = 0; i < seq_length; i++) {
+            if (values_copy[i] > max_val) {
+                max_val = values_copy[i];
+                max_idx = i;
+            }
+        }
+
+        ternary_out[max_idx] = ATTENTION_FOCUS;
+        values_copy[max_idx] = -1e30f;  /* Mark as used */
+    }
+
+    nimcp_free(values_copy);
+    return 0;
+}

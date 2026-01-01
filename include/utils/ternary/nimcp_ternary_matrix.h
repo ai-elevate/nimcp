@@ -586,6 +586,27 @@ static inline float trit_matrix_sparsity(const trit_matrix_t* mat) {
     return (float)n_unknown / (float)mat->numel;
 }
 
+/**
+ * @brief Get memory size of a ternary matrix in bytes
+ *
+ * @param mat Input matrix
+ * @return Memory size in bytes (data + overhead)
+ */
+static inline size_t trit_matrix_memory_size(const trit_matrix_t* mat) {
+    if (!mat || mat->magic != TERNARY_MAGIC) return 0;
+
+    size_t data_size;
+    if (mat->pack_mode == TERNARY_PACK_NONE) {
+        data_size = mat->numel * sizeof(trit_t);
+    } else if (mat->pack_mode == TERNARY_PACK_2BIT) {
+        data_size = (mat->numel + 3) / 4;  // 4 trits per byte
+    } else {
+        data_size = (mat->numel + 4) / 5;  // 5 trits per byte
+    }
+
+    return sizeof(trit_matrix_t) + data_size;
+}
+
 //=============================================================================
 // Pack Mode Conversion
 //=============================================================================
@@ -611,6 +632,107 @@ static inline trit_matrix_t* trit_matrix_convert(const trit_matrix_t* mat,
     }
 
     return result;
+}
+
+//=============================================================================
+// Serialization
+//=============================================================================
+
+/**
+ * @brief Serialize matrix to buffer
+ *
+ * @param mat Matrix to serialize
+ * @param buffer Output buffer (NULL to just get size)
+ * @param buffer_size Size of buffer
+ * @return Required buffer size, or 0 on error
+ */
+static inline size_t trit_matrix_serialize(const trit_matrix_t* mat,
+                                            uint8_t* buffer,
+                                            size_t buffer_size) {
+    if (!mat || mat->magic != TERNARY_MAGIC) return 0;
+
+    // Calculate required size: header (magic, rows, cols, pack_mode) + data
+    size_t data_size;
+    if (mat->pack_mode == TERNARY_PACK_NONE) {
+        data_size = mat->numel * sizeof(trit_t);
+    } else if (mat->pack_mode == TERNARY_PACK_2BIT) {
+        data_size = (mat->numel + 3) / 4;
+    } else {
+        data_size = (mat->numel + 4) / 5;
+    }
+
+    size_t header_size = sizeof(uint32_t) * 4;  // magic, rows, cols, pack_mode
+    size_t total_size = header_size + data_size;
+
+    // Just return size if no buffer
+    if (!buffer) return total_size;
+    if (buffer_size < total_size) return 0;
+
+    // Write header
+    uint32_t* header = (uint32_t*)buffer;
+    header[0] = mat->magic;
+    header[1] = (uint32_t)mat->rows;
+    header[2] = (uint32_t)mat->cols;
+    header[3] = (uint32_t)mat->pack_mode;
+
+    // Write data
+    uint8_t* data_ptr = buffer + header_size;
+    if (mat->pack_mode == TERNARY_PACK_NONE) {
+        memcpy(data_ptr, mat->data.unpacked, data_size);
+    } else {
+        memcpy(data_ptr, mat->data.packed, data_size);
+    }
+
+    return total_size;
+}
+
+/**
+ * @brief Deserialize matrix from buffer
+ *
+ * @param buffer Input buffer
+ * @param buffer_size Size of buffer
+ * @return Deserialized matrix, or NULL on error
+ */
+static inline trit_matrix_t* trit_matrix_deserialize(const uint8_t* buffer,
+                                                      size_t buffer_size) {
+    if (!buffer || buffer_size < sizeof(uint32_t) * 4) return NULL;
+
+    // Read header
+    const uint32_t* header = (const uint32_t*)buffer;
+    uint32_t magic = header[0];
+    size_t rows = header[1];
+    size_t cols = header[2];
+    ternary_pack_mode_t pack_mode = (ternary_pack_mode_t)header[3];
+
+    if (magic != TERNARY_MAGIC) return NULL;
+
+    // Calculate data size
+    size_t numel = rows * cols;
+    size_t data_size;
+    if (pack_mode == TERNARY_PACK_NONE) {
+        data_size = numel * sizeof(trit_t);
+    } else if (pack_mode == TERNARY_PACK_2BIT) {
+        data_size = (numel + 3) / 4;
+    } else {
+        data_size = (numel + 4) / 5;
+    }
+
+    size_t header_size = sizeof(uint32_t) * 4;
+    if (buffer_size < header_size + data_size) return NULL;
+
+    // Create matrix
+    trit_matrix_t* mat = trit_matrix_create(rows, cols, pack_mode);
+    if (!mat) return NULL;
+
+    // Copy data
+    const uint8_t* data_ptr = buffer + header_size;
+    if (pack_mode == TERNARY_PACK_NONE) {
+        memcpy(mat->data.unpacked, data_ptr, data_size);
+    } else {
+        memcpy(mat->data.packed, data_ptr, data_size);
+    }
+
+    return mat;
 }
 
 #ifdef __cplusplus

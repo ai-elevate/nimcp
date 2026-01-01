@@ -125,6 +125,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+/* Ternary support for sparse coefficients */
+#include "utils/ternary/nimcp_ternary.h"
+
 /* Cortical column modules */
 #include "core/cortical_columns/nimcp_cortical_column.h"
 
@@ -240,6 +243,20 @@ typedef struct {
 
     /* Bio-async */
     bool enable_bio_async;               /**< Enable bio-async messaging */
+
+    // NIMCP 2.10: Ternary sparse coding configuration
+    // WHAT: Enable ternary sparse coefficients {-1, 0, +1}
+    // WHY:  Memory efficiency (20x savings) and natural sparse representation
+    // HOW:  Threshold-based quantization of continuous activations
+    //
+    // BIOLOGICAL BASIS:
+    // - Cortical sparse codes are inherently discrete (spike/no-spike)
+    // - Many sparse coding models use binary/ternary representations
+    // - Sign information (excitatory/inhibitory) is important
+    bool enable_ternary_coefficients;    /**< Enable ternary sparse coefficients */
+    float ternary_positive_threshold;    /**< Threshold for +1 (excitatory) */
+    float ternary_negative_threshold;    /**< Threshold for -1 (inhibitory) */
+    ternary_pack_mode_t ternary_pack_mode; /**< Packing mode for ternary storage */
 } sparse_coding_config_t;
 
 /* ============================================================================
@@ -261,6 +278,10 @@ typedef struct {
     uint32_t activation_count;           /**< Total times activated */
     uint64_t last_active_time;           /**< Last activation timestamp (us) */
     bool is_currently_active;            /**< Active this timestep */
+
+    // NIMCP 2.10: Ternary sparse coefficient
+    trit_t ternary_activation;           /**< Ternary activation {-1, 0, +1} */
+    bool use_ternary;                    /**< Using ternary representation */
 } column_sparse_state_t;
 
 /**
@@ -832,6 +853,239 @@ int cortical_sparse_disconnect_bio_async(
  * THREAD-SAFE: Yes
  */
 bool cortical_sparse_is_bio_async_connected(
+    const cortical_sparse_coding_system_t* system
+);
+
+/* ============================================================================
+ * Ternary Sparse Coding API (NIMCP 2.10)
+ * ============================================================================ */
+
+/**
+ * @brief Quantize activations to ternary sparse code
+ *
+ * WHAT: Convert continuous activations to {-1, 0, +1}
+ * WHY:  Memory efficiency and natural sparse representation
+ * HOW:  Threshold-based quantization with positive/negative thresholds
+ *
+ * @param system Sparse coding system
+ * @param activations Input continuous activations
+ * @param num_activations Number of activations
+ * @param ternary_output Output ternary activations (caller allocated)
+ * @return 0 on success, negative error code on failure
+ *
+ * ALGORITHM:
+ * For each activation a[i]:
+ *   if a[i] >= positive_threshold: output[i] = +1
+ *   else if a[i] <= -negative_threshold: output[i] = -1
+ *   else: output[i] = 0
+ *
+ * COMPLEXITY: O(M) where M = num_columns
+ * THREAD-SAFE: Yes
+ */
+int cortical_sparse_quantize_to_ternary(
+    cortical_sparse_coding_system_t* system,
+    const float* activations,
+    uint32_t num_activations,
+    trit_t* ternary_output
+);
+
+/**
+ * @brief Dequantize ternary sparse code to continuous
+ *
+ * WHAT: Convert ternary activations to continuous values
+ * WHY:  Interface with continuous computations (reconstruction, etc.)
+ * HOW:  Map {-1, 0, +1} to {-scale, 0, +scale}
+ *
+ * @param system Sparse coding system
+ * @param ternary_input Input ternary activations
+ * @param num_activations Number of activations
+ * @param scale Scale factor for dequantization
+ * @param continuous_output Output continuous activations (caller allocated)
+ * @return 0 on success, negative error code on failure
+ *
+ * COMPLEXITY: O(M)
+ * THREAD-SAFE: Yes
+ */
+int cortical_sparse_dequantize_from_ternary(
+    cortical_sparse_coding_system_t* system,
+    const trit_t* ternary_input,
+    uint32_t num_activations,
+    float scale,
+    float* continuous_output
+);
+
+/**
+ * @brief Enforce sparsity and return ternary output
+ *
+ * WHAT: Apply sparsity constraint and quantize to ternary
+ * WHY:  Combined operation for efficiency
+ * HOW:  Sparsity enforcement then threshold quantization
+ *
+ * @param system Sparse coding system
+ * @param activations Input activation values
+ * @param num_activations Number of activations
+ * @param ternary_output Output ternary sparse activations
+ * @return 0 on success, negative error code on failure
+ *
+ * COMPLEXITY: O(M) to O(M log M) depending on sparsity method
+ * THREAD-SAFE: Yes
+ */
+int cortical_sparse_enforce_sparsity_ternary(
+    cortical_sparse_coding_system_t* system,
+    const float* activations,
+    uint32_t num_activations,
+    trit_t* ternary_output
+);
+
+/**
+ * @brief Get ternary active set indices
+ *
+ * WHAT: Return indices of non-zero ternary activations
+ * WHY:  Efficient sparse representation query
+ * HOW:  Scan ternary array, collect non-zero indices
+ *
+ * @param ternary_activations Ternary activation array
+ * @param num_activations Number of activations
+ * @param active_indices Output array for active indices
+ * @param max_active Maximum size of output array
+ * @param num_active Output: number of active (non-zero) indices
+ * @return 0 on success, negative error code on failure
+ *
+ * COMPLEXITY: O(M)
+ */
+int cortical_sparse_get_ternary_active_set(
+    const trit_t* ternary_activations,
+    uint32_t num_activations,
+    uint32_t* active_indices,
+    uint32_t max_active,
+    uint32_t* num_active
+);
+
+/**
+ * @brief Compute ternary sparse code sparsity
+ *
+ * WHAT: Calculate percentage of zero activations
+ * WHY:  Monitor sparsity level of ternary codes
+ * HOW:  Count zeros, divide by total
+ *
+ * @param ternary_activations Ternary activation array
+ * @param num_activations Number of activations
+ * @return Sparsity [0.0, 1.0] (fraction of zeros)
+ *
+ * COMPLEXITY: O(M)
+ */
+float cortical_sparse_compute_ternary_sparsity(
+    const trit_t* ternary_activations,
+    uint32_t num_activations
+);
+
+/**
+ * @brief Get ternary activation distribution
+ *
+ * WHAT: Count distribution of {-1, 0, +1} values
+ * WHY:  Analyze balance between excitatory/inhibitory activations
+ * HOW:  Count occurrences of each value
+ *
+ * @param ternary_activations Ternary activation array
+ * @param num_activations Number of activations
+ * @param n_negative Output: count of -1 values
+ * @param n_zero Output: count of 0 values
+ * @param n_positive Output: count of +1 values
+ *
+ * COMPLEXITY: O(M)
+ */
+void cortical_sparse_get_ternary_distribution(
+    const trit_t* ternary_activations,
+    uint32_t num_activations,
+    uint32_t* n_negative,
+    uint32_t* n_zero,
+    uint32_t* n_positive
+);
+
+/**
+ * @brief Create packed ternary vector from activations
+ *
+ * WHAT: Create memory-efficient packed ternary vector
+ * WHY:  20x memory savings for sparse code storage
+ * HOW:  Use trit_vector_t with specified pack mode
+ *
+ * @param system Sparse coding system
+ * @param activations Input continuous activations
+ * @param num_activations Number of activations
+ * @return Packed trit vector or NULL on failure
+ *
+ * COMPLEXITY: O(M)
+ */
+trit_vector_t* cortical_sparse_create_ternary_vector(
+    cortical_sparse_coding_system_t* system,
+    const float* activations,
+    uint32_t num_activations
+);
+
+/**
+ * @brief Ternary sparse dot product
+ *
+ * WHAT: Compute dot product using ternary sparse code
+ * WHY:  Efficient computation with ternary weights
+ * HOW:  Sum/subtract based on trit values
+ *
+ * @param ternary_code Ternary sparse code
+ * @param num_elements Number of elements
+ * @param values Value array to dot with
+ * @return Dot product result
+ *
+ * ALGORITHM:
+ * result = sum(values[i] if ternary[i] == +1) - sum(values[i] if ternary[i] == -1)
+ *
+ * COMPLEXITY: O(M)
+ */
+float cortical_sparse_ternary_dot(
+    const trit_t* ternary_code,
+    uint32_t num_elements,
+    const float* values
+);
+
+/**
+ * @brief Enable ternary mode for sparse coding system
+ *
+ * WHAT: Switch system to ternary sparse coding mode
+ * WHY:  Enable memory-efficient sparse representations
+ * HOW:  Set config flags and initialize ternary storage
+ *
+ * @param system Sparse coding system
+ * @param positive_threshold Threshold for +1 quantization
+ * @param negative_threshold Threshold for -1 quantization
+ * @param pack_mode Packing mode for ternary storage
+ * @return 0 on success, negative error code on failure
+ */
+int cortical_sparse_enable_ternary_mode(
+    cortical_sparse_coding_system_t* system,
+    float positive_threshold,
+    float negative_threshold,
+    ternary_pack_mode_t pack_mode
+);
+
+/**
+ * @brief Disable ternary mode for sparse coding system
+ *
+ * WHAT: Switch system back to continuous sparse coding
+ * WHY:  Allow fine-grained activation values
+ * HOW:  Clear config flags
+ *
+ * @param system Sparse coding system
+ * @return 0 on success, negative error code on failure
+ */
+int cortical_sparse_disable_ternary_mode(
+    cortical_sparse_coding_system_t* system
+);
+
+/**
+ * @brief Check if ternary mode is enabled
+ *
+ * @param system Sparse coding system
+ * @return true if ternary mode enabled
+ */
+bool cortical_sparse_is_ternary_mode(
     const cortical_sparse_coding_system_t* system
 );
 

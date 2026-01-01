@@ -3048,3 +3048,211 @@ bool neural_network_add_connection_typed(neural_network_t network, uint32_t from
 
     return true;
 }
+
+//=============================================================================
+// NIMCP 2.10: Ternary Weight Functions
+//=============================================================================
+
+/**
+ * @brief Convert float weight to ternary
+ *
+ * WHAT: Quantize continuous weight to {-1, 0, +1}
+ * WHY:  Prepare weight for ternary storage
+ * HOW:  Threshold-based quantization
+ */
+trit_t synapse_weight_to_ternary(float weight, float threshold) {
+    if (weight >= threshold) {
+        return TRIT_POSITIVE;
+    } else if (weight <= -threshold) {
+        return TRIT_NEGATIVE;
+    }
+    return TRIT_UNKNOWN;
+}
+
+/**
+ * @brief Convert ternary weight to float
+ *
+ * WHAT: Dequantize ternary weight to continuous value
+ * WHY:  Enable computation with ternary-stored weights
+ * HOW:  Map {-1, 0, +1} to {-scale, 0, +scale}
+ */
+float synapse_ternary_to_weight(trit_t ternary_weight, float positive_scale, float negative_scale) {
+    if (ternary_weight == TRIT_POSITIVE) {
+        return positive_scale;
+    } else if (ternary_weight == TRIT_NEGATIVE) {
+        return negative_scale;
+    }
+    return 0.0f;
+}
+
+/**
+ * @brief Enable ternary mode for synapse
+ */
+bool synapse_enable_ternary_weight(synapse_t* synapse, float threshold, float scale) {
+    if (!synapse) return false;
+
+    // Quantize current weight to ternary
+    synapse->ternary_weight = synapse_weight_to_ternary(synapse->weight, threshold);
+    synapse->use_ternary_weight = true;
+    synapse->ternary_scale = scale;
+
+    return true;
+}
+
+/**
+ * @brief Disable ternary mode for synapse
+ */
+bool synapse_disable_ternary_weight(synapse_t* synapse) {
+    if (!synapse) return false;
+
+    // Dequantize ternary weight to float if currently in ternary mode
+    if (synapse->use_ternary_weight) {
+        synapse->weight = synapse_ternary_to_weight(
+            synapse->ternary_weight,
+            synapse->ternary_scale,
+            -synapse->ternary_scale
+        );
+    }
+
+    synapse->use_ternary_weight = false;
+
+    return true;
+}
+
+/**
+ * @brief Get effective weight (handles ternary/float transparently)
+ */
+float synapse_get_effective_weight(const synapse_t* synapse) {
+    if (!synapse) return 0.0f;
+
+    if (synapse->use_ternary_weight) {
+        return synapse_ternary_to_weight(
+            synapse->ternary_weight,
+            synapse->ternary_scale,
+            -synapse->ternary_scale
+        );
+    }
+
+    return synapse->weight;
+}
+
+/**
+ * @brief Set effective weight (handles ternary/float transparently)
+ */
+void synapse_set_effective_weight(synapse_t* synapse, float weight, float threshold) {
+    if (!synapse) return;
+
+    if (synapse->use_ternary_weight) {
+        synapse->ternary_weight = synapse_weight_to_ternary(weight, threshold);
+    } else {
+        synapse->weight = weight;
+    }
+}
+
+/**
+ * @brief Create ternary weight matrix for network
+ */
+ternary_weight_matrix_t* ternary_weight_matrix_create(
+    uint32_t num_neurons,
+    ternary_pack_mode_t pack_mode
+) {
+    ternary_weight_matrix_t* twm = nimcp_malloc(sizeof(ternary_weight_matrix_t));
+    if (!twm) return NULL;
+
+    twm->weights = trit_matrix_create(num_neurons, num_neurons, pack_mode);
+    if (!twm->weights) {
+        nimcp_free(twm);
+        return NULL;
+    }
+
+    twm->positive_scale = 1.0f;
+    twm->negative_scale = -1.0f;
+    twm->threshold = 0.3f;
+    twm->num_neurons = num_neurons;
+    twm->is_sparse = false;
+
+    return twm;
+}
+
+/**
+ * @brief Destroy ternary weight matrix
+ */
+void ternary_weight_matrix_destroy(ternary_weight_matrix_t* twm) {
+    if (!twm) return;
+
+    if (twm->weights) {
+        trit_matrix_destroy(twm->weights);
+    }
+
+    nimcp_free(twm);
+}
+
+/**
+ * @brief Export network weights to ternary matrix
+ */
+ternary_weight_matrix_t* neural_network_export_ternary_weights(
+    neural_network_t network,
+    float threshold,
+    ternary_pack_mode_t pack_mode
+) {
+    if (!network) return NULL;
+
+    ternary_weight_matrix_t* twm = ternary_weight_matrix_create(network->num_neurons, pack_mode);
+    if (!twm) return NULL;
+
+    twm->threshold = threshold;
+
+    // Iterate all neurons and their outgoing synapses
+    for (uint32_t from_id = 0; from_id < network->num_neurons; from_id++) {
+        neuron_t* neuron = &network->neurons[from_id];
+
+        for (uint32_t syn_idx = 0; syn_idx < neuron->num_synapses; syn_idx++) {
+            synapse_t* syn = &neuron->synapses[syn_idx];
+            uint32_t to_id = syn->target_id;
+
+            // Quantize weight to ternary
+            trit_t trit_weight = synapse_weight_to_ternary(syn->weight, threshold);
+
+            // Store in matrix
+            trit_matrix_set(twm->weights, from_id, to_id, trit_weight);
+        }
+    }
+
+    return twm;
+}
+
+/**
+ * @brief Import ternary weights to network
+ */
+int neural_network_import_ternary_weights(
+    neural_network_t network,
+    const ternary_weight_matrix_t* twm
+) {
+    if (!network || !twm || !twm->weights) return -1;
+
+    int imported = 0;
+
+    // Iterate all neurons and their outgoing synapses
+    for (uint32_t from_id = 0; from_id < network->num_neurons; from_id++) {
+        neuron_t* neuron = &network->neurons[from_id];
+
+        for (uint32_t syn_idx = 0; syn_idx < neuron->num_synapses; syn_idx++) {
+            synapse_t* syn = &neuron->synapses[syn_idx];
+            uint32_t to_id = syn->target_id;
+
+            // Get ternary weight from matrix
+            trit_t trit_weight = trit_matrix_get(twm->weights, from_id, to_id);
+
+            // Dequantize to float
+            syn->weight = synapse_ternary_to_weight(
+                trit_weight,
+                twm->positive_scale,
+                twm->negative_scale
+            );
+
+            imported++;
+        }
+    }
+
+    return imported;
+}

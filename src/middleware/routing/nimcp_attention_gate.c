@@ -174,6 +174,12 @@ attention_gate_config_t attention_gate_default_config(void) {
     config.topdown_weight = 0.7F;
     config.bottomup_weight = 0.3F;
     config.inhibition_strength = 0.5F;
+    // NIMCP 2.10: Ternary attention defaults
+    config.enable_ternary_mode = false;
+    config.ternary_focus_threshold = 0.7f;
+    config.ternary_suppress_threshold = 0.3f;
+    config.ternary_focus_gain = 2.0f;
+    config.ternary_suppress_gain = 0.2f;
     return config;
 }
 
@@ -555,4 +561,216 @@ bool attention_gate_get_stats(const attention_gate_t* gate,
 
     nimcp_mutex_unlock(gate->mutex);
     return true;
+}
+
+//=============================================================================
+// Ternary Attention API (NIMCP 2.10)
+//=============================================================================
+
+/**
+ * @brief Set ternary attention state for target
+ */
+bool attention_gate_set_ternary_state(attention_gate_t* gate,
+                                       uint32_t source_id,
+                                       uint32_t target_id,
+                                       trit_t state) {
+    if (!gate) return false;
+
+    nimcp_mutex_lock(gate->mutex);
+
+    attention_entry_t* entry = find_entry(gate, source_id, target_id);
+    if (!entry) {
+        nimcp_mutex_unlock(gate->mutex);
+        return false;
+    }
+
+    entry->target.ternary_state = state;
+    entry->target.use_ternary = true;
+
+    nimcp_mutex_unlock(gate->mutex);
+    return true;
+}
+
+/**
+ * @brief Get ternary attention state for target
+ */
+bool attention_gate_get_ternary_state(const attention_gate_t* gate,
+                                       uint32_t source_id,
+                                       uint32_t target_id,
+                                       trit_t* state) {
+    if (!gate || !state) return false;
+
+    nimcp_mutex_lock(gate->mutex);
+
+    attention_entry_t* entry = find_entry(gate, source_id, target_id);
+    if (!entry) {
+        nimcp_mutex_unlock(gate->mutex);
+        return false;
+    }
+
+    *state = entry->target.ternary_state;
+
+    nimcp_mutex_unlock(gate->mutex);
+    return true;
+}
+
+/**
+ * @brief Convert all targets to ternary attention mode
+ */
+uint32_t attention_gate_convert_to_ternary(attention_gate_t* gate) {
+    if (!gate) return 0;
+
+    nimcp_mutex_lock(gate->mutex);
+
+    uint32_t converted = 0;
+    float focus_thresh = gate->config.ternary_focus_threshold;
+    float suppress_thresh = gate->config.ternary_suppress_threshold;
+
+    for (uint32_t i = 0; i < gate->num_entries; i++) {
+        attention_target_t* target = &gate->entries[i].target;
+
+        // Quantize combined_weight to ternary
+        if (target->combined_weight >= focus_thresh) {
+            target->ternary_state = TRIT_POSITIVE;  // FOCUS
+        } else if (target->combined_weight <= suppress_thresh) {
+            target->ternary_state = TRIT_NEGATIVE;  // SUPPRESS
+        } else {
+            target->ternary_state = TRIT_UNKNOWN;   // NEUTRAL
+        }
+        target->use_ternary = true;
+        converted++;
+    }
+
+    nimcp_mutex_unlock(gate->mutex);
+    return converted;
+}
+
+/**
+ * @brief Convert all targets back to continuous attention mode
+ */
+uint32_t attention_gate_convert_to_continuous(attention_gate_t* gate) {
+    if (!gate) return 0;
+
+    nimcp_mutex_lock(gate->mutex);
+
+    uint32_t converted = 0;
+
+    for (uint32_t i = 0; i < gate->num_entries; i++) {
+        attention_target_t* target = &gate->entries[i].target;
+
+        if (target->use_ternary) {
+            // Map ternary state to continuous weight
+            if (target->ternary_state == TRIT_POSITIVE) {
+                target->combined_weight = 1.0f;
+            } else if (target->ternary_state == TRIT_NEGATIVE) {
+                target->combined_weight = 0.0f;
+            } else {
+                target->combined_weight = 0.5f;
+            }
+            target->use_ternary = false;
+            converted++;
+        }
+    }
+
+    nimcp_mutex_unlock(gate->mutex);
+    return converted;
+}
+
+/**
+ * @brief Apply ternary attention gain modulation
+ */
+float attention_gate_apply_ternary_modulation(const attention_gate_t* gate,
+                                               uint32_t source_id,
+                                               uint32_t target_id,
+                                               float input) {
+    if (!gate) return input;
+
+    nimcp_mutex_lock(gate->mutex);
+
+    attention_entry_t* entry = find_entry(gate, source_id, target_id);
+    if (!entry || !entry->target.use_ternary) {
+        nimcp_mutex_unlock(gate->mutex);
+        return input;
+    }
+
+    float output;
+    switch (entry->target.ternary_state) {
+        case TRIT_POSITIVE:  // FOCUS
+            output = input * gate->config.ternary_focus_gain;
+            break;
+        case TRIT_NEGATIVE:  // SUPPRESS
+            output = input * gate->config.ternary_suppress_gain;
+            break;
+        default:  // NEUTRAL
+            output = input;
+            break;
+    }
+
+    nimcp_mutex_unlock(gate->mutex);
+    return output;
+}
+
+/**
+ * @brief Get ternary attention distribution
+ */
+void attention_gate_get_ternary_distribution(const attention_gate_t* gate,
+                                              uint32_t* n_suppress,
+                                              uint32_t* n_neutral,
+                                              uint32_t* n_focus) {
+    uint32_t suppress = 0, neutral = 0, focus = 0;
+
+    if (gate) {
+        nimcp_mutex_lock(gate->mutex);
+
+        for (uint32_t i = 0; i < gate->num_entries; i++) {
+            const attention_target_t* target = &gate->entries[i].target;
+            if (target->use_ternary) {
+                switch (target->ternary_state) {
+                    case TRIT_POSITIVE:
+                        focus++;
+                        break;
+                    case TRIT_NEGATIVE:
+                        suppress++;
+                        break;
+                    default:
+                        neutral++;
+                        break;
+                }
+            }
+        }
+
+        nimcp_mutex_unlock(gate->mutex);
+    }
+
+    if (n_suppress) *n_suppress = suppress;
+    if (n_neutral) *n_neutral = neutral;
+    if (n_focus) *n_focus = focus;
+}
+
+/**
+ * @brief Update ternary states from continuous weights
+ */
+void attention_gate_update_ternary_states(attention_gate_t* gate) {
+    if (!gate) return;
+
+    nimcp_mutex_lock(gate->mutex);
+
+    float focus_thresh = gate->config.ternary_focus_threshold;
+    float suppress_thresh = gate->config.ternary_suppress_threshold;
+
+    for (uint32_t i = 0; i < gate->num_entries; i++) {
+        attention_target_t* target = &gate->entries[i].target;
+
+        if (target->use_ternary) {
+            if (target->combined_weight >= focus_thresh) {
+                target->ternary_state = TRIT_POSITIVE;
+            } else if (target->combined_weight <= suppress_thresh) {
+                target->ternary_state = TRIT_NEGATIVE;
+            } else {
+                target->ternary_state = TRIT_UNKNOWN;
+            }
+        }
+    }
+
+    nimcp_mutex_unlock(gate->mutex);
 }

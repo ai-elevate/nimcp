@@ -520,6 +520,255 @@ void engram_get_statistics(
     uint64_t* total_recalls_out,
     uint32_t* active_count_out);
 
+//=============================================================================
+// TERNARY ENGRAM WEIGHT API
+//=============================================================================
+
+#include "utils/ternary/nimcp_ternary_types.h"
+
+/**
+ * @brief Ternary engram weight states
+ *
+ * WHAT: Discrete engram weight levels
+ * WHY:  Model discrete synaptic strength changes
+ * HOW:  Map to LTD/BASELINE/LTP synaptic states
+ *
+ * BIOLOGICAL BASIS:
+ * - Synaptic tags have discrete states (PRPs present/absent)
+ * - Metaplasticity creates distinct weight bands
+ * - All-or-none consolidation at cellular level
+ */
+typedef enum {
+    ENGRAM_WEIGHT_DEPRESSED = -1,   /**< LTD state: weakened synapse */
+    ENGRAM_WEIGHT_BASELINE = 0,     /**< Neutral: default synapse */
+    ENGRAM_WEIGHT_POTENTIATED = 1   /**< LTP state: strengthened synapse */
+} ternary_engram_weight_t;
+
+/**
+ * @brief Ternary consolidation states
+ *
+ * WHAT: Discrete consolidation levels
+ * WHY:  Model consolidation as discrete transitions
+ */
+typedef enum {
+    ENGRAM_CONSOL_LABILE = -1,      /**< Labile: vulnerable to disruption */
+    ENGRAM_CONSOL_TRANSITIONING = 0,/**< Transitioning: partially stable */
+    ENGRAM_CONSOL_STABLE = 1        /**< Stable: fully consolidated */
+} ternary_consolidation_state_t;
+
+/**
+ * @brief Ternary engram configuration
+ */
+typedef struct {
+    bool use_ternary_weights;       /**< Enable ternary weight mode */
+    bool use_ternary_consolidation; /**< Enable ternary consolidation states */
+    float potentiation_threshold;   /**< Threshold for potentiated state */
+    float depression_threshold;     /**< Threshold for depressed state */
+    float consolidation_threshold;  /**< Threshold for stable consolidation */
+    float lability_threshold;       /**< Threshold for labile state */
+    bool ternary_recall;            /**< Use ternary matching for recall */
+    float ternary_recall_threshold; /**< Match threshold for ternary recall */
+} ternary_engram_config_t;
+
+/**
+ * @brief Ternary engram statistics
+ */
+typedef struct {
+    uint64_t n_potentiated;         /**< Count of potentiated weights */
+    uint64_t n_baseline;            /**< Count of baseline weights */
+    uint64_t n_depressed;           /**< Count of depressed weights */
+    uint64_t n_stable;              /**< Count of stable engrams */
+    uint64_t n_labile;              /**< Count of labile engrams */
+    float avg_ternary_sparsity;     /**< Fraction of non-baseline weights */
+    float avg_consolidation_rate;   /**< Rate of consolidation */
+} ternary_engram_stats_t;
+
+/**
+ * @brief Get default ternary engram configuration
+ *
+ * DEFAULTS:
+ * - use_ternary_weights: true
+ * - potentiation_threshold: 0.7
+ * - depression_threshold: 0.3
+ * - consolidation_threshold: 0.8
+ *
+ * @param config Configuration to initialize
+ * @return 0 on success, negative on error
+ */
+int ternary_engram_default_config(ternary_engram_config_t* config);
+
+/**
+ * @brief Enable ternary mode for engram system
+ *
+ * @param system Engram system
+ * @param config Ternary configuration
+ * @return 0 on success, negative on error
+ */
+int engram_enable_ternary(
+    engram_system_t* system,
+    const ternary_engram_config_t* config
+);
+
+/**
+ * @brief Ternarize engram weights
+ *
+ * WHAT: Convert continuous engram weights to ternary
+ * WHY:  Enable discrete weight representation
+ * HOW:
+ *   - activation > potentiation_threshold => POTENTIATED
+ *   - activation < depression_threshold => DEPRESSED
+ *   - otherwise => BASELINE
+ *
+ * BIOLOGICAL BASIS:
+ * - Synaptic bistability in potentiation
+ * - Tag & capture model has discrete states
+ * - Binary engram allocation (allocated vs not)
+ *
+ * @param system Engram system
+ * @param engram_id Engram to ternarize
+ * @param config Ternary configuration
+ * @param weights_out Output: ternary weights [ENGRAM_MAX_NEURONS]
+ * @param n_weights_out Output: number of weights
+ * @return 0 on success, negative on error
+ */
+int engram_ternarize_weights(
+    engram_system_t* system,
+    uint64_t engram_id,
+    const ternary_engram_config_t* config,
+    ternary_engram_weight_t* weights_out,
+    uint32_t* n_weights_out
+);
+
+/**
+ * @brief Apply ternary weight update to engram
+ *
+ * WHAT: Update engram weights based on ternary plasticity
+ * WHY:  Discrete LTP/LTD updates
+ * HOW:  Apply ternary delta to continuous weights
+ *
+ * @param system Engram system
+ * @param engram_id Engram to update
+ * @param weight_changes Array of ternary changes
+ * @param n_changes Number of changes
+ * @param step_size Magnitude of weight change
+ * @return 0 on success, negative on error
+ */
+int engram_apply_ternary_update(
+    engram_system_t* system,
+    uint64_t engram_id,
+    const ternary_engram_weight_t* weight_changes,
+    uint32_t n_changes,
+    float step_size
+);
+
+/**
+ * @brief Get ternary consolidation state
+ *
+ * WHAT: Get discrete consolidation state of engram
+ * WHY:  Binary decision: consolidated or not
+ * HOW:  Threshold continuous consolidation_strength
+ *
+ * @param system Engram system
+ * @param engram_id Engram ID
+ * @param config Ternary configuration
+ * @return Ternary consolidation state
+ */
+ternary_consolidation_state_t engram_get_ternary_consolidation(
+    const engram_system_t* system,
+    uint64_t engram_id,
+    const ternary_engram_config_t* config
+);
+
+/**
+ * @brief Ternary pattern matching for recall
+ *
+ * WHAT: Match cue pattern using ternary logic
+ * WHY:  Discrete similarity matching
+ * HOW:  Count matching ternary states
+ *
+ * MATCHING LOGIC:
+ * - POTENTIATED matches POTENTIATED => +1
+ * - DEPRESSED matches DEPRESSED => +1
+ * - Mismatch => -1
+ * - BASELINE acts as wildcard => 0
+ *
+ * @param system Engram system
+ * @param cue_weights Ternary cue pattern
+ * @param n_cue Number of cue weights
+ * @param config Ternary configuration
+ * @param best_match_out Output: best matching engram ID
+ * @param match_score_out Output: match score [0-1]
+ * @return 0 on success, negative on error
+ */
+int engram_ternary_recall(
+    engram_system_t* system,
+    const ternary_engram_weight_t* cue_weights,
+    uint32_t n_cue,
+    const ternary_engram_config_t* config,
+    uint64_t* best_match_out,
+    float* match_score_out
+);
+
+/**
+ * @brief Compute ternary engram similarity
+ *
+ * WHAT: Similarity between two ternary engram patterns
+ * WHY:  Pattern separation/completion with discrete weights
+ * HOW:  Hamming-like distance with ternary logic
+ *
+ * @param weights_a First ternary weight pattern
+ * @param weights_b Second ternary weight pattern
+ * @param n_weights Number of weights
+ * @return Similarity score [0-1]
+ */
+float engram_ternary_similarity(
+    const ternary_engram_weight_t* weights_a,
+    const ternary_engram_weight_t* weights_b,
+    uint32_t n_weights
+);
+
+/**
+ * @brief Get ternary engram statistics
+ *
+ * @param system Engram system
+ * @param stats Output statistics
+ * @return 0 on success, negative on error
+ */
+int engram_get_ternary_stats(
+    const engram_system_t* system,
+    ternary_engram_stats_t* stats
+);
+
+/**
+ * @brief Convert ternary weight to string name
+ *
+ * @param weight Ternary weight
+ * @return String name
+ */
+static inline const char* ternary_engram_weight_name(ternary_engram_weight_t weight) {
+    switch (weight) {
+        case ENGRAM_WEIGHT_DEPRESSED:   return "DEPRESSED";
+        case ENGRAM_WEIGHT_BASELINE:    return "BASELINE";
+        case ENGRAM_WEIGHT_POTENTIATED: return "POTENTIATED";
+        default:                        return "INVALID";
+    }
+}
+
+/**
+ * @brief Convert ternary consolidation to string name
+ *
+ * @param state Consolidation state
+ * @return String name
+ */
+static inline const char* ternary_consolidation_name(ternary_consolidation_state_t state) {
+    switch (state) {
+        case ENGRAM_CONSOL_LABILE:       return "LABILE";
+        case ENGRAM_CONSOL_TRANSITIONING:return "TRANSITIONING";
+        case ENGRAM_CONSOL_STABLE:       return "STABLE";
+        default:                         return "INVALID";
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif

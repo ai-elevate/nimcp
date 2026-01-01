@@ -1175,6 +1175,457 @@ static inline int qreason_get_config(qreason_t ctx, qreason_config_t* config) {
     return 0;
 }
 
+//=============================================================================
+// Ternary Belief Propagation API
+//=============================================================================
+
+/**
+ * @brief Ternary belief state for probabilistic reasoning
+ *
+ * WHAT: Discrete belief states for efficient belief propagation
+ * WHY:  Simplifies continuous probabilities to actionable decision states
+ * HOW:  Maps to believe/uncertain/disbelieve for logical inference
+ *
+ * BIOLOGICAL GROUNDING:
+ * - Prefrontal cortex forms discrete belief categories
+ * - Decision-making uses categorical rather than continuous judgments
+ * - Confidence thresholds trigger different neural responses
+ *
+ * LOGICAL CORRESPONDENCE:
+ * - BELIEVE (+1) corresponds to Kleene TRUE
+ * - DISBELIEVE (-1) corresponds to Kleene FALSE
+ * - UNCERTAIN (0) corresponds to Kleene UNKNOWN
+ */
+typedef enum {
+    QREASON_BELIEF_DISBELIEVE = -1,  /**< Strong disbelief (p < low_threshold) */
+    QREASON_BELIEF_UNCERTAIN = 0,    /**< Uncertain (between thresholds) */
+    QREASON_BELIEF_BELIEVE = 1       /**< Strong belief (p > high_threshold) */
+} ternary_belief_t;
+
+/**
+ * @brief Ternary belief matrix for weight-based inference
+ *
+ * WHAT: Matrix of ternary beliefs for structured reasoning
+ * WHY:  Extend Kleene logic to weight matrices for graph-based inference
+ * HOW:  Each connection has a ternary strength: support/neutral/inhibit
+ */
+typedef struct {
+    ternary_belief_t* data;          /**< Flattened ternary matrix */
+    uint32_t rows;                   /**< Number of rows (from variables) */
+    uint32_t cols;                   /**< Number of columns (to variables) */
+    float* confidences;              /**< Optional confidence per edge */
+} ternary_belief_matrix_t;
+
+/**
+ * @brief Ternary belief propagation configuration
+ *
+ * WHAT: Configuration for ternary belief propagation
+ * WHY:  Customize belief discretization and propagation behavior
+ */
+typedef struct {
+    float believe_threshold;         /**< Probability >= this is BELIEVE (default: 0.7) */
+    float disbelieve_threshold;      /**< Probability <= this is DISBELIEVE (default: 0.3) */
+    uint32_t max_iterations;         /**< Max propagation iterations (default: 20) */
+    float damping_factor;            /**< Message damping for convergence (default: 0.5) */
+    bool use_ternary_messages;       /**< Send ternary instead of continuous messages */
+    bool track_convergence;          /**< Track convergence statistics */
+    float convergence_threshold;     /**< Convergence check threshold (default: 0.01) */
+} ternary_bp_config_t;
+
+/**
+ * @brief Ternary belief propagation statistics
+ *
+ * WHAT: Statistics for ternary belief propagation
+ * WHY:  Monitor convergence and belief distribution
+ */
+typedef struct {
+    uint32_t iterations_performed;   /**< Iterations until convergence */
+    bool converged;                  /**< Whether propagation converged */
+    uint32_t believe_count;          /**< Variables in BELIEVE state */
+    uint32_t uncertain_count;        /**< Variables in UNCERTAIN state */
+    uint32_t disbelieve_count;       /**< Variables in DISBELIEVE state */
+    uint32_t state_changes;          /**< Total state changes during propagation */
+    float avg_confidence;            /**< Average confidence of beliefs */
+} ternary_bp_stats_t;
+
+/**
+ * @brief Get default ternary belief propagation configuration
+ *
+ * WHAT: Initialize config with sensible defaults
+ * WHY:  Easy setup for ternary belief propagation
+ *
+ * @param config Configuration to initialize
+ * @return 0 on success, -1 on error
+ */
+static inline int ternary_bp_default_config(ternary_bp_config_t* config) {
+    if (!config) return -1;
+
+    config->believe_threshold = 0.7f;
+    config->disbelieve_threshold = 0.3f;
+    config->max_iterations = 20;
+    config->damping_factor = 0.5f;
+    config->use_ternary_messages = true;
+    config->track_convergence = true;
+    config->convergence_threshold = 0.01f;
+
+    return 0;
+}
+
+/**
+ * @brief Convert probability to ternary belief
+ *
+ * WHAT: Discretize continuous probability to ternary belief state
+ * WHY:  Simplify probabilistic reasoning to categorical decisions
+ *
+ * @param config Configuration with thresholds (NULL for defaults)
+ * @param probability Continuous probability [0,1]
+ * @return Ternary belief state
+ */
+static inline ternary_belief_t ternary_belief_from_prob(
+    const ternary_bp_config_t* config,
+    float probability
+) {
+    float believe_thresh = config ? config->believe_threshold : 0.7f;
+    float disbelieve_thresh = config ? config->disbelieve_threshold : 0.3f;
+
+    if (probability >= believe_thresh) {
+        return QREASON_BELIEF_BELIEVE;
+    }
+    if (probability <= disbelieve_thresh) {
+        return QREASON_BELIEF_DISBELIEVE;
+    }
+    return QREASON_BELIEF_UNCERTAIN;
+}
+
+/**
+ * @brief Convert ternary belief to representative probability
+ *
+ * WHAT: Get typical probability for belief state
+ * WHY:  Interface with systems expecting continuous probabilities
+ *
+ * @param belief Ternary belief state
+ * @return Representative probability
+ */
+static inline float ternary_belief_to_prob(ternary_belief_t belief) {
+    switch (belief) {
+        case QREASON_BELIEF_BELIEVE:    return 0.9f;
+        case QREASON_BELIEF_DISBELIEVE: return 0.1f;
+        default:                        return 0.5f;
+    }
+}
+
+/**
+ * @brief Ternary belief AND operation
+ *
+ * WHAT: Combine beliefs with AND semantics
+ * WHY:  Logical conjunction for ternary beliefs
+ * HOW:  Minimum operation (Kleene AND semantics)
+ *
+ * @param a First belief
+ * @param b Second belief
+ * @return Combined belief
+ */
+static inline ternary_belief_t ternary_belief_and(ternary_belief_t a, ternary_belief_t b) {
+    /* Kleene AND: min(a, b) in ternary space */
+    if (a == QREASON_BELIEF_DISBELIEVE || b == QREASON_BELIEF_DISBELIEVE) {
+        return QREASON_BELIEF_DISBELIEVE;
+    }
+    if (a == QREASON_BELIEF_UNCERTAIN || b == QREASON_BELIEF_UNCERTAIN) {
+        return QREASON_BELIEF_UNCERTAIN;
+    }
+    return QREASON_BELIEF_BELIEVE;
+}
+
+/**
+ * @brief Ternary belief OR operation
+ *
+ * WHAT: Combine beliefs with OR semantics
+ * WHY:  Logical disjunction for ternary beliefs
+ * HOW:  Maximum operation (Kleene OR semantics)
+ *
+ * @param a First belief
+ * @param b Second belief
+ * @return Combined belief
+ */
+static inline ternary_belief_t ternary_belief_or(ternary_belief_t a, ternary_belief_t b) {
+    /* Kleene OR: max(a, b) in ternary space */
+    if (a == QREASON_BELIEF_BELIEVE || b == QREASON_BELIEF_BELIEVE) {
+        return QREASON_BELIEF_BELIEVE;
+    }
+    if (a == QREASON_BELIEF_UNCERTAIN || b == QREASON_BELIEF_UNCERTAIN) {
+        return QREASON_BELIEF_UNCERTAIN;
+    }
+    return QREASON_BELIEF_DISBELIEVE;
+}
+
+/**
+ * @brief Ternary belief NOT operation
+ *
+ * WHAT: Negate ternary belief
+ * WHY:  Logical negation for ternary beliefs
+ *
+ * @param belief Belief to negate
+ * @return Negated belief
+ */
+static inline ternary_belief_t ternary_belief_not(ternary_belief_t belief) {
+    switch (belief) {
+        case QREASON_BELIEF_BELIEVE:    return QREASON_BELIEF_DISBELIEVE;
+        case QREASON_BELIEF_DISBELIEVE: return QREASON_BELIEF_BELIEVE;
+        default:                        return QREASON_BELIEF_UNCERTAIN;
+    }
+}
+
+/**
+ * @brief Create ternary belief matrix
+ *
+ * WHAT: Allocate and initialize ternary belief matrix
+ * WHY:  Represent inference graph with ternary edge weights
+ *
+ * @param rows Number of rows
+ * @param cols Number of columns
+ * @param with_confidences Whether to track per-edge confidence
+ * @return New matrix or NULL on failure
+ */
+static inline ternary_belief_matrix_t* ternary_belief_matrix_create(
+    uint32_t rows,
+    uint32_t cols,
+    bool with_confidences
+) {
+    ternary_belief_matrix_t* matrix = (ternary_belief_matrix_t*)calloc(
+        1, sizeof(ternary_belief_matrix_t)
+    );
+    if (!matrix) return NULL;
+
+    size_t size = (size_t)rows * cols;
+    matrix->data = (ternary_belief_t*)calloc(size, sizeof(ternary_belief_t));
+    if (!matrix->data) {
+        free(matrix);
+        return NULL;
+    }
+
+    if (with_confidences) {
+        matrix->confidences = (float*)calloc(size, sizeof(float));
+        if (!matrix->confidences) {
+            free(matrix->data);
+            free(matrix);
+            return NULL;
+        }
+        /* Initialize confidences to 0.5 (neutral) */
+        for (size_t i = 0; i < size; i++) {
+            matrix->confidences[i] = 0.5f;
+        }
+    }
+
+    matrix->rows = rows;
+    matrix->cols = cols;
+
+    return matrix;
+}
+
+/**
+ * @brief Destroy ternary belief matrix
+ *
+ * @param matrix Matrix to destroy (NULL-safe)
+ */
+static inline void ternary_belief_matrix_destroy(ternary_belief_matrix_t* matrix) {
+    if (!matrix) return;
+    free(matrix->data);
+    free(matrix->confidences);
+    free(matrix);
+}
+
+/**
+ * @brief Get belief from matrix
+ *
+ * @param matrix Belief matrix
+ * @param row Row index
+ * @param col Column index
+ * @return Belief value
+ */
+static inline ternary_belief_t ternary_belief_matrix_get(
+    const ternary_belief_matrix_t* matrix,
+    uint32_t row,
+    uint32_t col
+) {
+    if (!matrix || row >= matrix->rows || col >= matrix->cols) {
+        return QREASON_BELIEF_UNCERTAIN;
+    }
+    return matrix->data[row * matrix->cols + col];
+}
+
+/**
+ * @brief Set belief in matrix
+ *
+ * @param matrix Belief matrix
+ * @param row Row index
+ * @param col Column index
+ * @param belief Belief value
+ * @param confidence Optional confidence (if matrix has confidences)
+ */
+static inline void ternary_belief_matrix_set(
+    ternary_belief_matrix_t* matrix,
+    uint32_t row,
+    uint32_t col,
+    ternary_belief_t belief,
+    float confidence
+) {
+    if (!matrix || row >= matrix->rows || col >= matrix->cols) return;
+    size_t idx = row * matrix->cols + col;
+    matrix->data[idx] = belief;
+    if (matrix->confidences) {
+        matrix->confidences[idx] = confidence;
+    }
+}
+
+/**
+ * @brief Enable ternary belief propagation mode
+ *
+ * WHAT: Enable ternary belief propagation in quantum reasoner
+ * WHY:  Combine quantum-inspired reasoning with ternary beliefs
+ *
+ * @param ctx Quantum reasoner context
+ * @param config Ternary BP configuration (NULL for defaults)
+ * @return 0 on success
+ */
+int qreason_enable_ternary_bp(
+    qreason_t ctx,
+    const ternary_bp_config_t* config
+);
+
+/**
+ * @brief Disable ternary belief propagation mode
+ *
+ * @param ctx Quantum reasoner context
+ * @return 0 on success
+ */
+int qreason_disable_ternary_bp(qreason_t ctx);
+
+/**
+ * @brief Check if ternary BP is enabled
+ *
+ * @param ctx Quantum reasoner context
+ * @return true if ternary BP active
+ */
+bool qreason_is_ternary_bp(const qreason_t ctx);
+
+/**
+ * @brief Run ternary belief propagation
+ *
+ * WHAT: Propagate beliefs through factor graph using ternary messages
+ * WHY:  Efficient approximate inference with discrete beliefs
+ * HOW:  Sum-product algorithm with ternary discretization
+ *
+ * @param ctx Quantum reasoner context
+ * @param weights Ternary belief matrix (edge weights)
+ * @param initial_beliefs Initial beliefs for variables (NULL for UNCERTAIN)
+ * @param result Output: propagated beliefs
+ * @return 0 on success
+ */
+int qreason_ternary_bp_propagate(
+    qreason_t ctx,
+    const ternary_belief_matrix_t* weights,
+    const ternary_belief_t* initial_beliefs,
+    qreason_result_t* result
+);
+
+/**
+ * @brief Query with ternary belief propagation
+ *
+ * WHAT: Query variable belief using ternary propagation
+ * WHY:  Get ternary belief state for variable
+ *
+ * @param ctx Quantum reasoner context
+ * @param variable Variable index to query
+ * @param belief_out Output: ternary belief
+ * @param confidence_out Output: confidence [0,1]
+ * @return 0 on success
+ */
+int qreason_ternary_bp_query(
+    qreason_t ctx,
+    uint32_t variable,
+    ternary_belief_t* belief_out,
+    float* confidence_out
+);
+
+/**
+ * @brief Convert knowledge base to ternary belief matrix
+ *
+ * WHAT: Build belief matrix from rules in knowledge base
+ * WHY:  Enable ternary BP on existing knowledge base
+ *
+ * @param ctx Quantum reasoner context
+ * @param matrix Output: ternary belief matrix (caller must destroy)
+ * @return 0 on success
+ */
+int qreason_kb_to_ternary_matrix(
+    qreason_t ctx,
+    ternary_belief_matrix_t** matrix
+);
+
+/**
+ * @brief Apply ternary message passing
+ *
+ * WHAT: Single round of ternary message passing
+ * WHY:  Low-level control over propagation
+ *
+ * @param ctx Quantum reasoner context
+ * @param weights Belief matrix
+ * @param beliefs Current beliefs (modified in place)
+ * @param num_variables Number of variables
+ * @return Number of belief changes
+ */
+uint32_t qreason_ternary_message_pass(
+    qreason_t ctx,
+    const ternary_belief_matrix_t* weights,
+    ternary_belief_t* beliefs,
+    uint32_t num_variables
+);
+
+/**
+ * @brief Get ternary belief propagation statistics
+ *
+ * @param ctx Quantum reasoner context
+ * @param stats Output statistics
+ * @return 0 on success
+ */
+int qreason_get_ternary_bp_stats(
+    const qreason_t ctx,
+    ternary_bp_stats_t* stats
+);
+
+/**
+ * @brief Map quantum amplitude to ternary belief
+ *
+ * WHAT: Convert quantum amplitude (probability) to ternary belief
+ * WHY:  Bridge quantum and ternary representations
+ *
+ * @param amplitude Quantum amplitude
+ * @return Ternary belief
+ */
+static inline ternary_belief_t qreason_amplitude_to_belief(float amplitude) {
+    float prob = amplitude * amplitude;  /* |amplitude|^2 = probability */
+    if (prob >= 0.7f) return QREASON_BELIEF_BELIEVE;
+    if (prob <= 0.3f) return QREASON_BELIEF_DISBELIEVE;
+    return QREASON_BELIEF_UNCERTAIN;
+}
+
+/**
+ * @brief Map ternary belief to quantum amplitude
+ *
+ * WHAT: Convert ternary belief to quantum amplitude
+ * WHY:  Initialize quantum state from beliefs
+ *
+ * @param belief Ternary belief
+ * @return Representative amplitude
+ */
+static inline float qreason_belief_to_amplitude(ternary_belief_t belief) {
+    switch (belief) {
+        case QREASON_BELIEF_BELIEVE:    return 0.95f;   /* sqrt(0.9) approx */
+        case QREASON_BELIEF_DISBELIEVE: return 0.32f;   /* sqrt(0.1) approx */
+        default:                        return 0.71f;   /* sqrt(0.5) approx */
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif
