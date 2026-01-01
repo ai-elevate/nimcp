@@ -676,8 +676,7 @@ __global__ void kernel_create_hilbert_filter(
  * @brief Apply filter to complex spectrum (multiply each complex by scalar)
  */
 __global__ void kernel_apply_spectrum_filter(
-    float* __restrict__ spectrum_re,
-    float* __restrict__ spectrum_im,
+    float* __restrict__ spectrum,  // Interleaved re,im,re,im,...
     const float* __restrict__ filter,
     uint32_t n_fft)
 {
@@ -685,8 +684,9 @@ __global__ void kernel_apply_spectrum_filter(
     if (idx >= n_fft) return;
 
     float f = filter[idx];
-    spectrum_re[idx] *= f;
-    spectrum_im[idx] *= f;
+    // Interleaved layout: spectrum[2*idx] = real, spectrum[2*idx+1] = imag
+    spectrum[2 * idx] *= f;
+    spectrum[2 * idx + 1] *= f;
 }
 
 /**
@@ -717,6 +717,69 @@ __global__ void kernel_extract_amplitude(
     if (idx >= n) return;
 
     amplitude[idx] = sqrtf(re[idx] * re[idx] + im[idx] * im[idx]);
+}
+
+/**
+ * @brief Extract amplitude with scaled imaginary part (for FFT normalization)
+ */
+__global__ void kernel_extract_amplitude_scaled(
+    const float* __restrict__ re,
+    const float* __restrict__ im,
+    float* __restrict__ amplitude,
+    float im_scale,
+    uint32_t n)
+{
+    uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n) return;
+
+    float scaled_im = im[idx] * im_scale;
+    amplitude[idx] = sqrtf(re[idx] * re[idx] + scaled_im * scaled_im);
+}
+
+/**
+ * @brief Scale array in-place
+ */
+__global__ void kernel_scale_array(
+    float* __restrict__ data,
+    float scale,
+    uint32_t n)
+{
+    uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n) return;
+
+    data[idx] *= scale;
+}
+
+/**
+ * @brief Copy real signal to complex (imaginary = 0)
+ */
+__global__ void kernel_real_to_complex(
+    const float* __restrict__ real_signal,
+    cufftComplex* __restrict__ complex_signal,
+    uint32_t n)
+{
+    uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n) return;
+
+    complex_signal[idx].x = real_signal[idx];
+    complex_signal[idx].y = 0.0f;
+}
+
+/**
+ * @brief Extract amplitude from interleaved complex signal with normalization
+ */
+__global__ void kernel_complex_amplitude(
+    const cufftComplex* __restrict__ complex_signal,
+    float* __restrict__ amplitude,
+    float scale,
+    uint32_t n)
+{
+    uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n) return;
+
+    float re = complex_signal[idx].x * scale;
+    float im = complex_signal[idx].y * scale;
+    amplitude[idx] = sqrtf(re * re + im * im);
 }
 
 bool nimcp_gpu_hilbert_phase(
@@ -761,8 +824,7 @@ bool nimcp_gpu_hilbert_phase(
     // Note: R2C gives n/2+1 complex values, need to handle carefully
     uint32_t n_freq = n / 2 + 1;
     kernel_apply_spectrum_filter<<<GRID_SIZE(n_freq), BLOCK_SIZE>>>(
-        (float*)d_spectrum, (float*)d_spectrum + 1,  // Interleaved real/imag
-        d_filter, n_freq);
+        (float*)d_spectrum, d_filter, n_freq);
 
     // Create inverse FFT plan
     cufftHandle plan_inv;
@@ -773,15 +835,9 @@ bool nimcp_gpu_hilbert_phase(
     CUDA_CHECK(cudaMalloc(&d_analytic_im, n * sizeof(float)));
     CUFFT_CHECK(cufftExecC2R(plan_inv, d_spectrum, d_analytic_im));
 
-    // Normalize inverse FFT
+    // Normalize inverse FFT (cuFFT doesn't normalize)
     float norm_factor = 1.0f / (float)n;
-    __global__ void kernel_scale(float* data, float scale, uint32_t n);
-    // Simple scale kernel inline
-    {
-        float* d_norm_data = d_analytic_im;
-        cudaMemcpy(d_analytic_im, d_analytic_im, n * sizeof(float), cudaMemcpyDeviceToDevice);
-        // Scale inline - simplified
-    }
+    kernel_scale_array<<<GRID_SIZE(n), BLOCK_SIZE>>>(d_analytic_im, norm_factor, n);
 
     // Extract phase: atan2(hilbert(x), x)
     kernel_extract_phase<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -818,54 +874,47 @@ bool nimcp_gpu_hilbert_amplitude(
 
     uint32_t n = (uint32_t)signal->numel;
 
-    // Allocate complex spectrum buffer
-    cufftComplex *d_spectrum;
-    float *d_filter;
+    // Allocate complex buffers for C2C FFT
+    cufftComplex *d_complex_signal, *d_spectrum;
+    CUDA_CHECK(cudaMalloc(&d_complex_signal, n * sizeof(cufftComplex)));
     CUDA_CHECK(cudaMalloc(&d_spectrum, n * sizeof(cufftComplex)));
-    CUDA_CHECK(cudaMalloc(&d_filter, n * sizeof(float)));
 
-    // Copy signal to buffer
-    float *d_signal_copy;
-    CUDA_CHECK(cudaMalloc(&d_signal_copy, n * sizeof(float)));
-    CUDA_CHECK(cudaMemcpy(d_signal_copy, signal->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    // Copy real signal to complex (imaginary = 0)
+    kernel_real_to_complex<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        (const float*)signal->data, d_complex_signal, n);
 
-    // Create FFT plan
+    // Create C2C FFT plan
     cufftHandle plan;
-    CUFFT_CHECK(cufftPlan1d(&plan, n, CUFFT_R2C, 1));
+    CUFFT_CHECK(cufftPlan1d(&plan, n, CUFFT_C2C, 1));
 
     // Forward FFT
-    CUFFT_CHECK(cufftExecR2C(plan, d_signal_copy, d_spectrum));
+    CUFFT_CHECK(cufftExecC2C(plan, d_complex_signal, d_spectrum, CUFFT_FORWARD));
 
-    // Create Hilbert filter
+    // Apply analytic signal filter in-place:
+    // - DC (k=0): multiply by 1
+    // - Positive freqs (k=1 to N/2-1): multiply by 2
+    // - Nyquist (k=N/2): multiply by 1
+    // - Negative freqs (k=N/2+1 to N-1): multiply by 0
+    float *d_filter;
+    CUDA_CHECK(cudaMalloc(&d_filter, n * sizeof(float)));
     kernel_create_hilbert_filter<<<GRID_SIZE(n), BLOCK_SIZE>>>(d_filter, n);
+    kernel_apply_spectrum_filter<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        (float*)d_spectrum, d_filter, n);
 
-    // Apply filter
-    uint32_t n_freq = n / 2 + 1;
-    kernel_apply_spectrum_filter<<<GRID_SIZE(n_freq), BLOCK_SIZE>>>(
-        (float*)d_spectrum, (float*)d_spectrum + 1,
-        d_filter, n_freq);
+    // Inverse FFT (in-place)
+    CUFFT_CHECK(cufftExecC2C(plan, d_spectrum, d_spectrum, CUFFT_INVERSE));
 
-    // Inverse FFT
-    cufftHandle plan_inv;
-    CUFFT_CHECK(cufftPlan1d(&plan_inv, n, CUFFT_C2R, 1));
-
-    float *d_analytic_im;
-    CUDA_CHECK(cudaMalloc(&d_analytic_im, n * sizeof(float)));
-    CUFFT_CHECK(cufftExecC2R(plan_inv, d_spectrum, d_analytic_im));
-
-    // Extract amplitude: sqrt(x^2 + hilbert(x)^2)
-    kernel_extract_amplitude<<<GRID_SIZE(n), BLOCK_SIZE>>>(
-        (const float*)signal->data,
-        d_analytic_im,
-        (float*)amplitude->data, n);
+    // Extract amplitude from analytic signal: |z| = sqrt(re^2 + im^2)
+    // Note: cuFFT doesn't normalize, so divide by n
+    float norm = 1.0f / (float)n;
+    kernel_complex_amplitude<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        d_spectrum, (float*)amplitude->data, norm, n);
 
     // Cleanup
     cufftDestroy(plan);
-    cufftDestroy(plan_inv);
+    cudaFree(d_complex_signal);
     cudaFree(d_spectrum);
     cudaFree(d_filter);
-    cudaFree(d_signal_copy);
-    cudaFree(d_analytic_im);
 
     CUDA_CHECK(cudaGetLastError());
     return true;
@@ -1604,10 +1653,9 @@ bool nimcp_gpu_bandpass_filter(
     CUFFT_CHECK(cufftPlan1d(&plan_inv, n, CUFFT_C2R, 1));
     CUFFT_CHECK(cufftExecC2R(plan_inv, d_spectrum, (float*)filtered->data));
 
-    // Normalize
+    // Normalize (cuFFT doesn't normalize inverse FFT)
     float norm = 1.0f / (float)n;
-    __global__ void kernel_scale_inplace(float* data, float scale, uint32_t n);
-    // Scale is handled implicitly or can add a simple kernel
+    kernel_scale_array<<<GRID_SIZE(n), BLOCK_SIZE>>>((float*)filtered->data, norm, n);
 
     // Cleanup
     cufftDestroy(plan_fwd);
