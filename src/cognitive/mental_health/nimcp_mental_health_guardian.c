@@ -34,6 +34,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"
+#include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -118,6 +119,15 @@ struct mental_health_guardian {
 
     /* Plasticity integration */
     void* plasticity;  /* homeostatic_plasticity_t* */
+
+    /* FEP orchestrator integration */
+    void* fep_orchestrator;  /* fep_orchestrator_t* */
+    uint32_t fep_bridge_id;
+    bool fep_registered;
+
+    /* Cognitive module integration */
+    void* working_memory;    /* working_memory_t* */
+    void* executive;         /* executive_controller_t* */
 };
 
 //=============================================================================
@@ -839,6 +849,15 @@ mental_health_guardian_t* mental_health_guardian_create(
     guardian->sleep_system = NULL;
     guardian->plasticity = NULL;
 
+    /* FEP orchestrator integration */
+    guardian->fep_orchestrator = NULL;
+    guardian->fep_bridge_id = 0;
+    guardian->fep_registered = false;
+
+    /* Cognitive module integration */
+    guardian->working_memory = NULL;
+    guardian->executive = NULL;
+
     GUARDIAN_LOG("Mental Health Guardian created (interval=%ums, auto_intervene=%s)",
                 guardian->config.monitoring_interval_ms,
                 guardian->config.auto_intervene ? "yes" : "no");
@@ -854,6 +873,11 @@ void mental_health_guardian_destroy(mental_health_guardian_t* guardian) {
     /* Stop thread if running */
     if (atomic_load(&guardian->running)) {
         mental_health_guardian_stop(guardian);
+    }
+
+    /* Unregister from FEP orchestrator if registered */
+    if (guardian->fep_registered) {
+        mental_health_guardian_unregister_fep(guardian);
     }
 
     /* Destroy mutex */
@@ -1219,6 +1243,159 @@ bool mental_health_guardian_connect_plasticity(
     nimcp_mutex_unlock(guardian->lock);
 
     GUARDIAN_LOG("Connected to homeostatic plasticity");
+    return true;
+}
+
+//=============================================================================
+// FEP Orchestrator Integration
+//=============================================================================
+
+/**
+ * @brief FEP bridge update callback
+ *
+ * Called by FEP orchestrator to update guardian's FEP state.
+ * Provides current mental health severity as free energy contribution.
+ *
+ * @param handle Guardian handle (opaque)
+ * @return 0 on success, -1 on error
+ */
+int mental_health_guardian_fep_update(void* handle) {
+    if (!handle) {
+        return -1;
+    }
+
+    mental_health_guardian_t* guardian = (mental_health_guardian_t*)handle;
+
+    /* Lock for safe access */
+    nimcp_mutex_lock(guardian->lock);
+
+    /* Get current severity (represents free energy from mental health domain) */
+    float severity = guardian->last_overall_severity;
+
+    /* The guardian's "free energy" is the overall mental health severity.
+     * Lower severity = lower free energy = more optimal state.
+     *
+     * Free energy in FEP terms represents prediction error / surprise.
+     * A healthy mental state (low severity) means the brain's predictions
+     * about its own state are accurate. High severity indicates unexpected
+     * deviation from the brain's model of its own health. */
+
+    /* Update bio-async with current status if connected */
+    if (guardian->bio_async_connected && guardian->state == GUARDIAN_STATE_RUNNING) {
+        publish_bio_async_status(guardian);
+    }
+
+    nimcp_mutex_unlock(guardian->lock);
+
+    GUARDIAN_LOG_VERBOSE(guardian, "FEP update: severity=%.2f (free_energy proxy)",
+                        severity);
+
+    return 0;
+}
+
+bool mental_health_guardian_register_fep(
+    mental_health_guardian_t* guardian,
+    void* orchestrator  /* fep_orchestrator_t* */)
+{
+    if (!guardian || !orchestrator) {
+        return false;
+    }
+
+    if (guardian->fep_registered) {
+        GUARDIAN_LOG("Already registered with FEP orchestrator");
+        return true;
+    }
+
+    fep_orchestrator_t* fep_orch = (fep_orchestrator_t*)orchestrator;
+
+    /* Register guardian as cognitive FEP bridge */
+    uint32_t bridge_id = 0;
+    int result = fep_orchestrator_register_bridge(
+        fep_orch,
+        "mental_health_guardian",
+        FEP_BRIDGE_CATEGORY_COGNITIVE,
+        guardian,                           /* Handle */
+        mental_health_guardian_fep_update,  /* Update callback */
+        NULL,                               /* No destroy callback (we handle it) */
+        &bridge_id
+    );
+
+    if (result != 0) {
+        GUARDIAN_LOG("Failed to register with FEP orchestrator (error=%d)", result);
+        return false;
+    }
+
+    nimcp_mutex_lock(guardian->lock);
+    guardian->fep_orchestrator = orchestrator;
+    guardian->fep_bridge_id = bridge_id;
+    guardian->fep_registered = true;
+    nimcp_mutex_unlock(guardian->lock);
+
+    GUARDIAN_LOG("Registered with FEP orchestrator (bridge_id=%u)", bridge_id);
+    return true;
+}
+
+bool mental_health_guardian_unregister_fep(mental_health_guardian_t* guardian) {
+    if (!guardian) {
+        return false;
+    }
+
+    if (!guardian->fep_registered) {
+        return true;  /* Not registered, nothing to do */
+    }
+
+    fep_orchestrator_t* fep_orch = (fep_orchestrator_t*)guardian->fep_orchestrator;
+    if (fep_orch) {
+        int result = fep_orchestrator_unregister_bridge(fep_orch, guardian->fep_bridge_id);
+        if (result != 0) {
+            GUARDIAN_LOG("Warning: Failed to unregister from FEP orchestrator (error=%d)",
+                        result);
+        }
+    }
+
+    nimcp_mutex_lock(guardian->lock);
+    guardian->fep_orchestrator = NULL;
+    guardian->fep_bridge_id = 0;
+    guardian->fep_registered = false;
+    nimcp_mutex_unlock(guardian->lock);
+
+    GUARDIAN_LOG("Unregistered from FEP orchestrator");
+    return true;
+}
+
+//=============================================================================
+// Cognitive Module Integration
+//=============================================================================
+
+bool mental_health_guardian_connect_working_memory(
+    mental_health_guardian_t* guardian,
+    void* working_memory  /* working_memory_t* */)
+{
+    if (!guardian || !working_memory) {
+        return false;
+    }
+
+    nimcp_mutex_lock(guardian->lock);
+    guardian->working_memory = working_memory;
+    nimcp_mutex_unlock(guardian->lock);
+
+    GUARDIAN_LOG("Connected to working memory");
+    return true;
+}
+
+bool mental_health_guardian_connect_executive(
+    mental_health_guardian_t* guardian,
+    void* executive  /* executive_controller_t* */)
+{
+    if (!guardian || !executive) {
+        return false;
+    }
+
+    nimcp_mutex_lock(guardian->lock);
+    guardian->executive = executive;
+    nimcp_mutex_unlock(guardian->lock);
+
+    GUARDIAN_LOG("Connected to executive controller");
     return true;
 }
 

@@ -558,6 +558,86 @@ bool mental_health_guardian_connect_plasticity(
     void* plasticity  /* homeostatic_plasticity_t */
 );
 
+/**
+ * @brief Register guardian with FEP orchestrator
+ *
+ * Registers the guardian as a cognitive FEP bridge, enabling coordinated
+ * free energy minimization. The FEP orchestrator will call the guardian's
+ * update function during update cycles.
+ *
+ * @param guardian Guardian handle (non-NULL)
+ * @param orchestrator FEP orchestrator (non-NULL)
+ * @return true on success, false on error
+ *
+ * THREAD-SAFE: Yes
+ * COMPLEXITY: O(1)
+ */
+bool mental_health_guardian_register_fep(
+    mental_health_guardian_t* guardian,
+    void* orchestrator  /* fep_orchestrator_t* */
+);
+
+/**
+ * @brief Unregister guardian from FEP orchestrator
+ *
+ * @param guardian Guardian handle (non-NULL)
+ * @return true on success, false on error
+ */
+bool mental_health_guardian_unregister_fep(
+    mental_health_guardian_t* guardian
+);
+
+/**
+ * @brief FEP update callback for guardian
+ *
+ * Called by FEP orchestrator during update cycles. Performs a health check
+ * and returns free energy contribution.
+ *
+ * @param handle Guardian handle (cast from fep_bridge_handle_t)
+ * @return 0 on success, -1 on error
+ */
+int mental_health_guardian_fep_update(void* handle);
+
+//=============================================================================
+// Cognitive Module Integration API
+//=============================================================================
+
+/**
+ * @brief Connect guardian to working memory
+ *
+ * Enables guardian to interact with working memory for attention resets
+ * and cognitive load management at REGULATE intervention level.
+ *
+ * @param guardian Guardian handle (non-NULL)
+ * @param working_memory Working memory system (non-NULL)
+ * @return true on success, false on error
+ *
+ * THREAD-SAFE: Yes
+ * COMPLEXITY: O(1)
+ */
+bool mental_health_guardian_connect_working_memory(
+    mental_health_guardian_t* guardian,
+    void* working_memory  /* working_memory_t* */
+);
+
+/**
+ * @brief Connect guardian to executive controller
+ *
+ * Enables guardian to interact with executive functions for cognitive
+ * control adjustments and task prioritization during interventions.
+ *
+ * @param guardian Guardian handle (non-NULL)
+ * @param executive Executive controller (non-NULL)
+ * @return true on success, false on error
+ *
+ * THREAD-SAFE: Yes
+ * COMPLEXITY: O(1)
+ */
+bool mental_health_guardian_connect_executive(
+    mental_health_guardian_t* guardian,
+    void* executive  /* executive_controller_t* */
+);
+
 //=============================================================================
 // Utility API
 //=============================================================================

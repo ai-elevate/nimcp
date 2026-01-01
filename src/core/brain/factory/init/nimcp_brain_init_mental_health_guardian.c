@@ -82,6 +82,139 @@ static void connect_guardian_to_kg(
     }
 }
 
+/**
+ * @brief Connect guardian to bio-async orchestrator
+ */
+static void connect_guardian_to_bio_async(
+    mental_health_guardian_t* guardian,
+    brain_t brain)
+{
+    if (!brain->bio_async_ctx || !brain->bio_async_enabled) {
+        fprintf(stderr, LOG_TAG " Bio-async not available - skipping connection\n");
+        return;
+    }
+
+    if (mental_health_guardian_connect_bio_async(guardian, brain->bio_async_ctx)) {
+        fprintf(stderr, LOG_TAG " Connected to bio-async orchestrator\n");
+    } else {
+        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to bio-async\n");
+    }
+}
+
+/**
+ * @brief Connect guardian to FEP orchestrator
+ */
+static void connect_guardian_to_fep(
+    mental_health_guardian_t* guardian,
+    brain_t brain)
+{
+    if (!brain->fep_orchestrator) {
+        fprintf(stderr, LOG_TAG " FEP orchestrator not available - skipping registration\n");
+        return;
+    }
+
+    if (mental_health_guardian_register_fep(guardian, brain->fep_orchestrator)) {
+        fprintf(stderr, LOG_TAG " Registered with FEP orchestrator\n");
+    } else {
+        fprintf(stderr, LOG_TAG " WARNING: Failed to register with FEP orchestrator\n");
+    }
+}
+
+/**
+ * @brief Connect guardian to brainstem/medulla
+ */
+static void connect_guardian_to_medulla(
+    mental_health_guardian_t* guardian,
+    brain_t brain)
+{
+    if (!brain->medulla) {
+        fprintf(stderr, LOG_TAG " Medulla not available - skipping connection\n");
+        return;
+    }
+
+    if (mental_health_guardian_connect_brainstem(guardian, brain->medulla)) {
+        fprintf(stderr, LOG_TAG " Connected to brainstem/medulla\n");
+    } else {
+        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to medulla\n");
+    }
+}
+
+/**
+ * @brief Connect guardian to sleep system
+ */
+static void connect_guardian_to_sleep(
+    mental_health_guardian_t* guardian,
+    brain_t brain)
+{
+    if (!brain->sleep_system) {
+        fprintf(stderr, LOG_TAG " Sleep system not available - skipping connection\n");
+        return;
+    }
+
+    if (mental_health_guardian_connect_sleep(guardian, brain->sleep_system)) {
+        fprintf(stderr, LOG_TAG " Connected to sleep system\n");
+    } else {
+        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to sleep system\n");
+    }
+}
+
+/**
+ * @brief Connect guardian to plasticity coordinator
+ */
+static void connect_guardian_to_plasticity(
+    mental_health_guardian_t* guardian,
+    brain_t brain)
+{
+    if (!brain->plasticity_coordinator || !brain->plasticity_coordinator_enabled) {
+        fprintf(stderr, LOG_TAG " Plasticity coordinator not available - skipping connection\n");
+        return;
+    }
+
+    if (mental_health_guardian_connect_plasticity(guardian, brain->plasticity_coordinator)) {
+        fprintf(stderr, LOG_TAG " Connected to plasticity coordinator\n");
+    } else {
+        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to plasticity coordinator\n");
+    }
+}
+
+/**
+ * @brief Connect guardian to working memory
+ */
+static void connect_guardian_to_working_memory(
+    mental_health_guardian_t* guardian,
+    brain_t brain)
+{
+    if (!brain->working_memory) {
+        fprintf(stderr, LOG_TAG " Working memory not available - skipping connection\n");
+        return;
+    }
+
+    if (mental_health_guardian_connect_working_memory(guardian, brain->working_memory)) {
+        fprintf(stderr, LOG_TAG " Connected to working memory\n");
+    } else {
+        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to working memory\n");
+    }
+}
+
+/**
+ * @brief Connect guardian to executive controller
+ */
+static void connect_guardian_to_executive(
+    mental_health_guardian_t* guardian,
+    brain_t brain)
+{
+    if (!brain->executive) {
+        fprintf(stderr, LOG_TAG " Executive controller not available - skipping connection\n");
+        return;
+    }
+
+    if (mental_health_guardian_connect_executive(guardian, brain->executive)) {
+        fprintf(stderr, LOG_TAG " Connected to executive controller\n");
+    } else {
+        fprintf(stderr, LOG_TAG " WARNING: Failed to connect to executive controller\n");
+    }
+}
+
 //=============================================================================
 // Main Initialization Function
 //=============================================================================
@@ -150,12 +283,39 @@ bool nimcp_brain_factory_init_mental_health_guardian_subsystem(brain_t brain) {
     /* ====================================================================== */
     /* CONNECT TO RELEVANT SUBSYSTEMS                                         */
     /* ====================================================================== */
+    /* Connection order follows initialization dependencies:
+     * 1. Infrastructure (immune, KG, bio-async)
+     * 2. Low-level (medulla, sleep, plasticity)
+     * 3. Coordination (FEP orchestrator)
+     * 4. Cognitive (working memory, executive)
+     */
 
-    /* 1. Immune System - Threat reporting */
+    /* 1. Immune System - Threat reporting at QUARANTINE level */
     connect_guardian_to_immune(guardian, brain);
 
-    /* 2. Internal KG - Topology awareness */
+    /* 2. Internal KG - Topology awareness and state tracking */
     connect_guardian_to_kg(guardian, brain);
+
+    /* 3. Bio-Async - Inter-module messaging for status broadcasts */
+    connect_guardian_to_bio_async(guardian, brain);
+
+    /* 4. Brainstem/Medulla - Arousal control at REGULATE level */
+    connect_guardian_to_medulla(guardian, brain);
+
+    /* 5. Sleep System - Sleep trigger at REGULATE level */
+    connect_guardian_to_sleep(guardian, brain);
+
+    /* 6. Plasticity Coordinator - Synaptic reset at REGULATE level */
+    connect_guardian_to_plasticity(guardian, brain);
+
+    /* 7. FEP Orchestrator - Coordinated free energy updates */
+    connect_guardian_to_fep(guardian, brain);
+
+    /* 8. Working Memory - Attention/memory reset during interventions */
+    connect_guardian_to_working_memory(guardian, brain);
+
+    /* 9. Executive Controller - Cognitive control adjustments */
+    connect_guardian_to_executive(guardian, brain);
 
     /* ====================================================================== */
     /* AUTO-START IF BRAIN IS RUNNING                                         */
