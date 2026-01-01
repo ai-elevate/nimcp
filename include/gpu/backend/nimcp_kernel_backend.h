@@ -40,7 +40,9 @@ extern "C" {
 typedef enum {
     NIMCP_BACKEND_CPU = 0,       /**< Pure CPU implementation */
     NIMCP_BACKEND_CUDA = 1,      /**< NVIDIA CUDA implementation */
-    NIMCP_BACKEND_AUTO = 2       /**< Automatic selection (CUDA if available) */
+    NIMCP_BACKEND_ROCM = 2,      /**< AMD ROCm implementation */
+    NIMCP_BACKEND_OPENCL = 3,    /**< OpenCL implementation (cross-platform) */
+    NIMCP_BACKEND_AUTO = 4       /**< Automatic selection: CUDA -> ROCm -> OpenCL -> CPU */
 } nimcp_backend_type_t;
 
 typedef enum {
@@ -451,6 +453,23 @@ typedef struct nimcp_kernel_backend {
  * @return true on success
  */
 NIMCP_EXPORT bool nimcp_kernel_backend_init(nimcp_backend_type_t preferred);
+
+/**
+ * @brief Initialize kernel backend with GPU-first default policy
+ *
+ * WHAT: Tries GPU backends in order (CUDA -> ROCm -> OpenCL) before CPU
+ * WHY:  Phase 1 GPU integration - GPU is now the default backend
+ * HOW:  Auto-detects available GPU backends and selects best available
+ *
+ * FALLBACK PRIORITY:
+ * 1. CUDA (NVIDIA GPUs)
+ * 2. ROCm (AMD GPUs)
+ * 3. OpenCL (Cross-platform GPU)
+ * 4. CPU (Always available fallback)
+ *
+ * @return true on success (always succeeds - CPU fallback guaranteed)
+ */
+NIMCP_EXPORT bool nimcp_kernel_backend_init_default(void);
 
 /**
  * @brief Shutdown the kernel backend system

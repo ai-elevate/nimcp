@@ -1,0 +1,73 @@
+# ============================================================================
+# GPU Regression Tests CMakeLists.txt
+# ============================================================================
+# WHAT: Regression tests for GPU operations
+# WHY:  Prevent reintroduction of fixed GPU-related bugs
+# HOW:  Test specific bug scenarios and backward compatibility
+# ============================================================================
+
+# Guard: CUDA toolkit required for GPU regression tests
+if(NOT CUDAToolkit_FOUND)
+    message(STATUS "  Skipping GPU regression tests (CUDA toolkit not found)")
+    return()
+endif()
+
+message(STATUS "  Building GPU regression tests (CUDA toolkit found)")
+
+# Helper macro for adding GPU regression tests
+macro(add_gpu_regression_test TEST_NAME)
+    add_executable(regression_gpu_${TEST_NAME}
+        ${TEST_NAME}.cpp
+    )
+    target_link_libraries(regression_gpu_${TEST_NAME}
+        PRIVATE
+            GTest::GTest
+            GTest::Main
+            nimcp
+            m
+            pthread
+    )
+    target_compile_features(regression_gpu_${TEST_NAME} PRIVATE cxx_std_20)
+    target_compile_definitions(regression_gpu_${TEST_NAME} PRIVATE NIMCP_TESTING)
+    add_test(NAME regression_gpu_${TEST_NAME}
+             COMMAND regression_gpu_${TEST_NAME})
+    set_tests_properties(regression_gpu_${TEST_NAME}
+        PROPERTIES
+            LABELS "regression;gpu"
+            TIMEOUT 120
+    )
+endmacro()
+
+# =============================================================================
+# GPU Neuron Regression Tests
+# =============================================================================
+add_gpu_regression_test(test_gpu_neuron_backward_compat)
+add_gpu_regression_test(test_gpu_neuron_regression)
+
+# =============================================================================
+# Multi-GPU Regression Tests
+# =============================================================================
+add_gpu_regression_test(test_multigpu_regression)
+
+# =============================================================================
+# GPU Spike Event Regression Tests
+# =============================================================================
+add_gpu_regression_test(test_gpu_spike_event_backward_compat)
+
+# =============================================================================
+# GPU Execution Mode Regression Tests
+# =============================================================================
+add_gpu_regression_test(test_gpu_execution_mode_backward_compat)
+
+# =============================================================================
+# GPU Broca Regression Tests
+# =============================================================================
+# WHAT: Regression tests for GPU-accelerated Broca's region
+# WHY:  Prevent reintroduction of GPU Broca bugs (alignment, overflow, etc.)
+# HOW:  Test specific bug scenarios and verify fixes remain stable
+add_gpu_regression_test(test_broca_gpu_regression)
+
+# Include broca subdirectory if it exists
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/broca/CMakeLists.txt)
+    add_subdirectory(broca)
+endif()

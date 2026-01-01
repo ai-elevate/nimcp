@@ -95,6 +95,11 @@ examples/infant_demo: examples/CMakeFiles/infant_demo.dir/build.make
 examples/infant_demo: lib/libnimcp.so.2.6.2
 examples/infant_demo: /usr/lib/x86_64-linux-gnu/libpython3.12.so
 examples/infant_demo: /usr/lib/x86_64-linux-gnu/libcudart.so
+examples/infant_demo: /usr/lib/x86_64-linux-gnu/libcublas.so
+examples/infant_demo: /usr/lib/x86_64-linux-gnu/libcublasLt.so
+examples/infant_demo: /usr/lib/x86_64-linux-gnu/libculibos.a
+examples/infant_demo: /usr/lib/x86_64-linux-gnu/libcufft.so
+examples/infant_demo: /usr/lib/x86_64-linux-gnu/libcurand.so
 examples/infant_demo: /usr/lib/x86_64-linux-gnu/libssl.so
 examples/infant_demo: /usr/lib/x86_64-linux-gnu/libcrypto.so
 examples/infant_demo: examples/CMakeFiles/infant_demo.dir/link.txt

@@ -1119,6 +1119,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/validation/nimcp_validate.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/tensor/nimcp_tensor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/bridge/nimcp_bridge_base.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/bridge/nimcp_bridge_gpu.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/queue_manager/nimcp_queue_manager.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/json/nimcp_json.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/config/nimcp_config.c
@@ -1247,6 +1248,14 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/quantum/nimcp_quantum_kernels.cu>
     # Inference kernels (optimized forward pass)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/inference/nimcp_inference_kernels.cu>
+    # Cognitive module GPU kernels (FEP learning, attention, working memory, JEPA)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_learning_gpu.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_attention_gpu.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory_gpu.cu>
+    # JEPA predictor GPU kernels (forward/inverse models, masking)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/cognitive/nimcp_jepa_gpu.cu>
+    # Broca's region GPU kernels (lexical lookup, phoneme encoding, motor planning)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/cognitive/nimcp_broca_gpu.cu>
     # Existing CUDA kernels
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_gpu_kernels.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/synapse_compute/nimcp_synapse_compute_gpu.cu>

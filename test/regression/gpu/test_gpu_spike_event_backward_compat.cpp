@@ -12,9 +12,11 @@
 
 #include <gtest/gtest.h>
 
+// GPU header outside extern "C" due to CUDA runtime templates
+#include "gpu/nimcp_spike_event.h"
+
 extern "C" {
     #include "core/brain/nimcp_brain.h"
-    #include "gpu/nimcp_spike_event.h"
 }
 
 //=============================================================================

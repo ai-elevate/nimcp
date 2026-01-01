@@ -1425,6 +1425,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/gpu/CMakeLists.txt")
     add_subdirectory(integration/gpu)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/gpu/CMakeLists.txt")
+    message(STATUS "Adding GPU regression tests...")
+    add_subdirectory(regression/gpu)
+endif()
+
 # ============================================================================
 # LNN Tests
 # ============================================================================

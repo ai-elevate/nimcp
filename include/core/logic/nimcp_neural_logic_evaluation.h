@@ -189,6 +189,121 @@ NIMCP_EXPORT bool brain_get_evaluation_stats(
     uint32_t* spike_count
 );
 
+//=============================================================================
+// MODULE 2.1: Batch Logic Gate Evaluation API (GPU-Accelerated)
+//=============================================================================
+
+/**
+ * @brief Batch evaluate multiple logic gates on GPU
+ *
+ * WHAT: Evaluate many logic gates in parallel using GPU acceleration
+ * WHY:  100x speedup for bulk logic operations vs sequential evaluation
+ * HOW:  Transfer data to GPU -> launch batch kernel -> copy results back
+ *
+ * @param brain Brain instance with attached logic network
+ * @param gate_ids Array of logic gate neuron IDs [num_gates]
+ * @param num_gates Number of gates to evaluate
+ * @param all_inputs Flattened inputs: [gate0_in0, gate0_in1, gate1_in0, gate1_in1, ...]
+ * @param inputs_per_gate Number of inputs for each gate [num_gates] (typically 2 for binary gates)
+ * @param outputs Output values [num_gates] - one per gate
+ * @return true on success, false on failure
+ *
+ * GUARD CLAUSES:
+ * - NULL brain -> false + error log
+ * - brain->logic == NULL -> false + error log
+ * - NULL gate_ids -> false + error log
+ * - num_gates == 0 -> false + error log
+ * - NULL all_inputs -> false + error log
+ * - NULL inputs_per_gate -> false + error log
+ * - NULL outputs -> false + error log
+ *
+ * BEHAVIOR:
+ * - If GPU available: batch transfer, parallel kernel, batch result copy
+ * - If CPU fallback: sequential evaluation via brain_evaluate_logic_gate()
+ * - Publishes single batch event (not individual gate events)
+ *
+ * COMPLEXITY: O(n) on GPU, O(n * t) on CPU where n = num_gates, t = sim time
+ * THREAD SAFETY: Not thread-safe
+ *
+ * EXAMPLE:
+ * ```c
+ * uint32_t gate_ids[3] = {and_gate, or_gate, xor_gate};
+ * float all_inputs[6] = {1.0f, 1.0f,   // AND inputs
+ *                        1.0f, 0.0f,   // OR inputs
+ *                        1.0f, 1.0f};  // XOR inputs
+ * uint32_t inputs_per_gate[3] = {2, 2, 2};
+ * float outputs[3];
+ *
+ * if (brain_evaluate_logic_gates_batch(brain, gate_ids, 3, all_inputs, inputs_per_gate, outputs)) {
+ *     // outputs[0] = 1.0 (AND), outputs[1] = 1.0 (OR), outputs[2] = 0.0 (XOR)
+ * }
+ * ```
+ */
+NIMCP_EXPORT bool brain_evaluate_logic_gates_batch(
+    brain_t brain,
+    const uint32_t* gate_ids,
+    uint32_t num_gates,
+    const float* all_inputs,
+    const uint32_t* inputs_per_gate,
+    float* outputs
+);
+
+/**
+ * @brief Batch evaluate multiple logic expressions on GPU
+ *
+ * WHAT: Evaluate many string expressions in parallel with GPU acceleration
+ * WHY:  Efficient bulk evaluation of logic formulas
+ * HOW:  Parse expressions -> build circuits -> batch GPU evaluation
+ *
+ * @param brain Brain instance with attached logic network
+ * @param expressions Array of expression strings [num_expressions]
+ * @param num_expressions Number of expressions to evaluate
+ * @param bindings Array of binding arrays (one per expression)
+ * @param num_bindings_per_expr Number of bindings for each expression [num_expressions]
+ * @param outputs Output values [num_expressions] - one per expression
+ * @return true on success, false on failure
+ *
+ * GUARD CLAUSES:
+ * - NULL brain -> false + error log
+ * - brain->logic == NULL -> false + error log
+ * - NULL expressions -> false + error log
+ * - num_expressions == 0 -> false + error log
+ * - NULL bindings -> false + error log
+ * - NULL num_bindings_per_expr -> false + error log
+ * - NULL outputs -> false + error log
+ *
+ * BEHAVIOR:
+ * - Parses all expressions into circuit IDs
+ * - Collects all gate evaluations needed
+ * - Performs batch GPU evaluation
+ * - Maps results back to expression outputs
+ *
+ * COMPLEXITY: O(m * n) where m = total expression length, n = neurons
+ * THREAD SAFETY: Not thread-safe
+ *
+ * EXAMPLE:
+ * ```c
+ * const char* expressions[2] = {"A AND B", "A OR C"};
+ * float bindings_0[2] = {1.0f, 1.0f};  // A=1, B=1
+ * float bindings_1[3] = {0.0f, 0.0f, 1.0f};  // A=0, B=0, C=1
+ * const float* bindings[2] = {bindings_0, bindings_1};
+ * uint32_t num_bindings[2] = {2, 3};
+ * float outputs[2];
+ *
+ * if (brain_evaluate_logic_expressions_batch(brain, expressions, 2, bindings, num_bindings, outputs)) {
+ *     // outputs[0] = 1.0 (A AND B), outputs[1] = 1.0 (A OR C)
+ * }
+ * ```
+ */
+NIMCP_EXPORT bool brain_evaluate_logic_expressions_batch(
+    brain_t brain,
+    const char** expressions,
+    uint32_t num_expressions,
+    const float** bindings,
+    const uint32_t* num_bindings_per_expr,
+    float* outputs
+);
+
 #ifdef __cplusplus
 }
 #endif

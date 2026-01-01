@@ -1490,8 +1490,41 @@ typedef struct {
      * - Quantum: GPU-accelerated quantum algorithm simulation
      *
      * FALLBACK: If no GPU available or disabled, uses CPU execution.
+     *
+     * GPU-FIRST DEFAULT (Phase 1 GPU Integration):
+     * As of v2.6.3, GPU is the DEFAULT backend. The system will automatically:
+     * 1. Try CUDA (NVIDIA GPUs)
+     * 2. Try ROCm (AMD GPUs)
+     * 3. Try OpenCL (cross-platform)
+     * 4. Fall back to CPU only if no GPU is available
+     *
+     * To force CPU-only execution, set force_cpu_only = true.
+     * The legacy disable_gpu field is kept for backward compatibility.
      */
-    bool disable_gpu;                     /**< Disable GPU even if available (default: false) */
+    bool disable_gpu;                     /**< Disable GPU even if available (default: false) [DEPRECATED: use force_cpu_only] */
+
+    /**
+     * Force CPU-only execution (Phase 1 GPU Integration)
+     *
+     * WHAT: Force CPU execution even when GPU is available
+     * WHY:  Semantic inversion - GPU is now the default, this opts out
+     * HOW:  Set to true to skip GPU initialization entirely
+     *
+     * USAGE:
+     * ```c
+     * // Force CPU-only (skip GPU detection and init)
+     * config.force_cpu_only = true;
+     *
+     * // Use GPU if available (default behavior)
+     * config.force_cpu_only = false;  // or just don't set it
+     * ```
+     *
+     * NOTE: This is the preferred way to disable GPU. The older
+     * disable_gpu field is kept for backward compatibility but
+     * force_cpu_only takes precedence if both are set.
+     */
+    bool force_cpu_only;                  /**< Force CPU-only execution, skip GPU init (default: false) */
+
     int32_t gpu_device_id;                /**< GPU device ID (-1 = auto-select best) (default: -1) */
     bool gpu_enable_async;                /**< Enable async GPU operations (default: true) */
     uint32_t gpu_batch_size;              /**< Preferred batch size for GPU ops (default: 256) */

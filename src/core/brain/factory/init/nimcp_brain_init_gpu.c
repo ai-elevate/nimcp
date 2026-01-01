@@ -29,19 +29,25 @@
 /**
  * @brief Initialize GPU subsystem for brain
  *
- * WHAT: Creates GPU context if GPU is available
- * WHY:  Enables automatic GPU acceleration for brain operations
- * HOW:  Uses gpu_is_available() to detect, creates context if present
+ * WHAT: Creates GPU context with GPU-first default policy
+ * WHY:  Phase 1 GPU Integration - GPU is now the default backend
+ * HOW:  Always try GPU first unless force_cpu_only is set
  *
  * @param brain Brain instance to initialize GPU for
- * @return true on success (including when no GPU is available), false on error
+ * @return true on success (including CPU fallback), false on error
  *
  * COMPLEXITY: O(1) - GPU detection and context creation
  *
  * THREAD SAFETY: NOT thread-safe (call during brain creation only)
  *
- * NOTE: Success is returned even if no GPU is available - the brain
- * will simply operate in CPU-only mode. This is not an error.
+ * GPU-FIRST POLICY (Phase 1 GPU Integration):
+ * - GPU is the DEFAULT backend, not an optional enhancement
+ * - Only skips GPU if force_cpu_only=true OR GPU unavailable
+ * - Logs warning when falling back to CPU to encourage GPU setup
+ *
+ * BACKWARD COMPATIBILITY:
+ * - disable_gpu is still checked for legacy code
+ * - force_cpu_only takes precedence if both are set
  */
 bool nimcp_brain_factory_init_gpu_subsystem(brain_t brain)
 {
@@ -55,17 +61,25 @@ bool nimcp_brain_factory_init_gpu_subsystem(brain_t brain)
     brain->gpu_enabled = false;
     brain->last_gpu_sync_us = 0;
 
-    // Check if GPU is available
-    if (!gpu_is_available()) {
-        LOG_INFO("No GPU available - brain will use CPU-only execution");
-        return true;  // Success - CPU-only mode is valid
+    // Check if user explicitly requested CPU-only mode
+    // force_cpu_only takes precedence over disable_gpu
+    bool skip_gpu = brain->config.force_cpu_only || brain->config.disable_gpu;
+
+    if (skip_gpu) {
+        LOG_INFO("GPU disabled by configuration (force_cpu_only=%s, disable_gpu=%s) - using CPU-only execution",
+                 brain->config.force_cpu_only ? "true" : "false",
+                 brain->config.disable_gpu ? "true" : "false");
+        return true;
     }
 
-    // Check user config for GPU preference
-    // (Allow users to disable GPU even if available)
-    if (brain->config.disable_gpu) {
-        LOG_INFO("GPU disabled by configuration - using CPU-only execution");
-        return true;
+    // GPU-FIRST POLICY: Always try to use GPU unless explicitly disabled
+    LOG_INFO("Initializing GPU subsystem (GPU-first policy)...");
+
+    // Check if any GPU is available
+    if (!gpu_is_available()) {
+        LOG_WARN("No GPU available - falling back to CPU-only execution");
+        LOG_WARN("For optimal performance, install CUDA, ROCm, or OpenCL drivers");
+        return true;  // Success - CPU fallback is valid
     }
 
     // Create GPU context with auto-device selection
@@ -74,6 +88,7 @@ bool nimcp_brain_factory_init_gpu_subsystem(brain_t brain)
         // GPU detection said available, but context creation failed
         // This can happen if driver is outdated or GPU is busy
         LOG_WARN("GPU detected but context creation failed - falling back to CPU");
+        LOG_WARN("Check GPU driver version and availability");
         return true;  // Still success - CPU fallback is valid
     }
 
@@ -84,7 +99,7 @@ bool nimcp_brain_factory_init_gpu_subsystem(brain_t brain)
     // Log GPU info
     char info_buffer[256];
     nimcp_gpu_context_get_info_string(brain->gpu_ctx, info_buffer, sizeof(info_buffer));
-    LOG_INFO("GPU acceleration enabled: %s", info_buffer);
+    LOG_INFO("GPU acceleration enabled (GPU-first policy): %s", info_buffer);
 
     return true;
 }

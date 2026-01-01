@@ -270,6 +270,249 @@ bool brain_evaluate_logic_expression(
     return true;
 }
 
+//=============================================================================
+// MODULE 2.1: Batch Logic Gate Evaluation Implementation
+//=============================================================================
+
+// Forward declarations for GPU batch kernel launchers
+// Note: GPU batch operations are implemented in nimcp_neural_logic_kernels.cu
+// The C implementation uses CPU fallback or calls through neural_logic API
+
+/**
+ * @brief CPU fallback for batch gate evaluation
+ *
+ * Sequential evaluation when GPU is unavailable.
+ */
+static bool evaluate_gates_batch_cpu(
+    brain_t brain,
+    const uint32_t* gate_ids,
+    uint32_t num_gates,
+    const float* all_inputs,
+    const uint32_t* inputs_per_gate,
+    float* outputs
+) {
+    // WHAT: Sequential evaluation of gates on CPU
+    // WHY:  Fallback when GPU unavailable
+    // HOW:  Loop through gates, call brain_evaluate_logic_gate() for each
+
+    uint32_t input_offset = 0;
+
+    for (uint32_t i = 0; i < num_gates; i++) {
+        uint32_t gate_id = gate_ids[i];
+        uint32_t num_inputs = inputs_per_gate[i];
+
+        // Evaluate single gate
+        bool success = brain_evaluate_logic_gate(
+            brain,
+            gate_id,
+            &all_inputs[input_offset],
+            num_inputs,
+            &outputs[i]
+        );
+
+        if (!success) {
+            LOG_ERROR("evaluate_gates_batch_cpu: failed at gate %u (index %u)", gate_id, i);
+            return false;
+        }
+
+        input_offset += num_inputs;
+    }
+
+    return true;
+}
+
+bool brain_evaluate_logic_gates_batch(
+    brain_t brain,
+    const uint32_t* gate_ids,
+    uint32_t num_gates,
+    const float* all_inputs,
+    const uint32_t* inputs_per_gate,
+    float* outputs
+) {
+    // WHAT: Validate all inputs with guard clauses
+    // WHY:  Prevent NULL derefs and invalid operations
+    // HOW:  Early returns with error logging
+
+    // Guard: NULL brain
+    if (!nimcp_validate_pointer(brain, "brain")) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch: NULL brain");
+        return false;
+    }
+
+    // Guard: no logic network attached
+    if (!brain_has_neural_logic(brain)) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch: brain has no logic network");
+        return false;
+    }
+
+    // Guard: NULL gate_ids
+    if (!nimcp_validate_pointer(gate_ids, "gate_ids")) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch: NULL gate_ids");
+        return false;
+    }
+
+    // Guard: zero gates
+    if (num_gates == 0) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch: num_gates is zero");
+        return false;
+    }
+
+    // Guard: NULL all_inputs
+    if (!nimcp_validate_pointer(all_inputs, "all_inputs")) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch: NULL all_inputs");
+        return false;
+    }
+
+    // Guard: NULL inputs_per_gate
+    if (!nimcp_validate_pointer(inputs_per_gate, "inputs_per_gate")) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch: NULL inputs_per_gate");
+        return false;
+    }
+
+    // Guard: NULL outputs
+    if (!nimcp_validate_pointer(outputs, "outputs")) {
+        LOG_ERROR("brain_evaluate_logic_gates_batch: NULL outputs");
+        return false;
+    }
+
+    // WHAT: Evaluate gates in batch
+    // WHY:  Provides API for batch operations; GPU acceleration happens at network level
+    // HOW:  Use CPU path with optimized sequential evaluation
+    //       GPU kernels are available in nimcp_neural_logic_kernels.cu for direct use
+    //       when neural_logic_network provides batch evaluation API
+
+    // For Phase 3.1-3.2, we implement CPU path with GPU kernels available
+    // The GPU path requires neural_logic_evaluate_batch() to be added to
+    // nimcp_neural_logic.h/c which manages device memory
+
+    bool success = evaluate_gates_batch_cpu(brain, gate_ids, num_gates, all_inputs, inputs_per_gate, outputs);
+    if (success) {
+        LOG_DEBUG("brain_evaluate_logic_gates_batch: evaluated %u gates", num_gates);
+    }
+    return success;
+}
+
+bool brain_evaluate_logic_expressions_batch(
+    brain_t brain,
+    const char** expressions,
+    uint32_t num_expressions,
+    const float** bindings,
+    const uint32_t* num_bindings_per_expr,
+    float* outputs
+) {
+    // WHAT: Validate all inputs with guard clauses
+    // WHY:  Prevent NULL derefs and invalid operations
+    // HOW:  Early returns with error logging
+
+    // Guard: NULL brain
+    if (!nimcp_validate_pointer(brain, "brain")) {
+        LOG_ERROR("brain_evaluate_logic_expressions_batch: NULL brain");
+        return false;
+    }
+
+    // Guard: no logic network attached
+    if (!brain_has_neural_logic(brain)) {
+        LOG_ERROR("brain_evaluate_logic_expressions_batch: brain has no logic network");
+        return false;
+    }
+
+    // Guard: NULL expressions
+    if (!nimcp_validate_pointer(expressions, "expressions")) {
+        LOG_ERROR("brain_evaluate_logic_expressions_batch: NULL expressions");
+        return false;
+    }
+
+    // Guard: zero expressions
+    if (num_expressions == 0) {
+        LOG_ERROR("brain_evaluate_logic_expressions_batch: num_expressions is zero");
+        return false;
+    }
+
+    // Guard: NULL bindings
+    if (!nimcp_validate_pointer(bindings, "bindings")) {
+        LOG_ERROR("brain_evaluate_logic_expressions_batch: NULL bindings");
+        return false;
+    }
+
+    // Guard: NULL num_bindings_per_expr
+    if (!nimcp_validate_pointer(num_bindings_per_expr, "num_bindings_per_expr")) {
+        LOG_ERROR("brain_evaluate_logic_expressions_batch: NULL num_bindings_per_expr");
+        return false;
+    }
+
+    // Guard: NULL outputs
+    if (!nimcp_validate_pointer(outputs, "outputs")) {
+        LOG_ERROR("brain_evaluate_logic_expressions_batch: NULL outputs");
+        return false;
+    }
+
+    // WHAT: Build circuits from expressions, then batch evaluate
+    // WHY:  Leverage GPU acceleration for evaluation phase
+    // HOW:  Parse expressions -> collect gate IDs -> batch evaluate
+
+    // Step 1: Parse all expressions and build circuits
+    uint32_t* circuit_ids = (uint32_t*)nimcp_calloc(num_expressions, sizeof(uint32_t));
+    if (!circuit_ids) {
+        LOG_ERROR("brain_evaluate_logic_expressions_batch: failed to allocate circuit_ids");
+        return false;
+    }
+
+    for (uint32_t i = 0; i < num_expressions; i++) {
+        if (!expressions[i] || expressions[i][0] == '\0') {
+            LOG_ERROR("brain_evaluate_logic_expressions_batch: NULL or empty expression at index %u", i);
+            nimcp_free(circuit_ids);
+            return false;
+        }
+
+        circuit_ids[i] = brain_build_logic_circuit(brain, expressions[i]);
+        if (circuit_ids[i] == UINT32_MAX) {
+            LOG_ERROR("brain_evaluate_logic_expressions_batch: failed to parse expression '%s'", expressions[i]);
+            nimcp_free(circuit_ids);
+            return false;
+        }
+    }
+
+    // Step 2: Calculate total inputs and build flattened arrays
+    uint32_t total_inputs = 0;
+    for (uint32_t i = 0; i < num_expressions; i++) {
+        total_inputs += num_bindings_per_expr[i];
+    }
+
+    float* all_inputs = (float*)nimcp_calloc(total_inputs, sizeof(float));
+    if (!all_inputs) {
+        LOG_ERROR("brain_evaluate_logic_expressions_batch: failed to allocate all_inputs");
+        nimcp_free(circuit_ids);
+        return false;
+    }
+
+    // Flatten bindings into single array
+    uint32_t offset = 0;
+    for (uint32_t i = 0; i < num_expressions; i++) {
+        for (uint32_t j = 0; j < num_bindings_per_expr[i]; j++) {
+            all_inputs[offset++] = bindings[i][j];
+        }
+    }
+
+    // Step 3: Batch evaluate all circuits
+    bool success = brain_evaluate_logic_gates_batch(
+        brain,
+        circuit_ids,
+        num_expressions,
+        all_inputs,
+        num_bindings_per_expr,
+        outputs
+    );
+
+    nimcp_free(all_inputs);
+    nimcp_free(circuit_ids);
+
+    if (success) {
+        LOG_INFO("brain_evaluate_logic_expressions_batch: evaluated %u expressions", num_expressions);
+    }
+
+    return success;
+}
+
 bool brain_get_evaluation_stats(
     brain_t brain,
     uint64_t* eval_time_us,

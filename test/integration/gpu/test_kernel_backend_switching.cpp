@@ -113,7 +113,12 @@ protected:
     }
 
     bool hasGPU() const {
-        return nimcp_cuda_backend_available();
+        // Must check both: CUDA initialized AND CUDA is the active backend
+        if (!nimcp_cuda_backend_available()) {
+            return false;
+        }
+        nimcp_backend_type_t active_type = nimcp_get_backend_type();
+        return active_type == NIMCP_BACKEND_CUDA;
     }
 
     // Simple operation for verification
@@ -698,7 +703,7 @@ TEST_F(KernelBackendSwitchingTest, Error_OpsBeforeInit) {
 /**
  * WHAT: Test backend state after failed switch
  * WHY:  Failed switch should not corrupt state
- * HOW:  Attempt failing switch (CUDA when unavailable), verify state preserved
+ * HOW:  Attempt failing switch (ROCm which is unlikely to be available), verify state preserved
  */
 TEST_F(KernelBackendSwitchingTest, Error_StatePreservedAfterFailedSwitch) {
     EXPECT_TRUE(nimcp_kernel_backend_init(NIMCP_BACKEND_CPU));
@@ -707,15 +712,20 @@ TEST_F(KernelBackendSwitchingTest, Error_StatePreservedAfterFailedSwitch) {
     nimcp_backend_type_t type_before = nimcp_get_backend_type();
     nimcp_kernel_backend_t* backend_before = nimcp_get_kernel_backend();
 
-    if (!hasGPU()) {
-        // Try to switch to CUDA (should fail)
-        nimcp_switch_backend(NIMCP_BACKEND_CUDA);
+    // Try to switch to ROCm (should fail on most systems without AMD GPUs)
+    // This tests that a failed switch preserves state
+    bool switch_result = nimcp_switch_backend(NIMCP_BACKEND_ROCM);
 
-        // State should be preserved
+    if (!switch_result) {
+        // Switch failed as expected - state should be preserved
         EXPECT_EQ(nimcp_get_backend_type(), type_before);
         nimcp_kernel_backend_t* backend_after = nimcp_get_kernel_backend();
         ASSERT_NE(backend_after, nullptr);
         EXPECT_TRUE(backend_after->initialized);
+    } else {
+        // ROCm is available - test that we can switch back
+        EXPECT_TRUE(nimcp_switch_backend(NIMCP_BACKEND_CPU));
+        EXPECT_EQ(nimcp_get_backend_type(), NIMCP_BACKEND_CPU);
     }
 }
 

@@ -12,9 +12,11 @@
 
 #include <gtest/gtest.h>
 
+// GPU header must be outside extern "C" due to CUDA runtime templates
+#include "gpu/nimcp_gpu_neuron.h"
+
 extern "C" {
     #include "core/brain/nimcp_brain.h"
-    #include "gpu/nimcp_gpu_neuron.h"
 }
 
 //=============================================================================

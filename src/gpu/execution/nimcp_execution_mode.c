@@ -393,33 +393,74 @@ bool execution_mode_is_supported(execution_mode_t mode)
 
 /**
  * @brief Get recommended mode for workload
+ *
+ * WHAT: Returns the recommended execution mode for a given network size
+ * WHY:  Phase 1 GPU Integration - GPU is now always preferred when available
+ * HOW:  GPU-first policy: always try GPU regardless of network size
+ *
+ * GPU-FIRST POLICY (Phase 1 GPU Integration):
+ * - Always return GPU mode if ANY GPU is available
+ * - Network size no longer affects GPU vs CPU decision
+ * - Only fall back to CPU if no GPU is available
+ *
+ * PRIORITY ORDER:
+ * 1. Distributed GPU (if multi-node + GPU available)
+ * 2. CUDA (NVIDIA GPUs)
+ * 3. ROCm (AMD GPUs)
+ * 4. OpenCL (cross-platform)
+ * 5. CPU Parallel (if multi-core)
+ * 6. CPU Sequential (fallback)
+ *
+ * BACKWARD COMPATIBILITY:
+ * - Network size parameters are still accepted but no longer
+ *   determine GPU vs CPU choice
+ * - Very large networks still prefer distributed mode when available
  */
 execution_mode_t execution_get_recommended_mode(uint32_t num_neurons, uint32_t num_synapses)
 {
     hardware_capabilities_t caps;
     if (!execution_detect_capabilities(&caps)) {
+        LOG_WARN("Hardware detection failed, defaulting to CPU sequential");
         return EXEC_MODE_CPU_SEQUENTIAL;
     }
 
     (void)num_synapses;  // Not used yet
 
-    // Heuristics based on neuron count
-    if (num_neurons < 1000) {
-        return EXEC_MODE_CPU_SEQUENTIAL;
-    } else if (num_neurons < 10000) {
-        return caps.cpu_threads >= 4 ? EXEC_MODE_CPU_PARALLEL : EXEC_MODE_CPU_SEQUENTIAL;
-    } else if (num_neurons < 1000000) {
-        return caps.cuda_available ? EXEC_MODE_GPU_CUDA : EXEC_MODE_CPU_PARALLEL;
-    } else {
-        // Very large networks
-        if (caps.network_available && caps.cuda_available) {
+    // GPU-FIRST POLICY: Always prefer GPU when available
+    // Check for distributed GPU mode for very large networks
+    if (num_neurons >= 1000000 && caps.network_available) {
+        if (caps.cuda_available) {
+            LOG_DEBUG("Recommending DISTRIBUTED_GPU mode for %u neurons (multi-node + CUDA)", num_neurons);
             return EXEC_MODE_DISTRIBUTED_GPU;
-        } else if (caps.cuda_available) {
-            return EXEC_MODE_GPU_CUDA;
-        } else {
-            return EXEC_MODE_CPU_PARALLEL;
         }
+        // Could add ROCm distributed support here in future
     }
+
+    // GPU-first: Always use GPU if available, regardless of network size
+    if (caps.cuda_available) {
+        LOG_DEBUG("Recommending GPU_CUDA mode for %u neurons (GPU-first policy)", num_neurons);
+        return EXEC_MODE_GPU_CUDA;
+    }
+
+    if (caps.rocm_available) {
+        LOG_DEBUG("Recommending GPU_ROCM mode for %u neurons (GPU-first policy)", num_neurons);
+        return EXEC_MODE_GPU_ROCM;
+    }
+
+    if (caps.opencl_available) {
+        LOG_DEBUG("Recommending GPU_OPENCL mode for %u neurons (GPU-first policy)", num_neurons);
+        return EXEC_MODE_GPU_OPENCL;
+    }
+
+    // No GPU available - fall back to CPU
+    LOG_DEBUG("No GPU available, falling back to CPU for %u neurons", num_neurons);
+
+    // Use parallel CPU if multi-core
+    if (caps.cpu_threads >= 4) {
+        return EXEC_MODE_CPU_PARALLEL;
+    }
+
+    return EXEC_MODE_CPU_SEQUENTIAL;
 }
 
 //=============================================================================

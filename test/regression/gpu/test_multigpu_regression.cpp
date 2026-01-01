@@ -23,9 +23,8 @@
 #include <chrono>
 #include <vector>
 
-extern "C" {
-    #include "gpu/nimcp_multigpu.h"
-}
+// GPU header outside extern "C" due to CUDA runtime templates
+#include "gpu/nimcp_multigpu.h"
 
 //=============================================================================
 // Test Utilities

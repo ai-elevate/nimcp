@@ -164,10 +164,15 @@ protected:
     }
 
     //=========================================================================
-    // Helper: Check if GPU is available
+    // Helper: Check if GPU is available and active
     //=========================================================================
     bool hasGPU() const {
-        return gpu_ctx != nullptr && nimcp_cuda_backend_available();
+        // Must have valid GPU context AND active backend must be CUDA
+        if (!gpu_ctx || !nimcp_cuda_backend_available()) {
+            return false;
+        }
+        nimcp_backend_type_t active_type = nimcp_get_backend_type();
+        return active_type == NIMCP_BACKEND_CUDA;
     }
 
     //=========================================================================

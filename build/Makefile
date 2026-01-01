@@ -5359,97 +5359,6 @@ regression_fault_tolerance_test_fault_tolerance_regression/fast:
 .PHONY : regression_fault_tolerance_test_fault_tolerance_regression/fast
 
 #=============================================================================
-# Target rules for targets named regression_gpu_test_execution_mode_regression
-
-# Build rule for target.
-regression_gpu_test_execution_mode_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_execution_mode_regression
-.PHONY : regression_gpu_test_execution_mode_regression
-
-# fast build rule for target.
-regression_gpu_test_execution_mode_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_gpu_test_execution_mode_regression.dir/build.make test/CMakeFiles/regression_gpu_test_execution_mode_regression.dir/build
-.PHONY : regression_gpu_test_execution_mode_regression/fast
-
-#=============================================================================
-# Target rules for targets named regression_gpu_test_gpu_execution_mode_backward_compat
-
-# Build rule for target.
-regression_gpu_test_gpu_execution_mode_backward_compat: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_gpu_execution_mode_backward_compat
-.PHONY : regression_gpu_test_gpu_execution_mode_backward_compat
-
-# fast build rule for target.
-regression_gpu_test_gpu_execution_mode_backward_compat/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_gpu_test_gpu_execution_mode_backward_compat.dir/build.make test/CMakeFiles/regression_gpu_test_gpu_execution_mode_backward_compat.dir/build
-.PHONY : regression_gpu_test_gpu_execution_mode_backward_compat/fast
-
-#=============================================================================
-# Target rules for targets named regression_gpu_test_gpu_neuron_backward_compat
-
-# Build rule for target.
-regression_gpu_test_gpu_neuron_backward_compat: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_gpu_neuron_backward_compat
-.PHONY : regression_gpu_test_gpu_neuron_backward_compat
-
-# fast build rule for target.
-regression_gpu_test_gpu_neuron_backward_compat/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_gpu_test_gpu_neuron_backward_compat.dir/build.make test/CMakeFiles/regression_gpu_test_gpu_neuron_backward_compat.dir/build
-.PHONY : regression_gpu_test_gpu_neuron_backward_compat/fast
-
-#=============================================================================
-# Target rules for targets named regression_gpu_test_gpu_neuron_regression
-
-# Build rule for target.
-regression_gpu_test_gpu_neuron_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_gpu_neuron_regression
-.PHONY : regression_gpu_test_gpu_neuron_regression
-
-# fast build rule for target.
-regression_gpu_test_gpu_neuron_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_gpu_test_gpu_neuron_regression.dir/build.make test/CMakeFiles/regression_gpu_test_gpu_neuron_regression.dir/build
-.PHONY : regression_gpu_test_gpu_neuron_regression/fast
-
-#=============================================================================
-# Target rules for targets named regression_gpu_test_gpu_spike_event_backward_compat
-
-# Build rule for target.
-regression_gpu_test_gpu_spike_event_backward_compat: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_gpu_spike_event_backward_compat
-.PHONY : regression_gpu_test_gpu_spike_event_backward_compat
-
-# fast build rule for target.
-regression_gpu_test_gpu_spike_event_backward_compat/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_gpu_test_gpu_spike_event_backward_compat.dir/build.make test/CMakeFiles/regression_gpu_test_gpu_spike_event_backward_compat.dir/build
-.PHONY : regression_gpu_test_gpu_spike_event_backward_compat/fast
-
-#=============================================================================
-# Target rules for targets named regression_gpu_test_multigpu_regression
-
-# Build rule for target.
-regression_gpu_test_multigpu_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_multigpu_regression
-.PHONY : regression_gpu_test_multigpu_regression
-
-# fast build rule for target.
-regression_gpu_test_multigpu_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_gpu_test_multigpu_regression.dir/build.make test/CMakeFiles/regression_gpu_test_multigpu_regression.dir/build
-.PHONY : regression_gpu_test_multigpu_regression/fast
-
-#=============================================================================
-# Target rules for targets named regression_gpu_test_spike_event_regression
-
-# Build rule for target.
-regression_gpu_test_spike_event_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_spike_event_regression
-.PHONY : regression_gpu_test_spike_event_regression
-
-# fast build rule for target.
-regression_gpu_test_spike_event_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_gpu_test_spike_event_regression.dir/build.make test/CMakeFiles/regression_gpu_test_spike_event_regression.dir/build
-.PHONY : regression_gpu_test_spike_event_regression/fast
-
-#=============================================================================
 # Target rules for targets named regression_information_test_quantum_shannon_backward_compat
 
 # Build rule for target.
@@ -7333,6 +7242,32 @@ e2e_test_gpu_training_pipeline: cmake_check_build_system
 e2e_test_gpu_training_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_gpu_training_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_gpu_training_pipeline.dir/build
 .PHONY : e2e_test_gpu_training_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_mental_health_guardian
+
+# Build rule for target.
+e2e_test_mental_health_guardian: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mental_health_guardian
+.PHONY : e2e_test_mental_health_guardian
+
+# fast build rule for target.
+e2e_test_mental_health_guardian/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_mental_health_guardian.dir/build.make test/e2e/CMakeFiles/e2e_test_mental_health_guardian.dir/build
+.PHONY : e2e_test_mental_health_guardian/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_broca_gpu_pipeline
+
+# Build rule for target.
+e2e_test_broca_gpu_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_broca_gpu_pipeline
+.PHONY : e2e_test_broca_gpu_pipeline
+
+# fast build rule for target.
+e2e_test_broca_gpu_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_broca_gpu_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_broca_gpu_pipeline.dir/build
+.PHONY : e2e_test_broca_gpu_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -10609,6 +10544,19 @@ unit_cognitive_mental_health_immune_integration: cmake_check_build_system
 unit_cognitive_mental_health_immune_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/mental_health/CMakeFiles/unit_cognitive_mental_health_immune_integration.dir/build.make test/unit/cognitive/mental_health/CMakeFiles/unit_cognitive_mental_health_immune_integration.dir/build
 .PHONY : unit_cognitive_mental_health_immune_integration/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_mental_health_guardian
+
+# Build rule for target.
+unit_cognitive_mental_health_guardian: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_mental_health_guardian
+.PHONY : unit_cognitive_mental_health_guardian
+
+# fast build rule for target.
+unit_cognitive_mental_health_guardian/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/mental_health/CMakeFiles/unit_cognitive_mental_health_guardian.dir/build.make test/unit/cognitive/mental_health/CMakeFiles/unit_cognitive_mental_health_guardian.dir/build
+.PHONY : unit_cognitive_mental_health_guardian/fast
 
 #=============================================================================
 # Target rules for targets named unit_fep_learning
@@ -14418,6 +14366,84 @@ integration_collective_cognition_portia: cmake_check_build_system
 integration_collective_cognition_portia/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_portia.dir/build.make test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_portia.dir/build
 .PHONY : integration_collective_cognition_portia/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_mental_health_guardian_brain
+
+# Build rule for target.
+integration_cognitive_mental_health_guardian_brain: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_mental_health_guardian_brain
+.PHONY : integration_cognitive_mental_health_guardian_brain
+
+# fast build rule for target.
+integration_cognitive_mental_health_guardian_brain/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/mental_health/CMakeFiles/integration_cognitive_mental_health_guardian_brain.dir/build.make test/integration/cognitive/mental_health/CMakeFiles/integration_cognitive_mental_health_guardian_brain.dir/build
+.PHONY : integration_cognitive_mental_health_guardian_brain/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_emotion_performance
+
+# Build rule for target.
+regression_cognitive_emotion_performance: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_emotion_performance
+.PHONY : regression_cognitive_emotion_performance
+
+# fast build rule for target.
+regression_cognitive_emotion_performance/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/CMakeFiles/regression_cognitive_emotion_performance.dir/build.make test/regression/cognitive/CMakeFiles/regression_cognitive_emotion_performance.dir/build
+.PHONY : regression_cognitive_emotion_performance/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_working_memory_pe_test
+
+# Build rule for target.
+regression_cognitive_working_memory_pe_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_working_memory_pe_test
+.PHONY : regression_cognitive_working_memory_pe_test
+
+# fast build rule for target.
+regression_cognitive_working_memory_pe_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/CMakeFiles/regression_cognitive_working_memory_pe_test.dir/build.make test/regression/cognitive/CMakeFiles/regression_cognitive_working_memory_pe_test.dir/build
+.PHONY : regression_cognitive_working_memory_pe_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_bridge_completeness
+
+# Build rule for target.
+regression_cognitive_bridge_completeness: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_bridge_completeness
+.PHONY : regression_cognitive_bridge_completeness
+
+# fast build rule for target.
+regression_cognitive_bridge_completeness/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/CMakeFiles/regression_cognitive_bridge_completeness.dir/build.make test/regression/cognitive/CMakeFiles/regression_cognitive_bridge_completeness.dir/build
+.PHONY : regression_cognitive_bridge_completeness/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_thalamic_routing
+
+# Build rule for target.
+regression_cognitive_thalamic_routing: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_thalamic_routing
+.PHONY : regression_cognitive_thalamic_routing
+
+# fast build rule for target.
+regression_cognitive_thalamic_routing/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/CMakeFiles/regression_cognitive_thalamic_routing.dir/build.make test/regression/cognitive/CMakeFiles/regression_cognitive_thalamic_routing.dir/build
+.PHONY : regression_cognitive_thalamic_routing/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_guardian_intervention
+
+# Build rule for target.
+regression_cognitive_guardian_intervention: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_guardian_intervention
+.PHONY : regression_cognitive_guardian_intervention
+
+# fast build rule for target.
+regression_cognitive_guardian_intervention/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/CMakeFiles/regression_cognitive_guardian_intervention.dir/build.make test/regression/cognitive/CMakeFiles/regression_cognitive_guardian_intervention.dir/build
+.PHONY : regression_cognitive_guardian_intervention/fast
 
 #=============================================================================
 # Target rules for targets named integration_brain_regions_test_visual_cortex_integration
@@ -18671,6 +18697,19 @@ unit_gpu_immune_multigpu/fast:
 .PHONY : unit_gpu_immune_multigpu/fast
 
 #=============================================================================
+# Target rules for targets named unit_gpu_cognitive_test_broca_gpu
+
+# Build rule for target.
+unit_gpu_cognitive_test_broca_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_cognitive_test_broca_gpu
+.PHONY : unit_gpu_cognitive_test_broca_gpu
+
+# fast build rule for target.
+unit_gpu_cognitive_test_broca_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/cognitive/CMakeFiles/unit_gpu_cognitive_test_broca_gpu.dir/build.make test/unit/gpu/cognitive/CMakeFiles/unit_gpu_cognitive_test_broca_gpu.dir/build
+.PHONY : unit_gpu_cognitive_test_broca_gpu/fast
+
+#=============================================================================
 # Target rules for targets named integration_gpu_test_gpu_cpu_fallback_integration
 
 # Build rule for target.
@@ -18723,6 +18762,58 @@ integration_gpu_test_mixed_precision/fast:
 .PHONY : integration_gpu_test_mixed_precision/fast
 
 #=============================================================================
+# Target rules for targets named integration_gpu_test_cognitive_gpu
+
+# Build rule for target.
+integration_gpu_test_cognitive_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_gpu_test_cognitive_gpu
+.PHONY : integration_gpu_test_cognitive_gpu
+
+# fast build rule for target.
+integration_gpu_test_cognitive_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/gpu/CMakeFiles/integration_gpu_test_cognitive_gpu.dir/build.make test/integration/gpu/CMakeFiles/integration_gpu_test_cognitive_gpu.dir/build
+.PHONY : integration_gpu_test_cognitive_gpu/fast
+
+#=============================================================================
+# Target rules for targets named integration_gpu_test_logic_gpu
+
+# Build rule for target.
+integration_gpu_test_logic_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_gpu_test_logic_gpu
+.PHONY : integration_gpu_test_logic_gpu
+
+# fast build rule for target.
+integration_gpu_test_logic_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/gpu/CMakeFiles/integration_gpu_test_logic_gpu.dir/build.make test/integration/gpu/CMakeFiles/integration_gpu_test_logic_gpu.dir/build
+.PHONY : integration_gpu_test_logic_gpu/fast
+
+#=============================================================================
+# Target rules for targets named integration_gpu_test_broca_gpu_integration
+
+# Build rule for target.
+integration_gpu_test_broca_gpu_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_gpu_test_broca_gpu_integration
+.PHONY : integration_gpu_test_broca_gpu_integration
+
+# fast build rule for target.
+integration_gpu_test_broca_gpu_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/gpu/CMakeFiles/integration_gpu_test_broca_gpu_integration.dir/build.make test/integration/gpu/CMakeFiles/integration_gpu_test_broca_gpu_integration.dir/build
+.PHONY : integration_gpu_test_broca_gpu_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_gpu_test_broca_gpu_kernel_integration
+
+# Build rule for target.
+integration_gpu_test_broca_gpu_kernel_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_gpu_test_broca_gpu_kernel_integration
+.PHONY : integration_gpu_test_broca_gpu_kernel_integration
+
+# fast build rule for target.
+integration_gpu_test_broca_gpu_kernel_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/gpu/CMakeFiles/integration_gpu_test_broca_gpu_kernel_integration.dir/build.make test/integration/gpu/CMakeFiles/integration_gpu_test_broca_gpu_kernel_integration.dir/build
+.PHONY : integration_gpu_test_broca_gpu_kernel_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_gpu_test_gpu_integration
 
 # Build rule for target.
@@ -18773,6 +18864,84 @@ integration_gpu_test_gpu_spike_event_integration: cmake_check_build_system
 integration_gpu_test_gpu_spike_event_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/gpu/CMakeFiles/integration_gpu_test_gpu_spike_event_integration.dir/build.make test/integration/gpu/CMakeFiles/integration_gpu_test_gpu_spike_event_integration.dir/build
 .PHONY : integration_gpu_test_gpu_spike_event_integration/fast
+
+#=============================================================================
+# Target rules for targets named regression_gpu_test_gpu_neuron_backward_compat
+
+# Build rule for target.
+regression_gpu_test_gpu_neuron_backward_compat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_gpu_neuron_backward_compat
+.PHONY : regression_gpu_test_gpu_neuron_backward_compat
+
+# fast build rule for target.
+regression_gpu_test_gpu_neuron_backward_compat/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_neuron_backward_compat.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_neuron_backward_compat.dir/build
+.PHONY : regression_gpu_test_gpu_neuron_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_gpu_test_gpu_neuron_regression
+
+# Build rule for target.
+regression_gpu_test_gpu_neuron_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_gpu_neuron_regression
+.PHONY : regression_gpu_test_gpu_neuron_regression
+
+# fast build rule for target.
+regression_gpu_test_gpu_neuron_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_neuron_regression.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_neuron_regression.dir/build
+.PHONY : regression_gpu_test_gpu_neuron_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_gpu_test_multigpu_regression
+
+# Build rule for target.
+regression_gpu_test_multigpu_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_multigpu_regression
+.PHONY : regression_gpu_test_multigpu_regression
+
+# fast build rule for target.
+regression_gpu_test_multigpu_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_multigpu_regression.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_multigpu_regression.dir/build
+.PHONY : regression_gpu_test_multigpu_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_gpu_test_gpu_spike_event_backward_compat
+
+# Build rule for target.
+regression_gpu_test_gpu_spike_event_backward_compat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_gpu_spike_event_backward_compat
+.PHONY : regression_gpu_test_gpu_spike_event_backward_compat
+
+# fast build rule for target.
+regression_gpu_test_gpu_spike_event_backward_compat/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_spike_event_backward_compat.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_spike_event_backward_compat.dir/build
+.PHONY : regression_gpu_test_gpu_spike_event_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_gpu_test_gpu_execution_mode_backward_compat
+
+# Build rule for target.
+regression_gpu_test_gpu_execution_mode_backward_compat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_gpu_execution_mode_backward_compat
+.PHONY : regression_gpu_test_gpu_execution_mode_backward_compat
+
+# fast build rule for target.
+regression_gpu_test_gpu_execution_mode_backward_compat/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_execution_mode_backward_compat.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_execution_mode_backward_compat.dir/build
+.PHONY : regression_gpu_test_gpu_execution_mode_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_gpu_test_broca_gpu_regression
+
+# Build rule for target.
+regression_gpu_test_broca_gpu_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_broca_gpu_regression
+.PHONY : regression_gpu_test_broca_gpu_regression
+
+# fast build rule for target.
+regression_gpu_test_broca_gpu_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_broca_gpu_regression.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_broca_gpu_regression.dir/build
+.PHONY : regression_gpu_test_broca_gpu_regression/fast
 
 #=============================================================================
 # Target rules for targets named unit_lnn_test_lnn_config
@@ -20836,6 +21005,7 @@ help:
 	@echo "... e2e_test_brain_initialization_subsystems"
 	@echo "... e2e_test_brain_pipeline"
 	@echo "... e2e_test_bridge_pipelines"
+	@echo "... e2e_test_broca_gpu_pipeline"
 	@echo "... e2e_test_cerebellum_pipeline"
 	@echo "... e2e_test_cnn_backprop"
 	@echo "... e2e_test_cnn_cortex_bridge"
@@ -20869,6 +21039,7 @@ help:
 	@echo "... e2e_test_master_connectivity"
 	@echo "... e2e_test_medulla_pipeline"
 	@echo "... e2e_test_memory_immune_pipeline"
+	@echo "... e2e_test_mental_health_guardian"
 	@echo "... e2e_test_motor_control_pipeline"
 	@echo "... e2e_test_nlp_disaster_sar"
 	@echo "... e2e_test_nlp_neural_distributed"
@@ -20970,6 +21141,7 @@ help:
 	@echo "... integration_cognitive_joy_test_joy_euphoria_integration"
 	@echo "... integration_cognitive_memory_test_engram_integration"
 	@echo "... integration_cognitive_memory_test_semantic_memory_integration"
+	@echo "... integration_cognitive_mental_health_guardian_brain"
 	@echo "... integration_cognitive_mirror_neurons_substrate"
 	@echo "... integration_cognitive_parietal"
 	@echo "... integration_cognitive_salience_test_salience_fep_bridge_integration"
@@ -21024,6 +21196,9 @@ help:
 	@echo "... integration_glial_test_myelin_axon_oligo"
 	@echo "... integration_glial_test_myelin_biophysics"
 	@echo "... integration_glial_test_oligodendrocyte"
+	@echo "... integration_gpu_test_broca_gpu_integration"
+	@echo "... integration_gpu_test_broca_gpu_kernel_integration"
+	@echo "... integration_gpu_test_cognitive_gpu"
 	@echo "... integration_gpu_test_gpu_cpu_equivalence"
 	@echo "... integration_gpu_test_gpu_cpu_fallback_integration"
 	@echo "... integration_gpu_test_gpu_execution_mode_integration"
@@ -21031,6 +21206,7 @@ help:
 	@echo "... integration_gpu_test_gpu_neuron_integration"
 	@echo "... integration_gpu_test_gpu_spike_event_integration"
 	@echo "... integration_gpu_test_kernel_backend_switching"
+	@echo "... integration_gpu_test_logic_gpu"
 	@echo "... integration_gpu_test_mixed_precision"
 	@echo "... integration_information_test_quantum_shannon_integration"
 	@echo "... integration_information_test_shannon_integration"
@@ -21191,8 +21367,10 @@ help:
 	@echo "... regression_btree_test_btree_regression"
 	@echo "... regression_btree_test_ethics_btree_regression"
 	@echo "... regression_cognitive_bio_async_test"
+	@echo "... regression_cognitive_bridge_completeness"
 	@echo "... regression_cognitive_consolidation_test_systems_consolidation_backward_compat"
 	@echo "... regression_cognitive_curiosity_enhanced"
+	@echo "... regression_cognitive_emotion_performance"
 	@echo "... regression_cognitive_emotion_tensor_test_emotion_tensor_regression"
 	@echo "... regression_cognitive_emotions_test_emotional_system_regression"
 	@echo "... regression_cognitive_ethics_test_asimov_laws_regression"
@@ -21202,6 +21380,7 @@ help:
 	@echo "... regression_cognitive_global_workspace_test_global_workspace_regression"
 	@echo "... regression_cognitive_global_workspace_test_global_workspace_shannon_regression"
 	@echo "... regression_cognitive_grief_test_grief_and_loss_backward_compat"
+	@echo "... regression_cognitive_guardian_intervention"
 	@echo "... regression_cognitive_immune_brain_immune"
 	@echo "... regression_cognitive_immune_code_immune"
 	@echo "... regression_cognitive_immune_modules"
@@ -21217,7 +21396,9 @@ help:
 	@echo "... regression_cognitive_modules_api_test"
 	@echo "... regression_cognitive_sleep_bridge"
 	@echo "... regression_cognitive_sleep_test_cognitive_sleep_regression"
+	@echo "... regression_cognitive_thalamic_routing"
 	@echo "... regression_cognitive_wellbeing_enhanced"
+	@echo "... regression_cognitive_working_memory_pe_test"
 	@echo "... regression_core_axon_performance"
 	@echo "... regression_core_brain_coordinator_regression"
 	@echo "... regression_core_brain_distributed_cow_regression"
@@ -21258,13 +21439,12 @@ help:
 	@echo "... regression_fep_bridges"
 	@echo "... regression_game_theory"
 	@echo "... regression_glial_performance"
-	@echo "... regression_gpu_test_execution_mode_regression"
+	@echo "... regression_gpu_test_broca_gpu_regression"
 	@echo "... regression_gpu_test_gpu_execution_mode_backward_compat"
 	@echo "... regression_gpu_test_gpu_neuron_backward_compat"
 	@echo "... regression_gpu_test_gpu_neuron_regression"
 	@echo "... regression_gpu_test_gpu_spike_event_backward_compat"
 	@echo "... regression_gpu_test_multigpu_regression"
-	@echo "... regression_gpu_test_spike_event_regression"
 	@echo "... regression_information_test_quantum_shannon_backward_compat"
 	@echo "... regression_information_test_shannon_backward_compat"
 	@echo "... regression_io_test_dataio_regression"
@@ -21731,6 +21911,7 @@ help:
 	@echo "... unit_cognitive_mental_health_basic"
 	@echo "... unit_cognitive_mental_health_coverage"
 	@echo "... unit_cognitive_mental_health_detectors"
+	@echo "... unit_cognitive_mental_health_guardian"
 	@echo "... unit_cognitive_mental_health_immune_integration"
 	@echo "... unit_cognitive_mental_health_interventions"
 	@echo "... unit_cognitive_mental_health_real"
@@ -22014,6 +22195,7 @@ help:
 	@echo "... unit_glial_substrate_bridge"
 	@echo "... unit_glial_test_bio_async"
 	@echo "... unit_glial_test_fep_bridges"
+	@echo "... unit_gpu_cognitive_test_broca_gpu"
 	@echo "... unit_gpu_immune_execution"
 	@echo "... unit_gpu_immune_multigpu"
 	@echo "... unit_gpu_spike_event_unit_spike_event_test_amplitude_validation"

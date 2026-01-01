@@ -25,6 +25,8 @@
 
 static nimcp_kernel_backend_t g_cpu_backend;
 static nimcp_kernel_backend_t g_cuda_backend;
+static nimcp_kernel_backend_t g_rocm_backend;
+static nimcp_kernel_backend_t g_opencl_backend;
 static nimcp_kernel_backend_t* g_active_backend = NULL;
 static bool g_backend_initialized = false;
 
@@ -1161,6 +1163,110 @@ static void init_cuda_backend(void)
 }
 
 //=============================================================================
+// Initialize ROCm Backend (placeholder - for AMD GPU support)
+//=============================================================================
+
+#ifdef NIMCP_ENABLE_ROCM
+extern void init_rocm_backend_ops(nimcp_kernel_backend_t* backend);
+#endif
+
+static void init_rocm_backend(void)
+{
+#ifdef NIMCP_ENABLE_ROCM
+    memset(&g_rocm_backend, 0, sizeof(g_rocm_backend));
+
+    g_rocm_backend.type = NIMCP_BACKEND_ROCM;
+    g_rocm_backend.name = "ROCm";
+
+    init_rocm_backend_ops(&g_rocm_backend);
+
+    g_rocm_backend.initialized = true;
+    LOG_INFO("ROCm kernel backend initialized");
+#else
+    g_rocm_backend.initialized = false;
+    LOG_DEBUG("ROCm backend not available (not compiled with ROCm support)");
+#endif
+}
+
+//=============================================================================
+// Initialize OpenCL Backend (placeholder - for cross-platform GPU support)
+//=============================================================================
+
+#ifdef NIMCP_ENABLE_OPENCL
+extern void init_opencl_backend_ops(nimcp_kernel_backend_t* backend);
+#endif
+
+static void init_opencl_backend(void)
+{
+#ifdef NIMCP_ENABLE_OPENCL
+    memset(&g_opencl_backend, 0, sizeof(g_opencl_backend));
+
+    g_opencl_backend.type = NIMCP_BACKEND_OPENCL;
+    g_opencl_backend.name = "OpenCL";
+
+    init_opencl_backend_ops(&g_opencl_backend);
+
+    g_opencl_backend.initialized = true;
+    LOG_INFO("OpenCL kernel backend initialized");
+#else
+    g_opencl_backend.initialized = false;
+    LOG_DEBUG("OpenCL backend not available (not compiled with OpenCL support)");
+#endif
+}
+
+//=============================================================================
+// Helper: Try to initialize a specific GPU backend
+//=============================================================================
+
+/**
+ * @brief Attempt to initialize a GPU backend with fallback on failure
+ *
+ * WHAT: Tries to init a specific GPU backend, returns success/failure
+ * WHY:  Part of GPU-first fallback chain
+ * HOW:  Calls backend-specific init, checks if it succeeded
+ *
+ * @param type Backend type to try
+ * @return true if backend initialized successfully
+ */
+static bool try_init_gpu_backend(nimcp_backend_type_t type)
+{
+    switch (type) {
+        case NIMCP_BACKEND_CUDA:
+            init_cuda_backend();
+            if (g_cuda_backend.initialized) {
+                g_active_backend = &g_cuda_backend;
+                LOG_INFO("GPU backend selected: CUDA");
+                return true;
+            }
+            LOG_DEBUG("CUDA backend initialization failed, trying next...");
+            return false;
+
+        case NIMCP_BACKEND_ROCM:
+            init_rocm_backend();
+            if (g_rocm_backend.initialized) {
+                g_active_backend = &g_rocm_backend;
+                LOG_INFO("GPU backend selected: ROCm");
+                return true;
+            }
+            LOG_DEBUG("ROCm backend initialization failed, trying next...");
+            return false;
+
+        case NIMCP_BACKEND_OPENCL:
+            init_opencl_backend();
+            if (g_opencl_backend.initialized) {
+                g_active_backend = &g_opencl_backend;
+                LOG_INFO("GPU backend selected: OpenCL");
+                return true;
+            }
+            LOG_DEBUG("OpenCL backend initialization failed, trying next...");
+            return false;
+
+        default:
+            return false;
+    }
+}
+
+//=============================================================================
 // Backend API Implementation
 //=============================================================================
 
@@ -1171,28 +1277,122 @@ bool nimcp_kernel_backend_init(nimcp_backend_type_t preferred)
         return true;
     }
 
-    // Always initialize CPU backend
+    // Always initialize CPU backend (guaranteed fallback)
     init_cpu_backend();
 
-    // Try to initialize CUDA backend
+    // Initialize all GPU backends (will set initialized=false if not available)
     init_cuda_backend();
+    init_rocm_backend();
+    init_opencl_backend();
 
-    // Select active backend
-    if (preferred == NIMCP_BACKEND_CUDA && g_cuda_backend.initialized) {
-        g_active_backend = &g_cuda_backend;
-    } else if (preferred == NIMCP_BACKEND_AUTO) {
-        if (g_cuda_backend.initialized) {
-            g_active_backend = &g_cuda_backend;
-        } else {
+    // Select active backend based on preference
+    switch (preferred) {
+        case NIMCP_BACKEND_CUDA:
+            if (g_cuda_backend.initialized) {
+                g_active_backend = &g_cuda_backend;
+            } else {
+                LOG_WARN("CUDA backend requested but not available, falling back to CPU");
+                g_active_backend = &g_cpu_backend;
+            }
+            break;
+
+        case NIMCP_BACKEND_ROCM:
+            if (g_rocm_backend.initialized) {
+                g_active_backend = &g_rocm_backend;
+            } else {
+                LOG_WARN("ROCm backend requested but not available, falling back to CPU");
+                g_active_backend = &g_cpu_backend;
+            }
+            break;
+
+        case NIMCP_BACKEND_OPENCL:
+            if (g_opencl_backend.initialized) {
+                g_active_backend = &g_opencl_backend;
+            } else {
+                LOG_WARN("OpenCL backend requested but not available, falling back to CPU");
+                g_active_backend = &g_cpu_backend;
+            }
+            break;
+
+        case NIMCP_BACKEND_AUTO:
+            // GPU-first fallback chain: CUDA -> ROCm -> OpenCL -> CPU
+            if (g_cuda_backend.initialized) {
+                g_active_backend = &g_cuda_backend;
+            } else if (g_rocm_backend.initialized) {
+                g_active_backend = &g_rocm_backend;
+            } else if (g_opencl_backend.initialized) {
+                g_active_backend = &g_opencl_backend;
+            } else {
+                LOG_WARN("No GPU backend available, using CPU fallback");
+                g_active_backend = &g_cpu_backend;
+            }
+            break;
+
+        case NIMCP_BACKEND_CPU:
+        default:
             g_active_backend = &g_cpu_backend;
-        }
-    } else {
-        g_active_backend = &g_cpu_backend;
+            break;
     }
 
     g_backend_initialized = true;
 
     LOG_INFO("Kernel backend system initialized: active=%s", g_active_backend->name);
+    return true;
+}
+
+/**
+ * @brief Initialize kernel backend with GPU-first default policy
+ *
+ * WHAT: Phase 1 GPU integration - GPU is now the default backend
+ * WHY:  Maximize performance by using GPU acceleration when available
+ * HOW:  Try GPU backends in order, fall back to CPU if none available
+ *
+ * FALLBACK CHAIN:
+ * 1. CUDA (NVIDIA GPUs) - Most common and best optimized
+ * 2. ROCm (AMD GPUs) - AMD alternative
+ * 3. OpenCL (Cross-platform) - Works on any OpenCL-capable GPU
+ * 4. CPU (Always available) - Guaranteed fallback
+ *
+ * @return true on success (always succeeds due to CPU fallback)
+ */
+bool nimcp_kernel_backend_init_default(void)
+{
+    if (g_backend_initialized) {
+        LOG_WARN("Kernel backend already initialized");
+        return true;
+    }
+
+    LOG_INFO("Initializing kernel backend with GPU-first policy...");
+
+    // Always initialize CPU backend first (guaranteed fallback)
+    init_cpu_backend();
+
+    // Try GPU backends in priority order: CUDA -> ROCm -> OpenCL
+    bool gpu_found = false;
+
+    // Try CUDA first (most common, best optimized)
+    if (try_init_gpu_backend(NIMCP_BACKEND_CUDA)) {
+        gpu_found = true;
+    }
+    // Try ROCm if CUDA failed
+    else if (try_init_gpu_backend(NIMCP_BACKEND_ROCM)) {
+        gpu_found = true;
+    }
+    // Try OpenCL if ROCm failed
+    else if (try_init_gpu_backend(NIMCP_BACKEND_OPENCL)) {
+        gpu_found = true;
+    }
+
+    // Fall back to CPU if no GPU available
+    if (!gpu_found) {
+        g_active_backend = &g_cpu_backend;
+        LOG_WARN("No GPU backend available - falling back to CPU execution");
+        LOG_WARN("For optimal performance, install CUDA, ROCm, or OpenCL drivers");
+    }
+
+    g_backend_initialized = true;
+
+    LOG_INFO("Kernel backend initialized: %s (GPU-first policy)", g_active_backend->name);
     return true;
 }
 
@@ -1232,17 +1432,51 @@ bool nimcp_switch_backend(nimcp_backend_type_t type)
         return nimcp_kernel_backend_init(type);
     }
 
-    if (type == NIMCP_BACKEND_CUDA) {
-        if (!g_cuda_backend.initialized) {
-            LOG_ERROR("Cannot switch to CUDA backend - not available");
+    switch (type) {
+        case NIMCP_BACKEND_CUDA:
+            if (!g_cuda_backend.initialized) {
+                LOG_ERROR("Cannot switch to CUDA backend - not available");
+                return false;
+            }
+            g_active_backend = &g_cuda_backend;
+            break;
+
+        case NIMCP_BACKEND_ROCM:
+            if (!g_rocm_backend.initialized) {
+                LOG_ERROR("Cannot switch to ROCm backend - not available");
+                return false;
+            }
+            g_active_backend = &g_rocm_backend;
+            break;
+
+        case NIMCP_BACKEND_OPENCL:
+            if (!g_opencl_backend.initialized) {
+                LOG_ERROR("Cannot switch to OpenCL backend - not available");
+                return false;
+            }
+            g_active_backend = &g_opencl_backend;
+            break;
+
+        case NIMCP_BACKEND_CPU:
+            g_active_backend = &g_cpu_backend;
+            break;
+
+        case NIMCP_BACKEND_AUTO:
+            // Switch to best available GPU, or CPU if none
+            if (g_cuda_backend.initialized) {
+                g_active_backend = &g_cuda_backend;
+            } else if (g_rocm_backend.initialized) {
+                g_active_backend = &g_rocm_backend;
+            } else if (g_opencl_backend.initialized) {
+                g_active_backend = &g_opencl_backend;
+            } else {
+                g_active_backend = &g_cpu_backend;
+            }
+            break;
+
+        default:
+            LOG_ERROR("Unknown backend type: %d", type);
             return false;
-        }
-        g_active_backend = &g_cuda_backend;
-    } else if (type == NIMCP_BACKEND_CPU) {
-        g_active_backend = &g_cpu_backend;
-    } else {
-        LOG_ERROR("Unknown backend type: %d", type);
-        return false;
     }
 
     LOG_INFO("Switched to %s backend", g_active_backend->name);
@@ -1254,6 +1488,8 @@ const char* nimcp_backend_type_name(nimcp_backend_type_t type)
     switch (type) {
         case NIMCP_BACKEND_CPU: return "CPU";
         case NIMCP_BACKEND_CUDA: return "CUDA";
+        case NIMCP_BACKEND_ROCM: return "ROCm";
+        case NIMCP_BACKEND_OPENCL: return "OpenCL";
         case NIMCP_BACKEND_AUTO: return "AUTO";
         default: return "UNKNOWN";
     }

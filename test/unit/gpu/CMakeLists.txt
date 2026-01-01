@@ -43,5 +43,10 @@ else()
     message(STATUS "  Skipping CUDA kernel tests (CUDA toolkit not found)")
 endif()
 
-# Include immune subdirectory tests
+# Include subdirectory tests
 add_subdirectory(immune)
+
+# Include cognitive subdirectory tests (Broca GPU, etc.)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/CMakeLists.txt)
+    add_subdirectory(cognitive)
+endif()

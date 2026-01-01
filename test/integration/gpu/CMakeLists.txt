@@ -56,6 +56,39 @@ if(CUDAToolkit_FOUND)
     # WHY:  Mixed precision enables faster inference with acceptable accuracy
     # HOW:  Test precision conversions, quantization, and calibration functions
     add_gpu_integration_test(test_mixed_precision)
+
+    # =============================================================================
+    # Cognitive GPU Tests
+    # =============================================================================
+    # WHAT: Test GPU-accelerated cognitive operations (FEP, attention, working memory)
+    # WHY:  Verify cognitive modules work correctly on both GPU and CPU backends
+    # HOW:  Compare GPU and CPU results within tolerance, test fallback behavior
+    add_gpu_integration_test(test_cognitive_gpu)
+
+    # =============================================================================
+    # Logic GPU Tests
+    # =============================================================================
+    # WHAT: Test GPU-accelerated neural logic operations (gates, neuromodulation)
+    # WHY:  Verify neural logic gates work correctly on both GPU and CPU backends
+    # HOW:  Batch evaluation, neuromodulation effects, expression evaluation
+    add_gpu_integration_test(test_logic_gpu)
+
+    # =============================================================================
+    # Broca GPU Integration Tests
+    # =============================================================================
+    # WHAT: Test Broca's region works correctly with GPU-enabled brain
+    # WHY:  Verify GPU acceleration doesn't interfere with language production
+    # HOW:  Create brain with both GPU and Broca enabled, run production tests
+    add_gpu_integration_test(test_broca_gpu_integration)
+
+    # =============================================================================
+    # Broca GPU Kernel Integration Tests
+    # =============================================================================
+    # WHAT: Test GPU Broca kernels with other GPU systems and full pipelines
+    # WHY:  Verify GPU Broca works correctly with GPU context, large batches, etc.
+    # HOW:  Test shared contexts, large batches, GPU/CPU equivalence, stress tests
+    add_gpu_integration_test(test_broca_gpu_kernel_integration)
+
     # =============================================================================
     # Timeout Configuration for CUDA tests
     # =============================================================================
@@ -63,6 +96,10 @@ if(CUDAToolkit_FOUND)
     set_tests_properties(
         integration_gpu_test_gpu_cpu_equivalence
         integration_gpu_test_mixed_precision
+        integration_gpu_test_cognitive_gpu
+        integration_gpu_test_logic_gpu
+        integration_gpu_test_broca_gpu_integration
+        integration_gpu_test_broca_gpu_kernel_integration
         PROPERTIES TIMEOUT 180
     )
 

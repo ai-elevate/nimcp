@@ -24,9 +24,8 @@
 #include <vector>
 #include <cmath>
 
-extern "C" {
-    #include "gpu/nimcp_gpu_neuron.h"
-}
+// GPU header outside extern "C" due to CUDA runtime templates
+#include "gpu/nimcp_gpu_neuron.h"
 
 //=============================================================================
 // Test Utilities

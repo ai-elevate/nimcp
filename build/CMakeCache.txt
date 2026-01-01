@@ -31,7 +31,7 @@ CMAKE_AR:FILEPATH=/usr/bin/ar
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=
+CMAKE_BUILD_TYPE:STRING=Debug
 
 //Enable/Disable color output during build.
 CMAKE_COLOR_MAKEFILE:BOOL=ON
@@ -512,7 +512,7 @@ NIMCP_ASAN:BOOL=OFF
 NIMCP_BINARY_DIR:STATIC=/home/bbrelin/nimcp/build
 
 //No help, variable specified on the command line.
-NIMCP_BUILD_GPU:UNINITIALIZED=OFF
+NIMCP_BUILD_COGNITIVE:UNINITIALIZED=ON
 
 //Enable code coverage reporting with gcov/lcov
 NIMCP_COVERAGE:BOOL=OFF
@@ -521,7 +521,7 @@ NIMCP_COVERAGE:BOOL=OFF
 NIMCP_ENABLE_CPPCHECK:BOOL=OFF
 
 //No help, variable specified on the command line.
-NIMCP_ENABLE_CUDA:UNINITIALIZED=OFF
+NIMCP_ENABLE_CUDA:UNINITIALIZED=ON
 
 //Enable clang-tidy during build
 NIMCP_ENABLE_LINT:BOOL=OFF
@@ -678,7 +678,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=241
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=245
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP
