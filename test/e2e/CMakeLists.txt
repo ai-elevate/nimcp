@@ -1366,6 +1366,46 @@ if(CUDAToolkit_FOUND AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_broca_gpu_p
     message(STATUS "  Added GPU Broca Pipeline E2E test: e2e_test_broca_gpu_pipeline")
 endif()
 
+# ============================================================================
+# E2E Test: GPU Neural Substrate Pipeline
+# ============================================================================
+# WHAT: End-to-end test for GPU-accelerated neural substrate pipeline
+# WHY:  Validate complete GPU substrate from initialization to simulation
+# HOW:  Test all subsystems (axon, dendrite, myelin, neuromod, glial, metabolic)
+#
+# PIPELINE STAGES:
+# - Full substrate initialization -> Multi-step simulation -> Performance benchmarks
+# ============================================================================
+if(CUDAToolkit_FOUND AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_substrate_gpu_pipeline.cpp)
+    add_executable(e2e_test_substrate_gpu_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_substrate_gpu_pipeline.cpp
+    )
+    target_include_directories(e2e_test_substrate_gpu_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/gpu/substrate
+    )
+    target_link_libraries(e2e_test_substrate_gpu_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_substrate_gpu_pipeline PRIVATE cxx_std_20)
+    target_compile_definitions(e2e_test_substrate_gpu_pipeline PRIVATE NIMCP_TESTING)
+    add_test(NAME e2e_test_substrate_gpu_pipeline COMMAND e2e_test_substrate_gpu_pipeline)
+    set_tests_properties(e2e_test_substrate_gpu_pipeline PROPERTIES
+        LABELS "e2e;gpu;substrate;neural"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added GPU Substrate Pipeline E2E test: e2e_test_substrate_gpu_pipeline")
+endif()
+
+# Include GPU E2E test subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
+    add_subdirectory(gpu)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

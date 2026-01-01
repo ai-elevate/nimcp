@@ -50,7 +50,7 @@ TEST_F(CorticalSparseCodingTest, DefaultConfig) {
 
 TEST_F(CorticalSparseCodingTest, DefaultConfigNullPointer) {
     int result = cortical_sparse_default_config(nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);  /* Returns NIMCP_ERROR_NULL_ARG (positive error code) */
 }
 
 TEST_F(CorticalSparseCodingTest, CreateWithConfig) {
@@ -103,13 +103,13 @@ TEST_F(CorticalSparseCodingTest, EnforceSparsity) {
 TEST_F(CorticalSparseCodingTest, EnforceSparsityNullInput) {
     float output[256];
     int result = cortical_sparse_enforce_sparsity(sparse, nullptr, 256, output);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);  /* Returns NIMCP_ERROR_NULL_ARG (positive error code) */
 }
 
 TEST_F(CorticalSparseCodingTest, EnforceSparsityNullOutput) {
     float activations[256];
     int result = cortical_sparse_enforce_sparsity(sparse, activations, 256, nullptr);
-    EXPECT_LT(result, 0);
+    EXPECT_NE(result, 0);  /* Returns NIMCP_ERROR_NULL_ARG (positive error code) */
 }
 
 TEST_F(CorticalSparseCodingTest, ApplyLateralInhibition) {
@@ -256,7 +256,9 @@ TEST_F(CorticalSparseCodingTest, GetColumnState) {
 
 TEST_F(CorticalSparseCodingTest, ConnectBioAsync) {
     int result = cortical_sparse_connect_bio_async(sparse);
-    EXPECT_TRUE(result == 0 || result < 0);
+    /* Bio-async router may not be initialized in test environment.
+     * Accept success (0) or any error code (positive NIMCP error codes) */
+    EXPECT_GE(result, 0);
 }
 
 TEST_F(CorticalSparseCodingTest, IsBioAsyncConnected) {

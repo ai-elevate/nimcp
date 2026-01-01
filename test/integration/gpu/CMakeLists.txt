@@ -90,6 +90,14 @@ if(CUDAToolkit_FOUND)
     add_gpu_integration_test(test_broca_gpu_kernel_integration)
 
     # =============================================================================
+    # Substrate GPU Integration Tests
+    # =============================================================================
+    # WHAT: Test GPU neural substrate integration with brain factory and kernel backend
+    # WHY:  Verify substrate GPU operations work correctly in full system context
+    # HOW:  Test brain creation, kernel dispatch, subsystem initialization and stepping
+    add_gpu_integration_test(test_substrate_gpu_integration)
+
+    # =============================================================================
     # Timeout Configuration for CUDA tests
     # =============================================================================
     # GPU tests may take longer on systems without GPU acceleration
@@ -100,6 +108,7 @@ if(CUDAToolkit_FOUND)
         integration_gpu_test_logic_gpu
         integration_gpu_test_broca_gpu_integration
         integration_gpu_test_broca_gpu_kernel_integration
+        integration_gpu_test_substrate_gpu_integration
         PROPERTIES TIMEOUT 180
     )
 

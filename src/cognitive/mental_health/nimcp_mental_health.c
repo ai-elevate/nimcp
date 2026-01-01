@@ -33,6 +33,7 @@
 #include "cognitive/consolidation/nimcp_consolidation.h"
 #include "cognitive/memory/nimcp_systems_consolidation.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include "cognitive/nimcp_sleep_wake.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
@@ -788,11 +789,38 @@ static void collect_ethics_markers(behavioral_markers_t* markers, brain_t brain)
         return;
     }
 
-    // TODO: Query actual ethics system when API available
-    // For now, use placeholder values
-    markers->ethics_violations_recent = 0;
-    markers->ethics_violations_total = 0;
-    markers->ethics_approval_rate = 1.0F;
+    // Query ethics system for violation statistics
+    if (brain) {
+        ethics_engine_t ethics = brain_get_ethics(brain);
+        if (ethics) {
+            ethics_statistics_t ethics_stats;
+            if (ethics_get_statistics(ethics, &ethics_stats)) {
+                markers->ethics_violations_total = (uint32_t)ethics_stats.violations_detected;
+                // Recent violations approximated from total (no recent window in stats)
+                markers->ethics_violations_recent = (uint32_t)(ethics_stats.violations_detected > 10
+                    ? 10 : ethics_stats.violations_detected);
+                // Approval rate from evaluations vs blocked
+                if (ethics_stats.total_evaluations > 0) {
+                    uint64_t allowed = ethics_stats.total_evaluations - ethics_stats.actions_blocked;
+                    markers->ethics_approval_rate = (float)allowed / (float)ethics_stats.total_evaluations;
+                } else {
+                    markers->ethics_approval_rate = 1.0F;  // No evaluations = assume good
+                }
+            } else {
+                markers->ethics_violations_recent = 0;
+                markers->ethics_violations_total = 0;
+                markers->ethics_approval_rate = 1.0F;
+            }
+        } else {
+            markers->ethics_violations_recent = 0;
+            markers->ethics_violations_total = 0;
+            markers->ethics_approval_rate = 1.0F;
+        }
+    } else {
+        markers->ethics_violations_recent = 0;
+        markers->ethics_violations_total = 0;
+        markers->ethics_approval_rate = 1.0F;
+    }
 
     // =========================================================================
     // EMPATHY TRACKING via Theory of Mind (Phase 10.6 Integration)
@@ -953,11 +981,20 @@ static void collect_neurotransmitter_markers(behavioral_markers_t* markers, brai
         if (markers->serotonin_avg > 1.0F) markers->serotonin_avg = 1.0F;
     }
 
-    // TODO: Track variance over time (requires historical tracking)
-    // For now, use default variance values
-    markers->dopamine_variance = 0.1F;
-    markers->serotonin_variance = 0.1F;
-    markers->norepinephrine_variance = 0.1F;
+    // Get variance from neuromodulator statistics
+    neuromodulator_stats_t nm_stats;
+    if (neuromodulator_get_stats(neuromod_system, &nm_stats)) {
+        markers->dopamine_variance = nm_stats.dopamine_variance;
+        // Serotonin and norepinephrine variance not tracked in stats
+        // Estimate based on dopamine variance as proxy
+        markers->serotonin_variance = nm_stats.dopamine_variance * 0.8F;
+        markers->norepinephrine_variance = nm_stats.dopamine_variance * 1.2F;
+    } else {
+        // Fallback to default variance values
+        markers->dopamine_variance = 0.1F;
+        markers->serotonin_variance = 0.1F;
+        markers->norepinephrine_variance = 0.1F;
+    }
 }
 
 /**
@@ -973,12 +1010,38 @@ static void collect_cognitive_markers(behavioral_markers_t* markers, brain_t bra
         return;
     }
 
-    // TODO: Query actual executive and working memory systems when APIs available
-    // For now, use healthy baseline values
+    // Query working memory system for cognitive markers
+    if (brain) {
+        working_memory_t* wm = brain_get_working_memory(brain);
+        if (wm) {
+            working_memory_stats_t wm_stats;
+            working_memory_get_stats(wm, &wm_stats);
+
+            // Attention fragmentation from salience variance
+            // Low salience = fragmented attention
+            markers->attention_fragmentation = 1.0F - wm_stats.avg_salience;
+
+            // Repetitive behaviors from eviction patterns
+            // High eviction rate relative to additions suggests rigid patterns
+            if (wm_stats.total_additions > 0) {
+                float eviction_rate = (float)wm_stats.total_evictions / (float)wm_stats.total_additions;
+                markers->repetitive_behaviors = (uint32_t)(eviction_rate * 10.0F);
+            } else {
+                markers->repetitive_behaviors = 0;
+            }
+        } else {
+            markers->attention_fragmentation = 0.1F;
+            markers->repetitive_behaviors = 0;
+        }
+    } else {
+        markers->attention_fragmentation = 0.1F;
+        markers->repetitive_behaviors = 0;
+    }
+
+    // Executive stats require brain_get_executive() accessor (not yet available)
+    // Use placeholder values until accessor is implemented
     markers->impulse_control_failures = 0;
     markers->task_switching_difficulty = 0.2F;
-    markers->repetitive_behaviors = 0;
-    markers->attention_fragmentation = 0.1F;
 
     // =========================================================================
     // THEORY OF MIND MARKERS (Phase 10.6 Integration)

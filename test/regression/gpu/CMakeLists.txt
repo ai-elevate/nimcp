@@ -67,6 +67,14 @@ add_gpu_regression_test(test_gpu_execution_mode_backward_compat)
 # HOW:  Test specific bug scenarios and verify fixes remain stable
 add_gpu_regression_test(test_broca_gpu_regression)
 
+# =============================================================================
+# GPU Substrate Regression Tests
+# =============================================================================
+# WHAT: Regression tests for GPU-accelerated neural substrate
+# WHY:  Prevent reintroduction of substrate GPU bugs (numerical stability, memory)
+# HOW:  Test numerical stability, GPU/CPU equivalence, edge cases
+add_gpu_regression_test(test_substrate_gpu_regression)
+
 # Include broca subdirectory if it exists
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/broca/CMakeLists.txt)
     add_subdirectory(broca)

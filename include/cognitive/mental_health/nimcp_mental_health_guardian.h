@@ -175,6 +175,8 @@ typedef struct mental_health_guardian_status {
     /* Disorder breakdown */
     uint32_t active_disorders;            /**< Number of active disorders */
     int primary_disorder;                 /**< Most severe disorder type (-1 if none) */
+    int secondary_disorder;               /**< Second most severe disorder (-1 if none) */
+    float secondary_disorder_score;       /**< Score of secondary disorder [0.0-1.0] */
 
 } mental_health_guardian_status_t;
 

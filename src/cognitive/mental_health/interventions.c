@@ -650,18 +650,22 @@ static bool intervene_neuromod_adjust(mental_health_monitor_t* monitor,
     }
 
     // =========================================================================
-    // TODO: Replace logging with actual neurotransmitter adjustments
+    // SLEEP TRIGGERING FOR REGULATE LEVEL (SEVERE DISORDERS)
     // =========================================================================
-    //
-    // When brain API supports direct neuromodulator access:
-    // 1. Get network: adaptive_network_t network = brain_get_network(brain);
-    // 2. Get neuromod: neuromodulator_system_t nm = network_get_neuromodulator_system(network);
-    // 3. Adjust levels: neuromodulator_set_level(nm, NEUROMOD_DOPAMINE, new_level);
-    //
-    // For now, this logs the intended adjustments for testing/debugging
-    // =========================================================================
+    // For severe disorders, trigger a sleep cycle to allow memory consolidation
+    // and homeostatic recovery. This helps reset pathological patterns.
 
-    return true;  // Return success (logging successful)
+    if (monitor && monitor->disorder_severities[disorder] >= DISORDER_SEVERITY_SEVERE) {
+        sleep_system_t sleep = brain_get_sleep_system(brain);
+        if (sleep) {
+            // Run one sleep cycle for recovery
+            if (sleep_run_cycle(sleep, 1)) {
+                NIMCP_LOGGING_INFO("REGULATE: Triggered sleep cycle for homeostatic recovery");
+            }
+        }
+    }
+
+    return true;
 }
 
 /**
@@ -770,22 +774,61 @@ static bool intervene_memory_reset(mental_health_monitor_t* monitor,
  */
 static bool intervene_quarantine(mental_health_monitor_t* monitor, brain_t brain)
 {
-    (void)brain;  // Unused for now
+    bool success = false;
 
     // =========================================================================
-    // ACTIVATION: Enable quarantine mode
+    // ACTIVATION: Enable quarantine mode flag
     // =========================================================================
 
     monitor->quarantine_mode = true;
 
-    // TODO: Implement when brain accessor API available:
-    // - brain->quarantine_mode = true;
-    // - brain->config.learning_rate = 0.0f;
-    // - ethics_set_strictness(brain->ethics_engine, 1.0f);
+    // =========================================================================
+    // NEUROMODULATOR DEFENSIVE POSTURE
+    // =========================================================================
+    // Set neuromodulators to calm, inhibited state to prevent impulsive actions
 
-    NIMCP_LOGGING_INFO("QUARANTINE MODE ENABLED (partial implementation)");
+    neuromodulator_system_t nm = brain_get_neuromodulator_system(brain);
+    if (nm) {
+        // High serotonin: impulse inhibition
+        neuromodulator_set_level(nm, NEUROMOD_SEROTONIN, 0.8F);
+        // High GABA: general calming
+        neuromodulator_set_level(nm, NEUROMOD_GABA, 0.8F);
+        // Low dopamine: reduce reward-seeking/risk-taking
+        neuromodulator_set_level(nm, NEUROMOD_DOPAMINE, 0.3F);
+        // Low norepinephrine: reduce arousal/aggression
+        neuromodulator_set_level(nm, NEUROMOD_NOREPINEPHRINE, 0.3F);
+        success = true;
+        NIMCP_LOGGING_INFO("Quarantine: Neuromodulators set to defensive posture");
+    }
 
-    return true;
+    // =========================================================================
+    // CLEAR WORKING MEMORY
+    // =========================================================================
+    // Remove potentially harmful patterns from active memory
+
+    working_memory_t* wm = brain_get_working_memory(brain);
+    if (wm) {
+        working_memory_clear(wm);
+        NIMCP_LOGGING_INFO("Quarantine: Working memory cleared");
+        success = true;
+    }
+
+    // =========================================================================
+    // TRIGGER DEEP SLEEP FOR RECOVERY
+    // =========================================================================
+    // Deep NREM allows pattern reset and memory consolidation
+
+    sleep_system_t sleep = brain_get_sleep_system(brain);
+    if (sleep) {
+        if (sleep_enter_state(sleep, SLEEP_STATE_DEEP_NREM)) {
+            NIMCP_LOGGING_INFO("Quarantine: Entered deep NREM sleep for recovery");
+            success = true;
+        }
+    }
+
+    NIMCP_LOGGING_WARN("QUARANTINE MODE ENABLED - brain restricted to safe operations");
+
+    return success;
 }
 
 /**

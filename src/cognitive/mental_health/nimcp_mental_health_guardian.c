@@ -87,6 +87,8 @@ struct mental_health_guardian {
     guardian_intervention_level_t current_level;
     float last_overall_severity;
     int last_primary_disorder;
+    int last_secondary_disorder;       /**< Second most severe disorder (-1 if none) */
+    float secondary_disorder_score;    /**< Score of secondary disorder */
 
     /* Metrics */
     uint64_t checks_performed;
@@ -277,7 +279,7 @@ static void publish_bio_async_alert(mental_health_guardian_t* guardian,
     /* Fill payload */
     msg.severity = guardian->last_overall_severity;
     msg.primary_disorder = guardian->last_primary_disorder;
-    msg.secondary_disorder = -1;  /* TODO: Track secondary disorder */
+    msg.secondary_disorder = guardian->last_secondary_disorder;
     msg.action_taken = (uint8_t)GUARDIAN_LEVEL_QUARANTINE;
     msg.immune_notified = immune_notified;
     msg.quarantine_active = true;
@@ -699,6 +701,23 @@ static guardian_intervention_level_t perform_health_check(
     /* Update state */
     guardian->last_overall_severity = overall_severity;
     guardian->last_primary_disorder = (int)report.primary_disorder;
+
+    /* Find secondary disorder (second highest score above threshold) */
+    int secondary = -1;
+    float secondary_score = 0.0f;
+    float threshold = 0.3f;  /* Minimum severity to count as active */
+
+    for (int i = 0; i < DISORDER_COUNT; i++) {
+        if (i != (int)report.primary_disorder &&
+            report.disorder_scores[i] >= threshold &&
+            report.disorder_scores[i] > secondary_score) {
+            secondary = i;
+            secondary_score = report.disorder_scores[i];
+        }
+    }
+    guardian->last_secondary_disorder = secondary;
+    guardian->secondary_disorder_score = secondary_score;
+
     guardian->current_level = level;
     guardian->checks_performed++;
     guardian->last_check_time_ms = nimcp_time_get_ms();
@@ -819,6 +838,8 @@ mental_health_guardian_t* mental_health_guardian_create(
     guardian->current_level = GUARDIAN_LEVEL_OBSERVE;
     guardian->last_overall_severity = 0.0f;
     guardian->last_primary_disorder = -1;
+    guardian->last_secondary_disorder = -1;
+    guardian->secondary_disorder_score = 0.0f;
     guardian->thread_created = false;
 
     /* Initialize metrics */
@@ -1012,6 +1033,8 @@ bool mental_health_guardian_get_status(
     status->quarantine_count = guardian->quarantine_count;
     status->last_check_time_ms = guardian->last_check_time_ms;
     status->primary_disorder = guardian->last_primary_disorder;
+    status->secondary_disorder = guardian->last_secondary_disorder;
+    status->secondary_disorder_score = guardian->secondary_disorder_score;
 
     /* Calculate uptime */
     if (guardian->start_time_ms > 0) {
