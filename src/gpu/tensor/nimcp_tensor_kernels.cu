@@ -941,6 +941,514 @@ __global__ void kernel_reduce_min(const float* x, float* out, size_t n)
     }
 }
 
+//=============================================================================
+// Axis-Specific Reduction Kernels
+//=============================================================================
+
+/**
+ * @brief Reduction operation types for axis-specific reduction
+ */
+typedef enum nimcp_reduce_op {
+    NIMCP_REDUCE_SUM,
+    NIMCP_REDUCE_MEAN,
+    NIMCP_REDUCE_MAX,
+    NIMCP_REDUCE_MIN,
+    NIMCP_REDUCE_PROD,
+    NIMCP_REDUCE_ARGMAX,
+    NIMCP_REDUCE_ARGMIN
+} nimcp_reduce_op_t;
+
+/**
+ * @brief Generic reduction functor for sum operation
+ */
+struct ReduceSum {
+    __device__ __forceinline__ float operator()(float a, float b) const {
+        return a + b;
+    }
+    __device__ __forceinline__ float identity() const { return 0.0f; }
+};
+
+/**
+ * @brief Generic reduction functor for max operation
+ */
+struct ReduceMax {
+    __device__ __forceinline__ float operator()(float a, float b) const {
+        return fmaxf(a, b);
+    }
+    __device__ __forceinline__ float identity() const { return -FLT_MAX; }
+};
+
+/**
+ * @brief Generic reduction functor for min operation
+ */
+struct ReduceMin {
+    __device__ __forceinline__ float operator()(float a, float b) const {
+        return fminf(a, b);
+    }
+    __device__ __forceinline__ float identity() const { return FLT_MAX; }
+};
+
+/**
+ * @brief Generic reduction functor for product operation
+ */
+struct ReduceProd {
+    __device__ __forceinline__ float operator()(float a, float b) const {
+        return a * b;
+    }
+    __device__ __forceinline__ float identity() const { return 1.0f; }
+};
+
+/**
+ * @brief Kernel for sum reduction along a specific axis
+ *
+ * For tensor with shape [outer_size, reduce_size, inner_size]:
+ * - Each output element (outer_idx, inner_idx) sums over reduce_size elements
+ * - Output shape: [outer_size, inner_size]
+ */
+__global__ void kernel_reduce_sum_axis(
+    const float* input,
+    float* output,
+    size_t outer_size,
+    size_t reduce_size,
+    size_t inner_size)
+{
+    // Each thread handles one output element
+    size_t out_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t total_out = outer_size * inner_size;
+
+    if (out_idx >= total_out) return;
+
+    size_t outer_idx = out_idx / inner_size;
+    size_t inner_idx = out_idx % inner_size;
+
+    // Sum over the reduction axis
+    float sum = 0.0f;
+    size_t base_idx = outer_idx * reduce_size * inner_size + inner_idx;
+
+    for (size_t r = 0; r < reduce_size; r++) {
+        sum += input[base_idx + r * inner_size];
+    }
+
+    output[out_idx] = sum;
+}
+
+/**
+ * @brief Kernel for max reduction along a specific axis
+ */
+__global__ void kernel_reduce_max_axis(
+    const float* input,
+    float* output,
+    size_t outer_size,
+    size_t reduce_size,
+    size_t inner_size)
+{
+    size_t out_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t total_out = outer_size * inner_size;
+
+    if (out_idx >= total_out) return;
+
+    size_t outer_idx = out_idx / inner_size;
+    size_t inner_idx = out_idx % inner_size;
+
+    float max_val = -FLT_MAX;
+    size_t base_idx = outer_idx * reduce_size * inner_size + inner_idx;
+
+    for (size_t r = 0; r < reduce_size; r++) {
+        max_val = fmaxf(max_val, input[base_idx + r * inner_size]);
+    }
+
+    output[out_idx] = max_val;
+}
+
+/**
+ * @brief Kernel for min reduction along a specific axis
+ */
+__global__ void kernel_reduce_min_axis(
+    const float* input,
+    float* output,
+    size_t outer_size,
+    size_t reduce_size,
+    size_t inner_size)
+{
+    size_t out_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t total_out = outer_size * inner_size;
+
+    if (out_idx >= total_out) return;
+
+    size_t outer_idx = out_idx / inner_size;
+    size_t inner_idx = out_idx % inner_size;
+
+    float min_val = FLT_MAX;
+    size_t base_idx = outer_idx * reduce_size * inner_size + inner_idx;
+
+    for (size_t r = 0; r < reduce_size; r++) {
+        min_val = fminf(min_val, input[base_idx + r * inner_size]);
+    }
+
+    output[out_idx] = min_val;
+}
+
+/**
+ * @brief Kernel for mean reduction along a specific axis
+ */
+__global__ void kernel_reduce_mean_axis(
+    const float* input,
+    float* output,
+    size_t outer_size,
+    size_t reduce_size,
+    size_t inner_size)
+{
+    size_t out_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t total_out = outer_size * inner_size;
+
+    if (out_idx >= total_out) return;
+
+    size_t outer_idx = out_idx / inner_size;
+    size_t inner_idx = out_idx % inner_size;
+
+    float sum = 0.0f;
+    size_t base_idx = outer_idx * reduce_size * inner_size + inner_idx;
+
+    for (size_t r = 0; r < reduce_size; r++) {
+        sum += input[base_idx + r * inner_size];
+    }
+
+    output[out_idx] = sum / (float)reduce_size;
+}
+
+/**
+ * @brief Kernel for argmax reduction along a specific axis
+ */
+__global__ void kernel_reduce_argmax_axis(
+    const float* input,
+    int* output,
+    size_t outer_size,
+    size_t reduce_size,
+    size_t inner_size)
+{
+    size_t out_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t total_out = outer_size * inner_size;
+
+    if (out_idx >= total_out) return;
+
+    size_t outer_idx = out_idx / inner_size;
+    size_t inner_idx = out_idx % inner_size;
+
+    float max_val = -FLT_MAX;
+    int max_idx = 0;
+    size_t base_idx = outer_idx * reduce_size * inner_size + inner_idx;
+
+    for (size_t r = 0; r < reduce_size; r++) {
+        float val = input[base_idx + r * inner_size];
+        if (val > max_val) {
+            max_val = val;
+            max_idx = (int)r;
+        }
+    }
+
+    output[out_idx] = max_idx;
+}
+
+/**
+ * @brief Kernel for argmin reduction along a specific axis
+ */
+__global__ void kernel_reduce_argmin_axis(
+    const float* input,
+    int* output,
+    size_t outer_size,
+    size_t reduce_size,
+    size_t inner_size)
+{
+    size_t out_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t total_out = outer_size * inner_size;
+
+    if (out_idx >= total_out) return;
+
+    size_t outer_idx = out_idx / inner_size;
+    size_t inner_idx = out_idx % inner_size;
+
+    float min_val = FLT_MAX;
+    int min_idx = 0;
+    size_t base_idx = outer_idx * reduce_size * inner_size + inner_idx;
+
+    for (size_t r = 0; r < reduce_size; r++) {
+        float val = input[base_idx + r * inner_size];
+        if (val < min_val) {
+            min_val = val;
+            min_idx = (int)r;
+        }
+    }
+
+    output[out_idx] = min_idx;
+}
+
+/**
+ * @brief Kernel for product reduction along a specific axis
+ */
+__global__ void kernel_reduce_prod_axis(
+    const float* input,
+    float* output,
+    size_t outer_size,
+    size_t reduce_size,
+    size_t inner_size)
+{
+    size_t out_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t total_out = outer_size * inner_size;
+
+    if (out_idx >= total_out) return;
+
+    size_t outer_idx = out_idx / inner_size;
+    size_t inner_idx = out_idx % inner_size;
+
+    float prod = 1.0f;
+    size_t base_idx = outer_idx * reduce_size * inner_size + inner_idx;
+
+    for (size_t r = 0; r < reduce_size; r++) {
+        prod *= input[base_idx + r * inner_size];
+    }
+
+    output[out_idx] = prod;
+}
+
+/**
+ * @brief Transpose for multi-axis reduction (move reduction axes to end)
+ */
+__global__ void kernel_transpose_for_reduce(
+    const float* input,
+    float* output,
+    const size_t* input_dims,
+    const int* perm,
+    int ndim,
+    size_t numel)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= numel) return;
+
+    // Compute output coordinates from linear index
+    size_t remaining = idx;
+    size_t out_coords[8];  // Max 8 dimensions supported
+    for (int d = ndim - 1; d >= 0; d--) {
+        size_t dim_size = input_dims[perm[d]];
+        out_coords[d] = remaining % dim_size;
+        remaining /= dim_size;
+    }
+
+    // Compute input index from permuted coordinates
+    size_t in_idx = 0;
+    size_t stride = 1;
+    for (int d = ndim - 1; d >= 0; d--) {
+        // Inverse permutation: find where dimension d came from
+        int src_dim = -1;
+        for (int p = 0; p < ndim; p++) {
+            if (perm[p] == d) {
+                src_dim = p;
+                break;
+            }
+        }
+        in_idx += out_coords[src_dim] * stride;
+        stride *= input_dims[d];
+    }
+
+    output[idx] = input[in_idx];
+}
+
+/**
+ * @brief Helper to compute outer/reduce/inner sizes for axis reduction
+ */
+static void compute_axis_sizes(
+    const size_t* dims,
+    int ndim,
+    int axis,
+    size_t* outer_size,
+    size_t* reduce_size,
+    size_t* inner_size)
+{
+    *outer_size = 1;
+    *reduce_size = dims[axis];
+    *inner_size = 1;
+
+    for (int i = 0; i < axis; i++) {
+        *outer_size *= dims[i];
+    }
+    for (int i = axis + 1; i < ndim; i++) {
+        *inner_size *= dims[i];
+    }
+}
+
+/**
+ * @brief Reduce tensor along a single axis
+ */
+extern "C" int nimcp_tensor_reduce_axis(
+    void* gpu_ctx,
+    const float* input,
+    float* output,
+    const size_t* input_dims,
+    int input_ndim,
+    int axis,
+    nimcp_reduce_op_t op)
+{
+    if (!gpu_ctx || !input || !output || !input_dims || input_ndim <= 0) {
+        return -1;
+    }
+
+    // Handle negative axis
+    if (axis < 0) axis += input_ndim;
+    if (axis < 0 || axis >= input_ndim) {
+        LOG_ERROR("Invalid axis %d for tensor with %d dimensions", axis, input_ndim);
+        return -1;
+    }
+
+    size_t outer_size, reduce_size, inner_size;
+    compute_axis_sizes(input_dims, input_ndim, axis, &outer_size, &reduce_size, &inner_size);
+
+    size_t total_out = outer_size * inner_size;
+    int grid = GRID_SIZE(total_out);
+
+    switch (op) {
+        case NIMCP_REDUCE_SUM:
+            kernel_reduce_sum_axis<<<grid, BLOCK_SIZE>>>(
+                input, output, outer_size, reduce_size, inner_size);
+            break;
+        case NIMCP_REDUCE_MEAN:
+            kernel_reduce_mean_axis<<<grid, BLOCK_SIZE>>>(
+                input, output, outer_size, reduce_size, inner_size);
+            break;
+        case NIMCP_REDUCE_MAX:
+            kernel_reduce_max_axis<<<grid, BLOCK_SIZE>>>(
+                input, output, outer_size, reduce_size, inner_size);
+            break;
+        case NIMCP_REDUCE_MIN:
+            kernel_reduce_min_axis<<<grid, BLOCK_SIZE>>>(
+                input, output, outer_size, reduce_size, inner_size);
+            break;
+        case NIMCP_REDUCE_PROD:
+            kernel_reduce_prod_axis<<<grid, BLOCK_SIZE>>>(
+                input, output, outer_size, reduce_size, inner_size);
+            break;
+        case NIMCP_REDUCE_ARGMAX:
+            kernel_reduce_argmax_axis<<<grid, BLOCK_SIZE>>>(
+                input, (int*)output, outer_size, reduce_size, inner_size);
+            break;
+        case NIMCP_REDUCE_ARGMIN:
+            kernel_reduce_argmin_axis<<<grid, BLOCK_SIZE>>>(
+                input, (int*)output, outer_size, reduce_size, inner_size);
+            break;
+        default:
+            LOG_ERROR("Unknown reduction operation: %d", op);
+            return -1;
+    }
+
+    cudaError_t err = cudaGetLastError();
+    return (err == cudaSuccess) ? 0 : -1;
+}
+
+/**
+ * @brief Reduce tensor along multiple axes
+ *
+ * For multiple axes, we reduce one axis at a time, using temporary buffers.
+ */
+extern "C" int nimcp_tensor_reduce_axes(
+    void* gpu_ctx,
+    const float* input,
+    float* output,
+    const size_t* input_dims,
+    int input_ndim,
+    const int* axes,
+    int num_axes,
+    nimcp_reduce_op_t op,
+    bool keepdims)
+{
+    if (!gpu_ctx || !input || !output || !input_dims || !axes ||
+        input_ndim <= 0 || num_axes <= 0) {
+        return -1;
+    }
+
+    // For single axis, use direct reduction
+    if (num_axes == 1) {
+        return nimcp_tensor_reduce_axis(gpu_ctx, input, output, input_dims, input_ndim, axes[0], op);
+    }
+
+    // Sort axes in descending order to reduce from end first
+    int sorted_axes[8];
+    for (int i = 0; i < num_axes; i++) {
+        sorted_axes[i] = axes[i];
+        if (sorted_axes[i] < 0) sorted_axes[i] += input_ndim;
+    }
+    for (int i = 0; i < num_axes - 1; i++) {
+        for (int j = i + 1; j < num_axes; j++) {
+            if (sorted_axes[i] < sorted_axes[j]) {
+                int tmp = sorted_axes[i];
+                sorted_axes[i] = sorted_axes[j];
+                sorted_axes[j] = tmp;
+            }
+        }
+    }
+
+    // Compute total elements
+    size_t numel = 1;
+    for (int i = 0; i < input_ndim; i++) {
+        numel *= input_dims[i];
+    }
+
+    // Allocate temporary buffers
+    float* temp1 = NULL;
+    float* temp2 = NULL;
+    cudaMalloc(&temp1, numel * sizeof(float));
+    cudaMalloc(&temp2, numel * sizeof(float));
+
+    // Copy current dims (will be modified as we reduce)
+    size_t current_dims[8];
+    for (int i = 0; i < input_ndim; i++) {
+        current_dims[i] = input_dims[i];
+    }
+    int current_ndim = input_ndim;
+
+    const float* src = input;
+    float* dst = temp1;
+
+    // Reduce each axis in order
+    for (int a = 0; a < num_axes; a++) {
+        int axis = sorted_axes[a];
+
+        // Adjust axis for already-reduced dimensions
+        for (int prev = 0; prev < a; prev++) {
+            if (sorted_axes[prev] < axis) {
+                axis--;  // Account for removed dimensions
+            }
+        }
+
+        // Perform reduction
+        int result = nimcp_tensor_reduce_axis(gpu_ctx, src, dst, current_dims, current_ndim, axis, op);
+        if (result != 0) {
+            cudaFree(temp1);
+            cudaFree(temp2);
+            return result;
+        }
+
+        // Update dimensions for next reduction
+        for (int d = axis; d < current_ndim - 1; d++) {
+            current_dims[d] = current_dims[d + 1];
+        }
+        current_ndim--;
+
+        // Swap buffers
+        src = dst;
+        dst = (dst == temp1) ? temp2 : temp1;
+    }
+
+    // Copy final result to output
+    size_t out_numel = 1;
+    for (int i = 0; i < current_ndim; i++) {
+        out_numel *= current_dims[i];
+    }
+    cudaMemcpy(output, src, out_numel * sizeof(float), cudaMemcpyDeviceToDevice);
+
+    cudaFree(temp1);
+    cudaFree(temp2);
+
+    return 0;
+}
+
 bool nimcp_gpu_sum(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
                    nimcp_gpu_tensor_t* out, int axis, bool keepdims)
 {
@@ -956,22 +1464,30 @@ bool nimcp_gpu_sum(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
         return true;
     }
 
-    // TODO: Implement axis-specific reduction
-    LOG_WARN("Axis-specific reduction not yet implemented, using full reduction");
-    return nimcp_gpu_sum(ctx, x, out, -1, keepdims);
+    // Axis-specific reduction
+    int result = nimcp_tensor_reduce_axis(ctx, (const float*)x->data, (float*)out->data,
+                                          x->dims, (int)x->ndim, axis, NIMCP_REDUCE_SUM);
+    return (result == 0);
 }
 
 bool nimcp_gpu_mean(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
                     nimcp_gpu_tensor_t* out, int axis, bool keepdims)
 {
-    if (!nimcp_gpu_sum(ctx, x, out, axis, keepdims)) return false;
+    if (!ctx || !x || !out) return false;
 
-    size_t n = (axis < 0) ? x->numel : x->dims[axis];
-    float scale = 1.0f / (float)n;
+    // Full reduction
+    if (axis < 0) {
+        if (!nimcp_gpu_sum(ctx, x, out, axis, keepdims)) return false;
+        float scale = 1.0f / (float)x->numel;
+        kernel_mul_scalar<<<1, 1>>>((const float*)out->data, scale, (float*)out->data, 1);
+        CUDA_CHECK(cudaGetLastError());
+        return true;
+    }
 
-    kernel_mul_scalar<<<1, 1>>>((const float*)out->data, scale, (float*)out->data, 1);
-    CUDA_CHECK(cudaGetLastError());
-    return true;
+    // Axis-specific mean reduction
+    int result = nimcp_tensor_reduce_axis(ctx, (const float*)x->data, (float*)out->data,
+                                          x->dims, (int)x->ndim, axis, NIMCP_REDUCE_MEAN);
+    return (result == 0);
 }
 
 bool nimcp_gpu_max(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
@@ -989,8 +1505,10 @@ bool nimcp_gpu_max(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
         return true;
     }
 
-    LOG_WARN("Axis-specific max reduction not yet implemented");
-    return nimcp_gpu_max(ctx, x, out, -1, keepdims);
+    // Axis-specific max reduction
+    int result = nimcp_tensor_reduce_axis(ctx, (const float*)x->data, (float*)out->data,
+                                          x->dims, (int)x->ndim, axis, NIMCP_REDUCE_MAX);
+    return (result == 0);
 }
 
 bool nimcp_gpu_min(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
@@ -1008,8 +1526,10 @@ bool nimcp_gpu_min(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
         return true;
     }
 
-    LOG_WARN("Axis-specific min reduction not yet implemented");
-    return nimcp_gpu_min(ctx, x, out, -1, keepdims);
+    // Axis-specific min reduction
+    int result = nimcp_tensor_reduce_axis(ctx, (const float*)x->data, (float*)out->data,
+                                          x->dims, (int)x->ndim, axis, NIMCP_REDUCE_MIN);
+    return (result == 0);
 }
 
 //=============================================================================

@@ -462,6 +462,542 @@ __global__ void kernel_sws_importance_score(
 }
 
 //=============================================================================
+// Radix Sort Kernels for Particle/Memory Sorting
+//=============================================================================
+
+#define RADIX_BITS 4
+#define RADIX_SIZE (1 << RADIX_BITS)  // 16 buckets
+#define RADIX_MASK (RADIX_SIZE - 1)
+
+/**
+ * @brief Convert float to sortable unsigned int (preserves order)
+ *
+ * Flips sign bit for positive, flips all bits for negative.
+ * This ensures float ordering matches unsigned int ordering.
+ */
+__device__ __forceinline__ unsigned int float_to_sortable(float f)
+{
+    unsigned int u = __float_as_uint(f);
+    unsigned int mask = (u & 0x80000000) ? 0xffffffff : 0x80000000;
+    return u ^ mask;
+}
+
+/**
+ * @brief Convert sortable unsigned int back to float
+ */
+__device__ __forceinline__ float sortable_to_float(unsigned int u)
+{
+    unsigned int mask = (u & 0x80000000) ? 0x80000000 : 0xffffffff;
+    return __uint_as_float(u ^ mask);
+}
+
+/**
+ * @brief Compute histogram of 4-bit digit at given shift position
+ *
+ * Each block computes local histogram, then atomically adds to global histogram.
+ */
+__global__ void kernel_radix_histogram(
+    const unsigned int* keys,
+    unsigned int* histogram,
+    size_t n,
+    int shift)
+{
+    __shared__ unsigned int s_hist[RADIX_SIZE];
+
+    // Initialize shared histogram
+    if (threadIdx.x < RADIX_SIZE) {
+        s_hist[threadIdx.x] = 0;
+    }
+    __syncthreads();
+
+    // Each thread processes multiple elements
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+
+    for (size_t i = tid; i < n; i += stride) {
+        unsigned int key = keys[i];
+        unsigned int digit = (key >> shift) & RADIX_MASK;
+        atomicAdd(&s_hist[digit], 1);
+    }
+    __syncthreads();
+
+    // Add local histogram to global histogram
+    if (threadIdx.x < RADIX_SIZE) {
+        atomicAdd(&histogram[blockIdx.x * RADIX_SIZE + threadIdx.x], s_hist[threadIdx.x]);
+    }
+}
+
+/**
+ * @brief Prefix sum within blocks (Blelloch scan)
+ */
+__global__ void kernel_prefix_sum_blocks(
+    unsigned int* data,
+    unsigned int* block_sums,
+    size_t n)
+{
+    extern __shared__ unsigned int s_data[];
+
+    int tid = threadIdx.x;
+    int block_offset = blockIdx.x * blockDim.x * 2;
+
+    // Load input into shared memory
+    int ai = tid;
+    int bi = tid + blockDim.x;
+    s_data[ai] = (block_offset + ai < n) ? data[block_offset + ai] : 0;
+    s_data[bi] = (block_offset + bi < n) ? data[block_offset + bi] : 0;
+    __syncthreads();
+
+    // Build sum in place (up-sweep)
+    int offset = 1;
+    for (int d = blockDim.x; d > 0; d >>= 1) {
+        if (tid < d) {
+            int ai2 = offset * (2 * tid + 1) - 1;
+            int bi2 = offset * (2 * tid + 2) - 1;
+            s_data[bi2] += s_data[ai2];
+        }
+        offset *= 2;
+        __syncthreads();
+    }
+
+    // Store block sum and clear last element
+    if (tid == 0) {
+        if (block_sums) block_sums[blockIdx.x] = s_data[blockDim.x * 2 - 1];
+        s_data[blockDim.x * 2 - 1] = 0;
+    }
+    __syncthreads();
+
+    // Down-sweep
+    for (int d = 1; d < blockDim.x * 2; d *= 2) {
+        offset >>= 1;
+        if (tid < d) {
+            int ai2 = offset * (2 * tid + 1) - 1;
+            int bi2 = offset * (2 * tid + 2) - 1;
+            unsigned int temp = s_data[ai2];
+            s_data[ai2] = s_data[bi2];
+            s_data[bi2] += temp;
+        }
+        __syncthreads();
+    }
+
+    // Write results back
+    if (block_offset + ai < n) data[block_offset + ai] = s_data[ai];
+    if (block_offset + bi < n) data[block_offset + bi] = s_data[bi];
+}
+
+/**
+ * @brief Add block sums to complete global prefix sum
+ */
+__global__ void kernel_add_block_sums(
+    unsigned int* data,
+    const unsigned int* block_sums,
+    size_t n)
+{
+    if (blockIdx.x == 0) return;  // First block has no increment
+
+    unsigned int increment = block_sums[blockIdx.x];
+    int block_offset = blockIdx.x * blockDim.x * 2;
+
+    int idx1 = block_offset + threadIdx.x;
+    int idx2 = block_offset + threadIdx.x + blockDim.x;
+
+    if (idx1 < n) data[idx1] += increment;
+    if (idx2 < n) data[idx2] += increment;
+}
+
+/**
+ * @brief Scatter keys (and optionally values) to sorted positions
+ */
+__global__ void kernel_radix_scatter(
+    const unsigned int* keys_in,
+    unsigned int* keys_out,
+    const unsigned int* values_in,
+    unsigned int* values_out,
+    const unsigned int* prefix_sum,
+    size_t n,
+    int shift,
+    int num_blocks)
+{
+    __shared__ unsigned int s_offsets[RADIX_SIZE];
+
+    // Load starting offsets for this block from prefix sum
+    if (threadIdx.x < RADIX_SIZE) {
+        // Global offset for this digit across all blocks
+        unsigned int global_offset = 0;
+        for (int b = 0; b < num_blocks; b++) {
+            if (b < blockIdx.x) {
+                global_offset += prefix_sum[b * RADIX_SIZE + threadIdx.x + 1] -
+                                 prefix_sum[b * RADIX_SIZE + threadIdx.x];
+            }
+        }
+        // This is simplified - real implementation needs proper prefix sum of histogram
+        s_offsets[threadIdx.x] = prefix_sum[threadIdx.x];
+    }
+    __syncthreads();
+
+    // Scatter elements
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+
+    for (size_t i = tid; i < n; i += stride) {
+        unsigned int key = keys_in[i];
+        unsigned int digit = (key >> shift) & RADIX_MASK;
+
+        // Use atomic to get unique destination
+        unsigned int dest = atomicAdd(&s_offsets[digit], 1);
+        keys_out[dest] = key;
+        if (values_in && values_out) {
+            values_out[dest] = values_in[i];
+        }
+    }
+}
+
+/**
+ * @brief Compute local rank within same-digit elements for stable counting sort
+ *
+ * For each element, count how many preceding elements have the same digit.
+ * This gives each element a unique position within its digit bucket.
+ */
+__global__ void kernel_radix_compute_ranks(
+    const unsigned int* keys,
+    unsigned int* ranks,
+    const unsigned int* prefix_sum,  // [RADIX_SIZE] with prefix sums
+    size_t n,
+    int shift)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= n) return;
+
+    unsigned int key = keys[tid];
+    unsigned int digit = (key >> shift) & RADIX_MASK;
+
+    // Count how many elements with same digit come before this one
+    unsigned int local_rank = 0;
+    for (int i = 0; i < tid; i++) {
+        unsigned int other_digit = (keys[i] >> shift) & RADIX_MASK;
+        if (other_digit == digit) {
+            local_rank++;
+        }
+    }
+
+    // Final position = prefix_sum[digit] + local_rank
+    ranks[tid] = prefix_sum[digit] + local_rank;
+}
+
+/**
+ * @brief Scatter elements to sorted positions using precomputed ranks
+ */
+__global__ void kernel_radix_scatter_ranked(
+    const unsigned int* keys_in,
+    unsigned int* keys_out,
+    const unsigned int* values_in,
+    unsigned int* values_out,
+    const unsigned int* ranks,
+    size_t n)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= n) return;
+
+    unsigned int dest = ranks[tid];
+    keys_out[dest] = keys_in[tid];
+    if (values_in && values_out) {
+        values_out[dest] = values_in[tid];
+    }
+}
+
+//=============================================================================
+// Radix Sort Context Structure and API
+//=============================================================================
+
+/**
+ * @brief Radix sort context for swarm particle sorting
+ */
+typedef struct nimcp_radix_sort_ctx {
+    void* gpu_context;
+    size_t max_elements;
+
+    // Workspace buffers
+    unsigned int* d_temp_keys;
+    unsigned int* d_temp_values;
+    unsigned int* d_histogram;
+    unsigned int* d_prefix_sum;
+    unsigned int* d_ranks;  // For stable counting sort
+} nimcp_radix_sort_ctx_t;
+
+// Forward declaration
+extern "C" void nimcp_radix_sort_destroy(nimcp_radix_sort_ctx_t* ctx);
+
+/**
+ * @brief Create radix sort context
+ */
+extern "C" nimcp_radix_sort_ctx_t* nimcp_radix_sort_create(void* gpu_ctx, size_t max_elements)
+{
+    if (!gpu_ctx || max_elements == 0) {
+        LOG_ERROR("Invalid parameters for radix sort creation");
+        return NULL;
+    }
+
+    nimcp_radix_sort_ctx_t* ctx = (nimcp_radix_sort_ctx_t*)calloc(1, sizeof(nimcp_radix_sort_ctx_t));
+    if (!ctx) {
+        LOG_ERROR("Failed to allocate radix sort context");
+        return NULL;
+    }
+
+    ctx->gpu_context = gpu_ctx;
+    ctx->max_elements = max_elements;
+
+    // Allocate workspace buffers
+    int num_blocks = GRID_SIZE(max_elements);
+
+    cudaError_t err;
+    err = cudaMalloc(&ctx->d_temp_keys, max_elements * sizeof(unsigned int));
+    if (err != cudaSuccess) goto cleanup;
+
+    err = cudaMalloc(&ctx->d_temp_values, max_elements * sizeof(unsigned int));
+    if (err != cudaSuccess) goto cleanup;
+
+    // Histogram: one per block per digit
+    err = cudaMalloc(&ctx->d_histogram, num_blocks * RADIX_SIZE * sizeof(unsigned int));
+    if (err != cudaSuccess) goto cleanup;
+
+    // Prefix sum of histogram
+    err = cudaMalloc(&ctx->d_prefix_sum, (num_blocks * RADIX_SIZE + 1) * sizeof(unsigned int));
+    if (err != cudaSuccess) goto cleanup;
+
+    // Ranks buffer for stable sort
+    err = cudaMalloc(&ctx->d_ranks, max_elements * sizeof(unsigned int));
+    if (err != cudaSuccess) goto cleanup;
+
+    LOG_DEBUG("Created radix sort context: max_elements=%zu", max_elements);
+    return ctx;
+
+cleanup:
+    LOG_ERROR("Failed to allocate radix sort buffers: %s", cudaGetErrorString(err));
+    nimcp_radix_sort_destroy(ctx);
+    return NULL;
+}
+
+/**
+ * @brief Destroy radix sort context
+ */
+extern "C" void nimcp_radix_sort_destroy(nimcp_radix_sort_ctx_t* ctx)
+{
+    if (!ctx) return;
+
+    if (ctx->d_temp_keys) cudaFree(ctx->d_temp_keys);
+    if (ctx->d_temp_values) cudaFree(ctx->d_temp_values);
+    if (ctx->d_histogram) cudaFree(ctx->d_histogram);
+    if (ctx->d_prefix_sum) cudaFree(ctx->d_prefix_sum);
+    if (ctx->d_ranks) cudaFree(ctx->d_ranks);
+
+    free(ctx);
+    LOG_DEBUG("Destroyed radix sort context");
+}
+
+/**
+ * @brief Sort unsigned integer keys using radix sort
+ */
+extern "C" int nimcp_radix_sort_keys(
+    nimcp_radix_sort_ctx_t* ctx,
+    unsigned int* keys,
+    size_t n)
+{
+    if (!ctx || !keys || n == 0) return -1;
+    if (n > ctx->max_elements) {
+        LOG_ERROR("Array size %zu exceeds max_elements %zu", n, ctx->max_elements);
+        return -1;
+    }
+
+    unsigned int* d_keys_in = keys;
+    unsigned int* d_keys_out = ctx->d_temp_keys;
+
+    // Process 4 bits at a time (8 passes for 32-bit integers)
+    for (int shift = 0; shift < 32; shift += RADIX_BITS) {
+        // Clear histogram
+        cudaMemset(ctx->d_histogram, 0, GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int));
+
+        // Build histogram
+        kernel_radix_histogram<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            d_keys_in, ctx->d_histogram, n, shift);
+
+        // Compute prefix sum of histogram
+        // Simplified: compute global counts and prefix sum on CPU
+        unsigned int h_counts[RADIX_SIZE] = {0};
+        unsigned int h_prefix[RADIX_SIZE + 1];
+
+        // Sum across all blocks
+        unsigned int* h_hist = (unsigned int*)malloc(GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int));
+        cudaMemcpy(h_hist, ctx->d_histogram, GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+
+        for (size_t b = 0; b < (size_t)GRID_SIZE(n); b++) {
+            for (int d = 0; d < RADIX_SIZE; d++) {
+                h_counts[d] += h_hist[b * RADIX_SIZE + d];
+            }
+        }
+        free(h_hist);
+
+        // Compute prefix sum
+        h_prefix[0] = 0;
+        for (int d = 0; d < RADIX_SIZE; d++) {
+            h_prefix[d + 1] = h_prefix[d] + h_counts[d];
+        }
+
+        // Copy prefix sum to device
+        cudaMemcpy(ctx->d_prefix_sum, h_prefix, (RADIX_SIZE + 1) * sizeof(unsigned int), cudaMemcpyHostToDevice);
+
+        // Compute ranks for stable sort
+        kernel_radix_compute_ranks<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            d_keys_in, ctx->d_ranks, ctx->d_prefix_sum, n, shift);
+        cudaDeviceSynchronize();
+
+        // Scatter to sorted positions using computed ranks
+        kernel_radix_scatter_ranked<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            d_keys_in, d_keys_out, NULL, NULL, ctx->d_ranks, n);
+
+        // Swap buffers
+        unsigned int* temp = d_keys_in;
+        d_keys_in = d_keys_out;
+        d_keys_out = temp;
+    }
+
+    // If result is in temp buffer, copy back
+    if (d_keys_in == ctx->d_temp_keys) {
+        cudaMemcpy(keys, ctx->d_temp_keys, n * sizeof(unsigned int), cudaMemcpyDeviceToDevice);
+    }
+
+    cudaError_t err = cudaGetLastError();
+    return (err == cudaSuccess) ? 0 : -1;
+}
+
+/**
+ * @brief Sort key-value pairs using radix sort
+ */
+extern "C" int nimcp_radix_sort_pairs(
+    nimcp_radix_sort_ctx_t* ctx,
+    unsigned int* keys,
+    unsigned int* values,
+    size_t n)
+{
+    if (!ctx || !keys || !values || n == 0) return -1;
+    if (n > ctx->max_elements) return -1;
+
+    unsigned int* d_keys_in = keys;
+    unsigned int* d_keys_out = ctx->d_temp_keys;
+    unsigned int* d_vals_in = values;
+    unsigned int* d_vals_out = ctx->d_temp_values;
+
+    for (int shift = 0; shift < 32; shift += RADIX_BITS) {
+        cudaMemset(ctx->d_histogram, 0, GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int));
+
+        kernel_radix_histogram<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            d_keys_in, ctx->d_histogram, n, shift);
+
+        // Compute prefix sum
+        unsigned int h_counts[RADIX_SIZE] = {0};
+        unsigned int h_prefix[RADIX_SIZE + 1];
+        unsigned int* h_hist = (unsigned int*)malloc(GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int));
+        cudaMemcpy(h_hist, ctx->d_histogram, GRID_SIZE(n) * RADIX_SIZE * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+
+        for (size_t b = 0; b < (size_t)GRID_SIZE(n); b++) {
+            for (int d = 0; d < RADIX_SIZE; d++) {
+                h_counts[d] += h_hist[b * RADIX_SIZE + d];
+            }
+        }
+        free(h_hist);
+
+        h_prefix[0] = 0;
+        for (int d = 0; d < RADIX_SIZE; d++) {
+            h_prefix[d + 1] = h_prefix[d] + h_counts[d];
+        }
+        cudaMemcpy(ctx->d_prefix_sum, h_prefix, (RADIX_SIZE + 1) * sizeof(unsigned int), cudaMemcpyHostToDevice);
+
+        // Compute ranks for stable sort
+        kernel_radix_compute_ranks<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            d_keys_in, ctx->d_ranks, ctx->d_prefix_sum, n, shift);
+        cudaDeviceSynchronize();
+
+        // Scatter to sorted positions using computed ranks
+        kernel_radix_scatter_ranked<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+            d_keys_in, d_keys_out, d_vals_in, d_vals_out, ctx->d_ranks, n);
+
+        // Swap all buffers
+        unsigned int* temp = d_keys_in;
+        d_keys_in = d_keys_out;
+        d_keys_out = temp;
+        temp = d_vals_in;
+        d_vals_in = d_vals_out;
+        d_vals_out = temp;
+    }
+
+    if (d_keys_in == ctx->d_temp_keys) {
+        cudaMemcpy(keys, ctx->d_temp_keys, n * sizeof(unsigned int), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(values, ctx->d_temp_values, n * sizeof(unsigned int), cudaMemcpyDeviceToDevice);
+    }
+
+    cudaError_t err = cudaGetLastError();
+    return (err == cudaSuccess) ? 0 : -1;
+}
+
+/**
+ * @brief Sort floats with indices using radix sort
+ *
+ * Converts floats to sortable unsigned ints, sorts key-value pairs,
+ * then converts back. Indices track original positions.
+ */
+extern "C" int nimcp_radix_sort_floats(
+    nimcp_radix_sort_ctx_t* ctx,
+    float* keys,
+    unsigned int* indices,
+    size_t n)
+{
+    if (!ctx || !keys || !indices || n == 0) return -1;
+    if (n > ctx->max_elements) return -1;
+
+    // Convert floats to sortable uints in-place (reusing the buffer)
+    unsigned int* u_keys = (unsigned int*)keys;
+
+    // Initialize indices if not already done
+    // Kernel to convert and initialize
+    // For now, do on host (production would use kernel)
+    float* h_keys = (float*)malloc(n * sizeof(float));
+    unsigned int* h_indices = (unsigned int*)malloc(n * sizeof(unsigned int));
+
+    cudaMemcpy(h_keys, keys, n * sizeof(float), cudaMemcpyDeviceToHost);
+
+    for (size_t i = 0; i < n; i++) {
+        h_indices[i] = (unsigned int)i;
+    }
+
+    // Convert floats to sortable uints
+    unsigned int* h_ukeys = (unsigned int*)h_keys;
+    for (size_t i = 0; i < n; i++) {
+        unsigned int u = *(unsigned int*)&h_keys[i];
+        unsigned int mask = (u & 0x80000000) ? 0xffffffff : 0x80000000;
+        h_ukeys[i] = u ^ mask;
+    }
+
+    // Copy back to device
+    cudaMemcpy(u_keys, h_ukeys, n * sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(indices, h_indices, n * sizeof(unsigned int), cudaMemcpyHostToDevice);
+
+    // Sort key-value pairs
+    int result = nimcp_radix_sort_pairs(ctx, u_keys, indices, n);
+
+    // Convert back to floats
+    cudaMemcpy(h_ukeys, u_keys, n * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    for (size_t i = 0; i < n; i++) {
+        unsigned int u = h_ukeys[i];
+        unsigned int mask = (u & 0x80000000) ? 0x80000000 : 0xffffffff;
+        *(unsigned int*)&h_keys[i] = u ^ mask;
+    }
+    cudaMemcpy(keys, h_keys, n * sizeof(float), cudaMemcpyHostToDevice);
+
+    free(h_keys);
+    free(h_indices);
+
+    return result;
+}
+
+//=============================================================================
 // Multi-Agent Memory Coordination Kernels
 //=============================================================================
 

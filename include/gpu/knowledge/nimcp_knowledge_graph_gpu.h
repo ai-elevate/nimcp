@@ -591,6 +591,267 @@ NIMCP_EXPORT bool nimcp_gpu_knowledge_graph_is_valid(
     const nimcp_gpu_knowledge_graph_t* graph
 );
 
+//=============================================================================
+// Knowledge Graph Embedding DAO
+//=============================================================================
+
+/**
+ * @brief DAO (Data Access Object) for knowledge graph embeddings
+ *
+ * Provides CRUD operations and similarity search on entity/relation embeddings.
+ * Supports TransE-style knowledge graph embedding training.
+ */
+typedef struct nimcp_knowledge_embedding_dao nimcp_knowledge_embedding_dao_t;
+
+struct nimcp_knowledge_embedding_dao {
+    /** Entity embeddings [num_entities x embedding_dim] */
+    float* d_entity_embeddings;
+
+    /** Relation embeddings [num_relations x embedding_dim] */
+    float* d_relation_embeddings;
+
+    /** Number of entities */
+    int num_entities;
+
+    /** Number of relations */
+    int num_relations;
+
+    /** Embedding dimension */
+    int embedding_dim;
+
+    /** Maximum capacity for entities */
+    int max_entities;
+
+    /** Maximum capacity for relations */
+    int max_relations;
+
+    /** Hash table for fast entity lookup */
+    int* d_entity_hash_table;
+
+    /** Hash table for fast relation lookup */
+    int* d_relation_hash_table;
+
+    /** Entity validity flags [max_entities] */
+    int* d_entity_valid;
+
+    /** Relation validity flags [max_relations] */
+    int* d_relation_valid;
+
+    /** GPU context */
+    void* gpu_context;
+
+    /** DAO operation: Create an entity embedding */
+    int (*create_embedding)(struct nimcp_knowledge_embedding_dao* self,
+                           int entity_id, const float* embedding);
+
+    /** DAO operation: Read an entity embedding */
+    int (*read_embedding)(struct nimcp_knowledge_embedding_dao* self,
+                         int entity_id, float* embedding_out);
+
+    /** DAO operation: Update an entity embedding */
+    int (*update_embedding)(struct nimcp_knowledge_embedding_dao* self,
+                           int entity_id, const float* embedding);
+
+    /** DAO operation: Delete an entity embedding */
+    int (*delete_embedding)(struct nimcp_knowledge_embedding_dao* self,
+                           int entity_id);
+
+    /** DAO operation: Find k most similar entities */
+    int (*find_similar)(struct nimcp_knowledge_embedding_dao* self,
+                       const float* query, int k, int* results, float* scores);
+};
+
+/**
+ * @brief Create a knowledge embedding DAO
+ *
+ * @param gpu_ctx GPU context
+ * @param max_entities Maximum number of entities
+ * @param max_relations Maximum number of relations
+ * @param embedding_dim Embedding dimension
+ * @return DAO object or NULL on failure
+ */
+NIMCP_EXPORT nimcp_knowledge_embedding_dao_t* nimcp_knowledge_embedding_dao_create(
+    void* gpu_ctx, int max_entities, int max_relations, int embedding_dim);
+
+/**
+ * @brief Destroy a knowledge embedding DAO
+ *
+ * @param dao DAO to destroy
+ */
+NIMCP_EXPORT void nimcp_knowledge_embedding_dao_destroy(nimcp_knowledge_embedding_dao_t* dao);
+
+//=============================================================================
+// Knowledge Graph Query Structures
+//=============================================================================
+
+/**
+ * @brief Query types for knowledge graph operations
+ */
+typedef enum {
+    NIMCP_KG_QUERY_FIND_ENTITY = 0,    /**< Find entity by constraints */
+    NIMCP_KG_QUERY_FIND_PATH = 1,      /**< Find path between entities */
+    NIMCP_KG_QUERY_MATCH_PATTERN = 2,  /**< Match graph pattern */
+    NIMCP_KG_QUERY_SEMANTIC_SEARCH = 3 /**< Semantic similarity search */
+} nimcp_kg_query_type_t;
+
+/**
+ * @brief Knowledge graph query specification
+ */
+typedef struct {
+    nimcp_kg_query_type_t query_type;  /**< Type of query */
+    float* query_embedding;            /**< Query embedding for semantic search */
+    int* entity_constraints;           /**< Entity type constraints (NULL for any) */
+    int* relation_constraints;         /**< Relation type constraints (NULL for any) */
+    int num_entity_constraints;        /**< Number of entity constraints */
+    int num_relation_constraints;      /**< Number of relation constraints */
+    int max_hops;                      /**< Maximum path length for path finding */
+    float similarity_threshold;        /**< Minimum similarity for semantic matching */
+    int top_k;                         /**< Number of results to return */
+} nimcp_kg_query_t;
+
+/**
+ * @brief Knowledge graph query result
+ */
+typedef struct {
+    int* matched_entities;             /**< Matched entity indices [num_results] */
+    int* matched_relations;            /**< Matched relation indices (for paths) */
+    float* scores;                     /**< Match/similarity scores [num_results] */
+    int num_results;                   /**< Number of results */
+    int* path_lengths;                 /**< Path lengths (for path queries) */
+} nimcp_kg_result_t;
+
+/**
+ * @brief Perform semantic search on knowledge graph
+ *
+ * @param dao Embedding DAO
+ * @param query_embedding Query embedding [embedding_dim]
+ * @param k Number of results to return
+ * @param result Output result structure
+ * @return 0 on success, -1 on failure
+ */
+NIMCP_EXPORT int nimcp_kg_semantic_search(
+    nimcp_knowledge_embedding_dao_t* dao,
+    const float* query_embedding, int k,
+    nimcp_kg_result_t* result);
+
+/**
+ * @brief Find path between two entities using embedding guidance
+ *
+ * @param dao Embedding DAO
+ * @param source_entity Source entity index
+ * @param target_entity Target entity index
+ * @param max_hops Maximum path length
+ * @param result Output result structure
+ * @return 0 on success, -1 on failure
+ */
+NIMCP_EXPORT int nimcp_kg_find_path(
+    nimcp_knowledge_embedding_dao_t* dao,
+    int source_entity, int target_entity,
+    int max_hops, nimcp_kg_result_t* result);
+
+/**
+ * @brief Match pattern in knowledge graph using embeddings
+ *
+ * @param dao Embedding DAO
+ * @param pattern Query pattern
+ * @param result Output result structure
+ * @return 0 on success, -1 on failure
+ */
+NIMCP_EXPORT int nimcp_kg_pattern_match(
+    nimcp_knowledge_embedding_dao_t* dao,
+    const nimcp_kg_query_t* pattern,
+    nimcp_kg_result_t* result);
+
+/**
+ * @brief Destroy KG query result
+ *
+ * @param result Result to destroy
+ */
+NIMCP_EXPORT void nimcp_kg_result_destroy(nimcp_kg_result_t* result);
+
+//=============================================================================
+// TransE-style Knowledge Graph Embedding Training
+//=============================================================================
+
+/**
+ * @brief Training configuration for TransE embeddings
+ */
+typedef struct {
+    float learning_rate;               /**< Learning rate for gradient descent */
+    float margin;                      /**< Margin for margin-based loss */
+    int negative_samples;              /**< Number of negative samples per positive */
+    float regularization;              /**< L2 regularization coefficient */
+    bool normalize_embeddings;         /**< Whether to L2-normalize after each step */
+} nimcp_kg_train_config_t;
+
+/**
+ * @brief Perform one training step for TransE embeddings
+ *
+ * TransE: h + r ≈ t for valid triples (head, relation, tail)
+ * Loss: max(0, margin + d(h+r, t) - d(h+r, t'))
+ *
+ * @param dao Embedding DAO
+ * @param head_entities Head entity indices [batch_size]
+ * @param relations Relation indices [batch_size]
+ * @param tail_entities Tail entity indices [batch_size]
+ * @param batch_size Number of training triples
+ * @param config Training configuration
+ * @return 0 on success, -1 on failure
+ */
+NIMCP_EXPORT int nimcp_kg_train_step(
+    nimcp_knowledge_embedding_dao_t* dao,
+    const int* head_entities, const int* relations, const int* tail_entities,
+    int batch_size, nimcp_kg_train_config_t* config);
+
+/**
+ * @brief Compute TransE score for a triple
+ *
+ * Score = ||h + r - t||
+ *
+ * @param dao Embedding DAO
+ * @param head Head entity index
+ * @param relation Relation index
+ * @param tail Tail entity index
+ * @param score_out Output score
+ * @return 0 on success, -1 on failure
+ */
+NIMCP_EXPORT int nimcp_kg_transe_score(
+    nimcp_knowledge_embedding_dao_t* dao,
+    int head, int relation, int tail,
+    float* score_out);
+
+/**
+ * @brief Predict tail entity given head and relation
+ *
+ * @param dao Embedding DAO
+ * @param head Head entity index
+ * @param relation Relation index
+ * @param k Number of predictions
+ * @param predictions Output entity indices [k]
+ * @param scores Output scores [k]
+ * @return 0 on success, -1 on failure
+ */
+NIMCP_EXPORT int nimcp_kg_predict_tail(
+    nimcp_knowledge_embedding_dao_t* dao,
+    int head, int relation, int k,
+    int* predictions, float* scores);
+
+/**
+ * @brief Predict head entity given relation and tail
+ *
+ * @param dao Embedding DAO
+ * @param relation Relation index
+ * @param tail Tail entity index
+ * @param k Number of predictions
+ * @param predictions Output entity indices [k]
+ * @param scores Output scores [k]
+ * @return 0 on success, -1 on failure
+ */
+NIMCP_EXPORT int nimcp_kg_predict_head(
+    nimcp_knowledge_embedding_dao_t* dao,
+    int relation, int tail, int k,
+    int* predictions, float* scores);
+
 #ifdef __cplusplus
 }
 #endif

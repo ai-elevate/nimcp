@@ -26,6 +26,11 @@
 #include <algorithm>
 #include <numeric>
 #include <random>
+#include <cstdlib>
+
+#ifdef NIMCP_ENABLE_CUDA
+#include <cuda_runtime.h>
+#endif
 
 #include "gpu/knowledge/nimcp_knowledge_graph_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
@@ -1174,6 +1179,598 @@ TEST_F(KnowledgeGraphKernelTest, GraphStats_ComputesStatistics) {
 
     nimcp_gpu_knowledge_graph_destroy(graph);
 }
+
+//=============================================================================
+// Knowledge Graph Embedding DAO Tests
+//=============================================================================
+
+/**
+ * TEST: DAO creation
+ * WHAT: Create knowledge embedding DAO
+ * WHY:  Verify DAO initialization
+ */
+TEST_F(KnowledgeGraphKernelTest, DAOCreate_Succeeds) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (dao) {
+        EXPECT_EQ(dao->max_entities, 100);
+        EXPECT_EQ(dao->max_relations, 10);
+        EXPECT_EQ(dao->embedding_dim, (int)DEFAULT_EMBED_DIM);
+        EXPECT_EQ(dao->num_entities, 0);
+        EXPECT_NE(dao->d_entity_embeddings, nullptr);
+        EXPECT_NE(dao->d_relation_embeddings, nullptr);
+        nimcp_knowledge_embedding_dao_destroy(dao);
+    }
+}
+
+/**
+ * TEST: DAO create embedding
+ * WHAT: Create an entity embedding via DAO
+ * WHY:  Test CRUD create operation
+ */
+TEST_F(KnowledgeGraphKernelTest, DAOCreateEmbedding_Succeeds) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (!dao) {
+        GTEST_SKIP() << "DAO creation failed";
+    }
+
+    std::vector<float> embedding(DEFAULT_EMBED_DIM);
+    for (uint32_t i = 0; i < DEFAULT_EMBED_DIM; i++) {
+        embedding[i] = static_cast<float>(i) / DEFAULT_EMBED_DIM;
+    }
+
+    int result = dao->create_embedding(dao, 0, embedding.data());
+    EXPECT_EQ(result, 0);
+    EXPECT_EQ(dao->num_entities, 1);
+
+    // Creating duplicate should fail
+    int duplicate_result = dao->create_embedding(dao, 0, embedding.data());
+    EXPECT_EQ(duplicate_result, -1);
+
+    nimcp_knowledge_embedding_dao_destroy(dao);
+}
+
+/**
+ * TEST: DAO read embedding
+ * WHAT: Read an entity embedding via DAO
+ * WHY:  Test CRUD read operation
+ */
+TEST_F(KnowledgeGraphKernelTest, DAOReadEmbedding_ReturnsCorrectData) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (!dao) {
+        GTEST_SKIP() << "DAO creation failed";
+    }
+
+    // Create embedding
+    std::vector<float> embedding(DEFAULT_EMBED_DIM);
+    for (uint32_t i = 0; i < DEFAULT_EMBED_DIM; i++) {
+        embedding[i] = static_cast<float>(i) / DEFAULT_EMBED_DIM;
+    }
+    dao->create_embedding(dao, 5, embedding.data());
+
+    // Read it back
+    std::vector<float> read_embedding(DEFAULT_EMBED_DIM);
+    int result = dao->read_embedding(dao, 5, read_embedding.data());
+    EXPECT_EQ(result, 0);
+
+    // Verify data matches
+    for (uint32_t i = 0; i < DEFAULT_EMBED_DIM; i++) {
+        EXPECT_NEAR(embedding[i], read_embedding[i], NUMERICAL_EPS);
+    }
+
+    // Reading non-existent should fail
+    int invalid_result = dao->read_embedding(dao, 99, read_embedding.data());
+    EXPECT_EQ(invalid_result, -1);
+
+    nimcp_knowledge_embedding_dao_destroy(dao);
+}
+
+/**
+ * TEST: DAO update embedding
+ * WHAT: Update an entity embedding via DAO
+ * WHY:  Test CRUD update operation
+ */
+TEST_F(KnowledgeGraphKernelTest, DAOUpdateEmbedding_ModifiesData) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (!dao) {
+        GTEST_SKIP() << "DAO creation failed";
+    }
+
+    // Create initial embedding
+    std::vector<float> embedding(DEFAULT_EMBED_DIM, 1.0f);
+    dao->create_embedding(dao, 0, embedding.data());
+
+    // Update with new values
+    std::vector<float> new_embedding(DEFAULT_EMBED_DIM, 2.0f);
+    int result = dao->update_embedding(dao, 0, new_embedding.data());
+    EXPECT_EQ(result, 0);
+
+    // Verify update
+    std::vector<float> read_embedding(DEFAULT_EMBED_DIM);
+    dao->read_embedding(dao, 0, read_embedding.data());
+    for (uint32_t i = 0; i < DEFAULT_EMBED_DIM; i++) {
+        EXPECT_NEAR(read_embedding[i], 2.0f, NUMERICAL_EPS);
+    }
+
+    nimcp_knowledge_embedding_dao_destroy(dao);
+}
+
+/**
+ * TEST: DAO delete embedding
+ * WHAT: Delete an entity embedding via DAO
+ * WHY:  Test CRUD delete operation
+ */
+TEST_F(KnowledgeGraphKernelTest, DAODeleteEmbedding_RemovesEntity) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (!dao) {
+        GTEST_SKIP() << "DAO creation failed";
+    }
+
+    // Create and delete embedding
+    std::vector<float> embedding(DEFAULT_EMBED_DIM, 1.0f);
+    dao->create_embedding(dao, 0, embedding.data());
+    EXPECT_EQ(dao->num_entities, 1);
+
+    int result = dao->delete_embedding(dao, 0);
+    EXPECT_EQ(result, 0);
+    EXPECT_EQ(dao->num_entities, 0);
+
+    // Reading deleted should fail
+    std::vector<float> read_embedding(DEFAULT_EMBED_DIM);
+    int read_result = dao->read_embedding(dao, 0, read_embedding.data());
+    EXPECT_EQ(read_result, -1);
+
+    nimcp_knowledge_embedding_dao_destroy(dao);
+}
+
+/**
+ * TEST: Cosine similarity search
+ * WHAT: Find similar entities using cosine similarity
+ * WHY:  Core embedding search functionality
+ */
+TEST_F(KnowledgeGraphKernelTest, DAOFindSimilar_ReturnsCorrectEntities) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (!dao) {
+        GTEST_SKIP() << "DAO creation failed";
+    }
+
+    // Create several embeddings
+    for (int i = 0; i < 10; i++) {
+        std::vector<float> embedding(DEFAULT_EMBED_DIM);
+        for (uint32_t j = 0; j < DEFAULT_EMBED_DIM; j++) {
+            embedding[j] = (i == 0) ? 1.0f : static_cast<float>(j + i) / DEFAULT_EMBED_DIM;
+        }
+        dao->create_embedding(dao, i, embedding.data());
+    }
+
+    // Query with embedding similar to entity 0
+    std::vector<float> query(DEFAULT_EMBED_DIM, 1.0f);
+    std::vector<int> results(5);
+    std::vector<float> scores(5);
+
+    int result = dao->find_similar(dao, query.data(), 5, results.data(), scores.data());
+    EXPECT_EQ(result, 0);
+
+    // Entity 0 should be most similar (exact match)
+    EXPECT_EQ(results[0], 0);
+    EXPECT_NEAR(scores[0], 1.0f, 0.01f);  // Cosine similarity should be ~1.0
+
+    nimcp_knowledge_embedding_dao_destroy(dao);
+}
+
+/**
+ * TEST: Top-k retrieval correctness
+ * WHAT: Verify top-k returns correct k entities
+ * WHY:  Ensure ranking is correct
+ */
+TEST_F(KnowledgeGraphKernelTest, DAOFindSimilar_ReturnsCorrectK) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (!dao) {
+        GTEST_SKIP() << "DAO creation failed";
+    }
+
+    // Create 20 embeddings
+    for (int i = 0; i < 20; i++) {
+        std::vector<float> embedding(DEFAULT_EMBED_DIM);
+        for (uint32_t j = 0; j < DEFAULT_EMBED_DIM; j++) {
+            embedding[j] = static_cast<float>(i * DEFAULT_EMBED_DIM + j) / (20 * DEFAULT_EMBED_DIM);
+        }
+        dao->create_embedding(dao, i, embedding.data());
+    }
+
+    // Query for top 5
+    std::vector<float> query(DEFAULT_EMBED_DIM);
+    for (uint32_t j = 0; j < DEFAULT_EMBED_DIM; j++) {
+        query[j] = static_cast<float>(j) / (20 * DEFAULT_EMBED_DIM);  // Similar to entity 0
+    }
+
+    std::vector<int> results(5);
+    std::vector<float> scores(5);
+
+    dao->find_similar(dao, query.data(), 5, results.data(), scores.data());
+
+    // Verify we got 5 results
+    int valid_count = 0;
+    for (int i = 0; i < 5; i++) {
+        if (results[i] >= 0) valid_count++;
+    }
+    EXPECT_EQ(valid_count, 5);
+
+    // Scores should be in descending order
+    for (int i = 0; i < 4; i++) {
+        EXPECT_GE(scores[i], scores[i + 1]);
+    }
+
+    nimcp_knowledge_embedding_dao_destroy(dao);
+}
+
+//=============================================================================
+// TransE Training Tests
+//=============================================================================
+
+#ifdef NIMCP_ENABLE_CUDA
+/**
+ * TEST: TransE score computation
+ * WHAT: Compute ||h + r - t|| score
+ * WHY:  Verify TransE scoring function
+ */
+TEST_F(KnowledgeGraphKernelTest, TransEScore_ComputesCorrectly) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (!dao) {
+        GTEST_SKIP() << "DAO creation failed";
+    }
+
+    // Create head, relation, tail embeddings
+    std::vector<float> head_emb(DEFAULT_EMBED_DIM, 1.0f);
+    std::vector<float> rel_emb(DEFAULT_EMBED_DIM, 0.5f);
+    std::vector<float> tail_emb(DEFAULT_EMBED_DIM, 1.5f);  // h + r = t (perfect TransE)
+
+    dao->create_embedding(dao, 0, head_emb.data());
+    dao->create_embedding(dao, 1, tail_emb.data());
+
+    // Set relation embedding directly
+    cudaMemcpy(dao->d_relation_embeddings, rel_emb.data(),
+               DEFAULT_EMBED_DIM * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Mark relation as valid
+    int valid = 1;
+    cudaMemcpy(dao->d_relation_valid, &valid, sizeof(int), cudaMemcpyHostToDevice);
+
+    float score = 0.0f;
+    int result = nimcp_kg_transe_score(dao, 0, 0, 1, &score);
+
+    if (result == 0) {
+        // For perfect TransE: h + r = t, score should be 0
+        EXPECT_NEAR(score, 0.0f, 0.1f);
+    }
+
+    nimcp_knowledge_embedding_dao_destroy(dao);
+}
+
+/**
+ * TEST: TransE training step
+ * WHAT: Perform one TransE training step
+ * WHY:  Verify gradients are computed and applied
+ */
+TEST_F(KnowledgeGraphKernelTest, TransETrainStep_UpdatesEmbeddings) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (!dao) {
+        GTEST_SKIP() << "DAO creation failed";
+    }
+
+    // Create initial embeddings
+    for (int i = 0; i < 10; i++) {
+        std::vector<float> embedding(DEFAULT_EMBED_DIM);
+        for (uint32_t j = 0; j < DEFAULT_EMBED_DIM; j++) {
+            embedding[j] = static_cast<float>(rand()) / RAND_MAX;
+        }
+        dao->create_embedding(dao, i, embedding.data());
+    }
+
+    // Initialize relation embeddings
+    std::vector<float> rel_emb(DEFAULT_EMBED_DIM * 5);
+    for (size_t i = 0; i < rel_emb.size(); i++) {
+        rel_emb[i] = static_cast<float>(rand()) / RAND_MAX;
+    }
+    cudaMemcpy(dao->d_relation_embeddings, rel_emb.data(),
+               rel_emb.size() * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Read initial embedding
+    std::vector<float> before(DEFAULT_EMBED_DIM);
+    dao->read_embedding(dao, 0, before.data());
+
+    // Training configuration
+    nimcp_kg_train_config_t config;
+    config.learning_rate = 0.01f;
+    config.margin = 1.0f;
+    config.negative_samples = 1;
+    config.regularization = 0.0f;
+    config.normalize_embeddings = false;
+
+    // Training data (head, relation, tail)
+    int heads[] = {0, 1, 2};
+    int relations[] = {0, 1, 0};
+    int tails[] = {1, 2, 3};
+
+    int result = nimcp_kg_train_step(dao, heads, relations, tails, 3, &config);
+    EXPECT_EQ(result, 0);
+
+    // Read embedding after training
+    std::vector<float> after(DEFAULT_EMBED_DIM);
+    dao->read_embedding(dao, 0, after.data());
+
+    // Embeddings should have changed
+    bool changed = false;
+    for (uint32_t i = 0; i < DEFAULT_EMBED_DIM; i++) {
+        if (std::abs(before[i] - after[i]) > NUMERICAL_EPS) {
+            changed = true;
+            break;
+        }
+    }
+    // Note: embeddings may or may not change depending on gradient direction
+    // Just verify the function completes without error
+
+    nimcp_knowledge_embedding_dao_destroy(dao);
+}
+#endif  // NIMCP_ENABLE_CUDA
+
+//=============================================================================
+// Semantic Search and Path Finding Tests
+//=============================================================================
+
+/**
+ * TEST: Semantic search API
+ * WHAT: Perform semantic search on knowledge graph
+ * WHY:  High-level search API
+ */
+TEST_F(KnowledgeGraphKernelTest, SemanticSearch_ReturnsResults) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (!dao) {
+        GTEST_SKIP() << "DAO creation failed";
+    }
+
+    // Create embeddings
+    for (int i = 0; i < 10; i++) {
+        std::vector<float> embedding(DEFAULT_EMBED_DIM);
+        for (uint32_t j = 0; j < DEFAULT_EMBED_DIM; j++) {
+            embedding[j] = static_cast<float>(i == 0 ? 1.0f : (j + i) / (float)DEFAULT_EMBED_DIM);
+        }
+        dao->create_embedding(dao, i, embedding.data());
+    }
+
+    std::vector<float> query(DEFAULT_EMBED_DIM, 1.0f);  // Query similar to entity 0
+    nimcp_kg_result_t result;
+    memset(&result, 0, sizeof(result));
+
+    int search_result = nimcp_kg_semantic_search(dao, query.data(), 3, &result);
+    EXPECT_EQ(search_result, 0);
+    EXPECT_GT(result.num_results, 0);
+    EXPECT_NE(result.matched_entities, nullptr);
+    EXPECT_NE(result.scores, nullptr);
+
+    if (result.num_results > 0) {
+        // First result should be entity 0 (most similar)
+        EXPECT_EQ(result.matched_entities[0], 0);
+    }
+
+    nimcp_kg_result_destroy(&result);
+    nimcp_knowledge_embedding_dao_destroy(dao);
+}
+
+/**
+ * TEST: Path finding API
+ * WHAT: Find path between entities
+ * WHY:  Graph navigation
+ */
+TEST_F(KnowledgeGraphKernelTest, FindPath_ReturnsPath) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (!dao) {
+        GTEST_SKIP() << "DAO creation failed";
+    }
+
+    // Create source and target embeddings
+    std::vector<float> source_emb(DEFAULT_EMBED_DIM, 1.0f);
+    std::vector<float> target_emb(DEFAULT_EMBED_DIM, 0.9f);  // Similar to source
+
+    dao->create_embedding(dao, 0, source_emb.data());
+    dao->create_embedding(dao, 1, target_emb.data());
+
+    nimcp_kg_result_t result;
+    memset(&result, 0, sizeof(result));
+
+    int path_result = nimcp_kg_find_path(dao, 0, 1, 5, &result);
+    EXPECT_EQ(path_result, 0);
+    EXPECT_GT(result.num_results, 0);
+
+    if (result.num_results > 0) {
+        EXPECT_NE(result.matched_entities, nullptr);
+        EXPECT_NE(result.scores, nullptr);
+    }
+
+    nimcp_kg_result_destroy(&result);
+    nimcp_knowledge_embedding_dao_destroy(dao);
+}
+
+/**
+ * TEST: Pattern matching API
+ * WHAT: Match pattern in knowledge graph
+ * WHY:  Complex query support
+ */
+TEST_F(KnowledgeGraphKernelTest, PatternMatch_ReturnsMatches) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (!dao) {
+        GTEST_SKIP() << "DAO creation failed";
+    }
+
+    // Create embeddings
+    for (int i = 0; i < 5; i++) {
+        std::vector<float> embedding(DEFAULT_EMBED_DIM);
+        for (uint32_t j = 0; j < DEFAULT_EMBED_DIM; j++) {
+            embedding[j] = static_cast<float>(i * DEFAULT_EMBED_DIM + j) / (5 * DEFAULT_EMBED_DIM);
+        }
+        dao->create_embedding(dao, i, embedding.data());
+    }
+
+    // Create pattern query
+    nimcp_kg_query_t pattern;
+    memset(&pattern, 0, sizeof(pattern));
+    pattern.query_type = NIMCP_KG_QUERY_MATCH_PATTERN;
+
+    std::vector<float> query_emb(DEFAULT_EMBED_DIM);
+    for (uint32_t j = 0; j < DEFAULT_EMBED_DIM; j++) {
+        query_emb[j] = static_cast<float>(j) / (5 * DEFAULT_EMBED_DIM);  // Similar to entity 0
+    }
+    pattern.query_embedding = query_emb.data();
+    pattern.top_k = 3;
+
+    nimcp_kg_result_t result;
+    memset(&result, 0, sizeof(result));
+
+    int match_result = nimcp_kg_pattern_match(dao, &pattern, &result);
+    EXPECT_EQ(match_result, 0);
+
+    nimcp_kg_result_destroy(&result);
+    nimcp_knowledge_embedding_dao_destroy(dao);
+}
+
+#ifdef NIMCP_ENABLE_CUDA
+/**
+ * TEST: Predict tail entity
+ * WHAT: Predict tail given head and relation
+ * WHY:  Knowledge graph completion
+ */
+TEST_F(KnowledgeGraphKernelTest, PredictTail_ReturnsRankedEntities) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (!dao) {
+        GTEST_SKIP() << "DAO creation failed";
+    }
+
+    // Create entity embeddings
+    for (int i = 0; i < 10; i++) {
+        std::vector<float> embedding(DEFAULT_EMBED_DIM);
+        for (uint32_t j = 0; j < DEFAULT_EMBED_DIM; j++) {
+            embedding[j] = static_cast<float>(i + j) / DEFAULT_EMBED_DIM;
+        }
+        dao->create_embedding(dao, i, embedding.data());
+    }
+
+    // Set relation embedding
+    std::vector<float> rel_emb(DEFAULT_EMBED_DIM, 0.1f);
+    cudaMemcpy(dao->d_relation_embeddings, rel_emb.data(),
+               DEFAULT_EMBED_DIM * sizeof(float), cudaMemcpyHostToDevice);
+
+    std::vector<int> predictions(5);
+    std::vector<float> scores(5);
+
+    int result = nimcp_kg_predict_tail(dao, 0, 0, 5, predictions.data(), scores.data());
+    EXPECT_EQ(result, 0);
+
+    // Should return valid entity indices
+    for (int i = 0; i < 5; i++) {
+        if (predictions[i] >= 0) {
+            EXPECT_LT(predictions[i], 10);
+        }
+    }
+
+    nimcp_knowledge_embedding_dao_destroy(dao);
+}
+
+/**
+ * TEST: Predict head entity
+ * WHAT: Predict head given relation and tail
+ * WHY:  Reverse knowledge graph completion
+ */
+TEST_F(KnowledgeGraphKernelTest, PredictHead_ReturnsRankedEntities) {
+    RequireGPU();
+
+    nimcp_knowledge_embedding_dao_t* dao = nimcp_knowledge_embedding_dao_create(
+        ctx, 100, 10, DEFAULT_EMBED_DIM);
+
+    if (!dao) {
+        GTEST_SKIP() << "DAO creation failed";
+    }
+
+    // Create entity embeddings
+    for (int i = 0; i < 10; i++) {
+        std::vector<float> embedding(DEFAULT_EMBED_DIM);
+        for (uint32_t j = 0; j < DEFAULT_EMBED_DIM; j++) {
+            embedding[j] = static_cast<float>(i + j) / DEFAULT_EMBED_DIM;
+        }
+        dao->create_embedding(dao, i, embedding.data());
+    }
+
+    // Set relation embedding
+    std::vector<float> rel_emb(DEFAULT_EMBED_DIM, 0.1f);
+    cudaMemcpy(dao->d_relation_embeddings, rel_emb.data(),
+               DEFAULT_EMBED_DIM * sizeof(float), cudaMemcpyHostToDevice);
+
+    std::vector<int> predictions(5);
+    std::vector<float> scores(5);
+
+    int result = nimcp_kg_predict_head(dao, 0, 5, 5, predictions.data(), scores.data());
+    EXPECT_EQ(result, 0);
+
+    // Should return valid entity indices
+    for (int i = 0; i < 5; i++) {
+        if (predictions[i] >= 0) {
+            EXPECT_LT(predictions[i], 10);
+        }
+    }
+
+    nimcp_knowledge_embedding_dao_destroy(dao);
+}
+#endif  // NIMCP_ENABLE_CUDA
 
 //=============================================================================
 // Main

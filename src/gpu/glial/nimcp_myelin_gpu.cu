@@ -33,6 +33,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 #include "gpu/glial/nimcp_myelin_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
@@ -636,6 +637,402 @@ __global__ void kernel_apply_decay(
 
     float I = integrity[idx];
     integrity[idx] = device_clamp(I - decay_amount, 0.0f, 1.0f);
+}
+
+//=============================================================================
+// Enhanced Myelin GPU Kernels for Saltatory Conduction Simulation
+//=============================================================================
+
+/**
+ * @brief Myelin segment GPU context for detailed saltatory conduction
+ *
+ * This structure provides a specialized context for per-segment myelin
+ * simulation with explicit node of Ranvier modeling.
+ */
+typedef struct nimcp_myelin_gpu_ctx {
+    void* gpu_context;
+
+    // Per-segment data
+    float* d_thickness;         // Myelin thickness per segment
+    float* d_conductance;       // Axial conductance per segment
+    float* d_capacitance;       // Membrane capacitance per segment
+    int* d_segment_axon_map;    // Which axon each segment belongs to
+
+    // Node of Ranvier data
+    float* d_node_voltage;      // Voltage at each node
+    float* d_node_conductance;  // Node ion channel conductance
+
+    size_t num_segments;
+    size_t num_nodes;
+    size_t num_axons;
+} nimcp_myelin_gpu_ctx_t;
+
+// Forward declaration
+extern "C" void nimcp_myelin_gpu_destroy(nimcp_myelin_gpu_ctx_t* ctx);
+
+/**
+ * @brief Create enhanced myelin GPU context for saltatory conduction
+ */
+extern "C" nimcp_myelin_gpu_ctx_t* nimcp_myelin_gpu_create(
+    void* gpu_ctx,
+    size_t num_segments,
+    size_t num_nodes,
+    size_t num_axons)
+{
+    if (!gpu_ctx || num_segments == 0 || num_nodes == 0 || num_axons == 0) {
+        LOG_ERROR("Invalid parameters for myelin GPU context creation");
+        return NULL;
+    }
+
+    nimcp_myelin_gpu_ctx_t* ctx = (nimcp_myelin_gpu_ctx_t*)calloc(1, sizeof(nimcp_myelin_gpu_ctx_t));
+    if (!ctx) {
+        LOG_ERROR("Failed to allocate myelin GPU context");
+        return NULL;
+    }
+
+    ctx->gpu_context = gpu_ctx;
+    ctx->num_segments = num_segments;
+    ctx->num_nodes = num_nodes;
+    ctx->num_axons = num_axons;
+
+    cudaError_t err;
+
+    // Allocate per-segment data
+    err = cudaMalloc(&ctx->d_thickness, num_segments * sizeof(float));
+    if (err != cudaSuccess) goto cleanup;
+
+    err = cudaMalloc(&ctx->d_conductance, num_segments * sizeof(float));
+    if (err != cudaSuccess) goto cleanup;
+
+    err = cudaMalloc(&ctx->d_capacitance, num_segments * sizeof(float));
+    if (err != cudaSuccess) goto cleanup;
+
+    err = cudaMalloc(&ctx->d_segment_axon_map, num_segments * sizeof(int));
+    if (err != cudaSuccess) goto cleanup;
+
+    // Allocate node data
+    err = cudaMalloc(&ctx->d_node_voltage, num_nodes * sizeof(float));
+    if (err != cudaSuccess) goto cleanup;
+
+    err = cudaMalloc(&ctx->d_node_conductance, num_nodes * sizeof(float));
+    if (err != cudaSuccess) goto cleanup;
+
+    // Initialize to defaults
+    cudaMemset(ctx->d_thickness, 0, num_segments * sizeof(float));
+    cudaMemset(ctx->d_conductance, 0, num_segments * sizeof(float));
+    cudaMemset(ctx->d_capacitance, 0, num_segments * sizeof(float));
+    cudaMemset(ctx->d_node_voltage, 0, num_nodes * sizeof(float));
+    cudaMemset(ctx->d_node_conductance, 0, num_nodes * sizeof(float));
+
+    LOG_DEBUG("Created myelin GPU context: segments=%zu, nodes=%zu, axons=%zu",
+              num_segments, num_nodes, num_axons);
+    return ctx;
+
+cleanup:
+    LOG_ERROR("Failed to allocate myelin GPU buffers: %s", cudaGetErrorString(err));
+    nimcp_myelin_gpu_destroy(ctx);
+    return NULL;
+}
+
+/**
+ * @brief Destroy enhanced myelin GPU context
+ */
+extern "C" void nimcp_myelin_gpu_destroy(nimcp_myelin_gpu_ctx_t* ctx)
+{
+    if (!ctx) return;
+
+    if (ctx->d_thickness) cudaFree(ctx->d_thickness);
+    if (ctx->d_conductance) cudaFree(ctx->d_conductance);
+    if (ctx->d_capacitance) cudaFree(ctx->d_capacitance);
+    if (ctx->d_segment_axon_map) cudaFree(ctx->d_segment_axon_map);
+    if (ctx->d_node_voltage) cudaFree(ctx->d_node_voltage);
+    if (ctx->d_node_conductance) cudaFree(ctx->d_node_conductance);
+
+    free(ctx);
+    LOG_DEBUG("Destroyed myelin GPU context");
+}
+
+/**
+ * @brief Update conductance based on myelin thickness
+ *
+ * Thicker myelin = higher axial conductance (better insulation)
+ * Formula: conductance = base_conductance * (1 + k * thickness^2)
+ */
+__global__ void kernel_myelin_conductance_update(
+    float* conductance,
+    const float* thickness,
+    size_t num_segments,
+    float base_conductance)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= num_segments) return;
+
+    float t = thickness[idx];
+
+    // Conductance increases with thickness squared (cable theory approximation)
+    // G = G_base * (1 + k * t^2) where k accounts for myelin layers
+    float k = 0.1f;  // Scaling factor
+    conductance[idx] = base_conductance * (1.0f + k * t * t);
+}
+
+/**
+ * @brief Saltatory propagation simulation
+ *
+ * Simulates action potential jumping between nodes of Ranvier.
+ * Each node receives current from adjacent myelinated segments.
+ *
+ * @param node_voltage Current voltage at each node
+ * @param segment_conductance Conductance of myelinated segments
+ * @param segment_to_node_map Mapping from segments to their terminal nodes
+ * @param num_nodes Number of nodes of Ranvier
+ * @param num_segments Number of myelinated segments
+ * @param dt Time step in ms
+ */
+__global__ void kernel_saltatory_propagation(
+    float* node_voltage,
+    const float* segment_conductance,
+    const int* segment_to_node_map,
+    size_t num_nodes,
+    size_t num_segments,
+    float dt)
+{
+    size_t node_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (node_idx >= num_nodes) return;
+
+    // Node parameters
+    float V_rest = -70.0f;      // Resting potential (mV)
+    float V_thresh = -55.0f;    // Threshold potential (mV)
+    float V_peak = 40.0f;       // Peak AP voltage (mV)
+    float g_leak = 0.1f;        // Leak conductance (mS/cm^2)
+    float C_m = 1.0f;           // Membrane capacitance (uF/cm^2)
+
+    float V = node_voltage[node_idx];
+
+    // Calculate incoming current from adjacent segments
+    // In a real implementation, we'd track which segments connect to this node
+    float I_in = 0.0f;
+
+    // Check segments that terminate at this node
+    for (size_t seg = 0; seg < num_segments; seg++) {
+        if (segment_to_node_map[seg] == (int)node_idx) {
+            float G = segment_conductance[seg];
+            // Current from previous node through this segment
+            // Simplified: assume fixed driving voltage for active segments
+            I_in += G * (V_peak - V);
+        }
+    }
+
+    // Leak current
+    float I_leak = g_leak * (V - V_rest);
+
+    // Membrane potential update (forward Euler)
+    float dV = (I_in - I_leak) / C_m * dt;
+    V += dV;
+
+    // Simple threshold crossing for AP generation
+    if (V >= V_thresh && V < V_peak) {
+        V = V_peak;  // Generate AP
+    } else if (V >= V_peak) {
+        V = V_rest;  // Reset after AP
+    }
+
+    node_voltage[node_idx] = V;
+}
+
+/**
+ * @brief Activity-dependent myelin plasticity update
+ *
+ * Adjusts myelin thickness based on axon activity levels.
+ * Higher activity leads to increased myelination.
+ *
+ * @param thickness Current myelin thickness per segment
+ * @param activity Activity level per axon (firing rate)
+ * @param segment_axon_map Mapping from segments to their parent axons
+ * @param num_segments Number of myelinated segments
+ * @param learning_rate Rate of thickness adjustment
+ * @param min_thickness Minimum allowable thickness
+ * @param max_thickness Maximum allowable thickness
+ */
+__global__ void kernel_myelin_plasticity(
+    float* thickness,
+    const float* activity,
+    const int* segment_axon_map,
+    size_t num_segments,
+    float learning_rate,
+    float min_thickness,
+    float max_thickness)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= num_segments) return;
+
+    int axon_idx = segment_axon_map[idx];
+    float A = activity[axon_idx];
+    float t = thickness[idx];
+
+    // Hill-like response: high activity promotes myelination
+    float K_half = 10.0f;  // Half-max activity
+    float n = 2.0f;        // Hill coefficient
+    float A_n = powf(A, n);
+    float K_n = powf(K_half, n);
+    float myelination_drive = A_n / (K_n + A_n + 1e-9f);
+
+    // Compute target thickness based on activity
+    float target = min_thickness + (max_thickness - min_thickness) * myelination_drive;
+
+    // Gradual adjustment toward target
+    float delta = learning_rate * (target - t);
+    t = t + delta;
+
+    // Clamp to valid range
+    thickness[idx] = device_clamp(t, min_thickness, max_thickness);
+}
+
+/**
+ * @brief Compute myelination signal from firing rates
+ *
+ * Determines which axons should be myelinated based on activity threshold.
+ *
+ * @param firing_rates Average firing rate per axon
+ * @param myelination_signal Output signal strength for myelination
+ * @param num_axons Number of axons
+ * @param threshold Minimum firing rate to trigger myelination
+ */
+__global__ void kernel_compute_myelination_signal(
+    const float* firing_rates,
+    float* myelination_signal,
+    size_t num_axons,
+    float threshold)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= num_axons) return;
+
+    float rate = firing_rates[idx];
+
+    // Sigmoid activation above threshold
+    // sigma(x) = 1 / (1 + exp(-(x - threshold) / k))
+    float k = 5.0f;  // Steepness
+    float z = (rate - threshold) / k;
+    float signal = 1.0f / (1.0f + expf(-z));
+
+    // Scale signal by how far above threshold
+    if (rate > threshold) {
+        signal *= (rate - threshold) / (rate + 1e-6f);
+    }
+
+    myelination_signal[idx] = signal;
+}
+
+/**
+ * @brief Initialize myelin GPU context from network data
+ */
+extern "C" int nimcp_myelin_gpu_init_from_network(
+    nimcp_myelin_gpu_ctx_t* ctx,
+    const void* myelin_network)
+{
+    if (!ctx || !myelin_network) return -1;
+
+    // This would extract data from a CPU myelin network structure
+    // For now, initialize with default values
+    float default_thickness = 1.0f;  // 1 um
+    float default_capacitance = 1.0f;  // 1 uF/cm^2
+
+    // Initialize thickness and capacitance
+    std::vector<float> thickness(ctx->num_segments, default_thickness);
+    std::vector<float> capacitance(ctx->num_segments, default_capacitance);
+
+    cudaMemcpy(ctx->d_thickness, thickness.data(),
+               ctx->num_segments * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(ctx->d_capacitance, capacitance.data(),
+               ctx->num_segments * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Initialize segment-to-axon mapping (simple linear assignment)
+    std::vector<int> seg_axon_map(ctx->num_segments);
+    size_t segs_per_axon = ctx->num_segments / ctx->num_axons;
+    for (size_t i = 0; i < ctx->num_segments; i++) {
+        seg_axon_map[i] = (int)(i / segs_per_axon);
+    }
+    cudaMemcpy(ctx->d_segment_axon_map, seg_axon_map.data(),
+               ctx->num_segments * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Initialize conductance based on thickness
+    kernel_myelin_conductance_update<<<GRID_SIZE(ctx->num_segments), BLOCK_SIZE>>>(
+        ctx->d_conductance, ctx->d_thickness, ctx->num_segments, 1.0f);
+
+    cudaError_t err = cudaGetLastError();
+    return (err == cudaSuccess) ? 0 : -1;
+}
+
+/**
+ * @brief Propagate signals through myelin network
+ */
+extern "C" int nimcp_myelin_gpu_propagate(nimcp_myelin_gpu_ctx_t* ctx, float dt)
+{
+    if (!ctx) return -1;
+
+    // Update conductances based on current thickness
+    kernel_myelin_conductance_update<<<GRID_SIZE(ctx->num_segments), BLOCK_SIZE>>>(
+        ctx->d_conductance, ctx->d_thickness, ctx->num_segments, 1.0f);
+
+    // Create segment-to-node mapping for propagation
+    // Simple mapping: segment i connects to node i and i+1
+    int* d_seg_to_node;
+    cudaMalloc(&d_seg_to_node, ctx->num_segments * sizeof(int));
+
+    std::vector<int> seg_to_node(ctx->num_segments);
+    for (size_t i = 0; i < ctx->num_segments; i++) {
+        seg_to_node[i] = (int)(i % ctx->num_nodes);
+    }
+    cudaMemcpy(d_seg_to_node, seg_to_node.data(),
+               ctx->num_segments * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Perform saltatory propagation
+    kernel_saltatory_propagation<<<GRID_SIZE(ctx->num_nodes), BLOCK_SIZE>>>(
+        ctx->d_node_voltage,
+        ctx->d_conductance,
+        d_seg_to_node,
+        ctx->num_nodes,
+        ctx->num_segments,
+        dt);
+
+    cudaFree(d_seg_to_node);
+
+    cudaError_t err = cudaGetLastError();
+    return (err == cudaSuccess) ? 0 : -1;
+}
+
+/**
+ * @brief Update myelin thickness based on activity
+ */
+extern "C" int nimcp_myelin_gpu_update_thickness(
+    nimcp_myelin_gpu_ctx_t* ctx,
+    const float* activity_levels)
+{
+    if (!ctx || !activity_levels) return -1;
+
+    float learning_rate = 0.01f;
+    float min_thickness = 0.1f;
+    float max_thickness = 5.0f;
+
+    // Copy activity to device
+    float* d_activity;
+    cudaMalloc(&d_activity, ctx->num_axons * sizeof(float));
+    cudaMemcpy(d_activity, activity_levels,
+               ctx->num_axons * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Apply plasticity
+    kernel_myelin_plasticity<<<GRID_SIZE(ctx->num_segments), BLOCK_SIZE>>>(
+        ctx->d_thickness,
+        d_activity,
+        ctx->d_segment_axon_map,
+        ctx->num_segments,
+        learning_rate,
+        min_thickness,
+        max_thickness);
+
+    cudaFree(d_activity);
+
+    cudaError_t err = cudaGetLastError();
+    return (err == cudaSuccess) ? 0 : -1;
 }
 
 //=============================================================================

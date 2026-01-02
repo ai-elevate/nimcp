@@ -720,6 +720,209 @@ bool nimcp_gpu_stdp_pair(
     return true;
 }
 
+//=============================================================================
+// Triplet STDP Kernels (Pfister & Gerstner 2006)
+//=============================================================================
+
+/**
+ * @brief Decay all traces by exponential factor
+ *
+ * Applies trace = trace * exp(-dt/tau) element-wise
+ */
+__global__ void kernel_decay_traces(float* traces, size_t n, float decay_factor)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n) return;
+
+    traces[idx] *= decay_factor;
+}
+
+/**
+ * @brief Update presynaptic traces on spike
+ *
+ * For each spiking presynaptic neuron:
+ *   r1[i] += 1.0  (fast trace for pair-based term)
+ *   r2[i] += 1.0  (slow trace for triplet term)
+ */
+__global__ void kernel_update_presynaptic_traces(
+    float* r1, float* r2,
+    const float* spikes, size_t n,
+    float tau_plus, float tau_x, float dt)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n) return;
+
+    // Decay factors
+    float decay_r1 = expf(-dt / tau_plus);
+    float decay_r2 = expf(-dt / tau_x);
+
+    // Decay then add spike
+    float spike = spikes[idx];
+    r1[idx] = r1[idx] * decay_r1 + spike;
+    r2[idx] = r2[idx] * decay_r2 + spike;
+}
+
+/**
+ * @brief Update postsynaptic traces on spike
+ *
+ * For each spiking postsynaptic neuron:
+ *   o1[j] += 1.0  (fast trace for pair-based term)
+ *   o2[j] += 1.0  (slow trace for triplet term)
+ */
+__global__ void kernel_update_postsynaptic_traces(
+    float* o1, float* o2,
+    const float* spikes, size_t n,
+    float tau_minus, float tau_y, float dt)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n) return;
+
+    // Decay factors
+    float decay_o1 = expf(-dt / tau_minus);
+    float decay_o2 = expf(-dt / tau_y);
+
+    // Decay then add spike
+    float spike = spikes[idx];
+    o1[idx] = o1[idx] * decay_o1 + spike;
+    o2[idx] = o2[idx] * decay_o2 + spike;
+}
+
+/**
+ * @brief Triplet STDP LTP kernel
+ *
+ * When postsynaptic neuron fires:
+ *   dw = (A2_plus + A3_plus * o2_before) * r1 * post_spike
+ *
+ * Note: o2_before is the slow post trace BEFORE the spike is added
+ */
+__global__ void kernel_triplet_stdp_ltp(
+    float* weights,
+    const float* r1, const float* o2,
+    const float* post_spikes,
+    size_t n_pre, size_t n_post,
+    float A2_plus, float A3_plus,
+    float w_min, float w_max,
+    float learning_rate)
+{
+    size_t pre_idx = blockIdx.x;
+    size_t post_idx = threadIdx.x + blockIdx.y * blockDim.x;
+
+    if (pre_idx >= n_pre || post_idx >= n_post) return;
+
+    float post_spike = post_spikes[post_idx];
+    if (post_spike < 0.5f) return;  // No post spike, no LTP
+
+    size_t w_idx = pre_idx * n_post + post_idx;
+
+    float pre_trace = r1[pre_idx];
+    float post_trace_slow = o2[post_idx];  // o2 before spike was added
+
+    // Triplet LTP: pair term + triplet term
+    float dw = learning_rate * (A2_plus + A3_plus * post_trace_slow) * pre_trace;
+
+    // Apply bounded update
+    float w = weights[w_idx];
+    w = fminf(fmaxf(w + dw, w_min), w_max);
+    weights[w_idx] = w;
+}
+
+/**
+ * @brief Triplet STDP LTD kernel
+ *
+ * When presynaptic neuron fires:
+ *   dw = -(A2_minus + A3_minus * r2_before) * o1 * pre_spike
+ *
+ * Note: r2_before is the slow pre trace BEFORE the spike is added
+ */
+__global__ void kernel_triplet_stdp_ltd(
+    float* weights,
+    const float* o1, const float* r2,
+    const float* pre_spikes,
+    size_t n_pre, size_t n_post,
+    float A2_minus, float A3_minus,
+    float w_min, float w_max,
+    float learning_rate)
+{
+    size_t pre_idx = blockIdx.x;
+    size_t post_idx = threadIdx.x + blockIdx.y * blockDim.x;
+
+    if (pre_idx >= n_pre || post_idx >= n_post) return;
+
+    float pre_spike = pre_spikes[pre_idx];
+    if (pre_spike < 0.5f) return;  // No pre spike, no LTD
+
+    size_t w_idx = pre_idx * n_post + post_idx;
+
+    float post_trace_fast = o1[post_idx];
+    float pre_trace_slow = r2[pre_idx];  // r2 before spike was added
+
+    // Triplet LTD: pair term + triplet term
+    float dw = -learning_rate * (A2_minus + A3_minus * pre_trace_slow) * post_trace_fast;
+
+    // Apply bounded update
+    float w = weights[w_idx];
+    w = fminf(fmaxf(w + dw, w_min), w_max);
+    weights[w_idx] = w;
+}
+
+/**
+ * @brief Combined triplet STDP update kernel
+ *
+ * More efficient combined kernel that computes both LTP and LTD
+ * in a single pass for all synapses.
+ */
+__global__ void kernel_triplet_stdp_update(
+    float* weights,
+    const float* r1, const float* r2,
+    const float* o1, const float* o2,
+    const float* pre_spikes, const float* post_spikes,
+    size_t n_pre, size_t n_post,
+    float A2_plus, float A2_minus,
+    float A3_plus, float A3_minus,
+    float w_min, float w_max,
+    float learning_rate)
+{
+    size_t pre_idx = blockIdx.x;
+    size_t post_idx = threadIdx.x + blockIdx.y * blockDim.x;
+
+    if (pre_idx >= n_pre || post_idx >= n_post) return;
+
+    size_t w_idx = pre_idx * n_post + post_idx;
+    float w = weights[w_idx];
+
+    float pre_spike = pre_spikes[pre_idx];
+    float post_spike = post_spikes[post_idx];
+
+    // Read traces
+    float r1_val = r1[pre_idx];
+    float r2_val = r2[pre_idx];
+    float o1_val = o1[post_idx];
+    float o2_val = o2[post_idx];
+
+    float dw = 0.0f;
+
+    // LTP: triggered by post spike, uses pre traces
+    // Note: In the Pfister & Gerstner model, o2 should be the value
+    // BEFORE the current spike is added. We assume traces were already
+    // updated, so we use the current value which includes the spike.
+    // For strict adherence, traces should be updated AFTER weight updates.
+    if (post_spike > 0.5f) {
+        dw += learning_rate * (A2_plus + A3_plus * o2_val) * r1_val;
+    }
+
+    // LTD: triggered by pre spike, uses post traces
+    if (pre_spike > 0.5f) {
+        dw -= learning_rate * (A2_minus + A3_minus * r2_val) * o1_val;
+    }
+
+    // Apply bounded update
+    w = fminf(fmaxf(w + dw, w_min), w_max);
+    weights[w_idx] = w;
+}
+
+/**
+ * @brief Legacy triplet STDP interface (for backward compatibility)
+ */
 bool nimcp_gpu_stdp_triplet(
     nimcp_gpu_context_t* ctx,
     nimcp_gpu_tensor_t* weights,
@@ -731,10 +934,447 @@ bool nimcp_gpu_stdp_triplet(
     nimcp_gpu_tensor_t* post_trace_slow,
     const nimcp_stdp_params_t* params)
 {
-    // TODO: Implement triplet STDP
-    LOG_WARN("Triplet STDP not yet implemented, using pair-based");
-    return nimcp_gpu_stdp_pair(ctx, weights, pre_spikes, post_spikes,
-                               pre_trace_fast, post_trace_fast, params);
+    if (!ctx || !weights || !pre_spikes || !post_spikes ||
+        !pre_trace_fast || !pre_trace_slow ||
+        !post_trace_fast || !post_trace_slow || !params) {
+        return false;
+    }
+
+    size_t n_pre = pre_spikes->numel;
+    size_t n_post = post_spikes->numel;
+
+    // Use legacy params to derive triplet params (A3 terms set to 0 for pair-based)
+    // This provides backward compatibility while using the new implementation
+    float A2_plus = params->A_plus;
+    float A2_minus = params->A_minus;
+    float A3_plus = 0.0f;  // No triplet contribution in legacy mode
+    float A3_minus = 0.0f;
+    float learning_rate = 1.0f;
+
+    // Calculate grid dimensions
+    dim3 grid(n_pre, (n_post + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    dim3 block(n_post < BLOCK_SIZE ? n_post : BLOCK_SIZE);
+
+    // Run combined triplet STDP kernel
+    kernel_triplet_stdp_update<<<grid, block>>>(
+        (float*)weights->data,
+        (const float*)pre_trace_fast->data, (const float*)pre_trace_slow->data,
+        (const float*)post_trace_fast->data, (const float*)post_trace_slow->data,
+        (const float*)pre_spikes->data, (const float*)post_spikes->data,
+        n_pre, n_post,
+        A2_plus, A2_minus, A3_plus, A3_minus,
+        params->w_min, params->w_max, learning_rate);
+
+    CUDA_CHECK(cudaGetLastError());
+    return true;
+}
+
+/**
+ * @brief Full triplet STDP with tensor interface
+ */
+bool nimcp_gpu_triplet_stdp_full(
+    nimcp_gpu_context_t* ctx,
+    nimcp_gpu_tensor_t* weights,
+    const nimcp_gpu_tensor_t* pre_spikes,
+    const nimcp_gpu_tensor_t* post_spikes,
+    nimcp_gpu_tensor_t* r1,
+    nimcp_gpu_tensor_t* r2,
+    nimcp_gpu_tensor_t* o1,
+    nimcp_gpu_tensor_t* o2,
+    const nimcp_triplet_stdp_params_t* params,
+    float dt,
+    float learning_rate)
+{
+    if (!ctx || !weights || !pre_spikes || !post_spikes ||
+        !r1 || !r2 || !o1 || !o2 || !params) {
+        LOG_ERROR("Null parameter in triplet STDP full");
+        return false;
+    }
+
+    size_t n_pre = pre_spikes->numel;
+    size_t n_post = post_spikes->numel;
+
+    // Step 1: Apply weight updates BEFORE updating traces
+    // (This ensures o2 and r2 don't include the current spike)
+    dim3 grid(n_pre, (n_post + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    dim3 block(n_post < BLOCK_SIZE ? n_post : BLOCK_SIZE);
+
+    kernel_triplet_stdp_update<<<grid, block>>>(
+        (float*)weights->data,
+        (const float*)r1->data, (const float*)r2->data,
+        (const float*)o1->data, (const float*)o2->data,
+        (const float*)pre_spikes->data, (const float*)post_spikes->data,
+        n_pre, n_post,
+        params->A2_plus, params->A2_minus,
+        params->A3_plus, params->A3_minus,
+        params->w_min, params->w_max, learning_rate);
+
+    CUDA_CHECK(cudaGetLastError());
+
+    // Step 2: Update presynaptic traces
+    kernel_update_presynaptic_traces<<<GRID_SIZE(n_pre), BLOCK_SIZE>>>(
+        (float*)r1->data, (float*)r2->data,
+        (const float*)pre_spikes->data, n_pre,
+        params->tau_plus, params->tau_x, dt);
+
+    CUDA_CHECK(cudaGetLastError());
+
+    // Step 3: Update postsynaptic traces
+    kernel_update_postsynaptic_traces<<<GRID_SIZE(n_post), BLOCK_SIZE>>>(
+        (float*)o1->data, (float*)o2->data,
+        (const float*)post_spikes->data, n_post,
+        params->tau_minus, params->tau_y, dt);
+
+    CUDA_CHECK(cudaGetLastError());
+
+    return true;
+}
+
+/**
+ * @brief Get default triplet STDP parameters
+ *
+ * Values based on Pfister & Gerstner (2006) visual cortex fits
+ */
+void nimcp_triplet_stdp_default_params(nimcp_triplet_stdp_params_t* params)
+{
+    if (!params) return;
+
+    // Pair-based terms
+    params->A2_plus = 0.005f;     // Reduced pair LTP
+    params->A2_minus = 0.007f;    // Reduced pair LTD
+    params->tau_plus = 16.8f;     // ms
+    params->tau_minus = 33.7f;    // ms
+
+    // Triplet terms (these are the key additions)
+    params->A3_plus = 0.0063f;    // Triplet LTP amplitude
+    params->A3_minus = 0.0f;      // Minimal nearest-neighbor model
+    params->tau_x = 101.0f;       // ms (slow pre trace)
+    params->tau_y = 125.0f;       // ms (slow post trace)
+
+    // Weight bounds
+    params->w_min = 0.0f;
+    params->w_max = 1.0f;
+}
+
+//=============================================================================
+// Triplet STDP DAO Implementation
+//=============================================================================
+
+// Forward declarations for DAO method implementations
+static int dao_update_traces(nimcp_stdp_dao_t* self, const int* pre_spikes,
+                             const int* post_spikes, size_t num_pre_spikes,
+                             size_t num_post_spikes, float dt);
+static int dao_compute_weight_updates(nimcp_stdp_dao_t* self, float* weights,
+                                      const int* pre_indices, const int* post_indices,
+                                      size_t num_synapses);
+static int dao_apply_updates(nimcp_stdp_dao_t* self, float* weights, float learning_rate);
+static int dao_reset(nimcp_stdp_dao_t* self);
+
+nimcp_stdp_dao_t* nimcp_triplet_stdp_create(
+    void* gpu_ctx,
+    size_t num_pre,
+    size_t num_post,
+    nimcp_triplet_stdp_params_t* params)
+{
+    if (!gpu_ctx || num_pre == 0 || num_post == 0) {
+        LOG_ERROR("Invalid parameters for triplet STDP creation");
+        return NULL;
+    }
+
+    nimcp_stdp_dao_t* dao = (nimcp_stdp_dao_t*)calloc(1, sizeof(nimcp_stdp_dao_t));
+    if (!dao) {
+        LOG_ERROR("Failed to allocate DAO structure");
+        return NULL;
+    }
+
+    dao->state = (nimcp_triplet_stdp_state_t*)calloc(1, sizeof(nimcp_triplet_stdp_state_t));
+    if (!dao->state) {
+        LOG_ERROR("Failed to allocate state structure");
+        free(dao);
+        return NULL;
+    }
+
+    dao->state->num_pre = num_pre;
+    dao->state->num_post = num_post;
+    dao->gpu_context = gpu_ctx;
+
+    // Copy or use default params
+    if (params) {
+        dao->params = *params;
+    } else {
+        nimcp_triplet_stdp_default_params(&dao->params);
+    }
+
+    // Allocate GPU memory for traces
+    cudaError_t err;
+
+    err = cudaMalloc(&dao->state->d_r1, num_pre * sizeof(float));
+    if (err != cudaSuccess) goto cleanup;
+
+    err = cudaMalloc(&dao->state->d_r2, num_pre * sizeof(float));
+    if (err != cudaSuccess) goto cleanup;
+
+    err = cudaMalloc(&dao->state->d_o1, num_post * sizeof(float));
+    if (err != cudaSuccess) goto cleanup;
+
+    err = cudaMalloc(&dao->state->d_o2, num_post * sizeof(float));
+    if (err != cudaSuccess) goto cleanup;
+
+    // Initialize traces to zero
+    cudaMemset(dao->state->d_r1, 0, num_pre * sizeof(float));
+    cudaMemset(dao->state->d_r2, 0, num_pre * sizeof(float));
+    cudaMemset(dao->state->d_o1, 0, num_post * sizeof(float));
+    cudaMemset(dao->state->d_o2, 0, num_post * sizeof(float));
+
+    // Set method pointers
+    dao->update_traces = dao_update_traces;
+    dao->compute_weight_updates = dao_compute_weight_updates;
+    dao->apply_updates = dao_apply_updates;
+    dao->reset = dao_reset;
+
+    LOG_DEBUG("Created triplet STDP DAO for %zu pre x %zu post", num_pre, num_post);
+    return dao;
+
+cleanup:
+    LOG_ERROR("CUDA error allocating triplet STDP traces: %s", cudaGetErrorString(err));
+    if (dao->state->d_r1) cudaFree(dao->state->d_r1);
+    if (dao->state->d_r2) cudaFree(dao->state->d_r2);
+    if (dao->state->d_o1) cudaFree(dao->state->d_o1);
+    if (dao->state->d_o2) cudaFree(dao->state->d_o2);
+    free(dao->state);
+    free(dao);
+    return NULL;
+}
+
+void nimcp_triplet_stdp_destroy(nimcp_stdp_dao_t* dao)
+{
+    if (!dao) return;
+
+    if (dao->state) {
+        if (dao->state->d_r1) cudaFree(dao->state->d_r1);
+        if (dao->state->d_r2) cudaFree(dao->state->d_r2);
+        if (dao->state->d_o1) cudaFree(dao->state->d_o1);
+        if (dao->state->d_o2) cudaFree(dao->state->d_o2);
+        free(dao->state);
+    }
+    free(dao);
+}
+
+/**
+ * @brief Kernel to update traces from sparse spike indices
+ */
+__global__ void kernel_update_traces_sparse(
+    float* trace, const int* spike_indices, size_t num_spikes,
+    float decay, float dt)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= num_spikes) return;
+
+    int neuron_idx = spike_indices[idx];
+    // Atomic add to handle potential duplicate indices
+    atomicAdd(&trace[neuron_idx], 1.0f);
+}
+
+/**
+ * @brief DAO method: update traces based on spike indices
+ */
+static int dao_update_traces(nimcp_stdp_dao_t* self, const int* pre_spikes,
+                             const int* post_spikes, size_t num_pre_spikes,
+                             size_t num_post_spikes, float dt)
+{
+    if (!self || !self->state) return -1;
+
+    nimcp_triplet_stdp_state_t* state = self->state;
+    nimcp_triplet_stdp_params_t* params = &self->params;
+
+    // Decay all traces first
+    float decay_r1 = expf(-dt / params->tau_plus);
+    float decay_r2 = expf(-dt / params->tau_x);
+    float decay_o1 = expf(-dt / params->tau_minus);
+    float decay_o2 = expf(-dt / params->tau_y);
+
+    kernel_decay_traces<<<GRID_SIZE(state->num_pre), BLOCK_SIZE>>>(
+        state->d_r1, state->num_pre, decay_r1);
+    kernel_decay_traces<<<GRID_SIZE(state->num_pre), BLOCK_SIZE>>>(
+        state->d_r2, state->num_pre, decay_r2);
+    kernel_decay_traces<<<GRID_SIZE(state->num_post), BLOCK_SIZE>>>(
+        state->d_o1, state->num_post, decay_o1);
+    kernel_decay_traces<<<GRID_SIZE(state->num_post), BLOCK_SIZE>>>(
+        state->d_o2, state->num_post, decay_o2);
+
+    // Update traces for spiking neurons
+    if (num_pre_spikes > 0 && pre_spikes) {
+        int* d_pre_spikes;
+        cudaMalloc(&d_pre_spikes, num_pre_spikes * sizeof(int));
+        cudaMemcpy(d_pre_spikes, pre_spikes, num_pre_spikes * sizeof(int),
+                   cudaMemcpyHostToDevice);
+
+        kernel_update_traces_sparse<<<GRID_SIZE(num_pre_spikes), BLOCK_SIZE>>>(
+            state->d_r1, d_pre_spikes, num_pre_spikes, decay_r1, dt);
+        kernel_update_traces_sparse<<<GRID_SIZE(num_pre_spikes), BLOCK_SIZE>>>(
+            state->d_r2, d_pre_spikes, num_pre_spikes, decay_r2, dt);
+
+        cudaFree(d_pre_spikes);
+    }
+
+    if (num_post_spikes > 0 && post_spikes) {
+        int* d_post_spikes;
+        cudaMalloc(&d_post_spikes, num_post_spikes * sizeof(int));
+        cudaMemcpy(d_post_spikes, post_spikes, num_post_spikes * sizeof(int),
+                   cudaMemcpyHostToDevice);
+
+        kernel_update_traces_sparse<<<GRID_SIZE(num_post_spikes), BLOCK_SIZE>>>(
+            state->d_o1, d_post_spikes, num_post_spikes, decay_o1, dt);
+        kernel_update_traces_sparse<<<GRID_SIZE(num_post_spikes), BLOCK_SIZE>>>(
+            state->d_o2, d_post_spikes, num_post_spikes, decay_o2, dt);
+
+        cudaFree(d_post_spikes);
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Kernel for sparse weight updates
+ */
+__global__ void kernel_triplet_stdp_sparse_update(
+    float* weights,
+    const float* r1, const float* r2,
+    const float* o1, const float* o2,
+    const int* pre_indices, const int* post_indices,
+    size_t num_synapses, size_t n_post,
+    float A2_plus, float A2_minus,
+    float A3_plus, float A3_minus,
+    float w_min, float w_max,
+    float learning_rate)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= num_synapses) return;
+
+    int pre_idx = pre_indices[idx];
+    int post_idx = post_indices[idx];
+    size_t w_idx = pre_idx * n_post + post_idx;
+
+    float w = weights[w_idx];
+
+    // Read traces
+    float r1_val = r1[pre_idx];
+    float r2_val = r2[pre_idx];
+    float o1_val = o1[post_idx];
+    float o2_val = o2[post_idx];
+
+    // Compute weight change based on traces
+    // LTP component (driven by post trace activity interacting with pre traces)
+    float ltp = learning_rate * (A2_plus + A3_plus * o2_val) * r1_val * o1_val;
+
+    // LTD component (driven by pre trace activity interacting with post traces)
+    float ltd = learning_rate * (A2_minus + A3_minus * r2_val) * r1_val * o1_val;
+
+    float dw = ltp - ltd;
+
+    // Apply bounded update
+    w = fminf(fmaxf(w + dw, w_min), w_max);
+    weights[w_idx] = w;
+}
+
+/**
+ * @brief DAO method: compute weight updates (placeholder, updates applied directly)
+ */
+static int dao_compute_weight_updates(nimcp_stdp_dao_t* self, float* weights,
+                                      const int* pre_indices, const int* post_indices,
+                                      size_t num_synapses)
+{
+    // Weight updates are computed during apply_updates
+    // This method is a placeholder for potential future optimization
+    // where updates could be computed and cached before application
+    (void)self;
+    (void)weights;
+    (void)pre_indices;
+    (void)post_indices;
+    (void)num_synapses;
+    return 0;
+}
+
+/**
+ * @brief DAO method: apply weight updates (no-op, updates are immediate)
+ */
+static int dao_apply_updates(nimcp_stdp_dao_t* self, float* weights, float learning_rate)
+{
+    // Updates are applied immediately in nimcp_triplet_stdp_step
+    (void)self;
+    (void)weights;
+    (void)learning_rate;
+    return 0;
+}
+
+/**
+ * @brief DAO method: reset all traces to zero
+ */
+static int dao_reset(nimcp_stdp_dao_t* self)
+{
+    if (!self || !self->state) return -1;
+
+    nimcp_triplet_stdp_state_t* state = self->state;
+
+    cudaMemset(state->d_r1, 0, state->num_pre * sizeof(float));
+    cudaMemset(state->d_r2, 0, state->num_pre * sizeof(float));
+    cudaMemset(state->d_o1, 0, state->num_post * sizeof(float));
+    cudaMemset(state->d_o2, 0, state->num_post * sizeof(float));
+
+    return 0;
+}
+
+int nimcp_triplet_stdp_step(
+    nimcp_stdp_dao_t* dao,
+    const int* pre_spikes,
+    const int* post_spikes,
+    size_t num_pre_spikes,
+    size_t num_post_spikes,
+    float* weights,
+    const int* pre_indices,
+    const int* post_indices,
+    size_t num_synapses,
+    float dt,
+    float learning_rate)
+{
+    if (!dao || !dao->state || !weights) {
+        LOG_ERROR("Invalid parameters for triplet STDP step");
+        return -1;
+    }
+
+    nimcp_triplet_stdp_state_t* state = dao->state;
+    nimcp_triplet_stdp_params_t* params = &dao->params;
+
+    // Step 1: Apply weight updates using current traces (before updating them)
+    if (num_synapses > 0 && pre_indices && post_indices) {
+        int* d_pre_indices;
+        int* d_post_indices;
+
+        cudaMalloc(&d_pre_indices, num_synapses * sizeof(int));
+        cudaMalloc(&d_post_indices, num_synapses * sizeof(int));
+        cudaMemcpy(d_pre_indices, pre_indices, num_synapses * sizeof(int),
+                   cudaMemcpyHostToDevice);
+        cudaMemcpy(d_post_indices, post_indices, num_synapses * sizeof(int),
+                   cudaMemcpyHostToDevice);
+
+        kernel_triplet_stdp_sparse_update<<<GRID_SIZE(num_synapses), BLOCK_SIZE>>>(
+            weights,
+            state->d_r1, state->d_r2,
+            state->d_o1, state->d_o2,
+            d_pre_indices, d_post_indices,
+            num_synapses, state->num_post,
+            params->A2_plus, params->A2_minus,
+            params->A3_plus, params->A3_minus,
+            params->w_min, params->w_max,
+            learning_rate);
+
+        cudaFree(d_pre_indices);
+        cudaFree(d_post_indices);
+    }
+
+    // Step 2: Update traces with current spikes
+    return dao_update_traces(dao, pre_spikes, post_spikes,
+                             num_pre_spikes, num_post_spikes, dt);
 }
 
 //=============================================================================
@@ -1199,6 +1839,63 @@ bool nimcp_gpu_stdp_triplet(nimcp_gpu_context_t* ctx, nimcp_gpu_tensor_t* weight
     const nimcp_stdp_params_t* params)
 {
     return false;
+}
+
+bool nimcp_gpu_triplet_stdp_full(nimcp_gpu_context_t* ctx, nimcp_gpu_tensor_t* weights,
+    const nimcp_gpu_tensor_t* pre_spikes, const nimcp_gpu_tensor_t* post_spikes,
+    nimcp_gpu_tensor_t* r1, nimcp_gpu_tensor_t* r2,
+    nimcp_gpu_tensor_t* o1, nimcp_gpu_tensor_t* o2,
+    const nimcp_triplet_stdp_params_t* params, float dt, float learning_rate)
+{
+    (void)ctx; (void)weights; (void)pre_spikes; (void)post_spikes;
+    (void)r1; (void)r2; (void)o1; (void)o2;
+    (void)params; (void)dt; (void)learning_rate;
+    return false;
+}
+
+nimcp_stdp_dao_t* nimcp_triplet_stdp_create(void* gpu_ctx, size_t num_pre,
+    size_t num_post, nimcp_triplet_stdp_params_t* params)
+{
+    LOG_WARN("CUDA not available - triplet STDP requires GPU");
+    (void)gpu_ctx; (void)num_pre; (void)num_post; (void)params;
+    return NULL;
+}
+
+void nimcp_triplet_stdp_destroy(nimcp_stdp_dao_t* dao)
+{
+    if (dao) {
+        if (dao->state) free(dao->state);
+        free(dao);
+    }
+}
+
+int nimcp_triplet_stdp_step(nimcp_stdp_dao_t* dao, const int* pre_spikes,
+    const int* post_spikes, size_t num_pre_spikes, size_t num_post_spikes,
+    float* weights, const int* pre_indices, const int* post_indices,
+    size_t num_synapses, float dt, float learning_rate)
+{
+    (void)dao; (void)pre_spikes; (void)post_spikes;
+    (void)num_pre_spikes; (void)num_post_spikes;
+    (void)weights; (void)pre_indices; (void)post_indices;
+    (void)num_synapses; (void)dt; (void)learning_rate;
+    return -1;
+}
+
+void nimcp_triplet_stdp_default_params(nimcp_triplet_stdp_params_t* params)
+{
+    if (!params) return;
+
+    // Same defaults as CUDA version
+    params->A2_plus = 0.005f;
+    params->A2_minus = 0.007f;
+    params->tau_plus = 16.8f;
+    params->tau_minus = 33.7f;
+    params->A3_plus = 0.0063f;
+    params->A3_minus = 0.0f;
+    params->tau_x = 101.0f;
+    params->tau_y = 125.0f;
+    params->w_min = 0.0f;
+    params->w_max = 1.0f;
 }
 
 bool nimcp_gpu_snn_reset_state(nimcp_gpu_context_t* ctx, nimcp_gpu_tensor_t* v, float v_rest)

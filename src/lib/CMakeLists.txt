@@ -1247,6 +1247,8 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/perception/nimcp_speech_cortex_gpu.cu>
     # LNN kernels (liquid neural networks with ODE solvers)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/lnn/nimcp_lnn_kernels.cu>
+    # LNN Gradient DAO (gradient accumulation for training)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/lnn/nimcp_lnn_gradient_dao.c
     # Quantum algorithm kernels
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/quantum/nimcp_quantum_kernels.cu>
     # Inference kernels (optimized forward pass)
@@ -1320,6 +1322,12 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/synapse/nimcp_synapse_kernels.cu>
     # Ternary GPU kernels (2-bit packed ternary ops, no-multiply GEMM, quantization)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/ternary/nimcp_ternary_kernels.cu>
+    # Graph GPU kernels (CSR format, BFS, clustering coefficient, centrality, modularity, subgraph matching)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/graph/nimcp_graph_kernels.cu>
+
+    # Graph DAO and GraphQL utilities (CPU-side, always compiled)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/graph/nimcp_graph_dao.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/graphql/nimcp_graphql_utils.c
 
     # Note: CUDA compile flags set below per-file
 

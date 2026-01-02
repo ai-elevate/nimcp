@@ -557,8 +557,205 @@ bool nimcp_gpu_global_sync_index(
 }
 
 //=============================================================================
+// Hilbert Transform Context (for PAC computation)
+//=============================================================================
+
+// Forward declarations for kernels defined later in file
+__global__ void kernel_create_hilbert_filter(float* __restrict__ filter, uint32_t n_fft);
+__global__ void kernel_real_to_complex(const float* __restrict__ real,
+                                       cufftComplex* __restrict__ complex_out, uint32_t n);
+
+/**
+ * @brief Hilbert transform context for efficient reuse
+ */
+typedef struct nimcp_hilbert_ctx {
+    cufftHandle fft_plan;
+    cufftHandle ifft_plan;
+    int signal_length;
+    void* gpu_context;
+
+    // Workspace
+    cufftComplex* d_fft_buffer;
+    float* d_filter;
+} nimcp_hilbert_ctx_t;
+
+/**
+ * @brief Analytic signal result from Hilbert transform
+ */
+typedef struct nimcp_analytic_signal {
+    float* d_real;          // Original signal (real part)
+    float* d_imag;          // Hilbert transform (imaginary part)
+    float* d_amplitude;     // Instantaneous amplitude (envelope)
+    float* d_phase;         // Instantaneous phase
+    int length;
+} nimcp_analytic_signal_t;
+
+/**
+ * @brief Create Hilbert transform context
+ */
+nimcp_hilbert_ctx_t* nimcp_hilbert_create(nimcp_gpu_context_t* gpu_ctx, int signal_length)
+{
+    if (!gpu_ctx || signal_length <= 0) return NULL;
+
+    nimcp_hilbert_ctx_t* ctx = (nimcp_hilbert_ctx_t*)malloc(sizeof(nimcp_hilbert_ctx_t));
+    if (!ctx) return NULL;
+
+    ctx->signal_length = signal_length;
+    ctx->gpu_context = gpu_ctx;
+
+    // Create C2C FFT plan
+    if (cufftPlan1d(&ctx->fft_plan, signal_length, CUFFT_C2C, 1) != CUFFT_SUCCESS) {
+        free(ctx);
+        return NULL;
+    }
+
+    // Allocate workspace
+    if (cudaMalloc(&ctx->d_fft_buffer, signal_length * sizeof(cufftComplex)) != cudaSuccess) {
+        cufftDestroy(ctx->fft_plan);
+        free(ctx);
+        return NULL;
+    }
+
+    if (cudaMalloc(&ctx->d_filter, signal_length * sizeof(float)) != cudaSuccess) {
+        cudaFree(ctx->d_fft_buffer);
+        cufftDestroy(ctx->fft_plan);
+        free(ctx);
+        return NULL;
+    }
+
+    // Pre-compute Hilbert filter
+    kernel_create_hilbert_filter<<<GRID_SIZE(signal_length), BLOCK_SIZE>>>(
+        ctx->d_filter, signal_length);
+
+    return ctx;
+}
+
+/**
+ * @brief Destroy Hilbert transform context
+ */
+void nimcp_hilbert_destroy(nimcp_hilbert_ctx_t* ctx)
+{
+    if (!ctx) return;
+
+    cudaFree(ctx->d_fft_buffer);
+    cudaFree(ctx->d_filter);
+    cufftDestroy(ctx->fft_plan);
+    free(ctx);
+}
+
+/**
+ * @brief Apply Hilbert filter in frequency domain to create analytic signal
+ *
+ * H[k] = 2 for 0 < k < N/2
+ * H[0] = H[N/2] = 1
+ * H[k] = 0 for k > N/2
+ */
+__global__ void kernel_hilbert_multiply_h(
+    cufftComplex* __restrict__ spectrum,
+    int n)
+{
+    uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= (uint32_t)n) return;
+
+    uint32_t half = n / 2;
+    float multiplier;
+
+    if (idx == 0 || idx == half) {
+        multiplier = 1.0f;
+    } else if (idx < half) {
+        multiplier = 2.0f;
+    } else {
+        multiplier = 0.0f;
+    }
+
+    spectrum[idx].x *= multiplier;
+    spectrum[idx].y *= multiplier;
+}
+
+/**
+ * @brief Compute analytic signal components from IFFT result
+ */
+__global__ void kernel_compute_analytic_signal(
+    const cufftComplex* __restrict__ analytic,
+    const float* __restrict__ original,
+    float* __restrict__ amplitude,
+    float* __restrict__ phase,
+    float norm_factor,
+    int n)
+{
+    uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= (uint32_t)n) return;
+
+    float re = original[idx];
+    float im = analytic[idx].y * norm_factor;  // Imaginary part is Hilbert transform
+
+    amplitude[idx] = sqrtf(re * re + im * im);
+    phase[idx] = atan2f(im, re);
+}
+
+/**
+ * @brief Full Hilbert transform producing analytic signal
+ */
+int nimcp_hilbert_transform(
+    nimcp_hilbert_ctx_t* ctx,
+    const float* d_signal,
+    nimcp_analytic_signal_t* result)
+{
+    if (!ctx || !d_signal || !result) return -1;
+
+    int n = ctx->signal_length;
+
+    // Copy real signal to complex buffer
+    kernel_real_to_complex<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        d_signal, ctx->d_fft_buffer, n);
+
+    // Forward FFT
+    if (cufftExecC2C(ctx->fft_plan, ctx->d_fft_buffer, ctx->d_fft_buffer, CUFFT_FORWARD) != CUFFT_SUCCESS) {
+        return -1;
+    }
+
+    // Apply Hilbert filter (multiply by H)
+    kernel_hilbert_multiply_h<<<GRID_SIZE(n), BLOCK_SIZE>>>(ctx->d_fft_buffer, n);
+
+    // Inverse FFT
+    if (cufftExecC2C(ctx->fft_plan, ctx->d_fft_buffer, ctx->d_fft_buffer, CUFFT_INVERSE) != CUFFT_SUCCESS) {
+        return -1;
+    }
+
+    // Extract amplitude and phase
+    float norm = 1.0f / (float)n;
+    kernel_compute_analytic_signal<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        ctx->d_fft_buffer, d_signal, result->d_amplitude, result->d_phase, norm, n);
+
+    result->length = n;
+    return 0;
+}
+
+//=============================================================================
 // Phase-Amplitude Coupling (PAC) Kernels
 //=============================================================================
+
+/**
+ * @brief PAC parameters for computation
+ */
+typedef struct nimcp_pac_compute_params {
+    float phase_freq_low;   // Low frequency band for phase
+    float phase_freq_high;
+    float amp_freq_low;     // High frequency band for amplitude
+    float amp_freq_high;
+    float sample_rate;
+    int num_phase_bins;     // For modulation index (typically 18 = 20 degree bins)
+} nimcp_pac_compute_params_t;
+
+/**
+ * @brief PAC result structure
+ */
+typedef struct nimcp_pac_result {
+    float modulation_index; // Overall PAC strength (Tort MI)
+    float* d_phase_amplitude_dist; // Distribution of amplitude over phase bins [num_bins]
+    float mean_vector_length;      // Alternative PAC measure (MVL)
+    float preferred_phase;         // Phase of maximum amplitude
+} nimcp_pac_result_t;
 
 /**
  * @brief Bin amplitudes by phase for PAC modulation index
@@ -586,7 +783,27 @@ __global__ void kernel_pac_bin_amplitudes(
 }
 
 /**
+ * @brief Normalize phase bins and compute mean amplitude per bin
+ */
+__global__ void kernel_pac_normalize_bins(
+    float* __restrict__ phase_bins,
+    const uint32_t* __restrict__ bin_counts,
+    uint32_t n_bins)
+{
+    uint32_t bin = blockIdx.x * blockDim.x + threadIdx.x;
+    if (bin >= n_bins) return;
+
+    if (bin_counts[bin] > 0) {
+        phase_bins[bin] /= (float)bin_counts[bin];
+    } else {
+        phase_bins[bin] = 0.0f;
+    }
+}
+
+/**
  * @brief Compute entropy for PAC modulation index
+ *
+ * H = -sum(p * log(p)) where p is normalized amplitude distribution
  */
 __device__ float device_entropy(float* probs, uint32_t n)
 {
@@ -597,6 +814,276 @@ __device__ float device_entropy(float* probs, uint32_t n)
         }
     }
     return H;
+}
+
+/**
+ * @brief Compute modulation index from amplitude distribution
+ *
+ * MI = (H_max - H) / H_max
+ * where H_max = log(n_bins) for uniform distribution
+ */
+__global__ void kernel_pac_compute_mi(
+    const float* __restrict__ mean_amplitudes,  // [n_bins]
+    float* __restrict__ mi_out,
+    uint32_t n_bins)
+{
+    if (threadIdx.x != 0 || blockIdx.x != 0) return;
+
+    // Normalize amplitudes to create probability distribution
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < n_bins; i++) {
+        sum += mean_amplitudes[i];
+    }
+
+    float probs[36];  // Support up to 36 bins
+    if (n_bins > 36) n_bins = 36;
+
+    if (sum > 1e-10f) {
+        for (uint32_t i = 0; i < n_bins; i++) {
+            probs[i] = mean_amplitudes[i] / sum;
+        }
+    } else {
+        // Uniform distribution
+        for (uint32_t i = 0; i < n_bins; i++) {
+            probs[i] = 1.0f / (float)n_bins;
+        }
+    }
+
+    // Compute entropy
+    float H = 0.0f;
+    for (uint32_t i = 0; i < n_bins; i++) {
+        if (probs[i] > 1e-10f) {
+            H -= probs[i] * logf(probs[i]);
+        }
+    }
+
+    // Maximum entropy for uniform distribution
+    float H_max = logf((float)n_bins);
+
+    // Modulation index
+    float mi = (H_max - H) / H_max;
+    if (mi < 0.0f) mi = 0.0f;
+    if (mi > 1.0f) mi = 1.0f;
+
+    *mi_out = mi;
+}
+
+/**
+ * @brief Compute Mean Vector Length (alternative PAC measure)
+ *
+ * MVL = |mean(amplitude * exp(i * phase))|
+ */
+__global__ void kernel_pac_compute_mvl(
+    const float* __restrict__ phase,
+    const float* __restrict__ amplitude,
+    float* __restrict__ mvl_out,
+    uint32_t n_samples)
+{
+    // Use parallel reduction
+    extern __shared__ float sdata[];
+
+    uint32_t tid = threadIdx.x;
+    uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    float sum_cos = 0.0f;
+    float sum_sin = 0.0f;
+    float sum_amp = 0.0f;
+
+    if (idx < n_samples) {
+        float amp = amplitude[idx];
+        float ph = phase[idx];
+        sum_cos = amp * cosf(ph);
+        sum_sin = amp * sinf(ph);
+        sum_amp = amp;
+    }
+
+    // Store in shared memory
+    sdata[tid * 3 + 0] = sum_cos;
+    sdata[tid * 3 + 1] = sum_sin;
+    sdata[tid * 3 + 2] = sum_amp;
+    __syncthreads();
+
+    // Reduction
+    for (uint32_t s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            sdata[tid * 3 + 0] += sdata[(tid + s) * 3 + 0];
+            sdata[tid * 3 + 1] += sdata[(tid + s) * 3 + 1];
+            sdata[tid * 3 + 2] += sdata[(tid + s) * 3 + 2];
+        }
+        __syncthreads();
+    }
+
+    if (tid == 0) {
+        float total_cos = sdata[0];
+        float total_sin = sdata[1];
+        float total_amp = sdata[2];
+
+        if (total_amp > 1e-10f) {
+            float mvl = sqrtf(total_cos * total_cos + total_sin * total_sin) / total_amp;
+            atomicAdd(mvl_out, mvl);
+        }
+    }
+}
+
+/**
+ * @brief Full PAC computation with Hilbert transform
+ *
+ * Complete pipeline:
+ * 1. Bandpass filter for phase band
+ * 2. Bandpass filter for amplitude band
+ * 3. Hilbert transform to get phase from low freq
+ * 4. Hilbert transform to get amplitude envelope from high freq
+ * 5. Compute modulation index
+ */
+int nimcp_pac_compute(
+    nimcp_gpu_context_t* ctx,
+    const float* d_signal,
+    int signal_length,
+    nimcp_pac_compute_params_t* params,
+    nimcp_pac_result_t* result)
+{
+    if (!ctx || !d_signal || !params || !result) return -1;
+
+    int n = signal_length;
+    int n_bins = params->num_phase_bins;
+    if (n_bins <= 0) n_bins = 18;
+    if (n_bins > 36) n_bins = 36;
+
+    // Allocate filtered signal buffers
+    float *d_phase_filtered, *d_amp_filtered;
+    if (cudaMalloc(&d_phase_filtered, n * sizeof(float)) != cudaSuccess) return -1;
+    if (cudaMalloc(&d_amp_filtered, n * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_phase_filtered);
+        return -1;
+    }
+
+    // Allocate analytic signal buffers
+    float *d_phase_signal, *d_phase_unused;
+    float *d_amp_envelope, *d_amp_phase_unused;
+    if (cudaMalloc(&d_phase_signal, n * sizeof(float)) != cudaSuccess ||
+        cudaMalloc(&d_phase_unused, n * sizeof(float)) != cudaSuccess ||
+        cudaMalloc(&d_amp_envelope, n * sizeof(float)) != cudaSuccess ||
+        cudaMalloc(&d_amp_phase_unused, n * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_phase_filtered);
+        cudaFree(d_amp_filtered);
+        return -1;
+    }
+
+    // Create temporary tensors for bandpass filtering
+    size_t dims[1] = {(size_t)n};
+    nimcp_gpu_tensor_t* signal_tensor = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_tensor_t* phase_filtered_tensor = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_tensor_t* amp_filtered_tensor = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+
+    if (!signal_tensor || !phase_filtered_tensor || !amp_filtered_tensor) {
+        cudaFree(d_phase_filtered);
+        cudaFree(d_amp_filtered);
+        cudaFree(d_phase_signal);
+        cudaFree(d_phase_unused);
+        cudaFree(d_amp_envelope);
+        cudaFree(d_amp_phase_unused);
+        if (signal_tensor) nimcp_gpu_tensor_destroy(signal_tensor);
+        if (phase_filtered_tensor) nimcp_gpu_tensor_destroy(phase_filtered_tensor);
+        if (amp_filtered_tensor) nimcp_gpu_tensor_destroy(amp_filtered_tensor);
+        return -1;
+    }
+
+    // Copy signal to tensor
+    cudaMemcpy(signal_tensor->data, d_signal, n * sizeof(float), cudaMemcpyDeviceToDevice);
+
+    // 1. Bandpass filter for phase band (low frequency)
+    nimcp_gpu_bandpass_filter(ctx, signal_tensor, phase_filtered_tensor,
+                               params->phase_freq_low, params->phase_freq_high,
+                               4, params->sample_rate);
+
+    // 2. Bandpass filter for amplitude band (high frequency)
+    nimcp_gpu_bandpass_filter(ctx, signal_tensor, amp_filtered_tensor,
+                               params->amp_freq_low, params->amp_freq_high,
+                               4, params->sample_rate);
+
+    // Create tensors for Hilbert transform outputs
+    nimcp_gpu_tensor_t* phase_out = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_tensor_t* amp_out = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+
+    if (!phase_out || !amp_out) {
+        nimcp_gpu_tensor_destroy(signal_tensor);
+        nimcp_gpu_tensor_destroy(phase_filtered_tensor);
+        nimcp_gpu_tensor_destroy(amp_filtered_tensor);
+        if (phase_out) nimcp_gpu_tensor_destroy(phase_out);
+        if (amp_out) nimcp_gpu_tensor_destroy(amp_out);
+        cudaFree(d_phase_filtered);
+        cudaFree(d_amp_filtered);
+        cudaFree(d_phase_signal);
+        cudaFree(d_phase_unused);
+        cudaFree(d_amp_envelope);
+        cudaFree(d_amp_phase_unused);
+        return -1;
+    }
+
+    // 3. Extract phase from low-frequency signal
+    nimcp_gpu_hilbert_phase(ctx, phase_filtered_tensor, phase_out);
+
+    // 4. Extract amplitude envelope from high-frequency signal
+    nimcp_gpu_hilbert_amplitude(ctx, amp_filtered_tensor, amp_out);
+
+    // 5. Compute PAC modulation index
+    float *d_phase_bins;
+    uint32_t *d_bin_counts;
+    float *d_mi;
+    cudaMalloc(&d_phase_bins, n_bins * sizeof(float));
+    cudaMalloc(&d_bin_counts, n_bins * sizeof(uint32_t));
+    cudaMalloc(&d_mi, sizeof(float));
+    cudaMemset(d_phase_bins, 0, n_bins * sizeof(float));
+    cudaMemset(d_bin_counts, 0, n_bins * sizeof(uint32_t));
+    cudaMemset(d_mi, 0, sizeof(float));
+
+    // Bin amplitudes by phase
+    kernel_pac_bin_amplitudes<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        (float*)phase_out->data, (float*)amp_out->data,
+        d_phase_bins, d_bin_counts, n, n_bins);
+
+    // Normalize bins
+    kernel_pac_normalize_bins<<<GRID_SIZE(n_bins), BLOCK_SIZE>>>(
+        d_phase_bins, d_bin_counts, n_bins);
+
+    // Compute modulation index
+    kernel_pac_compute_mi<<<1, 1>>>(d_phase_bins, d_mi, n_bins);
+
+    // Copy result to output
+    cudaMemcpy(&result->modulation_index, d_mi, sizeof(float), cudaMemcpyDeviceToHost);
+
+    // Copy distribution if requested
+    if (result->d_phase_amplitude_dist) {
+        cudaMemcpy(result->d_phase_amplitude_dist, d_phase_bins,
+                   n_bins * sizeof(float), cudaMemcpyDeviceToDevice);
+    }
+
+    // Compute MVL as alternative measure
+    float *d_mvl;
+    cudaMalloc(&d_mvl, sizeof(float));
+    cudaMemset(d_mvl, 0, sizeof(float));
+    kernel_pac_compute_mvl<<<GRID_SIZE(n), BLOCK_SIZE, BLOCK_SIZE * 3 * sizeof(float)>>>(
+        (float*)phase_out->data, (float*)amp_out->data, d_mvl, n);
+    cudaMemcpy(&result->mean_vector_length, d_mvl, sizeof(float), cudaMemcpyDeviceToHost);
+    cudaFree(d_mvl);
+
+    // Cleanup
+    cudaFree(d_phase_bins);
+    cudaFree(d_bin_counts);
+    cudaFree(d_mi);
+    cudaFree(d_phase_filtered);
+    cudaFree(d_amp_filtered);
+    cudaFree(d_phase_signal);
+    cudaFree(d_phase_unused);
+    cudaFree(d_amp_envelope);
+    cudaFree(d_amp_phase_unused);
+    nimcp_gpu_tensor_destroy(signal_tensor);
+    nimcp_gpu_tensor_destroy(phase_filtered_tensor);
+    nimcp_gpu_tensor_destroy(amp_filtered_tensor);
+    nimcp_gpu_tensor_destroy(phase_out);
+    nimcp_gpu_tensor_destroy(amp_out);
+
+    return 0;
 }
 
 bool nimcp_gpu_pac_modulation_index(
@@ -612,35 +1099,40 @@ bool nimcp_gpu_pac_modulation_index(
 
     uint32_t n_samples = (uint32_t)signal->numel;
     uint32_t n_bins = (uint32_t)params->n_phase_bins;
+    if (n_bins == 0) n_bins = 18;
 
-    // For full PAC, we need bandpass filtered signals to extract phase and amplitude
-    // This is a simplified implementation that assumes pre-filtered inputs
-    // In practice, you would:
-    // 1. Bandpass filter signal at phase_freq -> extract phase via Hilbert
-    // 2. Bandpass filter signal at amp_freq -> extract amplitude via Hilbert
-    // 3. Bin amplitudes by phase
-    // 4. Compute modulation index from amplitude distribution entropy
+    // Set up PAC compute parameters
+    nimcp_pac_compute_params_t pac_params;
+    pac_params.phase_freq_low = params->phase_freq_low;
+    pac_params.phase_freq_high = params->phase_freq_high;
+    pac_params.amp_freq_low = params->amp_freq_low;
+    pac_params.amp_freq_high = params->amp_freq_high;
+    pac_params.sample_rate = 1000.0f;  // Default, should be passed in params
+    pac_params.num_phase_bins = n_bins;
 
-    // Allocate temporary buffers
-    float *d_phase_bins;
-    uint32_t *d_bin_counts;
-    CUDA_CHECK(cudaMalloc(&d_phase_bins, n_bins * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_bin_counts, n_bins * sizeof(uint32_t)));
-    CUDA_CHECK(cudaMemset(d_phase_bins, 0, n_bins * sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_bin_counts, 0, n_bins * sizeof(uint32_t)));
+    // Set up result
+    nimcp_pac_result_t result;
+    result.modulation_index = 0.0f;
+    result.d_phase_amplitude_dist = NULL;
+    result.mean_vector_length = 0.0f;
 
-    // For now, compute a placeholder PAC value (actual implementation needs Hilbert transform)
-    // Store result
-    float h_pac = 0.0f;
-    CUDA_CHECK(cudaMemcpy(pac_values->data, &h_pac, sizeof(float), cudaMemcpyHostToDevice));
+    // Run full PAC computation
+    int ret = nimcp_pac_compute(ctx, (const float*)signal->data, n_samples, &pac_params, &result);
 
-    // Cleanup
-    cudaFree(d_phase_bins);
-    cudaFree(d_bin_counts);
+    if (ret == 0) {
+        // Store modulation index
+        CUDA_CHECK(cudaMemcpy(pac_values->data, &result.modulation_index,
+                              sizeof(float), cudaMemcpyHostToDevice));
+        LOG_DEBUG("PAC modulation index: %.4f, MVL: %.4f",
+                  result.modulation_index, result.mean_vector_length);
+    } else {
+        float zero = 0.0f;
+        CUDA_CHECK(cudaMemcpy(pac_values->data, &zero, sizeof(float), cudaMemcpyHostToDevice));
+        LOG_WARN("PAC computation failed, returning zero");
+    }
 
-    LOG_DEBUG("PAC modulation index computed (placeholder)");
     CUDA_CHECK(cudaGetLastError());
-    return true;
+    return ret == 0;
 }
 
 //=============================================================================

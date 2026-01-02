@@ -611,6 +611,157 @@ NIMCP_EXPORT bool nimcp_lnn_layer_gpu_forward_sequence(
     size_t seq_len
 );
 
+//=============================================================================
+// CSR Weight Transfer API
+//=============================================================================
+
+/**
+ * @brief CSR (Compressed Sparse Row) weight matrix for GPU
+ *
+ * WHAT: Sparse matrix representation for efficient GPU computation
+ * WHY:  LNN/NCP networks often have sparse connectivity (>90% sparsity)
+ * HOW:  CSR format stores row pointers, column indices, and values
+ *
+ * Memory layout:
+ * - d_row_offsets[rows+1]: Start/end indices for each row in col_indices/values
+ * - d_col_indices[nnz]: Column index for each non-zero element
+ * - d_values[nnz]: Value of each non-zero element
+ */
+typedef struct nimcp_lnn_csr_weights {
+    int* d_row_offsets;     /**< GPU: Row offset pointers [rows+1] */
+    int* d_col_indices;     /**< GPU: Column indices [nnz] */
+    float* d_values;        /**< GPU: Non-zero values [nnz] */
+    size_t nnz;             /**< Number of non-zero elements */
+    size_t rows;            /**< Number of rows */
+    size_t cols;            /**< Number of columns */
+} nimcp_lnn_csr_weights_t;
+
+/**
+ * @brief Create CSR weight structure on GPU
+ *
+ * @param ctx GPU context
+ * @param rows Number of rows
+ * @param cols Number of columns
+ * @param nnz Number of non-zero elements
+ * @return New CSR structure, or NULL on failure
+ */
+NIMCP_EXPORT nimcp_lnn_csr_weights_t* nimcp_lnn_csr_create(void* ctx, size_t rows, size_t cols, size_t nnz);
+
+/**
+ * @brief Destroy CSR weight structure
+ *
+ * @param csr CSR structure to destroy
+ */
+NIMCP_EXPORT void nimcp_lnn_csr_destroy(nimcp_lnn_csr_weights_t* csr);
+
+/**
+ * @brief Transfer CSR data from host to GPU
+ *
+ * @param csr CSR structure with allocated GPU memory
+ * @param h_row_offsets Host row offsets [rows+1]
+ * @param h_col_indices Host column indices [nnz]
+ * @param h_values Host values [nnz]
+ * @return 0 on success, -1 on error
+ */
+NIMCP_EXPORT int nimcp_lnn_csr_to_gpu(nimcp_lnn_csr_weights_t* csr,
+                                      const int* h_row_offsets,
+                                      const int* h_col_indices,
+                                      const float* h_values);
+
+/**
+ * @brief Transfer CSR data from GPU to host
+ *
+ * @param csr CSR structure with GPU data
+ * @param h_row_offsets Host buffer for row offsets [rows+1]
+ * @param h_col_indices Host buffer for column indices [nnz]
+ * @param h_values Host buffer for values [nnz]
+ * @return 0 on success, -1 on error
+ */
+NIMCP_EXPORT int nimcp_lnn_csr_from_gpu(nimcp_lnn_csr_weights_t* csr,
+                                        int* h_row_offsets,
+                                        int* h_col_indices,
+                                        float* h_values);
+
+/**
+ * @brief Sparse matrix-vector multiplication: y = A * x
+ *
+ * WHAT: Compute y = CSR_matrix * x on GPU
+ * WHY:  Core operation for sparse LNN forward pass
+ * HOW:  CUDA kernel with one thread per row
+ *
+ * @param csr CSR matrix structure
+ * @param x Input vector (GPU pointer) [cols]
+ * @param y Output vector (GPU pointer) [rows]
+ * @return 0 on success, -1 on error
+ */
+NIMCP_EXPORT int nimcp_lnn_csr_spmv(nimcp_lnn_csr_weights_t* csr, const float* x, float* y);
+
+//=============================================================================
+// Spectral Radius API
+//=============================================================================
+
+/**
+ * @brief Configuration for spectral radius computation
+ *
+ * WHAT: Parameters for power iteration algorithm
+ * WHY:  Control convergence and precision of eigenvalue estimation
+ * HOW:  Iterative power method with configurable stopping criteria
+ */
+typedef struct nimcp_lnn_spectral_config {
+    int max_iterations;     /**< Maximum power iterations (default: 100) */
+    float tolerance;        /**< Convergence tolerance (default: 1e-6) */
+    float target_radius;    /**< Target spectral radius for rescaling */
+} nimcp_lnn_spectral_config_t;
+
+/**
+ * @brief Compute spectral radius of a weight matrix
+ *
+ * WHAT: Estimate the largest eigenvalue magnitude via power iteration
+ * WHY:  Spectral radius controls stability of recurrent dynamics
+ * HOW:  GPU-accelerated power iteration with convergence check
+ *
+ * The spectral radius rho(A) is the maximum absolute eigenvalue:
+ *   rho(A) = max{|lambda_i|} for all eigenvalues lambda_i
+ *
+ * For LNN stability:
+ * - rho < 1: Dynamics decay (vanishing gradients)
+ * - rho = 1: Critical dynamics (edge of chaos)
+ * - rho > 1: Dynamics explode (exploding gradients)
+ *
+ * @param ctx GPU context
+ * @param weight_matrix Dense weight matrix [n x n] (host pointer)
+ * @param n Matrix dimension
+ * @param config Power iteration configuration
+ * @return Spectral radius (>= 0), or -1.0 on error
+ */
+NIMCP_EXPORT float nimcp_lnn_compute_spectral_radius(void* ctx,
+                                                     const float* weight_matrix,
+                                                     size_t n,
+                                                     nimcp_lnn_spectral_config_t* config);
+
+/**
+ * @brief Rescale weight matrix to target spectral radius
+ *
+ * WHAT: Scale matrix so that rho(A) = target_radius
+ * WHY:  Initialize LNN weights for optimal gradient flow
+ * HOW:  A_new = A * (target_radius / current_radius)
+ *
+ * Common target values:
+ * - 0.9: Stable, slightly contracting dynamics
+ * - 1.0: Edge of chaos (maximal information capacity)
+ * - 0.99: Near-critical, stable for long sequences
+ *
+ * @param ctx GPU context
+ * @param weight_matrix Dense weight matrix [n x n] (host pointer, modified in-place)
+ * @param n Matrix dimension
+ * @param target_radius Desired spectral radius
+ * @return 0 on success, -1 on error
+ */
+NIMCP_EXPORT int nimcp_lnn_rescale_to_spectral_radius(void* ctx,
+                                                      float* weight_matrix,
+                                                      size_t n,
+                                                      float target_radius);
+
 #ifdef __cplusplus
 }
 #endif

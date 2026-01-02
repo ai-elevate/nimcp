@@ -191,9 +191,11 @@ __global__ void kernel_generate_window(
 }
 
 /**
- * @brief Apply window function to frames
+ * @brief Apply window function to frames (speech cortex specific)
+ *
+ * Note: Renamed from kernel_apply_window to avoid duplicate symbol with audio_kernels
  */
-__global__ void kernel_apply_window(
+__global__ void kernel_speech_cortex_apply_window(
     const float* __restrict__ input,
     float* __restrict__ output,
     const float* __restrict__ window,

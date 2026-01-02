@@ -38,6 +38,7 @@ if(CUDAToolkit_FOUND)
 
     # GPU SNN and LNN kernel tests
     add_gpu_test(test_snn_kernels)
+    add_gpu_test(test_snn_triplet_stdp_gpu)
     add_gpu_test(test_lnn_kernels)
     add_gpu_test(test_lnn_ode_kernels)
 
@@ -97,6 +98,24 @@ if(CUDAToolkit_FOUND)
 
     # GPU Ternary kernel tests (2-bit packing, no-multiply GEMM, quantization)
     add_gpu_test(test_ternary_kernels)
+
+    # GPU Perception kernel tests (atan2, optical flow, STFT, batched matmul)
+    add_gpu_test(test_perception_gpu)
+
+    # GPU LNN Enhancement tests (gradient DAO, CSR weights, spectral radius)
+    add_gpu_test(test_lnn_enhancements_gpu)
+
+    # GPU Speech and Oscillations kernel tests (LPC, Levinson-Durbin, Hilbert, PAC)
+    add_gpu_test(test_speech_oscillations_gpu)
+
+    # GPU CNN Backward Pass tests (im2col, col2im, layer norm, instance norm)
+    add_gpu_test(test_cnn_backward_gpu)
+
+    # GPU Swarm Radix Sort, Tensor Axis Reduction, and Enhanced Myelin tests
+    add_gpu_test(test_swarm_tensor_myelin_gpu)
+
+    # GPU Graph kernel tests (CSR graph, BFS, clustering, centrality, DAO, GraphQL)
+    add_gpu_test(test_graph_gpu)
 else()
     message(STATUS "  Skipping CUDA kernel tests (CUDA toolkit not found)")
 endif()

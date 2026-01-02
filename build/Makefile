@@ -19009,6 +19009,19 @@ unit_gpu_test_snn_kernels/fast:
 .PHONY : unit_gpu_test_snn_kernels/fast
 
 #=============================================================================
+# Target rules for targets named unit_gpu_test_snn_triplet_stdp_gpu
+
+# Build rule for target.
+unit_gpu_test_snn_triplet_stdp_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_snn_triplet_stdp_gpu
+.PHONY : unit_gpu_test_snn_triplet_stdp_gpu
+
+# fast build rule for target.
+unit_gpu_test_snn_triplet_stdp_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_snn_triplet_stdp_gpu.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_snn_triplet_stdp_gpu.dir/build
+.PHONY : unit_gpu_test_snn_triplet_stdp_gpu/fast
+
+#=============================================================================
 # Target rules for targets named unit_gpu_test_lnn_kernels
 
 # Build rule for target.
@@ -19280,6 +19293,84 @@ unit_gpu_test_ternary_kernels: cmake_check_build_system
 unit_gpu_test_ternary_kernels/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_ternary_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_ternary_kernels.dir/build
 .PHONY : unit_gpu_test_ternary_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_perception_gpu
+
+# Build rule for target.
+unit_gpu_test_perception_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_perception_gpu
+.PHONY : unit_gpu_test_perception_gpu
+
+# fast build rule for target.
+unit_gpu_test_perception_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_perception_gpu.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_perception_gpu.dir/build
+.PHONY : unit_gpu_test_perception_gpu/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_lnn_enhancements_gpu
+
+# Build rule for target.
+unit_gpu_test_lnn_enhancements_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_lnn_enhancements_gpu
+.PHONY : unit_gpu_test_lnn_enhancements_gpu
+
+# fast build rule for target.
+unit_gpu_test_lnn_enhancements_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_lnn_enhancements_gpu.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_lnn_enhancements_gpu.dir/build
+.PHONY : unit_gpu_test_lnn_enhancements_gpu/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_speech_oscillations_gpu
+
+# Build rule for target.
+unit_gpu_test_speech_oscillations_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_speech_oscillations_gpu
+.PHONY : unit_gpu_test_speech_oscillations_gpu
+
+# fast build rule for target.
+unit_gpu_test_speech_oscillations_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_speech_oscillations_gpu.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_speech_oscillations_gpu.dir/build
+.PHONY : unit_gpu_test_speech_oscillations_gpu/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_cnn_backward_gpu
+
+# Build rule for target.
+unit_gpu_test_cnn_backward_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_cnn_backward_gpu
+.PHONY : unit_gpu_test_cnn_backward_gpu
+
+# fast build rule for target.
+unit_gpu_test_cnn_backward_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_cnn_backward_gpu.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_cnn_backward_gpu.dir/build
+.PHONY : unit_gpu_test_cnn_backward_gpu/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_swarm_tensor_myelin_gpu
+
+# Build rule for target.
+unit_gpu_test_swarm_tensor_myelin_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_swarm_tensor_myelin_gpu
+.PHONY : unit_gpu_test_swarm_tensor_myelin_gpu
+
+# fast build rule for target.
+unit_gpu_test_swarm_tensor_myelin_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_swarm_tensor_myelin_gpu.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_swarm_tensor_myelin_gpu.dir/build
+.PHONY : unit_gpu_test_swarm_tensor_myelin_gpu/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_graph_gpu
+
+# Build rule for target.
+unit_gpu_test_graph_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_graph_gpu
+.PHONY : unit_gpu_test_graph_gpu
+
+# fast build rule for target.
+unit_gpu_test_graph_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_graph_gpu.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_graph_gpu.dir/build
+.PHONY : unit_gpu_test_graph_gpu/fast
 
 #=============================================================================
 # Target rules for targets named unit_gpu_immune_execution
@@ -22866,13 +22957,16 @@ help:
 	@echo "... unit_gpu_immune_multigpu"
 	@echo "... unit_gpu_spike_event_unit_spike_event_test_amplitude_validation"
 	@echo "... unit_gpu_test_axon_gpu"
+	@echo "... unit_gpu_test_cnn_backward_gpu"
 	@echo "... unit_gpu_test_dendrite_gpu"
 	@echo "... unit_gpu_test_dragonfly_vision_kernels"
 	@echo "... unit_gpu_test_emotion_kernels"
 	@echo "... unit_gpu_test_execution_mode"
 	@echo "... unit_gpu_test_gpu_neuron"
+	@echo "... unit_gpu_test_graph_gpu"
 	@echo "... unit_gpu_test_inference_kernels"
 	@echo "... unit_gpu_test_knowledge_graph_kernels"
+	@echo "... unit_gpu_test_lnn_enhancements_gpu"
 	@echo "... unit_gpu_test_lnn_kernels"
 	@echo "... unit_gpu_test_lnn_ode_kernels"
 	@echo "... unit_gpu_test_memory_consolidation_kernels"
@@ -22881,6 +22975,7 @@ help:
 	@echo "... unit_gpu_test_network_detect"
 	@echo "... unit_gpu_test_neuromodulator_kernels"
 	@echo "... unit_gpu_test_oscillations_kernels"
+	@echo "... unit_gpu_test_perception_gpu"
 	@echo "... unit_gpu_test_plasticity_kernels"
 	@echo "... unit_gpu_test_portia_kernels"
 	@echo "... unit_gpu_test_quantum_kernels"
@@ -22889,9 +22984,12 @@ help:
 	@echo "... unit_gpu_test_simd_detect"
 	@echo "... unit_gpu_test_sleep_kernels"
 	@echo "... unit_gpu_test_snn_kernels"
+	@echo "... unit_gpu_test_snn_triplet_stdp_gpu"
+	@echo "... unit_gpu_test_speech_oscillations_gpu"
 	@echo "... unit_gpu_test_spike_event"
 	@echo "... unit_gpu_test_substrate_gpu"
 	@echo "... unit_gpu_test_swarm_kernels"
+	@echo "... unit_gpu_test_swarm_tensor_myelin_gpu"
 	@echo "... unit_gpu_test_synapse_kernels"
 	@echo "... unit_gpu_test_tensor_kernels"
 	@echo "... unit_gpu_test_ternary_kernels"

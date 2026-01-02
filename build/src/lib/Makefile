@@ -16577,6 +16577,78 @@ __/gpu/glial/nimcp_myelin_gpu.cu.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/glial/nimcp_myelin_gpu.cu.s
 .PHONY : __/gpu/glial/nimcp_myelin_gpu.cu.s
 
+__/gpu/graph/nimcp_graph_dao.o: __/gpu/graph/nimcp_graph_dao.c.o
+.PHONY : __/gpu/graph/nimcp_graph_dao.o
+
+# target to build an object file
+__/gpu/graph/nimcp_graph_dao.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/graph/nimcp_graph_dao.c.o
+.PHONY : __/gpu/graph/nimcp_graph_dao.c.o
+
+__/gpu/graph/nimcp_graph_dao.i: __/gpu/graph/nimcp_graph_dao.c.i
+.PHONY : __/gpu/graph/nimcp_graph_dao.i
+
+# target to preprocess a source file
+__/gpu/graph/nimcp_graph_dao.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/graph/nimcp_graph_dao.c.i
+.PHONY : __/gpu/graph/nimcp_graph_dao.c.i
+
+__/gpu/graph/nimcp_graph_dao.s: __/gpu/graph/nimcp_graph_dao.c.s
+.PHONY : __/gpu/graph/nimcp_graph_dao.s
+
+# target to generate assembly for a file
+__/gpu/graph/nimcp_graph_dao.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/graph/nimcp_graph_dao.c.s
+.PHONY : __/gpu/graph/nimcp_graph_dao.c.s
+
+__/gpu/graph/nimcp_graph_kernels.o: __/gpu/graph/nimcp_graph_kernels.cu.o
+.PHONY : __/gpu/graph/nimcp_graph_kernels.o
+
+# target to build an object file
+__/gpu/graph/nimcp_graph_kernels.cu.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/graph/nimcp_graph_kernels.cu.o
+.PHONY : __/gpu/graph/nimcp_graph_kernels.cu.o
+
+__/gpu/graph/nimcp_graph_kernels.i: __/gpu/graph/nimcp_graph_kernels.cu.i
+.PHONY : __/gpu/graph/nimcp_graph_kernels.i
+
+# target to preprocess a source file
+__/gpu/graph/nimcp_graph_kernels.cu.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/graph/nimcp_graph_kernels.cu.i
+.PHONY : __/gpu/graph/nimcp_graph_kernels.cu.i
+
+__/gpu/graph/nimcp_graph_kernels.s: __/gpu/graph/nimcp_graph_kernels.cu.s
+.PHONY : __/gpu/graph/nimcp_graph_kernels.s
+
+# target to generate assembly for a file
+__/gpu/graph/nimcp_graph_kernels.cu.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/graph/nimcp_graph_kernels.cu.s
+.PHONY : __/gpu/graph/nimcp_graph_kernels.cu.s
+
+__/gpu/graphql/nimcp_graphql_utils.o: __/gpu/graphql/nimcp_graphql_utils.c.o
+.PHONY : __/gpu/graphql/nimcp_graphql_utils.o
+
+# target to build an object file
+__/gpu/graphql/nimcp_graphql_utils.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/graphql/nimcp_graphql_utils.c.o
+.PHONY : __/gpu/graphql/nimcp_graphql_utils.c.o
+
+__/gpu/graphql/nimcp_graphql_utils.i: __/gpu/graphql/nimcp_graphql_utils.c.i
+.PHONY : __/gpu/graphql/nimcp_graphql_utils.i
+
+# target to preprocess a source file
+__/gpu/graphql/nimcp_graphql_utils.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/graphql/nimcp_graphql_utils.c.i
+.PHONY : __/gpu/graphql/nimcp_graphql_utils.c.i
+
+__/gpu/graphql/nimcp_graphql_utils.s: __/gpu/graphql/nimcp_graphql_utils.c.s
+.PHONY : __/gpu/graphql/nimcp_graphql_utils.s
+
+# target to generate assembly for a file
+__/gpu/graphql/nimcp_graphql_utils.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/graphql/nimcp_graphql_utils.c.s
+.PHONY : __/gpu/graphql/nimcp_graphql_utils.c.s
+
 __/gpu/immune/nimcp_gpu_execution_immune_bridge.o: __/gpu/immune/nimcp_gpu_execution_immune_bridge.c.o
 .PHONY : __/gpu/immune/nimcp_gpu_execution_immune_bridge.o
 
@@ -16672,6 +16744,30 @@ __/gpu/knowledge/nimcp_knowledge_graph_kernels.s: __/gpu/knowledge/nimcp_knowled
 __/gpu/knowledge/nimcp_knowledge_graph_kernels.cu.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/knowledge/nimcp_knowledge_graph_kernels.cu.s
 .PHONY : __/gpu/knowledge/nimcp_knowledge_graph_kernels.cu.s
+
+__/gpu/lnn/nimcp_lnn_gradient_dao.o: __/gpu/lnn/nimcp_lnn_gradient_dao.c.o
+.PHONY : __/gpu/lnn/nimcp_lnn_gradient_dao.o
+
+# target to build an object file
+__/gpu/lnn/nimcp_lnn_gradient_dao.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/lnn/nimcp_lnn_gradient_dao.c.o
+.PHONY : __/gpu/lnn/nimcp_lnn_gradient_dao.c.o
+
+__/gpu/lnn/nimcp_lnn_gradient_dao.i: __/gpu/lnn/nimcp_lnn_gradient_dao.c.i
+.PHONY : __/gpu/lnn/nimcp_lnn_gradient_dao.i
+
+# target to preprocess a source file
+__/gpu/lnn/nimcp_lnn_gradient_dao.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/lnn/nimcp_lnn_gradient_dao.c.i
+.PHONY : __/gpu/lnn/nimcp_lnn_gradient_dao.c.i
+
+__/gpu/lnn/nimcp_lnn_gradient_dao.s: __/gpu/lnn/nimcp_lnn_gradient_dao.c.s
+.PHONY : __/gpu/lnn/nimcp_lnn_gradient_dao.s
+
+# target to generate assembly for a file
+__/gpu/lnn/nimcp_lnn_gradient_dao.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/lnn/nimcp_lnn_gradient_dao.c.s
+.PHONY : __/gpu/lnn/nimcp_lnn_gradient_dao.c.s
 
 __/gpu/lnn/nimcp_lnn_kernels.o: __/gpu/lnn/nimcp_lnn_kernels.cu.o
 .PHONY : __/gpu/lnn/nimcp_lnn_kernels.o
@@ -30592,6 +30688,15 @@ help:
 	@echo "... __/gpu/glial/nimcp_myelin_gpu.o"
 	@echo "... __/gpu/glial/nimcp_myelin_gpu.i"
 	@echo "... __/gpu/glial/nimcp_myelin_gpu.s"
+	@echo "... __/gpu/graph/nimcp_graph_dao.o"
+	@echo "... __/gpu/graph/nimcp_graph_dao.i"
+	@echo "... __/gpu/graph/nimcp_graph_dao.s"
+	@echo "... __/gpu/graph/nimcp_graph_kernels.o"
+	@echo "... __/gpu/graph/nimcp_graph_kernels.i"
+	@echo "... __/gpu/graph/nimcp_graph_kernels.s"
+	@echo "... __/gpu/graphql/nimcp_graphql_utils.o"
+	@echo "... __/gpu/graphql/nimcp_graphql_utils.i"
+	@echo "... __/gpu/graphql/nimcp_graphql_utils.s"
 	@echo "... __/gpu/immune/nimcp_gpu_execution_immune_bridge.o"
 	@echo "... __/gpu/immune/nimcp_gpu_execution_immune_bridge.i"
 	@echo "... __/gpu/immune/nimcp_gpu_execution_immune_bridge.s"
@@ -30604,6 +30709,9 @@ help:
 	@echo "... __/gpu/knowledge/nimcp_knowledge_graph_kernels.o"
 	@echo "... __/gpu/knowledge/nimcp_knowledge_graph_kernels.i"
 	@echo "... __/gpu/knowledge/nimcp_knowledge_graph_kernels.s"
+	@echo "... __/gpu/lnn/nimcp_lnn_gradient_dao.o"
+	@echo "... __/gpu/lnn/nimcp_lnn_gradient_dao.i"
+	@echo "... __/gpu/lnn/nimcp_lnn_gradient_dao.s"
 	@echo "... __/gpu/lnn/nimcp_lnn_kernels.o"
 	@echo "... __/gpu/lnn/nimcp_lnn_kernels.i"
 	@echo "... __/gpu/lnn/nimcp_lnn_kernels.s"

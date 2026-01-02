@@ -3022,6 +3022,7 @@
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_tensor_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_training_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_snn_kernels.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_snn_triplet_stdp_gpu.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_lnn_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_lnn_ode_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_swarm_kernels.dir
@@ -3043,6 +3044,12 @@
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_sleep_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_regions_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_ternary_kernels.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_perception_gpu.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_lnn_enhancements_gpu.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_speech_oscillations_gpu.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_cnn_backward_gpu.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_swarm_tensor_myelin_gpu.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_graph_gpu.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/rebuild_cache.dir

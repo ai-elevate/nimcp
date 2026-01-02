@@ -1233,8 +1233,35 @@ bool nimcp_gpu_lnn_accumulate_gradients(
         return false;
     }
 
-    // TODO: Full gradient accumulation implementation
-    LOG_DEBUG("Accumulating LNN gradients (simplified)");
+    size_t n = layer->n_neurons;
+    size_t d = layer->n_inputs;
+
+    // Accumulate gradients using cuBLAS SGER (rank-1 update): A += alpha * x * y^T
+    float alpha = dt;
+
+    // grad_W_in += dt * outer(adjoint, input) if W_in gradients exist
+    // For now, use kernel-based accumulation since we have dedicated gradient kernels
+    // This integrates with the gradient DAO pattern
+
+    // Accumulate gradients into layer's W_rec gradient buffer via outer product
+    // grad_W_rec += dt * adjoint * x^T
+    if (layer->W_rec) {
+        cublasSger(handle, n, n, &alpha,
+                   (const float*)adjoint->data, 1,
+                   (const float*)x_at_t->data, 1,
+                   (float*)layer->W_rec->data, n);
+    }
+
+    // Accumulate input weight gradients
+    // grad_W_in += dt * adjoint * input^T
+    if (layer->W_in && input_at_t) {
+        cublasSger(handle, n, d, &alpha,
+                   (const float*)adjoint->data, 1,
+                   (const float*)input_at_t->data, 1,
+                   (float*)layer->W_in->data, n);
+    }
+
+    LOG_DEBUG("Accumulated LNN gradients via cuBLAS SGER");
 
     return true;
 }
@@ -1289,11 +1316,43 @@ nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
         layer->b_tau = nimcp_gpu_tensor_from_cpu(ctx, cpu_layer->b_tau);
     }
 
-    // Handle sparse wiring
-    if (cpu_layer->wiring) {
-        layer->n_edges = cpu_layer->wiring->n_edges;
-        // Copy CSR structure to GPU
-        // TODO: Implement CSR GPU transfer
+    // Handle sparse wiring - transfer CSR structure to GPU
+    if (cpu_layer->wiring && cpu_layer->wiring->n_edges > 0) {
+        const lnn_wiring_t* wiring = cpu_layer->wiring;
+        layer->n_edges = wiring->n_edges;
+
+        // Copy row pointers (n_neurons + 1 elements)
+        if (wiring->row_ptr) {
+            size_t row_ptr_dims[] = {layer->n_neurons + 1};
+            layer->row_ptr = nimcp_gpu_tensor_create(ctx, row_ptr_dims, 1, NIMCP_GPU_PRECISION_UINT32);
+            if (layer->row_ptr) {
+                cudaMemcpy(layer->row_ptr->data, wiring->row_ptr,
+                           (layer->n_neurons + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice);
+            }
+        }
+
+        // Copy column indices (n_edges elements)
+        if (wiring->col_idx) {
+            size_t col_idx_dims[] = {wiring->n_edges};
+            layer->col_idx = nimcp_gpu_tensor_create(ctx, col_idx_dims, 1, NIMCP_GPU_PRECISION_UINT32);
+            if (layer->col_idx) {
+                cudaMemcpy(layer->col_idx->data, wiring->col_idx,
+                           wiring->n_edges * sizeof(uint32_t), cudaMemcpyHostToDevice);
+            }
+        }
+
+        // Copy edge weights if present (n_edges elements)
+        if (wiring->edge_weights) {
+            size_t edge_dims[] = {wiring->n_edges};
+            layer->edge_weights = nimcp_gpu_tensor_create(ctx, edge_dims, 1, NIMCP_GPU_PRECISION_FP32);
+            if (layer->edge_weights) {
+                cudaMemcpy(layer->edge_weights->data, wiring->edge_weights,
+                           wiring->n_edges * sizeof(float), cudaMemcpyHostToDevice);
+            }
+        }
+
+        LOG_DEBUG("Transferred CSR wiring to GPU: %u edges, sparsity=%.2f",
+                  wiring->n_edges, wiring->sparsity);
     }
 
     LOG_DEBUG("Created GPU LNN layer with %u neurons, %u inputs", layer->n_neurons, layer->n_inputs);
@@ -1726,6 +1785,496 @@ bool nimcp_lnn_layer_gpu_forward_sequence(
 
     return true;
 }
+
+//=============================================================================
+// Gradient Accumulation CUDA Kernels
+//=============================================================================
+
+/**
+ * @brief Accumulate gradients: accumulated += scale * new_grad
+ */
+__global__ void kernel_accumulate_gradients(float* accumulated, const float* new_grad,
+                                            size_t n, float scale)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        accumulated[idx] += scale * new_grad[idx];
+    }
+}
+
+/**
+ * @brief Clip gradients to [-clip_value, clip_value]
+ */
+__global__ void kernel_clip_gradients(float* grads, size_t n, float clip_value)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        float val = grads[idx];
+        if (val > clip_value) {
+            grads[idx] = clip_value;
+        } else if (val < -clip_value) {
+            grads[idx] = -clip_value;
+        }
+    }
+}
+
+/**
+ * @brief Compute sum of squares for L2 norm (reduction kernel)
+ */
+__global__ void kernel_sum_squares_reduce(const float* data, float* result, size_t n)
+{
+    extern __shared__ float sdata[];
+
+    size_t tid = threadIdx.x;
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Load and square
+    sdata[tid] = (idx < n) ? data[idx] * data[idx] : 0.0f;
+    __syncthreads();
+
+    // Parallel reduction for sum
+    for (size_t s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            sdata[tid] += sdata[tid + s];
+        }
+        __syncthreads();
+    }
+
+    // Write result from first thread
+    if (tid == 0) {
+        atomicAdd(result, sdata[0]);
+    }
+}
+
+/**
+ * @brief Normalize gradients by dividing by norm
+ */
+__global__ void kernel_normalize_gradients(float* grads, size_t n, float norm)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n && norm > 1e-8f) {
+        grads[idx] /= norm;
+    }
+}
+
+/**
+ * @brief Apply gradients to weights: weights -= lr * grads
+ */
+__global__ void kernel_apply_gradients(float* weights, const float* grads,
+                                       size_t n, float learning_rate)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        weights[idx] -= learning_rate * grads[idx];
+    }
+}
+
+/**
+ * @brief Reset gradients to zero
+ */
+__global__ void kernel_reset_gradients(float* grads, size_t n)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        grads[idx] = 0.0f;
+    }
+}
+
+// External C functions for gradient DAO
+extern "C" {
+
+void nimcp_lnn_gradient_accumulate_gpu(void* d_accumulated, const void* d_new_grad,
+                                        size_t n, float scale)
+{
+    kernel_accumulate_gradients<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        (float*)d_accumulated, (const float*)d_new_grad, n, scale);
+    cudaDeviceSynchronize();
+}
+
+void nimcp_lnn_gradient_clip_gpu(void* d_grads, size_t n, float clip_value)
+{
+    kernel_clip_gradients<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        (float*)d_grads, n, clip_value);
+    cudaDeviceSynchronize();
+}
+
+float nimcp_lnn_gradient_norm_gpu(const void* d_grads, size_t n)
+{
+    float* d_result;
+    float h_result = 0.0f;
+    cudaMalloc(&d_result, sizeof(float));
+    cudaMemset(d_result, 0, sizeof(float));
+
+    kernel_sum_squares_reduce<<<GRID_SIZE(n), BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
+        (const float*)d_grads, d_result, n);
+    cudaMemcpy(&h_result, d_result, sizeof(float), cudaMemcpyDeviceToHost);
+    cudaFree(d_result);
+
+    return sqrtf(h_result);
+}
+
+void nimcp_lnn_gradient_normalize_gpu(void* d_grads, size_t n, float norm)
+{
+    kernel_normalize_gradients<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        (float*)d_grads, n, norm);
+    cudaDeviceSynchronize();
+}
+
+void nimcp_lnn_gradient_apply_gpu(void* d_weights, const void* d_grads,
+                                   size_t n, float lr)
+{
+    kernel_apply_gradients<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        (float*)d_weights, (const float*)d_grads, n, lr);
+    cudaDeviceSynchronize();
+}
+
+void nimcp_lnn_gradient_reset_gpu(void* d_grads, size_t n)
+{
+    kernel_reset_gradients<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        (float*)d_grads, n);
+    cudaDeviceSynchronize();
+}
+
+void nimcp_lnn_memcpy_d2h(void* dst, const void* src, size_t size)
+{
+    cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost);
+}
+
+} // extern "C"
+
+//=============================================================================
+// CSR Weight Transfer Implementation
+//=============================================================================
+
+/**
+ * @brief CSR sparse matrix-vector multiplication kernel
+ *
+ * Computes y = A * x where A is in CSR format
+ */
+__global__ void kernel_csr_spmv(const int* row_offsets, const int* col_indices,
+                                const float* values, const float* x, float* y,
+                                size_t num_rows)
+{
+    size_t row = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row >= num_rows) return;
+
+    float sum = 0.0f;
+    int row_start = row_offsets[row];
+    int row_end = row_offsets[row + 1];
+
+    for (int k = row_start; k < row_end; k++) {
+        int col = col_indices[k];
+        sum += values[k] * x[col];
+    }
+
+    y[row] = sum;
+}
+
+// CSR weight structure - extern C API
+extern "C" {
+
+#include "gpu/lnn/nimcp_lnn_gpu.h"
+
+nimcp_lnn_csr_weights_t* nimcp_lnn_csr_create(void* ctx_ptr, size_t rows, size_t cols, size_t nnz)
+{
+    if (!ctx_ptr || rows == 0 || cols == 0) return NULL;
+
+    nimcp_lnn_csr_weights_t* csr = (nimcp_lnn_csr_weights_t*)calloc(1, sizeof(nimcp_lnn_csr_weights_t));
+    if (!csr) return NULL;
+
+    csr->rows = rows;
+    csr->cols = cols;
+    csr->nnz = nnz;
+
+    // Allocate GPU memory
+    cudaError_t err;
+    err = cudaMalloc(&csr->d_row_offsets, (rows + 1) * sizeof(int));
+    if (err != cudaSuccess) {
+        free(csr);
+        return NULL;
+    }
+
+    err = cudaMalloc(&csr->d_col_indices, nnz * sizeof(int));
+    if (err != cudaSuccess) {
+        cudaFree(csr->d_row_offsets);
+        free(csr);
+        return NULL;
+    }
+
+    err = cudaMalloc(&csr->d_values, nnz * sizeof(float));
+    if (err != cudaSuccess) {
+        cudaFree(csr->d_row_offsets);
+        cudaFree(csr->d_col_indices);
+        free(csr);
+        return NULL;
+    }
+
+    LOG_DEBUG("Created CSR weights: %zu x %zu, nnz=%zu", rows, cols, nnz);
+    return csr;
+}
+
+void nimcp_lnn_csr_destroy(nimcp_lnn_csr_weights_t* csr)
+{
+    if (!csr) return;
+
+    if (csr->d_row_offsets) cudaFree(csr->d_row_offsets);
+    if (csr->d_col_indices) cudaFree(csr->d_col_indices);
+    if (csr->d_values) cudaFree(csr->d_values);
+
+    free(csr);
+    LOG_DEBUG("Destroyed CSR weights");
+}
+
+int nimcp_lnn_csr_to_gpu(nimcp_lnn_csr_weights_t* csr,
+                         const int* h_row_offsets, const int* h_col_indices, const float* h_values)
+{
+    if (!csr || !h_row_offsets || !h_col_indices || !h_values) return -1;
+
+    cudaError_t err;
+    err = cudaMemcpy(csr->d_row_offsets, h_row_offsets,
+                     (csr->rows + 1) * sizeof(int), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) return -1;
+
+    err = cudaMemcpy(csr->d_col_indices, h_col_indices,
+                     csr->nnz * sizeof(int), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) return -1;
+
+    err = cudaMemcpy(csr->d_values, h_values,
+                     csr->nnz * sizeof(float), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) return -1;
+
+    return 0;
+}
+
+int nimcp_lnn_csr_from_gpu(nimcp_lnn_csr_weights_t* csr,
+                           int* h_row_offsets, int* h_col_indices, float* h_values)
+{
+    if (!csr || !h_row_offsets || !h_col_indices || !h_values) return -1;
+
+    cudaError_t err;
+    err = cudaMemcpy(h_row_offsets, csr->d_row_offsets,
+                     (csr->rows + 1) * sizeof(int), cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) return -1;
+
+    err = cudaMemcpy(h_col_indices, csr->d_col_indices,
+                     csr->nnz * sizeof(int), cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) return -1;
+
+    err = cudaMemcpy(h_values, csr->d_values,
+                     csr->nnz * sizeof(float), cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) return -1;
+
+    return 0;
+}
+
+int nimcp_lnn_csr_spmv(nimcp_lnn_csr_weights_t* csr, const float* x, float* y)
+{
+    if (!csr || !x || !y) return -1;
+
+    kernel_csr_spmv<<<GRID_SIZE(csr->rows), BLOCK_SIZE>>>(
+        csr->d_row_offsets, csr->d_col_indices, csr->d_values,
+        x, y, csr->rows);
+
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        LOG_ERROR("CSR SpMV kernel error: %s", cudaGetErrorString(err));
+        return -1;
+    }
+
+    cudaDeviceSynchronize();
+    return 0;
+}
+
+} // extern "C"
+
+//=============================================================================
+// Spectral Radius Computation via Power Iteration
+//=============================================================================
+
+/**
+ * @brief Dense matrix-vector multiplication for power iteration
+ *
+ * Computes y = A * v where A is a dense n x n matrix
+ */
+__global__ void kernel_power_iteration_step(const float* A, const float* v, float* Av, size_t n)
+{
+    size_t row = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row >= n) return;
+
+    float sum = 0.0f;
+    for (size_t col = 0; col < n; col++) {
+        sum += A[row * n + col] * v[col];
+    }
+    Av[row] = sum;
+}
+
+/**
+ * @brief Compute L2 norm and normalize vector in-place
+ */
+__global__ void kernel_vector_normalize(float* v, size_t n, float* norm_out)
+{
+    extern __shared__ float sdata[];
+
+    size_t tid = threadIdx.x;
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Load and square for norm computation
+    sdata[tid] = (idx < n) ? v[idx] * v[idx] : 0.0f;
+    __syncthreads();
+
+    // Parallel reduction
+    for (size_t s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            sdata[tid] += sdata[tid + s];
+        }
+        __syncthreads();
+    }
+
+    // First thread computes final norm and stores it
+    if (tid == 0) {
+        atomicAdd(norm_out, sdata[0]);
+    }
+}
+
+/**
+ * @brief Divide vector by scalar (for normalization)
+ */
+__global__ void kernel_vector_scale(float* v, size_t n, float scale)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        v[idx] *= scale;
+    }
+}
+
+/**
+ * @brief Rescale matrix by scalar factor: A *= scale_factor
+ */
+__global__ void kernel_rescale_matrix(float* A, size_t n, float scale_factor)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n * n) {
+        A[idx] *= scale_factor;
+    }
+}
+
+// Spectral radius API - extern C
+extern "C" {
+
+float nimcp_lnn_compute_spectral_radius(void* ctx_ptr, const float* weight_matrix,
+                                        size_t n, nimcp_lnn_spectral_config_t* config)
+{
+    if (!ctx_ptr || !weight_matrix || n == 0 || !config) return -1.0f;
+
+    // Default configuration
+    int max_iterations = config->max_iterations > 0 ? config->max_iterations : 100;
+    float tolerance = config->tolerance > 0 ? config->tolerance : 1e-6f;
+
+    // Allocate device memory
+    float *d_A, *d_v, *d_Av, *d_norm;
+    cudaMalloc(&d_A, n * n * sizeof(float));
+    cudaMalloc(&d_v, n * sizeof(float));
+    cudaMalloc(&d_Av, n * sizeof(float));
+    cudaMalloc(&d_norm, sizeof(float));
+
+    // Copy matrix to device
+    cudaMemcpy(d_A, weight_matrix, n * n * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Initialize v to [1, 0, 0, ..., 0] (or uniform would work too)
+    float* h_v = (float*)calloc(n, sizeof(float));
+    for (size_t i = 0; i < n; i++) {
+        h_v[i] = 1.0f / sqrtf((float)n);  // Normalized uniform
+    }
+    cudaMemcpy(d_v, h_v, n * sizeof(float), cudaMemcpyHostToDevice);
+    free(h_v);
+
+    float eigenvalue = 0.0f;
+    float prev_eigenvalue = 0.0f;
+
+    // Power iteration
+    for (int iter = 0; iter < max_iterations; iter++) {
+        // Av = A * v
+        kernel_power_iteration_step<<<GRID_SIZE(n), BLOCK_SIZE>>>(d_A, d_v, d_Av, n);
+        cudaDeviceSynchronize();
+
+        // Compute norm of Av (this is the eigenvalue estimate)
+        cudaMemset(d_norm, 0, sizeof(float));
+        kernel_vector_normalize<<<GRID_SIZE(n), BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
+            d_Av, n, d_norm);
+        cudaDeviceSynchronize();
+
+        float norm_sq;
+        cudaMemcpy(&norm_sq, d_norm, sizeof(float), cudaMemcpyDeviceToHost);
+        eigenvalue = sqrtf(norm_sq);
+
+        // Normalize: v = Av / ||Av||
+        if (eigenvalue > 1e-10f) {
+            kernel_vector_scale<<<GRID_SIZE(n), BLOCK_SIZE>>>(d_Av, n, 1.0f / eigenvalue);
+            cudaDeviceSynchronize();
+        }
+
+        // Swap v and Av
+        float* temp = d_v;
+        d_v = d_Av;
+        d_Av = temp;
+
+        // Check convergence
+        if (iter > 0 && fabsf(eigenvalue - prev_eigenvalue) < tolerance) {
+            LOG_DEBUG("Power iteration converged in %d iterations", iter + 1);
+            break;
+        }
+        prev_eigenvalue = eigenvalue;
+    }
+
+    // Cleanup
+    cudaFree(d_A);
+    cudaFree(d_v);
+    cudaFree(d_Av);
+    cudaFree(d_norm);
+
+    return eigenvalue;
+}
+
+int nimcp_lnn_rescale_to_spectral_radius(void* ctx_ptr, float* weight_matrix,
+                                         size_t n, float target_radius)
+{
+    if (!ctx_ptr || !weight_matrix || n == 0 || target_radius <= 0) return -1;
+
+    // First compute current spectral radius
+    nimcp_lnn_spectral_config_t config;
+    config.max_iterations = 100;
+    config.tolerance = 1e-6f;
+    config.target_radius = target_radius;
+
+    float current_radius = nimcp_lnn_compute_spectral_radius(ctx_ptr, weight_matrix, n, &config);
+    if (current_radius < 0) return -1;
+
+    if (current_radius < 1e-10f) {
+        LOG_WARN("Matrix has near-zero spectral radius, cannot rescale");
+        return -1;
+    }
+
+    // Compute scale factor
+    float scale = target_radius / current_radius;
+
+    // Allocate device memory and rescale
+    float* d_A;
+    cudaMalloc(&d_A, n * n * sizeof(float));
+    cudaMemcpy(d_A, weight_matrix, n * n * sizeof(float), cudaMemcpyHostToDevice);
+
+    kernel_rescale_matrix<<<GRID_SIZE(n * n), BLOCK_SIZE>>>(d_A, n, scale);
+    cudaDeviceSynchronize();
+
+    // Copy back
+    cudaMemcpy(weight_matrix, d_A, n * n * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaFree(d_A);
+
+    LOG_DEBUG("Rescaled matrix from spectral radius %.4f to %.4f (scale=%.4f)",
+              current_radius, target_radius, scale);
+    return 0;
+}
+
+} // extern "C"
 
 #else // !NIMCP_ENABLE_CUDA
 

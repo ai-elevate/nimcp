@@ -86,6 +86,19 @@ typedef int32_t nimcp_error_t;
 #define NIMCP_ERROR_PERMISSION_DENIED   1012 /**< Permission denied */
 
 //=============================================================================
+// GPU/Hardware Errors (1100-1199)
+//=============================================================================
+
+#ifndef NIMCP_ERROR_GPU
+#define NIMCP_ERROR_GPU                 1100 /**< GPU operation failed */
+#endif
+#define NIMCP_ERROR_GPU_NOT_AVAILABLE   1101 /**< GPU not available */
+#define NIMCP_ERROR_GPU_MEMORY          1102 /**< GPU memory allocation failed */
+#define NIMCP_ERROR_CUDA                1103 /**< CUDA error */
+#define NIMCP_ERROR_KERNEL_LAUNCH       1104 /**< Kernel launch failed */
+#define NIMCP_ERROR_GPU_SYNC            1105 /**< GPU synchronization failed */
+
+//=============================================================================
 // Memory Errors (2000-2999)
 //=============================================================================
 
