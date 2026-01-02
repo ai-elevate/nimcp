@@ -855,6 +855,30 @@ bool nimcp_gpu_receptor_compute_conductance(
 }
 
 /**
+ * @brief Simple kernel for synaptic current computation without post_ids mapping
+ *
+ * I = g * (V - E_rev)
+ *
+ * Uses direct indexing: synapse i uses voltage at index i % n_post
+ */
+__global__ void kernel_receptor_compute_current_simple(
+    const float* conductance,
+    const float* voltage,
+    float reversal,
+    float* current,
+    size_t n_synapses,
+    size_t n_post)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n_synapses) return;
+
+    float g = conductance[idx];
+    float v = voltage[idx % n_post];
+
+    current[idx] = g * (v - reversal);
+}
+
+/**
  * @brief Kernel for synaptic current computation
  *
  * I = g * (V_post - E_rev)
@@ -890,31 +914,22 @@ bool nimcp_gpu_receptor_compute_current(
         return false;
     }
 
-    // This function needs post_ids which isn't stored in receptor_state
-    // For now, we'll compute simple current without mapping
-    // In practice, this should be called with synapse state that has post_ids
+    if (!state->conductance) {
+        LOG_ERROR("Receptor state has no conductance tensor");
+        return false;
+    }
 
-    LOG_WARN("nimcp_gpu_receptor_compute_current called without post_ids mapping");
+    size_t n_synapses = state->conductance->numel;
+    size_t n_post = post_voltage->numel;
 
-    // Simple version: assume 1:1 mapping
-    size_t n = state->conductance->numel;
-
-    // Use a simplified kernel that just computes g * (V - E_rev) elementwise
-    __global__ void kernel_simple_current(
-        const float* conductance,
-        const float* voltage,
-        float reversal,
-        float* current,
-        size_t n);
-
-    // Launch simple current computation
-    kernel_receptor_compute_current<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+    // Use simple kernel with direct indexing (synapse i uses voltage[i % n_post])
+    kernel_receptor_compute_current_simple<<<GRID_SIZE(n_synapses), BLOCK_SIZE>>>(
         (const float*)state->conductance->data,
         (const float*)post_voltage->data,
-        NULL,  // No post_ids - will crash if kernel tries to use it
         state->params.reversal,
         (float*)current->data,
-        n);
+        n_synapses,
+        n_post);
 
     CUDA_CHECK(cudaGetLastError());
     return true;
