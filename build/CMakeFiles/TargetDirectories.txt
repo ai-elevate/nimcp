@@ -603,9 +603,6 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_swarm_memory_consolidation.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_brain_initialization_subsystems.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_gpu_nn_training_pipeline.dir
-/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_gpu_inference_pipeline.dir
-/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_gpu_snn_pipeline.dir
-/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_gpu_lnn_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_gpu_training_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_mental_health_guardian.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_broca_gpu_pipeline.dir
@@ -623,6 +620,9 @@
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_brain_simulation_gpu.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_dragonfly_hunting_gpu.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_stress_test_gpu.dir
+/home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_lnn_pipeline_gpu.dir
+/home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_snn_pipeline_gpu.dir
+/home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_inference_pipeline_gpu.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/rebuild_cache.dir
@@ -3035,7 +3035,14 @@
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_synapse_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_dragonfly_vision_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_plasticity_kernels.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_neuromodulator_kernels.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_emotion_kernels.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_reasoning_kernels.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_metalearning_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_portia_kernels.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_sleep_kernels.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_regions_kernels.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_ternary_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/rebuild_cache.dir

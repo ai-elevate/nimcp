@@ -16889,6 +16889,30 @@ __/gpu/perception/nimcp_audio_kernels.cu.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/perception/nimcp_audio_kernels.cu.s
 .PHONY : __/gpu/perception/nimcp_audio_kernels.cu.s
 
+__/gpu/perception/nimcp_speech_cortex_gpu.o: __/gpu/perception/nimcp_speech_cortex_gpu.cu.o
+.PHONY : __/gpu/perception/nimcp_speech_cortex_gpu.o
+
+# target to build an object file
+__/gpu/perception/nimcp_speech_cortex_gpu.cu.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/perception/nimcp_speech_cortex_gpu.cu.o
+.PHONY : __/gpu/perception/nimcp_speech_cortex_gpu.cu.o
+
+__/gpu/perception/nimcp_speech_cortex_gpu.i: __/gpu/perception/nimcp_speech_cortex_gpu.cu.i
+.PHONY : __/gpu/perception/nimcp_speech_cortex_gpu.i
+
+# target to preprocess a source file
+__/gpu/perception/nimcp_speech_cortex_gpu.cu.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/perception/nimcp_speech_cortex_gpu.cu.i
+.PHONY : __/gpu/perception/nimcp_speech_cortex_gpu.cu.i
+
+__/gpu/perception/nimcp_speech_cortex_gpu.s: __/gpu/perception/nimcp_speech_cortex_gpu.cu.s
+.PHONY : __/gpu/perception/nimcp_speech_cortex_gpu.s
+
+# target to generate assembly for a file
+__/gpu/perception/nimcp_speech_cortex_gpu.cu.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/perception/nimcp_speech_cortex_gpu.cu.s
+.PHONY : __/gpu/perception/nimcp_speech_cortex_gpu.cu.s
+
 __/gpu/perception/nimcp_speech_kernels.o: __/gpu/perception/nimcp_speech_kernels.cu.o
 .PHONY : __/gpu/perception/nimcp_speech_kernels.o
 
@@ -17225,6 +17249,30 @@ __/gpu/swarm/nimcp_swarm_kernels.cu.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/swarm/nimcp_swarm_kernels.cu.s
 .PHONY : __/gpu/swarm/nimcp_swarm_kernels.cu.s
 
+__/gpu/swarm/nimcp_swarm_memory_gpu.o: __/gpu/swarm/nimcp_swarm_memory_gpu.cu.o
+.PHONY : __/gpu/swarm/nimcp_swarm_memory_gpu.o
+
+# target to build an object file
+__/gpu/swarm/nimcp_swarm_memory_gpu.cu.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/swarm/nimcp_swarm_memory_gpu.cu.o
+.PHONY : __/gpu/swarm/nimcp_swarm_memory_gpu.cu.o
+
+__/gpu/swarm/nimcp_swarm_memory_gpu.i: __/gpu/swarm/nimcp_swarm_memory_gpu.cu.i
+.PHONY : __/gpu/swarm/nimcp_swarm_memory_gpu.i
+
+# target to preprocess a source file
+__/gpu/swarm/nimcp_swarm_memory_gpu.cu.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/swarm/nimcp_swarm_memory_gpu.cu.i
+.PHONY : __/gpu/swarm/nimcp_swarm_memory_gpu.cu.i
+
+__/gpu/swarm/nimcp_swarm_memory_gpu.s: __/gpu/swarm/nimcp_swarm_memory_gpu.cu.s
+.PHONY : __/gpu/swarm/nimcp_swarm_memory_gpu.s
+
+# target to generate assembly for a file
+__/gpu/swarm/nimcp_swarm_memory_gpu.cu.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/swarm/nimcp_swarm_memory_gpu.cu.s
+.PHONY : __/gpu/swarm/nimcp_swarm_memory_gpu.cu.s
+
 __/gpu/synapse/nimcp_synapse_kernels.o: __/gpu/synapse/nimcp_synapse_kernels.cu.o
 .PHONY : __/gpu/synapse/nimcp_synapse_kernels.o
 
@@ -17320,6 +17368,30 @@ __/gpu/tensor/nimcp_tensor_kernels.s: __/gpu/tensor/nimcp_tensor_kernels.cu.s
 __/gpu/tensor/nimcp_tensor_kernels.cu.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/tensor/nimcp_tensor_kernels.cu.s
 .PHONY : __/gpu/tensor/nimcp_tensor_kernels.cu.s
+
+__/gpu/ternary/nimcp_ternary_kernels.o: __/gpu/ternary/nimcp_ternary_kernels.cu.o
+.PHONY : __/gpu/ternary/nimcp_ternary_kernels.o
+
+# target to build an object file
+__/gpu/ternary/nimcp_ternary_kernels.cu.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/ternary/nimcp_ternary_kernels.cu.o
+.PHONY : __/gpu/ternary/nimcp_ternary_kernels.cu.o
+
+__/gpu/ternary/nimcp_ternary_kernels.i: __/gpu/ternary/nimcp_ternary_kernels.cu.i
+.PHONY : __/gpu/ternary/nimcp_ternary_kernels.i
+
+# target to preprocess a source file
+__/gpu/ternary/nimcp_ternary_kernels.cu.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/ternary/nimcp_ternary_kernels.cu.i
+.PHONY : __/gpu/ternary/nimcp_ternary_kernels.cu.i
+
+__/gpu/ternary/nimcp_ternary_kernels.s: __/gpu/ternary/nimcp_ternary_kernels.cu.s
+.PHONY : __/gpu/ternary/nimcp_ternary_kernels.s
+
+# target to generate assembly for a file
+__/gpu/ternary/nimcp_ternary_kernels.cu.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/ternary/nimcp_ternary_kernels.cu.s
+.PHONY : __/gpu/ternary/nimcp_ternary_kernels.cu.s
 
 __/gpu/training/nimcp_backprop_kernels.o: __/gpu/training/nimcp_backprop_kernels.cu.o
 .PHONY : __/gpu/training/nimcp_backprop_kernels.o
@@ -30559,6 +30631,9 @@ help:
 	@echo "... __/gpu/perception/nimcp_audio_kernels.o"
 	@echo "... __/gpu/perception/nimcp_audio_kernels.i"
 	@echo "... __/gpu/perception/nimcp_audio_kernels.s"
+	@echo "... __/gpu/perception/nimcp_speech_cortex_gpu.o"
+	@echo "... __/gpu/perception/nimcp_speech_cortex_gpu.i"
+	@echo "... __/gpu/perception/nimcp_speech_cortex_gpu.s"
 	@echo "... __/gpu/perception/nimcp_speech_kernels.o"
 	@echo "... __/gpu/perception/nimcp_speech_kernels.i"
 	@echo "... __/gpu/perception/nimcp_speech_kernels.s"
@@ -30601,6 +30676,9 @@ help:
 	@echo "... __/gpu/swarm/nimcp_swarm_kernels.o"
 	@echo "... __/gpu/swarm/nimcp_swarm_kernels.i"
 	@echo "... __/gpu/swarm/nimcp_swarm_kernels.s"
+	@echo "... __/gpu/swarm/nimcp_swarm_memory_gpu.o"
+	@echo "... __/gpu/swarm/nimcp_swarm_memory_gpu.i"
+	@echo "... __/gpu/swarm/nimcp_swarm_memory_gpu.s"
 	@echo "... __/gpu/synapse/nimcp_synapse_kernels.o"
 	@echo "... __/gpu/synapse/nimcp_synapse_kernels.i"
 	@echo "... __/gpu/synapse/nimcp_synapse_kernels.s"
@@ -30613,6 +30691,9 @@ help:
 	@echo "... __/gpu/tensor/nimcp_tensor_kernels.o"
 	@echo "... __/gpu/tensor/nimcp_tensor_kernels.i"
 	@echo "... __/gpu/tensor/nimcp_tensor_kernels.s"
+	@echo "... __/gpu/ternary/nimcp_ternary_kernels.o"
+	@echo "... __/gpu/ternary/nimcp_ternary_kernels.i"
+	@echo "... __/gpu/ternary/nimcp_ternary_kernels.s"
 	@echo "... __/gpu/training/nimcp_backprop_kernels.o"
 	@echo "... __/gpu/training/nimcp_backprop_kernels.i"
 	@echo "... __/gpu/training/nimcp_backprop_kernels.s"

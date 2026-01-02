@@ -1727,6 +1727,24 @@ static inline float cpu_activation(float x, int activation_type) {
     }
 }
 
+/**
+ * @brief Clamp state values to prevent numerical explosion
+ *
+ * LNN dynamics should keep state bounded (especially with tanh activation).
+ * This prevents numerical instability in the ODE solvers.
+ */
+static inline void cpu_clamp_state(float* state, size_t n, float min_val, float max_val) {
+    for (size_t i = 0; i < n; i++) {
+        if (state[i] < min_val) state[i] = min_val;
+        else if (state[i] > max_val) state[i] = max_val;
+        else if (isnanf(state[i]) || isinff(state[i])) state[i] = 0.0f;
+    }
+}
+
+// State clamp bounds for LNN (tanh activation outputs in [-1,1], allow some margin)
+#define LNN_STATE_CLAMP_MIN -10.0f
+#define LNN_STATE_CLAMP_MAX  10.0f
+
 //-----------------------------------------------------------------------------
 // Default Configuration
 //-----------------------------------------------------------------------------
@@ -1766,6 +1784,9 @@ bool nimcp_gpu_lnn_euler_step(
     for (size_t i = 0; i < n; i++) {
         x_new_data[i] = x_data[i] + dt * dx_data[i];
     }
+
+    // Clamp to prevent numerical explosion
+    cpu_clamp_state(x_new_data, n, LNN_STATE_CLAMP_MIN, LNN_STATE_CLAMP_MAX);
 
     return true;
 }
@@ -1881,7 +1902,17 @@ bool nimcp_gpu_lnn_compute_derivative(
 
         // Apply activation and compute derivative
         float activated = cpu_activation(sum, activation_type);
-        dx_dt_data[i] = -x_data[i] / tau_data[i] + activated;
+
+        // Ensure tau is not too small to prevent division issues
+        float tau = tau_data[i];
+        if (tau < 0.1f) tau = 0.1f;
+
+        dx_dt_data[i] = -x_data[i] / tau + activated;
+
+        // Clamp derivative to prevent runaway dynamics
+        if (dx_dt_data[i] < -100.0f) dx_dt_data[i] = -100.0f;
+        else if (dx_dt_data[i] > 100.0f) dx_dt_data[i] = 100.0f;
+        else if (isnanf(dx_dt_data[i]) || isinff(dx_dt_data[i])) dx_dt_data[i] = 0.0f;
     }
 
     return true;
@@ -1939,6 +1970,9 @@ bool nimcp_gpu_lnn_heun_step(
     for (size_t i = 0; i < n; i++) {
         x_data[i] = x_orig[i] + 0.5f * dt * (k1[i] + k2[i]);
     }
+
+    // Clamp to prevent numerical explosion
+    cpu_clamp_state(x_data, n, LNN_STATE_CLAMP_MIN, LNN_STATE_CLAMP_MAX);
 
     free(k1); free(k2); free(x_orig); free(x_temp);
     return true;
@@ -2020,6 +2054,9 @@ bool nimcp_gpu_lnn_rk4_step(
     for (size_t i = 0; i < n; i++) {
         x_data[i] = x_orig[i] + (dt / 6.0f) * (k1[i] + 2.0f * k2[i] + 2.0f * k3[i] + k4[i]);
     }
+
+    // Clamp to prevent numerical explosion
+    cpu_clamp_state(x_data, n, LNN_STATE_CLAMP_MIN, LNN_STATE_CLAMP_MAX);
 
     free(k1); free(k2); free(k3); free(k4); free(x_orig); free(x_temp);
     return true;
@@ -2182,6 +2219,9 @@ bool nimcp_gpu_lnn_dopri5_step(
             memcpy(x_data, x_new, n * sizeof(float));
         }
     }
+
+    // Clamp to prevent numerical explosion
+    cpu_clamp_state(x_data, n, LNN_STATE_CLAMP_MIN, LNN_STATE_CLAMP_MAX);
 
     free(k1); free(k2); free(k3); free(k4); free(k5); free(k6); free(k7);
     free(x_orig); free(x_temp); free(x_new); free(error_vec);

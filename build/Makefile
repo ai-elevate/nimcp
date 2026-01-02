@@ -7218,45 +7218,6 @@ e2e_test_gpu_nn_training_pipeline/fast:
 .PHONY : e2e_test_gpu_nn_training_pipeline/fast
 
 #=============================================================================
-# Target rules for targets named e2e_test_gpu_inference_pipeline
-
-# Build rule for target.
-e2e_test_gpu_inference_pipeline: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_gpu_inference_pipeline
-.PHONY : e2e_test_gpu_inference_pipeline
-
-# fast build rule for target.
-e2e_test_gpu_inference_pipeline/fast:
-	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_gpu_inference_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_gpu_inference_pipeline.dir/build
-.PHONY : e2e_test_gpu_inference_pipeline/fast
-
-#=============================================================================
-# Target rules for targets named e2e_test_gpu_snn_pipeline
-
-# Build rule for target.
-e2e_test_gpu_snn_pipeline: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_gpu_snn_pipeline
-.PHONY : e2e_test_gpu_snn_pipeline
-
-# fast build rule for target.
-e2e_test_gpu_snn_pipeline/fast:
-	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_gpu_snn_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_gpu_snn_pipeline.dir/build
-.PHONY : e2e_test_gpu_snn_pipeline/fast
-
-#=============================================================================
-# Target rules for targets named e2e_test_gpu_lnn_pipeline
-
-# Build rule for target.
-e2e_test_gpu_lnn_pipeline: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_gpu_lnn_pipeline
-.PHONY : e2e_test_gpu_lnn_pipeline
-
-# fast build rule for target.
-e2e_test_gpu_lnn_pipeline/fast:
-	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_gpu_lnn_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_gpu_lnn_pipeline.dir/build
-.PHONY : e2e_test_gpu_lnn_pipeline/fast
-
-#=============================================================================
 # Target rules for targets named e2e_test_gpu_training_pipeline
 
 # Build rule for target.
@@ -7385,6 +7346,45 @@ e2e_gpu_test_e2e_stress_test_gpu: cmake_check_build_system
 e2e_gpu_test_e2e_stress_test_gpu/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_stress_test_gpu.dir/build.make test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_stress_test_gpu.dir/build
 .PHONY : e2e_gpu_test_e2e_stress_test_gpu/fast
+
+#=============================================================================
+# Target rules for targets named e2e_gpu_test_e2e_lnn_pipeline_gpu
+
+# Build rule for target.
+e2e_gpu_test_e2e_lnn_pipeline_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_gpu_test_e2e_lnn_pipeline_gpu
+.PHONY : e2e_gpu_test_e2e_lnn_pipeline_gpu
+
+# fast build rule for target.
+e2e_gpu_test_e2e_lnn_pipeline_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_lnn_pipeline_gpu.dir/build.make test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_lnn_pipeline_gpu.dir/build
+.PHONY : e2e_gpu_test_e2e_lnn_pipeline_gpu/fast
+
+#=============================================================================
+# Target rules for targets named e2e_gpu_test_e2e_snn_pipeline_gpu
+
+# Build rule for target.
+e2e_gpu_test_e2e_snn_pipeline_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_gpu_test_e2e_snn_pipeline_gpu
+.PHONY : e2e_gpu_test_e2e_snn_pipeline_gpu
+
+# fast build rule for target.
+e2e_gpu_test_e2e_snn_pipeline_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_snn_pipeline_gpu.dir/build.make test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_snn_pipeline_gpu.dir/build
+.PHONY : e2e_gpu_test_e2e_snn_pipeline_gpu/fast
+
+#=============================================================================
+# Target rules for targets named e2e_gpu_test_e2e_inference_pipeline_gpu
+
+# Build rule for target.
+e2e_gpu_test_e2e_inference_pipeline_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_gpu_test_e2e_inference_pipeline_gpu
+.PHONY : e2e_gpu_test_e2e_inference_pipeline_gpu
+
+# fast build rule for target.
+e2e_gpu_test_e2e_inference_pipeline_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_inference_pipeline_gpu.dir/build.make test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_inference_pipeline_gpu.dir/build
+.PHONY : e2e_gpu_test_e2e_inference_pipeline_gpu/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_ternary_neural_network
@@ -19178,6 +19178,58 @@ unit_gpu_test_plasticity_kernels/fast:
 .PHONY : unit_gpu_test_plasticity_kernels/fast
 
 #=============================================================================
+# Target rules for targets named unit_gpu_test_neuromodulator_kernels
+
+# Build rule for target.
+unit_gpu_test_neuromodulator_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_neuromodulator_kernels
+.PHONY : unit_gpu_test_neuromodulator_kernels
+
+# fast build rule for target.
+unit_gpu_test_neuromodulator_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_neuromodulator_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_neuromodulator_kernels.dir/build
+.PHONY : unit_gpu_test_neuromodulator_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_emotion_kernels
+
+# Build rule for target.
+unit_gpu_test_emotion_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_emotion_kernels
+.PHONY : unit_gpu_test_emotion_kernels
+
+# fast build rule for target.
+unit_gpu_test_emotion_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_emotion_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_emotion_kernels.dir/build
+.PHONY : unit_gpu_test_emotion_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_reasoning_kernels
+
+# Build rule for target.
+unit_gpu_test_reasoning_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_reasoning_kernels
+.PHONY : unit_gpu_test_reasoning_kernels
+
+# fast build rule for target.
+unit_gpu_test_reasoning_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_reasoning_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_reasoning_kernels.dir/build
+.PHONY : unit_gpu_test_reasoning_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_metalearning_kernels
+
+# Build rule for target.
+unit_gpu_test_metalearning_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_metalearning_kernels
+.PHONY : unit_gpu_test_metalearning_kernels
+
+# fast build rule for target.
+unit_gpu_test_metalearning_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_metalearning_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_metalearning_kernels.dir/build
+.PHONY : unit_gpu_test_metalearning_kernels/fast
+
+#=============================================================================
 # Target rules for targets named unit_gpu_test_portia_kernels
 
 # Build rule for target.
@@ -19189,6 +19241,45 @@ unit_gpu_test_portia_kernels: cmake_check_build_system
 unit_gpu_test_portia_kernels/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_portia_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_portia_kernels.dir/build
 .PHONY : unit_gpu_test_portia_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_sleep_kernels
+
+# Build rule for target.
+unit_gpu_test_sleep_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_sleep_kernels
+.PHONY : unit_gpu_test_sleep_kernels
+
+# fast build rule for target.
+unit_gpu_test_sleep_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_sleep_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_sleep_kernels.dir/build
+.PHONY : unit_gpu_test_sleep_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_regions_kernels
+
+# Build rule for target.
+unit_gpu_test_regions_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_regions_kernels
+.PHONY : unit_gpu_test_regions_kernels
+
+# fast build rule for target.
+unit_gpu_test_regions_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_regions_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_regions_kernels.dir/build
+.PHONY : unit_gpu_test_regions_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_ternary_kernels
+
+# Build rule for target.
+unit_gpu_test_ternary_kernels: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_ternary_kernels
+.PHONY : unit_gpu_test_ternary_kernels
+
+# fast build rule for target.
+unit_gpu_test_ternary_kernels/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_ternary_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_ternary_kernels.dir/build
+.PHONY : unit_gpu_test_ternary_kernels/fast
 
 #=============================================================================
 # Target rules for targets named unit_gpu_immune_execution
@@ -21542,7 +21633,10 @@ help:
 	@echo "... e2e_gpu_test_e2e_brain_simulation_gpu"
 	@echo "... e2e_gpu_test_e2e_cognitive_processing_gpu"
 	@echo "... e2e_gpu_test_e2e_dragonfly_hunting_gpu"
+	@echo "... e2e_gpu_test_e2e_inference_pipeline_gpu"
 	@echo "... e2e_gpu_test_e2e_learning_pipeline_gpu"
+	@echo "... e2e_gpu_test_e2e_lnn_pipeline_gpu"
+	@echo "... e2e_gpu_test_e2e_snn_pipeline_gpu"
 	@echo "... e2e_gpu_test_e2e_stress_test_gpu"
 	@echo "... e2e_gpu_test_e2e_swarm_simulation_gpu"
 	@echo "... e2e_test_amygdala_pipeline"
@@ -21581,10 +21675,7 @@ help:
 	@echo "... e2e_test_fep_bridges_pipeline"
 	@echo "... e2e_test_fep_orchestrator_pipeline"
 	@echo "... e2e_test_game_theory_pipeline"
-	@echo "... e2e_test_gpu_inference_pipeline"
-	@echo "... e2e_test_gpu_lnn_pipeline"
 	@echo "... e2e_test_gpu_nn_training_pipeline"
-	@echo "... e2e_test_gpu_snn_pipeline"
 	@echo "... e2e_test_gpu_training_pipeline"
 	@echo "... e2e_test_hippocampus_pipeline"
 	@echo "... e2e_test_introspection_pipeline"
@@ -22777,6 +22868,7 @@ help:
 	@echo "... unit_gpu_test_axon_gpu"
 	@echo "... unit_gpu_test_dendrite_gpu"
 	@echo "... unit_gpu_test_dragonfly_vision_kernels"
+	@echo "... unit_gpu_test_emotion_kernels"
 	@echo "... unit_gpu_test_execution_mode"
 	@echo "... unit_gpu_test_gpu_neuron"
 	@echo "... unit_gpu_test_inference_kernels"
@@ -22784,19 +22876,25 @@ help:
 	@echo "... unit_gpu_test_lnn_kernels"
 	@echo "... unit_gpu_test_lnn_ode_kernels"
 	@echo "... unit_gpu_test_memory_consolidation_kernels"
+	@echo "... unit_gpu_test_metalearning_kernels"
 	@echo "... unit_gpu_test_myelin_gpu"
 	@echo "... unit_gpu_test_network_detect"
+	@echo "... unit_gpu_test_neuromodulator_kernels"
 	@echo "... unit_gpu_test_oscillations_kernels"
 	@echo "... unit_gpu_test_plasticity_kernels"
 	@echo "... unit_gpu_test_portia_kernels"
 	@echo "... unit_gpu_test_quantum_kernels"
+	@echo "... unit_gpu_test_reasoning_kernels"
+	@echo "... unit_gpu_test_regions_kernels"
 	@echo "... unit_gpu_test_simd_detect"
+	@echo "... unit_gpu_test_sleep_kernels"
 	@echo "... unit_gpu_test_snn_kernels"
 	@echo "... unit_gpu_test_spike_event"
 	@echo "... unit_gpu_test_substrate_gpu"
 	@echo "... unit_gpu_test_swarm_kernels"
 	@echo "... unit_gpu_test_synapse_kernels"
 	@echo "... unit_gpu_test_tensor_kernels"
+	@echo "... unit_gpu_test_ternary_kernels"
 	@echo "... unit_gpu_test_training_kernels"
 	@echo "... unit_information_test_quantum_shannon"
 	@echo "... unit_information_test_shannon"
