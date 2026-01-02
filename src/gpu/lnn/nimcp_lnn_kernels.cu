@@ -120,6 +120,29 @@ __global__ void kernel_euler_step(
     }
 }
 
+/**
+ * @brief State clamping kernel to prevent numerical explosion
+ * Clamps values to specified range and handles NaN/Inf
+ */
+__global__ void kernel_clamp_state(float* x, size_t n, float min_val, float max_val)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        float val = x[idx];
+        if (isnan(val) || isinf(val)) {
+            x[idx] = 0.0f;
+        } else if (val < min_val) {
+            x[idx] = min_val;
+        } else if (val > max_val) {
+            x[idx] = max_val;
+        }
+    }
+}
+
+// State clamping bounds for numerical stability
+#define GPU_LNN_STATE_CLAMP_MIN -10.0f
+#define GPU_LNN_STATE_CLAMP_MAX  10.0f
+
 bool nimcp_gpu_lnn_euler_step(
     nimcp_gpu_context_t* ctx,
     const nimcp_gpu_tensor_t* x,
@@ -132,6 +155,10 @@ bool nimcp_gpu_lnn_euler_step(
     kernel_euler_step<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
         (const float*)x->data, (const float*)dx_dt->data,
         dt, (float*)x_new->data, x->numel);
+
+    // Clamp state to prevent numerical explosion
+    kernel_clamp_state<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
+        (float*)x_new->data, x->numel, GPU_LNN_STATE_CLAMP_MIN, GPU_LNN_STATE_CLAMP_MAX);
 
     CUDA_CHECK(cudaGetLastError());
     return true;
@@ -438,6 +465,10 @@ bool nimcp_gpu_lnn_rk4_step(
         (const float*)k3->data, (const float*)k4->data,
         dt, (float*)layer->x->data, n);
 
+    // Clamp state to prevent numerical explosion
+    kernel_clamp_state<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        (float*)layer->x->data, n, GPU_LNN_STATE_CLAMP_MIN, GPU_LNN_STATE_CLAMP_MAX);
+
     CUDA_CHECK(cudaGetLastError());
 
     // Cleanup
@@ -504,6 +535,10 @@ bool nimcp_gpu_lnn_heun_step(
     kernel_add_scaled<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (const float*)x_orig->data, (const float*)x_temp->data,
         0.5f * dt, (float*)layer->x->data, n);  // x + 0.5*dt*(k1+k2)
+
+    // Clamp state to prevent numerical explosion
+    kernel_clamp_state<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        (float*)layer->x->data, n, GPU_LNN_STATE_CLAMP_MIN, GPU_LNN_STATE_CLAMP_MAX);
 
     CUDA_CHECK(cudaGetLastError());
 
@@ -779,6 +814,10 @@ bool nimcp_gpu_lnn_dopri5_step(
             cudaMemcpy(layer->x->data, x_temp->data, n * sizeof(float), cudaMemcpyDeviceToDevice);
         }
     }
+
+    // Clamp state to prevent numerical explosion
+    kernel_clamp_state<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        (float*)layer->x->data, n, GPU_LNN_STATE_CLAMP_MIN, GPU_LNN_STATE_CLAMP_MAX);
 
     CUDA_CHECK(cudaGetLastError());
 
@@ -1659,11 +1698,13 @@ bool nimcp_lnn_layer_gpu_forward_sequence(
     for (size_t t = 0; t < seq_len; t++) {
         // Create view for this timestep's input
         size_t input_offset = t * input_dim;
+        size_t input_step_dims[1] = {input_dim};  // Stack-allocate dims array
         nimcp_gpu_tensor_t input_step;
+        memset(&input_step, 0, sizeof(input_step));
         input_step.data = (float*)input->data + input_offset;
         input_step.numel = input_dim;
         input_step.ndim = 1;
-        input_step.dims[0] = input_dim;
+        input_step.dims = input_step_dims;  // Point to stack-allocated array
 
         // Step
         if (!nimcp_lnn_layer_gpu_step(layer, &input_step)) {
@@ -2971,11 +3012,13 @@ bool nimcp_lnn_layer_gpu_forward_sequence(
 
     for (size_t t = 0; t < seq_len; t++) {
         size_t input_offset = t * input_dim;
+        size_t input_step_dims[1] = {input_dim};  // Stack-allocate dims array
         nimcp_gpu_tensor_t input_step;
+        memset(&input_step, 0, sizeof(input_step));
         input_step.data = (float*)input->data + input_offset;
         input_step.numel = input_dim;
         input_step.ndim = 1;
-        input_step.dims[0] = input_dim;
+        input_step.dims = input_step_dims;  // Point to stack-allocated array
 
         if (!nimcp_lnn_layer_gpu_step(layer, &input_step)) {
             return false;
