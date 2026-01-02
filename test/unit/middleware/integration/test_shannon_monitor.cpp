@@ -21,10 +21,9 @@
 #include <cmath>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/integration/nimcp_shannon_monitor.h"
 #include "middleware/events/nimcp_event_types.h"
-}
 
 //=============================================================================
 // Test Fixture

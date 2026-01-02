@@ -22,11 +22,10 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_biological_timescales.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

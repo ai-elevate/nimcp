@@ -13,12 +13,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/factory/init/nimcp_brain_init_brainstem.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 // ============================================================================
 // TEST FIXTURE

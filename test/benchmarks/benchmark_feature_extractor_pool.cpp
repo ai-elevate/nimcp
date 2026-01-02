@@ -11,10 +11,9 @@
 #include <random>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/features/nimcp_feature_extractor.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 using namespace std::chrono;
 

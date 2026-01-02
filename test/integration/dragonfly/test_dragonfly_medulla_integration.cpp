@@ -27,13 +27,12 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "nimcp.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/medulla/nimcp_medulla.h"
 #include "dragonfly/nimcp_dragonfly.h"
 #include "dragonfly/nimcp_dragonfly_medulla_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

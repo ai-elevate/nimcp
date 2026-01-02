@@ -27,12 +27,11 @@
 
 #include "test_helpers.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_blood_brain_barrier.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
-}
 
 #include <cstring>
 #include <thread>

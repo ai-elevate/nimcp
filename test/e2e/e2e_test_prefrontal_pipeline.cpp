@@ -37,13 +37,12 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/prefrontal/nimcp_prefrontal_substrate_bridge.h"
 #include "core/prefrontal/nimcp_prefrontal_thalamic_bridge.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "core/brain/subcortical/nimcp_basal_ganglia.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 using namespace nimcp::e2e;
 

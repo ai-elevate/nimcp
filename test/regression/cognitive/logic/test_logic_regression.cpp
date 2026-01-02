@@ -12,12 +12,11 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "core/neuron_types/nimcp_neural_logic.h"
 #include "cognitive/nimcp_symbolic_logic.h"
 #include "cognitive/knowledge/nimcp_knowledge.h"
-}
 
 //=============================================================================
 // Test Fixture

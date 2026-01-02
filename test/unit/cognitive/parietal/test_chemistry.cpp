@@ -6,9 +6,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/parietal/nimcp_chemistry.h"
-}
 
 class ChemistryTest : public ::testing::Test {
 protected:

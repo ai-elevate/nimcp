@@ -9,9 +9,8 @@
 #include <gtest/gtest.h>
 #include "utils/nimcp_test_base.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/game_theory/nimcp_game_theory.h"
-}
 
 /**
  * @brief Test fixture for Game Theory module tests

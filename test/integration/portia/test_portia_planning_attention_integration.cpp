@@ -11,13 +11,12 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/platform/nimcp_platform_tier.h"
 #include "portia/nimcp_portia_degradation.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/validation/nimcp_common.h"
-}
 
 // Mock attention system state
 typedef struct {

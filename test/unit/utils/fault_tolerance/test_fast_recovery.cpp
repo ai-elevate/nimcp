@@ -14,9 +14,8 @@
 #include <csignal>
 #include <fenv.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_fast_recovery.h"
-}
 
 //=============================================================================
 // Test Fixture

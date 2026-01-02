@@ -5,10 +5,9 @@
 
 #include <gtest/gtest.h>
 #include <cstdint>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/cortical_columns/nimcp_cortical_attention_gain.h"
 #include "core/cortical_columns/nimcp_cortical_column.h"
-}
 
 /* ============================================================================
  * Test Fixtures

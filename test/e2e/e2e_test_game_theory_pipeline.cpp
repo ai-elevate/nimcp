@@ -27,7 +27,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/game_theory/nimcp_game_theory.h"
 #include "cognitive/game_theory/nimcp_auction.h"
 #include "cognitive/game_theory/nimcp_bargaining.h"
@@ -36,7 +36,6 @@ extern "C" {
 #include "cognitive/game_theory/integration/nimcp_gt_hemispheric.h"
 #include "cognitive/global_workspace/nimcp_global_workspace.h"
 #include "core/brain/hemispheric/nimcp_hemispheric_brain.h"
-}
 
 //=============================================================================
 // Test Constants

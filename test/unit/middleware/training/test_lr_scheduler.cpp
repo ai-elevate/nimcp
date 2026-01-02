@@ -14,9 +14,8 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_lr_scheduler.h"
-}
 
 /* ============================================================================
  * Test Fixtures

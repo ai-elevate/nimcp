@@ -26,13 +26,12 @@
 #include <chrono>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "dragonfly/nimcp_dragonfly.h"
 #include "dragonfly/nimcp_dragonfly_tsdn.h"
 #include "dragonfly/nimcp_dragonfly_tracking.h"
 #include "dragonfly/nimcp_dragonfly_prediction.h"
 #include "dragonfly/nimcp_dragonfly_intercept.h"
-}
 
 //=============================================================================
 // Test Fixture

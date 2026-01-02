@@ -5,12 +5,15 @@ macro(add_gpu_e2e_test TEST_NAME)
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_NAME}.cpp)
         add_executable(e2e_gpu_${TEST_NAME}
             ${TEST_NAME}.cpp
+            ${CMAKE_SOURCE_DIR}/test/e2e/e2e_test_framework.cpp
         )
         target_link_libraries(e2e_gpu_${TEST_NAME}
             PRIVATE
                 GTest::GTest
                 GTest::Main
                 nimcp
+                nimcp_portia
+                nimcp_middleware
                 m
                 pthread
         )
@@ -19,6 +22,7 @@ macro(add_gpu_e2e_test TEST_NAME)
                 ${CMAKE_SOURCE_DIR}/include
                 ${CMAKE_SOURCE_DIR}/test/e2e
         )
+        target_compile_features(e2e_gpu_${TEST_NAME} PRIVATE cxx_std_17)
         add_test(NAME e2e_gpu_${TEST_NAME}
                  COMMAND e2e_gpu_${TEST_NAME})
         set_tests_properties(e2e_gpu_${TEST_NAME} PROPERTIES
@@ -35,3 +39,12 @@ add_gpu_e2e_test(test_e2e_swarm_simulation_gpu)
 add_gpu_e2e_test(test_e2e_brain_simulation_gpu)
 add_gpu_e2e_test(test_e2e_dragonfly_hunting_gpu)
 add_gpu_e2e_test(test_e2e_stress_test_gpu)
+
+# GPU LNN Pipeline test
+add_gpu_e2e_test(test_e2e_lnn_pipeline_gpu)
+
+# GPU SNN Pipeline test
+add_gpu_e2e_test(test_e2e_snn_pipeline_gpu)
+
+# GPU Inference Pipeline test
+add_gpu_e2e_test(test_e2e_inference_pipeline_gpu)

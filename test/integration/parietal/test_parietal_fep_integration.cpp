@@ -27,7 +27,7 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/parietal/nimcp_parietal.h"
 #include "cognitive/parietal/nimcp_fep_parietal_bridge.h"
 #include "cognitive/parietal/nimcp_number_sense.h"
@@ -35,7 +35,6 @@ extern "C" {
 #include "cognitive/parietal/nimcp_mathematical_intuition.h"
 #include "cognitive/parietal/nimcp_scientific_reasoning.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 /* ============================================================================
  * TEST FIXTURE

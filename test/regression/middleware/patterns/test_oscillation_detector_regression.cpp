@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/patterns/nimcp_oscillation_detector.h"
-}
 
 class OscillationDetectorRegressionTest : public ::testing::Test {
 protected:

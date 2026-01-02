@@ -14,10 +14,9 @@
 #include <atomic>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_lockfree_metrics.h"
 #include "utils/fault_tolerance/nimcp_health_monitor.h"
-}
 
 //=============================================================================
 // Test Fixture

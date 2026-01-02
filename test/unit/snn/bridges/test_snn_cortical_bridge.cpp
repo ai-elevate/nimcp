@@ -4,12 +4,11 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "snn/bridges/nimcp_snn_cortical_bridge.h"
 #include "snn/nimcp_snn_config.h"
 #include "snn/nimcp_snn_network.h"
 #include "core/cortical_columns/nimcp_cortical_column.h"
-}
 
 class SNNCorticalBridgeTest : public ::testing::Test {
 protected:

@@ -11,9 +11,8 @@
 #include <gtest/gtest.h>
 #include "utils/nimcp_test_base.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_predictive_immune.h"
-}
 
 /**
  * @brief Test fixture for Predictive-Immune Integration tests

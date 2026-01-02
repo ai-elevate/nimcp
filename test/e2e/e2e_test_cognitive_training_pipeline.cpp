@@ -25,12 +25,11 @@
 #include <vector>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 /* Real implementation headers */
 #include "middleware/training/nimcp_cognitive_training_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Helper Structures

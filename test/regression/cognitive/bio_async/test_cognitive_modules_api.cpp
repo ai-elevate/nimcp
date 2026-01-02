@@ -12,7 +12,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/analysis/nimcp_network_analysis.h"
 #include "cognitive/consolidation/nimcp_consolidation.h"
 #include "cognitive/global_workspace/nimcp_global_workspace.h"
@@ -20,7 +20,6 @@ extern "C" {
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "cognitive/nimcp_predictive.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

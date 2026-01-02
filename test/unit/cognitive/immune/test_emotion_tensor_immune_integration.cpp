@@ -12,12 +12,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_emotion_immune_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/nimcp_emotion_tensor.h"
 #include "cognitive/nimcp_emotional_system.h"
-}
 
 class EmotionTensorImmuneTest : public ::testing::Test {
 protected:

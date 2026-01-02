@@ -33,7 +33,7 @@
 #include <cstring>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "lnn/nimcp_lnn.h"
 #include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_training.h"
@@ -44,7 +44,6 @@ extern "C" {
 #include "middleware/training/nimcp_optimizers.h"
 #include "middleware/training/nimcp_loss_functions.h"
 #include "nimcp.h"
-}
 
 namespace nimcp {
 namespace e2e {

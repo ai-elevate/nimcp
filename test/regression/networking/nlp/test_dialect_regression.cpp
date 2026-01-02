@@ -8,9 +8,8 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "networking/nlp/nimcp_dialect_learning.h"
-}
 
 TEST(DialectLearningRegression, LearningConvergence) {
     // Ensure learning converges consistently

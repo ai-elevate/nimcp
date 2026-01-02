@@ -10,7 +10,7 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/stdp/nimcp_stdp.h"
 #include "plasticity/homeostatic/nimcp_homeostatic.h"
 #include "plasticity/attention/nimcp_attention.h"
@@ -22,7 +22,6 @@ extern "C" {
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
-}
 
 class PlasticityBioAsyncIntegrationTest : public ::testing::Test {
 protected:

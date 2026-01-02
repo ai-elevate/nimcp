@@ -16,7 +16,7 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/fault_tolerance/nimcp_byzantine_fault_tolerance.h"
@@ -25,7 +25,6 @@ extern "C" {
 #include "utils/memory/nimcp_memory.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
-}
 
 /* ============================================================================
  * Integration Test Fixture

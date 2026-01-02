@@ -8,12 +8,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "snn/bridges/nimcp_snn_attention_bridge.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "plasticity/attention/nimcp_attention.h"
-}
 
 class SNNAttentionBridgeTest : public ::testing::Test {
 protected:

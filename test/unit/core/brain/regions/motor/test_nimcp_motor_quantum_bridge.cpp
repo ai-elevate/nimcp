@@ -15,10 +15,9 @@
 #include <stdlib.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/motor/nimcp_motor_quantum_bridge.h"
 #include "core/brain/regions/motor/nimcp_motor_adapter.h"
-}
 
 // Test Fixture for Motor Quantum Bridge
 class MotorQuantumBridgeTest : public ::testing::Test {

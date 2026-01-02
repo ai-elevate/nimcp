@@ -21,11 +21,10 @@
 #include <chrono>
 #include <fstream>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "networking/nlp/nimcp_protocol_metrics.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-}
 
 class ProtocolMetricsIntegrationTest : public ::testing::Test {
 protected:

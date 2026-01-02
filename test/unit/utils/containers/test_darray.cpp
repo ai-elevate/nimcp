@@ -27,9 +27,8 @@
 #include <string>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/containers/nimcp_darray.h"
-}
 
 //=============================================================================
 // Test Fixture

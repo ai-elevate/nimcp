@@ -27,14 +27,13 @@
 #include <chrono>
 #include <set>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/ternary/nimcp_ternary.h"
 #include "utils/ternary/nimcp_ternary_vector.h"
 #include "utils/ternary/nimcp_ternary_matrix.h"
 #include "utils/ternary/nimcp_ternary_logic.h"
 #include "swarm/nimcp_swarm_ternary.h"
 #include "swarm/nimcp_swarm_consensus.h"
-}
 
 //=============================================================================
 // Test Fixture

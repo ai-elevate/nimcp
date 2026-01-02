@@ -18,14 +18,13 @@
 #include <vector>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/attention/nimcp_attention.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/ternary/nimcp_ternary_types.h"
 #include "utils/ternary/nimcp_ternary_vector.h"
 #include "utils/ternary/nimcp_ternary_matrix.h"
 #include "utils/ternary/nimcp_ternary_convert.h"
-}
 
 /**
  * @class AttentionTernaryIntegrationTest

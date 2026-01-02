@@ -13,13 +13,12 @@
 #include <cstring>
 #include <cstdlib>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/parietal/nimcp_parietal.h"
 #include "cognitive/parietal/nimcp_number_sense.h"
 #include "cognitive/parietal/nimcp_spatial_reasoning.h"
 #include "cognitive/parietal/nimcp_mathematical_intuition.h"
 #include "cognitive/parietal/nimcp_equation_manipulation.h"
-}
 
 //=============================================================================
 // Test Fixture: Number Sense + Spatial Integration

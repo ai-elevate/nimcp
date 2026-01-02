@@ -22,9 +22,8 @@
 #include <chrono>
 #include <cstdint>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/thread/nimcp_atomic.h"
-}
 
 //=============================================================================
 // Test Constants

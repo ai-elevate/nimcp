@@ -8,10 +8,9 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_predictive_analysis.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

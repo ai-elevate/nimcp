@@ -6,9 +6,8 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/collective_cognition/nimcp_collective_phi.h"
-}
 
 /*=============================================================================
  * Test Fixture

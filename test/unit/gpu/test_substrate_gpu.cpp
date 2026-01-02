@@ -32,9 +32,8 @@
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "gpu/backend/nimcp_kernel_backend.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Constants

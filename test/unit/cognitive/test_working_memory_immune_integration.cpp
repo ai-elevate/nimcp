@@ -24,12 +24,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_working_memory.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
-}
 
 #include <vector>
 #include <cmath>

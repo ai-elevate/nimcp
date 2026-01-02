@@ -13,7 +13,7 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 /* Plasticity bridges */
 #include "plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.h"
 #include "plasticity/stdp/nimcp_stdp_sleep_bridge.h"
@@ -25,7 +25,6 @@ extern "C" {
 #include "cognitive/working_memory/nimcp_working_memory_sleep_bridge.h"
 #include "cognitive/executive/nimcp_executive_sleep_bridge.h"
 #include "core/brain_oscillations/nimcp_oscillations_sleep_bridge.h"
-}
 
 /* ============================================================================
  * E2E Test Fixture

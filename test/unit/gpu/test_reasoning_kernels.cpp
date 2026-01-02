@@ -11,11 +11,10 @@
 #include <vector>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "gpu/reasoning/nimcp_reasoning_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
-}
 
 //=============================================================================
 // Test Fixtures

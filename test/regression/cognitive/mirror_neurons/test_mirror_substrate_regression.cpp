@@ -19,9 +19,8 @@
 #include <vector>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/mirror_neurons/nimcp_mirror_substrate.h"
-}
 
 //=============================================================================
 // Regression Fixture (no brain creation - pure substrate operations)

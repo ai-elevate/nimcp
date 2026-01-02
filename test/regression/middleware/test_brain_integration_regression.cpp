@@ -29,10 +29,9 @@
 #include <cmath>
 #include <limits>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/brain_integration.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

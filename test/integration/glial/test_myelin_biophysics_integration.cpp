@@ -30,14 +30,13 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "glial/myelin_sheath/nimcp_myelin_sheath.h"
 #include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
 #include "core/axon/nimcp_axon.h"
 #include "utils/memory/nimcp_memory.h"
 #include "nimcp.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -5,9 +5,8 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_cascade.h"
-}
 
 class CascadeTest : public ::testing::Test {
 protected:

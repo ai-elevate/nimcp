@@ -8,10 +8,9 @@
 
 #include "e2e_test_framework.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 class PortiaThreatResponseE2ETest : public ::testing::Test {
 protected:

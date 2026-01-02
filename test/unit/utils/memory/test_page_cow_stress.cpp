@@ -20,9 +20,8 @@
 #include <chrono>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_page_cow.h"
-}
 
 //=============================================================================
 // Test Fixture

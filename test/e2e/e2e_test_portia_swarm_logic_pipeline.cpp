@@ -7,10 +7,9 @@
 #include <chrono>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_swarm_logic_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -44,7 +44,7 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 
 // All 8 substrate bridges
@@ -56,7 +56,6 @@ extern "C" {
 #include "cognitive/reasoning/nimcp_reasoning_substrate_bridge.h"
 #include "cognitive/tom/nimcp_tom_substrate_bridge.h"
 #include "cognitive/working_memory/nimcp_working_memory_substrate_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

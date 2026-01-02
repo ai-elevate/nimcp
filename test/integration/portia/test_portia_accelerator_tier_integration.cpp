@@ -9,12 +9,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/platform/nimcp_platform_tier.h"
 #include "portia/nimcp_portia_degradation.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/validation/nimcp_common.h"
-}
 
 class PortiaAcceleratorTierIntegrationTest : public ::testing::Test {
 protected:

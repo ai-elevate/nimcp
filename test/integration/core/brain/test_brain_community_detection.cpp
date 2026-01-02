@@ -7,10 +7,9 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
     #include "core/brain/nimcp_brain.h"
     #include "core/topology/nimcp_community_detection.h"
-}
 
 class BrainCommunityDetectionTest : public ::testing::Test {
 protected:

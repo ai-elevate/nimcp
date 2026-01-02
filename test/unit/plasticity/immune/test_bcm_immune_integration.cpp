@@ -11,12 +11,11 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "plasticity/immune/nimcp_bcm_immune_bridge.h"
 #include "plasticity/bcm/nimcp_bcm.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Test Fixtures

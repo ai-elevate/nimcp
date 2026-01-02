@@ -23,10 +23,9 @@
 #include <chrono>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "gpu/nimcp_execution_mode.h"
     #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Utilities

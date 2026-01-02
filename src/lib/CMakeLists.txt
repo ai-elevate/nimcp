@@ -1243,6 +1243,8 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/perception/nimcp_audio_kernels.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/perception/nimcp_visual_kernels.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/perception/nimcp_speech_kernels.cu>
+    # Speech Cortex GPU kernels (MFCC, LPC, formants, pitch, phoneme recognition)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/perception/nimcp_speech_cortex_gpu.cu>
     # LNN kernels (liquid neural networks with ODE solvers)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/lnn/nimcp_lnn_kernels.cu>
     # Quantum algorithm kernels
@@ -1310,10 +1312,14 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/knowledge/nimcp_knowledge_graph_kernels.cu>
     # Swarm GPU kernels (collective intelligence, pheromone trails, flocking)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/swarm/nimcp_swarm_kernels.cu>
+    # Swarm memory GPU kernels (experience replay, consolidation, multi-agent coordination)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/swarm/nimcp_swarm_memory_gpu.cu>
     # Dragonfly vision GPU kernels (TSDN, target tracking, interception)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/dragonfly/nimcp_dragonfly_vision_kernels.cu>
     # Synapse GPU kernels (synaptic transmission, plasticity, modulation)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/synapse/nimcp_synapse_kernels.cu>
+    # Ternary GPU kernels (2-bit packed ternary ops, no-multiply GEMM, quantization)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/ternary/nimcp_ternary_kernels.cu>
 
     # Note: CUDA compile flags set below per-file
 

@@ -11,11 +11,10 @@
 #include <gtest/gtest.h>
 #include "utils/nimcp_test_base.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/social/nimcp_social_substrate_bridge.h"
 #include "cognitive/social/nimcp_social_thalamic_bridge.h"
 #include "cognitive/love_loyalty_friendship/nimcp_love_loyalty_friendship_fep_bridge.h"
-}
 
 // ============================================================================
 // Social Substrate Bridge Tests

@@ -8,9 +8,8 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "plasticity/protein/nimcp_protein_synthesis.h"
-}
 
 class ProteinRegressionTest : public ::testing::Test {
 protected:

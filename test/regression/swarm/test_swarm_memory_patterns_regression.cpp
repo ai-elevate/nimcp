@@ -19,9 +19,8 @@
 #include <chrono>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_memory.h"
-}
 
 class SwarmMemoryPatternsRegressionTest : public ::testing::Test {
 protected:

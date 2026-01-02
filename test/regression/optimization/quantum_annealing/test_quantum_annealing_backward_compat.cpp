@@ -25,10 +25,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "core/brain/nimcp_brain.h"
     #include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
-}
 
 //=============================================================================
 // Test Fixture

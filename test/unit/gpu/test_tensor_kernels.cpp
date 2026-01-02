@@ -34,9 +34,8 @@
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/nimcp_execution_mode.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/tensor/nimcp_tensor.h"
-}
 
 //=============================================================================
 // Test Constants

@@ -7,10 +7,9 @@
 #include <cstring>
 #include <unistd.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_diagnostics.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

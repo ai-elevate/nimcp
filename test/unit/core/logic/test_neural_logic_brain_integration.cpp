@@ -23,7 +23,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/logic/nimcp_neural_logic_brain_integration.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/nimcp_brain.h"
@@ -32,7 +32,6 @@ extern "C" {
 #include "core/neuron_types/nimcp_neural_logic.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixture

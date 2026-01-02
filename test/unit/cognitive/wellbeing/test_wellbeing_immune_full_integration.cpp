@@ -10,13 +10,12 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_wellbeing_immune_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/wellbeing/nimcp_wellbeing.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Test Fixture

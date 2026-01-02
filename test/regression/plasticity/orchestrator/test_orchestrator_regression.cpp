@@ -29,9 +29,8 @@
 #include <atomic>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/nimcp_plasticity_orchestrator.h"
-}
 
 /* ============================================================================
  * Test Fixtures

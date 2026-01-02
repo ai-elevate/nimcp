@@ -11,14 +11,13 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "glial/astrocytes/nimcp_astrocytes_fep_bridge.h"
 #include "glial/microglia/nimcp_microglia_fep_bridge.h"
 #include "glial/oligodendrocytes/nimcp_oligodendrocytes_fep_bridge.h"
 #include "glial/myelin_sheath/nimcp_myelin_sheath_fep_bridge.h"
 #include "glial/integration/nimcp_glial_integration_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
-}
 
 class GlialFepBridgesTestBase : public ::testing::Test {
 protected:

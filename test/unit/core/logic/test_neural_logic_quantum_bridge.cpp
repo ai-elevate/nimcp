@@ -16,11 +16,10 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #define NIMCP_NEURAL_LOGIC_QUANTUM_BRIDGE_IMPLEMENTATION
 #include "core/logic/nimcp_neural_logic_quantum_bridge.h"
 #include "cognitive/reasoning/nimcp_quantum_reasoning.h"
-}
 
 //=============================================================================
 // Test Fixture

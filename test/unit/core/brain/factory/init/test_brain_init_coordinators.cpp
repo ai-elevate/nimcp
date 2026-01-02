@@ -25,7 +25,7 @@
 #include <cstring>
 #include <memory>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
@@ -35,7 +35,6 @@ extern "C" {
 #include "cognitive/nimcp_cognitive_meta_controller.h"
 #include "security/nimcp_security_perception_bridge.h"
 #include "swarm/nimcp_swarm_module_registry.h"
-}
 
 //=============================================================================
 // Test Fixture

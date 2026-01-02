@@ -7,12 +7,11 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_memory_immune_integration.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/nimcp_working_memory.h"
 #include "cognitive/consolidation/nimcp_consolidation.h"
-}
 
 /* ============================================================================
  * Test Fixtures

@@ -22,11 +22,10 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
 #include "middleware/patterns/nimcp_oscillation_detector.h"
-}
 
 //=============================================================================
 // Default State Tests

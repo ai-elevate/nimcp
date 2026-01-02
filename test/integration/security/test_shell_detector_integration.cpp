@@ -14,12 +14,11 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_shell_detector.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

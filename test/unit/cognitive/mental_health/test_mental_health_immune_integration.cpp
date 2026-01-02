@@ -23,12 +23,11 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_mental_health_immune_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/nimcp_mental_health.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 using ::testing::_;
 using ::testing::Return;

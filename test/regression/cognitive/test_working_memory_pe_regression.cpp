@@ -31,13 +31,12 @@
 #include <cmath>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_working_memory.h"
 #include "utils/encoding/nimcp_positional_encoding.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_unified_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

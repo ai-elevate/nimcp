@@ -5,11 +5,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/subcortical/nimcp_amygdala_training_bridge.h"
 #include "core/brain/subcortical/nimcp_amygdala.h"
 #include "middleware/training/nimcp_optimizers.h"
-}
 
 /* ============================================================================
  * Test Fixtures

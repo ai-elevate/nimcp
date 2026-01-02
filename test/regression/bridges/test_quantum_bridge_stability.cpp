@@ -36,9 +36,8 @@
 // Define implementation to get access to structures
 #define NIMCP_THALAMIC_QUANTUM_BRIDGE_IMPLEMENTATION
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/routing/nimcp_thalamic_quantum_bridge.h"
-}
 
 /* ============================================================================
  * Test Fixture

@@ -20,12 +20,11 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "snn/nimcp_snn_types.h"
 #include "utils/tensor/nimcp_tensor.h"
-}
 
 //=============================================================================
 // Test Fixture

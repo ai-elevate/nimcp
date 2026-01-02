@@ -21,10 +21,9 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_immune_bridge_coordinator.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Mock Bridge Implementations

@@ -13,10 +13,9 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/logic/nimcp_neural_logic_factory.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 class NeuralLogicFactoryTest : public ::testing::Test {
 protected:

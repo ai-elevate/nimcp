@@ -12,12 +12,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_checkpoint.h"
 #include "utils/signal/nimcp_signal_handler.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 #include <cstdio>
 #include <cstdlib>

@@ -4,10 +4,9 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_fault_state_machine.h"
 #include "utils/fault_tolerance/nimcp_metrics_aggregator.h"
-}
 #include <thread>
 #include <chrono>
 

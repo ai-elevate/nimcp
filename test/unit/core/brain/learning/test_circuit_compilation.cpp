@@ -7,10 +7,9 @@
 #include <string>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/learning/nimcp_circuit_compilation.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

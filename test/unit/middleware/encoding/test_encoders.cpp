@@ -14,11 +14,10 @@
 #include <memory>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/encoding/nimcp_rate_coding.h"
 #include "middleware/encoding/nimcp_temporal_coding.h"
 #include "middleware/encoding/nimcp_population_coding.h"
-}
 
 //=============================================================================
 // Test Fixture

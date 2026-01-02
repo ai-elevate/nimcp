@@ -13,11 +13,10 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "cognitive/free_energy/nimcp_fep_immune_bridge.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * FEP Perception Integration Test Fixture

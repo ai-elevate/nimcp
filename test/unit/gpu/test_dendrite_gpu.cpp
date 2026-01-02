@@ -14,9 +14,8 @@
 #include "gpu/dendrite/nimcp_dendrite_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Constants

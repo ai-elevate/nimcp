@@ -23,10 +23,9 @@
 #include <vector>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_narrative.h"
 #include "swarm/nimcp_gossip_beliefs.h"
-}
 
 /* ============================================================================
  * Narrative Regression Tests

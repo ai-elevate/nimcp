@@ -16,12 +16,11 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_brain_local.h"
 #include "core/brain/factory/init/nimcp_brain_init_config.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-}
 
 class SwarmBrainLocalRegressionTest : public ::testing::Test {
 protected:

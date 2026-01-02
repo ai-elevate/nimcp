@@ -13,10 +13,9 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_semantic_compression.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 class SemanticCompressionIntegrationTest : public ::testing::Test {
 protected:

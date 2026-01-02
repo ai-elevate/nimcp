@@ -8,10 +8,9 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_learning.h"
 #include "security/nimcp_blood_brain_barrier.h"
-}
 
 class PortiaLearningTest : public ::testing::Test {
 protected:

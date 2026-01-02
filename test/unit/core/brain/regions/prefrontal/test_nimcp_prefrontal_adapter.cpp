@@ -15,9 +15,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/prefrontal/nimcp_prefrontal_adapter.h"
-}
 
 // Test Fixture for Prefrontal Adapter
 class PrefrontalAdapterTest : public ::testing::Test {

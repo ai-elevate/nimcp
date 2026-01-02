@@ -26,7 +26,7 @@
 #include <atomic>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_protocol.h"
 #include "swarm/nimcp_swarm_signal.h"
 #include "swarm/nimcp_collective_workspace.h"
@@ -36,7 +36,6 @@ extern "C" {
 #include "security/nimcp_blood_brain_barrier.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -32,7 +32,7 @@
 #include <random>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -371,7 +371,6 @@ static bool swarm_consciousness_get_stats(
     return true;
 }
 
-} // extern "C"
 
 /* ========================================================================
  * TEST FIXTURE

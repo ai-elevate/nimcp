@@ -21,7 +21,7 @@
 #include <gtest/gtest.h>
 #include <thread>
 #include <chrono>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_brain_training_integration.h"
 #include "portia/nimcp_portia.h"
 #include "async/nimcp_bio_async.h"
@@ -30,7 +30,6 @@ extern "C" {
 #include "utils/platform/nimcp_platform_tier.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 class PortiaTrainingIntegrationTest : public ::testing::Test {
 protected:

@@ -13,12 +13,11 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "glial/immune/nimcp_astrocyte_immune_bridge.h"
 #include "glial/immune/nimcp_microglia_immune_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Mock Structures (minimal implementations for testing)
@@ -29,7 +28,7 @@ static float mock_avg_calcium = 0.5f;
 static float mock_max_calcium = 1.0f;
 static float mock_avg_glutamate = 0.3f;
 
-extern "C" {
+// Headers have their own extern "C" guards
 /* Mock function for astrocyte network stats */
 void astrocyte_network_get_stats(
     astrocyte_network_t* network,
@@ -41,7 +40,6 @@ void astrocyte_network_get_stats(
     if (avg_calcium) *avg_calcium = mock_avg_calcium;
     if (max_calcium) *max_calcium = mock_max_calcium;
     if (avg_glutamate) *avg_glutamate = mock_avg_glutamate;
-}
 }
 
 /* ============================================================================

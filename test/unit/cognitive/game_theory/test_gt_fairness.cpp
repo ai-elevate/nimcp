@@ -7,10 +7,9 @@
 #include <cstring>
 #include <cstdlib>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/game_theory/nimcp_gt_fairness.h"
 #include "cognitive/game_theory/nimcp_game_theory.h"
-}
 
 //=============================================================================
 // Test Fixture

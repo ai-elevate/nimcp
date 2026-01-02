@@ -16,13 +16,12 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_recovery_pool.h"
 #include "utils/fault_tolerance/nimcp_checkpoint.h"
 #include "utils/fault_tolerance/nimcp_diagnostics.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
-}
 
 #include <vector>
 #include <thread>

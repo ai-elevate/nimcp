@@ -51,7 +51,7 @@
 #include <cstring>
 #include <csignal>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/immune/nimcp_self_heal.h"
 #include "cognitive/immune/nimcp_heal_patterns.h"
@@ -61,7 +61,6 @@ extern "C" {
 #include "utils/code/nimcp_hot_inject.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 using namespace nimcp::e2e;
 

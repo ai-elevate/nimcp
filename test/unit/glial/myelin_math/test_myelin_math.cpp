@@ -20,9 +20,8 @@
 #include <cmath>
 #include <cstdlib>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "glial/myelin_sheath/nimcp_myelin_math.h"
-}
 
 //=============================================================================
 // Test Fixture

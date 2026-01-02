@@ -21,11 +21,10 @@
 
 #include "e2e_test_framework.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "gpu/nimcp_execution_mode.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 #include <thread>
 #include <atomic>

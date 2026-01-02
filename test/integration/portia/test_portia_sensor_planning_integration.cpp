@@ -12,12 +12,11 @@
 #include <chrono>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_sensor_fusion.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/time/nimcp_time.h"
-}
 
 // Mock planning system that uses fused state
 typedef struct {

@@ -25,11 +25,10 @@
 #include <fstream>
 #include <cstdio>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_encrypted_audit.h"
 #include "security/nimcp_security.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

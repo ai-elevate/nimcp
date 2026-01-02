@@ -40,10 +40,9 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_future.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Performance Thresholds (relaxed for debug builds)

@@ -19,12 +19,11 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "lnn/nimcp_lnn_layer.h"
 #include "lnn/nimcp_lnn_types.h"
 #include "lnn/nimcp_lnn_config.h"
 #include "utils/tensor/nimcp_tensor.h"
-}
 
 //=============================================================================
 // Test Fixture

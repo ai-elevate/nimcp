@@ -20,13 +20,12 @@
 #include <random>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/ternary/nimcp_ternary.h"
 #include "utils/ternary/nimcp_ternary_tensor.h"
 #include "snn/nimcp_snn_ternary.h"
 #include "plasticity/nimcp_plasticity_ternary.h"
 #include "utils/tensor/nimcp_tensor.h"
-}
 
 //=============================================================================
 // Test Fixture

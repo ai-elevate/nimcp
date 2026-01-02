@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/events/nimcp_event_subscriber.h"
-}
 
 class EventSubscriberRegressionTest : public ::testing::Test {
 protected:

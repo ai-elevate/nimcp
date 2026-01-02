@@ -12,12 +12,11 @@
 #include <chrono>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_degradation.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/validation/nimcp_common.h"
-}
 
 // Mock module that listens to degradation events
 typedef struct {

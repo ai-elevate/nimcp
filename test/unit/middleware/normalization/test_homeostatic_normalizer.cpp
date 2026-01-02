@@ -5,9 +5,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/normalization/nimcp_homeostatic_normalizer.h"
-}
 
 /**
  * WHAT: Comprehensive test suite for homeostatic normalization

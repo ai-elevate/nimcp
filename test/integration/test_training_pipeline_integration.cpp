@@ -23,14 +23,13 @@
 #include <vector>
 #include <memory>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_cognitive_training_bridge.h"
 #include "middleware/training/nimcp_cortical_training_bridge.h"
 #include "middleware/training/nimcp_perception_training_bridge.h"
 #include "middleware/training/nimcp_training_module.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture - Cognitive-Training Bridge

@@ -33,11 +33,10 @@
 #include <algorithm>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_cnn_training.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Helper Functions

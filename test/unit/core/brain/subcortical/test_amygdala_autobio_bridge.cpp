@@ -5,12 +5,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/subcortical/nimcp_amygdala_autobio_bridge.h"
 #include "core/brain/subcortical/nimcp_amygdala.h"
 #include "cognitive/nimcp_autobiographical_memory.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 /**
  * Test fixture for amygdala-autobio bridge tests

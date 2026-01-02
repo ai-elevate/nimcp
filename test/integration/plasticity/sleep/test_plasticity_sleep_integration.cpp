@@ -13,12 +13,11 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.h"
 #include "plasticity/stdp/nimcp_stdp_sleep_bridge.h"
 #include "plasticity/bcm/nimcp_bcm_sleep_bridge.h"
 #include "plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.h"
-}
 
 /* ============================================================================
  * Integration Test Fixture

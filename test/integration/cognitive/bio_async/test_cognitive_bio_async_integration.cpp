@@ -22,7 +22,7 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
@@ -32,7 +32,6 @@ extern "C" {
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "utils/memory/nimcp_unified_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

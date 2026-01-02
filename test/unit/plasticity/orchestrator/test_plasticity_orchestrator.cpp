@@ -18,10 +18,9 @@
 #include <vector>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/nimcp_plasticity_orchestrator.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 // ============================================================================
 // Test Fixture

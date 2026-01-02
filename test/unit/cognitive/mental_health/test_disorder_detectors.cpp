@@ -20,10 +20,9 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_mental_health.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixtures

@@ -28,7 +28,7 @@
 #include <vector>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "async/nimcp_future.h"
 #include "async/nimcp_bio_async.h"
@@ -36,7 +36,6 @@ extern "C" {
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

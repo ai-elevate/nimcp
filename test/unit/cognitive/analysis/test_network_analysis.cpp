@@ -10,12 +10,11 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/analysis/nimcp_network_analysis.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-}
 
 class NetworkAnalysisTest : public ::testing::Test {
 protected:

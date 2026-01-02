@@ -12,12 +12,11 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/curiosity/nimcp_curiosity_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 /* ============================================================================
  * Test Fixtures

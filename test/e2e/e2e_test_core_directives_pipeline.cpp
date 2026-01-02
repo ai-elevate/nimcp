@@ -28,11 +28,10 @@
 #include <vector>
 #include <string>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/directives/nimcp_action_history.h"
 #include "core/directives/nimcp_reciprocity_eval.h"
 #include "utils/time/nimcp_time.h"
-}
 
 /* ============================================================================
  * Test Fixture

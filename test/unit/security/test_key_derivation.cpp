@@ -26,10 +26,9 @@
 #include <set>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_key_derivation.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

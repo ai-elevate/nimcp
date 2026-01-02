@@ -26,12 +26,11 @@
 #include <cstring>
 #include <cstdio>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
 #include "nimcp.h"
-}
 
 namespace nimcp {
 namespace e2e {

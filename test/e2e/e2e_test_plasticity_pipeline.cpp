@@ -42,7 +42,7 @@
 #include <cmath>
 #include <unordered_map>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "nimcp.h"
 #include "plasticity/nimcp_plasticity_orchestrator.h"
 #include "plasticity/stdp/nimcp_stdp.h"
@@ -58,7 +58,6 @@ extern "C" {
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 using namespace nimcp::e2e;
 

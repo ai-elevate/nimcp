@@ -24,11 +24,10 @@
 #include <chrono>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/cognitive/nimcp_cognitive_adapters.h"
 #include "middleware/routing/nimcp_attention_gate.h"
 #include "core/events/nimcp_event_bus.h"
-}
 
 //=============================================================================
 // Test Fixture

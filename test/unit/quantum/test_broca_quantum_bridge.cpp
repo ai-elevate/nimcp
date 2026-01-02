@@ -22,9 +22,8 @@
 #include <vector>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/broca/nimcp_broca_quantum_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

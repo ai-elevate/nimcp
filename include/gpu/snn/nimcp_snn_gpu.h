@@ -385,6 +385,117 @@ NIMCP_EXPORT bool nimcp_gpu_stdp_triplet(
 );
 
 //=============================================================================
+// High-Level SNN Layer API (E2E Test Convenience)
+//=============================================================================
+
+/**
+ * @brief SNN layer configuration for easy creation
+ */
+typedef struct {
+    size_t num_neurons;         /**< Number of neurons in layer */
+    float tau_mem;              /**< Membrane time constant (ms) */
+    float tau_syn;              /**< Synaptic time constant (ms) */
+    float v_rest;               /**< Resting potential (mV) */
+    float v_thresh;             /**< Spike threshold (mV) */
+    float v_reset;              /**< Reset potential (mV) */
+    float dt;                   /**< Timestep (ms) */
+    float refractory_period;    /**< Refractory period (ms) */
+    nimcp_snn_model_t model;    /**< Neuron model type */
+} nimcp_snn_lif_config_t;
+
+/**
+ * @brief Unified SNN layer handle
+ */
+typedef struct nimcp_snn_layer_s {
+    nimcp_snn_model_t model;
+    size_t num_neurons;
+    nimcp_lif_state_t* lif_state;
+    nimcp_izhikevich_state_t* izh_state;
+    nimcp_adex_state_t* adex_state;
+    nimcp_gpu_context_t* ctx;
+    float refractory_period;
+    nimcp_gpu_tensor_t* refractory_timer;  /**< Time remaining in refractory */
+} nimcp_snn_layer_t;
+
+/**
+ * @brief Create SNN layer from configuration
+ */
+NIMCP_EXPORT nimcp_snn_layer_t* nimcp_snn_lif_layer_create(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_snn_lif_config_t* config
+);
+
+/**
+ * @brief Destroy SNN layer
+ */
+NIMCP_EXPORT void nimcp_snn_layer_destroy(nimcp_snn_layer_t* layer);
+
+/**
+ * @brief Get membrane potential tensor
+ */
+NIMCP_EXPORT nimcp_gpu_tensor_t* nimcp_snn_layer_get_membrane(nimcp_snn_layer_t* layer);
+
+/**
+ * @brief Get output spikes tensor
+ */
+NIMCP_EXPORT nimcp_gpu_tensor_t* nimcp_snn_layer_get_spikes(nimcp_snn_layer_t* layer);
+
+/**
+ * @brief Get layer size (number of neurons)
+ */
+NIMCP_EXPORT size_t nimcp_snn_layer_get_size(const nimcp_snn_layer_t* layer);
+
+/**
+ * @brief Get membrane time constant
+ */
+NIMCP_EXPORT float nimcp_snn_layer_get_tau_mem(const nimcp_snn_layer_t* layer);
+
+/**
+ * @brief Reset layer state to initial values
+ */
+NIMCP_EXPORT bool nimcp_snn_layer_reset(
+    nimcp_gpu_context_t* ctx,
+    nimcp_snn_layer_t* layer
+);
+
+/**
+ * @brief Forward pass for one timestep
+ */
+NIMCP_EXPORT bool nimcp_snn_layer_forward(
+    nimcp_gpu_context_t* ctx,
+    nimcp_snn_layer_t* layer,
+    const nimcp_gpu_tensor_t* input
+);
+
+/**
+ * @brief Forward pass that returns spikes tensor
+ * @return Pointer to internal spikes tensor (do not free)
+ */
+NIMCP_EXPORT nimcp_gpu_tensor_t* nimcp_snn_lif_step(
+    nimcp_gpu_context_t* ctx,
+    nimcp_snn_layer_t* layer,
+    const nimcp_gpu_tensor_t* input
+);
+
+/**
+ * @brief Create spike tensor from host data
+ */
+NIMCP_EXPORT nimcp_gpu_tensor_t* nimcp_snn_spike_tensor_create(
+    nimcp_gpu_context_t* ctx,
+    const uint8_t* data,
+    const size_t* dims,
+    size_t ndim
+);
+
+/**
+ * @brief Copy spike tensor to host
+ */
+NIMCP_EXPORT bool nimcp_snn_spike_tensor_to_host(
+    const nimcp_gpu_tensor_t* tensor,
+    uint8_t* data
+);
+
+//=============================================================================
 // Utility Functions
 //=============================================================================
 

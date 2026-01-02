@@ -9,13 +9,12 @@
 #include "e2e_test_framework.h"
 #include <thread>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 class PortiaSecurityIntegrationE2ETest : public ::testing::Test {
 protected:

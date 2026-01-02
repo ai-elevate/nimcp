@@ -18,12 +18,11 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "dragonfly/nimcp_dragonfly.h"
 #include "dragonfly/nimcp_dragonfly_visual_bridge.h"
 #include "dragonfly/nimcp_dragonfly_audio_bridge.h"
 #include "dragonfly/nimcp_dragonfly_tracking.h"
-}
 
 //=============================================================================
 // Test Fixture

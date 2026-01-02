@@ -6,11 +6,10 @@
 #include <gtest/gtest.h>
 #include <thread>
 #include <chrono>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_security_level.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_router.h"
-}
 
 class SecurityLevelIntegrationTest : public ::testing::Test {
 protected:

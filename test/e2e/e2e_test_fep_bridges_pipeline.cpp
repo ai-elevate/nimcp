@@ -42,7 +42,7 @@
 #include <cmath>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "nimcp.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "cognitive/attention/nimcp_attention_fep_bridge.h"
@@ -56,7 +56,6 @@ extern "C" {
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 using namespace nimcp::e2e;
 

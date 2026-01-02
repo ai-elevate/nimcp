@@ -24,12 +24,11 @@
 #include <chrono>
 #include <thread>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_event_driven_plasticity.h"
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "core/events/nimcp_event_bus.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -25,12 +25,11 @@
 #include <cstdlib>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "core/brain/regions/broca/nimcp_language_production_bridge.h"
     #include "core/brain/regions/broca/nimcp_broca_adapter.h"
     #include "utils/encoding/nimcp_positional_encoding.h"
     #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

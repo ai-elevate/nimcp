@@ -12,7 +12,7 @@
 #include <gtest/gtest.h>
 #include <thread>
 #include <chrono>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_brain_training_integration.h"
 #include "middleware/training/nimcp_loss_functions.h"
 #include "middleware/training/nimcp_optimizers.h"
@@ -21,7 +21,6 @@ extern "C" {
 #include "async/nimcp_bio_router.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 class BrainTrainingBioAsyncIntegrationTest : public ::testing::Test {
 protected:

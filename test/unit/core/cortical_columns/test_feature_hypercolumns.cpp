@@ -16,9 +16,8 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/cortical_columns/nimcp_feature_hypercolumns.h"
-}
 
 //=============================================================================
 // TEST CONSTANTS

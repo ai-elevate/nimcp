@@ -27,12 +27,11 @@
 #include <algorithm>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/ternary/nimcp_ternary.h"
 #include "utils/ternary/nimcp_ternary_tensor.h"
 #include "utils/ternary/nimcp_ternary_logic.h"
 #include "utils/ternary/nimcp_ternary_convert.h"
-}
 
 //=============================================================================
 // Test Fixture

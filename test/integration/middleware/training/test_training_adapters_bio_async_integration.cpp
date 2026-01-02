@@ -5,7 +5,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_training_adapters.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -13,7 +13,6 @@ extern "C" {
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "core/events/nimcp_event_bus.h"
-}
 
 class TrainingAdaptersIntegrationTest : public ::testing::Test {
 protected:

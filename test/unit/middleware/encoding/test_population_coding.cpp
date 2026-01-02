@@ -17,10 +17,9 @@
 #include <algorithm>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/encoding/nimcp_population_coding.h"
 #include "middleware/encoding/nimcp_rate_coding.h"
-}
 
 //=============================================================================
 // Test Fixture

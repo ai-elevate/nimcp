@@ -33,11 +33,10 @@
 #include <vector>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "cognitive/nimcp_working_memory.h"
     #include "utils/encoding/nimcp_positional_encoding.h"
     #include "cognitive/nimcp_emotional_tagging.h"
-}
 
 //=============================================================================
 // Test Fixtures

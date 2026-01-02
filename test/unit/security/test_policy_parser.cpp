@@ -4,10 +4,9 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_policy_parser.h"
 #include "security/nimcp_policy_ast.h"
-}
 
 class PolicyParserTest : public ::testing::Test {
 protected:

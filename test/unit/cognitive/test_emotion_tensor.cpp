@@ -11,10 +11,9 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_emotion_tensor.h"
 #include "cognitive/nimcp_emotion_tensor_bridge.h"
-}
 
 #include "utils/nimcp_test_base.h"
 

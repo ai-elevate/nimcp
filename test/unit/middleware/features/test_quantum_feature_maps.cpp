@@ -7,9 +7,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/features/nimcp_quantum_feature_maps.h"
-}
 
 //=============================================================================
 // Lifecycle Tests

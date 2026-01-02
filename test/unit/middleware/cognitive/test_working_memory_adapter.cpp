@@ -18,11 +18,10 @@
 #include <vector>
 #include <memory>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/cognitive/nimcp_working_memory_adapter.h"
 #include "utils/memory/nimcp_memory.h"
 #include "core/events/nimcp_event_bus.h"
-}
 
 //=============================================================================
 // Test Fixture

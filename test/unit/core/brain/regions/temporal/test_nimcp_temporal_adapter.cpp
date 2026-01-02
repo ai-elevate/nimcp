@@ -15,9 +15,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/temporal/nimcp_temporal_adapter.h"
-}
 
 // Test Fixture for Temporal Adapter
 class TemporalAdapterTest : public ::testing::Test {

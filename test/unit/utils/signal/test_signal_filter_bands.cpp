@@ -2,11 +2,10 @@
 #include <math.h>
 #include <stdlib.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "nimcp.h"
 #include "utils/signal/nimcp_signal_filter.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 #define M_PI 3.14159265358979323846
 

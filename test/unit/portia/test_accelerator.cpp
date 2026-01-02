@@ -10,11 +10,10 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "portia/nimcp_portia_accelerator.h"
     #include "security/nimcp_bbb_helpers.h"
     #include "utils/logging/nimcp_logging.h"
-}
 
 using namespace testing;
 

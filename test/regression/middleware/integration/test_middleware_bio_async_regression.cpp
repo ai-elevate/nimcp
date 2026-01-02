@@ -20,11 +20,10 @@
 #include <numeric>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
-}
 
 //=============================================================================
 // Static Handlers (C-style for bio-router C API)

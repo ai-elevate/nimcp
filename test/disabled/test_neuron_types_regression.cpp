@@ -26,12 +26,11 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/neuron_types/nimcp_neuron_types.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/factory/nimcp_brain_factory.h"
 #include "utils/memory/nimcp_unified_memory.h"
-}
 
 //=============================================================================
 // Test Configuration

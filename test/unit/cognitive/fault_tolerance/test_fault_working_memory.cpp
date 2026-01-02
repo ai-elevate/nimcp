@@ -23,9 +23,8 @@
 #include <chrono>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/fault_tolerance/nimcp_fault_working_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

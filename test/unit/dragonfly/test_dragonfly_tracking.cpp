@@ -15,9 +15,8 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "dragonfly/nimcp_dragonfly_tracking.h"
-}
 
 //=============================================================================
 // Test Fixture

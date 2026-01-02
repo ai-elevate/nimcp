@@ -24,14 +24,13 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/synapse_compute/nimcp_synapse_substrate_bridge.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "core/synapse_compute/nimcp_synapse_compute.h"
 #include "core/synapse_types/nimcp_synapse_types.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixture

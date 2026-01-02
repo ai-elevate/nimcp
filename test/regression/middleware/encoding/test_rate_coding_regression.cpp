@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/encoding/nimcp_rate_coding.h"
-}
 
 class RateCodingRegressionTest : public ::testing::Test {
 protected:

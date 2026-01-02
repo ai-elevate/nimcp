@@ -37,12 +37,11 @@
 #define NIMCP_QUANTUM_REASONING_IMPLEMENTATION
 #endif
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/inference/nimcp_brain_quantum_reasoning.h"
 #include "core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.h"
 #include "core/brain/regions/brainstem/nimcp_brainstem_quantum_bridge.h"
 #include "cognitive/reasoning/nimcp_quantum_reasoning.h"
-}
 
 //=============================================================================
 // Mock Brain Implementation for Testing

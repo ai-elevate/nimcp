@@ -14,11 +14,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/integration/nimcp_quantum_command_propagator.h"
 #include "middleware/integration/nimcp_middleware_command.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

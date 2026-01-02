@@ -32,7 +32,7 @@
 #include <atomic>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/routing/nimcp_thalamic_router.h"
 
 // Thalamic bridges
@@ -42,7 +42,6 @@ extern "C" {
 #include "cognitive/attention/nimcp_attention_thalamic_bridge.h"
 #include "cognitive/introspection/nimcp_introspection_thalamic_bridge.h"
 #include "cognitive/salience/nimcp_salience_thalamic_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

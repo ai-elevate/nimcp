@@ -15,9 +15,8 @@
 #include <vector>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_learning.h"
-}
 
 namespace {
 

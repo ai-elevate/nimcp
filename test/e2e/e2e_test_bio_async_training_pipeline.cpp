@@ -23,13 +23,12 @@
 #include <vector>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "core/brain/nimcp_brain.h"
 #include "middleware/training/nimcp_brain_training_integration.h"
-}
 
 //=============================================================================
 // Test Fixture

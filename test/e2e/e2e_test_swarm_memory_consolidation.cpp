@@ -19,10 +19,9 @@
 #include <thread>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_memory.h"
 #include "async/nimcp_bio_messages.h"
-}
 
 class SwarmMemoryE2ETest : public ::testing::Test {
 protected:

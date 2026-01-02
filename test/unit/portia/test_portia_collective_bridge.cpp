@@ -29,9 +29,8 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_collective_bridge.h"
-}
 
 class PortiaCollectiveBridgeTest : public ::testing::Test {
 protected:

@@ -838,6 +838,261 @@ bool nimcp_gpu_spike_rate(
     return true;
 }
 
+//=============================================================================
+// High-Level SNN Layer API Implementation
+//=============================================================================
+
+nimcp_snn_layer_t* nimcp_snn_lif_layer_create(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_snn_lif_config_t* config)
+{
+    if (!ctx || !config || config->num_neurons == 0) return NULL;
+
+    nimcp_snn_layer_t* layer = (nimcp_snn_layer_t*)calloc(1, sizeof(nimcp_snn_layer_t));
+    if (!layer) return NULL;
+
+    layer->model = NIMCP_SNN_LIF;
+    layer->num_neurons = config->num_neurons;
+    layer->ctx = ctx;
+    layer->refractory_period = config->refractory_period;
+
+    // Convert config to LIF params
+    nimcp_lif_params_t params;
+    params.tau_mem = config->tau_mem;
+    params.tau_syn = config->tau_syn;
+    params.v_rest = config->v_rest;
+    params.v_thresh = config->v_thresh;
+    params.v_reset = config->v_reset;
+    params.dt = config->dt;
+    params.hard_reset = true;
+
+    layer->lif_state = nimcp_lif_state_create(ctx, config->num_neurons, &params);
+    if (!layer->lif_state) {
+        free(layer);
+        return NULL;
+    }
+
+    // Create refractory timer if needed
+    if (config->refractory_period > 0) {
+        size_t dims[] = {config->num_neurons};
+        layer->refractory_timer = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+        if (layer->refractory_timer) {
+            cudaMemset(layer->refractory_timer->data, 0, config->num_neurons * sizeof(float));
+        }
+    }
+
+    LOG_DEBUG("Created SNN LIF layer with %zu neurons", config->num_neurons);
+    return layer;
+}
+
+void nimcp_snn_layer_destroy(nimcp_snn_layer_t* layer)
+{
+    if (!layer) return;
+
+    if (layer->lif_state) {
+        nimcp_lif_state_destroy(layer->lif_state);
+    }
+    if (layer->izh_state) {
+        nimcp_izhikevich_state_destroy(layer->izh_state);
+    }
+    if (layer->adex_state) {
+        nimcp_adex_state_destroy(layer->adex_state);
+    }
+    if (layer->refractory_timer) {
+        nimcp_gpu_tensor_destroy(layer->refractory_timer);
+    }
+
+    free(layer);
+}
+
+nimcp_gpu_tensor_t* nimcp_snn_layer_get_membrane(nimcp_snn_layer_t* layer)
+{
+    if (!layer) return NULL;
+
+    switch (layer->model) {
+        case NIMCP_SNN_LIF:
+            return layer->lif_state ? layer->lif_state->v : NULL;
+        case NIMCP_SNN_IZHIKEVICH:
+            return layer->izh_state ? layer->izh_state->v : NULL;
+        case NIMCP_SNN_ADEX:
+            return layer->adex_state ? layer->adex_state->v : NULL;
+        default:
+            return NULL;
+    }
+}
+
+nimcp_gpu_tensor_t* nimcp_snn_layer_get_spikes(nimcp_snn_layer_t* layer)
+{
+    if (!layer) return NULL;
+
+    switch (layer->model) {
+        case NIMCP_SNN_LIF:
+            return layer->lif_state ? layer->lif_state->spikes : NULL;
+        case NIMCP_SNN_IZHIKEVICH:
+            return layer->izh_state ? layer->izh_state->spikes : NULL;
+        case NIMCP_SNN_ADEX:
+            return layer->adex_state ? layer->adex_state->spikes : NULL;
+        default:
+            return NULL;
+    }
+}
+
+size_t nimcp_snn_layer_get_size(const nimcp_snn_layer_t* layer)
+{
+    if (!layer) return 0;
+    return layer->num_neurons;
+}
+
+float nimcp_snn_layer_get_tau_mem(const nimcp_snn_layer_t* layer)
+{
+    if (!layer) return 0.0f;
+
+    switch (layer->model) {
+        case NIMCP_SNN_LIF:
+            return layer->lif_state ? layer->lif_state->params.tau_mem : 0.0f;
+        case NIMCP_SNN_ADEX:
+            return layer->adex_state ? layer->adex_state->params.tau_mem : 0.0f;
+        default:
+            return 0.0f;
+    }
+}
+
+bool nimcp_snn_layer_reset(
+    nimcp_gpu_context_t* ctx,
+    nimcp_snn_layer_t* layer)
+{
+    if (!layer) return false;
+    (void)ctx;  // Use layer->ctx for consistency
+
+    float v_rest = 0.0f;
+
+    switch (layer->model) {
+        case NIMCP_SNN_LIF:
+            if (layer->lif_state && layer->lif_state->v) {
+                v_rest = layer->lif_state->params.v_rest;
+                return nimcp_gpu_snn_reset_state(layer->ctx, layer->lif_state->v, v_rest);
+            }
+            break;
+        case NIMCP_SNN_IZHIKEVICH:
+            if (layer->izh_state && layer->izh_state->v) {
+                v_rest = -65.0f;  // Standard Izhikevich resting
+                return nimcp_gpu_snn_reset_state(layer->ctx, layer->izh_state->v, v_rest);
+            }
+            break;
+        case NIMCP_SNN_ADEX:
+            if (layer->adex_state && layer->adex_state->v) {
+                v_rest = layer->adex_state->params.v_rest;
+                return nimcp_gpu_snn_reset_state(layer->ctx, layer->adex_state->v, v_rest);
+            }
+            break;
+        default:
+            break;
+    }
+
+    return false;
+}
+
+bool nimcp_snn_layer_forward(
+    nimcp_gpu_context_t* ctx,
+    nimcp_snn_layer_t* layer,
+    const nimcp_gpu_tensor_t* input)
+{
+    if (!layer || !input) return false;
+    (void)ctx;  // Use layer->ctx for consistency
+
+    switch (layer->model) {
+        case NIMCP_SNN_LIF:
+            return nimcp_gpu_lif_forward(layer->ctx, layer->lif_state, input);
+        case NIMCP_SNN_IZHIKEVICH:
+            return nimcp_gpu_izhikevich_forward(layer->ctx, layer->izh_state, input);
+        case NIMCP_SNN_ADEX:
+            return nimcp_gpu_adex_forward(layer->ctx, layer->adex_state, input);
+        default:
+            return false;
+    }
+}
+
+nimcp_gpu_tensor_t* nimcp_snn_lif_step(
+    nimcp_gpu_context_t* ctx,
+    nimcp_snn_layer_t* layer,
+    const nimcp_gpu_tensor_t* input)
+{
+    if (!layer || !input) return NULL;
+
+    // Run forward pass
+    if (!nimcp_snn_layer_forward(ctx, layer, input)) {
+        return NULL;
+    }
+
+    // Return spikes tensor
+    return nimcp_snn_layer_get_spikes(layer);
+}
+
+nimcp_gpu_tensor_t* nimcp_snn_spike_tensor_create(
+    nimcp_gpu_context_t* ctx,
+    const uint8_t* data,
+    const size_t* dims,
+    size_t ndim)
+{
+    if (!ctx || !data || !dims || ndim == 0) return NULL;
+
+    // Calculate total size
+    size_t total = 1;
+    for (size_t i = 0; i < ndim; i++) {
+        total *= dims[i];
+    }
+
+    // Create float tensor (spikes as 0.0 or 1.0)
+    nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, ndim, NIMCP_GPU_PRECISION_FP32);
+    if (!tensor) return NULL;
+
+    // Convert uint8 spikes to float and upload
+    float* host_data = (float*)malloc(total * sizeof(float));
+    if (!host_data) {
+        nimcp_gpu_tensor_destroy(tensor);
+        return NULL;
+    }
+
+    for (size_t i = 0; i < total; i++) {
+        host_data[i] = data[i] ? 1.0f : 0.0f;
+    }
+
+    cudaError_t err = cudaMemcpy(tensor->data, host_data, total * sizeof(float), cudaMemcpyHostToDevice);
+    free(host_data);
+
+    if (err != cudaSuccess) {
+        nimcp_gpu_tensor_destroy(tensor);
+        return NULL;
+    }
+
+    return tensor;
+}
+
+bool nimcp_snn_spike_tensor_to_host(
+    const nimcp_gpu_tensor_t* tensor,
+    uint8_t* data)
+{
+    if (!tensor || !data) return false;
+
+    // Download float data
+    float* host_data = (float*)malloc(tensor->numel * sizeof(float));
+    if (!host_data) return false;
+
+    cudaError_t err = cudaMemcpy(host_data, tensor->data, tensor->numel * sizeof(float), cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) {
+        free(host_data);
+        return false;
+    }
+
+    // Convert float to uint8
+    for (size_t i = 0; i < tensor->numel; i++) {
+        data[i] = host_data[i] > 0.5f ? 1 : 0;
+    }
+
+    free(host_data);
+    return true;
+}
+
 #else // !NIMCP_ENABLE_CUDA
 
 #include "gpu/snn/nimcp_snn_gpu.h"
@@ -960,6 +1215,102 @@ bool nimcp_gpu_spike_count(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* s
 bool nimcp_gpu_spike_rate(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* spikes,
     size_t n_timesteps, nimcp_gpu_tensor_t* rates)
 {
+    return false;
+}
+
+//=============================================================================
+// SNN Layer Wrapper API - CPU Fallback Stubs
+//=============================================================================
+
+nimcp_snn_layer_t* nimcp_snn_lif_layer_create(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_snn_lif_config_t* config)
+{
+    LOG_WARN("CUDA not available - SNN layer requires GPU");
+    (void)ctx;
+    (void)config;
+    return NULL;
+}
+
+void nimcp_snn_layer_destroy(nimcp_snn_layer_t* layer)
+{
+    if (layer) free(layer);
+}
+
+nimcp_gpu_tensor_t* nimcp_snn_layer_get_membrane(nimcp_snn_layer_t* layer)
+{
+    (void)layer;
+    return NULL;
+}
+
+nimcp_gpu_tensor_t* nimcp_snn_layer_get_spikes(nimcp_snn_layer_t* layer)
+{
+    (void)layer;
+    return NULL;
+}
+
+size_t nimcp_snn_layer_get_size(const nimcp_snn_layer_t* layer)
+{
+    (void)layer;
+    return 0;
+}
+
+float nimcp_snn_layer_get_tau_mem(const nimcp_snn_layer_t* layer)
+{
+    (void)layer;
+    return 0.0f;
+}
+
+bool nimcp_snn_layer_reset(
+    nimcp_gpu_context_t* ctx,
+    nimcp_snn_layer_t* layer)
+{
+    (void)ctx;
+    (void)layer;
+    return false;
+}
+
+bool nimcp_snn_layer_forward(
+    nimcp_gpu_context_t* ctx,
+    nimcp_snn_layer_t* layer,
+    const nimcp_gpu_tensor_t* input)
+{
+    (void)ctx;
+    (void)layer;
+    (void)input;
+    return false;
+}
+
+nimcp_gpu_tensor_t* nimcp_snn_lif_step(
+    nimcp_gpu_context_t* ctx,
+    nimcp_snn_layer_t* layer,
+    const nimcp_gpu_tensor_t* input)
+{
+    (void)ctx;
+    (void)layer;
+    (void)input;
+    return NULL;
+}
+
+nimcp_gpu_tensor_t* nimcp_snn_spike_tensor_create(
+    nimcp_gpu_context_t* ctx,
+    const uint8_t* data,
+    const size_t* dims,
+    size_t ndim)
+{
+    (void)ctx;
+    (void)data;
+    (void)dims;
+    (void)ndim;
+    return NULL;
+}
+
+bool nimcp_snn_spike_tensor_to_host(
+    const nimcp_gpu_tensor_t* tensor,
+    uint8_t* data)
+{
+    (void)tensor;
+    (void)data;
     return false;
 }
 

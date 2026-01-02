@@ -16,7 +16,7 @@
 #include <vector>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "snn/nimcp_snn.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
@@ -28,7 +28,6 @@ extern "C" {
 #include "snn/bridges/nimcp_snn_medulla_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Training Integration Pipeline E2E Tests

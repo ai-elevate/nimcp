@@ -25,10 +25,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "plasticity/noise/nimcp_pink_noise.h"
     #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

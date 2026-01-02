@@ -5,10 +5,9 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/analysis/nimcp_analysis_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
-}
 
 class AnalysisFEPBridgeTest : public ::testing::Test {
 protected:

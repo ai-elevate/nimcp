@@ -26,12 +26,11 @@
 #include <vector>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/memory/nimcp_cow_manager.h"
 #include "utils/memory/nimcp_buffer_pool.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

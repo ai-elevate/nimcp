@@ -8,11 +8,10 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_sleep_wake.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/thread/nimcp_thread.h"
-}
 
 //=============================================================================
 // Mock Sleep System Implementation
@@ -27,7 +26,7 @@ typedef struct mock_sleep_system {
 
 static mock_sleep_system_t g_mock_sleep = {SLEEP_STATE_AWAKE, 0.0f, nullptr, nullptr};
 
-extern "C" {
+// Headers have their own extern "C" guards
 
 sleep_state_t sleep_get_current_state(sleep_system_t sys) {
     (void)sys;
@@ -53,7 +52,6 @@ bool sleep_unregister_state_callback(sleep_system_t sys, sleep_state_callback_t 
     return true;
 }
 
-} // extern "C"
 
 static void trigger_sleep_state_change(sleep_state_t state) {
     g_mock_sleep.current_state = state;
@@ -66,9 +64,8 @@ static void trigger_sleep_state_change(sleep_state_t state) {
 // Swarm Brain Sleep Bridge Tests
 //=============================================================================
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_brain_sleep_bridge.h"
-}
 
 class SwarmBrainSleepBridgeTest : public ::testing::Test {
 protected:
@@ -119,9 +116,8 @@ TEST_F(SwarmBrainSleepBridgeTest, GetEffectsWorks) {
 // Swarm Consciousness Sleep Bridge Tests
 //=============================================================================
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.h"
-}
 
 class SwarmConsciousnessSleepBridgeTest : public ::testing::Test {
 protected:
@@ -137,7 +133,6 @@ TEST_F(SwarmConsciousnessSleepBridgeTest, CreateAndDestroy) {
     swarm_consciousness_sleep_bridge_t bridge = swarm_consciousness_sleep_bridge_create(&config, (sleep_system_t)1);
     EXPECT_NE(bridge, nullptr);
     swarm_consciousness_sleep_bridge_destroy(bridge);
-}
 
 TEST_F(SwarmConsciousnessSleepBridgeTest, PhiFactorVariesWithSleep) {
     float awake = swarm_consciousness_sleep_get_phi_factor(SLEEP_STATE_AWAKE);
@@ -152,9 +147,8 @@ TEST_F(SwarmConsciousnessSleepBridgeTest, PhiFactorVariesWithSleep) {
 // Swarm Consensus Sleep Bridge Tests
 //=============================================================================
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_consensus_sleep_bridge.h"
-}
 
 class SwarmConsensusSleepBridgeTest : public ::testing::Test {
 protected:
@@ -182,9 +176,8 @@ TEST_F(SwarmConsensusSleepBridgeTest, VoteFactorVariesWithSleep) {
 // Swarm Emergence Sleep Bridge Tests
 //=============================================================================
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_emergence_sleep_bridge.h"
-}
 
 class SwarmEmergenceSleepBridgeTest : public ::testing::Test {
 protected:
@@ -212,7 +205,7 @@ TEST_F(SwarmEmergenceSleepBridgeTest, TransFactorVariesWithSleep) {
 // Swarm Flocking Sleep Bridge Tests
 //=============================================================================
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_flocking_sleep_bridge.h"
 }
 
@@ -243,7 +236,7 @@ TEST_F(SwarmFlockingSleepBridgeTest, ForceFactorVariesWithSleep) {
 // Swarm Immune Sleep Bridge Tests
 //=============================================================================
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_immune_sleep_bridge.h"
 }
 
@@ -279,7 +272,7 @@ TEST_F(SwarmImmuneSleepBridgeTest, MemoryFactorEnhancedDuringSleep) {
 // Swarm Memory Sleep Bridge Tests
 //=============================================================================
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_memory_sleep_bridge.h"
 }
 
@@ -314,7 +307,7 @@ TEST_F(SwarmMemorySleepBridgeTest, ReplayFactorHighDuringREM) {
 // Swarm Pheromone Sleep Bridge Tests
 //=============================================================================
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.h"
 }
 
@@ -344,7 +337,7 @@ TEST_F(SwarmPheromoneSleepBridgeTest, DecayFactorVariesWithSleep) {
 // Swarm Quorum Sleep Bridge Tests
 //=============================================================================
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_quorum_sleep_bridge.h"
 }
 
@@ -379,7 +372,7 @@ TEST_F(SwarmQuorumSleepBridgeTest, CommitFactorReducedDuringSleep) {
 // Swarm Signal Sleep Bridge Tests
 //=============================================================================
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_signal_sleep_bridge.h"
 }
 

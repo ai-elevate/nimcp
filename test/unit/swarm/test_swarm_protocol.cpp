@@ -21,7 +21,7 @@
 #include <random>
 
 // Mock swarm protocol structures based on architecture doc
-extern "C" {
+// Headers have their own extern "C" guards
 
 // Message types
 typedef enum {
@@ -98,7 +98,6 @@ uint16_t swarm_protocol_compute_crc16(const uint8_t* data, uint32_t length) {
         }
     }
     return crc;
-}
 
 // Phoneme mappings
 const char* swarm_protocol_message_type_to_phoneme(swarm_message_type_t type) {

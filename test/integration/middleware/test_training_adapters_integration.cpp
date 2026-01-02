@@ -16,14 +16,13 @@
 #include <atomic>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_training_adapters.h"
 #include "middleware/training/nimcp_learning_signal_adapter.h"
 #include "middleware/training/nimcp_weight_update_adapter.h"
 #include "middleware/training/nimcp_training_event_adapter.h"
 #include "core/events/nimcp_event_bus.h"
 #include "middleware/routing/nimcp_routing_table.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

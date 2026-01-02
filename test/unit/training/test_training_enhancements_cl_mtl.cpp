@@ -36,12 +36,11 @@
 #include <cstdlib>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_continual_learning.h"
 #include "training/nimcp_multi_task.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Continual Learning Test Fixture

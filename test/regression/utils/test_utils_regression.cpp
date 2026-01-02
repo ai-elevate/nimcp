@@ -37,7 +37,7 @@
 #include <fstream>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "utils/memory/nimcp_memory.h"
     #include "utils/time/nimcp_time.h"
     #include "utils/config/nimcp_config.h"
@@ -80,7 +80,6 @@ extern "C" {
         return (code / 1000);
     }
     #endif
-}
 
 //=============================================================================
 // Test Fixture

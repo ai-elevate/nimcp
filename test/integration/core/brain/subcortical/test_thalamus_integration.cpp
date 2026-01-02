@@ -14,10 +14,9 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/subcortical/nimcp_thalamus.h"
 #include "core/brain/subcortical/nimcp_basal_ganglia.h"
-}
 
 //=============================================================================
 // Test Fixtures

@@ -17,9 +17,8 @@
 #include <vector>
 #include <limits>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_gradient_manager.h"
-}
 
 /* ============================================================================
  * Test Fixtures

@@ -6,7 +6,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_training_adapters.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -26,7 +26,6 @@ static inline nimcp_error_t bio_module_send_message(bio_module_id_t module,
     (void)promise;
     /* Just return success for testing - actual routing not implemented */
     return NIMCP_SUCCESS;
-}
 }
 
 using namespace testing;

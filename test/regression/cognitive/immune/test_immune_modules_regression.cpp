@@ -28,7 +28,7 @@ static uint64_t get_time_ms() {
     return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
 }
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/immune/nimcp_trained_immunity.h"
 #include "cognitive/immune/nimcp_complement_system.h"
@@ -39,7 +39,6 @@ extern "C" {
 #include "cognitive/immune/nimcp_mucosal_immunity.h"
 #include "cognitive/immune/nimcp_immune_persistence.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Base Regression Test Fixture

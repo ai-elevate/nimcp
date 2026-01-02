@@ -13,7 +13,7 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
 #include "cognitive/collective_cognition/nimcp_hyperscanning.h"
 #include "cognitive/collective_cognition/nimcp_collective_phi.h"
@@ -23,7 +23,6 @@ extern "C" {
 #include "training/nimcp_adversarial_training.h"
 #include "training/nimcp_distributed_training.h"
 #include "training/nimcp_gradient_scaling.h"
-}
 
 /*=============================================================================
  * Test Fixture

@@ -9,9 +9,8 @@
 #include <iomanip>
 #include <cstring>
 #include "middleware/routing/nimcp_signal_wrapper.h"
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_memory.h"
-}
 
 using namespace std::chrono;
 

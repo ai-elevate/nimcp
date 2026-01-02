@@ -22,11 +22,10 @@
 #include <chrono>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/fault_tolerance/nimcp_recovery_consolidation.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixture

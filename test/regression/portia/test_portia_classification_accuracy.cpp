@@ -14,9 +14,8 @@
 #include <vector>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_classification.h"
-}
 
 namespace {
 

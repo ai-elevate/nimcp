@@ -21,9 +21,8 @@
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/substrate/nimcp_substrate_gpu.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_memory.h"
-}
 
 namespace {
     constexpr uint32_t TEST_AXONS = 100;

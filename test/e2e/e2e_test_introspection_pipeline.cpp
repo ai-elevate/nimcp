@@ -31,7 +31,7 @@
 #include <atomic>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "nimcp.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/introspection/nimcp_consciousness_metrics.h"
@@ -39,7 +39,6 @@ extern "C" {
 #include "cognitive/introspection/nimcp_ensemble_uncertainty.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 using namespace nimcp::e2e;
 

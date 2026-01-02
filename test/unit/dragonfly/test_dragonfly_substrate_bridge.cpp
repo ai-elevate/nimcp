@@ -10,9 +10,8 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "dragonfly/nimcp_dragonfly_substrate_bridge.h"
-}
 
 //=============================================================================
 // Test Fixtures

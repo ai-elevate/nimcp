@@ -12,10 +12,9 @@
 #include <cstring>
 #include <unistd.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

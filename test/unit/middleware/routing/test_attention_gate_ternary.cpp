@@ -17,13 +17,12 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/routing/nimcp_attention_gate.h"
 #include "utils/ternary/nimcp_ternary.h"
 #include "utils/ternary/nimcp_ternary_types.h"
 #include "utils/ternary/nimcp_ternary_vector.h"
 #include "utils/ternary/nimcp_ternary_convert.h"
-}
 
 //=============================================================================
 // Ternary Attention State Definitions

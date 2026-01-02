@@ -11,10 +11,9 @@
  * @date 2025-12-19
  */
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "perception/cortical/nimcp_visual_cortical_bridge.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 #include <gtest/gtest.h>
 #include <cmath>

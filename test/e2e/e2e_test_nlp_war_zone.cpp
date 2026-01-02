@@ -27,11 +27,10 @@
 #include <chrono>
 #include <arpa/inet.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "networking/nlp/nimcp_neural_link_protocol.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 using namespace nimcp::e2e;
 

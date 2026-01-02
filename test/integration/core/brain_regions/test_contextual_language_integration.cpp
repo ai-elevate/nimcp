@@ -8,9 +8,8 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain_regions/nimcp_contextual_language.h"
-}
 
 class ContextualLanguageIntegrationTest : public ::testing::Test {
 protected:

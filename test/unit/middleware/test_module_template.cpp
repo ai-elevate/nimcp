@@ -13,12 +13,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "middleware/<category>/<HEADER_FILE>.h"
     #include "utils/logging/nimcp_logging.h"
     #include "utils/config/nimcp_dynamic_config.h"
     #include "security/nimcp_security.h"
-}
 
 //=============================================================================
 // Test Fixture

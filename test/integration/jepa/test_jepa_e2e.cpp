@@ -20,7 +20,7 @@
 #include <vector>
 #include <memory>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/jepa/nimcp_jepa_latent.h"
 #include "cognitive/jepa/nimcp_jepa_predictor.h"
 #include "cognitive/jepa/nimcp_jepa_context.h"
@@ -29,7 +29,6 @@ extern "C" {
 #include "perception/nimcp_visual_jepa_bridge.h"
 #include "perception/nimcp_speech_jepa_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Test Fixture

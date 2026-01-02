@@ -19,7 +19,7 @@
 #include <vector>
 #include <map>
 
-extern "C" {
+// Headers have their own extern "C" guards
 
 // Forward declaration
 typedef struct swarm_brain swarm_brain_t;
@@ -105,7 +105,6 @@ swarm_gateway_config_t swarm_gateway_default_config(void) {
     config.telemetry_interval_ms = 1000;
     config.enable_cross_swarm_comm = true;
     return config;
-}
 
 swarm_gateway_t* swarm_gateway_create(const swarm_gateway_config_t* config) {
     if (!config) return nullptr;

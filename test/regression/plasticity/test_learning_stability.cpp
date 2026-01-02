@@ -19,7 +19,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/stdp/nimcp_stdp.h"
 #include "plasticity/homeostatic/nimcp_homeostatic.h"
 #include "plasticity/bcm/nimcp_bcm.h"
@@ -27,7 +27,6 @@ extern "C" {
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
-}
 
 class LearningStabilityTest : public ::testing::Test {
 protected:

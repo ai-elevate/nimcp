@@ -14,12 +14,11 @@
 #include <vector>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/cognitive/nimcp_cognitive_adapters.h"
 #include "middleware/cognitive/nimcp_working_memory_adapter.h"
 #include "middleware/cognitive/nimcp_consolidation_adapter.h"
 #include "middleware/cognitive/nimcp_attention_adapter.h"
-}
 
 //=============================================================================
 // REGRESSION TEST FIXTURE

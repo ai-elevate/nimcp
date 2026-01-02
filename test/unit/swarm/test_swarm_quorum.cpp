@@ -18,9 +18,8 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_quorum.h"
-}
 
 class SwarmQuorumTest : public ::testing::Test {
 protected:

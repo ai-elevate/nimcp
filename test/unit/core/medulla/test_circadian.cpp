@@ -11,10 +11,9 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/medulla/nimcp_circadian.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Test Fixture

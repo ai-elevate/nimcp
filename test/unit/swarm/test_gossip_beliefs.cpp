@@ -23,9 +23,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_gossip_beliefs.h"
-}
 
 class GossipBeliefsTest : public ::testing::Test {
 protected:

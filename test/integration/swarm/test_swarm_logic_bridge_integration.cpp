@@ -19,11 +19,10 @@
 #include <vector>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_logic_bridge.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 class SwarmLogicBridgeIntegrationTest : public ::testing::Test {
 protected:

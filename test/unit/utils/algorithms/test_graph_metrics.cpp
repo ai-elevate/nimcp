@@ -17,11 +17,10 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/algorithms/nimcp_graph_metrics.h"
 #include "utils/containers/nimcp_graph.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 class GraphMetricsTest : public ::testing::Test {
 protected:

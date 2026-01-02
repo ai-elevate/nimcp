@@ -15,10 +15,9 @@
 #include <cstdlib>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/memory/nimcp_quantum_semantic.h"
 #include "cognitive/memory/nimcp_semantic_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

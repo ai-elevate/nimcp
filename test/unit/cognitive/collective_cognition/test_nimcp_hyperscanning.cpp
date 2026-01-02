@@ -5,9 +5,8 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/collective_cognition/nimcp_hyperscanning.h"
-}
 
 /*=============================================================================
  * Test Fixture

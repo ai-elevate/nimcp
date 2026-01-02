@@ -12,13 +12,12 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "glial/nimcp_glial_substrate_bridge.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "glial/astrocytes/nimcp_astrocytes.h"
 #include "glial/microglia/nimcp_microglia.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Test Fixture

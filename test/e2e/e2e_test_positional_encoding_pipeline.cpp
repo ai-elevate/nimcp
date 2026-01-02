@@ -29,12 +29,11 @@
 #include <random>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "nimcp.h"
 #include "utils/encoding/nimcp_positional_encoding.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 using namespace nimcp::e2e;
 

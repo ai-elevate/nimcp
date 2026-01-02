@@ -25,11 +25,10 @@
 #include <cstdlib>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "middleware/encoding/nimcp_population_coding.h"
     #include "utils/encoding/nimcp_positional_encoding.h"
     #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

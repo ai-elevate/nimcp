@@ -8,9 +8,8 @@
 #include <iomanip>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/buffering/nimcp_integration_buffer.h"
-}
 
 using namespace std::chrono;
 

@@ -9,10 +9,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.h"
 #include "core/brain/subcortical/nimcp_basal_ganglia.h"
-}
 
 //=============================================================================
 // Test Fixture

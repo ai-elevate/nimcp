@@ -22,10 +22,9 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/mirror_neurons/nimcp_mirror_neurons_sleep_bridge.h"
 #include "cognitive/nimcp_sleep_wake.h"
-}
 
 // Test tolerance for floating point comparisons
 #define FLOAT_EPSILON 1e-6f

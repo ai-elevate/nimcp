@@ -22,7 +22,7 @@
 #include <iomanip>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/neuron_models/nimcp_neuron_substrate_bridge.h"
 #include "core/synapse_compute/nimcp_synapse_substrate_bridge.h"
 #include "core/nimcp_axon_dendrite_substrate_bridge.h"
@@ -31,7 +31,6 @@ extern "C" {
 #include "core/synapse_compute/nimcp_synapse_compute.h"
 #include "core/axon/nimcp_axon.h"
 #include "core/dendrite/nimcp_dendrite.h"
-}
 
 //=============================================================================
 // PERFORMANCE MONITORING UTILITIES

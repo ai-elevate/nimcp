@@ -19,13 +19,12 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "cognitive/reasoning/nimcp_symbolic_logic_brain_integration.h"
     #include "core/brain/nimcp_brain.h"
     #include "cognitive/nimcp_working_memory.h"
     #include "cognitive/nimcp_executive.h"
     #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixture

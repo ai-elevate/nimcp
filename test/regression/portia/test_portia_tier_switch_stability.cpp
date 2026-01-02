@@ -20,10 +20,9 @@
 #include <vector>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_tier_switch.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 namespace {
 

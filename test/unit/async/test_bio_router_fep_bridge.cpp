@@ -11,10 +11,9 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_router_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
-}
 
 class BioRouterFepBridgeTest : public ::testing::Test {
 protected:

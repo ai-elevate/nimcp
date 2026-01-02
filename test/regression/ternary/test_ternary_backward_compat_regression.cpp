@@ -24,9 +24,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/ternary/nimcp_ternary.h"
-}
 
 //=============================================================================
 // Test Fixture

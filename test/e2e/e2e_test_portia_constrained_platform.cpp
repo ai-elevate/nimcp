@@ -25,7 +25,7 @@
 #include <chrono>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia.h"
 #include "portia/nimcp_portia_degradation.h"
 #include "utils/platform/nimcp_platform_tier.h"
@@ -38,7 +38,6 @@ extern "C" {
 #include "plasticity/attention/nimcp_attention.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixture

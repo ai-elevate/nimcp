@@ -16,9 +16,8 @@
 #include <cstdlib>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/attention/nimcp_quantum_attention.h"
-}
 
 //=============================================================================
 // Test Fixture

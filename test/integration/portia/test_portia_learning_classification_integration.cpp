@@ -11,11 +11,10 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_learning.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/validation/nimcp_common.h"
-}
 
 // Mock classification system
 typedef struct {

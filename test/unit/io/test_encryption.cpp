@@ -13,9 +13,8 @@
 #include <vector>
 #include <cstdint>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "io/serialization/nimcp_encryption.h"
-}
 
 //=============================================================================
 // Test Constants

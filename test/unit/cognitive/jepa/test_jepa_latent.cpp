@@ -12,10 +12,9 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/jepa/nimcp_jepa_latent.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 // Tolerance for floating point comparisons
 static constexpr float FLOAT_TOLERANCE = 1e-5f;

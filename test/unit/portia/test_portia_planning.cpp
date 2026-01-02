@@ -13,10 +13,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_planning.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

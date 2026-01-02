@@ -12,13 +12,12 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/nimcp_axon_dendrite_substrate_bridge.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "core/axon/nimcp_axon.h"
 #include "core/dendrite/nimcp_dendrite.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Test Fixture

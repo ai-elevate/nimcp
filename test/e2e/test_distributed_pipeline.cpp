@@ -19,10 +19,9 @@
 #include <thread>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "networking/p2p/nimcp_p2pnode.h"
 #include "networking/distributed/nimcp_distributed_cognition.h"
-}
 
 using namespace nimcp::e2e;
 

@@ -8,11 +8,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "snn/bridges/nimcp_snn_emotion_bridge.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
-}
 
 class SNNEmotionBridgeTest : public ::testing::Test {
 protected:

@@ -5,9 +5,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/reasoning/nimcp_quantum_reasoning.h"
-}
 
 //=============================================================================
 // Lifecycle Tests

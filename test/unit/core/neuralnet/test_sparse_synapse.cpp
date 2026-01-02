@@ -23,11 +23,10 @@
 #include <thread>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/neuralnet/nimcp_sparse_synapse.h"
 #include "core/neuralnet/nimcp_neuralnet.h"  // For synapse_t definition
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixtures

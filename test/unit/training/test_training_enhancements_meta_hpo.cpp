@@ -30,11 +30,10 @@
 #include <cmath>
 #include <climits>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_meta_learning.h"
 #include "training/nimcp_hyperparam_opt.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Meta-Learning Test Fixture

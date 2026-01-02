@@ -33,10 +33,9 @@
 #include <vector>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/parietal/nimcp_intuition_thalamic_bridge.h"
 #include "middleware/routing/nimcp_thalamic_router.h"
-}
 
 /* ============================================================================
  * Test Fixture

@@ -10,12 +10,11 @@
 #include <thread>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 class PortiaBioAsyncPipelineE2ETest : public ::testing::Test {
 protected:

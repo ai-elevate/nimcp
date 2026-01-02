@@ -19,9 +19,8 @@
 #include <sys/stat.h>
 #include <glob.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/logging/nimcp_logging.h"
-}
 
 class LoggingStressTest : public ::testing::Test {
 protected:

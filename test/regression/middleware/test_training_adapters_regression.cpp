@@ -15,12 +15,11 @@
 #include <cmath>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_training_adapters.h"
 #include "middleware/training/nimcp_learning_signal_adapter.h"
 #include "middleware/training/nimcp_weight_update_adapter.h"
 #include "middleware/training/nimcp_training_event_adapter.h"
-}
 
 //=============================================================================
 // REGRESSION TEST FIXTURE

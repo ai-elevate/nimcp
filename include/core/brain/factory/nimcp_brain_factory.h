@@ -33,12 +33,8 @@
 #ifndef NIMCP_BRAIN_FACTORY_H
 #define NIMCP_BRAIN_FACTORY_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 //=============================================================================
-// Includes
+// Includes (MUST be before extern "C" to avoid CUDA header conflicts)
 //=============================================================================
 
 #include "core/brain/nimcp_brain.h"
@@ -49,6 +45,10 @@ extern "C" {
 // Sub-module headers (Phase 11: SRP Split)
 #include "core/brain/factory/init/nimcp_brain_init.h"
 #include "core/brain/factory/validation/nimcp_brain_validation.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Forward declarations for internal types
 typedef struct task_strategy task_strategy_t;

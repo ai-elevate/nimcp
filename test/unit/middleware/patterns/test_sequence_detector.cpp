@@ -7,9 +7,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/patterns/nimcp_sequence_detector.h"
-}
 
 /**
  * WHAT: Comprehensive test suite for sequence detection

@@ -22,13 +22,12 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/neuromodulators/nimcp_neuromod_substrate_bridge.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 class NeuromodSubstrateBridgeTest : public ::testing::Test {
 protected:

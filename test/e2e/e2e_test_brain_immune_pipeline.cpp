@@ -43,14 +43,13 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/fault_tolerance/nimcp_byzantine_fault_tolerance.h"
 #include "swarm/nimcp_swarm_immune.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 using namespace nimcp::e2e;
 

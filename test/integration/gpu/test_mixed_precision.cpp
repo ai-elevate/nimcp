@@ -35,9 +35,8 @@
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/inference/nimcp_inference_gpu.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Configuration Constants

@@ -21,13 +21,12 @@
 
 #include "e2e_test_framework.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_snn_backprop.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 #include <thread>
 #include <atomic>

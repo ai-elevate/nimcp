@@ -10,10 +10,9 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/axon/nimcp_axon.h"
 #include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
-}
 
 //=============================================================================
 // AXON-OLIGODENDROCYTE INTEGRATION

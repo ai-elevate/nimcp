@@ -6,10 +6,9 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
     #include "security/nimcp_supply_chain.h"
     #include "utils/error/nimcp_error_codes.h"
-}
 #include <cstring>
 #include <fstream>
 #include <string>

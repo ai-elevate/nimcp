@@ -17,7 +17,7 @@
 #include <vector>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.h"
 #include "plasticity/nimcp_plasticity_orchestrator.h"
 #include "core/axon/nimcp_axon.h"
@@ -25,7 +25,6 @@ extern "C" {
 #include "core/neuron_models/nimcp_neuron_model.h"
 #include "core/neuron_models/nimcp_izhikevich.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 // ============================================================================
 // Test Fixture

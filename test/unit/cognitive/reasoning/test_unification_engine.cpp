@@ -9,12 +9,11 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
     #include "cognitive/reasoning/nimcp_unification_engine.h"
     #include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"
     #include "cognitive/reasoning/nimcp_reasoning_factory.h"
     #include "core/brain/nimcp_brain.h"
-}
 
 class UnificationEngineTest : public ::testing::Test {
 protected:

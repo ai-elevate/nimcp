@@ -16,12 +16,11 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/synapse_types/nimcp_synapse_types.h"
 #include "utils/ternary/nimcp_ternary.h"
 #include "utils/ternary/nimcp_ternary_types.h"
 #include "utils/ternary/nimcp_ternary_convert.h"
-}
 
 //=============================================================================
 // Test Fixtures

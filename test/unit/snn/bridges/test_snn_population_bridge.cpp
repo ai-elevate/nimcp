@@ -4,11 +4,10 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "snn/bridges/nimcp_snn_population_bridge.h"
 #include "snn/nimcp_snn_config.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 class SNNPopulationBridgeTest : public ::testing::Test {
 protected:

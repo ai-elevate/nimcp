@@ -24,10 +24,9 @@
 #include <vector>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "gpu/nimcp_spike_event.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

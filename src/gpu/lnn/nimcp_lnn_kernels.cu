@@ -1311,6 +1311,381 @@ bool nimcp_lnn_layer_gpu_zero_grad(
     return true;
 }
 
+//=============================================================================
+// Extended Layer Lifecycle (From Config)
+//=============================================================================
+
+/**
+ * @brief Random weight initialization kernel (Xavier/Glorot)
+ */
+__global__ void kernel_init_weights_xavier(
+    float* weights, size_t size, float scale, uint64_t seed)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= size) return;
+
+    // Simple LCG random number generator
+    uint64_t state = seed + idx * 6364136223846793005ULL;
+    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+
+    // Box-Muller transform for normal distribution
+    float u1 = (float)(state & 0xFFFFFFFF) / 4294967296.0f;
+    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+    float u2 = (float)(state & 0xFFFFFFFF) / 4294967296.0f;
+
+    u1 = fmaxf(u1, 1e-7f);  // Avoid log(0)
+    float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+
+    weights[idx] = z * scale;
+}
+
+/**
+ * @brief Zero tensor kernel
+ */
+__global__ void kernel_zero_tensor(float* data, size_t size)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        data[idx] = 0.0f;
+    }
+}
+
+/**
+ * @brief Initialize tau_base with uniform random in [tau_min, tau_max]
+ */
+__global__ void kernel_init_tau_base(
+    float* tau_base, size_t n_neurons, float tau_min, float tau_max, uint64_t seed)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n_neurons) return;
+
+    uint64_t state = seed + idx * 6364136223846793005ULL;
+    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+    float u = (float)(state & 0xFFFFFFFF) / 4294967296.0f;
+
+    tau_base[idx] = tau_min + u * (tau_max - tau_min);
+}
+
+nimcp_lnn_layer_gpu_extended_t* nimcp_lnn_layer_gpu_create_from_config(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_lnn_layer_config_t* config)
+{
+    if (!ctx || !config) return NULL;
+    if (config->input_dim == 0 || config->hidden_dim == 0) return NULL;
+
+    nimcp_lnn_layer_gpu_extended_t* ext = (nimcp_lnn_layer_gpu_extended_t*)calloc(
+        1, sizeof(nimcp_lnn_layer_gpu_extended_t));
+    if (!ext) return NULL;
+
+    // Store config
+    ext->config = *config;
+    ext->ctx = ctx;
+    ext->current_time = 0.0f;
+    ext->last_dt_used = config->dt;
+    ext->error_estimate = 0.0f;
+    ext->atol = 1e-6f;
+    ext->rtol = 1e-3f;
+    ext->dt_min = 0.01f;
+    ext->dt_max = 10.0f;
+
+    nimcp_lnn_layer_gpu_t* layer = &ext->base;
+    layer->n_neurons = config->hidden_dim;
+    layer->n_inputs = config->input_dim;
+    layer->activation = config->activation;
+
+    uint32_t n = config->hidden_dim;
+    uint32_t d = config->input_dim;
+
+    // Seed for random initialization
+    uint64_t seed = config->seed;
+    if (seed == 0) {
+        seed = (uint64_t)time(NULL);
+    }
+
+    // Weight initialization scale (Xavier/Glorot)
+    float std_W_in = config->weight_init_std > 0 ? config->weight_init_std : sqrtf(2.0f / (d + n));
+    float std_W_rec = config->weight_init_std > 0 ? config->weight_init_std : sqrtf(2.0f / (n + n));
+    float std_W_tau = config->weight_init_std > 0 ? config->weight_init_std : sqrtf(2.0f / (d + n + n));
+
+    // Allocate tensors
+    size_t dims_x[] = {n};
+    layer->x = nimcp_gpu_tensor_create(ctx, dims_x, 1, NIMCP_GPU_PRECISION_FP32);
+    layer->dx_dt = nimcp_gpu_tensor_create(ctx, dims_x, 1, NIMCP_GPU_PRECISION_FP32);
+    layer->tau = nimcp_gpu_tensor_create(ctx, dims_x, 1, NIMCP_GPU_PRECISION_FP32);
+    layer->tau_base = nimcp_gpu_tensor_create(ctx, dims_x, 1, NIMCP_GPU_PRECISION_FP32);
+    layer->b_in = nimcp_gpu_tensor_create(ctx, dims_x, 1, NIMCP_GPU_PRECISION_FP32);
+    layer->b_tau = nimcp_gpu_tensor_create(ctx, dims_x, 1, NIMCP_GPU_PRECISION_FP32);
+
+    size_t dims_W_in[] = {n, d};
+    layer->W_in = nimcp_gpu_tensor_create(ctx, dims_W_in, 2, NIMCP_GPU_PRECISION_FP32);
+
+    size_t dims_W_rec[] = {n, n};
+    layer->W_rec = nimcp_gpu_tensor_create(ctx, dims_W_rec, 2, NIMCP_GPU_PRECISION_FP32);
+
+    size_t dims_W_tau[] = {n, d + n};
+    layer->W_tau = nimcp_gpu_tensor_create(ctx, dims_W_tau, 2, NIMCP_GPU_PRECISION_FP32);
+
+    // Check allocations
+    if (!layer->x || !layer->dx_dt || !layer->tau || !layer->tau_base ||
+        !layer->b_in || !layer->b_tau || !layer->W_in || !layer->W_rec || !layer->W_tau) {
+        nimcp_lnn_layer_gpu_extended_destroy(ext);
+        return NULL;
+    }
+
+    // Initialize weights with Xavier initialization
+    kernel_init_weights_xavier<<<GRID_SIZE(n * d), BLOCK_SIZE>>>(
+        (float*)layer->W_in->data, n * d, std_W_in, seed);
+    kernel_init_weights_xavier<<<GRID_SIZE(n * n), BLOCK_SIZE>>>(
+        (float*)layer->W_rec->data, n * n, std_W_rec, seed + 1);
+    kernel_init_weights_xavier<<<GRID_SIZE(n * (d + n)), BLOCK_SIZE>>>(
+        (float*)layer->W_tau->data, n * (d + n), std_W_tau, seed + 2);
+
+    // Zero biases and state
+    kernel_zero_tensor<<<GRID_SIZE(n), BLOCK_SIZE>>>((float*)layer->x->data, n);
+    kernel_zero_tensor<<<GRID_SIZE(n), BLOCK_SIZE>>>((float*)layer->dx_dt->data, n);
+    kernel_zero_tensor<<<GRID_SIZE(n), BLOCK_SIZE>>>((float*)layer->b_in->data, n);
+    kernel_zero_tensor<<<GRID_SIZE(n), BLOCK_SIZE>>>((float*)layer->b_tau->data, n);
+
+    // Initialize tau_base with values in [tau_min, tau_max]
+    float tau_min = config->tau_min > 0 ? config->tau_min : LNN_TAU_MIN_DEFAULT;
+    float tau_max = config->tau_max > 0 ? config->tau_max : LNN_TAU_MAX_DEFAULT;
+    kernel_init_tau_base<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        (float*)layer->tau_base->data, n, tau_min, tau_max, seed + 3);
+
+    // Initialize tau to tau_base initially
+    cudaMemcpy(layer->tau->data, layer->tau_base->data, n * sizeof(float), cudaMemcpyDeviceToDevice);
+
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        LOG_ERROR("CUDA error in layer creation: %s", cudaGetErrorString(err));
+        nimcp_lnn_layer_gpu_extended_destroy(ext);
+        return NULL;
+    }
+
+    LOG_DEBUG("Created GPU LNN layer from config: %u inputs, %u neurons, ODE=%d",
+              d, n, config->ode_method);
+    return ext;
+}
+
+void nimcp_lnn_layer_gpu_extended_destroy(nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer) return;
+
+    // Manually destroy tensors (don't call nimcp_lnn_layer_gpu_destroy since base is embedded)
+    nimcp_lnn_layer_gpu_t* base = &layer->base;
+
+    nimcp_gpu_tensor_destroy(base->x);
+    nimcp_gpu_tensor_destroy(base->dx_dt);
+    nimcp_gpu_tensor_destroy(base->tau);
+    nimcp_gpu_tensor_destroy(base->tau_base);
+    nimcp_gpu_tensor_destroy(base->W_in);
+    nimcp_gpu_tensor_destroy(base->W_rec);
+    nimcp_gpu_tensor_destroy(base->W_tau);
+    nimcp_gpu_tensor_destroy(base->b_in);
+    nimcp_gpu_tensor_destroy(base->b_tau);
+    nimcp_gpu_tensor_destroy(base->row_ptr);
+    nimcp_gpu_tensor_destroy(base->col_idx);
+    nimcp_gpu_tensor_destroy(base->edge_weights);
+
+    free(layer);
+}
+
+//=============================================================================
+// Layer Accessors
+//=============================================================================
+
+size_t nimcp_lnn_layer_gpu_get_input_dim(const nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer) return 0;
+    return layer->config.input_dim;
+}
+
+size_t nimcp_lnn_layer_gpu_get_hidden_dim(const nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer) return 0;
+    return layer->config.hidden_dim;
+}
+
+lnn_ode_method_t nimcp_lnn_layer_gpu_get_ode_method(const nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer) return LNN_ODE_EULER;
+    return layer->config.ode_method;
+}
+
+size_t nimcp_lnn_layer_gpu_count_params(const nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer) return 0;
+
+    uint32_t n = layer->config.hidden_dim;
+    uint32_t d = layer->config.input_dim;
+
+    // W_in: n x d
+    // W_rec: n x n
+    // W_tau: n x (d + n)
+    // b_in: n
+    // b_tau: n
+    // tau_base: n (if learn_tau)
+
+    size_t count = n * d +          // W_in
+                   n * n +          // W_rec
+                   n * (d + n) +    // W_tau
+                   n +              // b_in
+                   n;               // b_tau
+
+    if (layer->config.learn_tau) {
+        count += n;  // tau_base
+    }
+
+    return count;
+}
+
+bool nimcp_lnn_layer_gpu_get_state(
+    const nimcp_lnn_layer_gpu_extended_t* layer,
+    float* state_out)
+{
+    if (!layer || !state_out) return false;
+    if (!layer->base.x) return false;
+
+    cudaError_t err = cudaMemcpy(state_out, layer->base.x->data,
+                                  layer->config.hidden_dim * sizeof(float),
+                                  cudaMemcpyDeviceToHost);
+    return (err == cudaSuccess);
+}
+
+bool nimcp_lnn_layer_gpu_reset(nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer) return false;
+
+    kernel_zero_tensor<<<GRID_SIZE(layer->config.hidden_dim), BLOCK_SIZE>>>(
+        (float*)layer->base.x->data, layer->config.hidden_dim);
+
+    layer->current_time = 0.0f;
+    layer->last_dt_used = layer->config.dt;
+    layer->error_estimate = 0.0f;
+
+    cudaError_t err = cudaGetLastError();
+    return (err == cudaSuccess);
+}
+
+//=============================================================================
+// High-Level Forward Operations
+//=============================================================================
+
+bool nimcp_lnn_layer_gpu_step(
+    nimcp_lnn_layer_gpu_extended_t* layer,
+    const nimcp_gpu_tensor_t* input)
+{
+    if (!layer || !input) return false;
+
+    nimcp_lnn_ode_config_t ode_config;
+    ode_config.method = layer->config.ode_method;
+    ode_config.dt = layer->config.dt;
+    ode_config.dt_min = layer->dt_min;
+    ode_config.dt_max = layer->dt_max;
+    ode_config.error_tolerance = layer->atol;
+    ode_config.max_steps = 1;
+    ode_config.adaptive_stepping = false;
+
+    bool ok = nimcp_gpu_lnn_ode_step(layer->ctx, &layer->base, input, &ode_config);
+    if (ok) {
+        layer->current_time += layer->config.dt;
+        layer->last_dt_used = layer->config.dt;
+    }
+    return ok;
+}
+
+void nimcp_lnn_layer_gpu_set_adaptive_params(
+    nimcp_lnn_layer_gpu_extended_t* layer,
+    float atol,
+    float rtol,
+    float dt_min,
+    float dt_max)
+{
+    if (!layer) return;
+    layer->atol = atol;
+    layer->rtol = rtol;
+    layer->dt_min = dt_min;
+    layer->dt_max = dt_max;
+}
+
+bool nimcp_lnn_layer_gpu_step_adaptive(
+    nimcp_lnn_layer_gpu_extended_t* layer,
+    const nimcp_gpu_tensor_t* input,
+    float* dt_used)
+{
+    if (!layer || !input) return false;
+
+    nimcp_lnn_ode_config_t ode_config;
+    ode_config.method = LNN_ODE_DOPRI5;  // Force DOPRI5 for adaptive
+    ode_config.dt = layer->last_dt_used;
+    ode_config.dt_min = layer->dt_min;
+    ode_config.dt_max = layer->dt_max;
+    ode_config.error_tolerance = layer->atol;
+    ode_config.max_steps = 10;
+    ode_config.adaptive_stepping = true;
+
+    float dt = layer->last_dt_used;
+    bool ok = nimcp_gpu_lnn_dopri5_step(layer->ctx, &layer->base, input, &dt, &ode_config);
+
+    if (ok) {
+        layer->current_time += dt;
+        layer->last_dt_used = dt;
+        if (dt_used) *dt_used = dt;
+    }
+    return ok;
+}
+
+float nimcp_lnn_layer_gpu_get_error_estimate(const nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer) return 0.0f;
+    return layer->error_estimate;
+}
+
+bool nimcp_lnn_layer_gpu_forward_sequence(
+    nimcp_lnn_layer_gpu_extended_t* layer,
+    const nimcp_gpu_tensor_t* input,
+    nimcp_gpu_tensor_t* output,
+    size_t seq_len)
+{
+    if (!layer || !input || !output) return false;
+
+    uint32_t input_dim = layer->config.input_dim;
+    uint32_t hidden_dim = layer->config.hidden_dim;
+
+    // Reset state at start of sequence
+    nimcp_lnn_layer_gpu_reset(layer);
+
+    // Process each timestep
+    for (size_t t = 0; t < seq_len; t++) {
+        // Create view for this timestep's input
+        size_t input_offset = t * input_dim;
+        nimcp_gpu_tensor_t input_step;
+        input_step.data = (float*)input->data + input_offset;
+        input_step.numel = input_dim;
+        input_step.ndim = 1;
+        input_step.dims[0] = input_dim;
+
+        // Step
+        if (!nimcp_lnn_layer_gpu_step(layer, &input_step)) {
+            return false;
+        }
+
+        // Copy state to output
+        size_t output_offset = t * hidden_dim;
+        cudaError_t err = cudaMemcpy(
+            (float*)output->data + output_offset,
+            layer->base.x->data,
+            hidden_dim * sizeof(float),
+            cudaMemcpyDeviceToDevice);
+
+        if (err != cudaSuccess) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 #else // !NIMCP_ENABLE_CUDA
 
 //=============================================================================
@@ -2250,6 +2625,327 @@ bool nimcp_lnn_layer_gpu_zero_grad(
 
     // Zero gradient tensors if they exist
     // In full implementation, layer would have grad_W_in, grad_W_rec, etc.
+
+    return true;
+}
+
+//=============================================================================
+// Extended Layer Lifecycle (CPU Fallback)
+//=============================================================================
+
+/**
+ * @brief CPU random number generator for weight initialization
+ */
+static float cpu_rand_normal(uint64_t* state, float std)
+{
+    // LCG random
+    *state = (*state) * 6364136223846793005ULL + 1442695040888963407ULL;
+    float u1 = (float)((*state) & 0xFFFFFFFF) / 4294967296.0f;
+    *state = (*state) * 6364136223846793005ULL + 1442695040888963407ULL;
+    float u2 = (float)((*state) & 0xFFFFFFFF) / 4294967296.0f;
+
+    u1 = fmaxf(u1, 1e-7f);
+    float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+    return z * std;
+}
+
+nimcp_lnn_layer_gpu_extended_t* nimcp_lnn_layer_gpu_create_from_config(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_lnn_layer_config_t* config)
+{
+    (void)ctx;  // Not used in CPU mode
+    if (!config) return NULL;
+    if (config->input_dim == 0 || config->hidden_dim == 0) return NULL;
+
+    nimcp_lnn_layer_gpu_extended_t* ext = (nimcp_lnn_layer_gpu_extended_t*)calloc(
+        1, sizeof(nimcp_lnn_layer_gpu_extended_t));
+    if (!ext) return NULL;
+
+    ext->config = *config;
+    ext->ctx = ctx;
+    ext->current_time = 0.0f;
+    ext->last_dt_used = config->dt;
+    ext->error_estimate = 0.0f;
+    ext->atol = 1e-6f;
+    ext->rtol = 1e-3f;
+    ext->dt_min = 0.01f;
+    ext->dt_max = 10.0f;
+
+    nimcp_lnn_layer_gpu_t* layer = &ext->base;
+    layer->n_neurons = config->hidden_dim;
+    layer->n_inputs = config->input_dim;
+    layer->activation = config->activation;
+
+    uint32_t n = config->hidden_dim;
+    uint32_t d = config->input_dim;
+
+    uint64_t seed = config->seed ? config->seed : (uint64_t)time(NULL);
+
+    float std_W_in = config->weight_init_std > 0 ? config->weight_init_std : sqrtf(2.0f / (d + n));
+    float std_W_rec = config->weight_init_std > 0 ? config->weight_init_std : sqrtf(2.0f / (n + n));
+    float std_W_tau = config->weight_init_std > 0 ? config->weight_init_std : sqrtf(2.0f / (d + n + n));
+
+    // Allocate tensors (CPU wrappers with allocated data)
+    #define ALLOC_TENSOR_1D(tensor, size) do { \
+        tensor = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t)); \
+        if (tensor) { \
+            tensor->data = calloc(size, sizeof(float)); \
+            tensor->numel = size; \
+            tensor->ndim = 1; \
+            tensor->dims[0] = size; \
+        } \
+    } while(0)
+
+    #define ALLOC_TENSOR_2D(tensor, rows, cols) do { \
+        tensor = (nimcp_gpu_tensor_t*)calloc(1, sizeof(nimcp_gpu_tensor_t)); \
+        if (tensor) { \
+            tensor->data = calloc((rows) * (cols), sizeof(float)); \
+            tensor->numel = (rows) * (cols); \
+            tensor->ndim = 2; \
+            tensor->dims[0] = rows; \
+            tensor->dims[1] = cols; \
+        } \
+    } while(0)
+
+    ALLOC_TENSOR_1D(layer->x, n);
+    ALLOC_TENSOR_1D(layer->dx_dt, n);
+    ALLOC_TENSOR_1D(layer->tau, n);
+    ALLOC_TENSOR_1D(layer->tau_base, n);
+    ALLOC_TENSOR_1D(layer->b_in, n);
+    ALLOC_TENSOR_1D(layer->b_tau, n);
+    ALLOC_TENSOR_2D(layer->W_in, n, d);
+    ALLOC_TENSOR_2D(layer->W_rec, n, n);
+    ALLOC_TENSOR_2D(layer->W_tau, n, d + n);
+
+    #undef ALLOC_TENSOR_1D
+    #undef ALLOC_TENSOR_2D
+
+    // Check allocations
+    if (!layer->x || !layer->x->data ||
+        !layer->dx_dt || !layer->dx_dt->data ||
+        !layer->tau || !layer->tau->data ||
+        !layer->tau_base || !layer->tau_base->data ||
+        !layer->b_in || !layer->b_in->data ||
+        !layer->b_tau || !layer->b_tau->data ||
+        !layer->W_in || !layer->W_in->data ||
+        !layer->W_rec || !layer->W_rec->data ||
+        !layer->W_tau || !layer->W_tau->data) {
+        nimcp_lnn_layer_gpu_extended_destroy(ext);
+        return NULL;
+    }
+
+    // Initialize weights
+    float* W_in_data = (float*)layer->W_in->data;
+    float* W_rec_data = (float*)layer->W_rec->data;
+    float* W_tau_data = (float*)layer->W_tau->data;
+
+    for (size_t i = 0; i < n * d; i++) {
+        W_in_data[i] = cpu_rand_normal(&seed, std_W_in);
+    }
+    for (size_t i = 0; i < n * n; i++) {
+        W_rec_data[i] = cpu_rand_normal(&seed, std_W_rec);
+    }
+    for (size_t i = 0; i < n * (d + n); i++) {
+        W_tau_data[i] = cpu_rand_normal(&seed, std_W_tau);
+    }
+
+    // Initialize tau_base
+    float tau_min = config->tau_min > 0 ? config->tau_min : LNN_TAU_MIN_DEFAULT;
+    float tau_max = config->tau_max > 0 ? config->tau_max : LNN_TAU_MAX_DEFAULT;
+    float* tau_base_data = (float*)layer->tau_base->data;
+    float* tau_data = (float*)layer->tau->data;
+
+    for (size_t i = 0; i < n; i++) {
+        seed = seed * 6364136223846793005ULL + 1442695040888963407ULL;
+        float u = (float)(seed & 0xFFFFFFFF) / 4294967296.0f;
+        tau_base_data[i] = tau_min + u * (tau_max - tau_min);
+        tau_data[i] = tau_base_data[i];
+    }
+
+    LOG_DEBUG("Created CPU LNN layer from config: %u inputs, %u neurons", d, n);
+    return ext;
+}
+
+void nimcp_lnn_layer_gpu_extended_destroy(nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer) return;
+
+    nimcp_lnn_layer_gpu_t* base = &layer->base;
+
+    // Free tensor data and wrappers
+    if (base->x) { free(base->x->data); free(base->x); }
+    if (base->dx_dt) { free(base->dx_dt->data); free(base->dx_dt); }
+    if (base->tau) { free(base->tau->data); free(base->tau); }
+    if (base->tau_base) { free(base->tau_base->data); free(base->tau_base); }
+    if (base->b_in) { free(base->b_in->data); free(base->b_in); }
+    if (base->b_tau) { free(base->b_tau->data); free(base->b_tau); }
+    if (base->W_in) { free(base->W_in->data); free(base->W_in); }
+    if (base->W_rec) { free(base->W_rec->data); free(base->W_rec); }
+    if (base->W_tau) { free(base->W_tau->data); free(base->W_tau); }
+    if (base->row_ptr) { free(base->row_ptr->data); free(base->row_ptr); }
+    if (base->col_idx) { free(base->col_idx->data); free(base->col_idx); }
+    if (base->edge_weights) { free(base->edge_weights->data); free(base->edge_weights); }
+
+    free(layer);
+}
+
+//=============================================================================
+// Layer Accessors (CPU)
+//=============================================================================
+
+size_t nimcp_lnn_layer_gpu_get_input_dim(const nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer) return 0;
+    return layer->config.input_dim;
+}
+
+size_t nimcp_lnn_layer_gpu_get_hidden_dim(const nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer) return 0;
+    return layer->config.hidden_dim;
+}
+
+lnn_ode_method_t nimcp_lnn_layer_gpu_get_ode_method(const nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer) return LNN_ODE_EULER;
+    return layer->config.ode_method;
+}
+
+size_t nimcp_lnn_layer_gpu_count_params(const nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer) return 0;
+
+    uint32_t n = layer->config.hidden_dim;
+    uint32_t d = layer->config.input_dim;
+
+    size_t count = n * d + n * n + n * (d + n) + n + n;
+    if (layer->config.learn_tau) count += n;
+    return count;
+}
+
+bool nimcp_lnn_layer_gpu_get_state(
+    const nimcp_lnn_layer_gpu_extended_t* layer,
+    float* state_out)
+{
+    if (!layer || !state_out || !layer->base.x) return false;
+    memcpy(state_out, layer->base.x->data, layer->config.hidden_dim * sizeof(float));
+    return true;
+}
+
+bool nimcp_lnn_layer_gpu_reset(nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer || !layer->base.x) return false;
+    memset(layer->base.x->data, 0, layer->config.hidden_dim * sizeof(float));
+    layer->current_time = 0.0f;
+    layer->last_dt_used = layer->config.dt;
+    layer->error_estimate = 0.0f;
+    return true;
+}
+
+//=============================================================================
+// High-Level Forward Operations (CPU)
+//=============================================================================
+
+bool nimcp_lnn_layer_gpu_step(
+    nimcp_lnn_layer_gpu_extended_t* layer,
+    const nimcp_gpu_tensor_t* input)
+{
+    if (!layer || !input) return false;
+
+    nimcp_lnn_ode_config_t ode_config;
+    ode_config.method = layer->config.ode_method;
+    ode_config.dt = layer->config.dt;
+    ode_config.dt_min = layer->dt_min;
+    ode_config.dt_max = layer->dt_max;
+    ode_config.error_tolerance = layer->atol;
+    ode_config.max_steps = 1;
+    ode_config.adaptive_stepping = false;
+
+    bool ok = nimcp_gpu_lnn_ode_step(layer->ctx, &layer->base, input, &ode_config);
+    if (ok) {
+        layer->current_time += layer->config.dt;
+        layer->last_dt_used = layer->config.dt;
+    }
+    return ok;
+}
+
+void nimcp_lnn_layer_gpu_set_adaptive_params(
+    nimcp_lnn_layer_gpu_extended_t* layer,
+    float atol,
+    float rtol,
+    float dt_min,
+    float dt_max)
+{
+    if (!layer) return;
+    layer->atol = atol;
+    layer->rtol = rtol;
+    layer->dt_min = dt_min;
+    layer->dt_max = dt_max;
+}
+
+bool nimcp_lnn_layer_gpu_step_adaptive(
+    nimcp_lnn_layer_gpu_extended_t* layer,
+    const nimcp_gpu_tensor_t* input,
+    float* dt_used)
+{
+    if (!layer || !input) return false;
+
+    nimcp_lnn_ode_config_t ode_config;
+    ode_config.method = LNN_ODE_DOPRI5;
+    ode_config.dt = layer->last_dt_used;
+    ode_config.dt_min = layer->dt_min;
+    ode_config.dt_max = layer->dt_max;
+    ode_config.error_tolerance = layer->atol;
+    ode_config.max_steps = 10;
+    ode_config.adaptive_stepping = true;
+
+    float dt = layer->last_dt_used;
+    bool ok = nimcp_gpu_lnn_dopri5_step(layer->ctx, &layer->base, input, &dt, &ode_config);
+
+    if (ok) {
+        layer->current_time += dt;
+        layer->last_dt_used = dt;
+        if (dt_used) *dt_used = dt;
+    }
+    return ok;
+}
+
+float nimcp_lnn_layer_gpu_get_error_estimate(const nimcp_lnn_layer_gpu_extended_t* layer)
+{
+    if (!layer) return 0.0f;
+    return layer->error_estimate;
+}
+
+bool nimcp_lnn_layer_gpu_forward_sequence(
+    nimcp_lnn_layer_gpu_extended_t* layer,
+    const nimcp_gpu_tensor_t* input,
+    nimcp_gpu_tensor_t* output,
+    size_t seq_len)
+{
+    if (!layer || !input || !output) return false;
+
+    uint32_t input_dim = layer->config.input_dim;
+    uint32_t hidden_dim = layer->config.hidden_dim;
+
+    nimcp_lnn_layer_gpu_reset(layer);
+
+    for (size_t t = 0; t < seq_len; t++) {
+        size_t input_offset = t * input_dim;
+        nimcp_gpu_tensor_t input_step;
+        input_step.data = (float*)input->data + input_offset;
+        input_step.numel = input_dim;
+        input_step.ndim = 1;
+        input_step.dims[0] = input_dim;
+
+        if (!nimcp_lnn_layer_gpu_step(layer, &input_step)) {
+            return false;
+        }
+
+        size_t output_offset = t * hidden_dim;
+        memcpy((float*)output->data + output_offset,
+               layer->base.x->data,
+               hidden_dim * sizeof(float));
+    }
 
     return true;
 }

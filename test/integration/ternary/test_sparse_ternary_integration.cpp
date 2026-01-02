@@ -23,7 +23,7 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "core/neuralnet/nimcp_sparse_synapse.h"
 #include "utils/ternary/nimcp_ternary.h"
@@ -31,7 +31,6 @@ extern "C" {
 #include "utils/ternary/nimcp_ternary_vector.h"
 #include "utils/ternary/nimcp_ternary_matrix.h"
 #include "utils/ternary/nimcp_ternary_convert.h"
-}
 
 //=============================================================================
 // Test Fixture

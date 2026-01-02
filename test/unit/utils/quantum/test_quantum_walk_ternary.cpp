@@ -14,9 +14,8 @@
 #include <cmath>
 #include <cstdlib>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/quantum/nimcp_quantum_walk_ternary.h"
-}
 
 //=============================================================================
 // 1D Walker Tests

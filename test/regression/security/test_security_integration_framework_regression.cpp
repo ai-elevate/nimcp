@@ -14,10 +14,9 @@
 
 #include "test_helpers.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_security_integration.h"
 #include "security/nimcp_security_math.h"
-}
 
 #include <cstring>
 #include <thread>

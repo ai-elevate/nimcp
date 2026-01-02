@@ -5,13 +5,12 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/astrocyte/nimcp_astrocyte_plasticity.h"
 #include "plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.h"
 #include "plasticity/astrocyte/nimcp_astrocyte_immune_bridge.h"
 #include "cognitive/nimcp_sleep_wake.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
-}
 
 class AstrocyteRegressionTest : public ::testing::Test {
 protected:

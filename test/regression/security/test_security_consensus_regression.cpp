@@ -8,10 +8,9 @@
 #include <chrono>
 #include <vector>
 #include <atomic>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_security_consensus.h"
 #include "async/nimcp_bio_router.h"
-}
 
 class SecurityConsensusRegressionTest : public ::testing::Test {
 protected:

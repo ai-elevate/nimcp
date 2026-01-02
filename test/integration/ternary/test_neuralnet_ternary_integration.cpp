@@ -24,7 +24,7 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/ternary/nimcp_ternary.h"
 #include "utils/ternary/nimcp_ternary_types.h"
@@ -32,7 +32,6 @@ extern "C" {
 #include "utils/ternary/nimcp_ternary_matrix.h"
 #include "utils/ternary/nimcp_ternary_convert.h"
 #include "utils/ternary/nimcp_ternary_tensor.h"
-}
 
 //=============================================================================
 // Test Fixture

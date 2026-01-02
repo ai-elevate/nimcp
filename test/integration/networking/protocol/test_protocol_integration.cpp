@@ -34,9 +34,8 @@
 #include <chrono>
 #include <thread>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "networking/protocol/nimcp_protocol.h"
-}
 
 //=============================================================================
 // Test Helpers and Mock Infrastructure

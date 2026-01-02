@@ -4,11 +4,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/immune/nimcp_sequence_immune_bridge.h"
 #include "middleware/patterns/nimcp_sequence_detector.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

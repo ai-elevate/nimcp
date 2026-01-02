@@ -13,13 +13,12 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "networking/immune/nimcp_distributed_immune_bridge.h"
 #include "networking/immune/nimcp_protocol_immune_bridge.h"
 #include "networking/immune/nimcp_p2p_immune_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Distributed-Immune Bridge Test Fixture

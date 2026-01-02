@@ -26,13 +26,12 @@
 #include <chrono>
 #include <cmath>
 
-extern "C" {
+// Headers already have their own extern "C" guards - don't wrap to avoid CUDA conflicts
 #include "swarm/nimcp_swarm_brain_local.h"
 #include "core/brain/factory/init/nimcp_brain_init_config.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixture

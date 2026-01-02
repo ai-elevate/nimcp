@@ -10,7 +10,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/neuron_types/nimcp_neuron_types.h"
 #include "core/neuron_types/nimcp_neural_logic.h"
 #include "async/nimcp_bio_async.h"
@@ -18,7 +18,6 @@ extern "C" {
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory_guards.h"
-}
 
 //=============================================================================
 // Test Fixture

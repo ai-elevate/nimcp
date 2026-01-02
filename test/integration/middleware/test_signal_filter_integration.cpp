@@ -19,12 +19,11 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
     #include "utils/signal/nimcp_signal_filter.h"
     #include "utils/signal/nimcp_hilbert.h"
     #include "middleware/patterns/nimcp_oscillation_detector.h"
     #include "utils/memory/nimcp_memory.h"
-}
 #include <cmath>
 #include <vector>
 #include <algorithm>

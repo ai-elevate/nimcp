@@ -32,10 +32,9 @@
 #include <random>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/curiosity/nimcp_curiosity_enhanced.h"
 #include "nimcp.h"
-}
 
 //=============================================================================
 // Test Fixture

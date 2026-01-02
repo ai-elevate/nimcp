@@ -25,7 +25,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_perception_training_bridge.h"
 #include "middleware/training/nimcp_cortical_training_bridge.h"
 #include "middleware/training/nimcp_cognitive_training_bridge.h"
@@ -33,7 +33,6 @@ extern "C" {
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "portia/nimcp_portia_swarm_logic_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 /* ============================================================================
  * Test Fixture

@@ -35,11 +35,10 @@
 #include <atomic>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "cognitive/jepa/nimcp_jepa_weights.h"
     #include "cognitive/jepa/nimcp_jepa_predictor.h"
     #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Test Constants (base paths - actual paths include unique test ID)

@@ -29,11 +29,10 @@
 #include <vector>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "nimcp.h"
 #include "core/brain/nimcp_brain.h"
 #include "dragonfly/nimcp_dragonfly.h"
-}
 
 //=============================================================================
 // Physics Simulation Helpers

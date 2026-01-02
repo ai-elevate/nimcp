@@ -11,9 +11,8 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/fault_tolerance/nimcp_fault_attention.h"
-}
 
 #include "utils/nimcp_test_base.h"
 

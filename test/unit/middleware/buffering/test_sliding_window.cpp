@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/buffering/nimcp_sliding_window.h"
-}
 #include <cmath>
 
 class SlidingWindowTest : public ::testing::Test {

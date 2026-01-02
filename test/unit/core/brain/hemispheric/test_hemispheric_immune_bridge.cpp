@@ -4,11 +4,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/hemispheric/nimcp_hemispheric_immune_bridge.h"
 #include "core/brain/hemispheric/nimcp_hemispheric_brain.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
-}
 
 //=============================================================================
 // Test Fixture

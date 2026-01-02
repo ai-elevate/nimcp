@@ -26,7 +26,7 @@
 #include <chrono>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "middleware/routing/nimcp_thalamic_router.h"
 
@@ -41,7 +41,6 @@ extern "C" {
 #include "cognitive/memory/nimcp_memory_thalamic_bridge.h"
 #include "cognitive/reasoning/nimcp_reasoning_thalamic_bridge.h"
 #include "cognitive/attention/nimcp_attention_thalamic_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

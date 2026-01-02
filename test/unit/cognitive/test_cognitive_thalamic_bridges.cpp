@@ -11,7 +11,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/analysis/nimcp_analysis_thalamic_bridge.h"
 #include "cognitive/attention/nimcp_attention_thalamic_bridge.h"
 #include "cognitive/emotional_tagging/nimcp_emotional_tagging_thalamic_bridge.h"
@@ -28,7 +28,6 @@ extern "C" {
 #include "cognitive/tom/nimcp_tom_thalamic_bridge.h"
 #include "cognitive/wellbeing/nimcp_wellbeing_thalamic_bridge.h"
 #include "cognitive/working_memory/nimcp_working_memory_thalamic_bridge.h"
-}
 
 /* ============================================================================
  * Analysis Thalamic Bridge Tests

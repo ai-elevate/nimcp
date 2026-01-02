@@ -26,14 +26,13 @@
 #include <vector>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_cnn_cortex_bridge.h"
 #include "perception/nimcp_visual_cortex.h"
 #include "perception/nimcp_audio_cortex.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

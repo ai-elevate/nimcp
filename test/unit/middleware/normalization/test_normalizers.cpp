@@ -14,12 +14,11 @@
 #include <cmath>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/normalization/nimcp_adaptive_normalizer.h"
 #include "middleware/normalization/nimcp_homeostatic_normalizer.h"
 #include "middleware/normalization/nimcp_min_max_normalizer.h"
 #include "middleware/normalization/nimcp_zscore_normalizer.h"
-}
 
 //=============================================================================
 // Test Fixture

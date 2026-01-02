@@ -19,11 +19,10 @@
 #include <algorithm>
 #include <memory>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/brain_integration.h"
 #include "middleware/features/nimcp_feature_extractor.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

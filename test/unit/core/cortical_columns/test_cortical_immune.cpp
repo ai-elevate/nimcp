@@ -4,11 +4,10 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/cortical_columns/nimcp_cortical_immune.h"
 #include "core/cortical_columns/nimcp_cortical_column.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
-}
 
 /* ============================================================================
  * Test Fixtures

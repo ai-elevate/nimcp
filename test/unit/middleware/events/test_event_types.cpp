@@ -8,9 +8,8 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include <vector>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/events/nimcp_event_types.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

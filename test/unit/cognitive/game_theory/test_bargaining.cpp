@@ -5,10 +5,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/game_theory/nimcp_bargaining.h"
 #include "cognitive/game_theory/nimcp_game_theory.h"
-}
 
 //=============================================================================
 // Test Fixture

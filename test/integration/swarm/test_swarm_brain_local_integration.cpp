@@ -20,11 +20,10 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_brain_local.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-}
 
 class SwarmBrainLocalIntegrationTest : public ::testing::Test {
 protected:

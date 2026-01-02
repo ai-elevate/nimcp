@@ -23,7 +23,7 @@
 #include <random>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 
 // Workspace item types
 typedef enum {
@@ -106,7 +106,6 @@ void collective_workspace_prune_low_salience(
     float threshold
 );
 
-} // extern "C"
 
 //=============================================================================
 // Mock Implementation

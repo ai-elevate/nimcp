@@ -8,10 +8,9 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_policy_engine.h"
 #include "async/nimcp_bio_async.h"
-}
 
 class PolicyEngineIntegrationTest : public ::testing::Test {
 protected:

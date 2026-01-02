@@ -20,12 +20,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "core/brain/nimcp_brain.h"
     #include "utils/platform/nimcp_system_resources.h"
     #include "utils/memory/nimcp_memory.h"
     #include "cognitive/nimcp_working_memory.h"
-}
 
 //=============================================================================
 // Mock Platform Tier API (same as unit tests)

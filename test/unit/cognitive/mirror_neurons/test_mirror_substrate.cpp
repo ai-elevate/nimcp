@@ -23,14 +23,13 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/mirror_neurons/nimcp_mirror_substrate.h"
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "utils/memory/nimcp_memory.h"
 #include "core/axon/nimcp_axon.h"
 #include "core/dendrite/nimcp_dendrite.h"
 #include "glial/myelin_sheath/nimcp_myelin_sheath.h"
-}
 
 #include <cstring>
 #include <cmath>

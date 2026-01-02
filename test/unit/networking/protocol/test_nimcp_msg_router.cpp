@@ -15,9 +15,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "networking/protocol/nimcp_msg_router.h"
-}
 
 /*=============================================================================
  * Test Fixtures

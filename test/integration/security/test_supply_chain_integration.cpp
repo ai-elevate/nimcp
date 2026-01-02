@@ -4,11 +4,10 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
     #include "security/nimcp_supply_chain.h"
     #include "security/nimcp_post_quantum.h"
     #include "async/nimcp_bio_router.h"
-}
 #include <fstream>
 #include <string>
 

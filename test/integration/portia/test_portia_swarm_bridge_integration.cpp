@@ -26,7 +26,7 @@
 #include <atomic>
 #include <mutex>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_swarm_bridge.h"
 #include "portia/nimcp_portia.h"
 #include "swarm/nimcp_swarm_brain.h"
@@ -38,7 +38,6 @@ extern "C" {
 #include "utils/validation/nimcp_common.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Mock Implementations for Missing Components

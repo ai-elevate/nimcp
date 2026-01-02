@@ -27,13 +27,12 @@
 #include <vector>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "nimcp.h"
 #include "core/brain/nimcp_brain.h"
 #include "dragonfly/nimcp_dragonfly.h"
 #include "dragonfly/nimcp_dragonfly_visual_bridge.h"
 #include "dragonfly/nimcp_dragonfly_audio_bridge.h"
-}
 
 using namespace nimcp::e2e;
 

@@ -18,11 +18,10 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_consciousness_fep_bridge.h"
 #include "swarm/nimcp_swarm_consciousness.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
-}
 
 class SwarmConsciousnessFepBridgeTest : public ::testing::Test {
 protected:

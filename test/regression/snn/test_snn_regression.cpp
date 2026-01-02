@@ -11,12 +11,11 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "snn/nimcp_snn.h"
 #include "snn/nimcp_snn_immune.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Spike Timing Regression Tests

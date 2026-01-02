@@ -22,10 +22,9 @@
 #include <limits>
 #include <functional>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/game_theory/nimcp_credit_assignment.h"
 #include "cognitive/game_theory/nimcp_game_theory.h"
-}
 
 //=============================================================================
 // Test Characteristic Functions

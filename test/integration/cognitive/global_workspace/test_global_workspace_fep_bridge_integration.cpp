@@ -9,11 +9,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/global_workspace/nimcp_global_workspace_fep_bridge.h"
 #include "cognitive/global_workspace/nimcp_global_workspace.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
-}
 
 /* ============================================================================
  * Test Fixture

@@ -15,10 +15,9 @@
 #include <limits>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_adversarial_training.h"
 #include "training/nimcp_gradient_scaling.h"
-}
 
 /* ============================================================================
  * Adversarial Training (ADV) Tests

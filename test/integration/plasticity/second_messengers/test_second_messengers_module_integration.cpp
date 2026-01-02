@@ -21,10 +21,9 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/nimcp_second_messengers.h"
 #include "core/brain/regions/broca/nimcp_language_production_bridge.h"
-}
 
 //=============================================================================
 // BROCA REGION INTEGRATION TESTS

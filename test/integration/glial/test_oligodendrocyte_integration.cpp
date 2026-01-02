@@ -21,11 +21,10 @@
 #include <chrono>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

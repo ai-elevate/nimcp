@@ -33,11 +33,10 @@
 #include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_layer.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/ternary/nimcp_ternary.h"
 #include "utils/ternary/nimcp_ternary_matrix.h"
 #include "utils/ternary/nimcp_ternary_convert.h"
-}
 
 //=============================================================================
 // Test Fixture

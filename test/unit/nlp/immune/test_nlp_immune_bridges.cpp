@@ -13,13 +13,12 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "nlp/immune/nimcp_nlp_immune_bridge.h"
 #include "nlp/immune/nimcp_spike_nlp_immune_bridge.h"
 #include "nlp/immune/nimcp_multimodal_nlp_immune_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * NLP-Immune Bridge Test Fixture

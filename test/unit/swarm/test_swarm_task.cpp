@@ -20,11 +20,10 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_task.h"
 #include "swarm/nimcp_swarm_task_queue.h"
 #include "swarm/nimcp_swarm_task_scheduler.h"
-}
 
 //=============================================================================
 // Test Fixtures

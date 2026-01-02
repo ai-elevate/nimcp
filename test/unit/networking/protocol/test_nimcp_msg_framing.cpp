@@ -14,9 +14,8 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "networking/protocol/nimcp_msg_framing.h"
-}
 
 /*=============================================================================
  * Test Fixtures

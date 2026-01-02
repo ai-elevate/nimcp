@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/nimcp_middleware.h"
-}
 
 class MiddlewareSubsystemsTest : public ::testing::Test {
 protected:

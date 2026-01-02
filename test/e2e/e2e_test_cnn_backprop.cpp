@@ -28,13 +28,12 @@
 #include <random>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_cnn_training.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/logging/nimcp_logging.h"
 #include "middleware/training/nimcp_loss_functions.h"
-}
 
 //=============================================================================
 // Test Data Generation Helpers

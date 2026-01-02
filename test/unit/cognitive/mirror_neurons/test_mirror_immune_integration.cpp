@@ -9,12 +9,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/mirror_neurons/nimcp_mirror_immune_integration.h"
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 class MirrorImmuneIntegrationTest : public ::testing::Test {
 protected:

@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/routing/nimcp_routing_table.h"
-}
 
 class RoutingTableRegressionTest : public ::testing::Test {
 protected:

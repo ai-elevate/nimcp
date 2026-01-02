@@ -5,11 +5,10 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/pipeline/nimcp_middleware_pipeline.h"
 #include "middleware/pipeline/nimcp_middleware_context.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

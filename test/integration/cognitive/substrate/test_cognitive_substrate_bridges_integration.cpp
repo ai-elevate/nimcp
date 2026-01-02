@@ -22,7 +22,7 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "cognitive/attention/nimcp_attention_substrate_bridge.h"
 #include "cognitive/emotion/nimcp_emotion_substrate_bridge.h"
@@ -32,7 +32,6 @@ extern "C" {
 #include "cognitive/reasoning/nimcp_reasoning_substrate_bridge.h"
 #include "cognitive/tom/nimcp_tom_substrate_bridge.h"
 #include "cognitive/working_memory/nimcp_working_memory_substrate_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

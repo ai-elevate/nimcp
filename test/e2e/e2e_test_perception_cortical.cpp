@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 // Visual-cortical bridge
 #include "perception/cortical/nimcp_visual_cortical_bridge.h"
 
@@ -41,7 +41,6 @@ extern "C" {
 
 // Memory management
 #include "utils/memory/nimcp_unified_memory.h"
-}
 
 /* =============================================================================
  * Test Fixtures

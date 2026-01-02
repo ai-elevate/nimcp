@@ -7,11 +7,10 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/processing/multimodal_integrator.h"
 #include "core/brain/processing/sensory_extractor.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

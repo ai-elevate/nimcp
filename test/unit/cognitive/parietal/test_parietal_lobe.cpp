@@ -28,7 +28,7 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/parietal/nimcp_parietal.h"
 #include "cognitive/parietal/nimcp_number_sense.h"
 #include "cognitive/parietal/nimcp_spatial_reasoning.h"
@@ -37,7 +37,6 @@ extern "C" {
 #include "cognitive/parietal/nimcp_fep_parietal_bridge.h"
 #include "cognitive/parietal/nimcp_parietal_quantum_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 /* ============================================================================
  * TEST FIXTURE

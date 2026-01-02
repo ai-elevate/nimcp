@@ -22,12 +22,11 @@
 #include <chrono>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/directives/nimcp_action_history.h"
 #include "core/directives/nimcp_reciprocity_eval.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 /* ============================================================================
  * Test Fixtures

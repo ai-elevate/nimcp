@@ -32,9 +32,8 @@ static const float FLOAT_EPSILON = 1e-6f;
 // Helper Functions
 //=============================================================================
 
-extern "C" {
+// Headers have their own extern "C" guards
     static float integration_mock_learning_rate() { return 0.01f; }
-}
 
 /**
  * WHAT: Helper to create complete configuration

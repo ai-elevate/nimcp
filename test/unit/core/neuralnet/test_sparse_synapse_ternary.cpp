@@ -18,13 +18,12 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/neuralnet/nimcp_sparse_synapse.h"
 #include "utils/ternary/nimcp_ternary.h"
 #include "utils/ternary/nimcp_ternary_types.h"
 #include "utils/ternary/nimcp_ternary_vector.h"
 #include "utils/ternary/nimcp_ternary_convert.h"
-}
 
 //=============================================================================
 // Test Fixtures

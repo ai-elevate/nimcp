@@ -8,13 +8,12 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/integration/nimcp_flow_tracker.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Test Fixture

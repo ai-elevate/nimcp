@@ -31,14 +31,13 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "core/neuron_models/nimcp_izhikevich.h"
-}
 
 //=============================================================================
 // Test Constants

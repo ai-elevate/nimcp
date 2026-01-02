@@ -38,11 +38,10 @@
 #include <sys/resource.h>
 
 // Glial module headers
-extern "C" {
+// Headers have their own extern "C" guards
 #include "glial/microglia/nimcp_microglia.h"
 #include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
 #include "glial/integration/nimcp_glial_integration.h"
-}
 
 //=============================================================================
 // Performance Utilities

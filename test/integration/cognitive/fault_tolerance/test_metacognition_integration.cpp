@@ -24,13 +24,12 @@
 #include <chrono>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/fault_tolerance/nimcp_metacognition.h"
 #include "utils/fault_tolerance/nimcp_fast_recovery.h"
 #include "utils/fault_tolerance/nimcp_lockfree_metrics.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixture

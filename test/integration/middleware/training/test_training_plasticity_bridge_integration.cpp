@@ -21,7 +21,7 @@
 #include <vector>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "middleware/training/nimcp_brain_training_integration.h"
 #include "middleware/training/nimcp_training_callbacks.h"
@@ -29,7 +29,6 @@ extern "C" {
 #include "plasticity/stdp/nimcp_stdp.h"
 #include "plasticity/bcm/nimcp_bcm.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

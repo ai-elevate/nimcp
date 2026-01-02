@@ -28,7 +28,7 @@
 #include <chrono>
 #include <functional>
 
-extern "C" {
+// Headers have their own extern "C" guards
 // ============================================================================
 // Neural Substrate Layer Headers
 // ============================================================================
@@ -89,7 +89,6 @@ extern "C" {
 #include "plasticity/orchestrator/nimcp_axon_orchestrator_bridge.h"
 #include "plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.h"
 #include "plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.h"
-}
 
 // ============================================================================
 // Test Constants - Replace Magic Numbers

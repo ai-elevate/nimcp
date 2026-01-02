@@ -6,13 +6,12 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/game_theory/integration/nimcp_gt_global_workspace.h"
 #include "cognitive/game_theory/integration/nimcp_gt_working_memory.h"
 #include "cognitive/game_theory/integration/nimcp_gt_neuromod.h"
 #include "cognitive/game_theory/integration/nimcp_gt_hemispheric.h"
 #include "cognitive/game_theory/nimcp_game_theory.h"
-}
 
 //=============================================================================
 // Global Workspace Auction Test Fixture

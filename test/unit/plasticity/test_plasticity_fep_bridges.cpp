@@ -11,14 +11,13 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/stp/nimcp_stp_fep_bridge.h"
 #include "plasticity/predictive/nimcp_predictive_coding_fep_bridge.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators_fep_bridge.h"
 #include "plasticity/noise/nimcp_pink_noise_fep_bridge.h"
 #include "plasticity/nimcp_second_messengers_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
-}
 
 class PlasticityFepBridgesTestBase : public ::testing::Test {
 protected:

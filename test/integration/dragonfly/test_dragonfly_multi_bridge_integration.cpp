@@ -24,7 +24,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "dragonfly/nimcp_dragonfly.h"
 #include "dragonfly/nimcp_dragonfly_visual_bridge.h"
 #include "dragonfly/nimcp_dragonfly_audio_bridge.h"
@@ -34,7 +34,6 @@ extern "C" {
 #include "dragonfly/nimcp_dragonfly_thalamic_bridge.h"
 #include "dragonfly/nimcp_dragonfly_substrate_bridge.h"
 #include "dragonfly/nimcp_dragonfly_fep_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

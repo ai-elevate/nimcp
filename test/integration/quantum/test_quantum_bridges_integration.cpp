@@ -25,7 +25,7 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 /* Quantum bridge headers with implementations */
 #define NIMCP_ATTENTION_QUANTUM_BRIDGE_IMPLEMENTATION
 #include "plasticity/attention/nimcp_attention_quantum_bridge.h"
@@ -43,7 +43,6 @@ extern "C" {
 #include "middleware/routing/nimcp_thalamic_quantum_bridge.h"
 
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Attention-Quantum Integration Tests

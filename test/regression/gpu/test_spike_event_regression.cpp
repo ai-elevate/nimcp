@@ -24,9 +24,8 @@
 #include <vector>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "gpu/nimcp_spike_event.h"
-}
 
 //=============================================================================
 // Test Utilities

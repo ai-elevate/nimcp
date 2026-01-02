@@ -26,12 +26,11 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/routing/nimcp_thalamic_router.h"
 #include "middleware/routing/nimcp_thalamic_quantum_bridge.h"
 #include "snn/bridges/nimcp_snn_thalamic_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
-}
 
 //=============================================================================
 // Test Fixture

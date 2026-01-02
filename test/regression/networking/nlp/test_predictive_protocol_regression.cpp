@@ -16,11 +16,10 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "networking/nlp/nimcp_predictive_protocol.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -20,12 +20,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "utils/platform/nimcp_platform_tier.h"
     #include "utils/platform/nimcp_system_resources.h"
     #include "utils/memory/nimcp_memory.h"
     #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixture

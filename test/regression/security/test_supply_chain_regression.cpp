@@ -4,9 +4,8 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
     #include "security/nimcp_supply_chain.h"
-}
 #include <fstream>
 
 class SupplyChainRegressionTest : public ::testing::Test {

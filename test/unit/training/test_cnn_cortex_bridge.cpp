@@ -24,12 +24,11 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_cnn_cortex_bridge.h"
 #include "perception/nimcp_visual_cortex.h"
 #include "perception/nimcp_audio_cortex.h"
 #include "utils/tensor/nimcp_tensor.h"
-}
 
 // Forward declaration for tests that would use cnn_trainer_t
 // (not compiled until nimcp_cnn_training.c enum conflicts resolved)

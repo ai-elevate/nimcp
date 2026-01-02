@@ -23,7 +23,7 @@
 #include <thread>
 
 // Mock swarm signal structures based on architecture doc
-extern "C" {
+// Headers have their own extern "C" guards
 
 // Radio types
 typedef enum {
@@ -113,7 +113,6 @@ void swarm_signal_reset_stats(swarm_signal_adapter_t* adapter);
 
 swarm_signal_config_t swarm_signal_default_config(swarm_radio_type_t radio_type);
 
-} // extern "C"
 
 //=============================================================================
 // Mock Implementation (for testing purposes)

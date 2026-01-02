@@ -12,14 +12,13 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/neuron_models/nimcp_neuron_substrate_bridge.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "core/neuron_models/nimcp_neuron_model.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 /* ============================================================================
  * Test Fixture

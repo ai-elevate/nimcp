@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/patterns/nimcp_sequence_detector.h"
-}
 
 class SequenceDetectorRegressionTest : public ::testing::Test {
 protected:

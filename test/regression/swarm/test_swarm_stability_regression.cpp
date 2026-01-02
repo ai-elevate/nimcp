@@ -27,14 +27,13 @@
 #include <fstream>
 #include <sstream>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_memory.h"
 #include "swarm/nimcp_gossip_beliefs.h"
 #include "swarm/nimcp_swarm_multi.h"
 #include "swarm/nimcp_swarm_signal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Memory Monitoring Utility

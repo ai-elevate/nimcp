@@ -29,7 +29,7 @@
 #include <mutex>
 #include <condition_variable>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/integration/nimcp_middleware_controller.h"
 #include "middleware/integration/nimcp_flow_tracker.h"
 #include "middleware/integration/nimcp_shannon_monitor.h"
@@ -38,7 +38,6 @@ extern "C" {
 #include "async/nimcp_bio_messages.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Test Fixture

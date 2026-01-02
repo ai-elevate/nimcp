@@ -15,11 +15,10 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/broca/nimcp_broca_substrate_bridge.h"
 #include "core/brain/regions/broca/nimcp_broca_thalamic_bridge.h"
 #include "core/brain/regions/broca/nimcp_broca_quantum_bridge.h"
-}
 
 //=============================================================================
 // Broca Substrate Bridge Tests

@@ -13,11 +13,10 @@
 #include <gtest/gtest.h>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include <stdlib.h>
 #include <string.h>
-}
 
 //=============================================================================
 // Test Fixtures

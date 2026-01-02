@@ -15,9 +15,8 @@
 #include <stdlib.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/hippocampus/nimcp_hippocampus_adapter.h"
-}
 
 // Test Fixture for Hippocampus Adapter
 class HippocampusAdapterTest : public ::testing::Test {

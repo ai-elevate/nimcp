@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/routing/nimcp_attention_gate.h"
-}
 
 class AttentionGateRegressionTest : public ::testing::Test {
 protected:

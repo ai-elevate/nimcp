@@ -5,10 +5,9 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "snn/bridges/nimcp_snn_stdp_bridge.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 class SNNSTDPBridgeTest : public ::testing::Test {
 protected:

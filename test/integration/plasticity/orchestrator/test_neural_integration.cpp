@@ -13,13 +13,12 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/orchestrator/nimcp_neural_plasticity_coordinator.h"
 #include "plasticity/orchestrator/nimcp_axon_orchestrator_bridge.h"
 #include "plasticity/orchestrator/nimcp_neuron_orchestrator_bridge.h"
 #include "plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.h"
 #include "plasticity/nimcp_plasticity_orchestrator.h"
-}
 
 // ============================================================================
 // Test Fixtures

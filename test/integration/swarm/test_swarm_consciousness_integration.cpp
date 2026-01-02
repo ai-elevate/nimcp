@@ -36,7 +36,7 @@
 #include <cmath>
 #include <memory>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_brain.h"
 #include "swarm/nimcp_collective_workspace.h"
 // Note: swarm_emergence types are in swarm_brain.h, no need for separate include
@@ -45,7 +45,6 @@ extern "C" {
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Mock Swarm Consciousness API

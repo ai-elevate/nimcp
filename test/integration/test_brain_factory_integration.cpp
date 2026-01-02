@@ -29,13 +29,12 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/factory/nimcp_brain_factory.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/factory/init/nimcp_brain_init.h"
 #include "utils/bridge/nimcp_bridge_base.h"
-}
 
 //=============================================================================
 // Test Fixture

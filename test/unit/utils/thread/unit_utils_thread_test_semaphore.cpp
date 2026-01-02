@@ -35,9 +35,8 @@
 #include <chrono>
 #include <memory>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/thread/nimcp_semaphore.h"
-}
 
 //=============================================================================
 // Test Fixtures and Helpers

@@ -23,10 +23,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/reasoning/nimcp_reasoning_sleep_bridge.h"
 #include "cognitive/nimcp_sleep_wake.h"
-}
 
 /* ============================================================================
  * TEST FIXTURE

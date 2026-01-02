@@ -10,13 +10,12 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_brain_recovery_integration.h"
 #include "utils/fault_tolerance/nimcp_runtime_adaptation.h"
 #include "utils/fault_tolerance/nimcp_diagnostics.h"
 #include "utils/fault_tolerance/nimcp_recovery.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

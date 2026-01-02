@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
     #include "utils/math/nimcp_complex_math.h"
-}
 #include <cmath>
 
 // Test tolerance for floating point comparisons

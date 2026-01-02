@@ -16,9 +16,8 @@
 #include <atomic>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_layer_pools.h"
-}
 
 class LayerPoolsIntegrationTest : public ::testing::Test {
 protected:

@@ -29,10 +29,9 @@
 #include <atomic>
 #include <thread>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/ethics/nimcp_core_directives.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

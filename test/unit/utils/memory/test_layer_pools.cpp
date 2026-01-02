@@ -27,9 +27,8 @@
 #include <chrono>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_layer_pools.h"
-}
 
 //=============================================================================
 // Test Fixture

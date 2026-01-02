@@ -386,6 +386,45 @@ NIMCP_EXPORT bool nimcp_gpu_lnn_accumulate_gradients(
 );
 
 //=============================================================================
+// High-Level Layer Configuration
+//=============================================================================
+
+/**
+ * @brief High-level LNN layer configuration for GPU
+ *
+ * Provides a simplified interface for creating GPU LNN layers without
+ * requiring a pre-existing CPU layer.
+ */
+typedef struct {
+    uint32_t input_dim;             /**< Input dimension */
+    uint32_t hidden_dim;            /**< Hidden state dimension (n_neurons) */
+    float tau_min;                  /**< Minimum time constant (ms) */
+    float tau_max;                  /**< Maximum time constant (ms) */
+    float dt;                       /**< Integration time step (ms) */
+    lnn_ode_method_t ode_method;    /**< ODE integration method */
+    lnn_activation_t activation;    /**< Activation function */
+    bool learn_tau;                 /**< Whether to learn time constants */
+    float weight_init_std;          /**< Weight initialization std (0 = default) */
+    uint64_t seed;                  /**< Random seed (0 = use time) */
+} nimcp_lnn_layer_config_t;
+
+/**
+ * @brief Extended GPU LNN layer with high-level state tracking
+ */
+typedef struct nimcp_lnn_layer_gpu_extended_s {
+    nimcp_lnn_layer_gpu_t base;     /**< Base layer structure */
+    nimcp_gpu_context_t* ctx;       /**< GPU context */
+    nimcp_lnn_layer_config_t config; /**< Creation config */
+    float current_time;             /**< Current simulation time */
+    float last_dt_used;             /**< Last adaptive dt used */
+    float error_estimate;           /**< Error estimate (for adaptive methods) */
+    float atol;                     /**< Absolute tolerance for adaptive stepping */
+    float rtol;                     /**< Relative tolerance for adaptive stepping */
+    float dt_min;                   /**< Minimum adaptive dt */
+    float dt_max;                   /**< Maximum adaptive dt */
+} nimcp_lnn_layer_gpu_extended_t;
+
+//=============================================================================
 // Layer Lifecycle
 //=============================================================================
 
@@ -402,11 +441,33 @@ NIMCP_EXPORT nimcp_lnn_layer_gpu_t* nimcp_lnn_layer_gpu_create(
 );
 
 /**
+ * @brief Create GPU LNN layer from configuration
+ *
+ * Creates a new GPU LNN layer directly on the GPU without requiring
+ * a pre-existing CPU layer. Weights are initialized randomly.
+ *
+ * @param ctx GPU context
+ * @param config Layer configuration
+ * @return GPU layer (extended type), or NULL on failure
+ */
+NIMCP_EXPORT nimcp_lnn_layer_gpu_extended_t* nimcp_lnn_layer_gpu_create_from_config(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_lnn_layer_config_t* config
+);
+
+/**
  * @brief Destroy GPU LNN layer
  *
  * @param layer Layer to destroy
  */
 NIMCP_EXPORT void nimcp_lnn_layer_gpu_destroy(nimcp_lnn_layer_gpu_t* layer);
+
+/**
+ * @brief Destroy extended GPU LNN layer
+ *
+ * @param layer Extended layer to destroy
+ */
+NIMCP_EXPORT void nimcp_lnn_layer_gpu_extended_destroy(nimcp_lnn_layer_gpu_extended_t* layer);
 
 /**
  * @brief Copy GPU layer state back to CPU
@@ -430,6 +491,124 @@ NIMCP_EXPORT bool nimcp_lnn_layer_gpu_to_cpu(
 NIMCP_EXPORT bool nimcp_lnn_layer_gpu_zero_grad(
     nimcp_gpu_context_t* ctx,
     nimcp_lnn_layer_gpu_t* layer
+);
+
+//=============================================================================
+// Layer Accessors
+//=============================================================================
+
+/**
+ * @brief Get layer input dimension
+ */
+NIMCP_EXPORT size_t nimcp_lnn_layer_gpu_get_input_dim(const nimcp_lnn_layer_gpu_extended_t* layer);
+
+/**
+ * @brief Get layer hidden dimension (number of neurons)
+ */
+NIMCP_EXPORT size_t nimcp_lnn_layer_gpu_get_hidden_dim(const nimcp_lnn_layer_gpu_extended_t* layer);
+
+/**
+ * @brief Get layer ODE method
+ */
+NIMCP_EXPORT lnn_ode_method_t nimcp_lnn_layer_gpu_get_ode_method(const nimcp_lnn_layer_gpu_extended_t* layer);
+
+/**
+ * @brief Count total trainable parameters
+ */
+NIMCP_EXPORT size_t nimcp_lnn_layer_gpu_count_params(const nimcp_lnn_layer_gpu_extended_t* layer);
+
+/**
+ * @brief Get current state vector
+ *
+ * @param layer GPU layer
+ * @param state_out Output buffer [hidden_dim]
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_lnn_layer_gpu_get_state(
+    const nimcp_lnn_layer_gpu_extended_t* layer,
+    float* state_out
+);
+
+/**
+ * @brief Reset layer state to zeros
+ *
+ * @param layer GPU layer
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_lnn_layer_gpu_reset(nimcp_lnn_layer_gpu_extended_t* layer);
+
+//=============================================================================
+// High-Level Forward Operations
+//=============================================================================
+
+/**
+ * @brief Single ODE step with input
+ *
+ * Advances the layer state by one dt using the configured ODE solver.
+ *
+ * @param layer GPU layer
+ * @param input Input tensor [input_dim]
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_lnn_layer_gpu_step(
+    nimcp_lnn_layer_gpu_extended_t* layer,
+    const nimcp_gpu_tensor_t* input
+);
+
+/**
+ * @brief Set adaptive stepping parameters
+ *
+ * @param layer GPU layer
+ * @param atol Absolute tolerance
+ * @param rtol Relative tolerance
+ * @param dt_min Minimum time step
+ * @param dt_max Maximum time step
+ */
+NIMCP_EXPORT void nimcp_lnn_layer_gpu_set_adaptive_params(
+    nimcp_lnn_layer_gpu_extended_t* layer,
+    float atol,
+    float rtol,
+    float dt_min,
+    float dt_max
+);
+
+/**
+ * @brief Adaptive ODE step with input
+ *
+ * Advances the layer state using adaptive time stepping (DOPRI5).
+ *
+ * @param layer GPU layer
+ * @param input Input tensor [input_dim]
+ * @param dt_used Output: actual dt used
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_lnn_layer_gpu_step_adaptive(
+    nimcp_lnn_layer_gpu_extended_t* layer,
+    const nimcp_gpu_tensor_t* input,
+    float* dt_used
+);
+
+/**
+ * @brief Get error estimate from last adaptive step
+ */
+NIMCP_EXPORT float nimcp_lnn_layer_gpu_get_error_estimate(const nimcp_lnn_layer_gpu_extended_t* layer);
+
+/**
+ * @brief Forward sequence through layer
+ *
+ * Processes a full sequence of inputs and produces output states.
+ *
+ * @param layer GPU layer
+ * @param input Input tensor [seq_len, input_dim]
+ * @param output Output tensor [seq_len, hidden_dim]
+ * @param seq_len Sequence length
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_lnn_layer_gpu_forward_sequence(
+    nimcp_lnn_layer_gpu_extended_t* layer,
+    const nimcp_gpu_tensor_t* input,
+    nimcp_gpu_tensor_t* output,
+    size_t seq_len
 );
 
 #ifdef __cplusplus

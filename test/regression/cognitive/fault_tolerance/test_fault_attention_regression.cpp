@@ -22,9 +22,8 @@
 #include <vector>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/fault_tolerance/nimcp_fault_attention.h"
-}
 
 //=============================================================================
 // Test Fixture

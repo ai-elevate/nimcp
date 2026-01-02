@@ -5,11 +5,10 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "middleware/buffering/nimcp_phase_coded_buffer.h"
     #include "utils/math/nimcp_complex_math.h"
     #include "utils/memory/nimcp_memory.h"
-}
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846

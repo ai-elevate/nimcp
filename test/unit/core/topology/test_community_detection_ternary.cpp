@@ -19,13 +19,12 @@
 #include <numeric>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/topology/nimcp_community_detection.h"
 #include "utils/ternary/nimcp_ternary.h"
 #include "utils/ternary/nimcp_ternary_types.h"
 #include "utils/ternary/nimcp_ternary_matrix.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -23,10 +23,9 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_morphogenesis.h"
 #include "security/nimcp_blood_brain_barrier.h"
-}
 
 //=============================================================================
 // Test Fixture

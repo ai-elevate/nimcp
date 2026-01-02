@@ -18,12 +18,11 @@
 #include <vector>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/orchestrator/nimcp_dendrite_orchestrator_bridge.h"
 #include "plasticity/nimcp_plasticity_orchestrator.h"
 #include "core/dendrite/nimcp_dendrite.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 // ============================================================================
 // Test Fixture

@@ -30,11 +30,10 @@
 #include <thread>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/global_workspace/nimcp_global_workspace.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Helpers

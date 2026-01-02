@@ -28,14 +28,13 @@
 #include <chrono>
 #include <limits>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/ternary/nimcp_ternary.h"
 #include "utils/ternary/nimcp_ternary_matrix.h"
 #include "utils/ternary/nimcp_ternary_vector.h"
 #include "utils/ternary/nimcp_ternary_convert.h"
 #include "snn/nimcp_snn_ternary.h"
 #include "plasticity/nimcp_plasticity_ternary.h"
-}
 
 //=============================================================================
 // Test Fixture

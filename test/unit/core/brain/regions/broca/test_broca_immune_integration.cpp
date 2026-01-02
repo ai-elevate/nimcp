@@ -5,11 +5,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/broca/nimcp_broca_immune.h"
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
-}
 
 /* ============================================================================
  * Test Fixture

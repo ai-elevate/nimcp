@@ -5,9 +5,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/normalization/nimcp_min_max_normalizer.h"
-}
 
 /**
  * WHAT: Comprehensive test suite for min-max normalization

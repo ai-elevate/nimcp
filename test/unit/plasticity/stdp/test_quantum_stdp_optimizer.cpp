@@ -6,9 +6,8 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/stdp/nimcp_quantum_stdp_optimizer.h"
-}
 
 //=============================================================================
 // Lifecycle Tests

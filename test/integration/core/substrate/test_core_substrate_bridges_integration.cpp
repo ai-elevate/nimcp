@@ -24,7 +24,7 @@
 #include <chrono>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/neuron_models/nimcp_neuron_substrate_bridge.h"
 #include "core/synapse_compute/nimcp_synapse_substrate_bridge.h"
 #include "core/nimcp_axon_dendrite_substrate_bridge.h"
@@ -35,7 +35,6 @@ extern "C" {
 #include "core/dendrite/nimcp_dendrite.h"
 #include "core/synapse_types/nimcp_synapse_types.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Integration Test Fixture

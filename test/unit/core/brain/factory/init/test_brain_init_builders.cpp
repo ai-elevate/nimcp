@@ -38,9 +38,8 @@ static const uint32_t DEFAULT_ADAPTATION_WINDOW = 100;
 //=============================================================================
 
 // Mock task strategy for testing
-extern "C" {
+// Headers have their own extern "C" guards
     static float mock_get_learning_rate() { return 0.01f; }
-}
 
 //=============================================================================
 // Spike Parameters Builder Tests

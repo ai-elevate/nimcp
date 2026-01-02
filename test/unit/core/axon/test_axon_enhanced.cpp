@@ -13,9 +13,8 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/axon/nimcp_axon.h"
-}
 
 //=============================================================================
 // STRESS TESTS

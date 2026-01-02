@@ -28,10 +28,9 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_training_logic_bridge.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 class TrainingLogicBridgeTest : public ::testing::Test {
 protected:

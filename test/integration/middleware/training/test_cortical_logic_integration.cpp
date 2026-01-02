@@ -21,11 +21,10 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_cortical_training_bridge.h"
 #include "middleware/training/nimcp_training_logic_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 class CorticalLogicIntegrationTest : public ::testing::Test {
 protected:

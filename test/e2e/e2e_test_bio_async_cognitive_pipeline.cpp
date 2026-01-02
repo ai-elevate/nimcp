@@ -24,14 +24,13 @@
 #include <cmath>
 #include <string>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/salience/nimcp_salience.h"
-}
 
 //=============================================================================
 // Test Fixture

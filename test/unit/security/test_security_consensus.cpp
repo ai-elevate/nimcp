@@ -6,10 +6,9 @@
 #include <gtest/gtest.h>
 #include <thread>
 #include <chrono>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_security_consensus.h"
 #include "async/nimcp_bio_router.h"
-}
 
 class SecurityConsensusTest : public ::testing::Test {
 protected:

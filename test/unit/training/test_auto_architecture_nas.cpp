@@ -24,11 +24,10 @@
 #include <cmath>
 #include <unistd.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_auto_architecture.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

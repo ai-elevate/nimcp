@@ -6,10 +6,9 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/game_theory/nimcp_gt_mechanism.h"
 #include "cognitive/game_theory/nimcp_game_theory.h"
-}
 
 //=============================================================================
 // Test Fixture

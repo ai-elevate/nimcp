@@ -14,10 +14,9 @@
 #include <stdlib.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/cingulate/nimcp_cingulate_adapter.h"
 #include "core/brain/regions/cingulate/nimcp_cingulate_quantum_bridge.h"
-}
 
 /*=============================================================================
  * TEST FIXTURE

@@ -23,11 +23,10 @@
 #include <chrono>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/directives/nimcp_action_history.h"
 #include "core/directives/nimcp_combinatorial_harm.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

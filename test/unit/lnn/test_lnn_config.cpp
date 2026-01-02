@@ -16,10 +16,9 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "lnn/nimcp_lnn_config.h"
 #include "lnn/nimcp_lnn_types.h"
-}
 
 //=============================================================================
 // Test Fixture

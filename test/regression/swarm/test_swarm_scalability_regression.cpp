@@ -30,12 +30,11 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_brain.h"
 #include "swarm/nimcp_collective_workspace.h"
 #include "swarm/nimcp_swarm_consensus.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -15,10 +15,9 @@
 #include <stdlib.h>
 #include <math.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/broca/nimcp_language_production_bridge.h"
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
-}
 
 // Test Fixture for Language Production Bridge
 class LanguageProductionBridgeTest : public ::testing::Test {

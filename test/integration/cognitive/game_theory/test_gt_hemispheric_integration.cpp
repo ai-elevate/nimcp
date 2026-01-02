@@ -14,13 +14,12 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/game_theory/integration/nimcp_gt_hemispheric.h"
 #include "core/brain/hemispheric/nimcp_hemispheric_brain.h"
 #include "cognitive/game_theory/nimcp_bargaining.h"
 #include "cognitive/game_theory/nimcp_credit_assignment.h"
 #include "cognitive/game_theory/nimcp_game_theory.h"
-}
 
 /* ============================================================================
  * Test Fixtures

@@ -6,12 +6,11 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/predictive/nimcp_predictive_coding.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
-}
 
 class PredictiveBioAsyncTest : public ::testing::Test {
 protected:

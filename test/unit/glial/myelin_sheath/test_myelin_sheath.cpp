@@ -32,11 +32,10 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "glial/myelin_sheath/nimcp_myelin_sheath.h"
 #include "utils/memory/nimcp_memory.h"
 #include "nimcp.h"
-}
 
 //=============================================================================
 // Test Fixture

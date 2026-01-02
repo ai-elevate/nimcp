@@ -21,10 +21,9 @@
 #include <cmath>
 #include <limits>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/axon/nimcp_axon.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

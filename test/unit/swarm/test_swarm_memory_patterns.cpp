@@ -20,9 +20,8 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_memory.h"
-}
 
 class SwarmMemoryPatternsTest : public ::testing::Test {
 protected:

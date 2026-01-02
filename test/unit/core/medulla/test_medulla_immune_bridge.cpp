@@ -10,11 +10,10 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/medulla/nimcp_medulla_immune_bridge.h"
 #include "core/medulla/nimcp_medulla.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
-}
 
 //=============================================================================
 // Test Fixture

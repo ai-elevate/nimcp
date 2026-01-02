@@ -18,11 +18,10 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_multi.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/time/nimcp_time.h"
-}
 
 class SwarmConflictResolutionIntegrationTest : public ::testing::Test {
 protected:

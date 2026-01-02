@@ -12,14 +12,13 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_predictive_protocol.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_time.h"
-}
 
 class PredictiveRouterTest : public ::testing::Test {
 protected:

@@ -24,7 +24,7 @@
 #include <numeric>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
@@ -34,7 +34,6 @@ extern "C" {
 #include "middleware/training/nimcp_optimizers.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

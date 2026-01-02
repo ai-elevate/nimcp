@@ -11,7 +11,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/consolidation/nimcp_consolidation_fep_bridge.h"
 #include "cognitive/nimcp_hierarchical_fep_bridge.h"
 #include "cognitive/nimcp_meta_learning_fep_bridge.h"
@@ -20,7 +20,6 @@ extern "C" {
 #include "cognitive/sleep_wake/nimcp_sleep_wake_fep_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
-}
 
 class CognitiveFepBridgesTestBase : public ::testing::Test {
 protected:

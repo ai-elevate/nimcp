@@ -14,10 +14,9 @@
 #include <gtest/gtest.h>
 #include "utils/nimcp_test_base.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_self_awareness_extended.h"
 #include "cognitive/self_awareness_extended/nimcp_self_awareness_extended_fep_bridge.h"
-}
 
 /**
  * @brief Test fixture for Extended Self-Awareness tests

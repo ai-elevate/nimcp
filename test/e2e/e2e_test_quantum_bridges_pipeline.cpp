@@ -21,11 +21,10 @@
 #define NIMCP_THALAMIC_QUANTUM_BRIDGE_IMPLEMENTATION
 
 // Include quantum bridge headers
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/attention/nimcp_attention_quantum_bridge.h"
 #include "plasticity/bcm/nimcp_bcm_quantum_bridge.h"
 #include "middleware/routing/nimcp_thalamic_quantum_bridge.h"
-}
 
 //=============================================================================
 // Test Fixtures

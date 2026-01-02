@@ -17,10 +17,9 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_gossip_beliefs.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 class GossipBeliefsMemoryTest : public ::testing::Test {
 protected:

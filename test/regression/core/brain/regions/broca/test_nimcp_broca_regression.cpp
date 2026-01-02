@@ -13,13 +13,12 @@
 #include <string.h>
 #include <stdlib.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
 #include "core/brain/regions/broca/nimcp_language_production_bridge.h"
 #include "core/brain/regions/broca/nimcp_syntax_processor.h"
 #include "core/brain/regions/broca/nimcp_phonological.h"
 #include "core/brain/regions/broca/nimcp_speech_motor.h"
-}
 
 // =============================================================================
 // BUG FIX REGRESSION: Speech Motor Timestamp Initialization

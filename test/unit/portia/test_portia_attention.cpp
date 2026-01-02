@@ -19,11 +19,10 @@
 #include <thread>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_attention.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixture

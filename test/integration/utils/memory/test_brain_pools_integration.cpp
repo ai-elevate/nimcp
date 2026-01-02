@@ -16,9 +16,8 @@
 #include <atomic>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_brain_pools.h"
-}
 
 class BrainPoolsIntegrationTest : public ::testing::Test {
 protected:

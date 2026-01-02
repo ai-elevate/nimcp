@@ -19,9 +19,8 @@
 #include <set>
 #include <arpa/inet.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "networking/nlp/nimcp_neural_link_protocol.h"
-}
 
 //=============================================================================
 // Test Constants

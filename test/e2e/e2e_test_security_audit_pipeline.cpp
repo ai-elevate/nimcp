@@ -21,12 +21,11 @@
 
 #include "e2e_test_framework.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_encrypted_audit.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 #include <thread>
 #include <atomic>

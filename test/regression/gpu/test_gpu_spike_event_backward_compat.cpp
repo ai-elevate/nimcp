@@ -15,9 +15,8 @@
 // GPU header outside extern "C" due to CUDA runtime templates
 #include "gpu/nimcp_spike_event.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

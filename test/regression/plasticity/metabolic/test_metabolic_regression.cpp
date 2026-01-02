@@ -6,13 +6,12 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/metabolic/nimcp_metabolic_plasticity.h"
 #include "plasticity/metabolic/nimcp_metabolic_sleep_bridge.h"
 #include "plasticity/metabolic/nimcp_metabolic_immune_bridge.h"
 #include "cognitive/nimcp_sleep_wake.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
-}
 
 /* ============================================================================
  * Stability Tests

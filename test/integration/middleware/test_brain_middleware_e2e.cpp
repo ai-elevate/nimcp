@@ -17,7 +17,7 @@
 #include <chrono>
 #include <memory>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/brain_integration.h"
 #include "middleware/cognitive/nimcp_cognitive_adapters.h"
 #include "middleware/training/nimcp_training_adapters.h"
@@ -25,7 +25,6 @@ extern "C" {
 #include "middleware/features/nimcp_feature_extractor.h"
 #include "middleware/pipeline/nimcp_middleware_pipeline.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

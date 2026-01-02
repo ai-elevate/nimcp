@@ -24,7 +24,7 @@
 #include <vector>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_pheromone.h"
 #include "swarm/nimcp_swarm_morphogenesis.h"
 #include "swarm/nimcp_swarm_flocking.h"
@@ -35,7 +35,6 @@ extern "C" {
 #include "swarm/nimcp_swarm_cascade.h"
 #include "swarm/nimcp_swarm_multi.h"
 #include "swarm/nimcp_swarm_proprioception.h"
-}
 
 //=============================================================================
 // Complete Swarm System

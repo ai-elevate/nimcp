@@ -5,9 +5,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/routing/nimcp_thalamic_router.h"
-}
 
 /**
  * WHAT: Comprehensive test suite for thalamic-style routing

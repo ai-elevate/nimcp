@@ -23,10 +23,9 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "lnn/nimcp_lnn_sleep_bridge.h"
 #include "cognitive/nimcp_sleep_wake.h"
-}
 
 //=============================================================================
 // Mock Sleep System
@@ -45,7 +44,7 @@ struct sleep_system_struct {
 };
 
 // Mock sleep system API implementations
-extern "C" {
+// Headers have their own extern "C" guards
 
 sleep_system_t sleep_system_create(const sleep_config_t* config) {
     (void)config;
@@ -59,7 +58,6 @@ sleep_system_t sleep_system_create(const sleep_config_t* config) {
     sys->callback_user_data = nullptr;
 
     return sys;
-}
 
 void sleep_system_destroy(sleep_system_t sleep) {
     free(sleep);

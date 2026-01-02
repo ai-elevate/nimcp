@@ -19,10 +19,9 @@
 #include <chrono>
 #include <memory>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_logic_bridge.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 class SwarmLogicBridgeRegressionTest : public ::testing::Test {
 protected:

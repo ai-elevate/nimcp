@@ -9,9 +9,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "dragonfly/nimcp_dragonfly_energy.h"
-}
 
 //=============================================================================
 // Test Fixture

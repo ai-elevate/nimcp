@@ -22,9 +22,8 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <vector>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/events/nimcp_event_queue.h"
-}
 
 //=============================================================================
 // Test Fixture

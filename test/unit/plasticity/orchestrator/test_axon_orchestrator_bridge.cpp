@@ -20,12 +20,11 @@
 #include <cstdint>
 #include <climits>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/orchestrator/nimcp_axon_orchestrator_bridge.h"
 #include "plasticity/nimcp_plasticity_orchestrator.h"
 #include "core/axon/nimcp_axon.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 // ============================================================================
 // Test Fixture

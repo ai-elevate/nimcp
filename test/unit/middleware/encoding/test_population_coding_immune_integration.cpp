@@ -7,12 +7,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/immune/nimcp_population_coding_immune_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "middleware/encoding/nimcp_population_coding.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 class PopulationImmuneTest : public ::testing::Test {
 protected:

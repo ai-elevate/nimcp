@@ -20,12 +20,11 @@
 #include <chrono>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_training_callbacks.h"
 #include "security/nimcp_security_integration.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/validation/nimcp_common.h"
-}
 
 namespace {
 

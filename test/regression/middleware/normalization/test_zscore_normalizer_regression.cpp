@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/normalization/nimcp_zscore_normalizer.h"
-}
 
 class ZscoreNormalizerRegressionTest : public ::testing::Test {
 protected:

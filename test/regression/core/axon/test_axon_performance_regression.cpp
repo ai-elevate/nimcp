@@ -15,9 +15,8 @@
 #include <iostream>
 #include <iomanip>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/axon/nimcp_axon.h"
-}
 
 //=============================================================================
 // PERFORMANCE MONITORING UTILITIES

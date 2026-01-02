@@ -6,11 +6,10 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
     #include "security/nimcp_post_quantum.h"
     #include "async/nimcp_bio_router.h"
     #include "core/nimcp_error.h"
-}
 #include <vector>
 #include <thread>
 #include <chrono>

@@ -26,14 +26,13 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
 #include "core/neuron_types/nimcp_neural_logic.h"
 #include "utils/memory/nimcp_unified_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

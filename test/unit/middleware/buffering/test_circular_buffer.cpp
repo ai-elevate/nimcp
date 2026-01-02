@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/buffering/nimcp_circular_buffer.h"
-}
 
 class CircularBufferTest : public ::testing::Test {
 protected:

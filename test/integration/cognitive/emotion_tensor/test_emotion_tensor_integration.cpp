@@ -20,12 +20,11 @@
 #include <cstring>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_emotion_tensor.h"
 #include "cognitive/nimcp_emotional_system.h"
 #include "cognitive/nimcp_emotional_tagging.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

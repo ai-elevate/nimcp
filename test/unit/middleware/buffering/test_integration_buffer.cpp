@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/buffering/nimcp_integration_buffer.h"
-}
 
 class IntegrationBufferTest : public ::testing::Test {
 protected:

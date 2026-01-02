@@ -14,7 +14,7 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "dragonfly/nimcp_dragonfly.h"
 #include "dragonfly/nimcp_dragonfly_multi_target.h"
 #include "dragonfly/nimcp_dragonfly_energy.h"
@@ -24,7 +24,6 @@ extern "C" {
 #include "dragonfly/nimcp_dragonfly_emotion_bridge.h"
 #include "dragonfly/nimcp_dragonfly_sleep_bridge.h"
 #include "dragonfly/nimcp_dragonfly_immune_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

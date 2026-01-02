@@ -4,9 +4,8 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/cortical_columns/nimcp_cortical_plasticity_bridge.h"
-}
 
 /* ============================================================================
  * Test Fixtures

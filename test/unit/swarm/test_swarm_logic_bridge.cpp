@@ -22,10 +22,9 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_logic_bridge.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 class SwarmLogicBridgeTest : public ::testing::Test {
 protected:

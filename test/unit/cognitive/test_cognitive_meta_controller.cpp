@@ -24,14 +24,13 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_cognitive_meta_controller.h"
 #include "cognitive/nimcp_working_memory.h"
 #include "cognitive/nimcp_executive.h"
 #include "cognitive/global_workspace/nimcp_global_workspace.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Constants

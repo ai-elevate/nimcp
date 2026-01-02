@@ -18,9 +18,8 @@
 #include <stdlib.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_adapter.h"
-}
 
 // Test Fixture for Hypothalamus Adapter
 class HypothalamusAdapterTest : public ::testing::Test {

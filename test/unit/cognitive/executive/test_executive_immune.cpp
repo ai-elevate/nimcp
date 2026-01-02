@@ -11,11 +11,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_executive.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/time/nimcp_time.h"
-}
 
 class ExecutiveImmuneTest : public ::testing::Test {
 protected:

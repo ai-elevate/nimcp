@@ -30,7 +30,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/neuron_types/nimcp_neural_logic.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
@@ -38,7 +38,6 @@ extern "C" {
 #include "core/brain/nimcp_pretrained.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 using namespace nimcp::e2e;
 

@@ -30,9 +30,8 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/occipital/nimcp_occipital_collective_bridge.h"
-}
 
 class OccipitalCollectiveBridgeTest : public ::testing::Test {
 protected:

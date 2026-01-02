@@ -15,9 +15,8 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
     #include "utils/signal/nimcp_signal_filter.h"
-}
 #include <cmath>
 #include <vector>
 

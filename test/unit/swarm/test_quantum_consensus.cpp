@@ -14,9 +14,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_quantum_consensus.h"
-}
 
 //=============================================================================
 // Lifecycle Tests

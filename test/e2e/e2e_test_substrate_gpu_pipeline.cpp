@@ -21,9 +21,8 @@
 #include "gpu/backend/nimcp_kernel_backend.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_memory.h"
-}
 
 namespace {
     constexpr uint32_t NUM_NEURONS = 1000;

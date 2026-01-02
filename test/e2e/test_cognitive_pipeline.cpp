@@ -17,10 +17,9 @@
 
 #include "e2e_test_framework.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/global_workspace/nimcp_global_workspace.h"
 #include "cognitive/ethics/nimcp_ethics.h"
-}
 
 using namespace nimcp::e2e;
 

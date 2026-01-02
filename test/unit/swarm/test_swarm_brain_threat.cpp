@@ -18,9 +18,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_brain.h"
-}
 
 class SwarmBrainThreatTest : public ::testing::Test {
 protected:

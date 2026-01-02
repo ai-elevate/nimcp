@@ -24,10 +24,9 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Regression Test Fixture

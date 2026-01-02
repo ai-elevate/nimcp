@@ -17,10 +17,9 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_multi.h"
 #include "utils/time/nimcp_time.h"
-}
 
 class SwarmConflictResolutionTest : public ::testing::Test {
 protected:

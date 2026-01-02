@@ -21,9 +21,8 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "gpu/execution/nimcp_simd_detect.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -13,11 +13,10 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "core/brain/nimcp_brain.h"
     #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
     #include "plasticity/neuromodulators/nimcp_phasic_tonic.h"
-}
 
 //=============================================================================
 // Test Fixture

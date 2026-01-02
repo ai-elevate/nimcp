@@ -14,7 +14,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 /* Substrate bridges */
 #include "cognitive/consolidation/nimcp_consolidation_substrate_bridge.h"
 #include "cognitive/emotion_tensor/nimcp_emotion_tensor_substrate_bridge.h"
@@ -45,7 +45,6 @@ extern "C" {
 
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Consolidation Substrate Bridge Tests

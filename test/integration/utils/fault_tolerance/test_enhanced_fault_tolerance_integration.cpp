@@ -16,7 +16,7 @@
 #include <vector>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_distributed_fault_tolerance.h"
 #include "utils/fault_tolerance/nimcp_hierarchical_recovery.h"
 #include "utils/fault_tolerance/nimcp_recovery_evolution.h"
@@ -26,7 +26,6 @@ extern "C" {
 #include "utils/fault_tolerance/nimcp_chaos_engineering.h"
 #include "utils/fault_tolerance/nimcp_predictive_analysis.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Multi-Module Integration Fixture

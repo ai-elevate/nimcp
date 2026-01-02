@@ -23,11 +23,10 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "core/brain/nimcp_brain.h"
     #include "cognitive/memory/nimcp_engram.h"
     #include "utils/platform/nimcp_platform_time.h"
-}
 
 //=============================================================================
 // Test Fixture

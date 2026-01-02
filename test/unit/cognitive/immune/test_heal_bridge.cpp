@@ -6,12 +6,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_heal_bridge.h"
 #include "cognitive/immune/nimcp_self_heal.h"
 #include "cognitive/immune/nimcp_code_immune.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Test Fixtures

@@ -15,11 +15,10 @@
 #include <stdlib.h>
 #include <math.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/occipital/nimcp_occipital_substrate_bridge.h"
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
-}
 
 // ============================================================================
 // TEST FIXTURE

@@ -25,7 +25,7 @@
 #include <chrono>
 #include "test_helpers.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
@@ -38,7 +38,6 @@ extern "C" {
 #include "cognitive/wellbeing/nimcp_wellbeing.h"
 #include "cognitive/nimcp_predictive.h"
 #include "utils/memory/nimcp_unified_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

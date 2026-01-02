@@ -27,10 +27,9 @@
 #include <atomic>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Mock Workspace Structures (since swarm workspace headers may not exist yet)

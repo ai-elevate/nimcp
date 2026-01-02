@@ -22,9 +22,8 @@
 #include <unistd.h>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Filter Callback Helpers

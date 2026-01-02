@@ -22,12 +22,11 @@
 #include <fstream>
 #include <sstream>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "swarm/nimcp_swarm_signal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Memory Measurement Utilities

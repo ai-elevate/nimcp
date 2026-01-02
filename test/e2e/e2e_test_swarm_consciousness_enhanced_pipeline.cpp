@@ -41,7 +41,7 @@
 #include <mutex>
 #include <condition_variable>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -585,7 +585,6 @@ static void enhanced_phi_result_free(enhanced_phi_result_t* result) {
     delete result;
 }
 
-} // extern "C"
 
 /* ========================================================================
  * E2E PIPELINE TEST FIXTURE

@@ -5,9 +5,8 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_proprioception.h"
-}
 
 class ProprioceptionTest : public ::testing::Test {
 protected:

@@ -13,12 +13,11 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
     #include "cognitive/reasoning/nimcp_knowledge_base_interface.h"
     #include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"
     #include "cognitive/reasoning/nimcp_reasoning_factory.h"
     #include "core/brain/nimcp_brain.h"
-}
 
 class KnowledgeBaseInterfaceTest : public ::testing::Test {
 protected:

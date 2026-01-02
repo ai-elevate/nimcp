@@ -22,7 +22,7 @@
 #include <cstring>
 #include <csignal>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_code_immune.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/immune/nimcp_self_heal.h"
@@ -30,7 +30,6 @@ extern "C" {
 #include "utils/signal/nimcp_signal_handler.h"
 #include "utils/code/nimcp_dwarf_symbols.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Integration Test Fixture

@@ -4,11 +4,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_training_adapters.h"
 #include "core/events/nimcp_event_bus.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 #include <thread>
 #include <atomic>

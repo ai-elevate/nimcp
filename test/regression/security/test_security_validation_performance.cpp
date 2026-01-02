@@ -27,10 +27,9 @@
 
 #include "test_helpers.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 #include <cstring>
 #include <chrono>

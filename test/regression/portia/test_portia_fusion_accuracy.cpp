@@ -16,9 +16,8 @@
 #include <cmath>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_sensor_fusion.h"
-}
 
 namespace {
 

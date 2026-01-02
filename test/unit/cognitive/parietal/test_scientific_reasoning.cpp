@@ -10,9 +10,8 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/parietal/nimcp_scientific_reasoning.h"
-}
 
 namespace {
 

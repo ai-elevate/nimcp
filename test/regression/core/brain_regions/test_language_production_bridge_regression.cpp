@@ -20,12 +20,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "core/brain_regions/nimcp_language_production_bridge.h"
     #include "async/nimcp_bio_router.h"
     #include "utils/logging/nimcp_logging.h"
     #include "utils/time/nimcp_time.h"
-}
 
 #include <algorithm>
 #include <vector>

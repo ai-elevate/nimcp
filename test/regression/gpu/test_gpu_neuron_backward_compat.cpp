@@ -15,9 +15,8 @@
 // GPU header must be outside extern "C" due to CUDA runtime templates
 #include "gpu/nimcp_gpu_neuron.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

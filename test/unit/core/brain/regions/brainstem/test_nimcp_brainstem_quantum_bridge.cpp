@@ -14,10 +14,9 @@
 #include <stdlib.h>
 #include <math.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/brainstem/nimcp_brainstem_adapter.h"
 #include "core/brain/regions/brainstem/nimcp_brainstem_quantum_bridge.h"
-}
 
 // ============================================================================
 // TEST FIXTURE

@@ -28,14 +28,13 @@
 
 #include "e2e_test_framework.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_blood_brain_barrier.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "core/brain/nimcp_brain.h"
 #include "nimcp.h"
-}
 
 #include <thread>
 #include <atomic>

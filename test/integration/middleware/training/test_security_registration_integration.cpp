@@ -18,7 +18,7 @@
 #include <chrono>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "middleware/training/nimcp_lr_scheduler.h"
 #include "middleware/training/nimcp_regularization.h"
@@ -27,7 +27,6 @@ extern "C" {
 #include "middleware/training/nimcp_loss_functions.h"
 #include "middleware/training/nimcp_optimizers.h"
 #include "security/nimcp_security_integration.h"
-}
 
 /* ============================================================================
  * Test Fixtures

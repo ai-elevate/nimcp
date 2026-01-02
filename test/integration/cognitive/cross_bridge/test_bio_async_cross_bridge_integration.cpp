@@ -30,7 +30,7 @@
 #include <condition_variable>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_async.h"
@@ -47,7 +47,6 @@ extern "C" {
 #include "cognitive/emotion/nimcp_emotion_thalamic_bridge.h"
 #include "cognitive/memory/nimcp_memory_thalamic_bridge.h"
 #include "middleware/routing/nimcp_thalamic_router.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -6,10 +6,9 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/patterns/nimcp_pattern_library.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /**
  * WHAT: Comprehensive test suite for pattern library

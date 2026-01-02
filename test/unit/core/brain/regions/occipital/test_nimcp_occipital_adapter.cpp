@@ -15,9 +15,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
-}
 
 // Test Fixture for Occipital Adapter
 class OccipitalAdapterTest : public ::testing::Test {

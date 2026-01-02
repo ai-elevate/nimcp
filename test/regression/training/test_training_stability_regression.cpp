@@ -30,11 +30,10 @@
 #include <atomic>
 #include <thread>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_auto_architecture.h"
 #include "training/nimcp_snn_backprop.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

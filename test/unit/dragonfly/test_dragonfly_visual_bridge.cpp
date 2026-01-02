@@ -7,9 +7,8 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "dragonfly/nimcp_dragonfly_visual_bridge.h"
-}
 
 class VisualBridgeTest : public ::testing::Test {
 protected:

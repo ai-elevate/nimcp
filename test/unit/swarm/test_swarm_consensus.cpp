@@ -22,7 +22,7 @@
 #include <map>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 
 // Vote topics
 typedef enum {
@@ -119,7 +119,6 @@ uint32_t swarm_consensus_get_active_proposal_count(
     const swarm_consensus_state_t* state
 );
 
-} // extern "C"
 
 //=============================================================================
 // Mock Implementation

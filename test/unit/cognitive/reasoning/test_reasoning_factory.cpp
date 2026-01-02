@@ -9,9 +9,8 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
     #include "cognitive/reasoning/nimcp_reasoning_factory.h"
-}
 
 class ReasoningFactoryTest : public ::testing::Test {
 protected:

@@ -23,10 +23,9 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_flocking.h"
 #include "security/nimcp_blood_brain_barrier.h"
-}
 
 class SwarmFlockingTest : public ::testing::Test {
 protected:

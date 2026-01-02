@@ -11,11 +11,10 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_empathetic_response.h"
 #include "cognitive/empathetic_response/nimcp_empathetic_response_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
-}
 
 #include "utils/nimcp_test_base.h"
 

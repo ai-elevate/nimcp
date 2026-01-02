@@ -21,13 +21,12 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_mental_health.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/accessors/nimcp_brain_accessors.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
-}
 
 //=============================================================================
 // Test Fixtures

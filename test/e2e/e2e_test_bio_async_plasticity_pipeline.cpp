@@ -23,14 +23,13 @@
 #include <vector>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "plasticity/stdp/nimcp_stdp.h"
 #include "plasticity/homeostatic/nimcp_homeostatic.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
-}
 
 //=============================================================================
 // Test Fixture

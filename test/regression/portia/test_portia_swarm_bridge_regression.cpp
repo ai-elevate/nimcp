@@ -32,11 +32,10 @@
 #include <atomic>
 #include <mutex>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_swarm_bridge.h"
 #include "portia/nimcp_portia.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixture

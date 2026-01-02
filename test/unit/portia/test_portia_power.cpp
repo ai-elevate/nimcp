@@ -8,11 +8,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_power.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_tier.h"
-}
 
 /**
  * @brief Test fixture for power monitoring tests

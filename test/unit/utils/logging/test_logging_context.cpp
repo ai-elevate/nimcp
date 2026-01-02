@@ -14,9 +14,8 @@
 #include <fstream>
 #include <unistd.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/logging/nimcp_logging.h"
-}
 
 class LoggingContextTest : public ::testing::Test {
 protected:

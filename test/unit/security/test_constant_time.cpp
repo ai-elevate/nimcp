@@ -26,10 +26,9 @@
 #include <vector>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_constant_time.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

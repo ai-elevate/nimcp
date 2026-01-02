@@ -33,12 +33,11 @@
 #include <cstdlib>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "core/brain_regions/nimcp_brain_region_predictive.h"
     #include "core/brain_regions/nimcp_brain_regions.h"
     #include "utils/encoding/nimcp_positional_encoding.h"
     #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

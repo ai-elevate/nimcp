@@ -15,11 +15,10 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "swarm/nimcp_swarm_multi.h"
 #include "portia/nimcp_portia_power.h"
-}
 
 // =============================================================================
 // Brain Initialization E2E Tests

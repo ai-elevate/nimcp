@@ -7,11 +7,10 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_deception.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_common.h"
-}
 
 class PortiaDeceptionTest : public ::testing::Test {
 protected:

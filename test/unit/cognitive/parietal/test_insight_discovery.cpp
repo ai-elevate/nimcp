@@ -7,9 +7,8 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/parietal/nimcp_insight_discovery.h"
-}
 
 namespace {
 

@@ -13,11 +13,10 @@
 #include <chrono>
 #include <thread>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "networking/distributed/nimcp_distributed_cognition.h"
 #include "async/nimcp_future.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 /**
  * @brief Test fixture for distributed cognition async tests

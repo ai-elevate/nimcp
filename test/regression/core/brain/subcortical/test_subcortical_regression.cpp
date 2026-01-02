@@ -18,13 +18,12 @@
 #include <vector>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/subcortical/nimcp_basal_ganglia.h"
 #include "core/brain/subcortical/nimcp_striatum.h"
 #include "core/brain/subcortical/nimcp_globus_pallidus.h"
 #include "core/brain/subcortical/nimcp_substantia_nigra.h"
 #include "core/brain/subcortical/nimcp_subthalamic.h"
-}
 
 //=============================================================================
 // Test Fixture

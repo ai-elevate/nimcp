@@ -32,11 +32,10 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/cortical_columns/nimcp_topographic_maps.h"
 #include "utils/memory/nimcp_memory.h"
 #include "nimcp.h"
-}
 
 // Test constants
 #define EPSILON 1e-5f

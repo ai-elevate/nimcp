@@ -25,14 +25,13 @@
 #include <cstdio>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_bio_async.h"
 #include "core/brain/persistence/nimcp_brain_persistence.h"
 #include "core/brain/factory/nimcp_brain_factory.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/memory/nimcp_unified_memory.h"
-}
 
 //=============================================================================
 // Test Configuration

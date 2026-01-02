@@ -9,11 +9,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/autobiographical_memory/nimcp_autobiographical_fep_bridge.h"
 #include "cognitive/nimcp_autobiographical_memory.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
-}
 
 class AutobiographicalFepBridgeIntegrationTest : public ::testing::Test {
 protected:

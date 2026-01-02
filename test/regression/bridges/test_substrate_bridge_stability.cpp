@@ -30,14 +30,13 @@
 #include <cmath>
 #include <thread>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/reasoning/nimcp_reasoning_substrate_bridge.h"
 #include "cognitive/parietal/nimcp_intuition_substrate_bridge.h"
 #include "cognitive/attention/nimcp_attention_substrate_bridge.h"
 #include "cognitive/emotion/nimcp_emotion_substrate_bridge.h"
 #include "cognitive/executive/nimcp_executive_substrate_bridge.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
-}
 
 /* ============================================================================
  * Test Fixture

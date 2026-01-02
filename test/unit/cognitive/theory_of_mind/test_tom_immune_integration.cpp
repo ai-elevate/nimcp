@@ -17,12 +17,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/time/nimcp_time.h"
 #include <string.h>
-}
 
 //=============================================================================
 // Test Fixture

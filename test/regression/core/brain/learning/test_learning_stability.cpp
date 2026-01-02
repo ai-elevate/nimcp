@@ -16,12 +16,11 @@
 #include <gtest/gtest.h>
 #include <vector>
 #include <cmath>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/learning/nimcp_brain_learning.h"
 #include "core/brain/learning/nimcp_association_learning.h"
 #include "utils/memory/nimcp_unified_memory.h"
-}
 
 class LearningStabilityTest : public ::testing::Test {
 protected:

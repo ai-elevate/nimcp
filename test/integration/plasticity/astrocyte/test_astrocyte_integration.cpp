@@ -5,7 +5,7 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/astrocyte/nimcp_astrocyte_plasticity.h"
 #include "plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.h"
 #include "plasticity/astrocyte/nimcp_astrocyte_immune_bridge.h"
@@ -14,7 +14,6 @@ extern "C" {
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/fault_tolerance/nimcp_byzantine_fault_tolerance.h"
 #include "swarm/nimcp_swarm_immune.h"
-}
 
 class AstrocyteIntegrationTest : public ::testing::Test {
 protected:

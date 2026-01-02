@@ -13,9 +13,8 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/cerebellum/nimcp_cerebellum_quantum_bridge.h"
-}
 
 //=============================================================================
 // Cerebellum Quantum Bridge Tests

@@ -26,14 +26,13 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "glial/microglia/nimcp_microglia.h"
 #include "glial/integration/nimcp_glial_integration.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -14,10 +14,9 @@
 #include <stdlib.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/occipital/nimcp_occipital_cortical_bridge.h"
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
-}
 
 // ============================================================================
 // TEST FIXTURE

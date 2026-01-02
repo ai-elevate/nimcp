@@ -8,9 +8,8 @@
 #include <chrono>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_policy_engine.h"
-}
 
 class PolicyEngineRegressionTest : public ::testing::Test {
 protected:

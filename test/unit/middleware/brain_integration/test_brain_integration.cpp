@@ -21,7 +21,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/brain_integration.h"
 #include "middleware/buffering/nimcp_sliding_window.h"
 #include "middleware/buffering/nimcp_integration_buffer.h"
@@ -30,7 +30,6 @@ extern "C" {
 #include "middleware/encoding/nimcp_rate_coding.h"
 #include "middleware/features/nimcp_feature_extractor.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 #include <cmath>
 #include <vector>

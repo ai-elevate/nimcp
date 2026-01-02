@@ -24,10 +24,9 @@
 #include <cstdlib>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "utils/tensor_networks/nimcp_mps.h"
     #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

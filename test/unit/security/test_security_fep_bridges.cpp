@@ -11,7 +11,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_anomaly_detector.h"
 #include "security/nimcp_anomaly_detector_fep_bridge.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -22,7 +22,6 @@ extern "C" {
 #include "security/nimcp_rate_limiter_fep_bridge.h"
 #include "security/nimcp_security_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
-}
 
 class SecurityFepBridgesTestBase : public ::testing::Test {
 protected:

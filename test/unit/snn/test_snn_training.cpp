@@ -13,12 +13,11 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "snn/nimcp_snn_training.h"
 #include "snn/nimcp_snn_types.h"
 #include "snn/nimcp_snn_config.h"
 #include "snn/nimcp_snn_network.h"
-}
 
 //=============================================================================
 // Test Fixture

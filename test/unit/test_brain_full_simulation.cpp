@@ -9,9 +9,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
-}
 
 class BrainFullSimulationTest : public ::testing::Test {
 protected:

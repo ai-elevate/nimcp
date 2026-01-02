@@ -14,10 +14,9 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_monitoring.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 /**
  * @brief Test fixture for monitoring tests

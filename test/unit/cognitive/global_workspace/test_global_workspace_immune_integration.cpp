@@ -16,12 +16,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/global_workspace/nimcp_global_workspace.h"
 #include "cognitive/global_workspace/nimcp_global_workspace_immune.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 #include <cmath>
 #include <cstring>

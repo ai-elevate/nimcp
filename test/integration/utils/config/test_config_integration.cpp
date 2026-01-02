@@ -27,13 +27,12 @@
 #include <fstream>
 #include <filesystem>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/config/nimcp_config_hash.h"
 #include "utils/config/nimcp_config_validation.h"
 #include "utils/config/nimcp_config_expand.h"
 #include "utils/config/nimcp_config_array.h"
 #include "utils/config/nimcp_dynamic_config.h"
-}
 
 //=============================================================================
 // Test Fixture

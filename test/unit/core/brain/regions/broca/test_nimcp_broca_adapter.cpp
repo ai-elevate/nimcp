@@ -14,9 +14,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
-}
 
 // Test Fixture for Broca Adapter
 class BrocaAdapterTest : public ::testing::Test {

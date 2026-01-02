@@ -15,9 +15,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/occipital/nimcp_occipital_quantum_bridge.h"
-}
 
 // Test Fixture for Occipital Quantum Bridge
 class OccipitalQuantumBridgeTest : public ::testing::Test {

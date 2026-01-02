@@ -7,12 +7,11 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 // Once implementation exists, include:
 // #include "portia/nimcp_portia_tier_switch.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/platform/nimcp_platform.h"
-}
 
 // Forward declarations for when implementation is available
 typedef enum {

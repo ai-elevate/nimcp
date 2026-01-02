@@ -19,11 +19,10 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_memory.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
-}
 
 class SwarmMemoryPatternsIntegrationTest : public ::testing::Test {
 protected:

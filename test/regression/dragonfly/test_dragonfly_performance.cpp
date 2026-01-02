@@ -27,9 +27,8 @@
 #include <chrono>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "dragonfly/nimcp_dragonfly.h"
-}
 
 //=============================================================================
 // Test Fixture

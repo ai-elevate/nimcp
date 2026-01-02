@@ -29,10 +29,9 @@
 #include <cstring>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "gpu/nimcp_spike_event.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Constants

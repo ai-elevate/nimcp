@@ -7,10 +7,9 @@
 #include <thread>
 #include <chrono>
 #include <vector>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_security_level.h"
 #include "async/nimcp_bio_router.h"
-}
 
 class SecurityLevelRegressionTest : public ::testing::Test {
 protected:

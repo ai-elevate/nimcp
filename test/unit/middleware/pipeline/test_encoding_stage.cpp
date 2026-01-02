@@ -6,12 +6,11 @@
 #include <vector>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/pipeline/nimcp_middleware_pipeline.h"
 #include "middleware/pipeline/nimcp_middleware_context.h"
 #include "middleware/encoding/nimcp_rate_coding.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -22,13 +22,12 @@
 
 #include "../e2e_test_framework.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "gpu/nimcp_execution_mode.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "gpu/swarm/nimcp_swarm_gpu.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 #include <thread>
 #include <atomic>

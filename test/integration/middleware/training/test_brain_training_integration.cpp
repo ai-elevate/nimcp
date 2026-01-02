@@ -19,12 +19,11 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_brain_training_integration.h"
 #include "middleware/training/nimcp_loss_functions.h"
 #include "middleware/training/nimcp_optimizers.h"
 #include "security/nimcp_security_integration.h"
-}
 
 /* ============================================================================
  * Test Fixture

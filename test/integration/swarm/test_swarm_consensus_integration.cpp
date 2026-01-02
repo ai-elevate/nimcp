@@ -29,12 +29,11 @@
 #include <random>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_consensus.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

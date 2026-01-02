@@ -38,7 +38,7 @@
 #include <atomic>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/stdp/nimcp_triplet_stdp.h"
 #include "plasticity/calcium/nimcp_calcium_dynamics.h"
 #include "plasticity/structural/nimcp_structural_plasticity.h"
@@ -48,7 +48,6 @@ extern "C" {
 #include "plasticity/astrocyte/nimcp_astrocyte_plasticity.h"
 #include "plasticity/heterosynaptic/nimcp_heterosynaptic.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 // ===========================================================================
 // Test Fixtures

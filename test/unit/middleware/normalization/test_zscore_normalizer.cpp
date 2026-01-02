@@ -6,9 +6,8 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/normalization/nimcp_zscore_normalizer.h"
-}
 
 /**
  * WHAT: Comprehensive test suite for z-score normalization

@@ -17,11 +17,10 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/homeostatic/nimcp_homeostatic.h"
 #include "plasticity/dendritic/nimcp_dendritic.h"
 #include "plasticity/predictive/nimcp_predictive_coding.h"
-}
 
 // ============================================================================
 // Performance Test Configuration

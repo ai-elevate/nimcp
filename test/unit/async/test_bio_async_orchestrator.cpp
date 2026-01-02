@@ -24,13 +24,12 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_async_orchestrator.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

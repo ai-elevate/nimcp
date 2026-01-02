@@ -35,9 +35,8 @@
 #include "gpu/snn/nimcp_snn_gpu.h"
 #include "gpu/lnn/nimcp_lnn_gpu.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Configuration Constants

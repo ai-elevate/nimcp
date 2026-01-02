@@ -27,9 +27,8 @@
 #include <iomanip>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/dendrite/nimcp_dendrite.h"
-}
 
 //=============================================================================
 // PERFORMANCE MONITORING UTILITIES

@@ -25,14 +25,15 @@
 #ifndef NIMCP_SNN_IMMUNE_H
 #define NIMCP_SNN_IMMUNE_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+// Includes MUST be before extern "C" to avoid CUDA header conflicts
 #include "snn/nimcp_snn_types.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 //=============================================================================
 // Configuration Types

@@ -16,10 +16,9 @@
 #include <algorithm>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_constant_time.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 class ConstantTimeRegressionTest : public ::testing::Test {
 protected:

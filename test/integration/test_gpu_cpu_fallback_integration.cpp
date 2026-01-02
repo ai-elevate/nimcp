@@ -22,14 +22,13 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "gpu/nimcp_execution_mode.h"
 #include "gpu/execution/nimcp_gpu_detect.h"
 #include "gpu/nimcp_gpu_neuron.h"
 #include "gpu/nimcp_spike_event.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture - GPU Detection

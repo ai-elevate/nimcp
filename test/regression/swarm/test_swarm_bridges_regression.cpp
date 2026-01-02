@@ -15,7 +15,7 @@
 #include <vector>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
 // Sleep bridges
 #include "swarm/sleep/nimcp_swarm_signal_sleep_bridge.h"
 #include "swarm/sleep/nimcp_swarm_consensus_sleep_bridge.h"
@@ -39,7 +39,6 @@ extern "C" {
 #include "swarm/immune/nimcp_swarm_quorum_immune_bridge.h"
 #include "swarm/immune/nimcp_swarm_immune_immune_bridge.h"
 #include "swarm/immune/nimcp_swarm_brain_immune_bridge.h"
-}
 
 /* =============================================================================
  * Sleep Bridge Factor Regression Tests

@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/normalization/nimcp_adaptive_normalizer.h"
-}
 
 class AdaptiveNormalizerRegressionTest : public ::testing::Test {
 protected:

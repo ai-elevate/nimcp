@@ -23,9 +23,8 @@
 #include <cstring>
 #include <cstdlib>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "gpu/execution/nimcp_network_detect.h"
-}
 
 //=============================================================================
 // Test Fixture

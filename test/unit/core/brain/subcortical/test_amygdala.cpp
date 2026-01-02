@@ -17,9 +17,8 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/subcortical/nimcp_amygdala.h"
-}
 
 // Test fixture for amygdala tests
 class AmygdalaTest : public ::testing::Test {

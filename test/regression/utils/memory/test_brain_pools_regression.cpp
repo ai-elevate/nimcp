@@ -20,9 +20,8 @@
 #include <algorithm>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_brain_pools.h"
-}
 
 class BrainPoolsRegressionTest : public ::testing::Test {
 protected:

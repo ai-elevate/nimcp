@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/immune/nimcp_buffer_immune.h"
 #include "middleware/buffering/nimcp_circular_buffer.h"
 #include "middleware/buffering/nimcp_integration_buffer.h"
@@ -12,7 +12,6 @@ extern "C" {
 #include "middleware/buffering/nimcp_sliding_window.h"
 #include "middleware/buffering/nimcp_temporal_accumulator.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

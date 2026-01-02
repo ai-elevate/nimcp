@@ -15,9 +15,8 @@
 #include <stdlib.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/insula/nimcp_insula_adapter.h"
-}
 
 // Test Fixture for Insula Adapter
 class InsulaAdapterTest : public ::testing::Test {

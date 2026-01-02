@@ -25,14 +25,13 @@
 #include <chrono>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/memory/nimcp_cow_manager.h"
 #include "utils/memory/nimcp_page_cow.h"
 // Forward declaration for cow_read function
 extern const void* cow_read(cow_handle_t handle);
-}
 
 // Helper macro to access cow_read function
 #define cow_read_ptr(h) cow_read(h)

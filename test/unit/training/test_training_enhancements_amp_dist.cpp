@@ -30,10 +30,9 @@
 #include <limits>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_mixed_precision.h"
 #include "training/nimcp_distributed_training.h"
-}
 
 /* ============================================================================
  * Mixed Precision (AMP) Test Fixtures

@@ -23,10 +23,9 @@
 #include <thread>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/nimcp_plasticity_coordinator.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Mock Plasticity Mechanism

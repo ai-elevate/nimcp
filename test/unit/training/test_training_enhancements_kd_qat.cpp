@@ -15,10 +15,9 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_knowledge_distillation.h"
 #include "training/nimcp_quantization_aware.h"
-}
 
 //=============================================================================
 // Knowledge Distillation Test Fixture

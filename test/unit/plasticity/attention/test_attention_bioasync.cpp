@@ -6,12 +6,11 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/attention/nimcp_attention.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
-}
 
 class AttentionBioAsyncTest : public ::testing::Test {
 protected:

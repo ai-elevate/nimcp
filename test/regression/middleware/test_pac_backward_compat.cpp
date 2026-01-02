@@ -24,11 +24,10 @@
 #include <vector>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/patterns/nimcp_oscillation_detector.h"
 #include "middleware/patterns/nimcp_pattern_library.h"
 #include "middleware/patterns/nimcp_sequence_detector.h"
-}
 
 //=============================================================================
 // Performance Measurement

@@ -19,7 +19,7 @@
 #include <cmath>
 #include <string.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/nimcp_plasticity_substrate_bridge.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "plasticity/stdp/nimcp_stdp.h"
@@ -28,7 +28,6 @@ extern "C" {
 #include "plasticity/eligibility/nimcp_eligibility_trace.h"
 #include "plasticity/dendritic/nimcp_dendritic.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Constants

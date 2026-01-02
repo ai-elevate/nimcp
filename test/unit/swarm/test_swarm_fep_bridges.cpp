@@ -17,7 +17,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_consensus_fep_bridge.h"
 #include "swarm/nimcp_swarm_emergence_fep_bridge.h"
 #include "swarm/nimcp_swarm_flocking_fep_bridge.h"
@@ -29,7 +29,6 @@ extern "C" {
 #include "swarm/nimcp_collective_workspace_fep_bridge.h"
 #include "swarm/nimcp_emotional_contagion_fep_bridge.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
-}
 
 class SwarmFepBridgesTestBase : public ::testing::Test {
 protected:

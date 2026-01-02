@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/patterns/nimcp_pattern_library.h"
-}
 
 class PatternLibraryRegressionTest : public ::testing::Test {
 protected:

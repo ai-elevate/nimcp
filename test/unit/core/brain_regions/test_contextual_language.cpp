@@ -9,9 +9,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain_regions/nimcp_contextual_language.h"
-}
 
 //=============================================================================
 // Test Fixture

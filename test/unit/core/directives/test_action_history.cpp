@@ -20,10 +20,9 @@
 #include <chrono>
 #include <thread>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/directives/nimcp_action_history.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Test Fixture

@@ -9,11 +9,10 @@
 #include <vector>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/calcium/nimcp_calcium_dynamics.h"
 #include "plasticity/calcium/nimcp_calcium_sleep_bridge.h"
 #include "plasticity/calcium/nimcp_calcium_immune_bridge.h"
-}
 
 /* ============================================================================
  * Test Fixtures

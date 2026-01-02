@@ -18,10 +18,9 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "snn/nimcp_snn_config.h"
 #include "snn/nimcp_snn_types.h"
-}
 
 //=============================================================================
 // Test Fixture

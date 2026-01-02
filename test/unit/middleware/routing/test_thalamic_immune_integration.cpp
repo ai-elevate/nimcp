@@ -12,11 +12,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/immune/nimcp_thalamic_immune_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "middleware/routing/nimcp_thalamic_router.h"
-}
 
 class ThalamicImmuneTest : public ::testing::Test {
 protected:

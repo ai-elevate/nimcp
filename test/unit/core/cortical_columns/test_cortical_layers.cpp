@@ -25,10 +25,9 @@
 #include <vector>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 // Direct include from src directory (internal header)
 #include "core/cortical_columns/nimcp_cortical_layers.h"
-}
 
 //=============================================================================
 // Test Constants

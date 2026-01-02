@@ -13,10 +13,9 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_emotional_contagion.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 class EmotionalContagionIntegrationTest : public ::testing::Test {
 protected:

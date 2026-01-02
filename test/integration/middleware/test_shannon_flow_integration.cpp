@@ -12,11 +12,10 @@
 #include <chrono>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/integration/nimcp_shannon_monitor.h"
 #include "middleware/integration/nimcp_flow_tracker.h"
 #include "middleware/events/nimcp_event_types.h"
-}
 
 //=============================================================================
 // Test Fixture

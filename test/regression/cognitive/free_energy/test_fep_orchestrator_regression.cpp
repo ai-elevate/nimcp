@@ -7,11 +7,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_time.h"
-}
 
 static int noop_update(void* bridge) { (void)bridge; return 0; }
 

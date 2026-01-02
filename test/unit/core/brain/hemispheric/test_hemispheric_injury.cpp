@@ -5,10 +5,9 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/hemispheric/nimcp_hemispheric_injury.h"
 #include "core/brain/hemispheric/nimcp_hemispheric_brain.h"
-}
 
 //=============================================================================
 // Configuration Tests

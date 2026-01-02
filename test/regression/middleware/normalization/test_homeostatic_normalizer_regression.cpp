@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/normalization/nimcp_homeostatic_normalizer.h"
-}
 
 class HomeostaticNormalizerRegressionTest : public ::testing::Test {
 protected:

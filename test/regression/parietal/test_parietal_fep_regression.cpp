@@ -24,10 +24,9 @@
 #include <chrono>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/parietal/nimcp_parietal.h"
 #include "cognitive/parietal/nimcp_fep_parietal_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

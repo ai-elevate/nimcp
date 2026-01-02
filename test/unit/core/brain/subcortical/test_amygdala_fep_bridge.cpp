@@ -12,9 +12,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/subcortical/nimcp_amygdala_fep_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

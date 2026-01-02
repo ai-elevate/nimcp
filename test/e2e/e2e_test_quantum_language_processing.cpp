@@ -24,13 +24,12 @@
 #define NIMCP_THALAMIC_QUANTUM_BRIDGE_IMPLEMENTATION
 #define NIMCP_EXECUTIVE_QUANTUM_BRIDGE_IMPLEMENTATION
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/broca/nimcp_broca_quantum_bridge.h"
 #include "cognitive/reasoning/nimcp_quantum_reasoning.h"
 #include "plasticity/attention/nimcp_attention_quantum_bridge.h"
 #include "middleware/routing/nimcp_thalamic_quantum_bridge.h"
 #include "cognitive/executive/nimcp_executive_quantum_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

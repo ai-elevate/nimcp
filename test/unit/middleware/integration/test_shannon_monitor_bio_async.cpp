@@ -9,14 +9,13 @@
 #include <chrono>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/integration/nimcp_shannon_monitor.h"
 #include "middleware/events/nimcp_event_types.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Test Fixture

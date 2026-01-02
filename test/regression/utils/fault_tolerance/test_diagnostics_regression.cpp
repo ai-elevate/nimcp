@@ -6,9 +6,8 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_diagnostics.h"
-}
 
 //=============================================================================
 // Test Fixture

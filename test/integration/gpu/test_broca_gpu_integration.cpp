@@ -16,11 +16,10 @@
 // GPU headers outside extern "C" due to CUDA runtime templates
 #include "gpu/context/nimcp_gpu_context.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "core/brain/nimcp_brain.h"
     #include "core/brain/nimcp_brain_internal.h"  // For accessing brain struct internals
     #include "core/brain/regions/broca/nimcp_broca_adapter.h"
-}
 
 //=============================================================================
 // Test Fixture

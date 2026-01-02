@@ -17,7 +17,8 @@
 #include <vector>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
+#include "utils/error/nimcp_error_codes.h"
 #include "swarm/nimcp_swarm_ternary.h"
 #include "swarm/nimcp_swarm_memory.h"
 #include "swarm/nimcp_swarm_consensus.h"
@@ -25,7 +26,6 @@ extern "C" {
 #include "utils/ternary/nimcp_ternary_vector.h"
 #include "utils/ternary/nimcp_ternary_matrix.h"
 #include "utils/ternary/nimcp_ternary_convert.h"
-}
 
 /**
  * @class SwarmTernaryIntegrationTest
@@ -42,7 +42,7 @@ protected:
 
         // Initialize
         nimcp_result_t result = nimcp_swarm_memory_init(swarm_memory, nullptr);
-        ASSERT_EQ(NIMCP_OK, result);
+        ASSERT_EQ(NIMCP_SUCCESS, result);
     }
 
     void TearDown() override {
@@ -350,14 +350,14 @@ TEST_F(SwarmTernaryIntegrationTest, TernaryConfidenceMode) {
     ternary_confidence_default_config(&config);
 
     nimcp_result_t result = swarm_memory_enable_ternary_confidence(swarm_memory, &config);
-    EXPECT_EQ(NIMCP_OK, result);
+    EXPECT_EQ(NIMCP_SUCCESS, result);
 
     is_ternary = swarm_memory_is_ternary_confidence(swarm_memory);
     EXPECT_TRUE(is_ternary);
 
     // Disable ternary confidence
     result = swarm_memory_disable_ternary_confidence(swarm_memory);
-    EXPECT_EQ(NIMCP_OK, result);
+    EXPECT_EQ(NIMCP_SUCCESS, result);
 
     is_ternary = swarm_memory_is_ternary_confidence(swarm_memory);
     EXPECT_FALSE(is_ternary);
@@ -369,7 +369,7 @@ TEST_F(SwarmTernaryIntegrationTest, TernaryConfidenceMode) {
 TEST_F(SwarmTernaryIntegrationTest, TernaryConfidenceMemoryOps) {
     // Enable ternary confidence
     nimcp_result_t result = swarm_memory_enable_ternary_confidence(swarm_memory, nullptr);
-    EXPECT_EQ(NIMCP_OK, result);
+    EXPECT_EQ(NIMCP_SUCCESS, result);
 
     // Store a memory
     const char* test_data = "test_memory_data";
@@ -383,7 +383,7 @@ TEST_F(SwarmTernaryIntegrationTest, TernaryConfidenceMemoryOps) {
         strlen(test_data) + 1,
         memory_id
     );
-    EXPECT_EQ(NIMCP_OK, result);
+    EXPECT_EQ(NIMCP_SUCCESS, result);
 
     // Get ternary confidence for the memory
     ternary_swarm_confidence_t conf = swarm_memory_get_ternary_confidence(
@@ -396,7 +396,7 @@ TEST_F(SwarmTernaryIntegrationTest, TernaryConfidenceMemoryOps) {
     // Apply some forgetting to reduce strength
     uint32_t forgotten_count = 0;
     result = nimcp_swarm_memory_apply_forgetting(swarm_memory, &forgotten_count);
-    EXPECT_EQ(NIMCP_OK, result);
+    EXPECT_EQ(NIMCP_SUCCESS, result);
 }
 
 /**
@@ -426,7 +426,7 @@ TEST_F(SwarmTernaryIntegrationTest, TernaryConfidenceStats) {
     ternary_confidence_stats_t stats;
     nimcp_result_t result = swarm_memory_get_ternary_confidence_stats(
         swarm_memory, &stats);
-    EXPECT_EQ(NIMCP_OK, result);
+    EXPECT_EQ(NIMCP_SUCCESS, result);
 
     // Verify we have some statistics
     uint32_t total = stats.certain_count + stats.uncertain_count + stats.unreliable_count;
@@ -460,12 +460,12 @@ TEST_F(SwarmTernaryIntegrationTest, PatternStorageWithStrength) {
 
     // Store pattern
     nimcp_result_t result = swarm_memory_store_pattern(swarm_memory, &pattern);
-    EXPECT_EQ(NIMCP_OK, result);
+    EXPECT_EQ(NIMCP_SUCCESS, result);
 
     // Retrieve and verify
     swarm_pattern_t retrieved = {0};
     result = swarm_memory_retrieve_pattern(swarm_memory, 1, &retrieved);
-    EXPECT_EQ(NIMCP_OK, result);
+    EXPECT_EQ(NIMCP_SUCCESS, result);
     EXPECT_STREQ("test_pattern", retrieved.label);
 
     // Check ternary confidence
@@ -622,12 +622,12 @@ TEST_F(SwarmTernaryIntegrationTest, PatternAssociationWithTernary) {
     // Positive reward -> strengthen association
     nimcp_result_t result = swarm_memory_associate_pattern(
         swarm_memory, (uint32_t)pattern_id, 100, 0.9f);  // outcome_id=100, reward=0.9
-    EXPECT_EQ(NIMCP_OK, result);
+    EXPECT_EQ(NIMCP_SUCCESS, result);
 
     // Negative reward -> weaken association
     result = swarm_memory_associate_pattern(
         swarm_memory, (uint32_t)pattern_id, 101, -0.5f);  // outcome_id=101, reward=-0.5
-    EXPECT_EQ(NIMCP_OK, result);
+    EXPECT_EQ(NIMCP_SUCCESS, result);
 
     // Predict outcome
     uint32_t predicted_outcome = 0;
@@ -636,7 +636,7 @@ TEST_F(SwarmTernaryIntegrationTest, PatternAssociationWithTernary) {
     result = swarm_memory_predict_outcome(
         swarm_memory, (uint32_t)pattern_id, &predicted_outcome, &confidence);
 
-    if (result == NIMCP_OK) {
+    if (result == NIMCP_SUCCESS) {
         // Should predict outcome 100 (higher reward)
         EXPECT_EQ(100u, predicted_outcome);
         EXPECT_GT(confidence, 0.0f);
@@ -666,7 +666,7 @@ TEST_F(SwarmTernaryIntegrationTest, VoteBasedMemoryConsensus) {
         strlen(data) + 1,
         memory_id
     );
-    EXPECT_EQ(NIMCP_OK, result);
+    EXPECT_EQ(NIMCP_SUCCESS, result);
 
     // Simulate votes from other nodes about this memory's validity
     std::vector<trit_vote_t> validity_votes = {

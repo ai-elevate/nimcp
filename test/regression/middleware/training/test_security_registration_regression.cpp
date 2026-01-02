@@ -19,14 +19,13 @@
 #include <atomic>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "middleware/training/nimcp_lr_scheduler.h"
 #include "middleware/training/nimcp_regularization.h"
 #include "middleware/training/nimcp_gradient_manager.h"
 #include "middleware/training/nimcp_training_adapters.h"
 #include "security/nimcp_security_integration.h"
-}
 
 /* ============================================================================
  * Test Fixtures

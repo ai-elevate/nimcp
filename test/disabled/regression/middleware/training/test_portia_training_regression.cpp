@@ -29,7 +29,7 @@
 #include <vector>
 #include <chrono>
 #include <cmath>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_brain_training_integration.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -38,7 +38,6 @@ extern "C" {
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-}
 
 class PortiaTrainingRegressionTest : public ::testing::Test {
 protected:

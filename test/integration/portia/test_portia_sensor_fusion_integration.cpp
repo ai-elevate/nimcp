@@ -4,13 +4,12 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_sensor_fusion.h"
 #include "async/nimcp_bio_ctx.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
-}
 
 class PortiaSensorFusionIntegrationTest : public ::testing::Test {
 protected:

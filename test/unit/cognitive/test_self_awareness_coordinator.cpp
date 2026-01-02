@@ -17,10 +17,9 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_self_awareness_coordinator.h"
 #include "cognitive/nimcp_self_awareness_feedback.h"
-}
 
 // ============================================================================
 // Test Fixture

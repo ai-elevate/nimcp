@@ -12,10 +12,9 @@
 #include <cstdio>
 #include <sys/stat.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/config/nimcp_config.h"
 #include "utils/config/nimcp_dynamic_config.h"
-}
 
 //=============================================================================
 // Test Fixtures

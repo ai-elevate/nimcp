@@ -6,9 +6,8 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/patterns/nimcp_quantum_sequence_matcher.h"
-}
 
 //=============================================================================
 // Lifecycle Tests

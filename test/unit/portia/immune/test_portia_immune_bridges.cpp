@@ -13,12 +13,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/immune/nimcp_portia_attention_immune_bridge.h"
 #include "portia/immune/nimcp_portia_learning_immune_bridge.h"
 #include "portia/immune/nimcp_portia_sensor_fusion_immune_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
-}
 
 class PortiaImmuneBridgesTestBase : public ::testing::Test {
 protected:

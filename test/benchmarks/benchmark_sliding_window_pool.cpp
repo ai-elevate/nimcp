@@ -9,11 +9,10 @@
 #include <iomanip>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/buffering/nimcp_sliding_window.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
-}
 
 using namespace std::chrono;
 

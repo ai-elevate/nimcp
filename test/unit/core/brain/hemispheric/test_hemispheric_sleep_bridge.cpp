@@ -16,11 +16,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/hemispheric/nimcp_hemispheric_sleep_bridge.h"
 #include "core/brain/hemispheric/nimcp_hemispheric_brain.h"
 #include "cognitive/free_energy/nimcp_fep_sleep.h"
-}
 
 //=============================================================================
 // Test Fixture

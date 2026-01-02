@@ -31,10 +31,9 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/cortical_columns/nimcp_cortical_substrate_bridge.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
-}
 
 //=============================================================================
 // Test Fixture

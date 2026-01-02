@@ -18,14 +18,13 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_quantization_aware.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/ternary/nimcp_ternary_types.h"
 #include "utils/ternary/nimcp_ternary_vector.h"
 #include "utils/ternary/nimcp_ternary_matrix.h"
 #include "utils/ternary/nimcp_ternary_convert.h"
-}
 
 /**
  * @class TrainingTernaryIntegrationTest

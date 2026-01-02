@@ -22,11 +22,10 @@
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "gpu/backend/nimcp_kernel_backend.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
-}
 
 //=============================================================================
 // Test Fixture

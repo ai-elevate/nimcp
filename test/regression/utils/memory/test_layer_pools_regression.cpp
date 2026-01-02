@@ -22,9 +22,8 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_layer_pools.h"
-}
 
 class LayerPoolsRegressionTest : public ::testing::Test {
 protected:

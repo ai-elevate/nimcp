@@ -15,9 +15,8 @@
 #include <stdlib.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/parietal/nimcp_parietal_adapter.h"
-}
 
 // Test Fixture for Parietal Adapter
 class ParietalAdapterTest : public ::testing::Test {

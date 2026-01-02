@@ -7,11 +7,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_predictive_immune.h"
 #include "cognitive/nimcp_predictive.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
-}
 
 /* ============================================================================
  * Test Fixture

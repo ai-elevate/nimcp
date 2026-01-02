@@ -12,11 +12,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "perception/immune/nimcp_audio_immune_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "perception/nimcp_audio_cortex.h"
-}
 
 class AudioImmuneTest : public ::testing::Test {
 protected:

@@ -16,9 +16,8 @@
 #include <chrono>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_lockfree_metrics.h"
-}
 
 //=============================================================================
 // Test Fixture

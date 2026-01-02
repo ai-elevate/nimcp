@@ -17,12 +17,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_executive.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/time/nimcp_time.h"
-}
 
 class ExecutiveEthicsImmuneIntegrationTest : public ::testing::Test {
 protected:

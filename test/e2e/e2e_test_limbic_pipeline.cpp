@@ -37,13 +37,12 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/cingulate/nimcp_cingulate_substrate_bridge.h"
 #include "core/insula/nimcp_insula_substrate_bridge.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 using namespace nimcp::e2e;
 

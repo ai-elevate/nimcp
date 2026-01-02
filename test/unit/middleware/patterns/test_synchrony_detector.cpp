@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/patterns/nimcp_synchrony_detector.h"
-}
 #include <cmath>
 #include <vector>
 

@@ -13,10 +13,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "core/neuralnet/nimcp_neuralnet.h"
     #include "core/synapse_compute/nimcp_synapse_compute.h"
-}
 
 //=============================================================================
 // Test Fixture

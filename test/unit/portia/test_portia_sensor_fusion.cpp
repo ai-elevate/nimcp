@@ -7,12 +7,11 @@
 #include <thread>
 #include <vector>
 #include <cmath>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_sensor_fusion.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/platform/nimcp_platform_time.h"
-}
 
 class PortiaSensorFusionTest : public ::testing::Test {
 protected:

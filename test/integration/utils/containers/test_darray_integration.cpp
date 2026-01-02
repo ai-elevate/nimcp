@@ -26,11 +26,10 @@
 #include <random>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/containers/nimcp_darray.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
-}
 
 //=============================================================================
 // Test Fixture

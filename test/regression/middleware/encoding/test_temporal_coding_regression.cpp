@@ -3,9 +3,8 @@
 //=============================================================================
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/encoding/nimcp_temporal_coding.h"
-}
 
 class TemporalCodingRegressionTest : public ::testing::Test {
 protected:

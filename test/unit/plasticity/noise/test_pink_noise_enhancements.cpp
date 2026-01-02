@@ -26,7 +26,7 @@
 #include <vector>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/noise/nimcp_pink_noise.h"
 #include "plasticity/noise/nimcp_pink_noise_multiscale.h"
 #include "plasticity/noise/nimcp_pink_noise_correlated.h"
@@ -37,7 +37,6 @@ extern "C" {
 #include "plasticity/noise/nimcp_pink_noise_simd.h"
 #include "plasticity/noise/nimcp_pink_noise_monitor.h"
 #include "plasticity/noise/nimcp_pink_noise_spatial.h"
-}
 
 //=============================================================================
 // Test Fixture Base

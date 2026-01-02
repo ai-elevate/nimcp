@@ -38,13 +38,12 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/occipital/nimcp_occipital_substrate_bridge.h"
 #include "core/occipital/nimcp_occipital_thalamic_bridge.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "core/brain/subcortical/nimcp_thalamus.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 using namespace nimcp::e2e;
 

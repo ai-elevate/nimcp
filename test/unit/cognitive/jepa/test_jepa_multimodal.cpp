@@ -25,13 +25,12 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/jepa/nimcp_jepa_multimodal.h"
 #include "cognitive/jepa/nimcp_jepa_latent.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 namespace {
 

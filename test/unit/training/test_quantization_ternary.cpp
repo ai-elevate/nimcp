@@ -21,13 +21,12 @@
 #include <numeric>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "training/nimcp_quantization_aware.h"
 #include "utils/ternary/nimcp_ternary.h"
 #include "utils/ternary/nimcp_ternary_types.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Test Fixture

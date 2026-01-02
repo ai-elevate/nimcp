@@ -20,7 +20,7 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_security_coverage.h"
 #include "security/nimcp_continuous_monitor.h"
 #include "security/nimcp_cfi.h"
@@ -29,7 +29,6 @@ extern "C" {
 #include "security/nimcp_security_fractal.h"
 #include "security/nimcp_security_audit.h"
 #include "security/nimcp_security.h"  // For nimcp_threat_level_t
-}
 
 //=============================================================================
 // Security Coverage Tests
@@ -931,9 +930,8 @@ TEST_F(SecurityIntegrationTest, CFIWithShadowStack) {
 //=============================================================================
 
 // Include security recovery bridge header
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_security_recovery_bridge.h"
-}
 
 class SecurityRecoveryBridgeTest : public ::testing::Test {
 protected:
@@ -1145,9 +1143,8 @@ TEST_F(SecurityRecoveryBridgeTest, VerificationCycle) {
 // Phase SC-3: Mathematical Security Tests
 //=============================================================================
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_security_math.h"
-}
 
 //-----------------------------------------------------------------------------
 // Entropy Analyzer Tests

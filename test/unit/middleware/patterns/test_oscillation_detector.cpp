@@ -5,9 +5,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/patterns/nimcp_oscillation_detector.h"
-}
 
 /**
  * WHAT: Comprehensive test suite for oscillation detection

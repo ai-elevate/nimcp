@@ -10,12 +10,11 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_sensor_fusion.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
-}
 
 class PortiaSensorFusionE2ETest : public ::testing::Test {
 protected:

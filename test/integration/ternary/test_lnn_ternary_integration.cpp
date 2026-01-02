@@ -23,13 +23,12 @@
 #include "lnn/nimcp_lnn_wiring.h"
 #include "lnn/nimcp_lnn_layer.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/ternary/nimcp_ternary_types.h"
 #include "utils/ternary/nimcp_ternary_vector.h"
 #include "utils/ternary/nimcp_ternary_matrix.h"
 #include "utils/ternary/nimcp_ternary_convert.h"
-}
 
 /**
  * @class LNNTernaryIntegrationTest

@@ -5,9 +5,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/routing/nimcp_routing_table.h"
-}
 
 /**
  * WHAT: Comprehensive test suite for routing table

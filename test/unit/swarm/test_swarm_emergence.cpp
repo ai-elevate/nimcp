@@ -18,7 +18,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 
 // Emergence tiers
 typedef enum {
@@ -94,7 +94,6 @@ uint32_t swarm_emergence_get_min_drones_for_tier(swarm_emergence_tier_t tier);
 
 float swarm_emergence_get_min_coherence_for_tier(swarm_emergence_tier_t tier);
 
-} // extern "C"
 
 //=============================================================================
 // Mock Implementation

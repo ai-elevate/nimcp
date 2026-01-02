@@ -13,13 +13,12 @@
 // Include header that transitively includes C++ CUDA templates outside extern "C"
 #include "cognitive/immune/nimcp_brain_immune.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "cognitive/immune/nimcp_curiosity_immune_bridge.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 class CuriosityImmuneIntegrationTest : public ::testing::Test {
 protected:

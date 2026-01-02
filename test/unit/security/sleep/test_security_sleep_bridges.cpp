@@ -17,12 +17,11 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/sleep/nimcp_bbb_sleep_bridge.h"
 #include "security/sleep/nimcp_anomaly_detector_sleep_bridge.h"
 #include "security/sleep/nimcp_rate_limiter_sleep_bridge.h"
 #include "security/sleep/nimcp_pattern_db_sleep_bridge.h"
-}
 
 /* =============================================================================
  * BBB Sleep Bridge Tests

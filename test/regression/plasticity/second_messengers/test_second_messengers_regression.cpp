@@ -22,9 +22,8 @@
 #include <vector>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/nimcp_second_messengers.h"
-}
 
 //=============================================================================
 // REGRESSION TEST FIXTURE

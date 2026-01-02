@@ -31,7 +31,7 @@
 #include <string>
 #include <cstdint>
 
-extern "C" {
+// Headers have their own extern "C" guards
 // Core substrate bridges
 #include "cognitive/attention/nimcp_attention_substrate_bridge.h"
 #include "cognitive/emotion/nimcp_emotion_substrate_bridge.h"

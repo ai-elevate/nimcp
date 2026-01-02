@@ -6,9 +6,8 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_health_monitor.h"
-}
 #include <thread>
 #include <chrono>
 #include <cstring>

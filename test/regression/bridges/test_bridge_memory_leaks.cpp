@@ -30,7 +30,7 @@
 
 #define NIMCP_THALAMIC_QUANTUM_BRIDGE_IMPLEMENTATION
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/reasoning/nimcp_reasoning_substrate_bridge.h"
 #include "cognitive/parietal/nimcp_intuition_substrate_bridge.h"
 #include "cognitive/attention/nimcp_attention_substrate_bridge.h"
@@ -40,7 +40,6 @@ extern "C" {
 #include "middleware/routing/nimcp_thalamic_quantum_bridge.h"
 #include "middleware/routing/nimcp_thalamic_router.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
-}
 
 /* ============================================================================
  * Test Fixture

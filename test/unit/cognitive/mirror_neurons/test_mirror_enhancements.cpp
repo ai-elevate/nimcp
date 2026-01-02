@@ -14,11 +14,10 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/mirror_neurons/nimcp_mirror_stdp.h"
 #include "cognitive/mirror_neurons/nimcp_mirror_resonance.h"
 #include "cognitive/mirror_neurons/nimcp_mirror_hierarchy.h"
-}
 
 //=============================================================================
 // STDP Learning Tests (Phase 10.11.4)

@@ -5,9 +5,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/routing/nimcp_attention_gate.h"
-}
 
 /**
  * WHAT: Comprehensive test suite for attention gate

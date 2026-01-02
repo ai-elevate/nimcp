@@ -38,12 +38,11 @@
 #include <algorithm>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/cortical_columns/nimcp_columnar_connectivity.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "nimcp.h"
-}
 
 //=============================================================================
 // Test Constants

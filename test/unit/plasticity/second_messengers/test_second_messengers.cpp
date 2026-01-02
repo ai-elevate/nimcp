@@ -23,11 +23,10 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/nimcp_second_messengers.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

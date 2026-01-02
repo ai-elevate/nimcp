@@ -15,13 +15,12 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_constant_time.h"
 #include "security/nimcp_security.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 class ConstantTimeIntegrationTest : public ::testing::Test {
 protected:

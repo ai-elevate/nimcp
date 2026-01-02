@@ -30,9 +30,8 @@
 #include <atomic>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/memory/nimcp_unified_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

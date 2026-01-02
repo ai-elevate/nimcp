@@ -21,13 +21,12 @@
  * Total: 35+ tests
  */
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "perception/cortical/nimcp_audio_cortical_bridge.h"
 #include "perception/nimcp_audio_cortex.h"
 #include "core/cortical_columns/nimcp_feature_hypercolumns.h"
 #include "core/cortical_columns/nimcp_topographic_maps.h"
 #include "core/cortical_columns/nimcp_cortical_immune.h"
-}
 
 #include <gtest/gtest.h>
 #include <cmath>

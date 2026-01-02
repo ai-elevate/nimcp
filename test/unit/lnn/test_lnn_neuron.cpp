@@ -20,10 +20,9 @@
 #include <cmath>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "lnn/nimcp_lnn_neuron.h"
 #include "lnn/nimcp_lnn_types.h"
-}
 
 //=============================================================================
 // Test Fixture

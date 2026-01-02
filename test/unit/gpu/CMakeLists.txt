@@ -94,6 +94,9 @@ if(CUDAToolkit_FOUND)
 
     # GPU Brain Regions kernel tests (cortical columns, PFC, motor, parietal)
     add_gpu_test(test_regions_kernels)
+
+    # GPU Ternary kernel tests (2-bit packing, no-multiply GEMM, quantization)
+    add_gpu_test(test_ternary_kernels)
 else()
     message(STATUS "  Skipping CUDA kernel tests (CUDA toolkit not found)")
 endif()

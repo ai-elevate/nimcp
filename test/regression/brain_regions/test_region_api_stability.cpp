@@ -30,10 +30,9 @@
 #include <string>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain_regions/nimcp_brain_regions.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Test Fixture

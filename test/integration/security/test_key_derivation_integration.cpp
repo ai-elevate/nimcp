@@ -14,14 +14,13 @@
 #include <vector>
 #include <string>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_key_derivation.h"
 #include "security/nimcp_constant_time.h"
 #include "security/nimcp_security.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 class KeyDerivationIntegrationTest : public ::testing::Test {
 protected:

@@ -28,11 +28,10 @@
 #include <mutex>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "networking/nlp/nimcp_neural_link_protocol.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixture

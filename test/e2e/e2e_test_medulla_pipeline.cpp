@@ -12,10 +12,9 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/medulla/nimcp_medulla.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // E2E Test Fixture

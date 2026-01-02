@@ -26,12 +26,11 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/attention/nimcp_quantum_attention.h"
 #include "middleware/routing/nimcp_thalamic_quantum_bridge.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/quantum/nimcp_quantum_shannon.h"
-}
 
 //=============================================================================
 // Test Fixture

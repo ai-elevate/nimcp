@@ -9,12 +9,11 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "snn/nimcp_snn.h"
 #include "snn/nimcp_snn_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 class SNNBioAsyncTest : public ::testing::Test {
 protected:

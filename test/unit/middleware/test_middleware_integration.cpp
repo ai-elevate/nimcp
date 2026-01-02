@@ -1,8 +1,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/nimcp_middleware.h"
-}
 
 TEST(MiddlewareIntegration, BufferingPipeline) {
     // Create buffering components

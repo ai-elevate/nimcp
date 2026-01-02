@@ -29,9 +29,8 @@
 #include <cmath>
 #include <limits>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "io/serialization/nimcp_serialization.h"
-}
 
 //=============================================================================
 // Test Fixture

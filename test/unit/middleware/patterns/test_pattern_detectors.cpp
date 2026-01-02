@@ -12,11 +12,10 @@
 #include <vector>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/patterns/nimcp_oscillation_detector.h"
 #include "middleware/patterns/nimcp_sequence_detector.h"
 #include "middleware/patterns/nimcp_synchrony_detector.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -21,14 +21,13 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "core/cortical_columns/nimcp_cortical_substrate_bridge.h"
 #include "cognitive/emotion/nimcp_emotion_substrate_bridge.h"
 #include "core/synapse_compute/nimcp_synapse_substrate_bridge.h"
 #include "core/neuron_models/nimcp_neuron_substrate_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
-}
 
 //=============================================================================
 // Test Fixture

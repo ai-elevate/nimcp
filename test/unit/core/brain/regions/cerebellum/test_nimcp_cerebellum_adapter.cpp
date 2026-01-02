@@ -20,9 +20,8 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/cerebellum/nimcp_cerebellum_adapter.h"
-}
 
 //=============================================================================
 // Lifecycle Tests

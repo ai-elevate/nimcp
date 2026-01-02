@@ -15,9 +15,8 @@
 #include <stdlib.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/insula/nimcp_insula_quantum_bridge.h"
-}
 
 // Test Fixture for Insula Quantum Bridge
 class InsulaQuantumBridgeTest : public ::testing::Test {

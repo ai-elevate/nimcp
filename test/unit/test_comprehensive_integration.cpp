@@ -9,13 +9,12 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
 // Note: All other includes disabled as test code is skipped with GTEST_SKIP
-}
 
 class ComprehensiveIntegrationTest : public ::testing::Test {
 protected:

@@ -21,9 +21,8 @@
 #include <vector>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/dendrite/nimcp_dendrite.h"
-}
 
 //=============================================================================
 // DENDRITE-SYNAPSE INTEGRATION

@@ -12,14 +12,13 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/brain_integration.h"
 #include "middleware/buffering/nimcp_sliding_window.h"
 #include "middleware/buffering/nimcp_integration_buffer.h"
 #include "middleware/buffering/nimcp_temporal_accumulator.h"
 #include "middleware/encoding/nimcp_population_coding.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 #include <cmath>
 #include <vector>

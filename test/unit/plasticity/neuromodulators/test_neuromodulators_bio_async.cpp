@@ -9,13 +9,12 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_unified_memory.h"
-}
 
 using ::testing::_;
 using ::testing::Return;

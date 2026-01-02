@@ -31,12 +31,11 @@
 #include <vector>
 #include <algorithm>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "plasticity/attention/nimcp_attention.h"
     #include "utils/encoding/nimcp_positional_encoding.h"
     #include "async/nimcp_bio_async.h"
     #include "async/nimcp_bio_messages.h"
-}
 
 //=============================================================================
 // Test Fixtures

@@ -20,11 +20,10 @@
 #include <vector>
 #include <thread>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/training/nimcp_training_module.h"
 #include "security/nimcp_security_integration.h"
 #include "utils/memory/nimcp_unified_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

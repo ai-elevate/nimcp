@@ -12,12 +12,11 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/attention/nimcp_attention_sleep_bridge.h"
 #include "cognitive/working_memory/nimcp_working_memory_sleep_bridge.h"
 #include "cognitive/executive/nimcp_executive_sleep_bridge.h"
 #include "core/brain_oscillations/nimcp_oscillations_sleep_bridge.h"
-}
 
 /* ============================================================================
  * Regression Test Fixture

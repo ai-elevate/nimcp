@@ -12,7 +12,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "swarm/immune/nimcp_swarm_brain_immune_bridge.h"
 #include "swarm/immune/nimcp_swarm_consensus_immune_bridge.h"
@@ -23,7 +23,6 @@ extern "C" {
 #include "swarm/immune/nimcp_swarm_consciousness_immune_bridge.h"
 #include "swarm/immune/nimcp_swarm_pheromone_immune_bridge.h"
 #include "swarm/immune/nimcp_swarm_quorum_immune_bridge.h"
-}
 
 //=============================================================================
 // Swarm Brain Immune Bridge Tests

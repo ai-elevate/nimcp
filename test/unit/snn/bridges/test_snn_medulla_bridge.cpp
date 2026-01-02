@@ -15,12 +15,11 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "snn/bridges/nimcp_snn_medulla_bridge.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/medulla/nimcp_medulla.h"
-}
 
 //=============================================================================
 // Test Fixture

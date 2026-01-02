@@ -15,7 +15,7 @@
 #include <random>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/cognitive/nimcp_cognitive_adapters.h"
 #include "middleware/cognitive/nimcp_working_memory_adapter.h"
 #include "middleware/cognitive/nimcp_consolidation_adapter.h"
@@ -24,7 +24,6 @@ extern "C" {
 #include "middleware/buffering/nimcp_integration_buffer.h"
 #include "middleware/routing/nimcp_attention_gate.h"
 #include "core/brain/nimcp_brain.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

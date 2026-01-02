@@ -25,11 +25,10 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/reasoning/nimcp_reasoning_integration.h"
 #include "core/events/nimcp_event_bus.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

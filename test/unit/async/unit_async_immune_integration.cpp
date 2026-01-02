@@ -14,14 +14,13 @@
 #include <cstring>
 #include <cstdint>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_time.h"
-}
 
 /**
  * @brief Mock brain immune system for testing

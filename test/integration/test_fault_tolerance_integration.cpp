@@ -25,13 +25,12 @@
 #include <cstdio>
 #include <sys/stat.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_checkpoint.h"
 #include "utils/fault_tolerance/nimcp_recovery.h"
 #include "utils/fault_tolerance/nimcp_graceful_degradation.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Helpers

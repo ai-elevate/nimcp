@@ -18,14 +18,13 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
     #include "utils/math/nimcp_complex_math.h"
     #include "core/brain_oscillations/nimcp_brain_oscillations.h"
     #include "middleware/patterns/nimcp_oscillation_detector.h"
     #include "middleware/patterns/nimcp_pattern_library.h"
     #include "core/brain/nimcp_brain.h"
     #include "core/brain/factory/nimcp_brain_factory.h"
-}
 #include <cmath>
 #include <vector>
 #include <random>

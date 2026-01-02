@@ -12,7 +12,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/introspection/nimcp_consciousness_metrics.h"
 #include "cognitive/introspection/nimcp_ensemble_uncertainty.h"
@@ -21,7 +21,6 @@ extern "C" {
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 /**
  * WHAT: Test fixture for immune integration tests

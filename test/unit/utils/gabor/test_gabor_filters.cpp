@@ -15,9 +15,8 @@
 #include <vector>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/gabor/nimcp_gabor.h"
-}
 
 // ============================================================================
 // Test Constants

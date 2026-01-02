@@ -19,9 +19,8 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/reasoning/nimcp_quantum_reasoning.h"
-}
 
 //=============================================================================
 // Test Fixture

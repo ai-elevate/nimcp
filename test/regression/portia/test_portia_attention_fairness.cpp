@@ -22,9 +22,8 @@
 #include <numeric>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_attention.h"
-}
 
 namespace {
 

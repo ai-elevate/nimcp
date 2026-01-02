@@ -15,11 +15,10 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/subcortical/nimcp_amygdala.h"
 #include "core/brain/subcortical/nimcp_thalamus.h"
 #include "core/brain/subcortical/nimcp_basal_ganglia.h"
-}
 
 // Test fixture for amygdala integration tests
 class AmygdalaIntegrationTest : public ::testing::Test {

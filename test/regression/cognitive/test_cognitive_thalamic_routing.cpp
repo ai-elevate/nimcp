@@ -33,7 +33,7 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 // Thalamic bridges
 #include "cognitive/parietal/nimcp_intuition_thalamic_bridge.h"
 #include "cognitive/attention/nimcp_attention_thalamic_bridge.h"
@@ -49,7 +49,6 @@ extern "C" {
 
 // Thalamic router (for route verification)
 #include "middleware/routing/nimcp_thalamic_router.h"
-}
 
 /* ============================================================================
  * Test Fixture

@@ -33,11 +33,10 @@
 #include <cstdlib>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "perception/nimcp_speech_cortex.h"
     #include "utils/encoding/nimcp_positional_encoding.h"
     #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixtures

@@ -26,13 +26,12 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/jepa/nimcp_jepa_latent.h"
 #include "cognitive/jepa/nimcp_jepa_predictor.h"
 #include "cognitive/jepa/nimcp_jepa_context.h"
 #include "cognitive/jepa/nimcp_jepa_masking.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 /* ============================================================================
  * Test Configuration Constants

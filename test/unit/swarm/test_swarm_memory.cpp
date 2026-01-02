@@ -22,9 +22,8 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_memory.h"
-}
 
 class SwarmMemoryTest : public ::testing::Test {
 protected:

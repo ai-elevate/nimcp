@@ -19,7 +19,7 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 
 // Forward declarations (simplified for testing)
 typedef struct brain brain_t;
@@ -102,7 +102,6 @@ swarm_brain_config_t swarm_brain_default_config(uint16_t drone_id) {
     config.neuromod_diffusion = 0.3f;
     config.enable_reward_sharing = true;
     return config;
-}
 
 swarm_brain_t* swarm_brain_create(
     const swarm_brain_config_t* config,

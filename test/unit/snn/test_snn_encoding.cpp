@@ -27,9 +27,8 @@
 #include <cstdlib>
 #include <ctime>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "snn/nimcp_snn_encoding.h"
-}
 
 //=============================================================================
 // Test Fixture

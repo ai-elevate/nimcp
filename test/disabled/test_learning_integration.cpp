@@ -14,14 +14,13 @@
  */
 
 #include <gtest/gtest.h>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/learning/nimcp_brain_learning.h"
 #include "core/brain/learning/nimcp_association_learning.h"
 #include "core/brain/learning/nimcp_rule_learning.h"
 #include "async/nimcp_bio_async.h"
 #include "utils/memory/nimcp_unified_memory.h"
-}
 
 class LearningIntegrationTest : public ::testing::Test {
 protected:

@@ -11,11 +11,10 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/logic/nimcp_visual_logic_bridge.h"
 #include "cognitive/logic/nimcp_somatosensory_logic_bridge.h"
 #include "cognitive/logic/nimcp_audio_logic_bridge.h"
-}
 
 //=============================================================================
 // Visual-Logic Bridge Tests

@@ -28,12 +28,11 @@
 #include "utils/quantum/nimcp_quantum_shannon.h"
 #include "utils/quantum/nimcp_quantum_walk.h"
 
-extern "C" {
+// Headers have their own extern "C" guards
     #include "information/nimcp_shannon.h"
     #include "core/brain/nimcp_brain.h"
     #include "core/neuralnet/nimcp_neuralnet.h"
     #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

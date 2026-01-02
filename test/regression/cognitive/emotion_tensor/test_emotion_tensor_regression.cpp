@@ -20,9 +20,8 @@
 #include <chrono>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/nimcp_emotion_tensor.h"
-}
 
 //=============================================================================
 // Test Fixture

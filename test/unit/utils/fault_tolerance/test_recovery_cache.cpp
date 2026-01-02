@@ -19,9 +19,8 @@
 #include <chrono>
 #include <random>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/fault_tolerance/nimcp_recovery_cache.h"
-}
 
 /* ============================================================================
  * TEST FIXTURE

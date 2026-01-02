@@ -12,9 +12,8 @@
 #include <vector>
 #include <atomic>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "middleware/integration/nimcp_flow_tracker.h"
-}
 
 //=============================================================================
 // Test Fixture

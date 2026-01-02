@@ -31,7 +31,7 @@
 #include <atomic>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/nimcp_brain.h"
 #include "swarm/nimcp_swarm_signal.h"
 #include "swarm/nimcp_swarm_memory.h"
@@ -39,7 +39,6 @@ extern "C" {
 #include "swarm/nimcp_swarm_conflict.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 using namespace nimcp::e2e;
 

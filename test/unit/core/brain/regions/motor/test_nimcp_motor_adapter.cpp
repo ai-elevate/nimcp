@@ -15,9 +15,8 @@
 #include <stdlib.h>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/regions/motor/nimcp_motor_adapter.h"
-}
 
 // Test Fixture for Motor Adapter
 class MotorAdapterTest : public ::testing::Test {

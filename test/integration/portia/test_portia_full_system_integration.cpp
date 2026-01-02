@@ -11,7 +11,7 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "utils/platform/nimcp_platform_tier.h"
 #include "portia/nimcp_portia_degradation.h"
 #include "portia/nimcp_portia_sensor_fusion.h"
@@ -19,7 +19,6 @@ extern "C" {
 #include "async/nimcp_bio_async.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/time/nimcp_time.h"
-}
 
 class PortiaFullSystemIntegrationTest : public ::testing::Test {
 protected:

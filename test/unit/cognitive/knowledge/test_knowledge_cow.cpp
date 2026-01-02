@@ -13,9 +13,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/knowledge/nimcp_knowledge_cow.h"
-}
 
 //=============================================================================
 // Test Fixture

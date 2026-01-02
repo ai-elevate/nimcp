@@ -22,11 +22,10 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "portia/nimcp_portia_logic_bridge.h"
 #include "portia/nimcp_portia.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 class PortiaLogicIntegrationTest : public ::testing::Test {
 protected:

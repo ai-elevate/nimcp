@@ -31,11 +31,10 @@
 #include <cstring>
 #include <type_traits>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "swarm/nimcp_swarm_memory.h"
 #include "swarm/nimcp_swarm_multi.h"
 #include "async/nimcp_bio_messages.h"
-}
 
 // =============================================================================
 // Compile-Time Type Safety Tests

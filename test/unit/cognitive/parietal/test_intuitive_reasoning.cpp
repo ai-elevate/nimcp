@@ -11,9 +11,8 @@
 #include <cstring>
 #include <cstdlib>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/parietal/nimcp_intuitive_reasoning.h"
-}
 
 namespace {
 

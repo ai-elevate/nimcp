@@ -16,7 +16,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 // Include ALL module headers to verify they compile together
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "plasticity/attention/nimcp_attention.h"
@@ -53,7 +53,6 @@ extern "C" {
 #include "utils/validation/nimcp_validate.h"
 #include "utils/containers/nimcp_vector.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // Test Fixture

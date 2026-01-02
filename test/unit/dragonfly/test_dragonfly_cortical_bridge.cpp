@@ -7,9 +7,8 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "dragonfly/nimcp_dragonfly_cortical_bridge.h"
-}
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846

@@ -23,10 +23,9 @@
 #include <random>
 #include <vector>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "plasticity/nimcp_second_messengers.h"
 #include "core/brain/regions/broca/nimcp_language_production_bridge.h"
-}
 
 //=============================================================================
 // MODULE INTEGRATION REGRESSION FIXTURE

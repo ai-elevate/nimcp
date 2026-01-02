@@ -20,10 +20,9 @@
 #include <cmath>
 #include <limits>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "security/nimcp_security.h"
 #include "utils/logging/nimcp_logging.h"
-}
 
 //=============================================================================
 // TEST FIXTURE

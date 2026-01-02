@@ -14,13 +14,12 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
 #include "cognitive/collective_cognition/nimcp_hyperscanning.h"
 #include "cognitive/collective_cognition/nimcp_collective_phi.h"
 #include "cognitive/collective_cognition/nimcp_shared_intentionality.h"
 #include "cognitive/collective_cognition/nimcp_extended_mind.h"
-}
 
 /*=============================================================================
  * Test Fixture

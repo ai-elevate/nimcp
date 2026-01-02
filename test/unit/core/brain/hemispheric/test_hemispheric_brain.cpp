@@ -18,12 +18,11 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/hemispheric/nimcp_hemispheric_brain.h"
 #include "core/brain/hemispheric/nimcp_brain_hemisphere.h"
 #include "core/brain/hemispheric/nimcp_corpus_callosum.h"
 #include "core/brain/hemispheric/nimcp_lateralization.h"
-}
 
 //=============================================================================
 // Test Fixtures

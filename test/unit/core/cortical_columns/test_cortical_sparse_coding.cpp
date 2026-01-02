@@ -5,9 +5,8 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/cortical_columns/nimcp_cortical_sparse_coding.h"
-}
 
 /* ============================================================================
  * Test Fixtures

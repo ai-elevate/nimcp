@@ -15,10 +15,9 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/topology/nimcp_fractal_topology.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -7,9 +7,8 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
+// Headers have their own extern "C" guards
 #include "core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.h"
-}
 
 class BGExecutiveBridgeTest : public ::testing::Test {
 protected:
