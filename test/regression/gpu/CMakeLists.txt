@@ -75,6 +75,14 @@ add_gpu_regression_test(test_broca_gpu_regression)
 # HOW:  Test numerical stability, GPU/CPU equivalence, edge cases
 add_gpu_regression_test(test_substrate_gpu_regression)
 
+# =============================================================================
+# GPU Visual Processing Regression Tests
+# =============================================================================
+# WHAT: Regression tests for GPU visual processing (V1-V5, saliency)
+# WHY:  Prevent reintroduction of visual processing bugs (numerical, API)
+# HOW:  Test struct layouts, function signatures, edge cases, memory safety
+add_gpu_regression_test(test_visual_processing_regression)
+
 # Include broca subdirectory if it exists
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/broca/CMakeLists.txt)
     add_subdirectory(broca)

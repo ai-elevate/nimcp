@@ -1245,6 +1245,8 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/perception/nimcp_speech_kernels.cu>
     # Speech Cortex GPU kernels (MFCC, LPC, formants, pitch, phoneme recognition)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/perception/nimcp_speech_cortex_gpu.cu>
+    # Occipital GPU bridge (connects CPU occipital cortex to GPU visual kernels)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/occipital/nimcp_occipital_gpu_bridge.cu>
     # LNN kernels (liquid neural networks with ODE solvers)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/lnn/nimcp_lnn_kernels.cu>
     # LNN Gradient DAO (gradient accumulation for training)

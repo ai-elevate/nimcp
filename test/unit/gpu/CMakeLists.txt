@@ -116,6 +116,9 @@ if(CUDAToolkit_FOUND)
 
     # GPU Graph kernel tests (CSR graph, BFS, clustering, centrality, DAO, GraphQL)
     add_gpu_test(test_graph_gpu)
+
+    # GPU Occipital Bridge tests (V1-V5 visual processing, saliency, optical flow)
+    add_gpu_test(test_occipital_gpu_bridge)
 else()
     message(STATUS "  Skipping CUDA kernel tests (CUDA toolkit not found)")
 endif()

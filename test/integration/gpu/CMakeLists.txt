@@ -98,6 +98,14 @@ if(CUDAToolkit_FOUND)
     add_gpu_integration_test(test_substrate_gpu_integration)
 
     # =============================================================================
+    # Visual Processing GPU Integration Tests
+    # =============================================================================
+    # WHAT: Test GPU visual processing (V1-V5, saliency, occipital bridge)
+    # WHY:  Verify GPU visual kernels produce correct results matching CPU reference
+    # HOW:  Run identical operations on both backends, compare outputs within tolerance
+    add_gpu_integration_test(test_visual_processing_gpu)
+
+    # =============================================================================
     # Timeout Configuration for CUDA tests
     # =============================================================================
     # GPU tests may take longer on systems without GPU acceleration
@@ -109,6 +117,7 @@ if(CUDAToolkit_FOUND)
         integration_gpu_test_broca_gpu_integration
         integration_gpu_test_broca_gpu_kernel_integration
         integration_gpu_test_substrate_gpu_integration
+        integration_gpu_test_visual_processing_gpu
         PROPERTIES TIMEOUT 180
     )
 

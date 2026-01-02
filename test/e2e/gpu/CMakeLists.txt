@@ -49,6 +49,9 @@ add_gpu_e2e_test(test_e2e_snn_pipeline_gpu)
 # GPU Inference Pipeline test
 add_gpu_e2e_test(test_e2e_inference_pipeline_gpu)
 
+# GPU Visual Processing Pipeline test
+add_gpu_e2e_test(test_e2e_visual_processing_gpu)
+
 # DISABLED - require unimplemented graph GPU module
 # add_gpu_e2e_test(e2e_gpu_test_brain_topology)
 # add_gpu_e2e_test(e2e_gpu_test_sparse_network)
