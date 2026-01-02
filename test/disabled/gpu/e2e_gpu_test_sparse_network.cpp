@@ -18,7 +18,7 @@
  * @date 2026
  */
 
-#include "../e2e_test_framework.h"
+#include "e2e_test_framework.h"
 
 // GPU headers
 #include "gpu/sparse/nimcp_sparse_gpu.h"

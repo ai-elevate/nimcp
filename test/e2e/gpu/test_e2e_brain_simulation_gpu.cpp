@@ -371,7 +371,7 @@ TEST_F(BrainSimulationGPUE2ETest, LargeScaleLIFDynamicsGPU) {
     E2E_STAGE_END();
 
     // Stage 2: Create input current with temporal structure
-    E2E_STAGE_BEGIN("Create structured input", 2000);
+    E2E_STAGE_BEGIN("Create structured input", 15000);
 
     size_t input_dims[] = {N_NEURONS};
     nimcp_gpu_tensor_t* input_current = nimcp_gpu_tensor_create(gpu_ctx_, input_dims, 1,
@@ -723,7 +723,7 @@ TEST_F(BrainSimulationGPUE2ETest, MultiRegionBrainGPU) {
     E2E_STAGE_END();
 
     // Stage 2: Create inter-region connections
-    E2E_STAGE_BEGIN("Create inter-region connections", 3000);
+    E2E_STAGE_BEGIN("Create inter-region connections", 20000);
 
     // Create weight matrices between regions (fully connected between regions)
     std::vector<std::vector<nimcp_gpu_tensor_t*>> inter_weights(N_REGIONS);

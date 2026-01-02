@@ -24,7 +24,7 @@
  * @date 2026
  */
 
-#include "../e2e_test_framework.h"
+#include "e2e_test_framework.h"
 
 // Headers have their own extern "C" guards
 #include "gpu/topology/nimcp_topology_gpu.h"
