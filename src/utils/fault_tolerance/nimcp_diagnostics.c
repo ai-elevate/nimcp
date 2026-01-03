@@ -801,11 +801,17 @@ bool diagnostics_auto_recover(diagnostic_result_t* result, brain_t brain) {
 //=============================================================================
 
 void diagnostics_report_to_log(const diagnostic_result_t* result) {
-    if (!result || !g_diagnostic_log) {
+    if (!result) {
         return;
     }
 
     nimcp_mutex_lock(&g_diagnostic_mutex);
+
+    // Check g_diagnostic_log AFTER acquiring lock to avoid TOCTOU race
+    if (!g_diagnostic_log) {
+        nimcp_mutex_unlock(&g_diagnostic_mutex);
+        return;
+    }
 
     fprintf(g_diagnostic_log, "\n========================================\n");
     fprintf(g_diagnostic_log, "DIAGNOSTIC REPORT #%lu\n", result->error_id);

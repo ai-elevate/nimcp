@@ -105,9 +105,13 @@ extern "C" {
  * Forward Declarations
  *============================================================================*/
 
-/* Core brain */
+/* Core brain - use forward declarations that match brain.h */
+#ifndef NIMCP_BRAIN_T_DEFINED
 typedef struct brain_struct* brain_t;
-typedef struct nimcp_brain_config brain_config_t;
+#define NIMCP_BRAIN_T_DEFINED
+#endif
+
+/* brain_config_t is defined in brain.h as anonymous struct typedef - no forward decl needed */
 
 /* JEPA and Cognitive */
 typedef struct jepa_predictor jepa_predictor_t;
@@ -131,8 +135,11 @@ typedef struct thalamic_router thalamic_router_t;
 typedef struct training_context training_context_t;
 typedef struct neural_logic_gate neural_logic_gate_t;
 
-/* Theory of Mind */
-typedef struct theory_of_mind theory_of_mind_t;
+/* Theory of Mind - matches brain.h typedef */
+#ifndef NIMCP_THEORY_OF_MIND_T_DEFINED
+typedef struct theory_of_mind_s* theory_of_mind_t;
+#define NIMCP_THEORY_OF_MIND_T_DEFINED
+#endif
 
 /* Curiosity */
 typedef struct curiosity_state curiosity_state_t;

@@ -53,6 +53,8 @@ static inline const void* get_element_ptr_const(const nimcp_ring_buffer_t* rb,
  */
 static inline size_t logical_to_physical(const nimcp_ring_buffer_t* rb,
                                           size_t logical_index) {
+    // Guard: capacity should never be 0, but protect against it
+    if (rb->capacity == 0) return 0;
     return (rb->head + logical_index) % rb->capacity;
 }
 

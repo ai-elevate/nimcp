@@ -211,6 +211,10 @@ portia_learning_immune_bridge_t* portia_learning_immune_create(
     bridge->last_update_time = 0;
     bridge->base.bio_async_enabled = false;
 
+    /* Initialize modulation structure to prevent reading uninitialized values */
+    memset(&bridge->learning_modulation, 0, sizeof(bridge->learning_modulation));
+    bridge->learning_modulation.learning_success_rate = 0.5f;  // Neutral default
+
     NIMCP_LOGGING_INFO("Created Portia learning-immune bridge");
     return bridge;
 }

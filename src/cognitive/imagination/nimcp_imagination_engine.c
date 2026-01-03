@@ -924,8 +924,12 @@ imagination_scenario_t* imagination_begin_scenario(
         goto error;
     }
 
-    /* Initialize with noise (seeding imagination) */
+    /* Initialize latent state to zero then add noise (seeding imagination) */
+    tensor_fill_zero(scenario->latent_state);
     apply_noise(scenario->latent_state, engine->config.creativity_noise_level);
+
+    /* Initialize latent_previous to same state as latent_state */
+    nimcp_tensor_copy(scenario->latent_previous, scenario->latent_state);
 
     /* Set initial metrics */
     scenario->vividness = engine->config.default_vividness;
@@ -1527,8 +1531,14 @@ imagination_scenario_t* imagination_counterfactual(
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_COUNTERFACTUAL, &goal);
+
+    /* Free the temporary goal.constraints since imagination_begin_scenario
+     * makes a deep copy if needed */
+    if (goal.constraints) {
+        nimcp_tensor_destroy(goal.constraints);
+    }
+
     if (!scenario) {
-        if (goal.constraints) nimcp_tensor_destroy(goal.constraints);
         return NULL;
     }
 

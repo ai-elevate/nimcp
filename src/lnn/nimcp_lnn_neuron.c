@@ -258,8 +258,8 @@ lnn_neuron_t* lnn_neuron_create(const lnn_neuron_config_t* config,
         }
     }
 
-    /* Allocate tau weights (for both input and recurrent) */
-    uint32_t n_tau = n_inputs + n_recurrent;
+    /* Allocate tau weights (bias + input + recurrent) */
+    uint32_t n_tau = 1 + n_inputs + n_recurrent;  // +1 for bias term
     neuron->w_tau = (float*)nimcp_calloc(n_tau, sizeof(float));
     if (!neuron->w_tau) {
         NIMCP_LOGGING_ERROR("Failed to allocate tau weights");

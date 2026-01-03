@@ -3761,6 +3761,54 @@ __/cognitive/grief/nimcp_grief_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grief/nimcp_grief_thalamic_bridge.c.s
 .PHONY : __/cognitive/grief/nimcp_grief_thalamic_bridge.c.s
 
+__/cognitive/imagination/nimcp_imagination_engine.o: __/cognitive/imagination/nimcp_imagination_engine.c.o
+.PHONY : __/cognitive/imagination/nimcp_imagination_engine.o
+
+# target to build an object file
+__/cognitive/imagination/nimcp_imagination_engine.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_imagination_engine.c.o
+.PHONY : __/cognitive/imagination/nimcp_imagination_engine.c.o
+
+__/cognitive/imagination/nimcp_imagination_engine.i: __/cognitive/imagination/nimcp_imagination_engine.c.i
+.PHONY : __/cognitive/imagination/nimcp_imagination_engine.i
+
+# target to preprocess a source file
+__/cognitive/imagination/nimcp_imagination_engine.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_imagination_engine.c.i
+.PHONY : __/cognitive/imagination/nimcp_imagination_engine.c.i
+
+__/cognitive/imagination/nimcp_imagination_engine.s: __/cognitive/imagination/nimcp_imagination_engine.c.s
+.PHONY : __/cognitive/imagination/nimcp_imagination_engine.s
+
+# target to generate assembly for a file
+__/cognitive/imagination/nimcp_imagination_engine.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_imagination_engine.c.s
+.PHONY : __/cognitive/imagination/nimcp_imagination_engine.c.s
+
+__/cognitive/imagination/nimcp_imagination_workspace.o: __/cognitive/imagination/nimcp_imagination_workspace.c.o
+.PHONY : __/cognitive/imagination/nimcp_imagination_workspace.o
+
+# target to build an object file
+__/cognitive/imagination/nimcp_imagination_workspace.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_imagination_workspace.c.o
+.PHONY : __/cognitive/imagination/nimcp_imagination_workspace.c.o
+
+__/cognitive/imagination/nimcp_imagination_workspace.i: __/cognitive/imagination/nimcp_imagination_workspace.c.i
+.PHONY : __/cognitive/imagination/nimcp_imagination_workspace.i
+
+# target to preprocess a source file
+__/cognitive/imagination/nimcp_imagination_workspace.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_imagination_workspace.c.i
+.PHONY : __/cognitive/imagination/nimcp_imagination_workspace.c.i
+
+__/cognitive/imagination/nimcp_imagination_workspace.s: __/cognitive/imagination/nimcp_imagination_workspace.c.s
+.PHONY : __/cognitive/imagination/nimcp_imagination_workspace.s
+
+# target to generate assembly for a file
+__/cognitive/imagination/nimcp_imagination_workspace.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_imagination_workspace.c.s
+.PHONY : __/cognitive/imagination/nimcp_imagination_workspace.c.s
+
 __/cognitive/immune/nimcp_attention_immune_bridge.o: __/cognitive/immune/nimcp_attention_immune_bridge.c.o
 .PHONY : __/cognitive/immune/nimcp_attention_immune_bridge.o
 
@@ -16937,6 +16985,30 @@ __/gpu/nimcp_multigpu.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/nimcp_multigpu.c.s
 .PHONY : __/gpu/nimcp_multigpu.c.s
 
+__/gpu/occipital/nimcp_occipital_gpu_bridge.o: __/gpu/occipital/nimcp_occipital_gpu_bridge.cu.o
+.PHONY : __/gpu/occipital/nimcp_occipital_gpu_bridge.o
+
+# target to build an object file
+__/gpu/occipital/nimcp_occipital_gpu_bridge.cu.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/occipital/nimcp_occipital_gpu_bridge.cu.o
+.PHONY : __/gpu/occipital/nimcp_occipital_gpu_bridge.cu.o
+
+__/gpu/occipital/nimcp_occipital_gpu_bridge.i: __/gpu/occipital/nimcp_occipital_gpu_bridge.cu.i
+.PHONY : __/gpu/occipital/nimcp_occipital_gpu_bridge.i
+
+# target to preprocess a source file
+__/gpu/occipital/nimcp_occipital_gpu_bridge.cu.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/occipital/nimcp_occipital_gpu_bridge.cu.i
+.PHONY : __/gpu/occipital/nimcp_occipital_gpu_bridge.cu.i
+
+__/gpu/occipital/nimcp_occipital_gpu_bridge.s: __/gpu/occipital/nimcp_occipital_gpu_bridge.cu.s
+.PHONY : __/gpu/occipital/nimcp_occipital_gpu_bridge.s
+
+# target to generate assembly for a file
+__/gpu/occipital/nimcp_occipital_gpu_bridge.cu.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/occipital/nimcp_occipital_gpu_bridge.cu.s
+.PHONY : __/gpu/occipital/nimcp_occipital_gpu_bridge.cu.s
+
 __/gpu/oscillations/nimcp_oscillations_kernels.o: __/gpu/oscillations/nimcp_oscillations_kernels.cu.o
 .PHONY : __/gpu/oscillations/nimcp_oscillations_kernels.o
 
@@ -26729,6 +26801,30 @@ __/utils/containers/nimcp_queue_spsc.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/containers/nimcp_queue_spsc.c.s
 .PHONY : __/utils/containers/nimcp_queue_spsc.c.s
 
+__/utils/containers/nimcp_ring_buffer.o: __/utils/containers/nimcp_ring_buffer.c.o
+.PHONY : __/utils/containers/nimcp_ring_buffer.o
+
+# target to build an object file
+__/utils/containers/nimcp_ring_buffer.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/containers/nimcp_ring_buffer.c.o
+.PHONY : __/utils/containers/nimcp_ring_buffer.c.o
+
+__/utils/containers/nimcp_ring_buffer.i: __/utils/containers/nimcp_ring_buffer.c.i
+.PHONY : __/utils/containers/nimcp_ring_buffer.i
+
+# target to preprocess a source file
+__/utils/containers/nimcp_ring_buffer.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/containers/nimcp_ring_buffer.c.i
+.PHONY : __/utils/containers/nimcp_ring_buffer.c.i
+
+__/utils/containers/nimcp_ring_buffer.s: __/utils/containers/nimcp_ring_buffer.c.s
+.PHONY : __/utils/containers/nimcp_ring_buffer.s
+
+# target to generate assembly for a file
+__/utils/containers/nimcp_ring_buffer.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/containers/nimcp_ring_buffer.c.s
+.PHONY : __/utils/containers/nimcp_ring_buffer.c.s
+
 __/utils/containers/nimcp_vector.o: __/utils/containers/nimcp_vector.c.o
 .PHONY : __/utils/containers/nimcp_vector.o
 
@@ -29086,6 +29182,12 @@ help:
 	@echo "... __/cognitive/grief/nimcp_grief_thalamic_bridge.o"
 	@echo "... __/cognitive/grief/nimcp_grief_thalamic_bridge.i"
 	@echo "... __/cognitive/grief/nimcp_grief_thalamic_bridge.s"
+	@echo "... __/cognitive/imagination/nimcp_imagination_engine.o"
+	@echo "... __/cognitive/imagination/nimcp_imagination_engine.i"
+	@echo "... __/cognitive/imagination/nimcp_imagination_engine.s"
+	@echo "... __/cognitive/imagination/nimcp_imagination_workspace.o"
+	@echo "... __/cognitive/imagination/nimcp_imagination_workspace.i"
+	@echo "... __/cognitive/imagination/nimcp_imagination_workspace.s"
 	@echo "... __/cognitive/immune/nimcp_attention_immune_bridge.o"
 	@echo "... __/cognitive/immune/nimcp_attention_immune_bridge.i"
 	@echo "... __/cognitive/immune/nimcp_attention_immune_bridge.s"
@@ -30733,6 +30835,9 @@ help:
 	@echo "... __/gpu/nimcp_multigpu.o"
 	@echo "... __/gpu/nimcp_multigpu.i"
 	@echo "... __/gpu/nimcp_multigpu.s"
+	@echo "... __/gpu/occipital/nimcp_occipital_gpu_bridge.o"
+	@echo "... __/gpu/occipital/nimcp_occipital_gpu_bridge.i"
+	@echo "... __/gpu/occipital/nimcp_occipital_gpu_bridge.s"
 	@echo "... __/gpu/oscillations/nimcp_oscillations_kernels.o"
 	@echo "... __/gpu/oscillations/nimcp_oscillations_kernels.i"
 	@echo "... __/gpu/oscillations/nimcp_oscillations_kernels.s"
@@ -31957,6 +32062,9 @@ help:
 	@echo "... __/utils/containers/nimcp_queue_spsc.o"
 	@echo "... __/utils/containers/nimcp_queue_spsc.i"
 	@echo "... __/utils/containers/nimcp_queue_spsc.s"
+	@echo "... __/utils/containers/nimcp_ring_buffer.o"
+	@echo "... __/utils/containers/nimcp_ring_buffer.i"
+	@echo "... __/utils/containers/nimcp_ring_buffer.s"
 	@echo "... __/utils/containers/nimcp_vector.o"
 	@echo "... __/utils/containers/nimcp_vector.i"
 	@echo "... __/utils/containers/nimcp_vector.s"

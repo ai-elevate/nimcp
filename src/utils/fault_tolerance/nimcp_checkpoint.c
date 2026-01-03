@@ -463,12 +463,26 @@ static bool deserialize_brain_state(const uint8_t* buffer, size_t size, brain_t*
 
             neuron_t* neuron = neural_network_get_neuron(base_net, neuron_id);
             if (!neuron) {
-                offset += 6 * sizeof(float) + sizeof(uint32_t);
-                if (offset <= size) {
-                    uint32_t skip;
-                    memcpy(&skip, buffer + offset - sizeof(uint32_t), sizeof(uint32_t));
-                    offset += skip * (sizeof(uint32_t) + 3 * sizeof(float));
+                // Skip neuron data: 6 floats + synapse count
+                size_t skip_base = 6 * sizeof(float) + sizeof(uint32_t);
+                if (offset + skip_base > size) break;
+                offset += skip_base;
+
+                // Read synapse count and skip synapse data
+                uint32_t skip;
+                memcpy(&skip, buffer + offset - sizeof(uint32_t), sizeof(uint32_t));
+
+                // Guard against integer overflow: each synapse = sizeof(uint32_t) + 3*sizeof(float) = 16 bytes
+                size_t synapse_size = sizeof(uint32_t) + 3 * sizeof(float);
+                if (skip > (SIZE_MAX / synapse_size)) {
+                    // Integer overflow would occur, abort
+                    set_error("Invalid synapse count causes integer overflow");
+                    brain_destroy(new_brain);
+                    return false;
                 }
+                size_t skip_size = (size_t)skip * synapse_size;
+                if (offset + skip_size > size) break;
+                offset += skip_size;
                 continue;
             }
 

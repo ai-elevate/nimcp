@@ -415,6 +415,20 @@ bool nimcp_gpu_synapse_transmit(
         return false;
     }
 
+    // Guard: Validate pre_activity has elements
+    if (pre_activity->numel == 0) {
+        LOG_ERROR("pre_activity tensor has zero elements");
+        return false;
+    }
+
+    // Guard: Nothing to do if no synapses
+    if (state->n_synapses == 0) {
+        return true;
+    }
+
+    // NOTE: pre_ids values must be < pre_activity->numel for safe indexing
+    // Caller must ensure synapse connectivity is valid for given pre_activity size
+
     if (state->model == NIMCP_SYNAPSE_STP && state->vesicle_state) {
         // STP-modulated transmission
         kernel_synapse_transmit_stp<<<GRID_SIZE(state->n_synapses), BLOCK_SIZE>>>(
@@ -934,6 +948,17 @@ bool nimcp_gpu_receptor_compute_current(
     size_t n_synapses = state->conductance->numel;
     size_t n_post = post_voltage->numel;
 
+    // Guard: Avoid division by zero in kernel (idx % n_post)
+    if (n_post == 0) {
+        LOG_ERROR("post_voltage tensor has zero elements");
+        return false;
+    }
+
+    // Guard: Nothing to compute if no synapses
+    if (n_synapses == 0) {
+        return true;
+    }
+
     // Use simple kernel with direct indexing (synapse i uses voltage[i % n_post])
     kernel_receptor_compute_current_simple<<<GRID_SIZE(n_synapses), BLOCK_SIZE>>>(
         (const float*)state->conductance->data,
@@ -1187,26 +1212,49 @@ bool nimcp_gpu_synapse_get_stats(
     }
 
     size_t n = state->n_synapses;
-    float* d_sum;
-    float h_sum;
 
-    CUDA_CHECK(cudaMalloc(&d_sum, sizeof(float)));
+    // Guard: Avoid division by zero
+    if (n == 0) {
+        if (mean_weight) *mean_weight = 0.0f;
+        if (mean_transmission) *mean_transmission = 0.0f;
+        if (mean_efficacy) *mean_efficacy = 1.0f;
+        return true;
+    }
+
+    float* d_sum = NULL;
+    float h_sum;
+    bool success = false;
+    cudaError_t err;
+
+    err = cudaMalloc(&d_sum, sizeof(float));
+    if (err != cudaSuccess) {
+        LOG_ERROR("CUDA error: %s", cudaGetErrorString(err));
+        return false;
+    }
 
     // Compute mean weight
     if (mean_weight) {
-        CUDA_CHECK(cudaMemset(d_sum, 0, sizeof(float)));
+        err = cudaMemset(d_sum, 0, sizeof(float));
+        if (err != cudaSuccess) goto cleanup;
         kernel_synapse_reduce_sum<<<GRID_SIZE(n), BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
             (const float*)state->weights->data, d_sum, n);
-        CUDA_CHECK(cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost));
+        err = cudaGetLastError();
+        if (err != cudaSuccess) goto cleanup;
+        err = cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost);
+        if (err != cudaSuccess) goto cleanup;
         *mean_weight = h_sum / (float)n;
     }
 
     // Compute mean transmission
     if (mean_transmission) {
-        CUDA_CHECK(cudaMemset(d_sum, 0, sizeof(float)));
+        err = cudaMemset(d_sum, 0, sizeof(float));
+        if (err != cudaSuccess) goto cleanup;
         kernel_synapse_reduce_sum<<<GRID_SIZE(n), BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
             (const float*)state->transmission->data, d_sum, n);
-        CUDA_CHECK(cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost));
+        err = cudaGetLastError();
+        if (err != cudaSuccess) goto cleanup;
+        err = cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost);
+        if (err != cudaSuccess) goto cleanup;
         *mean_transmission = h_sum / (float)n;
     }
 
@@ -1218,10 +1266,23 @@ bool nimcp_gpu_synapse_get_stats(
         if (efficacy) {
             nimcp_gpu_vesicle_get_efficacy(ctx, state->vesicle_state, efficacy);
 
-            CUDA_CHECK(cudaMemset(d_sum, 0, sizeof(float)));
+            err = cudaMemset(d_sum, 0, sizeof(float));
+            if (err != cudaSuccess) {
+                nimcp_gpu_tensor_destroy(efficacy);
+                goto cleanup;
+            }
             kernel_synapse_reduce_sum<<<GRID_SIZE(n), BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
                 (const float*)efficacy->data, d_sum, n);
-            CUDA_CHECK(cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost));
+            err = cudaGetLastError();
+            if (err != cudaSuccess) {
+                nimcp_gpu_tensor_destroy(efficacy);
+                goto cleanup;
+            }
+            err = cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost);
+            if (err != cudaSuccess) {
+                nimcp_gpu_tensor_destroy(efficacy);
+                goto cleanup;
+            }
             *mean_efficacy = h_sum / (float)n;
 
             nimcp_gpu_tensor_destroy(efficacy);
@@ -1232,8 +1293,14 @@ bool nimcp_gpu_synapse_get_stats(
         *mean_efficacy = 1.0f;  // Default efficacy when no STP
     }
 
-    CUDA_CHECK(cudaFree(d_sum));
-    return true;
+    success = true;
+
+cleanup:
+    if (d_sum) cudaFree(d_sum);
+    if (!success) {
+        LOG_ERROR("CUDA error: %s", cudaGetErrorString(err));
+    }
+    return success;
 }
 
 #else // !NIMCP_ENABLE_CUDA

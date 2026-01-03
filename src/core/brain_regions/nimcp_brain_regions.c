@@ -550,10 +550,14 @@ nimcp_result_t brain_module_connect_regions(brain_module_t* brain,
     conn->target_layer = LAYER_4;
 
     // Add to brain's connection list
-    brain->connections = (brain_connection_t**)nimcp_realloc(
+    brain_connection_t** new_connections = (brain_connection_t**)nimcp_realloc(
         brain->connections,
         (brain->num_connections + 1) * sizeof(brain_connection_t*));
-
+    if (!new_connections) {
+        nimcp_free(conn);
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+    brain->connections = new_connections;
     brain->connections[brain->num_connections] = conn;
     brain->num_connections++;
 
@@ -582,10 +586,14 @@ nimcp_result_t brain_module_connect_layers(brain_module_t* brain,
     conn->connection_strength = connection_density;
     conn->feedforward = (target_layer == LAYER_4);
 
-    brain->connections = (brain_connection_t**)nimcp_realloc(
+    brain_connection_t** new_connections = (brain_connection_t**)nimcp_realloc(
         brain->connections,
         (brain->num_connections + 1) * sizeof(brain_connection_t*));
-
+    if (!new_connections) {
+        nimcp_free(conn);
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+    brain->connections = new_connections;
     brain->connections[brain->num_connections] = conn;
     brain->num_connections++;
 

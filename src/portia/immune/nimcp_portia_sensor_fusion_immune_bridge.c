@@ -217,6 +217,10 @@ portia_sensor_fusion_immune_bridge_t* portia_sensor_fusion_immune_create(
     bridge->last_update_time = 0;
     bridge->base.bio_async_enabled = false;
 
+    /* Initialize modulation structure to prevent reading uninitialized values */
+    memset(&bridge->sensor_modulation, 0, sizeof(bridge->sensor_modulation));
+    bridge->sensor_modulation.sensor_conflict_level = 0.0f;  // No conflict by default
+
     NIMCP_LOGGING_INFO("Created Portia sensor fusion-immune bridge");
     return bridge;
 }

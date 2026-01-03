@@ -46,7 +46,10 @@ typedef struct mental_health_monitor mental_health_monitor_t;
 
 // Phase 10.6: Theory of Mind
 // Forward declare Theory of Mind (opaque pointer)
+#ifndef NIMCP_THEORY_OF_MIND_T_DEFINED
 typedef struct theory_of_mind_s* theory_of_mind_t;
+#define NIMCP_THEORY_OF_MIND_T_DEFINED
+#endif
 
 // Phase 10.7: Natural Explanations
 typedef struct explanation_generator_s* explanation_generator_t;  // Opaque pointer
@@ -385,7 +388,10 @@ typedef struct {
 /**
  * @brief Opaque brain handle
  */
+#ifndef NIMCP_BRAIN_T_DEFINED
 typedef struct brain_struct* brain_t;
+#define NIMCP_BRAIN_T_DEFINED
+#endif
 
 /**
  * @brief Forward declaration for brain stats (full definition below)

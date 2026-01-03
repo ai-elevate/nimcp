@@ -188,6 +188,12 @@ static void initialize_kalman(kalman_state_t* kalman, float process_noise) {
 
 /**
  * Kalman filter prediction step
+ *
+ * State vector: [x, y, z, vx, vy, vz, ax, ay, az]
+ * State indices: 0-2 = position, 3-5 = velocity, 6-8 = acceleration
+ *
+ * State transition model (constant acceleration):
+ *   x += vx*dt, vx += ax*dt (same for y,z)
  */
 static void kalman_predict(kalman_state_t* kalman, float dt) {
     if (dt <= 0.0F || dt > 1.0F) {
@@ -203,7 +209,36 @@ static void kalman_predict(kalman_state_t* kalman, float dt) {
     kalman->state[5] += kalman->state[8] * dt;  // vz += az * dt
 
     // Predict covariance: P = F * P * F^T + Q
-    // Simplified for diagonal Q matrix
+    // For constant acceleration model, F couples position to velocity and velocity to acceleration
+    // Apply state transition to covariance (simplified but functional)
+    // P_new[i][j] = P[i][j] + dt * (P[i+3][j] + P[i][j+3]) + dt^2 * P[i+3][j+3]  for position states
+
+    // Propagate covariance for position-velocity coupling (indices 0-2 with 3-5)
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < KALMAN_STATE_DIM; j++) {
+            // Position covariance grows with velocity uncertainty
+            kalman->covariance[i][j] += dt * kalman->covariance[i + 3][j];
+        }
+    }
+    for (int i = 0; i < KALMAN_STATE_DIM; i++) {
+        for (int j = 0; j < 3; j++) {
+            kalman->covariance[i][j] += dt * kalman->covariance[i][j + 3];
+        }
+    }
+
+    // Propagate covariance for velocity-acceleration coupling (indices 3-5 with 6-8)
+    for (int i = 3; i < 6; i++) {
+        for (int j = 0; j < KALMAN_STATE_DIM; j++) {
+            kalman->covariance[i][j] += dt * kalman->covariance[i + 3][j];
+        }
+    }
+    for (int i = 0; i < KALMAN_STATE_DIM; i++) {
+        for (int j = 3; j < 6; j++) {
+            kalman->covariance[i][j] += dt * kalman->covariance[i][j + 3];
+        }
+    }
+
+    // Add process noise
     for (int i = 0; i < KALMAN_STATE_DIM; i++) {
         for (int j = 0; j < KALMAN_STATE_DIM; j++) {
             kalman->covariance[i][j] += kalman->process_noise_matrix[i][j];

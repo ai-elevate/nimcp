@@ -105,9 +105,18 @@ static void bytecode_destroy(bytecode_t* bc) {
 
 static void emit(bytecode_t* bc, instruction_t instr) {
     if (bc->count >= bc->capacity) {
-        bc->capacity *= 2;
-        bc->instructions = realloc(bc->instructions,
-                                  bc->capacity * sizeof(instruction_t));
+        size_t new_capacity = bc->capacity * 2;
+        // Guard against integer overflow
+        if (new_capacity < bc->capacity || new_capacity > SIZE_MAX / sizeof(instruction_t)) {
+            return;  // Overflow, cannot grow
+        }
+        instruction_t* new_instructions = realloc(bc->instructions,
+                                                   new_capacity * sizeof(instruction_t));
+        if (!new_instructions) {
+            return;  // Keep original buffer intact
+        }
+        bc->instructions = new_instructions;
+        bc->capacity = new_capacity;
     }
     bc->instructions[bc->count++] = instr;
 }
@@ -121,9 +130,18 @@ static size_t add_string(bytecode_t* bc, const char* str) {
     }
 
     // Add new string
-    bc->string_pool = realloc(bc->string_pool,
-                             (bc->string_count + 1) * sizeof(char*));
-    bc->string_pool[bc->string_count] = strdup(str);
+    char** new_pool = realloc(bc->string_pool,
+                              (bc->string_count + 1) * sizeof(char*));
+    if (!new_pool) {
+        return (size_t)-1;  // Error indicator
+    }
+    bc->string_pool = new_pool;
+
+    char* dup = strdup(str);
+    if (!dup) {
+        return (size_t)-1;  // Error indicator
+    }
+    bc->string_pool[bc->string_count] = dup;
     return bc->string_count++;
 }
 

@@ -68,9 +68,11 @@ typedef struct {
     habituation_entry_t* habituation_table;
     uint32_t habituation_count;
     uint32_t habituation_capacity;
+    uint32_t habituation_evictions;   // Count of LRU evictions
     association_entry_t* association_table;
     uint32_t association_count;
     uint32_t association_capacity;
+    uint32_t association_evictions;   // Count of LRU evictions
     float learning_rate;
     float forgetting_rate;
     uint64_t last_consolidation_ms;

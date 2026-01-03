@@ -106,9 +106,18 @@ static void stack_destroy(value_stack_t* stack) {
 
 static void stack_push(value_stack_t* stack, nimcp_policy_value_t value) {
     if (stack->count >= stack->capacity) {
-        stack->capacity *= 2;
-        stack->values = realloc(stack->values,
-                               stack->capacity * sizeof(nimcp_policy_value_t));
+        size_t new_capacity = stack->capacity * 2;
+        // Guard against integer overflow
+        if (new_capacity < stack->capacity || new_capacity > SIZE_MAX / sizeof(nimcp_policy_value_t)) {
+            return;  // Overflow, cannot grow
+        }
+        nimcp_policy_value_t* new_values = realloc(stack->values,
+                                                    new_capacity * sizeof(nimcp_policy_value_t));
+        if (!new_values) {
+            return;  // Keep original buffer intact
+        }
+        stack->values = new_values;
+        stack->capacity = new_capacity;
     }
     stack->values[stack->count++] = value;
 }
@@ -233,6 +242,10 @@ static nimcp_error_t context_set(
     if (!entry) return NIMCP_ERROR_NO_MEMORY;
 
     entry->key = strdup(key);
+    if (!entry->key) {
+        free(entry);
+        return NIMCP_ERROR_NO_MEMORY;
+    }
     entry->value = value;
     entry->next = ctx->buckets[bucket];
     ctx->buckets[bucket] = entry;
@@ -249,6 +262,9 @@ nimcp_error_t nimcp_policy_context_set_string(
     nimcp_policy_value_t val = {0};
     val.type = NIMCP_POLICY_VALUE_STRING;
     val.string_val = strdup(value);
+    if (!val.string_val) {
+        return NIMCP_ERROR_NO_MEMORY;
+    }
     return context_set(ctx, key, val);
 }
 
@@ -457,7 +473,17 @@ function_registry_t* registry_create(void) {
     };
 
     for (size_t i = 0; i < sizeof(builtins) / sizeof(builtins[0]); i++) {
-        registry->functions[registry->count].name = strdup(builtins[i].name);
+        char* name_copy = strdup(builtins[i].name);
+        if (!name_copy) {
+            // Cleanup already-registered functions on failure
+            for (size_t j = 0; j < registry->count; j++) {
+                free(registry->functions[j].name);
+            }
+            free(registry->functions);
+            free(registry);
+            return NULL;
+        }
+        registry->functions[registry->count].name = name_copy;
         registry->functions[registry->count].func = builtins[i].func;
         registry->functions[registry->count].user_data = builtins[i].user_data;
         registry->count++;
@@ -557,6 +583,10 @@ nimcp_error_t nimcp_policy_evaluate_bytecode(
                 nimcp_policy_value_t val = {0};
                 val.type = NIMCP_POLICY_VALUE_STRING;
                 val.string_val = strdup(bc->string_pool[instr.index]);
+                if (!val.string_val) {
+                    error = NIMCP_ERROR_NO_MEMORY;
+                    goto cleanup;
+                }
                 stack_push(stack, val);
                 break;
             }
@@ -744,6 +774,14 @@ nimcp_error_t nimcp_policy_evaluate_bytecode(
                 const char* action_type = bc->string_pool[instr.index];
                 result->message = strdup("");
                 result->rule_name = strdup("");
+                if (!result->message || !result->rule_name) {
+                    free(result->message);
+                    free(result->rule_name);
+                    result->message = NULL;
+                    result->rule_name = NULL;
+                    error = NIMCP_ERROR_NO_MEMORY;
+                    goto cleanup;
+                }
 
                 if (strcmp(action_type, "ALLOW") == 0) {
                     result->action = NIMCP_POLICY_ACTION_ALLOW;

@@ -1399,3 +1399,35 @@ gtest_discover_tests(unit_cognitive_test_social
         LABELS "unit;cognitive;social"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Imagination Engine Tests
+# ============================================================================
+add_executable(unit_cognitive_test_imagination_engine
+    imagination/test_imagination_engine.cpp
+)
+
+target_link_libraries(unit_cognitive_test_imagination_engine
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_imagination_engine
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_imagination_engine PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_imagination_engine
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;imagination"
+        TIMEOUT 180
+)

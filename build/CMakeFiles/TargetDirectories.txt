@@ -127,6 +127,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_global_workspace_test_global_workspace_immune_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_global_workspace_test_global_workspace_shannon.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_grief_test_grief_and_loss.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_imagination_test_imagination_engine.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_jepa_test_jepa_context.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_jepa_test_jepa_latent.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_jepa_test_jepa_masking.dir
@@ -313,10 +314,6 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_algorithms_test_modularity.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_config_test_config.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_config_test_config_callbacks.dir
-/home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_containers_test_btree.dir
-/home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_containers_test_darray.dir
-/home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_containers_test_queue_types.dir
-/home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_containers_test_utils_min_heap.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_numerical_test_utils_vector_math.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_queue_manager_test_queue_manager.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_spatial_test_kdtree_range_search.dir
@@ -623,6 +620,7 @@
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_lnn_pipeline_gpu.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_snn_pipeline_gpu.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_inference_pipeline_gpu.dir
+/home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_visual_processing_gpu.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/gpu/CMakeFiles/rebuild_cache.dir
@@ -1195,6 +1193,7 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_game_theory.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_self_awareness_extended.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_social.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_imagination_engine.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/rebuild_cache.dir
@@ -2025,6 +2024,15 @@
 /home/bbrelin/nimcp/build/test/regression/utils/memory/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/regression/utils/memory/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/regression/utils/memory/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/unit/utils/containers/CMakeFiles/unit_utils_containers_test_darray.dir
+/home/bbrelin/nimcp/build/test/unit/utils/containers/CMakeFiles/unit_utils_containers_test_ring_buffer.dir
+/home/bbrelin/nimcp/build/test/unit/utils/containers/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/unit/utils/containers/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/unit/utils/containers/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/unit/utils/containers/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/unit/utils/containers/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/unit/utils/containers/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/unit/utils/containers/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/utils/containers/CMakeFiles/integration_utils_containers_test_queue_integration.dir
 /home/bbrelin/nimcp/build/test/integration/utils/containers/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/utils/containers/CMakeFiles/edit_cache.dir
@@ -3050,6 +3058,7 @@
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_cnn_backward_gpu.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_swarm_tensor_myelin_gpu.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_graph_gpu.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_occipital_gpu_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/rebuild_cache.dir
@@ -3090,6 +3099,7 @@
 /home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_broca_gpu_integration.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_broca_gpu_kernel_integration.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_substrate_gpu_integration.dir
+/home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_visual_processing_gpu.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_gpu_integration.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_gpu_execution_mode_integration.dir
 /home/bbrelin/nimcp/build/test/integration/gpu/CMakeFiles/integration_gpu_test_gpu_neuron_integration.dir
@@ -3108,6 +3118,7 @@
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_execution_mode_backward_compat.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_broca_gpu_regression.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_substrate_gpu_regression.dir
+/home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_visual_processing_regression.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/rebuild_cache.dir

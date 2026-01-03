@@ -408,6 +408,7 @@ int portia_learning_habituate(portia_learning_state_t* state, uint32_t stimulus_
                 return -1;
             }
             LOG_DEBUG("Evicting habituation entry: stimulus=%u", entry->stimulus_id);
+            state->habituation_evictions++;
         }
 
         // Initialize new entry
@@ -419,9 +420,14 @@ int portia_learning_habituate(portia_learning_state_t* state, uint32_t stimulus_
         entry->recovery_rate = 1.0F - HABITUATION_DECAY_FACTOR;
         entry->is_active = true;
 
+        // Apply initial habituation decay (first exposure causes some habituation)
+        float decrease = state->learning_rate * entry->habituation_rate;
+        entry->response_strength *= (1.0F - decrease);
+
         state->habituation_count++;
 
-        LOG_DEBUG("New habituation entry: stimulus=%u", stimulus_id);
+        LOG_DEBUG("New habituation entry: stimulus=%u, strength=%.3f",
+                 stimulus_id, entry->response_strength);
     }
 
     nimcp_platform_mutex_unlock(state->mutex);
@@ -549,12 +555,13 @@ int portia_learning_associate(portia_learning_state_t* state, uint32_t stimulus_
             }
             LOG_DEBUG("Evicting association entry: stimulus=%u, response=%u",
                      entry->stimulus_id, entry->response_id);
+            state->association_evictions++;
         }
 
         // Initialize new association
         entry->stimulus_id = stimulus_id;
         entry->response_id = response_id;
-        entry->association_strength = state->learning_rate;  // Initial strength
+        entry->association_strength = fminf(1.0f, state->learning_rate);  // Initial strength clamped
         entry->reinforcement_count = 1;
         entry->last_reinforcement_ms = timestamp_ms;
         entry->is_positive = is_positive;
@@ -623,7 +630,8 @@ int portia_learning_reinforce(portia_learning_state_t* state, uint32_t stimulus_
 
     // Apply reinforcement learning
     // Positive reward strengthens, negative weakens
-    float delta = state->learning_rate * reward;
+    // Use reward directly (not scaled by learning_rate) for effective reinforcement
+    float delta = reward;
     entry->association_strength = fmaxf(0.0F, fminf(1.0F,
                                        entry->association_strength + delta));
     entry->reinforcement_count++;
@@ -892,6 +900,8 @@ portia_learning_stats_t portia_learning_get_stats(portia_learning_state_t* state
 
     stats.total_habituation_entries = state->habituation_capacity;
     stats.total_association_entries = state->association_capacity;
+    stats.habituation_evictions = state->habituation_evictions;
+    stats.association_evictions = state->association_evictions;
 
     if (stats.active_habituation_entries > 0) {
         stats.avg_habituation_strength = total_hab_strength / stats.active_habituation_entries;
@@ -932,6 +942,8 @@ int portia_learning_reset(portia_learning_state_t* state) {
 
     state->habituation_count = 0;
     state->association_count = 0;
+    state->habituation_evictions = 0;
+    state->association_evictions = 0;
 
     nimcp_platform_mutex_unlock(state->mutex);
 

@@ -210,6 +210,10 @@ portia_attention_immune_bridge_t* portia_attention_immune_create(
     bridge->preemption_counter = 0;
     bridge->base.bio_async_enabled = false;
 
+    /* Initialize modulation structure to prevent reading uninitialized values */
+    memset(&bridge->attention_modulation, 0, sizeof(bridge->attention_modulation));
+    bridge->attention_modulation.available_resources = 1.0f;  /* Full resources by default */
+
     NIMCP_LOGGING_INFO("Created Portia attention-immune bridge");
     return bridge;
 }

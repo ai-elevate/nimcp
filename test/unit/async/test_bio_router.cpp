@@ -225,8 +225,9 @@ TEST_F(BioRouterTest, UnregisterModule) {
 
     // Unregister
     bio_router_unregister_module(ctx);
+    ctx = nullptr;  // Must set to NULL after unregister - pointer is now invalid
 
-    // Double unregister should be safe
+    // After unregistering, calling with NULL is safe (no-op)
     bio_router_unregister_module(ctx);
 }
 

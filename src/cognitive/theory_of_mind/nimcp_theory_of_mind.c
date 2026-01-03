@@ -446,8 +446,8 @@ theory_of_mind_t tom_create(brain_t self_brain)
     tom->perspective_score = INITIAL_PERSPECTIVE_SCORE;  // Perfect perspective-taking by default
 
     strncpy(tom->current_goal, "Unknown", sizeof(tom->current_goal) - 1);
+    tom->current_goal[sizeof(tom->current_goal) - 1] = '\0';  // Ensure null termination
 
-    
     // Bio-async registration
     tom->bio_ctx = NULL;
     tom->bio_async_enabled = false;

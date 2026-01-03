@@ -1121,6 +1121,19 @@ unit_cognitive_grief_test_grief_and_loss/fast:
 .PHONY : unit_cognitive_grief_test_grief_and_loss/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_imagination_test_imagination_engine
+
+# Build rule for target.
+unit_cognitive_imagination_test_imagination_engine: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_imagination_test_imagination_engine
+.PHONY : unit_cognitive_imagination_test_imagination_engine
+
+# fast build rule for target.
+unit_cognitive_imagination_test_imagination_engine/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_imagination_test_imagination_engine.dir/build.make test/CMakeFiles/unit_cognitive_imagination_test_imagination_engine.dir/build
+.PHONY : unit_cognitive_imagination_test_imagination_engine/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_jepa_test_jepa_context
 
 # Build rule for target.
@@ -3537,58 +3550,6 @@ unit_utils_config_test_config_callbacks: cmake_check_build_system
 unit_utils_config_test_config_callbacks/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_config_test_config_callbacks.dir/build.make test/CMakeFiles/unit_utils_config_test_config_callbacks.dir/build
 .PHONY : unit_utils_config_test_config_callbacks/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_containers_test_btree
-
-# Build rule for target.
-unit_utils_containers_test_btree: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_containers_test_btree
-.PHONY : unit_utils_containers_test_btree
-
-# fast build rule for target.
-unit_utils_containers_test_btree/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_containers_test_btree.dir/build.make test/CMakeFiles/unit_utils_containers_test_btree.dir/build
-.PHONY : unit_utils_containers_test_btree/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_containers_test_darray
-
-# Build rule for target.
-unit_utils_containers_test_darray: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_containers_test_darray
-.PHONY : unit_utils_containers_test_darray
-
-# fast build rule for target.
-unit_utils_containers_test_darray/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_containers_test_darray.dir/build.make test/CMakeFiles/unit_utils_containers_test_darray.dir/build
-.PHONY : unit_utils_containers_test_darray/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_containers_test_queue_types
-
-# Build rule for target.
-unit_utils_containers_test_queue_types: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_containers_test_queue_types
-.PHONY : unit_utils_containers_test_queue_types
-
-# fast build rule for target.
-unit_utils_containers_test_queue_types/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_containers_test_queue_types.dir/build.make test/CMakeFiles/unit_utils_containers_test_queue_types.dir/build
-.PHONY : unit_utils_containers_test_queue_types/fast
-
-#=============================================================================
-# Target rules for targets named unit_utils_containers_test_utils_min_heap
-
-# Build rule for target.
-unit_utils_containers_test_utils_min_heap: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_containers_test_utils_min_heap
-.PHONY : unit_utils_containers_test_utils_min_heap
-
-# fast build rule for target.
-unit_utils_containers_test_utils_min_heap/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_containers_test_utils_min_heap.dir/build.make test/CMakeFiles/unit_utils_containers_test_utils_min_heap.dir/build
-.PHONY : unit_utils_containers_test_utils_min_heap/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_numerical_test_utils_vector_math
@@ -7387,6 +7348,19 @@ e2e_gpu_test_e2e_inference_pipeline_gpu/fast:
 .PHONY : e2e_gpu_test_e2e_inference_pipeline_gpu/fast
 
 #=============================================================================
+# Target rules for targets named e2e_gpu_test_e2e_visual_processing_gpu
+
+# Build rule for target.
+e2e_gpu_test_e2e_visual_processing_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_gpu_test_e2e_visual_processing_gpu
+.PHONY : e2e_gpu_test_e2e_visual_processing_gpu
+
+# fast build rule for target.
+e2e_gpu_test_e2e_visual_processing_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_visual_processing_gpu.dir/build.make test/e2e/gpu/CMakeFiles/e2e_gpu_test_e2e_visual_processing_gpu.dir/build
+.PHONY : e2e_gpu_test_e2e_visual_processing_gpu/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_ternary_neural_network
 
 # Build rule for target.
@@ -10544,6 +10518,19 @@ unit_cognitive_test_social: cmake_check_build_system
 unit_cognitive_test_social/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_social.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_social.dir/build
 .PHONY : unit_cognitive_test_social/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_imagination_engine
+
+# Build rule for target.
+unit_cognitive_test_imagination_engine: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_imagination_engine
+.PHONY : unit_cognitive_test_imagination_engine
+
+# fast build rule for target.
+unit_cognitive_test_imagination_engine/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_imagination_engine.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_imagination_engine.dir/build
+.PHONY : unit_cognitive_test_imagination_engine/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
@@ -14145,6 +14132,32 @@ regression_utils_memory_test_unified_memory_regression: cmake_check_build_system
 regression_utils_memory_test_unified_memory_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/utils/memory/CMakeFiles/regression_utils_memory_test_unified_memory_regression.dir/build.make test/regression/utils/memory/CMakeFiles/regression_utils_memory_test_unified_memory_regression.dir/build
 .PHONY : regression_utils_memory_test_unified_memory_regression/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_containers_test_darray
+
+# Build rule for target.
+unit_utils_containers_test_darray: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_containers_test_darray
+.PHONY : unit_utils_containers_test_darray
+
+# fast build rule for target.
+unit_utils_containers_test_darray/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/containers/CMakeFiles/unit_utils_containers_test_darray.dir/build.make test/unit/utils/containers/CMakeFiles/unit_utils_containers_test_darray.dir/build
+.PHONY : unit_utils_containers_test_darray/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_containers_test_ring_buffer
+
+# Build rule for target.
+unit_utils_containers_test_ring_buffer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_containers_test_ring_buffer
+.PHONY : unit_utils_containers_test_ring_buffer
+
+# fast build rule for target.
+unit_utils_containers_test_ring_buffer/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/containers/CMakeFiles/unit_utils_containers_test_ring_buffer.dir/build.make test/unit/utils/containers/CMakeFiles/unit_utils_containers_test_ring_buffer.dir/build
+.PHONY : unit_utils_containers_test_ring_buffer/fast
 
 #=============================================================================
 # Target rules for targets named integration_utils_containers_test_queue_integration
@@ -19373,6 +19386,19 @@ unit_gpu_test_graph_gpu/fast:
 .PHONY : unit_gpu_test_graph_gpu/fast
 
 #=============================================================================
+# Target rules for targets named unit_gpu_test_occipital_gpu_bridge
+
+# Build rule for target.
+unit_gpu_test_occipital_gpu_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_occipital_gpu_bridge
+.PHONY : unit_gpu_test_occipital_gpu_bridge
+
+# fast build rule for target.
+unit_gpu_test_occipital_gpu_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_occipital_gpu_bridge.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_occipital_gpu_bridge.dir/build
+.PHONY : unit_gpu_test_occipital_gpu_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_gpu_immune_execution
 
 # Build rule for target.
@@ -19529,6 +19555,19 @@ integration_gpu_test_substrate_gpu_integration/fast:
 .PHONY : integration_gpu_test_substrate_gpu_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_gpu_test_visual_processing_gpu
+
+# Build rule for target.
+integration_gpu_test_visual_processing_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_gpu_test_visual_processing_gpu
+.PHONY : integration_gpu_test_visual_processing_gpu
+
+# fast build rule for target.
+integration_gpu_test_visual_processing_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/gpu/CMakeFiles/integration_gpu_test_visual_processing_gpu.dir/build.make test/integration/gpu/CMakeFiles/integration_gpu_test_visual_processing_gpu.dir/build
+.PHONY : integration_gpu_test_visual_processing_gpu/fast
+
+#=============================================================================
 # Target rules for targets named integration_gpu_test_gpu_integration
 
 # Build rule for target.
@@ -19670,6 +19709,19 @@ regression_gpu_test_substrate_gpu_regression: cmake_check_build_system
 regression_gpu_test_substrate_gpu_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_substrate_gpu_regression.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_substrate_gpu_regression.dir/build
 .PHONY : regression_gpu_test_substrate_gpu_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_gpu_test_visual_processing_regression
+
+# Build rule for target.
+regression_gpu_test_visual_processing_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_gpu_test_visual_processing_regression
+.PHONY : regression_gpu_test_visual_processing_regression
+
+# fast build rule for target.
+regression_gpu_test_visual_processing_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/gpu/CMakeFiles/regression_gpu_test_visual_processing_regression.dir/build.make test/regression/gpu/CMakeFiles/regression_gpu_test_visual_processing_regression.dir/build
+.PHONY : regression_gpu_test_visual_processing_regression/fast
 
 #=============================================================================
 # Target rules for targets named unit_lnn_test_lnn_config
@@ -21730,6 +21782,7 @@ help:
 	@echo "... e2e_gpu_test_e2e_snn_pipeline_gpu"
 	@echo "... e2e_gpu_test_e2e_stress_test_gpu"
 	@echo "... e2e_gpu_test_e2e_swarm_simulation_gpu"
+	@echo "... e2e_gpu_test_e2e_visual_processing_gpu"
 	@echo "... e2e_test_amygdala_pipeline"
 	@echo "... e2e_test_asymmetric_swarm"
 	@echo "... e2e_test_auditory_pipeline"
@@ -21951,6 +22004,7 @@ help:
 	@echo "... integration_gpu_test_logic_gpu"
 	@echo "... integration_gpu_test_mixed_precision"
 	@echo "... integration_gpu_test_substrate_gpu_integration"
+	@echo "... integration_gpu_test_visual_processing_gpu"
 	@echo "... integration_information_test_quantum_shannon_integration"
 	@echo "... integration_information_test_shannon_integration"
 	@echo "... integration_io_test_io_integration"
@@ -22195,6 +22249,7 @@ help:
 	@echo "... regression_gpu_test_gpu_spike_event_backward_compat"
 	@echo "... regression_gpu_test_multigpu_regression"
 	@echo "... regression_gpu_test_substrate_gpu_regression"
+	@echo "... regression_gpu_test_visual_processing_regression"
 	@echo "... regression_information_test_quantum_shannon_backward_compat"
 	@echo "... regression_information_test_shannon_backward_compat"
 	@echo "... regression_io_test_dataio_regression"
@@ -22623,6 +22678,7 @@ help:
 	@echo "... unit_cognitive_global_workspace_test_global_workspace_immune_integration"
 	@echo "... unit_cognitive_global_workspace_test_global_workspace_shannon"
 	@echo "... unit_cognitive_grief_test_grief_and_loss"
+	@echo "... unit_cognitive_imagination_test_imagination_engine"
 	@echo "... unit_cognitive_immune_attention_bridge"
 	@echo "... unit_cognitive_immune_brain_immune"
 	@echo "... unit_cognitive_immune_bridge_coordinator"
@@ -22722,6 +22778,7 @@ help:
 	@echo "... unit_cognitive_test_gt_repeated"
 	@echo "... unit_cognitive_test_gt_spatial"
 	@echo "... unit_cognitive_test_hyperscanning"
+	@echo "... unit_cognitive_test_imagination_engine"
 	@echo "... unit_cognitive_test_jepa_context"
 	@echo "... unit_cognitive_test_jepa_predictor"
 	@echo "... unit_cognitive_test_meta_controller"
@@ -22974,6 +23031,7 @@ help:
 	@echo "... unit_gpu_test_myelin_gpu"
 	@echo "... unit_gpu_test_network_detect"
 	@echo "... unit_gpu_test_neuromodulator_kernels"
+	@echo "... unit_gpu_test_occipital_gpu_bridge"
 	@echo "... unit_gpu_test_oscillations_kernels"
 	@echo "... unit_gpu_test_perception_gpu"
 	@echo "... unit_gpu_test_plasticity_kernels"
@@ -23249,10 +23307,8 @@ help:
 	@echo "... unit_utils_algorithms_test_modularity"
 	@echo "... unit_utils_config_test_config"
 	@echo "... unit_utils_config_test_config_callbacks"
-	@echo "... unit_utils_containers_test_btree"
 	@echo "... unit_utils_containers_test_darray"
-	@echo "... unit_utils_containers_test_queue_types"
-	@echo "... unit_utils_containers_test_utils_min_heap"
+	@echo "... unit_utils_containers_test_ring_buffer"
 	@echo "... unit_utils_encoding_test_positional_encoding"
 	@echo "... unit_utils_fault_tolerance_test_async_checkpoint"
 	@echo "... unit_utils_fault_tolerance_test_byzantine_fault_tolerance"

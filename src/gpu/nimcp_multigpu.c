@@ -568,8 +568,13 @@ static bool partition_by_layer(multigpu_context_t ctx)
         dev->num_assigned_layers = layers_for_this_gpu;
         dev->assigned_layers = (uint32_t*)nimcp_malloc(layers_for_this_gpu * sizeof(uint32_t));
 
-        // Guard: Allocation failed
+        // Guard: Allocation failed - clean up previously allocated arrays
         if (!dev->assigned_layers) {
+            for (uint32_t j = 0; j < dev_idx; j++) {
+                nimcp_free(ctx->devices[j].assigned_layers);
+                ctx->devices[j].assigned_layers = NULL;
+                ctx->devices[j].num_assigned_layers = 0;
+            }
             return false;
         }
 
@@ -600,8 +605,13 @@ static bool partition_by_neuron(multigpu_context_t ctx)
         dev->num_assigned_layers = ctx->num_layers;
         dev->assigned_layers = (uint32_t*)nimcp_malloc(ctx->num_layers * sizeof(uint32_t));
 
-        // Guard: Allocation failed
+        // Guard: Allocation failed - clean up previously allocated arrays
         if (!dev->assigned_layers) {
+            for (uint32_t j = 0; j < dev_idx; j++) {
+                nimcp_free(ctx->devices[j].assigned_layers);
+                ctx->devices[j].assigned_layers = NULL;
+                ctx->devices[j].num_assigned_layers = 0;
+            }
             return false;
         }
 

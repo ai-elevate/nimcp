@@ -149,6 +149,10 @@ static napi_value Forward(napi_env env, napi_callback_info info) {
 
     // Allocate and fill input array
     float* inputs = (float*)malloc(num_inputs * sizeof(float));
+    if (!inputs) {
+        napi_throw_error(env, NULL, "Failed to allocate memory for inputs");
+        return NULL;
+    }
     for (uint32_t i = 0; i < num_inputs; i++) {
         napi_value element;
         napi_get_element(env, args[0], i, &element);
@@ -160,6 +164,11 @@ static napi_value Forward(napi_env env, napi_callback_info info) {
     // Allocate output array (assume same size as input for now)
     uint32_t num_outputs = num_inputs;  // TODO: get actual output size from network
     float* outputs = (float*)malloc(num_outputs * sizeof(float));
+    if (!outputs) {
+        free(inputs);
+        napi_throw_error(env, NULL, "Failed to allocate memory for outputs");
+        return NULL;
+    }
 
     // Forward pass using unified API
     nimcp_status_t result = nimcp_network_forward(wrap->network, inputs, num_inputs, outputs, num_outputs);
@@ -216,6 +225,11 @@ static napi_value CreateMetricsCollector(napi_env env, napi_callback_info info) 
                 size_t str_len;
                 napi_get_value_string_utf8(env, directory_val, NULL, 0, &str_len);
                 char* directory = (char*)malloc(str_len + 1);
+                if (!directory) {
+                    nimcp_metrics_destroy(collector);
+                    napi_throw_error(env, NULL, "Failed to allocate memory for directory");
+                    return NULL;
+                }
                 napi_get_value_string_utf8(env, directory_val, directory, str_len + 1, &str_len);
                 nimcp_metrics_set_directory(collector, directory);
                 free(directory);
@@ -263,6 +277,10 @@ static napi_value RecordCounter(napi_env env, napi_callback_info info) {
     size_t str_len;
     napi_get_value_string_utf8(env, args[0], NULL, 0, &str_len);
     char* name = (char*)malloc(str_len + 1);
+    if (!name) {
+        napi_throw_error(env, NULL, "Failed to allocate memory for name");
+        return NULL;
+    }
     napi_get_value_string_utf8(env, args[0], name, str_len + 1, &str_len);
 
     // Get value
@@ -310,6 +328,10 @@ static napi_value RecordGauge(napi_env env, napi_callback_info info) {
     size_t str_len;
     napi_get_value_string_utf8(env, args[0], NULL, 0, &str_len);
     char* name = (char*)malloc(str_len + 1);
+    if (!name) {
+        napi_throw_error(env, NULL, "Failed to allocate memory for name");
+        return NULL;
+    }
     napi_get_value_string_utf8(env, args[0], name, str_len + 1, &str_len);
 
     // Get value
@@ -357,6 +379,10 @@ static napi_value RecordTimer(napi_env env, napi_callback_info info) {
     size_t str_len;
     napi_get_value_string_utf8(env, args[0], NULL, 0, &str_len);
     char* name = (char*)malloc(str_len + 1);
+    if (!name) {
+        napi_throw_error(env, NULL, "Failed to allocate memory for name");
+        return NULL;
+    }
     napi_get_value_string_utf8(env, args[0], name, str_len + 1, &str_len);
 
     // Get duration
@@ -431,6 +457,10 @@ static napi_value ExportTableauCsv(napi_env env, napi_callback_info info) {
     size_t str_len;
     napi_get_value_string_utf8(env, args[0], NULL, 0, &str_len);
     char* filename = (char*)malloc(str_len + 1);
+    if (!filename) {
+        napi_throw_error(env, NULL, "Failed to allocate memory for filename");
+        return NULL;
+    }
     napi_get_value_string_utf8(env, args[0], filename, str_len + 1, &str_len);
 
     bool success = nimcp_metrics_export_tableau_csv(wrap->collector, filename);
@@ -466,6 +496,10 @@ static napi_value ExportPowerBiJson(napi_env env, napi_callback_info info) {
     size_t str_len;
     napi_get_value_string_utf8(env, args[0], NULL, 0, &str_len);
     char* filename = (char*)malloc(str_len + 1);
+    if (!filename) {
+        napi_throw_error(env, NULL, "Failed to allocate memory for filename");
+        return NULL;
+    }
     napi_get_value_string_utf8(env, args[0], filename, str_len + 1, &str_len);
 
     bool success = nimcp_metrics_export_powerbi_json(wrap->collector, filename);

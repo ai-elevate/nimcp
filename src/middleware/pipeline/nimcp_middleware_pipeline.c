@@ -259,24 +259,42 @@ bool middleware_pipeline_get_stats(middleware_pipeline_t pipeline,
     stats->failed_executions = pipeline->failed_executions;
     stats->num_stages = pipeline->num_stages;
 
-    // Allocate arrays
+    // Allocate arrays with proper cleanup on failure
     stats->stage_execution_counts = nimcp_malloc(pipeline->num_stages * sizeof(uint64_t));
+    if (!stats->stage_execution_counts) {
+        nimcp_platform_mutex_unlock(&pipeline->mutex);
+        return false;
+    }
+
     stats->stage_total_time_us = nimcp_malloc(pipeline->num_stages * sizeof(uint64_t));
+    if (!stats->stage_total_time_us) {
+        nimcp_free(stats->stage_execution_counts);
+        stats->stage_execution_counts = NULL;
+        nimcp_platform_mutex_unlock(&pipeline->mutex);
+        return false;
+    }
+
     stats->stage_avg_time_us = nimcp_malloc(pipeline->num_stages * sizeof(float));
+    if (!stats->stage_avg_time_us) {
+        nimcp_free(stats->stage_execution_counts);
+        nimcp_free(stats->stage_total_time_us);
+        stats->stage_execution_counts = NULL;
+        stats->stage_total_time_us = NULL;
+        nimcp_platform_mutex_unlock(&pipeline->mutex);
+        return false;
+    }
 
-    if (stats->stage_execution_counts && stats->stage_total_time_us && stats->stage_avg_time_us) {
-        memcpy(stats->stage_execution_counts, pipeline->stage_execution_counts,
-               pipeline->num_stages * sizeof(uint64_t));
-        memcpy(stats->stage_total_time_us, pipeline->stage_total_time_us,
-               pipeline->num_stages * sizeof(uint64_t));
+    memcpy(stats->stage_execution_counts, pipeline->stage_execution_counts,
+           pipeline->num_stages * sizeof(uint64_t));
+    memcpy(stats->stage_total_time_us, pipeline->stage_total_time_us,
+           pipeline->num_stages * sizeof(uint64_t));
 
-        for (uint32_t i = 0; i < pipeline->num_stages; i++) {
-            if (pipeline->stage_execution_counts[i] > 0) {
-                stats->stage_avg_time_us[i] = (float)pipeline->stage_total_time_us[i] /
-                                             pipeline->stage_execution_counts[i];
-            } else {
-                stats->stage_avg_time_us[i] = 0.0F;
-            }
+    for (uint32_t i = 0; i < pipeline->num_stages; i++) {
+        if (pipeline->stage_execution_counts[i] > 0) {
+            stats->stage_avg_time_us[i] = (float)pipeline->stage_total_time_us[i] /
+                                         pipeline->stage_execution_counts[i];
+        } else {
+            stats->stage_avg_time_us[i] = 0.0F;
         }
     }
 
