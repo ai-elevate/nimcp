@@ -743,8 +743,21 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
         mirror->bio_ctx = bio_router_register_module(&bio_info);
         if (mirror->bio_ctx) {
             mirror->bio_async_enabled = true;
-            // Register message handlers
-            bio_router_register_handler(mirror->bio_ctx, BIO_MSG_MIRROR_NEURON_ACTIVATION, handle_mirror_activation);
+
+            /* Register handlers via KG-driven wiring callback */
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_MIRROR_NEURONS,
+                (void*)mirror_neurons_wiring_handler_callback,
+                mirror
+            );
+
+            if (wiring_result != NIMCP_SUCCESS) {
+                /* Legacy fallback: direct handler registration */
+                MIRROR_LOG_INFO("mirror_neurons: KG wiring unavailable, using legacy registration");
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(mirror->bio_ctx, BIO_MSG_MIRROR_NEURON_ACTIVATION, handle_mirror_activation));
+            }
+
             MIRROR_LOG_INFO("mirror_neurons: Bio-async communication enabled with handlers (module_id=%d)",
                            BIO_MODULE_MIRROR_NEURONS);
         } else {

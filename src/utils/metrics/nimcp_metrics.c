@@ -935,15 +935,26 @@ bool nimcp_metrics_register_bio_async(nimcp_metrics_collector_t collector) {
         }
     }
 
-    // Register handler for brain probe messages
-    nimcp_error_t err = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
-        g_metrics_module_ctx,
-        BIO_MSG_BRAIN_PROBE_DATA,
-        metrics_handle_brain_probe
-    ));
+    // Try KG-driven wiring callback registration first
+    nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+        BIO_MODULE_METRICS,
+        (void*)metrics_handler_callback,
+        collector
+    );
 
-    if (err != NIMCP_SUCCESS) {
-        return false;
+    if (wiring_result == NIMCP_SUCCESS) {
+        // KG-driven wiring registered successfully
+    } else {
+        // Legacy fallback - register handler directly
+        nimcp_error_t err = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
+            g_metrics_module_ctx,
+            BIO_MSG_BRAIN_PROBE_DATA,
+            metrics_handle_brain_probe
+        ));
+
+        if (err != NIMCP_SUCCESS) {
+            return false;
+        }
     }
 
     return true;

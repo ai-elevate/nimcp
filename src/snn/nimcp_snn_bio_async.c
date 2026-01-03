@@ -246,18 +246,28 @@ int snn_bio_async_connect(snn_network_t* network, uint16_t module_id) {
         return SNN_ERROR_OPERATION_FAILED;
     }
 
-    /* Register category handler */
-    nimcp_error_t err = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
-        ctx->bio_module,
-        0,
-        snn_bio_router_handler
-    ));
+    /* Register handlers via KG-driven wiring callback */
+    nimcp_error_t err = bio_router_register_wiring_callback(
+        module_id,
+        (void*)snn_bio_async_handler_callback,
+        network
+    );
 
     if (err != NIMCP_SUCCESS) {
-        NIMCP_LOGGING_ERROR("SNN bio-async: failed to register handler");
-        bio_router_unregister_module(ctx->bio_module);
-        destroy_bio_ctx(ctx);
-        return err;
+        /* Legacy fallback: direct handler registration */
+        NIMCP_LOGGING_DEBUG("SNN bio-async: KG wiring unavailable, using legacy registration");
+        err = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
+            ctx->bio_module,
+            0,
+            snn_bio_router_handler
+        ));
+
+        if (err != NIMCP_SUCCESS) {
+            NIMCP_LOGGING_ERROR("SNN bio-async: failed to register handler");
+            bio_router_unregister_module(ctx->bio_module);
+            destroy_bio_ctx(ctx);
+            return err;
+        }
     }
 
     ctx->module_id = module_id;

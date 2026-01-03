@@ -480,13 +480,26 @@ nimcp_result_t emotion_tensor_bridge_register_bioasync(
         return NIMCP_ERROR_INVALID;
     }
 
-    /* Register handlers for emotion tensor messages */
-    bio_router_register_handler(bridge->module_ctx,
-        BIO_MSG_EMOTION_TENSOR_QUERY, bridge_message_handler);
-    bio_router_register_handler(bridge->module_ctx,
-        BIO_MSG_EMOTION_TENSOR_STIMULUS, bridge_message_handler);
-    bio_router_register_handler(bridge->module_ctx,
-        BIO_MSG_EMOTION_SWARM_SYNC, bridge_message_handler);
+    /* Register handlers via KG-driven wiring callback */
+    nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+        BIO_MODULE_EMOTION_TENSOR_BRIDGE,
+        (void*)emotion_tensor_bridge_wiring_handler_callback,
+        bridge
+    );
+
+    if (wiring_result != NIMCP_SUCCESS) {
+        /* Legacy fallback: direct handler registration */
+        BRIDGE_LOG_DEBUG("KG wiring unavailable, using legacy registration");
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(bridge->module_ctx,
+                BIO_MSG_EMOTION_TENSOR_QUERY, bridge_message_handler));
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(bridge->module_ctx,
+                BIO_MSG_EMOTION_TENSOR_STIMULUS, bridge_message_handler));
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(bridge->module_ctx,
+                BIO_MSG_EMOTION_SWARM_SYNC, bridge_message_handler));
+    }
 
     bridge->bioasync_registered = true;
     BRIDGE_LOG_INFO("Registered with bio-async router");

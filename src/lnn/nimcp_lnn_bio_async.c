@@ -268,19 +268,28 @@ int lnn_bio_async_connect(lnn_network_t* network, uint16_t module_id) {
         return LNN_ERROR_OPERATION_FAILED;
     }
 
-    /* Register category handler for all LNN messages */
-    /* Note: Assuming LNN messages are in a specific range - adjust if needed */
-    nimcp_error_t err = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
-        ctx->bio_module,
-        0,  /* Message type 0 - we'll handle routing internally */
-        lnn_bio_router_handler
-    ));
+    /* Register handlers via KG-driven wiring callback */
+    nimcp_error_t err = bio_router_register_wiring_callback(
+        module_id,
+        (void*)lnn_bio_async_handler_callback,
+        network
+    );
 
     if (err != NIMCP_SUCCESS) {
-        NIMCP_LOGGING_ERROR("LNN bio-async: failed to register handler");
-        bio_router_unregister_module(ctx->bio_module);
-        destroy_bio_ctx(ctx);
-        return err;
+        /* Legacy fallback: direct handler registration */
+        NIMCP_LOGGING_DEBUG("LNN bio-async: KG wiring unavailable, using legacy registration");
+        err = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
+            ctx->bio_module,
+            0,  /* Message type 0 - we'll handle routing internally */
+            lnn_bio_router_handler
+        ));
+
+        if (err != NIMCP_SUCCESS) {
+            NIMCP_LOGGING_ERROR("LNN bio-async: failed to register handler");
+            bio_router_unregister_module(ctx->bio_module);
+            destroy_bio_ctx(ctx);
+            return err;
+        }
     }
 
     /* Update context */

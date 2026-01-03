@@ -843,10 +843,23 @@ consolidation_handle_t brain_start_background_consolidation(brain_t brain,
         handle->bio_ctx = bio_router_register_module(&bio_info);
         if (handle->bio_ctx) {
             handle->bio_async_enabled = true;
-            // Register message handlers
-            bio_router_register_handler(handle->bio_ctx, BIO_MSG_CONSOLIDATION_TRIGGER, handle_consolidation_trigger);
-            NIMCP_LOGGING_INFO("consolidation: Bio-async communication enabled with handlers (module_id=%d)",
-                              BIO_MODULE_CONSOLIDATION);
+
+            // Try KG-driven wiring callback registration first
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_CONSOLIDATION,
+                (void*)consolidation_wiring_handler_callback,
+                handle
+            );
+
+            if (wiring_result == NIMCP_SUCCESS) {
+                NIMCP_LOGGING_INFO("consolidation: KG-driven wiring callback registered");
+            } else {
+                // Legacy fallback
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(handle->bio_ctx, BIO_MSG_CONSOLIDATION_TRIGGER, handle_consolidation_trigger)
+                );
+                NIMCP_LOGGING_INFO("consolidation: legacy handler registration");
+            }
         } else {
             NIMCP_LOGGING_WARN("consolidation: Bio-async registration failed - module will operate without async messaging");
         }

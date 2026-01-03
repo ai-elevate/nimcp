@@ -679,56 +679,66 @@ static nimcp_error_t register_bio_async_handlers(
         return NIMCP_NOT_INITIALIZED;
     }
 
-    nimcp_error_t result;
+    /* Register handlers via KG-driven wiring callback */
+    nimcp_error_t result = bio_router_register_wiring_callback(
+        BIO_MODULE_SWARM_COORDINATOR,
+        (void*)multi_swarm_handler_callback,
+        coordinator
+    );
 
-    /* Register handler for swarm discovery */
-    result = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
-        g_multi_swarm_ctx,
-        (bio_message_type_t)MSG_TYPE_SWARM_DISCOVERY,
-        handle_swarm_discovery
-    ));
     if (result != NIMCP_SUCCESS) {
-        LOG_WARN("Failed to register swarm discovery handler: %d", result);
-    }
+        /* Legacy fallback: direct handler registration */
+        LOG_DEBUG("KG wiring unavailable, using legacy registration");
 
-    /* Register handler for resource requests */
-    result = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
-        g_multi_swarm_ctx,
-        (bio_message_type_t)MSG_TYPE_RESOURCE_REQUEST,
-        handle_resource_request
-    ));
-    if (result != NIMCP_SUCCESS) {
-        LOG_WARN("Failed to register resource request handler: %d", result);
-    }
+        /* Register handler for swarm discovery */
+        result = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
+            g_multi_swarm_ctx,
+            (bio_message_type_t)MSG_TYPE_SWARM_DISCOVERY,
+            handle_swarm_discovery
+        ));
+        if (result != NIMCP_SUCCESS) {
+            LOG_WARN("Failed to register swarm discovery handler: %d", result);
+        }
 
-    /* Register handler for territory negotiations */
-    result = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
-        g_multi_swarm_ctx,
-        (bio_message_type_t)MSG_TYPE_TERRITORY_NEGOTIATE,
-        handle_territory_negotiate
-    ));
-    if (result != NIMCP_SUCCESS) {
-        LOG_WARN("Failed to register territory negotiate handler: %d", result);
-    }
+        /* Register handler for resource requests */
+        result = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
+            g_multi_swarm_ctx,
+            (bio_message_type_t)MSG_TYPE_RESOURCE_REQUEST,
+            handle_resource_request
+        ));
+        if (result != NIMCP_SUCCESS) {
+            LOG_WARN("Failed to register resource request handler: %d", result);
+        }
 
-    /* Register handler for mission updates */
-    result = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
-        g_multi_swarm_ctx,
-        (bio_message_type_t)MSG_TYPE_MISSION_UPDATE,
-        handle_mission_update
-    ));
-    if (result != NIMCP_SUCCESS) {
-        LOG_WARN("Failed to register mission update handler: %d", result);
-    }
+        /* Register handler for territory negotiations */
+        result = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
+            g_multi_swarm_ctx,
+            (bio_message_type_t)MSG_TYPE_TERRITORY_NEGOTIATE,
+            handle_territory_negotiate
+        ));
+        if (result != NIMCP_SUCCESS) {
+            LOG_WARN("Failed to register territory negotiate handler: %d", result);
+        }
 
-    /* Register handler for conflict alerts */
-    result = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
-        g_multi_swarm_ctx,
-        (bio_message_type_t)MSG_TYPE_CONFLICT_ALERT,
-        handle_conflict_alert
-    ));
-    if (result != NIMCP_SUCCESS) {
-        LOG_WARN("Failed to register conflict alert handler: %d", result);
+        /* Register handler for mission updates */
+        result = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
+            g_multi_swarm_ctx,
+            (bio_message_type_t)MSG_TYPE_MISSION_UPDATE,
+            handle_mission_update
+        ));
+        if (result != NIMCP_SUCCESS) {
+            LOG_WARN("Failed to register mission update handler: %d", result);
+        }
+
+        /* Register handler for conflict alerts */
+        result = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
+            g_multi_swarm_ctx,
+            (bio_message_type_t)MSG_TYPE_CONFLICT_ALERT,
+            handle_conflict_alert
+        ));
+        if (result != NIMCP_SUCCESS) {
+            LOG_WARN("Failed to register conflict alert handler: %d", result);
+        }
     }
 
     LOG_INFO("Registered bio-async handlers for multi-swarm coordinator");

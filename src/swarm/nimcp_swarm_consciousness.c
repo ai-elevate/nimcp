@@ -1670,26 +1670,36 @@ int swarm_consciousness_register_imagination_handler(
             }
         }
 
-        // Register handler for imagination collective messages
-        nimcp_error_t err = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
-            ctx->bio_module_ctx,
-            BIO_MSG_IMAGINATION_COLLECTIVE_SHARE,
-            imagination_collective_handler));
+        /* Register handlers via KG-driven wiring callback */
+        nimcp_error_t err = bio_router_register_wiring_callback(
+            BIO_MODULE_SWARM_CONSCIOUSNESS,
+            (void*)swarm_consciousness_handler_callback,
+            ctx
+        );
 
-        if (err == NIMCP_SUCCESS) {
-            ctx->imagination_handler_registered = true;
-            LOG_INFO("Registered imagination collective handler");
-        } else {
-            LOG_WARN("Failed to register imagination handler: error=%d", err);
-            pthread_mutex_unlock(&ctx->lock);
-            return -1;
+        if (err != NIMCP_SUCCESS) {
+            /* Legacy fallback: direct handler registration */
+            LOG_DEBUG("KG wiring unavailable, using legacy registration");
+            err = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
+                ctx->bio_module_ctx,
+                BIO_MSG_IMAGINATION_COLLECTIVE_SHARE,
+                imagination_collective_handler));
+
+            if (err != NIMCP_SUCCESS) {
+                LOG_WARN("Failed to register imagination handler: error=%d", err);
+                pthread_mutex_unlock(&ctx->lock);
+                return -1;
+            }
+
+            // Also register for collective insight messages
+            LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
+                ctx->bio_module_ctx,
+                BIO_MSG_IMAGINATION_COLLECTIVE_INSIGHT,
+                imagination_collective_handler));
         }
 
-        // Also register for collective insight messages
-        LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
-            ctx->bio_module_ctx,
-            BIO_MSG_IMAGINATION_COLLECTIVE_INSIGHT,
-            imagination_collective_handler));
+        ctx->imagination_handler_registered = true;
+        LOG_INFO("Registered imagination collective handler");
     }
 
     pthread_mutex_unlock(&ctx->lock);

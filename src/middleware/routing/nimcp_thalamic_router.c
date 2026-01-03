@@ -1185,15 +1185,26 @@ bool thalamic_router_register_imagination_handler(thalamic_router_t* router) {
         return false;
     }
 
-    nimcp_error_t result = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
-        router->bio_ctx,
-        BIO_MSG_IMAGINATION_ATTENTION_GATE,
-        imagination_attention_handler
-    ));
+    /* Register handlers via KG-driven wiring callback */
+    nimcp_error_t result = bio_router_register_wiring_callback(
+        BIO_MODULE_SIGNAL_ROUTER,
+        (void*)thalamic_router_handler_callback,
+        router
+    );
 
     if (result != NIMCP_SUCCESS) {
-        LOG_ERROR(LOG_MODULE, "Failed to register imagination attention handler");
-        return false;
+        /* Legacy fallback: direct handler registration */
+        LOG_DEBUG(LOG_MODULE, "KG wiring unavailable, using legacy registration");
+        result = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
+            router->bio_ctx,
+            BIO_MSG_IMAGINATION_ATTENTION_GATE,
+            imagination_attention_handler
+        ));
+
+        if (result != NIMCP_SUCCESS) {
+            LOG_ERROR(LOG_MODULE, "Failed to register imagination attention handler");
+            return false;
+        }
     }
 
     LOG_INFO(LOG_MODULE, "Registered imagination attention gating handler");

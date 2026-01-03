@@ -961,13 +961,25 @@ nimcp_optimizer_context_t* nimcp_optimizer_create(
         ctx->bio_ctx = bio_router_register_module(&bio_info);
         if (ctx->bio_ctx) {
             ctx->bio_async_enabled = true;
-            /* Register message handlers */
-            LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(ctx->bio_ctx,
-                                       BIO_MSG_TRAINING_STEP_REQUEST,
-                                       handle_optimizer_step_request));
-            LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(ctx->bio_ctx,
-                                       BIO_MSG_GRADIENT_COMPUTED,
-                                       handle_gradient_computed));
+
+            /* Register handlers via KG-driven wiring callback */
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_TRAINING_OPTIMIZER,
+                (void*)optimizer_handler_callback,
+                ctx
+            );
+
+            if (wiring_result != NIMCP_SUCCESS) {
+                /* Legacy fallback: direct handler registration */
+                nimcp_log(LOG_LEVEL_DEBUG, "[%s] KG wiring unavailable, using legacy registration", LOG_MODULE);
+                LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(ctx->bio_ctx,
+                                           BIO_MSG_TRAINING_STEP_REQUEST,
+                                           handle_optimizer_step_request));
+                LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(ctx->bio_ctx,
+                                           BIO_MSG_GRADIENT_COMPUTED,
+                                           handle_gradient_computed));
+            }
+
             nimcp_log(LOG_LEVEL_INFO, "[%s] Bio-async integration enabled for optimizer type=%s",
                      LOG_MODULE, nimcp_optimizer_type_name(config->type));
         } else {
