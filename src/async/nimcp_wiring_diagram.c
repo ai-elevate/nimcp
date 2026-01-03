@@ -12,6 +12,7 @@
  */
 
 #include "async/nimcp_wiring_diagram.h"
+#include "core/brain/nimcp_brain_kg.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
@@ -1788,38 +1789,144 @@ static void auto_persist_if_enabled(wiring_diagram_t* wd) {
 }
 
 /* ============================================================================
- * Brain KG Integration Implementation (Stub)
+ * Brain KG Integration Implementation (Phase 8)
  * ============================================================================ */
 
 /**
- * @brief Sync wiring diagram to brain_kg
+ * @brief Sync wiring diagram handlers to brain_kg message index
  *
- * WHAT: Create/update brain_kg nodes and edges from wiring diagram
- * WHY:  Enable runtime topology queries via brain_kg
- * HOW:  Stub implementation - requires brain_kg integration
+ * WHAT: Register all wiring diagram message handlers with brain_kg
+ * WHY:  Enable KG-driven message dispatch (BIO_MODULE_KG_DISPATCH)
+ * HOW:  Iterate modules, call brain_kg_add_message_handler for each handler
+ *
+ * @param wd Wiring diagram source
+ * @param kg Brain KG to sync to
+ * @return Number of handlers synced, or -1 on error
  */
 int wiring_diagram_sync_to_brain_kg(wiring_diagram_t* wd, brain_kg_t* kg) {
     if (!wd || !kg) return -1;
 
-    /* TODO: Implement brain_kg sync */
-    /* This requires the brain_kg API which is not directly accessible here */
-    NIMCP_LOGGING_DEBUG("wiring_diagram_sync_to_brain_kg: stub implementation");
+    int handlers_synced = 0;
 
-    return 0;
+    /* Lock wiring diagram for thread-safe iteration */
+    if (wd->mutex) {
+        nimcp_platform_mutex_lock(wd->mutex);
+    }
+
+    /* Iterate all modules in the wiring diagram */
+    for (uint32_t i = 0; i < wd->module_count; i++) {
+        wiring_module_config_t* module = wd->module_configs[i];
+        if (!module || !module->enabled) {
+            continue;
+        }
+
+        /* Register each message handler for this module */
+        for (uint32_t j = 0; j < module->handles_message_count; j++) {
+            bio_message_type_t msg_type = module->handles_messages[j];
+
+            /* Use module_id as the handler ID (bio_module_id_t is compatible
+             * with brain_kg_node_id_t for message dispatch purposes) */
+            int result = brain_kg_add_message_handler(kg,
+                (brain_kg_node_id_t)module->module_id, msg_type);
+
+            if (result == 0) {
+                handlers_synced++;
+                NIMCP_LOGGING_DEBUG("wiring_diagram_sync_to_brain_kg: "
+                    "registered module %s (0x%04X) for message 0x%04X",
+                    module->module_name, module->module_id, msg_type);
+            }
+        }
+    }
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_unlock(wd->mutex);
+    }
+
+    NIMCP_LOGGING_INFO("wiring_diagram_sync_to_brain_kg: synced %d handlers from %u modules",
+        handlers_synced, wd->module_count);
+
+    return handlers_synced;
 }
 
 /**
- * @brief Sync changes from brain_kg back to wiring diagram
+ * @brief Sync message handlers from brain_kg back to wiring diagram
  *
- * WHAT: Update wiring diagram from brain_kg changes
- * WHY:  Enable bidirectional sync for runtime modifications
- * HOW:  Stub implementation - requires brain_kg integration
+ * WHAT: Update wiring diagram with handlers registered in brain_kg
+ * WHY:  Enable bidirectional sync for runtime-modified handlers
+ * HOW:  Query brain_kg for each module's handlers, update wiring config
+ *
+ * @param wd Wiring diagram to update
+ * @param kg Brain KG source (const - read-only)
+ * @return Number of handlers synced, or -1 on error
  */
 int wiring_diagram_sync_from_brain_kg(wiring_diagram_t* wd, const brain_kg_t* kg) {
     if (!wd || !kg) return -1;
 
-    /* TODO: Implement brain_kg sync */
-    NIMCP_LOGGING_DEBUG("wiring_diagram_sync_from_brain_kg: stub implementation");
+    int handlers_synced = 0;
 
-    return 0;
+    /* Lock wiring diagram for thread-safe update */
+    if (wd->mutex) {
+        nimcp_platform_mutex_lock(wd->mutex);
+    }
+
+    /* Iterate all modules in the wiring diagram */
+    for (uint32_t i = 0; i < wd->module_count; i++) {
+        wiring_module_config_t* module = wd->module_configs[i];
+        if (!module) {
+            continue;
+        }
+
+        /* Query brain_kg for messages this module handles
+         * Note: We cast away const because the API doesn't take const,
+         * but brain_kg_get_module_handled_messages is read-only */
+        uint32_t msg_types[WIRING_MAX_HANDLERS];
+        uint32_t count = brain_kg_get_module_handled_messages(
+            (brain_kg_t*)kg,
+            (brain_kg_node_id_t)module->module_id,
+            msg_types,
+            WIRING_MAX_HANDLERS);
+
+        if (count == 0) {
+            continue;
+        }
+
+        /* Ensure capacity for new handlers */
+        if (count > module->handles_message_capacity) {
+            bio_message_type_t* new_handlers = (bio_message_type_t*)
+                nimcp_realloc(module->handles_messages,
+                    count * sizeof(bio_message_type_t));
+            if (!new_handlers) {
+                NIMCP_LOGGING_ERROR("wiring_diagram_sync_from_brain_kg: "
+                    "failed to resize handlers for %s", module->module_name);
+                continue;
+            }
+            module->handles_messages = new_handlers;
+            module->handles_message_capacity = count;
+        }
+
+        /* Copy handlers from brain_kg */
+        for (uint32_t j = 0; j < count; j++) {
+            module->handles_messages[j] = (bio_message_type_t)msg_types[j];
+        }
+        module->handles_message_count = count;
+        handlers_synced += count;
+
+        NIMCP_LOGGING_DEBUG("wiring_diagram_sync_from_brain_kg: "
+            "synced %u handlers to module %s", count, module->module_name);
+    }
+
+    /* Mark dirty for persistence */
+    if (handlers_synced > 0) {
+        wd->dirty = true;
+        auto_persist_if_enabled(wd);
+    }
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_unlock(wd->mutex);
+    }
+
+    NIMCP_LOGGING_INFO("wiring_diagram_sync_from_brain_kg: synced %d handlers to %u modules",
+        handlers_synced, wd->module_count);
+
+    return handlers_synced;
 }

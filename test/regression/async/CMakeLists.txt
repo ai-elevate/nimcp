@@ -123,3 +123,35 @@ gtest_discover_tests(regression_async_test_bio_router_kg_dispatch
         LABELS "regression;async;router;kg;dispatch"
         TIMEOUT 120
 )
+
+# =============================================================================
+# Wiring Diagram KG Sync Regression Tests (Phase 8: Wiring-KG Bidirectional Sync)
+# =============================================================================
+add_executable(regression_async_test_wiring_diagram_kg_sync
+    test_wiring_diagram_kg_sync_regression.cpp
+)
+
+target_link_libraries(regression_async_test_wiring_diagram_kg_sync
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+        stdc++fs
+)
+
+target_include_directories(regression_async_test_wiring_diagram_kg_sync
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_async_test_wiring_diagram_kg_sync PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_async_test_wiring_diagram_kg_sync
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;async;wiring;kg;sync"
+        TIMEOUT 120
+)
