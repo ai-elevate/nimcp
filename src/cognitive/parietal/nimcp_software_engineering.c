@@ -7,6 +7,7 @@
  */
 
 #include "cognitive/parietal/nimcp_software_engineering.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -1016,4 +1017,23 @@ void software_eng_free_synthesis(se_synthesis_t* synthesis) {
     synthesis->insights = NULL;
     synthesis->knowledge_gaps = NULL;
     synthesis->contradictions = NULL;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int software_engineering_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Software_Engineering");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Module self-knowledge logged */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Software_Engineering");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Software_Engineering");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

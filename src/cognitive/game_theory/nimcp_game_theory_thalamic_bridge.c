@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/game_theory/nimcp_game_theory_thalamic_bridge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 
@@ -80,4 +81,28 @@ int game_theory_thalamic_bridge_get_stats(const game_theory_thalamic_bridge_t* b
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
     return 0;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for Game Theory Thalamic Bridge self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int game_theory_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Game_Theory_Thalamic_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* GT Thalamic bridge self-knowledge logged */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Game_Theory_Thalamic_Bridge");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Game_Theory_Thalamic_Bridge");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

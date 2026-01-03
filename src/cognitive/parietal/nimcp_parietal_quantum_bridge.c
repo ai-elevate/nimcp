@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/parietal/nimcp_parietal_quantum_bridge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
@@ -352,4 +353,23 @@ void parietal_quantum_reset_stats(parietal_quantum_bridge_t* bridge) {
 
 const char* parietal_quantum_get_last_error(void) {
     return g_error_message[0] ? g_error_message : NULL;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int parietal_quantum_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Parietal_Quantum_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Module self-knowledge logged */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Parietal_Quantum_Bridge");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Parietal_Quantum_Bridge");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

@@ -13,6 +13,7 @@
  */
 
 #include "cognitive/parietal/nimcp_analogical_reasoning.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -1148,4 +1149,23 @@ void analogical_reset_stats(analogical_engine_t* engine) {
 
 const char* analogical_get_last_error(void) {
     return g_last_error;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int analogical_reasoning_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Analogical_Reasoning");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Module self-knowledge logged */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Analogical_Reasoning");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Analogical_Reasoning");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

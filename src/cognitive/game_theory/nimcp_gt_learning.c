@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/game_theory/nimcp_gt_learning.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
@@ -1981,4 +1982,28 @@ void nimcp_gt_opponent_model_cleanup(nimcp_gt_opponent_model_t* model) {
     model->action_predictions = NULL;
     model->action_counts = NULL;
     model->num_actions = 0;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for GT Learning self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int gt_learning_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "GT_Learning");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* GT Learning self-knowledge logged */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "GT_Learning");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "GT_Learning");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

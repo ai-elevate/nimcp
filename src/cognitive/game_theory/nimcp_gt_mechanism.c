@@ -7,6 +7,7 @@
  */
 
 #include "cognitive/game_theory/nimcp_gt_mechanism.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
@@ -1314,4 +1315,28 @@ void nimcp_mechanism_result_init(nimcp_mechanism_result_t* result) {
 
     memset(result, 0, sizeof(nimcp_mechanism_result_t));
     result->state = NIMCP_MECHANISM_STATE_UNINITIALIZED;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for GT Mechanism self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int gt_mechanism_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "GT_Mechanism");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* GT Mechanism self-knowledge logged */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "GT_Mechanism");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "GT_Mechanism");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

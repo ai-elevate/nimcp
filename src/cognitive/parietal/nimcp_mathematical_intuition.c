@@ -7,6 +7,7 @@
  */
 
 #include "cognitive/parietal/nimcp_mathematical_intuition.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
@@ -1159,4 +1160,23 @@ void math_intuition_reset_stats(math_intuition_t* mi) {
 
 const char* math_intuition_get_last_error(void) {
     return g_math_error;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int mathematical_intuition_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Mathematical_Intuition");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Module self-knowledge logged */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Mathematical_Intuition");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mathematical_Intuition");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

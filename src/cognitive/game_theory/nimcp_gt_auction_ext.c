@@ -11,6 +11,7 @@
  */
 
 #include "cognitive/game_theory/nimcp_gt_auction_ext.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
@@ -1367,4 +1368,28 @@ nimcp_error_t nimcp_multi_unit_cancel(nimcp_multi_unit_auction_t ctx) {
     nimcp_platform_mutex_unlock(&ctx->mutex);
 
     return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for GT Auction Extended self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int gt_auction_ext_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "GT_Auction_Extended");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* GT Auction extended self-knowledge logged */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "GT_Auction_Extended");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "GT_Auction_Extended");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

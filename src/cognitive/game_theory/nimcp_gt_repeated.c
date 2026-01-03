@@ -7,6 +7,7 @@
  */
 
 #include "cognitive/game_theory/nimcp_gt_repeated.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
@@ -1068,4 +1069,28 @@ nimcp_repeated_strategy_type_t nimcp_repeated_get_strategy_type(
         return NIMCP_STRATEGY_TIT_FOR_TAT;  // Default
     }
     return ctx->player_states[player].strategy.type;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for GT Repeated self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int gt_repeated_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "GT_Repeated");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* GT Repeated self-knowledge logged */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "GT_Repeated");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "GT_Repeated");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

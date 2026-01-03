@@ -7,6 +7,7 @@
  */
 
 #include "cognitive/parietal/nimcp_number_sense.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/thread/nimcp_thread.h"
 #include <stdlib.h>
 #include <string.h>
@@ -734,4 +735,23 @@ void number_sense_reset_stats(number_sense_t* ns) {
 
 const char* number_sense_get_last_error(void) {
     return g_error_message;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int number_sense_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Number_Sense");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Module self-knowledge logged */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Number_Sense");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Number_Sense");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

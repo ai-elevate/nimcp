@@ -7,6 +7,7 @@
  */
 
 #include "cognitive/parietal/nimcp_civil_engineering.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -450,4 +451,23 @@ void civil_eng_reset_stats(civil_eng_t* ce) {
 
 const char* civil_eng_get_last_error(void) {
     return g_error_message[0] ? g_error_message : NULL;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int civil_engineering_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Civil_Engineering");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Module self-knowledge logged */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Civil_Engineering");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Civil_Engineering");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

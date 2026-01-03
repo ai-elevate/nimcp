@@ -16,6 +16,7 @@
  */
 
 #include "cognitive/analysis/nimcp_network_analysis.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -530,4 +531,28 @@ bool network_analyzer_check_new_community(network_analyzer_t* analyzer)
 
     // Stub: always return false (no new community)
     return false;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for Network Analysis self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int network_analysis_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Network_Analysis");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Log observation if logging available */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Network_Analysis");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Network_Analysis");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }
