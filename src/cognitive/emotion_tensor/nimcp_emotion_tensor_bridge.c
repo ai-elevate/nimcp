@@ -225,6 +225,64 @@ void emotion_tensor_bridge_destroy(emotion_tensor_bridge_t* bridge) {
 }
 
 /*=============================================================================
+ * KG-Driven Wiring Callback
+ *============================================================================*/
+
+/* Forward declarations for handlers */
+static nimcp_error_t bridge_message_handler(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+);
+
+/**
+ * @brief KG-driven wiring handler callback
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ */
+static int emotion_tensor_bridge_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    BRIDGE_LOG_INFO("emotion_tensor_bridge_wiring_handler_callback: registering %u handlers from KG",
+                    message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_EMOTION_TENSOR_QUERY:
+                bio_router_register_handler(ctx, message_types[i], bridge_message_handler);
+                BRIDGE_LOG_DEBUG("  Registered handler for BIO_MSG_EMOTION_TENSOR_QUERY");
+                break;
+
+            case BIO_MSG_EMOTION_TENSOR_STIMULUS:
+                bio_router_register_handler(ctx, message_types[i], bridge_message_handler);
+                BRIDGE_LOG_DEBUG("  Registered handler for BIO_MSG_EMOTION_TENSOR_STIMULUS");
+                break;
+
+            case BIO_MSG_EMOTION_SWARM_SYNC:
+                bio_router_register_handler(ctx, message_types[i], bridge_message_handler);
+                BRIDGE_LOG_DEBUG("  Registered handler for BIO_MSG_EMOTION_SWARM_SYNC");
+                break;
+
+            default:
+                BRIDGE_LOG_DEBUG("  Unknown message type %u - skipping", message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
+
+/*=============================================================================
  * BIO-ASYNC HANDLERS
  *============================================================================*/
 

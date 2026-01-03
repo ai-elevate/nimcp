@@ -707,6 +707,33 @@ static void* consolidation_thread_fn(void* arg)
 //=============================================================================
 
 /**
+ * @brief Wiring callback implementation for KG-driven handler registration
+ */
+static int consolidation_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_CONSOLIDATION_TRIGGER:
+                bio_router_register_handler(ctx, message_types[i], handle_consolidation_trigger);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG("Consolidation: unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    return (registered > 0) ? 0 : -1;
+}
+
+/**
  * @brief Bio-async message handler: Handle consolidation trigger
  */
 static nimcp_error_t handle_consolidation_trigger(
