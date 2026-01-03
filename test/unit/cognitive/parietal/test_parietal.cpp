@@ -359,7 +359,7 @@ TEST_F(ParietalTest, MentalRotateWrapper)
 
     spatial_object_t obj_b = obj_a;
 
-    rotation_result_t result = parietal_mental_rotate(parietal, &obj_a, &obj_b);
+    rotation_result_t result = parietal_mental_rotate_compare(parietal, &obj_a, &obj_b);
 
     EXPECT_TRUE(result.is_match);
     EXPECT_GT(result.confidence, 0.5f);  // Identical objects should match with good confidence
