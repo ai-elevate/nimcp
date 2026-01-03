@@ -83,8 +83,8 @@ struct nimcp_brain_snapshot_handle {
 
 static char g_last_error[256] = "No error";
 static nimcp_atomic_bool_t g_initialized = {0};  // Thread-safe initialized flag
-static nimcp_platform_once_t g_init_once = NIMCP_PLATFORM_ONCE_INIT;
-static nimcp_status_t g_init_result = NIMCP_OK;  // Result of init (set by once callback)
+static nimcp_atomic_bool_t g_init_in_progress = {0};  // Guard against concurrent init
+static nimcp_status_t g_init_result = NIMCP_OK;  // Result of init
 
 //=============================================================================
 // Version Functions
@@ -118,9 +118,15 @@ const char* nimcp_get_error(void) {
 //=============================================================================
 
 /**
- * @brief Internal initialization function called via nimcp_platform_once
+ * @brief Internal initialization function
+ *
+ * NOTE: Previously used nimcp_platform_once() which prevented re-initialization
+ * after shutdown. Now uses atomic compare-exchange for thread-safe init that
+ * can be repeated after shutdown.
+ *
+ * @return NIMCP_OK on success, NIMCP_ERROR on failure
  */
-static void nimcp_init_internal(void) {
+static nimcp_status_t nimcp_init_internal(void) {
     LOG_INFO("Initializing NIMCP library version %s", NIMCP_VERSION_STRING);
 
     // Initialize memory tracking (unified memory management)
@@ -134,8 +140,7 @@ static void nimcp_init_internal(void) {
         LOG_ERROR("Failed to initialize bio-async system");
         nimcp_memory_cleanup();
         set_error("Failed to initialize bio-async system");
-        g_init_result = NIMCP_ERROR;
-        return;
+        return NIMCP_ERROR;
     }
 
     // Initialize bio-async router (message routing for modules)
@@ -145,27 +150,51 @@ static void nimcp_init_internal(void) {
         nimcp_bio_async_shutdown();
         nimcp_memory_cleanup();
         set_error("Failed to initialize bio-async router");
-        g_init_result = NIMCP_ERROR;
-        return;
+        return NIMCP_ERROR;
     }
 
     // Initialize COW cache system
     LOG_DEBUG("Initializing COW cache system");
     nimcp_cache_init();
 
-    nimcp_atomic_store_bool(&g_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
     set_error("No error");
     LOG_INFO("NIMCP library initialized successfully");
-    g_init_result = NIMCP_OK;
+    return NIMCP_OK;
 }
 
 nimcp_status_t nimcp_init(void) {
-    // Thread-safe one-time initialization
-    nimcp_platform_once(&g_init_once, nimcp_init_internal);
-
+    // Fast path: already initialized
     if (nimcp_atomic_load_bool(&g_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         return g_init_result;
     }
+
+    // Try to acquire init lock using compare-exchange
+    // Only one thread will succeed; others will spin-wait
+    bool expected = false;
+    if (!nimcp_atomic_compare_exchange_bool(&g_init_in_progress, &expected, true,
+                                             NIMCP_MEMORY_ORDER_ACQ_REL)) {
+        // Another thread is initializing - wait for it to complete
+        while (nimcp_atomic_load_bool(&g_init_in_progress, NIMCP_MEMORY_ORDER_ACQUIRE)) {
+            // Spin-wait (could use yield/sleep for production)
+        }
+        return g_init_result;
+    }
+
+    // Double-check after acquiring lock (another thread may have initialized)
+    if (nimcp_atomic_load_bool(&g_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
+        nimcp_atomic_store_bool(&g_init_in_progress, false, NIMCP_MEMORY_ORDER_RELEASE);
+        return g_init_result;
+    }
+
+    // Perform actual initialization
+    g_init_result = nimcp_init_internal();
+
+    if (g_init_result == NIMCP_OK) {
+        nimcp_atomic_store_bool(&g_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
+    }
+
+    // Release init lock
+    nimcp_atomic_store_bool(&g_init_in_progress, false, NIMCP_MEMORY_ORDER_RELEASE);
 
     return g_init_result;
 }
@@ -198,6 +227,8 @@ void nimcp_shutdown(void) {
     LOG_DEBUG("Cleaning up memory tracking");
     nimcp_memory_cleanup();
 
+    // Reset init state to allow re-initialization
+    g_init_result = NIMCP_OK;  // Reset to default for next init
     nimcp_atomic_store_bool(&g_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
     LOG_INFO("NIMCP library shutdown complete");
 }

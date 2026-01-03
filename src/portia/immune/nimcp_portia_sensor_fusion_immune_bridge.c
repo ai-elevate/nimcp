@@ -350,29 +350,26 @@ float portia_sensor_fusion_immune_compute_confidence_reduction(
 }
 
 /* ============================================================================
- * Sensor Fusion → Immune API Implementation
+ * Sensor Fusion → Immune Internal Helpers (Unlocked versions)
+ * ============================================================================
+ * These functions perform the actual work WITHOUT acquiring the mutex.
+ * Caller MUST hold bridge->base.mutex before calling.
+ * This prevents deadlocks when update() calls these functions.
  * ============================================================================ */
 
-int portia_sensor_fusion_immune_trigger_overload_response(
+/**
+ * @brief Internal unlocked version - caller MUST hold bridge->base.mutex
+ */
+static int portia_sensor_fusion_immune_trigger_overload_response_unlocked(
     portia_sensor_fusion_immune_bridge_t* bridge
 ) {
-    /* Guard clause */
-    if (!bridge || !bridge->immune_system) {
-        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
-        return -1;
-    }
-
     if (!bridge->config.enable_sensor_overload_immune_trigger) {
         return 0;  /* Feature disabled */
     }
 
-    /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
-
     /* Get sensor fusion state */
     portia_fusion_stats_t stats;
     if (!portia_fusion_get_stats(bridge->sensor_fusion, &stats)) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -406,26 +403,18 @@ int portia_sensor_fusion_immune_trigger_overload_response(
         bridge->overload_accumulator *= 0.9f;
     }
 
-    /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
-int portia_sensor_fusion_immune_boost_from_conflicts(
+/**
+ * @brief Internal unlocked version - caller MUST hold bridge->base.mutex
+ */
+static int portia_sensor_fusion_immune_boost_from_conflicts_unlocked(
     portia_sensor_fusion_immune_bridge_t* bridge
 ) {
-    /* Guard clause */
-    if (!bridge || !bridge->immune_system) {
-        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
-        return -1;
-    }
-
     if (!bridge->config.enable_sensor_conflict_immune_boost) {
         return 0;  /* Feature disabled */
     }
-
-    /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Compute sensor conflict level (placeholder) */
     float conflict_level = bridge->sensor_modulation.sensor_conflict_level;
@@ -444,31 +433,22 @@ int portia_sensor_fusion_immune_boost_from_conflicts(
         NIMCP_LOGGING_DEBUG("Sensor conflict triggered IL-1β release: %.3f", il1_amount);
     }
 
-    /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
-int portia_sensor_fusion_immune_trigger_dropout_suppression(
+/**
+ * @brief Internal unlocked version - caller MUST hold bridge->base.mutex
+ */
+static int portia_sensor_fusion_immune_trigger_dropout_suppression_unlocked(
     portia_sensor_fusion_immune_bridge_t* bridge
 ) {
-    /* Guard clause */
-    if (!bridge || !bridge->immune_system) {
-        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
-        return -1;
-    }
-
     if (!bridge->config.enable_sensor_dropout_suppression) {
         return 0;  /* Feature disabled */
     }
 
-    /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
-
     /* Get sensor fusion state */
     portia_fusion_stats_t stats;
     if (!portia_fusion_get_stats(bridge->sensor_fusion, &stats)) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -487,9 +467,71 @@ int portia_sensor_fusion_immune_trigger_dropout_suppression(
                            suppression);
     }
 
+    return 0;
+}
+
+/* ============================================================================
+ * Sensor Fusion → Immune API Implementation
+ * ============================================================================ */
+
+int portia_sensor_fusion_immune_trigger_overload_response(
+    portia_sensor_fusion_immune_bridge_t* bridge
+) {
+    /* Guard clause */
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        return -1;
+    }
+
+    /* Lock */
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
+
+    /* Call unlocked version */
+    int result = portia_sensor_fusion_immune_trigger_overload_response_unlocked(bridge);
+
     /* Unlock */
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
-    return 0;
+    return result;
+}
+
+int portia_sensor_fusion_immune_boost_from_conflicts(
+    portia_sensor_fusion_immune_bridge_t* bridge
+) {
+    /* Guard clause */
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        return -1;
+    }
+
+    /* Lock */
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
+
+    /* Call unlocked version */
+    int result = portia_sensor_fusion_immune_boost_from_conflicts_unlocked(bridge);
+
+    /* Unlock */
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
+    return result;
+}
+
+int portia_sensor_fusion_immune_trigger_dropout_suppression(
+    portia_sensor_fusion_immune_bridge_t* bridge
+) {
+    /* Guard clause */
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        return -1;
+    }
+
+    /* Lock */
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
+
+    /* Call unlocked version */
+    int result = portia_sensor_fusion_immune_trigger_dropout_suppression_unlocked(bridge);
+
+    /* Unlock */
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
+    return result;
 }
 
 /* ============================================================================
@@ -521,17 +563,17 @@ int portia_sensor_fusion_immune_update(
         compute_inflammation_sensor_effects(bridge);
     }
 
-    /* Sensor Fusion → Immune direction */
+    /* Sensor Fusion → Immune direction - use unlocked versions since we already hold the mutex */
     if (bridge->config.enable_sensor_overload_immune_trigger) {
-        portia_sensor_fusion_immune_trigger_overload_response(bridge);
+        portia_sensor_fusion_immune_trigger_overload_response_unlocked(bridge);
     }
 
     if (bridge->config.enable_sensor_conflict_immune_boost) {
-        portia_sensor_fusion_immune_boost_from_conflicts(bridge);
+        portia_sensor_fusion_immune_boost_from_conflicts_unlocked(bridge);
     }
 
     if (bridge->config.enable_sensor_dropout_suppression) {
-        portia_sensor_fusion_immune_trigger_dropout_suppression(bridge);
+        portia_sensor_fusion_immune_trigger_dropout_suppression_unlocked(bridge);
     }
 
     bridge->total_updates++;

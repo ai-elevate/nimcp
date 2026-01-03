@@ -462,8 +462,14 @@ static void two_comp_reset(neuron_model_state_t state_opaque)
  */
 static void two_comp_copy(neuron_model_state_t dst_opaque, const neuron_model_state_t src_opaque)
 {
-    two_compartment_state_t* dst = (two_compartment_state_t*)dst_opaque;
-    const two_compartment_state_t* src = (const two_compartment_state_t*)src_opaque;
+    // Guard: NULL pointer check
+    if (!dst_opaque || !src_opaque) {
+        return;
+    }
+
+    // Access flexible array member, not the wrapper struct
+    two_compartment_state_t* dst = (two_compartment_state_t*)dst_opaque->model_state;
+    const two_compartment_state_t* src = (const two_compartment_state_t*)src_opaque->model_state;
 
     memcpy(dst, src, sizeof(two_compartment_state_t));
 }

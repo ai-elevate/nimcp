@@ -22,6 +22,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/thread/nimcp_atomic.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -79,11 +80,15 @@ static void brain_regions_bio_cleanup(void) {
 // ============================================================================
 
 /**
- * @brief Generate unique region ID
+ * @brief Generate unique region ID (thread-safe)
+ *
+ * THREAD SAFETY: Uses atomic fetch-add to ensure unique IDs across threads
  */
+static nimcp_atomic_uint32_t g_region_id_counter = {1};
+
 static uint32_t generate_region_id(void) {
-    static uint32_t next_id = 1;
-    return next_id++;
+    // Atomically increment and return the previous value (which becomes the ID)
+    return nimcp_atomic_fetch_add_u32(&g_region_id_counter, 1, NIMCP_MEMORY_ORDER_SEQ_CST);
 }
 
 /**

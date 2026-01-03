@@ -1000,6 +1000,11 @@ endif()
 # Utils Containers Tests
 # ============================================================================
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/containers")
+    message(STATUS "Adding utils containers unit tests...")
+    add_subdirectory(unit/utils/containers)
+endif()
+
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/containers")
     message(STATUS "Adding utils containers integration tests...")
     add_subdirectory(integration/utils/containers)

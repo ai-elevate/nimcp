@@ -883,6 +883,10 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations_thalamic_bridge.c  # Explanations-thalamic integration
     # Note: ToM thalamic bridge already included via theory_of_mind
 
+    # Imagination Engine - Generative mental simulation (Phase IMAGINATION)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_imagination_workspace.c  # Workspace for active scenarios
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_imagination_engine.c     # Main engine with all integrations
+
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocyte_calcium.c
@@ -1101,6 +1105,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_graph.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_min_heap.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_darray.c           # Generic dynamic array container
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_ring_buffer.c     # Fixed-size circular buffer
 
     # Async - Futures/Promises (Phase ASY-1: Async Communication)
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_future.c

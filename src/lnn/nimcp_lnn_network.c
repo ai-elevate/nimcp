@@ -16,10 +16,14 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_atomic.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+
+// Thread-safe network ID counter
+static nimcp_atomic_uint32_t g_lnn_network_id_counter = {0};
 
 /*=============================================================================
  * Network Lifecycle
@@ -51,9 +55,8 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
         return NULL;
     }
 
-    // Initialize basic fields
-    static uint32_t next_id = 0;
-    network->id = next_id++;
+    // Initialize basic fields with thread-safe ID generation
+    network->id = nimcp_atomic_fetch_add_u32(&g_lnn_network_id_counter, 1, NIMCP_MEMORY_ORDER_SEQ_CST);
     snprintf(network->name, sizeof(network->name), "lnn_network_%u", network->id);
     network->n_layers = config->n_layers;
     network->n_inputs = config->n_inputs;

@@ -19,8 +19,12 @@
 #include <math.h>
 #include <string.h>
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+#include "utils/thread/nimcp_atomic.h"
 
 #define LOG_MODULE "GRIEF"
+
+// Thread-safe attachment ID counter
+static nimcp_atomic_uint32_t g_attachment_id_counter = {1};
 #define BIO_MODULE_GRIEF 0x0323
 
 /*=============================================================================
@@ -204,9 +208,8 @@ uint32_t grief_create_attachment(grief_system_t* system,
 
     if (slot == -1) return 0;  // No space
 
-    // Generate unique ID (simple incrementing counter)
-    static uint32_t next_id = 1;
-    uint32_t attachment_id = next_id++;
+    // Generate unique ID (thread-safe atomic counter)
+    uint32_t attachment_id = nimcp_atomic_fetch_add_u32(&g_attachment_id_counter, 1, NIMCP_MEMORY_ORDER_SEQ_CST);
 
     // Initialize attachment
     attachment_bond_t* bond = &system->attachments[slot];

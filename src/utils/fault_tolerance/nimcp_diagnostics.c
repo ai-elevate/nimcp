@@ -11,6 +11,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/thread/nimcp_atomic.h"
 
 #define LOG_MODULE "utils_diagnostics"
 
@@ -34,7 +35,8 @@ static diagnostic_history_t* g_diagnostic_history = NULL;
 static nimcp_mutex_t g_diagnostic_mutex = NIMCP_MUTEX_INITIALIZER;
 static bool g_diagnostics_initialized = false;
 static FILE* g_diagnostic_log = NULL;
-static uint64_t g_error_id_counter = 0;
+// Thread-safe error ID counter
+static nimcp_atomic_uint64_t g_error_id_counter = {0};
 
 // Memory tracking for leak detection
 typedef struct {
@@ -295,7 +297,7 @@ diagnostic_result_t* diagnostics_analyze_stack_trace(void** trace, int depth) {
     result->severity = DIAG_SEVERITY_ERROR;
     result->confidence = 0.5F;
     result->timestamp = time(NULL);
-    result->error_id = __sync_fetch_and_add(&g_error_id_counter, 1);
+    result->error_id = nimcp_atomic_fetch_add_u64(&g_error_id_counter, 1, NIMCP_MEMORY_ORDER_SEQ_CST);
     strncpy(result->diagnostic_version, DIAGNOSTIC_VERSION,
             sizeof(result->diagnostic_version) - 1);
 
@@ -370,7 +372,7 @@ diagnostic_result_t* diagnostics_analyze_crash(int signal, crash_context_t* cras
     result->confidence = 0.9F;  // High confidence for signal-based crashes
     result->signal_number = signal;
     result->timestamp = time(NULL);
-    result->error_id = __sync_fetch_and_add(&g_error_id_counter, 1);
+    result->error_id = nimcp_atomic_fetch_add_u64(&g_error_id_counter, 1, NIMCP_MEMORY_ORDER_SEQ_CST);
     strncpy(result->diagnostic_version, DIAGNOSTIC_VERSION,
             sizeof(result->diagnostic_version) - 1);
 
@@ -462,7 +464,7 @@ diagnostic_result_t* diagnostics_analyze_memory_state(brain_t brain) {
     result->severity = DIAG_SEVERITY_INFO;
     result->confidence = 0.8F;
     result->timestamp = time(NULL);
-    result->error_id = __sync_fetch_and_add(&g_error_id_counter, 1);
+    result->error_id = nimcp_atomic_fetch_add_u64(&g_error_id_counter, 1, NIMCP_MEMORY_ORDER_SEQ_CST);
     strncpy(result->diagnostic_version, DIAGNOSTIC_VERSION,
             sizeof(result->diagnostic_version) - 1);
 
@@ -530,7 +532,7 @@ diagnostic_result_t* diagnostics_analyze_numerical_stability(brain_t brain) {
     result->severity = DIAG_SEVERITY_INFO;
     result->confidence = 0.9F;
     result->timestamp = time(NULL);
-    result->error_id = __sync_fetch_and_add(&g_error_id_counter, 1);
+    result->error_id = nimcp_atomic_fetch_add_u64(&g_error_id_counter, 1, NIMCP_MEMORY_ORDER_SEQ_CST);
     strncpy(result->diagnostic_version, DIAGNOSTIC_VERSION,
             sizeof(result->diagnostic_version) - 1);
 

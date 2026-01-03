@@ -341,29 +341,26 @@ float portia_attention_immune_compute_efficiency_loss(
 }
 
 /* ============================================================================
- * Attention → Immune API Implementation
+ * Attention → Immune Internal Helpers (Unlocked versions)
+ * ============================================================================
+ * These functions perform the actual work WITHOUT acquiring the mutex.
+ * Caller MUST hold bridge->base.mutex before calling.
+ * This prevents deadlocks when update() calls these functions.
  * ============================================================================ */
 
-int portia_attention_immune_trigger_depletion_suppression(
+/**
+ * @brief Internal unlocked version - caller MUST hold bridge->base.mutex
+ */
+static int portia_attention_immune_trigger_depletion_suppression_unlocked(
     portia_attention_immune_bridge_t* bridge
 ) {
-    /* Guard clause */
-    if (!bridge || !bridge->immune_system) {
-        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
-        return -1;
-    }
-
     if (!bridge->config.enable_resource_depletion_suppression) {
         return 0;  /* Feature disabled */
     }
 
-    /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
-
     /* Get resource availability */
     portia_attention_stats_t stats;
     if (portia_attention_get_stats(bridge->attention_system, &stats) != 0) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -383,29 +380,22 @@ int portia_attention_immune_trigger_depletion_suppression(
         bridge->attention_modulation.depletion_immune_suppression = 0.0f;
     }
 
-    /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
-int portia_attention_immune_trigger_scarcity_stress(portia_attention_immune_bridge_t* bridge) {
-    /* Guard clause */
-    if (!bridge || !bridge->immune_system) {
-        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
-        return -1;
-    }
-
+/**
+ * @brief Internal unlocked version - caller MUST hold bridge->base.mutex
+ */
+static int portia_attention_immune_trigger_scarcity_stress_unlocked(
+    portia_attention_immune_bridge_t* bridge
+) {
     if (!bridge->config.enable_resource_scarcity_stress) {
         return 0;  /* Feature disabled */
     }
 
-    /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
-
     /* Get resource state */
     portia_attention_stats_t stats;
     if (portia_attention_get_stats(bridge->attention_system, &stats) != 0) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -429,31 +419,22 @@ int portia_attention_immune_trigger_scarcity_stress(portia_attention_immune_brid
         NIMCP_LOGGING_DEBUG("Resource scarcity triggered IL-6 release: %.3f", il6_amount);
     }
 
-    /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
-int portia_attention_immune_trigger_preemption_inflammation(
+/**
+ * @brief Internal unlocked version - caller MUST hold bridge->base.mutex
+ */
+static int portia_attention_immune_trigger_preemption_inflammation_unlocked(
     portia_attention_immune_bridge_t* bridge
 ) {
-    /* Guard clause */
-    if (!bridge || !bridge->immune_system) {
-        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
-        return -1;
-    }
-
     if (!bridge->config.enable_preemption_inflammation) {
         return 0;  /* Feature disabled */
     }
 
-    /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
-
     /* Check preemption count */
     portia_attention_stats_t stats;
     if (portia_attention_get_stats(bridge->attention_system, &stats) != 0) {
-        nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
@@ -479,9 +460,69 @@ int portia_attention_immune_trigger_preemption_inflammation(
         bridge->attention_modulation.chronic_preemption_inflammation = false;
     }
 
+    return 0;
+}
+
+/* ============================================================================
+ * Attention → Immune API Implementation
+ * ============================================================================ */
+
+int portia_attention_immune_trigger_depletion_suppression(
+    portia_attention_immune_bridge_t* bridge
+) {
+    /* Guard clause */
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        return -1;
+    }
+
+    /* Lock */
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
+
+    /* Call unlocked version */
+    int result = portia_attention_immune_trigger_depletion_suppression_unlocked(bridge);
+
     /* Unlock */
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
-    return 0;
+    return result;
+}
+
+int portia_attention_immune_trigger_scarcity_stress(portia_attention_immune_bridge_t* bridge) {
+    /* Guard clause */
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        return -1;
+    }
+
+    /* Lock */
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
+
+    /* Call unlocked version */
+    int result = portia_attention_immune_trigger_scarcity_stress_unlocked(bridge);
+
+    /* Unlock */
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
+    return result;
+}
+
+int portia_attention_immune_trigger_preemption_inflammation(
+    portia_attention_immune_bridge_t* bridge
+) {
+    /* Guard clause */
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        return -1;
+    }
+
+    /* Lock */
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
+
+    /* Call unlocked version */
+    int result = portia_attention_immune_trigger_preemption_inflammation_unlocked(bridge);
+
+    /* Unlock */
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
+    return result;
 }
 
 /* ============================================================================
@@ -513,17 +554,17 @@ int portia_attention_immune_update(
         compute_inflammation_attention_effects(bridge);
     }
 
-    /* Attention → Immune direction */
+    /* Attention → Immune direction - use unlocked versions since we already hold the mutex */
     if (bridge->config.enable_resource_depletion_suppression) {
-        portia_attention_immune_trigger_depletion_suppression(bridge);
+        portia_attention_immune_trigger_depletion_suppression_unlocked(bridge);
     }
 
     if (bridge->config.enable_resource_scarcity_stress) {
-        portia_attention_immune_trigger_scarcity_stress(bridge);
+        portia_attention_immune_trigger_scarcity_stress_unlocked(bridge);
     }
 
     if (bridge->config.enable_preemption_inflammation) {
-        portia_attention_immune_trigger_preemption_inflammation(bridge);
+        portia_attention_immune_trigger_preemption_inflammation_unlocked(bridge);
     }
 
     bridge->total_updates++;

@@ -33,6 +33,14 @@
 #define OPTIMIZER_MODULE_NAME "nimcp_optimizer"
 #define LOG_MODULE "optimizers"
 
+/* Numerical stability constants */
+#define OPTIMIZER_BIAS_CORRECTION_MIN 1e-8F   /* Minimum bias correction to prevent division by zero */
+#define OPTIMIZER_BIAS_CORRECTION_MAX_STEPS 10000  /* After this many steps, bias correction is ~1.0 */
+#define OPTIMIZER_GRADIENT_MAX_VALUE 1e6F     /* Maximum gradient value before sanitization */
+#define OPTIMIZER_PARAM_MAX_VALUE 1e9F        /* Maximum parameter value to prevent overflow */
+#define OPTIMIZER_LR_MIN 1e-10F               /* Minimum learning rate */
+#define OPTIMIZER_LR_MAX 10.0F                /* Maximum learning rate */
+
 /* ============================================================================
  * Internal Structures
  * ============================================================================ */
@@ -365,6 +373,15 @@ static void step_sgd(
     for (size_t i = 0; i < count; i++) {
         float grad = gradients[i];
 
+        /* Sanitize gradient: check for NaN/Inf */
+        if (!isfinite(grad)) {
+            grad = 0.0F;
+        } else if (grad > OPTIMIZER_GRADIENT_MAX_VALUE) {
+            grad = OPTIMIZER_GRADIENT_MAX_VALUE;
+        } else if (grad < -OPTIMIZER_GRADIENT_MAX_VALUE) {
+            grad = -OPTIMIZER_GRADIENT_MAX_VALUE;
+        }
+
         /* L2 regularization */
         if (weight_decay != 0.0F) {
             grad += weight_decay * params[i];
@@ -432,11 +449,39 @@ static void step_adam(
     }
 
     state->t++;
-    float bias_correction1 = 1.0F - powf(beta1, (float)state->t);
-    float bias_correction2 = 1.0F - powf(beta2, (float)state->t);
+
+    /* Compute bias correction with clamping to prevent underflow/overflow
+     * For large t, powf(beta, t) underflows to 0, making bias_correction = 1.0
+     * For small t with beta close to 1, bias_correction can be very small
+     * Clamp to prevent division by near-zero values */
+    float beta1_t = (state->t <= OPTIMIZER_BIAS_CORRECTION_MAX_STEPS)
+                    ? powf(beta1, (float)state->t)
+                    : 0.0F;  /* For very large t, treat as converged */
+    float beta2_t = (state->t <= OPTIMIZER_BIAS_CORRECTION_MAX_STEPS)
+                    ? powf(beta2, (float)state->t)
+                    : 0.0F;
+    float bias_correction1 = 1.0F - beta1_t;
+    float bias_correction2 = 1.0F - beta2_t;
+
+    /* Clamp bias corrections to prevent division by very small numbers */
+    if (bias_correction1 < OPTIMIZER_BIAS_CORRECTION_MIN) {
+        bias_correction1 = OPTIMIZER_BIAS_CORRECTION_MIN;
+    }
+    if (bias_correction2 < OPTIMIZER_BIAS_CORRECTION_MIN) {
+        bias_correction2 = OPTIMIZER_BIAS_CORRECTION_MIN;
+    }
 
     for (size_t i = 0; i < count; i++) {
         float grad = gradients[i];
+
+        /* Sanitize gradient: check for NaN/Inf */
+        if (!isfinite(grad)) {
+            grad = 0.0F;  /* Replace invalid gradients with zero */
+        } else if (grad > OPTIMIZER_GRADIENT_MAX_VALUE) {
+            grad = OPTIMIZER_GRADIENT_MAX_VALUE;
+        } else if (grad < -OPTIMIZER_GRADIENT_MAX_VALUE) {
+            grad = -OPTIMIZER_GRADIENT_MAX_VALUE;
+        }
 
         /* L2 regularization */
         if (weight_decay != 0.0F) {
@@ -507,8 +552,24 @@ static void step_adamw(
     }
 
     state->t++;
-    float bias_correction1 = 1.0F - powf(beta1, (float)state->t);
-    float bias_correction2 = 1.0F - powf(beta2, (float)state->t);
+
+    /* Compute bias correction with clamping to prevent underflow/overflow */
+    float beta1_t = (state->t <= OPTIMIZER_BIAS_CORRECTION_MAX_STEPS)
+                    ? powf(beta1, (float)state->t)
+                    : 0.0F;
+    float beta2_t = (state->t <= OPTIMIZER_BIAS_CORRECTION_MAX_STEPS)
+                    ? powf(beta2, (float)state->t)
+                    : 0.0F;
+    float bias_correction1 = 1.0F - beta1_t;
+    float bias_correction2 = 1.0F - beta2_t;
+
+    /* Clamp bias corrections to prevent division by very small numbers */
+    if (bias_correction1 < OPTIMIZER_BIAS_CORRECTION_MIN) {
+        bias_correction1 = OPTIMIZER_BIAS_CORRECTION_MIN;
+    }
+    if (bias_correction2 < OPTIMIZER_BIAS_CORRECTION_MIN) {
+        bias_correction2 = OPTIMIZER_BIAS_CORRECTION_MIN;
+    }
 
     for (size_t i = 0; i < count; i++) {
         /* Decoupled weight decay */
@@ -517,6 +578,15 @@ static void step_adamw(
         }
 
         float grad = gradients[i];
+
+        /* Sanitize gradient: check for NaN/Inf */
+        if (!isfinite(grad)) {
+            grad = 0.0F;
+        } else if (grad > OPTIMIZER_GRADIENT_MAX_VALUE) {
+            grad = OPTIMIZER_GRADIENT_MAX_VALUE;
+        } else if (grad < -OPTIMIZER_GRADIENT_MAX_VALUE) {
+            grad = -OPTIMIZER_GRADIENT_MAX_VALUE;
+        }
 
         /* Update biased first moment estimate */
         state->m[i] = beta1 * state->m[i] + (1.0F - beta1) * grad;
@@ -575,12 +645,43 @@ static void step_nadam(
     }
 
     state->t++;
-    float bias_correction1 = 1.0F - powf(beta1, (float)state->t);
-    float bias_correction2 = 1.0F - powf(beta2, (float)state->t);
-    float bias_correction1_next = 1.0F - powf(beta1, (float)(state->t + 1));
+
+    /* Compute bias correction with clamping to prevent underflow/overflow */
+    float beta1_t = (state->t <= OPTIMIZER_BIAS_CORRECTION_MAX_STEPS)
+                    ? powf(beta1, (float)state->t)
+                    : 0.0F;
+    float beta2_t = (state->t <= OPTIMIZER_BIAS_CORRECTION_MAX_STEPS)
+                    ? powf(beta2, (float)state->t)
+                    : 0.0F;
+    float beta1_t_next = (state->t + 1 <= OPTIMIZER_BIAS_CORRECTION_MAX_STEPS)
+                         ? powf(beta1, (float)(state->t + 1))
+                         : 0.0F;
+    float bias_correction1 = 1.0F - beta1_t;
+    float bias_correction2 = 1.0F - beta2_t;
+    float bias_correction1_next = 1.0F - beta1_t_next;
+
+    /* Clamp bias corrections to prevent division by very small numbers */
+    if (bias_correction1 < OPTIMIZER_BIAS_CORRECTION_MIN) {
+        bias_correction1 = OPTIMIZER_BIAS_CORRECTION_MIN;
+    }
+    if (bias_correction2 < OPTIMIZER_BIAS_CORRECTION_MIN) {
+        bias_correction2 = OPTIMIZER_BIAS_CORRECTION_MIN;
+    }
+    if (bias_correction1_next < OPTIMIZER_BIAS_CORRECTION_MIN) {
+        bias_correction1_next = OPTIMIZER_BIAS_CORRECTION_MIN;
+    }
 
     for (size_t i = 0; i < count; i++) {
         float grad = gradients[i];
+
+        /* Sanitize gradient: check for NaN/Inf */
+        if (!isfinite(grad)) {
+            grad = 0.0F;
+        } else if (grad > OPTIMIZER_GRADIENT_MAX_VALUE) {
+            grad = OPTIMIZER_GRADIENT_MAX_VALUE;
+        } else if (grad < -OPTIMIZER_GRADIENT_MAX_VALUE) {
+            grad = -OPTIMIZER_GRADIENT_MAX_VALUE;
+        }
 
         if (weight_decay != 0.0F) {
             grad += weight_decay * params[i];
@@ -647,6 +748,15 @@ static void step_rmsprop(
     for (size_t i = 0; i < count; i++) {
         float grad = gradients[i];
 
+        /* Sanitize gradient: check for NaN/Inf */
+        if (!isfinite(grad)) {
+            grad = 0.0F;
+        } else if (grad > OPTIMIZER_GRADIENT_MAX_VALUE) {
+            grad = OPTIMIZER_GRADIENT_MAX_VALUE;
+        } else if (grad < -OPTIMIZER_GRADIENT_MAX_VALUE) {
+            grad = -OPTIMIZER_GRADIENT_MAX_VALUE;
+        }
+
         if (weight_decay != 0.0F) {
             grad += weight_decay * params[i];
         }
@@ -657,6 +767,10 @@ static void step_rmsprop(
         if (centered && state->grad_avg != NULL) {
             state->grad_avg[i] = alpha * state->grad_avg[i] + (1.0F - alpha) * grad;
             avg = state->square_avg[i] - state->grad_avg[i] * state->grad_avg[i];
+            /* Ensure avg is non-negative to prevent sqrt of negative */
+            if (avg < 0.0F) {
+                avg = 0.0F;
+            }
         } else {
             avg = state->square_avg[i];
         }
@@ -714,8 +828,24 @@ static void step_adagrad(
     state->step++;
     float clr = base_lr / (1.0F + (float)(state->step - 1) * lr_decay);
 
+    /* Clamp learning rate to valid bounds */
+    if (clr < OPTIMIZER_LR_MIN) {
+        clr = OPTIMIZER_LR_MIN;
+    } else if (clr > OPTIMIZER_LR_MAX) {
+        clr = OPTIMIZER_LR_MAX;
+    }
+
     for (size_t i = 0; i < count; i++) {
         float grad = gradients[i];
+
+        /* Sanitize gradient: check for NaN/Inf */
+        if (!isfinite(grad)) {
+            grad = 0.0F;
+        } else if (grad > OPTIMIZER_GRADIENT_MAX_VALUE) {
+            grad = OPTIMIZER_GRADIENT_MAX_VALUE;
+        } else if (grad < -OPTIMIZER_GRADIENT_MAX_VALUE) {
+            grad = -OPTIMIZER_GRADIENT_MAX_VALUE;
+        }
 
         if (weight_decay != 0.0F) {
             grad += weight_decay * params[i];
@@ -1051,6 +1181,17 @@ float nimcp_optimizer_get_lr(const nimcp_optimizer_context_t* ctx) {
 
 void nimcp_optimizer_set_lr(nimcp_optimizer_context_t* ctx, float lr) {
     if (!ctx || lr <= 0.0F) return;
+
+    /* Clamp learning rate to valid bounds */
+    if (lr < OPTIMIZER_LR_MIN) {
+        lr = OPTIMIZER_LR_MIN;
+        nimcp_log(LOG_LEVEL_WARN, "[%s] Learning rate clamped to minimum: %e",
+                  LOG_MODULE, OPTIMIZER_LR_MIN);
+    } else if (lr > OPTIMIZER_LR_MAX) {
+        lr = OPTIMIZER_LR_MAX;
+        nimcp_log(LOG_LEVEL_WARN, "[%s] Learning rate clamped to maximum: %f",
+                  LOG_MODULE, OPTIMIZER_LR_MAX);
+    }
 
     float old_lr = ctx->current_lr;
     ctx->current_lr = lr;

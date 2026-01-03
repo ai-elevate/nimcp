@@ -25,6 +25,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
@@ -120,6 +121,9 @@ struct brain_oscillation_analyzer_struct {
 
     // Sleep integration
     sleep_state_t current_sleep_state;     /**< Current sleep state for modulation */
+
+    // Thread safety for ring buffer operations
+    nimcp_mutex_t* buffer_mutex;           /**< Mutex protecting ring buffer access */
 };
 
 //=============================================================================
@@ -265,6 +269,13 @@ brain_oscillation_analyzer_t* brain_oscillation_create(
     // Initialize sleep state
     analyzer->current_sleep_state = SLEEP_STATE_AWAKE;
 
+    // Initialize buffer mutex for thread safety
+    analyzer->buffer_mutex = nimcp_mutex_create(NULL);
+    if (!analyzer->buffer_mutex) {
+        brain_oscillation_destroy(analyzer);
+        return NULL;
+    }
+
     return analyzer;
 }
 
@@ -293,6 +304,11 @@ void brain_oscillation_destroy(brain_oscillation_analyzer_t* analyzer)
         nimcp_free(analyzer->power_spectrum);
     }
 
+    if (analyzer->buffer_mutex) {
+        nimcp_mutex_destroy(analyzer->buffer_mutex);
+        nimcp_free(analyzer->buffer_mutex);
+    }
+
     nimcp_free(analyzer);
 }
 
@@ -301,21 +317,28 @@ void brain_oscillation_destroy(brain_oscillation_analyzer_t* analyzer)
 //=============================================================================
 
 /**
- * @brief Record activity value
+ * @brief Record activity value (thread-safe)
+ *
+ * THREAD SAFETY: Protected by buffer_mutex to ensure atomic ring buffer updates
  */
 bool brain_oscillation_record_value(
     brain_oscillation_analyzer_t* analyzer,
     float activity)
 {
     // Guard: Validate inputs
-    if (!analyzer) {
+    if (!analyzer || !analyzer->buffer_mutex) {
         return false;
     }
 
-    // Add to ring buffer
+    // Lock buffer for atomic ring buffer update
+    nimcp_mutex_lock(analyzer->buffer_mutex);
+
+    // Add to ring buffer - all three operations are now atomic
     analyzer->activity_buffer[analyzer->buffer_head] = activity;
     analyzer->buffer_head = (analyzer->buffer_head + 1) % analyzer->buffer_size;
     analyzer->samples_recorded++;
+
+    nimcp_mutex_unlock(analyzer->buffer_mutex);
 
     return true;
 }
@@ -376,30 +399,40 @@ static void reorder_ring_buffer(
 }
 
 /**
- * @brief Get brain wave power
+ * @brief Get brain wave power (thread-safe)
+ *
+ * THREAD SAFETY: Locks buffer_mutex while copying ring buffer data
  */
 bool brain_oscillation_get_wave_power(
     brain_oscillation_analyzer_t* analyzer,
     brain_wave_power_t* wave_power)
 {
     // Guard: Validate inputs
-    if (!analyzer || !wave_power) {
+    if (!analyzer || !wave_power || !analyzer->buffer_mutex) {
         return false;
     }
 
+    // Lock to check samples_recorded and copy buffer atomically
+    nimcp_mutex_lock(analyzer->buffer_mutex);
+
     // Check if buffer is full enough
     if (analyzer->samples_recorded < analyzer->min_samples) {
+        nimcp_mutex_unlock(analyzer->buffer_mutex);
         return false;  // Need full window
     }
 
     // Allocate temporary buffer for chronologically ordered data
     float* ordered_buffer = (float*)nimcp_calloc(analyzer->buffer_size, sizeof(float));
     if (!ordered_buffer) {
+        nimcp_mutex_unlock(analyzer->buffer_mutex);
         return false;
     }
 
-    // Reorder ring buffer into chronological order
+    // Reorder ring buffer into chronological order (while holding lock)
     reorder_ring_buffer(analyzer, ordered_buffer);
+
+    // Release lock - we have our own copy of the data now
+    nimcp_mutex_unlock(analyzer->buffer_mutex);
 
     // Perform FFT on ordered data
     bool fft_success = fft_execute_real(analyzer->fft_plan, ordered_buffer,

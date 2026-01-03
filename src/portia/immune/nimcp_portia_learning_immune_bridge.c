@@ -345,21 +345,15 @@ float portia_learning_immune_compute_consolidation_impairment(
  * Learning → Immune API Implementation
  * ============================================================================ */
 
-int portia_learning_immune_trigger_failure_response(
+/**
+ * @brief Internal unlocked version - caller MUST hold bridge->base.mutex
+ */
+static int portia_learning_immune_trigger_failure_response_unlocked(
     portia_learning_immune_bridge_t* bridge
 ) {
-    /* Guard clause */
-    if (!bridge || !bridge->immune_system) {
-        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
-        return -1;
-    }
-
     if (!bridge->config.enable_learning_failure_immune_trigger) {
         return 0;  /* Feature disabled */
     }
-
-    /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Check learning success rate */
     float success_rate = bridge->learning_modulation.learning_success_rate;
@@ -379,10 +373,6 @@ int portia_learning_immune_trigger_failure_response(
             float il6_amount = LEARNING_FAILURE_IL6_RELEASE *
                               bridge->config.learning_immune_sensitivity;
 
-            /* Would release IL-6 here */
-            /* brain_immune_release_cytokine(bridge->immune_system, BRAIN_CYTOKINE_IL6,
-                                            0, il6_amount, 0, NULL); */
-
             bridge->failure_immune_triggers++;
             bridge->failure_accumulator = 0.0f;
 
@@ -393,26 +383,18 @@ int portia_learning_immune_trigger_failure_response(
         bridge->failure_accumulator *= 0.8f;
     }
 
-    /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
-int portia_learning_immune_release_il10_from_success(
+/**
+ * @brief Internal unlocked version - caller MUST hold bridge->base.mutex
+ */
+static int portia_learning_immune_release_il10_from_success_unlocked(
     portia_learning_immune_bridge_t* bridge
 ) {
-    /* Guard clause */
-    if (!bridge || !bridge->immune_system) {
-        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
-        return -1;
-    }
-
     if (!bridge->config.enable_learning_success_immune_benefit) {
         return 0;  /* Feature disabled */
     }
-
-    /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Check learning success rate */
     float success_rate = bridge->learning_modulation.learning_success_rate;
@@ -426,36 +408,24 @@ int portia_learning_immune_release_il10_from_success(
             float il10_amount = LEARNING_SUCCESS_IL10_RELEASE *
                                bridge->config.learning_immune_sensitivity;
 
-            /* Would release IL-10 here */
-            /* brain_immune_release_cytokine(bridge->immune_system, BRAIN_CYTOKINE_IL10,
-                                            0, il10_amount, 0, NULL); */
-
             bridge->success_immune_benefits++;
 
             NIMCP_LOGGING_INFO("Learning success triggered IL-10 release: %.3f", il10_amount);
         }
     }
 
-    /* Unlock */
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
     return 0;
 }
 
-int portia_learning_immune_trigger_repeated_failure_inflammation(
+/**
+ * @brief Internal unlocked version - caller MUST hold bridge->base.mutex
+ */
+static int portia_learning_immune_trigger_repeated_failure_inflammation_unlocked(
     portia_learning_immune_bridge_t* bridge
 ) {
-    /* Guard clause */
-    if (!bridge || !bridge->immune_system) {
-        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
-        return -1;
-    }
-
     if (!bridge->config.enable_repeated_failure_inflammation) {
         return 0;  /* Feature disabled */
     }
-
-    /* Lock */
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
     /* Check for repeated failures */
     if (bridge->learning_modulation.consecutive_failures >=
@@ -475,9 +445,58 @@ int portia_learning_immune_trigger_repeated_failure_inflammation(
         bridge->learning_modulation.repeated_failure_inflammation = false;
     }
 
+    return 0;
+}
+
+int portia_learning_immune_trigger_failure_response(
+    portia_learning_immune_bridge_t* bridge
+) {
+    /* Guard clause */
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        return -1;
+    }
+
+    /* Lock */
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
+    int result = portia_learning_immune_trigger_failure_response_unlocked(bridge);
     /* Unlock */
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
-    return 0;
+    return result;
+}
+
+int portia_learning_immune_release_il10_from_success(
+    portia_learning_immune_bridge_t* bridge
+) {
+    /* Guard clause */
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        return -1;
+    }
+
+    /* Lock */
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
+    int result = portia_learning_immune_release_il10_from_success_unlocked(bridge);
+    /* Unlock */
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
+    return result;
+}
+
+int portia_learning_immune_trigger_repeated_failure_inflammation(
+    portia_learning_immune_bridge_t* bridge
+) {
+    /* Guard clause */
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        return -1;
+    }
+
+    /* Lock */
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
+    int result = portia_learning_immune_trigger_repeated_failure_inflammation_unlocked(bridge);
+    /* Unlock */
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
+    return result;
 }
 
 /* ============================================================================
@@ -509,17 +528,17 @@ int portia_learning_immune_update(
         compute_inflammation_learning_effects(bridge);
     }
 
-    /* Learning → Immune direction */
+    /* Learning → Immune direction - use unlocked versions since we already hold the mutex */
     if (bridge->config.enable_learning_failure_immune_trigger) {
-        portia_learning_immune_trigger_failure_response(bridge);
+        portia_learning_immune_trigger_failure_response_unlocked(bridge);
     }
 
     if (bridge->config.enable_learning_success_immune_benefit) {
-        portia_learning_immune_release_il10_from_success(bridge);
+        portia_learning_immune_release_il10_from_success_unlocked(bridge);
     }
 
     if (bridge->config.enable_repeated_failure_inflammation) {
-        portia_learning_immune_trigger_repeated_failure_inflammation(bridge);
+        portia_learning_immune_trigger_repeated_failure_inflammation_unlocked(bridge);
     }
 
     bridge->total_updates++;

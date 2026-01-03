@@ -409,6 +409,12 @@ bool nimcp_gpu_synapse_transmit(
         return false;
     }
 
+    // Guard: Validate internal tensor fields
+    if (!state->weights || !state->pre_ids || !state->transmission) {
+        LOG_ERROR("Synapse state not properly initialized");
+        return false;
+    }
+
     if (state->model == NIMCP_SYNAPSE_STP && state->vesicle_state) {
         // STP-modulated transmission
         kernel_synapse_transmit_stp<<<GRID_SIZE(state->n_synapses), BLOCK_SIZE>>>(
@@ -457,6 +463,12 @@ bool nimcp_gpu_synapse_accumulate_psc(
 {
     if (!ctx || !state) {
         LOG_ERROR("Invalid parameters");
+        return false;
+    }
+
+    // Guard: Validate internal tensor fields
+    if (!state->transmission || !state->post_ids || !state->psc) {
+        LOG_ERROR("Synapse state not properly initialized");
         return false;
     }
 
