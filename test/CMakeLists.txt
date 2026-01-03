@@ -836,6 +836,27 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain_oscillations/sleep")
 endif()
 
 # ============================================================================
+# Brain KG Message Index Tests (Phase 6: KG Query Optimization)
+# ============================================================================
+# WHAT: Unit tests for message-type index in brain knowledge graph
+# WHY:  Verify efficient O(1) handler lookup by message type
+# HOW:  Test CRUD operations on message-type index
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/test_brain_kg_message_index.cpp")
+    message(STATUS "Adding brain KG message index tests...")
+    add_executable(unit_core_brain_kg_message_index
+        unit/core/brain/test_brain_kg_message_index.cpp
+    )
+    target_link_libraries(unit_core_brain_kg_message_index
+        PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+    )
+    target_compile_features(unit_core_brain_kg_message_index PRIVATE cxx_std_17)
+    gtest_discover_tests(unit_core_brain_kg_message_index
+        PROPERTIES LABELS "unit;core;brain_kg;phase6")
+endif()
+
+# ============================================================================
 # Sleep Bridge Integration Tests (Phase 1.1: Sleep Integration)
 # ============================================================================
 # WHAT: Test all sleep bridges coordinating together

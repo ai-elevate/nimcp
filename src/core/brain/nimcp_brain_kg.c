@@ -38,6 +38,23 @@ typedef struct {
     void* callback_user_data;                /**< Callback context */
 } brain_kg_security_t;
 
+/* Message-type index entry (Phase 6: KG Query Optimization) */
+typedef struct {
+    uint32_t message_type;                   /**< Message type identifier */
+    brain_kg_node_id_t handlers[BRAIN_KG_MAX_HANDLERS_PER_MSG]; /**< Module node IDs */
+    uint32_t handler_count;                  /**< Number of handlers */
+    bool in_use;                             /**< Slot occupied */
+} brain_kg_msg_index_entry_t;
+
+/* Message-type index structure */
+typedef struct {
+    brain_kg_msg_index_entry_t* entries;     /**< Index entries */
+    uint32_t entry_count;                    /**< Number of used entries */
+    uint32_t entry_capacity;                 /**< Allocated capacity */
+    bool dirty;                              /**< Needs rebuild flag */
+    uint64_t last_rebuild;                   /**< Timestamp of last rebuild */
+} brain_kg_msg_index_t;
+
 struct brain_kg {
     brain_kg_config_t config;
 
@@ -64,6 +81,9 @@ struct brain_kg {
 
     /* Security */
     brain_kg_security_t security;
+
+    /* Message-type index (Phase 6: KG Query Optimization) */
+    brain_kg_msg_index_t msg_index;
 };
 
 /* ============================================================================
@@ -293,14 +313,38 @@ brain_kg_t* brain_kg_create(const brain_kg_config_t* config) {
     kg->next_edge_id = 1;
     kg->created_time = get_time_ms();
 
-    NIMCP_LOGGING_INFO("Brain KG created (nodes=%u, edges=%u)",
-                       kg->node_capacity, kg->edge_capacity);
+    /* Initialize message-type index (Phase 6) */
+    kg->msg_index.entry_capacity = BRAIN_KG_MAX_MESSAGE_TYPES;
+    kg->msg_index.entries = nimcp_malloc(
+        kg->msg_index.entry_capacity * sizeof(brain_kg_msg_index_entry_t));
+    if (!kg->msg_index.entries) {
+        NIMCP_LOGGING_ERROR("Failed to allocate message index");
+        nimcp_mutex_destroy(kg->mutex);
+        nimcp_free(kg->edges);
+        nimcp_free(kg->nodes);
+        nimcp_free(kg);
+        return NULL;
+    }
+    memset(kg->msg_index.entries, 0,
+           kg->msg_index.entry_capacity * sizeof(brain_kg_msg_index_entry_t));
+    kg->msg_index.entry_count = 0;
+    kg->msg_index.dirty = false;
+    kg->msg_index.last_rebuild = 0;
+
+    NIMCP_LOGGING_INFO("Brain KG created (nodes=%u, edges=%u, msg_index=%u)",
+                       kg->node_capacity, kg->edge_capacity,
+                       kg->msg_index.entry_capacity);
 
     return kg;
 }
 
 void brain_kg_destroy(brain_kg_t* kg) {
     if (!kg) return;
+
+    /* Free message-type index (Phase 6) */
+    if (kg->msg_index.entries) {
+        nimcp_free(kg->msg_index.entries);
+    }
 
     /* Free security critical nodes bitmap */
     if (kg->security.critical_nodes) {
@@ -1917,4 +1961,293 @@ int brain_kg_emergency_unlock(brain_kg_t* kg, uint64_t admin_token) {
 
     NIMCP_LOGGING_INFO("Brain KG emergency lock released");
     return 0;
+}
+
+/* ============================================================================
+ * MESSAGE-TYPE INDEX API (Phase 6: KG Query Optimization)
+ * ============================================================================ */
+
+/**
+ * @brief Find index entry for a message type (unlocked)
+ */
+static brain_kg_msg_index_entry_t* find_msg_index_entry_unlocked(
+    brain_kg_t* kg,
+    uint32_t message_type
+) {
+    if (!kg || !kg->msg_index.entries) return NULL;
+
+    for (uint32_t i = 0; i < kg->msg_index.entry_capacity; i++) {
+        if (kg->msg_index.entries[i].in_use &&
+            kg->msg_index.entries[i].message_type == message_type) {
+            return &kg->msg_index.entries[i];
+        }
+    }
+    return NULL;
+}
+
+/**
+ * @brief Find or create index entry for a message type (unlocked)
+ */
+static brain_kg_msg_index_entry_t* get_or_create_msg_index_entry_unlocked(
+    brain_kg_t* kg,
+    uint32_t message_type
+) {
+    if (!kg || !kg->msg_index.entries) return NULL;
+
+    /* First try to find existing entry */
+    brain_kg_msg_index_entry_t* entry = find_msg_index_entry_unlocked(kg, message_type);
+    if (entry) return entry;
+
+    /* Find free slot */
+    for (uint32_t i = 0; i < kg->msg_index.entry_capacity; i++) {
+        if (!kg->msg_index.entries[i].in_use) {
+            entry = &kg->msg_index.entries[i];
+            memset(entry, 0, sizeof(*entry));
+            entry->message_type = message_type;
+            entry->handler_count = 0;
+            entry->in_use = true;
+            kg->msg_index.entry_count++;
+            return entry;
+        }
+    }
+
+    NIMCP_LOGGING_WARN("Message index capacity reached (%u)", kg->msg_index.entry_capacity);
+    return NULL;
+}
+
+brain_kg_handler_list_t* brain_kg_get_handlers_for_message_type(
+    const brain_kg_t* kg,
+    uint32_t message_type
+) {
+    if (!kg) return NULL;
+
+    brain_kg_handler_list_t* list = nimcp_malloc(sizeof(*list));
+    if (!list) return NULL;
+
+    list->count = 0;
+    list->capacity = 16;
+    list->handlers = nimcp_malloc(list->capacity * sizeof(brain_kg_node_id_t));
+    if (!list->handlers) {
+        nimcp_free(list);
+        return NULL;
+    }
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    /* Rebuild index if dirty */
+    if (mkg->msg_index.dirty) {
+        nimcp_mutex_unlock(mkg->mutex);
+        brain_kg_rebuild_message_index(mkg);
+        nimcp_mutex_lock(mkg->mutex);
+    }
+
+    brain_kg_msg_index_entry_t* entry = find_msg_index_entry_unlocked(mkg, message_type);
+    if (entry) {
+        /* Copy handlers from index */
+        for (uint32_t i = 0; i < entry->handler_count; i++) {
+            if (list->count >= list->capacity) {
+                list->capacity *= 2;
+                brain_kg_node_id_t* new_handlers = nimcp_realloc(
+                    list->handlers, list->capacity * sizeof(brain_kg_node_id_t));
+                if (!new_handlers) break;
+                list->handlers = new_handlers;
+            }
+            list->handlers[list->count++] = entry->handlers[i];
+        }
+    }
+
+    mkg->stats.queries_count++;
+    nimcp_mutex_unlock(mkg->mutex);
+
+    return list;
+}
+
+void brain_kg_handler_list_destroy(brain_kg_handler_list_t* list) {
+    if (!list) return;
+    if (list->handlers) nimcp_free(list->handlers);
+    nimcp_free(list);
+}
+
+int brain_kg_add_message_handler(
+    brain_kg_t* kg,
+    brain_kg_node_id_t module_node_id,
+    uint32_t message_type
+) {
+    if (!kg || module_node_id == BRAIN_KG_INVALID_NODE) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+
+    /* Verify module node exists */
+    brain_kg_node_t* node = find_node_by_id_unlocked(kg, module_node_id);
+    if (!node) {
+        nimcp_mutex_unlock(kg->mutex);
+        NIMCP_LOGGING_WARN("Cannot add message handler: module node %u not found",
+                           module_node_id);
+        return -1;
+    }
+
+    /* Get or create index entry */
+    brain_kg_msg_index_entry_t* entry = get_or_create_msg_index_entry_unlocked(
+        kg, message_type);
+    if (!entry) {
+        nimcp_mutex_unlock(kg->mutex);
+        return -1;
+    }
+
+    /* Check if handler already registered */
+    for (uint32_t i = 0; i < entry->handler_count; i++) {
+        if (entry->handlers[i] == module_node_id) {
+            nimcp_mutex_unlock(kg->mutex);
+            return 0;  /* Already registered */
+        }
+    }
+
+    /* Add handler to index */
+    if (entry->handler_count >= BRAIN_KG_MAX_HANDLERS_PER_MSG) {
+        nimcp_mutex_unlock(kg->mutex);
+        NIMCP_LOGGING_WARN("Max handlers per message type reached for type %u",
+                           message_type);
+        return -1;
+    }
+
+    entry->handlers[entry->handler_count++] = module_node_id;
+    kg->stats.modifications_count++;
+
+    nimcp_mutex_unlock(kg->mutex);
+
+    NIMCP_LOGGING_DEBUG("Added handler for msg type 0x%x: node %u (%s)",
+                        message_type, module_node_id, node->name);
+    return 0;
+}
+
+int brain_kg_remove_message_handler(
+    brain_kg_t* kg,
+    brain_kg_node_id_t module_node_id,
+    uint32_t message_type
+) {
+    if (!kg || module_node_id == BRAIN_KG_INVALID_NODE) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+
+    brain_kg_msg_index_entry_t* entry = find_msg_index_entry_unlocked(kg, message_type);
+    if (!entry) {
+        nimcp_mutex_unlock(kg->mutex);
+        return -1;
+    }
+
+    /* Find and remove handler */
+    for (uint32_t i = 0; i < entry->handler_count; i++) {
+        if (entry->handlers[i] == module_node_id) {
+            /* Shift remaining handlers */
+            for (uint32_t j = i; j < entry->handler_count - 1; j++) {
+                entry->handlers[j] = entry->handlers[j + 1];
+            }
+            entry->handler_count--;
+
+            /* If no more handlers, mark entry as unused */
+            if (entry->handler_count == 0) {
+                entry->in_use = false;
+                kg->msg_index.entry_count--;
+            }
+
+            kg->stats.modifications_count++;
+            nimcp_mutex_unlock(kg->mutex);
+            return 0;
+        }
+    }
+
+    nimcp_mutex_unlock(kg->mutex);
+    return -1;  /* Not found */
+}
+
+int brain_kg_rebuild_message_index(brain_kg_t* kg) {
+    if (!kg) return -1;
+
+    nimcp_mutex_lock(kg->mutex);
+
+    /* Clear existing index */
+    for (uint32_t i = 0; i < kg->msg_index.entry_capacity; i++) {
+        kg->msg_index.entries[i].in_use = false;
+        kg->msg_index.entries[i].handler_count = 0;
+    }
+    kg->msg_index.entry_count = 0;
+
+    int handlers_indexed = 0;
+
+    /* Scan all HANDLES_MESSAGE edges and rebuild index */
+    for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+        if (!kg->edges[i].in_use) continue;
+        if (kg->edges[i].type != BRAIN_KG_EDGE_HANDLES_MESSAGE) continue;
+
+        brain_kg_node_id_t module_node_id = kg->edges[i].from;
+        uint32_t message_type = kg->edges[i].to;  /* 'to' holds message type */
+
+        brain_kg_msg_index_entry_t* entry = get_or_create_msg_index_entry_unlocked(
+            kg, message_type);
+        if (!entry) continue;
+
+        /* Check for duplicates */
+        bool found = false;
+        for (uint32_t j = 0; j < entry->handler_count; j++) {
+            if (entry->handlers[j] == module_node_id) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found && entry->handler_count < BRAIN_KG_MAX_HANDLERS_PER_MSG) {
+            entry->handlers[entry->handler_count++] = module_node_id;
+            handlers_indexed++;
+        }
+    }
+
+    kg->msg_index.dirty = false;
+    kg->msg_index.last_rebuild = get_time_ms();
+
+    nimcp_mutex_unlock(kg->mutex);
+
+    NIMCP_LOGGING_INFO("Message index rebuilt: %d handlers indexed in %u entries",
+                       handlers_indexed, kg->msg_index.entry_count);
+    return handlers_indexed;
+}
+
+uint32_t brain_kg_get_module_handled_messages(
+    const brain_kg_t* kg,
+    brain_kg_node_id_t module_node_id,
+    uint32_t* message_types,
+    uint32_t max_types
+) {
+    if (!kg || !message_types || max_types == 0) return 0;
+    if (module_node_id == BRAIN_KG_INVALID_NODE) return 0;
+
+    brain_kg_t* mkg = (brain_kg_t*)kg;
+    nimcp_mutex_lock(mkg->mutex);
+
+    uint32_t found = 0;
+
+    /* Scan index for entries containing this module */
+    for (uint32_t i = 0; i < kg->msg_index.entry_capacity && found < max_types; i++) {
+        if (!kg->msg_index.entries[i].in_use) continue;
+
+        for (uint32_t j = 0; j < kg->msg_index.entries[i].handler_count; j++) {
+            if (kg->msg_index.entries[i].handlers[j] == module_node_id) {
+                message_types[found++] = kg->msg_index.entries[i].message_type;
+                break;
+            }
+        }
+    }
+
+    nimcp_mutex_unlock(mkg->mutex);
+    return found;
+}
+
+void brain_kg_invalidate_message_index(brain_kg_t* kg) {
+    if (!kg) return;
+
+    nimcp_mutex_lock(kg->mutex);
+    kg->msg_index.dirty = true;
+    nimcp_mutex_unlock(kg->mutex);
+
+    NIMCP_LOGGING_DEBUG("Message index invalidated");
 }

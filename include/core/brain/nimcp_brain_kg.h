@@ -835,6 +835,129 @@ int brain_kg_emergency_lock(brain_kg_t* kg);
  */
 int brain_kg_emergency_unlock(brain_kg_t* kg, uint64_t admin_token);
 
+/* ============================================================================
+ * MESSAGE-TYPE INDEX API (Phase 6: KG Query Optimization)
+ * ============================================================================ */
+
+/**
+ * @brief Maximum message types indexed
+ */
+#define BRAIN_KG_MAX_MESSAGE_TYPES  512
+
+/**
+ * @brief Maximum handlers per message type
+ */
+#define BRAIN_KG_MAX_HANDLERS_PER_MSG  64
+
+/**
+ * @brief Handler lookup result
+ */
+typedef struct {
+    brain_kg_node_id_t* handlers;    /**< Array of module node IDs */
+    uint32_t count;                  /**< Number of handlers */
+    uint32_t capacity;               /**< Allocated capacity */
+} brain_kg_handler_list_t;
+
+/**
+ * @brief Get all modules that handle a specific message type
+ *
+ * WHAT: Efficient O(1) lookup of handlers for a message type
+ * WHY:  Enables fast KG-driven handler discovery at runtime
+ * HOW:  Uses internal message-type index, not full edge scan
+ *
+ * @param kg KG handle
+ * @param message_type Message type identifier (bio_message_type_t value)
+ * @return Handler list (caller must free with brain_kg_handler_list_destroy)
+ */
+brain_kg_handler_list_t* brain_kg_get_handlers_for_message_type(
+    const brain_kg_t* kg,
+    uint32_t message_type
+);
+
+/**
+ * @brief Free handler list
+ */
+void brain_kg_handler_list_destroy(brain_kg_handler_list_t* list);
+
+/**
+ * @brief Add message handler mapping to index
+ *
+ * WHAT: Register that a module handles a specific message type
+ * WHY:  Populates message-type index for fast handler lookup
+ * HOW:  Adds to internal hash index, also creates HANDLES_MESSAGE edge
+ *
+ * @param kg KG handle
+ * @param module_node_id Module's node ID in the KG
+ * @param message_type Message type identifier
+ * @return 0 on success, -1 on error
+ */
+int brain_kg_add_message_handler(
+    brain_kg_t* kg,
+    brain_kg_node_id_t module_node_id,
+    uint32_t message_type
+);
+
+/**
+ * @brief Remove message handler mapping from index
+ *
+ * WHAT: Unregister a module's handler for a message type
+ * WHY:  Maintains index consistency when handlers are removed
+ * HOW:  Removes from internal hash index
+ *
+ * @param kg KG handle
+ * @param module_node_id Module's node ID in the KG
+ * @param message_type Message type identifier
+ * @return 0 on success, -1 if not found
+ */
+int brain_kg_remove_message_handler(
+    brain_kg_t* kg,
+    brain_kg_node_id_t module_node_id,
+    uint32_t message_type
+);
+
+/**
+ * @brief Rebuild message-type index from edges
+ *
+ * WHAT: Reconstruct the message-type index from HANDLES_MESSAGE edges
+ * WHY:  Recovery after index corruption or for lazy initialization
+ * HOW:  Scans all edges, rebuilds index
+ *
+ * @param kg KG handle
+ * @return Number of handlers indexed, -1 on error
+ */
+int brain_kg_rebuild_message_index(brain_kg_t* kg);
+
+/**
+ * @brief Get all message types handled by a module
+ *
+ * WHAT: Reverse lookup - find all messages a module handles
+ * WHY:  Enable module introspection of its own handlers
+ * HOW:  Scans index for entries containing the module
+ *
+ * @param kg KG handle
+ * @param module_node_id Module's node ID
+ * @param message_types Output array (caller allocated)
+ * @param max_types Size of output array
+ * @return Number of message types found
+ */
+uint32_t brain_kg_get_module_handled_messages(
+    const brain_kg_t* kg,
+    brain_kg_node_id_t module_node_id,
+    uint32_t* message_types,
+    uint32_t max_types
+);
+
+/**
+ * @brief Invalidate message-type index cache
+ *
+ * WHAT: Mark index as needing rebuild
+ * WHY:  Called when edges are modified outside of add/remove_message_handler
+ * HOW:  Sets dirty flag, next query triggers rebuild
+ *
+ * @param kg KG handle
+ */
+void brain_kg_invalidate_message_index(brain_kg_t* kg);
+
 #ifdef __cplusplus
 }
 #endif
