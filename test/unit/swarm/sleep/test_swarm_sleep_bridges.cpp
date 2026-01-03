@@ -133,6 +133,7 @@ TEST_F(SwarmConsciousnessSleepBridgeTest, CreateAndDestroy) {
     swarm_consciousness_sleep_bridge_t bridge = swarm_consciousness_sleep_bridge_create(&config, (sleep_system_t)1);
     EXPECT_NE(bridge, nullptr);
     swarm_consciousness_sleep_bridge_destroy(bridge);
+}
 
 TEST_F(SwarmConsciousnessSleepBridgeTest, PhiFactorVariesWithSleep) {
     float awake = swarm_consciousness_sleep_get_phi_factor(SLEEP_STATE_AWAKE);
@@ -141,6 +142,130 @@ TEST_F(SwarmConsciousnessSleepBridgeTest, PhiFactorVariesWithSleep) {
     EXPECT_FLOAT_EQ(awake, SWARM_CONSCIOUSNESS_SLEEP_PHI_AWAKE);
     EXPECT_LT(deep, awake);
     EXPECT_GT(rem, deep);  // REM has more consciousness than deep sleep
+}
+
+//=============================================================================
+// Bidirectional Consciousness → Sleep Tests
+//=============================================================================
+
+TEST_F(SwarmConsciousnessSleepBridgeTest, ConnectAndDisconnectConsciousness) {
+    swarm_consciousness_sleep_config_t config;
+    swarm_consciousness_sleep_default_config(&config);
+    swarm_consciousness_sleep_bridge_t bridge = swarm_consciousness_sleep_bridge_create(&config, (sleep_system_t)1);
+    ASSERT_NE(bridge, nullptr);
+
+    // Connect consciousness (using NULL as mock - function handles it)
+    int result = swarm_consciousness_sleep_connect_consciousness(bridge, nullptr);
+    EXPECT_EQ(result, 0);
+
+    // Disconnect
+    swarm_consciousness_sleep_disconnect_consciousness(bridge);
+
+    swarm_consciousness_sleep_bridge_destroy(bridge);
+}
+
+TEST_F(SwarmConsciousnessSleepBridgeTest, PressureModifierVariesWithConsciousnessState) {
+    // DORMANT state increases sleep pressure
+    float dormant_mod = swarm_consciousness_sleep_get_pressure_modifier(0);  // DORMANT
+    EXPECT_FLOAT_EQ(dormant_mod, SWARM_CONSCIOUSNESS_TO_SLEEP_DORMANT);
+    EXPECT_GT(dormant_mod, 1.0f);  // Increases pressure
+
+    // EMERGING state is neutral
+    float emerging_mod = swarm_consciousness_sleep_get_pressure_modifier(1);  // EMERGING
+    EXPECT_FLOAT_EQ(emerging_mod, SWARM_CONSCIOUSNESS_TO_SLEEP_EMERGING);
+    EXPECT_FLOAT_EQ(emerging_mod, 1.0f);  // Neutral
+
+    // UNIFIED state reduces sleep pressure
+    float unified_mod = swarm_consciousness_sleep_get_pressure_modifier(2);  // UNIFIED
+    EXPECT_FLOAT_EQ(unified_mod, SWARM_CONSCIOUSNESS_TO_SLEEP_UNIFIED);
+    EXPECT_LT(unified_mod, 1.0f);  // Reduces pressure
+
+    // TRANSCENDENT state strongly reduces sleep pressure
+    float transcendent_mod = swarm_consciousness_sleep_get_pressure_modifier(3);  // TRANSCENDENT
+    EXPECT_FLOAT_EQ(transcendent_mod, SWARM_CONSCIOUSNESS_TO_SLEEP_TRANSCENDENT);
+    EXPECT_LT(transcendent_mod, unified_mod);  // Even more reduction
+}
+
+TEST_F(SwarmConsciousnessSleepBridgeTest, ConsciousnessChangeUpdatesModulation) {
+    swarm_consciousness_sleep_config_t config;
+    swarm_consciousness_sleep_default_config(&config);
+    swarm_consciousness_sleep_bridge_t bridge = swarm_consciousness_sleep_bridge_create(&config, (sleep_system_t)1);
+    ASSERT_NE(bridge, nullptr);
+
+    // Simulate consciousness state change
+    int result = swarm_consciousness_sleep_on_consciousness_change(bridge, 3, 8.0f);  // TRANSCENDENT, high phi
+    EXPECT_EQ(result, 0);
+
+    // Get modulation values
+    swarm_sleep_consciousness_modulation_t modulation;
+    result = swarm_consciousness_sleep_get_consciousness_modulation(bridge, &modulation);
+    EXPECT_EQ(result, 0);
+
+    // Verify modulation was applied
+    EXPECT_EQ(modulation.consciousness_state, 3u);  // TRANSCENDENT
+    EXPECT_FLOAT_EQ(modulation.collective_phi, 8.0f);
+    EXPECT_FLOAT_EQ(modulation.sleep_pressure_modifier, SWARM_CONSCIOUSNESS_TO_SLEEP_TRANSCENDENT);
+    EXPECT_TRUE(modulation.suppress_sleep_transition);  // Transcendent blocks sleep
+
+    swarm_consciousness_sleep_bridge_destroy(bridge);
+}
+
+TEST_F(SwarmConsciousnessSleepBridgeTest, TranscendentConsciousnessBlocksSleepTransition) {
+    swarm_consciousness_sleep_config_t config;
+    swarm_consciousness_sleep_default_config(&config);
+    swarm_consciousness_sleep_bridge_t bridge = swarm_consciousness_sleep_bridge_create(&config, (sleep_system_t)1);
+    ASSERT_NE(bridge, nullptr);
+
+    // Initially should not block
+    bool blocks = swarm_consciousness_sleep_blocks_transition(bridge);
+    EXPECT_FALSE(blocks);
+
+    // Set to TRANSCENDENT state
+    swarm_consciousness_sleep_on_consciousness_change(bridge, 3, 10.0f);
+
+    // Now should block
+    blocks = swarm_consciousness_sleep_blocks_transition(bridge);
+    EXPECT_TRUE(blocks);
+
+    // Set back to DORMANT
+    swarm_consciousness_sleep_on_consciousness_change(bridge, 0, 0.1f);
+
+    // Should no longer block
+    blocks = swarm_consciousness_sleep_blocks_transition(bridge);
+    EXPECT_FALSE(blocks);
+
+    swarm_consciousness_sleep_bridge_destroy(bridge);
+}
+
+TEST_F(SwarmConsciousnessSleepBridgeTest, WakefulnessBoostScalesWithPhi) {
+    swarm_consciousness_sleep_config_t config;
+    swarm_consciousness_sleep_default_config(&config);
+    swarm_consciousness_sleep_bridge_t bridge = swarm_consciousness_sleep_bridge_create(&config, (sleep_system_t)1);
+    ASSERT_NE(bridge, nullptr);
+
+    // Low phi should have low wakefulness boost
+    swarm_consciousness_sleep_on_consciousness_change(bridge, 2, 1.0f);  // UNIFIED, low phi
+    swarm_sleep_consciousness_modulation_t mod_low;
+    swarm_consciousness_sleep_get_consciousness_modulation(bridge, &mod_low);
+
+    // High phi should have higher wakefulness boost
+    swarm_consciousness_sleep_on_consciousness_change(bridge, 2, 10.0f);  // UNIFIED, high phi
+    swarm_sleep_consciousness_modulation_t mod_high;
+    swarm_consciousness_sleep_get_consciousness_modulation(bridge, &mod_high);
+
+    EXPECT_GT(mod_high.wakefulness_boost, mod_low.wakefulness_boost);
+
+    swarm_consciousness_sleep_bridge_destroy(bridge);
+}
+
+TEST_F(SwarmConsciousnessSleepBridgeTest, NullBridgeHandledGracefully) {
+    // All bidirectional functions should handle null gracefully
+    EXPECT_EQ(swarm_consciousness_sleep_connect_consciousness(nullptr, nullptr), -1);
+    swarm_consciousness_sleep_disconnect_consciousness(nullptr);  // Should not crash
+    EXPECT_EQ(swarm_consciousness_sleep_on_consciousness_change(nullptr, 0, 0.0f), -1);
+    swarm_sleep_consciousness_modulation_t mod;
+    EXPECT_EQ(swarm_consciousness_sleep_get_consciousness_modulation(nullptr, &mod), -1);
+    EXPECT_FALSE(swarm_consciousness_sleep_blocks_transition(nullptr));
 }
 
 //=============================================================================
@@ -207,7 +332,6 @@ TEST_F(SwarmEmergenceSleepBridgeTest, TransFactorVariesWithSleep) {
 
 // Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_flocking_sleep_bridge.h"
-}
 
 class SwarmFlockingSleepBridgeTest : public ::testing::Test {
 protected:
@@ -238,7 +362,6 @@ TEST_F(SwarmFlockingSleepBridgeTest, ForceFactorVariesWithSleep) {
 
 // Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_immune_sleep_bridge.h"
-}
 
 class SwarmImmuneSleepBridgeTest : public ::testing::Test {
 protected:
@@ -274,7 +397,6 @@ TEST_F(SwarmImmuneSleepBridgeTest, MemoryFactorEnhancedDuringSleep) {
 
 // Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_memory_sleep_bridge.h"
-}
 
 class SwarmMemorySleepBridgeTest : public ::testing::Test {
 protected:
@@ -309,7 +431,6 @@ TEST_F(SwarmMemorySleepBridgeTest, ReplayFactorHighDuringREM) {
 
 // Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.h"
-}
 
 class SwarmPheromoneSleepBridgeTest : public ::testing::Test {
 protected:
@@ -339,7 +460,6 @@ TEST_F(SwarmPheromoneSleepBridgeTest, DecayFactorVariesWithSleep) {
 
 // Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_quorum_sleep_bridge.h"
-}
 
 class SwarmQuorumSleepBridgeTest : public ::testing::Test {
 protected:
@@ -374,7 +494,6 @@ TEST_F(SwarmQuorumSleepBridgeTest, CommitFactorReducedDuringSleep) {
 
 // Headers have their own extern "C" guards
 #include "swarm/sleep/nimcp_swarm_signal_sleep_bridge.h"
-}
 
 class SwarmSignalSleepBridgeTest : public ::testing::Test {
 protected:

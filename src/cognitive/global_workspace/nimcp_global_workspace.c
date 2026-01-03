@@ -28,6 +28,7 @@
 #include "cognitive/global_workspace/nimcp_global_workspace.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
@@ -1700,4 +1701,152 @@ bool global_workspace_validate_config(
         error_msg[0] = '\0';
     }
     return true;
+}
+
+//=============================================================================
+// Knowledge Graph Self-Awareness Integration
+//=============================================================================
+
+/**
+ * @brief Query self-knowledge from knowledge graph
+ *
+ * WHAT: Allow global workspace module to introspect its own structure and capabilities
+ * WHY:  Enable self-awareness - GW is central to consciousness, needs to know itself
+ * HOW:  Use KG reader to look up Global_Workspace entity and related entities
+ *
+ * @param kg Knowledge graph reader instance
+ * @return 1 if self-knowledge found, 0 otherwise
+ */
+int global_workspace_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    // Query for our own module entity
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Global_Workspace");
+    if (self) {
+        // Global workspace module now has access to its documented structure
+        NIMCP_LOGGING_DEBUG("global_workspace: Self-knowledge found: %s (%u observations)",
+                  self->name, self->num_observations);
+    }
+
+    // Query consciousness-related entities
+    kg_entity_list_t* consciousness = kg_reader_search_entities(kg, "consciousness");
+    if (consciousness) {
+        NIMCP_LOGGING_DEBUG("global_workspace: Found %u consciousness-related entities in KG",
+                  consciousness->count);
+        kg_entity_list_destroy(consciousness);
+    }
+
+    // Query broadcast-related entities
+    kg_entity_list_t* broadcast = kg_reader_search_entities(kg, "broadcast");
+    if (broadcast) {
+        NIMCP_LOGGING_DEBUG("global_workspace: Found %u broadcast-related entities in KG",
+                  broadcast->count);
+        kg_entity_list_destroy(broadcast);
+    }
+
+    return self ? 1 : 0;
+}
+
+/**
+ * @brief Query broadcast targets from knowledge graph
+ *
+ * WHAT: Allow GW to know what cognitive modules it can broadcast to
+ * WHY:  Essential for consciousness - GW needs to know its audience
+ * HOW:  Query KG for cognitive subsystem entities that are potential broadcast targets
+ *
+ * @param kg Knowledge graph reader instance
+ * @return 1 if broadcast targets found, 0 otherwise
+ */
+int global_workspace_query_broadcast_targets(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    // GW should know all cognitive modules it can broadcast to
+    kg_entity_list_t* cognitive = kg_reader_get_entities_by_type(kg, "cognitive_subsystem");
+    if (cognitive) {
+        NIMCP_LOGGING_DEBUG("global_workspace: Found %u cognitive subsystems as broadcast targets",
+                  cognitive->count);
+        kg_entity_list_destroy(cognitive);
+        return 1;
+    }
+
+    // Also check for Module type entities
+    kg_entity_list_t* modules = kg_reader_get_entities_by_type(kg, "Module");
+    if (modules) {
+        NIMCP_LOGGING_DEBUG("global_workspace: Found %u modules as potential broadcast targets",
+                  modules->count);
+        kg_entity_list_destroy(modules);
+        return 1;
+    }
+
+    // Query for cognitive-related entities as fallback
+    kg_entity_list_t* cognitive_entities = kg_reader_search_entities(kg, "cognitive");
+    if (cognitive_entities) {
+        NIMCP_LOGGING_DEBUG("global_workspace: Found %u cognitive-related entities",
+                  cognitive_entities->count);
+        kg_entity_list_destroy(cognitive_entities);
+        return 1;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Get global workspace capabilities from knowledge graph
+ *
+ * @param kg Knowledge graph reader instance
+ * @return Capability description string or NULL
+ */
+const char* global_workspace_get_capabilities(kg_reader_t* kg) {
+    if (!kg) return NULL;
+    return kg_reader_get_module_capabilities(kg, "Global_Workspace");
+}
+
+/**
+ * @brief Get global workspace integrations from knowledge graph
+ *
+ * @param kg Knowledge graph reader instance
+ * @return Relation list showing integrations (caller must free)
+ */
+kg_relation_list_t* global_workspace_get_integrations(kg_reader_t* kg) {
+    if (!kg) return NULL;
+    return kg_reader_get_module_integrations(kg, "Global_Workspace");
+}
+
+/**
+ * @brief Query competition strategy information from knowledge graph
+ *
+ * WHAT: Allow GW to understand its competition mechanisms
+ * WHY:  Self-awareness about how attention works
+ * HOW:  Query KG for competition and attention related entities
+ *
+ * @param kg Knowledge graph reader instance
+ * @return Number of competition-related entities found
+ */
+int global_workspace_query_competition_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    int count = 0;
+
+    // Query for competition-related entities
+    kg_entity_list_t* competition = kg_reader_search_entities(kg, "competition");
+    if (competition) {
+        count += competition->count;
+        kg_entity_list_destroy(competition);
+    }
+
+    // Query for attention-related entities
+    kg_entity_list_t* attention = kg_reader_search_entities(kg, "attention");
+    if (attention) {
+        count += attention->count;
+        kg_entity_list_destroy(attention);
+    }
+
+    // Query for ignition-related entities (global ignition theory)
+    kg_entity_list_t* ignition = kg_reader_search_entities(kg, "ignition");
+    if (ignition) {
+        count += ignition->count;
+        kg_entity_list_destroy(ignition);
+    }
+
+    return count;
 }

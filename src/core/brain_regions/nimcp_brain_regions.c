@@ -13,6 +13,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -901,4 +902,68 @@ const char* brain_region_get_name(brain_region_type_t type) {
 
         default:                     return "Unknown Region";
     }
+}
+
+// ============================================================================
+// KNOWLEDGE GRAPH SELF-AWARENESS INTEGRATION
+// ============================================================================
+
+/**
+ * @brief Query self-knowledge from knowledge graph
+ *
+ * WHAT: Allow brain regions module to introspect its own structure and capabilities
+ * WHY:  Enable self-awareness - the system can query what brain regions it has
+ * HOW:  Use KG reader to look up Brain_Regions entity and related region entities
+ *
+ * @param kg Knowledge graph reader instance
+ * @return 1 if self-knowledge found, 0 otherwise
+ */
+int brain_regions_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    // Query for our own module entity
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Brain_Regions");
+    if (self) {
+        // Brain regions module now has access to its documented structure
+        LOG_DEBUG(LOG_MODULE, "Self-knowledge found: %s (%u observations)",
+                  self->name, self->num_observations);
+    }
+
+    // Query all region-related entities for enumeration
+    kg_entity_list_t* regions = kg_reader_search_entities(kg, "region");
+    if (regions) {
+        LOG_DEBUG(LOG_MODULE, "Found %u region-related entities in KG", regions->count);
+        kg_entity_list_destroy(regions);
+    }
+
+    // Query for cortical layer information
+    kg_entity_list_t* layers = kg_reader_search_entities(kg, "layer");
+    if (layers) {
+        LOG_DEBUG(LOG_MODULE, "Found %u layer-related entities in KG", layers->count);
+        kg_entity_list_destroy(layers);
+    }
+
+    return self ? 1 : 0;
+}
+
+/**
+ * @brief Get module capabilities from knowledge graph
+ *
+ * @param kg Knowledge graph reader instance
+ * @return Capability description string or NULL
+ */
+const char* brain_regions_get_capabilities(kg_reader_t* kg) {
+    if (!kg) return NULL;
+    return kg_reader_get_module_capabilities(kg, "Brain_Regions");
+}
+
+/**
+ * @brief Get module integrations from knowledge graph
+ *
+ * @param kg Knowledge graph reader instance
+ * @return Relation list showing integrations (caller must free)
+ */
+kg_relation_list_t* brain_regions_get_integrations(kg_reader_t* kg) {
+    if (!kg) return NULL;
+    return kg_reader_get_module_integrations(kg, "Brain_Regions");
 }

@@ -19,6 +19,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
+#include "core/brain/nimcp_brain_kg_helpers.h"  // KG self-awareness integration
 
 // Bio-async integration
 #include "async/nimcp_bio_async.h"
@@ -70,6 +71,10 @@ struct reasoning_integration {
     // Bio-async integration
     bio_module_context_t bio_ctx;
     bool bio_async_enabled;
+
+    // Internal Knowledge Graph integration (self-awareness)
+    kg_module_context_t kg_context;
+    bool kg_connected;
 };
 
 //=============================================================================
@@ -1028,4 +1033,126 @@ bool reasoning_integration_validate_config(
         return false;
 
     return true;
+}
+
+//=============================================================================
+// Knowledge Graph Self-Awareness Integration
+//=============================================================================
+
+/**
+ * @brief Connect reasoning integration to internal knowledge graph
+ *
+ * WHAT: Initialize KG context for self-awareness queries
+ * WHY:  Enable reasoning to query its resources and capabilities
+ * HOW:  Use KG helper functions to establish connection
+ *
+ * @param integration Reasoning integration instance
+ * @param brain Brain instance for KG access
+ * @return true if connected (or KG gracefully disabled), false on error
+ */
+bool reasoning_integration_connect_kg(reasoning_integration_t* integration, brain_t brain)
+{
+    if (!integration) {
+        return false;
+    }
+
+    nimcp_platform_mutex_lock(&integration->mutex);
+
+    int result = kg_module_init(&integration->kg_context, brain, "Reasoning_Integration");
+
+    if (result != 0) {
+        NIMCP_LOGGING_ERROR(LOG_MODULE, "Failed to initialize KG context");
+        nimcp_platform_mutex_unlock(&integration->mutex);
+        return false;
+    }
+
+    if (!kg_is_available(&integration->kg_context)) {
+        integration->kg_connected = false;
+        NIMCP_LOGGING_INFO(LOG_MODULE, "KG disabled, reasoning graceful degradation");
+        nimcp_platform_mutex_unlock(&integration->mutex);
+        return true;
+    }
+
+    integration->kg_connected = true;
+    NIMCP_LOGGING_INFO(LOG_MODULE, "Connected to internal KG for reasoning self-awareness");
+
+    nimcp_platform_mutex_unlock(&integration->mutex);
+    return true;
+}
+
+/**
+ * @brief Query reasoning resources from KG
+ *
+ * WHAT: Retrieve list of resources available to reasoning
+ * WHY:  Enable self-awareness of reasoning capabilities
+ * HOW:  Query KG for connected module nodes
+ *
+ * @param integration Reasoning integration instance
+ * @return Number of resources found (0 if KG not connected)
+ */
+int reasoning_integration_query_resources(reasoning_integration_t* integration)
+{
+    if (!integration || !integration->kg_connected) {
+        return 0;
+    }
+
+    nimcp_platform_mutex_lock(&integration->mutex);
+
+    if (!kg_is_available(&integration->kg_context)) {
+        nimcp_platform_mutex_unlock(&integration->mutex);
+        return 0;
+    }
+
+    // Get all neighbors (both incoming and outgoing connections)
+    brain_kg_node_list_t* neighbors = kg_get_neighbors_safe(&integration->kg_context);
+    if (!neighbors) {
+        nimcp_platform_mutex_unlock(&integration->mutex);
+        return 0;
+    }
+
+    int count = (int)neighbors->count;
+    NIMCP_LOGGING_DEBUG(LOG_MODULE, "Reasoning has %d KG resources", count);
+
+    brain_kg_node_list_destroy(neighbors);
+    nimcp_platform_mutex_unlock(&integration->mutex);
+    return count;
+}
+
+/**
+ * @brief Query reasoning's self-knowledge from KG
+ *
+ * WHAT: Query KG for structural self-knowledge about reasoning
+ * WHY:  Enable introspection of reasoning capabilities
+ * HOW:  Find self node and retrieve metadata
+ *
+ * @param integration Reasoning integration instance
+ * @return true if self-knowledge is available, false otherwise
+ */
+bool reasoning_integration_query_self_knowledge(reasoning_integration_t* integration)
+{
+    if (!integration || !integration->kg_connected) {
+        return false;
+    }
+
+    nimcp_platform_mutex_lock(&integration->mutex);
+
+    if (!kg_has_node(&integration->kg_context)) {
+        nimcp_platform_mutex_unlock(&integration->mutex);
+        return false;
+    }
+
+    const brain_kg_node_t* self = kg_get_node_safe(
+        &integration->kg_context,
+        integration->kg_context.self_node_id
+    );
+
+    if (self) {
+        NIMCP_LOGGING_DEBUG(LOG_MODULE, "Reasoning self-knowledge: name=%s, state=%d",
+                           self->name, self->state);
+        nimcp_platform_mutex_unlock(&integration->mutex);
+        return true;
+    }
+
+    nimcp_platform_mutex_unlock(&integration->mutex);
+    return false;
 }

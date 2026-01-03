@@ -35,6 +35,7 @@
 #include "utils/time/nimcp_time.h"       // nimcp_time_monotonic_ms
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
 #include "core/brain/nimcp_brain.h"      // Brain reference
+#include "core/brain/nimcp_brain_kg_helpers.h"  // KG self-awareness integration
 #include "cognitive/global_workspace/nimcp_global_workspace.h"  // Global Workspace integration
 #include <string.h>
 #include <stdio.h>
@@ -131,6 +132,10 @@ struct executive_controller {
     // Quantum planning integration
     executive_quantum_bridge_t* quantum_bridge;  /**< Quantum reasoning for planning */
     bool quantum_planning_enabled;               /**< Quantum planning active */
+
+    // Internal Knowledge Graph integration (self-awareness)
+    kg_module_context_t kg_context;  /**< KG access context */
+    bool kg_connected;               /**< Internal KG is connected */
 };
 
 //=============================================================================
@@ -2051,4 +2056,110 @@ void executive_set_sleep_state(executive_controller_t* exec, sleep_state_t state
     exec->current_sleep_state = state;
 
     LOG_MODULE_DEBUG(LOG_MODULE, "Sleep state updated to %d", state);
+}
+
+//=============================================================================
+// Knowledge Graph Self-Awareness Integration
+//=============================================================================
+
+/**
+ * @brief Connect executive to internal knowledge graph
+ *
+ * WHAT: Initialize KG context for self-awareness queries
+ * WHY:  Enable executive to query its own capabilities and connections
+ * HOW:  Use KG helper functions to establish connection
+ *
+ * @param exec Executive controller instance
+ * @param brain Brain instance for KG access
+ * @return true if connected (or KG gracefully disabled), false on error
+ */
+bool executive_connect_kg(executive_controller_t* exec, brain_t brain)
+{
+    if (!exec) {
+        return false;
+    }
+
+    int result = kg_module_init(&exec->kg_context, brain, "Executive_Controller");
+
+    if (result != 0) {
+        LOG_MODULE_ERROR(LOG_MODULE, "Failed to initialize KG context");
+        return false;
+    }
+
+    if (!kg_is_available(&exec->kg_context)) {
+        exec->kg_connected = false;
+        LOG_MODULE_INFO(LOG_MODULE, "KG disabled, graceful degradation");
+        return true;
+    }
+
+    exec->kg_connected = true;
+    LOG_MODULE_INFO(LOG_MODULE, "Connected to internal KG for self-awareness");
+
+    return true;
+}
+
+/**
+ * @brief Query executive's connected modules from KG
+ *
+ * WHAT: Retrieve list of modules connected to executive
+ * WHY:  Enable self-awareness of coordination relationships
+ * HOW:  Query KG for outgoing edges from executive node
+ *
+ * @param exec Executive controller instance
+ * @return Number of connected modules found (0 if KG not connected)
+ */
+int executive_query_connected_modules(executive_controller_t* exec)
+{
+    if (!exec || !exec->kg_connected) {
+        return 0;
+    }
+
+    if (!kg_is_available(&exec->kg_context)) {
+        return 0;
+    }
+
+    brain_kg_edge_list_t* outgoing = kg_get_outgoing_safe(&exec->kg_context);
+    if (!outgoing) {
+        return 0;
+    }
+
+    int count = (int)outgoing->count;
+    LOG_MODULE_DEBUG(LOG_MODULE, "Executive has %d outgoing KG connections", count);
+
+    brain_kg_edge_list_destroy(outgoing);
+    return count;
+}
+
+/**
+ * @brief Query executive's task capabilities from KG
+ *
+ * WHAT: Query KG for self-knowledge about task handling
+ * WHY:  Enable introspection of what tasks executive can manage
+ * HOW:  Find self node and get neighbors
+ *
+ * @param exec Executive controller instance
+ * @return true if self-knowledge is available, false otherwise
+ */
+bool executive_query_self_capabilities(executive_controller_t* exec)
+{
+    if (!exec || !exec->kg_connected) {
+        return false;
+    }
+
+    if (!kg_has_node(&exec->kg_context)) {
+        return false;
+    }
+
+    const brain_kg_node_t* self = kg_get_node_safe(
+        &exec->kg_context,
+        exec->kg_context.self_node_id
+    );
+
+    if (self) {
+        LOG_MODULE_DEBUG(LOG_MODULE, "Executive self-knowledge: name=%s, state=%d",
+                        self->name, self->state);
+        return true;
+    }
+
+    return false;
 }

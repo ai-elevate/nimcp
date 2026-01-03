@@ -26,6 +26,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_security.h"
+#include "core/brain/nimcp_brain_kg_helpers.h"  // KG self-awareness integration
 
 /* WHAT: Quantum attention bridge integration
  * WHY:  O(√N) speedup for attention head selection
@@ -191,6 +192,12 @@ struct multihead_attention_struct {
      * NOTE: Disabled until quantum bridge API matches quantum_attention implementation
      */
     /* attention_quantum_bridge_t* quantum_bridge; */
+
+    /* WHAT: Internal Knowledge Graph integration (self-awareness)
+     * WHY:  Enable attention to query its own structure and targets
+     */
+    kg_module_context_t kg_context;
+    bool kg_connected;
 };
 
 //=============================================================================
@@ -2127,4 +2134,110 @@ int ternary_attention_top_k(
 
     nimcp_free(values_copy);
     return 0;
+}
+
+//=============================================================================
+// Knowledge Graph Self-Awareness Integration
+//=============================================================================
+
+/**
+ * @brief Connect multihead attention to internal knowledge graph
+ *
+ * WHAT: Initialize KG context for self-awareness queries
+ * WHY:  Enable attention to query its targets and configurations
+ * HOW:  Use KG helper functions to establish connection
+ *
+ * @param mha Multihead attention instance
+ * @param brain Brain instance for KG access
+ * @return true if connected (or KG gracefully disabled), false on error
+ */
+bool multihead_attention_connect_kg(multihead_attention_t mha, brain_t brain)
+{
+    if (!mha) {
+        return false;
+    }
+
+    int result = kg_module_init(&mha->kg_context, brain, "Multihead_Attention");
+
+    if (result != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize KG context");
+        return false;
+    }
+
+    if (!kg_is_available(&mha->kg_context)) {
+        mha->kg_connected = false;
+        NIMCP_LOGGING_INFO("KG disabled, attention graceful degradation");
+        return true;
+    }
+
+    mha->kg_connected = true;
+    NIMCP_LOGGING_INFO("Connected to internal KG for attention self-awareness");
+
+    return true;
+}
+
+/**
+ * @brief Query attention targets from KG
+ *
+ * WHAT: Retrieve list of modules that attention can focus on
+ * WHY:  Enable self-awareness of what attention can target
+ * HOW:  Query KG for connected nodes
+ *
+ * @param mha Multihead attention instance
+ * @return Number of potential targets found (0 if KG not connected)
+ */
+int multihead_attention_query_targets(multihead_attention_t mha)
+{
+    if (!mha || !mha->kg_connected) {
+        return 0;
+    }
+
+    if (!kg_is_available(&mha->kg_context)) {
+        return 0;
+    }
+
+    brain_kg_edge_list_t* outgoing = kg_get_outgoing_safe(&mha->kg_context);
+    if (!outgoing) {
+        return 0;
+    }
+
+    int count = (int)outgoing->count;
+    NIMCP_LOGGING_DEBUG("Attention has %d potential KG targets", count);
+
+    brain_kg_edge_list_destroy(outgoing);
+    return count;
+}
+
+/**
+ * @brief Query attention's self-knowledge from KG
+ *
+ * WHAT: Query KG for structural self-knowledge about attention
+ * WHY:  Enable introspection of attention configuration
+ * HOW:  Find self node and retrieve metadata
+ *
+ * @param mha Multihead attention instance
+ * @return true if self-knowledge is available, false otherwise
+ */
+bool multihead_attention_query_self_knowledge(multihead_attention_t mha)
+{
+    if (!mha || !mha->kg_connected) {
+        return false;
+    }
+
+    if (!kg_has_node(&mha->kg_context)) {
+        return false;
+    }
+
+    const brain_kg_node_t* self = kg_get_node_safe(
+        &mha->kg_context,
+        mha->kg_context.self_node_id
+    );
+
+    if (self) {
+        NIMCP_LOGGING_DEBUG("Attention self-knowledge: name=%s, state=%d",
+                           self->name, self->state);
+        return true;
+    }
+
+    return false;
 }

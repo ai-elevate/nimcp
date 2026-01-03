@@ -14,6 +14,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -440,4 +441,47 @@ void stdp_synapse_print_stats(const stdp_synapse_t* synapse) {
     printf("  Pre trace: %.6f, Post trace: %.6f\n", pre_trace, post_trace);
     printf("  DA modulation: %s (gain: %.1f, burst amp: %.1fx)\n",
            enable_da ? "ENABLED" : "DISABLED", da_gain, burst_amp);
+}
+
+/* ============================================================================
+ * KG Reader Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * @brief Query self-knowledge from knowledge graph
+ *
+ * WHAT: Allow STDP module to introspect its own capabilities and connections
+ * WHY:  Self-awareness enables adaptive behavior and system introspection
+ * HOW:  Query KG for STDP_Module entity and its relations
+ *
+ * @param kg Knowledge graph reader handle
+ * @return 1 if self-knowledge found, 0 if not found or error
+ */
+int stdp_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    /* Query our own entity from the knowledge graph */
+    const kg_entity_t* self = kg_reader_get_entity(kg, "STDP_Module");
+    if (self) {
+        /* Module now knows its own capabilities from KG */
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("STDP self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    /* Query connections to understand integration points */
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "STDP_Module");
+    if (connections) {
+        LOG_DEBUG("STDP has %u outgoing connections", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    /* Query incoming connections */
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "STDP_Module");
+    if (incoming) {
+        LOG_DEBUG("STDP has %u incoming connections", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

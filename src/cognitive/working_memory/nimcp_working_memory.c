@@ -36,6 +36,7 @@
 #include "cognitive/immune/nimcp_brain_immune.h"  // Brain immune integration (cytokine enums)
 #include "cognitive/nimcp_sleep_wake.h"  // Sleep state integration
 #include "cognitive/working_memory/nimcp_working_memory_sleep_bridge.h"  // Sleep bridge for modulation
+#include "core/brain/nimcp_brain_kg_helpers.h"  // KG self-awareness integration
 #define NIMCP_WORKING_MEMORY_QUANTUM_BRIDGE_IMPLEMENTATION
 #include "cognitive/memory/nimcp_working_memory_quantum_bridge.h"  // Quantum retrieval bridge
 
@@ -151,6 +152,10 @@ struct working_memory {
     // Quantum retrieval integration
     working_memory_quantum_bridge_t* quantum_bridge;  // Quantum search bridge
     bool enable_quantum_wm;                          // Quantum retrieval enabled
+
+    // Internal Knowledge Graph integration (self-awareness)
+    kg_module_context_t kg_context;  // KG access context
+    bool kg_connected;               // Internal KG is connected
 };
 
 //=============================================================================
@@ -2276,4 +2281,111 @@ bool working_memory_set_salience(
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
 
     return true;
+}
+
+//=============================================================================
+// Knowledge Graph Self-Awareness Integration
+//=============================================================================
+
+/**
+ * @brief Connect working memory to internal knowledge graph
+ *
+ * WHAT: Initialize KG context for self-awareness queries
+ * WHY:  Enable working memory to query its integrations and capabilities
+ * HOW:  Use KG helper functions to establish connection
+ *
+ * @param wm Working memory instance
+ * @param brain Brain instance for KG access
+ * @return true if connected (or KG gracefully disabled), false on error
+ */
+bool working_memory_connect_kg(working_memory_t* wm, brain_t brain)
+{
+    if (!wm) {
+        return false;
+    }
+
+    int result = kg_module_init(&wm->kg_context, brain, "Working_Memory");
+
+    if (result != 0) {
+        LOG_ERROR("Failed to initialize KG context");
+        return false;
+    }
+
+    if (!kg_is_available(&wm->kg_context)) {
+        wm->kg_connected = false;
+        LOG_INFO("KG disabled, graceful degradation");
+        return true;
+    }
+
+    wm->kg_connected = true;
+    LOG_INFO("Connected to internal KG for self-awareness");
+
+    return true;
+}
+
+/**
+ * @brief Query working memory's integration points from KG
+ *
+ * WHAT: Retrieve list of modules that integrate with working memory
+ * WHY:  Enable self-awareness of memory pathway connections
+ * HOW:  Query KG for edges connected to working memory node
+ *
+ * @param wm Working memory instance
+ * @return Number of integration points found (0 if KG not connected)
+ */
+int working_memory_query_integrations(working_memory_t* wm)
+{
+    if (!wm || !wm->kg_connected) {
+        return 0;
+    }
+
+    if (!kg_is_available(&wm->kg_context)) {
+        return 0;
+    }
+
+    // Get all neighbors (both incoming and outgoing connections)
+    brain_kg_node_list_t* neighbors = kg_get_neighbors_safe(&wm->kg_context);
+    if (!neighbors) {
+        return 0;
+    }
+
+    int count = (int)neighbors->count;
+    LOG_DEBUG("Working memory has %d KG integration points", count);
+
+    brain_kg_node_list_destroy(neighbors);
+    return count;
+}
+
+/**
+ * @brief Query working memory's self-knowledge from KG
+ *
+ * WHAT: Query KG for structural self-knowledge about working memory
+ * WHY:  Enable introspection of capacity and integration status
+ * HOW:  Find self node and retrieve metadata
+ *
+ * @param wm Working memory instance
+ * @return true if self-knowledge is available, false otherwise
+ */
+bool working_memory_query_self_knowledge(working_memory_t* wm)
+{
+    if (!wm || !wm->kg_connected) {
+        return false;
+    }
+
+    if (!kg_has_node(&wm->kg_context)) {
+        return false;
+    }
+
+    const brain_kg_node_t* self = kg_get_node_safe(
+        &wm->kg_context,
+        wm->kg_context.self_node_id
+    );
+
+    if (self) {
+        LOG_DEBUG("Working memory self-knowledge: name=%s, state=%d",
+                  self->name, self->state);
+        return true;
+    }
+
+    return false;
 }

@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/nimcp_plasticity_coordinator.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -946,4 +947,47 @@ const char* conflict_resolution_strategy_to_string(
         case CONFLICT_RESOLUTION_ENERGY_LIMITED: return "ENERGY_LIMITED";
         default: return "UNKNOWN";
     }
+}
+
+/* ============================================================================
+ * KG Reader Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * @brief Query self-knowledge from knowledge graph
+ *
+ * WHAT: Allow plasticity coordinator to introspect its own capabilities and connections
+ * WHY:  Self-awareness enables adaptive behavior and system introspection
+ * HOW:  Query KG for Plasticity_Coordinator entity and its relations
+ *
+ * @param kg Knowledge graph reader handle
+ * @return 1 if self-knowledge found, 0 if not found or error
+ */
+int plasticity_coordinator_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    /* Query our own entity from the knowledge graph */
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Plasticity_Coordinator");
+    if (self) {
+        /* Coordinator now knows its own capabilities from KG */
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Plasticity Coordinator self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    /* Query connections to understand what mechanisms we coordinate */
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Plasticity_Coordinator");
+    if (connections) {
+        NIMCP_LOGGING_DEBUG("Plasticity Coordinator has %u outgoing connections", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    /* Query incoming connections to understand what depends on us */
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Plasticity_Coordinator");
+    if (incoming) {
+        NIMCP_LOGGING_DEBUG("Plasticity Coordinator has %u incoming connections", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

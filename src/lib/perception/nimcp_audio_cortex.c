@@ -17,6 +17,7 @@
 #include "utils/tensor/nimcp_tensor.h"  /* Tensor library for vectorized operations */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"  /* KG reader for self-awareness */
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "perception/nimcp_visual_cortex.h"  // For receptor_expression_t
@@ -2434,4 +2435,51 @@ bool audio_cortex_is_training_mode(const audio_cortex_t* cortex)
         return false;
     }
     return cortex->training_mode;
+}
+
+//=============================================================================
+// Self-Awareness (KG Reader Integration)
+//=============================================================================
+
+/**
+ * @brief Query self-knowledge from knowledge graph
+ *
+ * WHAT: Allows audio cortex to introspect its own capabilities and connections
+ * WHY:  Enables self-awareness - "what am I and what can I do?"
+ * HOW:  Query KG for Audio_Cortex entity and its relations
+ *
+ * @param kg Knowledge graph reader (must be loaded)
+ * @return 1 if self-knowledge found, 0 otherwise
+ */
+int audio_cortex_query_self_knowledge(kg_reader_t* kg)
+{
+    if (!kg) {
+        return 0;
+    }
+
+    /* Query self-identity from KG */
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Audio_Cortex");
+    if (self) {
+        /* Module now has access to its documented capabilities */
+        LOG_DEBUG(AUDIO_LOG_MODULE, "Self-knowledge: entity_type=%s, observations=%u",
+                  self->entity_type, self->num_observations);
+    }
+
+    /* Query what this module connects to (outputs) */
+    kg_relation_list_t* outputs = kg_reader_get_relations_from(kg, "Audio_Cortex");
+    if (outputs) {
+        LOG_DEBUG(AUDIO_LOG_MODULE, "Self-knowledge: %u downstream targets",
+                  outputs->count);
+        kg_relation_list_destroy(outputs);
+    }
+
+    /* Query what connects to this module (inputs) */
+    kg_relation_list_t* inputs = kg_reader_get_relations_to(kg, "Audio_Cortex");
+    if (inputs) {
+        LOG_DEBUG(AUDIO_LOG_MODULE, "Self-knowledge: %u upstream sources",
+                  inputs->count);
+        kg_relation_list_destroy(inputs);
+    }
+
+    return self ? 1 : 0;
 }

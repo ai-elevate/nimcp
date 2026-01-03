@@ -19,6 +19,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -1774,4 +1775,106 @@ void swarm_brain_migration_checkpoint_destroy(
 
     nimcp_free(checkpoint);
     LOG_DEBUG("Migration checkpoint destroyed");
+}
+
+//=============================================================================
+// Knowledge Graph Self-Awareness Integration
+//=============================================================================
+
+/**
+ * @brief Query self-knowledge from knowledge graph
+ *
+ * WHAT: Allow swarm brain module to introspect its own structure and capabilities
+ * WHY:  Enable self-awareness - the swarm can understand its distributed cognition capabilities
+ * HOW:  Use KG reader to look up Swarm_Brain entity and related swarm entities
+ *
+ * @param kg Knowledge graph reader instance
+ * @return 1 if self-knowledge found, 0 otherwise
+ */
+int swarm_brain_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    // Query for our own module entity
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Swarm_Brain");
+    if (self) {
+        // Swarm brain module now has access to its documented structure
+        LOG_DEBUG("Self-knowledge found: %s (%u observations)",
+                  self->name, self->num_observations);
+    }
+
+    // Query all swarm-related entities
+    kg_entity_list_t* swarm_entities = kg_reader_search_entities(kg, "swarm");
+    if (swarm_entities) {
+        LOG_DEBUG("Found %u swarm-related entities in KG", swarm_entities->count);
+        kg_entity_list_destroy(swarm_entities);
+    }
+
+    // Query for collective/distributed cognition information
+    kg_entity_list_t* collective = kg_reader_search_entities(kg, "collective");
+    if (collective) {
+        LOG_DEBUG("Found %u collective cognition entities in KG", collective->count);
+        kg_entity_list_destroy(collective);
+    }
+
+    // Query for consensus/voting related entities
+    kg_entity_list_t* consensus = kg_reader_search_entities(kg, "consensus");
+    if (consensus) {
+        LOG_DEBUG("Found %u consensus-related entities in KG", consensus->count);
+        kg_entity_list_destroy(consensus);
+    }
+
+    return self ? 1 : 0;
+}
+
+/**
+ * @brief Get swarm capabilities from knowledge graph
+ *
+ * @param kg Knowledge graph reader instance
+ * @return Capability description string or NULL
+ */
+const char* swarm_brain_get_capabilities(kg_reader_t* kg) {
+    if (!kg) return NULL;
+    return kg_reader_get_module_capabilities(kg, "Swarm_Brain");
+}
+
+/**
+ * @brief Get swarm integrations from knowledge graph
+ *
+ * @param kg Knowledge graph reader instance
+ * @return Relation list showing integrations (caller must free)
+ */
+kg_relation_list_t* swarm_brain_get_integrations(kg_reader_t* kg) {
+    if (!kg) return NULL;
+    return kg_reader_get_module_integrations(kg, "Swarm_Brain");
+}
+
+/**
+ * @brief Query peer knowledge from knowledge graph
+ *
+ * WHAT: Allow swarm brain to understand what peer types exist
+ * WHY:  Enable self-awareness about swarm composition
+ * HOW:  Query KG for peer-related entities and relationships
+ *
+ * @param kg Knowledge graph reader instance
+ * @return Number of peer-related entities found
+ */
+int swarm_brain_query_peer_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    int count = 0;
+
+    // Query for peer/drone related entities
+    kg_entity_list_t* peers = kg_reader_search_entities(kg, "peer");
+    if (peers) {
+        count += peers->count;
+        kg_entity_list_destroy(peers);
+    }
+
+    kg_entity_list_t* drones = kg_reader_search_entities(kg, "drone");
+    if (drones) {
+        count += drones->count;
+        kg_entity_list_destroy(drones);
+    }
+
+    return count;
 }

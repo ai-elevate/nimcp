@@ -32,6 +32,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "security/nimcp_security.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <math.h>
 #include <string.h>
 
@@ -666,4 +667,49 @@ void* bcm_extract_quantum_stats(const bcm_synapse_t* synapses, uint32_t num_syna
     stats->selectivity_index = bcm_stats.weight_variance * (1.0F - sparsity);
 
     return (void*)stats;
+}
+
+//=============================================================================
+// KG Reader Self-Awareness Integration
+//=============================================================================
+
+/**
+ * @brief Query self-knowledge from knowledge graph
+ *
+ * WHAT: Allow BCM module to introspect its own capabilities and connections
+ * WHY:  Self-awareness enables adaptive behavior and system introspection
+ * HOW:  Query KG for BCM_Module entity and its relations
+ *
+ * COMPLEXITY: O(n) where n = number of observations/relations
+ *
+ * @param kg Knowledge graph reader handle
+ * @return 1 if self-knowledge found, 0 if not found or error
+ */
+int bcm_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    /* Query our own entity from the knowledge graph */
+    const kg_entity_t* self = kg_reader_get_entity(kg, "BCM_Module");
+    if (self) {
+        /* Module now knows its own capabilities from KG */
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("BCM self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    /* Query connections to understand integration points */
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "BCM_Module");
+    if (connections) {
+        LOG_DEBUG("BCM has %u outgoing connections", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    /* Query incoming connections */
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "BCM_Module");
+    if (incoming) {
+        LOG_DEBUG("BCM has %u incoming connections", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }
