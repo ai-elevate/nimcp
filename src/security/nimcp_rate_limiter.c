@@ -16,6 +16,7 @@
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
@@ -1010,6 +1011,25 @@ nimcp_error_t nimcp_rate_limiter_set_burst(
 // Bio-Async Integration Implementation
 //=============================================================================
 
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the orchestrator with discovered message types from the knowledge graph.
+ * Registers handlers based on message types discovered at runtime.
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of discovered message types
+ * @param message_count Number of message types
+ * @param user_data User-provided context
+ * @return 0 on success, -1 on error
+ */
+static int rate_limiter_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+);
+
 static nimcp_error_t rate_limiter_bio_handler(
     const void* msg,
     size_t msg_size,
@@ -1042,6 +1062,34 @@ static nimcp_error_t rate_limiter_bio_handler(
     return NIMCP_SUCCESS;
 }
 
+/**
+ * @brief Wiring callback implementation for KG-driven handler registration
+ */
+static int rate_limiter_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_HEALTH_CHECK:
+                bio_router_register_handler(ctx, message_types[i], rate_limiter_bio_handler);
+                registered++;
+                break;
+            default:
+                LOG_MODULE_DEBUG("rate_limiter", "Unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_MODULE_INFO("rate_limiter", "KG-driven wiring callback registered %d handlers", registered);
+    return (registered > 0) ? 0 : -1;
+}
+
 nimcp_error_t nimcp_rate_limiter_register_bio_async(
     nimcp_rate_limiter_t limiter)
 {
@@ -1066,8 +1114,24 @@ nimcp_error_t nimcp_rate_limiter_register_bio_async(
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
-    bio_router_register_handler(limiter->bio_context,
-        BIO_MSG_HEALTH_CHECK, rate_limiter_bio_handler);
+    // Try KG-driven wiring callback registration first
+    nimcp_error_t result = bio_router_register_wiring_callback(
+        BIO_MODULE_SECURITY,
+        (void*)rate_limiter_wiring_handler_callback,
+        limiter
+    );
+
+    if (result == NIMCP_SUCCESS) {
+        LOG_MODULE_INFO("rate_limiter", "KG-driven wiring callback registered successfully");
+    } else {
+        // Fallback to legacy handler registration
+        LOG_MODULE_INFO("rate_limiter", "Falling back to legacy handler registration");
+
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(limiter->bio_context,
+                BIO_MSG_HEALTH_CHECK, rate_limiter_bio_handler)
+        );
+    }
 
     limiter->bio_registered = true;
 

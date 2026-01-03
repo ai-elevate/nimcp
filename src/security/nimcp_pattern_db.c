@@ -19,9 +19,9 @@
 #include "security/nimcp_pattern_db.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 
 #include "security/nimcp_security.h"
-#include "async/nimcp_bio_router.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_atomic.h"
 #include <stdlib.h>
@@ -1913,16 +1913,61 @@ uint32_t nimcp_pattern_db_process_inbox(
     return bio_router_process_inbox(db->bio_ctx, max_messages);
 }
 
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the orchestrator with discovered message types from the knowledge graph.
+ * Registers handlers based on message types discovered at runtime.
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of discovered message types
+ * @param message_count Number of message types
+ * @param user_data User-provided context
+ * @return 0 on success, -1 on error
+ */
+static int pattern_db_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_SECURITY_EVENT:
+                bio_router_register_handler(ctx, message_types[i], pattern_db_handle_security_event);
+                registered++;
+                break;
+            case BIO_MSG_SECURITY_THREAT_DETECTED:
+                bio_router_register_handler(ctx, message_types[i], pattern_db_handle_threat_detected);
+                registered++;
+                break;
+            case BIO_MSG_SECURITY_POLICY_UPDATE:
+                bio_router_register_handler(ctx, message_types[i], pattern_db_handle_policy_update);
+                registered++;
+                break;
+            default:
+                LOG_MODULE_DEBUG("pattern_db", "Unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_MODULE_INFO("pattern_db", "KG-driven wiring callback registered %d handlers", registered);
+    return (registered > 0) ? 0 : -1;
+}
+
 nimcp_error_t nimcp_pattern_db_register_bio_async(
     nimcp_pattern_db_t db,
     bio_module_id_t module_id
 ) {
     if (!validate_db(db)) {
-        return NIMCP_INVALID_PARAM;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!bio_router_is_initialized()) {
-        return NIMCP_ERROR;
+        return NIMCP_ERROR_NOT_SUPPORTED;
     }
 
     bio_module_info_t info = {
@@ -1934,19 +1979,34 @@ nimcp_error_t nimcp_pattern_db_register_bio_async(
 
     db->bio_ctx = bio_router_register_module(&info);
     if (!db->bio_ctx) {
-        return NIMCP_ERROR;
+        return NIMCP_ERROR_NOT_SUPPORTED;
     }
 
     db->bio_async_enabled = true;
     db->config.module_id = module_id;
 
-    // Register message handlers for pattern management
-    bio_router_register_handler(db->bio_ctx, BIO_MSG_SECURITY_EVENT,
-                                 pattern_db_handle_security_event);
-    bio_router_register_handler(db->bio_ctx, BIO_MSG_SECURITY_THREAT_DETECTED,
-                                 pattern_db_handle_threat_detected);
-    bio_router_register_handler(db->bio_ctx, BIO_MSG_SECURITY_POLICY_UPDATE,
-                                 pattern_db_handle_policy_update);
+    // Try KG-driven wiring callback registration first
+    nimcp_error_t result = bio_router_register_wiring_callback(
+        module_id,
+        (void*)pattern_db_wiring_handler_callback,
+        db
+    );
+
+    if (result == NIMCP_SUCCESS) {
+        LOG_MODULE_INFO("pattern_db", "KG-driven wiring callback registered successfully");
+    } else {
+        // Fallback to legacy handler registration
+        LOG_MODULE_INFO("pattern_db", "Falling back to legacy handler registration");
+
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(db->bio_ctx, BIO_MSG_SECURITY_EVENT,
+                                         pattern_db_handle_security_event);
+            bio_router_register_handler(db->bio_ctx, BIO_MSG_SECURITY_THREAT_DETECTED,
+                                         pattern_db_handle_threat_detected);
+            bio_router_register_handler(db->bio_ctx, BIO_MSG_SECURITY_POLICY_UPDATE,
+                                         pattern_db_handle_policy_update)
+        );
+    }
 
     LOG_MODULE_INFO("pattern_db", "Registered bio-async handlers");
 

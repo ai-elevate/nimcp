@@ -29,6 +29,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_common.h"
@@ -398,6 +399,25 @@ static nimcp_result_t s_pbkdf2_sha256(
 // Bio-Async Integration
 //=============================================================================
 
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the orchestrator with discovered message types from the knowledge graph.
+ * Registers handlers based on message types discovered at runtime.
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of discovered message types
+ * @param message_count Number of message types
+ * @param user_data User-provided context
+ * @return 0 on success, -1 on error
+ */
+static int key_derivation_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+);
+
 static nimcp_error_t s_kdf_message_handler(
     const void* msg,
     size_t msg_size,
@@ -461,18 +481,62 @@ static nimcp_error_t s_register_bio_async(nimcp_kdf_context_t ctx)
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    nimcp_error_t err = bio_router_register_handler(ctx->bio_ctx,
-                                      BIO_MSG_HEALTH_CHECK,
-                                      s_kdf_message_handler);
-    if (err != NIMCP_SUCCESS) {
-        LOG_ERROR("Failed to register KDF handler: %d", err);
-        return err;
+    // Try KG-driven wiring callback registration first
+    nimcp_error_t result = bio_router_register_wiring_callback(
+        BIO_MODULE_SECURITY,
+        (void*)key_derivation_wiring_handler_callback,
+        ctx
+    );
+
+    if (result == NIMCP_SUCCESS) {
+        LOG_INFO("KG-driven wiring callback registered successfully");
+    } else {
+        // Fallback to legacy handler registration
+        LOG_INFO("Falling back to legacy handler registration");
+
+        LEGACY_HANDLER_REGISTRATION(
+            result = bio_router_register_handler(ctx->bio_ctx,
+                                                  BIO_MSG_HEALTH_CHECK,
+                                                  s_kdf_message_handler)
+        );
+        if (result != NIMCP_SUCCESS) {
+            LOG_ERROR("Failed to register KDF handler: %d", result);
+            return NIMCP_ERROR_NOT_SUPPORTED;
+        }
     }
 
     ctx->bio_async_registered = true;
     LOG_INFO("KDF module registered with bio-async");
 
     return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Wiring callback implementation for KG-driven handler registration
+ */
+static int key_derivation_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_HEALTH_CHECK:
+                bio_router_register_handler(ctx, message_types[i], s_kdf_message_handler);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG("Unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_INFO("KG-driven wiring callback registered %d handlers", registered);
+    return (registered > 0) ? 0 : -1;
 }
 
 //=============================================================================

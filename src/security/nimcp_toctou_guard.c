@@ -16,6 +16,7 @@
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -613,6 +614,25 @@ uint32_t nimcp_toctou_get_active_count(nimcp_toctou_guard_t guard) {
 //=============================================================================
 
 /**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the orchestrator with discovered message types from the knowledge graph.
+ * Registers handlers based on message types discovered at runtime.
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of discovered message types
+ * @param message_count Number of message types
+ * @param user_data User-provided context
+ * @return 0 on success, -1 on error
+ */
+static int toctou_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+);
+
+/**
  * @brief Bio-async message handler for TOCTOU guard
  */
 static nimcp_error_t toctou_bio_handler(
@@ -649,6 +669,34 @@ static nimcp_error_t toctou_bio_handler(
     return NIMCP_SUCCESS;
 }
 
+/**
+ * @brief Wiring callback implementation for KG-driven handler registration
+ */
+static int toctou_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_HEALTH_CHECK:
+                bio_router_register_handler(ctx, message_types[i], toctou_bio_handler);
+                registered++;
+                break;
+            default:
+                LOG_MODULE_DEBUG("toctou_guard", "Unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_MODULE_INFO("toctou_guard", "KG-driven wiring callback registered %d handlers", registered);
+    return (registered > 0) ? 0 : -1;
+}
+
 nimcp_error_t nimcp_toctou_register_bio_async(nimcp_toctou_guard_t guard) {
     if (!is_valid_guard(guard)) {
         return NIMCP_ERROR_NULL_POINTER;
@@ -673,9 +721,24 @@ nimcp_error_t nimcp_toctou_register_bio_async(nimcp_toctou_guard_t guard) {
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
-    // Register message handlers
-    bio_router_register_handler(guard->bio_context,
-        BIO_MSG_HEALTH_CHECK, toctou_bio_handler);
+    // Try KG-driven wiring callback registration first
+    nimcp_error_t result = bio_router_register_wiring_callback(
+        BIO_MODULE_SECURITY,
+        (void*)toctou_wiring_handler_callback,
+        guard
+    );
+
+    if (result == NIMCP_SUCCESS) {
+        LOG_MODULE_INFO("toctou_guard", "KG-driven wiring callback registered successfully");
+    } else {
+        // Fallback to legacy handler registration
+        LOG_MODULE_INFO("toctou_guard", "Falling back to legacy handler registration");
+
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(guard->bio_context,
+                BIO_MSG_HEALTH_CHECK, toctou_bio_handler)
+        );
+    }
 
     guard->bio_registered = true;
 

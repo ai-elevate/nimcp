@@ -30,6 +30,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -166,7 +167,7 @@ static nimcp_error_t s_ct_message_handler(
 
     if (!ctx || ctx->magic != NIMCP_CT_MAGIC) {
         LOG_ERROR("Invalid context in message handler");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
     // Parse message header
@@ -199,10 +200,51 @@ static nimcp_error_t s_ct_message_handler(
     }
 }
 
+//=============================================================================
+// KG-Driven Wiring Callback
+//=============================================================================
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the orchestrator with discovered message types from the knowledge graph.
+ * Registers handlers based on message types discovered at runtime.
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of discovered message types
+ * @param message_count Number of message types
+ * @param user_data User-provided context
+ * @return 0 on success, -1 on error
+ */
+static int constant_time_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_HEALTH_CHECK:
+                bio_router_register_handler(ctx, message_types[i], s_ct_message_handler);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG("Unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_INFO("KG-driven wiring callback registered %d handlers", registered);
+    return (registered > 0) ? 0 : -1;
+}
+
 /**
  * WHAT: Register constant-time module with bio-async router
  * WHY:  Enable async communication and monitoring
- * HOW:  Register module ID and message handlers
+ * HOW:  Register module ID and message handlers using KG-driven wiring
  */
 static nimcp_error_t s_register_bio_async(nimcp_ct_context_t ctx)
 {
@@ -226,16 +268,31 @@ static nimcp_error_t s_register_bio_async(nimcp_ct_context_t ctx)
     ctx->bio_ctx = bio_router_register_module(&module_info);
     if (!ctx->bio_ctx) {
         LOG_ERROR("Failed to register with bio-async router");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
-    // Register message handlers
-    nimcp_error_t err = bio_router_register_handler(ctx->bio_ctx,
-                                      BIO_MSG_HEALTH_CHECK,
-                                      s_ct_message_handler);
-    if (err != NIMCP_SUCCESS) {
-        LOG_ERROR("Failed to register message handler: %d", err);
-        return err;
+    // Try KG-driven wiring callback registration first
+    nimcp_error_t result = bio_router_register_wiring_callback(
+        BIO_MODULE_SECURITY,
+        (void*)constant_time_wiring_handler_callback,
+        ctx
+    );
+
+    if (result == NIMCP_SUCCESS) {
+        LOG_INFO("KG-driven wiring callback registered successfully");
+    } else {
+        // Fallback to legacy handler registration
+        LOG_INFO("Falling back to legacy handler registration");
+
+        LEGACY_HANDLER_REGISTRATION(
+            result = bio_router_register_handler(ctx->bio_ctx,
+                                                  BIO_MSG_HEALTH_CHECK,
+                                                  s_ct_message_handler)
+        );
+        if (result != NIMCP_SUCCESS) {
+            LOG_ERROR("Failed to register message handler: %d", result);
+            return NIMCP_ERROR_OPERATION_FAILED;
+        }
     }
 
     ctx->bio_async_registered = true;
@@ -298,7 +355,7 @@ nimcp_result_t nimcp_ct_get_stats(nimcp_ct_context_t ctx, nimcp_ct_stats_t* stat
 {
     if (!ctx || ctx->magic != NIMCP_CT_MAGIC) {
         LOG_ERROR("Invalid context");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
     if (!stats) {
@@ -320,7 +377,7 @@ nimcp_result_t nimcp_ct_reset_stats(nimcp_ct_context_t ctx)
 {
     if (!ctx || ctx->magic != NIMCP_CT_MAGIC) {
         LOG_ERROR("Invalid context");
-        return NIMCP_ERROR_INVALID_PARAM;
+        return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
     memset(&ctx->stats, 0, sizeof(nimcp_ct_stats_t));
@@ -676,10 +733,10 @@ bool nimcp_ct_verify_timing(const char* operation_name, size_t num_trials,
     bool is_constant_time = (diff_percent <= threshold_percent);
 
     if (is_constant_time) {
-        LOG_INFO("✓ %s is constant-time (%.2f%% ≤ %.2f%%)",
+        LOG_INFO("Constant-time verified: %s (%.2f%% <= %.2f%%)",
                 operation_name, diff_percent, threshold_percent);
     } else {
-        LOG_WARN("✗ %s timing leak detected (%.2f%% > %.2f%%)",
+        LOG_WARN("Timing leak detected: %s (%.2f%% > %.2f%%)",
                 operation_name, diff_percent, threshold_percent);
     }
 

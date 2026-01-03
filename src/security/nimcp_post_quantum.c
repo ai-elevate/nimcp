@@ -13,6 +13,7 @@
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/validation/nimcp_common.h"
@@ -54,16 +55,66 @@ struct nimcp_pq_context {
  * Bio-Async Integration
  * ======================================================================== */
 
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the orchestrator with discovered message types from the knowledge graph.
+ * Registers handlers based on message types discovered at runtime.
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of discovered message types
+ * @param message_count Number of message types
+ * @param user_data User-provided context
+ * @return 0 on success, -1 on error
+ */
+static int post_quantum_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+);
+
+static nimcp_error_t pq_inbox_handler(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data);
+
+static int post_quantum_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_HEALTH_CHECK:
+                bio_router_register_handler(ctx, message_types[i], pq_inbox_handler);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG("Unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_INFO("KG-driven wiring callback registered %d handlers", registered);
+    return (registered > 0) ? 0 : -1;
+}
+
 static nimcp_error_t pq_inbox_handler(
     const void* msg,
     size_t msg_size,
     nimcp_bio_promise_t response_promise,
     void* user_data)
 {
-    nimcp_pq_context_t ctx = (nimcp_pq_context_t)user_data;
+    nimcp_pq_context_t pq_ctx = (nimcp_pq_context_t)user_data;
 
-    if (!ctx || ctx->magic != NIMCP_PQ_CONTEXT_MAGIC) {
-        return NIMCP_ERROR_INVALID;
+    if (!pq_ctx || pq_ctx->magic != NIMCP_PQ_CONTEXT_MAGIC) {
+        return NIMCP_ERROR_INVALID_PARAMETER;
     }
 
     if (!msg || msg_size == 0) {
@@ -132,17 +183,34 @@ nimcp_pq_context_t nimcp_pq_context_create(const nimcp_pq_config_t* config) {
 
         bio_module_context_t module_ctx = bio_router_register_module(&module_info);
         if (module_ctx) {
-            nimcp_error_t err = bio_router_register_handler(
-                module_ctx,
-                BIO_MSG_HEALTH_CHECK,  /* Register for health checks */
-                pq_inbox_handler
+            // Try KG-driven wiring callback registration first
+            nimcp_error_t result = bio_router_register_wiring_callback(
+                BIO_MODULE_SECURITY,
+                (void*)post_quantum_wiring_handler_callback,
+                ctx
             );
-            if (err == NIMCP_OK) {
+
+            if (result == NIMCP_SUCCESS) {
                 ctx->bio_registered = true;
-                LOG_INFO("Post-quantum crypto registered with bio-async");
+                LOG_INFO("KG-driven wiring callback registered successfully");
             } else {
-                bio_router_unregister_module(module_ctx);
-                LOG_WARN("Failed to register post-quantum handler: %d", err);
+                // Fallback to legacy handler registration
+                LOG_INFO("Falling back to legacy handler registration");
+
+                LEGACY_HANDLER_REGISTRATION(
+                    result = bio_router_register_handler(
+                        module_ctx,
+                        BIO_MSG_HEALTH_CHECK,
+                        pq_inbox_handler
+                    )
+                );
+                if (result == NIMCP_SUCCESS) {
+                    ctx->bio_registered = true;
+                    LOG_INFO("Post-quantum crypto registered with bio-async");
+                } else {
+                    bio_router_unregister_module(module_ctx);
+                    LOG_WARN("Failed to register post-quantum handler: %d", result);
+                }
             }
         } else {
             LOG_WARN("Failed to register post-quantum module with bio-router");

@@ -44,6 +44,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -515,6 +516,48 @@ working_memory_config_t working_memory_default_config(void) {
     return config;
 }
 
+/* ============================================================================
+ * KG-Driven Wiring Callback
+ * ============================================================================ */
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the orchestrator with discovered message types from the knowledge graph.
+ * Registers handlers based on message types discovered at runtime.
+ */
+static int working_memory_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_WORKING_MEMORY_STORE:
+                bio_router_register_handler(ctx, message_types[i], handle_wm_store_request);
+                registered++;
+                break;
+            case BIO_MSG_WORKING_MEMORY_RETRIEVE:
+                bio_router_register_handler(ctx, message_types[i], handle_wm_retrieve_request);
+                registered++;
+                break;
+            case BIO_MSG_NEUROMODULATOR_RELEASE:
+                bio_router_register_handler(ctx, message_types[i], handle_wm_store_request);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG("Working memory: unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    return (registered > 0) ? 0 : -1;
+}
+
 /**
  * @brief Create working memory with default configuration
  *
@@ -633,12 +676,25 @@ working_memory_t* working_memory_create_custom(
         wm->bio_ctx = bio_router_register_module(&bio_info);
         if (wm->bio_ctx) {
             wm->bio_async_enabled = true;
-            // Register message handlers
-            bio_router_register_handler(wm->bio_ctx, BIO_MSG_WORKING_MEMORY_STORE, handle_wm_store_request);
-            bio_router_register_handler(wm->bio_ctx, BIO_MSG_WORKING_MEMORY_RETRIEVE, handle_wm_retrieve_request);
-            // Subscribe to neuromodulator release messages for cascade triggering
-            bio_router_register_handler(wm->bio_ctx, BIO_MSG_NEUROMODULATOR_RELEASE, handle_wm_store_request);
-            LOG_INFO("Bio-async registered for working_memory module with handlers");
+
+            // Try KG-driven wiring callback registration first
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_WORKING_MEMORY,
+                (void*)working_memory_wiring_handler_callback,
+                wm
+            );
+
+            if (wiring_result == NIMCP_SUCCESS) {
+                LOG_INFO("Working memory: KG-driven wiring callback registered");
+            } else {
+                // Legacy fallback - register handlers directly
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(wm->bio_ctx, BIO_MSG_WORKING_MEMORY_STORE, handle_wm_store_request);
+                    bio_router_register_handler(wm->bio_ctx, BIO_MSG_WORKING_MEMORY_RETRIEVE, handle_wm_retrieve_request);
+                    bio_router_register_handler(wm->bio_ctx, BIO_MSG_NEUROMODULATOR_RELEASE, handle_wm_store_request)
+                );
+                LOG_INFO("Working memory: legacy handler registration");
+            }
         }
     }
 
