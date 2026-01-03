@@ -39,7 +39,7 @@
 #include <cstring>
 
 // Headers have their own extern "C" guards
-#include "core/occipital/nimcp_occipital_substrate_bridge.h"
+#include "core/brain/regions/occipital/nimcp_occipital_substrate_bridge.h"
 #include "core/occipital/nimcp_occipital_thalamic_bridge.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "core/brain/subcortical/nimcp_thalamus.h"
@@ -284,10 +284,10 @@ TEST_F(E2EVisualV1Test, BaselineVisualCapacity) {
 
     E2E_STAGE_BEGIN("Verify capacity", 2);
     EXPECT_GT(effects.overall_capacity, MIN_VISUAL_CAPACITY);
-    EXPECT_GT(effects.primary_visual, MIN_VISUAL_CAPACITY);
-    EXPECT_GT(effects.color_processing, MIN_VISUAL_CAPACITY);
-    EXPECT_GT(effects.form_processing, MIN_VISUAL_CAPACITY);
-    EXPECT_GT(effects.motion_perception, MIN_VISUAL_CAPACITY);
+    EXPECT_GT(effects.v1_contrast_sensitivity, MIN_VISUAL_CAPACITY);
+    EXPECT_GT(effects.v4_color_constancy, MIN_VISUAL_CAPACITY);
+    EXPECT_GT(effects.v4_complex_form, MIN_VISUAL_CAPACITY);
+    EXPECT_GT(effects.v5_motion_direction, MIN_VISUAL_CAPACITY);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -316,15 +316,15 @@ TEST_F(E2EVisualV1Test, OrientationTuning) {
         occipital_substrate_effects_t effects;
         occipital_substrate_bridge_get_effects(occ_bridge, &effects);
 
-        EXPECT_GE(effects.primary_visual, 0.0f);
-        EXPECT_LE(effects.primary_visual, 1.0f);
+        EXPECT_GE(effects.v1_contrast_sensitivity, 0.0f);
+        EXPECT_LE(effects.v1_contrast_sensitivity, 1.0f);
     }
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify processing", 5);
     occipital_substrate_effects_t final_effects;
     occipital_substrate_bridge_get_effects(occ_bridge, &final_effects);
-    EXPECT_GT(final_effects.primary_visual, 0.0f);
+    EXPECT_GT(final_effects.v1_contrast_sensitivity, 0.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -347,8 +347,8 @@ TEST_F(E2EVisualV1Test, ContrastSensitivity) {
         occipital_substrate_effects_t effects;
         occipital_substrate_bridge_get_effects(occ_bridge, &effects);
 
-        EXPECT_GE(effects.primary_visual, 0.0f);
-        EXPECT_FALSE(std::isnan(effects.primary_visual));
+        EXPECT_GE(effects.v1_contrast_sensitivity, 0.0f);
+        EXPECT_FALSE(std::isnan(effects.v1_contrast_sensitivity));
     }
     E2E_STAGE_END();
 
@@ -400,8 +400,8 @@ TEST_F(E2EVisualColorTest, ColorProcessingCapacity) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify", 2);
-    EXPECT_GT(effects.color_processing, MIN_VISUAL_CAPACITY);
-    EXPECT_LE(effects.color_processing, 1.0f);
+    EXPECT_GT(effects.v4_color_constancy, MIN_VISUAL_CAPACITY);
+    EXPECT_LE(effects.v4_color_constancy, 1.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -432,15 +432,15 @@ TEST_F(E2EVisualColorTest, ColorChannelProcessing) {
         occipital_substrate_effects_t effects;
         occipital_substrate_bridge_get_effects(occ_bridge, &effects);
 
-        EXPECT_GE(effects.color_processing, 0.0f);
-        EXPECT_LE(effects.color_processing, 1.0f);
+        EXPECT_GE(effects.v4_color_constancy, 0.0f);
+        EXPECT_LE(effects.v4_color_constancy, 1.0f);
     }
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify stability", 5);
     occipital_substrate_effects_t effects;
     occipital_substrate_bridge_get_effects(occ_bridge, &effects);
-    EXPECT_GE(effects.color_processing, 0.0f);
+    EXPECT_GE(effects.v4_color_constancy, 0.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -469,8 +469,8 @@ TEST_F(E2EVisualColorTest, ColorUnderMetabolicStress) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Compare", 2);
-    EXPECT_GT(normal.color_processing, 0.0f);
-    EXPECT_GE(stressed.color_processing, 0.0f);
+    EXPECT_GT(normal.v4_color_constancy, 0.0f);
+    EXPECT_GE(stressed.v4_color_constancy, 0.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -496,8 +496,8 @@ TEST_F(E2EVisualFormTest, FormProcessingCapacity) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify", 2);
-    EXPECT_GT(effects.form_processing, MIN_VISUAL_CAPACITY);
-    EXPECT_LE(effects.form_processing, 1.0f);
+    EXPECT_GT(effects.v4_complex_form, MIN_VISUAL_CAPACITY);
+    EXPECT_LE(effects.v4_complex_form, 1.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -520,15 +520,15 @@ TEST_F(E2EVisualFormTest, ShapeComplexityProcessing) {
         occipital_substrate_effects_t effects;
         occipital_substrate_bridge_get_effects(occ_bridge, &effects);
 
-        EXPECT_GE(effects.form_processing, 0.0f);
-        EXPECT_LE(effects.form_processing, 1.0f);
+        EXPECT_GE(effects.v4_complex_form, 0.0f);
+        EXPECT_LE(effects.v4_complex_form, 1.0f);
     }
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify processing", 5);
     occipital_substrate_effects_t effects;
     occipital_substrate_bridge_get_effects(occ_bridge, &effects);
-    EXPECT_GE(effects.form_processing, 0.0f);
+    EXPECT_GE(effects.v4_complex_form, 0.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -548,14 +548,14 @@ TEST_F(E2EVisualFormTest, EdgeDetectionPipeline) {
         occipital_substrate_effects_t effects;
         occipital_substrate_bridge_get_effects(occ_bridge, &effects);
 
-        EXPECT_GE(effects.form_processing, 0.0f);
+        EXPECT_GE(effects.v4_complex_form, 0.0f);
     }
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Final state", 5);
     occipital_substrate_effects_t effects;
     occipital_substrate_bridge_get_effects(occ_bridge, &effects);
-    EXPECT_GT(effects.form_processing, 0.0f);
+    EXPECT_GT(effects.v4_complex_form, 0.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -585,8 +585,8 @@ TEST_F(E2EVisualFormTest, FormWithFatigue) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify values", 2);
-    EXPECT_GE(fresh.form_processing, 0.0f);
-    EXPECT_GE(fatigued.form_processing, 0.0f);
+    EXPECT_GE(fresh.v4_complex_form, 0.0f);
+    EXPECT_GE(fatigued.v4_complex_form, 0.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -612,8 +612,8 @@ TEST_F(E2EVisualMotionTest, MotionPerceptionCapacity) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify", 2);
-    EXPECT_GT(effects.motion_perception, MIN_VISUAL_CAPACITY);
-    EXPECT_LE(effects.motion_perception, 1.0f);
+    EXPECT_GT(effects.v5_motion_direction, MIN_VISUAL_CAPACITY);
+    EXPECT_LE(effects.v5_motion_direction, 1.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -639,15 +639,15 @@ TEST_F(E2EVisualMotionTest, DirectionSelectivity) {
         occipital_substrate_effects_t effects;
         occipital_substrate_bridge_get_effects(occ_bridge, &effects);
 
-        EXPECT_GE(effects.motion_perception, 0.0f);
-        EXPECT_LE(effects.motion_perception, 1.0f);
+        EXPECT_GE(effects.v5_motion_direction, 0.0f);
+        EXPECT_LE(effects.v5_motion_direction, 1.0f);
     }
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify stability", 5);
     occipital_substrate_effects_t effects;
     occipital_substrate_bridge_get_effects(occ_bridge, &effects);
-    EXPECT_GE(effects.motion_perception, 0.0f);
+    EXPECT_GE(effects.v5_motion_direction, 0.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -672,14 +672,14 @@ TEST_F(E2EVisualMotionTest, VelocitySensitivity) {
         occipital_substrate_effects_t effects;
         occipital_substrate_bridge_get_effects(occ_bridge, &effects);
 
-        EXPECT_GE(effects.motion_perception, 0.0f);
+        EXPECT_GE(effects.v5_motion_direction, 0.0f);
     }
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify", 5);
     occipital_substrate_effects_t effects;
     occipital_substrate_bridge_get_effects(occ_bridge, &effects);
-    EXPECT_GE(effects.motion_perception, 0.0f);
+    EXPECT_GE(effects.v5_motion_direction, 0.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -707,8 +707,8 @@ TEST_F(E2EVisualMotionTest, MotionWithTemporalDegradation) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify values", 2);
-    EXPECT_GE(normal.motion_perception, 0.0f);
-    EXPECT_GE(cooled.motion_perception, 0.0f);
+    EXPECT_GE(normal.v5_motion_direction, 0.0f);
+    EXPECT_GE(cooled.v5_motion_direction, 0.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -742,7 +742,7 @@ TEST_F(E2EVisualV1Test, ATPEffectsOnVisualProcessing) {
 
     E2E_STAGE_BEGIN("Verify all valid", 5);
     for (const auto& eff : effects_at_atp) {
-        EXPECT_FALSE(std::isnan(eff.primary_visual));
+        EXPECT_FALSE(std::isnan(eff.v1_contrast_sensitivity));
     }
     E2E_STAGE_END();
 
@@ -772,8 +772,8 @@ TEST_F(E2EVisualV1Test, OxygenDependentVisualProcessing) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify", 2);
-    EXPECT_GT(normal_o2.primary_visual, 0.0f);
-    EXPECT_GE(low_o2.primary_visual, 0.0f);
+    EXPECT_GT(normal_o2.v1_contrast_sensitivity, 0.0f);
+    EXPECT_GE(low_o2.v1_contrast_sensitivity, 0.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -845,9 +845,9 @@ TEST_F(E2EVisualV1Test, V1ToHigherAreasProgression) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify hierarchy", 5);
-    EXPECT_GE(v1_stage.primary_visual, 0.0f);
-    EXPECT_GE(v4_stage.form_processing, 0.0f);
-    EXPECT_GE(mt_stage.motion_perception, 0.0f);
+    EXPECT_GE(v1_stage.v1_contrast_sensitivity, 0.0f);
+    EXPECT_GE(v4_stage.v4_complex_form, 0.0f);
+    EXPECT_GE(mt_stage.v5_motion_direction, 0.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -880,9 +880,9 @@ TEST_F(E2EVisualV1Test, DorsalVentralStreamSeparation) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify both streams", 5);
-    EXPECT_GE(dorsal.motion_perception, 0.0f);
-    EXPECT_GE(ventral.form_processing, 0.0f);
-    EXPECT_GE(ventral.color_processing, 0.0f);
+    EXPECT_GE(dorsal.v5_motion_direction, 0.0f);
+    EXPECT_GE(ventral.v4_complex_form, 0.0f);
+    EXPECT_GE(ventral.v4_color_constancy, 0.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();
@@ -915,10 +915,10 @@ TEST_F(E2EVisualV1Test, LongSimulationStability) {
     occipital_substrate_bridge_get_effects(occ_bridge, &final_effects);
 
     EXPECT_GT(final_effects.overall_capacity, 0.0f);
-    EXPECT_GT(final_effects.primary_visual, 0.0f);
-    EXPECT_GT(final_effects.color_processing, 0.0f);
-    EXPECT_GT(final_effects.form_processing, 0.0f);
-    EXPECT_GT(final_effects.motion_perception, 0.0f);
+    EXPECT_GT(final_effects.v1_contrast_sensitivity, 0.0f);
+    EXPECT_GT(final_effects.v4_color_constancy, 0.0f);
+    EXPECT_GT(final_effects.v4_complex_form, 0.0f);
+    EXPECT_GT(final_effects.v5_motion_direction, 0.0f);
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();

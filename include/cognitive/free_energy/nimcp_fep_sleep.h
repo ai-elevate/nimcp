@@ -129,6 +129,16 @@ extern "C" {
 #define FEP_SLEEP_SWS_PRECISION            0.2f  /**< Minimal in SWS */
 #define FEP_SLEEP_REM_PRECISION            0.6f  /**< Partial in REM */
 
+/* FEP → Sleep: Sleep pressure modulation constants */
+#define FEP_SLEEP_PE_PRESSURE_GAIN         0.1f   /**< PE contribution to sleep pressure */
+#define FEP_SLEEP_UNCERTAINTY_PRESSURE     0.15f  /**< Uncertainty contribution to pressure */
+#define FEP_SLEEP_CONVERGENCE_THRESHOLD    0.01f  /**< PE threshold for convergence */
+#define FEP_SLEEP_MAX_PRESSURE             1.0f   /**< Maximum sleep pressure */
+#define FEP_SLEEP_MIN_PRESSURE             0.0f   /**< Minimum sleep pressure */
+#define FEP_SLEEP_PRESSURE_DECAY           0.001f /**< Pressure decay per ms awake */
+#define FEP_SLEEP_PRESSURE_THRESHOLD       0.7f   /**< Threshold for sleep recommendation */
+#define FEP_SLEEP_HIGH_PE_THRESHOLD        0.5f   /**< Threshold for high prediction error */
+
 /* ============================================================================
  * Enumerations
  * ============================================================================ */
@@ -218,6 +228,24 @@ typedef struct {
 } fep_sleep_stats_t;
 
 /**
+ * @brief FEP-driven sleep pressure state (FEP → Sleep direction)
+ *
+ * WHAT: Sleep need indicators derived from FEP state
+ * WHY:  FEP prediction errors and uncertainty affect sleep need
+ * HOW:  Track accumulated prediction errors, uncertainty, convergence
+ */
+typedef struct {
+    float sleep_pressure;              /**< Accumulated sleep need [0,1] */
+    float accumulated_prediction_error; /**< Running sum of prediction errors */
+    float avg_uncertainty;             /**< Average epistemic uncertainty */
+    bool model_converged;              /**< Has FEP model converged? */
+    float convergence_quality;         /**< Quality of convergence [0,1] */
+    uint64_t wake_duration_ms;         /**< Time awake since last sleep */
+    uint32_t high_pe_events;           /**< Count of high prediction error events */
+    bool sleep_recommended;            /**< Is sleep currently recommended? */
+} fep_sleep_pressure_t;
+
+/**
  * @brief Complete FEP sleep system
  */
 typedef struct fep_sleep_system {
@@ -229,6 +257,9 @@ typedef struct fep_sleep_system {
 
     /* Current state */
     fep_sleep_state_t state;
+
+    /* FEP → Sleep: Sleep pressure tracking */
+    fep_sleep_pressure_t pressure;
 
     /* Experience buffer */
     fep_experience_t* experience_buffer;
@@ -401,6 +432,117 @@ int fep_sleep_get_stats(
  * @return Precision modifier (0-1)
  */
 float fep_sleep_get_precision_modifier(const fep_sleep_system_t* sys);
+
+/* ============================================================================
+ * FEP → Sleep Direction (Bidirectional Integration)
+ * ============================================================================ */
+
+/**
+ * @brief Report prediction error to sleep system
+ *
+ * WHAT: Accumulate prediction errors to increase sleep pressure
+ * WHY:  High prediction errors indicate cognitive fatigue → need sleep
+ * HOW:  Add scaled PE to sleep pressure, track high PE events
+ *
+ * BIOLOGICAL BASIS:
+ * - Cognitive effort during waking increases adenosine
+ * - Prediction errors represent metabolic cost
+ * - Accumulated errors trigger homeostatic sleep drive
+ *
+ * @param sys Sleep system
+ * @param prediction_error Prediction error magnitude
+ * @return 0 on success
+ */
+int fep_sleep_on_prediction_error(fep_sleep_system_t* sys, float prediction_error);
+
+/**
+ * @brief Report model uncertainty to sleep system
+ *
+ * WHAT: Update sleep pressure based on epistemic uncertainty
+ * WHY:  High uncertainty indicates poor model quality → need consolidation
+ * HOW:  Track average uncertainty, increase pressure when high
+ *
+ * @param sys Sleep system
+ * @param uncertainty Current epistemic uncertainty [0,1]
+ * @return 0 on success
+ */
+int fep_sleep_on_uncertainty(fep_sleep_system_t* sys, float uncertainty);
+
+/**
+ * @brief Report model convergence to sleep system
+ *
+ * WHAT: Signal that FEP model has converged
+ * WHY:  Convergence indicates good time for consolidation
+ * HOW:  Set convergence flag, may trigger sleep readiness
+ *
+ * @param sys Sleep system
+ * @param converged Whether model has converged
+ * @param convergence_quality Quality of convergence [0,1]
+ * @return 0 on success
+ */
+int fep_sleep_on_convergence(fep_sleep_system_t* sys, bool converged, float convergence_quality);
+
+/**
+ * @brief Get current sleep pressure
+ *
+ * WHAT: Query accumulated sleep need
+ * WHY:  External systems need to know when sleep is needed
+ * HOW:  Return current sleep pressure value
+ *
+ * @param sys Sleep system
+ * @return Sleep pressure [0,1], higher = more sleep needed
+ */
+float fep_sleep_get_pressure(const fep_sleep_system_t* sys);
+
+/**
+ * @brief Get full sleep pressure state
+ *
+ * WHAT: Query complete FEP-driven sleep pressure state
+ * WHY:  Detailed state for monitoring and decision-making
+ * HOW:  Copy internal pressure state to output
+ *
+ * @param sys Sleep system
+ * @param pressure Output pressure state
+ * @return 0 on success
+ */
+int fep_sleep_get_pressure_state(const fep_sleep_system_t* sys, fep_sleep_pressure_t* pressure);
+
+/**
+ * @brief Check if sleep is recommended based on FEP state
+ *
+ * WHAT: Determine if sleep should occur based on accumulated FEP signals
+ * WHY:  Provides recommendation for sleep scheduling
+ * HOW:  Evaluate pressure threshold, uncertainty, convergence
+ *
+ * @param sys Sleep system
+ * @return true if sleep is recommended
+ */
+bool fep_sleep_is_sleep_recommended(const fep_sleep_system_t* sys);
+
+/**
+ * @brief Reset sleep pressure after waking
+ *
+ * WHAT: Clear accumulated sleep pressure
+ * WHY:  After adequate sleep, pressure should reset
+ * HOW:  Zero out pressure state
+ *
+ * @param sys Sleep system
+ * @return 0 on success
+ */
+int fep_sleep_reset_pressure(fep_sleep_system_t* sys);
+
+/**
+ * @brief Update sleep pressure based on wake duration
+ *
+ * WHAT: Increase sleep pressure over time awake
+ * WHY:  Homeostatic sleep drive increases with wake time
+ * HOW:  Add time-based component to pressure
+ *
+ * @param sys Sleep system
+ * @param delta_ms Time since last update
+ * @return 0 on success
+ */
+int fep_sleep_update_pressure(fep_sleep_system_t* sys, uint64_t delta_ms);
 
 /* ============================================================================
  * Integration API

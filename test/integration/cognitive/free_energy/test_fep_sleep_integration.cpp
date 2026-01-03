@@ -409,3 +409,272 @@ TEST_F(FEPSleepIntegrationTest, DisabledFeaturesConfig) {
 
     fep_sleep_destroy(disabled);
 }
+
+/* ============================================================================
+ * FEP → Sleep Bidirectional Integration Tests
+ * ============================================================================ */
+
+TEST_F(FEPSleepIntegrationTest, BidirectionalPredictionErrorToSleepPressure) {
+    fep_sleep_connect(sleep, fep);
+
+    /* Simulate waking activity with FEP generating prediction errors */
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+
+    /* FEP prediction errors increase sleep pressure */
+    for (int i = 0; i < 30; i++) {
+        float pe = 0.3f + 0.2f * sinf((float)i * 0.5f);  /* Varying PE */
+        fep_sleep_on_prediction_error(sleep, pe);
+        fep_sleep_update_pressure(sleep, 100);  /* 100ms updates */
+    }
+
+    float pressure = fep_sleep_get_pressure(sleep);
+    EXPECT_GT(pressure, 0.0f);
+
+    /* Verify sleep is eventually recommended */
+    for (int i = 0; i < 100; i++) {
+        fep_sleep_on_prediction_error(sleep, 0.5f);
+    }
+    EXPECT_TRUE(fep_sleep_is_sleep_recommended(sleep));
+}
+
+TEST_F(FEPSleepIntegrationTest, BidirectionalUncertaintyAffectsSleepPressure) {
+    fep_sleep_connect(sleep, fep);
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+
+    /* High uncertainty from FEP affects sleep pressure */
+    for (int i = 0; i < 20; i++) {
+        fep_sleep_on_uncertainty(sleep, 0.75f);
+    }
+
+    fep_sleep_pressure_t pressure_state;
+    fep_sleep_get_pressure_state(sleep, &pressure_state);
+
+    EXPECT_GT(pressure_state.avg_uncertainty, 0.0f);
+    EXPECT_GT(pressure_state.sleep_pressure, 0.0f);
+}
+
+TEST_F(FEPSleepIntegrationTest, BidirectionalConvergenceSignalsSleepReadiness) {
+    fep_sleep_connect(sleep, fep);
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+
+    /* Learning experiences */
+    for (int i = 0; i < 30; i++) {
+        std::vector<float> state(STATE_DIM, 0.0f);
+        std::vector<float> obs(OBS_DIM, 0.0f);
+        std::vector<float> next(STATE_DIM, 0.0f);
+        state[i % STATE_DIM] = 1.0f;
+        fep_sleep_add_experience(sleep, state.data(), obs.data(), next.data(), STATE_DIM, OBS_DIM);
+        fep_sleep_on_prediction_error(sleep, 0.2f);
+    }
+
+    /* Signal FEP model convergence */
+    fep_sleep_on_convergence(sleep, true, 0.9f);
+
+    fep_sleep_pressure_t pressure_state;
+    fep_sleep_get_pressure_state(sleep, &pressure_state);
+
+    EXPECT_TRUE(pressure_state.model_converged);
+    EXPECT_GT(pressure_state.convergence_quality, 0.5f);
+}
+
+TEST_F(FEPSleepIntegrationTest, BidirectionalFullCycle) {
+    fep_sleep_connect(sleep, fep);
+
+    /* 1. Wake: FEP activity generates prediction errors */
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+
+    for (int i = 0; i < 50; i++) {
+        /* FEP processing */
+        std::vector<float> state(STATE_DIM, 0.0f);
+        std::vector<float> obs(OBS_DIM, 0.0f);
+        std::vector<float> next(STATE_DIM, 0.0f);
+        state[i % STATE_DIM] = 1.0f;
+        next[(i + 1) % STATE_DIM] = 1.0f;
+
+        /* FEP → Sleep: Report prediction errors */
+        float pe = 0.3f + 0.1f * (float)(i % 5);
+        fep_sleep_on_prediction_error(sleep, pe);
+
+        /* FEP → Sleep: Report uncertainty */
+        float uncertainty = 0.4f + 0.1f * (float)(i % 3);
+        fep_sleep_on_uncertainty(sleep, uncertainty);
+
+        /* Update homeostatic pressure */
+        fep_sleep_update_pressure(sleep, 100);
+
+        /* Accumulate experience for later consolidation */
+        fep_sleep_add_experience(sleep, state.data(), obs.data(), next.data(), STATE_DIM, OBS_DIM);
+    }
+
+    /* 2. FEP signals convergence */
+    fep_sleep_on_convergence(sleep, true, 0.85f);
+
+    /* Check pressure state before sleep */
+    fep_sleep_pressure_t pre_sleep_pressure;
+    fep_sleep_get_pressure_state(sleep, &pre_sleep_pressure);
+    EXPECT_GT(pre_sleep_pressure.sleep_pressure, 0.0f);
+    EXPECT_TRUE(pre_sleep_pressure.model_converged);
+
+    /* 3. Sleep: Consolidation (Sleep → FEP direction) */
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_N1);
+    fep_sleep_update(sleep, 500);
+
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_SWS);
+    fep_sleep_replay_consolidation(sleep, fep, 20);
+    fep_sleep_apply_downscaling(sleep, fep, 0.9f);
+
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_REM);
+    fep_sleep_rem_integration(sleep, fep);
+
+    /* 4. Wake: Reset pressure */
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+    fep_sleep_reset_pressure(sleep);
+
+    /* Verify pressure reset and consolidation occurred */
+    fep_sleep_pressure_t post_sleep_pressure;
+    fep_sleep_get_pressure_state(sleep, &post_sleep_pressure);
+    EXPECT_NEAR(post_sleep_pressure.sleep_pressure, 0.0f, 0.01f);
+
+    fep_sleep_stats_t stats;
+    fep_sleep_get_stats(sleep, &stats);
+    EXPECT_GT(stats.total_replays, 0u);
+}
+
+TEST_F(FEPSleepIntegrationTest, BidirectionalPressureDoesNotGrowDuringSleep) {
+    fep_sleep_connect(sleep, fep);
+
+    /* Build up some pressure while awake */
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+    for (int i = 0; i < 20; i++) {
+        fep_sleep_on_prediction_error(sleep, 0.3f);
+        fep_sleep_update_pressure(sleep, 100);
+    }
+
+    float pressure_before_sleep = fep_sleep_get_pressure(sleep);
+
+    /* Enter sleep */
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_SWS);
+
+    /* Update pressure while sleeping - should not grow */
+    for (int i = 0; i < 20; i++) {
+        fep_sleep_update_pressure(sleep, 100);
+    }
+
+    float pressure_after_sleep_update = fep_sleep_get_pressure(sleep);
+
+    /* Pressure should remain the same during sleep */
+    EXPECT_NEAR(pressure_after_sleep_update, pressure_before_sleep, 0.01f);
+}
+
+TEST_F(FEPSleepIntegrationTest, BidirectionalLearningWithSleepIntegration) {
+    fep_sleep_connect(sleep, fep);
+
+    /* Wake: Learning phase with FEP signals */
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+
+    for (int i = 0; i < 30; i++) {
+        std::vector<float> state(STATE_DIM, 0.0f);
+        std::vector<float> next(STATE_DIM, 0.0f);
+        state[i % STATE_DIM] = 1.0f;
+        next[(i + 1) % STATE_DIM] = 1.0f;
+
+        /* FEP learning */
+        fep_learn_transition(transition_learner, fep, state.data(), next.data(), STATE_DIM);
+
+        /* FEP → Sleep: Signal learning activity */
+        fep_sleep_on_prediction_error(sleep, 0.25f);
+        fep_sleep_add_experience(sleep, state.data(), state.data(), next.data(), STATE_DIM, OBS_DIM);
+    }
+
+    /* Signal learning completion */
+    fep_sleep_on_convergence(sleep, true, 0.8f);
+
+    /* Sleep: Consolidation */
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_SWS);
+    fep_sleep_replay_consolidation(sleep, fep, 15);
+
+    /* Verify bidirectional integration worked */
+    fep_sleep_pressure_t pressure_state;
+    fep_sleep_get_pressure_state(sleep, &pressure_state);
+    EXPECT_TRUE(pressure_state.model_converged);
+    EXPECT_GT(pressure_state.accumulated_prediction_error, 0.0f);
+}
+
+/* ============================================================================
+ * Regression Tests for Bidirectional FEP-Sleep Integration
+ * ============================================================================ */
+
+TEST_F(FEPSleepIntegrationTest, RegressionPressureAccumulatesCorrectly) {
+    fep_sleep_connect(sleep, fep);
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+
+    /* Known PE values */
+    float pe_values[] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+    float expected_contribution = 0.0f;
+
+    for (int i = 0; i < 5; i++) {
+        fep_sleep_on_prediction_error(sleep, pe_values[i]);
+        expected_contribution += pe_values[i] * FEP_SLEEP_PE_PRESSURE_GAIN;
+    }
+
+    float actual_pressure = fep_sleep_get_pressure(sleep);
+    EXPECT_NEAR(actual_pressure, expected_contribution, 0.01f);
+}
+
+TEST_F(FEPSleepIntegrationTest, RegressionHighPEEventsTracked) {
+    fep_sleep_connect(sleep, fep);
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+
+    /* Mix of high and low PE */
+    fep_sleep_on_prediction_error(sleep, 0.1f);  /* Low */
+    fep_sleep_on_prediction_error(sleep, 0.6f);  /* High */
+    fep_sleep_on_prediction_error(sleep, 0.2f);  /* Low */
+    fep_sleep_on_prediction_error(sleep, 0.8f);  /* High */
+    fep_sleep_on_prediction_error(sleep, 0.9f);  /* High */
+
+    fep_sleep_pressure_t pressure_state;
+    fep_sleep_get_pressure_state(sleep, &pressure_state);
+
+    /* Should have tracked 3 high PE events (>0.5 threshold) */
+    EXPECT_EQ(pressure_state.high_pe_events, 3u);
+}
+
+TEST_F(FEPSleepIntegrationTest, RegressionConvergenceQualityBounded) {
+    fep_sleep_connect(sleep, fep);
+
+    /* Test with out-of-bounds values */
+    fep_sleep_on_convergence(sleep, true, 2.0f);  /* Should clamp to 1.0 */
+
+    fep_sleep_pressure_t pressure_state;
+    fep_sleep_get_pressure_state(sleep, &pressure_state);
+
+    EXPECT_LE(pressure_state.convergence_quality, 1.0f);
+}
+
+TEST_F(FEPSleepIntegrationTest, RegressionResetClearsAllPressureState) {
+    fep_sleep_connect(sleep, fep);
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+
+    /* Build up state */
+    for (int i = 0; i < 50; i++) {
+        fep_sleep_on_prediction_error(sleep, 0.4f);
+        fep_sleep_on_uncertainty(sleep, 0.6f);
+        fep_sleep_update_pressure(sleep, 100);
+    }
+    fep_sleep_on_convergence(sleep, true, 0.9f);
+
+    /* Reset */
+    fep_sleep_reset_pressure(sleep);
+
+    /* Verify all fields cleared */
+    fep_sleep_pressure_t pressure_state;
+    fep_sleep_get_pressure_state(sleep, &pressure_state);
+
+    EXPECT_NEAR(pressure_state.sleep_pressure, 0.0f, 0.01f);
+    EXPECT_NEAR(pressure_state.accumulated_prediction_error, 0.0f, 0.01f);
+    EXPECT_NEAR(pressure_state.avg_uncertainty, 0.0f, 0.01f);
+    EXPECT_FALSE(pressure_state.model_converged);
+    EXPECT_EQ(pressure_state.wake_duration_ms, 0u);
+    EXPECT_EQ(pressure_state.high_pe_events, 0u);
+    EXPECT_FALSE(pressure_state.sleep_recommended);
+}

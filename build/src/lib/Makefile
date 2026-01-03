@@ -7673,6 +7673,78 @@ __/cognitive/recursive/nimcp_rcog_answer.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_answer.c.s
 .PHONY : __/cognitive/recursive/nimcp_rcog_answer.c.s
 
+__/cognitive/recursive/nimcp_rcog_bio_async_bridge.o: __/cognitive/recursive/nimcp_rcog_bio_async_bridge.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_bio_async_bridge.o
+
+# target to build an object file
+__/cognitive/recursive/nimcp_rcog_bio_async_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_bio_async_bridge.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_bio_async_bridge.c.o
+
+__/cognitive/recursive/nimcp_rcog_bio_async_bridge.i: __/cognitive/recursive/nimcp_rcog_bio_async_bridge.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_bio_async_bridge.i
+
+# target to preprocess a source file
+__/cognitive/recursive/nimcp_rcog_bio_async_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_bio_async_bridge.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_bio_async_bridge.c.i
+
+__/cognitive/recursive/nimcp_rcog_bio_async_bridge.s: __/cognitive/recursive/nimcp_rcog_bio_async_bridge.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_bio_async_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/recursive/nimcp_rcog_bio_async_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_bio_async_bridge.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_bio_async_bridge.c.s
+
+__/cognitive/recursive/nimcp_rcog_brain_kg_bridge.o: __/cognitive/recursive/nimcp_rcog_brain_kg_bridge.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_brain_kg_bridge.o
+
+# target to build an object file
+__/cognitive/recursive/nimcp_rcog_brain_kg_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_brain_kg_bridge.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_brain_kg_bridge.c.o
+
+__/cognitive/recursive/nimcp_rcog_brain_kg_bridge.i: __/cognitive/recursive/nimcp_rcog_brain_kg_bridge.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_brain_kg_bridge.i
+
+# target to preprocess a source file
+__/cognitive/recursive/nimcp_rcog_brain_kg_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_brain_kg_bridge.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_brain_kg_bridge.c.i
+
+__/cognitive/recursive/nimcp_rcog_brain_kg_bridge.s: __/cognitive/recursive/nimcp_rcog_brain_kg_bridge.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_brain_kg_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/recursive/nimcp_rcog_brain_kg_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_brain_kg_bridge.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_brain_kg_bridge.c.s
+
+__/cognitive/recursive/nimcp_rcog_collective_bridge.o: __/cognitive/recursive/nimcp_rcog_collective_bridge.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_collective_bridge.o
+
+# target to build an object file
+__/cognitive/recursive/nimcp_rcog_collective_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_collective_bridge.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_collective_bridge.c.o
+
+__/cognitive/recursive/nimcp_rcog_collective_bridge.i: __/cognitive/recursive/nimcp_rcog_collective_bridge.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_collective_bridge.i
+
+# target to preprocess a source file
+__/cognitive/recursive/nimcp_rcog_collective_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_collective_bridge.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_collective_bridge.c.i
+
+__/cognitive/recursive/nimcp_rcog_collective_bridge.s: __/cognitive/recursive/nimcp_rcog_collective_bridge.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_collective_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/recursive/nimcp_rcog_collective_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_collective_bridge.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_collective_bridge.c.s
+
 __/cognitive/recursive/nimcp_rcog_context_store.o: __/cognitive/recursive/nimcp_rcog_context_store.c.o
 .PHONY : __/cognitive/recursive/nimcp_rcog_context_store.o
 
@@ -7696,6 +7768,54 @@ __/cognitive/recursive/nimcp_rcog_context_store.s: __/cognitive/recursive/nimcp_
 __/cognitive/recursive/nimcp_rcog_context_store.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_context_store.c.s
 .PHONY : __/cognitive/recursive/nimcp_rcog_context_store.c.s
+
+__/cognitive/recursive/nimcp_rcog_imagination_bridge.o: __/cognitive/recursive/nimcp_rcog_imagination_bridge.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_imagination_bridge.o
+
+# target to build an object file
+__/cognitive/recursive/nimcp_rcog_imagination_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_imagination_bridge.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_imagination_bridge.c.o
+
+__/cognitive/recursive/nimcp_rcog_imagination_bridge.i: __/cognitive/recursive/nimcp_rcog_imagination_bridge.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_imagination_bridge.i
+
+# target to preprocess a source file
+__/cognitive/recursive/nimcp_rcog_imagination_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_imagination_bridge.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_imagination_bridge.c.i
+
+__/cognitive/recursive/nimcp_rcog_imagination_bridge.s: __/cognitive/recursive/nimcp_rcog_imagination_bridge.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_imagination_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/recursive/nimcp_rcog_imagination_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_imagination_bridge.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_imagination_bridge.c.s
+
+__/cognitive/recursive/nimcp_rcog_immune_bridge.o: __/cognitive/recursive/nimcp_rcog_immune_bridge.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_immune_bridge.o
+
+# target to build an object file
+__/cognitive/recursive/nimcp_rcog_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_immune_bridge.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_immune_bridge.c.o
+
+__/cognitive/recursive/nimcp_rcog_immune_bridge.i: __/cognitive/recursive/nimcp_rcog_immune_bridge.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_immune_bridge.i
+
+# target to preprocess a source file
+__/cognitive/recursive/nimcp_rcog_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_immune_bridge.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_immune_bridge.c.i
+
+__/cognitive/recursive/nimcp_rcog_immune_bridge.s: __/cognitive/recursive/nimcp_rcog_immune_bridge.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_immune_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/recursive/nimcp_rcog_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_immune_bridge.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_immune_bridge.c.s
 
 __/cognitive/remorse/nimcp_remorse_fep_bridge.o: __/cognitive/remorse/nimcp_remorse_fep_bridge.c.o
 .PHONY : __/cognitive/remorse/nimcp_remorse_fep_bridge.o
@@ -29839,9 +29959,24 @@ help:
 	@echo "... __/cognitive/recursive/nimcp_rcog_answer.o"
 	@echo "... __/cognitive/recursive/nimcp_rcog_answer.i"
 	@echo "... __/cognitive/recursive/nimcp_rcog_answer.s"
+	@echo "... __/cognitive/recursive/nimcp_rcog_bio_async_bridge.o"
+	@echo "... __/cognitive/recursive/nimcp_rcog_bio_async_bridge.i"
+	@echo "... __/cognitive/recursive/nimcp_rcog_bio_async_bridge.s"
+	@echo "... __/cognitive/recursive/nimcp_rcog_brain_kg_bridge.o"
+	@echo "... __/cognitive/recursive/nimcp_rcog_brain_kg_bridge.i"
+	@echo "... __/cognitive/recursive/nimcp_rcog_brain_kg_bridge.s"
+	@echo "... __/cognitive/recursive/nimcp_rcog_collective_bridge.o"
+	@echo "... __/cognitive/recursive/nimcp_rcog_collective_bridge.i"
+	@echo "... __/cognitive/recursive/nimcp_rcog_collective_bridge.s"
 	@echo "... __/cognitive/recursive/nimcp_rcog_context_store.o"
 	@echo "... __/cognitive/recursive/nimcp_rcog_context_store.i"
 	@echo "... __/cognitive/recursive/nimcp_rcog_context_store.s"
+	@echo "... __/cognitive/recursive/nimcp_rcog_imagination_bridge.o"
+	@echo "... __/cognitive/recursive/nimcp_rcog_imagination_bridge.i"
+	@echo "... __/cognitive/recursive/nimcp_rcog_imagination_bridge.s"
+	@echo "... __/cognitive/recursive/nimcp_rcog_immune_bridge.o"
+	@echo "... __/cognitive/recursive/nimcp_rcog_immune_bridge.i"
+	@echo "... __/cognitive/recursive/nimcp_rcog_immune_bridge.s"
 	@echo "... __/cognitive/remorse/nimcp_remorse_fep_bridge.o"
 	@echo "... __/cognitive/remorse/nimcp_remorse_fep_bridge.i"
 	@echo "... __/cognitive/remorse/nimcp_remorse_fep_bridge.s"

@@ -573,6 +573,166 @@ bool fep_sleep_is_bio_async_connected(const fep_sleep_system_t* sys) {
 }
 
 /* ============================================================================
+ * FEP → Sleep Bidirectional Integration Implementation
+ * ============================================================================ */
+
+int fep_sleep_on_prediction_error(fep_sleep_system_t* sys, float prediction_error) {
+    if (!sys) return -1;
+
+    nimcp_platform_mutex_lock(sys->mutex);
+
+    /* Accumulate prediction error */
+    sys->pressure.accumulated_prediction_error += prediction_error;
+
+    /* Add to sleep pressure (scaled by gain) */
+    float pressure_contribution = prediction_error * FEP_SLEEP_PE_PRESSURE_GAIN;
+    sys->pressure.sleep_pressure += pressure_contribution;
+
+    /* Clamp pressure to bounds */
+    sys->pressure.sleep_pressure = clamp_f(
+        sys->pressure.sleep_pressure,
+        FEP_SLEEP_MIN_PRESSURE,
+        FEP_SLEEP_MAX_PRESSURE
+    );
+
+    /* Track high prediction error events */
+    if (prediction_error > FEP_SLEEP_HIGH_PE_THRESHOLD) {
+        sys->pressure.high_pe_events++;
+    }
+
+    /* Update sleep recommendation */
+    sys->pressure.sleep_recommended =
+        (sys->pressure.sleep_pressure >= FEP_SLEEP_PRESSURE_THRESHOLD);
+
+    NIMCP_LOGGING_DEBUG("FEP->Sleep: PE=%.4f, pressure=%.4f, recommended=%d",
+                        prediction_error, sys->pressure.sleep_pressure,
+                        sys->pressure.sleep_recommended);
+
+    nimcp_platform_mutex_unlock(sys->mutex);
+    return 0;
+}
+
+int fep_sleep_on_uncertainty(fep_sleep_system_t* sys, float uncertainty) {
+    if (!sys) return -1;
+
+    nimcp_platform_mutex_lock(sys->mutex);
+
+    /* Update running average of uncertainty */
+    const float alpha = 0.1f;  /* Smoothing factor */
+    sys->pressure.avg_uncertainty =
+        (1.0f - alpha) * sys->pressure.avg_uncertainty + alpha * uncertainty;
+
+    /* High uncertainty increases sleep pressure */
+    if (uncertainty > 0.5f) {
+        float pressure_contribution = (uncertainty - 0.5f) * FEP_SLEEP_UNCERTAINTY_PRESSURE;
+        sys->pressure.sleep_pressure += pressure_contribution;
+        sys->pressure.sleep_pressure = clamp_f(
+            sys->pressure.sleep_pressure,
+            FEP_SLEEP_MIN_PRESSURE,
+            FEP_SLEEP_MAX_PRESSURE
+        );
+    }
+
+    /* Update sleep recommendation */
+    sys->pressure.sleep_recommended =
+        (sys->pressure.sleep_pressure >= FEP_SLEEP_PRESSURE_THRESHOLD);
+
+    nimcp_platform_mutex_unlock(sys->mutex);
+    return 0;
+}
+
+int fep_sleep_on_convergence(fep_sleep_system_t* sys, bool converged, float convergence_quality) {
+    if (!sys) return -1;
+
+    nimcp_platform_mutex_lock(sys->mutex);
+
+    sys->pressure.model_converged = converged;
+    sys->pressure.convergence_quality = clamp_f(convergence_quality, 0.0f, 1.0f);
+
+    /* Good convergence is a good time for sleep (consolidation) */
+    if (converged && convergence_quality > 0.8f) {
+        /* Slight boost to sleep pressure - good time to consolidate */
+        sys->pressure.sleep_pressure += 0.05f;
+        sys->pressure.sleep_pressure = clamp_f(
+            sys->pressure.sleep_pressure,
+            FEP_SLEEP_MIN_PRESSURE,
+            FEP_SLEEP_MAX_PRESSURE
+        );
+    }
+
+    /* Update sleep recommendation */
+    sys->pressure.sleep_recommended =
+        (sys->pressure.sleep_pressure >= FEP_SLEEP_PRESSURE_THRESHOLD);
+
+    NIMCP_LOGGING_DEBUG("FEP->Sleep: convergence=%d, quality=%.4f, pressure=%.4f",
+                        converged, convergence_quality, sys->pressure.sleep_pressure);
+
+    nimcp_platform_mutex_unlock(sys->mutex);
+    return 0;
+}
+
+float fep_sleep_get_pressure(const fep_sleep_system_t* sys) {
+    if (!sys) return 0.0f;
+    return sys->pressure.sleep_pressure;
+}
+
+int fep_sleep_get_pressure_state(const fep_sleep_system_t* sys, fep_sleep_pressure_t* pressure) {
+    if (!sys || !pressure) return -1;
+
+    nimcp_platform_mutex_lock((nimcp_mutex_t*)sys->mutex);
+    *pressure = sys->pressure;
+    nimcp_platform_mutex_unlock((nimcp_mutex_t*)sys->mutex);
+
+    return 0;
+}
+
+bool fep_sleep_is_sleep_recommended(const fep_sleep_system_t* sys) {
+    if (!sys) return false;
+    return sys->pressure.sleep_recommended;
+}
+
+int fep_sleep_reset_pressure(fep_sleep_system_t* sys) {
+    if (!sys) return -1;
+
+    nimcp_platform_mutex_lock(sys->mutex);
+
+    memset(&sys->pressure, 0, sizeof(fep_sleep_pressure_t));
+
+    NIMCP_LOGGING_INFO("FEP->Sleep: pressure reset");
+
+    nimcp_platform_mutex_unlock(sys->mutex);
+    return 0;
+}
+
+int fep_sleep_update_pressure(fep_sleep_system_t* sys, uint64_t delta_ms) {
+    if (!sys) return -1;
+
+    nimcp_platform_mutex_lock(sys->mutex);
+
+    /* Only accumulate wake time when actually awake */
+    if (sys->state.current_stage == SLEEP_STAGE_WAKE) {
+        sys->pressure.wake_duration_ms += delta_ms;
+
+        /* Homeostatic sleep pressure increases with time awake */
+        /* Approximately ~0.001 per ms = 3.6% per hour */
+        float time_pressure = (float)delta_ms * FEP_SLEEP_PRESSURE_DECAY;
+        sys->pressure.sleep_pressure += time_pressure;
+        sys->pressure.sleep_pressure = clamp_f(
+            sys->pressure.sleep_pressure,
+            FEP_SLEEP_MIN_PRESSURE,
+            FEP_SLEEP_MAX_PRESSURE
+        );
+    }
+
+    /* Update sleep recommendation */
+    sys->pressure.sleep_recommended =
+        (sys->pressure.sleep_pressure >= FEP_SLEEP_PRESSURE_THRESHOLD);
+
+    nimcp_platform_mutex_unlock(sys->mutex);
+    return 0;
+}
+
+/* ============================================================================
  * String Conversion Implementation
  * ============================================================================ */
 

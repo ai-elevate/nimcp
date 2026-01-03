@@ -599,3 +599,247 @@ TEST_F(FEPSleepTest, ConsolidationProgress) {
     fep_sleep_get_state(sleep, &state_out);
     EXPECT_GT(state_out.replays_this_cycle, 0u);
 }
+
+/* ============================================================================
+ * FEP → Sleep Bidirectional Integration Tests
+ * ============================================================================ */
+
+TEST_F(FEPSleepTest, PredictionErrorIncreasesSleepPressure) {
+    /* Initial pressure should be zero */
+    float initial_pressure = fep_sleep_get_pressure(sleep);
+    EXPECT_NEAR(initial_pressure, 0.0f, 0.01f);
+
+    /* Report prediction error */
+    int ret = fep_sleep_on_prediction_error(sleep, 0.5f);
+    EXPECT_EQ(ret, 0);
+
+    /* Pressure should increase */
+    float new_pressure = fep_sleep_get_pressure(sleep);
+    EXPECT_GT(new_pressure, initial_pressure);
+}
+
+TEST_F(FEPSleepTest, MultiplePredictionErrorsAccumulate) {
+    /* Report multiple prediction errors */
+    for (int i = 0; i < 10; i++) {
+        fep_sleep_on_prediction_error(sleep, 0.3f);
+    }
+
+    float pressure = fep_sleep_get_pressure(sleep);
+    EXPECT_GT(pressure, 0.0f);
+
+    /* Should be capped at max */
+    EXPECT_LE(pressure, FEP_SLEEP_MAX_PRESSURE);
+}
+
+TEST_F(FEPSleepTest, HighPredictionErrorTracking) {
+    /* Report a high prediction error */
+    fep_sleep_on_prediction_error(sleep, 0.8f);  /* Above threshold */
+
+    fep_sleep_pressure_t pressure_state;
+    fep_sleep_get_pressure_state(sleep, &pressure_state);
+
+    EXPECT_GT(pressure_state.high_pe_events, 0u);
+}
+
+TEST_F(FEPSleepTest, UncertaintyAffectsSleepPressure) {
+    float initial_pressure = fep_sleep_get_pressure(sleep);
+
+    /* Report high uncertainty */
+    int ret = fep_sleep_on_uncertainty(sleep, 0.8f);
+    EXPECT_EQ(ret, 0);
+
+    float new_pressure = fep_sleep_get_pressure(sleep);
+    EXPECT_GT(new_pressure, initial_pressure);
+}
+
+TEST_F(FEPSleepTest, LowUncertaintyDoesNotIncreasePressure) {
+    /* Report low uncertainty */
+    fep_sleep_on_uncertainty(sleep, 0.3f);
+
+    float pressure = fep_sleep_get_pressure(sleep);
+    /* Low uncertainty shouldn't significantly increase pressure */
+    EXPECT_LT(pressure, 0.1f);
+}
+
+TEST_F(FEPSleepTest, UncertaintyAveraging) {
+    /* Report multiple uncertainty values */
+    for (int i = 0; i < 10; i++) {
+        fep_sleep_on_uncertainty(sleep, 0.5f);
+    }
+
+    fep_sleep_pressure_t pressure_state;
+    fep_sleep_get_pressure_state(sleep, &pressure_state);
+
+    EXPECT_GT(pressure_state.avg_uncertainty, 0.0f);
+    EXPECT_LE(pressure_state.avg_uncertainty, 1.0f);
+}
+
+TEST_F(FEPSleepTest, ConvergenceSignaling) {
+    int ret = fep_sleep_on_convergence(sleep, true, 0.9f);
+    EXPECT_EQ(ret, 0);
+
+    fep_sleep_pressure_t pressure_state;
+    fep_sleep_get_pressure_state(sleep, &pressure_state);
+
+    EXPECT_TRUE(pressure_state.model_converged);
+    EXPECT_NEAR(pressure_state.convergence_quality, 0.9f, 0.01f);
+}
+
+TEST_F(FEPSleepTest, GoodConvergenceBoostsPressureSlightly) {
+    float initial_pressure = fep_sleep_get_pressure(sleep);
+
+    /* High-quality convergence is a good time for sleep */
+    fep_sleep_on_convergence(sleep, true, 0.95f);
+
+    float new_pressure = fep_sleep_get_pressure(sleep);
+    EXPECT_GT(new_pressure, initial_pressure);
+}
+
+TEST_F(FEPSleepTest, SleepRecommendedWhenPressureHigh) {
+    /* Initially not recommended */
+    EXPECT_FALSE(fep_sleep_is_sleep_recommended(sleep));
+
+    /* Accumulate enough prediction errors to trigger recommendation */
+    for (int i = 0; i < 100; i++) {
+        fep_sleep_on_prediction_error(sleep, 0.5f);
+    }
+
+    /* Should now recommend sleep */
+    EXPECT_TRUE(fep_sleep_is_sleep_recommended(sleep));
+}
+
+TEST_F(FEPSleepTest, GetPressureState) {
+    /* Generate some pressure */
+    fep_sleep_on_prediction_error(sleep, 0.5f);
+    fep_sleep_on_uncertainty(sleep, 0.6f);
+    fep_sleep_on_convergence(sleep, true, 0.8f);
+
+    fep_sleep_pressure_t pressure_state;
+    int ret = fep_sleep_get_pressure_state(sleep, &pressure_state);
+    EXPECT_EQ(ret, 0);
+
+    EXPECT_GT(pressure_state.sleep_pressure, 0.0f);
+    EXPECT_GT(pressure_state.accumulated_prediction_error, 0.0f);
+    EXPECT_GT(pressure_state.avg_uncertainty, 0.0f);
+    EXPECT_TRUE(pressure_state.model_converged);
+}
+
+TEST_F(FEPSleepTest, GetPressureStateNullParams) {
+    fep_sleep_pressure_t pressure_state;
+    EXPECT_EQ(fep_sleep_get_pressure_state(nullptr, &pressure_state), -1);
+    EXPECT_EQ(fep_sleep_get_pressure_state(sleep, nullptr), -1);
+}
+
+TEST_F(FEPSleepTest, ResetPressure) {
+    /* Accumulate some pressure */
+    for (int i = 0; i < 50; i++) {
+        fep_sleep_on_prediction_error(sleep, 0.3f);
+    }
+    EXPECT_GT(fep_sleep_get_pressure(sleep), 0.0f);
+
+    /* Reset */
+    int ret = fep_sleep_reset_pressure(sleep);
+    EXPECT_EQ(ret, 0);
+
+    /* Pressure should be zero */
+    EXPECT_NEAR(fep_sleep_get_pressure(sleep), 0.0f, 0.01f);
+    EXPECT_FALSE(fep_sleep_is_sleep_recommended(sleep));
+}
+
+TEST_F(FEPSleepTest, ResetPressureNullParam) {
+    EXPECT_EQ(fep_sleep_reset_pressure(nullptr), -1);
+}
+
+TEST_F(FEPSleepTest, UpdatePressureWhileAwake) {
+    float initial_pressure = fep_sleep_get_pressure(sleep);
+
+    /* Update pressure over time while awake */
+    int ret = fep_sleep_update_pressure(sleep, 10000);  /* 10 seconds */
+    EXPECT_EQ(ret, 0);
+
+    float new_pressure = fep_sleep_get_pressure(sleep);
+    EXPECT_GT(new_pressure, initial_pressure);
+}
+
+TEST_F(FEPSleepTest, UpdatePressureWhileAsleep) {
+    /* Set to sleep stage */
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_SWS);
+
+    float initial_pressure = fep_sleep_get_pressure(sleep);
+
+    /* Update pressure while asleep */
+    fep_sleep_update_pressure(sleep, 10000);
+
+    float new_pressure = fep_sleep_get_pressure(sleep);
+    /* Pressure should NOT increase during sleep */
+    EXPECT_NEAR(new_pressure, initial_pressure, 0.01f);
+}
+
+TEST_F(FEPSleepTest, WakeDurationTracking) {
+    /* Update while awake */
+    fep_sleep_update_pressure(sleep, 5000);
+    fep_sleep_update_pressure(sleep, 5000);
+
+    fep_sleep_pressure_t pressure_state;
+    fep_sleep_get_pressure_state(sleep, &pressure_state);
+
+    EXPECT_EQ(pressure_state.wake_duration_ms, 10000u);
+}
+
+TEST_F(FEPSleepTest, PressureClamping) {
+    /* Try to exceed max pressure */
+    for (int i = 0; i < 1000; i++) {
+        fep_sleep_on_prediction_error(sleep, 1.0f);
+    }
+
+    float pressure = fep_sleep_get_pressure(sleep);
+    EXPECT_LE(pressure, FEP_SLEEP_MAX_PRESSURE);
+}
+
+TEST_F(FEPSleepTest, NullParamSafety) {
+    EXPECT_EQ(fep_sleep_on_prediction_error(nullptr, 0.5f), -1);
+    EXPECT_EQ(fep_sleep_on_uncertainty(nullptr, 0.5f), -1);
+    EXPECT_EQ(fep_sleep_on_convergence(nullptr, true, 0.9f), -1);
+    EXPECT_EQ(fep_sleep_get_pressure(nullptr), 0.0f);
+    EXPECT_FALSE(fep_sleep_is_sleep_recommended(nullptr));
+    EXPECT_EQ(fep_sleep_update_pressure(nullptr, 1000), -1);
+}
+
+TEST_F(FEPSleepTest, BidirectionalIntegrationFullCycle) {
+    fep_sleep_connect(sleep, fep);
+
+    /* Simulate waking activity with FEP signals */
+    for (int i = 0; i < 20; i++) {
+        fep_sleep_on_prediction_error(sleep, 0.3f);
+        fep_sleep_on_uncertainty(sleep, 0.4f);
+        fep_sleep_update_pressure(sleep, 1000);
+    }
+
+    /* Check pressure accumulated */
+    EXPECT_GT(fep_sleep_get_pressure(sleep), 0.0f);
+
+    /* Signal convergence - good time to sleep */
+    fep_sleep_on_convergence(sleep, true, 0.85f);
+
+    /* Initiate sleep cycle */
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_N1);
+    fep_sleep_update(sleep, 1000);
+
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_SWS);
+
+    /* Add experiences and consolidate */
+    float state[8] = {0.1f};
+    float obs[8] = {0.2f};
+    float next[8] = {0.15f};
+    for (int i = 0; i < 10; i++) {
+        fep_sleep_add_experience(sleep, state, obs, next, 8, 8);
+    }
+    fep_sleep_replay_consolidation(sleep, fep, 5);
+
+    /* Wake up and reset pressure */
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+    fep_sleep_reset_pressure(sleep);
+
+    /* Pressure should be reset */
+    EXPECT_NEAR(fep_sleep_get_pressure(sleep), 0.0f, 0.01f);
+}

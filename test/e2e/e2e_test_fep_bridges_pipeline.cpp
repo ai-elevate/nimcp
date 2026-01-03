@@ -54,6 +54,7 @@
 #include "core/brain/oscillations/nimcp_oscillations_fep_bridge.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "cognitive/free_energy/nimcp_fep_sleep.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -1186,6 +1187,197 @@ E2E_TEST(FEPBridgesE2E, MemoryRetrievalAsActiveInference) {
 }
 
 //=============================================================================
+// E2E Test 16: Bidirectional FEP-Sleep Cycle
+//=============================================================================
+
+E2E_TEST(FEPBridgesE2E, BidirectionalFEPSleepCycle) {
+    PipelineTracker pipeline("Bidirectional FEP-Sleep Cycle");
+
+    // Stage 1: Create systems
+    pipeline.begin_stage("Create FEP and Sleep systems", 30000);
+    fep_system_t* fep = create_test_fep_system();
+    E2E_ASSERT_NOT_NULL(fep, "FEP creation failed");
+
+    fep_sleep_config_t sleep_config;
+    fep_sleep_default_config(&sleep_config);
+    sleep_config.enable_auto_cycle = false;  // Manual control for testing
+    fep_sleep_system_t* sleep = fep_sleep_create(&sleep_config);
+    E2E_ASSERT_NOT_NULL(sleep, "Sleep system creation failed");
+
+    int result = fep_sleep_connect(sleep, fep);
+    E2E_ASSERT_SUCCESS(result, "Failed to connect sleep to FEP");
+    pipeline.end_stage();
+
+    // Stage 2: Simulate waking FEP activity (FEP → Sleep direction)
+    pipeline.begin_stage("Wake: FEP activity generates sleep pressure", 30000);
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+
+    float visual_obs[FEP_OBSERVATION_DIM];
+    for (uint32_t step = 0; step < 50; step++) {
+        // Process visual observations
+        generate_visual_observation(visual_obs, FEP_OBSERVATION_DIM, step, step % 5 == 0);
+        fep_process_observation(fep, visual_obs, FEP_OBSERVATION_DIM);
+        fep_update_beliefs(fep);
+
+        // FEP → Sleep: Report prediction error
+        float pe = compute_prediction_error(fep);
+        fep_sleep_on_prediction_error(sleep, pe);
+
+        // FEP → Sleep: Report uncertainty
+        float uncertainty = 0.3f + 0.2f * (float)(step % 5) / 5.0f;
+        fep_sleep_on_uncertainty(sleep, uncertainty);
+
+        // Update homeostatic pressure
+        fep_sleep_update_pressure(sleep, DELTA_MS);
+
+        // Accumulate experience for consolidation
+        float state[FEP_OBSERVATION_DIM] = {0};
+        float next[FEP_OBSERVATION_DIM] = {0};
+        for (uint32_t i = 0; i < FEP_OBSERVATION_DIM; i++) {
+            state[i] = visual_obs[i];
+            next[i] = visual_obs[i] + 0.1f;
+        }
+        fep_sleep_add_experience(sleep, state, visual_obs, next, FEP_OBSERVATION_DIM, FEP_OBSERVATION_DIM);
+    }
+
+    // Verify sleep pressure accumulated
+    float wake_pressure = fep_sleep_get_pressure(sleep);
+    E2E_ASSERT(wake_pressure > 0.0f, "Sleep pressure should accumulate during wake");
+    pipeline.end_stage();
+
+    // Stage 3: FEP signals model convergence
+    pipeline.begin_stage("FEP signals convergence", 30000);
+    result = fep_sleep_on_convergence(sleep, true, 0.85f);
+    E2E_ASSERT_SUCCESS(result, "Failed to signal convergence");
+
+    fep_sleep_pressure_t pressure_state;
+    fep_sleep_get_pressure_state(sleep, &pressure_state);
+    E2E_ASSERT(pressure_state.model_converged, "FEP convergence should be recorded");
+    pipeline.end_stage();
+
+    // Stage 4: Enter sleep and consolidate (Sleep → FEP direction)
+    pipeline.begin_stage("Sleep: Consolidation affects FEP", 30000);
+    result = fep_sleep_set_stage(sleep, SLEEP_STAGE_N1);
+    E2E_ASSERT_SUCCESS(result, "Failed to enter N1");
+    fep_sleep_update(sleep, 500);
+
+    result = fep_sleep_set_stage(sleep, SLEEP_STAGE_SWS);
+    E2E_ASSERT_SUCCESS(result, "Failed to enter SWS");
+    fep_sleep_update(sleep, 1000);  // Spend time in SWS for stats tracking
+
+    // Sleep → FEP: Replay consolidation updates FEP model
+    result = fep_sleep_replay_consolidation(sleep, fep, 20);
+    E2E_ASSERT_SUCCESS(result, "Replay consolidation failed");
+
+    // Sleep → FEP: Synaptic downscaling
+    result = fep_sleep_apply_downscaling(sleep, fep, 0.9f);
+    E2E_ASSERT_SUCCESS(result, "Synaptic downscaling failed");
+
+    // REM integration
+    result = fep_sleep_set_stage(sleep, SLEEP_STAGE_REM);
+    E2E_ASSERT_SUCCESS(result, "Failed to enter REM");
+    result = fep_sleep_rem_integration(sleep, fep);
+    E2E_ASSERT_SUCCESS(result, "REM integration failed");
+    pipeline.end_stage();
+
+    // Stage 5: Wake up and reset pressure
+    pipeline.begin_stage("Wake: Reset pressure after sleep", 30000);
+    result = fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+    E2E_ASSERT_SUCCESS(result, "Failed to wake");
+
+    result = fep_sleep_reset_pressure(sleep);
+    E2E_ASSERT_SUCCESS(result, "Failed to reset pressure");
+
+    float post_sleep_pressure = fep_sleep_get_pressure(sleep);
+    E2E_ASSERT(post_sleep_pressure < 0.1f, "Pressure should be reset after sleep");
+    pipeline.end_stage();
+
+    // Stage 6: Verify stats tracked bidirectional activity
+    pipeline.begin_stage("Verify bidirectional stats", 30000);
+    fep_sleep_stats_t stats;
+    result = fep_sleep_get_stats(sleep, &stats);
+    E2E_ASSERT_SUCCESS(result, "Failed to get sleep stats");
+    E2E_ASSERT(stats.total_replays > 0, "Replays should be tracked");
+    E2E_ASSERT(stats.total_sws_time_ms > 0, "SWS time should be tracked");
+    pipeline.end_stage();
+
+    // Cleanup
+    fep_sleep_destroy(sleep);
+    fep_destroy(fep);
+}
+
+//=============================================================================
+// E2E Test 17: Sleep Pressure Recommendation Pipeline
+//=============================================================================
+
+E2E_TEST(FEPBridgesE2E, SleepPressureRecommendationPipeline) {
+    PipelineTracker pipeline("Sleep Pressure Recommendation Pipeline");
+
+    // Stage 1: Create systems
+    pipeline.begin_stage("Create systems", 30000);
+    fep_system_t* fep = create_test_fep_system();
+    E2E_ASSERT_NOT_NULL(fep, "FEP creation failed");
+
+    fep_sleep_config_t sleep_config;
+    fep_sleep_default_config(&sleep_config);
+    fep_sleep_system_t* sleep = fep_sleep_create(&sleep_config);
+    E2E_ASSERT_NOT_NULL(sleep, "Sleep system creation failed");
+    fep_sleep_connect(sleep, fep);
+    pipeline.end_stage();
+
+    // Stage 2: Initially, sleep should NOT be recommended
+    pipeline.begin_stage("Verify initial no-sleep recommendation", 30000);
+    E2E_ASSERT(!fep_sleep_is_sleep_recommended(sleep),
+               "Sleep should not be recommended initially");
+    pipeline.end_stage();
+
+    // Stage 3: Accumulate high cognitive load with many prediction errors
+    pipeline.begin_stage("Accumulate cognitive load", 30000);
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+
+    for (uint32_t i = 0; i < 200; i++) {
+        // High prediction errors indicate cognitive strain
+        fep_sleep_on_prediction_error(sleep, 0.5f);
+        fep_sleep_on_uncertainty(sleep, 0.6f);
+        fep_sleep_update_pressure(sleep, 10);
+    }
+    pipeline.end_stage();
+
+    // Stage 4: Verify sleep is now recommended
+    pipeline.begin_stage("Verify sleep recommendation", 30000);
+    E2E_ASSERT(fep_sleep_is_sleep_recommended(sleep),
+               "Sleep should be recommended after high cognitive load");
+
+    fep_sleep_pressure_t pressure_state;
+    fep_sleep_get_pressure_state(sleep, &pressure_state);
+    E2E_ASSERT(pressure_state.sleep_pressure >= FEP_SLEEP_PRESSURE_THRESHOLD,
+               "Pressure should exceed threshold");
+    E2E_ASSERT(pressure_state.accumulated_prediction_error > 0.0f,
+               "PE accumulation should be tracked");
+    pipeline.end_stage();
+
+    // Stage 5: Complete sleep cycle
+    pipeline.begin_stage("Complete sleep cycle", 30000);
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_N1);
+    fep_sleep_update(sleep, 100);
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_SWS);
+    fep_sleep_update(sleep, 500);
+    fep_sleep_set_stage(sleep, SLEEP_STAGE_WAKE);
+    fep_sleep_reset_pressure(sleep);
+    pipeline.end_stage();
+
+    // Stage 6: Verify sleep no longer recommended
+    pipeline.begin_stage("Verify no-sleep after cycle", 30000);
+    E2E_ASSERT(!fep_sleep_is_sleep_recommended(sleep),
+               "Sleep should not be recommended after sleep cycle");
+    pipeline.end_stage();
+
+    // Cleanup
+    fep_sleep_destroy(sleep);
+    fep_destroy(fep);
+}
+
+//=============================================================================
 // E2E Test Summary
 //=============================================================================
 
@@ -1213,13 +1405,16 @@ E2E_TEST(FEPBridgesE2E, TestSuiteSummary) {
     NIMCP_LOGGING_INFO(" 13. CrossModalPredictionErrorIntegration - Audio affects visual processing");
     NIMCP_LOGGING_INFO(" 14. StressTestAllBridgesActive - All bridges under load");
     NIMCP_LOGGING_INFO(" 15. MemoryRetrievalAsActiveInference - Recall as FE minimization");
+    NIMCP_LOGGING_INFO(" 16. BidirectionalFEPSleepCycle - Full bidirectional FEP-Sleep integration");
+    NIMCP_LOGGING_INFO(" 17. SleepPressureRecommendationPipeline - Sleep pressure triggers recommendation");
     NIMCP_LOGGING_INFO("=============================================================================");
     NIMCP_LOGGING_INFO("Coverage:");
     NIMCP_LOGGING_INFO("  - Perception bridges: Visual, Audio");
-    NIMCP_LOGGING_INFO("  - Cognitive bridges: Attention, Memory, Executive");
+    NIMCP_LOGGING_INFO("  - Cognitive bridges: Attention, Memory, Executive, Sleep");
     NIMCP_LOGGING_INFO("  - Plasticity bridges: STDP");
     NIMCP_LOGGING_INFO("  - Core bridges: Oscillations");
     NIMCP_LOGGING_INFO("  - Integration: Bio-async messaging, hierarchical processing");
+    NIMCP_LOGGING_INFO("  - Bidirectional: FEP → Sleep pressure, Sleep → FEP consolidation");
     NIMCP_LOGGING_INFO("=============================================================================");
 
     pipeline.end_stage();

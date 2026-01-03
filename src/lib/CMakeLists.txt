@@ -460,6 +460,12 @@ set(NIMCP_CORE_SOURCES
     # Recursive Cognition (RLM-inspired: Phase 1 Foundation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_context_store.c  # Context store (environment-as-variable pattern)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_answer.c  # Answer refiner (diffusion-style refinement)
+    # Recursive Cognition Bridges (bidirectional integration with brain systems)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_bio_async_bridge.c  # Bio-async messaging integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_imagination_bridge.c  # Imagination engine integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_immune_bridge.c  # Brain immune system integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_collective_bridge.c  # Swarm/collective workspace integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_brain_kg_bridge.c  # Brain knowledge graph integration
 
     # Game Theory - Economic mechanisms for cognitive resource allocation
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory.c  # Core game theory types and utilities
