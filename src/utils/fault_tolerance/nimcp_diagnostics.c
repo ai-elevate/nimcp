@@ -893,18 +893,66 @@ bool diagnostics_report_to_file(const diagnostic_result_t* result, const char* p
     return true;
 }
 
+/**
+ * @brief Escape a string for JSON output
+ * @param dest Destination buffer
+ * @param dest_size Size of destination buffer
+ * @param src Source string to escape
+ */
+static void json_escape_string(char* dest, size_t dest_size, const char* src) {
+    if (!dest || dest_size == 0) return;
+    if (!src) {
+        dest[0] = '\0';
+        return;
+    }
+
+    size_t di = 0;
+    for (size_t si = 0; src[si] != '\0' && di < dest_size - 2; si++) {
+        char c = src[si];
+        if (c == '"' || c == '\\') {
+            if (di + 2 >= dest_size) break;
+            dest[di++] = '\\';
+            dest[di++] = c;
+        } else if (c == '\n') {
+            if (di + 2 >= dest_size) break;
+            dest[di++] = '\\';
+            dest[di++] = 'n';
+        } else if (c == '\r') {
+            if (di + 2 >= dest_size) break;
+            dest[di++] = '\\';
+            dest[di++] = 'r';
+        } else if (c == '\t') {
+            if (di + 2 >= dest_size) break;
+            dest[di++] = '\\';
+            dest[di++] = 't';
+        } else if ((unsigned char)c >= 32) {
+            dest[di++] = c;
+        }
+        // Skip other control characters
+    }
+    dest[di] = '\0';
+}
+
 char* diagnostics_report_to_json(const diagnostic_result_t* result) {
     if (!result) {
         return NULL;
     }
 
-    // Allocate buffer for JSON (simplified, real implementation would use JSON library)
-    char* json = nimcp_malloc(4096);
+    // Allocate buffer for JSON - enough for escaped strings
+    // Each 512-char field could expand to ~1024 when escaped
+    const size_t json_size = 4096;
+    char* json = nimcp_malloc(json_size);
     if (!json) {
         return NULL;
     }
 
-    snprintf(json, 4096,
+    // Escape strings for JSON safety
+    char escaped_root_cause[1024];
+    char escaped_symptoms[1024];
+    json_escape_string(escaped_root_cause, sizeof(escaped_root_cause), result->root_cause);
+    json_escape_string(escaped_symptoms, sizeof(escaped_symptoms), result->symptoms);
+
+    snprintf(json, json_size,
              "{\n"
              "  \"error_id\": %lu,\n"
              "  \"timestamp\": %ld,\n"
@@ -920,8 +968,8 @@ char* diagnostics_report_to_json(const diagnostic_result_t* result) {
              diagnostics_get_error_type_name(result->error_type),
              diagnostics_get_severity_name(result->severity),
              result->confidence,
-             result->root_cause,
-             result->symptoms,
+             escaped_root_cause,
+             escaped_symptoms,
              result->stack_depth);
 
     return json;

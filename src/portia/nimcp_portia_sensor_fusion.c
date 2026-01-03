@@ -137,10 +137,21 @@ portia_fusion_config_t portia_fusion_default_config(void) {
 
 /**
  * Validate fusion context
+ *
+ * NOTE: This provides basic validation but cannot fully prevent TOCTOU races.
+ * Callers must handle the case where the context becomes invalid between
+ * validation and use. The destroy function sets mutex=NULL and magic=0
+ * atomically under the lock to minimize the race window.
  */
 static bool validate_fusion_ctx(const portia_fusion_ctx_t* ctx) {
     if (!ctx) {
         LOG_ERROR("Invalid fusion context pointer");
+        return false;
+    }
+
+    // Check mutex first - if NULL, context is being/was destroyed
+    if (!ctx->mutex) {
+        LOG_ERROR("Fusion context mutex is NULL (context destroyed?)");
         return false;
     }
 
@@ -585,8 +596,13 @@ void portia_fusion_destroy(portia_fusion_ctx_t* ctx) {
 
     ctx->magic = 0;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
-    nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)ctx->mutex); nimcp_free(ctx->mutex);
+    // Store mutex pointer before clearing ctx
+    nimcp_platform_mutex_t* mutex = (nimcp_platform_mutex_t*)ctx->mutex;
+    ctx->mutex = NULL;  // Prevent other threads from using it
+
+    nimcp_platform_mutex_unlock(mutex);
+    nimcp_platform_mutex_destroy(mutex);
+    nimcp_free(mutex);
 
     nimcp_free(ctx);
 

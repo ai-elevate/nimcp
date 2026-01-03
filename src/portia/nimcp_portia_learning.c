@@ -302,9 +302,13 @@ void portia_learning_destroy(portia_learning_state_t* state) {
     }
 
     if (state->mutex) {
-        nimcp_platform_mutex_unlock(state->mutex);
-        nimcp_platform_mutex_destroy(state->mutex);
-        nimcp_free(state->mutex);
+        // Store mutex pointer before clearing state
+        nimcp_platform_mutex_t* mutex = state->mutex;
+        state->mutex = NULL;  // Prevent other threads from using it
+
+        nimcp_platform_mutex_unlock(mutex);
+        nimcp_platform_mutex_destroy(mutex);
+        nimcp_free(mutex);
     }
 
     nimcp_free(state);
