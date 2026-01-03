@@ -115,6 +115,17 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
 void adaptive_network_destroy(adaptive_network_t network);
 
 /**
+ * @brief Cleanup adaptive module global resources
+ *
+ * WHAT: Destroy global memory pool and reset initialization state
+ * WHY:  Allow proper re-initialization after nimcp_shutdown()
+ * HOW:  Call during nimcp_shutdown() before memory cleanup
+ *
+ * THREAD SAFETY: NOT thread-safe - call only during shutdown
+ */
+void adaptive_pool_cleanup(void);
+
+/**
  * @brief Process input through adaptive network
  *
  * @param network Adaptive network

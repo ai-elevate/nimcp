@@ -223,6 +223,10 @@ void nimcp_shutdown(void) {
     LOG_DEBUG("Shutting down constant-time module");
     nimcp_ct_shutdown();
 
+    // Cleanup adaptive module memory pool (before memory cleanup)
+    LOG_DEBUG("Cleaning up adaptive network memory pool");
+    adaptive_pool_cleanup();
+
     // Cleanup memory tracking (last)
     LOG_DEBUG("Cleaning up memory tracking");
     nimcp_memory_cleanup();

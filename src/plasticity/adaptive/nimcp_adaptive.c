@@ -107,6 +107,26 @@ static memory_pool_t get_adaptive_pool(void) {
 }
 
 /**
+ * @brief Cleanup adaptive network memory pool
+ *
+ * WHAT: Destroy the global memory pool and reset the once flag
+ * WHY:  Allow proper re-initialization after nimcp_shutdown()
+ * HOW:  Destroy pool, store NULL, reset once flag
+ *
+ * THREAD SAFETY: NOT thread-safe - call only during shutdown
+ *                when no other threads are using the adaptive module
+ */
+void adaptive_pool_cleanup(void) {
+    memory_pool_t pool = atomic_load(&g_adaptive_pool);
+    if (pool) {
+        memory_pool_destroy(pool);
+        atomic_store(&g_adaptive_pool, (memory_pool_t)NULL);
+    }
+    // Reset once flag to allow re-initialization
+    g_adaptive_pool_once = NIMCP_PLATFORM_ONCE_INIT;
+}
+
+/**
  * @brief Allocate buffer from pool or heap
  */
 static void* alloc_hot_buffer(size_t size) {
