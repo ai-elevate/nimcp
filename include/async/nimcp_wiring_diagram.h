@@ -706,6 +706,138 @@ int wiring_diagram_sync_to_brain_kg(wiring_diagram_t* wd, brain_kg_t* kg);
 int wiring_diagram_sync_from_brain_kg(wiring_diagram_t* wd, const brain_kg_t* kg);
 
 /* ============================================================================
+ * Validation and Dependency Resolution API (Phase 9)
+ * ============================================================================ */
+
+/**
+ * @brief Validation result structure
+ */
+typedef struct {
+    bool valid;                          /**< Overall validation result */
+    uint32_t error_count;                /**< Number of errors found */
+    uint32_t warning_count;              /**< Number of warnings found */
+    char errors[16][256];                /**< Error messages (max 16) */
+    char warnings[16][256];              /**< Warning messages (max 16) */
+    bool has_circular_deps;              /**< Circular dependencies detected */
+    bool has_missing_deps;               /**< Missing dependencies detected */
+    bool has_invalid_handlers;           /**< Invalid handler configs detected */
+} wiring_validation_result_t;
+
+/**
+ * @brief Validate wiring diagram configuration
+ *
+ * WHAT: Check wiring diagram for consistency and correctness
+ * WHY:  Catch configuration errors before runtime
+ * HOW:  Validate module configs, check dependencies, verify handlers
+ *
+ * Checks performed:
+ * - All dependencies reference existing modules
+ * - No circular dependencies (via check_circular_deps)
+ * - All handler message types are valid
+ * - Module IDs are unique
+ * - Required modules are enabled
+ *
+ * @param wd Wiring diagram to validate
+ * @param result Validation result (caller allocated)
+ * @return 0 if valid, -1 if invalid (check result for details)
+ */
+int wiring_diagram_validate(const wiring_diagram_t* wd, wiring_validation_result_t* result);
+
+/**
+ * @brief Check for circular dependencies in wiring diagram
+ *
+ * WHAT: Detect circular dependency chains
+ * WHY:  Circular deps cause infinite loops in startup ordering
+ * HOW:  Depth-first search with cycle detection
+ *
+ * @param wd Wiring diagram to check
+ * @param cycle_modules Output array for modules in cycle (optional, can be NULL)
+ * @param max_cycle_modules Capacity of cycle_modules array
+ * @param cycle_count Output number of modules in cycle (optional)
+ * @return 0 if no cycles, -1 if cycles detected
+ */
+int wiring_diagram_check_circular_deps(
+    const wiring_diagram_t* wd,
+    bio_module_id_t* cycle_modules,
+    uint32_t max_cycle_modules,
+    uint32_t* cycle_count
+);
+
+/**
+ * @brief Get module startup order (topological sort)
+ *
+ * WHAT: Compute correct startup order respecting dependencies
+ * WHY:  Modules must start after their dependencies
+ * HOW:  Kahn's algorithm for topological sorting
+ *
+ * @param wd Wiring diagram
+ * @param order_out Output array for startup order (caller allocated)
+ * @param max_modules Capacity of order_out array
+ * @return Number of modules in order, -1 on error (circular deps)
+ */
+int wiring_diagram_get_startup_order(
+    const wiring_diagram_t* wd,
+    bio_module_id_t* order_out,
+    uint32_t max_modules
+);
+
+/**
+ * @brief Get dependency chain for a module
+ *
+ * WHAT: Get all transitive dependencies for a module
+ * WHY:  Know full dependency tree for module isolation
+ * HOW:  BFS/DFS traversal of DEPENDS_ON relations
+ *
+ * @param wd Wiring diagram
+ * @param module_id Module to get dependencies for
+ * @param deps_out Output array for dependencies (caller allocated)
+ * @param max_deps Capacity of deps_out array
+ * @return Number of dependencies, -1 on error
+ */
+int wiring_diagram_get_dependency_chain(
+    const wiring_diagram_t* wd,
+    bio_module_id_t module_id,
+    bio_module_id_t* deps_out,
+    uint32_t max_deps
+);
+
+/**
+ * @brief Get modules that depend on a given module
+ *
+ * WHAT: Get reverse dependencies (dependents)
+ * WHY:  Know what breaks if a module is disabled
+ * HOW:  Traverse all modules checking DEPENDS_ON
+ *
+ * @param wd Wiring diagram
+ * @param module_id Module to find dependents for
+ * @param dependents_out Output array for dependents (caller allocated)
+ * @param max_dependents Capacity of dependents_out array
+ * @return Number of dependents, -1 on error
+ */
+int wiring_diagram_get_dependents(
+    const wiring_diagram_t* wd,
+    bio_module_id_t module_id,
+    bio_module_id_t* dependents_out,
+    uint32_t max_dependents
+);
+
+/**
+ * @brief Check if module can be safely disabled
+ *
+ * WHAT: Verify no critical dependencies would break
+ * WHY:  Prevent disabling modules that others need
+ * HOW:  Check dependents and their criticality
+ *
+ * @param wd Wiring diagram
+ * @param module_id Module to check
+ * @return 1 if safe to disable, 0 if not safe, -1 on error
+ */
+int wiring_diagram_can_disable_module(
+    const wiring_diagram_t* wd,
+    bio_module_id_t module_id
+);
+
+/* ============================================================================
  * Hardware Detection API
  * ============================================================================ */
 

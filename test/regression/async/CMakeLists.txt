@@ -155,3 +155,35 @@ gtest_discover_tests(regression_async_test_wiring_diagram_kg_sync
         LABELS "regression;async;wiring;kg;sync"
         TIMEOUT 120
 )
+
+# =============================================================================
+# Wiring Diagram Validation Regression Tests (Phase 9: Validation & Dependency Resolution)
+# =============================================================================
+add_executable(regression_async_test_wiring_diagram_validation
+    test_wiring_diagram_validation_regression.cpp
+)
+
+target_link_libraries(regression_async_test_wiring_diagram_validation
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+        stdc++fs
+)
+
+target_include_directories(regression_async_test_wiring_diagram_validation
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_async_test_wiring_diagram_validation PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_async_test_wiring_diagram_validation
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;async;wiring;validation;dependency"
+        TIMEOUT 120
+)

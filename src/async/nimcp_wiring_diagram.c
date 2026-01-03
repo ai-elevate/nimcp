@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <dirent.h>
 #include <sys/stat.h>
@@ -1929,4 +1930,505 @@ int wiring_diagram_sync_from_brain_kg(wiring_diagram_t* wd, const brain_kg_t* kg
         handlers_synced, wd->module_count);
 
     return handlers_synced;
+}
+
+/* ============================================================================
+ * Validation and Dependency Resolution Implementation (Phase 9)
+ *
+ * WHAT: Validate wiring configurations and compute dependency ordering
+ * WHY:  Ensure correct module startup and detect configuration errors
+ * HOW:  Graph algorithms (DFS for cycle detection, Kahn's for topo sort)
+ * ============================================================================ */
+
+/**
+ * @brief Helper: Add error to validation result
+ */
+static void add_validation_error(wiring_validation_result_t* result, const char* fmt, ...) {
+    if (result->error_count >= 16) return;
+
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(result->errors[result->error_count], 256, fmt, args);
+    va_end(args);
+    result->error_count++;
+    result->valid = false;
+}
+
+/**
+ * @brief Helper: Add warning to validation result
+ */
+static void add_validation_warning(wiring_validation_result_t* result, const char* fmt, ...) {
+    if (result->warning_count >= 16) return;
+
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(result->warnings[result->warning_count], 256, fmt, args);
+    va_end(args);
+    result->warning_count++;
+}
+
+/**
+ * @brief Helper: DFS visit state for cycle detection
+ */
+typedef enum {
+    DFS_WHITE = 0,  /* Not visited */
+    DFS_GRAY  = 1,  /* Currently visiting (on stack) */
+    DFS_BLACK = 2   /* Fully visited */
+} dfs_color_t;
+
+/**
+ * @brief Helper: DFS for cycle detection
+ * @return true if cycle found
+ */
+static bool dfs_find_cycle(
+    const wiring_diagram_t* wd,
+    uint32_t module_idx,
+    dfs_color_t* colors,
+    bio_module_id_t* cycle_modules,
+    uint32_t max_cycle,
+    uint32_t* cycle_count
+) {
+    colors[module_idx] = DFS_GRAY;
+
+    wiring_module_config_t* module = wd->module_configs[module_idx];
+    if (!module) {
+        colors[module_idx] = DFS_BLACK;
+        return false;
+    }
+
+    /* Check all dependencies */
+    for (uint32_t i = 0; i < module->depends_on_count; i++) {
+        bio_module_id_t dep_id = module->depends_on[i];
+
+        /* Find dependency's index */
+        for (uint32_t j = 0; j < wd->module_count; j++) {
+            if (wd->module_configs[j] && wd->module_configs[j]->module_id == dep_id) {
+                if (colors[j] == DFS_GRAY) {
+                    /* Found cycle - record if output arrays provided */
+                    if (cycle_modules && cycle_count && *cycle_count < max_cycle) {
+                        cycle_modules[*cycle_count] = module->module_id;
+                        (*cycle_count)++;
+                    }
+                    return true;
+                }
+                if (colors[j] == DFS_WHITE) {
+                    if (dfs_find_cycle(wd, j, colors, cycle_modules, max_cycle, cycle_count)) {
+                        /* Add to cycle path */
+                        if (cycle_modules && cycle_count && *cycle_count < max_cycle) {
+                            cycle_modules[*cycle_count] = module->module_id;
+                            (*cycle_count)++;
+                        }
+                        return true;
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    colors[module_idx] = DFS_BLACK;
+    return false;
+}
+
+int wiring_diagram_check_circular_deps(
+    const wiring_diagram_t* wd,
+    bio_module_id_t* cycle_modules,
+    uint32_t max_cycle_modules,
+    uint32_t* cycle_count
+) {
+    if (!wd) return -1;
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_lock(wd->mutex);
+    }
+
+    if (wd->module_count == 0) {
+        if (wd->mutex) {
+            nimcp_platform_mutex_unlock(wd->mutex);
+        }
+        return 0;  /* No modules, no cycles */
+    }
+
+    /* Allocate color array */
+    dfs_color_t* colors = (dfs_color_t*)nimcp_calloc(wd->module_count, sizeof(dfs_color_t));
+    if (!colors) {
+        if (wd->mutex) {
+            nimcp_platform_mutex_unlock(wd->mutex);
+        }
+        return -1;
+    }
+
+    uint32_t local_cycle_count = 0;
+    bool has_cycle = false;
+
+    /* Run DFS from each unvisited node */
+    for (uint32_t i = 0; i < wd->module_count && !has_cycle; i++) {
+        if (colors[i] == DFS_WHITE) {
+            has_cycle = dfs_find_cycle(wd, i, colors, cycle_modules, max_cycle_modules, &local_cycle_count);
+        }
+    }
+
+    nimcp_free(colors);
+
+    if (cycle_count) {
+        *cycle_count = local_cycle_count;
+    }
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_unlock(wd->mutex);
+    }
+
+    return has_cycle ? -1 : 0;
+}
+
+int wiring_diagram_validate(const wiring_diagram_t* wd, wiring_validation_result_t* result) {
+    if (!wd || !result) return -1;
+
+    /* Initialize result */
+    memset(result, 0, sizeof(*result));
+    result->valid = true;
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_lock(wd->mutex);
+    }
+
+    /* Check 1: Module ID uniqueness */
+    for (uint32_t i = 0; i < wd->module_count; i++) {
+        if (!wd->module_configs[i]) continue;
+        bio_module_id_t id = wd->module_configs[i]->module_id;
+
+        for (uint32_t j = i + 1; j < wd->module_count; j++) {
+            if (wd->module_configs[j] && wd->module_configs[j]->module_id == id) {
+                add_validation_error(result, "Duplicate module ID 0x%04X: '%s' and '%s'",
+                    id, wd->module_configs[i]->module_name, wd->module_configs[j]->module_name);
+            }
+        }
+    }
+
+    /* Check 2: Dependencies reference existing modules */
+    for (uint32_t i = 0; i < wd->module_count; i++) {
+        wiring_module_config_t* module = wd->module_configs[i];
+        if (!module) continue;
+
+        for (uint32_t j = 0; j < module->depends_on_count; j++) {
+            bio_module_id_t dep_id = module->depends_on[j];
+            wiring_module_config_t* dep = find_module_by_id_unlocked(wd, dep_id);
+
+            if (!dep) {
+                add_validation_error(result, "Module '%s' depends on unknown module 0x%04X",
+                    module->module_name, dep_id);
+                result->has_missing_deps = true;
+            } else if (!dep->enabled && module->enabled) {
+                add_validation_warning(result, "Module '%s' depends on disabled module '%s'",
+                    module->module_name, dep->module_name);
+            }
+        }
+    }
+
+    /* Check 3: Circular dependencies (unlock for nested call) */
+    if (wd->mutex) {
+        nimcp_platform_mutex_unlock(wd->mutex);
+    }
+
+    uint32_t cycle_count = 0;
+    bio_module_id_t cycle_modules[16];
+    if (wiring_diagram_check_circular_deps(wd, cycle_modules, 16, &cycle_count) != 0) {
+        result->has_circular_deps = true;
+        add_validation_error(result, "Circular dependency detected involving %u modules", cycle_count);
+    }
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_lock(wd->mutex);
+    }
+
+    /* Check 4: Handler message types (basic validation) */
+    for (uint32_t i = 0; i < wd->module_count; i++) {
+        wiring_module_config_t* module = wd->module_configs[i];
+        if (!module || !module->enabled) continue;
+
+        /* Check for suspiciously high handler count */
+        if (module->handles_message_count > WIRING_MAX_HANDLERS) {
+            add_validation_error(result, "Module '%s' has too many handlers (%u > %u)",
+                module->module_name, module->handles_message_count, WIRING_MAX_HANDLERS);
+            result->has_invalid_handlers = true;
+        }
+    }
+
+    /* Check 5: Module name validation */
+    for (uint32_t i = 0; i < wd->module_count; i++) {
+        wiring_module_config_t* module = wd->module_configs[i];
+        if (!module) continue;
+
+        if (module->module_name[0] == '\0') {
+            add_validation_error(result, "Module at index %u has empty name", i);
+        }
+    }
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_unlock(wd->mutex);
+    }
+
+    NIMCP_LOGGING_INFO("wiring_diagram_validate: %s (%u errors, %u warnings)",
+        result->valid ? "VALID" : "INVALID", result->error_count, result->warning_count);
+
+    return result->valid ? 0 : -1;
+}
+
+int wiring_diagram_get_startup_order(
+    const wiring_diagram_t* wd,
+    bio_module_id_t* order_out,
+    uint32_t max_modules
+) {
+    if (!wd || !order_out || max_modules == 0) return -1;
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_lock(wd->mutex);
+    }
+
+    if (wd->module_count == 0) {
+        if (wd->mutex) {
+            nimcp_platform_mutex_unlock(wd->mutex);
+        }
+        return 0;
+    }
+
+    /* Kahn's algorithm for topological sort */
+
+    /* Compute in-degree for each module */
+    uint32_t* in_degree = (uint32_t*)nimcp_calloc(wd->module_count, sizeof(uint32_t));
+    if (!in_degree) {
+        if (wd->mutex) {
+            nimcp_platform_mutex_unlock(wd->mutex);
+        }
+        return -1;
+    }
+
+    /* Map module_id to index for quick lookup */
+    for (uint32_t i = 0; i < wd->module_count; i++) {
+        wiring_module_config_t* module = wd->module_configs[i];
+        if (!module) continue;
+
+        /* Count incoming edges (dependencies) */
+        in_degree[i] = module->depends_on_count;
+    }
+
+    /* Queue for modules with zero in-degree */
+    uint32_t* queue = (uint32_t*)nimcp_calloc(wd->module_count, sizeof(uint32_t));
+    if (!queue) {
+        nimcp_free(in_degree);
+        if (wd->mutex) {
+            nimcp_platform_mutex_unlock(wd->mutex);
+        }
+        return -1;
+    }
+
+    uint32_t queue_head = 0, queue_tail = 0;
+
+    /* Initialize queue with zero in-degree nodes */
+    for (uint32_t i = 0; i < wd->module_count; i++) {
+        if (in_degree[i] == 0 && wd->module_configs[i]) {
+            queue[queue_tail++] = i;
+        }
+    }
+
+    uint32_t sorted_count = 0;
+
+    while (queue_head < queue_tail && sorted_count < max_modules) {
+        uint32_t curr_idx = queue[queue_head++];
+        wiring_module_config_t* curr = wd->module_configs[curr_idx];
+
+        if (!curr) continue;
+
+        /* Add to output */
+        order_out[sorted_count++] = curr->module_id;
+
+        /* Reduce in-degree for all modules that depend on this one */
+        for (uint32_t i = 0; i < wd->module_count; i++) {
+            wiring_module_config_t* other = wd->module_configs[i];
+            if (!other) continue;
+
+            for (uint32_t j = 0; j < other->depends_on_count; j++) {
+                if (other->depends_on[j] == curr->module_id) {
+                    in_degree[i]--;
+                    if (in_degree[i] == 0) {
+                        queue[queue_tail++] = i;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    nimcp_free(in_degree);
+    nimcp_free(queue);
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_unlock(wd->mutex);
+    }
+
+    /* Check if all modules were sorted (no cycle) */
+    if (sorted_count < wd->module_count) {
+        NIMCP_LOGGING_WARN("wiring_diagram_get_startup_order: cycle detected, only %u/%u sorted",
+            sorted_count, wd->module_count);
+        return -1;
+    }
+
+    NIMCP_LOGGING_DEBUG("wiring_diagram_get_startup_order: computed order for %u modules", sorted_count);
+    return (int)sorted_count;
+}
+
+int wiring_diagram_get_dependency_chain(
+    const wiring_diagram_t* wd,
+    bio_module_id_t module_id,
+    bio_module_id_t* deps_out,
+    uint32_t max_deps
+) {
+    if (!wd || !deps_out || max_deps == 0) return -1;
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_lock(wd->mutex);
+    }
+
+    /* Find the module */
+    wiring_module_config_t* module = find_module_by_id_unlocked(wd, module_id);
+    if (!module) {
+        if (wd->mutex) {
+            nimcp_platform_mutex_unlock(wd->mutex);
+        }
+        return -1;
+    }
+
+    /* BFS to find all transitive dependencies */
+    bool* visited = (bool*)nimcp_calloc(wd->module_count, sizeof(bool));
+    uint32_t* queue = (uint32_t*)nimcp_calloc(wd->module_count, sizeof(uint32_t));
+    if (!visited || !queue) {
+        nimcp_free(visited);
+        nimcp_free(queue);
+        if (wd->mutex) {
+            nimcp_platform_mutex_unlock(wd->mutex);
+        }
+        return -1;
+    }
+
+    uint32_t queue_head = 0, queue_tail = 0;
+    uint32_t dep_count = 0;
+
+    /* Find starting module's index and mark visited */
+    for (uint32_t i = 0; i < wd->module_count; i++) {
+        if (wd->module_configs[i] && wd->module_configs[i]->module_id == module_id) {
+            visited[i] = true;
+
+            /* Add direct dependencies to queue */
+            for (uint32_t j = 0; j < module->depends_on_count; j++) {
+                for (uint32_t k = 0; k < wd->module_count; k++) {
+                    if (wd->module_configs[k] &&
+                        wd->module_configs[k]->module_id == module->depends_on[j] &&
+                        !visited[k]) {
+                        visited[k] = true;
+                        queue[queue_tail++] = k;
+                    }
+                }
+            }
+            break;
+        }
+    }
+
+    /* BFS */
+    while (queue_head < queue_tail && dep_count < max_deps) {
+        uint32_t curr_idx = queue[queue_head++];
+        wiring_module_config_t* curr = wd->module_configs[curr_idx];
+
+        if (!curr) continue;
+
+        /* Add to output */
+        deps_out[dep_count++] = curr->module_id;
+
+        /* Add this module's dependencies */
+        for (uint32_t j = 0; j < curr->depends_on_count; j++) {
+            for (uint32_t k = 0; k < wd->module_count; k++) {
+                if (wd->module_configs[k] &&
+                    wd->module_configs[k]->module_id == curr->depends_on[j] &&
+                    !visited[k]) {
+                    visited[k] = true;
+                    queue[queue_tail++] = k;
+                }
+            }
+        }
+    }
+
+    nimcp_free(visited);
+    nimcp_free(queue);
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_unlock(wd->mutex);
+    }
+
+    return (int)dep_count;
+}
+
+int wiring_diagram_get_dependents(
+    const wiring_diagram_t* wd,
+    bio_module_id_t module_id,
+    bio_module_id_t* dependents_out,
+    uint32_t max_dependents
+) {
+    if (!wd || !dependents_out || max_dependents == 0) return -1;
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_lock(wd->mutex);
+    }
+
+    uint32_t count = 0;
+
+    /* Find all modules that depend on module_id */
+    for (uint32_t i = 0; i < wd->module_count && count < max_dependents; i++) {
+        wiring_module_config_t* module = wd->module_configs[i];
+        if (!module) continue;
+
+        for (uint32_t j = 0; j < module->depends_on_count; j++) {
+            if (module->depends_on[j] == module_id) {
+                dependents_out[count++] = module->module_id;
+                break;
+            }
+        }
+    }
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_unlock(wd->mutex);
+    }
+
+    return (int)count;
+}
+
+int wiring_diagram_can_disable_module(
+    const wiring_diagram_t* wd,
+    bio_module_id_t module_id
+) {
+    if (!wd) return -1;
+
+    bio_module_id_t dependents[WIRING_MAX_DEPENDENCIES];
+    int dep_count = wiring_diagram_get_dependents(wd, module_id, dependents, WIRING_MAX_DEPENDENCIES);
+
+    if (dep_count < 0) return -1;
+    if (dep_count == 0) return 1;  /* No dependents, safe to disable */
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_lock(wd->mutex);
+    }
+
+    /* Check if any dependent is enabled */
+    bool has_enabled_dependent = false;
+    for (int i = 0; i < dep_count; i++) {
+        wiring_module_config_t* dep = find_module_by_id_unlocked(wd, dependents[i]);
+        if (dep && dep->enabled) {
+            has_enabled_dependent = true;
+            break;
+        }
+    }
+
+    if (wd->mutex) {
+        nimcp_platform_mutex_unlock(wd->mutex);
+    }
+
+    return has_enabled_dependent ? 0 : 1;
 }

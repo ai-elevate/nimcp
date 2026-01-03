@@ -261,3 +261,33 @@ gtest_discover_tests(integration_async_test_wiring_diagram_kg_sync
         LABELS "integration;async;wiring;kg;sync"
         TIMEOUT 180
 )
+
+# Test 10: Wiring Diagram Validation Integration (Phase 9: Validation & Dependency Resolution)
+add_executable(integration_async_test_wiring_diagram_validation
+    test_wiring_diagram_validation_integration.cpp
+)
+
+target_link_libraries(integration_async_test_wiring_diagram_validation
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+        stdc++fs
+)
+
+target_include_directories(integration_async_test_wiring_diagram_validation
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_async_test_wiring_diagram_validation PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_async_test_wiring_diagram_validation
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;async;wiring;validation;dependency"
+        TIMEOUT 180
+)

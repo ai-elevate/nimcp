@@ -333,3 +333,32 @@ gtest_discover_tests(unit_async_wiring_diagram_kg_sync
         LABELS "unit;async;wiring;kg;sync"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Wiring Diagram Validation Unit Tests (Phase 9: Validation & Dependency Resolution)
+# ============================================================================
+
+add_executable(unit_async_wiring_diagram_validation
+    test_wiring_diagram_validation.cpp
+)
+target_link_libraries(unit_async_wiring_diagram_validation
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+        stdc++fs
+)
+target_include_directories(unit_async_wiring_diagram_validation
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_async_wiring_diagram_validation PRIVATE cxx_std_17)
+gtest_discover_tests(unit_async_wiring_diagram_validation
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;async;wiring;validation;dependency"
+        TIMEOUT 120
+)
