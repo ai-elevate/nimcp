@@ -16,6 +16,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "cognitive/mirror_neurons/nimcp_mirror_substrate.h"  // Substrate integration (Phase 10.11.2)
 #include "cognitive/mirror_neurons/nimcp_mirror_stdp.h"       // STDP learning (Phase 10.11.4)
@@ -2331,4 +2332,23 @@ bool mirror_neurons_step_enhancements(mirror_neurons_t mirror, float dt_ms)
     }
 
     return true;
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+int mirror_neurons_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Mirror_Neurons");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            MIRROR_LOG_INFO("Mirror neurons self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Mirror_Neurons");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mirror_Neurons");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

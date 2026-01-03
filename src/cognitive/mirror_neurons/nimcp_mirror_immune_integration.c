@@ -17,6 +17,7 @@
 #include "cognitive/mirror_neurons/nimcp_mirror_resonance.h"
 #include "cognitive/mirror_neurons/nimcp_mirror_hierarchy.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -665,4 +666,23 @@ const char* mirror_immune_effect_to_string(mirror_immune_effect_t effect) {
         case IMMUNE_EFFECT_HEALTHY: return "HEALTHY";
         default: return "UNKNOWN";
     }
+}
+
+/* ============================================================================
+ * KG Self-Awareness Integration
+ * ============================================================================ */
+
+int mirror_immune_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Mirror_Immune_Integration");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Mirror immune self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Mirror_Immune_Integration");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mirror_Immune_Integration");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

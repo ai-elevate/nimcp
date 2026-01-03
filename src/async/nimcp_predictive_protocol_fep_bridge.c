@@ -10,6 +10,8 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/validation/nimcp_common.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <math.h>
 
@@ -365,4 +367,41 @@ int predictive_protocol_fep_reset_stats(predictive_protocol_fep_bridge_t* bridge
     nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * @brief Query self-knowledge from the knowledge graph
+ *
+ * WHAT: Retrieves structural self-knowledge about the Predictive_Protocol_FEP_Bridge module
+ * WHY:  Enables runtime introspection and self-awareness capabilities
+ * HOW:  Queries KG for Predictive_Protocol_FEP_Bridge entity and logs observations/relations
+ *
+ * @param kg Knowledge graph reader handle
+ * @return 1 if self-knowledge was found, 0 otherwise
+ */
+int predictive_protocol_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Predictive_Protocol_FEP_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Predictive_Protocol_FEP_Bridge self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Predictive_Protocol_FEP_Bridge");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Predictive_Protocol_FEP_Bridge");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

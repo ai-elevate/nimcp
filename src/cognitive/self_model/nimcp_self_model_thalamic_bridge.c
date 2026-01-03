@@ -4,6 +4,8 @@
  */
 
 #include "cognitive/self_model/nimcp_self_model_thalamic_bridge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include <string.h>
@@ -165,4 +167,45 @@ int self_model_thalamic_bridge_get_stats(
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
     return 0;
+}
+
+/* ========================================================================
+ * KG SELF-AWARENESS INTEGRATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Query knowledge graph for self-knowledge about self-model thalamic bridge
+ * WHY:  Enable self-awareness - module can introspect its own capabilities
+ * HOW:  Query entity by name, get relations from/to
+ *
+ * @param kg Knowledge graph reader
+ * @return 1 if entity found, 0 if not
+ */
+int self_model_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    /* Query our own entity from the knowledge graph */
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Self_Model_Thalamic_Bridge");
+    if (self) {
+        /* Module now knows its own capabilities from KG */
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Self-model thalamic bridge self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    /* Query connections to understand integration points */
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Self_Model_Thalamic_Bridge");
+    if (connections) {
+        NIMCP_LOGGING_DEBUG("Self-model thalamic bridge has %u outgoing connections", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    /* Query incoming connections */
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Self_Model_Thalamic_Bridge");
+    if (incoming) {
+        NIMCP_LOGGING_DEBUG("Self-model thalamic bridge has %u incoming connections", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

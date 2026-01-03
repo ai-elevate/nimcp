@@ -29,6 +29,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "security/nimcp_security.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -2336,4 +2337,41 @@ void nimcp_glial_wave_destroy(nimcp_glial_wave_t wave) {
 
     bio_free(wave->regions);
     bio_free(wave);
+}
+
+//=============================================================================
+// Knowledge Graph Self-Awareness Integration
+//=============================================================================
+
+/**
+ * @brief Query self-knowledge from the knowledge graph
+ *
+ * WHAT: Retrieves structural self-knowledge about the Bio_Async module
+ * WHY:  Enables runtime introspection and self-awareness capabilities
+ * HOW:  Queries KG for Bio_Async entity and logs observations/relations
+ *
+ * @param kg Knowledge graph reader handle
+ * @return 1 if self-knowledge was found, 0 otherwise
+ */
+int bio_async_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Bio_Async");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Bio_Async self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Bio_Async");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Bio_Async");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

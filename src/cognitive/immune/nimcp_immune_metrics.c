@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/immune/nimcp_immune_metrics.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
@@ -1224,4 +1225,33 @@ uint64_t immune_metrics_get_uptime(immune_metrics_t* metrics)
 {
     if (metrics == NULL || !metrics->initialized) return 0;
     return get_time_ms() - metrics->start_time;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * @brief Query self-knowledge from knowledge graph
+ *
+ * WHAT: Query KG for module self-awareness information
+ * WHY:  Enable introspective self-knowledge about immune metrics
+ * HOW:  Look up entity and relations in KG
+ *
+ * @param kg Knowledge graph reader handle
+ * @return 1 if self-knowledge found, 0 otherwise
+ */
+int immune_metrics_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Immune_Metrics");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Immune metrics self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Immune_Metrics");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Immune_Metrics");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

@@ -11,6 +11,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 
@@ -714,4 +715,23 @@ bool brain_import_knowledge_base(
     // TODO: Implement knowledge base import
     set_error("Knowledge base import not yet implemented");
     return false;
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+int symbolic_logic_brain_integration_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Symbolic_Logic_Brain_Integration");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Symbolic_Logic_Brain_Integration self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Symbolic_Logic_Brain_Integration");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Symbolic_Logic_Brain_Integration");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

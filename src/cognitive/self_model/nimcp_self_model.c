@@ -3,6 +3,7 @@
 // ============================================================================
 
 #include "cognitive/nimcp_self_model.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -783,4 +784,45 @@ uint32_t self_model_discover_capabilities_from_kg(self_model_system_t system)
 
     nimcp_mutex_unlock(&system->mutex);
     return discovered;
+}
+
+/* ========================================================================
+ * KG SELF-AWARENESS INTEGRATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Query knowledge graph for self-knowledge about self-model module
+ * WHY:  Enable self-awareness - module can introspect its own capabilities
+ * HOW:  Query entity by name, get relations from/to
+ *
+ * @param kg Knowledge graph reader
+ * @return 1 if entity found, 0 if not
+ */
+int self_model_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    /* Query our own entity from the knowledge graph */
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Self_Model_Module");
+    if (self) {
+        /* Module now knows its own capabilities from KG */
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Self-model self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    /* Query connections to understand integration points */
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Self_Model_Module");
+    if (connections) {
+        LOG_DEBUG("Self-model has %u outgoing connections", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    /* Query incoming connections */
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Self_Model_Module");
+    if (incoming) {
+        LOG_DEBUG("Self-model has %u incoming connections", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/mirror_neurons/nimcp_mirror_neurons_sleep_bridge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -451,4 +452,23 @@ bool mirror_neurons_sleep_is_bio_async_connected(const mirror_neurons_sleep_brid
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+/* ============================================================================
+ * KG Self-Awareness Integration
+ * ============================================================================ */
+
+int mirror_neurons_sleep_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Mirror_Neurons_Sleep_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Mirror neurons sleep bridge self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Mirror_Neurons_Sleep_Bridge");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mirror_Neurons_Sleep_Bridge");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

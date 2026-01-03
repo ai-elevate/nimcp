@@ -15,6 +15,7 @@
 
 #include "cognitive/wellbeing/nimcp_wellbeing_homeostasis.h"
 #include "cognitive/introspection/nimcp_consciousness_metrics.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
@@ -633,4 +634,28 @@ const char* consent_decision_name(consent_decision_t decision)
         case CONSENT_AUTO_APPROVED: return "Auto-Approved";
         default:                    return "Unknown Decision";
     }
+}
+
+//=============================================================================
+// KNOWLEDGE GRAPH SELF-AWARENESS INTEGRATION
+//=============================================================================
+
+/**
+ * WHAT: Query knowledge graph for Homeostasis module self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int wellbeing_homeostasis_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Wellbeing_Homeostasis_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Wellbeing Homeostasis self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Wellbeing_Homeostasis_Module");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Wellbeing_Homeostasis_Module");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

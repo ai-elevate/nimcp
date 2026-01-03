@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/memory/nimcp_systems_consolidation_pink_noise_bridge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -537,4 +538,36 @@ float consolidation_pink_noise_arousal_to_frequency(float arousal) {
     }
 
     return freq;
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+/**
+ * WHAT: Query self-knowledge from knowledge graph
+ * WHY:  Enable introspection about module capabilities and connections
+ * HOW:  Query KG reader for entity and relations
+ */
+int consolidation_pink_noise_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Systems_Consolidation_Pink_Noise_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Consolidation pink noise bridge self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Systems_Consolidation_Pink_Noise_Bridge");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Systems_Consolidation_Pink_Noise_Bridge");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

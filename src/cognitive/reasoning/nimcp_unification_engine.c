@@ -11,6 +11,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"
 #include "cognitive/nimcp_symbolic_logic.h"
 #include "utils/validation/nimcp_validate.h"
@@ -139,4 +140,23 @@ void unification_free_result(unification_t* result)
     if (!result) return;
     // Free implementation
     memset(result, 0, sizeof(unification_t));
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+int unification_engine_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Unification_Engine");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Unification_Engine self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Unification_Engine");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Unification_Engine");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

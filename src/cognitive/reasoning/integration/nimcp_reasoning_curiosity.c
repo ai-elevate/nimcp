@@ -7,6 +7,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "utils/logging/nimcp_logging.h"
@@ -194,4 +195,23 @@ bool reasoning_curiosity_set_config(reasoning_curiosity_t* integration, const re
     if (!integration || !config || !reasoning_curiosity_validate_config(config)) return false;
     integration->config = *config;
     return true;
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+int reasoning_curiosity_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Reasoning_Curiosity");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Reasoning_Curiosity self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Reasoning_Curiosity");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Reasoning_Curiosity");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

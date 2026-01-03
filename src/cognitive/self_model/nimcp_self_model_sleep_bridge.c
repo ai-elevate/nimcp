@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/self_model/nimcp_self_model_sleep_bridge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -244,4 +245,45 @@ float self_model_sleep_reflection_for_state(sleep_state_t state) {
         case SLEEP_STATE_REM:        return SELF_MODEL_SLEEP_REFLECTION_REM;
         default:                     return SELF_MODEL_SLEEP_REFLECTION_AWAKE;
     }
+}
+
+/* ========================================================================
+ * KG SELF-AWARENESS INTEGRATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Query knowledge graph for self-knowledge about self-model sleep bridge
+ * WHY:  Enable self-awareness - module can introspect its own capabilities
+ * HOW:  Query entity by name, get relations from/to
+ *
+ * @param kg Knowledge graph reader
+ * @return 1 if entity found, 0 if not
+ */
+int self_model_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    /* Query our own entity from the knowledge graph */
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Self_Model_Sleep_Bridge");
+    if (self) {
+        /* Module now knows its own capabilities from KG */
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Self-model sleep bridge self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    /* Query connections to understand integration points */
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Self_Model_Sleep_Bridge");
+    if (connections) {
+        NIMCP_LOGGING_DEBUG("Self-model sleep bridge has %u outgoing connections", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    /* Query incoming connections */
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Self_Model_Sleep_Bridge");
+    if (incoming) {
+        NIMCP_LOGGING_DEBUG("Self-model sleep bridge has %u incoming connections", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

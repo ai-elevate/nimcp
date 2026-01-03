@@ -15,6 +15,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -857,4 +858,23 @@ void mirror_hierarchy_reset_stats(mirror_hierarchy_t hierarchy) {
         motor->total_active_time = 0.0F;
         motor->peak_activation = 0.0F;
     }
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+int mirror_hierarchy_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Mirror_Hierarchy");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Mirror hierarchy self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Mirror_Hierarchy");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mirror_Hierarchy");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

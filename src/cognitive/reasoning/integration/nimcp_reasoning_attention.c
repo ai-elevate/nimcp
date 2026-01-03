@@ -9,6 +9,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/fault_tolerance/nimcp_fault_attention.h"
 #include "utils/logging/nimcp_logging.h"
@@ -385,4 +386,23 @@ bool reasoning_attention_reset_stats(reasoning_attention_t* integration) {
     if (!integration) return false;
     memset(&integration->stats, 0, sizeof(reasoning_attention_stats_t));
     return true;
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+int reasoning_attention_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Reasoning_Attention");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Reasoning_Attention self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Reasoning_Attention");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Reasoning_Attention");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

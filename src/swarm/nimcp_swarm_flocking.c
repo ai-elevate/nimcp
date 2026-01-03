@@ -11,6 +11,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/memory/nimcp_memory.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <math.h>
 #include <string.h>
 
@@ -1345,4 +1346,42 @@ int nimcp_flocking_broadcast_state(nimcp_flocking_engine_t *engine, uint32_t boi
     nimcp_error_t result = bio_router_broadcast(engine->bio_ctx, &msg, sizeof(msg));
 
     return (result == NIMCP_SUCCESS) ? 0 : -1;
+}
+
+/* ========================================================================
+ * KG Self-Awareness Integration
+ * ======================================================================== */
+
+/**
+ * @brief Query knowledge graph for module self-knowledge
+ *
+ * WHAT: Introspect module identity from knowledge graph
+ * WHY:  Enable self-awareness and runtime reflection
+ * HOW:  Query KG for Swarm_Flocking entity and its relations
+ *
+ * @param kg Knowledge graph reader
+ * @return 1 if self-knowledge found, 0 otherwise
+ */
+int swarm_flocking_query_self_knowledge(kg_reader_t* kg)
+{
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Swarm_Flocking");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Flocking self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Swarm_Flocking");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Swarm_Flocking");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

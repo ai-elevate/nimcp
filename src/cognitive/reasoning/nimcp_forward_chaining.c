@@ -13,6 +13,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/validation/nimcp_validate.h"
@@ -261,4 +262,23 @@ bool brain_get_forward_chain_stats(
     }
 
     return true;
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+int forward_chaining_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Forward_Chaining");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Forward_Chaining self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Forward_Chaining");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Forward_Chaining");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

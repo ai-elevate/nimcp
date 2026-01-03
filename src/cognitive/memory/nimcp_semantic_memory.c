@@ -18,6 +18,7 @@
 #define LOG_MODULE "semantic_memory"
 
 #include "cognitive/memory/nimcp_semantic_memory.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -1142,4 +1143,37 @@ spreading_activation_params_t semantic_memory_get_default_spread_params(void) {
         .min_activation = 0.1F     // Stop below 10% activation
     };
     return params;
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+/**
+ * @brief Query self-knowledge from knowledge graph
+ * WHAT: Retrieve module's self-awareness information from KG
+ * WHY:  Enable introspection about module capabilities and connections
+ * HOW:  Query KG reader for entity and relations
+ */
+int semantic_memory_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Semantic_Memory_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Semantic memory self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Semantic_Memory_Module");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Semantic_Memory_Module");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

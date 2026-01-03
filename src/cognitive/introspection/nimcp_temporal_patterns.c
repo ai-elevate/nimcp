@@ -31,6 +31,7 @@
 #include "cognitive/introspection/nimcp_temporal_patterns.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/containers/nimcp_queue.h"
@@ -1222,4 +1223,45 @@ static void notify_pattern_detected(pattern_detection_context_t* ctx,
 
     LOG_DEBUG("Pattern detection callback invoked for '%s' (confidence: %.2f)",
               pattern->name, confidence);
+}
+
+/* ========================================================================
+ * KG SELF-AWARENESS INTEGRATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Query knowledge graph for self-knowledge about temporal patterns module
+ * WHY:  Enable self-awareness - module can introspect its own capabilities
+ * HOW:  Query entity by name, get relations from/to
+ *
+ * @param kg Knowledge graph reader
+ * @return 1 if entity found, 0 if not
+ */
+int temporal_patterns_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    /* Query our own entity from the knowledge graph */
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Temporal_Patterns_Module");
+    if (self) {
+        /* Module now knows its own capabilities from KG */
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Temporal patterns self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    /* Query connections to understand integration points */
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Temporal_Patterns_Module");
+    if (connections) {
+        LOG_DEBUG("Temporal patterns has %u outgoing connections", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    /* Query incoming connections */
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Temporal_Patterns_Module");
+    if (incoming) {
+        LOG_DEBUG("Temporal patterns has %u incoming connections", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

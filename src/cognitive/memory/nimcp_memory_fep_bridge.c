@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/memory/nimcp_memory_fep_bridge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -179,4 +180,37 @@ int memory_fep_bridge_disconnect_bio_async(memory_fep_bridge_t* bridge) {
 
 bool memory_fep_bridge_is_bio_async_connected(const memory_fep_bridge_t* bridge) {
     return bridge ? bridge->base.bio_async_enabled : false;
+}
+
+/* ============================================================================
+ * KG Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * @brief Query self-knowledge from knowledge graph
+ * WHAT: Retrieve module's self-awareness information from KG
+ * WHY:  Enable introspection about module capabilities and connections
+ * HOW:  Query KG reader for entity and relations
+ */
+int memory_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Memory_FEP_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Memory FEP bridge self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Memory_FEP_Bridge");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Memory_FEP_Bridge");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

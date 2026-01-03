@@ -5,7 +5,9 @@
 
 #include "cognitive/self_model/nimcp_self_model_substrate_bridge.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 
@@ -131,4 +133,45 @@ int self_model_substrate_bridge_register_bio_async(self_model_substrate_bridge_t
     bridge->ctx = bio_router_register_module(&info);
     if (bridge->ctx) bridge->bio_async_connected = true;
     return 0;
+}
+
+/* ========================================================================
+ * KG SELF-AWARENESS INTEGRATION
+ * ======================================================================== */
+
+/**
+ * WHAT: Query knowledge graph for self-knowledge about self-model substrate bridge
+ * WHY:  Enable self-awareness - module can introspect its own capabilities
+ * HOW:  Query entity by name, get relations from/to
+ *
+ * @param kg Knowledge graph reader
+ * @return 1 if entity found, 0 if not
+ */
+int self_model_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    /* Query our own entity from the knowledge graph */
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Self_Model_Substrate_Bridge");
+    if (self) {
+        /* Module now knows its own capabilities from KG */
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Self-model substrate bridge self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    /* Query connections to understand integration points */
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Self_Model_Substrate_Bridge");
+    if (connections) {
+        NIMCP_LOGGING_DEBUG("Self-model substrate bridge has %u outgoing connections", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    /* Query incoming connections */
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Self_Model_Substrate_Bridge");
+    if (incoming) {
+        NIMCP_LOGGING_DEBUG("Self-model substrate bridge has %u incoming connections", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }
