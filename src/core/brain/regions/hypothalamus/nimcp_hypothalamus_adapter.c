@@ -12,6 +12,7 @@
 
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_adapter.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
@@ -215,6 +216,69 @@ static nimcp_error_t handle_temperature_input(
 static nimcp_error_t handle_state_query(
     const void* msg, size_t msg_size,
     nimcp_bio_promise_t response_promise, void* user_data);
+
+/*=============================================================================
+ * KG-DRIVEN WIRING CALLBACK
+ *===========================================================================*/
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the wiring orchestrator with message types discovered from KG
+ * HANDLES_MESSAGE relations. Registers the appropriate handlers dynamically.
+ */
+static int hypothalamus_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;
+    }
+
+    hypothalamus_adapter_t* adapter = (hypothalamus_adapter_t*)user_data;
+    if (!adapter) {
+        LOG_WARNING(HYPOTHALAMUS_LOG_MODULE, "Wiring callback: adapter is NULL");
+        return 0;
+    }
+
+    LOG_DEBUG(HYPOTHALAMUS_LOG_MODULE,
+              "KG wiring callback: registering %u message handlers", message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_STRESS_INPUT:
+                bio_router_register_handler(ctx, message_types[i],
+                    handle_stress_input_request);
+                LOG_DEBUG(HYPOTHALAMUS_LOG_MODULE,
+                          "Registered handler: BIO_MSG_STRESS_INPUT");
+                break;
+
+            case BIO_MSG_TEMPERATURE_INPUT:
+                bio_router_register_handler(ctx, message_types[i],
+                    handle_temperature_input);
+                LOG_DEBUG(HYPOTHALAMUS_LOG_MODULE,
+                          "Registered handler: BIO_MSG_TEMPERATURE_INPUT");
+                break;
+
+            case BIO_MSG_STATE_QUERY:
+                bio_router_register_handler(ctx, message_types[i],
+                    handle_state_query);
+                LOG_DEBUG(HYPOTHALAMUS_LOG_MODULE,
+                          "Registered handler: BIO_MSG_STATE_QUERY");
+                break;
+
+            default:
+                LOG_DEBUG(HYPOTHALAMUS_LOG_MODULE,
+                          "Unknown message type 0x%04X in wiring callback",
+                          message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
 
 /*=============================================================================
  * LIFECYCLE FUNCTIONS

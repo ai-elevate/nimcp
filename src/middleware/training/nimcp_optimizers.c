@@ -24,6 +24,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -32,6 +33,32 @@
 /* Module name for security registration and logging */
 #define OPTIMIZER_MODULE_NAME "nimcp_optimizer"
 #define LOG_MODULE "optimizers"
+
+/* ============================================================================
+ * KG-Driven Wiring Infrastructure
+ * ============================================================================ */
+
+/* Forward declarations for handlers */
+static nimcp_error_t handle_optimizer_step_request(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+static nimcp_error_t handle_gradient_computed(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+/**
+ * Handler map for optimizer module.
+ * Handles training step requests and gradient computed events.
+ */
+DEFINE_HANDLER_MAP_BEGIN(optimizer)
+    HANDLER_MAP_ENTRY(BIO_MSG_TRAINING_STEP_REQUEST, handle_optimizer_step_request)
+    HANDLER_MAP_ENTRY(BIO_MSG_GRADIENT_COMPUTED, handle_gradient_computed)
+DEFINE_HANDLER_MAP_END()
+
+/**
+ * Wiring callback for KG-driven handler registration.
+ */
+DEFINE_HANDLER_CALLBACK(optimizer, nimcp_optimizer_context_t, ctx)
 
 /* Numerical stability constants */
 #define OPTIMIZER_BIAS_CORRECTION_MIN 1e-8F   /* Minimum bias correction to prevent division by zero */
@@ -935,12 +962,12 @@ nimcp_optimizer_context_t* nimcp_optimizer_create(
         if (ctx->bio_ctx) {
             ctx->bio_async_enabled = true;
             /* Register message handlers */
-            bio_router_register_handler(ctx->bio_ctx,
+            LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(ctx->bio_ctx,
                                        BIO_MSG_TRAINING_STEP_REQUEST,
-                                       handle_optimizer_step_request);
-            bio_router_register_handler(ctx->bio_ctx,
+                                       handle_optimizer_step_request));
+            LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(ctx->bio_ctx,
                                        BIO_MSG_GRADIENT_COMPUTED,
-                                       handle_gradient_computed);
+                                       handle_gradient_computed));
             nimcp_log(LOG_LEVEL_INFO, "[%s] Bio-async integration enabled for optimizer type=%s",
                      LOG_MODULE, nimcp_optimizer_type_name(config->type));
         } else {

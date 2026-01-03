@@ -30,6 +30,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "cognitive/imagination/nimcp_imagination_callbacks.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 
@@ -39,6 +40,29 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <time.h>
+
+//=============================================================================
+// KG-Driven Wiring Infrastructure
+//=============================================================================
+
+/* Forward declaration for imagination handler */
+static nimcp_error_t imagination_collective_handler(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+/**
+ * Handler map for swarm consciousness module.
+ * Handles collective imagination sharing and insight messages.
+ */
+DEFINE_HANDLER_MAP_BEGIN(swarm_consciousness)
+    HANDLER_MAP_ENTRY(BIO_MSG_IMAGINATION_COLLECTIVE_SHARE, imagination_collective_handler)
+    HANDLER_MAP_ENTRY(BIO_MSG_IMAGINATION_COLLECTIVE_INSIGHT, imagination_collective_handler)
+DEFINE_HANDLER_MAP_END()
+
+/**
+ * Wiring callback for KG-driven handler registration.
+ */
+DEFINE_HANDLER_CALLBACK(swarm_consciousness, swarm_consciousness_ctx_t, ctx)
 
 //=============================================================================
 // Forward Declarations for Swarm Brain Integration
@@ -1647,10 +1671,10 @@ int swarm_consciousness_register_imagination_handler(
         }
 
         // Register handler for imagination collective messages
-        nimcp_error_t err = bio_router_register_handler(
+        nimcp_error_t err = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
             ctx->bio_module_ctx,
             BIO_MSG_IMAGINATION_COLLECTIVE_SHARE,
-            imagination_collective_handler);
+            imagination_collective_handler));
 
         if (err == NIMCP_SUCCESS) {
             ctx->imagination_handler_registered = true;
@@ -1662,10 +1686,10 @@ int swarm_consciousness_register_imagination_handler(
         }
 
         // Also register for collective insight messages
-        bio_router_register_handler(
+        LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
             ctx->bio_module_ctx,
             BIO_MSG_IMAGINATION_COLLECTIVE_INSIGHT,
-            imagination_collective_handler);
+            imagination_collective_handler));
     }
 
     pthread_mutex_unlock(&ctx->lock);

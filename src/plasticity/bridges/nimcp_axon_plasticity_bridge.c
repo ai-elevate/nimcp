@@ -17,6 +17,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_common.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -53,6 +54,44 @@ static axon_segment_state_t* find_or_create_segment(
 }
 
 /* NOTE: Message handlers are registered separately via bio_router_register_handler() */
+
+/* ============================================================================
+ * KG-Driven Wiring Callback
+ * ============================================================================ */
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ */
+static int axon_plasticity_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;
+    }
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            /* Add handlers for specific message types as needed */
+            /* Currently no handlers defined - placeholder for future extension */
+            default:
+                NIMCP_LOGGING_DEBUG("Axon plasticity: unknown message type %d in wiring callback",
+                                    message_types[i]);
+                break;
+        }
+    }
+
+    return (registered > 0) ? 0 : -1;
+}
 
 /* ============================================================================
  * Lifecycle API
@@ -212,8 +251,8 @@ int axon_plasticity_connect_myelin(axon_plasticity_bridge_t* bridge, nimcp_myeli
 
 int axon_plasticity_connect_bio_async(axon_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->base.bio_async_enabled) return 0;
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_AXON,
@@ -225,9 +264,26 @@ int axon_plasticity_connect_bio_async(axon_plasticity_bridge_t* bridge)
     bridge->base.bio_ctx = bio_router_register_module(&info);
     if (bridge->base.bio_ctx) {
         bridge->base.bio_async_enabled = true;
-        NIMCP_LOGGING_INFO("Connected axon-plasticity to bio-async");
+
+        /* Try KG-driven wiring callback registration first */
+        nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+            BIO_MODULE_AXON,
+            (void*)axon_plasticity_wiring_handler_callback,
+            bridge
+        );
+
+        if (wiring_result == NIMCP_SUCCESS) {
+            NIMCP_LOGGING_INFO("Axon plasticity: KG-driven wiring callback registered");
+        } else {
+            /* Legacy fallback - no specific handlers currently defined */
+            LEGACY_HANDLER_REGISTRATION(
+                /* No handlers registered currently - module uses direct function calls */
+                (void)0
+            );
+            NIMCP_LOGGING_INFO("Axon plasticity: legacy handler registration (no handlers)");
+        }
     }
-    return 0;
+    return NIMCP_SUCCESS;
 }
 
 int axon_plasticity_disconnect_bio_async(axon_plasticity_bridge_t* bridge)

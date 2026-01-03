@@ -18,6 +18,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "nimcp.h"
 
 #include <string.h>
@@ -170,6 +171,43 @@ static nimcp_error_t deception_inbox_handler(
     return NIMCP_SUCCESS;
 }
 
+//=============================================================================
+// KG-Driven Wiring Callback
+//=============================================================================
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ */
+static int deception_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_PORTIA_POWER_STATE_CHANGE:
+            case BIO_MSG_SECURITY_EVENT:
+                bio_router_register_handler(ctx, message_types[i], deception_inbox_handler);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG("Unknown message type 0x%04X in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_INFO("KG-driven wiring callback registered %d handlers", registered);
+    return (registered > 0) ? 0 : -1;
+}
+
 /**
  * WHAT: Broadcast stealth state change event
  * WHY:  Notify other modules of mode changes
@@ -297,11 +335,27 @@ portia_deception_t portia_deception_init(
 
         deception->bio_ctx = bio_router_register_module(&info);
         if (deception->bio_ctx) {
-            bio_router_register_handler(deception->bio_ctx,
-                                       BIO_MSG_SECURITY_EVENT,
-                                       deception_inbox_handler);
+            /* KG-Driven Wiring: Register callback for orchestrator to invoke */
+            nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                BIO_MODULE_PORTIA_DECEPTION,
+                (void*)deception_wiring_handler_callback,
+                deception
+            );
+
+            if (cb_result == NIMCP_SUCCESS) {
+                LOG_INFO("Bio-async registered with KG-driven wiring callback (module_id=0x%04X)",
+                         BIO_MODULE_PORTIA_DECEPTION);
+            } else {
+                /* Fallback: Direct registration if orchestrator not available */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(deception->bio_ctx,
+                                               BIO_MSG_SECURITY_EVENT,
+                                               deception_inbox_handler)
+                );
+                LOG_INFO("Bio-async registered with legacy handler registration (module_id=0x%04X)",
+                         BIO_MODULE_PORTIA_DECEPTION);
+            }
             deception->bio_async_enabled = true;
-            LOG_INFO("Bio-async messaging enabled");
         } else {
             LOG_WARN("Failed to register bio-async module");
             deception->bio_async_enabled = false;

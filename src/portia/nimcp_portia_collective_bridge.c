@@ -14,6 +14,7 @@
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -452,6 +453,45 @@ static nimcp_error_t portia_collective_message_handler(
             LOG_DEBUG("Unknown message type: 0x%04X", header->type);
             return -1;
     }
+}
+
+//=============================================================================
+// KG-Driven Wiring Callback
+//=============================================================================
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ */
+static int portia_collective_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_PORTIA_COLLECTIVE_TIER_CHANGE:
+            case BIO_MSG_PORTIA_COLLECTIVE_STATE_UPDATE:
+            case BIO_MSG_PORTIA_COLLECTIVE_OFFLOAD_REQUEST:
+            case BIO_MSG_PORTIA_COLLECTIVE_DEGRADATION:
+                bio_router_register_handler(ctx, message_types[i], portia_collective_message_handler);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG("Unknown message type 0x%04X in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_INFO("KG-driven wiring callback registered %d handlers", registered);
+    return (registered > 0) ? 0 : -1;
 }
 
 //=============================================================================
@@ -936,15 +976,37 @@ int portia_collective_connect_bio_async(portia_collective_bridge_t* bridge) {
         return -1;
     }
 
-    /* Register handlers for Portia collective message types */
-    bio_router_register_handler(bridge->bio_ctx, BIO_MSG_PORTIA_COLLECTIVE_TIER_CHANGE,
-                                portia_collective_message_handler);
-    bio_router_register_handler(bridge->bio_ctx, BIO_MSG_PORTIA_COLLECTIVE_STATE_UPDATE,
-                                portia_collective_message_handler);
-    bio_router_register_handler(bridge->bio_ctx, BIO_MSG_PORTIA_COLLECTIVE_OFFLOAD_REQUEST,
-                                portia_collective_message_handler);
-    bio_router_register_handler(bridge->bio_ctx, BIO_MSG_PORTIA_COLLECTIVE_DEGRADATION,
-                                portia_collective_message_handler);
+    /* KG-Driven Wiring: Register callback for orchestrator to invoke */
+    nimcp_error_t cb_result = bio_router_register_wiring_callback(
+        BIO_MODULE_PORTIA_COLLECTIVE,
+        (void*)portia_collective_wiring_handler_callback,
+        bridge
+    );
+
+    if (cb_result == NIMCP_SUCCESS) {
+        LOG_INFO("Bio-async registered with KG-driven wiring callback (module_id=0x%04X)",
+                 BIO_MODULE_PORTIA_COLLECTIVE);
+    } else {
+        /* Fallback: Direct registration if orchestrator not available */
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(bridge->bio_ctx, BIO_MSG_PORTIA_COLLECTIVE_TIER_CHANGE,
+                                        portia_collective_message_handler)
+        );
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(bridge->bio_ctx, BIO_MSG_PORTIA_COLLECTIVE_STATE_UPDATE,
+                                        portia_collective_message_handler)
+        );
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(bridge->bio_ctx, BIO_MSG_PORTIA_COLLECTIVE_OFFLOAD_REQUEST,
+                                        portia_collective_message_handler)
+        );
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(bridge->bio_ctx, BIO_MSG_PORTIA_COLLECTIVE_DEGRADATION,
+                                        portia_collective_message_handler)
+        );
+        LOG_INFO("Bio-async registered with legacy handler registration (module_id=0x%04X)",
+                 BIO_MODULE_PORTIA_COLLECTIVE);
+    }
 
     bridge->bio_async_connected = true;
 

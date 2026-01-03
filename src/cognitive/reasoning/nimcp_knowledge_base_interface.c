@@ -26,6 +26,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "nimcp.h"  // For error codes
 
 #include <string.h>
@@ -129,6 +130,50 @@ static nimcp_error_t handle_kb_knowledge_query(
 }
 
 /**
+ * @brief KG-driven wiring handler callback
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data Module context pointer
+ * @return 0 on success, -1 on error
+ */
+static int kb_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    (void)user_data;
+
+    NIMCP_LOGGING_INFO("kb_wiring_handler_callback: registering %u handlers from KG",
+        message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_KNOWLEDGE_QUERY:
+                bio_router_register_handler(ctx, message_types[i], handle_kb_knowledge_query);
+                NIMCP_LOGGING_DEBUG("  Registered handler for BIO_MSG_KNOWLEDGE_QUERY");
+                break;
+
+            default:
+                NIMCP_LOGGING_DEBUG("  Unknown message type 0x%04X, skipping", message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
+
+/**
  * @brief Initialize bio-async for knowledge base interface
  */
 static void kb_init_bio_async(void)
@@ -146,10 +191,27 @@ static void kb_init_bio_async(void)
         };
         g_kb_bio_ctx = bio_router_register_module(&bio_info);
         if (g_kb_bio_ctx) {
-            bio_router_register_handler(g_kb_bio_ctx, BIO_MSG_KNOWLEDGE_QUERY,
-                                         handle_kb_knowledge_query);
+            /* KG-Driven Wiring: Register callback for orchestrator to invoke
+             * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+             * from the KG and invokes this callback with the message types */
+            nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                BIO_MODULE_KNOWLEDGE_INTERFACE,
+                (void*)kb_wiring_handler_callback,
+                NULL
+            );
+
+            if (cb_result != NIMCP_SUCCESS) {
+                /* Fallback: Direct registration if orchestrator not available
+                 * This ensures backward compatibility with non-KG systems */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(g_kb_bio_ctx, BIO_MSG_KNOWLEDGE_QUERY,
+                                                 handle_kb_knowledge_query)
+                );
+                NIMCP_LOGGING_INFO("Bio-async enabled for knowledge base interface (legacy)");
+            } else {
+                NIMCP_LOGGING_INFO("Bio-async enabled for knowledge base interface (KG-driven)");
+            }
             g_kb_bio_async_enabled = true;
-            NIMCP_LOGGING_INFO("Bio-async enabled for knowledge base interface");
         } else {
             NIMCP_LOGGING_WARN("Bio-async registration failed for knowledge base interface");
         }

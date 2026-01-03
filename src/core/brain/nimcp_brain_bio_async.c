@@ -31,6 +31,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "glial/integration/nimcp_glial_integration.h"
 #include "utils/logging/nimcp_logging.h"
@@ -188,6 +189,72 @@ static nimcp_error_t brain_handle_step_request(
 static void brain_publish_state_signals(brain_bio_async_ctx_t* ctx);
 
 //=============================================================================
+// KG-Driven Wiring Callback
+//=============================================================================
+
+/**
+ * @brief KG-driven wiring handler callback for Brain module
+ *
+ * WHAT: Register message handlers based on KG-discovered message types
+ * WHY:  Enable dynamic wiring driven by knowledge graph
+ * HOW:  Iterate discovered message types and register appropriate handlers
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data Brain bio-async context pointer
+ * @return 0 on success, -1 on error
+ */
+static int brain_bio_async_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    LOG_INFO("brain_bio_async_wiring_handler_callback: registering %u handlers from KG",
+             message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_BRAIN_STATE_QUERY:
+                bio_router_register_handler(ctx, message_types[i], brain_handle_state_query);
+                LOG_DEBUG("  Registered handler for BIO_MSG_BRAIN_STATE_QUERY");
+                break;
+
+            case BIO_MSG_NEURON_ACTIVATION_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], brain_handle_activation_request);
+                LOG_DEBUG("  Registered handler for BIO_MSG_NEURON_ACTIVATION_REQUEST");
+                break;
+
+            case BIO_MSG_NETWORK_TOPOLOGY_QUERY:
+                bio_router_register_handler(ctx, message_types[i], brain_handle_topology_query);
+                LOG_DEBUG("  Registered handler for BIO_MSG_NETWORK_TOPOLOGY_QUERY");
+                break;
+
+            case BIO_MSG_REGION_CONFIG_QUERY:
+                bio_router_register_handler(ctx, message_types[i], brain_handle_region_config_query);
+                LOG_DEBUG("  Registered handler for BIO_MSG_REGION_CONFIG_QUERY");
+                break;
+
+            case BIO_MSG_BRAIN_STEP_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], brain_handle_step_request);
+                LOG_DEBUG("  Registered handler for BIO_MSG_BRAIN_STEP_REQUEST");
+                break;
+
+            default:
+                LOG_DEBUG("  Unknown message type %u - skipping", message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
+
+//=============================================================================
 // Initialization and Registration
 //=============================================================================
 
@@ -272,94 +339,90 @@ nimcp_error_t brain_bio_async_init(brain_t brain) {
 
     LOG_DEBUG("Registered brain module (ID=%d) with bio-router", BIO_MODULE_BRAIN);
 
-    // Register message handlers
-    nimcp_error_t err = bio_router_register_handler(
-        ctx->module_ctx,
-        BIO_MSG_BRAIN_STATE_QUERY,
-        brain_handle_state_query
+    /* KG-Driven Wiring: Register callback for orchestrator to invoke
+     * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+     * from the KG and invokes this callback with the message types */
+    nimcp_error_t cb_result = bio_router_register_wiring_callback(
+        BIO_MODULE_BRAIN_BIOLOGICAL,
+        (void*)brain_bio_async_wiring_handler_callback,
+        ctx
     );
 
-    if (err != NIMCP_SUCCESS) {
-        LOG_ERROR("brain_bio_async_init: Failed to register state query handler");
-        bio_router_unregister_module(ctx->module_ctx);
-        nimcp_platform_mutex_destroy(&ctx->stats_mutex);
-        unified_mem_free(ctx_handle);
-        unified_mem_destroy(mem_mgr);
-        return err;
+    if (cb_result == NIMCP_SUCCESS) {
+        LOG_DEBUG("Brain bio-async registered with KG-driven wiring (module_id=0x%04X)",
+                  BIO_MODULE_BRAIN_BIOLOGICAL);
+    } else {
+        /* Fallback: Direct registration if orchestrator not available */
+        nimcp_error_t err;
+
+        LEGACY_HANDLER_REGISTRATION(
+            err = bio_router_register_handler(ctx->module_ctx, BIO_MSG_BRAIN_STATE_QUERY,
+                                              brain_handle_state_query)
+        );
+        if (err != NIMCP_SUCCESS) {
+            LOG_ERROR("brain_bio_async_init: Failed to register state query handler");
+            bio_router_unregister_module(ctx->module_ctx);
+            nimcp_platform_mutex_destroy(&ctx->stats_mutex);
+            unified_mem_free(ctx_handle);
+            unified_mem_destroy(mem_mgr);
+            return err;
+        }
+
+        LEGACY_HANDLER_REGISTRATION(
+            err = bio_router_register_handler(ctx->module_ctx, BIO_MSG_NEURON_ACTIVATION_REQUEST,
+                                              brain_handle_activation_request)
+        );
+        if (err != NIMCP_SUCCESS) {
+            LOG_ERROR("brain_bio_async_init: Failed to register activation handler");
+            bio_router_unregister_module(ctx->module_ctx);
+            nimcp_platform_mutex_destroy(&ctx->stats_mutex);
+            unified_mem_free(ctx_handle);
+            unified_mem_destroy(mem_mgr);
+            return err;
+        }
+
+        LEGACY_HANDLER_REGISTRATION(
+            err = bio_router_register_handler(ctx->module_ctx, BIO_MSG_NETWORK_TOPOLOGY_QUERY,
+                                              brain_handle_topology_query)
+        );
+        if (err != NIMCP_SUCCESS) {
+            LOG_ERROR("brain_bio_async_init: Failed to register topology query handler");
+            bio_router_unregister_module(ctx->module_ctx);
+            nimcp_platform_mutex_destroy(&ctx->stats_mutex);
+            unified_mem_free(ctx_handle);
+            unified_mem_destroy(mem_mgr);
+            return err;
+        }
+
+        LEGACY_HANDLER_REGISTRATION(
+            err = bio_router_register_handler(ctx->module_ctx, BIO_MSG_REGION_CONFIG_QUERY,
+                                              brain_handle_region_config_query)
+        );
+        if (err != NIMCP_SUCCESS) {
+            LOG_ERROR("brain_bio_async_init: Failed to register region config query handler");
+            bio_router_unregister_module(ctx->module_ctx);
+            nimcp_platform_mutex_destroy(&ctx->stats_mutex);
+            unified_mem_free(ctx_handle);
+            unified_mem_destroy(mem_mgr);
+            return err;
+        }
+
+        LEGACY_HANDLER_REGISTRATION(
+            err = bio_router_register_handler(ctx->module_ctx, BIO_MSG_BRAIN_STEP_REQUEST,
+                                              brain_handle_step_request)
+        );
+        if (err != NIMCP_SUCCESS) {
+            LOG_ERROR("brain_bio_async_init: Failed to register brain step request handler");
+            bio_router_unregister_module(ctx->module_ctx);
+            nimcp_platform_mutex_destroy(&ctx->stats_mutex);
+            unified_mem_free(ctx_handle);
+            unified_mem_destroy(mem_mgr);
+            return err;
+        }
+
+        LOG_DEBUG("Brain bio-async registered with legacy handlers (module_id=0x%04X)",
+                  BIO_MODULE_BRAIN_BIOLOGICAL);
     }
-
-    LOG_DEBUG("Registered handler for BIO_MSG_BRAIN_STATE_QUERY");
-
-    err = bio_router_register_handler(
-        ctx->module_ctx,
-        BIO_MSG_NEURON_ACTIVATION_REQUEST,
-        brain_handle_activation_request
-    );
-
-    if (err != NIMCP_SUCCESS) {
-        LOG_ERROR("brain_bio_async_init: Failed to register activation handler");
-        bio_router_unregister_module(ctx->module_ctx);
-        nimcp_platform_mutex_destroy(&ctx->stats_mutex);
-        unified_mem_free(ctx_handle);
-        unified_mem_destroy(mem_mgr);
-        return err;
-    }
-
-    LOG_DEBUG("Registered handler for BIO_MSG_NEURON_ACTIVATION_REQUEST");
-
-    // Register handler for network topology queries
-    err = bio_router_register_handler(
-        ctx->module_ctx,
-        BIO_MSG_NETWORK_TOPOLOGY_QUERY,
-        brain_handle_topology_query
-    );
-
-    if (err != NIMCP_SUCCESS) {
-        LOG_ERROR("brain_bio_async_init: Failed to register topology query handler");
-        bio_router_unregister_module(ctx->module_ctx);
-        nimcp_platform_mutex_destroy(&ctx->stats_mutex);
-        unified_mem_free(ctx_handle);
-        unified_mem_destroy(mem_mgr);
-        return err;
-    }
-
-    LOG_DEBUG("Registered handler for BIO_MSG_NETWORK_TOPOLOGY_QUERY");
-
-    // Register handler for region configuration queries
-    err = bio_router_register_handler(
-        ctx->module_ctx,
-        BIO_MSG_REGION_CONFIG_QUERY,
-        brain_handle_region_config_query
-    );
-
-    if (err != NIMCP_SUCCESS) {
-        LOG_ERROR("brain_bio_async_init: Failed to register region config query handler");
-        bio_router_unregister_module(ctx->module_ctx);
-        nimcp_platform_mutex_destroy(&ctx->stats_mutex);
-        unified_mem_free(ctx_handle);
-        unified_mem_destroy(mem_mgr);
-        return err;
-    }
-
-    LOG_DEBUG("Registered handler for BIO_MSG_REGION_CONFIG_QUERY");
-
-    // Register handler for brain step requests
-    err = bio_router_register_handler(
-        ctx->module_ctx,
-        BIO_MSG_BRAIN_STEP_REQUEST,
-        brain_handle_step_request
-    );
-
-    if (err != NIMCP_SUCCESS) {
-        LOG_ERROR("brain_bio_async_init: Failed to register brain step request handler");
-        bio_router_unregister_module(ctx->module_ctx);
-        nimcp_platform_mutex_destroy(&ctx->stats_mutex);
-        unified_mem_free(ctx_handle);
-        unified_mem_destroy(mem_mgr);
-        return err;
-    }
-
-    LOG_DEBUG("Registered handler for BIO_MSG_BRAIN_STEP_REQUEST");
 
     // Initialize predictive models for brain state signals
     // WHAT: Only create predictive models if global bio-async is initialized

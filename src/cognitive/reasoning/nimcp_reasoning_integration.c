@@ -25,6 +25,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "nimcp.h"  // For error codes
 
 #include <stdlib.h>
@@ -406,6 +407,55 @@ static nimcp_error_t handle_decision_request(
 }
 
 /**
+ * @brief KG-driven wiring handler callback
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data Module context pointer
+ * @return 0 on success, -1 on error
+ */
+static int reasoning_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    (void)user_data;
+
+    NIMCP_LOGGING_INFO("reasoning_wiring_handler_callback: registering %u handlers from KG",
+        message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_KNOWLEDGE_QUERY:
+                bio_router_register_handler(ctx, message_types[i], handle_knowledge_query);
+                NIMCP_LOGGING_DEBUG("  Registered handler for BIO_MSG_KNOWLEDGE_QUERY");
+                break;
+
+            case BIO_MSG_DECISION_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_decision_request);
+                NIMCP_LOGGING_DEBUG("  Registered handler for BIO_MSG_DECISION_REQUEST");
+                break;
+
+            default:
+                NIMCP_LOGGING_DEBUG("  Unknown message type 0x%04X, skipping", message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
+
+/**
  * @brief Main event callback dispatcher
  */
 static void reasoning_event_callback(const brain_event_t* event, void* context)
@@ -618,12 +668,31 @@ reasoning_integration_t* reasoning_integration_create_custom(
         };
         integration->bio_ctx = bio_router_register_module(&bio_info);
         if (integration->bio_ctx) {
-            bio_router_register_handler(integration->bio_ctx, BIO_MSG_KNOWLEDGE_QUERY,
-                                         handle_knowledge_query);
-            bio_router_register_handler(integration->bio_ctx, BIO_MSG_DECISION_REQUEST,
-                                         handle_decision_request);
+            /* KG-Driven Wiring: Register callback for orchestrator to invoke
+             * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+             * from the KG and invokes this callback with the message types */
+            nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                BIO_MODULE_KNOWLEDGE_INTEGRATION,
+                (void*)reasoning_wiring_handler_callback,
+                integration
+            );
+
+            if (cb_result != NIMCP_SUCCESS) {
+                /* Fallback: Direct registration if orchestrator not available
+                 * This ensures backward compatibility with non-KG systems */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(integration->bio_ctx, BIO_MSG_KNOWLEDGE_QUERY,
+                                                 handle_knowledge_query)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(integration->bio_ctx, BIO_MSG_DECISION_REQUEST,
+                                                 handle_decision_request)
+                );
+                NIMCP_LOGGING_INFO("Bio-async integration enabled for reasoning integration (legacy)");
+            } else {
+                NIMCP_LOGGING_INFO("Bio-async integration enabled for reasoning integration (KG-driven)");
+            }
             integration->bio_async_enabled = true;
-            NIMCP_LOGGING_INFO("Bio-async integration enabled for reasoning integration");
         } else {
             NIMCP_LOGGING_WARN("Bio-async registration failed for reasoning integration");
         }

@@ -19,6 +19,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "plasticity/nimcp_second_messengers.h"
@@ -28,6 +29,31 @@
 #include "middleware/routing/nimcp_thalamic_quantum_bridge.h"
 
 /* Version 1.2.0 - Added quantum attention for O(√N) routing decisions */
+
+/* ============================================================================
+ * KG-Driven Wiring Infrastructure
+ * ============================================================================ */
+
+/* Forward declarations for handlers */
+static nimcp_error_t imagination_attention_handler(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+);
+
+/**
+ * Handler map for thalamic router module.
+ * Routes imagination attention gate messages.
+ */
+DEFINE_HANDLER_MAP_BEGIN(thalamic_router)
+    HANDLER_MAP_ENTRY(BIO_MSG_IMAGINATION_ATTENTION_GATE, imagination_attention_handler)
+DEFINE_HANDLER_MAP_END()
+
+/**
+ * Wiring callback for KG-driven handler registration.
+ */
+DEFINE_HANDLER_CALLBACK(thalamic_router, thalamic_router_t, router)
 
 
 
@@ -1159,11 +1185,11 @@ bool thalamic_router_register_imagination_handler(thalamic_router_t* router) {
         return false;
     }
 
-    nimcp_error_t result = bio_router_register_handler(
+    nimcp_error_t result = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
         router->bio_ctx,
         BIO_MSG_IMAGINATION_ATTENTION_GATE,
         imagination_attention_handler
-    );
+    ));
 
     if (result != NIMCP_SUCCESS) {
         LOG_ERROR(LOG_MODULE, "Failed to register imagination attention handler");

@@ -31,6 +31,7 @@
 /* Bio-async includes */
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_async.h"
+#include "async/nimcp_wiring_helpers.h"
 
 #define LOG_MODULE "BRAIN_INIT_COLLECTIVE_COGNITION"
 
@@ -135,6 +136,58 @@ static nimcp_error_t collective_handle_swarm_update(
 }
 
 /**
+ * @brief KG-driven wiring handler callback for collective cognition
+ *
+ * WHAT: Register message handlers based on KG-discovered message types
+ * WHY:  Enable dynamic wiring driven by knowledge graph
+ * HOW:  Iterate discovered message types and register appropriate handlers
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data Collective cognition context pointer
+ * @return 0 on success, -1 on error
+ */
+static int collective_cognition_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    LOG_INFO(LOG_MODULE, "collective_cognition_wiring_handler_callback: registering %u handlers from KG",
+             message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_SWARM_CONSENSUS_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], collective_handle_consensus_request);
+                LOG_DEBUG(LOG_MODULE, "  Registered handler for BIO_MSG_SWARM_CONSENSUS_REQUEST");
+                break;
+
+            case BIO_MSG_SWARM_CONSENSUS_REACHED:
+                bio_router_register_handler(ctx, message_types[i], collective_handle_broadcast);
+                LOG_DEBUG(LOG_MODULE, "  Registered handler for BIO_MSG_SWARM_CONSENSUS_REACHED");
+                break;
+
+            case BIO_MSG_SWARM_SIGNAL_UPDATE:
+                bio_router_register_handler(ctx, message_types[i], collective_handle_swarm_update);
+                LOG_DEBUG(LOG_MODULE, "  Registered handler for BIO_MSG_SWARM_SIGNAL_UPDATE");
+                break;
+
+            default:
+                LOG_DEBUG(LOG_MODULE, "  Unknown message type %u - skipping", message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
+
+/**
  * @brief Connect collective cognition to bio-async messaging
  */
 static bool connect_collective_cognition_to_bio_async(brain_t brain) {
@@ -152,15 +205,35 @@ static bool connect_collective_cognition_to_bio_async(brain_t brain) {
 
         bio_module_context_t ctx = bio_router_register_module(&info);
         if (ctx) {
-            /* Register message handlers for collective cognition messages */
-            bio_router_register_handler(ctx, BIO_MSG_SWARM_CONSENSUS_REQUEST,
-                                        collective_handle_consensus_request);
-            bio_router_register_handler(ctx, BIO_MSG_SWARM_CONSENSUS_REACHED,
-                                        collective_handle_broadcast);
-            bio_router_register_handler(ctx, BIO_MSG_SWARM_SIGNAL_UPDATE,
-                                        collective_handle_swarm_update);
-            LOG_DEBUG(LOG_MODULE, "Collective cognition bio-async registered (module_id=0x%04X)",
-                      BIO_MODULE_BRAIN_COGNITIVE);
+            /* KG-Driven Wiring: Register callback for orchestrator to invoke
+             * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+             * from the KG and invokes this callback with the message types */
+            nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                BIO_MODULE_BRAIN_COGNITIVE,
+                (void*)collective_cognition_wiring_handler_callback,
+                brain->collective_cognition
+            );
+
+            if (cb_result == NIMCP_SUCCESS) {
+                LOG_DEBUG(LOG_MODULE, "Collective cognition bio-async registered with KG-driven wiring (module_id=0x%04X)",
+                          BIO_MODULE_BRAIN_COGNITIVE);
+            } else {
+                /* Fallback: Direct registration if orchestrator not available */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(ctx, BIO_MSG_SWARM_CONSENSUS_REQUEST,
+                                                collective_handle_consensus_request)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(ctx, BIO_MSG_SWARM_CONSENSUS_REACHED,
+                                                collective_handle_broadcast)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(ctx, BIO_MSG_SWARM_SIGNAL_UPDATE,
+                                                collective_handle_swarm_update)
+                );
+                LOG_DEBUG(LOG_MODULE, "Collective cognition bio-async registered with legacy handlers (module_id=0x%04X)",
+                          BIO_MODULE_BRAIN_COGNITIVE);
+            }
         } else {
             LOG_WARN(LOG_MODULE, "Failed to register collective cognition with bio-async");
         }

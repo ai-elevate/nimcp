@@ -46,6 +46,7 @@
 #include "nimcp.h"  // For error codes
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "async/nimcp_bio_router.h"
 
 #define LOG_MODULE "global_workspace"
@@ -109,6 +110,37 @@ struct global_workspace_struct {
 //=============================================================================
 // BIO-ASYNC MESSAGE HANDLERS
 //=============================================================================
+
+// Forward declaration for handler function
+static nimcp_error_t handle_attention_shift(const void*, size_t, nimcp_bio_promise_t, void*);
+
+/**
+ * @brief KG-driven wiring callback for global workspace module
+ */
+static int global_workspace_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data)
+{
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_ATTENTION_SHIFT:
+                bio_router_register_handler(ctx, message_types[i], handle_attention_shift);
+                registered++;
+                break;
+            default:
+                NIMCP_LOGGING_DEBUG("global_workspace: unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    NIMCP_LOGGING_INFO("global_workspace: registered %d handlers via KG wiring", registered);
+    return 0;
+}
 
 /**
  * @brief Handle attention shift via bio-async
@@ -609,10 +641,23 @@ global_workspace_t* global_workspace_create_custom(
         workspace->bio_ctx = bio_router_register_module(&bio_info);
         if (workspace->bio_ctx) {
             workspace->bio_async_enabled = true;
-            // Register message handlers
-            bio_router_register_handler(workspace->bio_ctx, BIO_MSG_ATTENTION_SHIFT, handle_attention_shift);
-            NIMCP_LOGGING_INFO("global_workspace: Bio-async communication enabled with handlers (module_id=%d)",
-                              BIO_MODULE_GLOBAL_WORKSPACE);
+
+            // Try KG-driven wiring callback registration first
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_GLOBAL_WORKSPACE,
+                (void*)global_workspace_wiring_handler_callback,
+                workspace
+            );
+
+            if (wiring_result == NIMCP_SUCCESS) {
+                NIMCP_LOGGING_INFO("global_workspace: KG-driven wiring callback registered");
+            } else {
+                // Legacy fallback - register handlers directly
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(workspace->bio_ctx, BIO_MSG_ATTENTION_SHIFT, handle_attention_shift)
+                );
+                NIMCP_LOGGING_INFO("global_workspace: legacy handler registration");
+            }
         } else {
             NIMCP_LOGGING_WARN("global_workspace: Bio-async registration failed - module will operate without async messaging");
         }

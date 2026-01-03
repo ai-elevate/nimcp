@@ -28,6 +28,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -72,6 +73,52 @@ static nimcp_error_t neuron_handle_activation_request(
     nimcp_bio_promise_t response_promise,
     void* user_data
 );
+
+//=============================================================================
+// KG-Driven Wiring Callback
+//=============================================================================
+
+/**
+ * @brief KG-driven wiring handler callback for Neuron Model module
+ *
+ * WHAT: Register message handlers based on KG-discovered message types
+ * WHY:  Enable dynamic wiring driven by knowledge graph
+ * HOW:  Iterate discovered message types and register appropriate handlers
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data Neuron model async context pointer
+ * @return 0 on success, -1 on error
+ */
+static int neuron_model_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    LOG_INFO("neuron_model_wiring_handler_callback: registering %u handlers from KG",
+             message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_NEURON_ACTIVATION_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], neuron_handle_activation_request);
+                LOG_DEBUG("  Registered handler for BIO_MSG_NEURON_ACTIVATION_REQUEST");
+                break;
+
+            default:
+                LOG_DEBUG("  Unknown message type %u - skipping", message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
 
 //=============================================================================
 // Initialization and Shutdown
@@ -142,23 +189,40 @@ nimcp_error_t neuron_model_bio_async_init(void) {
     LOG_DEBUG("Registered neuron model module (ID=%d) with bio-router",
               BIO_MODULE_NEURON_MODEL);
 
-    // Register activation request handler
-    nimcp_error_t err = bio_router_register_handler(
-        g_neuron_async_ctx.module_ctx,
-        BIO_MSG_NEURON_ACTIVATION_REQUEST,
-        neuron_handle_activation_request
+    /* KG-Driven Wiring: Register callback for orchestrator to invoke
+     * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+     * from the KG and invokes this callback with the message types */
+    nimcp_error_t cb_result = bio_router_register_wiring_callback(
+        BIO_MODULE_NEURON_MODEL_BIO_ASYNC,
+        (void*)neuron_model_wiring_handler_callback,
+        &g_neuron_async_ctx
     );
 
-    if (err != NIMCP_SUCCESS) {
-        LOG_ERROR("neuron_model_bio_async_init: Failed to register handler");
-        bio_router_unregister_module(g_neuron_async_ctx.module_ctx);
-        unified_mem_destroy(g_neuron_async_ctx.mem_mgr);
-        nimcp_platform_mutex_destroy(&g_neuron_async_ctx.stats_mutex);
-        nimcp_platform_mutex_unlock(&g_neuron_async_ctx.init_mutex);
-        return err;
-    }
+    if (cb_result == NIMCP_SUCCESS) {
+        LOG_DEBUG("Neuron model bio-async registered with KG-driven wiring (module_id=0x%04X)",
+                  BIO_MODULE_NEURON_MODEL_BIO_ASYNC);
+    } else {
+        /* Fallback: Direct registration if orchestrator not available */
+        LEGACY_HANDLER_REGISTRATION(
+            nimcp_error_t err = bio_router_register_handler(
+                g_neuron_async_ctx.module_ctx,
+                BIO_MSG_NEURON_ACTIVATION_REQUEST,
+                neuron_handle_activation_request
+            )
+        );
 
-    LOG_DEBUG("Registered handler for BIO_MSG_NEURON_ACTIVATION_REQUEST");
+        if (err != NIMCP_SUCCESS) {
+            LOG_ERROR("neuron_model_bio_async_init: Failed to register handler");
+            bio_router_unregister_module(g_neuron_async_ctx.module_ctx);
+            unified_mem_destroy(g_neuron_async_ctx.mem_mgr);
+            nimcp_platform_mutex_destroy(&g_neuron_async_ctx.stats_mutex);
+            nimcp_platform_mutex_unlock(&g_neuron_async_ctx.init_mutex);
+            return err;
+        }
+
+        LOG_DEBUG("Neuron model bio-async registered with legacy handlers (module_id=0x%04X)",
+                  BIO_MODULE_NEURON_MODEL_BIO_ASYNC);
+    }
 
     g_neuron_async_ctx.initialized = true;
 

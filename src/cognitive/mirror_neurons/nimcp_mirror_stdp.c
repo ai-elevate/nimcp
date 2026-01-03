@@ -26,6 +26,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
@@ -267,6 +268,63 @@ static nimcp_error_t handle_stdp_event(
 }
 
 //=============================================================================
+// KG-Driven Wiring Handler
+//=============================================================================
+
+/**
+ * @brief KG-driven wiring handler callback
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data Module context pointer
+ * @return 0 on success, -1 on error
+ */
+static int mirror_stdp_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    (void)user_data;
+
+    LOG_INFO(LOG_MODULE,
+        "mirror_stdp_wiring_handler_callback: registering %u handlers from KG",
+        message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_MIRROR_NEURON_ACTIVATION:
+                bio_router_register_handler(ctx, message_types[i], handle_mirror_neuron_activation);
+                LOG_DEBUG(LOG_MODULE,
+                    "  Registered handler for BIO_MSG_MIRROR_NEURON_ACTIVATION");
+                break;
+
+            case BIO_MSG_STDP_EVENT:
+                bio_router_register_handler(ctx, message_types[i], handle_stdp_event);
+                LOG_DEBUG(LOG_MODULE,
+                    "  Registered handler for BIO_MSG_STDP_EVENT");
+                break;
+
+            default:
+                LOG_DEBUG(LOG_MODULE,
+                    "  Unknown message type 0x%04X, skipping", message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
+
+//=============================================================================
 // Lifecycle Management
 //=============================================================================
 
@@ -379,28 +437,30 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
         if (!stdp->bio_ctx) {
             LOG_WARN("mirror_stdp_create: failed to register with bio-async router");
         } else {
-            // Register message handlers
-            nimcp_error_t err;
-
-            err = bio_router_register_handler(
-                stdp->bio_ctx,
-                BIO_MSG_MIRROR_NEURON_ACTIVATION,
-                handle_mirror_neuron_activation
+            /* KG-Driven Wiring: Register callback for orchestrator to invoke
+             * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+             * from the KG and invokes this callback with the message types */
+            nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                BIO_MODULE_MIRROR_NEURONS_STDP,
+                (void*)mirror_stdp_wiring_handler_callback,
+                stdp
             );
-            if (err != NIMCP_SUCCESS) {
-                LOG_WARN("mirror_stdp_create: failed to register MIRROR_NEURON_ACTIVATION handler");
-            }
 
-            err = bio_router_register_handler(
-                stdp->bio_ctx,
-                BIO_MSG_STDP_EVENT,
-                handle_stdp_event
-            );
-            if (err != NIMCP_SUCCESS) {
-                LOG_WARN("mirror_stdp_create: failed to register STDP_EVENT handler");
+            if (cb_result != NIMCP_SUCCESS) {
+                /* Fallback: Direct registration if orchestrator not available
+                 * This ensures backward compatibility with non-KG systems */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(stdp->bio_ctx,
+                        BIO_MSG_MIRROR_NEURON_ACTIVATION, handle_mirror_neuron_activation)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(stdp->bio_ctx,
+                        BIO_MSG_STDP_EVENT, handle_stdp_event)
+                );
+                LOG_INFO("mirror_stdp_create: bio-async registered (legacy direct registration)");
+            } else {
+                LOG_INFO("mirror_stdp_create: bio-async registered (KG-driven wiring callback)");
             }
-
-            LOG_INFO("mirror_stdp_create: successfully registered with bio-async router");
         }
     } else {
         LOG_DEBUG("mirror_stdp_create: bio-async router not initialized, skipping registration");

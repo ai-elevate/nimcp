@@ -15,6 +15,9 @@
 #include "cognitive/imagination/nimcp_imagination_callbacks.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
+#include "nimcp.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -2737,6 +2740,36 @@ static nimcp_error_t imagination_message_handler(
 }
 
 /**
+ * @brief KG-driven wiring callback for brain immune module
+ */
+static int brain_immune_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data)
+{
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_IMAGINATION_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], imagination_message_handler);
+                registered++;
+                break;
+            default:
+                LOG_MODULE_DEBUG(BRAIN_IMMUNE_MODULE_NAME,
+                    "brain_immune: unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+        "Brain immune: registered %d handlers via KG wiring", registered);
+    return 0;
+}
+
+/**
  * @brief Register imagination handler with bio-async router
  *
  * WHAT: Register handler for imagination-related messages
@@ -2753,11 +2786,31 @@ int brain_immune_register_imagination_handler(brain_immune_system_t* system) {
     if (!system) return -1;
     if (!system->bio_context) return -1;
 
-    /* Register handler for imagination request messages */
-    nimcp_error_t result = bio_router_register_handler(
-        system->bio_context,
-        BIO_MSG_IMAGINATION_REQUEST,
-        imagination_message_handler
+    /* Module ID for brain immune */
+    bio_module_id_t module_id = BIO_MODULE_INTROSPECTION + 0x50;
+
+    /* Try KG-driven wiring callback registration first */
+    nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+        module_id,
+        (void*)brain_immune_wiring_handler_callback,
+        system
+    );
+
+    if (wiring_result == NIMCP_SUCCESS) {
+        if (system->config.enable_logging) {
+            LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+                "Brain immune: KG-driven wiring callback registered");
+        }
+        return 0;
+    }
+
+    /* Legacy fallback - register handlers directly */
+    LEGACY_HANDLER_REGISTRATION(
+        nimcp_error_t result = bio_router_register_handler(
+            system->bio_context,
+            BIO_MSG_IMAGINATION_REQUEST,
+            imagination_message_handler
+        )
     );
 
     if (result != NIMCP_SUCCESS) {
@@ -2770,7 +2823,7 @@ int brain_immune_register_imagination_handler(brain_immune_system_t* system) {
 
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
-            "Registered imagination engine handler");
+            "Registered imagination engine handler (legacy)");
     }
 
     return 0;

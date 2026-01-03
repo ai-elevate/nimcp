@@ -11,10 +11,26 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_common.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <string.h>
 #include <math.h>
 
-/* NOTE: Message handlers are registered separately via bio_router_register_handler() */
+/* ============================================================================
+ * KG-Driven Wiring Infrastructure
+ * ============================================================================ */
+
+/**
+ * Handler map for myelin-immune bridge module.
+ * Currently empty - handlers to be added as module evolves.
+ */
+DEFINE_HANDLER_MAP_BEGIN(myelin_immune)
+    /* Future handlers will be added here as needed */
+DEFINE_HANDLER_MAP_END()
+
+/**
+ * Wiring callback for KG-driven handler registration.
+ */
+DEFINE_HANDLER_CALLBACK(myelin_immune, myelin_immune_bridge_t, bridge)
 
 int myelin_immune_default_config(myelin_immune_config_t* config)
 {

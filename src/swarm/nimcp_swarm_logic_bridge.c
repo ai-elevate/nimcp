@@ -15,9 +15,36 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/time/nimcp_time.h"
 #include "security/nimcp_security.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+
+/*=============================================================================
+ * KG-DRIVEN WIRING INFRASTRUCTURE
+ *============================================================================*/
+
+/* Forward declaration of message handler */
+static nimcp_error_t logic_bridge_message_handler(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+);
+
+/**
+ * Handler map for swarm logic bridge module.
+ * Handles logic gate evaluation and quorum vote messages.
+ */
+DEFINE_HANDLER_MAP_BEGIN(swarm_logic_bridge)
+    HANDLER_MAP_ENTRY(BIO_MSG_LOGIC_GATE_EVALUATE, logic_bridge_message_handler)
+    HANDLER_MAP_ENTRY(BIO_MSG_SWARM_QUORUM_VOTE, logic_bridge_message_handler)
+DEFINE_HANDLER_MAP_END()
+
+/**
+ * Wiring callback for KG-driven handler registration.
+ */
+DEFINE_HANDLER_CALLBACK(swarm_logic_bridge, swarm_logic_bridge_t, bridge)
 
 /*=============================================================================
  * CONSTANTS
@@ -409,12 +436,12 @@ swarm_logic_bridge_t* swarm_logic_bridge_create(const swarm_logic_bridge_config_
         bridge->base.bio_ctx = bio_router_register_module(&module_info);
         if (bridge->base.bio_ctx) {
             // Register message handlers
-            bio_router_register_handler(bridge->base.bio_ctx,
+            LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(bridge->base.bio_ctx,
                                        BIO_MSG_LOGIC_GATE_EVALUATE,
-                                       logic_bridge_message_handler);
-            bio_router_register_handler(bridge->base.bio_ctx,
+                                       logic_bridge_message_handler));
+            LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(bridge->base.bio_ctx,
                                        BIO_MSG_SWARM_QUORUM_VOTE,
-                                       logic_bridge_message_handler);
+                                       logic_bridge_message_handler));
 
             bridge->base.bio_async_enabled = true;
             LOG_INFO("Logic bridge registered with bio-async router");

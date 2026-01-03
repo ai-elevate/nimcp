@@ -13,8 +13,34 @@
 #include "lnn/nimcp_lnn_bio_async.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <string.h>
 #include <stdio.h>
+
+/*=============================================================================
+ * KG-Driven Wiring Infrastructure
+ *===========================================================================*/
+
+/* Forward declaration of bio-router handler */
+static nimcp_error_t lnn_bio_router_handler(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+);
+
+/**
+ * Handler map for LNN bio-async module.
+ * Message type 0 is used as a category handler for all LNN messages.
+ */
+DEFINE_HANDLER_MAP_BEGIN(lnn_bio_async)
+    HANDLER_MAP_ENTRY(0, lnn_bio_router_handler)
+DEFINE_HANDLER_MAP_END()
+
+/**
+ * Wiring callback for KG-driven handler registration.
+ */
+DEFINE_HANDLER_CALLBACK(lnn_bio_async, lnn_network_t, network)
 
 /*=============================================================================
  * Internal Structures
@@ -244,11 +270,11 @@ int lnn_bio_async_connect(lnn_network_t* network, uint16_t module_id) {
 
     /* Register category handler for all LNN messages */
     /* Note: Assuming LNN messages are in a specific range - adjust if needed */
-    nimcp_error_t err = bio_router_register_handler(
+    nimcp_error_t err = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
         ctx->bio_module,
         0,  /* Message type 0 - we'll handle routing internally */
         lnn_bio_router_handler
-    );
+    ));
 
     if (err != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("LNN bio-async: failed to register handler");

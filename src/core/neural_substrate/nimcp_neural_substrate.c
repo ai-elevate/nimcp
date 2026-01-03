@@ -14,6 +14,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/error/nimcp_error_codes.h"
 #include <string.h>
 #include <math.h>
@@ -792,6 +793,48 @@ static nimcp_error_t handle_imagination_capacity_request(
     return (result == 0) ? NIMCP_SUCCESS : NIMCP_ERROR_OPERATION_FAILED;
 }
 
+/**
+ * @brief KG-driven wiring handler callback for Neural Substrate Imagination
+ *
+ * WHAT: Register message handlers based on KG-discovered message types
+ * WHY:  Enable dynamic wiring driven by knowledge graph
+ * HOW:  Iterate discovered message types and register appropriate handlers
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data Neural substrate pointer
+ * @return 0 on success, -1 on error
+ */
+static int neural_substrate_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    NIMCP_LOGGING_INFO("neural_substrate_wiring_handler_callback: registering %u handlers from KG",
+                       message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_IMAGINATION_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_imagination_capacity_request);
+                NIMCP_LOGGING_DEBUG("  Registered handler for BIO_MSG_IMAGINATION_REQUEST");
+                break;
+
+            default:
+                NIMCP_LOGGING_DEBUG("  Unknown message type %u - skipping", message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
+
 int neural_substrate_register_imagination_handler(neural_substrate_t* substrate) {
     if (!substrate) return -1;
 
@@ -814,19 +857,36 @@ int neural_substrate_register_imagination_handler(neural_substrate_t* substrate)
         return -1;
     }
 
-    /* Register handler for capacity requests from imagination engine */
-    nimcp_error_t err = bio_router_register_handler(
-        g_substrate_imag_ctx,
-        BIO_MSG_IMAGINATION_REQUEST,
-        handle_imagination_capacity_request
+    /* KG-Driven Wiring: Register callback for orchestrator to invoke
+     * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+     * from the KG and invokes this callback with the message types */
+    nimcp_error_t cb_result = bio_router_register_wiring_callback(
+        BIO_MODULE_SUBSTRATE_IMAGINATION,
+        (void*)neural_substrate_wiring_handler_callback,
+        substrate
     );
 
-    if (err != NIMCP_SUCCESS) {
-        NIMCP_LOGGING_WARN("Failed to register imagination request handler: %d", err);
-        /* Continue anyway - we can still send updates */
-    }
+    if (cb_result == NIMCP_SUCCESS) {
+        NIMCP_LOGGING_INFO("Neural substrate bio-async registered with KG-driven wiring (module_id=0x%04X)",
+                          BIO_MODULE_SUBSTRATE_IMAGINATION);
+    } else {
+        /* Fallback: Direct registration if orchestrator not available */
+        LEGACY_HANDLER_REGISTRATION(
+            nimcp_error_t err = bio_router_register_handler(
+                g_substrate_imag_ctx,
+                BIO_MSG_IMAGINATION_REQUEST,
+                handle_imagination_capacity_request
+            )
+        );
 
-    NIMCP_LOGGING_INFO("Registered neural substrate imagination handler");
+        if (err != NIMCP_SUCCESS) {
+            NIMCP_LOGGING_WARN("Failed to register imagination request handler: %d", err);
+            /* Continue anyway - we can still send updates */
+        }
+
+        NIMCP_LOGGING_INFO("Neural substrate bio-async registered with legacy handlers (module_id=0x%04X)",
+                          BIO_MODULE_SUBSTRATE_IMAGINATION);
+    }
 
     /* Send initial capacity state */
     neural_substrate_send_imagination_capacity(substrate);

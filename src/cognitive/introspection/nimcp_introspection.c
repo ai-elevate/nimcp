@@ -53,6 +53,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 
 // Internal Knowledge Graph integration
 #include "core/brain/nimcp_brain_kg_helpers.h"
@@ -150,6 +151,50 @@ struct introspection_context_struct {
 /* ========================================================================
  * BIO-ASYNC MESSAGE HANDLERS
  * ======================================================================== */
+
+/**
+ * @brief KG-driven wiring callback for introspection module
+ */
+static int introspection_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data);
+
+/* Forward declaration of handler */
+static nimcp_error_t handle_introspection_query(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data);
+
+/**
+ * @brief KG-driven wiring callback for introspection module
+ */
+static int introspection_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data)
+{
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_INTROSPECTION_QUERY:
+                bio_router_register_handler(ctx, message_types[i], handle_introspection_query);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG("introspection: unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_INFO(LOG_MODULE, "Introspection: registered %d handlers via KG wiring", registered);
+    return 0;
+}
 
 /**
  * @brief Handle introspection query via bio-async
@@ -287,9 +332,23 @@ introspection_context_t introspection_context_create(brain_t brain,
         context->bio_ctx = bio_router_register_module(&bio_info);
         if (context->bio_ctx) {
             context->bio_async_enabled = true;
-            // Register message handlers
-            bio_router_register_handler(context->bio_ctx, BIO_MSG_INTROSPECTION_QUERY, handle_introspection_query);
-            LOG_INFO(LOG_MODULE, "Bio-async communication enabled with handlers");
+
+            /* Try KG-driven wiring callback registration first */
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_INTROSPECTION,
+                (void*)introspection_wiring_handler_callback,
+                context
+            );
+
+            if (wiring_result == NIMCP_SUCCESS) {
+                LOG_INFO(LOG_MODULE, "Introspection: KG-driven wiring callback registered");
+            } else {
+                /* Legacy fallback - register handlers directly */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(context->bio_ctx, BIO_MSG_INTROSPECTION_QUERY, handle_introspection_query)
+                );
+                LOG_INFO(LOG_MODULE, "Introspection: legacy handler registration");
+            }
         } else {
             LOG_WARN(LOG_MODULE, "Bio-async registration failed");
         }

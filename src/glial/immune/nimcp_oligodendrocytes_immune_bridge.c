@@ -18,8 +18,26 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_common.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <string.h>
 #include <math.h>
+
+/* ============================================================================
+ * KG-Driven Wiring Infrastructure
+ * ============================================================================ */
+
+/**
+ * Handler map for oligodendrocyte-immune bridge module.
+ * Currently empty - handlers to be added as module evolves.
+ */
+DEFINE_HANDLER_MAP_BEGIN(oligo_immune)
+    /* Future handlers will be added here as needed */
+DEFINE_HANDLER_MAP_END()
+
+/**
+ * Wiring callback for KG-driven handler registration.
+ */
+DEFINE_HANDLER_CALLBACK(oligo_immune, oligo_immune_bridge_t, bridge)
 
 /* ============================================================================
  * Static Helpers

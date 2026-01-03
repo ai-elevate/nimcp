@@ -26,6 +26,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "cognitive/memory/nimcp_engram.h"
@@ -50,6 +51,46 @@ static nimcp_error_t handle_wm_store_request(
     nimcp_bio_promise_t response_promise, void* user_data);
 
 static void bio_broadcast_transfer_complete(wm_transfer_system_t* system, uint32_t item_id, float score);
+
+/*=============================================================================
+ * KG-Driven Wiring Callback
+ *============================================================================*/
+
+/**
+ * @brief KG-driven wiring handler callback
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ */
+static int wm_transfer_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    LOG_INFO(LOG_MODULE, "wm_transfer_wiring_handler_callback: registering %u handlers from KG",
+             message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_WORKING_MEMORY_STORE:
+                bio_router_register_handler(ctx, message_types[i], handle_wm_store_request);
+                LOG_DEBUG(LOG_MODULE, "  Registered handler for BIO_MSG_WORKING_MEMORY_STORE");
+                break;
+
+            default:
+                LOG_DEBUG(LOG_MODULE, "  Unknown message type %u - skipping", message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
 
 //=============================================================================
 // Constants
@@ -137,13 +178,28 @@ wm_transfer_system_t* wm_transfer_create(void) {
         system->bio_ctx = bio_router_register_module(&bio_info);
         if (system->bio_ctx) {
             system->bio_async_enabled = true;
-            bio_router_register_handler(system->bio_ctx, BIO_MSG_WORKING_MEMORY_STORE,
-                                        handle_wm_store_request);
-            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_WM_TRANSFER);
+
+            // Try KG-driven wiring callback first
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_WORKING_MEMORY_TRANSFER,
+                (void*)wm_transfer_wiring_handler_callback,
+                system
+            );
+
+            if (wiring_result != NIMCP_SUCCESS) {
+                // Fallback to legacy hardcoded registration
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(system->bio_ctx, BIO_MSG_WORKING_MEMORY_STORE,
+                                                handle_wm_store_request)
+                );
+                LOG_INFO(LOG_MODULE, "Bio-async registered with legacy handlers (module_id=0x%04X)", BIO_MODULE_WM_TRANSFER);
+            } else {
+                LOG_INFO(LOG_MODULE, "Bio-async registered with KG wiring callback (module_id=0x%04X)", BIO_MODULE_WM_TRANSFER);
+            }
         }
     }
 
-return system;
+    return system;
 }
 
 /*=============================================================================

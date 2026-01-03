@@ -64,6 +64,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "security/nimcp_security.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include <math.h>
@@ -611,6 +612,53 @@ static nimcp_error_t neuromod_handle_learning_rate_message(
     return NIMCP_SUCCESS;
 }
 
+/* ============================================================================
+ * KG-Driven Wiring Callback
+ * ============================================================================ */
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ */
+static int neuromodulator_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;
+    }
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_NEUROMODULATOR_RELEASE:
+                bio_router_register_handler(ctx, message_types[i], neuromod_handle_release_message);
+                registered++;
+                LOG_DEBUG("  Registered handler for BIO_MSG_NEUROMODULATOR_RELEASE");
+                break;
+
+            case BIO_MSG_LEARNING_RATE_UPDATE:
+                bio_router_register_handler(ctx, message_types[i], neuromod_handle_learning_rate_message);
+                registered++;
+                LOG_DEBUG("  Registered handler for BIO_MSG_LEARNING_RATE_UPDATE");
+                break;
+
+            default:
+                LOG_DEBUG("Neuromodulator: unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    return (registered > 0) ? 0 : -1;
+}
+
 /**
  * @brief Initialize bio-async integration for neuromodulator system
  *
@@ -664,32 +712,47 @@ static nimcp_error_t neuromod_bio_async_init(neuromodulator_system_t system) {
         return NIMCP_SUCCESS;  // Not an error - spatial system handles messages
     }
 
-    // Register message handlers
-    nimcp_error_t err;
-
-    // Handler for neuromodulator release events
-    err = bio_router_register_handler(
-        g_neuromod_bio_state.module_ctx,
-        BIO_MSG_NEUROMODULATOR_RELEASE,
-        neuromod_handle_release_message
+    /* Try KG-driven wiring callback registration first */
+    nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+        BIO_MODULE_NEUROMODULATOR,
+        (void*)neuromodulator_wiring_handler_callback,
+        system
     );
-    if (err != NIMCP_SUCCESS) {
-        LOG_ERROR("Failed to register neuromodulator release handler: %d", err);
-        bio_router_unregister_module(g_neuromod_bio_state.module_ctx);
-        g_neuromod_bio_state.module_ctx = NULL;
-        pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
-        return err;
-    }
 
-    // Handler for learning rate modulation
-    err = bio_router_register_handler(
-        g_neuromod_bio_state.module_ctx,
-        BIO_MSG_LEARNING_RATE_UPDATE,
-        neuromod_handle_learning_rate_message
-    );
-    if (err != NIMCP_SUCCESS) {
-        LOG_WARN("Failed to register learning rate handler: %d (non-fatal)", err);
-        // Continue anyway - release handler is more important
+    if (wiring_result == NIMCP_SUCCESS) {
+        LOG_INFO("Neuromodulator: KG-driven wiring callback registered");
+    } else {
+        // Legacy fallback - register handlers directly
+        nimcp_error_t err;
+
+        LEGACY_HANDLER_REGISTRATION(
+            err = bio_router_register_handler(
+                g_neuromod_bio_state.module_ctx,
+                BIO_MSG_NEUROMODULATOR_RELEASE,
+                neuromod_handle_release_message
+            )
+        );
+        if (err != NIMCP_SUCCESS) {
+            LOG_ERROR("Failed to register neuromodulator release handler: %d", err);
+            bio_router_unregister_module(g_neuromod_bio_state.module_ctx);
+            g_neuromod_bio_state.module_ctx = NULL;
+            pthread_mutex_unlock(&g_neuromod_bio_state.init_mutex);
+            return err;
+        }
+
+        LEGACY_HANDLER_REGISTRATION(
+            err = bio_router_register_handler(
+                g_neuromod_bio_state.module_ctx,
+                BIO_MSG_LEARNING_RATE_UPDATE,
+                neuromod_handle_learning_rate_message
+            )
+        );
+        if (err != NIMCP_SUCCESS) {
+            LOG_WARN("Failed to register learning rate handler: %d (non-fatal)", err);
+            // Continue anyway - release handler is more important
+        }
+
+        LOG_INFO("Neuromodulator: legacy handler registration");
     }
 
     g_neuromod_bio_state.current_system = system;

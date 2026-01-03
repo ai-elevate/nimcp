@@ -144,6 +144,52 @@ struct executive_controller {
 // BIO-ASYNC MESSAGE HANDLERS
 //=============================================================================
 
+// Forward declarations for handler functions
+static nimcp_error_t handle_decision_request(const void*, size_t, nimcp_bio_promise_t, void*);
+static nimcp_error_t handle_workspace_ignition(const void*, size_t, nimcp_bio_promise_t, void*);
+static nimcp_error_t handle_portia_tier_change(const void*, size_t, nimcp_bio_promise_t, void*);
+static nimcp_error_t handle_portia_degradation_event(const void*, size_t, nimcp_bio_promise_t, void*);
+
+/**
+ * @brief KG-driven wiring callback for executive module
+ */
+static int executive_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data)
+{
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_DECISION_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_decision_request);
+                registered++;
+                break;
+            case BIO_MSG_ATTENTION_SHIFT:
+                bio_router_register_handler(ctx, message_types[i], handle_workspace_ignition);
+                registered++;
+                break;
+            case BIO_MSG_TYPE_PORTIA_TIER_CHANGE:
+                bio_router_register_handler(ctx, message_types[i], handle_portia_tier_change);
+                registered++;
+                break;
+            case BIO_MSG_TYPE_PORTIA_DEGRADATION_EVENT:
+                bio_router_register_handler(ctx, message_types[i], handle_portia_degradation_event);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG("Executive: unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_INFO("Executive: registered %d handlers via KG wiring", registered);
+    return 0;
+}
+
 /**
  * @brief Handle decision request via bio-async
  */
@@ -708,17 +754,27 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
         exec->bio_ctx = bio_router_register_module(&bio_info);
         if (exec->bio_ctx) {
             exec->bio_async_enabled = true;
-            // Register message handlers
-            bio_router_register_handler(exec->bio_ctx, BIO_MSG_DECISION_REQUEST, handle_decision_request);
-            bio_router_register_handler(exec->bio_ctx, BIO_MSG_ATTENTION_SHIFT, handle_workspace_ignition);
 
-            // Register Portia integration handlers
-            if (exec->config.enable_portia_integration) {
-                bio_router_register_handler(exec->bio_ctx, BIO_MSG_TYPE_PORTIA_TIER_CHANGE, handle_portia_tier_change);
-                bio_router_register_handler(exec->bio_ctx, BIO_MSG_TYPE_PORTIA_DEGRADATION_EVENT, handle_portia_degradation_event);
-                LOG_INFO("Bio-async registered for executive module with Portia handlers");
+            // Try KG-driven wiring callback registration first
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_EXECUTIVE,
+                (void*)executive_wiring_handler_callback,
+                exec
+            );
+
+            if (wiring_result == NIMCP_SUCCESS) {
+                LOG_INFO("Executive: KG-driven wiring callback registered");
             } else {
-                LOG_INFO("Bio-async registered for executive module with handlers");
+                // Legacy fallback - register handlers directly
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(exec->bio_ctx, BIO_MSG_DECISION_REQUEST, handle_decision_request);
+                    bio_router_register_handler(exec->bio_ctx, BIO_MSG_ATTENTION_SHIFT, handle_workspace_ignition);
+                    if (exec->config.enable_portia_integration) {
+                        bio_router_register_handler(exec->bio_ctx, BIO_MSG_TYPE_PORTIA_TIER_CHANGE, handle_portia_tier_change);
+                        bio_router_register_handler(exec->bio_ctx, BIO_MSG_TYPE_PORTIA_DEGRADATION_EVENT, handle_portia_degradation_event);
+                    }
+                );
+                LOG_INFO("Executive: legacy handler registration");
             }
         }
     }

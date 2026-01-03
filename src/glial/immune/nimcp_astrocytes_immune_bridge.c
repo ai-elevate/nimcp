@@ -18,10 +18,27 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_common.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <string.h>
 #include <math.h>
 
-/* NOTE: Message handlers are registered separately via bio_router_register_handler() */
+/* ============================================================================
+ * KG-Driven Wiring Infrastructure
+ * ============================================================================ */
+
+/**
+ * Handler map for astrocyte-immune bridge module.
+ * Currently empty - handlers to be added as module evolves.
+ * This infrastructure enables future KG-driven wiring.
+ */
+DEFINE_HANDLER_MAP_BEGIN(astro_cell_immune)
+    /* Future handlers will be added here as needed */
+DEFINE_HANDLER_MAP_END()
+
+/**
+ * Wiring callback for KG-driven handler registration.
+ */
+DEFINE_HANDLER_CALLBACK(astro_cell_immune, astro_immune_bridge_t, bridge)
 
 int astro_cell_default_config(astro_immune_config_t* config)
 {

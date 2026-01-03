@@ -16,6 +16,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -73,6 +74,44 @@ static float apply_weight_change(
 }
 
 /* NOTE: Message handlers are registered separately via bio_router_register_handler() */
+
+/* ============================================================================
+ * KG-Driven Wiring Callback
+ * ============================================================================ */
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ */
+static int synapse_plasticity_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;
+    }
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            /* Add handlers for specific message types as needed */
+            /* Currently no handlers defined - placeholder for future extension */
+            default:
+                NIMCP_LOGGING_DEBUG("Synapse plasticity: unknown message type %d in wiring callback",
+                                    message_types[i]);
+                break;
+        }
+    }
+
+    return (registered > 0) ? 0 : -1;
+}
 
 /* ============================================================================
  * Lifecycle API
@@ -372,8 +411,8 @@ int synapse_plasticity_connect_all(
 
 int synapse_plasticity_connect_bio_async(synapse_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge->base.bio_async_enabled) return 0;
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_SYNAPSE,
@@ -385,10 +424,27 @@ int synapse_plasticity_connect_bio_async(synapse_plasticity_bridge_t* bridge)
     bridge->base.bio_ctx = bio_router_register_module(&info);
     if (bridge->base.bio_ctx) {
         bridge->base.bio_async_enabled = true;
-        NIMCP_LOGGING_INFO("Connected synapse-plasticity to bio-async");
+
+        /* Try KG-driven wiring callback registration first */
+        nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+            BIO_MODULE_SYNAPSE,
+            (void*)synapse_plasticity_wiring_handler_callback,
+            bridge
+        );
+
+        if (wiring_result == NIMCP_SUCCESS) {
+            NIMCP_LOGGING_INFO("Synapse plasticity: KG-driven wiring callback registered");
+        } else {
+            /* Legacy fallback - no specific handlers currently defined */
+            LEGACY_HANDLER_REGISTRATION(
+                /* No handlers registered currently - module uses direct function calls */
+                (void)0
+            );
+            NIMCP_LOGGING_INFO("Synapse plasticity: legacy handler registration (no handlers)");
+        }
     }
 
-    return 0;
+    return NIMCP_SUCCESS;
 }
 
 int synapse_plasticity_disconnect_bio_async(synapse_plasticity_bridge_t* bridge)

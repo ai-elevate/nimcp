@@ -10,11 +10,34 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
+
+//=============================================================================
+// KG-Driven Wiring Infrastructure
+//=============================================================================
+
+/* Forward declaration for handler */
+static nimcp_error_t handle_dialect_learned(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+);
+
+/**
+ * Handler map for dialect learner module.
+ * Handles NLP neural encode complete events.
+ */
+DEFINE_HANDLER_MAP_BEGIN(dialect_learner)
+    HANDLER_MAP_ENTRY(BIO_MSG_NLP_NEURAL_ENCODE_COMPLETE, handle_dialect_learned)
+DEFINE_HANDLER_MAP_END()
+
+// Note: DEFINE_HANDLER_CALLBACK moved to after struct definition below
 
 //=============================================================================
 // Constants
@@ -61,6 +84,11 @@ typedef struct dialect_learner_struct {
     // Thread safety
     pthread_mutex_t lock;
 } dialect_learner_struct;
+
+/**
+ * Wiring callback for KG-driven handler registration.
+ */
+DEFINE_HANDLER_CALLBACK(dialect_learner, dialect_learner_struct, dl)
 
 //=============================================================================
 // Thread-local Error Storage
@@ -340,11 +368,11 @@ dialect_learner_t dialect_learner_create(const dialect_learner_config_t* config)
 
         if (dl->bio_ctx) {
             // Register handler for dialect messages
-            bio_router_register_handler(
+            LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
                 dl->bio_ctx,
                 BIO_MSG_NLP_NEURAL_ENCODE_COMPLETE,
                 handle_dialect_learned
-            );
+            ));
         }
     }
 

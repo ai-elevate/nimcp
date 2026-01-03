@@ -16,6 +16,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "nimcp.h"
 #include <math.h>
 #include <string.h>
@@ -31,6 +32,39 @@ static nimcp_atomic_uint32_t g_attachment_id_counter = {1};
 /*=============================================================================
  * BIO-ASYNC MESSAGE HANDLERS
  *============================================================================*/
+
+/* Forward declaration of handler */
+static nimcp_error_t handle_grief_query(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+/**
+ * @brief KG-driven wiring callback for grief module
+ */
+static int grief_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data)
+{
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_INTROSPECTION_QUERY:
+                bio_router_register_handler(ctx, message_types[i], handle_grief_query);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG(LOG_MODULE, "grief: unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_INFO(LOG_MODULE, "Grief: registered %d handlers via KG wiring", registered);
+    return 0;
+}
 
 /**
  * @brief Handle incoming query about grief state (e.g., from mental health module)
@@ -129,10 +163,23 @@ grief_system_t* grief_system_create(void) {
         system->bio_ctx_ptr = bio_router_register_module(&bio_info);
         if (system->bio_ctx_ptr) {
             system->bio_async_enabled = true;
-            /* Register message handlers */
-            bio_router_register_handler(system->bio_ctx_ptr, BIO_MSG_INTROSPECTION_QUERY,
-                                        handle_grief_query);
-            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_GRIEF);
+
+            /* Try KG-driven wiring callback registration first */
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_GRIEF,
+                (void*)grief_wiring_handler_callback,
+                system
+            );
+
+            if (wiring_result == NIMCP_SUCCESS) {
+                LOG_INFO(LOG_MODULE, "Grief: KG-driven wiring callback registered");
+            } else {
+                /* Legacy fallback - register handlers directly */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(system->bio_ctx_ptr, BIO_MSG_INTROSPECTION_QUERY, handle_grief_query)
+                );
+                LOG_INFO(LOG_MODULE, "Grief: legacy handler registration (module_id=0x%04X)", BIO_MODULE_GRIEF);
+            }
         }
     }
 

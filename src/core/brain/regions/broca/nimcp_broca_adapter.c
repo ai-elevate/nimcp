@@ -24,6 +24,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -177,6 +178,77 @@ static nimcp_error_t handle_speech_feedback(
 static nimcp_error_t handle_utterance_production_request(
     const void* msg, size_t msg_size,
     nimcp_bio_promise_t response_promise, void* user_data);
+
+/*=============================================================================
+ * KG-DRIVEN WIRING CALLBACK
+ *===========================================================================*/
+
+/**
+ * @brief KG-driven wiring handler callback
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data Broca adapter pointer
+ * @return 0 on success, -1 on error
+ */
+static int broca_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    LOG_INFO("[%s] broca_wiring_handler_callback: registering %u handlers from KG",
+             BROCA_LOG_MODULE, message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_LEXICAL_ACCESS_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_lexical_access_request);
+                LOG_DEBUG("[%s]   Registered handler for BIO_MSG_LEXICAL_ACCESS_REQUEST", BROCA_LOG_MODULE);
+                break;
+
+            case BIO_MSG_SYNTAX_PARSE_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_syntax_parse_request);
+                LOG_DEBUG("[%s]   Registered handler for BIO_MSG_SYNTAX_PARSE_REQUEST", BROCA_LOG_MODULE);
+                break;
+
+            case BIO_MSG_PHONOLOGICAL_ENCODE_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_phonological_encode_request);
+                LOG_DEBUG("[%s]   Registered handler for BIO_MSG_PHONOLOGICAL_ENCODE_REQUEST", BROCA_LOG_MODULE);
+                break;
+
+            case BIO_MSG_MOTOR_COMMAND_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_motor_command_request);
+                LOG_DEBUG("[%s]   Registered handler for BIO_MSG_MOTOR_COMMAND_REQUEST", BROCA_LOG_MODULE);
+                break;
+
+            case BIO_MSG_SPEECH_FEEDBACK:
+                bio_router_register_handler(ctx, message_types[i], handle_speech_feedback);
+                LOG_DEBUG("[%s]   Registered handler for BIO_MSG_SPEECH_FEEDBACK", BROCA_LOG_MODULE);
+                break;
+
+            case BIO_MSG_UTTERANCE_PRODUCTION_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_utterance_production_request);
+                LOG_DEBUG("[%s]   Registered handler for BIO_MSG_UTTERANCE_PRODUCTION_REQUEST", BROCA_LOG_MODULE);
+                break;
+
+            default:
+                LOG_DEBUG("[%s]   Unknown message type %u - skipping", BROCA_LOG_MODULE, message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
 
 /*=============================================================================
  * LIFECYCLE FUNCTIONS
@@ -335,21 +407,46 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
 
         adapter->bio_ctx = bio_router_register_module(&bio_info);
         if (adapter->bio_ctx) {
-            /* Register message handlers */
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_LEXICAL_ACCESS_REQUEST, handle_lexical_access_request);
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_SYNTAX_PARSE_REQUEST, handle_syntax_parse_request);
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_PHONOLOGICAL_ENCODE_REQUEST, handle_phonological_encode_request);
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_MOTOR_COMMAND_REQUEST, handle_motor_command_request);
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_SPEECH_FEEDBACK, handle_speech_feedback);
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_UTTERANCE_PRODUCTION_REQUEST, handle_utterance_production_request);
+            /* KG-Driven Wiring: Register callback for orchestrator to invoke
+             * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+             * from the KG and invokes this callback with the message types */
+            nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                BIO_MODULE_BROCA,
+                (void*)broca_wiring_handler_callback,
+                adapter
+            );
 
-            LOG_INFO("[%s] Bio-async handlers registered successfully", BROCA_LOG_MODULE);
+            if (cb_result != NIMCP_SUCCESS) {
+                /* Fallback: Direct registration if orchestrator not available
+                 * This ensures backward compatibility with non-KG systems */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_LEXICAL_ACCESS_REQUEST, handle_lexical_access_request)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_SYNTAX_PARSE_REQUEST, handle_syntax_parse_request)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_PHONOLOGICAL_ENCODE_REQUEST, handle_phonological_encode_request)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_MOTOR_COMMAND_REQUEST, handle_motor_command_request)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_SPEECH_FEEDBACK, handle_speech_feedback)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_UTTERANCE_PRODUCTION_REQUEST, handle_utterance_production_request)
+                );
+                LOG_INFO("[%s] Bio-async enabled (legacy direct registration)", BROCA_LOG_MODULE);
+            } else {
+                LOG_INFO("[%s] Bio-async enabled (KG-driven wiring callback registered)", BROCA_LOG_MODULE);
+            }
         } else {
             LOG_WARNING("[%s] Failed to register with bio-async router", BROCA_LOG_MODULE);
         }

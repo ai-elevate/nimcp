@@ -24,6 +24,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "nimcp.h"  // For error codes
 
@@ -970,6 +971,41 @@ static void initialize_domain_stats(domain_knowledge_t* stats, knowledge_domain_
 // BIO-ASYNC MESSAGE HANDLERS
 //=============================================================================
 
+/* Forward declaration of handler */
+static nimcp_error_t handle_knowledge_query(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data);
+
+/**
+ * @brief KG-driven wiring callback for knowledge module
+ */
+static int knowledge_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data)
+{
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_KNOWLEDGE_QUERY:
+                bio_router_register_handler(ctx, message_types[i], handle_knowledge_query);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG(LOG_MODULE, "knowledge: unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_INFO(LOG_MODULE, "Knowledge: registered %d handlers via KG wiring", registered);
+    return 0;
+}
+
 /**
  * @brief Bio-async message handler: Handle knowledge query
  */
@@ -1104,10 +1140,23 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
         system->bio_ctx = bio_router_register_module(&bio_info);
         if (system->bio_ctx) {
             system->bio_async_enabled = true;
-            // Register message handlers
-            bio_router_register_handler(system->bio_ctx, BIO_MSG_KNOWLEDGE_QUERY, handle_knowledge_query);
-            LOG_INFO("knowledge: Bio-async communication enabled with handlers (module_id=%d)",
-                              BIO_MODULE_KNOWLEDGE);
+
+            /* Try KG-driven wiring callback registration first */
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_KNOWLEDGE,
+                (void*)knowledge_wiring_handler_callback,
+                system
+            );
+
+            if (wiring_result == NIMCP_SUCCESS) {
+                LOG_INFO("knowledge: KG-driven wiring callback registered");
+            } else {
+                /* Legacy fallback - register handlers directly */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(system->bio_ctx, BIO_MSG_KNOWLEDGE_QUERY, handle_knowledge_query)
+                );
+                LOG_INFO("knowledge: legacy handler registration (module_id=%d)", BIO_MODULE_KNOWLEDGE);
+            }
         } else {
             LOG_WARN("knowledge: Bio-async registration failed - module will operate without async messaging");
         }

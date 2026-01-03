@@ -29,6 +29,7 @@
 #include "utils/platform/nimcp_platform_time.h"
 #include "security/nimcp_security.h"
 #include "async/nimcp_bio_async.h"
+#include "async/nimcp_wiring_helpers.h"
 
 #include <math.h>
 #include <string.h>
@@ -261,6 +262,54 @@ void second_messenger_destroy(second_messenger_system_t* system) {
  * BIO-ASYNC INTEGRATION
  *============================================================================*/
 
+/* ============================================================================
+ * KG-Driven Wiring Callback
+ * ============================================================================ */
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ */
+static int second_messenger_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;
+    }
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_SECOND_MESSENGER_UPDATE:
+                bio_router_register_handler(ctx, message_types[i], bio_message_handler);
+                registered++;
+                LOG_MODULE_DEBUG(LOG_MODULE, "  Registered handler for BIO_MSG_SECOND_MESSENGER_UPDATE");
+                break;
+
+            case BIO_MSG_NEUROMODULATOR_RELEASE:
+                bio_router_register_handler(ctx, message_types[i], bio_message_handler);
+                registered++;
+                LOG_MODULE_DEBUG(LOG_MODULE, "  Registered handler for BIO_MSG_NEUROMODULATOR_RELEASE");
+                break;
+
+            default:
+                LOG_MODULE_DEBUG(LOG_MODULE, "Second messenger: unknown message type %d in wiring callback",
+                                 message_types[i]);
+                break;
+        }
+    }
+
+    return (registered > 0) ? 0 : -1;
+}
+
 /**
  * @brief Register with bio-async router
  */
@@ -291,21 +340,38 @@ nimcp_result_t second_messenger_register_bioasync(
     system->bio_ctx = bio_router_register_module(&info);
     if (!system->bio_ctx) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to register with bio-router");
-        return NIMCP_ERROR_NOT_IMPLEMENTED;
+        return NIMCP_ERROR_NOT_SUPPORTED;
     }
 
-    /* Register message handler */
-    nimcp_result_t result = bio_router_register_handler(
-        system->bio_ctx,
-        BIO_MSG_SECOND_MESSENGER_UPDATE,
-        bio_message_handler
+    /* Try KG-driven wiring callback registration first */
+    nimcp_result_t wiring_result = bio_router_register_wiring_callback(
+        BIO_MODULE_SECOND_MESSENGER,
+        (void*)second_messenger_wiring_handler_callback,
+        system
     );
-    if (result != NIMCP_SUCCESS) {
-        LOG_MODULE_WARN(LOG_MODULE, "Handler registration failed: %d", result);
-    }
 
-    /* Subscribe to neuromodulator release messages */
-    bio_router_register_handler(system->bio_ctx, BIO_MSG_NEUROMODULATOR_RELEASE, bio_message_handler);
+    if (wiring_result == NIMCP_SUCCESS) {
+        LOG_MODULE_INFO(LOG_MODULE, "Second messenger: KG-driven wiring callback registered");
+    } else {
+        /* Legacy fallback - register handlers directly */
+        LEGACY_HANDLER_REGISTRATION(
+            nimcp_result_t result = bio_router_register_handler(
+                system->bio_ctx,
+                BIO_MSG_SECOND_MESSENGER_UPDATE,
+                bio_message_handler
+            )
+        );
+        if (result != NIMCP_SUCCESS) {
+            LOG_MODULE_WARN(LOG_MODULE, "Handler registration failed: %d", result);
+        }
+
+        /* Subscribe to neuromodulator release messages */
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(system->bio_ctx, BIO_MSG_NEUROMODULATOR_RELEASE, bio_message_handler)
+        );
+
+        LOG_MODULE_INFO(LOG_MODULE, "Second messenger: legacy handler registration");
+    }
 
     system->bio_async_enabled = true;
     LOG_MODULE_INFO(LOG_MODULE, "Registered with bio-async router");

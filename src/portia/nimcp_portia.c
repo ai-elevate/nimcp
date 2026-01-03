@@ -175,6 +175,12 @@ static nimcp_error_t portia_message_handler(
     const void* msg, size_t msg_size,
     nimcp_bio_promise_t response_promise, void* user_data);
 
+static int portia_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data);
+
 static nimcp_error_t portia_tier_manager_create(portia_tier_manager_t** out_mgr, const portia_tier_config_t* config);
 static void portia_tier_manager_destroy(portia_tier_manager_t* mgr);
 static nimcp_error_t portia_tier_manager_update(portia_tier_manager_t* mgr, const system_resources_t* resources);
@@ -411,14 +417,29 @@ nimcp_error_t portia_init(const portia_config_t* config) {
         if (!ctx->bio_ctx) {
             LOG_WARN(LOG_MODULE, "Failed to register with bio-router (continuing anyway)");
         } else {
-            // Register message handler for Portia messages
-            bio_router_register_handler(ctx->bio_ctx,
-                                       (bio_message_type_t)BIO_MSG_TYPE_PORTIA_STATUS_QUERY,
-                                       portia_message_handler);
-            bio_router_register_handler(ctx->bio_ctx,
-                                       (bio_message_type_t)BIO_MSG_TYPE_PORTIA_TIER_QUERY,
-                                       portia_message_handler);
-            LOG_INFO(LOG_MODULE, "Registered with bio-router and message handlers");
+            /* KG-Driven Wiring: Register callback for orchestrator to invoke */
+            nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                BIO_MODULE_PORTIA,
+                (void*)portia_wiring_handler_callback,
+                ctx
+            );
+
+            if (cb_result == NIMCP_SUCCESS) {
+                LOG_INFO(LOG_MODULE, "Bio-async registered with KG-driven wiring callback (module_id=0x%04X)", BIO_MODULE_PORTIA);
+            } else {
+                /* Fallback: Direct registration if orchestrator not available */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(ctx->bio_ctx,
+                                               (bio_message_type_t)BIO_MSG_TYPE_PORTIA_STATUS_QUERY,
+                                               portia_message_handler)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(ctx->bio_ctx,
+                                               (bio_message_type_t)BIO_MSG_TYPE_PORTIA_TIER_QUERY,
+                                               portia_message_handler)
+                );
+                LOG_INFO(LOG_MODULE, "Bio-async registered with legacy handler registration (module_id=0x%04X)", BIO_MODULE_PORTIA);
+            }
         }
     }
 
