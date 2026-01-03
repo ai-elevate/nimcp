@@ -11300,30 +11300,17 @@ unit_cognitive_test_shared_intentionality/fast:
 .PHONY : unit_cognitive_test_shared_intentionality/fast
 
 #=============================================================================
-# Target rules for targets named unit_cognitive_recursive_test_context_store
+# Target rules for targets named test_rcog_bridges
 
 # Build rule for target.
-unit_cognitive_recursive_test_context_store: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_recursive_test_context_store
-.PHONY : unit_cognitive_recursive_test_context_store
+test_rcog_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_rcog_bridges
+.PHONY : test_rcog_bridges
 
 # fast build rule for target.
-unit_cognitive_recursive_test_context_store/fast:
-	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/recursive/CMakeFiles/unit_cognitive_recursive_test_context_store.dir/build.make test/unit/cognitive/recursive/CMakeFiles/unit_cognitive_recursive_test_context_store.dir/build
-.PHONY : unit_cognitive_recursive_test_context_store/fast
-
-#=============================================================================
-# Target rules for targets named unit_cognitive_recursive_test_answer
-
-# Build rule for target.
-unit_cognitive_recursive_test_answer: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_recursive_test_answer
-.PHONY : unit_cognitive_recursive_test_answer
-
-# fast build rule for target.
-unit_cognitive_recursive_test_answer/fast:
-	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/recursive/CMakeFiles/unit_cognitive_recursive_test_answer.dir/build.make test/unit/cognitive/recursive/CMakeFiles/unit_cognitive_recursive_test_answer.dir/build
-.PHONY : unit_cognitive_recursive_test_answer/fast
+test_rcog_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/recursive/CMakeFiles/test_rcog_bridges.dir/build.make test/unit/cognitive/recursive/CMakeFiles/test_rcog_bridges.dir/build
+.PHONY : test_rcog_bridges/fast
 
 #=============================================================================
 # Target rules for targets named integration_cognitive_bio_async_test
@@ -22524,6 +22511,7 @@ help:
 	@echo "... test_quorum_immune_logic_integration"
 	@echo "... test_quorum_immune_logic_regression"
 	@echo "... test_quorum_logic"
+	@echo "... test_rcog_bridges"
 	@echo "... test_reasoning_factory"
 	@echo "... test_reasoning_memory"
 	@echo "... test_reasoning_performance"
@@ -22765,8 +22753,6 @@ help:
 	@echo "... unit_cognitive_predictive_test_predictive_real"
 	@echo "... unit_cognitive_reasoning_substrate_bridge"
 	@echo "... unit_cognitive_reasoning_test_reasoning_sleep_bridge"
-	@echo "... unit_cognitive_recursive_test_answer"
-	@echo "... unit_cognitive_recursive_test_context_store"
 	@echo "... unit_cognitive_salience_test_salience"
 	@echo "... unit_cognitive_salience_test_salience_comprehensive"
 	@echo "... unit_cognitive_salience_test_salience_coverage"

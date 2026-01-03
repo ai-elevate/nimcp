@@ -1,21 +1,18 @@
 # ============================================================================
 # Recursive Cognition Unit Tests
 # ============================================================================
-# WHAT: CMakeLists for recursive cognition (RLM-inspired) tests
-# WHY:  Build GTest-based tests for context store and answer refiner
-# HOW:  Add test binaries for each component
-# ============================================================================
+#
+# WHAT: Unit tests for recursive cognition module components
+# WHY:  Verify individual bridge functionality and API contracts
+# HOW:  GTest-based tests with comprehensive coverage
 
-# Context Store Tests
+message(STATUS "Adding recursive cognition unit tests...")
+
+# Test 1: All RCOG Bridges
 add_test_binary(
-    unit_cognitive_recursive_test_context_store
-    ${CMAKE_CURRENT_SOURCE_DIR}/test_rcog_context_store.cpp
+    test_rcog_bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_rcog_bridges.cpp
     unit
 )
 
-# Answer Refiner Tests
-add_test_binary(
-    unit_cognitive_recursive_test_answer
-    ${CMAKE_CURRENT_SOURCE_DIR}/test_rcog_answer.cpp
-    unit
-)
+message(STATUS "  Configured recursive cognition unit tests")

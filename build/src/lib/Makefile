@@ -7865,6 +7865,30 @@ __/cognitive/recursive/nimcp_rcog_orchestrator.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_orchestrator.c.s
 .PHONY : __/cognitive/recursive/nimcp_rcog_orchestrator.c.s
 
+__/cognitive/recursive/nimcp_rcog_tool_router.o: __/cognitive/recursive/nimcp_rcog_tool_router.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_tool_router.o
+
+# target to build an object file
+__/cognitive/recursive/nimcp_rcog_tool_router.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_tool_router.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_tool_router.c.o
+
+__/cognitive/recursive/nimcp_rcog_tool_router.i: __/cognitive/recursive/nimcp_rcog_tool_router.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_tool_router.i
+
+# target to preprocess a source file
+__/cognitive/recursive/nimcp_rcog_tool_router.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_tool_router.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_tool_router.c.i
+
+__/cognitive/recursive/nimcp_rcog_tool_router.s: __/cognitive/recursive/nimcp_rcog_tool_router.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_tool_router.s
+
+# target to generate assembly for a file
+__/cognitive/recursive/nimcp_rcog_tool_router.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_tool_router.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_tool_router.c.s
+
 __/cognitive/remorse/nimcp_remorse_fep_bridge.o: __/cognitive/remorse/nimcp_remorse_fep_bridge.c.o
 .PHONY : __/cognitive/remorse/nimcp_remorse_fep_bridge.o
 
@@ -30031,6 +30055,9 @@ help:
 	@echo "... __/cognitive/recursive/nimcp_rcog_orchestrator.o"
 	@echo "... __/cognitive/recursive/nimcp_rcog_orchestrator.i"
 	@echo "... __/cognitive/recursive/nimcp_rcog_orchestrator.s"
+	@echo "... __/cognitive/recursive/nimcp_rcog_tool_router.o"
+	@echo "... __/cognitive/recursive/nimcp_rcog_tool_router.i"
+	@echo "... __/cognitive/recursive/nimcp_rcog_tool_router.s"
 	@echo "... __/cognitive/remorse/nimcp_remorse_fep_bridge.o"
 	@echo "... __/cognitive/remorse/nimcp_remorse_fep_bridge.i"
 	@echo "... __/cognitive/remorse/nimcp_remorse_fep_bridge.s"

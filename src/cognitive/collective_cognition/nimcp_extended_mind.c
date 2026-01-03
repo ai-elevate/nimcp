@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/collective_cognition/nimcp_extended_mind.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <stdio.h>
@@ -826,4 +827,28 @@ void extended_mind_dump(const extended_mind_t* em) {
     printf("  Avg latency: %.2fms\n", em->stats.avg_latency_ms);
     printf("  Avg reliability: %.2f\n", em->stats.avg_reliability);
     printf("  Bytes transferred: %lu\n", (unsigned long)em->stats.bytes_transferred);
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for Extended Mind self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int extended_mind_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Extended_Mind");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            printf("Extended Mind self-knowledge: %s\n", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Extended_Mind");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Extended_Mind");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

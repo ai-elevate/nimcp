@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/collective_cognition/nimcp_hyperscanning.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/containers/nimcp_hash_table.h"
@@ -1188,4 +1189,28 @@ void hyperscanning_dump(const hyperscanning_t* hs) {
     printf("  Entrainment successes: %lu\n", (unsigned long)hs->stats.entrainment_successes);
     printf("  Avg global sync: %.3f\n", hs->stats.avg_global_sync);
     printf("  Max global sync: %.3f\n", hs->stats.max_global_sync);
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for Hyperscanning self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int hyperscanning_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Hyperscanning");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            printf("Hyperscanning self-knowledge: %s\n", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Hyperscanning");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Hyperscanning");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/collective_cognition/nimcp_collective_phi.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <stdio.h>
@@ -832,4 +833,28 @@ void collective_phi_dump(const collective_phi_system_t* cps) {
            cps->stats.avg_phi, cps->stats.min_phi, cps->stats.max_phi);
     printf("  Emergence events: %lu\n", (unsigned long)cps->stats.emergence_events);
     printf("  Fragmentation events: %lu\n", (unsigned long)cps->stats.fragmentation_events);
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for Collective Phi self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int collective_phi_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Collective_Phi");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            printf("Collective Phi self-knowledge: %s\n", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Collective_Phi");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Collective_Phi");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

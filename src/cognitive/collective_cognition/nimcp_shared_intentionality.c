@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/collective_cognition/nimcp_shared_intentionality.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <stdio.h>
@@ -1026,4 +1027,28 @@ void shared_intentionality_dump(const shared_intentionality_t* si) {
     printf("  Goals failed: %lu\n", (unsigned long)si->stats.goals_failed);
     printf("  Avg commitment: %.2f\n", si->stats.avg_commitment);
     printf("  We-mode time ratio: %.2f\n", si->stats.we_mode_time_ratio);
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for Shared Intentionality self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int shared_intentionality_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Shared_Intentionality");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            printf("Shared Intentionality self-knowledge: %s\n", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Shared_Intentionality");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Shared_Intentionality");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

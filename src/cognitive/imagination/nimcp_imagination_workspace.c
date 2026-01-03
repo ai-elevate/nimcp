@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/imagination/nimcp_imagination_workspace.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/error/nimcp_error_codes.h"
 
@@ -563,4 +564,28 @@ int imagination_workspace_reset_stats(imagination_workspace_t* workspace) {
     nimcp_mutex_unlock(workspace->mutex);
 
     return 0;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for Imagination Workspace self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int imagination_workspace_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Imagination_Workspace");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Use basic logging since no LOG_MODULE defined */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Imagination_Workspace");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Imagination_Workspace");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

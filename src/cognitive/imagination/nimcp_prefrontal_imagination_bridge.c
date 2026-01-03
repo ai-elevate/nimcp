@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/imagination/nimcp_prefrontal_imagination_bridge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/imagination/nimcp_imagination_engine.h"
 #include "core/brain/regions/prefrontal/nimcp_prefrontal_adapter.h"
 #include "utils/memory/nimcp_memory.h"
@@ -741,4 +742,28 @@ int prefrontal_imagination_process_messages(
      */
 
     return 0;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for Prefrontal Imagination Bridge self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int prefrontal_imagination_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Prefrontal_Imagination_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Prefrontal Imagination Bridge self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Prefrontal_Imagination_Bridge");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Prefrontal_Imagination_Bridge");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

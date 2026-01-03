@@ -17,6 +17,7 @@
  */
 
 #include "cognitive/collective_cognition/nimcp_collective_cognition_immune_bridge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/memory/nimcp_memory.h"
@@ -798,4 +799,28 @@ void collective_immune_bridge_dump(const collective_immune_bridge_t* bridge)
     LOG_INFO("  Avg response time: %.2f ms", stats.avg_response_time_ms);
     LOG_INFO("  Pending threats: %u", bridge->pending_threat_count);
     LOG_INFO("======================================");
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for Collective Cognition Immune Bridge self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int collective_cognition_immune_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Collective_Cognition_Immune_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Collective Cognition Immune Bridge self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Collective_Cognition_Immune_Bridge");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Collective_Cognition_Immune_Bridge");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

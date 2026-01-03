@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/collective_cognition/nimcp_hyperscanning.h"
 #include "cognitive/collective_cognition/nimcp_extended_mind.h"
 #include "cognitive/collective_cognition/nimcp_collective_phi.h"
@@ -965,4 +966,28 @@ void collective_cognition_dump(const collective_cognition_t* cc) {
     printf("  Avg sync: %.3f\n", cc->stats.avg_sync);
 
     printf("\nBio-Async: %s\n", cc->bio_async_connected ? "connected" : "disconnected");
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for Collective Cognition self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int collective_cognition_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Collective_Cognition");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            printf("Collective Cognition self-knowledge: %s\n", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Collective_Cognition");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Collective_Cognition");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }
