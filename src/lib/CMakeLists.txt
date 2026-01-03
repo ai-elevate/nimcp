@@ -469,6 +469,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_orchestrator.c  # Task decomposition and coordination
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_delegation_pool.c  # Worker pool for subtask execution
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_tool_router.c  # Capability-based tool access control
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_engine.c  # Main processing coordinator
 
     # Game Theory - Economic mechanisms for cognitive resource allocation
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory.c  # Core game theory types and utilities
