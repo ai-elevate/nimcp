@@ -276,3 +276,31 @@ gtest_discover_tests(unit_async_wiring_diagram
         LABELS "unit;async;wiring"
         TIMEOUT 120
 )
+
+# ============================================================================
+# KG Dispatch Unit Tests (Phase 7: Runtime Message Orchestration)
+# ============================================================================
+
+add_executable(unit_async_bio_router_kg_dispatch
+    test_bio_router_kg_dispatch.cpp
+)
+target_link_libraries(unit_async_bio_router_kg_dispatch
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_include_directories(unit_async_bio_router_kg_dispatch
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_async_bio_router_kg_dispatch PRIVATE cxx_std_17)
+gtest_discover_tests(unit_async_bio_router_kg_dispatch
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;async;router;kg;dispatch"
+        TIMEOUT 120
+)

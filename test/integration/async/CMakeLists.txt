@@ -202,3 +202,32 @@ gtest_discover_tests(integration_async_test_wiring_diagram
         LABELS "integration;async;wiring"
         TIMEOUT 180
 )
+
+# Test 8: KG Dispatch Integration (Phase 7: Runtime Message Orchestration)
+add_executable(integration_async_test_bio_router_kg_dispatch
+    test_bio_router_kg_dispatch_integration.cpp
+)
+
+target_link_libraries(integration_async_test_bio_router_kg_dispatch
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_async_test_bio_router_kg_dispatch
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_async_test_bio_router_kg_dispatch PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_async_test_bio_router_kg_dispatch
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;async;router;kg;dispatch"
+        TIMEOUT 180
+)

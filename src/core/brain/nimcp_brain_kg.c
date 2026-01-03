@@ -2078,14 +2078,11 @@ int brain_kg_add_message_handler(
 
     nimcp_mutex_lock(kg->mutex);
 
-    /* Verify module node exists */
-    brain_kg_node_t* node = find_node_by_id_unlocked(kg, module_node_id);
-    if (!node) {
-        nimcp_mutex_unlock(kg->mutex);
-        NIMCP_LOGGING_WARN("Cannot add message handler: module node %u not found",
-                           module_node_id);
-        return -1;
-    }
+    /* Note: We intentionally skip node existence validation here.
+     * The message index stores handler IDs that can be:
+     * - Internal KG node IDs (for KG-internal use)
+     * - bio_module_ids (for Phase 7 KG dispatch)
+     * The consumer of the handler list interprets the IDs appropriately. */
 
     /* Get or create index entry */
     brain_kg_msg_index_entry_t* entry = get_or_create_msg_index_entry_unlocked(
@@ -2116,8 +2113,8 @@ int brain_kg_add_message_handler(
 
     nimcp_mutex_unlock(kg->mutex);
 
-    NIMCP_LOGGING_DEBUG("Added handler for msg type 0x%x: node %u (%s)",
-                        message_type, module_node_id, node->name);
+    NIMCP_LOGGING_DEBUG("Added handler for msg type 0x%x: handler ID %u",
+                        message_type, module_node_id);
     return 0;
 }
 

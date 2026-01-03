@@ -144,10 +144,13 @@ TEST_F(BrainKGMessageIndexTest, test_remove_nonexistent_handler) {
     EXPECT_EQ(brain_kg_remove_message_handler(kg, node_id, 0x500), -1);
 }
 
-// Test add handler for invalid node
+// Test add handler for invalid node ID (BRAIN_KG_INVALID_NODE only)
+// Note: Phase 7 relaxed validation - any valid ID is now accepted as a handler,
+// whether or not a corresponding node exists (for bio_module_id support)
 TEST_F(BrainKGMessageIndexTest, test_add_handler_invalid_node) {
     EXPECT_EQ(brain_kg_add_message_handler(kg, BRAIN_KG_INVALID_NODE, 0x600), -1);
-    EXPECT_EQ(brain_kg_add_message_handler(kg, 99999, 0x600), -1);  // Non-existent
+    // Non-existent node IDs are now allowed (for bio_module_id support)
+    EXPECT_EQ(brain_kg_add_message_handler(kg, 99999, 0x600), 0);
 }
 
 // Test get module handled messages (reverse lookup)
