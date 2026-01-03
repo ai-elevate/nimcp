@@ -848,6 +848,17 @@ bool working_memory_add(
         return false;
     }
 
+    // CRITICAL: Allocate and copy item BEFORE locking/evicting
+    // WHY: The input 'item' pointer may point to an existing working memory item.
+    //      If we evict that item before copying, we'd read from freed memory.
+    //      By copying first, we safely capture the data before any eviction.
+    float* item_copy = nimcp_malloc(item_size * sizeof(float));
+    if (!item_copy) {
+        set_error("Failed to allocate item memory");
+        return false;
+    }
+    memcpy(item_copy, item, item_size * sizeof(float));
+
     // Lock mutex for thread-safe access
     nimcp_platform_mutex_lock(&wm->mutex);
 
@@ -857,16 +868,14 @@ bool working_memory_add(
         if (evict_index >= 0) {
             evict_item_at_index(wm, evict_index);
         }
+        // Safety check: if eviction failed, we can't add
+        if (wm->current_size >= wm->capacity) {
+            nimcp_platform_mutex_unlock(&wm->mutex);
+            nimcp_free(item_copy);
+            set_error("Working memory full and eviction failed");
+            return false;
+        }
     }
-
-    // Allocate and copy item
-    float* item_copy = nimcp_malloc(item_size * sizeof(float));
-    if (!item_copy) {
-        set_error("Failed to allocate item memory");
-        nimcp_platform_mutex_unlock(&wm->mutex);
-        return false;
-    }
-    memcpy(item_copy, item, item_size * sizeof(float));
 
     // Insert at end
     uint32_t index = wm->current_size;

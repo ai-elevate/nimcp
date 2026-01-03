@@ -7769,6 +7769,30 @@ __/cognitive/recursive/nimcp_rcog_context_store.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_context_store.c.s
 .PHONY : __/cognitive/recursive/nimcp_rcog_context_store.c.s
 
+__/cognitive/recursive/nimcp_rcog_delegation_pool.o: __/cognitive/recursive/nimcp_rcog_delegation_pool.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_delegation_pool.o
+
+# target to build an object file
+__/cognitive/recursive/nimcp_rcog_delegation_pool.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_delegation_pool.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_delegation_pool.c.o
+
+__/cognitive/recursive/nimcp_rcog_delegation_pool.i: __/cognitive/recursive/nimcp_rcog_delegation_pool.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_delegation_pool.i
+
+# target to preprocess a source file
+__/cognitive/recursive/nimcp_rcog_delegation_pool.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_delegation_pool.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_delegation_pool.c.i
+
+__/cognitive/recursive/nimcp_rcog_delegation_pool.s: __/cognitive/recursive/nimcp_rcog_delegation_pool.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_delegation_pool.s
+
+# target to generate assembly for a file
+__/cognitive/recursive/nimcp_rcog_delegation_pool.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_delegation_pool.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_delegation_pool.c.s
+
 __/cognitive/recursive/nimcp_rcog_imagination_bridge.o: __/cognitive/recursive/nimcp_rcog_imagination_bridge.c.o
 .PHONY : __/cognitive/recursive/nimcp_rcog_imagination_bridge.o
 
@@ -7816,6 +7840,30 @@ __/cognitive/recursive/nimcp_rcog_immune_bridge.s: __/cognitive/recursive/nimcp_
 __/cognitive/recursive/nimcp_rcog_immune_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_immune_bridge.c.s
 .PHONY : __/cognitive/recursive/nimcp_rcog_immune_bridge.c.s
+
+__/cognitive/recursive/nimcp_rcog_orchestrator.o: __/cognitive/recursive/nimcp_rcog_orchestrator.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_orchestrator.o
+
+# target to build an object file
+__/cognitive/recursive/nimcp_rcog_orchestrator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_orchestrator.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_orchestrator.c.o
+
+__/cognitive/recursive/nimcp_rcog_orchestrator.i: __/cognitive/recursive/nimcp_rcog_orchestrator.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_orchestrator.i
+
+# target to preprocess a source file
+__/cognitive/recursive/nimcp_rcog_orchestrator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_orchestrator.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_orchestrator.c.i
+
+__/cognitive/recursive/nimcp_rcog_orchestrator.s: __/cognitive/recursive/nimcp_rcog_orchestrator.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_orchestrator.s
+
+# target to generate assembly for a file
+__/cognitive/recursive/nimcp_rcog_orchestrator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_orchestrator.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_orchestrator.c.s
 
 __/cognitive/remorse/nimcp_remorse_fep_bridge.o: __/cognitive/remorse/nimcp_remorse_fep_bridge.c.o
 .PHONY : __/cognitive/remorse/nimcp_remorse_fep_bridge.o
@@ -29971,12 +30019,18 @@ help:
 	@echo "... __/cognitive/recursive/nimcp_rcog_context_store.o"
 	@echo "... __/cognitive/recursive/nimcp_rcog_context_store.i"
 	@echo "... __/cognitive/recursive/nimcp_rcog_context_store.s"
+	@echo "... __/cognitive/recursive/nimcp_rcog_delegation_pool.o"
+	@echo "... __/cognitive/recursive/nimcp_rcog_delegation_pool.i"
+	@echo "... __/cognitive/recursive/nimcp_rcog_delegation_pool.s"
 	@echo "... __/cognitive/recursive/nimcp_rcog_imagination_bridge.o"
 	@echo "... __/cognitive/recursive/nimcp_rcog_imagination_bridge.i"
 	@echo "... __/cognitive/recursive/nimcp_rcog_imagination_bridge.s"
 	@echo "... __/cognitive/recursive/nimcp_rcog_immune_bridge.o"
 	@echo "... __/cognitive/recursive/nimcp_rcog_immune_bridge.i"
 	@echo "... __/cognitive/recursive/nimcp_rcog_immune_bridge.s"
+	@echo "... __/cognitive/recursive/nimcp_rcog_orchestrator.o"
+	@echo "... __/cognitive/recursive/nimcp_rcog_orchestrator.i"
+	@echo "... __/cognitive/recursive/nimcp_rcog_orchestrator.s"
 	@echo "... __/cognitive/remorse/nimcp_remorse_fep_bridge.o"
 	@echo "... __/cognitive/remorse/nimcp_remorse_fep_bridge.i"
 	@echo "... __/cognitive/remorse/nimcp_remorse_fep_bridge.s"

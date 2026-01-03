@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/attention/nimcp_emotion_attention.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -908,4 +909,28 @@ bool emotion_attention_get_priority_embedding(
 
     EA_LOG_DEBUG("Retrieved priority embedding for rank %u", priority_rank);
     return true;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for Emotion Attention self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int emotion_attention_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Emotion_Attention");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            EA_LOG_DEBUG("Emotion Attention self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Emotion_Attention");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Emotion_Attention");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

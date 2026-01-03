@@ -3292,6 +3292,26 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // ========================================================================
+    // DEFENSIVE COPY: Protect against input pointer invalidation
+    // ========================================================================
+    // WHAT: Make a local copy of the input features
+    // WHY:  The caller may pass a pointer to working memory storage. Operations
+    //       within brain_decide (e.g., working_memory_add) may evict and free
+    //       that storage, invalidating the pointer. By copying first, we ensure
+    //       safe access throughout the function.
+    // HOW:  Allocate, copy, use local_features everywhere, free at return points
+    float* local_features = nimcp_malloc(num_features * sizeof(float));
+    if (!local_features) {
+        set_error("Failed to allocate local features buffer");
+        return NULL;
+    }
+    memcpy(local_features, features, num_features * sizeof(float));
+
+    // Use local_features instead of features from here on
+    // (reassign to avoid changing all usage sites)
+    features = local_features;
+
+    // ========================================================================
     // CACHE CHECK: Thread-safe decision caching with mutex protection
     // ========================================================================
     // WHAT: Check if input matches cached input and return cached decision
@@ -3308,6 +3328,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // Lock cache mutex and check for cached decision
     if (nimcp_platform_mutex_lock(&brain->cache_mutex) != 0) {
         set_error("Failed to lock cache mutex for cache check");
+        nimcp_free(local_features);
         return NULL;
     }
 
@@ -3317,18 +3338,21 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         if (nimcp_platform_mutex_unlock(&brain->cache_mutex) != 0) {
             set_error("Failed to unlock cache mutex after cache hit");
             brain_free_decision(cached_copy);
+            nimcp_free(local_features);
             return NULL;
         }
 
         if (cached_copy) {
             // Use atomic increment for thread-safe stats update
             __atomic_fetch_add(&brain->stats.total_inferences, 1, __ATOMIC_RELAXED);
+            nimcp_free(local_features);
             return cached_copy;
         }
         // Fall through if copy failed
     } else {
         if (nimcp_platform_mutex_unlock(&brain->cache_mutex) != 0) {
             set_error("Failed to unlock cache mutex after cache miss");
+            nimcp_free(local_features);
             return NULL;
         }
     }
@@ -3355,6 +3379,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                 set_error("Decision blocked: System in CRITICAL distress (%s)",
                          brain->last_distress.description ? brain->last_distress.description : "Unknown");
                 // Note: Caller should check error and potentially apply intervention
+                nimcp_free(local_features);
                 return NULL;
             }
         }
@@ -3366,6 +3391,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     if (!brain->can_use_readonly) {
         // Not using read-only mode - ensure network is writable
         if (!ensure_writable_network(brain)) {
+            nimcp_free(local_features);
             return NULL;  // Error already set
         }
     }
@@ -3375,6 +3401,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     brain_decision_t* decision = allocate_decision(brain->config.num_outputs);
     if (!decision) {
         set_error("Failed to allocate decision structure");
+        nimcp_free(local_features);
         return NULL;
     }
 
@@ -4332,6 +4359,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     cache_decision(brain, features, num_features, decision);
     nimcp_platform_mutex_unlock(&brain->cache_mutex);
 
+    // Free the defensive copy of features
+    nimcp_free(local_features);
     return decision;
 
     // ========================================================================
