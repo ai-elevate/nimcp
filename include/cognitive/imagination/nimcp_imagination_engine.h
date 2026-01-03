@@ -167,6 +167,12 @@ typedef struct equation_manipulation_context equation_manipulation_context_t;
 /* Quantum Reasoning */
 typedef struct qreason_kb qreason_kb_t;
 typedef struct qreason_qstate qreason_qstate_t;
+
+/* Swarm/Collective Consciousness */
+typedef struct swarm_consciousness_ctx swarm_consciousness_ctx_t;
+
+/* Internal Knowledge Graph */
+typedef struct brain_kg brain_kg_t;
 typedef struct qreason_cnf qreason_cnf_t;
 
 /**
@@ -474,6 +480,13 @@ typedef struct imagination_engine {
     qreason_kb_t* quantum_kb;           /**< Quantum knowledge base */
     qreason_qstate_t* quantum_state;    /**< Quantum superposition state */
     bool quantum_enabled;               /**< Quantum reasoning enabled */
+
+    /* Collective Consciousness */
+    swarm_consciousness_ctx_t* collective; /**< Swarm consciousness connection */
+
+    /* Internal Knowledge Graph */
+    brain_kg_t* kg;                     /**< Brain KG registration */
+    uint32_t kg_node_id;                /**< Node ID in brain KG */
 
     /* GPU acceleration */
     nimcp_gpu_context_t* gpu_ctx;       /**< GPU context */
@@ -809,6 +822,71 @@ int imagination_engine_init_quantum_state(
 int imagination_engine_set_quantum_enabled(
     imagination_engine_t* engine,
     bool enabled);
+
+/*============================================================================
+ * Collective Consciousness Integration
+ *============================================================================*/
+
+/**
+ * @brief Connect swarm/collective consciousness
+ *
+ * WHAT: Enable collective imagination across swarm nodes
+ * WHY:  Shared imagination scenarios, distributed counterfactual reasoning,
+ *       collective creative recombination, swarm-level prospective simulation
+ *
+ * @param engine Engine instance
+ * @param collective Collective consciousness context
+ * @return 0 on success, -1 on failure
+ */
+int imagination_engine_connect_collective(
+    imagination_engine_t* engine,
+    swarm_consciousness_ctx_t* collective);
+
+/**
+ * @brief Broadcast imagination scenario to collective
+ *
+ * WHAT: Share current scenario with swarm consciousness
+ * WHY:  Enable collective processing and emergent insights
+ *
+ * @param engine Engine instance
+ * @param scenario Scenario to broadcast
+ * @return 0 on success, -1 on failure
+ */
+int imagination_broadcast_to_collective(
+    imagination_engine_t* engine,
+    imagination_scenario_t* scenario);
+
+/**
+ * @brief Receive collective imagination insights
+ *
+ * WHAT: Gather insights from swarm nodes into scenario
+ * WHY:  Integrate collective perspectives into imagination
+ *
+ * @param engine Engine instance
+ * @param scenario Scenario to update
+ * @return Number of insights received, -1 on failure
+ */
+int imagination_receive_collective_insights(
+    imagination_engine_t* engine,
+    imagination_scenario_t* scenario);
+
+/*============================================================================
+ * Internal Knowledge Graph Registration
+ *============================================================================*/
+
+/**
+ * @brief Register imagination engine with brain's internal KG
+ *
+ * WHAT: Add imagination engine node and edges to brain KG
+ * WHY:  Enable brain self-awareness of imagination capabilities and connections
+ *
+ * @param engine Engine instance
+ * @param kg Brain internal knowledge graph
+ * @return 0 on success, -1 on failure
+ */
+int imagination_engine_register_with_kg(
+    imagination_engine_t* engine,
+    brain_kg_t* kg);
 
 /*============================================================================
  * Scenario Management API

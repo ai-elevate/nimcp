@@ -13,6 +13,7 @@
 
 #include "cognitive/imagination/nimcp_imagination_engine.h"
 #include "cognitive/imagination/nimcp_imagination_workspace.h"
+#include "core/brain/nimcp_brain_kg.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
@@ -2281,4 +2282,221 @@ const char* imagination_quality_to_string(imagination_quality_t quality) {
         case IMAGINATION_QUALITY_VIVID:  return "VIVID";
         default:                         return "UNKNOWN";
     }
+}
+
+/*============================================================================
+ * Collective Consciousness Integration
+ *============================================================================*/
+
+int imagination_engine_connect_collective(
+    imagination_engine_t* engine,
+    swarm_consciousness_ctx_t* collective) {
+
+    if (!engine) return -1;
+
+    nimcp_mutex_lock(engine->mutex);
+    engine->collective = collective;
+    nimcp_mutex_unlock(engine->mutex);
+
+    return 0;
+}
+
+int imagination_broadcast_to_collective(
+    imagination_engine_t* engine,
+    imagination_scenario_t* scenario) {
+
+    if (!engine || !scenario) return -1;
+    if (!engine->collective) return -1;  /* No collective connected */
+
+    nimcp_mutex_lock(engine->mutex);
+
+    /* TODO: When swarm_consciousness API supports it, broadcast latent state
+     * to collective workspace for distributed processing.
+     * For now, placeholder implementation. */
+
+    nimcp_mutex_unlock(engine->mutex);
+
+    return 0;
+}
+
+int imagination_receive_collective_insights(
+    imagination_engine_t* engine,
+    imagination_scenario_t* scenario) {
+
+    if (!engine || !scenario) return -1;
+    if (!engine->collective) return -1;  /* No collective connected */
+
+    nimcp_mutex_lock(engine->mutex);
+
+    /* TODO: When swarm_consciousness API supports it, receive collective
+     * insights and integrate into scenario's latent state.
+     * For now, placeholder returning 0 insights. */
+
+    nimcp_mutex_unlock(engine->mutex);
+
+    return 0;  /* 0 insights received (placeholder) */
+}
+
+/*============================================================================
+ * Internal Knowledge Graph Registration
+ *============================================================================*/
+
+int imagination_engine_register_with_kg(
+    imagination_engine_t* engine,
+    brain_kg_t* kg) {
+
+    if (!engine || !kg) return -1;
+
+    nimcp_mutex_lock(engine->mutex);
+
+    /* Store KG reference */
+    engine->kg = kg;
+
+    /* Add imagination engine as a cognitive node */
+    engine->kg_node_id = brain_kg_add_node(kg,
+        "imagination_engine",
+        BRAIN_KG_NODE_COGNITIVE,
+        "Generative mental simulation: 12 modes including counterfactual, "
+        "prospective, creative, social, spatial, mathematical, scientific reasoning");
+
+    if (engine->kg_node_id == BRAIN_KG_INVALID_NODE) {
+        nimcp_mutex_unlock(engine->mutex);
+        return -1;
+    }
+
+    /* Register edges for connected systems */
+
+    /* Cognitive connections */
+    if (engine->world_model) {
+        uint32_t jepa_node = brain_kg_find_node(kg, "jepa_predictor");
+        if (jepa_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, jepa_node,
+                BRAIN_KG_EDGE_INTEGRATES_WITH,
+                "Latent prediction for imagination", 0.9f);
+        }
+    }
+
+    if (engine->hippocampus) {
+        uint32_t hipp_node = brain_kg_find_node(kg, "hippocampus");
+        if (hipp_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, hipp_node,
+                BRAIN_KG_EDGE_CONNECTS_TO,
+                "Memory retrieval for imagination", 0.8f);
+        }
+    }
+
+    if (engine->prefrontal) {
+        uint32_t pfc_node = brain_kg_find_node(kg, "prefrontal_cortex");
+        if (pfc_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, pfc_node,
+                BRAIN_KG_EDGE_RECEIVES_FROM,
+                "Executive control of imagination", 0.9f);
+        }
+    }
+
+    if (engine->visual_cortex) {
+        uint32_t vis_node = brain_kg_find_node(kg, "visual_cortex");
+        if (vis_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, vis_node,
+                BRAIN_KG_EDGE_SENDS_TO,
+                "Visual generation from imagination", 0.8f);
+        }
+    }
+
+    if (engine->audio_cortex) {
+        uint32_t aud_node = brain_kg_find_node(kg, "audio_cortex");
+        if (aud_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, aud_node,
+                BRAIN_KG_EDGE_SENDS_TO,
+                "Audio generation from imagination", 0.7f);
+        }
+    }
+
+    if (engine->global_workspace) {
+        uint32_t gws_node = brain_kg_find_node(kg, "global_workspace");
+        if (gws_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, gws_node,
+                BRAIN_KG_EDGE_CONNECTS_TO,
+                "Conscious broadcast of imagined content", 0.8f);
+        }
+    }
+
+    if (engine->tom) {
+        uint32_t tom_node = brain_kg_find_node(kg, "theory_of_mind");
+        if (tom_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, tom_node,
+                BRAIN_KG_EDGE_INTEGRATES_WITH,
+                "Social imagination and perspective-taking", 0.85f);
+        }
+    }
+
+    if (engine->curiosity) {
+        uint32_t cur_node = brain_kg_find_node(kg, "curiosity");
+        if (cur_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, cur_node,
+                BRAIN_KG_EDGE_RECEIVES_FROM,
+                "Curiosity drives exploratory imagination", 0.7f);
+        }
+    }
+
+    if (engine->sleep) {
+        uint32_t slp_node = brain_kg_find_node(kg, "sleep_wake_cycle");
+        if (slp_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, slp_node,
+                BRAIN_KG_EDGE_MODULATES,
+                "REM sleep enhances creative imagination", 0.6f);
+        }
+    }
+
+    /* Integration bridges */
+    if (engine->immune) {
+        uint32_t imm_node = brain_kg_find_node(kg, "brain_immune");
+        if (imm_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, imm_node,
+                BRAIN_KG_EDGE_MODULATES,
+                "Immune state modulates vividness/coherence", 0.5f);
+        }
+    }
+
+    if (engine->substrate) {
+        uint32_t sub_node = brain_kg_find_node(kg, "neural_substrate");
+        if (sub_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, sub_node,
+                BRAIN_KG_EDGE_DEPENDS_ON,
+                "Metabolic constraints on imagination", 0.6f);
+        }
+    }
+
+    if (engine->thalamic) {
+        uint32_t thal_node = brain_kg_find_node(kg, "thalamic_router");
+        if (thal_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, thal_node,
+                BRAIN_KG_EDGE_RECEIVES_FROM,
+                "Attention gating for imagination", 0.7f);
+        }
+    }
+
+    /* Parietal connections */
+    if (engine->parietal) {
+        uint32_t par_node = brain_kg_find_node(kg, "parietal_lobe");
+        if (par_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, par_node,
+                BRAIN_KG_EDGE_INTEGRATES_WITH,
+                "Spatial/mathematical reasoning in imagination", 0.8f);
+        }
+    }
+
+    /* Collective consciousness */
+    if (engine->collective) {
+        uint32_t col_node = brain_kg_find_node(kg, "swarm_consciousness");
+        if (col_node != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, engine->kg_node_id, col_node,
+                BRAIN_KG_EDGE_CONNECTS_TO,
+                "Collective imagination across swarm", 0.7f);
+        }
+    }
+
+    nimcp_mutex_unlock(engine->mutex);
+
+    return 0;
 }
