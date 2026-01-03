@@ -14,6 +14,7 @@
 #include "cognitive/jepa/nimcp_jepa_multimodal.h"
 #include "cognitive/jepa/nimcp_jepa_latent.h"
 #include "cognitive/jepa/nimcp_jepa_predictor.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -1294,4 +1295,36 @@ static float cosine_similarity(const float* a, const float* b, uint32_t dim)
 
     float denom = sqrtf(norm_a) * sqrtf(norm_b);
     return denom > 1e-8f ? dot / denom : 0.0f;
+}
+
+/* ============================================================================
+ * KG Self-Awareness API
+ * ============================================================================ */
+
+int jepa_multimodal_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "JEPA_Multimodal");
+    if (self) {
+        NIMCP_LOGGING_INFO("[%s] Self-knowledge entity: %s (type: %s)",
+                          MULTIMODAL_LOG_TAG, self->name, self->entity_type);
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("[%s] Observation[%u]: %s",
+                               MULTIMODAL_LOG_TAG, i, self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "JEPA_Multimodal");
+    if (connections) {
+        NIMCP_LOGGING_DEBUG("[%s] Outgoing connections: %u", MULTIMODAL_LOG_TAG, connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "JEPA_Multimodal");
+    if (incoming) {
+        NIMCP_LOGGING_DEBUG("[%s] Incoming connections: %u", MULTIMODAL_LOG_TAG, incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

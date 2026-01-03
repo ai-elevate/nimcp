@@ -452,6 +452,122 @@ TEST_F(SwarmSleepConfigTest, NullConfigReturnsError) {
 }
 
 /* =============================================================================
+ * Bidirectional Consciousness <-> Sleep Integration Tests
+ *
+ * These tests verify the bidirectional integration where:
+ * - Sleep affects consciousness (phi, integration, coherence factors)
+ * - Consciousness affects sleep (pressure modulation, wakefulness boost)
+ * ============================================================================= */
+
+TEST(SwarmBidirectionalIntegration, ConsciousnessStateAffectsSleepPressure) {
+    // DORMANT state should increase sleep pressure (promotes sleep)
+    float dormant = swarm_consciousness_sleep_get_pressure_modifier(0);
+    EXPECT_GT(dormant, 1.0f);  // > 1.0 means increased sleep pressure
+
+    // EMERGING state should be neutral
+    float emerging = swarm_consciousness_sleep_get_pressure_modifier(1);
+    EXPECT_FLOAT_EQ(1.0f, emerging);
+
+    // UNIFIED state should reduce sleep pressure (promotes wakefulness)
+    float unified = swarm_consciousness_sleep_get_pressure_modifier(2);
+    EXPECT_LT(unified, 1.0f);  // < 1.0 means reduced sleep pressure
+
+    // TRANSCENDENT state should strongly reduce sleep pressure
+    float transcendent = swarm_consciousness_sleep_get_pressure_modifier(3);
+    EXPECT_LT(transcendent, unified);  // Even more wakefulness-promoting
+}
+
+TEST(SwarmBidirectionalIntegration, HighConsciousnessPromotesWakefulness) {
+    // Higher consciousness states should progressively reduce sleep pressure
+    float dormant_pressure = swarm_consciousness_sleep_get_pressure_modifier(0);
+    float emerging_pressure = swarm_consciousness_sleep_get_pressure_modifier(1);
+    float unified_pressure = swarm_consciousness_sleep_get_pressure_modifier(2);
+    float transcendent_pressure = swarm_consciousness_sleep_get_pressure_modifier(3);
+
+    // Should form a decreasing sequence
+    EXPECT_GE(dormant_pressure, emerging_pressure);
+    EXPECT_GE(emerging_pressure, unified_pressure);
+    EXPECT_GE(unified_pressure, transcendent_pressure);
+}
+
+TEST(SwarmBidirectionalIntegration, SleepStateMatchesConsciousnessExpectation) {
+    // Deep sleep should have minimal consciousness
+    float deep_phi = swarm_consciousness_sleep_get_phi_factor(SLEEP_STATE_DEEP_NREM);
+    EXPECT_LT(deep_phi, 0.1f);  // Near-zero consciousness
+
+    // Awake should have full consciousness
+    float awake_phi = swarm_consciousness_sleep_get_phi_factor(SLEEP_STATE_AWAKE);
+    EXPECT_FLOAT_EQ(1.0f, awake_phi);
+
+    // The ratio should be significant (at least 10:1)
+    EXPECT_GT(awake_phi / deep_phi, 10.0f);
+}
+
+TEST(SwarmBidirectionalIntegration, BidirectionalConsistency) {
+    // When consciousness is low (DORMANT), sleep pressure should be high
+    float dormant_sleep_mod = swarm_consciousness_sleep_get_pressure_modifier(0);
+    EXPECT_GT(dormant_sleep_mod, 1.0f);  // Promotes sleep
+
+    // When in deep sleep, consciousness should be low
+    float deep_sleep_phi = swarm_consciousness_sleep_get_phi_factor(SLEEP_STATE_DEEP_NREM);
+    EXPECT_LT(deep_sleep_phi, 0.1f);  // Very low consciousness
+
+    // This creates a consistent feedback loop:
+    // Low consciousness -> high sleep pressure -> deep sleep -> low consciousness
+}
+
+TEST(SwarmBidirectionalIntegration, TranscendentStateBlocksSleep) {
+    // The transcendent consciousness state should have the strongest
+    // wakefulness-promoting effect
+    float transcendent_mod = swarm_consciousness_sleep_get_pressure_modifier(3);
+    EXPECT_LE(transcendent_mod, 0.5f);  // Strong reduction in sleep pressure
+}
+
+/* =============================================================================
+ * Regression Tests for Collective Consciousness Integration
+ *
+ * These tests ensure the collective consciousness module properly integrates
+ * with all its connected modules through defined interfaces.
+ * ============================================================================= */
+
+TEST(SwarmConsciousnessRegression, PhiFactorRange) {
+    // All phi factors should be in valid range [0, 1]
+    for (int state = 0; state < 5; state++) {
+        float phi = swarm_consciousness_sleep_get_phi_factor((sleep_state_t)state);
+        EXPECT_GE(phi, 0.0f) << "State " << state;
+        EXPECT_LE(phi, 1.0f) << "State " << state;
+    }
+}
+
+TEST(SwarmConsciousnessRegression, IntegrationFactorRange) {
+    // All integration factors should be in valid range [0, 1]
+    for (int state = 0; state < 5; state++) {
+        float factor = swarm_consciousness_sleep_get_integration_factor((sleep_state_t)state);
+        EXPECT_GE(factor, 0.0f) << "State " << state;
+        EXPECT_LE(factor, 1.0f) << "State " << state;
+    }
+}
+
+TEST(SwarmConsciousnessRegression, CoherenceFactorRange) {
+    // All coherence factors should be in valid range [0, 1]
+    for (int state = 0; state < 5; state++) {
+        float factor = swarm_consciousness_sleep_get_coherence_factor((sleep_state_t)state);
+        EXPECT_GE(factor, 0.0f) << "State " << state;
+        EXPECT_LE(factor, 1.0f) << "State " << state;
+    }
+}
+
+TEST(SwarmConsciousnessRegression, PressureModifierRange) {
+    // Pressure modifiers should be positive (> 0)
+    // Range varies by consciousness state
+    for (int state = 0; state <= 3; state++) {
+        float mod = swarm_consciousness_sleep_get_pressure_modifier((uint32_t)state);
+        EXPECT_GT(mod, 0.0f) << "State " << state;
+        EXPECT_LT(mod, 10.0f) << "State " << state;  // Reasonable upper bound
+    }
+}
+
+/* =============================================================================
  * Main
  * ============================================================================= */
 

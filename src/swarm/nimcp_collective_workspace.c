@@ -47,6 +47,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -1396,4 +1397,49 @@ bool collective_workspace_validate_config(
     }
 
     return true;
+}
+
+//=============================================================================
+// Knowledge Graph Self-Awareness Integration
+//=============================================================================
+
+/**
+ * @brief Query knowledge graph for self-knowledge about collective workspace
+ *
+ * WHAT: Query knowledge graph for self-knowledge about collective workspace module
+ * WHY:  Enable self-awareness by introspecting module's identity in KG
+ * HOW:  Query entity, observations, and relations from knowledge graph
+ *
+ * @param kg Knowledge graph reader handle
+ * @return 1 if entity found, 0 if not found or error
+ */
+int collective_workspace_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) {
+        return 0;
+    }
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Collective_Workspace");
+    if (self) {
+        LOG_INFO("KG Self-Knowledge: Found entity '%s' of type '%s'",
+                 self->name, self->entity_type);
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("  Observation[%u]: %s", i, self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Collective_Workspace");
+    if (connections) {
+        LOG_INFO("KG Self-Knowledge: Collective_Workspace has %u outgoing connections",
+                 connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Collective_Workspace");
+    if (incoming) {
+        LOG_INFO("KG Self-Knowledge: Collective_Workspace has %u incoming connections",
+                 incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

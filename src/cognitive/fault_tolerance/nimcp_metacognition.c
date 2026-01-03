@@ -32,6 +32,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #define LOG_MODULE "cognitive.fault.metacognition"
 #define BIO_MODULE_COGNITIVE_FAULT_METACOGNITION 0x0359
@@ -914,4 +915,47 @@ static void populate_diagnosis_degraded(diagnosis_t* diagnosis, const metacognit
              diagnosis->recommend_recovery ? "Recovery " : "",
              diagnosis->recommend_help ? "Help " : "",
              diagnosis->recommend_rest ? "Rest" : "");
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+/**
+ * @brief Query knowledge graph for self-knowledge about metacognition module
+ *
+ * WHAT: Retrieve module's own entity and connections from KG
+ * WHY:  Enable self-awareness - module can introspect its own capabilities
+ * HOW:  Query entity by name, get relations from/to
+ *
+ * @param kg Knowledge graph reader
+ * @return 1 if entity found, 0 if not
+ */
+int metacognition_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    /* Query our own entity from the knowledge graph */
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Metacognition_Module");
+    if (self) {
+        /* Module now knows its own capabilities from KG */
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Metacognition self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    /* Query connections to understand integration points */
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Metacognition_Module");
+    if (connections) {
+        LOG_DEBUG("Metacognition has %u outgoing connections", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    /* Query incoming connections */
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Metacognition_Module");
+    if (incoming) {
+        LOG_DEBUG("Metacognition has %u incoming connections", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

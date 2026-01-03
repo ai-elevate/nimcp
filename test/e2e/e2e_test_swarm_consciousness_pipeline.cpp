@@ -445,6 +445,202 @@ TEST_F(SwarmConsciousnessE2ETest, ContextLifecyclePipeline) {
 }
 
 //=============================================================================
+// E2E Test: Bidirectional Sleep-Consciousness Integration
+//=============================================================================
+
+#include "swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.h"
+
+//=============================================================================
+// Mock Sleep System for E2E Testing
+//=============================================================================
+
+namespace {
+
+struct MockSleepSystem {
+    sleep_state_t current_state = SLEEP_STATE_AWAKE;
+    float sleep_pressure = 0.0f;
+    sleep_state_callback_t callback = nullptr;
+    void* callback_data = nullptr;
+};
+
+static MockSleepSystem g_mock_sleep;
+
+}  // namespace
+
+// Mock implementations - these override the weak symbols from the library
+extern "C" {
+
+sleep_state_t sleep_get_current_state(sleep_system_t sys) {
+    (void)sys;
+    return g_mock_sleep.current_state;
+}
+
+float sleep_get_pressure(sleep_system_t sys) {
+    (void)sys;
+    return g_mock_sleep.sleep_pressure;
+}
+
+bool sleep_register_state_callback(sleep_system_t sys, sleep_state_callback_t cb, void* data) {
+    (void)sys;
+    g_mock_sleep.callback = cb;
+    g_mock_sleep.callback_data = data;
+    return true;
+}
+
+bool sleep_unregister_state_callback(sleep_system_t sys, sleep_state_callback_t cb, void* data) {
+    (void)sys; (void)cb; (void)data;
+    g_mock_sleep.callback = nullptr;
+    g_mock_sleep.callback_data = nullptr;
+    return true;
+}
+
+}  // extern "C"
+
+class SwarmBidirectionalSleepE2ETest : public ::testing::Test {
+protected:
+    swarm_consciousness_sleep_bridge_t bridge_ = nullptr;
+
+    void SetUp() override {
+        // Reset mock state
+        g_mock_sleep.current_state = SLEEP_STATE_AWAKE;
+        g_mock_sleep.sleep_pressure = 0.0f;
+        g_mock_sleep.callback = nullptr;
+        g_mock_sleep.callback_data = nullptr;
+
+        swarm_consciousness_sleep_config_t config;
+        swarm_consciousness_sleep_default_config(&config);
+        // Use a mock sleep system pointer - the mock functions will handle it
+        bridge_ = swarm_consciousness_sleep_bridge_create(&config, (sleep_system_t)&g_mock_sleep);
+    }
+
+    void TearDown() override {
+        if (bridge_) {
+            swarm_consciousness_sleep_bridge_destroy(bridge_);
+            bridge_ = nullptr;
+        }
+    }
+
+    void TriggerSleepStateChange(sleep_state_t state) {
+        g_mock_sleep.current_state = state;
+        if (g_mock_sleep.callback) {
+            g_mock_sleep.callback(state, g_mock_sleep.callback_data);
+        }
+    }
+};
+
+TEST_F(SwarmBidirectionalSleepE2ETest, BidirectionalSleepConsciousnessPipeline) {
+    PipelineTracker pipeline("Bidirectional Sleep-Consciousness");
+
+    // Stage 1: Test sleep -> consciousness direction
+    pipeline.begin_stage("Sleep affects consciousness", 5000);
+
+    // Verify phi factors vary by sleep state
+    float awake_phi = swarm_consciousness_sleep_get_phi_factor(SLEEP_STATE_AWAKE);
+    float deep_phi = swarm_consciousness_sleep_get_phi_factor(SLEEP_STATE_DEEP_NREM);
+
+    EXPECT_FLOAT_EQ(awake_phi, 1.0f) << "Awake should have full consciousness";
+    EXPECT_LT(deep_phi, 0.1f) << "Deep sleep should have minimal consciousness";
+
+    std::cout << "  Sleep -> Consciousness: Awake phi=" << awake_phi
+              << ", Deep phi=" << deep_phi << "\n";
+
+    pipeline.end_stage();
+
+    // Stage 2: Test consciousness -> sleep direction
+    pipeline.begin_stage("Consciousness affects sleep", 5000);
+
+    ASSERT_NE(bridge_, nullptr) << "Bridge should be created";
+
+    // Connect consciousness (null is ok for testing)
+    int result = swarm_consciousness_sleep_connect_consciousness(bridge_, nullptr);
+    EXPECT_EQ(result, 0) << "Should connect successfully";
+
+    // Simulate consciousness state changes
+    result = swarm_consciousness_sleep_on_consciousness_change(bridge_, 0, 0.5f);  // DORMANT
+    EXPECT_EQ(result, 0);
+
+    swarm_sleep_consciousness_modulation_t mod;
+    result = swarm_consciousness_sleep_get_consciousness_modulation(bridge_, &mod);
+    EXPECT_EQ(result, 0);
+
+    std::cout << "  Consciousness -> Sleep (DORMANT): pressure_mod=" << mod.sleep_pressure_modifier
+              << ", wakefulness=" << mod.wakefulness_boost << "\n";
+
+    // High consciousness should reduce sleep pressure
+    result = swarm_consciousness_sleep_on_consciousness_change(bridge_, 3, 10.0f);  // TRANSCENDENT
+    EXPECT_EQ(result, 0);
+
+    result = swarm_consciousness_sleep_get_consciousness_modulation(bridge_, &mod);
+    EXPECT_EQ(result, 0);
+
+    std::cout << "  Consciousness -> Sleep (TRANSCENDENT): pressure_mod=" << mod.sleep_pressure_modifier
+              << ", wakefulness=" << mod.wakefulness_boost << "\n";
+
+    EXPECT_LT(mod.sleep_pressure_modifier, 1.0f) << "Transcendent should reduce sleep pressure";
+    EXPECT_TRUE(mod.suppress_sleep_transition) << "Transcendent should block sleep";
+
+    pipeline.end_stage();
+
+    // Stage 3: Test full bidirectional cycle
+    pipeline.begin_stage("Full bidirectional cycle", 5000);
+
+    // Simulate: consciousness drops -> promotes sleep -> sleep deepens -> consciousness further reduced
+    // This is the biological feedback loop
+
+    // Low consciousness (dormant)
+    swarm_consciousness_sleep_on_consciousness_change(bridge_, 0, 0.1f);
+    swarm_consciousness_sleep_get_consciousness_modulation(bridge_, &mod);
+    float low_consciousness_sleep_pressure = mod.sleep_pressure_modifier;
+
+    // Verify feedback: low consciousness increases sleep pressure
+    EXPECT_GT(low_consciousness_sleep_pressure, 1.0f)
+        << "Low consciousness should promote sleep";
+
+    // Deep sleep state has low phi
+    float deep_sleep_consciousness = swarm_consciousness_sleep_get_phi_factor(SLEEP_STATE_DEEP_NREM);
+    EXPECT_LT(deep_sleep_consciousness, 0.1f)
+        << "Deep sleep should reduce consciousness";
+
+    std::cout << "  Bidirectional cycle verified: Low consciousness -> High sleep pressure -> Deep sleep -> Low consciousness\n";
+
+    pipeline.end_stage();
+
+    pipeline.print_summary();
+}
+
+TEST_F(SwarmBidirectionalSleepE2ETest, ConsciousnessStateTransitionPipeline) {
+    PipelineTracker pipeline("Consciousness State Transitions");
+
+    // Verify all consciousness states affect sleep differently
+    pipeline.begin_stage("State transition effects", 5000);
+
+    ASSERT_NE(bridge_, nullptr);
+    swarm_consciousness_sleep_connect_consciousness(bridge_, nullptr);
+
+    const char* state_names[] = {"DORMANT", "EMERGING", "UNIFIED", "TRANSCENDENT"};
+    float prev_pressure = 2.0f;  // Start above DORMANT pressure
+
+    for (uint32_t state = 0; state <= 3; state++) {
+        swarm_consciousness_sleep_on_consciousness_change(bridge_, state, (float)(state + 1) * 2.0f);
+
+        swarm_sleep_consciousness_modulation_t mod;
+        swarm_consciousness_sleep_get_consciousness_modulation(bridge_, &mod);
+
+        std::cout << "  State " << state_names[state] << ": pressure_mod=" << mod.sleep_pressure_modifier
+                  << ", blocks_sleep=" << (mod.suppress_sleep_transition ? "YES" : "NO") << "\n";
+
+        // Verify pressure decreases as consciousness increases
+        EXPECT_LE(mod.sleep_pressure_modifier, prev_pressure)
+            << "Higher consciousness should have equal or lower sleep pressure";
+        prev_pressure = mod.sleep_pressure_modifier;
+    }
+
+    pipeline.end_stage();
+
+    pipeline.print_summary();
+}
+
+//=============================================================================
 // Main
 //=============================================================================
 

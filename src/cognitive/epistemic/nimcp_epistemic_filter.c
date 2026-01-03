@@ -19,6 +19,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #define LOG_MODULE "epistemic"
 

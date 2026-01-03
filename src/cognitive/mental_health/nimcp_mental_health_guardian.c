@@ -38,6 +38,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -1444,4 +1445,47 @@ const char* guardian_state_to_string(guardian_state_t state) {
         case GUARDIAN_STATE_ERROR:    return "ERROR";
         default:                      return "UNKNOWN";
     }
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+/**
+ * @brief Query knowledge graph for self-knowledge about mental health guardian
+ *
+ * WHAT: Retrieve module's own entity and connections from KG
+ * WHY:  Enable self-awareness - module can introspect its own capabilities
+ * HOW:  Query entity by name, get relations from/to
+ *
+ * @param kg Knowledge graph reader
+ * @return 1 if entity found, 0 if not
+ */
+int mental_health_guardian_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    /* Query our own entity from the knowledge graph */
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Mental_Health_Guardian_Module");
+    if (self) {
+        /* Module now knows its own capabilities from KG */
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            GUARDIAN_LOG("Self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    /* Query connections to understand integration points */
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Mental_Health_Guardian_Module");
+    if (connections) {
+        GUARDIAN_LOG("Guardian has %u outgoing connections", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    /* Query incoming connections */
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mental_Health_Guardian_Module");
+    if (incoming) {
+        GUARDIAN_LOG("Guardian has %u incoming connections", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

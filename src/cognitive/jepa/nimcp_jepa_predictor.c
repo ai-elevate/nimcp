@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/jepa/nimcp_jepa_predictor.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -1008,4 +1009,36 @@ const char* jepa_loss_to_string(jepa_loss_t loss) {
         case JEPA_LOSS_PRECISION_WEIGHTED: return "precision_weighted";
         default:                          return "unknown";
     }
+}
+
+/* ============================================================================
+ * KG Self-Awareness API
+ * ============================================================================ */
+
+int jepa_predictor_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "JEPA_Predictor");
+    if (self) {
+        NIMCP_LOGGING_INFO(LOG_MODULE " Self-knowledge entity: %s (type: %s)",
+                          self->name, self->entity_type);
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG(LOG_MODULE " Observation[%u]: %s",
+                               i, self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "JEPA_Predictor");
+    if (connections) {
+        NIMCP_LOGGING_DEBUG(LOG_MODULE " Outgoing connections: %u", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "JEPA_Predictor");
+    if (incoming) {
+        NIMCP_LOGGING_DEBUG(LOG_MODULE " Incoming connections: %u", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

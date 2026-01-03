@@ -31,6 +31,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "cognitive/imagination/nimcp_imagination_callbacks.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -1673,4 +1674,47 @@ int swarm_consciousness_register_imagination_handler(
                   "callback=%p", (void*)callback);
 
     return 0;
+}
+
+//=============================================================================
+// Knowledge Graph Self-Awareness Integration
+//=============================================================================
+
+/**
+ * WHAT: Query knowledge graph for self-knowledge about swarm consciousness
+ * WHY:  Enable self-awareness by introspecting module's identity in KG
+ * HOW:  Query entity, observations, and relations from knowledge graph
+ *
+ * @param kg Knowledge graph reader handle
+ * @return 1 if entity found, 0 if not found or error
+ */
+int swarm_consciousness_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) {
+        return 0;
+    }
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Swarm_Consciousness");
+    if (self) {
+        LOG_INFO("KG Self-Knowledge: Found entity '%s' of type '%s'",
+                 self->name, self->entity_type);
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("  Observation[%u]: %s", i, self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Swarm_Consciousness");
+    if (connections) {
+        LOG_INFO("KG Self-Knowledge: Swarm_Consciousness has %u outgoing connections",
+                 connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Swarm_Consciousness");
+    if (incoming) {
+        LOG_INFO("KG Self-Knowledge: Swarm_Consciousness has %u incoming connections",
+                 incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }
