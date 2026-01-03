@@ -466,6 +466,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_immune_bridge.c  # Brain immune system integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_collective_bridge.c  # Swarm/collective workspace integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_brain_kg_bridge.c  # Brain knowledge graph integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_orchestrator.c  # Task decomposition and coordination
 
     # Game Theory - Economic mechanisms for cognitive resource allocation
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory.c  # Core game theory types and utilities

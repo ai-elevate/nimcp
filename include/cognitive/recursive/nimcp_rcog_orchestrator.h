@@ -199,6 +199,7 @@ typedef struct {
     uint64_t depth_limit_hits;
     uint64_t early_terminations;
     uint64_t strategy_adaptations;
+    uint32_t max_depth_reached;      /**< Maximum depth observed */
     float avg_subtasks_per_goal;
     float avg_depth;
     float avg_completion_time_ms;
