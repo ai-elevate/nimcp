@@ -201,7 +201,10 @@ typedef struct {
 } nimcp_index_t;
 
 /** Opaque tensor handle */
+#ifndef NIMCP_TENSOR_T_DEFINED
+#define NIMCP_TENSOR_T_DEFINED
 typedef struct nimcp_tensor_s nimcp_tensor_t;
+#endif
 
 /** Opaque autodiff context */
 typedef struct nimcp_autodiff_ctx_s nimcp_autodiff_ctx_t;

@@ -1482,6 +1482,40 @@ brain_inflammation_level_t brain_immune_get_inflammation_level(
 );
 
 /* ============================================================================
+ * Imagination Engine Integration
+ * ============================================================================ */
+
+/**
+ * @brief Send imagination modulation based on inflammation
+ *
+ * WHAT: Notify imagination engine of immune-driven modulation
+ * WHY:  Sickness behavior includes reduced imaginative capacity
+ * HOW:  Compute vividness/coherence modifiers, send via bio-async
+ *
+ * BIOLOGICAL BASIS:
+ * Inflammation triggers "sickness behavior" including:
+ * - Reduced creativity and imagination vividness
+ * - Lower working memory capacity
+ * - Impaired cognitive flexibility
+ *
+ * @param system Brain immune system
+ * @return 0 on success, -1 on error
+ */
+int brain_immune_send_imagination_modulation(brain_immune_system_t* system);
+
+/**
+ * @brief Register handler for imagination engine messages
+ *
+ * WHAT: Enable bidirectional communication with imagination engine
+ * WHY:  Imagination may query immune state for modulation
+ * HOW:  Register bio-async handler for imagination message types
+ *
+ * @param system Brain immune system
+ * @return 0 on success, -1 on error
+ */
+int brain_immune_register_imagination_handler(brain_immune_system_t* system);
+
+/* ============================================================================
  * String Conversion Utilities
  * ============================================================================ */
 

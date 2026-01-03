@@ -229,8 +229,11 @@ void zscore_normalizer_reset_all(zscore_normalizer_t* normalizer);
 //=============================================================================
 
 /* Forward declaration for tensor type */
+#ifndef NIMCP_TENSOR_T_DEFINED
+#define NIMCP_TENSOR_T_DEFINED
 struct nimcp_tensor_s;
 typedef struct nimcp_tensor_s nimcp_tensor_t;
+#endif
 
 /**
  * @brief Transform tensor in-place using z-score normalization

@@ -66,12 +66,19 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 
+/* Imagination engine integration */
+#include "cognitive/imagination/nimcp_imagination_callbacks.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // Forward declaration for brain integration
 typedef struct brain_struct* brain_t;
+
+// Forward declaration for imagination engine integration
+typedef struct imagination_engine imagination_engine_t;
+typedef struct imagination_scenario imagination_scenario_t;
 
 //=============================================================================
 // Activation Functions
@@ -1131,6 +1138,111 @@ int visual_cortex_set_training_mode(visual_cortex_t* cortex, bool enable);
  * @return true if training mode enabled
  */
 bool visual_cortex_is_training_mode(const visual_cortex_t* cortex);
+
+//=============================================================================
+// Imagination Engine Integration API
+//=============================================================================
+
+/**
+ * @brief Connect visual cortex to imagination engine
+ *
+ * WHAT: Establish bidirectional connection with imagination engine
+ * WHY:  Enable imagination to generate visual content and visual cortex to
+ *       contribute to imagination scenarios
+ * HOW:  Register mutual callbacks and share latent space mappings
+ *
+ * BIOLOGICAL BASIS:
+ * V1/V2 visual areas connect bidirectionally with the default mode network
+ * (posterior cingulate cortex, medial prefrontal cortex). During imagination,
+ * top-down signals from DMN activate visual areas in reverse (imagery).
+ *
+ * @param cortex Visual cortex instance
+ * @param engine Imagination engine instance to connect
+ * @return 0 on success, negative on error
+ *
+ * USAGE:
+ * ```c
+ * imagination_engine_t* engine = imagination_engine_create(&imag_config);
+ * visual_cortex_t* cortex = visual_cortex_create(&vis_config);
+ * visual_cortex_connect_imagination(cortex, engine);
+ * // Now imagination can render visual content through cortex
+ * ```
+ */
+int visual_cortex_connect_imagination(visual_cortex_t* cortex, imagination_engine_t* engine);
+
+/**
+ * @brief Set callback for imagination-generated visual content
+ *
+ * WHAT: Register callback invoked when imagination generates visual imagery
+ * WHY:  Allow visual cortex to receive and process imagined visual content
+ * HOW:  Store callback and user_data for invocation during imagination
+ *
+ * BIOLOGICAL BASIS:
+ * During visual imagery, feedback projections from higher areas (IT, PFC, DMN)
+ * activate V1/V2 neurons in a top-down manner. This callback models the
+ * reception of those top-down imagination signals.
+ *
+ * @param cortex Visual cortex instance
+ * @param cb Callback function for imagination visual content
+ * @param user_data User context passed to callback
+ * @return 0 on success, negative on error
+ */
+int visual_cortex_set_imagination_callback(visual_cortex_t* cortex,
+                                            imagination_visual_callback_t cb,
+                                            void* user_data);
+
+/**
+ * @brief Generate visual features from imagination latent representation
+ *
+ * WHAT: Decode latent imagination state into visual cortex feature space
+ * WHY:  Enable visualization of imagined content in visual feature space
+ * HOW:  Project latent tensor through learned decoder to V1-compatible features
+ *
+ * BIOLOGICAL BASIS:
+ * Mental imagery activates visual cortex in a "backwards" manner - high-level
+ * semantic content is projected down to low-level visual features. fMRI studies
+ * show V1 activation during vivid imagery that resembles actual perception.
+ *
+ * @param cortex Visual cortex instance
+ * @param latent Latent representation tensor from imagination engine
+ * @return 0 on success, negative on error
+ *
+ * USAGE:
+ * ```c
+ * nimcp_tensor_t* latent = imagination_get_current_latent(engine);
+ * visual_cortex_generate_from_imagination(cortex, latent);
+ * // Visual cortex now contains imagined visual features
+ * ```
+ */
+int visual_cortex_generate_from_imagination(visual_cortex_t* cortex,
+                                             struct nimcp_tensor* latent);
+
+/**
+ * @brief Render complete imagination scenario as visual output
+ *
+ * WHAT: Process full imagination scenario into visual representation
+ * WHY:  Enable visualization of complex imagined scenes with context
+ * HOW:  Extract visual components from scenario and compose full visual scene
+ *
+ * BIOLOGICAL BASIS:
+ * Complex mental imagery involves not just V1 activation but coordinated
+ * activation across the visual hierarchy (V1->V2->V4->IT). Each level
+ * contributes different aspects: V1 for edges/orientation, V4 for color/shape,
+ * IT for object identity. This function coordinates the full rendering.
+ *
+ * @param cortex Visual cortex instance
+ * @param scenario Imagination scenario containing visual elements
+ * @return 0 on success, negative on error
+ *
+ * USAGE:
+ * ```c
+ * imagination_scenario_t* scenario = imagination_get_active_scenario(engine);
+ * visual_cortex_render_imagined_scene(cortex, scenario);
+ * // Visual cortex now contains rendered scene features
+ * ```
+ */
+int visual_cortex_render_imagined_scene(visual_cortex_t* cortex,
+                                         imagination_scenario_t* scenario);
 
 #ifdef __cplusplus
 }

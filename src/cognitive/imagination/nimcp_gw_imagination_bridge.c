@@ -1,0 +1,594 @@
+/**
+ * @file nimcp_gw_imagination_bridge.c
+ * @brief Global Workspace-Imagination Bidirectional Bridge Implementation
+ * @version 1.0.0
+ * @date 2026-01-03
+ */
+
+#include "cognitive/imagination/nimcp_gw_imagination_bridge.h"
+#include "cognitive/imagination/nimcp_imagination_engine.h"
+#include "cognitive/global_workspace/nimcp_global_workspace.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/time/nimcp_time.h"
+
+#include <string.h>
+#include <math.h>
+
+/* ============================================================================
+ * CONFIGURATION
+ * ============================================================================ */
+
+int gw_imagination_default_config(gw_imagination_config_t* config) {
+    if (!config) return -1;
+
+    config->attention_boost_factor = GW_IMAG_DEFAULT_ATTENTION_BOOST;
+    config->focus_decay_rate = 0.05f;
+
+    config->ignition_threshold = GW_IMAG_DEFAULT_IGNITION_THRESHOLD;
+    config->salience_weight_novelty = 0.3f;
+    config->salience_weight_emotional = 0.4f;
+    config->salience_weight_goal = 0.3f;
+
+    config->enable_automatic_submission = true;
+    config->auto_submit_threshold = 0.7f;
+    config->max_pending_submissions = GW_IMAG_MAX_COMPETING_SCENARIOS;
+
+    config->update_interval_ms = 16.0f;  /* ~60 Hz */
+    config->enable_bio_async = true;
+
+    return 0;
+}
+
+int gw_imagination_validate_config(const gw_imagination_config_t* config) {
+    if (!config) return -1;
+
+    if (config->attention_boost_factor < 1.0f || config->attention_boost_factor > 3.0f) {
+        return -1;
+    }
+    if (config->focus_decay_rate < 0.0f || config->focus_decay_rate > 1.0f) {
+        return -1;
+    }
+    if (config->ignition_threshold < 0.0f || config->ignition_threshold > 1.0f) {
+        return -1;
+    }
+    if (config->salience_weight_novelty < 0.0f || config->salience_weight_novelty > 1.0f) {
+        return -1;
+    }
+    if (config->salience_weight_emotional < 0.0f || config->salience_weight_emotional > 1.0f) {
+        return -1;
+    }
+    if (config->salience_weight_goal < 0.0f || config->salience_weight_goal > 1.0f) {
+        return -1;
+    }
+    if (config->auto_submit_threshold < 0.0f || config->auto_submit_threshold > 1.0f) {
+        return -1;
+    }
+    if (config->update_interval_ms < 1.0f) {
+        return -1;
+    }
+
+    return 0;
+}
+
+/* ============================================================================
+ * LIFECYCLE
+ * ============================================================================ */
+
+gw_imagination_bridge_t* gw_imagination_bridge_create(
+    const gw_imagination_config_t* config)
+{
+    gw_imagination_bridge_t* bridge = nimcp_calloc(
+        1, sizeof(gw_imagination_bridge_t));
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate GW-imagination bridge");
+        return NULL;
+    }
+
+    /* Initialize base */
+    bridge->base.module_id = BIO_MODULE_IMAGINATION_GW;
+    bridge->base.module_name = "gw_imagination_bridge";
+    bridge->base.system_a_connected = false;
+    bridge->base.system_b_connected = false;
+    bridge->base.bridge_active = false;
+
+    /* Create mutex */
+    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (!bridge->base.mutex) {
+        NIMCP_LOGGING_ERROR("Failed to create bridge mutex");
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Apply configuration */
+    if (config) {
+        if (gw_imagination_validate_config(config) != 0) {
+            NIMCP_LOGGING_ERROR("Invalid bridge configuration");
+            nimcp_mutex_destroy(bridge->base.mutex);
+            nimcp_free(bridge);
+            return NULL;
+        }
+        bridge->config = *config;
+    } else {
+        gw_imagination_default_config(&bridge->config);
+    }
+
+    /* Initialize effects */
+    memset(&bridge->gw_to_imag, 0, sizeof(bridge->gw_to_imag));
+    memset(&bridge->imag_to_gw, 0, sizeof(bridge->imag_to_gw));
+
+    /* Initialize pending submissions */
+    bridge->num_pending = 0;
+    for (uint32_t i = 0; i < GW_IMAG_MAX_COMPETING_SCENARIOS; i++) {
+        bridge->pending_submissions[i].pending = false;
+    }
+
+    /* Initialize statistics */
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
+
+    /* Initialize timing */
+    bridge->last_update_time_ms = nimcp_time_get_ms();
+
+    NIMCP_LOGGING_INFO("Created GW-imagination bridge");
+    return bridge;
+}
+
+void gw_imagination_bridge_destroy(gw_imagination_bridge_t* bridge) {
+    if (!bridge) return;
+
+    /* Disconnect bio-async if connected */
+    if (bridge->base.bio_async_enabled) {
+        gw_imagination_disconnect_bio_async(bridge);
+    }
+
+    /* Free goal embedding if present */
+    if (bridge->gw_to_imag.goal_embedding) {
+        nimcp_tensor_destroy(bridge->gw_to_imag.goal_embedding);
+    }
+
+    /* Free content embedding if present */
+    if (bridge->imag_to_gw.content_embedding) {
+        nimcp_tensor_destroy(bridge->imag_to_gw.content_embedding);
+    }
+
+    /* Destroy mutex */
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
+    }
+
+    nimcp_free(bridge);
+    NIMCP_LOGGING_INFO("Destroyed GW-imagination bridge");
+}
+
+int gw_imagination_reset(gw_imagination_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Clear effects (but preserve allocated tensors) */
+    bridge->gw_to_imag.attention_boost = 0.0f;
+    bridge->gw_to_imag.focus_strength = 0.0f;
+    bridge->gw_to_imag.conscious_goal_active = false;
+    bridge->gw_to_imag.broadcast_salience = 0.0f;
+    bridge->gw_to_imag.broadcast_relevant_to_imagination = false;
+
+    bridge->imag_to_gw.submission_strength = 0.0f;
+    bridge->imag_to_gw.requesting_broadcast = false;
+    bridge->imag_to_gw.vividness = 0.0f;
+    bridge->imag_to_gw.coherence = 0.0f;
+
+    /* Clear pending submissions */
+    bridge->num_pending = 0;
+    for (uint32_t i = 0; i < GW_IMAG_MAX_COMPETING_SCENARIOS; i++) {
+        bridge->pending_submissions[i].pending = false;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * CONNECTION
+ * ============================================================================ */
+
+int gw_imagination_connect_global_workspace(
+    gw_imagination_bridge_t* bridge,
+    global_workspace_t* gw)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    bridge->global_workspace = gw;
+    bridge->base.system_a = gw;
+    bridge->base.system_a_connected = (gw != NULL);
+    bridge->base.bridge_active = bridge->base.system_a_connected &&
+                                  bridge->base.system_b_connected;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    NIMCP_LOGGING_INFO("Global workspace %s to bridge",
+                   gw ? "connected" : "disconnected");
+    return 0;
+}
+
+int gw_imagination_connect_imagination(
+    gw_imagination_bridge_t* bridge,
+    struct imagination_engine* imagination)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    bridge->imagination = imagination;
+    bridge->base.system_b = imagination;
+    bridge->base.system_b_connected = (imagination != NULL);
+    bridge->base.bridge_active = bridge->base.system_a_connected &&
+                                  bridge->base.system_b_connected;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    NIMCP_LOGGING_INFO("Imagination engine %s to bridge",
+                   imagination ? "connected" : "disconnected");
+    return 0;
+}
+
+int gw_imagination_disconnect_global_workspace(gw_imagination_bridge_t* bridge) {
+    return gw_imagination_connect_global_workspace(bridge, NULL);
+}
+
+int gw_imagination_disconnect_imagination(gw_imagination_bridge_t* bridge) {
+    return gw_imagination_connect_imagination(bridge, NULL);
+}
+
+bool gw_imagination_is_connected(const gw_imagination_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->base.bridge_active;
+}
+
+/* ============================================================================
+ * UPDATE
+ * ============================================================================ */
+
+int gw_imagination_update(
+    gw_imagination_bridge_t* bridge,
+    float delta_time_ms)
+{
+    if (!bridge) return -1;
+    if (!bridge->base.bridge_active) return 0;  /* Nothing to do */
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Check update interval */
+    uint64_t now = nimcp_time_get_ms();
+    float elapsed = (float)(now - bridge->last_update_time_ms);
+    if (elapsed < bridge->config.update_interval_ms) {
+        nimcp_mutex_unlock(bridge->base.mutex);
+        return 0;
+    }
+    bridge->last_update_time_ms = now;
+
+    /* Compute effects in both directions */
+    gw_imagination_compute_gw_effects(bridge);
+    gw_imagination_compute_imag_effects(bridge);
+
+    /* Apply effects */
+    gw_imagination_apply_effects(bridge);
+
+    /* Decay focus over time */
+    bridge->gw_to_imag.focus_strength *= (1.0f - bridge->config.focus_decay_rate);
+
+    /* Update statistics */
+    bridge->stats.total_updates++;
+    bridge->base.total_updates++;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int gw_imagination_compute_gw_effects(gw_imagination_bridge_t* bridge) {
+    if (!bridge || !bridge->global_workspace) return -1;
+
+    /* Query global workspace for current state */
+    /* In a full implementation, this would call global workspace APIs */
+
+    /* Check if there's a current broadcast */
+    bool has_broadcast = global_workspace_has_broadcast(bridge->global_workspace);
+
+    if (has_broadcast) {
+        bridge->gw_to_imag.broadcast_salience =
+            global_workspace_get_broadcast_strength(bridge->global_workspace);
+        bridge->gw_to_imag.broadcast_source_module =
+            (uint32_t)global_workspace_get_broadcast_source(bridge->global_workspace);
+    } else {
+        bridge->gw_to_imag.broadcast_salience = 0.0f;
+    }
+
+    /* Get competition context */
+    bridge->gw_to_imag.competition_threshold =
+        global_workspace_get_ignition_threshold(bridge->global_workspace);
+    bridge->gw_to_imag.num_competitors =
+        global_workspace_get_competitor_count(bridge->global_workspace);
+
+    /* Compute attention boost based on focus */
+    bridge->gw_to_imag.attention_boost =
+        1.0f + (bridge->gw_to_imag.focus_strength *
+                (bridge->config.attention_boost_factor - 1.0f));
+
+    return 0;
+}
+
+int gw_imagination_compute_imag_effects(gw_imagination_bridge_t* bridge) {
+    if (!bridge || !bridge->imagination) return -1;
+
+    /* Query imagination engine for current state */
+    /* In a full implementation, this would call imagination engine APIs */
+
+    /* Default: no active submission unless requested */
+    if (!bridge->imag_to_gw.requesting_broadcast) {
+        bridge->imag_to_gw.submission_strength = 0.0f;
+    }
+
+    /* Compute combined salience */
+    float combined_salience =
+        bridge->imag_to_gw.novelty_salience * bridge->config.salience_weight_novelty +
+        bridge->imag_to_gw.emotional_salience * bridge->config.salience_weight_emotional +
+        bridge->imag_to_gw.goal_relevance_salience * bridge->config.salience_weight_goal;
+
+    /* Modify submission strength by vividness and coherence */
+    if (bridge->imag_to_gw.requesting_broadcast) {
+        bridge->imag_to_gw.submission_strength =
+            combined_salience *
+            bridge->imag_to_gw.vividness *
+            bridge->imag_to_gw.coherence;
+    }
+
+    return 0;
+}
+
+int gw_imagination_apply_effects(gw_imagination_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    /* Apply GW effects to imagination */
+    if (bridge->imagination && bridge->gw_to_imag.attention_boost > 1.0f) {
+        /* Would call imagination APIs to boost vividness */
+        bridge->stats.attention_boosts_applied++;
+        bridge->stats.avg_attention_boost =
+            (bridge->stats.avg_attention_boost *
+             (bridge->stats.attention_boosts_applied - 1) +
+             bridge->gw_to_imag.attention_boost) /
+            bridge->stats.attention_boosts_applied;
+    }
+
+    /* Process pending submissions to workspace */
+    if (bridge->global_workspace && bridge->num_pending > 0) {
+        for (uint32_t i = 0; i < GW_IMAG_MAX_COMPETING_SCENARIOS; i++) {
+            if (bridge->pending_submissions[i].pending) {
+                /* Submit to global workspace competition */
+                /* In full implementation: global_workspace_submit(...) */
+                bridge->stats.submissions_made++;
+                bridge->pending_submissions[i].pending = false;
+                bridge->num_pending--;
+            }
+        }
+    }
+
+    /* Handle active broadcast request */
+    if (bridge->global_workspace && bridge->imag_to_gw.requesting_broadcast) {
+        if (bridge->imag_to_gw.submission_strength >=
+            bridge->config.ignition_threshold) {
+            /* Would call global_workspace_compete() here */
+            bridge->stats.submissions_made++;
+        }
+        bridge->imag_to_gw.requesting_broadcast = false;
+    }
+
+    return 0;
+}
+
+/* ============================================================================
+ * WORKSPACE COMPETITION
+ * ============================================================================ */
+
+int gw_imagination_submit_for_broadcast(
+    gw_imagination_bridge_t* bridge,
+    uint32_t scenario_id,
+    float strength)
+{
+    if (!bridge) return -1;
+    if (strength < 0.0f || strength > 1.0f) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Find an empty slot */
+    if (bridge->num_pending >= bridge->config.max_pending_submissions) {
+        nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_LOGGING_WARN("Pending submissions full, dropping request");
+        return -1;
+    }
+
+    for (uint32_t i = 0; i < GW_IMAG_MAX_COMPETING_SCENARIOS; i++) {
+        if (!bridge->pending_submissions[i].pending) {
+            bridge->pending_submissions[i].scenario_id = scenario_id;
+            bridge->pending_submissions[i].strength = strength;
+            bridge->pending_submissions[i].pending = true;
+            bridge->num_pending++;
+            break;
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    NIMCP_LOGGING_DEBUG("Queued scenario %u for broadcast (strength %.2f)",
+                   scenario_id, strength);
+    return 0;
+}
+
+int gw_imagination_request_attention_boost(
+    gw_imagination_bridge_t* bridge,
+    float boost_level)
+{
+    if (!bridge) return -1;
+    if (boost_level < 0.0f || boost_level > 1.0f) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Set focus strength which will translate to attention boost */
+    bridge->gw_to_imag.focus_strength = boost_level;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    NIMCP_LOGGING_DEBUG("Requested attention boost level %.2f", boost_level);
+    return 0;
+}
+
+int gw_imagination_set_conscious_goal(
+    gw_imagination_bridge_t* bridge,
+    const nimcp_tensor_t* goal_embedding)
+{
+    if (!bridge || !goal_embedding) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Free existing goal if present */
+    if (bridge->gw_to_imag.goal_embedding) {
+        nimcp_tensor_destroy(bridge->gw_to_imag.goal_embedding);
+    }
+
+    /* Clone the goal embedding */
+    bridge->gw_to_imag.goal_embedding = nimcp_tensor_clone(goal_embedding);
+    bridge->gw_to_imag.conscious_goal_active =
+        (bridge->gw_to_imag.goal_embedding != NULL);
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    NIMCP_LOGGING_DEBUG("Set conscious goal for imagination");
+    return bridge->gw_to_imag.conscious_goal_active ? 0 : -1;
+}
+
+int gw_imagination_clear_conscious_goal(gw_imagination_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    if (bridge->gw_to_imag.goal_embedding) {
+        nimcp_tensor_destroy(bridge->gw_to_imag.goal_embedding);
+        bridge->gw_to_imag.goal_embedding = NULL;
+    }
+    bridge->gw_to_imag.conscious_goal_active = false;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+bool gw_imagination_is_broadcasting(const gw_imagination_bridge_t* bridge) {
+    if (!bridge || !bridge->global_workspace) return false;
+
+    /* Check if imagination module is currently broadcasting */
+    /* In full implementation, would check global_workspace_get_broadcast_source() */
+    return false;  /* Placeholder */
+}
+
+float gw_imagination_get_broadcast_strength(const gw_imagination_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+    return bridge->imag_to_gw.submission_strength;
+}
+
+/* ============================================================================
+ * QUERY
+ * ============================================================================ */
+
+int gw_imagination_get_gw_effects(
+    const gw_imagination_bridge_t* bridge,
+    gw_to_imagination_effects_t* effects)
+{
+    if (!bridge || !effects) return -1;
+
+    *effects = bridge->gw_to_imag;
+    return 0;
+}
+
+int gw_imagination_get_imag_effects(
+    const gw_imagination_bridge_t* bridge,
+    imagination_to_gw_effects_t* effects)
+{
+    if (!bridge || !effects) return -1;
+
+    *effects = bridge->imag_to_gw;
+    return 0;
+}
+
+int gw_imagination_get_stats(
+    const gw_imagination_bridge_t* bridge,
+    gw_imagination_stats_t* stats)
+{
+    if (!bridge || !stats) return -1;
+
+    *stats = bridge->stats;
+    return 0;
+}
+
+int gw_imagination_reset_stats(gw_imagination_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    return 0;
+}
+
+uint32_t gw_imagination_get_pending_count(const gw_imagination_bridge_t* bridge) {
+    if (!bridge) return 0;
+    return bridge->num_pending;
+}
+
+/* ============================================================================
+ * BIO-ASYNC
+ * ============================================================================ */
+
+int gw_imagination_connect_bio_async(gw_imagination_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
+
+    /* Use bridge base helper */
+    int result = bridge_base_connect_bio_async(&bridge->base);
+    if (result == 0) {
+        NIMCP_LOGGING_INFO("GW-imagination bridge connected to bio-async");
+    }
+
+    return result;
+}
+
+int gw_imagination_disconnect_bio_async(gw_imagination_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected */
+
+    int result = bridge_base_disconnect_bio_async(&bridge->base);
+    if (result == 0) {
+        NIMCP_LOGGING_INFO("GW-imagination bridge disconnected from bio-async");
+    }
+
+    return result;
+}
+
+bool gw_imagination_is_bio_async_connected(const gw_imagination_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->base.bio_async_enabled;
+}
+
+int gw_imagination_process_messages(gw_imagination_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->base.bio_async_enabled) return 0;
+
+    /* Process pending bio-async messages */
+    /* In full implementation, would handle:
+     * - BIO_MSG_GW_BROADCAST_REQUEST
+     * - BIO_MSG_GW_ATTENTION_BOOST
+     * - BIO_MSG_IMAGINATION_CONTENT_READY
+     * - BIO_MSG_GW_COMPETITION_RESULT
+     */
+
+    return 0;
+}

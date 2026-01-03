@@ -776,8 +776,11 @@ bool nimcp_loss_is_registered(const nimcp_loss_context_t* ctx);
  * ============================================================================ */
 
 /* Forward declaration for tensor type */
+#ifndef NIMCP_TENSOR_T_DEFINED
+#define NIMCP_TENSOR_T_DEFINED
 struct nimcp_tensor_s;
 typedef struct nimcp_tensor_s nimcp_tensor_t;
+#endif
 
 /**
  * @brief Compute MSE loss from tensors

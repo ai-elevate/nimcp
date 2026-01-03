@@ -3761,6 +3761,54 @@ __/cognitive/grief/nimcp_grief_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grief/nimcp_grief_thalamic_bridge.c.s
 .PHONY : __/cognitive/grief/nimcp_grief_thalamic_bridge.c.s
 
+__/cognitive/imagination/nimcp_gw_imagination_bridge.o: __/cognitive/imagination/nimcp_gw_imagination_bridge.c.o
+.PHONY : __/cognitive/imagination/nimcp_gw_imagination_bridge.o
+
+# target to build an object file
+__/cognitive/imagination/nimcp_gw_imagination_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_gw_imagination_bridge.c.o
+.PHONY : __/cognitive/imagination/nimcp_gw_imagination_bridge.c.o
+
+__/cognitive/imagination/nimcp_gw_imagination_bridge.i: __/cognitive/imagination/nimcp_gw_imagination_bridge.c.i
+.PHONY : __/cognitive/imagination/nimcp_gw_imagination_bridge.i
+
+# target to preprocess a source file
+__/cognitive/imagination/nimcp_gw_imagination_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_gw_imagination_bridge.c.i
+.PHONY : __/cognitive/imagination/nimcp_gw_imagination_bridge.c.i
+
+__/cognitive/imagination/nimcp_gw_imagination_bridge.s: __/cognitive/imagination/nimcp_gw_imagination_bridge.c.s
+.PHONY : __/cognitive/imagination/nimcp_gw_imagination_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/imagination/nimcp_gw_imagination_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_gw_imagination_bridge.c.s
+.PHONY : __/cognitive/imagination/nimcp_gw_imagination_bridge.c.s
+
+__/cognitive/imagination/nimcp_hippocampus_imagination_bridge.o: __/cognitive/imagination/nimcp_hippocampus_imagination_bridge.c.o
+.PHONY : __/cognitive/imagination/nimcp_hippocampus_imagination_bridge.o
+
+# target to build an object file
+__/cognitive/imagination/nimcp_hippocampus_imagination_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_hippocampus_imagination_bridge.c.o
+.PHONY : __/cognitive/imagination/nimcp_hippocampus_imagination_bridge.c.o
+
+__/cognitive/imagination/nimcp_hippocampus_imagination_bridge.i: __/cognitive/imagination/nimcp_hippocampus_imagination_bridge.c.i
+.PHONY : __/cognitive/imagination/nimcp_hippocampus_imagination_bridge.i
+
+# target to preprocess a source file
+__/cognitive/imagination/nimcp_hippocampus_imagination_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_hippocampus_imagination_bridge.c.i
+.PHONY : __/cognitive/imagination/nimcp_hippocampus_imagination_bridge.c.i
+
+__/cognitive/imagination/nimcp_hippocampus_imagination_bridge.s: __/cognitive/imagination/nimcp_hippocampus_imagination_bridge.c.s
+.PHONY : __/cognitive/imagination/nimcp_hippocampus_imagination_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/imagination/nimcp_hippocampus_imagination_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_hippocampus_imagination_bridge.c.s
+.PHONY : __/cognitive/imagination/nimcp_hippocampus_imagination_bridge.c.s
+
 __/cognitive/imagination/nimcp_imagination_engine.o: __/cognitive/imagination/nimcp_imagination_engine.c.o
 .PHONY : __/cognitive/imagination/nimcp_imagination_engine.o
 
@@ -3808,6 +3856,78 @@ __/cognitive/imagination/nimcp_imagination_workspace.s: __/cognitive/imagination
 __/cognitive/imagination/nimcp_imagination_workspace.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_imagination_workspace.c.s
 .PHONY : __/cognitive/imagination/nimcp_imagination_workspace.c.s
+
+__/cognitive/imagination/nimcp_jepa_imagination_bridge.o: __/cognitive/imagination/nimcp_jepa_imagination_bridge.c.o
+.PHONY : __/cognitive/imagination/nimcp_jepa_imagination_bridge.o
+
+# target to build an object file
+__/cognitive/imagination/nimcp_jepa_imagination_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_jepa_imagination_bridge.c.o
+.PHONY : __/cognitive/imagination/nimcp_jepa_imagination_bridge.c.o
+
+__/cognitive/imagination/nimcp_jepa_imagination_bridge.i: __/cognitive/imagination/nimcp_jepa_imagination_bridge.c.i
+.PHONY : __/cognitive/imagination/nimcp_jepa_imagination_bridge.i
+
+# target to preprocess a source file
+__/cognitive/imagination/nimcp_jepa_imagination_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_jepa_imagination_bridge.c.i
+.PHONY : __/cognitive/imagination/nimcp_jepa_imagination_bridge.c.i
+
+__/cognitive/imagination/nimcp_jepa_imagination_bridge.s: __/cognitive/imagination/nimcp_jepa_imagination_bridge.c.s
+.PHONY : __/cognitive/imagination/nimcp_jepa_imagination_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/imagination/nimcp_jepa_imagination_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_jepa_imagination_bridge.c.s
+.PHONY : __/cognitive/imagination/nimcp_jepa_imagination_bridge.c.s
+
+__/cognitive/imagination/nimcp_prefrontal_imagination_bridge.o: __/cognitive/imagination/nimcp_prefrontal_imagination_bridge.c.o
+.PHONY : __/cognitive/imagination/nimcp_prefrontal_imagination_bridge.o
+
+# target to build an object file
+__/cognitive/imagination/nimcp_prefrontal_imagination_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_prefrontal_imagination_bridge.c.o
+.PHONY : __/cognitive/imagination/nimcp_prefrontal_imagination_bridge.c.o
+
+__/cognitive/imagination/nimcp_prefrontal_imagination_bridge.i: __/cognitive/imagination/nimcp_prefrontal_imagination_bridge.c.i
+.PHONY : __/cognitive/imagination/nimcp_prefrontal_imagination_bridge.i
+
+# target to preprocess a source file
+__/cognitive/imagination/nimcp_prefrontal_imagination_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_prefrontal_imagination_bridge.c.i
+.PHONY : __/cognitive/imagination/nimcp_prefrontal_imagination_bridge.c.i
+
+__/cognitive/imagination/nimcp_prefrontal_imagination_bridge.s: __/cognitive/imagination/nimcp_prefrontal_imagination_bridge.c.s
+.PHONY : __/cognitive/imagination/nimcp_prefrontal_imagination_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/imagination/nimcp_prefrontal_imagination_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_prefrontal_imagination_bridge.c.s
+.PHONY : __/cognitive/imagination/nimcp_prefrontal_imagination_bridge.c.s
+
+__/cognitive/imagination/nimcp_sleep_imagination_bridge.o: __/cognitive/imagination/nimcp_sleep_imagination_bridge.c.o
+.PHONY : __/cognitive/imagination/nimcp_sleep_imagination_bridge.o
+
+# target to build an object file
+__/cognitive/imagination/nimcp_sleep_imagination_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_sleep_imagination_bridge.c.o
+.PHONY : __/cognitive/imagination/nimcp_sleep_imagination_bridge.c.o
+
+__/cognitive/imagination/nimcp_sleep_imagination_bridge.i: __/cognitive/imagination/nimcp_sleep_imagination_bridge.c.i
+.PHONY : __/cognitive/imagination/nimcp_sleep_imagination_bridge.i
+
+# target to preprocess a source file
+__/cognitive/imagination/nimcp_sleep_imagination_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_sleep_imagination_bridge.c.i
+.PHONY : __/cognitive/imagination/nimcp_sleep_imagination_bridge.c.i
+
+__/cognitive/imagination/nimcp_sleep_imagination_bridge.s: __/cognitive/imagination/nimcp_sleep_imagination_bridge.c.s
+.PHONY : __/cognitive/imagination/nimcp_sleep_imagination_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/imagination/nimcp_sleep_imagination_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_sleep_imagination_bridge.c.s
+.PHONY : __/cognitive/imagination/nimcp_sleep_imagination_bridge.c.s
 
 __/cognitive/immune/nimcp_attention_immune_bridge.o: __/cognitive/immune/nimcp_attention_immune_bridge.c.o
 .PHONY : __/cognitive/immune/nimcp_attention_immune_bridge.o
@@ -7528,6 +7648,54 @@ __/cognitive/reasoning/nimcp_unification_engine.s: __/cognitive/reasoning/nimcp_
 __/cognitive/reasoning/nimcp_unification_engine.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/reasoning/nimcp_unification_engine.c.s
 .PHONY : __/cognitive/reasoning/nimcp_unification_engine.c.s
+
+__/cognitive/recursive/nimcp_rcog_answer.o: __/cognitive/recursive/nimcp_rcog_answer.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_answer.o
+
+# target to build an object file
+__/cognitive/recursive/nimcp_rcog_answer.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_answer.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_answer.c.o
+
+__/cognitive/recursive/nimcp_rcog_answer.i: __/cognitive/recursive/nimcp_rcog_answer.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_answer.i
+
+# target to preprocess a source file
+__/cognitive/recursive/nimcp_rcog_answer.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_answer.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_answer.c.i
+
+__/cognitive/recursive/nimcp_rcog_answer.s: __/cognitive/recursive/nimcp_rcog_answer.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_answer.s
+
+# target to generate assembly for a file
+__/cognitive/recursive/nimcp_rcog_answer.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_answer.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_answer.c.s
+
+__/cognitive/recursive/nimcp_rcog_context_store.o: __/cognitive/recursive/nimcp_rcog_context_store.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_context_store.o
+
+# target to build an object file
+__/cognitive/recursive/nimcp_rcog_context_store.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_context_store.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_context_store.c.o
+
+__/cognitive/recursive/nimcp_rcog_context_store.i: __/cognitive/recursive/nimcp_rcog_context_store.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_context_store.i
+
+# target to preprocess a source file
+__/cognitive/recursive/nimcp_rcog_context_store.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_context_store.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_context_store.c.i
+
+__/cognitive/recursive/nimcp_rcog_context_store.s: __/cognitive/recursive/nimcp_rcog_context_store.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_context_store.s
+
+# target to generate assembly for a file
+__/cognitive/recursive/nimcp_rcog_context_store.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_context_store.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_context_store.c.s
 
 __/cognitive/remorse/nimcp_remorse_fep_bridge.o: __/cognitive/remorse/nimcp_remorse_fep_bridge.c.o
 .PHONY : __/cognitive/remorse/nimcp_remorse_fep_bridge.o
@@ -29182,12 +29350,27 @@ help:
 	@echo "... __/cognitive/grief/nimcp_grief_thalamic_bridge.o"
 	@echo "... __/cognitive/grief/nimcp_grief_thalamic_bridge.i"
 	@echo "... __/cognitive/grief/nimcp_grief_thalamic_bridge.s"
+	@echo "... __/cognitive/imagination/nimcp_gw_imagination_bridge.o"
+	@echo "... __/cognitive/imagination/nimcp_gw_imagination_bridge.i"
+	@echo "... __/cognitive/imagination/nimcp_gw_imagination_bridge.s"
+	@echo "... __/cognitive/imagination/nimcp_hippocampus_imagination_bridge.o"
+	@echo "... __/cognitive/imagination/nimcp_hippocampus_imagination_bridge.i"
+	@echo "... __/cognitive/imagination/nimcp_hippocampus_imagination_bridge.s"
 	@echo "... __/cognitive/imagination/nimcp_imagination_engine.o"
 	@echo "... __/cognitive/imagination/nimcp_imagination_engine.i"
 	@echo "... __/cognitive/imagination/nimcp_imagination_engine.s"
 	@echo "... __/cognitive/imagination/nimcp_imagination_workspace.o"
 	@echo "... __/cognitive/imagination/nimcp_imagination_workspace.i"
 	@echo "... __/cognitive/imagination/nimcp_imagination_workspace.s"
+	@echo "... __/cognitive/imagination/nimcp_jepa_imagination_bridge.o"
+	@echo "... __/cognitive/imagination/nimcp_jepa_imagination_bridge.i"
+	@echo "... __/cognitive/imagination/nimcp_jepa_imagination_bridge.s"
+	@echo "... __/cognitive/imagination/nimcp_prefrontal_imagination_bridge.o"
+	@echo "... __/cognitive/imagination/nimcp_prefrontal_imagination_bridge.i"
+	@echo "... __/cognitive/imagination/nimcp_prefrontal_imagination_bridge.s"
+	@echo "... __/cognitive/imagination/nimcp_sleep_imagination_bridge.o"
+	@echo "... __/cognitive/imagination/nimcp_sleep_imagination_bridge.i"
+	@echo "... __/cognitive/imagination/nimcp_sleep_imagination_bridge.s"
 	@echo "... __/cognitive/immune/nimcp_attention_immune_bridge.o"
 	@echo "... __/cognitive/immune/nimcp_attention_immune_bridge.i"
 	@echo "... __/cognitive/immune/nimcp_attention_immune_bridge.s"
@@ -29653,6 +29836,12 @@ help:
 	@echo "... __/cognitive/reasoning/nimcp_unification_engine.o"
 	@echo "... __/cognitive/reasoning/nimcp_unification_engine.i"
 	@echo "... __/cognitive/reasoning/nimcp_unification_engine.s"
+	@echo "... __/cognitive/recursive/nimcp_rcog_answer.o"
+	@echo "... __/cognitive/recursive/nimcp_rcog_answer.i"
+	@echo "... __/cognitive/recursive/nimcp_rcog_answer.s"
+	@echo "... __/cognitive/recursive/nimcp_rcog_context_store.o"
+	@echo "... __/cognitive/recursive/nimcp_rcog_context_store.i"
+	@echo "... __/cognitive/recursive/nimcp_rcog_context_store.s"
 	@echo "... __/cognitive/remorse/nimcp_remorse_fep_bridge.o"
 	@echo "... __/cognitive/remorse/nimcp_remorse_fep_bridge.i"
 	@echo "... __/cognitive/remorse/nimcp_remorse_fep_bridge.s"

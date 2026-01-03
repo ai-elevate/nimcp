@@ -12,6 +12,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "cognitive/imagination/nimcp_imagination_callbacks.h"
 
 /**
  * @file nimcp_curiosity.h
@@ -453,8 +454,13 @@ float curiosity_get_information_gain(curiosity_engine_t engine);
 // Immune System Integration (Brain Immune System)
 //=============================================================================
 
-/* Forward declaration to avoid circular dependency */
+/* Forward declarations to avoid circular dependencies */
 struct brain_immune_system;
+struct imagination_engine;
+struct imagination_scenario;
+
+typedef struct imagination_engine imagination_engine_t;
+typedef struct imagination_scenario imagination_scenario_t;
 
 /**
  * @brief Connect curiosity engine to brain immune system
@@ -508,6 +514,78 @@ float curiosity_get_immune_suppression(curiosity_engine_t engine);
  * @return Immune vigilance boost (1.0-1.5x)
  */
 float curiosity_get_novelty_vigilance_boost(curiosity_engine_t engine);
+
+//=============================================================================
+// Imagination Engine Integration
+//=============================================================================
+
+/**
+ * @brief Connect curiosity engine to imagination engine
+ *
+ * WHAT: Establish bidirectional curiosity-imagination coupling
+ * WHY:  Model exploratory imagination triggered by curiosity
+ * HOW:  Create internal bridge, register callbacks with imagination engine
+ *
+ * BIOLOGICAL BASIS:
+ * - Curiosity -> Imagination: Novel stimuli trigger exploratory mental simulation
+ * - Imagination -> Curiosity: Imagined scenarios generate new questions/gaps
+ * - Default Mode Network (imagination) activated during curiosity-driven exploration
+ *
+ * @param engine Curiosity engine
+ * @param imag   Imagination engine to connect
+ * @return 0 on success, -1 on error
+ */
+int curiosity_connect_imagination(curiosity_engine_t engine, imagination_engine_t* imag);
+
+/**
+ * @brief Set callback for imagination results
+ *
+ * WHAT: Register callback to receive imagination scenario results
+ * WHY:  Allows curiosity module to evaluate imagined content for novelty
+ * HOW:  Store callback and user_data, invoke when imagination completes
+ *
+ * @param engine    Curiosity engine
+ * @param cb        Callback function for imagination results
+ * @param user_data User context passed to callback
+ * @return 0 on success, -1 on error
+ */
+int curiosity_set_imagination_callback(curiosity_engine_t engine,
+                                       imagination_result_callback_t cb,
+                                       void* user_data);
+
+/**
+ * @brief Evaluate novelty of an imagined scenario
+ *
+ * WHAT: Assess how novel/surprising an imagination scenario is
+ * WHY:  Drive curiosity-based exploration of interesting mental simulations
+ * HOW:  Compare scenario content against known concepts and experiences
+ *
+ * BIOLOGICAL BASIS:
+ * - Dopaminergic prediction error from novel imagined content
+ * - High novelty increases motivation to explore further
+ *
+ * @param engine   Curiosity engine
+ * @param scenario Imagination scenario to evaluate
+ * @return Novelty score [0.0-1.0] (0=familiar, 1=highly novel)
+ */
+float curiosity_evaluate_imagined_novelty(curiosity_engine_t engine,
+                                          imagination_scenario_t* scenario);
+
+/**
+ * @brief Request exploratory imagination from connected engine
+ *
+ * WHAT: Trigger imagination to explore current knowledge gaps
+ * WHY:  Proactive exploration through mental simulation
+ * HOW:  Send request to imagination engine based on curiosity state
+ *
+ * BIOLOGICAL BASIS:
+ * - Curiosity triggers Default Mode Network for hypothetical exploration
+ * - Mental simulation of "what would happen if..."
+ *
+ * @param engine Curiosity engine
+ * @return 0 on success, -1 on error (e.g., no imagination connected)
+ */
+int curiosity_request_exploratory_imagination(curiosity_engine_t engine);
 
 
 #ifdef __cplusplus

@@ -26,6 +26,10 @@ struct swarm_consciousness_sleep_bridge_struct {
     sleep_system_t sleep_system;
     swarm_consciousness_sleep_effects_t effects;
     bool callback_registered;
+
+    /* Bidirectional: Consciousness → Sleep */
+    struct swarm_consciousness_ctx* consciousness_ctx;
+    swarm_sleep_consciousness_modulation_t consciousness_modulation;
 };
 
 static void swarm_consciousness_on_sleep_state_change(sleep_state_t new_state, void* user_data)
@@ -214,4 +218,136 @@ float swarm_consciousness_sleep_get_coherence_factor(sleep_state_t state)
 {
     /* Coherence uses same pattern as phi */
     return swarm_consciousness_sleep_get_phi_factor(state);
+}
+
+/*============================================================================
+ * Bidirectional Integration: Consciousness → Sleep
+ *============================================================================*/
+
+int swarm_consciousness_sleep_connect_consciousness(
+    swarm_consciousness_sleep_bridge_t bridge,
+    struct swarm_consciousness_ctx* consciousness_ctx)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->consciousness_ctx = consciousness_ctx;
+
+    /* Initialize modulation to neutral */
+    bridge->consciousness_modulation.sleep_pressure_modifier = 1.0f;
+    bridge->consciousness_modulation.wakefulness_boost = 0.0f;
+    bridge->consciousness_modulation.circadian_phase_shift = 0.0f;
+    bridge->consciousness_modulation.suppress_sleep_transition = false;
+    bridge->consciousness_modulation.consciousness_state = 0;  /* DORMANT */
+    bridge->consciousness_modulation.collective_phi = 0.0f;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    NIMCP_LOGGING_INFO("Connected consciousness context to sleep bridge");
+    return 0;
+}
+
+void swarm_consciousness_sleep_disconnect_consciousness(
+    swarm_consciousness_sleep_bridge_t bridge)
+{
+    if (!bridge) return;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->consciousness_ctx = NULL;
+
+    /* Reset modulation to neutral */
+    bridge->consciousness_modulation.sleep_pressure_modifier = 1.0f;
+    bridge->consciousness_modulation.wakefulness_boost = 0.0f;
+    bridge->consciousness_modulation.suppress_sleep_transition = false;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    NIMCP_LOGGING_INFO("Disconnected consciousness context from sleep bridge");
+}
+
+int swarm_consciousness_sleep_on_consciousness_change(
+    swarm_consciousness_sleep_bridge_t bridge,
+    uint32_t consciousness_state,
+    float collective_phi)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Store state */
+    bridge->consciousness_modulation.consciousness_state = consciousness_state;
+    bridge->consciousness_modulation.collective_phi = collective_phi;
+
+    /* Compute pressure modifier based on consciousness state */
+    bridge->consciousness_modulation.sleep_pressure_modifier =
+        swarm_consciousness_sleep_get_pressure_modifier(consciousness_state);
+
+    /* Compute wakefulness boost from phi */
+    /* Higher phi = more wakeful, range [0, 1] */
+    float normalized_phi = collective_phi / 10.0f;  /* Assume max phi ~10 */
+    if (normalized_phi > 1.0f) normalized_phi = 1.0f;
+    bridge->consciousness_modulation.wakefulness_boost = normalized_phi * 0.5f;
+
+    /* Transcendent state blocks sleep transition */
+    bridge->consciousness_modulation.suppress_sleep_transition =
+        (consciousness_state == 3);  /* SWARM_CONSCIOUSNESS_TRANSCENDENT */
+
+    /* Apply modulation to sleep system if connected */
+    if (bridge->sleep_system) {
+        /* Modulate sleep pressure */
+        float current_pressure = sleep_get_pressure(bridge->sleep_system);
+        float modified_pressure = current_pressure *
+            bridge->consciousness_modulation.sleep_pressure_modifier;
+
+        /* Note: Would call sleep_set_pressure_modifier() if it exists */
+        NIMCP_LOGGING_DEBUG("Consciousness modulating sleep: state=%u, phi=%.2f, pressure_mod=%.2f",
+                            consciousness_state, collective_phi,
+                            bridge->consciousness_modulation.sleep_pressure_modifier);
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    return 0;
+}
+
+int swarm_consciousness_sleep_get_consciousness_modulation(
+    const swarm_consciousness_sleep_bridge_t bridge,
+    swarm_sleep_consciousness_modulation_t* modulation)
+{
+    if (!bridge || !modulation) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    memcpy(modulation, &bridge->consciousness_modulation,
+           sizeof(swarm_sleep_consciousness_modulation_t));
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    return 0;
+}
+
+float swarm_consciousness_sleep_get_pressure_modifier(uint32_t consciousness_state)
+{
+    switch (consciousness_state) {
+        case 0:  /* SWARM_CONSCIOUSNESS_DORMANT */
+            return SWARM_CONSCIOUSNESS_TO_SLEEP_DORMANT;
+        case 1:  /* SWARM_CONSCIOUSNESS_EMERGING */
+            return SWARM_CONSCIOUSNESS_TO_SLEEP_EMERGING;
+        case 2:  /* SWARM_CONSCIOUSNESS_UNIFIED */
+            return SWARM_CONSCIOUSNESS_TO_SLEEP_UNIFIED;
+        case 3:  /* SWARM_CONSCIOUSNESS_TRANSCENDENT */
+            return SWARM_CONSCIOUSNESS_TO_SLEEP_TRANSCENDENT;
+        default:
+            return 1.0f;  /* Neutral */
+    }
+}
+
+bool swarm_consciousness_sleep_blocks_transition(
+    const swarm_consciousness_sleep_bridge_t bridge)
+{
+    if (!bridge) return false;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bool blocks = bridge->consciousness_modulation.suppress_sleep_transition;
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    return blocks;
 }

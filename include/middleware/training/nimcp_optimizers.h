@@ -411,8 +411,11 @@ float nimcp_optimizer_clip_by_norm(
  * ============================================================================ */
 
 /* Forward declaration for tensor type */
+#ifndef NIMCP_TENSOR_T_DEFINED
+#define NIMCP_TENSOR_T_DEFINED
 struct nimcp_tensor_s;
 typedef struct nimcp_tensor_s nimcp_tensor_t;
+#endif
 
 /**
  * @brief Perform optimization step on tensor parameters

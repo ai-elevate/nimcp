@@ -79,6 +79,105 @@ float swarm_consciousness_sleep_get_phi_factor(sleep_state_t state);
 float swarm_consciousness_sleep_get_integration_factor(sleep_state_t state);
 float swarm_consciousness_sleep_get_coherence_factor(sleep_state_t state);
 
+/*============================================================================
+ * Bidirectional Integration: Consciousness → Sleep
+ *============================================================================
+ * BIOLOGICAL BASIS:
+ * - High consciousness (transcendent state) promotes wakefulness
+ * - Low consciousness increases sleep pressure/need
+ * - Consciousness quality affects circadian rhythm modulation
+ * - Collective phi affects sleep synchronization across swarm
+ *============================================================================*/
+
+/**
+ * @brief Consciousness-based sleep modulation factors
+ *
+ * WHAT: How consciousness states affect sleep drive
+ * WHY:  High consciousness should promote wakefulness; low promotes sleep
+ * HOW:  Modulation factors applied to sleep pressure calculations
+ */
+#define SWARM_CONSCIOUSNESS_TO_SLEEP_DORMANT       1.5f   /* Increases sleep pressure */
+#define SWARM_CONSCIOUSNESS_TO_SLEEP_EMERGING      1.0f   /* Neutral */
+#define SWARM_CONSCIOUSNESS_TO_SLEEP_UNIFIED       0.7f   /* Reduces sleep pressure */
+#define SWARM_CONSCIOUSNESS_TO_SLEEP_TRANSCENDENT  0.3f   /* Strongly promotes wakefulness */
+
+/**
+ * @brief Modulation applied to sleep system from consciousness
+ */
+typedef struct {
+    float sleep_pressure_modifier;     /**< Multiplier for sleep pressure */
+    float wakefulness_boost;           /**< Additional wakefulness factor [0-1] */
+    float circadian_phase_shift;       /**< Phase shift in hours [-2, +2] */
+    bool suppress_sleep_transition;    /**< Block transition to sleep */
+    uint32_t consciousness_state;      /**< Current swarm consciousness state */
+    float collective_phi;              /**< Current collective phi */
+} swarm_sleep_consciousness_modulation_t;
+
+/**
+ * @brief Connect consciousness context to sleep bridge for bidirectional updates
+ *
+ * @param bridge Sleep bridge
+ * @param consciousness_ctx Swarm consciousness context
+ * @return 0 on success, -1 on error
+ */
+struct swarm_consciousness_ctx;
+int swarm_consciousness_sleep_connect_consciousness(
+    swarm_consciousness_sleep_bridge_t bridge,
+    struct swarm_consciousness_ctx* consciousness_ctx);
+
+/**
+ * @brief Disconnect consciousness from sleep bridge
+ *
+ * @param bridge Sleep bridge
+ */
+void swarm_consciousness_sleep_disconnect_consciousness(
+    swarm_consciousness_sleep_bridge_t bridge);
+
+/**
+ * @brief Update sleep pressure based on consciousness state
+ *
+ * Called when consciousness state changes to modulate sleep system.
+ *
+ * @param bridge Sleep bridge
+ * @param consciousness_state Current swarm consciousness state (swarm_consciousness_state_t)
+ * @param collective_phi Current collective phi value
+ * @return 0 on success, -1 on error
+ */
+int swarm_consciousness_sleep_on_consciousness_change(
+    swarm_consciousness_sleep_bridge_t bridge,
+    uint32_t consciousness_state,
+    float collective_phi);
+
+/**
+ * @brief Get consciousness-based sleep modulation
+ *
+ * @param bridge Sleep bridge
+ * @param modulation Output modulation values
+ * @return 0 on success, -1 on error
+ */
+int swarm_consciousness_sleep_get_consciousness_modulation(
+    const swarm_consciousness_sleep_bridge_t bridge,
+    swarm_sleep_consciousness_modulation_t* modulation);
+
+/**
+ * @brief Compute sleep pressure modifier from consciousness state
+ *
+ * @param consciousness_state Swarm consciousness state
+ * @return Sleep pressure modifier (< 1 reduces pressure, > 1 increases)
+ */
+float swarm_consciousness_sleep_get_pressure_modifier(uint32_t consciousness_state);
+
+/**
+ * @brief Check if consciousness state blocks sleep transition
+ *
+ * Transcendent consciousness may block transition to deep sleep.
+ *
+ * @param bridge Sleep bridge
+ * @return true if sleep transition should be blocked
+ */
+bool swarm_consciousness_sleep_blocks_transition(
+    const swarm_consciousness_sleep_bridge_t bridge);
+
 #ifdef __cplusplus
 }
 #endif

@@ -11300,6 +11300,32 @@ unit_cognitive_test_shared_intentionality/fast:
 .PHONY : unit_cognitive_test_shared_intentionality/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_recursive_test_context_store
+
+# Build rule for target.
+unit_cognitive_recursive_test_context_store: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_recursive_test_context_store
+.PHONY : unit_cognitive_recursive_test_context_store
+
+# fast build rule for target.
+unit_cognitive_recursive_test_context_store/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/recursive/CMakeFiles/unit_cognitive_recursive_test_context_store.dir/build.make test/unit/cognitive/recursive/CMakeFiles/unit_cognitive_recursive_test_context_store.dir/build
+.PHONY : unit_cognitive_recursive_test_context_store/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_recursive_test_answer
+
+# Build rule for target.
+unit_cognitive_recursive_test_answer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_recursive_test_answer
+.PHONY : unit_cognitive_recursive_test_answer
+
+# fast build rule for target.
+unit_cognitive_recursive_test_answer/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/recursive/CMakeFiles/unit_cognitive_recursive_test_answer.dir/build.make test/unit/cognitive/recursive/CMakeFiles/unit_cognitive_recursive_test_answer.dir/build
+.PHONY : unit_cognitive_recursive_test_answer/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_bio_async_test
 
 # Build rule for target.
@@ -22739,6 +22765,8 @@ help:
 	@echo "... unit_cognitive_predictive_test_predictive_real"
 	@echo "... unit_cognitive_reasoning_substrate_bridge"
 	@echo "... unit_cognitive_reasoning_test_reasoning_sleep_bridge"
+	@echo "... unit_cognitive_recursive_test_answer"
+	@echo "... unit_cognitive_recursive_test_context_store"
 	@echo "... unit_cognitive_salience_test_salience"
 	@echo "... unit_cognitive_salience_test_salience_comprehensive"
 	@echo "... unit_cognitive_salience_test_salience_coverage"

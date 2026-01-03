@@ -65,6 +65,7 @@
 /* NOTE: nimcp_parietal_quantum_bridge.h NOT included here to avoid circular deps */
 /* Forward declarations for quantum types are provided below */
 #include "cognitive/parietal/nimcp_fep_parietal_bridge.h"
+#include "cognitive/imagination/nimcp_imagination_callbacks.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -142,6 +143,12 @@ typedef struct training_engine_struct* training_engine_t;
 typedef struct perception_system_struct* perception_system_t;
 #endif
 
+/* Tensor - defined in nimcp_tensor.h */
+#ifndef NIMCP_TENSOR_T_DEFINED
+#define NIMCP_TENSOR_T_DEFINED
+typedef struct nimcp_tensor_s nimcp_tensor_t;
+#endif
+
 /* Sleep modulation - defined in nimcp_medulla.h */
 #ifndef NIMCP_SLEEP_SYSTEM_T_DEFINED
 #define NIMCP_SLEEP_SYSTEM_T_DEFINED
@@ -178,6 +185,17 @@ typedef struct parietal_vqe_result_s parietal_vqe_result_t;
 #ifndef NIMCP_PARIETAL_QUANTUM_CONFIG_T_DEFINED
 #define NIMCP_PARIETAL_QUANTUM_CONFIG_T_DEFINED
 typedef struct parietal_quantum_config_s parietal_quantum_config_t;
+#endif
+
+/* Imagination engine types - defined in nimcp_imagination_engine.h */
+#ifndef NIMCP_IMAGINATION_ENGINE_T_DEFINED
+#define NIMCP_IMAGINATION_ENGINE_T_DEFINED
+typedef struct imagination_engine imagination_engine_t;
+#endif
+
+#ifndef NIMCP_IMAGINATION_SCENARIO_T_DEFINED
+#define NIMCP_IMAGINATION_SCENARIO_T_DEFINED
+typedef struct imagination_scenario imagination_scenario_t;
 #endif
 
 /* ============================================================================
@@ -702,6 +720,99 @@ int parietal_attach_sleep(
 );
 
 /* ============================================================================
+ * IMAGINATION ENGINE INTEGRATION API
+ * ============================================================================ */
+
+/**
+ * @brief Connect to imagination engine
+ *
+ * Establishes bidirectional connection between parietal lobe and imagination
+ * engine. Enables spatial imagination, mental rotation visualization, and
+ * mathematical visualization capabilities.
+ *
+ * @param parietal Parietal lobe handle
+ * @param engine Imagination engine handle
+ * @return 0 on success, -1 on error
+ */
+int parietal_connect_imagination(
+    parietal_lobe_t* parietal,
+    imagination_engine_t* engine
+);
+
+/**
+ * @brief Set callback for imagination results
+ *
+ * Registers a callback to receive imagination scenario results. Called when
+ * imagination engine completes spatial or mathematical visualization requests.
+ *
+ * @param parietal Parietal lobe handle
+ * @param cb Result callback function
+ * @param user_data User data passed to callback
+ * @return 0 on success, -1 on error
+ */
+int parietal_set_imagination_callback(
+    parietal_lobe_t* parietal,
+    imagination_result_callback_t cb,
+    void* user_data
+);
+
+/**
+ * @brief Request imagination-based mental rotation
+ *
+ * Uses imagination engine to perform mental rotation of an object in 3D space.
+ * This extends the standard mental rotation with full visualization capabilities.
+ *
+ * Note: For spatial object comparison rotation, use standard mental rotate functions.
+ *
+ * @param parietal Parietal lobe handle
+ * @param object Tensor representation of object to rotate
+ * @param angle_x Rotation angle around X axis (radians)
+ * @param angle_y Rotation angle around Y axis (radians)
+ * @param angle_z Rotation angle around Z axis (radians)
+ * @return Imagination scenario handle or NULL on error
+ */
+imagination_scenario_t* parietal_imagine_rotation(
+    parietal_lobe_t* parietal,
+    nimcp_tensor_t* object,
+    float angle_x,
+    float angle_y,
+    float angle_z
+);
+
+/**
+ * @brief Request spatial transformation through imagination
+ *
+ * Uses imagination engine to transform a spatial scene using a transformation
+ * matrix. Enables complex spatial manipulations with full visualization.
+ *
+ * @param parietal Parietal lobe handle
+ * @param scene Tensor representation of spatial scene
+ * @param transform Transformation matrix tensor (4x4 or 3x3)
+ * @return Imagination scenario handle or NULL on error
+ */
+imagination_scenario_t* parietal_spatial_transform(
+    parietal_lobe_t* parietal,
+    nimcp_tensor_t* scene,
+    nimcp_tensor_t* transform
+);
+
+/**
+ * @brief Request mathematical visualization through imagination
+ *
+ * Triggers imagination engine to generate visual representation of a
+ * mathematical expression. Useful for geometric visualization, function
+ * plotting, and abstract mathematical concepts.
+ *
+ * @param parietal Parietal lobe handle
+ * @param expression Mathematical expression string to visualize
+ * @return 0 on success, -1 on error
+ */
+int parietal_request_mathematical_visualization(
+    parietal_lobe_t* parietal,
+    const char* expression
+);
+
+/* ============================================================================
  * PROCESSING API
  * ============================================================================ */
 
@@ -852,8 +963,10 @@ expr_node_t* parietal_differentiate_expression(
 
 /**
  * @brief Mental rotation comparison (convenience wrapper)
+ *
+ * @deprecated Use parietal_mental_rotate() with imagination engine for advanced visualization
  */
-rotation_result_t parietal_mental_rotate(
+rotation_result_t parietal_mental_rotate_compare(
     parietal_lobe_t* parietal,
     const spatial_object_t* object_a,
     const spatial_object_t* object_b

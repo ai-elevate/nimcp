@@ -36,6 +36,9 @@
 #include <stdbool.h>
 #include <stddef.h>  // for size_t
 
+/* Imagination callbacks for ToM integration */
+#include "cognitive/imagination/nimcp_imagination_callbacks.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -48,6 +51,21 @@ extern "C" {
 // NOTE: brain.h defines: typedef struct brain_struct* brain_t;
 // We only forward-declare the struct here
 struct brain_struct;
+
+// Forward declare imagination engine for ToM integration
+struct imagination_engine;
+typedef struct imagination_engine imagination_engine_t;
+
+// Forward declare imagination scenario for perspective simulation
+struct imagination_scenario;
+typedef struct imagination_scenario imagination_scenario_t;
+
+// Forward declare tensor for state representation
+// Use the correct struct name (nimcp_tensor_s) and guard against redefinition
+#ifndef NIMCP_TENSOR_T_DEFINED
+struct nimcp_tensor_s;
+typedef struct nimcp_tensor_s nimcp_tensor_t;
+#endif
 
 // If brain_t hasn't been typedef'd yet (e.g., brain.h not included),
 // create a compatible typedef. This allows theory_of_mind.h to be
@@ -646,6 +664,108 @@ float tom_get_immune_impairment(theory_of_mind_t tom);
  * COMPLEXITY: O(1)
  */
 bool tom_trigger_social_stress(theory_of_mind_t tom, float prediction_error, bool is_social_rejection);
+
+//=============================================================================
+// Imagination Engine Integration API
+//=============================================================================
+
+/**
+ * @brief Connect ToM to imagination engine
+ *
+ * WHAT: Establish bidirectional communication between ToM and imagination
+ * WHY:  Imagination enables mental simulation of other agents' perspectives
+ * HOW:  Store imagination handle, register callbacks for social imagination
+ *
+ * BIOLOGICAL BASIS:
+ * - Theory of Mind and imagination share neural substrates in mPFC and TPJ
+ * - Perspective-taking recruits the same networks as mental simulation
+ * - Default Mode Network active in both ToM and spontaneous imagination
+ * - Social imagination: simulating what others think/feel/will do
+ *
+ * INTEGRATION:
+ * - ToM -> Imagination: Request perspective-taking simulations
+ * - Imagination -> ToM: Report social simulation results
+ * - ToM + Imagination: False belief reasoning via counterfactual simulation
+ *
+ * @param tom ToM handle
+ * @param engine Imagination engine handle
+ * @return 0 on success, -1 on error
+ *
+ * SIDE EFFECTS:
+ * - Registers callbacks with imagination engine
+ * - Enables social imagination mode
+ *
+ * COMPLEXITY: O(1)
+ */
+int tom_connect_imagination(theory_of_mind_t tom, imagination_engine_t* engine);
+
+/**
+ * @brief Set callback for receiving imagination results
+ *
+ * WHAT: Register callback invoked when imagination completes perspective simulation
+ * WHY:  Enable async processing of imagination-based perspective-taking
+ * HOW:  Store callback and user_data in ToM, invoke on imagination completion
+ *
+ * @param tom ToM handle
+ * @param cb Callback function invoked with imagination results
+ * @param user_data Opaque pointer passed to callback
+ * @return 0 on success, -1 on error
+ *
+ * COMPLEXITY: O(1)
+ */
+int tom_set_imagination_callback(theory_of_mind_t tom, imagination_result_callback_t cb, void* user_data);
+
+/**
+ * @brief Simulate another agent's perspective using imagination
+ *
+ * WHAT: Use imagination engine to mentally simulate how an agent perceives the world
+ * WHY:  Rich perspective-taking requires full mental simulation, not just BDI tracking
+ * HOW:  Create imagination scenario with agent's believed state as initial condition
+ *
+ * BIOLOGICAL BASIS:
+ * - TPJ activation during perspective-taking correlates with simulation accuracy
+ * - Mental simulation uses same circuits as self-referential imagination
+ * - False belief understanding requires imagining agent's (incorrect) world model
+ *
+ * @param tom ToM handle
+ * @param agent_id ID of the agent whose perspective to simulate
+ * @param believed_state What the agent believes about the world (latent representation)
+ * @return Imagination scenario with simulated perspective, or NULL on error
+ *
+ * NOTE: Caller is responsible for managing the returned scenario lifecycle
+ *
+ * SIDE EFFECTS:
+ * - Creates active imagination scenario
+ * - May consume imagination workspace capacity
+ *
+ * COMPLEXITY: O(1) for scenario creation, O(n) for simulation
+ */
+imagination_scenario_t* tom_simulate_other_perspective(theory_of_mind_t tom, uint64_t agent_id, nimcp_tensor_t* believed_state);
+
+/**
+ * @brief Request social imagination based on observation
+ *
+ * WHAT: Trigger imagination to simulate social context of observation
+ * WHY:  Complex social situations benefit from imagination-based simulation
+ * HOW:  Submit observation to imagination engine in SOCIAL mode
+ *
+ * Use cases:
+ * - Predicting how an agent will react to an action
+ * - Understanding emotional impact of social events
+ * - Simulating group dynamics and social interactions
+ * - Counterfactual reasoning: "How would they have reacted if..."
+ *
+ * @param tom ToM handle
+ * @param obs Behavioral observation triggering social imagination
+ * @return 0 on success (imagination request submitted), -1 on error
+ *
+ * SIDE EFFECTS:
+ * - Submits async imagination request
+ * - Result delivered via registered callback (tom_set_imagination_callback)
+ *
+ * COMPLEXITY: O(1) for request submission
+ */
+int tom_request_social_imagination(theory_of_mind_t tom, const tom_observation_t* obs);
 
 #ifdef __cplusplus
 }

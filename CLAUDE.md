@@ -38,6 +38,7 @@
 | Tensor Integration | [modules/tensor.md](docs/claude/modules/tensor.md) |
 | Metabolic Modulation | [modules/metabolic-modulation.md](docs/claude/modules/metabolic-modulation.md) |
 | Brain Regions Roadmap | [modules/brain-regions-roadmap.md](docs/claude/modules/brain-regions-roadmap.md) |
+| Recursive Cognition | [modules/recursive-cognition.md](docs/claude/modules/recursive-cognition.md) |
 
 ---
 

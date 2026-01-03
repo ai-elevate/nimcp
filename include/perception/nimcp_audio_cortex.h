@@ -28,12 +28,19 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 
+/* Imagination engine integration */
+#include "cognitive/imagination/nimcp_imagination_callbacks.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // Forward declaration for brain integration
 typedef struct brain_struct* brain_t;
+
+// Forward declarations for imagination engine integration
+typedef struct imagination_engine imagination_engine_t;
+typedef struct imagination_scenario imagination_scenario_t;
 
 //=============================================================================
 // Neuromodulation Structures
@@ -654,6 +661,79 @@ int audio_cortex_set_training_mode(audio_cortex_t* cortex, bool enable);
  * @return true if training mode enabled
  */
 bool audio_cortex_is_training_mode(const audio_cortex_t* cortex);
+
+//=============================================================================
+// Imagination Engine Integration
+//=============================================================================
+
+/**
+ * @brief Connect imagination engine to audio cortex
+ *
+ * WHAT: Establish bidirectional link between imagination and audio processing
+ * WHY:  Enable imagined audio generation and imagination-guided perception
+ * HOW:  Store engine reference and register audio cortex as imagination target
+ *
+ * BIOLOGICAL BASIS: Models the connection between auditory cortex and
+ * prefrontal/hippocampal imagination systems. Enables "hearing in your head"
+ * - auditory imagery during daydreaming, memory recall, and planning.
+ *
+ * @param cortex Audio cortex instance
+ * @param engine Imagination engine to connect
+ * @return 0 on success, negative on error
+ */
+int audio_cortex_connect_imagination(audio_cortex_t* cortex, imagination_engine_t* engine);
+
+/**
+ * @brief Set callback for imagination-generated audio events
+ *
+ * WHAT: Register callback for when imagination generates audio content
+ * WHY:  Enable cortex to process imagined audio like real input
+ * HOW:  Store callback and user data, invoke during imagination playback
+ *
+ * BIOLOGICAL BASIS: Models the feedback projections from imagination
+ * systems that can activate auditory cortex during mental imagery,
+ * producing subjective "hearing" without external stimulus.
+ *
+ * @param cortex Audio cortex instance
+ * @param cb Callback function for imagination events
+ * @param user_data User data passed to callback
+ * @return 0 on success, negative on error
+ */
+int audio_cortex_set_imagination_callback(audio_cortex_t* cortex, imagination_audio_callback_t cb, void* user_data);
+
+/**
+ * @brief Generate audio features from imagination latent representation
+ *
+ * WHAT: Decode latent vector into audio cortex features
+ * WHY:  Enable imagination to drive audio perception pathways
+ * HOW:  Use inverse feature mapping to generate mel/MFCC from latent
+ *
+ * BIOLOGICAL BASIS: Models the generative pathway where imagination
+ * latent representations are decoded into sensory-specific formats.
+ * Similar to how we can "hear" imagined music or speech.
+ *
+ * @param cortex Audio cortex instance
+ * @param latent Latent representation tensor from imagination engine
+ * @return 0 on success, negative on error
+ */
+int audio_cortex_generate_from_imagination(audio_cortex_t* cortex, struct nimcp_tensor* latent);
+
+/**
+ * @brief Render imagined audio from complete scenario
+ *
+ * WHAT: Generate full audio experience from imagination scenario
+ * WHY:  Enable rich multi-sensory imagination with audio component
+ * HOW:  Extract audio modality from scenario and render via cortex
+ *
+ * BIOLOGICAL BASIS: Models how imagination scenarios (memories,
+ * fantasies, plans) include auditory components that are rendered
+ * through auditory cortex to create subjective audio experience.
+ *
+ * @param cortex Audio cortex instance
+ * @param scenario Imagination scenario containing audio modality
+ * @return 0 on success, negative on error
+ */
+int audio_cortex_render_imagined_audio(audio_cortex_t* cortex, imagination_scenario_t* scenario);
 
 #ifdef __cplusplus
 }

@@ -457,6 +457,10 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_fractal_cognitive.c  # Fractal cognitive processing
     ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/nimcp_hierarchical.c
 
+    # Recursive Cognition (RLM-inspired: Phase 1 Foundation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_context_store.c  # Context store (environment-as-variable pattern)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_answer.c  # Answer refiner (diffusion-style refinement)
+
     # Game Theory - Economic mechanisms for cognitive resource allocation
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory.c  # Core game theory types and utilities
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_auction.c  # Auction mechanisms (second-price, VCG, ascending, descending)
@@ -886,6 +890,11 @@ set(NIMCP_CORE_SOURCES
     # Imagination Engine - Generative mental simulation (Phase IMAGINATION)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_imagination_workspace.c  # Workspace for active scenarios
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_imagination_engine.c     # Main engine with all integrations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_hippocampus_imagination_bridge.c  # Hippocampus-imagination bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_jepa_imagination_bridge.c  # JEPA-imagination bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_prefrontal_imagination_bridge.c  # Prefrontal-imagination bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_gw_imagination_bridge.c  # Global workspace-imagination bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_sleep_imagination_bridge.c  # Sleep-imagination bridge
 
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c

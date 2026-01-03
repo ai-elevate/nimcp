@@ -443,6 +443,32 @@ typedef enum {
     BIO_MSG_OCCIPITAL_COLLECTIVE_STATE_UPDATE,        /**< Occipital state update */
     BIO_MSG_OCCIPITAL_COLLECTIVE_GAZE_FOLLOW,         /**< Gaze following event */
 
+    /* Imagination Engine messages (0x1A00 - 0x1AFF) */
+    BIO_MSG_IMAGINATION_REQUEST = 0x1A00,             /**< Request imagination scenario */
+    BIO_MSG_IMAGINATION_RESULT,                       /**< Imagination scenario result */
+    BIO_MSG_IMAGINATION_SCENARIO_START,               /**< Scenario started notification */
+    BIO_MSG_IMAGINATION_SCENARIO_STEP,                /**< Scenario step complete */
+    BIO_MSG_IMAGINATION_SCENARIO_END,                 /**< Scenario ended */
+    BIO_MSG_IMAGINATION_VISUAL_READY,                 /**< Visual content generated */
+    BIO_MSG_IMAGINATION_AUDIO_READY,                  /**< Audio content generated */
+    BIO_MSG_IMAGINATION_COHERENCE_CHECK,              /**< Request coherence evaluation */
+    BIO_MSG_IMAGINATION_COHERENCE_RESULT,             /**< Coherence evaluation result */
+    BIO_MSG_IMAGINATION_COUNTERFACTUAL_QUERY,         /**< Counterfactual reasoning request */
+    BIO_MSG_IMAGINATION_COUNTERFACTUAL_RESULT,        /**< Counterfactual result */
+    BIO_MSG_IMAGINATION_PROSPECTIVE_QUERY,            /**< Future simulation request */
+    BIO_MSG_IMAGINATION_PROSPECTIVE_RESULT,           /**< Prospective simulation result */
+    BIO_MSG_IMAGINATION_SOCIAL_SIMULATE,              /**< ToM simulation request */
+    BIO_MSG_IMAGINATION_SOCIAL_RESULT,                /**< Social simulation result */
+    BIO_MSG_IMAGINATION_MEMORY_REQUEST,               /**< Request memory for imagination */
+    BIO_MSG_IMAGINATION_MEMORY_RESPONSE,              /**< Memory retrieval response */
+    BIO_MSG_IMAGINATION_VIVIDNESS_UPDATE,             /**< Vividness modulation (from immune) */
+    BIO_MSG_IMAGINATION_CAPACITY_UPDATE,              /**< Capacity modulation (from substrate) */
+    BIO_MSG_IMAGINATION_ATTENTION_GATE,               /**< Attention gating (from thalamic) */
+    BIO_MSG_IMAGINATION_GOAL_UPDATE,                  /**< Goal update notification */
+    BIO_MSG_IMAGINATION_MODE_CHANGE,                  /**< Imagination mode changed */
+    BIO_MSG_IMAGINATION_COLLECTIVE_SHARE,             /**< Share scenario with swarm */
+    BIO_MSG_IMAGINATION_COLLECTIVE_INSIGHT,           /**< Receive swarm insights */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;
@@ -1139,6 +1165,7 @@ typedef enum {
     BIO_MODULE_SUBSTRATE_MEMORY_CONSOLIDATION,  /**< Memory consolidation substrate bridge */
     BIO_MODULE_SUBSTRATE_TOM,                   /**< Theory of Mind substrate bridge */
     BIO_MODULE_SUBSTRATE_INTROSPECTION,         /**< Introspection substrate bridge */
+    BIO_MODULE_SUBSTRATE_IMAGINATION,           /**< Imagination substrate bridge */
 
     /* Phase 6: Cognitive Thalamic Bridges (0x1210 - 0x121F) */
     BIO_MODULE_THALAMIC_WORKING_MEMORY = 0x1210, /**< Working memory thalamic bridge */
@@ -1174,6 +1201,21 @@ typedef enum {
     BIO_MODULE_HEMISPHERIC_CONTRALATERAL,       /**< Contralateral motor/sensory mapping */
     BIO_MODULE_HEMISPHERIC_INJURY,              /**< Brain injury and recovery modeling */
     BIO_MODULE_SPLIT_BRAIN_EXPERIMENTS,         /**< Split-brain experimental framework */
+
+    /* Imagination Engine modules (0x1A00 - 0x1A0F) */
+    BIO_MODULE_IMAGINATION = 0x1A00,            /**< Imagination engine core */
+    BIO_MODULE_IMAGINATION_WORKSPACE,           /**< Imagination workspace manager */
+    BIO_MODULE_IMAGINATION_HIPPOCAMPUS,         /**< Hippocampus-imagination bridge */
+    BIO_MODULE_IMAGINATION_PREFRONTAL,          /**< Prefrontal-imagination bridge */
+    BIO_MODULE_IMAGINATION_GW,                  /**< Global workspace-imagination bridge */
+    BIO_MODULE_IMAGINATION_JEPA,                /**< JEPA-imagination bridge */
+    BIO_MODULE_IMAGINATION_SLEEP,               /**< Sleep-imagination bridge */
+    BIO_MODULE_IMAGINATION_TOM,                 /**< Theory of mind-imagination bridge */
+    BIO_MODULE_IMAGINATION_VISUAL,              /**< Visual-imagination bridge */
+    BIO_MODULE_IMAGINATION_AUDIO,               /**< Audio-imagination bridge */
+    BIO_MODULE_IMAGINATION_CURIOSITY,           /**< Curiosity-imagination bridge */
+    BIO_MODULE_IMAGINATION_PARIETAL,            /**< Parietal-imagination bridge */
+    BIO_MODULE_IMAGINATION_COLLECTIVE,          /**< Collective imagination (swarm) */
 
     /* Special values */
     BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */
@@ -2906,6 +2948,179 @@ typedef struct {
     float avg_severity;             /**< Average severity (rolling) */
     float max_severity;             /**< Maximum severity seen */
 } bio_msg_guardian_metrics_update_t;
+
+/*=============================================================================
+ * IMAGINATION ENGINE MESSAGE PAYLOADS
+ *============================================================================*/
+
+/**
+ * @brief Imagination request message
+ *
+ * WHAT: Request to begin an imagination scenario
+ * WHY:  Modules need to trigger imagination for planning, prediction, creativity
+ * HOW:  Sent to imagination engine, returns scenario ID
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t mode;                  /**< Imagination mode (imagination_mode_t) */
+    float urgency;                  /**< Request urgency [0.0-1.0] */
+    uint32_t max_steps;             /**< Maximum simulation steps */
+    float vividness_target;         /**< Target vividness level [0.0-1.0] */
+    float coherence_threshold;      /**< Minimum coherence required [0.0-1.0] */
+    uint32_t goal_type;             /**< Goal type identifier */
+    float goal_data[16];            /**< Goal embedding/parameters */
+} bio_msg_imagination_request_t;
+
+/**
+ * @brief Imagination result message
+ *
+ * WHAT: Result from completed imagination scenario
+ * WHY:  Modules need imagination output for decision-making
+ * HOW:  Broadcast when scenario completes or reaches checkpoint
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t scenario_id;           /**< Unique scenario identifier */
+    uint32_t mode;                  /**< Mode that generated this result */
+    uint32_t steps_completed;       /**< Steps executed */
+    float vividness;                /**< Achieved vividness [0.0-1.0] */
+    float coherence;                /**< Scene coherence [0.0-1.0] */
+    float plausibility;             /**< Result plausibility [0.0-1.0] */
+    uint32_t latent_dim;            /**< Dimension of latent state */
+    float latent_summary[8];        /**< Summary of latent state (first 8 dims) */
+} bio_msg_imagination_result_t;
+
+/**
+ * @brief Imagination scenario lifecycle notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t scenario_id;           /**< Scenario identifier */
+    uint32_t event_type;            /**< 0=start, 1=step, 2=pause, 3=resume, 4=end */
+    uint32_t step_number;           /**< Current step (for step events) */
+    float progress;                 /**< Progress [0.0-1.0] */
+} bio_msg_imagination_lifecycle_t;
+
+/**
+ * @brief Imagination visual/audio content ready
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t scenario_id;           /**< Source scenario */
+    uint32_t content_type;          /**< 0=visual, 1=audio, 2=multimodal */
+    float vividness;                /**< Content vividness [0.0-1.0] */
+    uint32_t width;                 /**< Content width (for visual) */
+    uint32_t height;                /**< Content height (for visual) */
+    uint32_t channels;              /**< Number of channels */
+    /* Actual content follows in separate buffer */
+} bio_msg_imagination_content_t;
+
+/**
+ * @brief Counterfactual reasoning request/result
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t scenario_id;           /**< Base scenario ID */
+    uint32_t intervention_type;     /**< Type of counterfactual intervention */
+    float intervention_params[8];   /**< Intervention parameters */
+    float plausibility;             /**< Result plausibility (in response) */
+    float divergence;               /**< How much outcome diverges from original */
+    bool is_response;               /**< true=response, false=request */
+} bio_msg_imagination_counterfactual_t;
+
+/**
+ * @brief Prospective simulation request/result
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t scenario_id;           /**< Scenario identifier */
+    uint32_t horizon_steps;         /**< How far to simulate */
+    float time_horizon_ms;          /**< Time horizon in milliseconds */
+    float predicted_outcomes[8];    /**< Predicted outcome values */
+    float confidence;               /**< Prediction confidence [0.0-1.0] */
+    bool is_response;               /**< true=response, false=request */
+} bio_msg_imagination_prospective_t;
+
+/**
+ * @brief Social/ToM simulation request/result
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t agent_id;              /**< Agent to simulate */
+    uint32_t scenario_id;           /**< Associated scenario */
+    float agent_mental_state[8];    /**< Simulated mental state */
+    float prediction_confidence;    /**< Confidence in simulation [0.0-1.0] */
+    uint32_t behavior_prediction;   /**< Predicted agent behavior */
+    bool is_response;               /**< true=response, false=request */
+} bio_msg_imagination_social_t;
+
+/**
+ * @brief Memory request for imagination grounding
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t scenario_id;           /**< Requesting scenario */
+    float query_cue[16];            /**< Memory query cue */
+    uint32_t max_memories;          /**< Maximum memories to retrieve */
+    float relevance_threshold;      /**< Minimum relevance [0.0-1.0] */
+} bio_msg_imagination_memory_request_t;
+
+/**
+ * @brief Memory response for imagination
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t scenario_id;           /**< Destination scenario */
+    uint32_t memories_found;        /**< Number of memories returned */
+    float memory_embeddings[4][16]; /**< Up to 4 memory embeddings */
+    float relevance[4];             /**< Relevance scores */
+} bio_msg_imagination_memory_response_t;
+
+/**
+ * @brief Imagination modulation message (from immune/substrate/attention)
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t modulation_type;       /**< 0=vividness, 1=capacity, 2=attention */
+    float modifier;                 /**< Modulation multiplier [0.0-2.0] */
+    float source_level;             /**< Source system level (e.g., inflammation) */
+    float secondary_level;          /**< Secondary level (e.g., fatigue) */
+} bio_msg_imagination_modulation_t;
+
+/**
+ * @brief Imagination goal update notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t scenario_id;           /**< Affected scenario */
+    uint32_t old_goal_type;         /**< Previous goal type */
+    uint32_t new_goal_type;         /**< New goal type */
+    float new_goal_params[8];       /**< New goal parameters */
+} bio_msg_imagination_goal_update_t;
+
+/**
+ * @brief Imagination mode change notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t scenario_id;           /**< Affected scenario */
+    uint32_t old_mode;              /**< Previous mode */
+    uint32_t new_mode;              /**< New mode */
+    float transition_urgency;       /**< How urgent the transition was */
+} bio_msg_imagination_mode_change_t;
+
+/**
+ * @brief Collective imagination share/insight
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint32_t scenario_id;           /**< Scenario identifier */
+    uint64_t source_node;           /**< Node that shared (for insight) */
+    uint32_t share_scope;           /**< Sharing scope (local/global) */
+    float relevance;                /**< Relevance score [0.0-1.0] */
+    float scenario_summary[16];     /**< Summary embedding of scenario */
+    bool is_share;                  /**< true=share, false=insight received */
+} bio_msg_imagination_collective_t;
 
 /*=============================================================================
  * MESSAGE UTILITIES

@@ -12,6 +12,8 @@
  */
 
 #include "cognitive/immune/nimcp_brain_immune.h"
+#include "cognitive/imagination/nimcp_imagination_callbacks.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -44,6 +46,7 @@ static void update_immune_phase(brain_immune_system_t* system);
 static void process_pending_antigens(brain_immune_system_t* system);
 static void decay_antibodies(brain_immune_system_t* system, uint64_t delta_ms);
 static void update_inflammation_sites(brain_immune_system_t* system, uint64_t delta_ms);
+static void send_imagination_modulation_unlocked(brain_immune_system_t* system);
 
 /* ============================================================================
  * String Conversion
@@ -316,21 +319,36 @@ static void decay_antibodies(brain_immune_system_t* system, uint64_t delta_ms) {
 
 /**
  * @brief Update inflammation sites (progress resolution)
+ *
+ * WHAT: Progress inflammation resolution and notify imagination engine
+ * WHY:  Inflammation affects imagination vividness/coherence (sickness behavior)
+ * HOW:  Track level changes and send modulation when inflammation changes
  */
 static void update_inflammation_sites(brain_immune_system_t* system, uint64_t delta_ms) {
     if (!system) return;
+
+    bool level_changed = false;
 
     for (size_t i = 0; i < system->inflammation_count; i++) {
         brain_inflammation_site_t* site = &system->inflammation_sites[i];
 
         /* Progress resolution if active */
         if (site->resolution_progress > 0 && site->resolution_progress < 1.0f) {
+            brain_inflammation_level_t old_level = site->level;
             site->resolution_progress += 0.001f * delta_ms;
             if (site->resolution_progress >= 1.0f) {
                 site->resolution_progress = 1.0f;
                 site->level = INFLAMMATION_NONE;
             }
+            if (site->level != old_level) {
+                level_changed = true;
+            }
         }
+    }
+
+    /* Notify imagination engine of inflammation changes */
+    if (level_changed) {
+        send_imagination_modulation_unlocked(system);
     }
 }
 
@@ -2557,4 +2575,201 @@ brain_inflammation_level_t brain_immune_get_inflammation_level(
     nimcp_platform_mutex_unlock(system->mutex);
 
     return max_level;
+}
+
+/* ============================================================================
+ * Imagination Engine Integration
+ * ============================================================================ */
+
+/**
+ * @brief Compute inflammation level as normalized float
+ *
+ * WHAT: Convert inflammation level enum to [0.0-1.0] scale
+ * WHY:  Needed for modulation calculations
+ * HOW:  Map enum values to float range
+ *
+ * NOTE: Called while mutex is held - assumes system is valid
+ */
+static float compute_inflammation_float_unlocked(brain_immune_system_t* system) {
+    brain_inflammation_level_t max_level = INFLAMMATION_NONE;
+
+    for (size_t i = 0; i < system->inflammation_count; i++) {
+        if (system->inflammation_sites[i].resolution_progress > 0.0f) {
+            continue;  /* Skip resolving sites */
+        }
+        if (system->inflammation_sites[i].level > max_level) {
+            max_level = system->inflammation_sites[i].level;
+        }
+    }
+
+    /* Map enum to [0.0, 1.0] */
+    switch (max_level) {
+        case INFLAMMATION_NONE:     return 0.0f;
+        case INFLAMMATION_LOCAL:    return 0.25f;
+        case INFLAMMATION_REGIONAL: return 0.5f;
+        case INFLAMMATION_SYSTEMIC: return 0.75f;
+        case INFLAMMATION_STORM:    return 1.0f;
+        default:                    return 0.0f;
+    }
+}
+
+/**
+ * @brief Send imagination modulation message (internal, mutex already held)
+ *
+ * WHAT: Compute and send vividness/coherence modifiers to imagination engine
+ * WHY:  Sickness behavior includes reduced imaginative capacity
+ * HOW:  Higher inflammation = lower vividness/coherence, via bio-async message
+ *
+ * BIOLOGICAL BASIS:
+ * Inflammation triggers "sickness behavior" including cognitive changes:
+ * - Reduced creativity and imagination vividness
+ * - Lower working memory capacity
+ * - Impaired cognitive flexibility
+ * Pro-inflammatory cytokines (IL-1, IL-6, TNF-alpha) cross BBB and
+ * affect hippocampus and prefrontal cortex, impairing imagination.
+ *
+ * NOTE: Called from update_inflammation_sites while mutex is held
+ */
+static void send_imagination_modulation_unlocked(brain_immune_system_t* system) {
+    if (!system) return;
+    if (!system->bio_context) return;  /* Bio-async not connected */
+
+    /* Compute inflammation level as float [0.0, 1.0] */
+    float inflammation = compute_inflammation_float_unlocked(system);
+
+    /* Compute modifiers: higher inflammation = lower vividness/coherence
+     * Using exponential decay: modifier = e^(-k * inflammation)
+     * k=2 gives: inflammation=0 -> modifier=1.0
+     *            inflammation=0.5 -> modifier=0.37
+     *            inflammation=1.0 -> modifier=0.14
+     */
+    float vividness_modifier = expf(-2.0f * inflammation);
+    float coherence_modifier = expf(-1.5f * inflammation);  /* Coherence degrades slower */
+
+    /* Clamp to reasonable bounds */
+    if (vividness_modifier < 0.1f) vividness_modifier = 0.1f;
+    if (coherence_modifier < 0.2f) coherence_modifier = 0.2f;
+
+    /* Build modulation message */
+    bio_msg_imagination_modulation_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    msg.header.type = BIO_MSG_IMAGINATION_VIVIDNESS_UPDATE;
+    msg.header.source_module = BIO_MODULE_IMMUNE_BRAIN;
+    msg.header.target_module = BIO_MODULE_IMAGINATION;
+    msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
+    msg.header.channel = BIO_CHANNEL_SEROTONIN;  /* Slow, modulatory signal */
+
+    msg.modulation_type = 0;  /* 0 = vividness modulation */
+    msg.modifier = vividness_modifier;
+    msg.source_level = inflammation;
+    msg.secondary_level = coherence_modifier;  /* Coherence in secondary field */
+
+    /* Send via bio-async (non-blocking) */
+    bio_router_send(system->bio_context, &msg, sizeof(msg), 0);
+}
+
+/**
+ * @brief Send imagination modulation based on current inflammation
+ *
+ * WHAT: Public API to send imagination modulation message
+ * WHY:  Allow external triggers to update imagination engine
+ * HOW:  Lock mutex, compute modulation, send via bio-async
+ *
+ * @param system Brain immune system
+ * @return 0 on success, -1 on error
+ */
+int brain_immune_send_imagination_modulation(brain_immune_system_t* system) {
+    if (!system) return -1;
+    if (!system->mutex) return -1;
+
+    nimcp_mutex_lock(system->mutex);
+    send_imagination_modulation_unlocked(system);
+    nimcp_mutex_unlock(system->mutex);
+
+    return 0;
+}
+
+/**
+ * @brief Handler for imagination-related bio-async messages
+ *
+ * WHAT: Process incoming imagination engine messages
+ * WHY:  Bidirectional communication between immune and imagination
+ * HOW:  Dispatch based on message type
+ *
+ * @param msg Incoming message
+ * @param msg_size Message size
+ * @param response_promise Promise for response (may be NULL)
+ * @param user_data Brain immune system pointer
+ * @return NIMCP_SUCCESS on success, error code on failure
+ */
+static nimcp_error_t imagination_message_handler(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+) {
+    (void)response_promise;  /* Unused - no response needed */
+
+    if (!msg || msg_size < sizeof(bio_message_header_t) || !user_data) {
+        return -1;
+    }
+
+    brain_immune_system_t* system = (brain_immune_system_t*)user_data;
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    /* Handle imagination engine queries about immune state */
+    switch (header->type) {
+        case BIO_MSG_IMAGINATION_REQUEST:
+            /* Imagination engine requesting current immune state */
+            /* Send current modulation values */
+            brain_immune_send_imagination_modulation(system);
+            break;
+
+        default:
+            /* Unknown message type - ignore */
+            break;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Register imagination handler with bio-async router
+ *
+ * WHAT: Register handler for imagination-related messages
+ * WHY:  Enable bidirectional communication with imagination engine
+ * HOW:  Register handler for imagination message types
+ *
+ * NOTE: User data comes from bio_module_info_t.user_data set during
+ *       bio_router_register_module() call in brain_immune_connect_bio_async()
+ *
+ * @param system Brain immune system
+ * @return 0 on success, -1 on error
+ */
+int brain_immune_register_imagination_handler(brain_immune_system_t* system) {
+    if (!system) return -1;
+    if (!system->bio_context) return -1;
+
+    /* Register handler for imagination request messages */
+    nimcp_error_t result = bio_router_register_handler(
+        system->bio_context,
+        BIO_MSG_IMAGINATION_REQUEST,
+        imagination_message_handler
+    );
+
+    if (result != NIMCP_SUCCESS) {
+        if (system->config.enable_logging) {
+            LOG_MODULE_WARN(BRAIN_IMMUNE_MODULE_NAME,
+                "Failed to register imagination handler");
+        }
+        return -1;
+    }
+
+    if (system->config.enable_logging) {
+        LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+            "Registered imagination engine handler");
+    }
+
+    return 0;
 }

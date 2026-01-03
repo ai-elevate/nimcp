@@ -1363,7 +1363,7 @@ expr_node_t* parietal_differentiate_expression(parietal_lobe_t* parietal,
     return result.output.expression;
 }
 
-rotation_result_t parietal_mental_rotate(parietal_lobe_t* parietal,
+rotation_result_t parietal_mental_rotate_compare(parietal_lobe_t* parietal,
                                           const spatial_object_t* object_a,
                                           const spatial_object_t* object_b) {
     parietal_request_t req = {0};
@@ -1798,6 +1798,41 @@ void parietal_reset_stats(parietal_lobe_t* parietal) {
 
 const char* parietal_get_last_error(void) {
     return g_parietal_error;
+}
+
+/* ============================================================================
+ * IMAGINATION INTEGRATION
+ * ============================================================================ */
+
+imagination_scenario_t* parietal_mental_rotate(
+    parietal_lobe_t* parietal,
+    nimcp_tensor_t* object,
+    float angle_x,
+    float angle_y,
+    float angle_z
+) {
+    if (!parietal || !object) return NULL;
+
+    /* TODO: Integrate with imagination engine for visualization */
+    /* This is a stub for the new imagination-integrated API */
+    (void)angle_x;
+    (void)angle_y;
+    (void)angle_z;
+
+    return NULL;
+}
+
+imagination_scenario_t* parietal_spatial_transform(
+    parietal_lobe_t* parietal,
+    nimcp_tensor_t* scene,
+    nimcp_tensor_t* transform
+) {
+    if (!parietal || !scene || !transform) return NULL;
+
+    /* TODO: Integrate with imagination engine for spatial transformation */
+    /* This is a stub for the new imagination-integrated API */
+
+    return NULL;
 }
 
 /* ============================================================================

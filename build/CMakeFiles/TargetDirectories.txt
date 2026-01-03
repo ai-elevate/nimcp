@@ -1393,6 +1393,15 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/collective_cognition/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/collective_cognition/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/collective_cognition/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/recursive/CMakeFiles/unit_cognitive_recursive_test_context_store.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/recursive/CMakeFiles/unit_cognitive_recursive_test_answer.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/recursive/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/recursive/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/recursive/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/recursive/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/recursive/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/recursive/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/recursive/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/bio_async/CMakeFiles/integration_cognitive_bio_async_test.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/bio_async/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/bio_async/CMakeFiles/edit_cache.dir

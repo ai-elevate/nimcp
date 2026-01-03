@@ -479,8 +479,11 @@ void nimcp_gradient_finalize_allreduce(
  * ============================================================================ */
 
 /* Forward declaration for tensor type */
+#ifndef NIMCP_TENSOR_T_DEFINED
+#define NIMCP_TENSOR_T_DEFINED
 struct nimcp_tensor_s;
 typedef struct nimcp_tensor_s nimcp_tensor_t;
+#endif
 
 /**
  * @brief Accumulate gradients using tensor operations

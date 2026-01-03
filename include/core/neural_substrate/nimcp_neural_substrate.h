@@ -555,6 +555,57 @@ const char* substrate_health_level_to_string(substrate_health_level_t level);
  */
 const char* substrate_alert_type_to_string(substrate_alert_type_t alert);
 
+/* ============================================================================
+ * Imagination Engine Integration API
+ *
+ * BIOLOGICAL BASIS:
+ * Imagination is metabolically expensive, requiring sustained activity in
+ * prefrontal cortex and default mode network. ATP depletion and accumulated
+ * fatigue reduce imaginative capacity - creative thinking and mental simulation
+ * abilities decline with energy depletion.
+ * ============================================================================ */
+
+/**
+ * @brief Send current imagination capacity to imagination engine
+ *
+ * WHAT: Notify imagination engine of current substrate capacity for imagination
+ * WHY:  Allow imagination to adjust scenario complexity based on metabolic state
+ * HOW:  Compute capacity modifier from ATP and fatigue, send via bio-async
+ *
+ * @param substrate Neural substrate
+ * @return 0 on success, -1 on error
+ *
+ * CAPACITY FORMULA:
+ * capacity = atp_level * (1 - fatigue * 0.5)
+ * - Low ATP reduces available energy for DMN activity
+ * - Fatigue impairs prefrontal function even with ATP available
+ * - Minimum 10% capacity persists (consciousness maintained)
+ */
+int neural_substrate_send_imagination_capacity(neural_substrate_t* substrate);
+
+/**
+ * @brief Register bio-async handler for imagination integration
+ *
+ * WHAT: Connect neural substrate to imagination engine via bio-async
+ * WHY:  Enable bidirectional communication for capacity modulation
+ * HOW:  Register module, set up message handlers
+ *
+ * @param substrate Neural substrate to connect
+ * @return 0 on success, -1 if bio-async not available
+ */
+int neural_substrate_register_imagination_handler(neural_substrate_t* substrate);
+
+/**
+ * @brief Unregister imagination bio-async handler
+ *
+ * WHAT: Disconnect neural substrate from imagination engine
+ * WHY:  Clean shutdown of bio-async integration
+ * HOW:  Unregister module from bio-async router
+ *
+ * @return 0 on success
+ */
+int neural_substrate_unregister_imagination_handler(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -28,6 +28,9 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
+#include "cognitive/imagination/nimcp_imagination_callbacks.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -115,6 +118,12 @@ typedef struct swarm_consciousness_ctx {
 
     // Bio-async integration
     bool bio_async_registered;               /**< Bio-async active? */
+    bio_module_context_t bio_module_ctx;     /**< Bio-router module context */
+
+    // Imagination integration (collective creativity)
+    imagination_collective_receive_callback_t collective_imagination_callback; /**< Callback for received imagination */
+    void* collective_imagination_user_data;  /**< User data for imagination callback */
+    bool imagination_handler_registered;     /**< Imagination handler active? */
 
     // History for trend analysis
     float phi_history[PHI_HISTORY_SIZE];     /**< Recent phi values */
@@ -146,6 +155,11 @@ static uint64_t get_time_ms(void);
 
 // Public API forward declaration for use in destroy
 void swarm_consciousness_stop_monitoring(swarm_consciousness_ctx_t* context);
+
+// Imagination integration forward declarations
+static nimcp_error_t imagination_collective_handler(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
 
 //=============================================================================
 // Configuration API
@@ -244,6 +258,12 @@ swarm_consciousness_ctx_t* swarm_consciousness_create(
     ctx->user_data = NULL;
     ctx->swarm_brain = NULL;
 
+    // Initialize imagination integration
+    ctx->collective_imagination_callback = NULL;
+    ctx->collective_imagination_user_data = NULL;
+    ctx->imagination_handler_registered = false;
+    ctx->bio_module_ctx = NULL;
+
     // Register with BBB security
     if (!bbb_register_module("swarm_consciousness", BBB_MODULE_TYPE_SWARM)) {
         LOG_WARN("Failed to register with BBB security module");
@@ -285,6 +305,18 @@ void swarm_consciousness_destroy(swarm_consciousness_ctx_t* context) {
     // Stop monitoring if active
     if (ctx->monitoring_active) {
         swarm_consciousness_stop_monitoring(context);
+    }
+
+    // Unregister imagination handlers and bio-router module
+    if (ctx->bio_module_ctx) {
+        if (ctx->imagination_handler_registered) {
+            bio_router_unregister_handler(ctx->bio_module_ctx,
+                                          BIO_MSG_IMAGINATION_COLLECTIVE_SHARE);
+            bio_router_unregister_handler(ctx->bio_module_ctx,
+                                          BIO_MSG_IMAGINATION_COLLECTIVE_INSIGHT);
+        }
+        bio_router_unregister_module(ctx->bio_module_ctx);
+        ctx->bio_module_ctx = NULL;
     }
 
     // Unregister from BBB
@@ -1324,4 +1356,321 @@ static float brain_get_phi_internal(brain_t* brain) {
     // Fallback: Estimate phi from brain activity
     // Simple heuristic: use 0.5 as baseline for active brain
     return 0.5f;
+}
+
+//=============================================================================
+// Imagination Engine Integration
+//=============================================================================
+// BIOLOGICAL BASIS: Collective imagination enables distributed creativity
+// across the swarm, similar to cultural transmission of imaginative content
+// in social species. Individual nodes can share novel scenarios and insights,
+// enabling emergent collective creativity beyond individual capabilities.
+//
+// NOTE: bio_msg_imagination_collective_t is defined in nimcp_bio_messages.h
+
+/**
+ * WHAT: Handler for incoming collective imagination messages
+ * WHY:  Process imagination content from other swarm nodes
+ * HOW:  Validate, evaluate relevance, invoke user callback
+ */
+static nimcp_error_t imagination_collective_handler(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    (void)response_promise;  // No response expected for broadcasts
+
+    swarm_consciousness_ctx_t* ctx = (swarm_consciousness_ctx_t*)user_data;
+
+    // Guard: Validate context
+    if (!ctx || ctx->magic != SWARM_CONSCIOUSNESS_MAGIC) {
+        return NIMCP_INVALID_PARAM;
+    }
+
+    // Guard: Validate message size
+    if (!msg || msg_size < sizeof(bio_msg_imagination_collective_t)) {
+        LOG_WARN("Invalid imagination collective message size");
+        return NIMCP_INVALID_PARAM;
+    }
+
+    const bio_msg_imagination_collective_t* imag_msg =
+        (const bio_msg_imagination_collective_t*)msg;
+
+    // Log received imagination
+    LOG_DEBUG("Received collective imagination from node %lu: scenario=%u, relevance=%.3f",
+              (unsigned long)imag_msg->source_node,
+              imag_msg->scenario_id,
+              imag_msg->relevance);
+
+    // Invoke user callback if registered
+    pthread_mutex_lock(&ctx->lock);
+    imagination_collective_receive_callback_t callback = ctx->collective_imagination_callback;
+    void* callback_data = ctx->collective_imagination_user_data;
+    pthread_mutex_unlock(&ctx->lock);
+
+    if (callback) {
+        // Note: In full implementation, would reconstruct imagination_scenario_t
+        // from message payload. For now, we pass NULL scenario with metadata.
+        callback(NULL,  // scenario pointer (would be reconstructed)
+                 imag_msg->source_node,
+                 imag_msg->relevance,
+                 callback_data);
+    }
+
+    // BBB audit for collective imagination
+    bbb_audit_log(BBB_AUDIT_INFO, "swarm_consciousness", "imagination_received",
+                  "source=%lu scenario=%u relevance=%.3f",
+                  (unsigned long)imag_msg->source_node,
+                  imag_msg->scenario_id,
+                  imag_msg->relevance);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Share imagination scenario with other swarm nodes
+ * WHY:  Enable distributed creativity through collective imagination
+ * HOW:  Broadcast imagination content via BIO_MSG_IMAGINATION_COLLECTIVE_SHARE
+ *
+ * BIOLOGICAL BASIS: Similar to cultural transmission in social species,
+ * where imaginative content (stories, solutions, innovations) spreads
+ * through the population, enabling collective creativity.
+ *
+ * @param ctx Swarm consciousness context
+ * @param scenario Imagination scenario to share
+ * @return 0 on success, -1 on error
+ */
+int swarm_consciousness_share_imagination(
+    swarm_consciousness_ctx_t* ctx,
+    const struct imagination_scenario* scenario)
+{
+    // Guard: Validate context
+    if (!ctx) {
+        LOG_ERROR("Null context in share_imagination");
+        return -1;
+    }
+
+    if (ctx->magic != SWARM_CONSCIOUSNESS_MAGIC) {
+        LOG_ERROR("Invalid context magic in share_imagination");
+        return -1;
+    }
+
+    // Guard: Validate scenario
+    if (!scenario) {
+        LOG_ERROR("Null scenario in share_imagination");
+        return -1;
+    }
+
+    // Guard: Check bio-async availability
+    if (!ctx->bio_async_registered || !ctx->bio_module_ctx) {
+        LOG_WARN("Bio-async not available for imagination sharing");
+        return -1;
+    }
+
+    // Prepare broadcast message
+    bio_msg_imagination_collective_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    // Initialize header
+    bio_msg_init_header(&msg.header, BIO_MSG_IMAGINATION_COLLECTIVE_SHARE,
+                        bio_module_context_get_id(ctx->bio_module_ctx),
+                        0,  // Broadcast to all
+                        sizeof(msg));
+    msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
+    msg.header.timestamp_us = get_time_ms() * 1000;
+
+    // Fill imagination metadata
+    // Note: Would extract from scenario struct in full implementation
+    msg.source_node = (uint64_t)bio_module_context_get_id(ctx->bio_module_ctx);
+    msg.scenario_id = 0;  // Would extract from scenario->id
+    msg.share_scope = 0;  // Default scope (global)
+    msg.relevance = 1.0f;  // Self-generated = max relevance
+    msg.is_share = true;  // This is a share operation
+
+    // Send broadcast
+    nimcp_error_t err = bio_router_send(ctx->bio_module_ctx, &msg, sizeof(msg), 0);
+    if (err != NIMCP_SUCCESS) {
+        LOG_ERROR("Failed to broadcast imagination: error=%d", err);
+        return -1;
+    }
+
+    LOG_INFO("Shared imagination scenario with swarm: scenario_id=%u",
+             msg.scenario_id);
+
+    bbb_audit_log(BBB_AUDIT_INFO, "swarm_consciousness", "imagination_shared",
+                  "scenario=%u scope=%u", msg.scenario_id, msg.share_scope);
+
+    return 0;
+}
+
+/**
+ * WHAT: Receive and process imagination from another swarm node
+ * WHY:  Evaluate and integrate external imagination into local consciousness
+ * HOW:  Assess relevance, filter, and invoke callback for accepted content
+ *
+ * BIOLOGICAL BASIS: Incoming cultural/imaginative content is evaluated
+ * for relevance to current goals and mental state before integration,
+ * similar to selective attention in social learning.
+ *
+ * @param ctx Swarm consciousness context
+ * @param scenario Received imagination scenario
+ * @param source_node_id ID of the node that shared the scenario
+ * @return 0 on success, -1 on error
+ */
+int swarm_consciousness_receive_imagination(
+    swarm_consciousness_ctx_t* ctx,
+    const struct imagination_scenario* scenario,
+    uint64_t source_node_id)
+{
+    // Guard: Validate context
+    if (!ctx) {
+        LOG_ERROR("Null context in receive_imagination");
+        return -1;
+    }
+
+    if (ctx->magic != SWARM_CONSCIOUSNESS_MAGIC) {
+        LOG_ERROR("Invalid context magic in receive_imagination");
+        return -1;
+    }
+
+    // Guard: Validate scenario
+    if (!scenario) {
+        LOG_WARN("Null scenario in receive_imagination");
+        return -1;
+    }
+
+    // Evaluate relevance to local consciousness
+    // Relevance factors:
+    // 1. Current consciousness state (more receptive in UNIFIED+ states)
+    // 2. Workspace coherence (higher coherence = better integration)
+    // 3. Source node trust/history
+    float relevance = 0.5f;  // Base relevance
+
+    pthread_mutex_lock(&ctx->lock);
+
+    // Boost relevance based on consciousness state
+    if (ctx->current_metrics) {
+        switch (ctx->current_metrics->consciousness_state) {
+            case SWARM_CONSCIOUSNESS_TRANSCENDENT:
+                relevance *= 1.5f;
+                break;
+            case SWARM_CONSCIOUSNESS_UNIFIED:
+                relevance *= 1.2f;
+                break;
+            case SWARM_CONSCIOUSNESS_EMERGING:
+                relevance *= 1.0f;
+                break;
+            case SWARM_CONSCIOUSNESS_DORMANT:
+            default:
+                relevance *= 0.5f;  // Less receptive when dormant
+                break;
+        }
+
+        // Modulate by workspace coherence
+        relevance *= (0.5f + 0.5f * ctx->current_metrics->workspace_coherence);
+    }
+
+    // Clamp relevance to [0, 1]
+    if (relevance > 1.0f) relevance = 1.0f;
+    if (relevance < 0.0f) relevance = 0.0f;
+
+    // Get callback
+    imagination_collective_receive_callback_t callback = ctx->collective_imagination_callback;
+    void* callback_data = ctx->collective_imagination_user_data;
+
+    pthread_mutex_unlock(&ctx->lock);
+
+    // Invoke callback with relevance-weighted scenario
+    if (callback) {
+        callback(scenario, source_node_id, relevance, callback_data);
+
+        LOG_DEBUG("Processed imagination from node %lu with relevance %.3f",
+                  (unsigned long)source_node_id, relevance);
+    }
+
+    return 0;
+}
+
+/**
+ * WHAT: Register handler for collective imagination sharing
+ * WHY:  Enable reception of imagination from other swarm nodes
+ * HOW:  Register bio-async handler for BIO_MSG_IMAGINATION_COLLECTIVE_SHARE
+ *
+ * BIOLOGICAL BASIS: Establishes neural pathways for receiving and
+ * processing culturally transmitted imaginative content from the swarm.
+ *
+ * @param ctx Swarm consciousness context
+ * @param callback Callback for received imagination
+ * @param user_data User data passed to callback
+ * @return 0 on success, -1 on error
+ */
+int swarm_consciousness_register_imagination_handler(
+    swarm_consciousness_ctx_t* ctx,
+    imagination_collective_receive_callback_t callback,
+    void* user_data)
+{
+    // Guard: Validate context
+    if (!ctx) {
+        LOG_ERROR("Null context in register_imagination_handler");
+        return -1;
+    }
+
+    if (ctx->magic != SWARM_CONSCIOUSNESS_MAGIC) {
+        LOG_ERROR("Invalid context magic in register_imagination_handler");
+        return -1;
+    }
+
+    pthread_mutex_lock(&ctx->lock);
+
+    // Store callback
+    ctx->collective_imagination_callback = callback;
+    ctx->collective_imagination_user_data = user_data;
+
+    // Register bio-async handler if not already done
+    if (!ctx->imagination_handler_registered && ctx->bio_async_registered) {
+        // Register module with bio-router if not yet registered
+        if (!ctx->bio_module_ctx) {
+            bio_module_info_t mod_info = {
+                .module_id = BIO_MODULE_SWARM_CONSCIOUSNESS,
+                .module_name = "swarm_consciousness",
+                .inbox_capacity = 0,  // Use default
+                .user_data = ctx
+            };
+            ctx->bio_module_ctx = bio_router_register_module(&mod_info);
+            if (!ctx->bio_module_ctx) {
+                LOG_WARN("Failed to register swarm_consciousness with bio-router");
+                pthread_mutex_unlock(&ctx->lock);
+                return -1;
+            }
+        }
+
+        // Register handler for imagination collective messages
+        nimcp_error_t err = bio_router_register_handler(
+            ctx->bio_module_ctx,
+            BIO_MSG_IMAGINATION_COLLECTIVE_SHARE,
+            imagination_collective_handler);
+
+        if (err == NIMCP_SUCCESS) {
+            ctx->imagination_handler_registered = true;
+            LOG_INFO("Registered imagination collective handler");
+        } else {
+            LOG_WARN("Failed to register imagination handler: error=%d", err);
+            pthread_mutex_unlock(&ctx->lock);
+            return -1;
+        }
+
+        // Also register for collective insight messages
+        bio_router_register_handler(
+            ctx->bio_module_ctx,
+            BIO_MSG_IMAGINATION_COLLECTIVE_INSIGHT,
+            imagination_collective_handler);
+    }
+
+    pthread_mutex_unlock(&ctx->lock);
+
+    bbb_audit_log(BBB_AUDIT_INFO, "swarm_consciousness", "imagination_handler_registered",
+                  "callback=%p", (void*)callback);
+
+    return 0;
 }

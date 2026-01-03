@@ -166,7 +166,10 @@ typedef struct {
 } nimcp_tensor_config_t;
 
 /** Opaque tensor handle */
+#ifndef NIMCP_TENSOR_T_DEFINED
+#define NIMCP_TENSOR_T_DEFINED
 typedef struct nimcp_tensor_s nimcp_tensor_t;
+#endif
 
 /** Opaque gradient tape handle for automatic differentiation */
 typedef struct nimcp_grad_tape_s nimcp_grad_tape_t;

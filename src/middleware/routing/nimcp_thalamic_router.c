@@ -6,6 +6,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "cognitive/imagination/nimcp_imagination_callbacks.h"
 
 #include "middleware/routing/nimcp_attention_gate.h"
 #include "middleware/routing/nimcp_routing_table.h"
@@ -88,6 +89,12 @@ struct thalamic_router {
     // Quantum routing
     thalamic_quantum_bridge_t* quantum_bridge;
     bool quantum_routing_enabled;
+
+    // Imagination integration
+    float imagination_attention_weight;   /**< Gating weight for imagination content [0.0-1.0] */
+    bool imagination_routing_enabled;     /**< Whether to route imagination content */
+    imagination_attention_gate_callback_t imagination_gate_callback;  /**< Callback for attention gate updates */
+    void* imagination_callback_user_data; /**< User data for imagination callback */
 };
 
 // ============================================================================
@@ -521,6 +528,13 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
             LOG_WARN(LOG_MODULE, "Failed to initialize quantum routing bridge");
         }
     }
+
+    // Initialize imagination integration
+    router->imagination_attention_weight = 1.0f;  /* Default: full attention to imagination */
+    router->imagination_routing_enabled = true;   /* Enable by default */
+    router->imagination_gate_callback = NULL;
+    router->imagination_callback_user_data = NULL;
+    LOG_DEBUG(LOG_MODULE, "Imagination routing enabled with default attention weight 1.0");
 
     return router;
 }
@@ -995,4 +1009,340 @@ bool thalamic_router_get_second_messenger_state(const thalamic_router_t* router,
     }
 
     return true;
+}
+
+// ============================================================================
+// IMAGINATION ENGINE INTEGRATION
+// ============================================================================
+
+/**
+ * @brief Set imagination attention gating weight
+ *
+ * WHAT: Controls how much imagination content reaches conscious awareness
+ * WHY:  Thalamus gates imagination like sensory input based on attention focus
+ * HOW:  Sets weight [0.0-1.0] and sends BIO_MSG_IMAGINATION_ATTENTION_GATE
+ *
+ * BIOLOGICAL BASIS:
+ * The thalamus serves as a relay for both external sensory input and internal
+ * signals like imagination. The pulvinar nucleus specifically coordinates
+ * attention-based gating, allowing focused attention to amplify or suppress
+ * imagination content reaching conscious awareness in prefrontal cortex.
+ *
+ * @param router Router handle
+ * @param attention_weight Attention weight for imagination [0.0-1.0]
+ * @return true on success, false on error
+ */
+bool thalamic_router_set_imagination_attention(thalamic_router_t* router,
+                                                float attention_weight) {
+    // Guard clauses
+    if (!router) {
+        LOG_ERROR(LOG_MODULE, "NULL router in set_imagination_attention");
+        return false;
+    }
+
+    // Clamp attention weight to valid range
+    if (attention_weight < 0.0f) {
+        LOG_WARN(LOG_MODULE, "Imagination attention weight %.3f < 0, clamping to 0",
+                 attention_weight);
+        attention_weight = 0.0f;
+    } else if (attention_weight > 1.0f) {
+        LOG_WARN(LOG_MODULE, "Imagination attention weight %.3f > 1, clamping to 1",
+                 attention_weight);
+        attention_weight = 1.0f;
+    }
+
+    float old_weight = router->imagination_attention_weight;
+    router->imagination_attention_weight = attention_weight;
+
+    LOG_DEBUG(LOG_MODULE, "Imagination attention weight: %.3f -> %.3f",
+              old_weight, attention_weight);
+
+    // Send bio-async message to notify imagination engine of attention gate change
+    if (router->bio_async_enabled && router->bio_ctx) {
+        bio_msg_imagination_modulation_t msg;
+        bio_msg_init_header(&msg.header,
+                           BIO_MSG_IMAGINATION_ATTENTION_GATE,
+                           BIO_MODULE_SIGNAL_ROUTER,
+                           BIO_MODULE_IMAGINATION,
+                           sizeof(msg) - sizeof(bio_message_header_t));
+
+        msg.modulation_type = 2;  /* 2 = attention modulation */
+        msg.modifier = attention_weight;
+        msg.source_level = old_weight;       /* Previous attention level */
+        msg.secondary_level = 0.0f;          /* Not used for attention */
+
+        nimcp_error_t result = bio_router_send(router->bio_ctx, &msg, sizeof(msg), 0);
+        if (result != NIMCP_SUCCESS) {
+            LOG_WARN(LOG_MODULE, "Failed to send imagination attention gate message");
+        }
+    }
+
+    // Invoke registered callback if present
+    if (router->imagination_gate_callback) {
+        router->imagination_gate_callback(attention_weight, NULL,
+                                          router->imagination_callback_user_data);
+    }
+
+    return true;
+}
+
+/**
+ * @brief Get current imagination attention weight
+ *
+ * @param router Router handle
+ * @return Current attention weight [0.0-1.0], or -1.0 on error
+ */
+float thalamic_router_get_imagination_attention(const thalamic_router_t* router) {
+    if (!router) {
+        LOG_ERROR(LOG_MODULE, "NULL router in get_imagination_attention");
+        return -1.0f;
+    }
+    return router->imagination_attention_weight;
+}
+
+/**
+ * @brief Handler for imagination attention gate bio-async messages
+ */
+static nimcp_error_t imagination_attention_handler(const void* msg,
+                                                    size_t msg_size,
+                                                    nimcp_bio_promise_t response_promise,
+                                                    void* user_data) {
+    (void)response_promise;  /* Not expecting response */
+
+    thalamic_router_t* router = (thalamic_router_t*)user_data;
+    if (!router || !msg) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    if (msg_size < sizeof(bio_msg_imagination_modulation_t)) {
+        LOG_WARN(LOG_MODULE, "Imagination modulation message too small");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const bio_msg_imagination_modulation_t* mod_msg =
+        (const bio_msg_imagination_modulation_t*)msg;
+
+    /* Only handle attention modulation type (2) */
+    if (mod_msg->modulation_type == 2) {
+        float new_weight = mod_msg->modifier;
+        router->imagination_attention_weight = new_weight;
+        LOG_DEBUG(LOG_MODULE, "Received imagination attention update: %.3f", new_weight);
+
+        /* Invoke callback if registered */
+        if (router->imagination_gate_callback) {
+            router->imagination_gate_callback(new_weight, NULL,
+                                              router->imagination_callback_user_data);
+        }
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Register bio-async handlers for imagination attention gating
+ *
+ * WHAT: Sets up message handlers for imagination-related routing
+ * WHY:  Enable asynchronous communication with imagination engine
+ * HOW:  Register handler for BIO_MSG_IMAGINATION_ATTENTION_GATE
+ *
+ * @param router Router handle
+ * @return true on success, false on error
+ */
+bool thalamic_router_register_imagination_handler(thalamic_router_t* router) {
+    if (!router) {
+        LOG_ERROR(LOG_MODULE, "NULL router in register_imagination_handler");
+        return false;
+    }
+
+    if (!router->bio_async_enabled || !router->bio_ctx) {
+        LOG_WARN(LOG_MODULE, "Bio-async not enabled, cannot register imagination handler");
+        return false;
+    }
+
+    nimcp_error_t result = bio_router_register_handler(
+        router->bio_ctx,
+        BIO_MSG_IMAGINATION_ATTENTION_GATE,
+        imagination_attention_handler
+    );
+
+    if (result != NIMCP_SUCCESS) {
+        LOG_ERROR(LOG_MODULE, "Failed to register imagination attention handler");
+        return false;
+    }
+
+    LOG_INFO(LOG_MODULE, "Registered imagination attention gating handler");
+    return true;
+}
+
+/**
+ * @brief Set callback for imagination attention gate updates
+ *
+ * @param router Router handle
+ * @param callback Callback function
+ * @param user_data User context for callback
+ * @return true on success, false on error
+ */
+bool thalamic_router_set_imagination_callback(thalamic_router_t* router,
+                                               imagination_attention_gate_callback_t callback,
+                                               void* user_data) {
+    if (!router) {
+        LOG_ERROR(LOG_MODULE, "NULL router in set_imagination_callback");
+        return false;
+    }
+
+    router->imagination_gate_callback = callback;
+    router->imagination_callback_user_data = user_data;
+    LOG_DEBUG(LOG_MODULE, "Imagination attention gate callback registered");
+
+    return true;
+}
+
+/**
+ * @brief Route imagination content based on attention weight
+ *
+ * WHAT: Routes imagination scenario content to appropriate destinations
+ * WHY:  Prioritizes imagination when attention weight is high
+ * HOW:  Creates routed signal with attention-modulated priority
+ *
+ * BIOLOGICAL BASIS:
+ * When attention is focused on imagination (high weight), the thalamus
+ * prioritizes routing imagination content over external sensory input.
+ * This models the "absorbed in thought" state where internal content
+ * dominates conscious awareness.
+ *
+ * @param router Router handle
+ * @param scenario_id Imagination scenario identifier
+ * @param content Imagination content data
+ * @param content_size Size of content in floats
+ * @param dest_ids Destination module IDs
+ * @param num_dests Number of destinations
+ * @return true on success, false on error
+ */
+bool thalamic_router_route_imagination_content(thalamic_router_t* router,
+                                                uint32_t scenario_id,
+                                                const float* content,
+                                                uint32_t content_size,
+                                                const uint32_t* dest_ids,
+                                                uint32_t num_dests) {
+    // Guard clauses
+    if (!router) {
+        LOG_ERROR(LOG_MODULE, "NULL router in route_imagination_content");
+        return false;
+    }
+
+    if (!content || content_size == 0) {
+        LOG_ERROR(LOG_MODULE, "NULL or empty content in route_imagination_content");
+        return false;
+    }
+
+    if (!dest_ids || num_dests == 0) {
+        LOG_ERROR(LOG_MODULE, "NULL or empty destinations in route_imagination_content");
+        return false;
+    }
+
+    if (!router->imagination_routing_enabled) {
+        LOG_DEBUG(LOG_MODULE, "Imagination routing disabled, skipping scenario %u",
+                  scenario_id);
+        return false;
+    }
+
+    // Check attention threshold - skip if attention too low
+    float attention = router->imagination_attention_weight;
+    if (attention < router->config.min_attention_threshold) {
+        LOG_DEBUG(LOG_MODULE, "Imagination attention %.3f below threshold %.3f, "
+                  "filtering scenario %u",
+                  attention, router->config.min_attention_threshold, scenario_id);
+        return false;
+    }
+
+    // Determine priority based on attention weight
+    // High attention (>0.7) -> HIGH priority (bypass queue)
+    // Medium attention (0.3-0.7) -> NORMAL priority
+    // Low attention (<0.3) -> LOW priority
+    signal_priority_t priority;
+    bool bypass_queue = false;
+
+    if (attention > 0.7f) {
+        priority = SIGNAL_PRIORITY_HIGH;
+        bypass_queue = true;  /* High attention imagination bypasses queue */
+        LOG_DEBUG(LOG_MODULE, "Imagination scenario %u: HIGH priority (attention=%.3f)",
+                  scenario_id, attention);
+    } else if (attention > 0.3f) {
+        priority = SIGNAL_PRIORITY_NORMAL;
+        LOG_DEBUG(LOG_MODULE, "Imagination scenario %u: NORMAL priority (attention=%.3f)",
+                  scenario_id, attention);
+    } else {
+        priority = SIGNAL_PRIORITY_LOW;
+        LOG_DEBUG(LOG_MODULE, "Imagination scenario %u: LOW priority (attention=%.3f)",
+                  scenario_id, attention);
+    }
+
+    // Create routed signal
+    routed_signal_t* signal = thalamic_router_create_signal(
+        scenario_id,  /* Use scenario_id as source */
+        dest_ids,
+        num_dests,
+        content,
+        content_size,
+        priority
+    );
+
+    if (!signal) {
+        LOG_ERROR(LOG_MODULE, "Failed to create imagination signal for scenario %u",
+                  scenario_id);
+        return false;
+    }
+
+    // Apply imagination attention weight
+    signal->attention_weight = attention;
+    signal->bypass_queue = bypass_queue;
+
+    // Route the signal
+    bool success = thalamic_router_route_signal(router, signal);
+
+    if (success) {
+        LOG_DEBUG(LOG_MODULE, "Routed imagination scenario %u to %u destinations "
+                  "(attention=%.3f, priority=%d)",
+                  scenario_id, num_dests, attention, priority);
+    } else {
+        LOG_WARN(LOG_MODULE, "Failed to route imagination scenario %u", scenario_id);
+    }
+
+    // Cleanup
+    thalamic_router_free_signal(signal);
+
+    return success;
+}
+
+/**
+ * @brief Enable or disable imagination routing
+ *
+ * @param router Router handle
+ * @param enabled true to enable, false to disable
+ * @return true on success, false on error
+ */
+bool thalamic_router_set_imagination_routing_enabled(thalamic_router_t* router,
+                                                      bool enabled) {
+    if (!router) {
+        LOG_ERROR(LOG_MODULE, "NULL router in set_imagination_routing_enabled");
+        return false;
+    }
+
+    router->imagination_routing_enabled = enabled;
+    LOG_INFO(LOG_MODULE, "Imagination routing %s", enabled ? "enabled" : "disabled");
+
+    return true;
+}
+
+/**
+ * @brief Check if imagination routing is enabled
+ *
+ * @param router Router handle
+ * @return true if enabled, false otherwise
+ */
+bool thalamic_router_is_imagination_routing_enabled(const thalamic_router_t* router) {
+    if (!router) {
+        return false;
+    }
+    return router->imagination_routing_enabled;
 }

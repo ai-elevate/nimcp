@@ -472,6 +472,79 @@ bool swarm_consciousness_bbb_validate(
     const swarm_consciousness_metrics_t* metrics);
 
 /* ============================================================================
+ * Imagination Engine Integration
+ * ============================================================================ */
+
+/* Forward declaration for imagination scenario */
+struct imagination_scenario;
+
+/* Forward declaration for imagination callback */
+typedef void (*imagination_collective_receive_callback_t)(
+    const struct imagination_scenario* scenario,
+    uint64_t source_node,
+    float relevance,
+    void* user_data
+);
+
+/**
+ * Share imagination scenario with other swarm nodes
+ *
+ * WHAT: Broadcasts imagination content to the swarm
+ * WHY:  Enables distributed creativity through collective imagination
+ * HOW:  Sends BIO_MSG_IMAGINATION_COLLECTIVE_SHARE via bio-async
+ *
+ * BIOLOGICAL BASIS: Similar to cultural transmission in social species,
+ * where imaginative content spreads through the population.
+ *
+ * @param ctx Swarm consciousness context
+ * @param scenario Imagination scenario to share
+ * @return 0 on success, -1 on error
+ */
+int swarm_consciousness_share_imagination(
+    swarm_consciousness_ctx_t* ctx,
+    const struct imagination_scenario* scenario);
+
+/**
+ * Receive and process imagination from another swarm node
+ *
+ * WHAT: Evaluates and integrates external imagination content
+ * WHY:  Enable collective creativity across the swarm
+ * HOW:  Assess relevance and invoke registered callback
+ *
+ * BIOLOGICAL BASIS: Incoming imaginative content is evaluated
+ * for relevance before integration, like selective attention.
+ *
+ * @param ctx Swarm consciousness context
+ * @param scenario Received imagination scenario
+ * @param source_node_id ID of the node that shared the scenario
+ * @return 0 on success, -1 on error
+ */
+int swarm_consciousness_receive_imagination(
+    swarm_consciousness_ctx_t* ctx,
+    const struct imagination_scenario* scenario,
+    uint64_t source_node_id);
+
+/**
+ * Register handler for collective imagination sharing
+ *
+ * WHAT: Enable reception of imagination from other swarm nodes
+ * WHY:  Establish pathways for collective creativity
+ * HOW:  Register bio-async handler for imagination messages
+ *
+ * BIOLOGICAL BASIS: Establishes neural pathways for receiving
+ * culturally transmitted imaginative content from the swarm.
+ *
+ * @param ctx Swarm consciousness context
+ * @param callback Callback for received imagination
+ * @param user_data User data passed to callback
+ * @return 0 on success, -1 on error
+ */
+int swarm_consciousness_register_imagination_handler(
+    swarm_consciousness_ctx_t* ctx,
+    imagination_collective_receive_callback_t callback,
+    void* user_data);
+
+/* ============================================================================
  * Utility Functions
  * ============================================================================ */
 

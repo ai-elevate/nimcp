@@ -51,6 +51,7 @@ The `docs/claude/` directory is the **primary developer reference** for working 
 | Positional Encoding | [modules/positional-encoding.md](claude/modules/positional-encoding.md) |
 | Tensor Integration | [modules/tensor.md](claude/modules/tensor.md) |
 | Metabolic Modulation | [modules/metabolic-modulation.md](claude/modules/metabolic-modulation.md) |
+| Recursive Cognition | [modules/recursive-cognition.md](claude/modules/recursive-cognition.md) |
 
 ---
 

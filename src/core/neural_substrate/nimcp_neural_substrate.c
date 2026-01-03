@@ -10,8 +10,32 @@
  */
 
 #include "core/neural_substrate/nimcp_neural_substrate.h"
+#include "cognitive/imagination/nimcp_imagination_callbacks.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "utils/error/nimcp_error_codes.h"
 #include <string.h>
 #include <math.h>
+
+/* ============================================================================
+ * Imagination Integration - Static Variables
+ * ============================================================================ */
+
+/**
+ * @brief Bio-async context for substrate-imagination communication
+ */
+static bio_module_context_t g_substrate_imag_ctx = NULL;
+
+/**
+ * @brief Threshold for significant metabolic state change
+ *
+ * BIOLOGICAL: ATP changes > 5% are significant for imagination capacity
+ */
+#define SUBSTRATE_IMAG_CHANGE_THRESHOLD 0.05f
+
+/* Forward declaration for imagination capacity computation */
+static float compute_imagination_capacity_modifier(const neural_substrate_t* substrate);
 
 /* ============================================================================
  * Helper Functions
@@ -388,6 +412,30 @@ int substrate_update(neural_substrate_t* substrate, uint64_t delta_ms) {
         (substrate->stats.avg_health_score * (substrate->stats.total_updates - 1) + health_score) /
         substrate->stats.total_updates;
 
+    /*
+     * Imagination capacity notification
+     *
+     * BIOLOGICAL: Imagination is metabolically expensive. When ATP or overall
+     * capacity changes significantly (>5%), notify the imagination engine so
+     * it can adjust scenario complexity, vividness targets, and step counts.
+     *
+     * We track the previous capacity and only send updates on significant change
+     * to avoid flooding the message system.
+     */
+    static float s_prev_imagination_capacity = 1.0f;
+    float current_capacity = compute_imagination_capacity_modifier(substrate);
+    float delta_capacity = current_capacity - s_prev_imagination_capacity;
+
+    if (delta_capacity < 0) delta_capacity = -delta_capacity;  /* fabsf without math.h float fn */
+
+    if (delta_capacity >= SUBSTRATE_IMAG_CHANGE_THRESHOLD) {
+        s_prev_imagination_capacity = current_capacity;
+        /* Send update outside of lock to avoid potential deadlock */
+        nimcp_platform_mutex_unlock(substrate->mutex);
+        neural_substrate_send_imagination_capacity(substrate);
+        return 0;
+    }
+
     nimcp_platform_mutex_unlock(substrate->mutex);
     return 0;
 }
@@ -615,4 +663,186 @@ const char* substrate_alert_type_to_string(substrate_alert_type_t alert) {
         case SUBSTRATE_ALERT_MEMBRANE_DAMAGE:return "MEMBRANE_DAMAGE";
         default:                             return "UNKNOWN";
     }
+}
+
+/* ============================================================================
+ * Imagination Engine Integration
+ *
+ * BIOLOGICAL BASIS:
+ * Imagination is metabolically expensive, requiring sustained prefrontal and
+ * default mode network activity. ATP depletion and fatigue reduce imaginative
+ * capacity - a phenomenon observed in mental fatigue studies where creative
+ * thinking and mental simulation abilities decline with energy depletion.
+ *
+ * References:
+ * - Smallwood & Schooler (2015) "The Science of Mind Wandering"
+ * - Andrews-Hanna et al. (2014) "The Default Network and Self-Generated Thought"
+ * ============================================================================ */
+
+/**
+ * @brief Compute imagination capacity modifier from substrate state
+ *
+ * WHAT: Calculate how much substrate state limits imagination
+ * WHY:  Imagination requires ATP for DMN/PFC activity; fatigue impairs it
+ * HOW:  capacity_mod = atp_level * (1 - fatigue_level * 0.5)
+ *
+ * BIOLOGICAL: Low ATP reduces neural firing in DMN; fatigue accumulates
+ * metabolites that impair cognitive flexibility and creative thought.
+ *
+ * @param substrate Neural substrate to query
+ * @return Capacity modifier [0.0-1.0], where 1.0 = optimal imagination capacity
+ */
+static float compute_imagination_capacity_modifier(const neural_substrate_t* substrate) {
+    if (!substrate) return 1.0f;
+
+    /* Get ATP level - primary driver of imagination capacity */
+    float atp = substrate->metabolic.atp_level;
+
+    /*
+     * Fatigue level approximation:
+     * - Low metabolic capacity indicates accumulated fatigue
+     * - Physical stress (membrane/ion issues) adds to fatigue
+     * - Scale: 0 = rested, 1 = exhausted
+     */
+    float metabolic_fatigue = 1.0f - substrate->metabolic.metabolic_capacity;
+    float physical_fatigue = 1.0f - substrate->physical.physical_capacity;
+    float fatigue = (metabolic_fatigue * 0.7f + physical_fatigue * 0.3f);
+
+    /*
+     * Capacity formula:
+     * - Base capacity from ATP (imagination needs energy)
+     * - Fatigue reduces capacity by up to 50% (even with ATP available,
+     *   accumulated metabolites impair prefrontal function)
+     * - Minimum 10% capacity (consciousness persists even when exhausted)
+     */
+    float capacity_mod = atp * (1.0f - fatigue * 0.5f);
+
+    return clamp_f(capacity_mod, 0.1f, 1.0f);
+}
+
+int neural_substrate_send_imagination_capacity(neural_substrate_t* substrate) {
+    if (!substrate) return -1;
+
+    /* Check if bio-async is connected */
+    if (!g_substrate_imag_ctx) {
+        /* Not connected - silently succeed (imagination may not be present) */
+        return 0;
+    }
+
+    /* Compute capacity modifier */
+    float capacity_mod = compute_imagination_capacity_modifier(substrate);
+
+    /* Compute fatigue level for the message */
+    float metabolic_fatigue = 1.0f - substrate->metabolic.metabolic_capacity;
+    float physical_fatigue = 1.0f - substrate->physical.physical_capacity;
+    float fatigue = (metabolic_fatigue * 0.7f + physical_fatigue * 0.3f);
+
+    /* Build modulation message */
+    bio_msg_imagination_modulation_t msg;
+    memset(&msg, 0, sizeof(msg));
+
+    bio_msg_init_header(
+        &msg.header,
+        BIO_MSG_IMAGINATION_CAPACITY_UPDATE,
+        BIO_MODULE_SUBSTRATE_IMAGINATION,
+        BIO_MODULE_IMAGINATION,
+        sizeof(msg) - sizeof(bio_message_header_t)
+    );
+
+    msg.modulation_type = 1;  /* 1 = capacity modulation (from substrate) */
+    msg.modifier = capacity_mod;
+    msg.source_level = substrate->metabolic.atp_level;
+    msg.secondary_level = fatigue;
+
+    /* Send to imagination engine */
+    nimcp_error_t err = bio_router_send(g_substrate_imag_ctx, &msg, sizeof(msg), 0);
+    if (err != NIMCP_SUCCESS) {
+        NIMCP_LOGGING_DEBUG("Failed to send imagination capacity update: %d", err);
+        return -1;
+    }
+
+    NIMCP_LOGGING_DEBUG("Sent imagination capacity update: modifier=%.3f, atp=%.3f, fatigue=%.3f",
+                        capacity_mod, substrate->metabolic.atp_level, fatigue);
+
+    return 0;
+}
+
+/**
+ * @brief Handler for imagination capacity request messages
+ *
+ * WHAT: Respond to imagination engine requests for current capacity
+ * WHY:  Imagination may query substrate before initiating expensive scenarios
+ * HOW:  Compute and return current capacity modifier
+ */
+static nimcp_error_t handle_imagination_capacity_request(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+) {
+    (void)msg;
+    (void)msg_size;
+    (void)response_promise;
+
+    neural_substrate_t* substrate = (neural_substrate_t*)user_data;
+    if (!substrate) return NIMCP_ERROR_NULL_POINTER;
+
+    /* Send current capacity state */
+    int result = neural_substrate_send_imagination_capacity(substrate);
+    return (result == 0) ? NIMCP_SUCCESS : NIMCP_ERROR_OPERATION_FAILED;
+}
+
+int neural_substrate_register_imagination_handler(neural_substrate_t* substrate) {
+    if (!substrate) return -1;
+
+    /* Check if already registered */
+    if (g_substrate_imag_ctx) {
+        return 0;  /* Already connected */
+    }
+
+    /* Register with bio-async router */
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_SUBSTRATE_IMAGINATION,
+        .module_name = "neural_substrate_imagination",
+        .inbox_capacity = 16,
+        .user_data = substrate
+    };
+
+    g_substrate_imag_ctx = bio_router_register_module(&info);
+    if (!g_substrate_imag_ctx) {
+        NIMCP_LOGGING_WARN("Bio-async router not available for imagination integration");
+        return -1;
+    }
+
+    /* Register handler for capacity requests from imagination engine */
+    nimcp_error_t err = bio_router_register_handler(
+        g_substrate_imag_ctx,
+        BIO_MSG_IMAGINATION_REQUEST,
+        handle_imagination_capacity_request
+    );
+
+    if (err != NIMCP_SUCCESS) {
+        NIMCP_LOGGING_WARN("Failed to register imagination request handler: %d", err);
+        /* Continue anyway - we can still send updates */
+    }
+
+    NIMCP_LOGGING_INFO("Registered neural substrate imagination handler");
+
+    /* Send initial capacity state */
+    neural_substrate_send_imagination_capacity(substrate);
+
+    return 0;
+}
+
+int neural_substrate_unregister_imagination_handler(void) {
+    if (!g_substrate_imag_ctx) {
+        return 0;  /* Not connected */
+    }
+
+    bio_router_unregister_module(g_substrate_imag_ctx);
+    g_substrate_imag_ctx = NULL;
+
+    NIMCP_LOGGING_INFO("Unregistered neural substrate imagination handler");
+
+    return 0;
 }

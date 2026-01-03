@@ -318,6 +318,122 @@ bool thalamic_router_get_second_messenger_state(const thalamic_router_t* router,
                                                  uint32_t neuron_id,
                                                  void* state);
 
+// ============================================================================
+// IMAGINATION ENGINE INTEGRATION
+// ============================================================================
+
+/* Forward declaration for callback type */
+struct nimcp_tensor;
+
+/**
+ * @brief Callback for imagination attention gate updates
+ *
+ * @param attention_weight Current attention weight [0.0-1.0]
+ * @param focus_target Current attention target (may be NULL)
+ * @param user_data User context
+ */
+typedef void (*imagination_attention_gate_callback_t)(
+    float attention_weight,
+    const struct nimcp_tensor* focus_target,
+    void* user_data
+);
+
+/**
+ * @brief Set imagination attention gating weight
+ *
+ * WHAT: Controls how much imagination content reaches conscious awareness
+ * WHY:  Thalamus gates imagination based on attention focus
+ * HOW:  Sets weight [0.0-1.0] and sends BIO_MSG_IMAGINATION_ATTENTION_GATE
+ *
+ * BIOLOGICAL BASIS:
+ * The pulvinar nucleus of thalamus coordinates attention-based gating,
+ * allowing focused attention to amplify or suppress imagination content
+ * reaching conscious awareness.
+ *
+ * @param router Router handle
+ * @param attention_weight Attention weight for imagination [0.0-1.0]
+ * @return true on success, false on error
+ */
+bool thalamic_router_set_imagination_attention(thalamic_router_t* router,
+                                                float attention_weight);
+
+/**
+ * @brief Get current imagination attention weight
+ *
+ * @param router Router handle
+ * @return Current attention weight [0.0-1.0], or -1.0 on error
+ */
+float thalamic_router_get_imagination_attention(const thalamic_router_t* router);
+
+/**
+ * @brief Register bio-async handlers for imagination attention gating
+ *
+ * WHAT: Sets up message handlers for imagination-related routing
+ * WHY:  Enable asynchronous communication with imagination engine
+ * HOW:  Register handler for BIO_MSG_IMAGINATION_ATTENTION_GATE
+ *
+ * @param router Router handle
+ * @return true on success, false on error
+ */
+bool thalamic_router_register_imagination_handler(thalamic_router_t* router);
+
+/**
+ * @brief Set callback for imagination attention gate updates
+ *
+ * @param router Router handle
+ * @param callback Callback function
+ * @param user_data User context for callback
+ * @return true on success, false on error
+ */
+bool thalamic_router_set_imagination_callback(thalamic_router_t* router,
+                                               imagination_attention_gate_callback_t callback,
+                                               void* user_data);
+
+/**
+ * @brief Route imagination content based on attention weight
+ *
+ * WHAT: Routes imagination scenario content to appropriate destinations
+ * WHY:  Prioritizes imagination when attention weight is high
+ * HOW:  Creates routed signal with attention-modulated priority
+ *
+ * BIOLOGICAL BASIS:
+ * When attention is focused on imagination (high weight), the thalamus
+ * prioritizes routing imagination content over external sensory input.
+ * This models the "absorbed in thought" state.
+ *
+ * @param router Router handle
+ * @param scenario_id Imagination scenario identifier
+ * @param content Imagination content data
+ * @param content_size Size of content in floats
+ * @param dest_ids Destination module IDs
+ * @param num_dests Number of destinations
+ * @return true on success, false on error
+ */
+bool thalamic_router_route_imagination_content(thalamic_router_t* router,
+                                                uint32_t scenario_id,
+                                                const float* content,
+                                                uint32_t content_size,
+                                                const uint32_t* dest_ids,
+                                                uint32_t num_dests);
+
+/**
+ * @brief Enable or disable imagination routing
+ *
+ * @param router Router handle
+ * @param enabled true to enable, false to disable
+ * @return true on success, false on error
+ */
+bool thalamic_router_set_imagination_routing_enabled(thalamic_router_t* router,
+                                                      bool enabled);
+
+/**
+ * @brief Check if imagination routing is enabled
+ *
+ * @param router Router handle
+ * @return true if enabled, false otherwise
+ */
+bool thalamic_router_is_imagination_routing_enabled(const thalamic_router_t* router);
+
 #ifdef __cplusplus
 }
 #endif

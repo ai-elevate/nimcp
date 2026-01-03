@@ -1369,6 +1369,11 @@ gtest_discover_tests(unit_cognitive_test_self_awareness_extended
 add_subdirectory(collective_cognition)
 
 # ============================================================================
+# Recursive Cognition Tests (RLM-inspired)
+# ============================================================================
+add_subdirectory(recursive)
+
+# ============================================================================
 # Social Tests
 # ============================================================================
 add_executable(unit_cognitive_test_social
