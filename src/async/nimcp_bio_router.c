@@ -23,6 +23,7 @@
 #include "async/nimcp_bio_router.h"
 
 #include "async/nimcp_bio_messages.h"
+#include "core/brain/nimcp_brain_kg.h"  /* Phase 7: KG-driven dispatch */
 #include "async/nimcp_predictive_protocol.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/memory/nimcp_memory.h"
@@ -159,6 +160,12 @@ static nimcp_platform_once_t g_router_init_once = NIMCP_PLATFORM_ONCE_INIT;
 
 /* Orchestrator reference for KG-driven wiring callbacks */
 static struct bio_async_orchestrator* g_router_orchestrator = NULL;
+
+/* Brain KG reference for Phase 7: Runtime Message Orchestration */
+static struct brain_kg* g_router_brain_kg = NULL;
+
+/* Forward declaration for Phase 7: KG dispatch */
+static int bio_router_kg_dispatch_internal(const void* msg, size_t msg_size, uint32_t timeout_ms);
 
 /**
  * WHAT: One-time initialization of router init mutex
@@ -1150,7 +1157,31 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
 
     nimcp_error_t result = NIMCP_SUCCESS;
 
-    if (target_id == 0) {
+    if (target_id == BIO_MODULE_KG_DISPATCH) {
+        /* Phase 7: KG-driven dispatch - route to all handlers for message type */
+        nimcp_platform_mutex_unlock(&g_router->modules_mutex);
+
+        if (!g_router_brain_kg) {
+            LOG_WARN("KG dispatch requested but brain_kg not set");
+            nimcp_platform_mutex_lock(&g_router->stats_mutex);
+            g_router->stats.messages_dropped++;
+            nimcp_platform_mutex_unlock(&g_router->stats_mutex);
+            return NIMCP_ERROR_NOT_INITIALIZED;
+        }
+
+        int dispatched = bio_router_kg_dispatch_internal(msg, msg_size, timeout_ms);
+        if (dispatched < 0) {
+            nimcp_platform_mutex_lock(&g_router->stats_mutex);
+            g_router->stats.messages_dropped++;
+            nimcp_platform_mutex_unlock(&g_router->stats_mutex);
+            return NIMCP_ERROR_OPERATION_FAILED;
+        }
+
+        LOG_DEBUG("KG dispatch: msg type 0x%04X delivered to %d handlers",
+                  header->type, dispatched);
+        return NIMCP_SUCCESS;
+
+    } else if (target_id == 0) {
         // Broadcast to all modules except sender
         for (uint32_t i = 0; i < g_router->module_count; i++) {
             bio_module_entry_t* entry = &g_router->modules[i];
@@ -2374,6 +2405,119 @@ nimcp_error_t bio_router_register_wiring_callback(
     }
 
     return NIMCP_ERROR_OPERATION_FAILED;
+}
+
+/*=============================================================================
+ * BRAIN KNOWLEDGE GRAPH INTEGRATION (Phase 7: Runtime Message Orchestration)
+ *============================================================================*/
+
+nimcp_error_t bio_router_set_brain_kg(struct brain_kg* kg) {
+    g_router_brain_kg = kg;
+    if (kg) {
+        LOG_INFO("bio_router_set_brain_kg: brain KG linked for message-type dispatch");
+    } else {
+        LOG_INFO("bio_router_set_brain_kg: brain KG disconnected");
+    }
+    return NIMCP_SUCCESS;
+}
+
+struct brain_kg* bio_router_get_brain_kg(void) {
+    return g_router_brain_kg;
+}
+
+bool bio_router_kg_dispatch_available(void) {
+    return (g_router_brain_kg != NULL);
+}
+
+/**
+ * @brief Internal: Dispatch message to all KG-discovered handlers
+ *
+ * WHAT: Route message to all modules that handle this message type
+ * WHY:  Enables declarative message routing based on KG wiring
+ * HOW:  Query brain_kg for handlers, dispatch to each
+ *
+ * @param msg Message to dispatch
+ * @param msg_size Message size
+ * @param timeout_ms Timeout for each dispatch
+ * @return Number of modules dispatched to, -1 on error
+ */
+static int bio_router_kg_dispatch_internal(
+    const void* msg,
+    size_t msg_size,
+    uint32_t timeout_ms
+) {
+    if (!g_router_brain_kg || !msg) return -1;
+
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    /* Query KG for handlers of this message type */
+    brain_kg_handler_list_t* handlers = brain_kg_get_handlers_for_message_type(
+        g_router_brain_kg,
+        header->type
+    );
+
+    if (!handlers) {
+        LOG_WARN("KG dispatch: failed to query handlers for msg type 0x%04X", header->type);
+        return -1;
+    }
+
+    if (handlers->count == 0) {
+        LOG_DEBUG("KG dispatch: no handlers found for msg type 0x%04X", header->type);
+        brain_kg_handler_list_destroy(handlers);
+        return 0;
+    }
+
+    LOG_DEBUG("KG dispatch: found %u handlers for msg type 0x%04X",
+              handlers->count, header->type);
+
+    int dispatched = 0;
+
+    /* Dispatch to each handler module */
+    nimcp_platform_mutex_lock(&g_router->modules_mutex);
+
+    for (uint32_t i = 0; i < handlers->count; i++) {
+        brain_kg_node_id_t handler_node = handlers->handlers[i];
+
+        /* Find module by KG node ID
+         * Note: For simplicity, we assume handler_node == module_id.
+         * In a full implementation, we'd look up the module_id from the KG node.
+         */
+        bio_module_entry_t* target = bio_router_find_module((bio_module_id_t)handler_node);
+        if (!target) {
+            LOG_DEBUG("KG dispatch: module for node %u not found", handler_node);
+            continue;
+        }
+
+        /* Skip sender to avoid self-delivery */
+        if (target->module_id == header->source_module) {
+            continue;
+        }
+
+        /* Enqueue to target inbox */
+        nimcp_error_t enq_result = bio_msg_queue_enqueue(&target->inbox,
+                                                          msg, msg_size,
+                                                          NULL, timeout_ms);
+        if (enq_result == NIMCP_SUCCESS) {
+            target->messages_received++;
+            dispatched++;
+        } else {
+            LOG_DEBUG("KG dispatch: failed to enqueue to module %u", target->module_id);
+        }
+    }
+
+    nimcp_platform_mutex_unlock(&g_router->modules_mutex);
+    brain_kg_handler_list_destroy(handlers);
+
+    LOG_DEBUG("KG dispatch: delivered to %d/%u handlers", dispatched, handlers->count);
+
+    /* Update stats */
+    if (dispatched > 0) {
+        nimcp_platform_mutex_lock(&g_router->stats_mutex);
+        g_router->stats.messages_routed += dispatched;
+        nimcp_platform_mutex_unlock(&g_router->stats_mutex);
+    }
+
+    return dispatched;
 }
 
 /*=============================================================================

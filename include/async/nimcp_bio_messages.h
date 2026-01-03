@@ -1217,8 +1217,9 @@ typedef enum {
     BIO_MODULE_IMAGINATION_PARIETAL,            /**< Parietal-imagination bridge */
     BIO_MODULE_IMAGINATION_COLLECTIVE,          /**< Collective imagination (swarm) */
 
-    /* Special values */
-    BIO_MODULE_ALL = 0xFFFF,        /**< Broadcast to all modules */
+    /* Special values (Phase 7: Runtime Message Orchestration) */
+    BIO_MODULE_KG_DISPATCH = 0xFFFE, /**< KG-driven dispatch: route to all handlers for message type */
+    BIO_MODULE_ALL = 0xFFFF,         /**< Broadcast to all modules */
 
     BIO_MODULE_COUNT
 } bio_module_id_t;

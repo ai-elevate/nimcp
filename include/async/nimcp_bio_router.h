@@ -560,6 +560,7 @@ void* bio_module_context_get_user_data(bio_module_context_t ctx);
 
 /* Forward declaration */
 struct bio_async_orchestrator;
+struct brain_kg;
 
 /**
  * @brief Set orchestrator reference for the router
@@ -572,6 +573,40 @@ struct bio_async_orchestrator;
  * @return NIMCP_SUCCESS or error
  */
 nimcp_error_t bio_router_set_orchestrator(struct bio_async_orchestrator* orchestrator);
+
+/*=============================================================================
+ * BRAIN KNOWLEDGE GRAPH INTEGRATION (Phase 7: Runtime Message Orchestration)
+ *============================================================================*/
+
+/**
+ * @brief Set brain KG reference for KG-driven message dispatch
+ *
+ * WHAT: Associate brain_kg with global router for handler lookup
+ * WHY:  Enables BIO_MODULE_KG_DISPATCH routing mode
+ * HOW:  Store KG reference, use for message-type handler lookup
+ *
+ * When a message has target_module set to BIO_MODULE_KG_DISPATCH (0xFFFE),
+ * the router queries the brain_kg to find all modules that handle this
+ * message type, then dispatches to all of them.
+ *
+ * @param kg Brain knowledge graph (NULL to disconnect)
+ * @return NIMCP_SUCCESS or error
+ */
+nimcp_error_t bio_router_set_brain_kg(struct brain_kg* kg);
+
+/**
+ * @brief Get brain KG reference from router
+ *
+ * @return brain_kg pointer or NULL if not set
+ */
+struct brain_kg* bio_router_get_brain_kg(void);
+
+/**
+ * @brief Check if KG-driven dispatch is available
+ *
+ * @return true if brain_kg is set and message-type index is usable
+ */
+bool bio_router_kg_dispatch_available(void);
 
 /**
  * @brief Get orchestrator reference from router
