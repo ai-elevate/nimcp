@@ -8,6 +8,7 @@
  */
 
 #include "core/cortical_columns/nimcp_columnar_connectivity.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -1252,4 +1253,36 @@ nimcp_result_t connectivity_get_stats(
               stats->total_connections, stats->avg_weight, stats->avg_delay_ms);
 
     return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+/**
+ * WHAT: Query knowledge graph for columnar connectivity module self-knowledge
+ * WHY:  Enable self-awareness and introspection about this module's role
+ * HOW:  Query KG for entity info, log observations, check relations
+ */
+int columnar_connectivity_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Columnar_Connectivity_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Columnar connectivity self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Columnar_Connectivity_Module");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Columnar_Connectivity_Module");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

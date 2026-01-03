@@ -6,6 +6,7 @@
  */
 
 #include "core/cortical_columns/nimcp_cortical_predictive_coding.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/validation/nimcp_common.h"
 #include <math.h>
 #include <string.h>
@@ -825,4 +826,36 @@ bool cortical_predictive_is_bio_async_connected(const cortical_predictive_t* pc)
         return false;
     }
     return pc->bio_async_enabled;
+}
+
+/* ============================================================================
+ * KG Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for cortical predictive coding module self-knowledge
+ * WHY:  Enable self-awareness and introspection about this module's role
+ * HOW:  Query KG for entity info, log observations, check relations
+ */
+int cortical_predictive_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Cortical_Predictive_Coding_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Cortical predictive coding self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Cortical_Predictive_Coding_Module");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Cortical_Predictive_Coding_Module");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

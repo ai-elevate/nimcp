@@ -6,6 +6,7 @@
  */
 
 #include "core/cortical_columns/nimcp_cortical_oscillations_integration.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include <stdlib.h>
@@ -645,4 +646,36 @@ bool cortical_oscillation_is_bio_async_connected(
     }
 
     return integration->bio_async_enabled;
+}
+
+/* ============================================================================
+ * KG Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for cortical oscillations module self-knowledge
+ * WHY:  Enable self-awareness and introspection about this module's role
+ * HOW:  Query KG for entity info, log observations, check relations
+ */
+int cortical_oscillations_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Cortical_Oscillations_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Cortical oscillations self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Cortical_Oscillations_Module");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Cortical_Oscillations_Module");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

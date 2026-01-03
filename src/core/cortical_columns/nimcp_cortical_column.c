@@ -17,6 +17,7 @@
  */
 
 #include "core/cortical_columns/nimcp_cortical_column.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -1355,4 +1356,36 @@ static float euclidean_distance_3d(float x1, float y1, float z1, float x2, float
     float dy = y1 - y2;
     float dz = z1 - z2;
     return sqrtf(dx * dx + dy * dy + dz * dz);
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+/**
+ * WHAT: Query knowledge graph for cortical column module self-knowledge
+ * WHY:  Enable self-awareness and introspection about this module's role
+ * HOW:  Query KG for entity info, log observations, check relations
+ */
+int cortical_column_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Cortical_Column_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            COLUMN_LOG_DEBUG("Cortical column self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Cortical_Column_Module");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Cortical_Column_Module");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

@@ -7,12 +7,16 @@
  */
 
 #include "cognitive/game_theory/nimcp_gt_equilibrium.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
+
+#define LOG_MODULE "equilibrium"
 
 //=============================================================================
 // Internal Structure
@@ -1584,4 +1588,31 @@ static bool check_no_outside_deviation(const nimcp_equilibrium_t ctx,
     }
 
     return true;
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+int equilibrium_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Equilibrium_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG(LOG_MODULE, "Equilibrium self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Equilibrium_Module");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Equilibrium_Module");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

@@ -17,6 +17,7 @@
  */
 
 #include "core/cortical_columns/nimcp_topographic_maps.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -1494,4 +1495,36 @@ static void column_id_to_coords(
 {
     if (x) *x = id % width;
     if (y) *y = id / width;
+}
+
+/* ============================================================================
+ * KG Self-Awareness Integration
+ * ========================================================================== */
+
+/**
+ * WHAT: Query knowledge graph for topographic maps module self-knowledge
+ * WHY:  Enable self-awareness and introspection about this module's role
+ * HOW:  Query KG for entity info, log observations, check relations
+ */
+int topographic_maps_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Topographic_Maps_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            TOPO_LOG_DEBUG("Topographic maps self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Topographic_Maps_Module");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Topographic_Maps_Module");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

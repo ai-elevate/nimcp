@@ -4,7 +4,9 @@
  */
 
 #include "cognitive/parietal/nimcp_hypothesis_generation.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -246,3 +248,32 @@ void hypothesis_reset_stats(hypothesis_engine_t* engine) {
 }
 
 const char* hypothesis_get_last_error(void) { return g_last_error; }
+
+/* ============================================================================
+ * KG SELF-AWARENESS INTEGRATION
+ * ============================================================================ */
+
+int hypothesis_generation_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Hypothesis_Generation_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Hypothesis generation self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Hypothesis_Generation_Module");
+    if (connections) {
+        LOG_DEBUG("Hypothesis generation has %u outgoing connections", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Hypothesis_Generation_Module");
+    if (incoming) {
+        LOG_DEBUG("Hypothesis generation has %u incoming connections", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
+}

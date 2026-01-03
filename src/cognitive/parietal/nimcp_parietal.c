@@ -9,7 +9,9 @@
 
 #include "cognitive/parietal/nimcp_parietal.h"
 #include "cognitive/parietal/nimcp_parietal_quantum_bridge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -1851,4 +1853,33 @@ int parietal_handle_bio_msg(parietal_lobe_t* parietal, uint32_t msg_type,
     /* Based on msg_type, create appropriate request and process */
 
     return 0;
+}
+
+/* ============================================================================
+ * KG SELF-AWARENESS INTEGRATION
+ * ============================================================================ */
+
+int parietal_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Parietal_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Parietal self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Parietal_Module");
+    if (connections) {
+        LOG_DEBUG("Parietal has %u outgoing connections", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Parietal_Module");
+    if (incoming) {
+        LOG_DEBUG("Parietal has %u incoming connections", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

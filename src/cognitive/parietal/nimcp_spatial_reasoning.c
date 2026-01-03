@@ -7,7 +7,9 @@
  */
 
 #include "cognitive/parietal/nimcp_spatial_reasoning.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -1055,4 +1057,33 @@ void spatial_reset_stats(spatial_reasoning_t* sr) {
 
 const char* spatial_get_last_error(void) {
     return g_spatial_error;
+}
+
+/* ============================================================================
+ * KG SELF-AWARENESS INTEGRATION
+ * ============================================================================ */
+
+int spatial_reasoning_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Spatial_Reasoning_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Spatial reasoning self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Spatial_Reasoning_Module");
+    if (connections) {
+        LOG_DEBUG("Spatial reasoning has %u outgoing connections", connections->count);
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Spatial_Reasoning_Module");
+    if (incoming) {
+        LOG_DEBUG("Spatial reasoning has %u incoming connections", incoming->count);
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

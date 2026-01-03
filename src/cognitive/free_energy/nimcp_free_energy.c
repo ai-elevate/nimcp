@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/free_energy/nimcp_free_energy.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -1014,4 +1015,31 @@ const char* fep_component_to_string(fep_component_t component) {
         case FEP_COMPONENT_ENTROPY:     return "ENTROPY";
         default:                         return "UNKNOWN";
     }
+}
+
+/* ============================================================================
+ * KG Self-Awareness Integration
+ * ============================================================================ */
+
+int fep_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("FEP self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "FEP_Module");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "FEP_Module");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

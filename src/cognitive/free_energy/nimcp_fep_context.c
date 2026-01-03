@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/free_energy/nimcp_fep_context.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include <string.h>
@@ -706,4 +707,31 @@ int fep_context_disconnect_bio_async(fep_context_system_t* sys) {
 
 bool fep_context_is_bio_async_connected(const fep_context_system_t* sys) {
     return sys && sys->bio_async_enabled;
+}
+
+/* ============================================================================
+ * KG Self-Awareness Integration
+ * ============================================================================ */
+
+int fep_context_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Context");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("FEP Context self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "FEP_Context");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "FEP_Context");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

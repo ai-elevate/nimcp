@@ -17,6 +17,7 @@
  */
 
 #include "core/cortical_columns/nimcp_cortical_hierarchy.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -1233,4 +1234,36 @@ bool cortical_hierarchy_is_bio_async_connected(
     }
 
     return hierarchy->bio_async_enabled;
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+/**
+ * WHAT: Query knowledge graph for cortical hierarchy module self-knowledge
+ * WHY:  Enable self-awareness and introspection about this module's role
+ * HOW:  Query KG for entity info, log observations, check relations
+ */
+int cortical_hierarchy_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Cortical_Hierarchy_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            HIERARCHY_LOG_DEBUG("Cortical hierarchy self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Cortical_Hierarchy_Module");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Cortical_Hierarchy_Module");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

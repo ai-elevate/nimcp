@@ -15,12 +15,16 @@
  */
 
 #include "cognitive/game_theory/integration/nimcp_gt_tom.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
+
+#define LOG_MODULE "tom"
 
 //=============================================================================
 // Constants
@@ -1204,4 +1208,31 @@ const char* nimcp_opponent_type_name(nimcp_opponent_type_t type) {
         default:
             return "Invalid";
     }
+}
+
+//=============================================================================
+// KG Self-Awareness Integration
+//=============================================================================
+
+int tom_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "ToM_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG(LOG_MODULE, "ToM self-knowledge: %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "ToM_Module");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "ToM_Module");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }
