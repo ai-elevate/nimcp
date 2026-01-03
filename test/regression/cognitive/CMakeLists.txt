@@ -54,6 +54,9 @@ gtest_discover_tests(regression_cognitive_working_memory_pe_test
 # when regression/cognitive is included as a subdirectory.
 # See test/CMakeLists.txt for the individual subdirectory includes.
 
+# Recursive Cognition Regression Tests (RLM-inspired)
+add_subdirectory(recursive)
+
 # ============================================================================
 # Cognitive Bridge Completeness Tests
 # ============================================================================

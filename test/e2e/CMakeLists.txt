@@ -132,6 +132,12 @@ add_e2e_test(e2e_test_cognitive_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/test_cognitive_pipeline.cpp
 )
 
+# Recursive Cognition Pipeline E2E Test (RLM-inspired recursive processing)
+add_e2e_test(e2e_test_recursive_cognition_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_recursive_cognition_pipeline.cpp
+)
+
 add_e2e_test(e2e_test_distributed_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_distributed_pipeline.cpp
