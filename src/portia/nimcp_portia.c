@@ -16,6 +16,7 @@
 #include "portia/nimcp_portia.h"
 #include "portia/nimcp_portia_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/logging/nimcp_logging.h"
@@ -809,6 +810,55 @@ nimcp_error_t portia_get_accelerators(
     nimcp_mutex_unlock(&det->lock);
 
     return NIMCP_SUCCESS;
+}
+
+//=============================================================================
+// KG-Driven Wiring Callback
+//=============================================================================
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the orchestrator with discovered message types from the knowledge graph.
+ * Registers handlers based on message types discovered at runtime.
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of discovered message types
+ * @param message_count Number of message types
+ * @param user_data User-provided context (unused)
+ * @return 0 on success, -1 on error
+ */
+static nimcp_error_t portia_message_handler(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+static int portia_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_TYPE_PORTIA_STATUS_QUERY:
+                bio_router_register_handler(ctx, message_types[i], portia_message_handler);
+                registered++;
+                break;
+            case BIO_MSG_TYPE_PORTIA_TIER_QUERY:
+                bio_router_register_handler(ctx, message_types[i], portia_message_handler);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG(LOG_MODULE, "Unknown message type 0x%04X in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_INFO(LOG_MODULE, "KG-driven wiring callback registered %d handlers", registered);
+    return (registered > 0) ? 0 : -1;
 }
 
 //=============================================================================

@@ -1,10 +1,39 @@
 # Security subsystem wiring - security monitoring and threat detection
 # Handles pattern detection, security levels, and threat response
+
+# Module Entities
 {"type":"entity","name":"Security_Level_Module","entityType":"SecurityModule","subsystem":"security","min_tier":0,"enabled":true}
 {"type":"entity","name":"Pattern_Db_Module","entityType":"SecurityModule","subsystem":"security","min_tier":0,"enabled":true}
 {"type":"entity","name":"Blood_Brain_Barrier_Module","entityType":"SecurityModule","subsystem":"security","min_tier":0,"enabled":true}
+{"type":"entity","name":"Constant_Time_Module","entityType":"SecurityModule","subsystem":"security","min_tier":0,"enabled":true}
+{"type":"entity","name":"Key_Derivation_Module","entityType":"SecurityModule","subsystem":"security","min_tier":0,"enabled":true}
+{"type":"entity","name":"Policy_Engine_Module","entityType":"SecurityModule","subsystem":"security","min_tier":0,"enabled":true}
+{"type":"entity","name":"Post_Quantum_Module","entityType":"SecurityModule","subsystem":"security","min_tier":0,"enabled":true}
+{"type":"entity","name":"Rate_Limiter_Module","entityType":"SecurityModule","subsystem":"security","min_tier":0,"enabled":true}
+{"type":"entity","name":"TOCTOU_Guard_Module","entityType":"SecurityModule","subsystem":"security","min_tier":0,"enabled":true}
+
+# Security_Level_Module handlers
 {"type":"relation","from":"Security_Level_Module","to":"BIO_MSG_SECURITY_EVENT","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_SECURITY_EVENT"}
-{"type":"relation","from":"Security_Level_Module","to":"BIO_MSG_HEALTH_CHECK","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_HEALTH_CHECK"}
+
+# Pattern_Db_Module handlers
 {"type":"relation","from":"Pattern_Db_Module","to":"BIO_MSG_SECURITY_EVENT","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_SECURITY_EVENT"}
 {"type":"relation","from":"Pattern_Db_Module","to":"BIO_MSG_SECURITY_THREAT_DETECTED","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_SECURITY_THREAT_DETECTED"}
 {"type":"relation","from":"Pattern_Db_Module","to":"BIO_MSG_SECURITY_POLICY_UPDATE","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_SECURITY_POLICY_UPDATE"}
+
+# Constant_Time_Module handlers
+{"type":"relation","from":"Constant_Time_Module","to":"BIO_MSG_HEALTH_CHECK","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_HEALTH_CHECK"}
+
+# Key_Derivation_Module handlers
+{"type":"relation","from":"Key_Derivation_Module","to":"BIO_MSG_HEALTH_CHECK","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_HEALTH_CHECK"}
+
+# Policy_Engine_Module handlers
+{"type":"relation","from":"Policy_Engine_Module","to":"BIO_MSG_SECURITY_POLICY_UPDATE","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_SECURITY_POLICY_UPDATE"}
+
+# Post_Quantum_Module handlers
+{"type":"relation","from":"Post_Quantum_Module","to":"BIO_MSG_HEALTH_CHECK","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_HEALTH_CHECK"}
+
+# Rate_Limiter_Module handlers
+{"type":"relation","from":"Rate_Limiter_Module","to":"BIO_MSG_HEALTH_CHECK","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_HEALTH_CHECK"}
+
+# TOCTOU_Guard_Module handlers
+{"type":"relation","from":"TOCTOU_Guard_Module","to":"BIO_MSG_HEALTH_CHECK","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_HEALTH_CHECK"}

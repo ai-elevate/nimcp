@@ -20,6 +20,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform.h"
@@ -71,6 +72,36 @@ static nimcp_error_t handle_memory_retrieve_request(
     nimcp_bio_promise_t response_promise, void* user_data);
 
 static void bio_broadcast_memory_stored(struct autobiographical_memory_system* system, uint64_t memory_id, float salience);
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the orchestrator with discovered message types from the knowledge graph.
+ * Registers handlers based on message types discovered at runtime.
+ */
+static int autobiographical_memory_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_WORKING_MEMORY_RETRIEVE:
+                bio_router_register_handler(ctx, message_types[i], handle_memory_retrieve_request);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG("Autobiographical memory: unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    return (registered > 0) ? 0 : -1;
+}
 
 // ============================================================================
 // Helper Functions
@@ -251,9 +282,24 @@ autobiographical_memory_t autobio_create(uint32_t capacity)
         system->bio_ctx = bio_router_register_module(&bio_info);
         if (system->bio_ctx) {
             system->bio_async_enabled = true;
-            bio_router_register_handler(system->bio_ctx, BIO_MSG_WORKING_MEMORY_RETRIEVE,
-                                        handle_memory_retrieve_request);
-            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_AUTOBIOGRAPHICAL_MEMORY);
+
+            // Try KG-driven wiring callback registration first
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_MEMORY_AUTOBIOGRAPHICAL,
+                (void*)autobiographical_memory_wiring_handler_callback,
+                system
+            );
+
+            if (wiring_result == NIMCP_SUCCESS) {
+                LOG_INFO("Autobiographical memory: KG-driven wiring callback registered");
+            } else {
+                // Legacy fallback - register handlers directly
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(system->bio_ctx, BIO_MSG_WORKING_MEMORY_RETRIEVE,
+                                                handle_memory_retrieve_request)
+                );
+                LOG_INFO("Autobiographical memory: legacy handler registration");
+            }
         }
     }
 

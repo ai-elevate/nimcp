@@ -60,6 +60,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "nimcp.h"  // For error codes
 
 #define LOG_MODULE "consolidation"
@@ -125,6 +126,24 @@ static void* consolidation_thread_fn(void* arg);
 static void bio_broadcast_consolidation_complete(consolidation_handle_t handle, float duration_ms);
 static bool perform_consolidation(brain_t brain, const consolidation_config_t* config,
                                   consolidation_stats_t* stats, float* progress);
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the orchestrator with discovered message types from the knowledge graph.
+ * Registers handlers based on message types discovered at runtime.
+ */
+static int consolidation_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+);
+
+/* Forward declaration of handler */
+static nimcp_error_t handle_consolidation_trigger(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
 static bool consolidate_replay(brain_t brain, const consolidation_config_t* config,
                                consolidation_stats_t* stats);
 static bool consolidate_scaling(brain_t brain, const consolidation_config_t* config,

@@ -30,6 +30,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "cognitive/nimcp_emotional_tagging.h"
 #include "nimcp.h"
 #include <stdlib.h>
@@ -80,6 +81,50 @@ struct emotional_system {
     // === Quantum Bridge ===
     emotion_quantum_bridge_t* quantum_bridge;
 };
+
+/*=============================================================================
+ * KG-Driven Wiring Callback
+ *============================================================================*/
+
+/**
+ * @brief KG-driven wiring handler callback
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ */
+static nimcp_error_t handle_salience_query(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+static int emotional_system_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    LOG_INFO(LOG_MODULE, "emotional_system_wiring_handler_callback: registering %u handlers from KG",
+             message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_SALIENCE_QUERY:
+                bio_router_register_handler(ctx, message_types[i], handle_salience_query);
+                LOG_DEBUG(LOG_MODULE, "  Registered handler for BIO_MSG_SALIENCE_QUERY");
+                break;
+
+            default:
+                LOG_DEBUG(LOG_MODULE, "  Unknown message type %u - skipping", message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
 
 /*=============================================================================
  * BIO-ASYNC MESSAGE HANDLERS
@@ -268,10 +313,24 @@ emotional_system_t* emotion_system_create(const emotion_config_t* config) {
         system->bio_ctx = bio_router_register_module(&bio_info);
         if (system->bio_ctx) {
             system->bio_async_enabled = true;
-            /* Register message handlers */
-            bio_router_register_handler(system->bio_ctx, BIO_MSG_SALIENCE_QUERY,
-                                        handle_salience_query);
-            LOG_INFO(LOG_MODULE, "Bio-async registered (module_id=0x%04X)", BIO_MODULE_EMOTIONS);
+
+            /* KG-Driven Wiring: Register callback for orchestrator to invoke */
+            nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                BIO_MODULE_EMOTIONS,
+                (void*)emotional_system_wiring_handler_callback,
+                system
+            );
+
+            if (cb_result == NIMCP_SUCCESS) {
+                LOG_INFO(LOG_MODULE, "Bio-async registered with KG-driven wiring callback (module_id=0x%04X)", BIO_MODULE_EMOTIONS);
+            } else {
+                /* Fallback: Direct registration if orchestrator not available */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(system->bio_ctx, BIO_MSG_SALIENCE_QUERY,
+                                                handle_salience_query)
+                );
+                LOG_INFO(LOG_MODULE, "Bio-async registered with legacy handler registration (module_id=0x%04X)", BIO_MODULE_EMOTIONS);
+            }
         }
     }
 

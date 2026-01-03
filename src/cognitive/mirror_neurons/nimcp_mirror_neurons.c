@@ -35,6 +35,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "nimcp.h"  // For error codes
 
 #define LOG_MODULE "mirror_neurons"
@@ -600,6 +601,48 @@ static void bio_broadcast_mirror_fire(mirror_neurons_t mirror,
     bio_router_broadcast(mirror->bio_ctx, &msg, sizeof(msg));
     LOG_DEBUG(LOG_MODULE, "Broadcast mirror fire: action=%u, activation=%.2f",
               action_id, activation);
+}
+
+//=============================================================================
+// KG-Driven Wiring Callback
+//=============================================================================
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * WHAT: Callback invoked by orchestrator with discovered message types
+ * WHY:  Enable dynamic handler registration based on KG wiring diagram
+ * HOW:  Register handlers for discovered message types from handler map
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of discovered message types from KG
+ * @param message_count Number of message types
+ * @param user_data User-provided context (mirror_neurons_t)
+ * @return 0 on success, -1 on error
+ */
+static int mirror_neurons_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_MIRROR_NEURON_ACTIVATION:
+                bio_router_register_handler(ctx, message_types[i], handle_mirror_activation);
+                registered++;
+                break;
+            default:
+                LOG_DEBUG(LOG_MODULE, "Unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    MIRROR_LOG_INFO("KG-driven wiring callback registered %d handlers", registered);
+    return (registered > 0) ? 0 : -1;
 }
 
 //=============================================================================
