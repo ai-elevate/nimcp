@@ -1,0 +1,10 @@
+# Plasticity subsystem wiring - learning and synaptic adaptation
+# Extracted from bio_router_register_handler calls in src/plasticity/
+{"type":"entity","name":"second_messengers","entityType":"PlasticityModule","subsystem":"plasticity","min_tier":0,"enabled":true}
+{"type":"entity","name":"neuromodulators","entityType":"PlasticityModule","subsystem":"plasticity","min_tier":0,"enabled":true}
+{"type":"entity","name":"spatial_neuromod","entityType":"PlasticityModule","subsystem":"plasticity","min_tier":0,"enabled":true}
+{"type":"relation","from":"second_messengers","to":"BIO_MSG_SECOND_MESSENGER_UPDATE","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_SECOND_MESSENGER_UPDATE"}
+{"type":"relation","from":"second_messengers","to":"BIO_MSG_NEUROMODULATOR_RELEASE","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_NEUROMODULATOR_RELEASE"}
+{"type":"relation","from":"neuromodulators","to":"BIO_MSG_NEUROMODULATOR_RELEASE","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_NEUROMODULATOR_RELEASE"}
+{"type":"relation","from":"neuromodulators","to":"BIO_MSG_LEARNING_RATE_UPDATE","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_LEARNING_RATE_UPDATE"}
+{"type":"relation","from":"spatial_neuromod","to":"BIO_MSG_NEUROMODULATOR_RELEASE","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_NEUROMODULATOR_RELEASE"}

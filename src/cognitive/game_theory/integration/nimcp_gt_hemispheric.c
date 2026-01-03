@@ -15,6 +15,7 @@
  */
 
 #include "cognitive/game_theory/integration/nimcp_gt_hemispheric.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/game_theory/nimcp_bargaining.h"
 #include "cognitive/game_theory/nimcp_credit_assignment.h"
 #include "utils/memory/nimcp_memory.h"
@@ -460,4 +461,31 @@ nimcp_error_t gt_hemi_get_stats(
 
 bool gt_hemi_is_active(const gt_hemi_bargaining_ctx_t ctx) {
     return ctx ? ctx->active : false;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int gt_hemispheric_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Game_Theory_Hemispheric");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Game_Theory_Hemispheric");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Game_Theory_Hemispheric");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

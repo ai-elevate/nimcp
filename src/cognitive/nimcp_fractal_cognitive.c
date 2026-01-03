@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "cognitive/nimcp_fractal_cognitive.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -360,4 +361,31 @@ void fractal_cognitive_print_summary(const fractal_cognitive_cache_t *cache) {
                fractal_get_hierarchical_level(cache, top_neurons[i]));
     }
     printf("====================================\n");
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int fractal_cognitive_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Fractal_Cognitive");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Fractal_Cognitive");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Fractal_Cognitive");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

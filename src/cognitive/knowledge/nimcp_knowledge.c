@@ -4,6 +4,7 @@
 //=============================================================================
 
 #include "cognitive/knowledge/nimcp_knowledge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -2501,4 +2502,44 @@ uint32_t knowledge_add_to_symbolic_logic(
     }
 
     return facts_added;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * @brief Query knowledge graph for self-knowledge about this module
+ *
+ * WHAT: Retrieves entity observations and relations for the Knowledge module
+ * WHY: Enables self-aware introspection of module capabilities
+ * HOW: Uses kg_reader to query JSONL knowledge graph
+ *
+ * @param kg Knowledge graph reader instance
+ * @return 1 if self-knowledge found, 0 otherwise
+ */
+int knowledge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Knowledge_System");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Module can access its own observations for introspection */
+            (void)self->observations[i];
+        }
+    }
+
+    /* Query outgoing relations (what this module connects to) */
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Knowledge_System");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    /* Query incoming relations (what connects to this module) */
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Knowledge_System");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

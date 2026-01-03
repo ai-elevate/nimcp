@@ -19,3 +19,5 @@ endmacro()
 
 add_cerebellum_test(test_nimcp_cerebellum_adapter)
 add_cerebellum_test(test_cerebellum_bridges)
+add_cerebellum_test(test_cerebellum_synaptic_dynamics)
+add_cerebellum_test(test_cerebellum_interneurons)

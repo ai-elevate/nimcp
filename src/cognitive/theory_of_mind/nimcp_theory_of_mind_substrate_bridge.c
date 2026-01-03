@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/theory_of_mind/nimcp_theory_of_mind_substrate_bridge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
@@ -193,4 +194,31 @@ int tom_substrate_bridge_register_bio_async(tom_substrate_bridge_t* bridge, bio_
     }
     bridge->router = router;
     return 0;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int tom_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Theory_Of_Mind_Substrate_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Theory_Of_Mind_Substrate_Bridge");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Theory_Of_Mind_Substrate_Bridge");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

@@ -281,10 +281,10 @@ TEST_F(RcogEngineInitializedTest, ClearContext)
     int result = rcog_engine_clear_context(engine, "var1");
     EXPECT_EQ(result, 0);
 
+    // After clearing, the context should not be found
     rcog_query_result_t query_result;
     result = rcog_engine_get_context(engine, "var1", &query_result);
-    EXPECT_EQ(result, 0);
-    EXPECT_FALSE(query_result.found);
+    EXPECT_EQ(result, (int)RCOG_ERROR_CONTEXT_NOT_FOUND);
 }
 
 TEST_F(RcogEngineInitializedTest, ClearAllContext)
@@ -296,12 +296,13 @@ TEST_F(RcogEngineInitializedTest, ClearAllContext)
     int result = rcog_engine_clear_all_context(engine);
     EXPECT_EQ(result, 0);
 
+    // After clearing all, variables should not be found
     rcog_query_result_t query_result;
-    rcog_engine_get_context(engine, "var1", &query_result);
-    EXPECT_FALSE(query_result.found);
+    result = rcog_engine_get_context(engine, "var1", &query_result);
+    EXPECT_EQ(result, (int)RCOG_ERROR_CONTEXT_NOT_FOUND);
 
-    rcog_engine_get_context(engine, "var2", &query_result);
-    EXPECT_FALSE(query_result.found);
+    result = rcog_engine_get_context(engine, "var2", &query_result);
+    EXPECT_EQ(result, (int)RCOG_ERROR_CONTEXT_NOT_FOUND);
 }
 
 TEST(RcogEngineContextTest, ContextNullEngine)

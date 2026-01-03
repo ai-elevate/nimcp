@@ -6,6 +6,7 @@
  */
 
 #include "async/nimcp_bio_async_orchestrator.h"
+#include "async/nimcp_wiring_diagram.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_common.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
@@ -963,4 +964,239 @@ int bio_async_orchestrator_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Wiring Diagram Integration - Handler Callback API
+ * ============================================================================ */
+
+/**
+ * @brief Register handler callback for a module
+ *
+ * WHAT: Store callback that receives discovered message types
+ * WHY:  Enable modules to auto-register handlers based on KG wiring
+ * HOW:  Store in module entry, invoked by discover_all_wiring
+ */
+int bio_orchestrator_register_handler_callback(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id,
+    wiring_handler_callback_t callback,
+    void* user_data
+) {
+    if (!orchestrator || !callback) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    bio_module_entry_t* entry = find_module(orchestrator, module_id);
+    if (!entry) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        NIMCP_LOGGING_WARN("Cannot register callback: module 0x%04X not found", module_id);
+        return -1;
+    }
+
+    entry->handler_callback = callback;
+    entry->handler_callback_data = user_data;
+
+    if (orchestrator->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Registered handler callback for module: %s", entry->module_name);
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return 0;
+}
+
+/**
+ * @brief Get module's discovered message handlers
+ *
+ * WHAT: Query message types a module should handle
+ * WHY:  Introspection of discovered wiring
+ * HOW:  Return array from module's wiring config
+ */
+uint32_t bio_orchestrator_get_module_handlers(
+    const bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id,
+    bio_message_type_t* message_types,
+    uint32_t max_types
+) {
+    if (!orchestrator || !message_types || max_types == 0) return 0;
+
+    const bio_module_entry_t* entry = bio_orchestrator_get_module_info(orchestrator, module_id);
+    if (!entry || !entry->wiring_discovered) return 0;
+
+    uint32_t count = entry->wiring.handles_message_count;
+    if (count > max_types) count = max_types;
+
+    for (uint32_t i = 0; i < count; i++) {
+        message_types[i] = entry->wiring.handles_messages[i];
+    }
+
+    return count;
+}
+
+/**
+ * @brief Invoke handler callbacks for all modules with discovered wiring
+ *
+ * WHAT: Call registered callbacks with discovered message types
+ * WHY:  Enable modules to auto-register handlers
+ * HOW:  Iterate modules, call callbacks with wiring.handles_messages
+ */
+int bio_orchestrator_invoke_handler_callbacks(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    uint32_t invoked = 0;
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        bio_module_entry_t* entry = &orchestrator->modules[i];
+
+        /* Skip if no callback or no wiring discovered */
+        if (!entry->handler_callback) continue;
+        if (!entry->wiring_discovered) continue;
+        if (entry->wiring.handles_message_count == 0) continue;
+
+        /* Invoke callback */
+        int result = entry->handler_callback(
+            entry->bio_context,
+            entry->wiring.handles_messages,
+            entry->wiring.handles_message_count,
+            entry->handler_callback_data
+        );
+
+        if (result == 0) {
+            invoked++;
+            if (orchestrator->config.enable_logging) {
+                NIMCP_LOGGING_DEBUG("Invoked handler callback for %s (%u handlers)",
+                    entry->module_name, entry->wiring.handles_message_count);
+            }
+        } else {
+            NIMCP_LOGGING_WARN("Handler callback failed for module: %s", entry->module_name);
+        }
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+
+    if (orchestrator->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Invoked %u module handler callbacks", invoked);
+    }
+
+    return (int)invoked;
+}
+
+/**
+ * @brief Set the wiring diagram for this orchestrator
+ *
+ * WHAT: Associate a wiring diagram with the orchestrator
+ * WHY:  Enable runtime wiring discovery from JSONL diagrams
+ * HOW:  Store pointer (not owned by orchestrator)
+ */
+int bio_orchestrator_set_wiring_diagram(
+    bio_async_orchestrator_t* orchestrator,
+    wiring_diagram_t* wd
+) {
+    if (!orchestrator) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+    orchestrator->wiring_diagram = wd;
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+
+    if (orchestrator->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Wiring diagram %s for orchestrator",
+            wd ? "set" : "cleared");
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Get the wiring diagram from this orchestrator
+ *
+ * WHAT: Retrieve associated wiring diagram
+ * WHY:  Allow modules to access wiring diagram
+ * HOW:  Return stored pointer
+ */
+wiring_diagram_t* bio_orchestrator_get_wiring_diagram(
+    const bio_async_orchestrator_t* orchestrator
+) {
+    if (!orchestrator) return NULL;
+    return orchestrator->wiring_diagram;
+}
+
+/**
+ * @brief Discover wiring for a single module from wiring diagram
+ *
+ * WHAT: Populate module's wiring config from wiring diagram
+ * WHY:  Enable runtime wiring discovery
+ * HOW:  Query wiring diagram by module name, copy to entry
+ */
+int bio_orchestrator_discover_module_wiring(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id
+) {
+    if (!orchestrator || !orchestrator->wiring_diagram) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    bio_module_entry_t* entry = find_module(orchestrator, module_id);
+    if (!entry) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+        return -1;
+    }
+
+    /* Query wiring diagram for this module */
+    wiring_module_config_t config;
+    wiring_module_config_init(&config);
+
+    int result = wiring_diagram_get_module_config(
+        orchestrator->wiring_diagram, entry->module_name, &config);
+    if (result == 0) {
+        /* Copy discovered wiring (shallow copy for now) */
+        entry->wiring = config;
+        entry->wiring_discovered = true;
+
+        if (orchestrator->config.enable_logging) {
+            NIMCP_LOGGING_DEBUG("Discovered wiring for %s: %u handlers",
+                entry->module_name, config.handles_message_count);
+        }
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+    return result;
+}
+
+/**
+ * @brief Discover wiring for all registered modules
+ *
+ * WHAT: Populate wiring configs for all modules from wiring diagram
+ * WHY:  Bulk wiring discovery at startup
+ * HOW:  Iterate all modules, query wiring diagram for each
+ */
+int bio_orchestrator_discover_all_wiring(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator || !orchestrator->wiring_diagram) return -1;
+
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    uint32_t discovered = 0;
+    for (uint32_t i = 0; i < orchestrator->module_count; i++) {
+        bio_module_entry_t* entry = &orchestrator->modules[i];
+
+        wiring_module_config_t config;
+        wiring_module_config_init(&config);
+
+        int result = wiring_diagram_get_module_config(
+            orchestrator->wiring_diagram, entry->module_name, &config);
+        if (result == 0) {
+            entry->wiring = config;
+            entry->wiring_discovered = true;
+            discovered++;
+        }
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+
+    if (orchestrator->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Discovered wiring for %u/%u modules",
+            discovered, orchestrator->module_count);
+    }
+
+    return (int)discovered;
 }

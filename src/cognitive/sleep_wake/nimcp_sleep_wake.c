@@ -18,6 +18,7 @@
  */
 
 #include "cognitive/nimcp_sleep_wake.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
@@ -961,4 +962,31 @@ bool sleep_unregister_state_callback(sleep_system_t sleep,
     }
 
     return found;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int sleep_wake_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Sleep_Wake");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Sleep_Wake");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Sleep_Wake");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

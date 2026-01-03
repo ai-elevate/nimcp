@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/nimcp_mental_health.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -1040,4 +1041,31 @@ disorder_severity_t mental_health_classify_severity(
 
 const char* mental_health_get_last_error(void) {
     return get_last_error();
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int mental_health_monitor_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Mental_Health_Monitor");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Mental_Health_Monitor");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mental_Health_Monitor");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

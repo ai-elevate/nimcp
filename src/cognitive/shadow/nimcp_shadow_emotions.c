@@ -5,6 +5,7 @@
  */
 
 #include "cognitive/nimcp_shadow_emotions.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -1186,4 +1187,31 @@ void shadow_get_interaction_modulation(const shadow_emotion_system_t* system,
     *empathy_modulation = clamp(*empathy_modulation, 0.1F, 1.0F);
     *trust_modulation = clamp(*trust_modulation, 0.0F, 1.0F);
     *engagement_modulation = clamp(*engagement_modulation, 0.1F, 1.0F);
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int shadow_emotions_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Shadow_Emotions");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Shadow_Emotions");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Shadow_Emotions");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

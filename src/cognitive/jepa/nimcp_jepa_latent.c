@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/jepa/nimcp_jepa_latent.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <math.h>
 #include <string.h>
 #include <float.h>
@@ -823,4 +824,31 @@ const char* jepa_similarity_to_string(jepa_similarity_t metric) {
         case JEPA_SIM_PRECISION_WEIGHTED: return "precision_weighted";
         default:                          return "invalid";
     }
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int jepa_latent_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "JEPA_Latent_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "JEPA_Latent_Module");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "JEPA_Latent_Module");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

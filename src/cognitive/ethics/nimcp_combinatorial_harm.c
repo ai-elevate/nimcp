@@ -43,6 +43,7 @@
 #include "plasticity/noise/nimcp_pink_noise.h"
 #include "plasticity/noise/nimcp_pink_noise_monitor.h"
 #include "plasticity/noise/nimcp_pink_noise_criticality.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 // #include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
 
 //=============================================================================
@@ -1742,4 +1743,28 @@ NIMCP_EXPORT const nimcp_directive_system_t* combinatorial_get_directive_system(
         return NULL;
     }
     return detector->directive_system;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for Combinatorial Harm self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int combinatorial_harm_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Combinatorial_Harm_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            NIMCP_LOGGING_DEBUG("Combinatorial harm self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Combinatorial_Harm_Module");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Combinatorial_Harm_Module");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

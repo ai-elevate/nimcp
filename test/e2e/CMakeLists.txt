@@ -1252,6 +1252,17 @@ add_e2e_test(e2e_test_brain_initialization_subsystems
 )
 
 # ============================================================================
+# Wiring Diagram Pipeline E2E Test (2026-01-03)
+# ============================================================================
+# WHAT: E2E test for KG-based runtime module wiring system
+# WHY:  Verify complete wiring pipeline from JSONL loading to handler registration
+# HOW:  Test wiring loading, discovery, callback invocation, and persistence
+add_e2e_test(e2e_test_wiring_diagram_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_wiring_diagram_pipeline.cpp
+)
+
+# ============================================================================
 # GPU Kernel Pipeline E2E Tests (2025-12-31)
 # ============================================================================
 # WHAT: E2E tests for GPU training, inference, SNN, and LNN pipelines

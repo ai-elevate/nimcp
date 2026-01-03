@@ -19,6 +19,7 @@
  */
 
 #include "cognitive/global_workspace/nimcp_global_workspace_immune.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -752,4 +753,31 @@ const char* gw_anomaly_severity_to_string(gw_anomaly_severity_t severity) {
         case GW_ANOMALY_SEVERITY_CRITICAL: return "CRITICAL";
         default: return "UNKNOWN";
     }
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int global_workspace_immune_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Global_Workspace_Immune");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Global_Workspace_Immune");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Global_Workspace_Immune");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

@@ -41,6 +41,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #define LOG_MODULE "cognitive.fault.prediction"
 #define BIO_MODULE_COGNITIVE_FAULT_PREDICTION 0x0356
@@ -1135,4 +1136,31 @@ const char* failure_predictor_get_highest_priority_action(
     unlock(predictor);
 
     return failure_predictor_get_preventive_action(predictor, top);
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int failure_prediction_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Failure_Prediction");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Log self-knowledge observations */
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Failure_Prediction");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Failure_Prediction");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

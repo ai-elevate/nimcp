@@ -184,6 +184,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/brainstem/nimcp_brainstem_adapter.c         # Brainstem core adapter
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/brainstem/nimcp_brainstem_quantum_bridge.c  # Quantum-accelerated processing
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/brainstem/nimcp_brainstem_immune_bridge.c   # Brainstem-immune integration (arousal-immune)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/brainstem/nimcp_vestibular.c               # Vestibular nuclei processor (Phase 3)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.c # Vestibular-cerebellum bridge (Phase 3)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_brainstem.c           # Brainstem factory init
 
     # Cingulate Cortex - Conflict monitoring, error detection, cognitive control (Phase B4)
@@ -1131,6 +1133,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_async.c      # Phase BIO-ASYNC: Biologically-inspired async
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_router.c     # Phase BIO-ASYNC: Bio-router message routing
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_bio_async_orchestrator.c  # Bio-Async Orchestrator - central coordinator for 200+ bio-async modules
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_wiring_diagram.c  # KG-Based Runtime Module Wiring Diagram System
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/immune/nimcp_bio_router_immune_bridge.c  # Bio-router-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../async/nimcp_predictive_protocol.c  # Predictive communication protocol
 
@@ -1196,6 +1199,30 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_visual_cortex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_audio_cortex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_speech_cortex.c
+
+    # Cochlear Audio Processing (Phase 3: Biologically-accurate cochlear model)
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_basilar_membrane.c      # Basilar membrane mechanics
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_hair_cells.c            # Inner/outer hair cells
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_auditory_nerve.c        # Auditory nerve fibers
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_cochlea_extended.c      # Extended cochlea (dog/bat modes)
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_cochlea.c               # Main cochlea integration
+
+    # Cochlear Brain Integration Bridges (Phase 3: Auditory pathway)
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_medulla_bridge.c       # Brainstem pathway
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_thalamic_bridge.c      # MGN relay with attention
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_audio_cortex_bridge.c  # A1 cortical integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_fep_bridge.c          # Free Energy Principle integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_sleep_bridge.c        # Sleep stage modulation
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_immune_bridge.c       # Cochlear health/immune system
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_kg_bridge.c           # Knowledge Graph self-awareness
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_substrate_bridge.c    # Neural substrate spike encoding
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_rcog_bridge.c         # Recursive Cognition integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_collective_bridge.c   # Collective cognition sync
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_cortical_deep_bridge.c # Deep cortical integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_occipital_bridge.c    # Occipital audiovisual bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_broca_bridge.c        # Broca speech bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_bio_async_bridge.c    # Bio-async complete
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/bridges/nimcp_cochlea_verification_bridge.c # Verification system
 
     # Perception JEPA Bridges (Joint Embedding Predictive Architecture)
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_visual_jepa_bridge.c         # Visual-JEPA encoding bridge

@@ -37,6 +37,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include "utils/geometry/nimcp_hyperbolic.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <stdio.h>
 #include <math.h>
 
@@ -276,4 +277,31 @@ void curiosity_visualize_hyperbolic_state(const knowledge_item_t *current_knowle
     }
     printf("]\n");
     printf("================================\n");
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int curiosity_hyperbolic_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Curiosity_Hyperbolic_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Curiosity_Hyperbolic_Module");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Curiosity_Hyperbolic_Module");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

@@ -19,6 +19,7 @@
  */
 
 #include "cognitive/knowledge/nimcp_knowledge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -193,4 +194,41 @@ void knowledge_fractal_print_concept_context(const fractal_cognitive_cache_t *ca
     printf("Hierarchical level: %.3f\n", fractal_get_hierarchical_level(cache, concept_neuron));
     printf("Learning boost: %.2fx\n", knowledge_fractal_learning_boost(cache, concept_neuron));
     printf("===============================\n");
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * @brief Query knowledge graph for self-knowledge about fractal knowledge anchoring
+ *
+ * WHAT: Retrieves entity observations and relations for fractal topology
+ * WHY: Enables self-aware introspection of module capabilities
+ * HOW: Uses kg_reader to query JSONL knowledge graph
+ *
+ * @param kg Knowledge graph reader instance
+ * @return 1 if self-knowledge found, 0 otherwise
+ */
+int knowledge_fractal_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Knowledge_Fractal");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Knowledge_Fractal");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Knowledge_Fractal");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

@@ -105,6 +105,54 @@ struct climbing_fiber_system {
     float error_threshold;           /**< Threshold to trigger learning */
 };
 
+/*=============================================================================
+ * PHASE 1-2: NEW INTERNAL STRUCTURES
+ *===========================================================================*/
+
+/**
+ * @brief Glomerular layer (Phase 1) - mossy fiber divergence
+ */
+struct glomerular_layer {
+    glomerulus_t* glomeruli;         /**< Array of glomeruli */
+    uint32_t num_glomeruli;          /**< Number of glomeruli (one per mossy fiber) */
+    uint32_t granules_per_glomerulus;/**< Target divergence (50-100) */
+    float divergence_factor;         /**< Actual divergence achieved */
+    bool synaptic_dynamics_enabled;  /**< Whether to use synaptic dynamics */
+};
+
+/**
+ * @brief Molecular layer interneurons (Phase 2) - basket and stellate cells
+ */
+struct molecular_layer_interneurons {
+    basket_cell_t* basket_cells;     /**< Basket cell array */
+    uint32_t num_basket_cells;       /**< Number of basket cells */
+    stellate_cell_t* stellate_cells; /**< Stellate cell array */
+    uint32_t num_stellate_cells;     /**< Number of stellate cells */
+    float* parallel_input_buffer;    /**< Input from parallel fibers */
+    float inhibition_strength;       /**< Global inhibition gain */
+};
+
+/**
+ * @brief Golgi cell network (Phase 2) - feedback inhibition to granule layer
+ */
+struct golgi_cell_network {
+    golgi_cell_t* cells;             /**< Golgi cell array */
+    uint32_t num_cells;              /**< Number of Golgi cells */
+    float feedback_delay_ms;         /**< Delay for feedback inhibition */
+    float inhibition_decay_tau;      /**< Decay time constant (ms) */
+    float* granule_activity_buffer;  /**< Granule cell activity feedback */
+};
+
+/**
+ * @brief Metabolic modulation state (Phase 4)
+ */
+typedef struct {
+    float motor_coordination;        /**< Scaling for motor coordination [0.3, 1.0] */
+    float timing_precision;          /**< Scaling for timing [0.3, 1.0] */
+    float learning_capacity;         /**< Scaling for learning [0.3, 1.0] */
+    bool modulation_active;          /**< Whether modulation is applied */
+} metabolic_modulation_t;
+
 /**
  * @brief Forward model internal state
  */
@@ -141,6 +189,16 @@ struct cerebellum_adapter {
     purkinje_layer_t* purkinje;
     deep_nuclei_t* nuclei;
     climbing_fiber_system_t* climbing;
+
+    /* Phase 1: New sub-modules */
+    glomerular_layer_t* glomerular;              /**< Glomerular layer for divergence */
+
+    /* Phase 2: Interneurons */
+    molecular_layer_interneurons_t* molecular;   /**< Basket + stellate cells */
+    golgi_cell_network_t* golgi;                 /**< Golgi feedback network */
+
+    /* Phase 4: Metabolic modulation */
+    metabolic_modulation_t metabolic;            /**< Metabolic state from substrate bridge */
 
     /* Forward model */
     forward_model_t forward_model;
@@ -197,6 +255,120 @@ static void emit_event(cerebellum_adapter_t* adapter, uint32_t event_type, const
     if (adapter->config.enable_events && adapter->event_callback) {
         adapter->event_callback(event_type, data, adapter->event_user_data);
     }
+}
+
+/*=============================================================================
+ * SYNAPTIC DYNAMICS FUNCTIONS (Phase 1)
+ *===========================================================================*/
+
+cerebellar_synapse_config_t cerebellar_synapse_default_config(void) {
+    cerebellar_synapse_config_t config;
+    memset(&config, 0, sizeof(config));
+
+    /* Vesicle pool configuration */
+    config.rrp_capacity = CEREBELLUM_SYNAPSE_DEFAULT_RRP_CAPACITY;
+    config.recycling_capacity = CEREBELLUM_SYNAPSE_DEFAULT_RECYCLING_CAP;
+    config.release_probability = CEREBELLUM_SYNAPSE_DEFAULT_RELEASE_PROB;
+    config.refill_rate = CEREBELLUM_SYNAPSE_DEFAULT_REFILL_RATE;
+
+    /* Short-term plasticity */
+    config.stp_U = CEREBELLUM_SYNAPSE_DEFAULT_STP_U;
+    config.stp_tau_D = CEREBELLUM_SYNAPSE_DEFAULT_STP_TAU_D;
+    config.stp_tau_F = CEREBELLUM_SYNAPSE_DEFAULT_STP_TAU_F;
+
+    /* Calcium dynamics */
+    config.ca_baseline = CEREBELLUM_SYNAPSE_DEFAULT_CA_BASELINE;
+    config.ca_decay_tau = CEREBELLUM_SYNAPSE_DEFAULT_CA_DECAY_TAU;
+    config.ca_influx_per_spike = CEREBELLUM_SYNAPSE_DEFAULT_CA_INFLUX;
+
+    /* Enable flags */
+    config.enable_vesicle_dynamics = false;
+    config.enable_stp = false;
+    config.enable_calcium_dynamics = false;
+
+    return config;
+}
+
+void cerebellar_synapse_init(cerebellar_synapse_state_t* state,
+                              const cerebellar_synapse_config_t* config) {
+    if (!state) return;
+
+    cerebellar_synapse_config_t cfg = config ? *config : cerebellar_synapse_default_config();
+
+    /* Initialize vesicle pool */
+    state->rrp_available = cfg.rrp_capacity;
+    state->rrp_capacity = cfg.rrp_capacity;
+    state->vesicle_depletion = 0.0f;
+
+    /* Initialize STP state (Tsodyks-Markram model) */
+    state->stp_x = 1.0f;  /* Full resources available */
+    state->stp_u = cfg.stp_U;  /* Baseline utilization */
+    state->last_spike_time = 0;
+
+    /* Initialize calcium */
+    state->calcium_concentration = cfg.ca_baseline;
+    state->calcium_decay_tau = cfg.ca_decay_tau;
+
+    /* Initialize facilitation/depression */
+    state->facilitation_factor = 1.0f;
+    state->depression_factor = 1.0f;
+    state->effective_weight = 1.0f;
+}
+
+void cerebellar_synapse_update(cerebellar_synapse_state_t* state,
+                                float dt_ms,
+                                float presynaptic_activity) {
+    if (!state || dt_ms <= 0.0f) return;
+
+    /* Update STP state (Tsodyks-Markram model) */
+    /* dx/dt = (1 - x) / tau_D  (resource recovery) */
+    /* du/dt = (U - u) / tau_F  (facilitation decay) */
+    float tau_D = CEREBELLUM_SYNAPSE_DEFAULT_STP_TAU_D;
+    float tau_F = CEREBELLUM_SYNAPSE_DEFAULT_STP_TAU_F;
+    float U = CEREBELLUM_SYNAPSE_DEFAULT_STP_U;
+
+    /* Recovery of resources */
+    float dx = ((1.0f - state->stp_x) / tau_D) * dt_ms;
+    state->stp_x += dx;
+    if (state->stp_x > 1.0f) state->stp_x = 1.0f;
+
+    /* Decay of facilitation */
+    float du = ((U - state->stp_u) / tau_F) * dt_ms;
+    state->stp_u += du;
+    if (state->stp_u < U) state->stp_u = U;
+
+    /* If presynaptic activity (spike), trigger release */
+    if (presynaptic_activity > 0.5f) {
+        /* On spike: u += U(1 - u), then x -= ux */
+        float u_before = state->stp_u;
+        state->stp_u = state->stp_u + U * (1.0f - state->stp_u);
+        state->stp_x = state->stp_x - u_before * state->stp_x;
+        if (state->stp_x < 0.0f) state->stp_x = 0.0f;
+
+        /* Calcium influx on spike */
+        state->calcium_concentration += CEREBELLUM_SYNAPSE_DEFAULT_CA_INFLUX;
+    }
+
+    /* Calcium decay */
+    float ca_decay = (state->calcium_concentration - CEREBELLUM_SYNAPSE_DEFAULT_CA_BASELINE)
+                     * (dt_ms / state->calcium_decay_tau);
+    state->calcium_concentration -= ca_decay;
+    if (state->calcium_concentration < CEREBELLUM_SYNAPSE_DEFAULT_CA_BASELINE) {
+        state->calcium_concentration = CEREBELLUM_SYNAPSE_DEFAULT_CA_BASELINE;
+    }
+
+    /* Update facilitation/depression factors */
+    state->facilitation_factor = state->stp_u / U;  /* > 1 if facilitated */
+    state->depression_factor = state->stp_x;         /* < 1 if depressed */
+
+    /* Compute effective weight */
+    state->effective_weight = state->facilitation_factor * state->depression_factor;
+}
+
+float cerebellar_synapse_get_effective_weight(const cerebellar_synapse_state_t* state,
+                                               float base_weight) {
+    if (!state) return base_weight;
+    return base_weight * state->effective_weight;
 }
 
 /**
@@ -478,6 +650,308 @@ static void destroy_climbing_fibers(climbing_fiber_system_t* cf) {
     nimcp_free(cf);
 }
 
+/*=============================================================================
+ * PHASE 1: GLOMERULAR LAYER
+ *===========================================================================*/
+
+/**
+ * @brief Create glomerular layer for mossy fiber divergence
+ */
+static glomerular_layer_t* create_glomerular_layer(uint32_t num_mossy,
+                                                    uint32_t num_granule,
+                                                    uint32_t granules_per_glom,
+                                                    bool enable_synaptic_dynamics) {
+    glomerular_layer_t* layer = nimcp_calloc(1, sizeof(glomerular_layer_t));
+    if (!layer) return NULL;
+
+    layer->num_glomeruli = num_mossy;
+    layer->granules_per_glomerulus = granules_per_glom;
+    layer->synaptic_dynamics_enabled = enable_synaptic_dynamics;
+    layer->divergence_factor = (float)granules_per_glom;
+
+    /* Allocate glomeruli */
+    layer->glomeruli = nimcp_calloc(num_mossy, sizeof(glomerulus_t));
+    if (!layer->glomeruli) {
+        nimcp_free(layer);
+        return NULL;
+    }
+
+    /* Initialize each glomerulus */
+    for (uint32_t i = 0; i < num_mossy; i++) {
+        glomerulus_t* glom = &layer->glomeruli[i];
+        glom->mossy_fiber_id = i;
+        glom->num_targets = granules_per_glom;
+        glom->activity = 0.0f;
+
+        /* Allocate targets - distribute across granule cells */
+        glom->granule_targets = nimcp_calloc(granules_per_glom, sizeof(uint32_t));
+        glom->synapse_weights = nimcp_calloc(granules_per_glom, sizeof(float));
+
+        if (!glom->granule_targets || !glom->synapse_weights) {
+            /* Cleanup on failure */
+            for (uint32_t j = 0; j <= i; j++) {
+                if (layer->glomeruli[j].granule_targets)
+                    nimcp_free(layer->glomeruli[j].granule_targets);
+                if (layer->glomeruli[j].synapse_weights)
+                    nimcp_free(layer->glomeruli[j].synapse_weights);
+            }
+            nimcp_free(layer->glomeruli);
+            nimcp_free(layer);
+            return NULL;
+        }
+
+        /* Assign granule targets with divergence */
+        for (uint32_t j = 0; j < granules_per_glom; j++) {
+            glom->granule_targets[j] = (i * granules_per_glom + j) % num_granule;
+            glom->synapse_weights[j] = 0.25f;  /* Initial weight */
+        }
+
+        /* Initialize synaptic dynamics */
+        cerebellar_synapse_init(&glom->synapse, NULL);
+    }
+
+    LOG_DEBUG("[%s] Created glomerular layer: %u glomeruli, %u targets each",
+              CEREBELLUM_LOG_MODULE, num_mossy, granules_per_glom);
+
+    return layer;
+}
+
+/**
+ * @brief Destroy glomerular layer
+ */
+static void destroy_glomerular_layer(glomerular_layer_t* layer) {
+    if (!layer) return;
+
+    if (layer->glomeruli) {
+        for (uint32_t i = 0; i < layer->num_glomeruli; i++) {
+            if (layer->glomeruli[i].granule_targets)
+                nimcp_free(layer->glomeruli[i].granule_targets);
+            if (layer->glomeruli[i].synapse_weights)
+                nimcp_free(layer->glomeruli[i].synapse_weights);
+        }
+        nimcp_free(layer->glomeruli);
+    }
+
+    nimcp_free(layer);
+}
+
+/*=============================================================================
+ * PHASE 2: MOLECULAR LAYER INTERNEURONS
+ *===========================================================================*/
+
+/**
+ * @brief Create molecular layer interneurons (basket and stellate cells)
+ */
+static molecular_layer_interneurons_t* create_molecular_interneurons(
+    uint32_t num_basket, uint32_t purkinje_per_basket,
+    uint32_t num_stellate, uint32_t purkinje_per_stellate,
+    uint32_t num_purkinje, uint32_t num_parallel) {
+
+    molecular_layer_interneurons_t* layer = nimcp_calloc(1, sizeof(molecular_layer_interneurons_t));
+    if (!layer) return NULL;
+
+    layer->num_basket_cells = num_basket;
+    layer->num_stellate_cells = num_stellate;
+    layer->inhibition_strength = 1.0f;
+
+    /* Allocate parallel input buffer */
+    layer->parallel_input_buffer = nimcp_calloc(num_parallel, sizeof(float));
+    if (!layer->parallel_input_buffer) {
+        nimcp_free(layer);
+        return NULL;
+    }
+
+    /* Allocate basket cells */
+    if (num_basket > 0) {
+        layer->basket_cells = nimcp_calloc(num_basket, sizeof(basket_cell_t));
+        if (!layer->basket_cells) {
+            nimcp_free(layer->parallel_input_buffer);
+            nimcp_free(layer);
+            return NULL;
+        }
+
+        /* Initialize basket cells */
+        for (uint32_t i = 0; i < num_basket; i++) {
+            basket_cell_t* bc = &layer->basket_cells[i];
+            bc->num_purkinje_targets = purkinje_per_basket;
+            bc->activation = 0.0f;
+            bc->firing_rate = 0.0f;
+            bc->somatic_inhibition = 0.0f;
+
+            bc->purkinje_weights = nimcp_calloc(purkinje_per_basket, sizeof(float));
+            bc->target_purkinje_ids = nimcp_calloc(purkinje_per_basket, sizeof(uint32_t));
+
+            if (bc->purkinje_weights && bc->target_purkinje_ids) {
+                for (uint32_t j = 0; j < purkinje_per_basket; j++) {
+                    bc->target_purkinje_ids[j] = (i * purkinje_per_basket + j) % num_purkinje;
+                    bc->purkinje_weights[j] = -1.0f;  /* Inhibitory */
+                }
+            }
+
+            cerebellar_synapse_init(&bc->synapse, NULL);
+        }
+    }
+
+    /* Allocate stellate cells */
+    if (num_stellate > 0) {
+        layer->stellate_cells = nimcp_calloc(num_stellate, sizeof(stellate_cell_t));
+        if (!layer->stellate_cells) {
+            /* Cleanup basket cells */
+            if (layer->basket_cells) {
+                for (uint32_t i = 0; i < num_basket; i++) {
+                    if (layer->basket_cells[i].purkinje_weights)
+                        nimcp_free(layer->basket_cells[i].purkinje_weights);
+                    if (layer->basket_cells[i].target_purkinje_ids)
+                        nimcp_free(layer->basket_cells[i].target_purkinje_ids);
+                }
+                nimcp_free(layer->basket_cells);
+            }
+            nimcp_free(layer->parallel_input_buffer);
+            nimcp_free(layer);
+            return NULL;
+        }
+
+        /* Initialize stellate cells */
+        for (uint32_t i = 0; i < num_stellate; i++) {
+            stellate_cell_t* sc = &layer->stellate_cells[i];
+            sc->num_purkinje_targets = purkinje_per_stellate;
+            sc->activation = 0.0f;
+            sc->dendritic_inhibition = 0.0f;
+
+            sc->purkinje_weights = nimcp_calloc(purkinje_per_stellate, sizeof(float));
+            sc->target_purkinje_ids = nimcp_calloc(purkinje_per_stellate, sizeof(uint32_t));
+
+            if (sc->purkinje_weights && sc->target_purkinje_ids) {
+                for (uint32_t j = 0; j < purkinje_per_stellate; j++) {
+                    sc->target_purkinje_ids[j] = (i * purkinje_per_stellate + j) % num_purkinje;
+                    sc->purkinje_weights[j] = -0.5f;  /* Inhibitory, weaker than basket */
+                }
+            }
+
+            cerebellar_synapse_init(&sc->synapse, NULL);
+        }
+    }
+
+    LOG_DEBUG("[%s] Created molecular interneurons: %u basket, %u stellate",
+              CEREBELLUM_LOG_MODULE, num_basket, num_stellate);
+
+    return layer;
+}
+
+/**
+ * @brief Destroy molecular layer interneurons
+ */
+static void destroy_molecular_interneurons(molecular_layer_interneurons_t* layer) {
+    if (!layer) return;
+
+    if (layer->basket_cells) {
+        for (uint32_t i = 0; i < layer->num_basket_cells; i++) {
+            if (layer->basket_cells[i].purkinje_weights)
+                nimcp_free(layer->basket_cells[i].purkinje_weights);
+            if (layer->basket_cells[i].target_purkinje_ids)
+                nimcp_free(layer->basket_cells[i].target_purkinje_ids);
+        }
+        nimcp_free(layer->basket_cells);
+    }
+
+    if (layer->stellate_cells) {
+        for (uint32_t i = 0; i < layer->num_stellate_cells; i++) {
+            if (layer->stellate_cells[i].purkinje_weights)
+                nimcp_free(layer->stellate_cells[i].purkinje_weights);
+            if (layer->stellate_cells[i].target_purkinje_ids)
+                nimcp_free(layer->stellate_cells[i].target_purkinje_ids);
+        }
+        nimcp_free(layer->stellate_cells);
+    }
+
+    if (layer->parallel_input_buffer)
+        nimcp_free(layer->parallel_input_buffer);
+
+    nimcp_free(layer);
+}
+
+/*=============================================================================
+ * PHASE 2: GOLGI CELL NETWORK
+ *===========================================================================*/
+
+/**
+ * @brief Create Golgi cell network for feedback inhibition
+ */
+static golgi_cell_network_t* create_golgi_network(uint32_t num_golgi,
+                                                   uint32_t granules_per_golgi,
+                                                   uint32_t num_granule) {
+    golgi_cell_network_t* network = nimcp_calloc(1, sizeof(golgi_cell_network_t));
+    if (!network) return NULL;
+
+    network->num_cells = num_golgi;
+    network->feedback_delay_ms = 5.0f;
+    network->inhibition_decay_tau = 50.0f;
+
+    /* Allocate granule activity buffer */
+    network->granule_activity_buffer = nimcp_calloc(num_granule, sizeof(float));
+    if (!network->granule_activity_buffer) {
+        nimcp_free(network);
+        return NULL;
+    }
+
+    /* Allocate Golgi cells */
+    network->cells = nimcp_calloc(num_golgi, sizeof(golgi_cell_t));
+    if (!network->cells) {
+        nimcp_free(network->granule_activity_buffer);
+        nimcp_free(network);
+        return NULL;
+    }
+
+    /* Initialize Golgi cells */
+    for (uint32_t i = 0; i < num_golgi; i++) {
+        golgi_cell_t* gc = &network->cells[i];
+        gc->num_granule_targets = granules_per_golgi;
+        gc->activation = 0.0f;
+        gc->feedback_inhibition = 0.0f;
+        gc->parallel_fiber_input = 0.0f;
+        gc->mossy_fiber_input = 0.0f;
+
+        gc->granule_weights = nimcp_calloc(granules_per_golgi, sizeof(float));
+        gc->target_granule_ids = nimcp_calloc(granules_per_golgi, sizeof(uint32_t));
+
+        if (gc->granule_weights && gc->target_granule_ids) {
+            for (uint32_t j = 0; j < granules_per_golgi; j++) {
+                gc->target_granule_ids[j] = (i * granules_per_golgi + j) % num_granule;
+                gc->granule_weights[j] = -0.5f;  /* Inhibitory */
+            }
+        }
+
+        cerebellar_synapse_init(&gc->synapse, NULL);
+    }
+
+    LOG_DEBUG("[%s] Created Golgi network: %u cells, %u granule targets each",
+              CEREBELLUM_LOG_MODULE, num_golgi, granules_per_golgi);
+
+    return network;
+}
+
+/**
+ * @brief Destroy Golgi cell network
+ */
+static void destroy_golgi_network(golgi_cell_network_t* network) {
+    if (!network) return;
+
+    if (network->cells) {
+        for (uint32_t i = 0; i < network->num_cells; i++) {
+            if (network->cells[i].granule_weights)
+                nimcp_free(network->cells[i].granule_weights);
+            if (network->cells[i].target_granule_ids)
+                nimcp_free(network->cells[i].target_granule_ids);
+        }
+        nimcp_free(network->cells);
+    }
+
+    if (network->granule_activity_buffer)
+        nimcp_free(network->granule_activity_buffer);
+
+    nimcp_free(network);
+}
+
 /**
  * @brief Process granule layer
  */
@@ -628,6 +1102,301 @@ static void apply_ltd_learning(cerebellum_adapter_t* adapter, uint32_t purkinje_
 }
 
 /*=============================================================================
+ * PHASE 1: GLOMERULAR LAYER PROCESSING
+ *===========================================================================*/
+
+/**
+ * @brief Process glomerular layer - distribute mossy input with enhanced divergence
+ *
+ * BIOLOGICAL CONTEXT:
+ * Each mossy fiber terminates in glomeruli, which fan out to 50-100 granule cells.
+ * This creates the massive expansion from mossy fibers to granule cells that is
+ * characteristic of the cerebellar cortex.
+ */
+static void process_glomerular_layer(cerebellum_adapter_t* adapter) {
+    if (!adapter || !adapter->glomerular || !adapter->granule) return;
+
+    glomerular_layer_t* glom = adapter->glomerular;
+    granule_layer_t* gran = adapter->granule;
+
+    /* For each glomerulus, distribute mossy fiber input to target granules */
+    for (uint32_t i = 0; i < glom->num_glomeruli; i++) {
+        glomerulus_t* g = &glom->glomeruli[i];
+
+        /* Get mossy fiber input */
+        float mossy_input = 0.0f;
+        if (g->mossy_fiber_id < gran->num_mossy_fibers) {
+            mossy_input = gran->mossy_input_buffer[g->mossy_fiber_id];
+        }
+
+        /* Update glomerulus activity */
+        g->activity = mossy_input;
+
+        /* Update synaptic dynamics if enabled */
+        if (glom->synaptic_dynamics_enabled) {
+            cerebellar_synapse_update(&g->synapse, 1.0f, mossy_input);
+        }
+
+        /* Distribute to target granule cells with synaptic modulation */
+        for (uint32_t j = 0; j < g->num_targets; j++) {
+            uint32_t target_id = g->granule_targets[j];
+            if (target_id < gran->num_cells) {
+                float effective_weight = g->synapse_weights[j];
+
+                /* Apply synaptic dynamics modulation if enabled */
+                if (glom->synaptic_dynamics_enabled) {
+                    effective_weight = cerebellar_synapse_get_effective_weight(
+                        &g->synapse, effective_weight);
+                }
+
+                /* Add glomerular input to granule (accumulative from multiple glomeruli) */
+                gran->cells[target_id].activation += mossy_input * effective_weight;
+            }
+        }
+    }
+
+    adapter->stats.glomerular_activations++;
+}
+
+/*=============================================================================
+ * PHASE 2: INTERNEURON PROCESSING FUNCTIONS
+ *===========================================================================*/
+
+/**
+ * @brief Process Golgi cells - feedback inhibition to granule layer
+ *
+ * BIOLOGICAL CONTEXT:
+ * Golgi cells receive input from parallel fibers and mossy fibers, and provide
+ * feedback inhibition to granule cells. This regulates the gain and timing of
+ * granule cell activity.
+ */
+static void process_golgi_cells(cerebellum_adapter_t* adapter) {
+    if (!adapter || !adapter->golgi || !adapter->granule) return;
+
+    golgi_cell_network_t* golgi = adapter->golgi;
+    granule_layer_t* gran = adapter->granule;
+
+    /* First, compute Golgi cell activity from parallel fiber input */
+    for (uint32_t i = 0; i < golgi->num_cells; i++) {
+        golgi_cell_t* gc = &golgi->cells[i];
+
+        /* Get input from parallel fibers (active granule cells) */
+        float pf_input = 0.0f;
+        for (uint32_t j = 0; j < gc->num_granule_targets; j++) {
+            uint32_t gid = gc->target_granule_ids[j];
+            if (gid < gran->num_cells && gran->cells[gid].active) {
+                pf_input += gran->cells[gid].activation * 0.1f;
+            }
+        }
+
+        /* Get input from mossy fibers (via glomeruli) */
+        float mossy_input = gc->mossy_fiber_input;
+
+        /* Golgi cell activation */
+        float total_input = pf_input + mossy_input;
+        gc->activation = tanhf(total_input);
+
+        /* Update synaptic state */
+        cerebellar_synapse_update(&gc->synapse, 1.0f, gc->activation);
+
+        /* Compute feedback inhibition strength */
+        gc->feedback_inhibition = gc->activation;
+
+        if (gc->activation > 0.5f) {
+            adapter->stats.golgi_cell_spikes++;
+        }
+    }
+}
+
+/**
+ * @brief Apply Golgi cell inhibition to granule layer
+ */
+static void apply_golgi_inhibition(cerebellum_adapter_t* adapter) {
+    if (!adapter || !adapter->golgi || !adapter->granule) return;
+
+    golgi_cell_network_t* golgi = adapter->golgi;
+    granule_layer_t* gran = adapter->granule;
+
+    /* Each Golgi cell inhibits its target granule cells */
+    for (uint32_t i = 0; i < golgi->num_cells; i++) {
+        golgi_cell_t* gc = &golgi->cells[i];
+
+        if (gc->feedback_inhibition < 0.1f) continue;
+
+        for (uint32_t j = 0; j < gc->num_granule_targets; j++) {
+            uint32_t target_id = gc->target_granule_ids[j];
+            if (target_id < gran->num_cells) {
+                /* Apply inhibition */
+                float inh = gc->feedback_inhibition * fabsf(gc->granule_weights[j]);
+                gran->cells[target_id].activation -= inh;
+                if (gran->cells[target_id].activation < 0.0f) {
+                    gran->cells[target_id].activation = 0.0f;
+                }
+            }
+        }
+    }
+}
+
+/**
+ * @brief Process basket cells - somatic inhibition of Purkinje cells
+ *
+ * BIOLOGICAL CONTEXT:
+ * Basket cells receive parallel fiber input and provide powerful somatic
+ * inhibition to Purkinje cells. Their axons form "baskets" around Purkinje
+ * cell bodies, enabling rapid and strong inhibition.
+ */
+static void process_basket_cells(cerebellum_adapter_t* adapter) {
+    if (!adapter || !adapter->molecular || !adapter->granule) return;
+
+    molecular_layer_interneurons_t* mol = adapter->molecular;
+    granule_layer_t* gran = adapter->granule;
+
+    if (!mol->basket_cells) return;
+
+    /* Compute basket cell activity from parallel fiber (granule) input */
+    for (uint32_t i = 0; i < mol->num_basket_cells; i++) {
+        basket_cell_t* bc = &mol->basket_cells[i];
+
+        /* Get parallel fiber input */
+        float pf_input = 0.0f;
+        uint32_t active_count = 0;
+        for (uint32_t j = 0; j < gran->num_cells && j < 100; j++) {
+            if (gran->cells[j].active) {
+                pf_input += gran->cells[j].activation;
+                active_count++;
+            }
+        }
+        if (active_count > 0) {
+            pf_input /= active_count;
+        }
+
+        /* Basket cell activation (fast-spiking interneuron characteristics) */
+        bc->activation = tanhf(pf_input * 2.0f);  /* Higher gain than Purkinje */
+        bc->firing_rate = bc->activation;
+
+        /* Compute somatic inhibition */
+        bc->somatic_inhibition = bc->activation * mol->inhibition_strength;
+
+        /* Update synaptic state */
+        cerebellar_synapse_update(&bc->synapse, 1.0f, bc->activation);
+
+        if (bc->activation > 0.5f) {
+            adapter->stats.basket_cell_spikes++;
+        }
+    }
+}
+
+/**
+ * @brief Apply basket cell inhibition to Purkinje cell somata
+ */
+static void apply_basket_inhibition(cerebellum_adapter_t* adapter) {
+    if (!adapter || !adapter->molecular || !adapter->purkinje) return;
+
+    molecular_layer_interneurons_t* mol = adapter->molecular;
+    purkinje_layer_t* pk = adapter->purkinje;
+
+    if (!mol->basket_cells) return;
+
+    /* Each basket cell inhibits its target Purkinje cells */
+    for (uint32_t i = 0; i < mol->num_basket_cells; i++) {
+        basket_cell_t* bc = &mol->basket_cells[i];
+
+        if (bc->somatic_inhibition < 0.1f) continue;
+
+        for (uint32_t j = 0; j < bc->num_purkinje_targets; j++) {
+            uint32_t target_id = bc->target_purkinje_ids[j];
+            if (target_id < pk->num_cells) {
+                /* Apply somatic inhibition (affects simple spike rate) */
+                float inh = bc->somatic_inhibition * fabsf(bc->purkinje_weights[j]);
+                pk->cells[target_id].simple_spike_rate -= inh;
+                if (pk->cells[target_id].simple_spike_rate < 0.0f) {
+                    pk->cells[target_id].simple_spike_rate = 0.0f;
+                }
+            }
+        }
+    }
+}
+
+/**
+ * @brief Process stellate cells - dendritic inhibition of Purkinje cells
+ *
+ * BIOLOGICAL CONTEXT:
+ * Stellate cells are located in the outer molecular layer and inhibit
+ * Purkinje cell dendrites. Their inhibition is weaker but more distributed
+ * than basket cells.
+ */
+static void process_stellate_cells(cerebellum_adapter_t* adapter) {
+    if (!adapter || !adapter->molecular || !adapter->granule) return;
+
+    molecular_layer_interneurons_t* mol = adapter->molecular;
+    granule_layer_t* gran = adapter->granule;
+
+    if (!mol->stellate_cells) return;
+
+    /* Compute stellate cell activity from parallel fiber input */
+    for (uint32_t i = 0; i < mol->num_stellate_cells; i++) {
+        stellate_cell_t* sc = &mol->stellate_cells[i];
+
+        /* Get parallel fiber input */
+        float pf_input = 0.0f;
+        uint32_t active_count = 0;
+        for (uint32_t j = 0; j < gran->num_cells && j < 50; j++) {
+            if (gran->cells[j].active) {
+                pf_input += gran->cells[j].activation;
+                active_count++;
+            }
+        }
+        if (active_count > 0) {
+            pf_input /= active_count;
+        }
+
+        /* Stellate cell activation */
+        sc->activation = tanhf(pf_input * 1.5f);
+
+        /* Compute dendritic inhibition */
+        sc->dendritic_inhibition = sc->activation * mol->inhibition_strength * 0.5f;
+
+        /* Update synaptic state */
+        cerebellar_synapse_update(&sc->synapse, 1.0f, sc->activation);
+
+        if (sc->activation > 0.5f) {
+            adapter->stats.stellate_cell_spikes++;
+        }
+    }
+}
+
+/**
+ * @brief Apply stellate cell inhibition to Purkinje cell dendrites
+ */
+static void apply_stellate_inhibition(cerebellum_adapter_t* adapter) {
+    if (!adapter || !adapter->molecular || !adapter->purkinje) return;
+
+    molecular_layer_interneurons_t* mol = adapter->molecular;
+    purkinje_layer_t* pk = adapter->purkinje;
+
+    if (!mol->stellate_cells) return;
+
+    /* Each stellate cell inhibits its target Purkinje cells */
+    for (uint32_t i = 0; i < mol->num_stellate_cells; i++) {
+        stellate_cell_t* sc = &mol->stellate_cells[i];
+
+        if (sc->dendritic_inhibition < 0.1f) continue;
+
+        for (uint32_t j = 0; j < sc->num_purkinje_targets; j++) {
+            uint32_t target_id = sc->target_purkinje_ids[j];
+            if (target_id < pk->num_cells) {
+                /* Apply dendritic inhibition (affects parallel fiber integration) */
+                float inh = sc->dendritic_inhibition * fabsf(sc->purkinje_weights[j]);
+                pk->cells[target_id].simple_spike_rate -= inh * 0.3f;  /* Weaker effect */
+                if (pk->cells[target_id].simple_spike_rate < 0.0f) {
+                    pk->cells[target_id].simple_spike_rate = 0.0f;
+                }
+            }
+        }
+    }
+}
+
+/*=============================================================================
  * LIFECYCLE FUNCTIONS
  *===========================================================================*/
 
@@ -660,6 +1429,53 @@ cerebellum_config_t cerebellum_default_config(void) {
     config.enable_events = true;
     config.enable_bio_async = true;
     config.default_channel = BIO_CHANNEL_ACETYLCHOLINE;
+
+    /*=== Phase 1: Synaptic Dynamics (disabled by default for backward compat) ===*/
+
+    /* Synaptic dynamics configuration */
+    config.synapse_config.rrp_capacity = CEREBELLUM_SYNAPSE_DEFAULT_RRP_CAPACITY;
+    config.synapse_config.recycling_capacity = CEREBELLUM_SYNAPSE_DEFAULT_RECYCLING_CAP;
+    config.synapse_config.release_probability = CEREBELLUM_SYNAPSE_DEFAULT_RELEASE_PROB;
+    config.synapse_config.refill_rate = CEREBELLUM_SYNAPSE_DEFAULT_REFILL_RATE;
+    config.synapse_config.stp_U = CEREBELLUM_SYNAPSE_DEFAULT_STP_U;
+    config.synapse_config.stp_tau_D = CEREBELLUM_SYNAPSE_DEFAULT_STP_TAU_D;
+    config.synapse_config.stp_tau_F = CEREBELLUM_SYNAPSE_DEFAULT_STP_TAU_F;
+    config.synapse_config.ca_baseline = CEREBELLUM_SYNAPSE_DEFAULT_CA_BASELINE;
+    config.synapse_config.ca_decay_tau = CEREBELLUM_SYNAPSE_DEFAULT_CA_DECAY_TAU;
+    config.synapse_config.ca_influx_per_spike = CEREBELLUM_SYNAPSE_DEFAULT_CA_INFLUX;
+    config.synapse_config.enable_vesicle_dynamics = false;
+    config.synapse_config.enable_stp = false;
+    config.synapse_config.enable_calcium_dynamics = false;
+    config.enable_synaptic_dynamics = false;
+
+    /* Glomerular divergence */
+    config.granules_per_mossy_fiber = CEREBELLUM_DEFAULT_GRANULES_PER_MOSSY;
+    config.enable_glomerular_divergence = false;
+
+    /*=== Phase 2: Inhibitory Interneurons (disabled by default) ===*/
+
+    /* Basket cells */
+    config.num_basket_cells = CEREBELLUM_DEFAULT_BASKET_CELLS;
+    config.purkinje_per_basket = CEREBELLUM_DEFAULT_PURKINJE_PER_BASKET;
+    config.enable_basket_cells = false;
+
+    /* Stellate cells */
+    config.num_stellate_cells = CEREBELLUM_DEFAULT_STELLATE_CELLS;
+    config.purkinje_per_stellate = CEREBELLUM_DEFAULT_PURKINJE_PER_STELLATE;
+    config.enable_stellate_cells = false;
+
+    /* Golgi cells */
+    config.num_golgi_cells = CEREBELLUM_DEFAULT_GOLGI_CELLS;
+    config.granules_per_golgi = CEREBELLUM_DEFAULT_GRANULES_PER_GOLGI;
+    config.enable_golgi_cells = false;
+
+    /*=== Phase 3: Vestibulocerebellum (disabled by default) ===*/
+
+    config.num_flocculus_purkinje = 20;
+    config.num_nodulus_purkinje = 10;
+    config.enable_vestibulocerebellum = false;
+    config.enable_vor_adaptation = false;
+    config.vor_ltd_rate = 0.002f;
 
     return config;
 }
@@ -757,6 +1573,67 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
         return NULL;
     }
 
+    /*=== Phase 1: Create glomerular layer (if enabled) ===*/
+    adapter->glomerular = NULL;
+    if (adapter->config.enable_glomerular_divergence) {
+        LOG_DEBUG("[%s] Creating glomerular layer (%u granules per mossy)",
+                  CEREBELLUM_LOG_MODULE, adapter->config.granules_per_mossy_fiber);
+        adapter->glomerular = create_glomerular_layer(
+            adapter->config.num_mossy_fibers,
+            adapter->config.num_granule_cells,
+            adapter->config.granules_per_mossy_fiber,
+            adapter->config.enable_synaptic_dynamics);
+        if (!adapter->glomerular) {
+            LOG_ERROR("[%s] Failed to create glomerular layer", CEREBELLUM_LOG_MODULE);
+            cerebellum_destroy(adapter);
+            return NULL;
+        }
+    }
+
+    /*=== Phase 2: Create molecular layer interneurons (if enabled) ===*/
+    adapter->molecular = NULL;
+    if (adapter->config.enable_basket_cells || adapter->config.enable_stellate_cells) {
+        uint32_t num_basket = adapter->config.enable_basket_cells ?
+                              adapter->config.num_basket_cells : 0;
+        uint32_t num_stellate = adapter->config.enable_stellate_cells ?
+                                adapter->config.num_stellate_cells : 0;
+
+        LOG_DEBUG("[%s] Creating molecular interneurons (basket=%u, stellate=%u)",
+                  CEREBELLUM_LOG_MODULE, num_basket, num_stellate);
+        adapter->molecular = create_molecular_interneurons(
+            num_basket, adapter->config.purkinje_per_basket,
+            num_stellate, adapter->config.purkinje_per_stellate,
+            adapter->config.num_purkinje_cells,
+            adapter->config.num_parallel_fibers);
+        if (!adapter->molecular) {
+            LOG_ERROR("[%s] Failed to create molecular interneurons", CEREBELLUM_LOG_MODULE);
+            cerebellum_destroy(adapter);
+            return NULL;
+        }
+    }
+
+    /*=== Phase 2: Create Golgi cell network (if enabled) ===*/
+    adapter->golgi = NULL;
+    if (adapter->config.enable_golgi_cells) {
+        LOG_DEBUG("[%s] Creating Golgi network (%u cells)",
+                  CEREBELLUM_LOG_MODULE, adapter->config.num_golgi_cells);
+        adapter->golgi = create_golgi_network(
+            adapter->config.num_golgi_cells,
+            adapter->config.granules_per_golgi,
+            adapter->config.num_granule_cells);
+        if (!adapter->golgi) {
+            LOG_ERROR("[%s] Failed to create Golgi network", CEREBELLUM_LOG_MODULE);
+            cerebellum_destroy(adapter);
+            return NULL;
+        }
+    }
+
+    /* Initialize metabolic modulation state (Phase 4) */
+    adapter->metabolic.motor_coordination = 1.0f;
+    adapter->metabolic.timing_precision = 1.0f;
+    adapter->metabolic.learning_capacity = 1.0f;
+    adapter->metabolic.modulation_active = false;
+
     /* Initialize bio-async communication */
     adapter->bio_ctx = NULL;
     if (adapter->config.enable_bio_async && bio_router_is_initialized()) {
@@ -799,11 +1676,16 @@ void cerebellum_destroy(cerebellum_adapter_t* adapter) {
         adapter->bio_ctx = NULL;
     }
 
-    /* Destroy sub-modules */
+    /* Destroy core sub-modules */
     destroy_granule_layer(adapter->granule);
     destroy_purkinje_layer(adapter->purkinje);
     destroy_deep_nuclei(adapter->nuclei);
     destroy_climbing_fibers(adapter->climbing);
+
+    /* Destroy Phase 1-2 sub-modules */
+    destroy_glomerular_layer(adapter->glomerular);
+    destroy_molecular_interneurons(adapter->molecular);
+    destroy_golgi_network(adapter->golgi);
 
     /* Free forward model */
     if (adapter->forward_model.weights) {
@@ -985,11 +1867,47 @@ bool cerebellum_process(cerebellum_adapter_t* adapter,
 
     adapter->status = CEREBELLUM_STATUS_PROCESSING;
 
-    /* Process granule layer */
+    /*=== PHASE 1: Glomerular layer processing (if enabled) ===*/
+    /* Distributes mossy fiber input with enhanced divergence (50-100x) */
+    if (adapter->config.enable_glomerular_divergence && adapter->glomerular) {
+        process_glomerular_layer(adapter);
+    }
+
+    /*=== PHASE 2: Golgi cell processing (if enabled) ===*/
+    /* Computes feedback inhibition from parallel fibers to granule layer */
+    if (adapter->config.enable_golgi_cells && adapter->golgi) {
+        process_golgi_cells(adapter);
+    }
+
+    /* Process granule layer (standard pathway) */
     process_granule_layer(adapter);
+
+    /*=== Apply Golgi inhibition to granule cells (if enabled) ===*/
+    if (adapter->config.enable_golgi_cells && adapter->golgi) {
+        apply_golgi_inhibition(adapter);
+    }
+
+    /*=== PHASE 2: Molecular layer interneuron processing (if enabled) ===*/
+    /* Basket cells provide somatic inhibition to Purkinje cells */
+    if (adapter->config.enable_basket_cells && adapter->molecular) {
+        process_basket_cells(adapter);
+    }
+
+    /* Stellate cells provide dendritic inhibition to Purkinje cells */
+    if (adapter->config.enable_stellate_cells && adapter->molecular) {
+        process_stellate_cells(adapter);
+    }
 
     /* Process Purkinje layer */
     process_purkinje_layer(adapter);
+
+    /*=== Apply interneuron inhibition to Purkinje cells (if enabled) ===*/
+    if (adapter->config.enable_basket_cells && adapter->molecular) {
+        apply_basket_inhibition(adapter);
+    }
+    if (adapter->config.enable_stellate_cells && adapter->molecular) {
+        apply_stellate_inhibition(adapter);
+    }
 
     /* Process deep nuclei */
     process_deep_nuclei(adapter);
@@ -1464,4 +2382,192 @@ nimcp_error_t cerebellum_broadcast_adaptation_complete(
     msg.timestamp_ms = result->predicted_timing_ms;
 
     return bio_router_broadcast(adapter->bio_ctx, &msg, sizeof(msg));
+}
+
+/*=============================================================================
+ * PHASE 1-2: NEW SUB-MODULE ACCESS
+ *===========================================================================*/
+
+glomerular_layer_t* cerebellum_get_glomerular_layer(cerebellum_adapter_t* adapter) {
+    if (!adapter) return NULL;
+    return adapter->glomerular;
+}
+
+molecular_layer_interneurons_t* cerebellum_get_molecular_interneurons(
+    cerebellum_adapter_t* adapter) {
+    if (!adapter) return NULL;
+    return adapter->molecular;
+}
+
+golgi_cell_network_t* cerebellum_get_golgi_network(cerebellum_adapter_t* adapter) {
+    if (!adapter) return NULL;
+    return adapter->golgi;
+}
+
+/*=============================================================================
+ * PHASE 2: INTERNEURON QUERY FUNCTIONS
+ *===========================================================================*/
+
+bool cerebellum_get_basket_activity(const cerebellum_adapter_t* adapter,
+                                     uint32_t basket_id,
+                                     float* activation,
+                                     float* firing_rate) {
+    if (!adapter || !adapter->molecular || !adapter->molecular->basket_cells) {
+        return false;
+    }
+
+    if (basket_id >= adapter->molecular->num_basket_cells) {
+        return false;
+    }
+
+    basket_cell_t* bc = &adapter->molecular->basket_cells[basket_id];
+
+    if (activation) {
+        *activation = bc->activation;
+    }
+    if (firing_rate) {
+        *firing_rate = bc->firing_rate;
+    }
+
+    return true;
+}
+
+bool cerebellum_get_purkinje_inhibition(const cerebellum_adapter_t* adapter,
+                                         uint32_t purkinje_id,
+                                         float* somatic_inhibition,
+                                         float* dendritic_inhibition) {
+    if (!adapter || !adapter->purkinje) {
+        return false;
+    }
+
+    if (purkinje_id >= adapter->purkinje->num_cells) {
+        return false;
+    }
+
+    /* Calculate somatic inhibition from basket cells */
+    float somatic = 0.0f;
+    if (adapter->molecular && adapter->molecular->basket_cells) {
+        for (uint32_t i = 0; i < adapter->molecular->num_basket_cells; i++) {
+            basket_cell_t* bc = &adapter->molecular->basket_cells[i];
+            for (uint32_t j = 0; j < bc->num_purkinje_targets; j++) {
+                if (bc->target_purkinje_ids[j] == purkinje_id) {
+                    somatic += bc->somatic_inhibition * fabsf(bc->purkinje_weights[j]);
+                }
+            }
+        }
+    }
+
+    /* Calculate dendritic inhibition from stellate cells */
+    float dendritic = 0.0f;
+    if (adapter->molecular && adapter->molecular->stellate_cells) {
+        for (uint32_t i = 0; i < adapter->molecular->num_stellate_cells; i++) {
+            stellate_cell_t* sc = &adapter->molecular->stellate_cells[i];
+            for (uint32_t j = 0; j < sc->num_purkinje_targets; j++) {
+                if (sc->target_purkinje_ids[j] == purkinje_id) {
+                    dendritic += sc->dendritic_inhibition * fabsf(sc->purkinje_weights[j]);
+                }
+            }
+        }
+    }
+
+    if (somatic_inhibition) {
+        *somatic_inhibition = somatic;
+    }
+    if (dendritic_inhibition) {
+        *dendritic_inhibition = dendritic;
+    }
+
+    return true;
+}
+
+bool cerebellum_get_golgi_feedback(const cerebellum_adapter_t* adapter,
+                                    float* total_feedback,
+                                    float* avg_granule_inhibition) {
+    if (!adapter || !adapter->golgi) {
+        return false;
+    }
+
+    float total = 0.0f;
+    for (uint32_t i = 0; i < adapter->golgi->num_cells; i++) {
+        total += adapter->golgi->cells[i].feedback_inhibition;
+    }
+
+    if (total_feedback) {
+        *total_feedback = total;
+    }
+
+    if (avg_granule_inhibition) {
+        if (adapter->granule && adapter->granule->num_cells > 0) {
+            *avg_granule_inhibition = total / adapter->granule->num_cells;
+        } else {
+            *avg_granule_inhibition = 0.0f;
+        }
+    }
+
+    return true;
+}
+
+/*=============================================================================
+ * PHASE 3-4: VESTIBULAR AND METABOLIC MODULATION (Stubs/Partial)
+ *===========================================================================*/
+
+bool cerebellum_process_vestibular_input(cerebellum_adapter_t* adapter,
+                                          const vestibular_mossy_signal_t* input) {
+    if (!adapter || !input) {
+        return false;
+    }
+
+    if (!adapter->config.enable_vestibulocerebellum) {
+        LOG_DEBUG("[%s] Vestibulocerebellum not enabled", CEREBELLUM_LOG_MODULE);
+        return true;  /* Not an error, just disabled */
+    }
+
+    /* TODO: Phase 3 implementation - route to flocculus/nodulus */
+    adapter->stats.vestibular_inputs++;
+
+    return true;
+}
+
+bool cerebellum_get_vor_output(cerebellum_adapter_t* adapter,
+                                float vor_output[3]) {
+    if (!adapter || !vor_output) {
+        return false;
+    }
+
+    if (!adapter->config.enable_vestibulocerebellum) {
+        vor_output[0] = 0.0f;
+        vor_output[1] = 0.0f;
+        vor_output[2] = 0.0f;
+        return true;  /* Not an error, just return zeros */
+    }
+
+    /* TODO: Phase 3 implementation - get from flocculus output */
+    vor_output[0] = 0.0f;  /* Yaw */
+    vor_output[1] = 0.0f;  /* Pitch */
+    vor_output[2] = 0.0f;  /* Roll */
+
+    return true;
+}
+
+bool cerebellum_set_metabolic_modulation(cerebellum_adapter_t* adapter,
+                                          float motor_coordination,
+                                          float timing_precision,
+                                          float learning_capacity) {
+    if (!adapter) {
+        return false;
+    }
+
+    /* Clamp values to valid range [0.3, 1.0] per requirements */
+    adapter->metabolic.motor_coordination = fmaxf(0.3f, fminf(1.0f, motor_coordination));
+    adapter->metabolic.timing_precision = fmaxf(0.3f, fminf(1.0f, timing_precision));
+    adapter->metabolic.learning_capacity = fmaxf(0.3f, fminf(1.0f, learning_capacity));
+    adapter->metabolic.modulation_active = true;
+
+    LOG_DEBUG("[%s] Metabolic modulation set: coord=%.2f, timing=%.2f, learning=%.2f",
+              CEREBELLUM_LOG_MODULE,
+              adapter->metabolic.motor_coordination,
+              adapter->metabolic.timing_precision,
+              adapter->metabolic.learning_capacity);
+
+    return true;
 }

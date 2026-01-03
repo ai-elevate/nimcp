@@ -373,22 +373,33 @@ TEST_F(RcogCoreMemoryTest, NoLeakOnCoreCreateDestroy) {
 /* Core Component Correctness Tests */
 class RcogCoreCorrectnessTest : public ::testing::Test {};
 
+// Dummy tool handler for registration tests
+static rcog_error_t dummy_tool_handler(
+    const void* input, size_t input_size,
+    void* context, void** output, size_t* output_size) {
+    (void)input; (void)input_size; (void)context;
+    (void)output; (void)output_size;
+    return RCOG_OK;
+}
+
 TEST_F(RcogCoreCorrectnessTest, ToolRouterTierHierarchy) {
     auto* router = rcog_tool_router_create_default();
     ASSERT_NE(router, nullptr);
 
     // Register tool at L2 tier using rcog_tool_def_t
-    rcog_tool_def_t def = rcog_tool_def_create("l2_tool", nullptr, RCOG_TIER_L2_PERCEPTION);
-    rcog_tool_router_register(router, &def);
+    rcog_tool_def_t def = rcog_tool_def_create("l2_tool", dummy_tool_handler, RCOG_TIER_L2_PERCEPTION);
+    int result = rcog_tool_router_register(router, &def);
+    EXPECT_EQ(result, 0);
 
-    // L1 (higher) should have access
-    EXPECT_TRUE(rcog_tool_router_can_access(router, "l2_tool", RCOG_TIER_L1_REASONING));
+    // Tier access: higher numbered tiers can access lower tier tools
+    // L1 (lower number, cannot access L2 tools)
+    EXPECT_FALSE(rcog_tool_router_can_access(router, "l2_tool", RCOG_TIER_L1_REASONING));
 
     // L2 (same) should have access
     EXPECT_TRUE(rcog_tool_router_can_access(router, "l2_tool", RCOG_TIER_L2_PERCEPTION));
 
-    // L3 (lower) should NOT have access
-    EXPECT_FALSE(rcog_tool_router_can_access(router, "l2_tool", RCOG_TIER_L3_ACTION));
+    // L3 (higher number, can access L2 tools)
+    EXPECT_TRUE(rcog_tool_router_can_access(router, "l2_tool", RCOG_TIER_L3_ACTION));
 
     rcog_tool_router_destroy(router);
 }
@@ -408,7 +419,8 @@ TEST_F(RcogCoreCorrectnessTest, OrchestratorDecomposeValid) {
 TEST_F(RcogCoreCorrectnessTest, DelegationPoolConfigValid) {
     rcog_delegation_pool_config_t cfg = rcog_delegation_pool_default_config();
 
-    EXPECT_GT(cfg.total_workers, 0u);
+    // Check tier workers (total_workers is computed at pool creation)
+    EXPECT_GT(cfg.tiers[RCOG_TIER_L1_REASONING].num_workers, 0u);
     EXPECT_GT(cfg.default_task_timeout_ms, 0u);
     EXPECT_GT(cfg.shutdown_timeout_ms, 0u);
     EXPECT_GT(cfg.max_pending_tasks, 0u);

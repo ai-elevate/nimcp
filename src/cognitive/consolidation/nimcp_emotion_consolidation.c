@@ -22,6 +22,7 @@
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 //=============================================================================
 // Logging
@@ -490,4 +491,31 @@ void emotion_consolidation_unregister_bio_async(emotion_consolidation_system_t* 
     system->bio_async_registered = false;
 
     EC_LOG_INFO("Unregistered from bio-async");
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int emotion_consolidation_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Emotion_Consolidation_System");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Emotion_Consolidation_System");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Emotion_Consolidation_System");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

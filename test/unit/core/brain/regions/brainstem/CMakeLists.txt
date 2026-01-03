@@ -26,3 +26,7 @@ add_brainstem_test(test_nimcp_brainstem_quantum_bridge)
 
 # Factory initialization tests
 add_brainstem_test(test_nimcp_brain_init_brainstem)
+
+# Vestibular system tests
+add_brainstem_test(test_vestibular)
+add_brainstem_test(test_vestibular_cerebellum_bridge)

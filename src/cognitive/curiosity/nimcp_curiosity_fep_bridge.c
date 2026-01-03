@@ -32,6 +32,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -530,4 +531,31 @@ int curiosity_fep_bridge_disconnect_bio_async(curiosity_fep_bridge_t* bridge) {
  */
 bool curiosity_fep_bridge_is_bio_async_connected(const curiosity_fep_bridge_t* bridge) {
     return bridge && bridge->base.bio_async_enabled;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int curiosity_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Curiosity_FEP_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Curiosity_FEP_Bridge");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Curiosity_FEP_Bridge");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

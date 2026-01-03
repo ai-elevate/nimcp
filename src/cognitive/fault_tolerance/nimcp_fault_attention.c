@@ -25,6 +25,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #define LOG_MODULE "cognitive.fault.attention"
 #define BIO_MODULE_COGNITIVE_FAULT_ATTENTION 0x0357
@@ -851,4 +852,41 @@ bool fault_attention_reset_stats(fault_attention_t* attention) {
     nimcp_log(LOG_LEVEL_DEBUG, "Attention statistics reset");
 
     return true;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int fault_attention_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Fault_Attention");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            nimcp_log(LOG_LEVEL_DEBUG, "[KG-Self] %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Fault_Attention");
+    if (connections) {
+        for (uint32_t i = 0; i < connections->count; i++) {
+            nimcp_log(LOG_LEVEL_DEBUG, "[KG-Rel] -> %s (%s)",
+                      connections->relations[i]->to,
+                      connections->relations[i]->relation_type);
+        }
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Fault_Attention");
+    if (incoming) {
+        for (uint32_t i = 0; i < incoming->count; i++) {
+            nimcp_log(LOG_LEVEL_DEBUG, "[KG-Rel] <- %s (%s)",
+                      incoming->relations[i]->from,
+                      incoming->relations[i]->relation_type);
+        }
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

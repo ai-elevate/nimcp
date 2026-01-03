@@ -473,6 +473,30 @@ __/async/nimcp_semantic_compression_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/async/nimcp_semantic_compression_fep_bridge.c.s
 .PHONY : __/async/nimcp_semantic_compression_fep_bridge.c.s
 
+__/async/nimcp_wiring_diagram.o: __/async/nimcp_wiring_diagram.c.o
+.PHONY : __/async/nimcp_wiring_diagram.o
+
+# target to build an object file
+__/async/nimcp_wiring_diagram.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/async/nimcp_wiring_diagram.c.o
+.PHONY : __/async/nimcp_wiring_diagram.c.o
+
+__/async/nimcp_wiring_diagram.i: __/async/nimcp_wiring_diagram.c.i
+.PHONY : __/async/nimcp_wiring_diagram.i
+
+# target to preprocess a source file
+__/async/nimcp_wiring_diagram.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/async/nimcp_wiring_diagram.c.i
+.PHONY : __/async/nimcp_wiring_diagram.c.i
+
+__/async/nimcp_wiring_diagram.s: __/async/nimcp_wiring_diagram.c.s
+.PHONY : __/async/nimcp_wiring_diagram.s
+
+# target to generate assembly for a file
+__/async/nimcp_wiring_diagram.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/async/nimcp_wiring_diagram.c.s
+.PHONY : __/async/nimcp_wiring_diagram.c.s
+
 __/cognitive/analysis/nimcp_analysis_fep_bridge.o: __/cognitive/analysis/nimcp_analysis_fep_bridge.c.o
 .PHONY : __/cognitive/analysis/nimcp_analysis_fep_bridge.o
 
@@ -7793,6 +7817,30 @@ __/cognitive/recursive/nimcp_rcog_delegation_pool.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_delegation_pool.c.s
 .PHONY : __/cognitive/recursive/nimcp_rcog_delegation_pool.c.s
 
+__/cognitive/recursive/nimcp_rcog_engine.o: __/cognitive/recursive/nimcp_rcog_engine.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_engine.o
+
+# target to build an object file
+__/cognitive/recursive/nimcp_rcog_engine.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_engine.c.o
+.PHONY : __/cognitive/recursive/nimcp_rcog_engine.c.o
+
+__/cognitive/recursive/nimcp_rcog_engine.i: __/cognitive/recursive/nimcp_rcog_engine.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_engine.i
+
+# target to preprocess a source file
+__/cognitive/recursive/nimcp_rcog_engine.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_engine.c.i
+.PHONY : __/cognitive/recursive/nimcp_rcog_engine.c.i
+
+__/cognitive/recursive/nimcp_rcog_engine.s: __/cognitive/recursive/nimcp_rcog_engine.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_engine.s
+
+# target to generate assembly for a file
+__/cognitive/recursive/nimcp_rcog_engine.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/recursive/nimcp_rcog_engine.c.s
+.PHONY : __/cognitive/recursive/nimcp_rcog_engine.c.s
+
 __/cognitive/recursive/nimcp_rcog_imagination_bridge.o: __/cognitive/recursive/nimcp_rcog_imagination_bridge.c.o
 .PHONY : __/cognitive/recursive/nimcp_rcog_imagination_bridge.o
 
@@ -11248,6 +11296,54 @@ __/core/brain/regions/brainstem/nimcp_brainstem_quantum_bridge.s: __/core/brain/
 __/core/brain/regions/brainstem/nimcp_brainstem_quantum_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/brainstem/nimcp_brainstem_quantum_bridge.c.s
 .PHONY : __/core/brain/regions/brainstem/nimcp_brainstem_quantum_bridge.c.s
+
+__/core/brain/regions/brainstem/nimcp_vestibular.o: __/core/brain/regions/brainstem/nimcp_vestibular.c.o
+.PHONY : __/core/brain/regions/brainstem/nimcp_vestibular.o
+
+# target to build an object file
+__/core/brain/regions/brainstem/nimcp_vestibular.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/brainstem/nimcp_vestibular.c.o
+.PHONY : __/core/brain/regions/brainstem/nimcp_vestibular.c.o
+
+__/core/brain/regions/brainstem/nimcp_vestibular.i: __/core/brain/regions/brainstem/nimcp_vestibular.c.i
+.PHONY : __/core/brain/regions/brainstem/nimcp_vestibular.i
+
+# target to preprocess a source file
+__/core/brain/regions/brainstem/nimcp_vestibular.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/brainstem/nimcp_vestibular.c.i
+.PHONY : __/core/brain/regions/brainstem/nimcp_vestibular.c.i
+
+__/core/brain/regions/brainstem/nimcp_vestibular.s: __/core/brain/regions/brainstem/nimcp_vestibular.c.s
+.PHONY : __/core/brain/regions/brainstem/nimcp_vestibular.s
+
+# target to generate assembly for a file
+__/core/brain/regions/brainstem/nimcp_vestibular.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/brainstem/nimcp_vestibular.c.s
+.PHONY : __/core/brain/regions/brainstem/nimcp_vestibular.c.s
+
+__/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.o: __/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.c.o
+.PHONY : __/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.o
+
+# target to build an object file
+__/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.c.o
+.PHONY : __/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.c.o
+
+__/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.i: __/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.c.i
+.PHONY : __/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.c.i
+.PHONY : __/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.c.i
+
+__/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.s: __/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.c.s
+.PHONY : __/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.c.s
+.PHONY : __/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.c.s
 
 __/core/brain/regions/broca/nimcp_broca_adapter.o: __/core/brain/regions/broca/nimcp_broca_adapter.c.o
 .PHONY : __/core/brain/regions/broca/nimcp_broca_adapter.o
@@ -29009,6 +29105,366 @@ cognitive/nimcp_hierarchical.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/cognitive/nimcp_hierarchical.c.s
 .PHONY : cognitive/nimcp_hierarchical.c.s
 
+perception/bridges/nimcp_cochlea_audio_cortex_bridge.o: perception/bridges/nimcp_cochlea_audio_cortex_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_audio_cortex_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_audio_cortex_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_audio_cortex_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_audio_cortex_bridge.c.o
+
+perception/bridges/nimcp_cochlea_audio_cortex_bridge.i: perception/bridges/nimcp_cochlea_audio_cortex_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_audio_cortex_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_audio_cortex_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_audio_cortex_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_audio_cortex_bridge.c.i
+
+perception/bridges/nimcp_cochlea_audio_cortex_bridge.s: perception/bridges/nimcp_cochlea_audio_cortex_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_audio_cortex_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_audio_cortex_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_audio_cortex_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_audio_cortex_bridge.c.s
+
+perception/bridges/nimcp_cochlea_bio_async_bridge.o: perception/bridges/nimcp_cochlea_bio_async_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_bio_async_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_bio_async_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_bio_async_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_bio_async_bridge.c.o
+
+perception/bridges/nimcp_cochlea_bio_async_bridge.i: perception/bridges/nimcp_cochlea_bio_async_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_bio_async_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_bio_async_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_bio_async_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_bio_async_bridge.c.i
+
+perception/bridges/nimcp_cochlea_bio_async_bridge.s: perception/bridges/nimcp_cochlea_bio_async_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_bio_async_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_bio_async_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_bio_async_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_bio_async_bridge.c.s
+
+perception/bridges/nimcp_cochlea_broca_bridge.o: perception/bridges/nimcp_cochlea_broca_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_broca_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_broca_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_broca_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_broca_bridge.c.o
+
+perception/bridges/nimcp_cochlea_broca_bridge.i: perception/bridges/nimcp_cochlea_broca_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_broca_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_broca_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_broca_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_broca_bridge.c.i
+
+perception/bridges/nimcp_cochlea_broca_bridge.s: perception/bridges/nimcp_cochlea_broca_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_broca_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_broca_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_broca_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_broca_bridge.c.s
+
+perception/bridges/nimcp_cochlea_collective_bridge.o: perception/bridges/nimcp_cochlea_collective_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_collective_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_collective_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_collective_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_collective_bridge.c.o
+
+perception/bridges/nimcp_cochlea_collective_bridge.i: perception/bridges/nimcp_cochlea_collective_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_collective_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_collective_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_collective_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_collective_bridge.c.i
+
+perception/bridges/nimcp_cochlea_collective_bridge.s: perception/bridges/nimcp_cochlea_collective_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_collective_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_collective_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_collective_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_collective_bridge.c.s
+
+perception/bridges/nimcp_cochlea_cortical_deep_bridge.o: perception/bridges/nimcp_cochlea_cortical_deep_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_cortical_deep_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_cortical_deep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_cortical_deep_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_cortical_deep_bridge.c.o
+
+perception/bridges/nimcp_cochlea_cortical_deep_bridge.i: perception/bridges/nimcp_cochlea_cortical_deep_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_cortical_deep_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_cortical_deep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_cortical_deep_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_cortical_deep_bridge.c.i
+
+perception/bridges/nimcp_cochlea_cortical_deep_bridge.s: perception/bridges/nimcp_cochlea_cortical_deep_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_cortical_deep_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_cortical_deep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_cortical_deep_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_cortical_deep_bridge.c.s
+
+perception/bridges/nimcp_cochlea_fep_bridge.o: perception/bridges/nimcp_cochlea_fep_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_fep_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_fep_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_fep_bridge.c.o
+
+perception/bridges/nimcp_cochlea_fep_bridge.i: perception/bridges/nimcp_cochlea_fep_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_fep_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_fep_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_fep_bridge.c.i
+
+perception/bridges/nimcp_cochlea_fep_bridge.s: perception/bridges/nimcp_cochlea_fep_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_fep_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_fep_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_fep_bridge.c.s
+
+perception/bridges/nimcp_cochlea_immune_bridge.o: perception/bridges/nimcp_cochlea_immune_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_immune_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_immune_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_immune_bridge.c.o
+
+perception/bridges/nimcp_cochlea_immune_bridge.i: perception/bridges/nimcp_cochlea_immune_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_immune_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_immune_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_immune_bridge.c.i
+
+perception/bridges/nimcp_cochlea_immune_bridge.s: perception/bridges/nimcp_cochlea_immune_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_immune_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_immune_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_immune_bridge.c.s
+
+perception/bridges/nimcp_cochlea_kg_bridge.o: perception/bridges/nimcp_cochlea_kg_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_kg_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_kg_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_kg_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_kg_bridge.c.o
+
+perception/bridges/nimcp_cochlea_kg_bridge.i: perception/bridges/nimcp_cochlea_kg_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_kg_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_kg_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_kg_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_kg_bridge.c.i
+
+perception/bridges/nimcp_cochlea_kg_bridge.s: perception/bridges/nimcp_cochlea_kg_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_kg_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_kg_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_kg_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_kg_bridge.c.s
+
+perception/bridges/nimcp_cochlea_medulla_bridge.o: perception/bridges/nimcp_cochlea_medulla_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_medulla_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_medulla_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_medulla_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_medulla_bridge.c.o
+
+perception/bridges/nimcp_cochlea_medulla_bridge.i: perception/bridges/nimcp_cochlea_medulla_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_medulla_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_medulla_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_medulla_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_medulla_bridge.c.i
+
+perception/bridges/nimcp_cochlea_medulla_bridge.s: perception/bridges/nimcp_cochlea_medulla_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_medulla_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_medulla_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_medulla_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_medulla_bridge.c.s
+
+perception/bridges/nimcp_cochlea_occipital_bridge.o: perception/bridges/nimcp_cochlea_occipital_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_occipital_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_occipital_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_occipital_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_occipital_bridge.c.o
+
+perception/bridges/nimcp_cochlea_occipital_bridge.i: perception/bridges/nimcp_cochlea_occipital_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_occipital_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_occipital_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_occipital_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_occipital_bridge.c.i
+
+perception/bridges/nimcp_cochlea_occipital_bridge.s: perception/bridges/nimcp_cochlea_occipital_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_occipital_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_occipital_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_occipital_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_occipital_bridge.c.s
+
+perception/bridges/nimcp_cochlea_rcog_bridge.o: perception/bridges/nimcp_cochlea_rcog_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_rcog_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_rcog_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_rcog_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_rcog_bridge.c.o
+
+perception/bridges/nimcp_cochlea_rcog_bridge.i: perception/bridges/nimcp_cochlea_rcog_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_rcog_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_rcog_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_rcog_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_rcog_bridge.c.i
+
+perception/bridges/nimcp_cochlea_rcog_bridge.s: perception/bridges/nimcp_cochlea_rcog_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_rcog_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_rcog_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_rcog_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_rcog_bridge.c.s
+
+perception/bridges/nimcp_cochlea_sleep_bridge.o: perception/bridges/nimcp_cochlea_sleep_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_sleep_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_sleep_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_sleep_bridge.c.o
+
+perception/bridges/nimcp_cochlea_sleep_bridge.i: perception/bridges/nimcp_cochlea_sleep_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_sleep_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_sleep_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_sleep_bridge.c.i
+
+perception/bridges/nimcp_cochlea_sleep_bridge.s: perception/bridges/nimcp_cochlea_sleep_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_sleep_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_sleep_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_sleep_bridge.c.s
+
+perception/bridges/nimcp_cochlea_substrate_bridge.o: perception/bridges/nimcp_cochlea_substrate_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_substrate_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_substrate_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_substrate_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_substrate_bridge.c.o
+
+perception/bridges/nimcp_cochlea_substrate_bridge.i: perception/bridges/nimcp_cochlea_substrate_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_substrate_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_substrate_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_substrate_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_substrate_bridge.c.i
+
+perception/bridges/nimcp_cochlea_substrate_bridge.s: perception/bridges/nimcp_cochlea_substrate_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_substrate_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_substrate_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_substrate_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_substrate_bridge.c.s
+
+perception/bridges/nimcp_cochlea_thalamic_bridge.o: perception/bridges/nimcp_cochlea_thalamic_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_thalamic_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_thalamic_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_thalamic_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_thalamic_bridge.c.o
+
+perception/bridges/nimcp_cochlea_thalamic_bridge.i: perception/bridges/nimcp_cochlea_thalamic_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_thalamic_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_thalamic_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_thalamic_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_thalamic_bridge.c.i
+
+perception/bridges/nimcp_cochlea_thalamic_bridge.s: perception/bridges/nimcp_cochlea_thalamic_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_thalamic_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_thalamic_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_thalamic_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_thalamic_bridge.c.s
+
+perception/bridges/nimcp_cochlea_verification_bridge.o: perception/bridges/nimcp_cochlea_verification_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_verification_bridge.o
+
+# target to build an object file
+perception/bridges/nimcp_cochlea_verification_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_verification_bridge.c.o
+.PHONY : perception/bridges/nimcp_cochlea_verification_bridge.c.o
+
+perception/bridges/nimcp_cochlea_verification_bridge.i: perception/bridges/nimcp_cochlea_verification_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_verification_bridge.i
+
+# target to preprocess a source file
+perception/bridges/nimcp_cochlea_verification_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_verification_bridge.c.i
+.PHONY : perception/bridges/nimcp_cochlea_verification_bridge.c.i
+
+perception/bridges/nimcp_cochlea_verification_bridge.s: perception/bridges/nimcp_cochlea_verification_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_verification_bridge.s
+
+# target to generate assembly for a file
+perception/bridges/nimcp_cochlea_verification_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/bridges/nimcp_cochlea_verification_bridge.c.s
+.PHONY : perception/bridges/nimcp_cochlea_verification_bridge.c.s
+
 perception/nimcp_audio_cortex.o: perception/nimcp_audio_cortex.c.o
 .PHONY : perception/nimcp_audio_cortex.o
 
@@ -29032,6 +29488,126 @@ perception/nimcp_audio_cortex.s: perception/nimcp_audio_cortex.c.s
 perception/nimcp_audio_cortex.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_audio_cortex.c.s
 .PHONY : perception/nimcp_audio_cortex.c.s
+
+perception/nimcp_auditory_nerve.o: perception/nimcp_auditory_nerve.c.o
+.PHONY : perception/nimcp_auditory_nerve.o
+
+# target to build an object file
+perception/nimcp_auditory_nerve.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_auditory_nerve.c.o
+.PHONY : perception/nimcp_auditory_nerve.c.o
+
+perception/nimcp_auditory_nerve.i: perception/nimcp_auditory_nerve.c.i
+.PHONY : perception/nimcp_auditory_nerve.i
+
+# target to preprocess a source file
+perception/nimcp_auditory_nerve.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_auditory_nerve.c.i
+.PHONY : perception/nimcp_auditory_nerve.c.i
+
+perception/nimcp_auditory_nerve.s: perception/nimcp_auditory_nerve.c.s
+.PHONY : perception/nimcp_auditory_nerve.s
+
+# target to generate assembly for a file
+perception/nimcp_auditory_nerve.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_auditory_nerve.c.s
+.PHONY : perception/nimcp_auditory_nerve.c.s
+
+perception/nimcp_basilar_membrane.o: perception/nimcp_basilar_membrane.c.o
+.PHONY : perception/nimcp_basilar_membrane.o
+
+# target to build an object file
+perception/nimcp_basilar_membrane.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_basilar_membrane.c.o
+.PHONY : perception/nimcp_basilar_membrane.c.o
+
+perception/nimcp_basilar_membrane.i: perception/nimcp_basilar_membrane.c.i
+.PHONY : perception/nimcp_basilar_membrane.i
+
+# target to preprocess a source file
+perception/nimcp_basilar_membrane.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_basilar_membrane.c.i
+.PHONY : perception/nimcp_basilar_membrane.c.i
+
+perception/nimcp_basilar_membrane.s: perception/nimcp_basilar_membrane.c.s
+.PHONY : perception/nimcp_basilar_membrane.s
+
+# target to generate assembly for a file
+perception/nimcp_basilar_membrane.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_basilar_membrane.c.s
+.PHONY : perception/nimcp_basilar_membrane.c.s
+
+perception/nimcp_cochlea.o: perception/nimcp_cochlea.c.o
+.PHONY : perception/nimcp_cochlea.o
+
+# target to build an object file
+perception/nimcp_cochlea.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_cochlea.c.o
+.PHONY : perception/nimcp_cochlea.c.o
+
+perception/nimcp_cochlea.i: perception/nimcp_cochlea.c.i
+.PHONY : perception/nimcp_cochlea.i
+
+# target to preprocess a source file
+perception/nimcp_cochlea.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_cochlea.c.i
+.PHONY : perception/nimcp_cochlea.c.i
+
+perception/nimcp_cochlea.s: perception/nimcp_cochlea.c.s
+.PHONY : perception/nimcp_cochlea.s
+
+# target to generate assembly for a file
+perception/nimcp_cochlea.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_cochlea.c.s
+.PHONY : perception/nimcp_cochlea.c.s
+
+perception/nimcp_cochlea_extended.o: perception/nimcp_cochlea_extended.c.o
+.PHONY : perception/nimcp_cochlea_extended.o
+
+# target to build an object file
+perception/nimcp_cochlea_extended.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_cochlea_extended.c.o
+.PHONY : perception/nimcp_cochlea_extended.c.o
+
+perception/nimcp_cochlea_extended.i: perception/nimcp_cochlea_extended.c.i
+.PHONY : perception/nimcp_cochlea_extended.i
+
+# target to preprocess a source file
+perception/nimcp_cochlea_extended.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_cochlea_extended.c.i
+.PHONY : perception/nimcp_cochlea_extended.c.i
+
+perception/nimcp_cochlea_extended.s: perception/nimcp_cochlea_extended.c.s
+.PHONY : perception/nimcp_cochlea_extended.s
+
+# target to generate assembly for a file
+perception/nimcp_cochlea_extended.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_cochlea_extended.c.s
+.PHONY : perception/nimcp_cochlea_extended.c.s
+
+perception/nimcp_hair_cells.o: perception/nimcp_hair_cells.c.o
+.PHONY : perception/nimcp_hair_cells.o
+
+# target to build an object file
+perception/nimcp_hair_cells.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_hair_cells.c.o
+.PHONY : perception/nimcp_hair_cells.c.o
+
+perception/nimcp_hair_cells.i: perception/nimcp_hair_cells.c.i
+.PHONY : perception/nimcp_hair_cells.i
+
+# target to preprocess a source file
+perception/nimcp_hair_cells.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_hair_cells.c.i
+.PHONY : perception/nimcp_hair_cells.c.i
+
+perception/nimcp_hair_cells.s: perception/nimcp_hair_cells.c.s
+.PHONY : perception/nimcp_hair_cells.s
+
+# target to generate assembly for a file
+perception/nimcp_hair_cells.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/perception/nimcp_hair_cells.c.s
+.PHONY : perception/nimcp_hair_cells.c.s
 
 perception/nimcp_speech_cortex.o: perception/nimcp_speech_cortex.c.o
 .PHONY : perception/nimcp_speech_cortex.o
@@ -29131,6 +29707,9 @@ help:
 	@echo "... __/async/nimcp_semantic_compression_fep_bridge.o"
 	@echo "... __/async/nimcp_semantic_compression_fep_bridge.i"
 	@echo "... __/async/nimcp_semantic_compression_fep_bridge.s"
+	@echo "... __/async/nimcp_wiring_diagram.o"
+	@echo "... __/async/nimcp_wiring_diagram.i"
+	@echo "... __/async/nimcp_wiring_diagram.s"
 	@echo "... __/cognitive/analysis/nimcp_analysis_fep_bridge.o"
 	@echo "... __/cognitive/analysis/nimcp_analysis_fep_bridge.i"
 	@echo "... __/cognitive/analysis/nimcp_analysis_fep_bridge.s"
@@ -30046,6 +30625,9 @@ help:
 	@echo "... __/cognitive/recursive/nimcp_rcog_delegation_pool.o"
 	@echo "... __/cognitive/recursive/nimcp_rcog_delegation_pool.i"
 	@echo "... __/cognitive/recursive/nimcp_rcog_delegation_pool.s"
+	@echo "... __/cognitive/recursive/nimcp_rcog_engine.o"
+	@echo "... __/cognitive/recursive/nimcp_rcog_engine.i"
+	@echo "... __/cognitive/recursive/nimcp_rcog_engine.s"
 	@echo "... __/cognitive/recursive/nimcp_rcog_imagination_bridge.o"
 	@echo "... __/cognitive/recursive/nimcp_rcog_imagination_bridge.i"
 	@echo "... __/cognitive/recursive/nimcp_rcog_imagination_bridge.s"
@@ -30478,6 +31060,12 @@ help:
 	@echo "... __/core/brain/regions/brainstem/nimcp_brainstem_quantum_bridge.o"
 	@echo "... __/core/brain/regions/brainstem/nimcp_brainstem_quantum_bridge.i"
 	@echo "... __/core/brain/regions/brainstem/nimcp_brainstem_quantum_bridge.s"
+	@echo "... __/core/brain/regions/brainstem/nimcp_vestibular.o"
+	@echo "... __/core/brain/regions/brainstem/nimcp_vestibular.i"
+	@echo "... __/core/brain/regions/brainstem/nimcp_vestibular.s"
+	@echo "... __/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.o"
+	@echo "... __/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.i"
+	@echo "... __/core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.s"
 	@echo "... __/core/brain/regions/broca/nimcp_broca_adapter.o"
 	@echo "... __/core/brain/regions/broca/nimcp_broca_adapter.i"
 	@echo "... __/core/brain/regions/broca/nimcp_broca_adapter.s"
@@ -32698,9 +33286,69 @@ help:
 	@echo "... cognitive/nimcp_hierarchical.o"
 	@echo "... cognitive/nimcp_hierarchical.i"
 	@echo "... cognitive/nimcp_hierarchical.s"
+	@echo "... perception/bridges/nimcp_cochlea_audio_cortex_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_audio_cortex_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_audio_cortex_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_bio_async_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_bio_async_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_bio_async_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_broca_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_broca_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_broca_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_collective_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_collective_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_collective_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_cortical_deep_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_cortical_deep_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_cortical_deep_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_fep_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_fep_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_fep_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_immune_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_immune_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_immune_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_kg_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_kg_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_kg_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_medulla_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_medulla_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_medulla_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_occipital_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_occipital_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_occipital_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_rcog_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_rcog_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_rcog_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_sleep_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_sleep_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_sleep_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_substrate_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_substrate_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_substrate_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_thalamic_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_thalamic_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_thalamic_bridge.s"
+	@echo "... perception/bridges/nimcp_cochlea_verification_bridge.o"
+	@echo "... perception/bridges/nimcp_cochlea_verification_bridge.i"
+	@echo "... perception/bridges/nimcp_cochlea_verification_bridge.s"
 	@echo "... perception/nimcp_audio_cortex.o"
 	@echo "... perception/nimcp_audio_cortex.i"
 	@echo "... perception/nimcp_audio_cortex.s"
+	@echo "... perception/nimcp_auditory_nerve.o"
+	@echo "... perception/nimcp_auditory_nerve.i"
+	@echo "... perception/nimcp_auditory_nerve.s"
+	@echo "... perception/nimcp_basilar_membrane.o"
+	@echo "... perception/nimcp_basilar_membrane.i"
+	@echo "... perception/nimcp_basilar_membrane.s"
+	@echo "... perception/nimcp_cochlea.o"
+	@echo "... perception/nimcp_cochlea.i"
+	@echo "... perception/nimcp_cochlea.s"
+	@echo "... perception/nimcp_cochlea_extended.o"
+	@echo "... perception/nimcp_cochlea_extended.i"
+	@echo "... perception/nimcp_cochlea_extended.s"
+	@echo "... perception/nimcp_hair_cells.o"
+	@echo "... perception/nimcp_hair_cells.i"
+	@echo "... perception/nimcp_hair_cells.s"
 	@echo "... perception/nimcp_speech_cortex.o"
 	@echo "... perception/nimcp_speech_cortex.i"
 	@echo "... perception/nimcp_speech_cortex.s"

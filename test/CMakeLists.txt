@@ -518,6 +518,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/medulla")
 endif()
 
 # ============================================================================
+# Cerebellum Core Module Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/cerebellum")
+    message(STATUS "Adding cerebellum core unit tests...")
+    add_subdirectory(unit/core/cerebellum)
+endif()
+
+# ============================================================================
 # Cognitive Fault Tolerance Tests
 # ============================================================================
 

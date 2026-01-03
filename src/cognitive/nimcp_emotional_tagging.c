@@ -17,6 +17,7 @@
  */
 
 #include "cognitive/nimcp_emotional_tagging.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -328,4 +329,31 @@ void emotional_modulate_arousal(emotional_tag_t* tag, float arousal_delta) {
      * HOW:  Reclassify and recompute intensity */
     tag->category = emotional_tag_classify(tag);
     tag->intensity = emotional_tag_intensity(tag);
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int cognitive_emotional_tagging_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Cognitive_Emotional_Tagging");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Cognitive_Emotional_Tagging");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Cognitive_Emotional_Tagging");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

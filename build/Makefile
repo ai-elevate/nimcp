@@ -4007,6 +4007,19 @@ integration_api_test_api_multimodal/fast:
 .PHONY : integration_api_test_api_multimodal/fast
 
 #=============================================================================
+# Target rules for targets named integration_cerebellum_test_cerebellum_vestibular_integration
+
+# Build rule for target.
+integration_cerebellum_test_cerebellum_vestibular_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cerebellum_test_cerebellum_vestibular_integration
+.PHONY : integration_cerebellum_test_cerebellum_vestibular_integration
+
+# fast build rule for target.
+integration_cerebellum_test_cerebellum_vestibular_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_cerebellum_test_cerebellum_vestibular_integration.dir/build.make test/CMakeFiles/integration_cerebellum_test_cerebellum_vestibular_integration.dir/build
+.PHONY : integration_cerebellum_test_cerebellum_vestibular_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_consolidation_test_systems_consolidation_integration
 
 # Build rule for target.
@@ -5151,6 +5164,19 @@ regression_core_brain_regions_broca_test_nimcp_broca_regression/fast:
 .PHONY : regression_core_brain_regions_broca_test_nimcp_broca_regression/fast
 
 #=============================================================================
+# Target rules for targets named regression_core_brain_regions_cerebellum_test_cerebellum_regression
+
+# Build rule for target.
+regression_core_brain_regions_cerebellum_test_cerebellum_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_brain_regions_cerebellum_test_cerebellum_regression
+.PHONY : regression_core_brain_regions_cerebellum_test_cerebellum_regression
+
+# fast build rule for target.
+regression_core_brain_regions_cerebellum_test_cerebellum_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_core_brain_regions_cerebellum_test_cerebellum_regression.dir/build.make test/CMakeFiles/regression_core_brain_regions_cerebellum_test_cerebellum_regression.dir/build
+.PHONY : regression_core_brain_regions_cerebellum_test_cerebellum_regression/fast
+
+#=============================================================================
 # Target rules for targets named regression_core_brain_regions_test_contextual_regression
 
 # Build rule for target.
@@ -6085,6 +6111,19 @@ e2e_test_cognitive_pipeline: cmake_check_build_system
 e2e_test_cognitive_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_cognitive_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_cognitive_pipeline.dir/build
 .PHONY : e2e_test_cognitive_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_recursive_cognition_pipeline
+
+# Build rule for target.
+e2e_test_recursive_cognition_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_recursive_cognition_pipeline
+.PHONY : e2e_test_recursive_cognition_pipeline
+
+# fast build rule for target.
+e2e_test_recursive_cognition_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_recursive_cognition_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_recursive_cognition_pipeline.dir/build
+.PHONY : e2e_test_recursive_cognition_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_distributed_pipeline
@@ -7164,6 +7203,19 @@ e2e_test_brain_initialization_subsystems: cmake_check_build_system
 e2e_test_brain_initialization_subsystems/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_brain_initialization_subsystems.dir/build.make test/e2e/CMakeFiles/e2e_test_brain_initialization_subsystems.dir/build
 .PHONY : e2e_test_brain_initialization_subsystems/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_wiring_diagram_pipeline
+
+# Build rule for target.
+e2e_test_wiring_diagram_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_wiring_diagram_pipeline
+.PHONY : e2e_test_wiring_diagram_pipeline
+
+# fast build rule for target.
+e2e_test_wiring_diagram_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_wiring_diagram_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_wiring_diagram_pipeline.dir/build
+.PHONY : e2e_test_wiring_diagram_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_gpu_nn_training_pipeline
@@ -9415,6 +9467,32 @@ regression_core_medulla/fast:
 .PHONY : regression_core_medulla/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_cerebellum_test_cerebellum_substrate_bridge
+
+# Build rule for target.
+unit_core_cerebellum_test_cerebellum_substrate_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_cerebellum_test_cerebellum_substrate_bridge
+.PHONY : unit_core_cerebellum_test_cerebellum_substrate_bridge
+
+# fast build rule for target.
+unit_core_cerebellum_test_cerebellum_substrate_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cerebellum/CMakeFiles/unit_core_cerebellum_test_cerebellum_substrate_bridge.dir/build.make test/unit/core/cerebellum/CMakeFiles/unit_core_cerebellum_test_cerebellum_substrate_bridge.dir/build
+.PHONY : unit_core_cerebellum_test_cerebellum_substrate_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_cerebellum_test_cerebellum_thalamic_bridge
+
+# Build rule for target.
+unit_core_cerebellum_test_cerebellum_thalamic_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_cerebellum_test_cerebellum_thalamic_bridge
+.PHONY : unit_core_cerebellum_test_cerebellum_thalamic_bridge
+
+# fast build rule for target.
+unit_core_cerebellum_test_cerebellum_thalamic_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cerebellum/CMakeFiles/unit_core_cerebellum_test_cerebellum_thalamic_bridge.dir/build.make test/unit/core/cerebellum/CMakeFiles/unit_core_cerebellum_test_cerebellum_thalamic_bridge.dir/build
+.PHONY : unit_core_cerebellum_test_cerebellum_thalamic_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_fault_tolerance_emotional_tagging
 
 # Build rule for target.
@@ -11300,6 +11378,32 @@ unit_cognitive_test_shared_intentionality/fast:
 .PHONY : unit_cognitive_test_shared_intentionality/fast
 
 #=============================================================================
+# Target rules for targets named test_rcog_context_store
+
+# Build rule for target.
+test_rcog_context_store: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_rcog_context_store
+.PHONY : test_rcog_context_store
+
+# fast build rule for target.
+test_rcog_context_store/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/recursive/CMakeFiles/test_rcog_context_store.dir/build.make test/unit/cognitive/recursive/CMakeFiles/test_rcog_context_store.dir/build
+.PHONY : test_rcog_context_store/fast
+
+#=============================================================================
+# Target rules for targets named test_rcog_answer
+
+# Build rule for target.
+test_rcog_answer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_rcog_answer
+.PHONY : test_rcog_answer
+
+# fast build rule for target.
+test_rcog_answer/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/recursive/CMakeFiles/test_rcog_answer.dir/build.make test/unit/cognitive/recursive/CMakeFiles/test_rcog_answer.dir/build
+.PHONY : test_rcog_answer/fast
+
+#=============================================================================
 # Target rules for targets named test_rcog_bridges
 
 # Build rule for target.
@@ -11311,6 +11415,58 @@ test_rcog_bridges: cmake_check_build_system
 test_rcog_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/recursive/CMakeFiles/test_rcog_bridges.dir/build.make test/unit/cognitive/recursive/CMakeFiles/test_rcog_bridges.dir/build
 .PHONY : test_rcog_bridges/fast
+
+#=============================================================================
+# Target rules for targets named test_rcog_orchestrator
+
+# Build rule for target.
+test_rcog_orchestrator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_rcog_orchestrator
+.PHONY : test_rcog_orchestrator
+
+# fast build rule for target.
+test_rcog_orchestrator/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/recursive/CMakeFiles/test_rcog_orchestrator.dir/build.make test/unit/cognitive/recursive/CMakeFiles/test_rcog_orchestrator.dir/build
+.PHONY : test_rcog_orchestrator/fast
+
+#=============================================================================
+# Target rules for targets named test_rcog_delegation_pool
+
+# Build rule for target.
+test_rcog_delegation_pool: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_rcog_delegation_pool
+.PHONY : test_rcog_delegation_pool
+
+# fast build rule for target.
+test_rcog_delegation_pool/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/recursive/CMakeFiles/test_rcog_delegation_pool.dir/build.make test/unit/cognitive/recursive/CMakeFiles/test_rcog_delegation_pool.dir/build
+.PHONY : test_rcog_delegation_pool/fast
+
+#=============================================================================
+# Target rules for targets named test_rcog_tool_router
+
+# Build rule for target.
+test_rcog_tool_router: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_rcog_tool_router
+.PHONY : test_rcog_tool_router
+
+# fast build rule for target.
+test_rcog_tool_router/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/recursive/CMakeFiles/test_rcog_tool_router.dir/build.make test/unit/cognitive/recursive/CMakeFiles/test_rcog_tool_router.dir/build
+.PHONY : test_rcog_tool_router/fast
+
+#=============================================================================
+# Target rules for targets named test_rcog_engine
+
+# Build rule for target.
+test_rcog_engine: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_rcog_engine
+.PHONY : test_rcog_engine
+
+# fast build rule for target.
+test_rcog_engine/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/recursive/CMakeFiles/test_rcog_engine.dir/build.make test/unit/cognitive/recursive/CMakeFiles/test_rcog_engine.dir/build
+.PHONY : test_rcog_engine/fast
 
 #=============================================================================
 # Target rules for targets named integration_cognitive_bio_async_test
@@ -12756,6 +12912,32 @@ unit_core_brain_regions_brainstem_test_nimcp_brain_init_brainstem/fast:
 .PHONY : unit_core_brain_regions_brainstem_test_nimcp_brain_init_brainstem/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_brain_regions_brainstem_test_vestibular
+
+# Build rule for target.
+unit_core_brain_regions_brainstem_test_vestibular: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_brainstem_test_vestibular
+.PHONY : unit_core_brain_regions_brainstem_test_vestibular
+
+# fast build rule for target.
+unit_core_brain_regions_brainstem_test_vestibular/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/brainstem/CMakeFiles/unit_core_brain_regions_brainstem_test_vestibular.dir/build.make test/unit/core/brain/regions/brainstem/CMakeFiles/unit_core_brain_regions_brainstem_test_vestibular.dir/build
+.PHONY : unit_core_brain_regions_brainstem_test_vestibular/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_brainstem_test_vestibular_cerebellum_bridge
+
+# Build rule for target.
+unit_core_brain_regions_brainstem_test_vestibular_cerebellum_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_brainstem_test_vestibular_cerebellum_bridge
+.PHONY : unit_core_brain_regions_brainstem_test_vestibular_cerebellum_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_brainstem_test_vestibular_cerebellum_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/brainstem/CMakeFiles/unit_core_brain_regions_brainstem_test_vestibular_cerebellum_bridge.dir/build.make test/unit/core/brain/regions/brainstem/CMakeFiles/unit_core_brain_regions_brainstem_test_vestibular_cerebellum_bridge.dir/build
+.PHONY : unit_core_brain_regions_brainstem_test_vestibular_cerebellum_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter
 
 # Build rule for target.
@@ -12780,6 +12962,32 @@ unit_core_brain_regions_cerebellum_test_cerebellum_bridges: cmake_check_build_sy
 unit_core_brain_regions_cerebellum_test_cerebellum_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/cerebellum/CMakeFiles/unit_core_brain_regions_cerebellum_test_cerebellum_bridges.dir/build.make test/unit/core/brain/regions/cerebellum/CMakeFiles/unit_core_brain_regions_cerebellum_test_cerebellum_bridges.dir/build
 .PHONY : unit_core_brain_regions_cerebellum_test_cerebellum_bridges/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_cerebellum_test_cerebellum_synaptic_dynamics
+
+# Build rule for target.
+unit_core_brain_regions_cerebellum_test_cerebellum_synaptic_dynamics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_cerebellum_test_cerebellum_synaptic_dynamics
+.PHONY : unit_core_brain_regions_cerebellum_test_cerebellum_synaptic_dynamics
+
+# fast build rule for target.
+unit_core_brain_regions_cerebellum_test_cerebellum_synaptic_dynamics/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/cerebellum/CMakeFiles/unit_core_brain_regions_cerebellum_test_cerebellum_synaptic_dynamics.dir/build.make test/unit/core/brain/regions/cerebellum/CMakeFiles/unit_core_brain_regions_cerebellum_test_cerebellum_synaptic_dynamics.dir/build
+.PHONY : unit_core_brain_regions_cerebellum_test_cerebellum_synaptic_dynamics/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_cerebellum_test_cerebellum_interneurons
+
+# Build rule for target.
+unit_core_brain_regions_cerebellum_test_cerebellum_interneurons: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_cerebellum_test_cerebellum_interneurons
+.PHONY : unit_core_brain_regions_cerebellum_test_cerebellum_interneurons
+
+# fast build rule for target.
+unit_core_brain_regions_cerebellum_test_cerebellum_interneurons/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/cerebellum/CMakeFiles/unit_core_brain_regions_cerebellum_test_cerebellum_interneurons.dir/build.make test/unit/core/brain/regions/cerebellum/CMakeFiles/unit_core_brain_regions_cerebellum_test_cerebellum_interneurons.dir/build
+.PHONY : unit_core_brain_regions_cerebellum_test_cerebellum_interneurons/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_brain_regions_cingulate_test_nimcp_cingulate_adapter
@@ -14745,6 +14953,19 @@ integration_collective_cognition_portia/fast:
 .PHONY : integration_collective_cognition_portia/fast
 
 #=============================================================================
+# Target rules for targets named test_rcog_integration
+
+# Build rule for target.
+test_rcog_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_rcog_integration
+.PHONY : test_rcog_integration
+
+# fast build rule for target.
+test_rcog_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/recursive/CMakeFiles/test_rcog_integration.dir/build.make test/integration/cognitive/recursive/CMakeFiles/test_rcog_integration.dir/build
+.PHONY : test_rcog_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_mental_health_guardian_brain
 
 # Build rule for target.
@@ -14823,6 +15044,19 @@ regression_cognitive_guardian_intervention/fast:
 .PHONY : regression_cognitive_guardian_intervention/fast
 
 #=============================================================================
+# Target rules for targets named test_rcog_regression
+
+# Build rule for target.
+test_rcog_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_rcog_regression
+.PHONY : test_rcog_regression
+
+# fast build rule for target.
+test_rcog_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/recursive/CMakeFiles/test_rcog_regression.dir/build.make test/regression/cognitive/recursive/CMakeFiles/test_rcog_regression.dir/build
+.PHONY : test_rcog_regression/fast
+
+#=============================================================================
 # Target rules for targets named integration_brain_regions_test_visual_cortex_integration
 
 # Build rule for target.
@@ -14834,6 +15068,32 @@ integration_brain_regions_test_visual_cortex_integration: cmake_check_build_syst
 integration_brain_regions_test_visual_cortex_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/core/brain_regions/CMakeFiles/integration_brain_regions_test_visual_cortex_integration.dir/build.make test/integration/core/brain_regions/CMakeFiles/integration_brain_regions_test_visual_cortex_integration.dir/build
 .PHONY : integration_brain_regions_test_visual_cortex_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_brain_regions_test_cerebellum_vestibular_integration
+
+# Build rule for target.
+integration_brain_regions_test_cerebellum_vestibular_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_brain_regions_test_cerebellum_vestibular_integration
+.PHONY : integration_brain_regions_test_cerebellum_vestibular_integration
+
+# fast build rule for target.
+integration_brain_regions_test_cerebellum_vestibular_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain_regions/CMakeFiles/integration_brain_regions_test_cerebellum_vestibular_integration.dir/build.make test/integration/core/brain_regions/CMakeFiles/integration_brain_regions_test_cerebellum_vestibular_integration.dir/build
+.PHONY : integration_brain_regions_test_cerebellum_vestibular_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_brain_regions_test_cerebellum_brain_integration
+
+# Build rule for target.
+integration_brain_regions_test_cerebellum_brain_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_brain_regions_test_cerebellum_brain_integration
+.PHONY : integration_brain_regions_test_cerebellum_brain_integration
+
+# fast build rule for target.
+integration_brain_regions_test_cerebellum_brain_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain_regions/CMakeFiles/integration_brain_regions_test_cerebellum_brain_integration.dir/build.make test/integration/core/brain_regions/CMakeFiles/integration_brain_regions_test_cerebellum_brain_integration.dir/build
+.PHONY : integration_brain_regions_test_cerebellum_brain_integration/fast
 
 #=============================================================================
 # Target rules for targets named integration_brain_regions_test_signal_propagation_integration
@@ -16526,6 +16786,19 @@ unit_async_bio_async_orchestrator/fast:
 .PHONY : unit_async_bio_async_orchestrator/fast
 
 #=============================================================================
+# Target rules for targets named unit_async_wiring_diagram
+
+# Build rule for target.
+unit_async_wiring_diagram: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_async_wiring_diagram
+.PHONY : unit_async_wiring_diagram
+
+# fast build rule for target.
+unit_async_wiring_diagram/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/async/CMakeFiles/unit_async_wiring_diagram.dir/build.make test/unit/async/CMakeFiles/unit_async_wiring_diagram.dir/build
+.PHONY : unit_async_wiring_diagram/fast
+
+#=============================================================================
 # Target rules for targets named integration_async_test_cross_module_communication
 
 # Build rule for target.
@@ -16604,6 +16877,19 @@ integration_async_test_bio_async_integration/fast:
 .PHONY : integration_async_test_bio_async_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_async_test_wiring_diagram
+
+# Build rule for target.
+integration_async_test_wiring_diagram: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_async_test_wiring_diagram
+.PHONY : integration_async_test_wiring_diagram
+
+# fast build rule for target.
+integration_async_test_wiring_diagram/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/async/CMakeFiles/integration_async_test_wiring_diagram.dir/build.make test/integration/async/CMakeFiles/integration_async_test_wiring_diagram.dir/build
+.PHONY : integration_async_test_wiring_diagram/fast
+
+#=============================================================================
 # Target rules for targets named regression_async_test_future_regression
 
 # Build rule for target.
@@ -16628,6 +16914,19 @@ regression_async_test_bio_async_regression: cmake_check_build_system
 regression_async_test_bio_async_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/async/CMakeFiles/regression_async_test_bio_async_regression.dir/build.make test/regression/async/CMakeFiles/regression_async_test_bio_async_regression.dir/build
 .PHONY : regression_async_test_bio_async_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_async_test_wiring_diagram
+
+# Build rule for target.
+regression_async_test_wiring_diagram: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_async_test_wiring_diagram
+.PHONY : regression_async_test_wiring_diagram
+
+# fast build rule for target.
+regression_async_test_wiring_diagram/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/async/CMakeFiles/regression_async_test_wiring_diagram.dir/build.make test/regression/async/CMakeFiles/regression_async_test_wiring_diagram.dir/build
+.PHONY : regression_async_test_wiring_diagram/fast
 
 #=============================================================================
 # Target rules for targets named test_attention_bioasync
@@ -17488,6 +17787,19 @@ unit_perception_test_visual_jepa_bridge/fast:
 .PHONY : unit_perception_test_visual_jepa_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_perception_test_cochlea_core
+
+# Build rule for target.
+unit_perception_test_cochlea_core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_perception_test_cochlea_core
+.PHONY : unit_perception_test_cochlea_core
+
+# fast build rule for target.
+unit_perception_test_cochlea_core/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/perception/CMakeFiles/unit_perception_test_cochlea_core.dir/build.make test/unit/perception/CMakeFiles/unit_perception_test_cochlea_core.dir/build
+.PHONY : unit_perception_test_cochlea_core/fast
+
+#=============================================================================
 # Target rules for targets named unit_perception_cortical_test_visual_cortical_bridge
 
 # Build rule for target.
@@ -17525,6 +17837,32 @@ unit_perception_cortical_test_speech_cortical_bridge: cmake_check_build_system
 unit_perception_cortical_test_speech_cortical_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/perception/cortical/CMakeFiles/unit_perception_cortical_test_speech_cortical_bridge.dir/build.make test/unit/perception/cortical/CMakeFiles/unit_perception_cortical_test_speech_cortical_bridge.dir/build
 .PHONY : unit_perception_cortical_test_speech_cortical_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_perception_bridges_test_cochlea_bridges
+
+# Build rule for target.
+unit_perception_bridges_test_cochlea_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_perception_bridges_test_cochlea_bridges
+.PHONY : unit_perception_bridges_test_cochlea_bridges
+
+# fast build rule for target.
+unit_perception_bridges_test_cochlea_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/perception/bridges/CMakeFiles/unit_perception_bridges_test_cochlea_bridges.dir/build.make test/unit/perception/bridges/CMakeFiles/unit_perception_bridges_test_cochlea_bridges.dir/build
+.PHONY : unit_perception_bridges_test_cochlea_bridges/fast
+
+#=============================================================================
+# Target rules for targets named integration_perception_test_cochlea_integration
+
+# Build rule for target.
+integration_perception_test_cochlea_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_perception_test_cochlea_integration
+.PHONY : integration_perception_test_cochlea_integration
+
+# fast build rule for target.
+integration_perception_test_cochlea_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/perception/CMakeFiles/integration_perception_test_cochlea_integration.dir/build.make test/integration/perception/CMakeFiles/integration_perception_test_cochlea_integration.dir/build
+.PHONY : integration_perception_test_cochlea_integration/fast
 
 #=============================================================================
 # Target rules for targets named integration_jepa_fep
@@ -21868,6 +22206,7 @@ help:
 	@echo "... e2e_test_quantum_bridges_pipeline"
 	@echo "... e2e_test_quantum_language_processing"
 	@echo "... e2e_test_quantum_reasoning_pipeline"
+	@echo "... e2e_test_recursive_cognition_pipeline"
 	@echo "... e2e_test_second_messenger_pipeline"
 	@echo "... e2e_test_security_attack_simulation"
 	@echo "... e2e_test_server_swarm_pipeline"
@@ -21893,6 +22232,7 @@ help:
 	@echo "... e2e_test_unified_training_integration"
 	@echo "... e2e_test_visual_pipeline"
 	@echo "... e2e_test_wellbeing_enhanced_pipeline"
+	@echo "... e2e_test_wiring_diagram_pipeline"
 	@echo "... ethics_demo"
 	@echo "... event_demo"
 	@echo "... fractal_network_demo"
@@ -21908,13 +22248,17 @@ help:
 	@echo "... integration_async_test_glial_wave_propagation"
 	@echo "... integration_async_test_phase_synchronization"
 	@echo "... integration_async_test_predictive_coding"
+	@echo "... integration_async_test_wiring_diagram"
 	@echo "... integration_bio_async_cross_bridge"
 	@echo "... integration_brain_bio_async_test"
 	@echo "... integration_brain_coordinator_test"
 	@echo "... integration_brain_persistence_test"
+	@echo "... integration_brain_regions_test_cerebellum_brain_integration"
+	@echo "... integration_brain_regions_test_cerebellum_vestibular_integration"
 	@echo "... integration_brain_regions_test_occipital_integration"
 	@echo "... integration_brain_regions_test_signal_propagation_integration"
 	@echo "... integration_brain_regions_test_visual_cortex_integration"
+	@echo "... integration_cerebellum_test_cerebellum_vestibular_integration"
 	@echo "... integration_cognitive_bio_async_test"
 	@echo "... integration_cognitive_consolidation_test_systems_consolidation_integration"
 	@echo "... integration_cognitive_curiosity_enhanced"
@@ -22069,6 +22413,7 @@ help:
 	@echo "... integration_optimization_test_dynamic_adaptation_integration"
 	@echo "... integration_optimization_test_multi_objective_integration"
 	@echo "... integration_parietal_test_parietal_fep_integration"
+	@echo "... integration_perception_test_cochlea_integration"
 	@echo "... integration_plasticity_adaptive_test_adaptive_integration"
 	@echo "... integration_plasticity_adaptive_test_adaptive_routing_integration"
 	@echo "... integration_plasticity_astrocyte_test_astrocyte_integration"
@@ -22171,6 +22516,7 @@ help:
 	@echo "... regression_api_test_api_stability"
 	@echo "... regression_async_test_bio_async_regression"
 	@echo "... regression_async_test_future_regression"
+	@echo "... regression_async_test_wiring_diagram"
 	@echo "... regression_brain_regions_test_cerebellum_backward_compat"
 	@echo "... regression_brain_regions_test_hippocampus_backward_compat"
 	@echo "... regression_brain_regions_test_prefrontal_backward_compat"
@@ -22224,6 +22570,7 @@ help:
 	@echo "... regression_core_brain_memory_tracking_regression"
 	@echo "... regression_core_brain_oscillation_backward_compat"
 	@echo "... regression_core_brain_regions_broca_test_nimcp_broca_regression"
+	@echo "... regression_core_brain_regions_cerebellum_test_cerebellum_regression"
 	@echo "... regression_core_brain_regions_test_contextual_regression"
 	@echo "... regression_core_brain_regions_test_language_bridge_regression"
 	@echo "... regression_core_brain_regions_test_language_production_bridge_regression"
@@ -22511,7 +22858,15 @@ help:
 	@echo "... test_quorum_immune_logic_integration"
 	@echo "... test_quorum_immune_logic_regression"
 	@echo "... test_quorum_logic"
+	@echo "... test_rcog_answer"
 	@echo "... test_rcog_bridges"
+	@echo "... test_rcog_context_store"
+	@echo "... test_rcog_delegation_pool"
+	@echo "... test_rcog_engine"
+	@echo "... test_rcog_integration"
+	@echo "... test_rcog_orchestrator"
+	@echo "... test_rcog_regression"
+	@echo "... test_rcog_tool_router"
 	@echo "... test_reasoning_factory"
 	@echo "... test_reasoning_memory"
 	@echo "... test_reasoning_performance"
@@ -22632,6 +22987,7 @@ help:
 	@echo "... unit_async_semantic_compression_fep_bridge"
 	@echo "... unit_async_test_bio_async"
 	@echo "... unit_async_test_bio_router"
+	@echo "... unit_async_wiring_diagram"
 	@echo "... unit_brain_integration"
 	@echo "... unit_brain_population_coding"
 	@echo "... unit_brain_spike_features"
@@ -22848,6 +23204,8 @@ help:
 	@echo "... unit_core_brain_regions_brainstem_test_nimcp_brain_init_brainstem"
 	@echo "... unit_core_brain_regions_brainstem_test_nimcp_brainstem_adapter"
 	@echo "... unit_core_brain_regions_brainstem_test_nimcp_brainstem_quantum_bridge"
+	@echo "... unit_core_brain_regions_brainstem_test_vestibular"
+	@echo "... unit_core_brain_regions_brainstem_test_vestibular_cerebellum_bridge"
 	@echo "... unit_core_brain_regions_broca_test_broca_bridges"
 	@echo "... unit_core_brain_regions_broca_test_broca_immune_integration"
 	@echo "... unit_core_brain_regions_broca_test_language_production_pe"
@@ -22857,6 +23215,8 @@ help:
 	@echo "... unit_core_brain_regions_broca_test_nimcp_speech_motor"
 	@echo "... unit_core_brain_regions_broca_test_nimcp_syntax_processor"
 	@echo "... unit_core_brain_regions_cerebellum_test_cerebellum_bridges"
+	@echo "... unit_core_brain_regions_cerebellum_test_cerebellum_interneurons"
+	@echo "... unit_core_brain_regions_cerebellum_test_cerebellum_synaptic_dynamics"
 	@echo "... unit_core_brain_regions_cerebellum_test_nimcp_cerebellum_adapter"
 	@echo "... unit_core_brain_regions_cingulate_test_nimcp_cingulate_adapter"
 	@echo "... unit_core_brain_regions_cingulate_test_nimcp_cingulate_quantum_bridge"
@@ -22935,6 +23295,8 @@ help:
 	@echo "... unit_core_brain_test_oscillations_immune_full_integration"
 	@echo "... unit_core_brain_test_pretrained_bio_async"
 	@echo "... unit_core_brain_test_version_checking"
+	@echo "... unit_core_cerebellum_test_cerebellum_substrate_bridge"
+	@echo "... unit_core_cerebellum_test_cerebellum_thalamic_bridge"
 	@echo "... unit_core_cortical_columns_substrate_bridge"
 	@echo "... unit_core_dendrite_test_dendrite"
 	@echo "... unit_core_directives_action_history"
@@ -23186,12 +23548,14 @@ help:
 	@echo "... unit_parietal_scientific_reasoning"
 	@echo "... unit_parietal_software_engineering"
 	@echo "... unit_parietal_spatial_reasoning"
+	@echo "... unit_perception_bridges_test_cochlea_bridges"
 	@echo "... unit_perception_cortical_test_audio_cortical_bridge"
 	@echo "... unit_perception_cortical_test_speech_cortical_bridge"
 	@echo "... unit_perception_cortical_test_visual_cortical_bridge"
 	@echo "... unit_perception_immune_test_audio_immune_integration"
 	@echo "... unit_perception_immune_test_speech_immune_integration"
 	@echo "... unit_perception_immune_test_visual_immune_integration"
+	@echo "... unit_perception_test_cochlea_core"
 	@echo "... unit_perception_test_speech_cortex_pe"
 	@echo "... unit_perception_test_speech_jepa_bridge"
 	@echo "... unit_perception_test_visual_jepa_bridge"

@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/jepa/nimcp_jepa_weights.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -617,4 +618,31 @@ const char* jepa_load_status_to_string(jepa_load_status_t status) {
         case JEPA_LOAD_INCOMPATIBLE: return "incompatible";
         default:                     return "unknown";
     }
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int jepa_weights_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "JEPA_Weights_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "JEPA_Weights_Module");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "JEPA_Weights_Module");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

@@ -155,6 +155,7 @@
 /* Integration modules */
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_diagram.h"
 #include "core/brain/nimcp_brain_kg_helpers.h"
 
 /* Utilities */
@@ -276,6 +277,12 @@ typedef struct {
 
     /* Knowledge Graph integration */
     brain_kg_node_id_t kg_node_id;         /**< KG node ID for this module */
+
+    /* Wiring diagram integration */
+    wiring_module_config_t wiring;         /**< Discovered wiring configuration */
+    wiring_handler_callback_t handler_callback;  /**< Handler registration callback */
+    void* handler_callback_data;           /**< User data for callback */
+    bool wiring_discovered;                /**< Wiring has been discovered from KG */
 } bio_module_entry_t;
 
 /* ============================================================================
@@ -396,6 +403,10 @@ struct bio_async_orchestrator {
     /* Internal Knowledge Graph integration */
     kg_module_context_t kg_context;        /**< KG access context */
     bool kg_connected;                     /**< Internal KG is connected */
+
+    /* Wiring diagram integration */
+    wiring_diagram_t* wiring_diagram;      /**< Wiring diagram (not owned) */
+    bool wiring_loaded;                    /**< Wiring has been loaded/discovered */
 };
 
 /* ============================================================================
@@ -849,6 +860,116 @@ float bio_orchestrator_get_health_score(const bio_async_orchestrator_t* orchestr
  */
 bio_orchestrator_state_t bio_orchestrator_get_state(
     const bio_async_orchestrator_t* orchestrator
+);
+
+/* ============================================================================
+ * Wiring Diagram Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Set wiring diagram for orchestrator
+ *
+ * WHAT: Associate wiring diagram with orchestrator
+ * WHY:  Enable KG-driven module discovery and handler registration
+ * HOW:  Store reference, orchestrator uses it during startup
+ *
+ * @param orchestrator Orchestrator
+ * @param wd Wiring diagram (ownership NOT transferred)
+ * @return 0 on success, -1 on error
+ */
+int bio_orchestrator_set_wiring_diagram(
+    bio_async_orchestrator_t* orchestrator,
+    wiring_diagram_t* wd
+);
+
+/**
+ * @brief Get wiring diagram from orchestrator
+ *
+ * @param orchestrator Orchestrator
+ * @return Wiring diagram or NULL if not set
+ */
+wiring_diagram_t* bio_orchestrator_get_wiring_diagram(
+    const bio_async_orchestrator_t* orchestrator
+);
+
+/**
+ * @brief Discover wiring for all registered modules
+ *
+ * WHAT: Query wiring diagram for each module's configuration
+ * WHY:  Populate dependencies and message handlers from KG
+ * HOW:  Iterate modules, query wiring_diagram_get_module_config
+ *
+ * @param orchestrator Orchestrator
+ * @return Number of modules with discovered wiring, -1 on error
+ */
+int bio_orchestrator_discover_all_wiring(bio_async_orchestrator_t* orchestrator);
+
+/**
+ * @brief Discover wiring for specific module
+ *
+ * WHAT: Query wiring for single module
+ * WHY:  On-demand discovery for dynamically registered modules
+ * HOW:  Query wiring diagram, populate module entry
+ *
+ * @param orchestrator Orchestrator
+ * @param module_id Module to discover wiring for
+ * @return 0 on success, -1 if module or wiring not found
+ */
+int bio_orchestrator_discover_module_wiring(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id
+);
+
+/**
+ * @brief Invoke handler callbacks for all modules
+ *
+ * WHAT: Call each module's handler callback with discovered message types
+ * WHY:  Enable modules to auto-register handlers based on KG wiring
+ * HOW:  Iterate modules with callbacks, invoke with message type arrays
+ *
+ * @param orchestrator Orchestrator
+ * @return Number of callbacks invoked, -1 on error
+ */
+int bio_orchestrator_invoke_handler_callbacks(bio_async_orchestrator_t* orchestrator);
+
+/**
+ * @brief Register handler callback for module
+ *
+ * WHAT: Register callback to be invoked when wiring is discovered
+ * WHY:  Enable modules to react to discovered message types
+ * HOW:  Store callback in module entry, invoked by discover_all_wiring
+ *
+ * @param orchestrator Orchestrator
+ * @param module_id Module ID
+ * @param callback Handler callback function
+ * @param user_data User data passed to callback
+ * @return 0 on success, -1 on error
+ */
+int bio_orchestrator_register_handler_callback(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id,
+    wiring_handler_callback_t callback,
+    void* user_data
+);
+
+/**
+ * @brief Get module's discovered message handlers
+ *
+ * WHAT: Query message types a module should handle
+ * WHY:  Introspection of discovered wiring
+ * HOW:  Return array from module's wiring config
+ *
+ * @param orchestrator Orchestrator
+ * @param module_id Module ID
+ * @param message_types Output array (caller allocated)
+ * @param max_types Array capacity
+ * @return Number of message types, 0 if no wiring discovered
+ */
+uint32_t bio_orchestrator_get_module_handlers(
+    const bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id,
+    bio_message_type_t* message_types,
+    uint32_t max_types
 );
 
 /* ============================================================================

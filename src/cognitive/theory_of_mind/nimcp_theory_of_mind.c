@@ -21,6 +21,7 @@
  */
 
 #include "cognitive/nimcp_theory_of_mind.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -1130,4 +1131,31 @@ static void apply_immune_impairment_to_goal(theory_of_mind_t tom, float* confide
     // Reduce confidence proportional to impairment
     float reduction_factor = 1.0f - (tom->immune_impairment * 0.8f);  // Max 80% reduction
     *confidence *= reduction_factor;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int theory_of_mind_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Theory_Of_Mind");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Theory_Of_Mind");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Theory_Of_Mind");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/knowledge/nimcp_knowledge_sleep_bridge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -244,4 +245,41 @@ float knowledge_sleep_consolidation_for_state(sleep_state_t state) {
         case SLEEP_STATE_REM:        return KNOWLEDGE_SLEEP_CONSOLIDATION_REM;
         default:                     return KNOWLEDGE_SLEEP_CONSOLIDATION_AWAKE;
     }
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * @brief Query knowledge graph for self-knowledge about sleep-knowledge bridge
+ *
+ * WHAT: Retrieves entity observations and relations for sleep bridge
+ * WHY: Enables self-aware introspection of module capabilities
+ * HOW: Uses kg_reader to query JSONL knowledge graph
+ *
+ * @param kg Knowledge graph reader instance
+ * @return 1 if self-knowledge found, 0 otherwise
+ */
+int knowledge_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Knowledge_Sleep_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Knowledge_Sleep_Bridge");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Knowledge_Sleep_Bridge");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

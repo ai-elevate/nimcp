@@ -31,3 +31,9 @@ add_brain_region_integration_test(test_visual_cortex_integration)
 # Predictive coding + PE integration test
 # DISABLED: Depends on nimcp_brain_region_predictive.c which is disabled for API updates
 # add_brain_region_integration_test(test_predictive_pe_integration)
+
+# Cerebellum-vestibular integration test
+add_brain_region_integration_test(test_cerebellum_vestibular_integration)
+
+# Cerebellum-brain integration test (multi-bridge verification)
+add_brain_region_integration_test(test_cerebellum_brain_integration)

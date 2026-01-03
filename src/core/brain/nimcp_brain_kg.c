@@ -1365,6 +1365,7 @@ const char* brain_kg_edge_type_to_string(brain_kg_edge_type_t type) {
     case BRAIN_KG_EDGE_COORDINATES_WITH: return "coordinates_with";
     case BRAIN_KG_EDGE_DEPENDS_ON:       return "depends_on";
     case BRAIN_KG_EDGE_PROVIDES_TO:      return "provides_to";
+    case BRAIN_KG_EDGE_HANDLES_MESSAGE:  return "handles_message";
     case BRAIN_KG_EDGE_CUSTOM:           return "custom";
     default:                             return "unknown";
     }

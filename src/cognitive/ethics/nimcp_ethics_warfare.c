@@ -20,6 +20,7 @@
 #include "security/nimcp_blood_brain_barrier.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -1026,4 +1027,28 @@ bool ethics_apply_moral_support(ethics_engine_t engine, const char* support_type
 
     LOG_WARN("Unknown moral support type: %s", support_type);
     return false;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * WHAT: Query knowledge graph for Ethics Warfare self-knowledge
+ * WHY:  Enable self-awareness about module's role and connections
+ * HOW:  Query KG for entity observations and relations
+ */
+int ethics_warfare_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Ethics_Warfare_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("Ethics warfare self-knowledge: %s", self->observations[i]);
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Ethics_Warfare_Module");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Ethics_Warfare_Module");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

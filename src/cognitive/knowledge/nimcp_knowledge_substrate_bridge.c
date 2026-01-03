@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/knowledge/nimcp_knowledge_substrate_bridge.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
@@ -211,4 +212,41 @@ int knowledge_substrate_bridge_register_bio_async(knowledge_substrate_bridge_t* 
         bridge->bio_async_connected = true;
     }
     return 0;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+/**
+ * @brief Query knowledge graph for self-knowledge about substrate knowledge bridge
+ *
+ * WHAT: Retrieves entity observations and relations for substrate-knowledge bridge
+ * WHY: Enables self-aware introspection of module capabilities
+ * HOW: Uses kg_reader to query JSONL knowledge graph
+ *
+ * @param kg Knowledge graph reader instance
+ * @return 1 if self-knowledge found, 0 otherwise
+ */
+int knowledge_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Knowledge_Substrate_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Knowledge_Substrate_Bridge");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Knowledge_Substrate_Bridge");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

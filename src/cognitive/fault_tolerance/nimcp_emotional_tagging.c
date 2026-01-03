@@ -32,6 +32,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #define LOG_MODULE "cognitive.fault.emotional_tag"
 #define BIO_MODULE_COGNITIVE_FAULT_EMOTIONAL_TAG 0x0355
@@ -619,4 +620,41 @@ bool nimcp_emotional_tagger_get_stats(
     nimcp_mutex_unlock((nimcp_mutex_t*)&tagger->mutex);
 
     return true;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int emotional_tagging_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Emotional_Tagging");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            LOG_DEBUG("[KG-Self] %s", self->observations[i]);
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Emotional_Tagging");
+    if (connections) {
+        for (uint32_t i = 0; i < connections->count; i++) {
+            LOG_DEBUG("[KG-Rel] -> %s (%s)",
+                      connections->relations[i]->to,
+                      connections->relations[i]->relation_type);
+        }
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Emotional_Tagging");
+    if (incoming) {
+        for (uint32_t i = 0; i < incoming->count; i++) {
+            LOG_DEBUG("[KG-Rel] <- %s (%s)",
+                      incoming->relations[i]->from,
+                      incoming->relations[i]->relation_type);
+        }
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

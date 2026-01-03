@@ -12,6 +12,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_time.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -1286,4 +1287,23 @@ const char* rcog_tool_io_type_name(rcog_tool_io_type_t type) {
         case RCOG_TOOL_IO_GRAPH: return "graph";
         default: return "unknown";
     }
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int rcog_tool_router_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Recursive_Cognition_Tool_Router_Module");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Log self-knowledge observations */
+        }
+    }
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Recursive_Cognition_Tool_Router_Module");
+    if (connections) { kg_relation_list_destroy(connections); }
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Recursive_Cognition_Tool_Router_Module");
+    if (incoming) { kg_relation_list_destroy(incoming); }
+    return self ? 1 : 0;
 }

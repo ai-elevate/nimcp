@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/nimcp_cognitive_meta_controller.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -1130,4 +1131,31 @@ const char* meta_controller_state_to_string(meta_controller_state_t state) {
         case META_CONTROLLER_ERROR: return "ERROR";
         default: return "UNKNOWN";
     }
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int cognitive_meta_controller_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Cognitive_Meta_Controller");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Cognitive_Meta_Controller");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Cognitive_Meta_Controller");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

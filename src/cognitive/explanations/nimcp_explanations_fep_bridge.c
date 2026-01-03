@@ -9,6 +9,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <string.h>
 
 #define LOG_MODULE "explanations_fep_bridge"
@@ -154,4 +155,31 @@ int explanations_fep_bridge_disconnect_bio_async(explanations_fep_bridge_t* brid
 
 bool explanations_fep_bridge_is_bio_async_connected(const explanations_fep_bridge_t* bridge) {
     return bridge ? bridge->base.bio_async_enabled : false;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int explanations_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Explanations_FEP_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Explanations_FEP_Bridge");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Explanations_FEP_Bridge");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

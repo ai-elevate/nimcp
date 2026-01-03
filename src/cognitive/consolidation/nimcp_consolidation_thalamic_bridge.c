@@ -6,6 +6,7 @@
 #include "cognitive/consolidation/nimcp_consolidation_thalamic_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <string.h>
 
 struct consolidation_thalamic_bridge {
@@ -108,4 +109,31 @@ int consolidation_thalamic_bridge_get_stats(const consolidation_thalamic_bridge_
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int consolidation_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Consolidation_Thalamic_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Consolidation_Thalamic_Bridge");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Consolidation_Thalamic_Bridge");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

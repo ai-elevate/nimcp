@@ -246,3 +246,33 @@ gtest_discover_tests(unit_async_bio_async_orchestrator
         LABELS "unit;async;orchestrator"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Wiring Diagram Unit Tests
+# ============================================================================
+
+# Wiring diagram tests
+add_executable(unit_async_wiring_diagram
+    test_wiring_diagram.cpp
+)
+target_link_libraries(unit_async_wiring_diagram
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+        stdc++fs  # Filesystem library for C++17
+)
+target_include_directories(unit_async_wiring_diagram
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_async_wiring_diagram PRIVATE cxx_std_17)
+gtest_discover_tests(unit_async_wiring_diagram
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;async;wiring"
+        TIMEOUT 120
+)

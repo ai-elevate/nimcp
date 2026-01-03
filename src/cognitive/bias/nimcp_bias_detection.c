@@ -29,6 +29,7 @@
 #include <math.h>
 #include <ctype.h>
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #define LOG_MODULE "cognitive.bias_detection"
 #define BIO_MODULE_BIAS_DETECTION 0x0340
@@ -843,4 +844,31 @@ bool bias_is_detected(const bias_detection_system_t* system, bias_type_t bias_ty
 
 float bias_get_fairness_score(const bias_detection_system_t* system) {
     return system ? system->fairness_score : 0.0F;
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int bias_detection_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Bias_Detection_System");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Bias_Detection_System");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Bias_Detection_System");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

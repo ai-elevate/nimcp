@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <string.h>
 
 struct curiosity_sleep_bridge_struct {
@@ -231,4 +232,31 @@ float curiosity_sleep_threshold_for_state(sleep_state_t state) {
         case SLEEP_STATE_REM:        return CURIOSITY_SLEEP_THRESHOLD_REM;
         default:                     return CURIOSITY_SLEEP_THRESHOLD_AWAKE;
     }
+}
+
+/* ============================================================================
+ * Knowledge Graph Self-Awareness Integration
+ * ============================================================================ */
+
+int curiosity_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
+    if (!kg) return 0;
+
+    const kg_entity_t* self = kg_reader_get_entity(kg, "Curiosity_Sleep_Bridge");
+    if (self) {
+        for (uint32_t i = 0; i < self->num_observations; i++) {
+            (void)self->observations[i];
+        }
+    }
+
+    kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Curiosity_Sleep_Bridge");
+    if (connections) {
+        kg_relation_list_destroy(connections);
+    }
+
+    kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Curiosity_Sleep_Bridge");
+    if (incoming) {
+        kg_relation_list_destroy(incoming);
+    }
+
+    return self ? 1 : 0;
 }

@@ -141,6 +141,7 @@ typedef enum {
     BRAIN_KG_EDGE_COORDINATES_WITH,  /**< Coordination/synchronization */
     BRAIN_KG_EDGE_DEPENDS_ON,        /**< Initialization dependency */
     BRAIN_KG_EDGE_PROVIDES_TO,       /**< Service/capability provision */
+    BRAIN_KG_EDGE_HANDLES_MESSAGE,   /**< Module to message handler set link */
     BRAIN_KG_EDGE_CUSTOM,            /**< User-defined edge type */
     BRAIN_KG_EDGE_TYPE_COUNT
 } brain_kg_edge_type_t;
