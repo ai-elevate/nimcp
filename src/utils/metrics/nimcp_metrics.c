@@ -12,6 +12,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -23,6 +24,25 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "utils/memory/nimcp_unified_memory.h"
+
+//=============================================================================
+// KG-Driven Wiring Infrastructure
+//=============================================================================
+
+/* Forward declaration for handler */
+static nimcp_error_t metrics_handle_brain_probe(
+    const void* msg, size_t msg_size,
+    nimcp_bio_promise_t response_promise, void* user_data);
+
+/**
+ * Handler map for metrics module.
+ * Handles brain probe data messages for metrics collection.
+ */
+DEFINE_HANDLER_MAP_BEGIN(metrics)
+    HANDLER_MAP_ENTRY(BIO_MSG_BRAIN_PROBE_DATA, metrics_handle_brain_probe)
+DEFINE_HANDLER_MAP_END()
+
+// Note: DEFINE_HANDLER_CALLBACK moved to after struct definition below
 
 //=============================================================================
 // Internal Structures
@@ -53,6 +73,11 @@ typedef struct nimcp_metrics_collector_internal {
     // Thread safety (future)
     bool is_initialized;
 } nimcp_metrics_collector_internal_t;
+
+/**
+ * Wiring callback for KG-driven handler registration.
+ */
+DEFINE_HANDLER_CALLBACK(metrics, nimcp_metrics_collector_internal_t, collector)
 
 //=============================================================================
 // Utility Functions
@@ -911,11 +936,11 @@ bool nimcp_metrics_register_bio_async(nimcp_metrics_collector_t collector) {
     }
 
     // Register handler for brain probe messages
-    nimcp_error_t err = bio_router_register_handler(
+    nimcp_error_t err = LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
         g_metrics_module_ctx,
         BIO_MSG_BRAIN_PROBE_DATA,
         metrics_handle_brain_probe
-    );
+    ));
 
     if (err != NIMCP_SUCCESS) {
         return false;

@@ -367,12 +367,24 @@ dialect_learner_t dialect_learner_create(const dialect_learner_config_t* config)
         dl->bio_ctx = bio_router_register_module(&info);
 
         if (dl->bio_ctx) {
-            // Register handler for dialect messages
-            LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
-                dl->bio_ctx,
-                BIO_MSG_NLP_NEURAL_ENCODE_COMPLETE,
-                handle_dialect_learned
-            ));
+            // Try KG-driven wiring callback registration first
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_NLP,
+                (void*)dialect_learner_handler_callback,
+                dl
+            );
+
+            if (wiring_result == NIMCP_SUCCESS) {
+                LOG_INFO("dialect_learner: KG-driven wiring callback registered");
+            } else {
+                // Legacy fallback - register handlers directly
+                LEGACY_HANDLER_REGISTRATION(bio_router_register_handler(
+                    dl->bio_ctx,
+                    BIO_MSG_NLP_NEURAL_ENCODE_COMPLETE,
+                    handle_dialect_learned
+                ));
+                LOG_INFO("dialect_learner: legacy handler registration");
+            }
         }
     }
 

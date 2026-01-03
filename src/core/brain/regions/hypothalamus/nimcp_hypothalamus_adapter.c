@@ -418,13 +418,31 @@ hypothalamus_adapter_t* hypothalamus_create(const hypothalamus_config_t* config)
 
         adapter->bio_ctx = bio_router_register_module(&bio_info);
         if (adapter->bio_ctx) {
-            /* Register message handlers */
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_STRESS_INPUT, handle_stress_input_request);
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_TEMPERATURE_INPUT, handle_temperature_input);
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_STATE_QUERY, handle_state_query);
+            /* Try KG-driven wiring callback first */
+            nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                BIO_MODULE_HYPOTHALAMUS,
+                (void*)hypothalamus_wiring_handler_callback,
+                adapter
+            );
+
+            if (cb_result != NIMCP_SUCCESS) {
+                /* Fall back to legacy direct registration */
+                LOG_DEBUG(HYPOTHALAMUS_LOG_MODULE,
+                          "KG wiring not available, using legacy registration");
+
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_STRESS_INPUT, handle_stress_input_request)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_TEMPERATURE_INPUT, handle_temperature_input)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_STATE_QUERY, handle_state_query)
+                );
+            }
 
             LOG_INFO(HYPOTHALAMUS_LOG_MODULE, "Bio-async handlers registered");
         } else {

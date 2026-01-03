@@ -14,6 +14,7 @@
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -456,6 +457,67 @@ static void elect_attention_leader(occipital_collective_bridge_t* bridge) {
  * @param user_data Bridge context
  * @return NIMCP_SUCCESS or error code
  */
+static nimcp_error_t occipital_collective_message_handler(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+);
+
+//=============================================================================
+// KG-Driven Wiring Callback
+//=============================================================================
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the wiring orchestrator with message types discovered from KG
+ * HANDLES_MESSAGE relations. Registers the appropriate handlers dynamically.
+ */
+static int occipital_collective_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;
+    }
+
+    occipital_collective_bridge_t* bridge = (occipital_collective_bridge_t*)user_data;
+    if (!bridge) {
+        LOG_WARNING("Wiring callback: bridge is NULL");
+        return 0;
+    }
+
+    LOG_DEBUG("KG wiring callback: registering %u message handlers", message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_OCCIPITAL_COLLECTIVE_ATTENTION:
+            case BIO_MSG_OCCIPITAL_COLLECTIVE_FEATURE:
+            case BIO_MSG_OCCIPITAL_COLLECTIVE_STATE_UPDATE:
+            case BIO_MSG_OCCIPITAL_COLLECTIVE_GAZE_FOLLOW:
+                bio_router_register_handler(ctx, message_types[i],
+                    occipital_collective_message_handler);
+                LOG_DEBUG("Registered handler for message type 0x%04X",
+                          message_types[i]);
+                break;
+
+            default:
+                LOG_DEBUG("Unknown message type 0x%04X in wiring callback",
+                          message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
+
+//=============================================================================
+// Bio-Async Message Handler Implementation
+//=============================================================================
+
 static nimcp_error_t occipital_collective_message_handler(
     const void* msg,
     size_t msg_size,
@@ -1034,15 +1096,38 @@ int occipital_collective_connect_bio_async(occipital_collective_bridge_t* bridge
         return -1;
     }
 
-    /* Register handlers for occipital collective message types */
-    bio_router_register_handler(bridge->bio_ctx, BIO_MSG_OCCIPITAL_COLLECTIVE_ATTENTION,
-                                occipital_collective_message_handler);
-    bio_router_register_handler(bridge->bio_ctx, BIO_MSG_OCCIPITAL_COLLECTIVE_FEATURE,
-                                occipital_collective_message_handler);
-    bio_router_register_handler(bridge->bio_ctx, BIO_MSG_OCCIPITAL_COLLECTIVE_STATE_UPDATE,
-                                occipital_collective_message_handler);
-    bio_router_register_handler(bridge->bio_ctx, BIO_MSG_OCCIPITAL_COLLECTIVE_GAZE_FOLLOW,
-                                occipital_collective_message_handler);
+    /* Try KG-driven wiring callback first */
+    nimcp_error_t cb_result = bio_router_register_wiring_callback(
+        BIO_MODULE_OCCIPITAL_COLLECTIVE,
+        (void*)occipital_collective_wiring_handler_callback,
+        bridge
+    );
+
+    if (cb_result != NIMCP_SUCCESS) {
+        /* Fall back to legacy direct registration */
+        LOG_DEBUG("KG wiring not available, using legacy registration");
+
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(bridge->bio_ctx,
+                BIO_MSG_OCCIPITAL_COLLECTIVE_ATTENTION,
+                occipital_collective_message_handler)
+        );
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(bridge->bio_ctx,
+                BIO_MSG_OCCIPITAL_COLLECTIVE_FEATURE,
+                occipital_collective_message_handler)
+        );
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(bridge->bio_ctx,
+                BIO_MSG_OCCIPITAL_COLLECTIVE_STATE_UPDATE,
+                occipital_collective_message_handler)
+        );
+        LEGACY_HANDLER_REGISTRATION(
+            bio_router_register_handler(bridge->bio_ctx,
+                BIO_MSG_OCCIPITAL_COLLECTIVE_GAZE_FOLLOW,
+                occipital_collective_message_handler)
+        );
+    }
 
     bridge->bio_async_connected = true;
 

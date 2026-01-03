@@ -11,6 +11,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -205,6 +206,52 @@ static nimcp_error_t handle_context_detected(
 }
 
 //=============================================================================
+// KG-Driven Wiring Callback
+//=============================================================================
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the wiring orchestrator with message types discovered from KG
+ * HANDLES_MESSAGE relations. Registers the appropriate handlers dynamically.
+ */
+static int contextual_language_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;
+    }
+
+    contextual_language_t cl = (contextual_language_t)user_data;
+    if (!cl) {
+        LOG_WARNING("Wiring callback: contextual_language is NULL");
+        return 0;
+    }
+
+    LOG_DEBUG("KG wiring callback: registering %u message handlers", message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_BRAIN_STATE_QUERY:
+                bio_router_register_handler(ctx, message_types[i],
+                    handle_context_detected);
+                LOG_DEBUG("Registered handler: BIO_MSG_BRAIN_STATE_QUERY");
+                break;
+
+            default:
+                LOG_DEBUG("Unknown message type 0x%04X in wiring callback",
+                          message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
+
+//=============================================================================
 // Core API Implementation
 //=============================================================================
 
@@ -271,12 +318,25 @@ contextual_language_t contextual_language_create(
         cl->bio_ctx = bio_router_register_module(&info);
 
         if (cl->bio_ctx) {
-            // Register handler for context detection messages
-            bio_router_register_handler(
-                cl->bio_ctx,
-                BIO_MSG_BRAIN_STATE_QUERY,  // Reuse existing message type
-                handle_context_detected
+            /* Try KG-driven wiring callback first */
+            nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                BIO_MODULE_BRAIN_REGION,
+                (void*)contextual_language_wiring_handler_callback,
+                cl
             );
+
+            if (cb_result != NIMCP_SUCCESS) {
+                /* Fall back to legacy direct registration */
+                LOG_DEBUG("KG wiring not available, using legacy registration");
+
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(
+                        cl->bio_ctx,
+                        BIO_MSG_BRAIN_STATE_QUERY,  // Reuse existing message type
+                        handle_context_detected
+                    )
+                );
+            }
         }
     }
 
