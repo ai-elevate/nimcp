@@ -16,6 +16,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -215,6 +216,67 @@ static nimcp_error_t handle_cerebellar_correction(
     nimcp_bio_promise_t response_promise, void* user_data);
 
 /*=============================================================================
+ * KG-DRIVEN WIRING CALLBACK
+ *===========================================================================*/
+
+/**
+ * @brief KG-driven wiring handler callback
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data Motor adapter pointer
+ * @return 0 on success, -1 on error
+ */
+static int motor_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    LOG_INFO("[%s] motor_wiring_handler_callback: registering %u handlers from KG",
+             MOTOR_LOG_MODULE, message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_MOTOR_COMMAND_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_motor_command_request);
+                LOG_DEBUG("[%s]   Registered handler for BIO_MSG_MOTOR_COMMAND_REQUEST", MOTOR_LOG_MODULE);
+                break;
+
+            case BIO_MSG_MOTOR_STOP_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_motor_stop_request);
+                LOG_DEBUG("[%s]   Registered handler for BIO_MSG_MOTOR_STOP_REQUEST", MOTOR_LOG_MODULE);
+                break;
+
+            case BIO_MSG_BG_ACTION_SELECTION:
+                bio_router_register_handler(ctx, message_types[i], handle_bg_action_selection);
+                LOG_DEBUG("[%s]   Registered handler for BIO_MSG_BG_ACTION_SELECTION", MOTOR_LOG_MODULE);
+                break;
+
+            case BIO_MSG_CEREBELLAR_CORRECTION:
+                bio_router_register_handler(ctx, message_types[i], handle_cerebellar_correction);
+                LOG_DEBUG("[%s]   Registered handler for BIO_MSG_CEREBELLAR_CORRECTION", MOTOR_LOG_MODULE);
+                break;
+
+            default:
+                LOG_DEBUG("[%s]   Unknown message type %u - skipping", MOTOR_LOG_MODULE, message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
+
+/*=============================================================================
  * LIFECYCLE FUNCTIONS
  *===========================================================================*/
 
@@ -355,17 +417,38 @@ motor_adapter_t* motor_create(const motor_config_t* config) {
 
         adapter->bio_ctx = bio_router_register_module(&bio_info);
         if (adapter->bio_ctx) {
-            /* Register message handlers */
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_MOTOR_COMMAND_REQUEST, handle_motor_command_request);
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_MOTOR_STOP_REQUEST, handle_motor_stop_request);
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_BG_ACTION_SELECTION, handle_bg_action_selection);
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_CEREBELLAR_CORRECTION, handle_cerebellar_correction);
+            /* KG-Driven Wiring: Register callback for orchestrator to invoke
+             * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+             * from the KG and invokes this callback with the message types */
+            nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                BIO_MODULE_MOTOR_CORTEX,
+                (void*)motor_wiring_handler_callback,
+                adapter
+            );
 
-            LOG_INFO("[%s] Bio-async handlers registered successfully", MOTOR_LOG_MODULE);
+            if (cb_result != NIMCP_SUCCESS) {
+                /* Fallback: Direct registration if orchestrator not available
+                 * This ensures backward compatibility with non-KG systems */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_MOTOR_COMMAND_REQUEST, handle_motor_command_request)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_MOTOR_STOP_REQUEST, handle_motor_stop_request)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_BG_ACTION_SELECTION, handle_bg_action_selection)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_CEREBELLAR_CORRECTION, handle_cerebellar_correction)
+                );
+                LOG_INFO("[%s] Bio-async enabled (legacy direct registration)", MOTOR_LOG_MODULE);
+            } else {
+                LOG_INFO("[%s] Bio-async enabled (KG-driven wiring callback registered)", MOTOR_LOG_MODULE);
+            }
         } else {
             LOG_WARNING("[%s] Failed to register with bio-async router", MOTOR_LOG_MODULE);
         }

@@ -25,6 +25,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
@@ -66,6 +67,35 @@ static void nlp_auto_mode_check(nlp_node_t node);
 //=============================================================================
 
 static bio_module_context_t g_nlp_bio_ctx = NULL;
+
+//=============================================================================
+// KG-Driven Wiring Callback (Phase 2: KG-Based Runtime Module Assembly)
+//=============================================================================
+
+/**
+ * @brief KG-driven wiring handler callback for NLP module
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data NLP node pointer
+ * @return 0 on success, -1 on error
+ */
+static int nlp_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+);
+
+/* Forward declaration for bio handler */
+static nimcp_error_t nlp_bio_handler(const void* msg, size_t msg_size,
+                                      nimcp_bio_promise_t response_promise,
+                                      void* user_data);
 
 /**
  * @brief Broadcast NLP session event to cognitive modules
@@ -256,6 +286,65 @@ static nimcp_error_t nlp_bio_handler(const void* msg, size_t msg_size,
 }
 
 /**
+ * @brief KG-driven wiring handler callback implementation
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ */
+static int nlp_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    (void)user_data;  /* NLP node, if needed for context */
+
+    NIMCP_LOGGING_INFO(NLP_MODULE_NAME,
+        "nlp_wiring_handler_callback: registering %u handlers from KG",
+        message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_HEALTH_CHECK:
+                bio_router_register_handler(ctx, message_types[i], nlp_bio_handler);
+                NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME,
+                    "  Registered handler for BIO_MSG_HEALTH_CHECK");
+                break;
+
+            case BIO_MSG_ATTENTION_SHIFT:
+                bio_router_register_handler(ctx, message_types[i], nlp_bio_handler);
+                NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME,
+                    "  Registered handler for BIO_MSG_ATTENTION_SHIFT");
+                break;
+
+            case BIO_MSG_SECURITY_ALERT:
+                bio_router_register_handler(ctx, message_types[i], nlp_bio_handler);
+                NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME,
+                    "  Registered handler for BIO_MSG_SECURITY_ALERT");
+                break;
+
+            case BIO_MSG_SHUTDOWN_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], nlp_bio_handler);
+                NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME,
+                    "  Registered handler for BIO_MSG_SHUTDOWN_REQUEST");
+                break;
+
+            default:
+                NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME,
+                    "  Unknown message type 0x%04X - skipping", message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
+
+/**
  * @brief Register NLP with bio-router
  */
 static void nlp_register_bio_async(nlp_node_t node) {
@@ -274,21 +363,47 @@ static void nlp_register_bio_async(nlp_node_t node) {
 
     g_nlp_bio_ctx = bio_router_register_module(&info);
     if (g_nlp_bio_ctx) {
-        // Register handlers for message types we care about
-        bio_router_register_handler(g_nlp_bio_ctx, BIO_MSG_HEALTH_CHECK, nlp_bio_handler);
-        bio_router_register_handler(g_nlp_bio_ctx, BIO_MSG_ATTENTION_SHIFT, nlp_bio_handler);
-        bio_router_register_handler(g_nlp_bio_ctx, BIO_MSG_SECURITY_ALERT, nlp_bio_handler);
-        bio_router_register_handler(g_nlp_bio_ctx, BIO_MSG_SHUTDOWN_REQUEST, nlp_bio_handler);
-
-        // Also register for NLP-specific messages
-        bio_router_register_category_handler(g_nlp_bio_ctx, 0x0A00, nlp_bio_handler);
-
         if (node) {
             node->bio_module_ctx = g_nlp_bio_ctx;
         }
 
-        NIMCP_LOGGING_INFO(NLP_MODULE_NAME,
-            "Registered with bio-router as module 0x%04X", BIO_MODULE_NLP);
+        /* KG-Driven Wiring: Register callback for orchestrator to invoke
+         * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+         * from the KG and invokes this callback with the message types */
+        nimcp_error_t cb_result = bio_router_register_wiring_callback(
+            BIO_MODULE_NLP,
+            (void*)nlp_wiring_handler_callback,
+            node
+        );
+
+        if (cb_result != NIMCP_SUCCESS) {
+            /* Fallback: Direct registration if orchestrator not available
+             * This ensures backward compatibility with non-KG systems */
+            LEGACY_HANDLER_REGISTRATION(
+                bio_router_register_handler(g_nlp_bio_ctx, BIO_MSG_HEALTH_CHECK, nlp_bio_handler)
+            );
+            LEGACY_HANDLER_REGISTRATION(
+                bio_router_register_handler(g_nlp_bio_ctx, BIO_MSG_ATTENTION_SHIFT, nlp_bio_handler)
+            );
+            LEGACY_HANDLER_REGISTRATION(
+                bio_router_register_handler(g_nlp_bio_ctx, BIO_MSG_SECURITY_ALERT, nlp_bio_handler)
+            );
+            LEGACY_HANDLER_REGISTRATION(
+                bio_router_register_handler(g_nlp_bio_ctx, BIO_MSG_SHUTDOWN_REQUEST, nlp_bio_handler)
+            );
+
+            // Also register for NLP-specific messages
+            bio_router_register_category_handler(g_nlp_bio_ctx, 0x0A00, nlp_bio_handler);
+
+            NIMCP_LOGGING_INFO(NLP_MODULE_NAME,
+                "Registered with bio-router as module 0x%04X (legacy direct registration)",
+                BIO_MODULE_NLP);
+        } else {
+            NIMCP_LOGGING_INFO(NLP_MODULE_NAME,
+                "Registered with bio-router as module 0x%04X (KG-driven wiring callback)",
+                BIO_MODULE_NLP);
+        }
+
         bbb_audit_log(BBB_AUDIT_INFO, NLP_MODULE_NAME, "bio_async_registered",
                       "module_id=0x%04X", BIO_MODULE_NLP);
     }

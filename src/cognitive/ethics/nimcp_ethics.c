@@ -38,6 +38,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
@@ -64,6 +65,53 @@ static nimcp_error_t handle_ethics_request(
     size_t msg_size,
     nimcp_bio_promise_t response_promise,
     void* user_data);
+
+//=============================================================================
+// KG-Driven Wiring Callback (Phase 2: KG-Based Runtime Module Assembly)
+//=============================================================================
+
+/**
+ * @brief KG-driven wiring handler callback
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data Ethics engine pointer
+ * @return 0 on success, -1 on error
+ */
+static int ethics_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    LOG_INFO("ethics_wiring_handler_callback: registering %u handlers from KG",
+             message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_ETHICS_EVALUATION_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_ethics_request);
+                LOG_DEBUG("  Registered handler for BIO_MSG_ETHICS_EVALUATION_REQUEST");
+                break;
+
+            /* Add additional message types as wiring is discovered from KG */
+            default:
+                LOG_DEBUG("  Unknown message type %u - skipping", message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
 
 //=============================================================================
 // Object Pool Implementation
@@ -408,16 +456,34 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
     if (config->enable_bio_async && bio_router_is_initialized()) {
         bio_module_info_t bio_info = {
             .module_id = BIO_MODULE_ETHICS,
-            .module_name = "ethics",
+            .module_name = "Ethics_Module",  /* Must match KG entity name */
             .inbox_capacity = 64,
             .user_data = engine
         };
         engine->bio_ctx = bio_router_register_module(&bio_info);
         if (engine->bio_ctx) {
             engine->bio_async_enabled = true;
-            // Register message handlers
-            bio_router_register_handler(engine->bio_ctx, BIO_MSG_ETHICS_EVALUATION_REQUEST, handle_ethics_request);
-            LOG_INFO("Bio-async communication enabled with handlers");
+
+            /* KG-Driven Wiring: Register callback for orchestrator to invoke
+             * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+             * from the KG and invokes this callback with the message types */
+            nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                BIO_MODULE_ETHICS,
+                (void*)ethics_wiring_handler_callback,
+                engine
+            );
+
+            if (cb_result != NIMCP_SUCCESS) {
+                /* Fallback: Direct registration if orchestrator not available
+                 * This ensures backward compatibility with non-KG systems */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(engine->bio_ctx,
+                        BIO_MSG_ETHICS_EVALUATION_REQUEST, handle_ethics_request)
+                );
+                LOG_INFO("Bio-async enabled (legacy direct registration)");
+            } else {
+                LOG_INFO("Bio-async enabled (KG-driven wiring callback registered)");
+            }
         } else {
             LOG_WARN("Bio-async registration failed");
         }

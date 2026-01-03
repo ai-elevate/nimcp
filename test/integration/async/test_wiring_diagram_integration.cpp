@@ -398,3 +398,142 @@ TEST_F(WiringDiagramIntegrationTest, RouterIntegrationWithWiring) {
     // Note: Don't call cleanup on shallow-copied config - memory owned by diagram
 }
 
+//=============================================================================
+// Router-Orchestrator Integration Tests (KG-Based Runtime Module Assembly)
+//=============================================================================
+
+TEST_F(WiringDiagramIntegrationTest, RouterOrchestratorLinking) {
+    // Initially, router should have no orchestrator
+    EXPECT_EQ(bio_router_get_orchestrator(), nullptr)
+        << "Router should start with no orchestrator";
+
+    // Link orchestrator to router
+    EXPECT_EQ(bio_router_set_orchestrator(orch_), NIMCP_SUCCESS)
+        << "Should successfully link orchestrator to router";
+
+    // Now router should return the orchestrator
+    EXPECT_EQ(bio_router_get_orchestrator(), orch_)
+        << "Router should return the linked orchestrator";
+
+    // Unlink (set to NULL)
+    EXPECT_EQ(bio_router_set_orchestrator(nullptr), NIMCP_SUCCESS)
+        << "Should successfully unlink orchestrator";
+
+    EXPECT_EQ(bio_router_get_orchestrator(), nullptr)
+        << "Router should have no orchestrator after unlink";
+}
+
+// Global counter for callback invocation testing
+static std::atomic<int> g_callback_invocation_count{0};
+static std::atomic<int> g_callback_message_count{0};
+
+static int test_wiring_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)ctx;
+    (void)user_data;
+    g_callback_invocation_count++;
+    g_callback_message_count += message_count;
+
+    // Log the message types we received
+    for (uint32_t i = 0; i < message_count; i++) {
+        (void)message_types[i];  // Would normally register handlers here
+    }
+    return 0;
+}
+
+TEST_F(WiringDiagramIntegrationTest, RouterWiringCallbackRegistration) {
+    // Reset counters
+    g_callback_invocation_count = 0;
+    g_callback_message_count = 0;
+
+    // Without orchestrator linked, callback registration should fail
+    nimcp_error_t result = bio_router_register_wiring_callback(
+        BIO_MODULE_ETHICS,
+        (void*)test_wiring_callback,
+        nullptr
+    );
+    EXPECT_NE(result, NIMCP_SUCCESS)
+        << "Should fail without orchestrator";
+
+    // Link orchestrator
+    ASSERT_EQ(bio_router_set_orchestrator(orch_), NIMCP_SUCCESS);
+
+    // Create wiring with handlers for ethics module
+    std::vector<int> msg_types = {
+        BIO_MSG_ETHICS_EVALUATION_REQUEST,
+        BIO_MSG_ETHICS_EVALUATION_RESPONSE
+    };
+    CreateModuleWithHandlers("Ethics_Module", "ethics", msg_types);
+    ASSERT_EQ(wiring_diagram_load_subsystem(wd_, WIRING_SUBSYSTEM_ETHICS), 0);
+
+    // Set wiring diagram on orchestrator
+    ASSERT_EQ(bio_orchestrator_set_wiring_diagram(orch_, wd_), 0);
+
+    // Register the module with orchestrator
+    ASSERT_EQ(RegisterModule(BIO_MODULE_ETHICS, "Ethics_Module",
+                             BIO_MODULE_CATEGORY_COGNITIVE, 1), 0);
+
+    // Now callback registration should succeed
+    result = bio_router_register_wiring_callback(
+        BIO_MODULE_ETHICS,
+        (void*)test_wiring_callback,
+        nullptr
+    );
+    EXPECT_EQ(result, NIMCP_SUCCESS)
+        << "Should succeed with orchestrator linked";
+
+    // Cleanup
+    bio_router_set_orchestrator(nullptr);
+}
+
+TEST_F(WiringDiagramIntegrationTest, WiringCallbackInvokedDuringDiscovery) {
+    // Reset counters
+    g_callback_invocation_count = 0;
+    g_callback_message_count = 0;
+
+    // Link orchestrator and set up wiring
+    ASSERT_EQ(bio_router_set_orchestrator(orch_), NIMCP_SUCCESS);
+
+    // Create wiring with handlers
+    std::vector<int> msg_types = {
+        BIO_MSG_KNOWLEDGE_QUERY,
+        BIO_MSG_BRAIN_STATE_QUERY,
+        BIO_MSG_NEURON_ACTIVATION_REQUEST
+    };
+    CreateModuleWithHandlers("callback_test_module", "core", msg_types);
+    ASSERT_EQ(wiring_diagram_load_subsystem(wd_, WIRING_SUBSYSTEM_CORE), 0);
+    ASSERT_EQ(bio_orchestrator_set_wiring_diagram(orch_, wd_), 0);
+
+    // Register module
+    ASSERT_EQ(RegisterModule(BIO_MODULE_BRAIN, "callback_test_module",
+                             BIO_MODULE_CATEGORY_CORE, 1), 0);
+
+    // Register wiring callback
+    ASSERT_EQ(bio_router_register_wiring_callback(
+        BIO_MODULE_BRAIN,
+        (void*)test_wiring_callback,
+        nullptr
+    ), NIMCP_SUCCESS);
+
+    // Discover wiring first - this populates the module's handler list from KG
+    int discovered = bio_orchestrator_discover_all_wiring(orch_);
+    EXPECT_GE(discovered, 1) << "Should have discovered wiring for at least one module";
+
+    // Invoke handler callbacks (simulates what orchestrator does during start)
+    int invoked = bio_orchestrator_invoke_handler_callbacks(orch_);
+    EXPECT_GE(invoked, 1) << "Should have invoked at least one callback";
+
+    // Verify our callback was invoked
+    EXPECT_GE(g_callback_invocation_count.load(), 1)
+        << "Callback should have been invoked";
+    EXPECT_GE(g_callback_message_count.load(), (int)msg_types.size())
+        << "Callback should have received all message types";
+
+    // Cleanup
+    bio_router_set_orchestrator(nullptr);
+}
+

@@ -554,6 +554,54 @@ const char* bio_module_context_get_name(bio_module_context_t ctx);
  */
 void* bio_module_context_get_user_data(bio_module_context_t ctx);
 
+/*=============================================================================
+ * ORCHESTRATOR INTEGRATION (KG-Based Runtime Module Assembly)
+ *============================================================================*/
+
+/* Forward declaration */
+struct bio_async_orchestrator;
+
+/**
+ * @brief Set orchestrator reference for the router
+ *
+ * WHAT: Associate orchestrator with global router instance
+ * WHY:  Enables modules to access orchestrator for KG-driven registration
+ * HOW:  Store reference in router, accessible via bio_router_get_orchestrator()
+ *
+ * @param orchestrator Orchestrator to associate
+ * @return NIMCP_SUCCESS or error
+ */
+nimcp_error_t bio_router_set_orchestrator(struct bio_async_orchestrator* orchestrator);
+
+/**
+ * @brief Get orchestrator reference from router
+ *
+ * WHAT: Retrieve associated orchestrator for callback registration
+ * WHY:  Modules use this to register KG-driven handler callbacks
+ * HOW:  Return stored orchestrator reference
+ *
+ * @return Orchestrator pointer or NULL if not set
+ */
+struct bio_async_orchestrator* bio_router_get_orchestrator(void);
+
+/**
+ * @brief Register KG-driven handler callback via router
+ *
+ * WHAT: Convenience wrapper for registering wiring callbacks
+ * WHY:  Simplifies module migration to KG-driven pattern
+ * HOW:  Gets orchestrator from router, registers callback
+ *
+ * @param module_id Module ID
+ * @param callback Handler callback function (wiring_handler_callback_t)
+ * @param user_data User data passed to callback
+ * @return NIMCP_SUCCESS or error if orchestrator not set
+ */
+nimcp_error_t bio_router_register_wiring_callback(
+    bio_module_id_t module_id,
+    void* callback,
+    void* user_data
+);
+
 #ifdef __cplusplus
 }
 #endif

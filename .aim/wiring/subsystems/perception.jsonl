@@ -24,3 +24,6 @@
 {"type":"relation","from":"nlp","to":"BIO_MSG_ATTENTION_SHIFT","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_ATTENTION_SHIFT"}
 {"type":"relation","from":"nlp","to":"BIO_MSG_SECURITY_ALERT","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_SECURITY_ALERT"}
 {"type":"relation","from":"nlp","to":"BIO_MSG_SHUTDOWN_REQUEST","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_SHUTDOWN_REQUEST"}
+{"type":"relation","from":"Occipital_Collective_Bridge_Module","to":"BIO_MSG_OCCIPITAL_COLLECTIVE_ATTENTION","relationType":"HANDLES_MESSAGE","message_type":8001}
+{"type":"relation","from":"Occipital_Collective_Bridge_Module","to":"BIO_MSG_OCCIPITAL_COLLECTIVE_FEATURE","relationType":"HANDLES_MESSAGE","message_type":8002}
+{"type":"relation","from":"Occipital_Collective_Bridge_Module","to":"BIO_MSG_OCCIPITAL_COLLECTIVE_STATE_UPDATE","relationType":"HANDLES_MESSAGE","message_type":8003}

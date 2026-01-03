@@ -73,10 +73,12 @@ typedef struct {
  * @brief Add entry to handler map
  *
  * @param msg_type Message type enum (BIO_MSG_*)
- * @param handler Handler function pointer
+ * @param handler_fn Handler function pointer
+ * NOTE: Parameter named handler_fn (not handler) to avoid macro expansion conflict
+ *       with struct field name .handler
  */
-#define HANDLER_MAP_ENTRY(msg_type, handler) \
-    { .message_type = (msg_type), .handler = (handler) },
+#define HANDLER_MAP_ENTRY(msg_type, handler_fn) \
+    { .message_type = (msg_type), .handler = (handler_fn) },
 
 /**
  * @brief End handler map definition

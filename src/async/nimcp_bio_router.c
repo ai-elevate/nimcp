@@ -157,6 +157,9 @@ static struct bio_router_struct* g_router = NULL;
 static nimcp_platform_mutex_t g_router_init_mutex;
 static nimcp_platform_once_t g_router_init_once = NIMCP_PLATFORM_ONCE_INIT;
 
+/* Orchestrator reference for KG-driven wiring callbacks */
+static struct bio_async_orchestrator* g_router_orchestrator = NULL;
+
 /**
  * WHAT: One-time initialization of router init mutex
  * WHY:  Fix TOCTOU race condition in bio_router_init
@@ -2316,6 +2319,61 @@ void bbb_register_emotion_query(void* system, const char* module_name) {
 
     LOG_INFO("bbb_register_emotion_query: registered module '%s' (slot=%u)",
              g_emotion_registrations[slot].module_name, slot);
+}
+
+/*=============================================================================
+ * ORCHESTRATOR INTEGRATION (KG-Based Runtime Module Assembly)
+ *============================================================================*/
+
+nimcp_error_t bio_router_set_orchestrator(struct bio_async_orchestrator* orchestrator) {
+    g_router_orchestrator = orchestrator;
+    if (orchestrator) {
+        LOG_INFO("bio_router_set_orchestrator: orchestrator linked for KG-driven wiring");
+    }
+    return NIMCP_SUCCESS;
+}
+
+struct bio_async_orchestrator* bio_router_get_orchestrator(void) {
+    return g_router_orchestrator;
+}
+
+nimcp_error_t bio_router_register_wiring_callback(
+    bio_module_id_t module_id,
+    void* callback,
+    void* user_data
+) {
+    if (!g_router_orchestrator) {
+        LOG_WARN("bio_router_register_wiring_callback: no orchestrator set");
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    if (!callback) {
+        LOG_WARN("bio_router_register_wiring_callback: NULL callback");
+        return NIMCP_ERROR_INVALID_PARAMETER;
+    }
+
+    /* Include orchestrator header for register function */
+    extern int bio_orchestrator_register_handler_callback(
+        struct bio_async_orchestrator* orchestrator,
+        bio_module_id_t module_id,
+        void* callback,
+        void* user_data
+    );
+
+    int result = bio_orchestrator_register_handler_callback(
+        g_router_orchestrator,
+        module_id,
+        callback,
+        user_data
+    );
+
+    if (result == 0) {
+        LOG_DEBUG("bio_router_register_wiring_callback: registered callback for module %u",
+                  (unsigned)module_id);
+        return NIMCP_SUCCESS;
+    }
+
+    return NIMCP_ERROR_OPERATION_FAILED;
 }
 
 /*=============================================================================

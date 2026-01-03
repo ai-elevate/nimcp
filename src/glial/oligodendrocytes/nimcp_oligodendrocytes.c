@@ -22,6 +22,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
@@ -177,6 +178,59 @@ static nimcp_error_t handle_glial_sync_message(
     return result;
 }
 
+//=============================================================================
+// KG-Driven Wiring Callback
+//=============================================================================
+
+/**
+ * @brief Wiring callback for KG-driven handler registration
+ *
+ * Called by the orchestrator with discovered message types from the knowledge graph.
+ * Registers handlers based on message types discovered at runtime.
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of discovered message types
+ * @param message_count Number of message types
+ * @param user_data User-provided context (unused)
+ * @return 0 on success, -1 on error
+ */
+static int oligodendrocyte_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_OLIGODENDROCYTE_MYELINATE:
+                bio_router_register_handler(ctx, message_types[i], handle_myelination_message);
+                registered++;
+                break;
+            case BIO_MSG_METABOLIC_DEMAND:
+                bio_router_register_handler(ctx, message_types[i], handle_metabolic_demand_message);
+                registered++;
+                break;
+            case BIO_MSG_METABOLIC_SUPPLY:
+                bio_router_register_handler(ctx, message_types[i], handle_metabolic_supply_message);
+                registered++;
+                break;
+            case BIO_MSG_GLIAL_SYNC_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_glial_sync_message);
+                registered++;
+                break;
+            default:
+                LOG_MODULE_DEBUG("OLIGODENDROCYTE", "Unknown message type %d in wiring callback", message_types[i]);
+                break;
+        }
+    }
+
+    LOG_MODULE_INFO("OLIGODENDROCYTE", "KG-driven wiring callback registered %d handlers", registered);
+    return (registered > 0) ? 0 : -1;
+}
+
 /**
  * @brief Internal initialization function called by nimcp_platform_once
  *
@@ -211,43 +265,63 @@ static void oligodendrocyte_bio_do_init(void)
         return;
     }
 
-    // Register message handlers
-    nimcp_error_t result;
+    // Try KG-driven wiring callback registration first
+    nimcp_error_t result = bio_router_register_wiring_callback(
+        BIO_MODULE_OLIGODENDROCYTE,
+        (void*)oligodendrocyte_wiring_handler_callback,
+        NULL
+    );
 
-    result = bio_router_register_handler(g_oligo_bio_ctx,
-                                          BIO_MSG_OLIGODENDROCYTE_MYELINATE,
-                                          handle_myelination_message);
-    if (result != NIMCP_SUCCESS) {
-        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register myelination handler: %d", result);
-        goto cleanup;
-    }
+    if (result == NIMCP_SUCCESS) {
+        LOG_MODULE_INFO("OLIGODENDROCYTE", "KG-driven wiring callback registered successfully");
+    } else {
+        // Fallback to legacy handler registration
+        LOG_MODULE_INFO("OLIGODENDROCYTE", "Falling back to legacy handler registration");
 
-    result = bio_router_register_handler(g_oligo_bio_ctx,
-                                          BIO_MSG_METABOLIC_DEMAND,
-                                          handle_metabolic_demand_message);
-    if (result != NIMCP_SUCCESS) {
-        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register metabolic demand handler: %d", result);
-        goto cleanup;
-    }
+        LEGACY_HANDLER_REGISTRATION(
+            result = bio_router_register_handler(g_oligo_bio_ctx,
+                                                  BIO_MSG_OLIGODENDROCYTE_MYELINATE,
+                                                  handle_myelination_message)
+        );
+        if (result != NIMCP_SUCCESS) {
+            LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register myelination handler: %d", result);
+            goto cleanup;
+        }
 
-    result = bio_router_register_handler(g_oligo_bio_ctx,
-                                          BIO_MSG_METABOLIC_SUPPLY,
-                                          handle_metabolic_supply_message);
-    if (result != NIMCP_SUCCESS) {
-        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register metabolic supply handler: %d", result);
-        goto cleanup;
-    }
+        LEGACY_HANDLER_REGISTRATION(
+            result = bio_router_register_handler(g_oligo_bio_ctx,
+                                                  BIO_MSG_METABOLIC_DEMAND,
+                                                  handle_metabolic_demand_message)
+        );
+        if (result != NIMCP_SUCCESS) {
+            LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register metabolic demand handler: %d", result);
+            goto cleanup;
+        }
 
-    result = bio_router_register_handler(g_oligo_bio_ctx,
-                                          BIO_MSG_GLIAL_SYNC_REQUEST,
-                                          handle_glial_sync_message);
-    if (result != NIMCP_SUCCESS) {
-        LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register glial sync handler: %d", result);
-        goto cleanup;
+        LEGACY_HANDLER_REGISTRATION(
+            result = bio_router_register_handler(g_oligo_bio_ctx,
+                                                  BIO_MSG_METABOLIC_SUPPLY,
+                                                  handle_metabolic_supply_message)
+        );
+        if (result != NIMCP_SUCCESS) {
+            LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register metabolic supply handler: %d", result);
+            goto cleanup;
+        }
+
+        LEGACY_HANDLER_REGISTRATION(
+            result = bio_router_register_handler(g_oligo_bio_ctx,
+                                                  BIO_MSG_GLIAL_SYNC_REQUEST,
+                                                  handle_glial_sync_message)
+        );
+        if (result != NIMCP_SUCCESS) {
+            LOG_MODULE_ERROR("OLIGODENDROCYTE", "Failed to register glial sync handler: %d", result);
+            goto cleanup;
+        }
+
+        LOG_MODULE_INFO("OLIGODENDROCYTE", "Bio-async integration initialized with legacy handlers (4 handlers registered)");
     }
 
     g_oligo_bio_init_result = NIMCP_SUCCESS;
-    LOG_MODULE_INFO("OLIGODENDROCYTE", "Bio-async integration initialized successfully (4 handlers registered)");
     return;
 
 cleanup:

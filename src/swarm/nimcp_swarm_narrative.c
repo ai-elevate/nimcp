@@ -13,6 +13,7 @@
 #include "swarm/nimcp_swarm_narrative.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
@@ -201,6 +202,56 @@ void swarm_narrative_destroy(swarm_narrative_t* sn)
     LOG_INFO("Swarm narrative system destroyed");
 }
 
+/* ============================================================================
+ * KG-Driven Wiring Callback
+ * ============================================================================ */
+
+/**
+ * @brief Handler map for KG-driven wiring
+ */
+DEFINE_HANDLER_MAP_BEGIN(swarm_narrative)
+    HANDLER_MAP_ENTRY(BIO_MSG_NARRATIVE_SHARED, (bio_message_handler_t)handle_narrative_shared)
+DEFINE_HANDLER_MAP_END()
+
+/**
+ * @brief KG-driven wiring callback for swarm narrative module
+ *
+ * WHAT: Register message handlers based on KG-discovered wiring
+ * WHY:  Enable dynamic handler registration from knowledge graph
+ * HOW:  Iterate discovered message types and register matching handlers
+ *
+ * @param bio_ctx Bio-async module context
+ * @param message_types Array of message types discovered from KG
+ * @param message_count Number of message types in array
+ * @param user_data User data (swarm_narrative_t pointer)
+ * @return 0 on success, -1 on failure
+ */
+static int swarm_narrative_wiring_handler_callback(
+    bio_module_context_t bio_ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;  /* swarm_narrative_t* context available if needed */
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        for (size_t j = 0; j < HANDLER_MAP_SIZE(swarm_narrative); j++) {
+            if (g_swarm_narrative_handler_map[j].message_type == message_types[i]) {
+                bio_router_register_handler(
+                    bio_ctx,
+                    message_types[i],
+                    g_swarm_narrative_handler_map[j].handler
+                );
+                registered++;
+                break;
+            }
+        }
+    }
+
+    return (registered > 0) ? 0 : -1;
+}
+
 nimcp_result_t swarm_narrative_init(swarm_narrative_t* sn, void* bio_ctx)
 {
     /* WHAT: Initialize bio-async integration
@@ -228,7 +279,7 @@ nimcp_result_t swarm_narrative_init(swarm_narrative_t* sn, void* bio_ctx)
     if (sn->bio_async_enabled && bio_router_is_initialized()) {
         /* Register with bio-router */
         bio_module_info_t module_info = {
-            .module_id = BIO_MODULE_SWARM_MEMORY,
+            .module_id = BIO_MODULE_SWARM_NARRATIVE,
             .module_name = "swarm_narrative",
             .inbox_capacity = NIMCP_INBOX_CAPACITY_LARGE,
             .user_data = sn
@@ -238,9 +289,23 @@ nimcp_result_t swarm_narrative_init(swarm_narrative_t* sn, void* bio_ctx)
         if (sn->bio_module) {
             LOG_INFO("Registered with bio-router");
 
-            /* Register message handlers */
-            bio_router_register_handler(sn->bio_module, BIO_MSG_NARRATIVE_SHARED,
-                (bio_message_handler_t)handle_narrative_shared);
+            /* Try KG-driven wiring callback registration */
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_SWARM_NARRATIVE,
+                (void*)swarm_narrative_wiring_handler_callback,
+                sn
+            );
+
+            if (wiring_result != NIMCP_SUCCESS) {
+                /* Fallback to legacy hardcoded registration */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(sn->bio_module, BIO_MSG_NARRATIVE_SHARED,
+                        (bio_message_handler_t)handle_narrative_shared)
+                );
+                LOG_DEBUG("Swarm narrative using legacy handler registration (wiring callback unavailable)");
+            } else {
+                LOG_DEBUG("Swarm narrative registered KG-driven wiring callback");
+            }
         } else {
             LOG_WARN("Failed to register with bio-router");
         }

@@ -204,6 +204,24 @@ int bio_orchestrator_start(bio_async_orchestrator_t* orchestrator) {
     orchestrator->state = BIO_ORCHESTRATOR_RUNNING;
     orchestrator->start_time = nimcp_time_get_ms();
 
+    /* Discover wiring from KG if wiring diagram is set */
+    if (orchestrator->wiring_diagram) {
+        nimcp_platform_mutex_unlock(orchestrator->mutex);
+
+        int discovered = bio_orchestrator_discover_all_wiring(orchestrator);
+        if (orchestrator->config.enable_logging && discovered > 0) {
+            NIMCP_LOGGING_INFO("Discovered wiring for %d modules from KG", discovered);
+        }
+
+        /* Invoke handler callbacks with discovered message types */
+        int invoked = bio_orchestrator_invoke_handler_callbacks(orchestrator);
+        if (orchestrator->config.enable_logging && invoked > 0) {
+            NIMCP_LOGGING_INFO("Invoked handler callbacks for %d modules", invoked);
+        }
+
+        nimcp_platform_mutex_lock(orchestrator->mutex);
+    }
+
     if (orchestrator->config.enable_logging) {
         NIMCP_LOGGING_INFO("Bio-async orchestrator started");
     }

@@ -12,6 +12,7 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <math.h>
 #include <string.h>
 
@@ -1274,6 +1275,56 @@ static nimcp_error_t flocking_bioasync_handler(
     return NIMCP_SUCCESS;
 }
 
+/* ========================================================================
+ * KG-Driven Wiring Callback
+ * ======================================================================== */
+
+/**
+ * @brief Handler map for KG-driven wiring
+ */
+DEFINE_HANDLER_MAP_BEGIN(flocking)
+    HANDLER_MAP_ENTRY(BIO_MSG_BRAIN_STATE_QUERY, flocking_bioasync_handler)
+DEFINE_HANDLER_MAP_END()
+
+/**
+ * @brief KG-driven wiring callback for flocking module
+ *
+ * WHAT: Register message handlers based on KG-discovered wiring
+ * WHY:  Enable dynamic handler registration from knowledge graph
+ * HOW:  Iterate discovered message types and register matching handlers
+ *
+ * @param bio_ctx Bio-async module context
+ * @param message_types Array of message types discovered from KG
+ * @param message_count Number of message types in array
+ * @param user_data User data (flocking engine pointer)
+ * @return 0 on success, -1 on failure
+ */
+static int flocking_wiring_handler_callback(
+    bio_module_context_t bio_ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;  // Engine context available if needed
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        for (size_t j = 0; j < HANDLER_MAP_SIZE(flocking); j++) {
+            if (g_flocking_handler_map[j].message_type == message_types[i]) {
+                bio_router_register_handler(
+                    bio_ctx,
+                    message_types[i],
+                    g_flocking_handler_map[j].handler
+                );
+                registered++;
+                break;
+            }
+        }
+    }
+
+    return (registered > 0) ? 0 : -1;
+}
+
 int nimcp_flocking_register_bioasync(nimcp_flocking_engine_t *engine,
                                      bio_router_t *router) {
     if (!engine || !router) return -1;
@@ -1282,7 +1333,7 @@ int nimcp_flocking_register_bioasync(nimcp_flocking_engine_t *engine,
 
     // Create module info for registration
     bio_module_info_t info = {
-        .module_id = BIO_MODULE_UNKNOWN,  // Will be assigned by router
+        .module_id = BIO_MODULE_SWARM_FLOCKING,
         .module_name = "swarm_flocking",
         .inbox_capacity = 0,  // Use default
         .user_data = engine
@@ -1292,8 +1343,23 @@ int nimcp_flocking_register_bioasync(nimcp_flocking_engine_t *engine,
     engine->bio_ctx = bio_router_register_module(&info);
 
     if (engine->bio_ctx != NULL) {
-        // Register handler for brain state queries (used as generic swarm message)
-        bio_router_register_handler(engine->bio_ctx, BIO_MSG_BRAIN_STATE_QUERY, flocking_bioasync_handler);
+        // Try KG-driven wiring callback registration
+        nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+            BIO_MODULE_SWARM_FLOCKING,
+            (void*)flocking_wiring_handler_callback,
+            engine
+        );
+
+        if (wiring_result != NIMCP_SUCCESS) {
+            // Fallback to legacy hardcoded registration
+            LEGACY_HANDLER_REGISTRATION(
+                bio_router_register_handler(engine->bio_ctx, BIO_MSG_BRAIN_STATE_QUERY, flocking_bioasync_handler)
+            );
+            LOG_DEBUG("Flocking using legacy handler registration (wiring callback unavailable)");
+        } else {
+            LOG_DEBUG("Flocking registered KG-driven wiring callback");
+        }
+
         engine->bio_async_enabled = true;
         LOG_INFO("Flocking engine registered with bio-async router");
     } else {

@@ -1,0 +1,10 @@
+# Security subsystem wiring - security monitoring and threat detection
+# Handles pattern detection, security levels, and threat response
+{"type":"entity","name":"Security_Level_Module","entityType":"SecurityModule","subsystem":"security","min_tier":0,"enabled":true}
+{"type":"entity","name":"Pattern_Db_Module","entityType":"SecurityModule","subsystem":"security","min_tier":0,"enabled":true}
+{"type":"entity","name":"Blood_Brain_Barrier_Module","entityType":"SecurityModule","subsystem":"security","min_tier":0,"enabled":true}
+{"type":"relation","from":"Security_Level_Module","to":"BIO_MSG_SECURITY_EVENT","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_SECURITY_EVENT"}
+{"type":"relation","from":"Security_Level_Module","to":"BIO_MSG_HEALTH_CHECK","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_HEALTH_CHECK"}
+{"type":"relation","from":"Pattern_Db_Module","to":"BIO_MSG_SECURITY_EVENT","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_SECURITY_EVENT"}
+{"type":"relation","from":"Pattern_Db_Module","to":"BIO_MSG_SECURITY_THREAT_DETECTED","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_SECURITY_THREAT_DETECTED"}
+{"type":"relation","from":"Pattern_Db_Module","to":"BIO_MSG_SECURITY_POLICY_UPDATE","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_SECURITY_POLICY_UPDATE"}

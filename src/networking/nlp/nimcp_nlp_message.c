@@ -38,6 +38,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -142,6 +143,75 @@ static nimcp_error_t msg_bio_handler(
         default:
             LOG_MODULE_TRACE(MODULE_NAME, "Unhandled bio message type: 0x%04x", msg_type);
             break;
+    }
+
+    return 0;
+}
+
+//=============================================================================
+// KG-Driven Wiring Callback (Phase 2: KG-Based Runtime Module Assembly)
+//=============================================================================
+
+/**
+ * @brief KG-driven wiring handler callback for NLP message module
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data Module context pointer
+ * @return 0 on success, -1 on error
+ */
+static int msg_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    (void)user_data;
+
+    LOG_MODULE_INFO(MODULE_NAME,
+        "msg_wiring_handler_callback: registering %u handlers from KG",
+        message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_HEALTH_CHECK:
+                bio_router_register_handler(ctx, message_types[i], msg_bio_handler);
+                LOG_MODULE_DEBUG(MODULE_NAME,
+                    "  Registered handler for BIO_MSG_HEALTH_CHECK");
+                break;
+
+            case BIO_MSG_ATTENTION_SHIFT:
+                bio_router_register_handler(ctx, message_types[i], msg_bio_handler);
+                LOG_MODULE_DEBUG(MODULE_NAME,
+                    "  Registered handler for BIO_MSG_ATTENTION_SHIFT");
+                break;
+
+            case BIO_MSG_SECURITY_ALERT:
+                bio_router_register_handler(ctx, message_types[i], msg_bio_handler);
+                LOG_MODULE_DEBUG(MODULE_NAME,
+                    "  Registered handler for BIO_MSG_SECURITY_ALERT");
+                break;
+
+            case BIO_MSG_SHUTDOWN_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], msg_bio_handler);
+                LOG_MODULE_DEBUG(MODULE_NAME,
+                    "  Registered handler for BIO_MSG_SHUTDOWN_REQUEST");
+                break;
+
+            default:
+                LOG_MODULE_DEBUG(MODULE_NAME,
+                    "  Unknown message type 0x%04X - skipping", message_types[i]);
+                break;
+        }
     }
 
     return 0;
@@ -306,15 +376,40 @@ static void ensure_context_initialized(void) {
 
             // Register handlers for incoming messages
             if (g_msg_bio_ctx) {
-                bio_router_register_handler(g_msg_bio_ctx, BIO_MSG_HEALTH_CHECK,
-                                            msg_bio_handler);
-                bio_router_register_handler(g_msg_bio_ctx, BIO_MSG_ATTENTION_SHIFT,
-                                            msg_bio_handler);
-                bio_router_register_handler(g_msg_bio_ctx, BIO_MSG_SECURITY_ALERT,
-                                            msg_bio_handler);
-                bio_router_register_handler(g_msg_bio_ctx, BIO_MSG_SHUTDOWN_REQUEST,
-                                            msg_bio_handler);
-                LOG_MODULE_DEBUG(MODULE_NAME, "Bio-async handlers registered");
+                /* KG-Driven Wiring: Register callback for orchestrator to invoke
+                 * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+                 * from the KG and invokes this callback with the message types */
+                nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                    BIO_MODULE_NLP,
+                    (void*)msg_wiring_handler_callback,
+                    NULL
+                );
+
+                if (cb_result != NIMCP_SUCCESS) {
+                    /* Fallback: Direct registration if orchestrator not available
+                     * This ensures backward compatibility with non-KG systems */
+                    LEGACY_HANDLER_REGISTRATION(
+                        bio_router_register_handler(g_msg_bio_ctx, BIO_MSG_HEALTH_CHECK,
+                                                    msg_bio_handler)
+                    );
+                    LEGACY_HANDLER_REGISTRATION(
+                        bio_router_register_handler(g_msg_bio_ctx, BIO_MSG_ATTENTION_SHIFT,
+                                                    msg_bio_handler)
+                    );
+                    LEGACY_HANDLER_REGISTRATION(
+                        bio_router_register_handler(g_msg_bio_ctx, BIO_MSG_SECURITY_ALERT,
+                                                    msg_bio_handler)
+                    );
+                    LEGACY_HANDLER_REGISTRATION(
+                        bio_router_register_handler(g_msg_bio_ctx, BIO_MSG_SHUTDOWN_REQUEST,
+                                                    msg_bio_handler)
+                    );
+                    LOG_MODULE_DEBUG(MODULE_NAME,
+                        "Bio-async handlers registered (legacy direct registration)");
+                } else {
+                    LOG_MODULE_DEBUG(MODULE_NAME,
+                        "Bio-async handlers registered (KG-driven wiring callback)");
+                }
             }
         }
 

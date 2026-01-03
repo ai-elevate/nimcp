@@ -13,6 +13,7 @@
 #include "swarm/nimcp_gossip_beliefs.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
@@ -435,6 +436,56 @@ void gossip_beliefs_destroy(gossip_beliefs_t* gb)
     LOG_INFO("Gossip beliefs system destroyed");
 }
 
+/* ============================================================================
+ * KG-Driven Wiring Callback
+ * ============================================================================ */
+
+/**
+ * @brief Handler map for KG-driven wiring
+ */
+DEFINE_HANDLER_MAP_BEGIN(gossip_beliefs)
+    HANDLER_MAP_ENTRY(BIO_MSG_GOSSIP_SPREAD, (bio_message_handler_t)handle_gossip_spread)
+DEFINE_HANDLER_MAP_END()
+
+/**
+ * @brief KG-driven wiring callback for gossip beliefs module
+ *
+ * WHAT: Register message handlers based on KG-discovered wiring
+ * WHY:  Enable dynamic handler registration from knowledge graph
+ * HOW:  Iterate discovered message types and register matching handlers
+ *
+ * @param bio_ctx Bio-async module context
+ * @param message_types Array of message types discovered from KG
+ * @param message_count Number of message types in array
+ * @param user_data User data (gossip_beliefs_t pointer)
+ * @return 0 on success, -1 on failure
+ */
+static int gossip_beliefs_wiring_handler_callback(
+    bio_module_context_t bio_ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    (void)user_data;  /* gossip_beliefs_t* context available if needed */
+
+    int registered = 0;
+    for (uint32_t i = 0; i < message_count; i++) {
+        for (size_t j = 0; j < HANDLER_MAP_SIZE(gossip_beliefs); j++) {
+            if (g_gossip_beliefs_handler_map[j].message_type == message_types[i]) {
+                bio_router_register_handler(
+                    bio_ctx,
+                    message_types[i],
+                    g_gossip_beliefs_handler_map[j].handler
+                );
+                registered++;
+                break;
+            }
+        }
+    }
+
+    return (registered > 0) ? 0 : -1;
+}
+
 nimcp_result_t gossip_beliefs_init(gossip_beliefs_t* gb, void* bio_ctx)
 {
     /* WHAT: Initialize bio-async integration
@@ -462,7 +513,7 @@ nimcp_result_t gossip_beliefs_init(gossip_beliefs_t* gb, void* bio_ctx)
     if (gb->bio_async_enabled && bio_router_is_initialized()) {
         /* Register with bio-router */
         bio_module_info_t module_info = {
-            .module_id = BIO_MODULE_SWARM_MEMORY,
+            .module_id = BIO_MODULE_GOSSIP_BELIEFS,
             .module_name = "gossip_beliefs",
             .inbox_capacity = NIMCP_INBOX_CAPACITY_XLARGE,
             .user_data = gb
@@ -472,9 +523,23 @@ nimcp_result_t gossip_beliefs_init(gossip_beliefs_t* gb, void* bio_ctx)
         if (gb->bio_module) {
             LOG_INFO("Registered with bio-router");
 
-            /* Register message handlers */
-            bio_router_register_handler(gb->bio_module, BIO_MSG_GOSSIP_SPREAD,
-                (bio_message_handler_t)handle_gossip_spread);
+            /* Try KG-driven wiring callback registration */
+            nimcp_error_t wiring_result = bio_router_register_wiring_callback(
+                BIO_MODULE_GOSSIP_BELIEFS,
+                (void*)gossip_beliefs_wiring_handler_callback,
+                gb
+            );
+
+            if (wiring_result != NIMCP_SUCCESS) {
+                /* Fallback to legacy hardcoded registration */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(gb->bio_module, BIO_MSG_GOSSIP_SPREAD,
+                        (bio_message_handler_t)handle_gossip_spread)
+                );
+                LOG_DEBUG("Gossip beliefs using legacy handler registration (wiring callback unavailable)");
+            } else {
+                LOG_DEBUG("Gossip beliefs registered KG-driven wiring callback");
+            }
         } else {
             LOG_WARN("Failed to register with bio-router");
         }

@@ -95,6 +95,10 @@ bool nimcp_brain_factory_init_bio_async_orchestrator_subsystem(brain_t brain) {
     brain->bio_async_orchestrator = orch;
     brain->bio_async_orchestrator_enabled = true;
 
+    /* Link orchestrator to router for KG-driven wiring callbacks */
+    extern nimcp_error_t bio_router_set_orchestrator(struct bio_async_orchestrator*);
+    bio_router_set_orchestrator(orch);
+
     /* Log success */
     bio_orchestrator_stats_t stats;
     if (bio_orchestrator_get_stats(orch, &stats) == 0) {

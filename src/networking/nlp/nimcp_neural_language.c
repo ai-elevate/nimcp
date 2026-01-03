@@ -20,6 +20,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -568,6 +569,69 @@ static nimcp_error_t nlang_bio_handler(const void* msg, size_t msg_size,
     return NIMCP_SUCCESS;
 }
 
+//=============================================================================
+// KG-Driven Wiring Callback (Phase 2: KG-Based Runtime Module Assembly)
+//=============================================================================
+
+/**
+ * @brief KG-driven wiring handler callback for neural language module
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data Module context pointer
+ * @return 0 on success, -1 on error
+ */
+static int nlang_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    (void)user_data;
+
+    NIMCP_LOGGING_INFO(NLANG_MODULE,
+        "nlang_wiring_handler_callback: registering %u handlers from KG",
+        message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_NLP_NEURAL_ENCODE_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], nlang_bio_handler);
+                NIMCP_LOGGING_DEBUG(NLANG_MODULE,
+                    "  Registered handler for BIO_MSG_NLP_NEURAL_ENCODE_REQUEST");
+                break;
+
+            case BIO_MSG_NLP_NEURAL_DECODE_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], nlang_bio_handler);
+                NIMCP_LOGGING_DEBUG(NLANG_MODULE,
+                    "  Registered handler for BIO_MSG_NLP_NEURAL_DECODE_REQUEST");
+                break;
+
+            case BIO_MSG_ATTENTION_SHIFT:
+                bio_router_register_handler(ctx, message_types[i], nlang_bio_handler);
+                NIMCP_LOGGING_DEBUG(NLANG_MODULE,
+                    "  Registered handler for BIO_MSG_ATTENTION_SHIFT");
+                break;
+
+            default:
+                NIMCP_LOGGING_DEBUG(NLANG_MODULE,
+                    "  Unknown message type 0x%04X - skipping", message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
+
 void nlang_context_init(nlang_shared_context_t* ctx) {
     if (!ctx) return;
     memset(ctx, 0, sizeof(nlang_shared_context_t));
@@ -588,16 +652,39 @@ void nlang_context_init(nlang_shared_context_t* ctx) {
             g_nlang_bio_ctx = bio_router_register_module(&bio_info);
 
             if (g_nlang_bio_ctx) {
-                // Register handlers for neural language messages
-                bio_router_register_handler(g_nlang_bio_ctx,
-                    BIO_MSG_NLP_NEURAL_ENCODE_REQUEST, nlang_bio_handler);
-                bio_router_register_handler(g_nlang_bio_ctx,
-                    BIO_MSG_NLP_NEURAL_DECODE_REQUEST, nlang_bio_handler);
-                bio_router_register_handler(g_nlang_bio_ctx,
-                    BIO_MSG_ATTENTION_SHIFT, nlang_bio_handler);
+                /* KG-Driven Wiring: Register callback for orchestrator to invoke
+                 * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+                 * from the KG and invokes this callback with the message types */
+                nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                    BIO_MODULE_NLP,
+                    (void*)nlang_wiring_handler_callback,
+                    NULL
+                );
 
-                NIMCP_LOGGING_INFO(NLANG_MODULE,
-                    "Registered with bio-router as module 0x%04X", BIO_MODULE_NLP);
+                if (cb_result != NIMCP_SUCCESS) {
+                    /* Fallback: Direct registration if orchestrator not available
+                     * This ensures backward compatibility with non-KG systems */
+                    LEGACY_HANDLER_REGISTRATION(
+                        bio_router_register_handler(g_nlang_bio_ctx,
+                            BIO_MSG_NLP_NEURAL_ENCODE_REQUEST, nlang_bio_handler)
+                    );
+                    LEGACY_HANDLER_REGISTRATION(
+                        bio_router_register_handler(g_nlang_bio_ctx,
+                            BIO_MSG_NLP_NEURAL_DECODE_REQUEST, nlang_bio_handler)
+                    );
+                    LEGACY_HANDLER_REGISTRATION(
+                        bio_router_register_handler(g_nlang_bio_ctx,
+                            BIO_MSG_ATTENTION_SHIFT, nlang_bio_handler)
+                    );
+
+                    NIMCP_LOGGING_INFO(NLANG_MODULE,
+                        "Registered with bio-router as module 0x%04X (legacy direct registration)",
+                        BIO_MODULE_NLP);
+                } else {
+                    NIMCP_LOGGING_INFO(NLANG_MODULE,
+                        "Registered with bio-router as module 0x%04X (KG-driven wiring callback)",
+                        BIO_MODULE_NLP);
+                }
             }
         }
 

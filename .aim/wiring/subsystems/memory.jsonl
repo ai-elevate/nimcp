@@ -7,3 +7,12 @@
 {"type":"relation","from":"Working_Memory","to":"Episodic_Memory","relationType":"HANDLES_MESSAGE","message_type":"MEMORY_ENCODE"}
 {"type":"relation","from":"Episodic_Memory","to":"Semantic_Memory","relationType":"HANDLES_MESSAGE","message_type":"MEMORY_CONSOLIDATE"}
 {"type":"relation","from":"Consolidation","to":"Episodic_Memory","relationType":"HANDLES_MESSAGE","message_type":"SLEEP_REPLAY"}
+{"type":"relation","from":"Working_Memory_Module","to":"BIO_MSG_WORKING_MEMORY_STORE","relationType":"HANDLES_MESSAGE","message_type":2001}
+{"type":"relation","from":"Working_Memory_Module","to":"BIO_MSG_WORKING_MEMORY_RETRIEVE","relationType":"HANDLES_MESSAGE","message_type":2002}
+{"type":"relation","from":"Working_Memory_Module","to":"BIO_MSG_NEUROMODULATOR_RELEASE","relationType":"HANDLES_MESSAGE","message_type":2003}
+{"type":"relation","from":"Semantic_Memory_Module","to":"BIO_MSG_KNOWLEDGE_QUERY","relationType":"HANDLES_MESSAGE","message_type":1001}
+{"type":"relation","from":"Wm_Transfer_Module","to":"BIO_MSG_WORKING_MEMORY_STORE","relationType":"HANDLES_MESSAGE","message_type":2001}
+{"type":"relation","from":"Engram_Module","to":"BIO_MSG_WORKING_MEMORY_RETRIEVE","relationType":"HANDLES_MESSAGE","message_type":2002}
+{"type":"relation","from":"Systems_Consolidation_Module","to":"BIO_MSG_CONSOLIDATION_TRIGGER","relationType":"HANDLES_MESSAGE","message_type":2004}
+{"type":"relation","from":"Consolidation_Module","to":"BIO_MSG_CONSOLIDATION_TRIGGER","relationType":"HANDLES_MESSAGE","message_type":2004}
+{"type":"relation","from":"Autobiographical_Memory_Module","to":"BIO_MSG_WORKING_MEMORY_RETRIEVE","relationType":"HANDLES_MESSAGE","message_type":2002}

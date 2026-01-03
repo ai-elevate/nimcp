@@ -20,6 +20,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "async/nimcp_wiring_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -241,6 +242,62 @@ static nimcp_error_t handle_inhibition_check(
     nimcp_bio_promise_t response_promise, void* user_data);
 
 /*=============================================================================
+ * KG-DRIVEN WIRING CALLBACK
+ *===========================================================================*/
+
+/**
+ * @brief KG-driven wiring handler callback
+ *
+ * WHAT: Register message handlers based on discovered wiring from KG
+ * WHY:  Enables runtime assembly - module discovers its handlers from KG
+ * HOW:  Orchestrator invokes this with message types from HANDLES_MESSAGE relations
+ *
+ * @param ctx Bio-async module context
+ * @param message_types Array of message types to handle (from KG)
+ * @param message_count Number of message types
+ * @param user_data Prefrontal adapter pointer
+ * @return 0 on success, -1 on error
+ */
+static int prefrontal_wiring_handler_callback(
+    bio_module_context_t ctx,
+    const bio_message_type_t* message_types,
+    uint32_t message_count,
+    void* user_data
+) {
+    if (!ctx || !message_types || message_count == 0) {
+        return 0;  /* No handlers to register */
+    }
+
+    LOG_INFO("[%s] prefrontal_wiring_handler_callback: registering %u handlers from KG",
+             PFC_LOG_MODULE, message_count);
+
+    for (uint32_t i = 0; i < message_count; i++) {
+        switch (message_types[i]) {
+            case BIO_MSG_GOAL_EVAL_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_goal_eval_request);
+                LOG_DEBUG("[%s]   Registered handler for BIO_MSG_GOAL_EVAL_REQUEST", PFC_LOG_MODULE);
+                break;
+
+            case BIO_MSG_DECISION_REQUEST:
+                bio_router_register_handler(ctx, message_types[i], handle_decision_request);
+                LOG_DEBUG("[%s]   Registered handler for BIO_MSG_DECISION_REQUEST", PFC_LOG_MODULE);
+                break;
+
+            case BIO_MSG_INHIBITION_CHECK:
+                bio_router_register_handler(ctx, message_types[i], handle_inhibition_check);
+                LOG_DEBUG("[%s]   Registered handler for BIO_MSG_INHIBITION_CHECK", PFC_LOG_MODULE);
+                break;
+
+            default:
+                LOG_DEBUG("[%s]   Unknown message type %u - skipping", PFC_LOG_MODULE, message_types[i]);
+                break;
+        }
+    }
+
+    return 0;
+}
+
+/*=============================================================================
  * LIFECYCLE FUNCTIONS
  *===========================================================================*/
 
@@ -393,15 +450,34 @@ prefrontal_adapter_t* prefrontal_create(const prefrontal_config_t* config) {
 
         adapter->bio_ctx = bio_router_register_module(&bio_info);
         if (adapter->bio_ctx) {
-            /* Register message handlers */
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_GOAL_EVAL_REQUEST, handle_goal_eval_request);
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_DECISION_REQUEST, handle_decision_request);
-            bio_router_register_handler(adapter->bio_ctx,
-                BIO_MSG_INHIBITION_CHECK, handle_inhibition_check);
+            /* KG-Driven Wiring: Register callback for orchestrator to invoke
+             * When orchestrator starts, it discovers HANDLES_MESSAGE relations
+             * from the KG and invokes this callback with the message types */
+            nimcp_error_t cb_result = bio_router_register_wiring_callback(
+                BIO_MODULE_PREFRONTAL,
+                (void*)prefrontal_wiring_handler_callback,
+                adapter
+            );
 
-            LOG_INFO("[%s] Bio-async handlers registered successfully", PFC_LOG_MODULE);
+            if (cb_result != NIMCP_SUCCESS) {
+                /* Fallback: Direct registration if orchestrator not available
+                 * This ensures backward compatibility with non-KG systems */
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_GOAL_EVAL_REQUEST, handle_goal_eval_request)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_DECISION_REQUEST, handle_decision_request)
+                );
+                LEGACY_HANDLER_REGISTRATION(
+                    bio_router_register_handler(adapter->bio_ctx,
+                        BIO_MSG_INHIBITION_CHECK, handle_inhibition_check)
+                );
+                LOG_INFO("[%s] Bio-async enabled (legacy direct registration)", PFC_LOG_MODULE);
+            } else {
+                LOG_INFO("[%s] Bio-async enabled (KG-driven wiring callback registered)", PFC_LOG_MODULE);
+            }
         } else {
             LOG_WARNING("[%s] Failed to register with bio-async router", PFC_LOG_MODULE);
         }

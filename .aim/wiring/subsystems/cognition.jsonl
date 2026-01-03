@@ -57,3 +57,12 @@
 {"type":"relation","from":"executive","to":"BIO_MSG_ATTENTION_SHIFT","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_ATTENTION_SHIFT"}
 {"type":"relation","from":"executive","to":"BIO_MSG_TYPE_PORTIA_TIER_CHANGE","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_TYPE_PORTIA_TIER_CHANGE"}
 {"type":"relation","from":"executive","to":"BIO_MSG_TYPE_PORTIA_DEGRADATION_EVENT","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_TYPE_PORTIA_DEGRADATION_EVENT"}
+{"type":"relation","from":"Knowledge_Module","to":"BIO_MSG_KNOWLEDGE_QUERY","relationType":"HANDLES_MESSAGE","message_type":1001}
+{"type":"relation","from":"Introspection_Module","to":"BIO_MSG_INTROSPECTION_QUERY","relationType":"HANDLES_MESSAGE","message_type":1002}
+{"type":"relation","from":"Reasoning_Integration_Module","to":"BIO_MSG_KNOWLEDGE_QUERY","relationType":"HANDLES_MESSAGE","message_type":1001}
+{"type":"relation","from":"Reasoning_Integration_Module","to":"BIO_MSG_DECISION_REQUEST","relationType":"HANDLES_MESSAGE","message_type":1003}
+{"type":"relation","from":"Salience_Module","to":"BIO_MSG_SALIENCE_QUERY","relationType":"HANDLES_MESSAGE","message_type":1004}
+{"type":"relation","from":"Executive_Module","to":"BIO_MSG_DECISION_REQUEST","relationType":"HANDLES_MESSAGE","message_type":1003}
+{"type":"relation","from":"Executive_Module","to":"BIO_MSG_ATTENTION_SHIFT","relationType":"HANDLES_MESSAGE","message_type":1005}
+{"type":"relation","from":"Global_Workspace_Module","to":"BIO_MSG_ATTENTION_SHIFT","relationType":"HANDLES_MESSAGE","message_type":1005}
+{"type":"relation","from":"Mirror_Neurons_Module","to":"BIO_MSG_MIRROR_NEURON_ACTIVATION","relationType":"HANDLES_MESSAGE","message_type":1006}
