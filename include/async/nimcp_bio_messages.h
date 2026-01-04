@@ -431,6 +431,98 @@ typedef enum {
     BIO_MSG_TEMPERATURE_INPUT,                    /**< Temperature sensor input */
     BIO_MSG_STATE_QUERY,                          /**< State query request */
 
+    /* Hypothalamus drive/alignment messages (0x1140 - 0x114F) - Byrnes Steering */
+    BIO_MSG_HYPO_DRIVE_STATE = 0x1140,            /**< Drive state broadcast */
+    BIO_MSG_HYPO_REWARD_SIGNAL,                   /**< Reward → SNc/VTA */
+    BIO_MSG_HYPO_AROUSAL_CHANGE,                  /**< Arousal → Thalamus */
+    BIO_MSG_HYPO_SURVIVAL_PRIORITY,               /**< Priority → Attention */
+    BIO_MSG_HYPO_SETPOINT_DEVIATION,              /**< Deviation alert */
+    BIO_MSG_HYPO_ALIGNMENT_ALERT,                 /**< SAFETY: Alignment violation alert */
+    BIO_MSG_HYPO_DRIVE_SATISFIED,                 /**< Drive satisfaction event */
+    BIO_MSG_HYPO_DRIVE_CONFLICT,                  /**< Multiple drives competing */
+
+    /* SNc/VTA dopamine messages (0x1150 - 0x115F) - Reward → Dopamine */
+    BIO_MSG_SNC_DOPAMINE_STATE = 0x1150,          /**< Dopamine channel state */
+    BIO_MSG_SNC_RPE,                              /**< Reward Prediction Error */
+    BIO_MSG_SNC_DOPAMINE_BURST,                   /**< Phasic dopamine burst */
+    BIO_MSG_SNC_DOPAMINE_DIP,                     /**< Phasic dopamine dip */
+    BIO_MSG_SNC_TONIC_CHANGE,                     /**< Tonic baseline change */
+    BIO_MSG_SNC_VALUE_UPDATE,                     /**< Value prediction update */
+
+    /* Executive bridge messages (0x1160 - 0x116F) - Goal Priority Management */
+    BIO_MSG_EXEC_PRIORITY_UPDATE = 0x1160,        /**< Goal priority update from drives */
+    BIO_MSG_EXEC_INTERRUPT,                       /**< Survival drive interrupt signal */
+    BIO_MSG_EXEC_GOAL_REGISTERED,                 /**< New goal registered */
+    BIO_MSG_EXEC_GOAL_ACTIVATED,                  /**< Goal activated */
+    BIO_MSG_EXEC_GOAL_COMPLETED,                  /**< Goal completed */
+    BIO_MSG_EXEC_GOAL_BLOCKED,                    /**< Goal blocked by survival interrupt */
+    BIO_MSG_EXEC_CATEGORY_BOOST,                  /**< Category priority boost */
+    BIO_MSG_EXEC_INTERRUPT_CLEARED,               /**< Survival interrupt cleared */
+
+    /* Attention bridge messages (0x1170 - 0x117F) - Drive-Biased Salience */
+    BIO_MSG_ATTENTION_MODULATION_UPDATE = 0x1170, /**< Salience modulation from drives */
+    BIO_MSG_ATTENTION_SALIENCE_QUERY,             /**< Query salience for target */
+    BIO_MSG_ATTENTION_CATEGORY_BOOST,             /**< Category salience boost */
+    BIO_MSG_ATTENTION_DRIVE_BIAS,                 /**< Drive bias for attention */
+
+    /* Brainstem bridge messages (0x1180 - 0x118F) - Arousal/Pain/Pleasure */
+    BIO_MSG_BRAINSTEM_AROUSAL_REQUEST = 0x1180,   /**< Hypothalamus → Brainstem arousal request */
+    BIO_MSG_BRAINSTEM_PROTECTION_REQUEST,         /**< Hypothalamus → Brainstem protection request */
+    BIO_MSG_BRAINSTEM_PAIN,                       /**< Brainstem → Hypothalamus pain signal */
+    BIO_MSG_BRAINSTEM_PLEASURE,                   /**< Brainstem → Hypothalamus pleasure signal */
+    BIO_MSG_BRAINSTEM_AROUSAL_STATE,              /**< Brainstem → Hypothalamus arousal state */
+    BIO_MSG_BRAINSTEM_VITAL_ALERT,                /**< Vital function alert */
+    BIO_MSG_BRAINSTEM_REFLEX_TRIGGER,             /**< Reflex triggered notification */
+
+    /* Medulla bridge messages (0x1190 - 0x119F) - Autonomic Control */
+    BIO_MSG_MEDULLA_AROUSAL_SET = 0x1190,         /**< Hypothalamus → Medulla arousal command */
+    BIO_MSG_MEDULLA_PROTECTION_SET,               /**< Hypothalamus → Medulla protection command */
+    BIO_MSG_MEDULLA_CIRCADIAN_SYNC,               /**< Circadian synchronization command */
+    BIO_MSG_MEDULLA_STATE,                        /**< Medulla → Hypothalamus state update */
+    BIO_MSG_MEDULLA_VITAL_STATUS,                 /**< Vital status report */
+    BIO_MSG_MEDULLA_EMERGENCY_REQUEST,            /**< Emergency shutdown request */
+    BIO_MSG_MEDULLA_SLEEP_PRESSURE,               /**< Sleep pressure from fatigue */
+
+    /* Hippocampus cognitive bridge messages (0x11A0 - 0x11AF) - Memory-Drive Integration */
+    BIO_MSG_HIPPOCAMPUS_ENCODING_PRIORITY = 0x11A0, /**< Hypothalamus → Hippocampus encoding priority */
+    BIO_MSG_HIPPOCAMPUS_CONSOLIDATE,              /**< Consolidation timing signal */
+    BIO_MSG_HIPPOCAMPUS_NAV_GOAL,                 /**< Navigation goal from drives */
+    BIO_MSG_HIPPOCAMPUS_MEMORY_RETRIEVED,         /**< Hippocampus → Hypothalamus memory retrieval */
+    BIO_MSG_HIPPOCAMPUS_CONTEXT_UPDATE,           /**< Spatial context update */
+    BIO_MSG_HIPPOCAMPUS_REPLAY_EVENT,             /**< Memory replay event notification */
+    BIO_MSG_HIPPOCAMPUS_MEMORY_ENCODED,           /**< Memory encoding complete */
+    BIO_MSG_HIPPOCAMPUS_ASSOCIATION_FORMED,       /**< Drive-memory association formed */
+
+    /* Amygdala cognitive bridge messages (0x11B0 - 0x11BF) - Emotion-Drive Integration */
+    BIO_MSG_AMYGDALA_STRESS_MODULATION = 0x11B0,  /**< Hypothalamus → Amygdala stress context */
+    BIO_MSG_AMYGDALA_DRIVE_CONTEXT,               /**< Drive state context for fear sensitivity */
+    BIO_MSG_AMYGDALA_FEAR_LEVEL,                  /**< Amygdala → Hypothalamus fear feedback */
+    BIO_MSG_AMYGDALA_THREAT_DETECTED,             /**< Threat detection event */
+    BIO_MSG_AMYGDALA_FEAR_OUTPUT,                 /**< CeA fear output signals */
+    BIO_MSG_AMYGDALA_CHRONIC_STRESS,              /**< Chronic stress state notification */
+    BIO_MSG_AMYGDALA_SAFETY_BOOST,                /**< Safety drive boost from fear */
+    BIO_MSG_AMYGDALA_ANXIETY_UPDATE,              /**< Anxiety level update */
+
+    /* Quantum-Drive bridge messages (0x11C0 - 0x11CF) - Drive-Quantum Integration */
+    BIO_MSG_QUANTUM_DRIVE_OPTIMIZATION_REQUEST = 0x11C0, /**< Request quantum optimization for drives */
+    BIO_MSG_QUANTUM_DRIVE_OPTIMIZATION_RESULT,    /**< Result of quantum drive optimization */
+    BIO_MSG_QUANTUM_DRIVE_QUBO_READY,             /**< QUBO formulation ready for solving */
+    BIO_MSG_QUANTUM_DRIVE_ALIGNMENT_CHECK,        /**< Alignment constraint verification request */
+    BIO_MSG_QUANTUM_DRIVE_ALIGNMENT_RESULT,       /**< Alignment verification result */
+    BIO_MSG_QUANTUM_DRIVE_MODE_CHANGE,            /**< Compute mode changed */
+    BIO_MSG_QUANTUM_DRIVE_FALLBACK,               /**< Fallback to classical computation */
+    BIO_MSG_QUANTUM_DRIVE_CONFLICT_DETECTED,      /**< Drive conflict requiring resolution */
+
+    /* Hypothalamus-Immune bridge messages (0x11D0 - 0x11DF) - Neuroimmune Integration */
+    BIO_MSG_HYPO_IMMUNE_FEVER_STATE = 0x11D0,     /**< Fever state from cytokines */
+    BIO_MSG_HYPO_IMMUNE_SICKNESS_STATE,           /**< Sickness behavior level */
+    BIO_MSG_HYPO_IMMUNE_CORTISOL_STATE,           /**< HPA axis cortisol output */
+    BIO_MSG_HYPO_IMMUNE_CYTOKINE_EFFECT,          /**< Cytokine effect on drives */
+    BIO_MSG_HYPO_IMMUNE_HPA_ACTIVATION,           /**< HPA axis activation event */
+    BIO_MSG_HYPO_IMMUNE_SAFETY_MODE,              /**< Alignment safety mode trigger */
+    BIO_MSG_HYPO_IMMUNE_CIRCADIAN_PHASE,          /**< Circadian immune phase */
+    BIO_MSG_HYPO_IMMUNE_STORM_ALERT,              /**< Cytokine storm emergency */
+
     /* Collective Cognition: Portia bridge messages (0x2E10 - 0x2E1F) */
     BIO_MSG_PORTIA_COLLECTIVE_TIER_CHANGE = 0x2E11,   /**< Portia tier change broadcast */
     BIO_MSG_PORTIA_COLLECTIVE_STATE_UPDATE,           /**< Portia state update */

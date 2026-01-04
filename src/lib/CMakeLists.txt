@@ -196,6 +196,18 @@ set(NIMCP_CORE_SOURCES
 
     # Hypothalamus - Homeostatic regulation, circadian rhythms, stress response (Phase H1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_adapter.c         # Hypothalamus core adapter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_drives.c          # Byrnes alignment-safe drive system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_drives_bio.c      # Drive system bio-async integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_homeostasis.c     # PI/PD homeostatic control
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_snc_bridge.c      # SNc/VTA bridge (reward → dopamine)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_executive_bridge.c  # Executive bridge (goals)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_attention_bridge.c  # Attention bridge (salience)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_brainstem_bridge.c  # Brainstem bridge (arousal/pain)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_medulla_bridge.c  # Medulla bridge (autonomic)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_hippocampus_bridge.c  # Hippocampus bridge (memory-drive)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_amygdala_bridge.c  # Amygdala bridge (emotion-drive)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_drive_quantum_bridge.c  # Drive-quantum bridge (alignment)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_immune_bridge.c  # Immune bridge (neuroimmune)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_quantum_bridge.c  # Quantum homeostatic optimization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_hypothalamus.c              # Hypothalamus factory init
 
