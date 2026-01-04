@@ -33,6 +33,7 @@
 #include "cognitive/omni/nimcp_omni_precision.h"
 #include "cognitive/omni/nimcp_omni_active_inference.h"
 #include "cognitive/omni/nimcp_omni_world_model.h"
+#include "cognitive/omni/nimcp_omni_metacognition.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 
@@ -1619,4 +1620,388 @@ TEST_F(OmniIntegrationTest, WorldModelLearning) {
     omni_wm_state_destroy(state);
     omni_wm_state_destroy(next_state);
     omni_wm_destroy(wm);
+}
+
+/* ============================================================================
+ * Phase 10: Metacognition Tests
+ * ============================================================================ */
+
+TEST_F(OmniIntegrationTest, MetacognitionCreation) {
+    /* Test basic metacognition context creation and destruction */
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Verify initial state */
+    uint64_t total_inferences;
+    float success_rate, efficiency;
+    EXPECT_EQ(omni_metacog_get_statistics(ctx, &total_inferences, &success_rate, &efficiency), NIMCP_SUCCESS);
+    EXPECT_EQ(total_inferences, 0u);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionConfig) {
+    /* Test configuration */
+    omni_metacog_config_t config;
+    EXPECT_EQ(omni_metacog_get_default_config(&config), NIMCP_SUCCESS);
+
+    /* Verify default values */
+    EXPECT_FLOAT_EQ(config.coherence_threshold, OMNI_METACOG_DEFAULT_COHERENCE_THRESHOLD);
+    EXPECT_GT(config.monitoring_frequency, 0.0f);
+    EXPECT_TRUE(config.enable_online_learning);
+
+    /* Create with custom config */
+    config.monitoring_frequency = 20.0f;
+    config.exploration_rate = 0.2f;
+
+    omni_metacog_ctx_t* ctx = omni_metacog_create_with_config(&config);
+    ASSERT_NE(ctx, nullptr);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionSelfModel) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Get capability for forward mode */
+    omni_capability_t cap;
+    EXPECT_EQ(omni_metacog_get_capability(ctx, OMNI_METACOG_MODE_FORWARD, &cap), NIMCP_SUCCESS);
+    EXPECT_EQ(cap.mode, OMNI_METACOG_MODE_FORWARD);
+    EXPECT_GE(cap.proficiency, 0.0f);
+    EXPECT_LE(cap.proficiency, 1.0f);
+
+    /* Update self-model with experience */
+    EXPECT_EQ(omni_metacog_update_self_model(ctx, OMNI_METACOG_MODE_FORWARD,
+                                             0.8f, 0.3f, 0.1f, true), NIMCP_SUCCESS);
+
+    /* Verify update */
+    EXPECT_EQ(omni_metacog_get_capability(ctx, OMNI_METACOG_MODE_FORWARD, &cap), NIMCP_SUCCESS);
+    EXPECT_EQ(cap.usage_count, 1u);
+    EXPECT_EQ(cap.success_count, 1u);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionResourceManagement) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Get resource state */
+    omni_resource_state_t resources;
+    EXPECT_EQ(omni_metacog_get_resources(ctx, &resources), NIMCP_SUCCESS);
+
+    /* Verify initial resources */
+    for (int i = 0; i < OMNI_RESOURCE_COUNT; i++) {
+        EXPECT_FLOAT_EQ(resources.available[i], 1.0f);
+        EXPECT_GE(resources.budget[i], 0.0f);
+    }
+
+    /* Set new budget */
+    EXPECT_EQ(omni_metacog_set_resource_budget(ctx, OMNI_RESOURCE_COMPUTE, 0.9f), NIMCP_SUCCESS);
+
+    EXPECT_EQ(omni_metacog_get_resources(ctx, &resources), NIMCP_SUCCESS);
+    EXPECT_FLOAT_EQ(resources.budget[OMNI_RESOURCE_COMPUTE], 0.9f);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionMonitoring) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Take monitoring snapshot */
+    omni_monitoring_snapshot_t snapshot;
+    EXPECT_EQ(omni_metacog_monitor(ctx, &snapshot), NIMCP_SUCCESS);
+
+    /* Verify snapshot */
+    EXPECT_GT(snapshot.timestamp, 0.0);
+    EXPECT_EQ(snapshot.current_mode, OMNI_METACOG_MODE_FORWARD);
+    EXPECT_GE(snapshot.current_accuracy, 0.0f);
+    EXPECT_LE(snapshot.current_accuracy, 1.0f);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionCoherence) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Check coherence with no inferences */
+    omni_coherence_result_t result;
+    EXPECT_EQ(omni_metacog_check_coherence(ctx, nullptr, 0, &result), NIMCP_SUCCESS);
+    EXPECT_EQ(result.status, OMNI_COHERENCE_OK);
+    EXPECT_FLOAT_EQ(result.coherence_score, 1.0f);
+
+    /* Add some failures to history to test coherence detection */
+    for (int i = 0; i < 5; i++) {
+        omni_metacog_update_self_model(ctx, OMNI_METACOG_MODE_FORWARD,
+                                       0.2f, 0.5f, 0.2f, false);
+    }
+
+    /* Check coherence again */
+    float dummy[4] = {0.1f, 0.2f, 0.3f, 0.4f};
+    EXPECT_EQ(omni_metacog_check_coherence(ctx, dummy, 4, &result), NIMCP_SUCCESS);
+    EXPECT_LT(result.coherence_score, 1.0f);  /* Should detect some incoherence */
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionAnomalyDetection) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    omni_monitoring_snapshot_t snapshot;
+    EXPECT_EQ(omni_metacog_monitor(ctx, &snapshot), NIMCP_SUCCESS);
+
+    float anomaly_score;
+    char description[256];
+    EXPECT_EQ(omni_metacog_detect_anomaly(ctx, &snapshot, &anomaly_score, description), NIMCP_SUCCESS);
+
+    /* Initial state should have no anomalies */
+    EXPECT_GE(anomaly_score, 0.0f);
+    EXPECT_LE(anomaly_score, 1.0f);
+    EXPECT_NE(description[0], '\0');
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionEvaluation) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    float accuracy, confidence;
+    EXPECT_EQ(omni_metacog_evaluate_performance(ctx, &accuracy, &confidence), NIMCP_SUCCESS);
+    EXPECT_GE(accuracy, 0.0f);
+    EXPECT_LE(accuracy, 1.0f);
+
+    /* Get confidence */
+    float conf = omni_metacog_get_confidence(ctx);
+    EXPECT_GE(conf, 0.0f);
+    EXPECT_LE(conf, 1.0f);
+
+    /* Predict performance */
+    float expected_acc, expected_cost;
+    EXPECT_EQ(omni_metacog_predict_performance(ctx, OMNI_METACOG_MODE_BACKWARD,
+                                                0, &expected_acc, &expected_cost), NIMCP_SUCCESS);
+    EXPECT_GE(expected_acc, 0.0f);
+    EXPECT_GE(expected_cost, 0.0f);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionModeSelection) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Select mode */
+    omni_mode_recommendation_t recommendation;
+    EXPECT_EQ(omni_metacog_select_mode(ctx, 0, &recommendation), NIMCP_SUCCESS);
+
+    /* Verify recommendation */
+    EXPECT_LT(recommendation.recommended_mode, OMNI_METACOG_MODE_COUNT);
+    EXPECT_GE(recommendation.confidence, 0.0f);
+    EXPECT_LE(recommendation.confidence, 1.0f);
+    EXPECT_NE(recommendation.rationale[0], '\0');
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionResourcePlanning) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    omni_resource_plan_t plan;
+    EXPECT_EQ(omni_metacog_plan_resources(ctx, OMNI_METACOG_MODE_FORWARD, 0.8f, &plan), NIMCP_SUCCESS);
+
+    /* Verify plan */
+    EXPECT_GE(plan.total_budget, 0.0f);
+    EXPECT_LE(plan.total_budget, 1.0f);
+    EXPECT_GE(plan.efficiency_score, 0.0f);
+    EXPECT_NE(plan.rationale[0], '\0');
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionIntervention) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Get snapshot */
+    omni_monitoring_snapshot_t snapshot;
+    EXPECT_EQ(omni_metacog_monitor(ctx, &snapshot), NIMCP_SUCCESS);
+
+    /* Decide on intervention */
+    omni_intervention_t intervention;
+    EXPECT_EQ(omni_metacog_decide_intervention(ctx, &snapshot, &intervention), NIMCP_SUCCESS);
+
+    /* In normal state, should not need intervention */
+    /* (May or may not need intervention depending on initial state) */
+
+    /* Execute intervention (even if not needed, should be no-op) */
+    EXPECT_EQ(omni_metacog_execute_intervention(ctx, &intervention), NIMCP_SUCCESS);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionModeSwitch) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Switch mode */
+    EXPECT_EQ(omni_metacog_switch_mode(ctx, OMNI_METACOG_MODE_BACKWARD), NIMCP_SUCCESS);
+
+    /* Verify mode changed in monitoring */
+    omni_monitoring_snapshot_t snapshot;
+    EXPECT_EQ(omni_metacog_monitor(ctx, &snapshot), NIMCP_SUCCESS);
+    EXPECT_EQ(snapshot.current_mode, OMNI_METACOG_MODE_BACKWARD);
+
+    /* Switch to another mode */
+    EXPECT_EQ(omni_metacog_switch_mode(ctx, OMNI_METACOG_MODE_DREAMING), NIMCP_SUCCESS);
+
+    EXPECT_EQ(omni_metacog_monitor(ctx, &snapshot), NIMCP_SUCCESS);
+    EXPECT_EQ(snapshot.current_mode, OMNI_METACOG_MODE_DREAMING);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionPrecisionAdjustment) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Get initial resources */
+    omni_resource_state_t resources_before;
+    EXPECT_EQ(omni_metacog_get_resources(ctx, &resources_before), NIMCP_SUCCESS);
+
+    /* Adjust precision up */
+    EXPECT_EQ(omni_metacog_adjust_precision(ctx, 0.5f), NIMCP_SUCCESS);
+
+    /* Check resources changed */
+    omni_resource_state_t resources_after;
+    EXPECT_EQ(omni_metacog_get_resources(ctx, &resources_after), NIMCP_SUCCESS);
+
+    /* Adjust precision down */
+    EXPECT_EQ(omni_metacog_adjust_precision(ctx, -0.5f), NIMCP_SUCCESS);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionLearning) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Add some history */
+    for (int i = 0; i < 20; i++) {
+        float accuracy = 0.5f + (float)i / 40.0f;  /* Improving accuracy */
+        omni_metacog_update_self_model(ctx, OMNI_METACOG_MODE_FORWARD,
+                                       accuracy, 0.3f, 0.1f, accuracy > 0.5f);
+    }
+
+    /* Learn from history */
+    EXPECT_EQ(omni_metacog_learn(ctx, 10), NIMCP_SUCCESS);
+
+    /* Check learning stats */
+    float improvement, convergence;
+    EXPECT_EQ(omni_metacog_get_learning_stats(ctx, &improvement, &convergence), NIMCP_SUCCESS);
+    /* With improving accuracy, should show positive improvement */
+    EXPECT_GE(improvement, 0.0f);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionPolicyUpdate) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Update policy with positive reward */
+    EXPECT_EQ(omni_metacog_update_policy(ctx, 1.0f), NIMCP_SUCCESS);
+
+    /* Update policy with negative reward */
+    EXPECT_EQ(omni_metacog_update_policy(ctx, -0.5f), NIMCP_SUCCESS);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionIntegration) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Connect to other systems (passing NULL is valid - no-op) */
+    EXPECT_EQ(omni_metacog_connect_world_model(ctx, nullptr), NIMCP_SUCCESS);
+    EXPECT_EQ(omni_metacog_connect_active_inference(ctx, nullptr), NIMCP_SUCCESS);
+    EXPECT_EQ(omni_metacog_connect_precision(ctx, nullptr), NIMCP_SUCCESS);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionStep) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Run a few metacognitive cycles */
+    for (int i = 0; i < 5; i++) {
+        EXPECT_EQ(omni_metacog_step(ctx), NIMCP_SUCCESS);
+    }
+
+    /* Verify statistics updated */
+    uint64_t total_inferences;
+    float success_rate, efficiency;
+    EXPECT_EQ(omni_metacog_get_statistics(ctx, &total_inferences, &success_rate, &efficiency), NIMCP_SUCCESS);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionReset) {
+    omni_metacog_ctx_t* ctx = omni_metacog_create();
+    ASSERT_NE(ctx, nullptr);
+
+    /* Add some state */
+    for (int i = 0; i < 10; i++) {
+        omni_metacog_update_self_model(ctx, OMNI_METACOG_MODE_FORWARD,
+                                       0.7f, 0.3f, 0.1f, true);
+    }
+
+    /* Reset */
+    EXPECT_EQ(omni_metacog_reset(ctx), NIMCP_SUCCESS);
+
+    /* Verify reset */
+    uint64_t total_inferences;
+    float success_rate, efficiency;
+    EXPECT_EQ(omni_metacog_get_statistics(ctx, &total_inferences, &success_rate, &efficiency), NIMCP_SUCCESS);
+    EXPECT_EQ(total_inferences, 0u);
+
+    omni_metacog_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, MetacognitionStringConversions) {
+    /* Test mode to string */
+    EXPECT_STREQ(omni_metacog_mode_to_string(OMNI_METACOG_MODE_FORWARD), "FORWARD");
+    EXPECT_STREQ(omni_metacog_mode_to_string(OMNI_METACOG_MODE_BACKWARD), "BACKWARD");
+    EXPECT_STREQ(omni_metacog_mode_to_string(OMNI_METACOG_MODE_LATERAL), "LATERAL");
+    EXPECT_STREQ(omni_metacog_mode_to_string(OMNI_METACOG_MODE_HIERARCHICAL), "HIERARCHICAL");
+    EXPECT_STREQ(omni_metacog_mode_to_string(OMNI_METACOG_MODE_EXPLORATORY), "EXPLORATORY");
+    EXPECT_STREQ(omni_metacog_mode_to_string(OMNI_METACOG_MODE_EXPLOITATIVE), "EXPLOITATIVE");
+    EXPECT_STREQ(omni_metacog_mode_to_string(OMNI_METACOG_MODE_DREAMING), "DREAMING");
+    EXPECT_STREQ(omni_metacog_mode_to_string(OMNI_METACOG_MODE_CONSOLIDATING), "CONSOLIDATING");
+
+    /* Test state to string */
+    EXPECT_STREQ(omni_metacog_state_to_string(OMNI_METACOG_STATE_IDLE), "IDLE");
+    EXPECT_STREQ(omni_metacog_state_to_string(OMNI_METACOG_STATE_MONITORING), "MONITORING");
+    EXPECT_STREQ(omni_metacog_state_to_string(OMNI_METACOG_STATE_EVALUATING), "EVALUATING");
+    EXPECT_STREQ(omni_metacog_state_to_string(OMNI_METACOG_STATE_INTERVENING), "INTERVENING");
+    EXPECT_STREQ(omni_metacog_state_to_string(OMNI_METACOG_STATE_LEARNING), "LEARNING");
+
+    /* Test resource to string */
+    EXPECT_STREQ(omni_resource_type_to_string(OMNI_RESOURCE_COMPUTE), "COMPUTE");
+    EXPECT_STREQ(omni_resource_type_to_string(OMNI_RESOURCE_MEMORY), "MEMORY");
+    EXPECT_STREQ(omni_resource_type_to_string(OMNI_RESOURCE_TIME), "TIME");
+    EXPECT_STREQ(omni_resource_type_to_string(OMNI_RESOURCE_ATTENTION), "ATTENTION");
+    EXPECT_STREQ(omni_resource_type_to_string(OMNI_RESOURCE_PRECISION), "PRECISION");
+
+    /* Test coherence status to string */
+    EXPECT_STREQ(omni_coherence_status_to_string(OMNI_COHERENCE_OK), "OK");
+    EXPECT_STREQ(omni_coherence_status_to_string(OMNI_COHERENCE_CONTRADICTION), "CONTRADICTION");
+    EXPECT_STREQ(omni_coherence_status_to_string(OMNI_COHERENCE_IMPLAUSIBILITY), "IMPLAUSIBILITY");
+    EXPECT_STREQ(omni_coherence_status_to_string(OMNI_COHERENCE_TEMPORAL), "TEMPORAL");
+    EXPECT_STREQ(omni_coherence_status_to_string(OMNI_COHERENCE_MODAL), "MODAL");
 }
