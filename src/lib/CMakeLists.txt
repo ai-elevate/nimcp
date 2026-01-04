@@ -577,6 +577,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_audio_cortex_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_speech_cortex_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_visual_cortex_fep_bridge.c
+    # Omnidirectional Inference Bridges (Phase 2)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_omni_sensory_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_omni_cortical_columns_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_omni_occipital_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_omni_broca_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/nimcp_omni_kg_sync.c
     # Plasticity FEP Bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/dendritic/nimcp_dendritic_fep_bridge.c

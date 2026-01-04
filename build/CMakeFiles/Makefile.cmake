@@ -1737,6 +1737,7 @@ set(CMAKE_DEPEND_INFO_FILES
   "test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_cortical_columns.dir/DependInfo.cmake"
   "test/integration/cognitive/collective_cognition/CMakeFiles/integration_collective_cognition_portia.dir/DependInfo.cmake"
   "test/integration/cognitive/recursive/CMakeFiles/test_rcog_integration.dir/DependInfo.cmake"
+  "test/integration/cognitive/omni/CMakeFiles/test_omni_bridges_integration.dir/DependInfo.cmake"
   "test/integration/cognitive/mental_health/CMakeFiles/integration_cognitive_mental_health_guardian_brain.dir/DependInfo.cmake"
   "test/regression/cognitive/CMakeFiles/regression_cognitive_emotion_performance.dir/DependInfo.cmake"
   "test/regression/cognitive/CMakeFiles/regression_cognitive_working_memory_pe_test.dir/DependInfo.cmake"

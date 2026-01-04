@@ -266,10 +266,13 @@ int omni_sensory_update(omni_sensory_bridge_t* bridge) {
         omni_sensory_update_precision(bridge);
     }
 
-    /* Compute cross-modal binding if enabled */
+    /* Compute cross-modal binding if enabled (call unlocked version) */
     if (bridge->config.enable_binding) {
         omni_crossmodal_binding_t binding;
+        /* Unlock before calling to avoid deadlock, or call internal helper */
+        nimcp_mutex_unlock(bridge->mutex);
         omni_sensory_compute_binding(bridge, &binding);
+        nimcp_mutex_lock(bridge->mutex);
     }
 
     /* Copy individual PEs to effects */

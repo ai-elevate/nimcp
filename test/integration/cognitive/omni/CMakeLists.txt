@@ -1,35 +1,18 @@
+# ============================================================================
 # Omnidirectional Inference Integration Tests
+# ============================================================================
+#
+# WHAT: Integration tests for Phase 2 omnidirectional inference bridges
+# WHY:  Verify all bridges (Sensory, CC, Occipital, Broca, KG) work together
+# HOW:  Multi-bridge scenarios with JEPA, Hopfield, Hierarchy, and Replay
 
-# TODO: Integration test needs API updates to match actual implementation:
-# - jepa_bidirectional_predict now takes jepa_latent_t* not float*
-# - predictive_hierarchy_forward -> pred_hier_forward_pass
-# - temporal_replay_store_sequence -> temporal_replay_store_transition
-# - Many other API signature changes
-if(GTest_FOUND AND FALSE)
-    # Test executable for omnidirectional bridge integration
-    add_executable(test_omni_bridges_integration
-        test_omni_bridges_integration.cpp
-    )
+message(STATUS "Adding omnidirectional inference integration tests...")
 
-    target_link_libraries(test_omni_bridges_integration
-        nimcp
-        GTest::gtest
-        GTest::gtest_main
-    )
+# Integration Test: Multi-bridge omnidirectional inference
+add_test_binary(
+    test_omni_bridges_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_omni_bridges_integration.cpp
+    integration
+)
 
-    target_include_directories(test_omni_bridges_integration PRIVATE
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/src
-    )
-
-    # Register with CTest
-    add_test(NAME OmniBridgesIntegration
-        COMMAND test_omni_bridges_integration
-    )
-
-    # Set test properties
-    set_tests_properties(OmniBridgesIntegration PROPERTIES
-        TIMEOUT 120
-        LABELS "integration;cognitive;omni"
-    )
-endif()
+message(STATUS "  Configured omnidirectional inference integration tests")

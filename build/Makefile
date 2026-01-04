@@ -15109,6 +15109,19 @@ test_rcog_integration/fast:
 .PHONY : test_rcog_integration/fast
 
 #=============================================================================
+# Target rules for targets named test_omni_bridges_integration
+
+# Build rule for target.
+test_omni_bridges_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_omni_bridges_integration
+.PHONY : test_omni_bridges_integration
+
+# fast build rule for target.
+test_omni_bridges_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/omni/CMakeFiles/test_omni_bridges_integration.dir/build.make test/integration/cognitive/omni/CMakeFiles/test_omni_bridges_integration.dir/build
+.PHONY : test_omni_bridges_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_mental_health_guardian_brain
 
 # Build rule for target.
@@ -23150,6 +23163,7 @@ help:
 	@echo "... test_nlp_mode_transitions"
 	@echo "... test_nlp_neural_sync"
 	@echo "... test_nlp_peer_communication"
+	@echo "... test_omni_bridges_integration"
 	@echo "... test_omni_regression"
 	@echo "... test_perception_portia_swarm_integration"
 	@echo "... test_phase3"

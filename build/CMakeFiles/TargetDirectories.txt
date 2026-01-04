@@ -2267,6 +2267,7 @@
 /home/bbrelin/nimcp/build/test/integration/cognitive/recursive/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/recursive/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/recursive/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/omni/CMakeFiles/test_omni_bridges_integration.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/omni/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/omni/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/omni/CMakeFiles/rebuild_cache.dir

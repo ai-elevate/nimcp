@@ -72,7 +72,7 @@ typedef struct jepa_bidirectional jepa_bidirectional_t;
 typedef struct predictive_hierarchy predictive_hierarchy_t;
 typedef struct hopfield_memory hopfield_memory_t;
 typedef struct audio_cortex audio_cortex_t;
-typedef struct visual_cortex visual_cortex_t;
+typedef struct visual_cortex_struct visual_cortex_t;
 typedef struct speech_cortex speech_cortex_t;
 
 /* ============================================================================

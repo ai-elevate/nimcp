@@ -13,6 +13,7 @@
 #include "utils/time/nimcp_time.h"
 
 #include <string.h>
+#include <stdio.h>
 
 /* ============================================================================
  * Static Helpers
@@ -231,15 +232,15 @@ brain_kg_node_id_t omni_kg_register_module(omni_kg_sync_t* sync,
     /* Add metadata for capabilities */
     char cap_str[32];
     snprintf(cap_str, sizeof(cap_str), "0x%02X", info->capabilities);
-    brain_kg_set_metadata(sync->kg, node_id, "omni_capabilities", cap_str);
+    brain_kg_add_metadata(sync->kg, node_id, "omni_capabilities", cap_str);
 
     char prec_str[32];
     snprintf(prec_str, sizeof(prec_str), "%.3f", info->default_precision);
-    brain_kg_set_metadata(sync->kg, node_id, "default_precision", prec_str);
+    brain_kg_add_metadata(sync->kg, node_id, "default_precision", prec_str);
 
     char type_str[32];
     snprintf(type_str, sizeof(type_str), "%d", (int)info->type);
-    brain_kg_set_metadata(sync->kg, node_id, "omni_type", type_str);
+    brain_kg_add_metadata(sync->kg, node_id, "omni_type", type_str);
 
     sync->stats.nodes_created++;
 
@@ -363,7 +364,7 @@ int omni_kg_add_prediction_edge(omni_kg_sync_t* sync,
 
     if (edge_id == BRAIN_KG_INVALID_NODE) {
         nimcp_mutex_unlock(sync->mutex);
-        return NIMCP_ERROR_INTERNAL;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     sync->stats.edges_created++;
@@ -415,17 +416,23 @@ int omni_kg_update_edge_precision(omni_kg_sync_t* sync,
 
     nimcp_mutex_lock(sync->mutex);
 
+    /* Find the edge first (edge_type is used for semantics, find_edge uses from/to only) */
+    (void)edge_type; /* edge_type used for identifying edge type in multi-edge scenarios */
+    brain_kg_edge_id_t edge_id = brain_kg_find_edge(sync->kg, from_node, to_node);
+    if (edge_id == BRAIN_KG_INVALID_NODE) {
+        nimcp_mutex_unlock(sync->mutex);
+        return NIMCP_ERROR_NOT_FOUND;
+    }
+
     /* Update edge weight in brain KG */
-    int result = brain_kg_update_edge_weight(sync->kg, from_node, to_node,
-                                              map_omni_edge_to_kg_edge(edge_type),
-                                              new_precision);
+    int result = brain_kg_update_edge(sync->kg, edge_id, new_precision, NULL);
 
     if (result == 0) {
         sync->stats.edges_updated++;
     }
 
     nimcp_mutex_unlock(sync->mutex);
-    return result == 0 ? NIMCP_SUCCESS : NIMCP_ERROR_INTERNAL;
+    return result == 0 ? NIMCP_SUCCESS : NIMCP_ERROR_OPERATION_FAILED;
 }
 
 /* ============================================================================
@@ -468,7 +475,7 @@ int omni_kg_get_prediction_path(const omni_kg_sync_t* sync,
         path_out[count++] = path->nodes[i];
     }
 
-    brain_kg_free_path(path);
+    brain_kg_path_destroy(path);
     return (int)count;
 }
 
@@ -487,12 +494,12 @@ int omni_kg_get_predictors_for(const omni_kg_sync_t* sync,
     uint32_t count = 0;
 
     for (uint32_t i = 0; i < edges->count && count < max_predictors; i++) {
-        if (edges->edges[i].type == target_type) {
-            predictors_out[count++] = edges->edges[i].from;
+        if (edges->edges[i]->type == target_type) {
+            predictors_out[count++] = edges->edges[i]->from;
         }
     }
 
-    brain_kg_free_edge_list(edges);
+    brain_kg_edge_list_destroy(edges);
     return (int)count;
 }
 
@@ -535,7 +542,7 @@ int omni_kg_sync_all(omni_kg_sync_t* sync) {
 
     /* All modules are already registered, just update timestamp */
     sync->stats.total_syncs++;
-    sync->stats.last_sync_time_ms = nimcp_time_now_ms();
+    sync->stats.last_sync_time_ms = nimcp_time_get_ms();
 
     nimcp_mutex_unlock(sync->mutex);
     return NIMCP_SUCCESS;
@@ -551,13 +558,13 @@ int omni_kg_sync_precision(omni_kg_sync_t* sync) {
         char prec_str[32];
         snprintf(prec_str, sizeof(prec_str), "%.3f",
                  sync->modules[i].default_precision);
-        brain_kg_set_metadata(sync->kg, sync->node_ids[i],
+        brain_kg_add_metadata(sync->kg, sync->node_ids[i],
                                "current_precision", prec_str);
         sync->stats.nodes_updated++;
     }
 
     sync->stats.total_syncs++;
-    sync->stats.last_sync_time_ms = nimcp_time_now_ms();
+    sync->stats.last_sync_time_ms = nimcp_time_get_ms();
 
     nimcp_mutex_unlock(sync->mutex);
     return NIMCP_SUCCESS;
@@ -573,13 +580,13 @@ int omni_kg_sync_capabilities(omni_kg_sync_t* sync) {
         char cap_str[32];
         snprintf(cap_str, sizeof(cap_str), "0x%02X",
                  sync->modules[i].capabilities);
-        brain_kg_set_metadata(sync->kg, sync->node_ids[i],
+        brain_kg_add_metadata(sync->kg, sync->node_ids[i],
                                "omni_capabilities", cap_str);
         sync->stats.nodes_updated++;
     }
 
     sync->stats.total_syncs++;
-    sync->stats.last_sync_time_ms = nimcp_time_now_ms();
+    sync->stats.last_sync_time_ms = nimcp_time_get_ms();
 
     nimcp_mutex_unlock(sync->mutex);
     return NIMCP_SUCCESS;
