@@ -211,6 +211,10 @@ struct omni_cortical_columns_bridge {
     /* Statistics */
     omni_cc_stats_t stats;
 
+    /* Bio-async integration */
+    void* bio_context;               /**< Bio-async module context */
+    bool bio_async_connected;        /**< Bio-async connection state */
+
     /* Thread safety */
     void* mutex;
 };

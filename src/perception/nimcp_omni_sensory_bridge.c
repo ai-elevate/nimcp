@@ -10,10 +10,53 @@
 #include "perception/nimcp_audio_cortex.h"
 #include "perception/nimcp_visual_cortex.h"
 #include "perception/nimcp_speech_cortex.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/thread/nimcp_thread.h"
 
 #include <string.h>
 #include <math.h>
+
+/* ============================================================================
+ * Bio-Async Message Handlers
+ * ============================================================================ */
+
+static nimcp_error_t handle_omni_predict_request(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    omni_sensory_bridge_t* bridge = (omni_sensory_bridge_t*)user_data;
+    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* Process prediction request through the bridge */
+    omni_sensory_update(bridge);
+
+    /* Signal completion (no response data for now) */
+    (void)response_promise;
+    (void)msg_size;
+
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t handle_omni_precision_update(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    omni_sensory_bridge_t* bridge = (omni_sensory_bridge_t*)user_data;
+    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* Update precision weights */
+    omni_sensory_update_precision(bridge);
+
+    (void)response_promise;
+    (void)msg_size;
+
+    return NIMCP_SUCCESS;
+}
 
 /* ============================================================================
  * Static Helpers
@@ -652,17 +695,49 @@ int omni_sensory_reset_stats(omni_sensory_bridge_t* bridge) {
 
 int omni_sensory_connect_bio_async(omni_sensory_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (bridge->bio_async_connected) return NIMCP_SUCCESS;
+
+    /* Register module with bio-router */
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_OMNI_SENSORY_BRIDGE,
+        .module_name = "omni_sensory_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bio_module_context_t ctx = bio_router_register_module(&info);
+    if (!ctx) {
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
+
+    bridge->bio_context = ctx;
+
+    /* Register message handlers */
+    bio_router_register_handler(ctx, BIO_MSG_OMNI_PREDICT_REQUEST,
+                                 handle_omni_predict_request);
+    bio_router_register_handler(ctx, BIO_MSG_OMNI_PRECISION_UPDATE,
+                                 handle_omni_precision_update);
+
+    bridge->bio_async_connected = true;
     return NIMCP_SUCCESS;
 }
 
 int omni_sensory_disconnect_bio_async(omni_sensory_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
+
+    if (bridge->bio_context) {
+        bio_router_unregister_module(bridge->bio_context);
+        bridge->bio_context = NULL;
+    }
+
+    bridge->bio_async_connected = false;
     return NIMCP_SUCCESS;
 }
 
 bool omni_sensory_is_bio_async_connected(const omni_sensory_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->config.enable_bio_async;
+    return bridge->bio_async_connected;
 }
 
 /* ============================================================================

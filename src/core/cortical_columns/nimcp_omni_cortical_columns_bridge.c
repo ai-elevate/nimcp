@@ -8,6 +8,8 @@
 #include "cognitive/jepa/nimcp_jepa_bidirectional.h"
 #include "cognitive/predictive/nimcp_predictive_hierarchy.h"
 #include "utils/thread/nimcp_thread.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 
 #include <string.h>
 #include <math.h>
@@ -501,22 +503,89 @@ float omni_cc_get_entropy(const omni_cortical_columns_bridge_t* bridge) {
 }
 
 /* ============================================================================
+ * Bio-Async Message Handlers
+ * ============================================================================ */
+
+static nimcp_error_t handle_cc_predict_request(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    omni_cortical_columns_bridge_t* bridge = (omni_cortical_columns_bridge_t*)user_data;
+    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+
+    omni_cc_update(bridge);
+
+    (void)response_promise;
+    (void)msg_size;
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t handle_cc_precision_update(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    omni_cortical_columns_bridge_t* bridge = (omni_cortical_columns_bridge_t*)user_data;
+    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* Apply precision update to competition temperature */
+    omni_cc_update(bridge);
+
+    (void)response_promise;
+    (void)msg_size;
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
  * Bio-Async API
  * ============================================================================ */
 
 int omni_cc_connect_bio_async(omni_cortical_columns_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (bridge->bio_async_connected) return NIMCP_SUCCESS;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_OMNI_CORTICAL_COLUMNS_BRIDGE,
+        .module_name = "omni_cortical_columns_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bio_module_context_t ctx = bio_router_register_module(&info);
+    if (!ctx) {
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
+
+    bridge->bio_context = ctx;
+
+    bio_router_register_handler(ctx, BIO_MSG_OMNI_PREDICT_REQUEST,
+                                 handle_cc_predict_request);
+    bio_router_register_handler(ctx, BIO_MSG_OMNI_PRECISION_UPDATE,
+                                 handle_cc_precision_update);
+
+    bridge->bio_async_connected = true;
     return NIMCP_SUCCESS;
 }
 
 int omni_cc_disconnect_bio_async(omni_cortical_columns_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
+
+    if (bridge->bio_context) {
+        bio_router_unregister_module(bridge->bio_context);
+        bridge->bio_context = NULL;
+    }
+
+    bridge->bio_async_connected = false;
     return NIMCP_SUCCESS;
 }
 
 bool omni_cc_is_bio_async_connected(const omni_cortical_columns_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->config.enable_bio_async;
+    return bridge->bio_async_connected;
 }
 
 /* ============================================================================
