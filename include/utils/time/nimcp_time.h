@@ -46,6 +46,11 @@ extern "C" {
 uint64_t nimcp_time_get_us(void);
 
 /**
+ * @brief Alias for nimcp_time_get_us() for code compatibility
+ */
+#define nimcp_time_now_us() nimcp_time_get_us()
+
+/**
  * WHAT: Get current wall clock time in milliseconds since Unix epoch
  * WHY: Timestamps with millisecond precision (less overhead than microseconds)
  * HOW: nimcp_time_get_us() / 1000

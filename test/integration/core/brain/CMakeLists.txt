@@ -56,3 +56,8 @@ gtest_discover_tests(integration_brain_coordinator_test)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/subcortical")
     add_subdirectory(subcortical)
 endif()
+
+# Add regions subdirectory (hypothalamus, broca, etc.)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regions")
+    add_subdirectory(regions)
+endif()

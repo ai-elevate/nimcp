@@ -971,6 +971,17 @@ NIMCP_EXPORT bool nimcp_log_is_tty(void);
 #define NIMCP_LOGGING_FATAL(...) LOG_FATAL(__VA_ARGS__)
 
 /**
+ * @brief Short-form macros (NIMCP_LOG_ prefix) for convenience
+ */
+
+#define NIMCP_LOG_TRACE(...) LOG_TRACE(__VA_ARGS__)
+#define NIMCP_LOG_DEBUG(...) LOG_DEBUG(__VA_ARGS__)
+#define NIMCP_LOG_INFO(...)  LOG_INFO(__VA_ARGS__)
+#define NIMCP_LOG_WARN(...)  LOG_WARN(__VA_ARGS__)
+#define NIMCP_LOG_ERROR(...) LOG_ERROR(__VA_ARGS__)
+#define NIMCP_LOG_FATAL(...) LOG_FATAL(__VA_ARGS__)
+
+/**
  * @brief Assertion-style logging
  */
 

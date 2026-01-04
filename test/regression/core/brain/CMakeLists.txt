@@ -111,3 +111,8 @@ set_tests_properties(regression_core_brain_coordinator_regression PROPERTIES LAB
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/subcortical")
     add_subdirectory(subcortical)
 endif()
+
+# Add regions subdirectory (hypothalamus, broca, cerebellum, etc.)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regions")
+    add_subdirectory(regions)
+endif()

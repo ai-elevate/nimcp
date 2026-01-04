@@ -4306,32 +4306,6 @@ integration_cognitive_sleep_test_cognitive_sleep_integration/fast:
 .PHONY : integration_cognitive_sleep_test_cognitive_sleep_integration/fast
 
 #=============================================================================
-# Target rules for targets named integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration
-
-# Build rule for target.
-integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration
-.PHONY : integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration
-
-# fast build rule for target.
-integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration.dir/build.make test/CMakeFiles/integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration.dir/build
-.PHONY : integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration/fast
-
-#=============================================================================
-# Target rules for targets named integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline
-
-# Build rule for target.
-integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline
-.PHONY : integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline
-
-# fast build rule for target.
-integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline.dir/build.make test/CMakeFiles/integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline.dir/build
-.PHONY : integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline/fast
-
-#=============================================================================
 # Target rules for targets named integration_core_integration_test_integration_cognitive
 
 # Build rule for target.
@@ -5214,32 +5188,6 @@ regression_core_brain_learning_test_learning_stability: cmake_check_build_system
 regression_core_brain_learning_test_learning_stability/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_core_brain_learning_test_learning_stability.dir/build.make test/CMakeFiles/regression_core_brain_learning_test_learning_stability.dir/build
 .PHONY : regression_core_brain_learning_test_learning_stability/fast
-
-#=============================================================================
-# Target rules for targets named regression_core_brain_regions_broca_test_nimcp_broca_regression
-
-# Build rule for target.
-regression_core_brain_regions_broca_test_nimcp_broca_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_brain_regions_broca_test_nimcp_broca_regression
-.PHONY : regression_core_brain_regions_broca_test_nimcp_broca_regression
-
-# fast build rule for target.
-regression_core_brain_regions_broca_test_nimcp_broca_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_core_brain_regions_broca_test_nimcp_broca_regression.dir/build.make test/CMakeFiles/regression_core_brain_regions_broca_test_nimcp_broca_regression.dir/build
-.PHONY : regression_core_brain_regions_broca_test_nimcp_broca_regression/fast
-
-#=============================================================================
-# Target rules for targets named regression_core_brain_regions_cerebellum_test_cerebellum_regression
-
-# Build rule for target.
-regression_core_brain_regions_cerebellum_test_cerebellum_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_brain_regions_cerebellum_test_cerebellum_regression
-.PHONY : regression_core_brain_regions_cerebellum_test_cerebellum_regression
-
-# fast build rule for target.
-regression_core_brain_regions_cerebellum_test_cerebellum_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_core_brain_regions_cerebellum_test_cerebellum_regression.dir/build.make test/CMakeFiles/regression_core_brain_regions_cerebellum_test_cerebellum_regression.dir/build
-.PHONY : regression_core_brain_regions_cerebellum_test_cerebellum_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_core_brain_regions_test_contextual_regression
@@ -7203,6 +7151,19 @@ e2e_test_limbic_pipeline: cmake_check_build_system
 e2e_test_limbic_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_limbic_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_limbic_pipeline.dir/build
 .PHONY : e2e_test_limbic_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_hypothalamus_alignment_pipeline
+
+# Build rule for target.
+e2e_test_hypothalamus_alignment_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_hypothalamus_alignment_pipeline
+.PHONY : e2e_test_hypothalamus_alignment_pipeline
+
+# fast build rule for target.
+e2e_test_hypothalamus_alignment_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_hypothalamus_alignment_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_hypothalamus_alignment_pipeline.dir/build
+.PHONY : e2e_test_hypothalamus_alignment_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_motor_control_pipeline
@@ -12626,6 +12587,45 @@ integration_core_brain_subcortical_amygdala_test/fast:
 .PHONY : integration_core_brain_subcortical_amygdala_test/fast
 
 #=============================================================================
+# Target rules for targets named integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration
+
+# Build rule for target.
+integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration
+.PHONY : integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration
+
+# fast build rule for target.
+integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/broca/CMakeFiles/integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration.dir/build.make test/integration/core/brain/regions/broca/CMakeFiles/integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration.dir/build
+.PHONY : integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline
+
+# Build rule for target.
+integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline
+.PHONY : integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline
+
+# fast build rule for target.
+integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/broca/CMakeFiles/integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline.dir/build.make test/integration/core/brain/regions/broca/CMakeFiles/integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline.dir/build
+.PHONY : integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integration
+
+# Build rule for target.
+integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integration
+.PHONY : integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integration
+
+# fast build rule for target.
+integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integration.dir/build.make test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integration.dir/build
+.PHONY : integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integration/fast
+
+#=============================================================================
 # Target rules for targets named regression_core_brain_oscillation_backward_compat
 
 # Build rule for target.
@@ -12728,6 +12728,45 @@ regression_core_brain_subcortical_amygdala_test: cmake_check_build_system
 regression_core_brain_subcortical_amygdala_test/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_amygdala_test.dir/build.make test/regression/core/brain/subcortical/CMakeFiles/regression_core_brain_subcortical_amygdala_test.dir/build
 .PHONY : regression_core_brain_subcortical_amygdala_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_brain_regions_broca_test_nimcp_broca_regression
+
+# Build rule for target.
+regression_core_brain_regions_broca_test_nimcp_broca_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_brain_regions_broca_test_nimcp_broca_regression
+.PHONY : regression_core_brain_regions_broca_test_nimcp_broca_regression
+
+# fast build rule for target.
+regression_core_brain_regions_broca_test_nimcp_broca_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/regions/broca/CMakeFiles/regression_core_brain_regions_broca_test_nimcp_broca_regression.dir/build.make test/regression/core/brain/regions/broca/CMakeFiles/regression_core_brain_regions_broca_test_nimcp_broca_regression.dir/build
+.PHONY : regression_core_brain_regions_broca_test_nimcp_broca_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_brain_regions_cerebellum_test_cerebellum_regression
+
+# Build rule for target.
+regression_core_brain_regions_cerebellum_test_cerebellum_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_brain_regions_cerebellum_test_cerebellum_regression
+.PHONY : regression_core_brain_regions_cerebellum_test_cerebellum_regression
+
+# fast build rule for target.
+regression_core_brain_regions_cerebellum_test_cerebellum_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/regions/cerebellum/CMakeFiles/regression_core_brain_regions_cerebellum_test_cerebellum_regression.dir/build.make test/regression/core/brain/regions/cerebellum/CMakeFiles/regression_core_brain_regions_cerebellum_test_cerebellum_regression.dir/build
+.PHONY : regression_core_brain_regions_cerebellum_test_cerebellum_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression
+
+# Build rule for target.
+regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression
+.PHONY : regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression
+
+# fast build rule for target.
+regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression.dir/build.make test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression.dir/build
+.PHONY : regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_brain_regions_test_signal_propagation_regression
@@ -13183,6 +13222,19 @@ unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_adapter: cmake_chec
 unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_adapter/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_adapter.dir/build.make test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_adapter.dir/build
 .PHONY : unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_adapter/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment
+
+# Build rule for target.
+unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment
+.PHONY : unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment
+
+# fast build rule for target.
+unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment.dir/build.make test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment.dir/build
+.PHONY : unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_brain_regions_insula_test_nimcp_insula_adapter
@@ -22511,6 +22563,7 @@ help:
 	@echo "... e2e_test_gpu_nn_training_pipeline"
 	@echo "... e2e_test_gpu_training_pipeline"
 	@echo "... e2e_test_hippocampus_pipeline"
+	@echo "... e2e_test_hypothalamus_alignment_pipeline"
 	@echo "... e2e_test_introspection_pipeline"
 	@echo "... e2e_test_limbic_pipeline"
 	@echo "... e2e_test_master_connectivity"
@@ -22658,6 +22711,7 @@ help:
 	@echo "... integration_core_brain_factory_test_factory_integration"
 	@echo "... integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration"
 	@echo "... integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline"
+	@echo "... integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integration"
 	@echo "... integration_core_brain_subcortical_amygdala_test"
 	@echo "... integration_core_brain_subcortical_test"
 	@echo "... integration_core_brain_subcortical_thalamus_test"
@@ -22918,6 +22972,7 @@ help:
 	@echo "... regression_core_brain_oscillation_backward_compat"
 	@echo "... regression_core_brain_regions_broca_test_nimcp_broca_regression"
 	@echo "... regression_core_brain_regions_cerebellum_test_cerebellum_regression"
+	@echo "... regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression"
 	@echo "... regression_core_brain_regions_test_contextual_regression"
 	@echo "... regression_core_brain_regions_test_language_bridge_regression"
 	@echo "... regression_core_brain_regions_test_language_production_bridge_regression"
@@ -23582,6 +23637,7 @@ help:
 	@echo "... unit_core_brain_regions_cingulate_test_nimcp_cingulate_quantum_bridge"
 	@echo "... unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter"
 	@echo "... unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_adapter"
+	@echo "... unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment"
 	@echo "... unit_core_brain_regions_insula_test_nimcp_insula_adapter"
 	@echo "... unit_core_brain_regions_insula_test_nimcp_insula_quantum_bridge"
 	@echo "... unit_core_brain_regions_motor_test_nimcp_motor_adapter"

@@ -208,7 +208,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_amygdala_bridge.c  # Amygdala bridge (emotion-drive)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_drive_quantum_bridge.c  # Drive-quantum bridge (alignment)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_immune_bridge.c  # Immune bridge (neuroimmune)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_insula_bridge.c  # Insula bridge (interoception)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_sleep_bridge.c  # Sleep bridge (circadian)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_emotion_bridge.c  # Emotion bridge (HPA axis)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_wellbeing_bridge.c  # Wellbeing bridge (homeostatic)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_perception_bridge.c  # Perception bridge (sensory modulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_broca_bridge.c  # Broca bridge (speech modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_quantum_bridge.c  # Quantum homeostatic optimization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_alignment.c       # Alignment hardening & introspection (Phase 19)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_hypothalamus.c              # Hypothalamus factory init
 
     # Hippocampus - Episodic memory, spatial navigation, pattern separation/completion (Phase H1)
@@ -1422,6 +1429,10 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/ternary/nimcp_ternary_kernels.cu>
     # Graph GPU kernels (CSR format, BFS, clustering coefficient, centrality, modularity, subgraph matching)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/graph/nimcp_graph_kernels.cu>
+    # Hypothalamus GPU kernels (drive dynamics, setpoint evaluation, reward computation)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/hypothalamus/nimcp_hypothalamus_kernels.cu>
+    # Hypothalamus QMC GPU kernels (EFE computation, trajectory sampling, policy optimization)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/hypothalamus/nimcp_hypothalamus_qmc_kernels.cu>
 
     # Graph DAO and GraphQL utilities (CPU-side, always compiled)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/graph/nimcp_graph_dao.c

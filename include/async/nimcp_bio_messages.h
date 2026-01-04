@@ -523,6 +523,66 @@ typedef enum {
     BIO_MSG_HYPO_IMMUNE_CIRCADIAN_PHASE,          /**< Circadian immune phase */
     BIO_MSG_HYPO_IMMUNE_STORM_ALERT,              /**< Cytokine storm emergency */
 
+    /* Hypothalamus-Insula bridge messages (0x11E0 - 0x11EF) - Interoceptive Integration */
+    BIO_MSG_HYPO_INSULA_INTERO_UPDATE = 0x11E0,   /**< Interoceptive state from insula */
+    BIO_MSG_HYPO_INSULA_ATTENTION_REQUEST,        /**< Request attention modulation */
+    BIO_MSG_HYPO_INSULA_ATTENTION_OUTPUT,         /**< Attention modulation output */
+    BIO_MSG_HYPO_INSULA_CARDIAC_STATE,            /**< Cardiac interoception */
+    BIO_MSG_HYPO_INSULA_GASTRIC_STATE,            /**< Gastric interoception */
+    BIO_MSG_HYPO_INSULA_THERMAL_STATE,            /**< Thermal interoception */
+    BIO_MSG_HYPO_INSULA_PAIN_STATE,               /**< Pain/nociceptive interoception */
+    BIO_MSG_HYPO_INSULA_DISTRESS_SIGNAL,          /**< Interoceptive distress */
+
+    /* Hypothalamus-Sleep bridge messages (0x11F0 - 0x11FF) - Circadian Integration */
+    BIO_MSG_HYPO_SLEEP_STATE_UPDATE = 0x11F0,     /**< Sleep state from sleep system */
+    BIO_MSG_HYPO_SLEEP_SCN_REQUEST,               /**< Request SCN circadian output */
+    BIO_MSG_HYPO_SLEEP_SCN_OUTPUT,                /**< SCN circadian phase output */
+    BIO_MSG_HYPO_SLEEP_PROPENSITY,                /**< Sleep propensity signal */
+    BIO_MSG_HYPO_SLEEP_PRESSURE,                  /**< Sleep pressure update */
+    BIO_MSG_HYPO_SLEEP_ALERTNESS,                 /**< Alertness level */
+    BIO_MSG_HYPO_SLEEP_MELATONIN,                 /**< Melatonin signal */
+    BIO_MSG_HYPO_SLEEP_DEPRIVATION_ALERT,         /**< Sleep deprivation warning */
+
+    /* Hypothalamus-Emotion bridge messages (0x1200 - 0x120F) - HPA Axis Integration */
+    BIO_MSG_HYPO_EMOTION_UPDATE = 0x1200,         /**< Emotional state input */
+    BIO_MSG_HYPO_EMOTION_HPA_REQUEST,             /**< Request HPA output */
+    BIO_MSG_HYPO_EMOTION_HPA_OUTPUT,              /**< HPA axis output state */
+    BIO_MSG_HYPO_EMOTION_CRH_LEVEL,               /**< CRH release level */
+    BIO_MSG_HYPO_EMOTION_CORTISOL_LEVEL,          /**< Cortisol level */
+    BIO_MSG_HYPO_EMOTION_STRESS_STATE,            /**< Stress response state */
+    BIO_MSG_HYPO_EMOTION_DAMPENING,               /**< Emotional dampening factor */
+    BIO_MSG_HYPO_EMOTION_CHRONIC_STRESS,          /**< Chronic stress alert */
+
+    /* Hypothalamus-Wellbeing bridge messages (0x1210 - 0x121F) - Homeostatic Wellbeing */
+    BIO_MSG_HYPO_WB_DISTRESS_REPORT = 0x1210,     /**< Distress report output */
+    BIO_MSG_HYPO_WB_DISTRESS_REQUEST,             /**< Request distress assessment */
+    BIO_MSG_HYPO_WB_FEEDBACK,                     /**< Wellbeing feedback input */
+    BIO_MSG_HYPO_WB_INTERVENTION_NEEDED,          /**< Intervention recommendation */
+    BIO_MSG_HYPO_WB_SAFETY_THREAT,                /**< Safety threatened alert */
+    BIO_MSG_HYPO_WB_CHRONIC_LOAD,                 /**< Chronic stress load */
+    BIO_MSG_HYPO_WB_STATE_CHANGE,                 /**< Wellbeing state change */
+    BIO_MSG_HYPO_WB_CONFLICT_LEVEL,               /**< Multi-drive conflict level */
+
+    /* Hypothalamus-Perception bridge messages (0x1220 - 0x122F) - Sensory Modulation */
+    BIO_MSG_HYPO_PERCEPTION_MODULATION_OUTPUT = 0x1220, /**< Perception modulation output */
+    BIO_MSG_HYPO_PERCEPTION_MODULATION_REQUEST,   /**< Request modulation computation */
+    BIO_MSG_HYPO_PERCEPTION_AROUSAL_UPDATE,       /**< Arousal level update */
+    BIO_MSG_HYPO_PERCEPTION_DETECTION,            /**< Sensory detection feedback */
+    BIO_MSG_HYPO_PERCEPTION_CATEGORY_SALIENCE,    /**< Category salience update */
+    BIO_MSG_HYPO_PERCEPTION_THREAT_PRIORITY,      /**< Threat priority flag */
+    BIO_MSG_HYPO_PERCEPTION_SURVIVAL_MODE,        /**< Survival mode state */
+    BIO_MSG_HYPO_PERCEPTION_ANTICIPATION,         /**< Drive anticipation from detection */
+
+    /* Hypothalamus-Broca bridge messages (0x1230 - 0x123F) - Speech Modulation */
+    BIO_MSG_HYPO_BROCA_MODULATION_OUTPUT = 0x1230, /**< Speech modulation output */
+    BIO_MSG_HYPO_BROCA_MODULATION_REQUEST,        /**< Request modulation computation */
+    BIO_MSG_HYPO_BROCA_STRESS_UPDATE,             /**< HPA stress state update */
+    BIO_MSG_HYPO_BROCA_AROUSAL_UPDATE,            /**< Arousal level update */
+    BIO_MSG_HYPO_BROCA_STATE_CHANGE,              /**< Speech state change */
+    BIO_MSG_HYPO_BROCA_FLUENCY_LEVEL,             /**< Fluency level update */
+    BIO_MSG_HYPO_BROCA_ALARM_ACTIVE,              /**< Alarm vocalization active */
+    BIO_MSG_HYPO_BROCA_INITIATION_MODE,           /**< Speech initiation mode */
+
     /* Collective Cognition: Portia bridge messages (0x2E10 - 0x2E1F) */
     BIO_MSG_PORTIA_COLLECTIVE_TIER_CHANGE = 0x2E11,   /**< Portia tier change broadcast */
     BIO_MSG_PORTIA_COLLECTIVE_STATE_UPDATE,           /**< Portia state update */

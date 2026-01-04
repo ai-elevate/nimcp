@@ -1178,6 +1178,17 @@ add_e2e_test(e2e_test_limbic_pipeline
 )
 
 # ============================================================================
+# Hypothalamus Alignment Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for Hypothalamus Alignment Hardening (Phase 19)
+# WHY:  Verify Byrnes' Steering Subsystem model compliance
+# HOW:  Test alignment constraints, callback chains, audit logging, safety invariants
+# ============================================================================
+add_e2e_test(e2e_test_hypothalamus_alignment_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypothalamus_alignment_pipeline.cpp
+)
+
+# ============================================================================
 # Motor Control Pipeline E2E Test
 # ============================================================================
 # WHAT: E2E tests for motor control and execution

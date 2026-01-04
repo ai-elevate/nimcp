@@ -20,3 +20,6 @@ endmacro()
 
 # Core Hypothalamus adapter tests (Phase H1)
 add_hypothalamus_test(test_nimcp_hypothalamus_adapter)
+
+# Alignment hardening tests (Phase 19)
+add_hypothalamus_test(test_nimcp_hypothalamus_alignment)
