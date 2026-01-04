@@ -14,6 +14,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <float.h>
 
 /* ============================================================================
@@ -23,6 +24,28 @@
 #define AI_INITIAL_POLICY_CAPACITY    16
 #define AI_INITIAL_GOAL_CAPACITY      8
 #define AI_EPSILON                    1e-8f
+
+/* ============================================================================
+ * Thread-Safe PRNG (xorshift64)
+ * ============================================================================ */
+
+static __thread uint64_t ai_prng_state = 0;
+
+static void ai_prng_seed(void) {
+    /* Seed with address XOR'd with a constant for uniqueness per thread */
+    ai_prng_state = (uint64_t)(uintptr_t)&ai_prng_state ^ 0x123456789ABCDEF0ULL;
+    if (ai_prng_state == 0) ai_prng_state = 1;  /* State must be non-zero */
+}
+
+static uint64_t ai_prng_next(void) {
+    if (ai_prng_state == 0) ai_prng_seed();
+    uint64_t x = ai_prng_state;
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+    ai_prng_state = x;
+    return x;
+}
 
 /* ============================================================================
  * Static Helpers
@@ -78,7 +101,8 @@ static float compute_intrinsic_value(const float* current_belief,
 }
 
 static float random_uniform(void) {
-    return (float)rand() / (float)RAND_MAX;
+    /* Thread-safe random using xorshift64 */
+    return (float)(ai_prng_next() >> 11) / (float)(1ULL << 53);
 }
 
 static void compute_policy_efe(omni_active_inference_t* ai,

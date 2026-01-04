@@ -383,12 +383,12 @@ int omni_precision_update(omni_precision_ctx_t* ctx,
 
 int omni_precision_update_from_fep(omni_precision_ctx_t* ctx,
                                     uint16_t module_id,
-                                    const void* fep_ptr) {
-    const fep_system_t* fep = (const fep_system_t*)fep_ptr;
+                                    const void* fep) {
+    const fep_system_t* fep_sys = (const fep_system_t*)fep;
     if (!ctx || !fep) return NIMCP_ERROR_INVALID_PARAM;
 
     /* Get FEP free energy as proxy for prediction error */
-    float fe = fep_get_free_energy(fep);
+    float fe = fep_get_free_energy(fep_sys);
     if (isnan(fe)) fe = 0.0f;
 
     /* Update all enabled channels based on FEP state */
@@ -423,7 +423,7 @@ int omni_precision_propagate(omni_precision_ctx_t* ctx) {
 
     /* Propagate precision through edges */
     for (uint32_t e = 0; e < ctx->edge_count; e++) {
-        omni_precision_edge_t* edge = &ctx->edges[e];
+        const omni_precision_edge_t* edge = &ctx->edges[e];
 
         const omni_module_precision_t* source =
             find_module_const(ctx, edge->source_module);
@@ -728,7 +728,7 @@ static nimcp_error_t handle_free_energy_report(
     nimcp_bio_promise_t response_promise,
     void* user_data)
 {
-    omni_precision_ctx_t* ctx = (omni_precision_ctx_t*)user_data;
+    const omni_precision_ctx_t* ctx = (const omni_precision_ctx_t*)user_data;
     if (!ctx || !msg) return NIMCP_ERROR_INVALID_PARAM;
 
     /* Update avg prediction error from free energy report */

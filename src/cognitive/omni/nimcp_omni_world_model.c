@@ -1067,7 +1067,8 @@ float omni_wm_mdn_log_prob(const omni_wm_mdn_prediction_t* pred,
     }
 
     nimcp_free(log_probs);
-    return max_log + logf(sum);
+    /* Guard against logf(0) when num_components is 0 */
+    return max_log + logf(sum > 0.0f ? sum : 1e-10f);
 }
 
 /* ============================================================================

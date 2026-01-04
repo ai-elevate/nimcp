@@ -429,7 +429,7 @@ nimcp_error_t omni_metacog_monitor(
 
     /* Performance metrics from self-model */
     if (ctx->self_model) {
-        omni_capability_t* cap = &ctx->self_model->capabilities[ctx->current_mode];
+        const omni_capability_t* cap = &ctx->self_model->capabilities[ctx->current_mode];
         snapshot->current_accuracy = cap->typical_accuracy;
         snapshot->current_confidence = cap->proficiency;
         snapshot->current_progress = 0.5f;  /* Placeholder */
@@ -542,7 +542,7 @@ nimcp_error_t omni_metacog_detect_anomaly(
 
     /* Check for anomalies based on self-model */
     if (ctx->self_model) {
-        omni_capability_t* cap = &ctx->self_model->capabilities[snapshot->current_mode];
+        const omni_capability_t* cap = &ctx->self_model->capabilities[snapshot->current_mode];
 
         /* Anomaly: accuracy much lower than typical */
         if (cap->usage_count > 10) {
@@ -602,7 +602,7 @@ nimcp_error_t omni_metacog_evaluate_performance(
     nimcp_mutex_lock(ctx->mutex);
 
     if (ctx->self_model) {
-        omni_capability_t* cap = &ctx->self_model->capabilities[ctx->current_mode];
+        const omni_capability_t* cap = &ctx->self_model->capabilities[ctx->current_mode];
         *accuracy = cap->typical_accuracy;
         *confidence = cap->proficiency;
 
@@ -638,7 +638,7 @@ nimcp_error_t omni_metacog_predict_performance(
     nimcp_mutex_lock(ctx->mutex);
 
     if (ctx->self_model) {
-        omni_capability_t* cap = &ctx->self_model->capabilities[mode];
+        const omni_capability_t* cap = &ctx->self_model->capabilities[mode];
         *expected_accuracy = cap->typical_accuracy;
         *expected_cost = cap->typical_cost;
 
@@ -738,7 +738,7 @@ nimcp_error_t omni_metacog_select_mode(
     recommendation->confidence = mode_probs[best_mode];
 
     if (ctx->self_model) {
-        omni_capability_t* cap = &ctx->self_model->capabilities[best_mode];
+        const omni_capability_t* cap = &ctx->self_model->capabilities[best_mode];
         recommendation->expected_accuracy = cap->typical_accuracy;
         recommendation->expected_cost = cap->typical_cost;
         recommendation->expected_latency = cap->typical_latency;
@@ -805,7 +805,7 @@ nimcp_error_t omni_metacog_plan_resources(
     memset(plan, 0, sizeof(*plan));
 
     if (ctx->self_model) {
-        omni_capability_t* cap = &ctx->self_model->capabilities[mode];
+        const omni_capability_t* cap = &ctx->self_model->capabilities[mode];
 
         /* Estimate resources needed based on accuracy target */
         float accuracy_ratio = accuracy_target / (cap->typical_accuracy + 0.01f);
@@ -1073,18 +1073,14 @@ nimcp_error_t omni_metacog_update_policy(
 
     nimcp_mutex_lock(ctx->mutex);
 
-    /* Update exploration rate based on reward */
+    /* Update exploration rate based on reward
+     * Positive reward: decrease exploration (reward is positive, subtract)
+     * Negative reward: increase exploration (reward is negative, -negative = add)
+     * Both cases use the same formula: rate - lr * reward * 0.1f
+     */
     float lr = ctx->config.meta_learning_rate;
-
-    if (reward > 0.0f) {
-        /* Positive reward: decrease exploration */
-        ctx->config.exploration_rate = clamp01(
-            ctx->config.exploration_rate - lr * reward * 0.1f);
-    } else {
-        /* Negative reward: increase exploration */
-        ctx->config.exploration_rate = clamp01(
-            ctx->config.exploration_rate - lr * reward * 0.1f);  /* negative * negative = positive */
-    }
+    ctx->config.exploration_rate = clamp01(
+        ctx->config.exploration_rate - lr * reward * 0.1f);
 
     /* Update intervention threshold based on reward */
     if (ctx->interventions_made > 0) {
