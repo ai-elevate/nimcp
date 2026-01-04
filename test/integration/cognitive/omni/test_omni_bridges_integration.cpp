@@ -30,6 +30,8 @@
 #include "core/brain/regions/occipital/nimcp_omni_occipital_bridge.h"
 #include "core/brain/regions/broca/nimcp_omni_broca_bridge.h"
 #include "cognitive/omni/nimcp_omni_kg_sync.h"
+#include "cognitive/omni/nimcp_omni_precision.h"
+#include "cognitive/omni/nimcp_omni_active_inference.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 
@@ -698,4 +700,443 @@ TEST_F(OmniIntegrationTest, StressPredictionPipeline) {
 
     EXPECT_EQ(success_count, NUM_ITERATIONS);
     std::cout << "Stress test: " << success_count << "/" << NUM_ITERATIONS << std::endl;
+}
+
+/* ============================================================================
+ * Precision Weighting Tests (Phase 6)
+ * ============================================================================ */
+
+TEST_F(OmniIntegrationTest, PrecisionContextCreation) {
+    omni_precision_config_t config;
+    ASSERT_EQ(omni_precision_default_config(&config), NIMCP_SUCCESS);
+
+    omni_precision_ctx_t* ctx = omni_precision_create(&config);
+    ASSERT_NE(ctx, nullptr);
+
+    /* Verify default config values */
+    EXPECT_EQ(config.update_mode, OMNI_PREC_UPDATE_BAYESIAN);
+    EXPECT_FLOAT_EQ(config.learning_rate, OMNI_PRECISION_DEFAULT_LR);
+    EXPECT_TRUE(config.enable_propagation);
+
+    omni_precision_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, PrecisionModuleRegistration) {
+    omni_precision_ctx_t* ctx = omni_precision_create(nullptr);
+    ASSERT_NE(ctx, nullptr);
+
+    /* Register a module */
+    EXPECT_EQ(omni_precision_register_module(ctx, 0x0E55, "sensory_bridge", 1.0f),
+              NIMCP_SUCCESS);
+
+    /* Enable forward channel */
+    EXPECT_EQ(omni_precision_enable_channel(ctx, 0x0E55,
+              OMNI_PREC_CHANNEL_FORWARD, 1.0f),
+              NIMCP_SUCCESS);
+
+    /* Get precision should return 1.0 */
+    float prec = omni_precision_get(ctx, 0x0E55, OMNI_PREC_CHANNEL_FORWARD);
+    EXPECT_FLOAT_EQ(prec, 1.0f);
+
+    omni_precision_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, PrecisionUpdate) {
+    omni_precision_ctx_t* ctx = omni_precision_create(nullptr);
+    ASSERT_NE(ctx, nullptr);
+
+    /* Register module with precision 1.0 */
+    EXPECT_EQ(omni_precision_register_module(ctx, 0x0E55, "test_module", 1.0f),
+              NIMCP_SUCCESS);
+    EXPECT_EQ(omni_precision_enable_channel(ctx, 0x0E55,
+              OMNI_PREC_CHANNEL_FORWARD, 1.0f),
+              NIMCP_SUCCESS);
+
+    /* Update with small prediction error - precision should increase */
+    float small_error = 0.1f;
+    EXPECT_EQ(omni_precision_update(ctx, 0x0E55, OMNI_PREC_CHANNEL_FORWARD,
+              small_error), NIMCP_SUCCESS);
+
+    float prec_after_small = omni_precision_get(ctx, 0x0E55, OMNI_PREC_CHANNEL_FORWARD);
+    EXPECT_GT(prec_after_small, 1.0f); /* Precision should increase */
+
+    /* Reset and update with large prediction error - precision should decrease */
+    EXPECT_EQ(omni_precision_reset(ctx), NIMCP_SUCCESS);
+    EXPECT_EQ(omni_precision_enable_channel(ctx, 0x0E55,
+              OMNI_PREC_CHANNEL_FORWARD, 1.0f),
+              NIMCP_SUCCESS);
+
+    float large_error = 5.0f;
+    EXPECT_EQ(omni_precision_update(ctx, 0x0E55, OMNI_PREC_CHANNEL_FORWARD,
+              large_error), NIMCP_SUCCESS);
+
+    float prec_after_large = omni_precision_get(ctx, 0x0E55, OMNI_PREC_CHANNEL_FORWARD);
+    EXPECT_LT(prec_after_large, 1.0f); /* Precision should decrease */
+
+    omni_precision_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, PrecisionEdgeCreation) {
+    omni_precision_ctx_t* ctx = omni_precision_create(nullptr);
+    ASSERT_NE(ctx, nullptr);
+
+    /* Register two modules */
+    EXPECT_EQ(omni_precision_register_module(ctx, 0x0E55, "module_a", 1.0f),
+              NIMCP_SUCCESS);
+    EXPECT_EQ(omni_precision_register_module(ctx, 0x0E56, "module_b", 1.0f),
+              NIMCP_SUCCESS);
+
+    /* Add precision edge */
+    EXPECT_EQ(omni_precision_add_edge(ctx, 0x0E55, 0x0E56,
+              OMNI_PREC_CHANNEL_FORWARD, 0.5f), NIMCP_SUCCESS);
+
+    /* Add bidirectional edge */
+    EXPECT_EQ(omni_precision_add_bidirectional_edge(ctx, 0x0E55, 0x0E56, 0.3f),
+              NIMCP_SUCCESS);
+
+    omni_precision_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, PrecisionConfidence) {
+    /* Test confidence = precision / (precision + 1) */
+    EXPECT_NEAR(omni_precision_to_confidence(0.0f), 0.0f, 0.001f);
+    EXPECT_NEAR(omni_precision_to_confidence(1.0f), 0.5f, 0.001f);
+    EXPECT_NEAR(omni_precision_to_confidence(9.0f), 0.9f, 0.001f);
+    EXPECT_NEAR(omni_precision_to_confidence(99.0f), 0.99f, 0.001f);
+}
+
+TEST_F(OmniIntegrationTest, PrecisionClamp) {
+    /* Test precision clamping */
+    EXPECT_EQ(omni_precision_clamp(0.001f), OMNI_PRECISION_MIN);
+    EXPECT_EQ(omni_precision_clamp(500.0f), OMNI_PRECISION_MAX);
+    EXPECT_FLOAT_EQ(omni_precision_clamp(5.0f), 5.0f);
+}
+
+TEST_F(OmniIntegrationTest, PrecisionFromVariance) {
+    /* Test precision = 1/variance */
+    EXPECT_NEAR(omni_precision_from_variance(1.0f), 1.0f, 0.001f);
+    EXPECT_NEAR(omni_precision_from_variance(0.25f), 4.0f, 0.001f);
+    EXPECT_NEAR(omni_precision_from_variance(4.0f), 0.25f, 0.001f);
+
+    /* Very small variance should clamp to max precision */
+    float prec_small_var = omni_precision_from_variance(0.001f);
+    EXPECT_LE(prec_small_var, OMNI_PRECISION_MAX);
+}
+
+TEST_F(OmniIntegrationTest, PrecisionStats) {
+    omni_precision_ctx_t* ctx = omni_precision_create(nullptr);
+    ASSERT_NE(ctx, nullptr);
+
+    omni_precision_stats_t stats;
+    EXPECT_EQ(omni_precision_get_stats(ctx, &stats), NIMCP_SUCCESS);
+
+    EXPECT_EQ(stats.total_updates, 0u);
+    EXPECT_EQ(stats.propagations, 0u);
+
+    /* Register module and do some updates */
+    omni_precision_register_module(ctx, 0x0E55, "test", 1.0f);
+    omni_precision_enable_channel(ctx, 0x0E55, OMNI_PREC_CHANNEL_FORWARD, 1.0f);
+    omni_precision_update(ctx, 0x0E55, OMNI_PREC_CHANNEL_FORWARD, 0.5f);
+    omni_precision_update(ctx, 0x0E55, OMNI_PREC_CHANNEL_FORWARD, 0.3f);
+
+    EXPECT_EQ(omni_precision_get_stats(ctx, &stats), NIMCP_SUCCESS);
+    EXPECT_EQ(stats.total_updates, 2u);
+
+    /* Reset stats */
+    EXPECT_EQ(omni_precision_reset_stats(ctx), NIMCP_SUCCESS);
+    EXPECT_EQ(omni_precision_get_stats(ctx, &stats), NIMCP_SUCCESS);
+    EXPECT_EQ(stats.total_updates, 0u);
+
+    omni_precision_destroy(ctx);
+}
+
+TEST_F(OmniIntegrationTest, PrecisionStringConversion) {
+    /* Test channel string conversion */
+    EXPECT_STREQ(omni_precision_channel_to_string(OMNI_PREC_CHANNEL_FORWARD),
+                 "FORWARD");
+    EXPECT_STREQ(omni_precision_channel_to_string(OMNI_PREC_CHANNEL_BACKWARD),
+                 "BACKWARD");
+    EXPECT_STREQ(omni_precision_channel_to_string(OMNI_PREC_CHANNEL_LATERAL),
+                 "LATERAL");
+
+    /* Test update mode string conversion */
+    EXPECT_STREQ(omni_precision_update_mode_to_string(OMNI_PREC_UPDATE_BAYESIAN),
+                 "BAYESIAN");
+    EXPECT_STREQ(omni_precision_update_mode_to_string(OMNI_PREC_UPDATE_GRADIENT),
+                 "GRADIENT");
+
+    /* Test route mode string conversion */
+    EXPECT_STREQ(omni_precision_route_mode_to_string(OMNI_PREC_ROUTE_INDEPENDENT),
+                 "INDEPENDENT");
+    EXPECT_STREQ(omni_precision_route_mode_to_string(OMNI_PREC_ROUTE_GRAPH),
+                 "GRAPH");
+}
+
+TEST_F(OmniIntegrationTest, SensoryBridgePrecisionConnect) {
+    /* Create sensory bridge */
+    omni_sensory_config_t config;
+    omni_sensory_default_config(&config);
+    omni_sensory_bridge_t* bridge = omni_sensory_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    /* Create precision context */
+    omni_precision_ctx_t* prec_ctx = omni_precision_create(nullptr);
+    ASSERT_NE(prec_ctx, nullptr);
+
+    /* Connect precision to bridge */
+    EXPECT_EQ(omni_sensory_connect_precision(bridge, prec_ctx), NIMCP_SUCCESS);
+
+    /* Verify module was registered */
+    float prec = omni_precision_get(prec_ctx, BIO_MODULE_OMNI_SENSORY_BRIDGE,
+                                     OMNI_PREC_CHANNEL_FORWARD);
+    EXPECT_FLOAT_EQ(prec, OMNI_PRECISION_DEFAULT);
+
+    omni_precision_destroy(prec_ctx);
+    omni_sensory_bridge_destroy(bridge);
+}
+
+/* ============================================================================
+ * Active Inference Tests (Phase 7)
+ * ============================================================================ */
+
+TEST_F(OmniIntegrationTest, ActiveInferenceCreation) {
+    omni_ai_config_t config;
+    ASSERT_EQ(omni_ai_default_config(&config), NIMCP_SUCCESS);
+
+    omni_active_inference_t* ai = omni_ai_create(&config, 8, 16);
+    ASSERT_NE(ai, nullptr);
+
+    /* Verify default config */
+    EXPECT_EQ(config.select_mode, OMNI_AI_SELECT_SOFTMAX);
+    EXPECT_EQ(config.efe_mode, OMNI_AI_EFE_BALANCED);
+    EXPECT_FLOAT_EQ(config.policy_precision, OMNI_AI_DEFAULT_PRECISION);
+
+    omni_ai_destroy(ai);
+}
+
+TEST_F(OmniIntegrationTest, ActiveInferencePolicyAdd) {
+    omni_active_inference_t* ai = omni_ai_create(nullptr, 4, 8);
+    ASSERT_NE(ai, nullptr);
+
+    /* Add a policy */
+    float actions[8] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f};
+    int idx = omni_ai_add_policy(ai, actions, 2, 4);
+    EXPECT_GE(idx, 0);
+
+    /* Get policy */
+    omni_ai_policy_t policy;
+    EXPECT_EQ(omni_ai_get_policy(ai, (uint32_t)idx, &policy), NIMCP_SUCCESS);
+    EXPECT_EQ(policy.horizon, 2u);
+    EXPECT_EQ(policy.action_dim, 4u);
+
+    omni_ai_destroy(ai);
+}
+
+TEST_F(OmniIntegrationTest, ActiveInferenceRandomPolicies) {
+    omni_active_inference_t* ai = omni_ai_create(nullptr, 4, 8);
+    ASSERT_NE(ai, nullptr);
+
+    /* Generate random policies */
+    int generated = omni_ai_generate_random_policies(ai, 5, 3);
+    EXPECT_EQ(generated, 5);
+
+    /* Clear policies */
+    EXPECT_EQ(omni_ai_clear_policies(ai), NIMCP_SUCCESS);
+
+    omni_ai_destroy(ai);
+}
+
+TEST_F(OmniIntegrationTest, ActiveInferenceGoalSet) {
+    omni_active_inference_t* ai = omni_ai_create(nullptr, 4, 8);
+    ASSERT_NE(ai, nullptr);
+
+    /* Set goal */
+    float preferred[8] = {1.0f, 0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.5f, 0.0f};
+    int goal_idx = omni_ai_set_goal(ai, preferred, 8, 2.0f);
+    EXPECT_GE(goal_idx, 0);
+
+    /* Add additional goal */
+    float goal2[8] = {0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f};
+    int goal2_idx = omni_ai_add_goal(ai, goal2, 8, 1.5f);
+    EXPECT_GE(goal2_idx, 0);
+
+    /* Deactivate goal */
+    EXPECT_EQ(omni_ai_set_goal_active(ai, (uint32_t)goal_idx, false), NIMCP_SUCCESS);
+
+    omni_ai_destroy(ai);
+}
+
+TEST_F(OmniIntegrationTest, ActiveInferenceObservation) {
+    omni_active_inference_t* ai = omni_ai_create(nullptr, 4, 8);
+    ASSERT_NE(ai, nullptr);
+
+    /* Update observation */
+    float obs[8] = {0.5f, 0.6f, 0.7f, 0.8f, 0.1f, 0.2f, 0.3f, 0.4f};
+    EXPECT_EQ(omni_ai_update_observation(ai, obs, 8), NIMCP_SUCCESS);
+
+    omni_ai_destroy(ai);
+}
+
+TEST_F(OmniIntegrationTest, ActiveInferencePolicyEvaluation) {
+    omni_active_inference_t* ai = omni_ai_create(nullptr, 4, 8);
+    ASSERT_NE(ai, nullptr);
+
+    /* Set up goal */
+    float goal[8] = {1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+    omni_ai_set_goal(ai, goal, 8, 1.0f);
+
+    /* Update observation */
+    float obs[8] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
+    omni_ai_update_observation(ai, obs, 8);
+
+    /* Generate and evaluate policies */
+    omni_ai_generate_random_policies(ai, 4, 2);
+    EXPECT_EQ(omni_ai_evaluate_policies(ai), NIMCP_SUCCESS);
+
+    /* Get EFE for first policy */
+    float efe = omni_ai_get_policy_efe(ai, 0, OMNI_AI_DIR_FORWARD);
+    EXPECT_GE(efe, 0.0f); /* EFE is non-negative for risk */
+
+    omni_ai_destroy(ai);
+}
+
+TEST_F(OmniIntegrationTest, ActiveInferenceForwardSelection) {
+    omni_active_inference_t* ai = omni_ai_create(nullptr, 4, 8);
+    ASSERT_NE(ai, nullptr);
+
+    /* Set up goal and generate policies */
+    float goal[8] = {1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f};
+    omni_ai_set_goal(ai, goal, 8, 1.0f);
+    omni_ai_generate_random_policies(ai, 5, 3);
+
+    /* Select action */
+    omni_ai_action_result_t* result = omni_ai_action_result_create(4);
+    ASSERT_NE(result, nullptr);
+
+    EXPECT_EQ(omni_ai_select_action_forward(ai, result), NIMCP_SUCCESS);
+    EXPECT_EQ(result->direction, OMNI_AI_DIR_FORWARD);
+    EXPECT_GE(result->confidence, 0.0f);
+    EXPECT_LE(result->confidence, 1.0f);
+
+    omni_ai_action_result_destroy(result);
+    omni_ai_destroy(ai);
+}
+
+TEST_F(OmniIntegrationTest, ActiveInferenceBackwardInference) {
+    omni_active_inference_t* ai = omni_ai_create(nullptr, 4, 8);
+    ASSERT_NE(ai, nullptr);
+
+    /* Generate policies */
+    omni_ai_generate_random_policies(ai, 4, 2);
+
+    /* Infer action from outcome */
+    float outcome[8] = {0.9f, 0.1f, 0.8f, 0.2f, 0.7f, 0.3f, 0.6f, 0.4f};
+    omni_ai_action_result_t* result = omni_ai_action_result_create(4);
+    ASSERT_NE(result, nullptr);
+
+    EXPECT_EQ(omni_ai_infer_action_backward(ai, outcome, 8, result), NIMCP_SUCCESS);
+    EXPECT_EQ(result->direction, OMNI_AI_DIR_BACKWARD);
+
+    omni_ai_action_result_destroy(result);
+    omni_ai_destroy(ai);
+}
+
+TEST_F(OmniIntegrationTest, ActiveInferenceOmniSelection) {
+    omni_active_inference_t* ai = omni_ai_create(nullptr, 4, 8);
+    ASSERT_NE(ai, nullptr);
+
+    /* Set up for omni selection */
+    float goal[8] = {1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f};
+    omni_ai_set_goal(ai, goal, 8, 1.0f);
+    omni_ai_generate_random_policies(ai, 6, 2);
+
+    /* Omni action selection */
+    omni_ai_action_result_t* result = omni_ai_action_result_create(4);
+    ASSERT_NE(result, nullptr);
+
+    EXPECT_EQ(omni_ai_select_action_omni(ai, result), NIMCP_SUCCESS);
+
+    omni_ai_action_result_destroy(result);
+    omni_ai_destroy(ai);
+}
+
+TEST_F(OmniIntegrationTest, ActiveInferenceSoftmax) {
+    /* Test softmax over EFE */
+    float efe[4] = {1.0f, 2.0f, 0.5f, 1.5f};
+    float probs[4];
+
+    EXPECT_EQ(omni_ai_softmax_efe(efe, probs, 4, 1.0f), NIMCP_SUCCESS);
+
+    /* Check probabilities sum to 1 */
+    float sum = probs[0] + probs[1] + probs[2] + probs[3];
+    EXPECT_NEAR(sum, 1.0f, 0.001f);
+
+    /* Lower EFE should have higher probability */
+    EXPECT_GT(probs[2], probs[0]); /* EFE 0.5 > EFE 1.0 */
+    EXPECT_GT(probs[0], probs[1]); /* EFE 1.0 > EFE 2.0 */
+}
+
+TEST_F(OmniIntegrationTest, ActiveInferenceStats) {
+    omni_active_inference_t* ai = omni_ai_create(nullptr, 4, 8);
+    ASSERT_NE(ai, nullptr);
+
+    omni_ai_stats_t stats;
+    EXPECT_EQ(omni_ai_get_stats(ai, &stats), NIMCP_SUCCESS);
+    EXPECT_EQ(stats.total_inferences, 0u);
+
+    /* Do some inferences */
+    omni_ai_generate_random_policies(ai, 3, 2);
+    omni_ai_action_result_t* result = omni_ai_action_result_create(4);
+    if (result) {
+        omni_ai_select_action_forward(ai, result);
+        omni_ai_select_action_forward(ai, result);
+        omni_ai_action_result_destroy(result);
+    }
+
+    EXPECT_EQ(omni_ai_get_stats(ai, &stats), NIMCP_SUCCESS);
+    EXPECT_EQ(stats.total_inferences, 2u);
+    EXPECT_EQ(stats.forward_selections, 2u);
+
+    /* Reset stats */
+    EXPECT_EQ(omni_ai_reset_stats(ai), NIMCP_SUCCESS);
+    EXPECT_EQ(omni_ai_get_stats(ai, &stats), NIMCP_SUCCESS);
+    EXPECT_EQ(stats.total_inferences, 0u);
+
+    omni_ai_destroy(ai);
+}
+
+TEST_F(OmniIntegrationTest, ActiveInferencePrecisionIntegration) {
+    /* Create precision context */
+    omni_precision_ctx_t* prec_ctx = omni_precision_create(nullptr);
+    ASSERT_NE(prec_ctx, nullptr);
+
+    /* Create active inference */
+    omni_active_inference_t* ai = omni_ai_create(nullptr, 4, 8);
+    ASSERT_NE(ai, nullptr);
+
+    /* Connect precision */
+    EXPECT_EQ(omni_ai_connect_precision(ai, prec_ctx), NIMCP_SUCCESS);
+
+    /* Verify module was registered */
+    float prec = omni_precision_get(prec_ctx, BIO_MODULE_OMNI_ACTIVE_INFERENCE,
+                                     OMNI_PREC_CHANNEL_FORWARD);
+    EXPECT_FLOAT_EQ(prec, OMNI_AI_DEFAULT_PRECISION);
+
+    omni_ai_destroy(ai);
+    omni_precision_destroy(prec_ctx);
+}
+
+TEST_F(OmniIntegrationTest, ActiveInferenceStringConversion) {
+    /* Direction strings */
+    EXPECT_STREQ(omni_ai_direction_to_string(OMNI_AI_DIR_FORWARD), "FORWARD");
+    EXPECT_STREQ(omni_ai_direction_to_string(OMNI_AI_DIR_BACKWARD), "BACKWARD");
+    EXPECT_STREQ(omni_ai_direction_to_string(OMNI_AI_DIR_LATERAL), "LATERAL");
+
+    /* Select mode strings */
+    EXPECT_STREQ(omni_ai_select_mode_to_string(OMNI_AI_SELECT_SOFTMAX), "SOFTMAX");
+    EXPECT_STREQ(omni_ai_select_mode_to_string(OMNI_AI_SELECT_GREEDY), "GREEDY");
+
+    /* EFE mode strings */
+    EXPECT_STREQ(omni_ai_efe_mode_to_string(OMNI_AI_EFE_BALANCED), "BALANCED");
+    EXPECT_STREQ(omni_ai_efe_mode_to_string(OMNI_AI_EFE_CURIOUS), "CURIOUS");
 }

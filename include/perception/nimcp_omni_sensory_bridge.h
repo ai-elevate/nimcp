@@ -74,6 +74,7 @@ typedef struct hopfield_memory hopfield_memory_t;
 typedef struct audio_cortex audio_cortex_t;
 typedef struct visual_cortex_struct visual_cortex_t;
 typedef struct speech_cortex speech_cortex_t;
+typedef struct omni_precision_ctx omni_precision_ctx_t;
 
 /* ============================================================================
  * Constants
@@ -271,6 +272,9 @@ struct omni_sensory_bridge {
     /* Statistics */
     omni_sensory_stats_t stats;
 
+    /* Precision weighting (Phase 6) */
+    omni_precision_ctx_t* precision_ctx; /**< Precision context */
+
     /* Bio-async integration */
     void* bio_context;               /**< Bio-async module context */
     bool bio_async_connected;        /**< Bio-async connection state */
@@ -324,6 +328,9 @@ int omni_sensory_connect_visual(omni_sensory_bridge_t* bridge,
 
 int omni_sensory_connect_speech(omni_sensory_bridge_t* bridge,
                                  speech_cortex_t* speech);
+
+int omni_sensory_connect_precision(omni_sensory_bridge_t* bridge,
+                                    omni_precision_ctx_t* precision_ctx);
 
 /* ============================================================================
  * Update API

@@ -583,6 +583,16 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_omni_occipital_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_omni_broca_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/nimcp_omni_kg_sync.c
+    # Omnidirectional Inference Bridges (Phase 4) - Higher Cognitive
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_omni_rcog_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_omni_logic_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_omni_immune_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_omni_amygdala_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/training/nimcp_omni_training_bridge.c
+    # Omnidirectional Inference (Phase 6) - Precision Weighting
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/nimcp_omni_precision.c
+    # Omnidirectional Inference (Phase 7) - Active Inference
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/nimcp_omni_active_inference.c
     # Plasticity FEP Bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/dendritic/nimcp_dendritic_fep_bridge.c

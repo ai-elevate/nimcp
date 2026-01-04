@@ -7,6 +7,7 @@
 #include "cognitive/jepa/nimcp_jepa_bidirectional.h"
 #include "cognitive/predictive/nimcp_predictive_hierarchy.h"
 #include "cognitive/memory/nimcp_hopfield_memory.h"
+#include "cognitive/omni/nimcp_omni_precision.h"
 #include "perception/nimcp_audio_cortex.h"
 #include "perception/nimcp_visual_cortex.h"
 #include "perception/nimcp_speech_cortex.h"
@@ -274,6 +275,38 @@ int omni_sensory_connect_speech(omni_sensory_bridge_t* bridge,
     nimcp_mutex_lock(bridge->mutex);
     bridge->speech_cortex = speech;
     bridge->modality_states[OMNI_MODALITY_SPEECH].active = (speech != NULL);
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_sensory_connect_precision(omni_sensory_bridge_t* bridge,
+                                    omni_precision_ctx_t* precision_ctx) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->precision_ctx = precision_ctx;
+
+    /* Register this bridge with the precision context if provided */
+    if (precision_ctx) {
+        omni_precision_register_module(precision_ctx,
+                                        BIO_MODULE_OMNI_SENSORY_BRIDGE,
+                                        "omni_sensory_bridge",
+                                        OMNI_PRECISION_DEFAULT);
+
+        /* Enable forward and backward precision channels */
+        omni_precision_enable_channel(precision_ctx,
+                                       BIO_MODULE_OMNI_SENSORY_BRIDGE,
+                                       OMNI_PREC_CHANNEL_FORWARD,
+                                       OMNI_PRECISION_DEFAULT);
+        omni_precision_enable_channel(precision_ctx,
+                                       BIO_MODULE_OMNI_SENSORY_BRIDGE,
+                                       OMNI_PREC_CHANNEL_BACKWARD,
+                                       OMNI_PRECISION_DEFAULT);
+        omni_precision_enable_channel(precision_ctx,
+                                       BIO_MODULE_OMNI_SENSORY_BRIDGE,
+                                       OMNI_PREC_CHANNEL_LATERAL,
+                                       OMNI_PRECISION_DEFAULT);
+    }
+
     nimcp_mutex_unlock(bridge->mutex);
     return NIMCP_SUCCESS;
 }

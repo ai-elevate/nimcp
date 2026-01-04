@@ -10,6 +10,8 @@
 #include "cognitive/memory/nimcp_temporal_replay.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 
 #include <string.h>
 #include <math.h>
@@ -23,15 +25,14 @@ static float compute_aggregated_pe(omni_immune_bridge_t* bridge) {
     float total_weight = 0.0f;
 
     if (bridge->jepa) {
-        float forward_pe = 0.0f, backward_pe = 0.0f;
         jepa_bidir_stats_t stats;
-        if (jepa_bidir_get_stats(bridge->jepa, &stats) == NIMCP_SUCCESS) {
-            forward_pe = stats.avg_forward_error;
-            backward_pe = stats.avg_backward_error;
+        if (jepa_bidirectional_get_stats(bridge->jepa, &stats) == NIMCP_SUCCESS) {
+            /* Use free energy as a proxy for prediction error */
+            float fe = stats.avg_free_energy;
+            total_pe += fe * bridge->config.jepa_forward_weight;
+            total_pe += fe * bridge->config.jepa_backward_weight;
+            total_weight += bridge->config.jepa_forward_weight + bridge->config.jepa_backward_weight;
         }
-        total_pe += forward_pe * bridge->config.jepa_forward_weight;
-        total_pe += backward_pe * bridge->config.jepa_backward_weight;
-        total_weight += bridge->config.jepa_forward_weight + bridge->config.jepa_backward_weight;
     }
 
     if (bridge->hopfield) {
@@ -84,14 +85,12 @@ static omni_immune_source_t find_dominant_source(omni_immune_bridge_t* bridge) {
 
     if (bridge->jepa) {
         jepa_bidir_stats_t stats;
-        if (jepa_bidir_get_stats(bridge->jepa, &stats) == NIMCP_SUCCESS) {
-            if (stats.avg_forward_error > max_error) {
-                max_error = stats.avg_forward_error;
+        if (jepa_bidirectional_get_stats(bridge->jepa, &stats) == NIMCP_SUCCESS) {
+            /* Use free energy as proxy for error */
+            float fe = stats.avg_free_energy;
+            if (fe > max_error) {
+                max_error = fe;
                 source = OMNI_SOURCE_JEPA_FORWARD;
-            }
-            if (stats.avg_backward_error > max_error) {
-                max_error = stats.avg_backward_error;
-                source = OMNI_SOURCE_JEPA_BACKWARD;
             }
         }
     }
@@ -346,23 +345,89 @@ int omni_immune_reset_stats(omni_immune_bridge_t* bridge) {
 }
 
 /* ============================================================================
+ * Bio-Async Message Handlers
+ * ============================================================================ */
+
+static nimcp_error_t handle_immune_free_energy_report(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    omni_immune_bridge_t* bridge = (omni_immune_bridge_t*)user_data;
+    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+
+    omni_immune_update(bridge);
+
+    (void)response_promise;
+    (void)msg_size;
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t handle_immune_error_propagate(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    omni_immune_bridge_t* bridge = (omni_immune_bridge_t*)user_data;
+    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* Process error propagation for immune response */
+    omni_immune_update(bridge);
+
+    (void)response_promise;
+    (void)msg_size;
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
  * Bio-Async API
  * ============================================================================ */
 
 int omni_immune_connect_bio_async(omni_immune_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
-    /* Bio-async connection would be implemented here */
+    if (bridge->bio_async_connected) return NIMCP_SUCCESS;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_OMNI_IMMUNE_BRIDGE,
+        .module_name = "omni_immune_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bio_module_context_t ctx = bio_router_register_module(&info);
+    if (!ctx) {
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
+
+    bridge->bio_context = ctx;
+
+    bio_router_register_handler(ctx, BIO_MSG_OMNI_FREE_ENERGY_REPORT,
+                                 handle_immune_free_energy_report);
+    bio_router_register_handler(ctx, BIO_MSG_PRED_HIER_ERROR_PROPAGATE,
+                                 handle_immune_error_propagate);
+
+    bridge->bio_async_connected = true;
     return NIMCP_SUCCESS;
 }
 
 int omni_immune_disconnect_bio_async(omni_immune_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
+
+    if (bridge->bio_context) {
+        bio_router_unregister_module(bridge->bio_context);
+        bridge->bio_context = NULL;
+    }
+
+    bridge->bio_async_connected = false;
     return NIMCP_SUCCESS;
 }
 
 bool omni_immune_is_bio_async_connected(const omni_immune_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->config.enable_bio_async;
+    return bridge->bio_async_connected;
 }
 
 /* ============================================================================

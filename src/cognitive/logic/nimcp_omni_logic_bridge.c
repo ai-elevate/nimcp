@@ -8,6 +8,8 @@
 #include "cognitive/predictive/nimcp_predictive_hierarchy.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 
 #include <string.h>
 #include <math.h>
@@ -203,13 +205,15 @@ int omni_logic_update(omni_logic_bridge_t* bridge) {
     /* Update conditions from connected systems */
     if (bridge->jepa) {
         jepa_bidir_stats_t stats;
-        if (jepa_bidir_get_stats(bridge->jepa, &stats) == NIMCP_SUCCESS) {
-            bridge->conditions.forward_pe = stats.avg_forward_error;
-            bridge->conditions.backward_pe = stats.avg_backward_error;
+        if (jepa_bidirectional_get_stats(bridge->jepa, &stats) == NIMCP_SUCCESS) {
+            /* Use free energy as a proxy for prediction error */
+            float fe = stats.avg_free_energy;
+            bridge->conditions.forward_pe = fe;
+            bridge->conditions.backward_pe = fe;
             bridge->conditions.forward_confident =
-                (stats.avg_forward_error < bridge->config.forward_confidence_min);
+                (fe < bridge->config.forward_confidence_min);
             bridge->conditions.backward_confident =
-                (stats.avg_backward_error < bridge->config.backward_confidence_min);
+                (fe < bridge->config.backward_confidence_min);
         }
     }
 
@@ -357,7 +361,7 @@ int omni_logic_add_rule(omni_logic_bridge_t* bridge,
 
     if (bridge->num_rules >= bridge->max_rules) {
         nimcp_mutex_unlock(bridge->mutex);
-        return NIMCP_ERROR_CAPACITY;
+        return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     omni_logic_rule_t* rule = &bridge->rules[bridge->num_rules];
@@ -470,22 +474,89 @@ int omni_logic_reset_stats(omni_logic_bridge_t* bridge) {
 }
 
 /* ============================================================================
+ * Bio-Async Message Handlers
+ * ============================================================================ */
+
+static nimcp_error_t handle_logic_direction_switch(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    omni_logic_bridge_t* bridge = (omni_logic_bridge_t*)user_data;
+    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+
+    omni_logic_update(bridge);
+
+    (void)response_promise;
+    (void)msg_size;
+    return NIMCP_SUCCESS;
+}
+
+static nimcp_error_t handle_logic_gate_result(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    omni_logic_bridge_t* bridge = (omni_logic_bridge_t*)user_data;
+    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* Process logic gate result */
+    omni_logic_update(bridge);
+
+    (void)response_promise;
+    (void)msg_size;
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
  * Bio-Async API
  * ============================================================================ */
 
 int omni_logic_connect_bio_async(omni_logic_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (bridge->bio_async_connected) return NIMCP_SUCCESS;
+
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_OMNI_LOGIC_BRIDGE,
+        .module_name = "omni_logic_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bio_module_context_t ctx = bio_router_register_module(&info);
+    if (!ctx) {
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
+
+    bridge->bio_context = ctx;
+
+    bio_router_register_handler(ctx, BIO_MSG_OMNI_DIRECTION_SWITCH,
+                                 handle_logic_direction_switch);
+    bio_router_register_handler(ctx, BIO_MSG_LOGIC_GATE_RESULT,
+                                 handle_logic_gate_result);
+
+    bridge->bio_async_connected = true;
     return NIMCP_SUCCESS;
 }
 
 int omni_logic_disconnect_bio_async(omni_logic_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
+
+    if (bridge->bio_context) {
+        bio_router_unregister_module(bridge->bio_context);
+        bridge->bio_context = NULL;
+    }
+
+    bridge->bio_async_connected = false;
     return NIMCP_SUCCESS;
 }
 
 bool omni_logic_is_bio_async_connected(const omni_logic_bridge_t* bridge) {
     if (!bridge) return false;
-    return bridge->config.enable_bio_async;
+    return bridge->bio_async_connected;
 }
 
 /* ============================================================================
