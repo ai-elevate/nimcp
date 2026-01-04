@@ -593,6 +593,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/nimcp_omni_precision.c
     # Omnidirectional Inference (Phase 7) - Active Inference
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/nimcp_omni_active_inference.c
+    # Omnidirectional Inference (Phase 9) - Generative World Model
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/nimcp_omni_world_model.c
     # Plasticity FEP Bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/dendritic/nimcp_dendritic_fep_bridge.c

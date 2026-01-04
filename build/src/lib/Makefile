@@ -6737,6 +6737,30 @@ __/cognitive/omni/nimcp_omni_precision.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/omni/nimcp_omni_precision.c.s
 .PHONY : __/cognitive/omni/nimcp_omni_precision.c.s
 
+__/cognitive/omni/nimcp_omni_world_model.o: __/cognitive/omni/nimcp_omni_world_model.c.o
+.PHONY : __/cognitive/omni/nimcp_omni_world_model.o
+
+# target to build an object file
+__/cognitive/omni/nimcp_omni_world_model.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/omni/nimcp_omni_world_model.c.o
+.PHONY : __/cognitive/omni/nimcp_omni_world_model.c.o
+
+__/cognitive/omni/nimcp_omni_world_model.i: __/cognitive/omni/nimcp_omni_world_model.c.i
+.PHONY : __/cognitive/omni/nimcp_omni_world_model.i
+
+# target to preprocess a source file
+__/cognitive/omni/nimcp_omni_world_model.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/omni/nimcp_omni_world_model.c.i
+.PHONY : __/cognitive/omni/nimcp_omni_world_model.c.i
+
+__/cognitive/omni/nimcp_omni_world_model.s: __/cognitive/omni/nimcp_omni_world_model.c.s
+.PHONY : __/cognitive/omni/nimcp_omni_world_model.s
+
+# target to generate assembly for a file
+__/cognitive/omni/nimcp_omni_world_model.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/omni/nimcp_omni_world_model.c.s
+.PHONY : __/cognitive/omni/nimcp_omni_world_model.c.s
+
 __/cognitive/parietal/nimcp_analogical_reasoning.o: __/cognitive/parietal/nimcp_analogical_reasoning.c.o
 .PHONY : __/cognitive/parietal/nimcp_analogical_reasoning.o
 
@@ -30994,6 +31018,9 @@ help:
 	@echo "... __/cognitive/omni/nimcp_omni_precision.o"
 	@echo "... __/cognitive/omni/nimcp_omni_precision.i"
 	@echo "... __/cognitive/omni/nimcp_omni_precision.s"
+	@echo "... __/cognitive/omni/nimcp_omni_world_model.o"
+	@echo "... __/cognitive/omni/nimcp_omni_world_model.i"
+	@echo "... __/cognitive/omni/nimcp_omni_world_model.s"
 	@echo "... __/cognitive/parietal/nimcp_analogical_reasoning.o"
 	@echo "... __/cognitive/parietal/nimcp_analogical_reasoning.i"
 	@echo "... __/cognitive/parietal/nimcp_analogical_reasoning.s"

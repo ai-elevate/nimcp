@@ -32,6 +32,7 @@
 #include "cognitive/omni/nimcp_omni_kg_sync.h"
 #include "cognitive/omni/nimcp_omni_precision.h"
 #include "cognitive/omni/nimcp_omni_active_inference.h"
+#include "cognitive/omni/nimcp_omni_world_model.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 
@@ -1139,4 +1140,483 @@ TEST_F(OmniIntegrationTest, ActiveInferenceStringConversion) {
     /* EFE mode strings */
     EXPECT_STREQ(omni_ai_efe_mode_to_string(OMNI_AI_EFE_BALANCED), "BALANCED");
     EXPECT_STREQ(omni_ai_efe_mode_to_string(OMNI_AI_EFE_CURIOUS), "CURIOUS");
+}
+
+/* ============================================================================
+ * Phase 9: Generative World Model Tests
+ *
+ * Tests for DreamerV3/JEPA-inspired world model with:
+ * - RSSM dynamics (deterministic + stochastic)
+ * - Latent space encoding (JEPA-style)
+ * - Symlog reward normalization
+ * - Counterfactual reasoning
+ * - Experience replay and dreaming
+ * ============================================================================ */
+
+TEST_F(OmniIntegrationTest, WorldModelCreation) {
+    /* Create with default config */
+    omni_world_model_t* wm = omni_wm_create(nullptr);
+    ASSERT_NE(wm, nullptr);
+    omni_wm_destroy(wm);
+
+    /* Create with explicit config */
+    omni_wm_config_t config;
+    EXPECT_EQ(omni_wm_get_default_config(&config), NIMCP_SUCCESS);
+    config.state_dim = 32;
+    config.action_dim = 4;
+    config.obs_dim = 64;
+
+    wm = omni_wm_create(&config);
+    ASSERT_NE(wm, nullptr);
+    omni_wm_destroy(wm);
+
+    /* Create simple */
+    wm = omni_wm_create_simple(16, 4, 32);
+    ASSERT_NE(wm, nullptr);
+    omni_wm_destroy(wm);
+}
+
+TEST_F(OmniIntegrationTest, WorldModelStateManagement) {
+    omni_world_model_t* wm = omni_wm_create_simple(8, 4, 8);
+    ASSERT_NE(wm, nullptr);
+
+    /* Create and set state */
+    omni_wm_state_t* state = omni_wm_state_create(8);
+    ASSERT_NE(state, nullptr);
+
+    for (uint32_t i = 0; i < 8; i++) {
+        state->values[i] = (float)i * 0.1f;
+    }
+    state->uncertainty = 0.5f;
+
+    EXPECT_EQ(omni_wm_set_state(wm, state), NIMCP_SUCCESS);
+
+    /* Get current state */
+    const omni_wm_state_t* current = omni_wm_get_state(wm);
+    ASSERT_NE(current, nullptr);
+    EXPECT_FLOAT_EQ(current->values[0], 0.0f);
+    EXPECT_FLOAT_EQ(current->values[3], 0.3f);
+
+    /* Clone state */
+    omni_wm_state_t* clone = omni_wm_state_clone(state);
+    ASSERT_NE(clone, nullptr);
+    EXPECT_FLOAT_EQ(clone->values[5], 0.5f);
+
+    omni_wm_state_destroy(state);
+    omni_wm_state_destroy(clone);
+    omni_wm_destroy(wm);
+}
+
+TEST_F(OmniIntegrationTest, WorldModelRSSMState) {
+    /* Create RSSM state */
+    omni_wm_rssm_state_t* rssm = omni_wm_rssm_state_create(32, 16);
+    ASSERT_NE(rssm, nullptr);
+    EXPECT_EQ(rssm->h_dim, 32u);
+    EXPECT_EQ(rssm->z_dim, 16u);
+
+    /* Initialize deterministic and stochastic components */
+    for (uint32_t i = 0; i < 32; i++) {
+        rssm->h[i] = (float)i * 0.01f;
+    }
+    for (uint32_t i = 0; i < 16; i++) {
+        rssm->z[i] = (float)i * 0.02f;
+        rssm->z_mean[i] = (float)i * 0.02f;
+        rssm->z_std[i] = 0.1f;
+    }
+
+    /* Clone RSSM state */
+    omni_wm_rssm_state_t* clone = omni_wm_rssm_state_clone(rssm);
+    ASSERT_NE(clone, nullptr);
+    EXPECT_FLOAT_EQ(clone->h[10], 0.1f);
+    EXPECT_FLOAT_EQ(clone->z[5], 0.1f);
+
+    omni_wm_rssm_state_destroy(rssm);
+    omni_wm_rssm_state_destroy(clone);
+}
+
+TEST_F(OmniIntegrationTest, WorldModelSymlogTransform) {
+    /* Test symlog: sign(x) * ln(|x| + 1) */
+    EXPECT_NEAR(omni_wm_symlog(0.0f), 0.0f, 0.001f);
+    EXPECT_NEAR(omni_wm_symlog(1.0f), 0.693f, 0.01f);  /* ln(2) */
+    EXPECT_NEAR(omni_wm_symlog(-1.0f), -0.693f, 0.01f);
+    EXPECT_NEAR(omni_wm_symlog(9.0f), 2.303f, 0.01f);  /* ln(10) */
+
+    /* Test symexp: inverse of symlog */
+    EXPECT_NEAR(omni_wm_symexp(omni_wm_symlog(5.0f)), 5.0f, 0.001f);
+    EXPECT_NEAR(omni_wm_symexp(omni_wm_symlog(-3.0f)), -3.0f, 0.001f);
+    EXPECT_NEAR(omni_wm_symexp(omni_wm_symlog(100.0f)), 100.0f, 0.01f);
+
+    /* Test array versions */
+    float input[4] = {-10.0f, -1.0f, 1.0f, 10.0f};
+    float transformed[4];
+    float recovered[4];
+
+    omni_wm_symlog_array(input, transformed, 4);
+    omni_wm_symexp_array(transformed, recovered, 4);
+
+    for (int i = 0; i < 4; i++) {
+        EXPECT_NEAR(recovered[i], input[i], 0.01f);
+    }
+}
+
+TEST_F(OmniIntegrationTest, WorldModelForwardPrediction) {
+    omni_world_model_t* wm = omni_wm_create_simple(16, 4, 16);
+    ASSERT_NE(wm, nullptr);
+
+    /* Set initial state */
+    omni_wm_state_t* state = omni_wm_state_create(16);
+    ASSERT_NE(state, nullptr);
+    for (uint32_t i = 0; i < 16; i++) {
+        state->values[i] = 0.5f;
+    }
+    EXPECT_EQ(omni_wm_set_state(wm, state), NIMCP_SUCCESS);
+
+    /* Predict forward */
+    float action[4] = {0.1f, 0.2f, -0.1f, 0.0f};
+    omni_wm_transition_t result;
+    memset(&result, 0, sizeof(result));
+
+    EXPECT_EQ(omni_wm_predict_forward(wm, action, 4, &result), NIMCP_SUCCESS);
+    ASSERT_NE(result.next_state, nullptr);
+    EXPECT_EQ(result.direction, OMNI_WM_DIR_FORWARD);
+
+    /* State should have changed */
+    EXPECT_NE(result.next_state->values[0], state->values[0]);
+
+    omni_wm_state_destroy(result.next_state);
+    omni_wm_state_destroy(state);
+    omni_wm_destroy(wm);
+}
+
+TEST_F(OmniIntegrationTest, WorldModelBackwardInference) {
+    omni_world_model_t* wm = omni_wm_create_simple(16, 4, 16);
+    ASSERT_NE(wm, nullptr);
+
+    /* Create state for backward inference */
+    omni_wm_state_t* state = omni_wm_state_create(16);
+    ASSERT_NE(state, nullptr);
+    for (uint32_t i = 0; i < 16; i++) {
+        state->values[i] = (float)i * 0.1f;
+    }
+
+    /* Infer backward */
+    omni_wm_transition_t result;
+    memset(&result, 0, sizeof(result));
+
+    EXPECT_EQ(omni_wm_infer_backward(wm, state, &result), NIMCP_SUCCESS);
+    ASSERT_NE(result.next_state, nullptr);
+    ASSERT_NE(result.action_taken, nullptr);
+    EXPECT_EQ(result.direction, OMNI_WM_DIR_BACKWARD);
+
+    omni_wm_state_destroy(result.next_state);
+    nimcp_free(result.action_taken);
+    omni_wm_state_destroy(state);
+    omni_wm_destroy(wm);
+}
+
+TEST_F(OmniIntegrationTest, WorldModelLatentEncoding) {
+    omni_world_model_t* wm = omni_wm_create_simple(32, 4, 32);
+    ASSERT_NE(wm, nullptr);
+
+    /* Create latent representation */
+    omni_wm_latent_t* latent = omni_wm_latent_create(32);
+    ASSERT_NE(latent, nullptr);
+
+    /* Encode observation */
+    float observation[32];
+    for (uint32_t i = 0; i < 32; i++) {
+        observation[i] = (float)i * 0.05f;
+    }
+
+    EXPECT_EQ(omni_wm_encode(wm, observation, 32, latent), NIMCP_SUCCESS);
+
+    /* Latent should have some values */
+    bool has_nonzero = false;
+    for (uint32_t i = 0; i < 32; i++) {
+        if (latent->embedding[i] != 0.0f) {
+            has_nonzero = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(has_nonzero);
+
+    /* Decode back to observation space */
+    float decoded[32];
+    EXPECT_EQ(omni_wm_decode(wm, latent, decoded, 32), NIMCP_SUCCESS);
+
+    omni_wm_latent_destroy(latent);
+    omni_wm_destroy(wm);
+}
+
+TEST_F(OmniIntegrationTest, WorldModelMDN) {
+    /* Create MDN prediction */
+    omni_wm_mdn_prediction_t* mdn = omni_wm_mdn_create(5, 8);
+    ASSERT_NE(mdn, nullptr);
+    EXPECT_EQ(mdn->num_components, 5u);
+    EXPECT_EQ(mdn->dim, 8u);
+
+    /* Check components initialized */
+    for (uint32_t k = 0; k < 5; k++) {
+        EXPECT_NEAR(mdn->components[k].weight, 0.2f, 0.001f);
+        EXPECT_NE(mdn->components[k].mean, nullptr);
+        EXPECT_NE(mdn->components[k].std, nullptr);
+    }
+
+    /* Sample from MDN */
+    float sample[8];
+    EXPECT_EQ(omni_wm_mdn_sample(mdn, sample), NIMCP_SUCCESS);
+
+    /* Get mode */
+    float mode[8];
+    EXPECT_EQ(omni_wm_mdn_mode(mdn, mode), NIMCP_SUCCESS);
+
+    /* Compute log probability */
+    float log_prob = omni_wm_mdn_log_prob(mdn, sample);
+    EXPECT_LT(log_prob, 0.0f);  /* Log prob should be negative */
+
+    omni_wm_mdn_destroy(mdn);
+}
+
+TEST_F(OmniIntegrationTest, WorldModelExperienceReplay) {
+    omni_world_model_t* wm = omni_wm_create_simple(16, 4, 16);
+    ASSERT_NE(wm, nullptr);
+
+    /* Initially empty */
+    EXPECT_EQ(omni_wm_get_replay_size(wm), 0u);
+
+    /* Create and add experiences */
+    for (int i = 0; i < 5; i++) {
+        omni_wm_experience_t* exp = omni_wm_experience_create(16, 4, 16);
+        ASSERT_NE(exp, nullptr);
+
+        exp->reward = (float)i * 0.5f;
+        exp->terminal = (i == 4);
+
+        EXPECT_EQ(omni_wm_add_experience(wm, exp), NIMCP_SUCCESS);
+        omni_wm_experience_destroy(exp);
+    }
+
+    EXPECT_EQ(omni_wm_get_replay_size(wm), 5u);
+
+    /* Sample from replay */
+    omni_wm_experience_t* batch[3];
+    uint32_t sampled = omni_wm_sample_experiences(wm, batch, 3);
+    EXPECT_EQ(sampled, 3u);
+
+    /* Clear replay */
+    EXPECT_EQ(omni_wm_clear_replay(wm), NIMCP_SUCCESS);
+    EXPECT_EQ(omni_wm_get_replay_size(wm), 0u);
+
+    omni_wm_destroy(wm);
+}
+
+TEST_F(OmniIntegrationTest, WorldModelCounterfactual) {
+    omni_world_model_t* wm = omni_wm_create_simple(8, 4, 8);
+    ASSERT_NE(wm, nullptr);
+
+    /* Set initial state */
+    omni_wm_state_t* state = omni_wm_state_create(8);
+    ASSERT_NE(state, nullptr);
+    for (uint32_t i = 0; i < 8; i++) {
+        state->values[i] = 1.0f;
+    }
+    EXPECT_EQ(omni_wm_set_state(wm, state), NIMCP_SUCCESS);
+
+    /* What if query */
+    float action[4] = {0.5f, 0.5f, 0.0f, 0.0f};
+    omni_wm_counterfactual_result_t result;
+    memset(&result, 0, sizeof(result));
+
+    EXPECT_EQ(omni_wm_what_if(wm, action, 4, 5, &result), NIMCP_SUCCESS);
+
+    EXPECT_EQ(result.trajectory_len, 5u);
+    ASSERT_NE(result.trajectory, nullptr);
+    EXPECT_GT(result.confidence, 0.0f);
+
+    omni_wm_cf_result_destroy(&result);
+    omni_wm_state_destroy(state);
+    omni_wm_destroy(wm);
+}
+
+TEST_F(OmniIntegrationTest, WorldModelDreaming) {
+    omni_wm_config_t config;
+    omni_wm_get_default_config(&config);
+    config.enable_dreaming = true;
+    config.state_dim = 16;
+    config.action_dim = 4;
+    config.obs_dim = 16;
+
+    omni_world_model_t* wm = omni_wm_create(&config);
+    ASSERT_NE(wm, nullptr);
+
+    /* Set initial state for dreaming */
+    omni_wm_state_t* state = omni_wm_state_create(16);
+    ASSERT_NE(state, nullptr);
+    for (uint32_t i = 0; i < 16; i++) {
+        state->values[i] = 0.5f;
+    }
+    EXPECT_EQ(omni_wm_set_state(wm, state), NIMCP_SUCCESS);
+
+    /* Add some experiences for dream replay */
+    for (int i = 0; i < 10; i++) {
+        omni_wm_experience_t* exp = omni_wm_experience_create(16, 4, 16);
+        ASSERT_NE(exp, nullptr);
+        exp->reward = (float)i * 0.1f;
+        EXPECT_EQ(omni_wm_add_experience(wm, exp), NIMCP_SUCCESS);
+        omni_wm_experience_destroy(exp);
+    }
+
+    /* Run dreaming */
+    EXPECT_EQ(omni_wm_dream(wm, 3, 5), NIMCP_SUCCESS);
+
+    omni_wm_state_destroy(state);
+    omni_wm_destroy(wm);
+}
+
+TEST_F(OmniIntegrationTest, WorldModelPolicyEvaluation) {
+    omni_world_model_t* wm = omni_wm_create_simple(8, 4, 8);
+    ASSERT_NE(wm, nullptr);
+
+    /* Set initial state */
+    omni_wm_state_t* state = omni_wm_state_create(8);
+    ASSERT_NE(state, nullptr);
+    for (uint32_t i = 0; i < 8; i++) {
+        state->values[i] = 0.0f;
+    }
+    EXPECT_EQ(omni_wm_set_state(wm, state), NIMCP_SUCCESS);
+
+    /* Evaluate policy */
+    float policy_actions[20];  /* 5 steps x 4 actions */
+    for (int i = 0; i < 20; i++) {
+        policy_actions[i] = 0.1f;
+    }
+
+    float preferred_obs[8] = {1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+
+    float efe = omni_wm_evaluate_policy(wm, policy_actions, 5, preferred_obs, 8);
+    EXPECT_LT(efe, 1e10f);  /* Should be finite */
+
+    omni_wm_state_destroy(state);
+    omni_wm_destroy(wm);
+}
+
+TEST_F(OmniIntegrationTest, WorldModelStatistics) {
+    omni_world_model_t* wm = omni_wm_create_simple(8, 4, 8);
+    ASSERT_NE(wm, nullptr);
+
+    /* Get initial stats */
+    omni_wm_stats_t stats;
+    EXPECT_EQ(omni_wm_get_stats(wm, &stats), NIMCP_SUCCESS);
+    EXPECT_EQ(stats.forward_predictions, 0u);
+
+    /* Set state and make predictions */
+    omni_wm_state_t* state = omni_wm_state_create(8);
+    ASSERT_NE(state, nullptr);
+    EXPECT_EQ(omni_wm_set_state(wm, state), NIMCP_SUCCESS);
+
+    float action[4] = {0.1f, 0.2f, 0.0f, 0.0f};
+    omni_wm_transition_t result;
+    memset(&result, 0, sizeof(result));
+
+    omni_wm_predict_forward(wm, action, 4, &result);
+    if (result.next_state) omni_wm_state_destroy(result.next_state);
+
+    memset(&result, 0, sizeof(result));
+    omni_wm_predict_forward(wm, action, 4, &result);
+    if (result.next_state) omni_wm_state_destroy(result.next_state);
+
+    /* Check stats updated */
+    EXPECT_EQ(omni_wm_get_stats(wm, &stats), NIMCP_SUCCESS);
+    EXPECT_EQ(stats.forward_predictions, 2u);
+
+    /* Reset stats */
+    EXPECT_EQ(omni_wm_reset_stats(wm), NIMCP_SUCCESS);
+    EXPECT_EQ(omni_wm_get_stats(wm, &stats), NIMCP_SUCCESS);
+    EXPECT_EQ(stats.forward_predictions, 0u);
+
+    omni_wm_state_destroy(state);
+    omni_wm_destroy(wm);
+}
+
+TEST_F(OmniIntegrationTest, WorldModelStringConversions) {
+    /* Direction strings */
+    EXPECT_STREQ(omni_wm_direction_to_string(OMNI_WM_DIR_FORWARD), "forward");
+    EXPECT_STREQ(omni_wm_direction_to_string(OMNI_WM_DIR_BACKWARD), "backward");
+    EXPECT_STREQ(omni_wm_direction_to_string(OMNI_WM_DIR_LATERAL), "lateral");
+    EXPECT_STREQ(omni_wm_direction_to_string(OMNI_WM_DIR_HIERARCHICAL), "hierarchical");
+
+    /* Learn mode strings */
+    EXPECT_STREQ(omni_wm_learn_mode_to_string(OMNI_WM_LEARN_ONLINE), "online");
+    EXPECT_STREQ(omni_wm_learn_mode_to_string(OMNI_WM_LEARN_BATCH), "batch");
+    EXPECT_STREQ(omni_wm_learn_mode_to_string(OMNI_WM_LEARN_REPLAY), "replay");
+    EXPECT_STREQ(omni_wm_learn_mode_to_string(OMNI_WM_LEARN_DREAMING), "dreaming");
+
+    /* Counterfactual type strings */
+    EXPECT_STREQ(omni_wm_cf_type_to_string(OMNI_WM_CF_ACTION), "action");
+    EXPECT_STREQ(omni_wm_cf_type_to_string(OMNI_WM_CF_STATE), "state");
+    EXPECT_STREQ(omni_wm_cf_type_to_string(OMNI_WM_CF_GOAL), "goal");
+}
+
+TEST_F(OmniIntegrationTest, WorldModelRSSMStep) {
+    omni_world_model_t* wm = omni_wm_create_simple(32, 4, 32);
+    ASSERT_NE(wm, nullptr);
+
+    /* Get RSSM state */
+    const omni_wm_rssm_state_t* rssm = omni_wm_get_rssm_state(wm);
+    ASSERT_NE(rssm, nullptr);
+
+    /* Create next state */
+    omni_wm_rssm_state_t* next = omni_wm_rssm_state_create(rssm->h_dim, rssm->z_dim);
+    ASSERT_NE(next, nullptr);
+
+    /* Perform RSSM step */
+    float action[4] = {0.1f, 0.2f, -0.1f, 0.0f};
+    EXPECT_EQ(omni_wm_rssm_step(wm, rssm, action, 4, next), NIMCP_SUCCESS);
+
+    /* Next state should be different */
+    bool changed = false;
+    for (uint32_t i = 0; i < next->h_dim && i < 5; i++) {
+        if (next->h[i] != rssm->h[i]) {
+            changed = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(changed);
+
+    omni_wm_rssm_state_destroy(next);
+    omni_wm_destroy(wm);
+}
+
+TEST_F(OmniIntegrationTest, WorldModelLearning) {
+    omni_world_model_t* wm = omni_wm_create_simple(8, 4, 8);
+    ASSERT_NE(wm, nullptr);
+
+    /* Create states for update */
+    omni_wm_state_t* state = omni_wm_state_create(8);
+    omni_wm_state_t* next_state = omni_wm_state_create(8);
+    ASSERT_NE(state, nullptr);
+    ASSERT_NE(next_state, nullptr);
+
+    for (uint32_t i = 0; i < 8; i++) {
+        state->values[i] = 0.5f;
+        next_state->values[i] = 0.6f;
+    }
+
+    EXPECT_EQ(omni_wm_set_state(wm, state), NIMCP_SUCCESS);
+
+    /* Update model */
+    float action[4] = {0.1f, 0.0f, 0.0f, 0.0f};
+    EXPECT_EQ(omni_wm_update(wm, state, action, 4, next_state, 1.0f), NIMCP_SUCCESS);
+
+    /* Check stats */
+    omni_wm_stats_t stats;
+    EXPECT_EQ(omni_wm_get_stats(wm, &stats), NIMCP_SUCCESS);
+    EXPECT_EQ(stats.model_updates, 1u);
+
+    /* Set learning rate */
+    EXPECT_EQ(omni_wm_set_learning_rate(wm, 0.01f), NIMCP_SUCCESS);
+
+    omni_wm_state_destroy(state);
+    omni_wm_state_destroy(next_state);
+    omni_wm_destroy(wm);
 }
