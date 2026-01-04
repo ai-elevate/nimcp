@@ -1436,3 +1436,131 @@ gtest_discover_tests(unit_cognitive_test_imagination_engine
         LABELS "unit;cognitive;imagination"
         TIMEOUT 180
 )
+
+# ============================================================================
+# Omnidirectional Inference Tests (Phase 4)
+# ============================================================================
+# WHAT: Unit tests for Omnidirectional Inference components
+# WHY:  Validate bidirectional JEPA, Hopfield memory, predictive hierarchy,
+#       and temporal replay modules
+# ============================================================================
+
+# JEPA Bidirectional Tests
+add_executable(unit_cognitive_test_jepa_bidirectional
+    jepa/test_jepa_bidirectional.cpp
+)
+
+target_link_libraries(unit_cognitive_test_jepa_bidirectional
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_jepa_bidirectional
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_test_jepa_bidirectional PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_jepa_bidirectional
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;jepa;bidirectional;omni"
+        TIMEOUT 120
+)
+
+# Hopfield Memory Tests
+add_executable(unit_cognitive_test_hopfield_memory
+    memory/test_hopfield_memory.cpp
+)
+
+target_link_libraries(unit_cognitive_test_hopfield_memory
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_hopfield_memory
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_test_hopfield_memory PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_hopfield_memory
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;memory;hopfield;omni"
+        TIMEOUT 120
+)
+
+# Predictive Hierarchy Tests
+add_executable(unit_cognitive_test_predictive_hierarchy
+    predictive/test_predictive_hierarchy.cpp
+)
+
+target_link_libraries(unit_cognitive_test_predictive_hierarchy
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_predictive_hierarchy
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_test_predictive_hierarchy PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_predictive_hierarchy
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;predictive;hierarchy;omni"
+        TIMEOUT 120
+)
+
+# Temporal Replay Tests
+add_executable(unit_cognitive_test_temporal_replay
+    memory/test_temporal_replay.cpp
+)
+
+target_link_libraries(unit_cognitive_test_temporal_replay
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_temporal_replay
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_test_temporal_replay PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_temporal_replay
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;memory;replay;omni"
+        TIMEOUT 120
+)

@@ -57,6 +57,9 @@ gtest_discover_tests(regression_cognitive_working_memory_pe_test
 # Recursive Cognition Regression Tests (RLM-inspired)
 add_subdirectory(recursive)
 
+# Omnidirectional Inference Regression Tests
+add_subdirectory(omni)
+
 # ============================================================================
 # Cognitive Bridge Completeness Tests
 # ============================================================================

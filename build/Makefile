@@ -1134,6 +1134,19 @@ unit_cognitive_imagination_test_imagination_engine/fast:
 .PHONY : unit_cognitive_imagination_test_imagination_engine/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_jepa_test_jepa_bidirectional
+
+# Build rule for target.
+unit_cognitive_jepa_test_jepa_bidirectional: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_jepa_test_jepa_bidirectional
+.PHONY : unit_cognitive_jepa_test_jepa_bidirectional
+
+# fast build rule for target.
+unit_cognitive_jepa_test_jepa_bidirectional/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_jepa_test_jepa_bidirectional.dir/build.make test/CMakeFiles/unit_cognitive_jepa_test_jepa_bidirectional.dir/build
+.PHONY : unit_cognitive_jepa_test_jepa_bidirectional/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_jepa_test_jepa_context
 
 # Build rule for target.
@@ -1301,6 +1314,19 @@ unit_cognitive_predictive_test_predictive_coverage: cmake_check_build_system
 unit_cognitive_predictive_test_predictive_coverage/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_predictive_test_predictive_coverage.dir/build.make test/CMakeFiles/unit_cognitive_predictive_test_predictive_coverage.dir/build
 .PHONY : unit_cognitive_predictive_test_predictive_coverage/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_predictive_test_predictive_hierarchy
+
+# Build rule for target.
+unit_cognitive_predictive_test_predictive_hierarchy: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_predictive_test_predictive_hierarchy
+.PHONY : unit_cognitive_predictive_test_predictive_hierarchy
+
+# fast build rule for target.
+unit_cognitive_predictive_test_predictive_hierarchy/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_predictive_test_predictive_hierarchy.dir/build.make test/CMakeFiles/unit_cognitive_predictive_test_predictive_hierarchy.dir/build
+.PHONY : unit_cognitive_predictive_test_predictive_hierarchy/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_predictive_test_predictive_real
@@ -1873,6 +1899,19 @@ unit_core_brain_test_brain_json: cmake_check_build_system
 unit_core_brain_test_brain_json/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_test_brain_json.dir/build.make test/CMakeFiles/unit_core_brain_test_brain_json.dir/build
 .PHONY : unit_core_brain_test_brain_json/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_test_brain_kg_message_index
+
+# Build rule for target.
+unit_core_brain_test_brain_kg_message_index: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_test_brain_kg_message_index
+.PHONY : unit_core_brain_test_brain_kg_message_index
+
+# fast build rule for target.
+unit_core_brain_test_brain_kg_message_index/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_test_brain_kg_message_index.dir/build.make test/CMakeFiles/unit_core_brain_test_brain_kg_message_index.dir/build
+.PHONY : unit_core_brain_test_brain_kg_message_index/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_brain_test_brain_layer_freezing
@@ -3524,6 +3563,32 @@ unit_utils_algorithms_test_modularity: cmake_check_build_system
 unit_utils_algorithms_test_modularity/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_algorithms_test_modularity.dir/build.make test/CMakeFiles/unit_utils_algorithms_test_modularity.dir/build
 .PHONY : unit_utils_algorithms_test_modularity/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_algorithms_test_monte_carlo
+
+# Build rule for target.
+unit_utils_algorithms_test_monte_carlo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_algorithms_test_monte_carlo
+.PHONY : unit_utils_algorithms_test_monte_carlo
+
+# fast build rule for target.
+unit_utils_algorithms_test_monte_carlo/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_algorithms_test_monte_carlo.dir/build.make test/CMakeFiles/unit_utils_algorithms_test_monte_carlo.dir/build
+.PHONY : unit_utils_algorithms_test_monte_carlo/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_algorithms_test_sort
+
+# Build rule for target.
+unit_utils_algorithms_test_sort: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_algorithms_test_sort
+.PHONY : unit_utils_algorithms_test_sort
+
+# fast build rule for target.
+unit_utils_algorithms_test_sort/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_algorithms_test_sort.dir/build.make test/CMakeFiles/unit_utils_algorithms_test_sort.dir/build
+.PHONY : unit_utils_algorithms_test_sort/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_config_test_config
@@ -6022,6 +6087,19 @@ unit_core_oscillations_sleep_bridge/fast:
 .PHONY : unit_core_oscillations_sleep_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_brain_kg_message_index
+
+# Build rule for target.
+unit_core_brain_kg_message_index: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_kg_message_index
+.PHONY : unit_core_brain_kg_message_index
+
+# fast build rule for target.
+unit_core_brain_kg_message_index/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_kg_message_index.dir/build.make test/CMakeFiles/unit_core_brain_kg_message_index.dir/build
+.PHONY : unit_core_brain_kg_message_index/fast
+
+#=============================================================================
 # Target rules for targets named integration_plasticity_sleep_bridge
 
 # Build rule for target.
@@ -7216,6 +7294,19 @@ e2e_test_wiring_diagram_pipeline: cmake_check_build_system
 e2e_test_wiring_diagram_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_wiring_diagram_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_wiring_diagram_pipeline.dir/build
 .PHONY : e2e_test_wiring_diagram_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_omni_inference_pipeline
+
+# Build rule for target.
+e2e_test_omni_inference_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_omni_inference_pipeline
+.PHONY : e2e_test_omni_inference_pipeline
+
+# fast build rule for target.
+e2e_test_omni_inference_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_omni_inference_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_omni_inference_pipeline.dir/build
+.PHONY : e2e_test_omni_inference_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_gpu_nn_training_pipeline
@@ -10609,6 +10700,58 @@ unit_cognitive_test_imagination_engine: cmake_check_build_system
 unit_cognitive_test_imagination_engine/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_imagination_engine.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_imagination_engine.dir/build
 .PHONY : unit_cognitive_test_imagination_engine/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_jepa_bidirectional
+
+# Build rule for target.
+unit_cognitive_test_jepa_bidirectional: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_jepa_bidirectional
+.PHONY : unit_cognitive_test_jepa_bidirectional
+
+# fast build rule for target.
+unit_cognitive_test_jepa_bidirectional/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_jepa_bidirectional.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_jepa_bidirectional.dir/build
+.PHONY : unit_cognitive_test_jepa_bidirectional/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_hopfield_memory
+
+# Build rule for target.
+unit_cognitive_test_hopfield_memory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_hopfield_memory
+.PHONY : unit_cognitive_test_hopfield_memory
+
+# fast build rule for target.
+unit_cognitive_test_hopfield_memory/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_hopfield_memory.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_hopfield_memory.dir/build
+.PHONY : unit_cognitive_test_hopfield_memory/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_predictive_hierarchy
+
+# Build rule for target.
+unit_cognitive_test_predictive_hierarchy: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_predictive_hierarchy
+.PHONY : unit_cognitive_test_predictive_hierarchy
+
+# fast build rule for target.
+unit_cognitive_test_predictive_hierarchy/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_predictive_hierarchy.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_predictive_hierarchy.dir/build
+.PHONY : unit_cognitive_test_predictive_hierarchy/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_temporal_replay
+
+# Build rule for target.
+unit_cognitive_test_temporal_replay: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_temporal_replay
+.PHONY : unit_cognitive_test_temporal_replay
+
+# fast build rule for target.
+unit_cognitive_test_temporal_replay/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_temporal_replay.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_temporal_replay.dir/build
+.PHONY : unit_cognitive_test_temporal_replay/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
@@ -15057,6 +15200,19 @@ test_rcog_regression/fast:
 .PHONY : test_rcog_regression/fast
 
 #=============================================================================
+# Target rules for targets named test_omni_regression
+
+# Build rule for target.
+test_omni_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_omni_regression
+.PHONY : test_omni_regression
+
+# fast build rule for target.
+test_omni_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/omni/CMakeFiles/test_omni_regression.dir/build.make test/regression/cognitive/omni/CMakeFiles/test_omni_regression.dir/build
+.PHONY : test_omni_regression/fast
+
+#=============================================================================
 # Target rules for targets named integration_brain_regions_test_visual_cortex_integration
 
 # Build rule for target.
@@ -16799,6 +16955,58 @@ unit_async_wiring_diagram/fast:
 .PHONY : unit_async_wiring_diagram/fast
 
 #=============================================================================
+# Target rules for targets named unit_async_bio_router_kg_dispatch
+
+# Build rule for target.
+unit_async_bio_router_kg_dispatch: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_async_bio_router_kg_dispatch
+.PHONY : unit_async_bio_router_kg_dispatch
+
+# fast build rule for target.
+unit_async_bio_router_kg_dispatch/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/async/CMakeFiles/unit_async_bio_router_kg_dispatch.dir/build.make test/unit/async/CMakeFiles/unit_async_bio_router_kg_dispatch.dir/build
+.PHONY : unit_async_bio_router_kg_dispatch/fast
+
+#=============================================================================
+# Target rules for targets named unit_async_wiring_diagram_kg_sync
+
+# Build rule for target.
+unit_async_wiring_diagram_kg_sync: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_async_wiring_diagram_kg_sync
+.PHONY : unit_async_wiring_diagram_kg_sync
+
+# fast build rule for target.
+unit_async_wiring_diagram_kg_sync/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/async/CMakeFiles/unit_async_wiring_diagram_kg_sync.dir/build.make test/unit/async/CMakeFiles/unit_async_wiring_diagram_kg_sync.dir/build
+.PHONY : unit_async_wiring_diagram_kg_sync/fast
+
+#=============================================================================
+# Target rules for targets named unit_async_wiring_diagram_validation
+
+# Build rule for target.
+unit_async_wiring_diagram_validation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_async_wiring_diagram_validation
+.PHONY : unit_async_wiring_diagram_validation
+
+# fast build rule for target.
+unit_async_wiring_diagram_validation/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/async/CMakeFiles/unit_async_wiring_diagram_validation.dir/build.make test/unit/async/CMakeFiles/unit_async_wiring_diagram_validation.dir/build
+.PHONY : unit_async_wiring_diagram_validation/fast
+
+#=============================================================================
+# Target rules for targets named unit_async_self_assembly
+
+# Build rule for target.
+unit_async_self_assembly: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_async_self_assembly
+.PHONY : unit_async_self_assembly
+
+# fast build rule for target.
+unit_async_self_assembly/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/async/CMakeFiles/unit_async_self_assembly.dir/build.make test/unit/async/CMakeFiles/unit_async_self_assembly.dir/build
+.PHONY : unit_async_self_assembly/fast
+
+#=============================================================================
 # Target rules for targets named integration_async_test_cross_module_communication
 
 # Build rule for target.
@@ -16890,6 +17098,58 @@ integration_async_test_wiring_diagram/fast:
 .PHONY : integration_async_test_wiring_diagram/fast
 
 #=============================================================================
+# Target rules for targets named integration_async_test_bio_router_kg_dispatch
+
+# Build rule for target.
+integration_async_test_bio_router_kg_dispatch: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_async_test_bio_router_kg_dispatch
+.PHONY : integration_async_test_bio_router_kg_dispatch
+
+# fast build rule for target.
+integration_async_test_bio_router_kg_dispatch/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/async/CMakeFiles/integration_async_test_bio_router_kg_dispatch.dir/build.make test/integration/async/CMakeFiles/integration_async_test_bio_router_kg_dispatch.dir/build
+.PHONY : integration_async_test_bio_router_kg_dispatch/fast
+
+#=============================================================================
+# Target rules for targets named integration_async_test_wiring_diagram_kg_sync
+
+# Build rule for target.
+integration_async_test_wiring_diagram_kg_sync: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_async_test_wiring_diagram_kg_sync
+.PHONY : integration_async_test_wiring_diagram_kg_sync
+
+# fast build rule for target.
+integration_async_test_wiring_diagram_kg_sync/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/async/CMakeFiles/integration_async_test_wiring_diagram_kg_sync.dir/build.make test/integration/async/CMakeFiles/integration_async_test_wiring_diagram_kg_sync.dir/build
+.PHONY : integration_async_test_wiring_diagram_kg_sync/fast
+
+#=============================================================================
+# Target rules for targets named integration_async_test_wiring_diagram_validation
+
+# Build rule for target.
+integration_async_test_wiring_diagram_validation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_async_test_wiring_diagram_validation
+.PHONY : integration_async_test_wiring_diagram_validation
+
+# fast build rule for target.
+integration_async_test_wiring_diagram_validation/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/async/CMakeFiles/integration_async_test_wiring_diagram_validation.dir/build.make test/integration/async/CMakeFiles/integration_async_test_wiring_diagram_validation.dir/build
+.PHONY : integration_async_test_wiring_diagram_validation/fast
+
+#=============================================================================
+# Target rules for targets named integration_async_test_self_assembly
+
+# Build rule for target.
+integration_async_test_self_assembly: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_async_test_self_assembly
+.PHONY : integration_async_test_self_assembly
+
+# fast build rule for target.
+integration_async_test_self_assembly/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/async/CMakeFiles/integration_async_test_self_assembly.dir/build.make test/integration/async/CMakeFiles/integration_async_test_self_assembly.dir/build
+.PHONY : integration_async_test_self_assembly/fast
+
+#=============================================================================
 # Target rules for targets named regression_async_test_future_regression
 
 # Build rule for target.
@@ -16927,6 +17187,58 @@ regression_async_test_wiring_diagram: cmake_check_build_system
 regression_async_test_wiring_diagram/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/async/CMakeFiles/regression_async_test_wiring_diagram.dir/build.make test/regression/async/CMakeFiles/regression_async_test_wiring_diagram.dir/build
 .PHONY : regression_async_test_wiring_diagram/fast
+
+#=============================================================================
+# Target rules for targets named regression_async_test_bio_router_kg_dispatch
+
+# Build rule for target.
+regression_async_test_bio_router_kg_dispatch: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_async_test_bio_router_kg_dispatch
+.PHONY : regression_async_test_bio_router_kg_dispatch
+
+# fast build rule for target.
+regression_async_test_bio_router_kg_dispatch/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/async/CMakeFiles/regression_async_test_bio_router_kg_dispatch.dir/build.make test/regression/async/CMakeFiles/regression_async_test_bio_router_kg_dispatch.dir/build
+.PHONY : regression_async_test_bio_router_kg_dispatch/fast
+
+#=============================================================================
+# Target rules for targets named regression_async_test_wiring_diagram_kg_sync
+
+# Build rule for target.
+regression_async_test_wiring_diagram_kg_sync: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_async_test_wiring_diagram_kg_sync
+.PHONY : regression_async_test_wiring_diagram_kg_sync
+
+# fast build rule for target.
+regression_async_test_wiring_diagram_kg_sync/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/async/CMakeFiles/regression_async_test_wiring_diagram_kg_sync.dir/build.make test/regression/async/CMakeFiles/regression_async_test_wiring_diagram_kg_sync.dir/build
+.PHONY : regression_async_test_wiring_diagram_kg_sync/fast
+
+#=============================================================================
+# Target rules for targets named regression_async_test_wiring_diagram_validation
+
+# Build rule for target.
+regression_async_test_wiring_diagram_validation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_async_test_wiring_diagram_validation
+.PHONY : regression_async_test_wiring_diagram_validation
+
+# fast build rule for target.
+regression_async_test_wiring_diagram_validation/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/async/CMakeFiles/regression_async_test_wiring_diagram_validation.dir/build.make test/regression/async/CMakeFiles/regression_async_test_wiring_diagram_validation.dir/build
+.PHONY : regression_async_test_wiring_diagram_validation/fast
+
+#=============================================================================
+# Target rules for targets named regression_async_test_self_assembly
+
+# Build rule for target.
+regression_async_test_self_assembly: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_async_test_self_assembly
+.PHONY : regression_async_test_self_assembly
+
+# fast build rule for target.
+regression_async_test_self_assembly/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/async/CMakeFiles/regression_async_test_self_assembly.dir/build.make test/regression/async/CMakeFiles/regression_async_test_self_assembly.dir/build
+.PHONY : regression_async_test_self_assembly/fast
 
 #=============================================================================
 # Target rules for targets named test_attention_bioasync
@@ -19319,6 +19631,19 @@ unit_gpu_test_quantum_kernels: cmake_check_build_system
 unit_gpu_test_quantum_kernels/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_quantum_kernels.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_quantum_kernels.dir/build
 .PHONY : unit_gpu_test_quantum_kernels/fast
+
+#=============================================================================
+# Target rules for targets named unit_gpu_test_qmc_gpu
+
+# Build rule for target.
+unit_gpu_test_qmc_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_gpu_test_qmc_gpu
+.PHONY : unit_gpu_test_qmc_gpu
+
+# fast build rule for target.
+unit_gpu_test_qmc_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/gpu/CMakeFiles/unit_gpu_test_qmc_gpu.dir/build.make test/unit/gpu/CMakeFiles/unit_gpu_test_qmc_gpu.dir/build
+.PHONY : unit_gpu_test_qmc_gpu/fast
 
 #=============================================================================
 # Target rules for targets named unit_gpu_test_inference_kernels
@@ -22184,6 +22509,7 @@ help:
 	@echo "... e2e_test_nlp_neural_distributed"
 	@echo "... e2e_test_nlp_swarm_coordination"
 	@echo "... e2e_test_nlp_war_zone"
+	@echo "... e2e_test_omni_inference_pipeline"
 	@echo "... e2e_test_parietal_pipeline"
 	@echo "... e2e_test_perception_cortical"
 	@echo "... e2e_test_perception_training_pipeline"
@@ -22243,12 +22569,16 @@ help:
 	@echo "... integration_api_test_api_end_to_end"
 	@echo "... integration_api_test_api_multimodal"
 	@echo "... integration_async_test_bio_async_integration"
+	@echo "... integration_async_test_bio_router_kg_dispatch"
 	@echo "... integration_async_test_channel_semantics"
 	@echo "... integration_async_test_cross_module_communication"
 	@echo "... integration_async_test_glial_wave_propagation"
 	@echo "... integration_async_test_phase_synchronization"
 	@echo "... integration_async_test_predictive_coding"
+	@echo "... integration_async_test_self_assembly"
 	@echo "... integration_async_test_wiring_diagram"
+	@echo "... integration_async_test_wiring_diagram_kg_sync"
+	@echo "... integration_async_test_wiring_diagram_validation"
 	@echo "... integration_bio_async_cross_bridge"
 	@echo "... integration_brain_bio_async_test"
 	@echo "... integration_brain_coordinator_test"
@@ -22515,8 +22845,12 @@ help:
 	@echo "... regression_api_test_api_memory_safety"
 	@echo "... regression_api_test_api_stability"
 	@echo "... regression_async_test_bio_async_regression"
+	@echo "... regression_async_test_bio_router_kg_dispatch"
 	@echo "... regression_async_test_future_regression"
+	@echo "... regression_async_test_self_assembly"
 	@echo "... regression_async_test_wiring_diagram"
+	@echo "... regression_async_test_wiring_diagram_kg_sync"
+	@echo "... regression_async_test_wiring_diagram_validation"
 	@echo "... regression_brain_regions_test_cerebellum_backward_compat"
 	@echo "... regression_brain_regions_test_hippocampus_backward_compat"
 	@echo "... regression_brain_regions_test_prefrontal_backward_compat"
@@ -22816,6 +23150,7 @@ help:
 	@echo "... test_nlp_mode_transitions"
 	@echo "... test_nlp_neural_sync"
 	@echo "... test_nlp_peer_communication"
+	@echo "... test_omni_regression"
 	@echo "... test_perception_portia_swarm_integration"
 	@echo "... test_phase3"
 	@echo "... test_phase4"
@@ -22981,13 +23316,17 @@ help:
 	@echo "... unit_async_bio_async_fep_bridge"
 	@echo "... unit_async_bio_async_orchestrator"
 	@echo "... unit_async_bio_router_fep_bridge"
+	@echo "... unit_async_bio_router_kg_dispatch"
 	@echo "... unit_async_biological_timescales_fep_bridge"
 	@echo "... unit_async_immune_integration"
 	@echo "... unit_async_predictive_protocol_fep_bridge"
+	@echo "... unit_async_self_assembly"
 	@echo "... unit_async_semantic_compression_fep_bridge"
 	@echo "... unit_async_test_bio_async"
 	@echo "... unit_async_test_bio_router"
 	@echo "... unit_async_wiring_diagram"
+	@echo "... unit_async_wiring_diagram_kg_sync"
+	@echo "... unit_async_wiring_diagram_validation"
 	@echo "... unit_brain_integration"
 	@echo "... unit_brain_population_coding"
 	@echo "... unit_brain_spike_features"
@@ -23078,6 +23417,7 @@ help:
 	@echo "... unit_cognitive_jepa_latent"
 	@echo "... unit_cognitive_jepa_masking"
 	@echo "... unit_cognitive_jepa_multimodal"
+	@echo "... unit_cognitive_jepa_test_jepa_bidirectional"
 	@echo "... unit_cognitive_jepa_test_jepa_context"
 	@echo "... unit_cognitive_jepa_test_jepa_latent"
 	@echo "... unit_cognitive_jepa_test_jepa_masking"
@@ -23106,6 +23446,7 @@ help:
 	@echo "... unit_cognitive_personality_test_personality"
 	@echo "... unit_cognitive_predictive_test_predictive"
 	@echo "... unit_cognitive_predictive_test_predictive_coverage"
+	@echo "... unit_cognitive_predictive_test_predictive_hierarchy"
 	@echo "... unit_cognitive_predictive_test_predictive_real"
 	@echo "... unit_cognitive_reasoning_substrate_bridge"
 	@echo "... unit_cognitive_reasoning_test_reasoning_sleep_bridge"
@@ -23147,15 +23488,19 @@ help:
 	@echo "... unit_cognitive_test_gt_mechanism"
 	@echo "... unit_cognitive_test_gt_repeated"
 	@echo "... unit_cognitive_test_gt_spatial"
+	@echo "... unit_cognitive_test_hopfield_memory"
 	@echo "... unit_cognitive_test_hyperscanning"
 	@echo "... unit_cognitive_test_imagination_engine"
+	@echo "... unit_cognitive_test_jepa_bidirectional"
 	@echo "... unit_cognitive_test_jepa_context"
 	@echo "... unit_cognitive_test_jepa_predictor"
 	@echo "... unit_cognitive_test_meta_controller"
 	@echo "... unit_cognitive_test_phase7_bridges"
+	@echo "... unit_cognitive_test_predictive_hierarchy"
 	@echo "... unit_cognitive_test_self_awareness_extended"
 	@echo "... unit_cognitive_test_shared_intentionality"
 	@echo "... unit_cognitive_test_social"
+	@echo "... unit_cognitive_test_temporal_replay"
 	@echo "... unit_cognitive_test_working_memory_immune"
 	@echo "... unit_cognitive_theory_of_mind_test_theory_of_mind"
 	@echo "... unit_cognitive_theory_of_mind_test_theory_of_mind_coverage"
@@ -23200,6 +23545,7 @@ help:
 	@echo "... unit_core_brain_hemispheric_injury_test"
 	@echo "... unit_core_brain_hemispheric_sleep_test"
 	@echo "... unit_core_brain_hemispheric_test"
+	@echo "... unit_core_brain_kg_message_index"
 	@echo "... unit_core_brain_oscillations_test_complex_oscillations"
 	@echo "... unit_core_brain_regions_brainstem_test_nimcp_brain_init_brainstem"
 	@echo "... unit_core_brain_regions_brainstem_test_nimcp_brainstem_adapter"
@@ -23271,6 +23617,7 @@ help:
 	@echo "... unit_core_brain_test_brain_final_push_95"
 	@echo "... unit_core_brain_test_brain_finetune"
 	@echo "... unit_core_brain_test_brain_json"
+	@echo "... unit_core_brain_test_brain_kg_message_index"
 	@echo "... unit_core_brain_test_brain_layer_freezing"
 	@echo "... unit_core_brain_test_brain_learning_strategies"
 	@echo "... unit_core_brain_test_brain_master"
@@ -23412,6 +23759,7 @@ help:
 	@echo "... unit_gpu_test_perception_gpu"
 	@echo "... unit_gpu_test_plasticity_kernels"
 	@echo "... unit_gpu_test_portia_kernels"
+	@echo "... unit_gpu_test_qmc_gpu"
 	@echo "... unit_gpu_test_quantum_kernels"
 	@echo "... unit_gpu_test_reasoning_kernels"
 	@echo "... unit_gpu_test_regions_kernels"
@@ -23683,6 +24031,8 @@ help:
 	@echo "... unit_utils_algorithms_test_graph_metrics"
 	@echo "... unit_utils_algorithms_test_louvain"
 	@echo "... unit_utils_algorithms_test_modularity"
+	@echo "... unit_utils_algorithms_test_monte_carlo"
+	@echo "... unit_utils_algorithms_test_sort"
 	@echo "... unit_utils_config_test_config"
 	@echo "... unit_utils_config_test_config_callbacks"
 	@echo "... unit_utils_containers_test_darray"

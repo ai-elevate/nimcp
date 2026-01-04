@@ -204,6 +204,11 @@ typedef struct basal_ganglia {
     bio_module_context_t bio_ctx;           /**< Bio-async context */
     bool bio_async_enabled;                 /**< Bio-async connected */
 
+    /* MCTS integration */
+    uint32_t rand_seed;                     /**< Thread-safe RNG seed for MCTS */
+    float mcts_conflict_threshold;          /**< Threshold to trigger MCTS [0-1] */
+    uint32_t mcts_iterations;               /**< MCTS iterations for uncertain decisions */
+
     /* Thread safety */
     nimcp_mutex_t* mutex;                   /**< Mutex for thread safety */
 } basal_ganglia_t;
@@ -308,6 +313,26 @@ int basal_ganglia_action_completed(
     basal_ganglia_t* bg,
     uint32_t action_id,
     bool success
+);
+
+/**
+ * @brief MCTS-based action selection for high-conflict decisions
+ *
+ * Uses Monte Carlo Tree Search to explore action consequences when
+ * conflict between competing actions is high. Simulates multi-step
+ * trajectories to find optimal action.
+ *
+ * @param bg Basal ganglia system
+ * @param cortical_input Cortical input activations (size num_actions)
+ * @param num_iterations MCTS iterations (0 uses default)
+ * @param selected_action Output: selected action ID
+ * @return 0 on success, negative on error
+ */
+int basal_ganglia_select_action_mcts(
+    basal_ganglia_t* bg,
+    const float* cortical_input,
+    uint32_t num_iterations,
+    uint32_t* selected_action
 );
 
 //=============================================================================

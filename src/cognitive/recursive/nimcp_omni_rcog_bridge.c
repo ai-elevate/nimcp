@@ -1,0 +1,332 @@
+/**
+ * @file nimcp_omni_rcog_bridge.c
+ * @brief Implementation of Omnidirectional Inference to Recursive Cognition Bridge
+ */
+
+#include "cognitive/recursive/nimcp_omni_rcog_bridge.h"
+#include "cognitive/jepa/nimcp_jepa_bidirectional.h"
+#include "cognitive/predictive/nimcp_predictive_hierarchy.h"
+#include "utils/thread/nimcp_thread.h"
+
+#include <string.h>
+#include <math.h>
+
+/* ============================================================================
+ * Static Helpers
+ * ============================================================================ */
+
+static omni_decomp_strategy_t compute_strategy(float pe,
+                                               const omni_rcog_config_t* config) {
+    if (pe < config->direct_exec_threshold) {
+        return OMNI_DECOMP_DIRECT;
+    } else if (pe < config->shallow_decomp_threshold) {
+        return OMNI_DECOMP_SHALLOW;
+    } else if (pe < config->deep_decomp_threshold) {
+        return config->enable_backward_decomp ?
+               OMNI_DECOMP_BACKWARD : OMNI_DECOMP_DEEP;
+    } else if (pe < config->abort_threshold) {
+        return config->enable_bidirectional ?
+               OMNI_DECOMP_BIDIRECTIONAL : OMNI_DECOMP_DEEP;
+    } else {
+        return OMNI_DECOMP_ABORT;
+    }
+}
+
+static uint32_t compute_depth(float pe, const omni_rcog_config_t* config) {
+    if (pe < config->direct_exec_threshold) {
+        return 0;
+    }
+
+    float ratio = (pe - config->direct_exec_threshold) /
+                  (config->abort_threshold - config->direct_exec_threshold);
+    uint32_t adjustment = (uint32_t)(ratio * config->max_depth_adjustment);
+    return config->base_recursion_depth + adjustment;
+}
+
+/* ============================================================================
+ * Configuration API
+ * ============================================================================ */
+
+int omni_rcog_default_config(omni_rcog_config_t* config) {
+    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+
+    memset(config, 0, sizeof(omni_rcog_config_t));
+
+    config->direct_exec_threshold = OMNI_RCOG_DIRECT_EXEC_THRESHOLD;
+    config->shallow_decomp_threshold = 2.0f;
+    config->deep_decomp_threshold = OMNI_RCOG_DEEP_DECOMP_THRESHOLD;
+    config->abort_threshold = 10.0f;
+
+    config->base_recursion_depth = 2;
+    config->max_depth_adjustment = OMNI_RCOG_MAX_DEPTH_ADJUSTMENT;
+    config->enable_backward_decomp = true;
+    config->enable_bidirectional = true;
+
+    config->goal_mode = OMNI_GOAL_BIDIRECTIONAL;
+    config->use_hopfield_goals = true;
+
+    config->enable_bio_async = true;
+    config->enable_logging = false;
+
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Lifecycle API
+ * ============================================================================ */
+
+omni_rcog_bridge_t* omni_rcog_bridge_create(const omni_rcog_config_t* config) {
+    omni_rcog_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_rcog_bridge_t));
+    if (!bridge) return NULL;
+
+    if (config) {
+        memcpy(&bridge->config, config, sizeof(omni_rcog_config_t));
+    } else {
+        omni_rcog_default_config(&bridge->config);
+    }
+
+    bridge->mutex = nimcp_mutex_create(NULL);
+    if (!bridge->mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    memset(&bridge->stats, 0, sizeof(omni_rcog_stats_t));
+
+    return bridge;
+}
+
+void omni_rcog_bridge_destroy(omni_rcog_bridge_t* bridge) {
+    if (!bridge) return;
+
+    if (bridge->omni_effects.subgoal_predictions) {
+        nimcp_free(bridge->omni_effects.subgoal_predictions);
+    }
+    if (bridge->rcog_effects.goal_embedding) {
+        nimcp_free(bridge->rcog_effects.goal_embedding);
+    }
+
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+    }
+
+    nimcp_free(bridge);
+}
+
+/* ============================================================================
+ * Connection API
+ * ============================================================================ */
+
+int omni_rcog_connect_jepa(omni_rcog_bridge_t* bridge,
+                            jepa_bidirectional_t* jepa) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->jepa = jepa;
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_rcog_connect_pred_hier(omni_rcog_bridge_t* bridge,
+                                 predictive_hierarchy_t* pred_hier) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->pred_hier = pred_hier;
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_rcog_connect_orchestrator(omni_rcog_bridge_t* bridge,
+                                    rcog_orchestrator_t* orchestrator) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->orchestrator = orchestrator;
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_rcog_connect_engine(omni_rcog_bridge_t* bridge,
+                              rcog_engine_t* engine) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->engine = engine;
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Update API
+ * ============================================================================ */
+
+int omni_rcog_update(omni_rcog_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Get prediction error from connected systems */
+    float pe = 0.0f;
+    if (bridge->pred_hier) {
+        float fe = pred_hier_compute_free_energy(bridge->pred_hier);
+        pe = isnan(fe) ? 0.0f : fe;
+    }
+
+    /* Compute omni → rcog effects */
+    bridge->omni_effects.strategy = compute_strategy(pe, &bridge->config);
+    bridge->omni_effects.suggested_depth = compute_depth(pe, &bridge->config);
+    bridge->omni_effects.execution_confidence = 1.0f / (1.0f + pe);
+    bridge->omni_effects.needs_backward_inference =
+        (bridge->omni_effects.strategy == OMNI_DECOMP_BACKWARD ||
+         bridge->omni_effects.strategy == OMNI_DECOMP_BIDIRECTIONAL);
+
+    /* Update rcog → omni effects (placeholder) */
+    bridge->rcog_effects.current_depth = bridge->config.base_recursion_depth;
+    bridge->rcog_effects.task_urgency = 0.5f;
+    bridge->rcog_effects.in_backtracking = false;
+    bridge->rcog_effects.working_memory_load = 0.3f;
+
+    /* Update statistics */
+    bridge->stats.total_updates++;
+    switch (bridge->omni_effects.strategy) {
+        case OMNI_DECOMP_DIRECT:
+            bridge->stats.direct_executions++;
+            break;
+        case OMNI_DECOMP_SHALLOW:
+            bridge->stats.shallow_decompositions++;
+            break;
+        case OMNI_DECOMP_DEEP:
+            bridge->stats.deep_decompositions++;
+            break;
+        case OMNI_DECOMP_BACKWARD:
+        case OMNI_DECOMP_BIDIRECTIONAL:
+            bridge->stats.backward_inferences++;
+            break;
+        case OMNI_DECOMP_ABORT:
+            bridge->stats.aborts++;
+            break;
+    }
+
+    float n = (float)bridge->stats.total_updates;
+    bridge->stats.avg_pe_at_decomp =
+        (bridge->stats.avg_pe_at_decomp * (n - 1) + pe) / n;
+    bridge->stats.avg_depth =
+        (bridge->stats.avg_depth * (n - 1) + bridge->omni_effects.suggested_depth) / n;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_rcog_apply_to_rcog(omni_rcog_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    return NIMCP_SUCCESS;
+}
+
+int omni_rcog_apply_to_omni(omni_rcog_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Decomposition API
+ * ============================================================================ */
+
+int omni_rcog_get_strategy(const omni_rcog_bridge_t* bridge,
+                            omni_decomp_strategy_t* strategy) {
+    if (!bridge || !strategy) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(((omni_rcog_bridge_t*)bridge)->mutex);
+    *strategy = bridge->omni_effects.strategy;
+    nimcp_mutex_unlock(((omni_rcog_bridge_t*)bridge)->mutex);
+    return NIMCP_SUCCESS;
+}
+
+uint32_t omni_rcog_get_suggested_depth(const omni_rcog_bridge_t* bridge) {
+    if (!bridge) return 0;
+    return bridge->omni_effects.suggested_depth;
+}
+
+bool omni_rcog_needs_backward(const omni_rcog_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->omni_effects.needs_backward_inference;
+}
+
+/* ============================================================================
+ * Query API
+ * ============================================================================ */
+
+int omni_rcog_get_omni_effects(const omni_rcog_bridge_t* bridge,
+                                omni_to_rcog_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(((omni_rcog_bridge_t*)bridge)->mutex);
+    memcpy(effects, &bridge->omni_effects, sizeof(omni_to_rcog_effects_t));
+    nimcp_mutex_unlock(((omni_rcog_bridge_t*)bridge)->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_rcog_get_rcog_effects(const omni_rcog_bridge_t* bridge,
+                                rcog_to_omni_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(((omni_rcog_bridge_t*)bridge)->mutex);
+    memcpy(effects, &bridge->rcog_effects, sizeof(rcog_to_omni_effects_t));
+    nimcp_mutex_unlock(((omni_rcog_bridge_t*)bridge)->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_rcog_get_stats(const omni_rcog_bridge_t* bridge,
+                         omni_rcog_stats_t* stats) {
+    if (!bridge || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(((omni_rcog_bridge_t*)bridge)->mutex);
+    memcpy(stats, &bridge->stats, sizeof(omni_rcog_stats_t));
+    nimcp_mutex_unlock(((omni_rcog_bridge_t*)bridge)->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_rcog_reset_stats(omni_rcog_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(bridge->mutex);
+    memset(&bridge->stats, 0, sizeof(omni_rcog_stats_t));
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Bio-Async API
+ * ============================================================================ */
+
+int omni_rcog_connect_bio_async(omni_rcog_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    return NIMCP_SUCCESS;
+}
+
+int omni_rcog_disconnect_bio_async(omni_rcog_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    return NIMCP_SUCCESS;
+}
+
+bool omni_rcog_is_bio_async_connected(const omni_rcog_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->config.enable_bio_async;
+}
+
+/* ============================================================================
+ * String Conversion API
+ * ============================================================================ */
+
+const char* omni_rcog_strategy_to_string(omni_decomp_strategy_t strategy) {
+    switch (strategy) {
+        case OMNI_DECOMP_DIRECT: return "DIRECT";
+        case OMNI_DECOMP_SHALLOW: return "SHALLOW";
+        case OMNI_DECOMP_DEEP: return "DEEP";
+        case OMNI_DECOMP_BACKWARD: return "BACKWARD";
+        case OMNI_DECOMP_BIDIRECTIONAL: return "BIDIRECTIONAL";
+        case OMNI_DECOMP_ABORT: return "ABORT";
+        default: return "UNKNOWN";
+    }
+}
+
+const char* omni_rcog_goal_mode_to_string(omni_goal_mode_t mode) {
+    switch (mode) {
+        case OMNI_GOAL_FORWARD: return "FORWARD";
+        case OMNI_GOAL_BACKWARD: return "BACKWARD";
+        case OMNI_GOAL_HIERARCHICAL: return "HIERARCHICAL";
+        case OMNI_GOAL_ASSOCIATIVE: return "ASSOCIATIVE";
+        default: return "UNKNOWN";
+    }
+}

@@ -7,7 +7,15 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/algorithms/nimcp_monte_carlo.h"
+#include "utils/quantum/nimcp_quantum_monte_carlo.h"
 #include <string.h>
+
+//=============================================================================
+// Monte Carlo Integration - Thread-local seed
+//=============================================================================
+
+static __thread uint32_t g_bqr_mc_seed = 0;
 
 //=============================================================================
 // Internal State
@@ -445,4 +453,243 @@ void nimcp_brain_qreason_reset_stats(brain_t brain) {
 qreason_t nimcp_brain_qreason_get_handle(brain_t brain) {
     brain_qreason_ctx_t* ctx = get_ctx(brain);
     return ctx ? ctx->reasoner : NULL;
+}
+
+//=============================================================================
+// Monte Carlo Enhanced Functions
+//=============================================================================
+
+/**
+ * @brief Convert qreason CNF to QMC CNF format
+ *
+ * QMC uses int32_t literals where:
+ * - positive literal i means variable i is true
+ * - negative literal -i means variable i is false
+ */
+static bool convert_to_qmc_cnf(const qreason_cnf_t* src, qmc_cnf_t* dst) {
+    if (!src || !dst) return false;
+
+    memset(dst, 0, sizeof(*dst));
+    dst->num_variables = src->n_variables;
+    dst->num_clauses = src->n_clauses;
+
+    /* Allocate clause storage */
+    dst->clauses = nimcp_calloc(dst->num_clauses, sizeof(qmc_clause_t));
+    if (!dst->clauses) return false;
+
+    for (uint32_t c = 0; c < src->n_clauses; c++) {
+        const qreason_clause_t* sq = &src->clauses[c];
+        qmc_clause_t* dq = &dst->clauses[c];
+
+        dq->num_literals = sq->n_literals;
+        dq->literals = nimcp_calloc(sq->n_literals, sizeof(int32_t));
+        if (!dq->literals) {
+            /* Cleanup on failure */
+            for (uint32_t i = 0; i < c; i++) {
+                if (dst->clauses[i].literals) {
+                    nimcp_free(dst->clauses[i].literals);
+                }
+            }
+            nimcp_free(dst->clauses);
+            dst->clauses = NULL;
+            return false;
+        }
+
+        for (uint32_t l = 0; l < sq->n_literals; l++) {
+            /* Convert to QMC format: +var for true, -var for negated */
+            int32_t lit = (int32_t)(sq->literals[l].variable + 1);  /* +1 because 0 is not valid */
+            if (sq->literals[l].negated) {
+                lit = -lit;
+            }
+            dq->literals[l] = lit;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Free QMC CNF resources
+ */
+static void free_qmc_cnf(qmc_cnf_t* cnf) {
+    if (cnf && cnf->clauses) {
+        for (uint32_t c = 0; c < cnf->num_clauses; c++) {
+            if (cnf->clauses[c].literals) {
+                nimcp_free(cnf->clauses[c].literals);
+            }
+        }
+        nimcp_free(cnf->clauses);
+        cnf->clauses = NULL;
+    }
+}
+
+/**
+ * @brief Solve SAT using MCTS-guided search
+ *
+ * WHAT: Use Monte Carlo Tree Search for SAT solving
+ * WHY:  MCTS can find solutions faster via learned exploration
+ * HOW:  Use qmc_solve_sat_mcts with variable-branching tree
+ *
+ * @param brain Brain handle
+ * @param query Reasoning query with CNF formula
+ * @param result Output: reasoning result
+ * @return 0 on success, -1 on error
+ */
+int nimcp_brain_qreason_solve_sat_mcts(brain_t brain,
+                                        const brain_reasoning_query_t* query,
+                                        brain_reasoning_result_t* result) {
+    if (!brain || !query || !result) return -1;
+
+    brain_qreason_ctx_t* ctx = get_ctx(brain);
+    if (!ctx) return -1;
+
+    if (g_bqr_mc_seed == 0) {
+        g_bqr_mc_seed = mc_seed_from_time();
+    }
+
+    memset(result, 0, sizeof(*result));
+    uint64_t start_time = nimcp_time_get_us();
+
+    /* Convert CNF format */
+    qmc_cnf_t qmc_cnf;
+    if (!convert_to_qmc_cnf(&query->cnf, &qmc_cnf)) {
+        NIMCP_LOGGING_ERROR("Failed to convert CNF for MCTS solver");
+        return -1;
+    }
+
+    /* Set up MCTS SAT config */
+    qmc_sat_config_t config = {
+        .mcts_iterations = ctx->config.max_grover_iterations > 0 ?
+                          ctx->config.max_grover_iterations * 100 : 1000,
+        .max_depth = query->cnf.n_variables,
+        .exploration_constant = 1.41421356f,  /* sqrt(2) */
+        .use_unit_propagation = true,
+        .seed = g_bqr_mc_seed
+    };
+
+    qmc_sat_result_t sat_result;
+    memset(&sat_result, 0, sizeof(sat_result));
+
+    qmc_result_t status = qmc_solve_sat_mcts(&qmc_cnf, &config, &sat_result);
+
+    uint64_t end_time = nimcp_time_get_us();
+
+    /* Copy result */
+    result->satisfiable = sat_result.satisfiable;
+    result->confidence = sat_result.confidence;
+
+    /* Copy assignment */
+    for (uint32_t i = 0; i < query->cnf.n_variables && i < QREASON_MAX_VARIABLES; i++) {
+        if (sat_result.assignment) {
+            result->assignment[i] = sat_result.assignment[i] ? QREASON_TRUE : QREASON_FALSE;
+        }
+    }
+    result->num_variables = query->cnf.n_variables;
+
+    result->grover_iterations = sat_result.nodes_explored;
+    result->solve_time_us = end_time - start_time;
+
+    /* Update stats */
+    ctx->stats.total_queries++;
+    if (result->satisfiable) {
+        ctx->stats.satisfiable_count++;
+    } else {
+        ctx->stats.unsatisfiable_count++;
+    }
+    ctx->stats.total_grover_iterations += sat_result.nodes_explored;
+
+    /* Update seed */
+    g_bqr_mc_seed = config.seed;
+
+    /* Cleanup */
+    qmc_sat_result_free(&sat_result);
+    free_qmc_cnf(&qmc_cnf);
+
+    return (status == QMC_OK) ? 0 : -1;
+}
+
+/**
+ * @brief Estimate satisfiability probability via Monte Carlo
+ *
+ * WHAT: Estimate P(SAT) using random sampling
+ * WHY:  Quick estimate without full solving
+ * HOW:  Sample random assignments, check clause satisfaction
+ *
+ * @param brain Brain handle
+ * @param query Reasoning query
+ * @param num_samples Number of MC samples
+ * @param probability_out Output: estimated P(SAT)
+ * @param variance_out Output: estimate variance
+ * @return 0 on success
+ */
+int nimcp_brain_qreason_estimate_sat_prob_mc(brain_t brain,
+                                              const brain_reasoning_query_t* query,
+                                              uint32_t num_samples,
+                                              float* probability_out,
+                                              float* variance_out) {
+    if (!brain || !query || !probability_out) return -1;
+
+    brain_qreason_ctx_t* ctx = get_ctx(brain);
+    if (!ctx) return -1;
+
+    if (g_bqr_mc_seed == 0) {
+        g_bqr_mc_seed = mc_seed_from_time();
+    }
+
+    const qreason_cnf_t* cnf = &query->cnf;
+    if (cnf->n_variables == 0) {
+        *probability_out = 1.0f;
+        if (variance_out) *variance_out = 0.0f;
+        return 0;
+    }
+
+    uint32_t num_sat = 0;
+
+    for (uint32_t s = 0; s < num_samples; s++) {
+        /* Generate random assignment */
+        uint32_t assignment = mc_random_int(&g_bqr_mc_seed, 1U << cnf->n_variables);
+
+        /* Check if satisfies all clauses */
+        bool sat = true;
+        for (uint32_t c = 0; c < cnf->n_clauses && sat; c++) {
+            const qreason_clause_t* clause = &cnf->clauses[c];
+            bool clause_sat = false;
+
+            for (uint32_t l = 0; l < clause->n_literals; l++) {
+                uint32_t var = clause->literals[l].variable;
+                bool val = (assignment >> var) & 1;
+                if (clause->literals[l].negated) val = !val;
+                if (val) {
+                    clause_sat = true;
+                    break;
+                }
+            }
+
+            if (!clause_sat) sat = false;
+        }
+
+        if (sat) num_sat++;
+    }
+
+    *probability_out = (float)num_sat / (float)num_samples;
+
+    if (variance_out) {
+        /* Bernoulli variance: p(1-p)/n */
+        float p = *probability_out;
+        *variance_out = (p * (1.0f - p)) / (float)num_samples;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Get thread-local MC seed for brain quantum reasoning
+ *
+ * @return Pointer to thread-local seed
+ */
+uint32_t* nimcp_brain_qreason_get_mc_seed(void) {
+    if (g_bqr_mc_seed == 0) {
+        g_bqr_mc_seed = mc_seed_from_time();
+    }
+    return &g_bqr_mc_seed;
 }

@@ -595,6 +595,68 @@ const char* jepa_activation_to_string(jepa_activation_t activation);
  */
 const char* jepa_loss_to_string(jepa_loss_t loss);
 
+/* ============================================================================
+ * Monte Carlo Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Predict with uncertainty estimation via MC sampling
+ *
+ * WHAT: Make prediction with uncertainty quantification
+ * WHY:  Enable confidence-aware predictions in JEPA
+ * HOW:  Sample predictions with noise, compute mean and variance
+ *
+ * @param predictor JEPA predictor
+ * @param context Input context
+ * @param prediction Output prediction (mean)
+ * @param uncertainty Output uncertainty (std per dimension, size = output_dim)
+ * @param num_samples Number of MC samples
+ * @return NIMCP_SUCCESS on success
+ */
+int jepa_predictor_predict_with_uncertainty_mc(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    jepa_latent_t* prediction,
+    float* uncertainty,
+    uint32_t num_samples);
+
+/**
+ * @brief Apply MC dropout during training
+ *
+ * WHAT: Apply stochastic dropout using MC sampling
+ * WHY:  Regularization and uncertainty estimation
+ * HOW:  Randomly zero elements with dropout rate (inverted dropout)
+ *
+ * @param activations Activation array to modify in-place
+ * @param size Array size
+ * @param dropout_rate Probability of dropping [0,1]
+ */
+void jepa_predictor_apply_dropout_mc(float* activations, uint32_t size, float dropout_rate);
+
+/**
+ * @brief Estimate prediction confidence via MC sampling
+ *
+ * WHAT: Estimate confidence in prediction
+ * WHY:  Support uncertainty-aware decision making
+ * HOW:  Compute prediction variance over samples
+ *
+ * @param predictor JEPA predictor
+ * @param context Input context
+ * @param num_samples Number of MC samples
+ * @return Confidence score [0,1] (inverse of normalized variance)
+ */
+float jepa_predictor_estimate_confidence_mc(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    uint32_t num_samples);
+
+/**
+ * @brief Get thread-local MC seed for JEPA predictor
+ *
+ * @return Pointer to thread-local seed
+ */
+uint32_t* jepa_predictor_get_mc_seed(void);
+
 #ifdef __cplusplus
 }
 #endif

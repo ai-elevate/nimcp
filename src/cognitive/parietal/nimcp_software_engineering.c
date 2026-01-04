@@ -9,6 +9,7 @@
 #include "cognitive/parietal/nimcp_software_engineering.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/algorithms/nimcp_sort.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -732,6 +733,61 @@ int software_eng_analyze_dependencies(software_eng_t* se, dep_graph_t* graph) {
     return 0;
 }
 
+/*
+ * Callback context for software engineering topological sort
+ *
+ * NOTE: The original algorithm uses inverted dependency semantics:
+ * - "dependencies" in the graph means "nodes this node depends on"
+ * - But the algorithm increments in_degree of the dependency, not the dependent
+ * This produces a reverse topological order (dependents before dependencies)
+ *
+ * We preserve this behavior by using the dependencies array as "dependents"
+ * (nodes that will have their in_degree decremented when this node is processed)
+ */
+typedef struct {
+    const dep_graph_t* graph;
+    uint32_t* in_degrees;  /* Precomputed: how many nodes have i in their dependencies */
+} sweng_topo_ctx_t;
+
+/**
+ * @brief Get count of nodes that "depend on" this node (in the original semantics)
+ */
+static uint32_t sweng_get_dep_count(uint32_t node_index, void* user_data) {
+    sweng_topo_ctx_t* ctx = (sweng_topo_ctx_t*)user_data;
+    if (node_index >= ctx->graph->num_nodes) {
+        return 0;
+    }
+    return ctx->in_degrees[node_index];
+}
+
+/**
+ * @brief Get the jth node that has this node in its dependencies array
+ */
+static uint32_t sweng_get_dep(uint32_t node_index, uint32_t dep_index, void* user_data) {
+    sweng_topo_ctx_t* ctx = (sweng_topo_ctx_t*)user_data;
+    const dep_graph_t* graph = ctx->graph;
+
+    if (node_index >= graph->num_nodes) {
+        return UINT32_MAX;
+    }
+
+    /* Find nodes that have node_index in their dependencies array */
+    uint32_t found = 0;
+    for (uint32_t i = 0; i < graph->num_nodes; i++) {
+        for (uint32_t j = 0; j < graph->nodes[i].num_dependencies; j++) {
+            if (graph->nodes[i].dependencies[j] == node_index) {
+                if (found == dep_index) {
+                    return i;
+                }
+                found++;
+                break;  /* Node i only counts once */
+            }
+        }
+    }
+
+    return UINT32_MAX;
+}
+
 int software_eng_topological_sort(
     software_eng_t* se,
     const dep_graph_t* graph,
@@ -740,43 +796,46 @@ int software_eng_topological_sort(
 ) {
     if (!se || !graph || !order) return -1;
     if (graph->has_cycles) return -1;
+    if (graph->num_nodes == 0) return 0;
 
     nimcp_mutex_lock(se->lock);
 
-    uint32_t in_degree[SWENG_MAX_GRAPH_NODES] = {0};
-
-    /* Calculate in-degrees */
+    /* Precompute in-degrees (same as original algorithm) */
+    uint32_t in_degrees[SWENG_MAX_GRAPH_NODES] = {0};
     for (uint32_t i = 0; i < graph->num_nodes; i++) {
         for (uint32_t j = 0; j < graph->nodes[i].num_dependencies; j++) {
-            in_degree[graph->nodes[i].dependencies[j]]++;
-        }
-    }
-
-    /* Queue nodes with zero in-degree */
-    uint32_t queue[SWENG_MAX_GRAPH_NODES];
-    uint32_t front = 0, back = 0;
-    for (uint32_t i = 0; i < graph->num_nodes; i++) {
-        if (in_degree[i] == 0) {
-            queue[back++] = i;
-        }
-    }
-
-    uint32_t count = 0;
-    while (front < back && count < max_order) {
-        uint32_t u = queue[front++];
-        order[count++] = u;
-
-        for (uint32_t i = 0; i < graph->nodes[u].num_dependencies; i++) {
-            uint32_t v = graph->nodes[u].dependencies[i];
-            in_degree[v]--;
-            if (in_degree[v] == 0) {
-                queue[back++] = v;
+            uint32_t dep = graph->nodes[i].dependencies[j];
+            if (dep < graph->num_nodes) {
+                in_degrees[dep]++;
             }
         }
     }
 
+    sweng_topo_ctx_t ctx = {
+        .graph = graph,
+        .in_degrees = in_degrees
+    };
+
+    nimcp_topo_config_t config = {
+        .node_count = graph->num_nodes,
+        .user_data = &ctx,
+        .get_dep_count = sweng_get_dep_count,
+        .get_dep = sweng_get_dep,
+        .get_dependent_count = NULL,
+        .get_dependent = NULL
+    };
+
+    uint32_t sorted_count = 0;
+    nimcp_sort_result_t result = nimcp_topological_sort(
+        &config, order, max_order, &sorted_count);
+
     nimcp_mutex_unlock(se->lock);
-    return (int)count;
+
+    if (result == NIMCP_SORT_ERROR_CYCLE) {
+        return -1;
+    }
+
+    return (int)sorted_count;
 }
 
 /* ============================================================================

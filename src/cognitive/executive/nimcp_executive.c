@@ -34,6 +34,45 @@
 
 #include "utils/memory/nimcp_memory.h"  // nimcp_malloc/nimcp_free
 #include "utils/time/nimcp_time.h"       // nimcp_time_monotonic_ms
+#include "utils/algorithms/nimcp_monte_carlo.h"  // Monte Carlo utilities
+
+//=============================================================================
+// Monte Carlo Integration - GPU acceleration with CPU fallback
+//=============================================================================
+
+static __thread uint32_t g_exec_mc_seed = 0;
+
+#ifdef NIMCP_ENABLE_CUDA
+#include "gpu/quantum/nimcp_qmc_gpu.h"
+#include "gpu/context/nimcp_gpu_context.h"
+
+static nimcp_gpu_context_t* g_exec_gpu_ctx = NULL;
+static qmc_gpu_rng_t g_exec_gpu_rng = NULL;
+static bool g_exec_gpu_init_attempted = false;
+
+static bool exec_init_gpu_mc(void) {
+    if (g_exec_gpu_init_attempted) return g_exec_gpu_rng != NULL;
+    g_exec_gpu_init_attempted = true;
+    if (!qmc_gpu_is_available()) return false;
+    g_exec_gpu_ctx = nimcp_gpu_context_create_auto();
+    if (!g_exec_gpu_ctx) return false;
+    g_exec_gpu_rng = qmc_gpu_rng_create(g_exec_gpu_ctx, 4096, 0);
+    if (!g_exec_gpu_rng) {
+        nimcp_gpu_context_destroy(g_exec_gpu_ctx);
+        g_exec_gpu_ctx = NULL;
+        return false;
+    }
+    return true;
+}
+
+static inline bool exec_has_gpu_mc(void) {
+    if (!g_exec_gpu_init_attempted) exec_init_gpu_mc();
+    return g_exec_gpu_rng != NULL;
+}
+#else
+static inline bool exec_has_gpu_mc(void) { return false; }
+#endif
+
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
 #include "core/brain/nimcp_brain.h"      // Brain reference
 #include "core/brain/nimcp_brain_kg_helpers.h"  // KG self-awareness integration
@@ -2247,4 +2286,214 @@ int executive_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+//=============================================================================
+// Monte Carlo Enhanced Functions
+//=============================================================================
+
+/**
+ * @brief Select task using epsilon-greedy exploration
+ *
+ * WHAT: Select task with exploration-exploitation tradeoff
+ * WHY:  Avoid getting stuck in local optima during task scheduling
+ * HOW:  With probability epsilon, select random task; otherwise best
+ *
+ * @param exec Executive controller
+ * @param epsilon Exploration probability [0,1]
+ * @return Selected task or NULL
+ */
+task_descriptor_t* executive_select_task_epsilon_greedy_mc(
+    executive_controller_t* exec,
+    float epsilon
+) {
+    if (!exec || exec->num_tasks == 0) return NULL;
+
+    if (g_exec_mc_seed == 0) {
+        g_exec_mc_seed = mc_seed_from_time();
+    }
+
+    /* Count pending tasks */
+    uint32_t num_pending = 0;
+    for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        if (exec->task_queue[i] && exec->task_queue[i]->status == TASK_STATUS_PENDING) {
+            num_pending++;
+        }
+    }
+
+    if (num_pending == 0) return NULL;
+
+    /* Epsilon-greedy selection */
+    float r = mc_random_uniform(&g_exec_mc_seed);
+
+    if (r < epsilon) {
+        /* Explore: select random pending task */
+        uint32_t random_idx = mc_random_int(&g_exec_mc_seed, num_pending);
+        uint32_t count = 0;
+
+        for (uint32_t i = 0; i < exec->num_tasks; i++) {
+            if (exec->task_queue[i] && exec->task_queue[i]->status == TASK_STATUS_PENDING) {
+                if (count == random_idx) {
+                    return exec->task_queue[i];
+                }
+                count++;
+            }
+        }
+    }
+
+    /* Exploit: select highest priority task */
+    return get_highest_priority_task(exec);
+}
+
+/**
+ * @brief Estimate task value via Monte Carlo rollout
+ *
+ * WHAT: Estimate expected value of executing a task
+ * WHY:  Support value-based task selection
+ * HOW:  Simulate task execution and accumulate rewards
+ *
+ * @param exec Executive controller
+ * @param task Task to evaluate
+ * @param num_rollouts Number of MC rollouts
+ * @param discount Discount factor for future rewards
+ * @return Estimated value
+ */
+float executive_estimate_task_value_mc(
+    executive_controller_t* exec,
+    const task_descriptor_t* task,
+    uint32_t num_rollouts,
+    float discount
+) {
+    if (!exec || !task) return 0.0f;
+
+    if (g_exec_mc_seed == 0) {
+        g_exec_mc_seed = mc_seed_from_time();
+    }
+
+    float total_value = 0.0f;
+
+    for (uint32_t r = 0; r < num_rollouts; r++) {
+        float rollout_value = 0.0f;
+        float gamma = 1.0f;
+
+        /* Simulate task execution with stochastic outcomes */
+        float success_prob = 0.8f;  /* Base success probability */
+
+        /* Adjust for priority - higher priority tasks more likely to succeed */
+        success_prob += 0.04f * (float)task->priority;
+        if (success_prob > 0.99f) success_prob = 0.99f;
+
+        /* Simulate execution */
+        float outcome = mc_random_uniform(&g_exec_mc_seed);
+        if (outcome < success_prob) {
+            /* Success: reward based on priority */
+            rollout_value += gamma * (1.0f + 0.2f * (float)task->priority);
+        } else {
+            /* Failure: negative reward */
+            rollout_value += gamma * (-0.5f);
+        }
+
+        /* Simulate future tasks (simplified) */
+        for (uint32_t step = 1; step < 5; step++) {
+            gamma *= discount;
+            float future_reward = mc_random_uniform(&g_exec_mc_seed) * 0.5f;
+            rollout_value += gamma * future_reward;
+        }
+
+        total_value += rollout_value;
+    }
+
+    return total_value / (float)num_rollouts;
+}
+
+/**
+ * @brief Select task using softmax over estimated values
+ *
+ * WHAT: Probabilistic task selection based on values
+ * WHY:  Smooth exploration that favors high-value tasks
+ * HOW:  Compute softmax probabilities, sample
+ *
+ * @param exec Executive controller
+ * @param temperature Softmax temperature (higher = more exploration)
+ * @param num_rollouts MC rollouts per task for value estimation
+ * @return Selected task
+ */
+task_descriptor_t* executive_select_task_softmax_mc(
+    executive_controller_t* exec,
+    float temperature,
+    uint32_t num_rollouts
+) {
+    if (!exec || exec->num_tasks == 0 || temperature <= 0.0f) return NULL;
+
+    if (g_exec_mc_seed == 0) {
+        g_exec_mc_seed = mc_seed_from_time();
+    }
+
+    /* Collect pending tasks and their values */
+    task_descriptor_t** pending = nimcp_calloc(exec->num_tasks, sizeof(task_descriptor_t*));
+    float* values = nimcp_calloc(exec->num_tasks, sizeof(float));
+    if (!pending || !values) {
+        nimcp_free(pending);
+        nimcp_free(values);
+        return get_highest_priority_task(exec);
+    }
+
+    uint32_t num_pending = 0;
+    float max_value = -1e30f;
+
+    for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        if (exec->task_queue[i] && exec->task_queue[i]->status == TASK_STATUS_PENDING) {
+            pending[num_pending] = exec->task_queue[i];
+            values[num_pending] = executive_estimate_task_value_mc(
+                exec, exec->task_queue[i], num_rollouts, 0.9f
+            );
+            if (values[num_pending] > max_value) {
+                max_value = values[num_pending];
+            }
+            num_pending++;
+        }
+    }
+
+    if (num_pending == 0) {
+        nimcp_free(pending);
+        nimcp_free(values);
+        return NULL;
+    }
+
+    /* Compute softmax probabilities (with max subtraction for stability) */
+    float sum_exp = 0.0f;
+    for (uint32_t i = 0; i < num_pending; i++) {
+        values[i] = expf((values[i] - max_value) / temperature);
+        sum_exp += values[i];
+    }
+
+    /* Sample from distribution */
+    float r = mc_random_uniform(&g_exec_mc_seed) * sum_exp;
+    float cumulative = 0.0f;
+    task_descriptor_t* selected = pending[num_pending - 1];
+
+    for (uint32_t i = 0; i < num_pending; i++) {
+        cumulative += values[i];
+        if (r < cumulative) {
+            selected = pending[i];
+            break;
+        }
+    }
+
+    nimcp_free(pending);
+    nimcp_free(values);
+
+    return selected;
+}
+
+/**
+ * @brief Get thread-local MC seed for executive functions
+ *
+ * @return Pointer to thread-local seed
+ */
+uint32_t* executive_get_mc_seed(void) {
+    if (g_exec_mc_seed == 0) {
+        g_exec_mc_seed = mc_seed_from_time();
+    }
+    return &g_exec_mc_seed;
 }

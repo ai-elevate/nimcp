@@ -281,6 +281,104 @@ float quantum_annealer_get_temperature(quantum_annealer_t annealer, uint32_t ite
  */
 quantum_annealing_config_t quantum_annealing_default_config(void);
 
+//=============================================================================
+// Monte Carlo Integration API
+//=============================================================================
+
+/* Forward declaration for QMC result type */
+struct qmc_anneal_result;
+
+/**
+ * @brief Adaptive annealing using MCMC proposal learning
+ *
+ * WHAT: Quantum annealing with adaptive proposal distribution
+ * WHY:  Learn optimal step sizes from acceptance history (2-5x faster convergence)
+ * HOW:  Use qmc_adaptive_anneal() with learned proposal covariance
+ *
+ * @param annealer Annealer instance
+ * @param energy_func Energy function to minimize
+ * @param initial_state Starting state
+ * @param optimized_state Output: best state found
+ * @param dim State dimensionality
+ * @param user_data Passed to energy function
+ * @param result Output: detailed optimization result
+ * @return Best energy found
+ */
+float quantum_annealer_optimize_adaptive_mc(
+    quantum_annealer_t annealer,
+    energy_function_t energy_func,
+    const float* initial_state,
+    float* optimized_state,
+    uint32_t dim,
+    void* user_data,
+    struct qmc_anneal_result* result
+);
+
+/**
+ * @brief Importance sampling for Boltzmann distribution
+ *
+ * WHAT: Sample states proportional to Boltzmann weights
+ * WHY:  Efficient sampling of low-energy configurations
+ * HOW:  Use MC importance sampling with exp(-E/T) weights
+ *
+ * @param annealer Annealer instance
+ * @param energy_func Energy function
+ * @param temperature Current temperature
+ * @param states Array of candidate states (dim x num_states)
+ * @param num_states Number of candidate states
+ * @param dim State dimensionality
+ * @param user_data Passed to energy function
+ * @return Index of sampled state
+ */
+uint32_t quantum_annealer_sample_boltzmann_mc(
+    quantum_annealer_t annealer,
+    energy_function_t energy_func,
+    float temperature,
+    const float* states,
+    uint32_t num_states,
+    uint32_t dim,
+    void* user_data
+);
+
+/**
+ * @brief Estimate partition function via Monte Carlo
+ *
+ * WHAT: Estimate Z = Σ exp(-E_i/T) for normalization
+ * WHY:  Needed for free energy calculations and convergence diagnostics
+ * HOW:  MC sampling with variance estimation
+ *
+ * @param annealer Annealer instance
+ * @param energy_func Energy function
+ * @param temperature Current temperature
+ * @param sample_states Sampled states for estimation
+ * @param num_samples Number of samples
+ * @param dim State dimensionality
+ * @param user_data Passed to energy function
+ * @param variance_out Output: variance of estimate
+ * @return Estimated partition function
+ */
+float quantum_annealer_estimate_partition_mc(
+    quantum_annealer_t annealer,
+    energy_function_t energy_func,
+    float temperature,
+    const float* sample_states,
+    uint32_t num_samples,
+    uint32_t dim,
+    void* user_data,
+    float* variance_out
+);
+
+/**
+ * @brief Get thread-local MC seed for quantum annealing
+ *
+ * WHAT: Access the thread-local RNG seed
+ * WHY:  Allow external seeding for reproducibility
+ * HOW:  Return pointer to thread-local seed variable
+ *
+ * @return Pointer to thread-local seed
+ */
+uint32_t* quantum_annealer_get_mc_seed(void);
+
 #ifdef __cplusplus
 }
 #endif

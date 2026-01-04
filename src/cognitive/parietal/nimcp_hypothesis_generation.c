@@ -7,11 +7,44 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/algorithms/nimcp_monte_carlo.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
+
+/* GPU acceleration with CPU fallback */
+#ifdef NIMCP_ENABLE_CUDA
+#include "gpu/quantum/nimcp_qmc_gpu.h"
+#include "gpu/context/nimcp_gpu_context.h"
+
+static nimcp_gpu_context_t* g_hypogen_gpu_ctx = NULL;
+static qmc_gpu_rng_t g_hypogen_gpu_rng = NULL;
+static bool g_hypogen_gpu_init_attempted = false;
+
+static bool hypogen_init_gpu_mc(void) {
+    if (g_hypogen_gpu_init_attempted) return g_hypogen_gpu_rng != NULL;
+    g_hypogen_gpu_init_attempted = true;
+    if (!qmc_gpu_is_available()) return false;
+    g_hypogen_gpu_ctx = nimcp_gpu_context_create_auto();
+    if (!g_hypogen_gpu_ctx) return false;
+    g_hypogen_gpu_rng = qmc_gpu_rng_create(g_hypogen_gpu_ctx, 4096, 0);
+    if (!g_hypogen_gpu_rng) {
+        nimcp_gpu_context_destroy(g_hypogen_gpu_ctx);
+        g_hypogen_gpu_ctx = NULL;
+        return false;
+    }
+    return true;
+}
+
+static inline bool hypogen_has_gpu_mc(void) {
+    if (!g_hypogen_gpu_init_attempted) hypogen_init_gpu_mc();
+    return g_hypogen_gpu_rng != NULL;
+}
+#else
+static inline bool hypogen_has_gpu_mc(void) { return false; }
+#endif
 
 struct hypothesis_engine {
     hypogen_config_t config;
@@ -20,6 +53,7 @@ struct hypothesis_engine {
     float fatigue;
     uint32_t next_theory_id;
     uint32_t next_prediction_id;
+    uint32_t rand_seed;  /**< Thread-safe RNG seed for MCTS */
 };
 
 static __thread char g_last_error[256] = {0};
@@ -59,6 +93,7 @@ hypothesis_engine_t* hypothesis_engine_create_custom(const hypogen_config_t* con
     e->config = *config;
     e->next_theory_id = 1;
     e->next_prediction_id = 1;
+    e->rand_seed = mc_seed_from_time();
     return e;
 }
 
@@ -82,8 +117,8 @@ hypogen_theory_t** hypothesis_generate_explanations(hypothesis_engine_t* engine,
         t->id = engine->next_theory_id++;
         snprintf(t->statement, sizeof(t->statement),
                 "Theory explaining observation %u", i);
-        t->explanatory_power = 0.5f + 0.3f * ((float)rand() / RAND_MAX);
-        t->parsimony = 0.6f + 0.2f * ((float)rand() / RAND_MAX);
+        t->explanatory_power = 0.5f + 0.3f * mc_random_uniform(&engine->rand_seed);
+        t->parsimony = 0.6f + 0.2f * mc_random_uniform(&engine->rand_seed);
         t->falsifiability = 0.7f;
         t->prior = 0.5f;
         t->likelihood = apply_mod(engine, t->explanatory_power);
@@ -248,6 +283,307 @@ void hypothesis_reset_stats(hypothesis_engine_t* engine) {
 }
 
 const char* hypothesis_get_last_error(void) { return g_last_error; }
+
+/* ============================================================================
+ * MCTS-BASED HYPOTHESIS SEARCH
+ * ============================================================================ */
+
+/**
+ * @brief State for MCTS hypothesis search
+ */
+typedef struct {
+    uint32_t num_observations;
+    uint32_t tested_theory_mask;  /**< Bitmask of tested theories */
+    float best_confidence;
+    uint32_t best_theory_id;
+    uint32_t depth;
+} hypogen_mcts_state_t;
+
+/**
+ * @brief User data for MCTS callbacks
+ */
+typedef struct {
+    hypothesis_engine_t* engine;
+    hypogen_theory_t** theories;
+    uint32_t num_theories;
+} hypogen_mcts_user_data_t;
+
+static uint32_t hypogen_mcts_get_action_count(const void* state, void* user_data) {
+    hypogen_mcts_user_data_t* ud = (hypogen_mcts_user_data_t*)user_data;
+    return ud->num_theories;
+}
+
+static uint32_t hypogen_mcts_get_action(const void* state, uint32_t idx, void* user_data) {
+    (void)state;
+    (void)user_data;
+    return idx;
+}
+
+static void* hypogen_mcts_apply_action(const void* state, uint32_t action, void* user_data) {
+    const hypogen_mcts_state_t* s = (const hypogen_mcts_state_t*)state;
+    hypogen_mcts_user_data_t* ud = (hypogen_mcts_user_data_t*)user_data;
+
+    hypogen_mcts_state_t* new_state = nimcp_malloc(sizeof(hypogen_mcts_state_t));
+    if (!new_state) return NULL;
+
+    *new_state = *s;
+    new_state->depth = s->depth + 1;
+    new_state->tested_theory_mask |= (1u << action);
+
+    /* Simulate testing this theory */
+    if (action < ud->num_theories) {
+        hypogen_theory_t* theory = ud->theories[action];
+        float score = theory->posterior;
+
+        /* Apply some randomness to simulate test outcome */
+        float test_outcome = mc_random_uniform(&ud->engine->rand_seed);
+        if (test_outcome < score) {
+            /* Theory confirmed - boost confidence */
+            new_state->best_confidence = fmaxf(s->best_confidence, score * 1.2f);
+            new_state->best_theory_id = theory->id;
+        } else {
+            /* Theory weakened */
+            new_state->best_confidence = s->best_confidence * 0.9f;
+        }
+    }
+
+    if (new_state->best_confidence > 1.0f) {
+        new_state->best_confidence = 1.0f;
+    }
+
+    return new_state;
+}
+
+static float hypogen_mcts_evaluate(const void* state, void* user_data) {
+    const hypogen_mcts_state_t* s = (const hypogen_mcts_state_t*)state;
+    (void)user_data;
+    return s->best_confidence;
+}
+
+static bool hypogen_mcts_is_terminal(const void* state, void* user_data) {
+    const hypogen_mcts_state_t* s = (const hypogen_mcts_state_t*)state;
+    hypogen_mcts_user_data_t* ud = (hypogen_mcts_user_data_t*)user_data;
+
+    /* Terminal if high confidence or all tested */
+    if (s->best_confidence >= 0.9f) return true;
+    if (s->tested_theory_mask == ((1u << ud->num_theories) - 1)) return true;
+    if (s->depth >= 5) return true;
+    return false;
+}
+
+static void hypogen_mcts_free_state(void* state, void* user_data) {
+    (void)user_data;
+    nimcp_free(state);
+}
+
+static void* hypogen_mcts_clone_state(const void* state, void* user_data) {
+    (void)user_data;
+    if (!state) return NULL;
+    hypogen_mcts_state_t* clone = nimcp_malloc(sizeof(hypogen_mcts_state_t));
+    if (!clone) return NULL;
+    *clone = *(const hypogen_mcts_state_t*)state;
+    return clone;
+}
+
+/**
+ * @brief Search for best hypothesis using MCTS
+ */
+hypogen_theory_t* hypothesis_search_mcts(
+    hypothesis_engine_t* engine,
+    hypogen_theory_t** theories,
+    uint32_t num_theories,
+    uint32_t num_iterations
+) {
+    if (!engine || !theories || num_theories == 0) return NULL;
+    if (num_theories > 32) num_theories = 32;  /* Limit for bitmask */
+
+    hypogen_mcts_state_t initial_state = {
+        .num_observations = 0,
+        .tested_theory_mask = 0,
+        .best_confidence = 0.0f,
+        .best_theory_id = 0,
+        .depth = 0
+    };
+
+    hypogen_mcts_user_data_t user_data = {
+        .engine = engine,
+        .theories = theories,
+        .num_theories = num_theories
+    };
+
+    mcts_config_t config;
+    mcts_config_init(&config);
+    config.max_iterations = num_iterations > 0 ? num_iterations : 25;
+    config.max_depth = 5;
+    config.exploration_constant = 1.2f;
+    config.discount_factor = 0.95f;
+    config.max_nodes = 64;
+
+    config.get_action_count = hypogen_mcts_get_action_count;
+    config.get_action = hypogen_mcts_get_action;
+    config.apply_action = hypogen_mcts_apply_action;
+    config.evaluate = hypogen_mcts_evaluate;
+    config.is_terminal = hypogen_mcts_is_terminal;
+    config.free_state = hypogen_mcts_free_state;
+    config.clone_state = hypogen_mcts_clone_state;
+    config.user_data = &user_data;
+    config.seed = engine->rand_seed;
+
+    mcts_result_t result;
+    nimcp_mc_result_t err = mcts_search(&config, &initial_state, &result);
+
+    engine->rand_seed = config.seed;
+
+    if (err != NIMCP_MC_OK) {
+        return num_theories > 0 ? theories[0] : NULL;
+    }
+
+    uint32_t best_idx = result.best_action;
+    mcts_result_free(&result);
+
+    if (best_idx < num_theories) {
+        return theories[best_idx];
+    }
+    return theories[0];
+}
+
+/* ============================================================================
+ * MONTE CARLO UTILITIES
+ * ============================================================================ */
+
+/**
+ * @brief Sample hypothesis using softmax MC sampling
+ *
+ * WHAT: Probabilistically select hypothesis based on posterior
+ * WHY:  Enable diverse exploration while respecting quality
+ * HOW:  Apply softmax to posteriors, sample from distribution
+ *
+ * @param engine Hypothesis engine
+ * @param theories Array of theories
+ * @param num_theories Number of theories
+ * @param temperature Softmax temperature (higher = more random)
+ * @return Pointer to selected theory, or NULL on error
+ */
+hypogen_theory_t* hypothesis_sample_mc(
+    hypothesis_engine_t* engine,
+    hypogen_theory_t** theories,
+    uint32_t num_theories,
+    float temperature
+) {
+    if (!engine || !theories || num_theories == 0 || temperature <= 0.0f) {
+        return NULL;
+    }
+
+    /* Find max posterior for numerical stability */
+    float max_posterior = theories[0]->posterior;
+    for (uint32_t i = 1; i < num_theories; i++) {
+        if (theories[i]->posterior > max_posterior) {
+            max_posterior = theories[i]->posterior;
+        }
+    }
+
+    /* Compute softmax probabilities */
+    float* probs = nimcp_calloc(num_theories, sizeof(float));
+    if (!probs) return theories[0];
+
+    float sum_exp = 0.0f;
+    for (uint32_t i = 0; i < num_theories; i++) {
+        probs[i] = expf((theories[i]->posterior - max_posterior) / temperature);
+        sum_exp += probs[i];
+    }
+
+    /* Sample from distribution */
+    float r = mc_random_uniform(&engine->rand_seed) * sum_exp;
+    float cumulative = 0.0f;
+    hypogen_theory_t* selected = theories[num_theories - 1];
+
+    for (uint32_t i = 0; i < num_theories; i++) {
+        cumulative += probs[i];
+        if (r < cumulative) {
+            selected = theories[i];
+            break;
+        }
+    }
+
+    nimcp_free(probs);
+    return selected;
+}
+
+/**
+ * @brief Estimate hypothesis confidence via MC sampling
+ *
+ * WHAT: Estimate confidence using bootstrapping
+ * WHY:  Robust confidence estimation under uncertainty
+ * HOW:  Resample evidence, compute posterior distribution
+ *
+ * @param engine Hypothesis engine
+ * @param theory Theory to evaluate
+ * @param num_samples Number of MC samples
+ * @return Average posterior with sampling
+ */
+float hypothesis_estimate_confidence_mc(
+    hypothesis_engine_t* engine,
+    const hypogen_theory_t* theory,
+    uint32_t num_samples
+) {
+    if (!engine || !theory || num_samples == 0) return 0.0f;
+
+    float total = 0.0f;
+    float base_posterior = theory->posterior;
+
+    for (uint32_t s = 0; s < num_samples; s++) {
+        /* Add noise to simulate uncertainty in evidence */
+        float noise = mc_random_normal(&engine->rand_seed, 0.0f, 0.1f);
+        float sampled_posterior = base_posterior + noise;
+
+        if (sampled_posterior < 0.0f) sampled_posterior = 0.0f;
+        if (sampled_posterior > 1.0f) sampled_posterior = 1.0f;
+
+        total += sampled_posterior;
+    }
+
+    return total / (float)num_samples;
+}
+
+/**
+ * @brief Add exploration noise to theory scores
+ *
+ * WHAT: Add stochastic noise for diverse hypothesis exploration
+ * WHY:  Prevent fixation on single hypothesis
+ * HOW:  Add Gaussian noise to scores
+ *
+ * @param engine Hypothesis engine
+ * @param theories Theories to modify in-place
+ * @param num_theories Number of theories
+ * @param noise_scale Standard deviation of noise
+ */
+void hypothesis_add_exploration_noise_mc(
+    hypothesis_engine_t* engine,
+    hypogen_theory_t** theories,
+    uint32_t num_theories,
+    float noise_scale
+) {
+    if (!engine || !theories || num_theories == 0) return;
+
+    for (uint32_t i = 0; i < num_theories; i++) {
+        float noise = mc_random_normal(&engine->rand_seed, 0.0f, noise_scale);
+        theories[i]->posterior += noise;
+
+        if (theories[i]->posterior < 0.01f) theories[i]->posterior = 0.01f;
+        if (theories[i]->posterior > 0.99f) theories[i]->posterior = 0.99f;
+    }
+}
+
+/**
+ * @brief Get thread-local MC seed for hypothesis engine
+ *
+ * @param engine Hypothesis engine
+ * @return Pointer to RNG seed
+ */
+uint32_t* hypothesis_get_mc_seed(hypothesis_engine_t* engine) {
+    if (!engine) return NULL;
+    return &engine->rand_seed;
+}
 
 /* ============================================================================
  * KG SELF-AWARENESS INTEGRATION

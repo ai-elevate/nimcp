@@ -20,12 +20,16 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/containers/nimcp_darray.h"
+#include "utils/algorithms/nimcp_monte_carlo.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
 #include <stdio.h>
+
+/* Thread-local RNG seed for imagination engine */
+static __thread uint32_t g_imagination_rand_seed = 0;
 
 /*============================================================================
  * Constants
@@ -101,8 +105,8 @@ static float gaussian_noise(float stddev) {
 
     float u, v, s;
     do {
-        u = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
-        v = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
+        u = mc_random_uniform(&g_imagination_rand_seed) * 2.0f - 1.0f;
+        v = mc_random_uniform(&g_imagination_rand_seed) * 2.0f - 1.0f;
         s = u * u + v * v;
     } while (s >= 1.0f || s == 0.0f);
 
@@ -346,6 +350,9 @@ imagination_engine_t* imagination_engine_create(
 
     /* Initialize statistics */
     memset(&engine->stats, 0, sizeof(imagination_stats_t));
+
+    /* Initialize thread-safe RNG seed */
+    g_imagination_rand_seed = mc_seed_from_time();
 
     /* Mark as initialized */
     engine->base.bridge_active = true;
@@ -2524,4 +2531,354 @@ int imagination_engine_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Imagination_Engine");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * MCTS-BASED GOAL-DIRECTED IMAGINATION
+ * ============================================================================ */
+
+/**
+ * @brief Action types for imagination MCTS
+ */
+typedef enum {
+    IMAG_ACTION_STEP,           /**< Take a step in current mode */
+    IMAG_ACTION_ADD_NOISE,      /**< Add creative noise */
+    IMAG_ACTION_ROTATE,         /**< Apply rotation transform */
+    IMAG_ACTION_BLEND_TOWARD,   /**< Blend toward goal */
+    IMAG_ACTION_COUNT
+} imag_mcts_action_t;
+
+/**
+ * @brief State for MCTS imagination search
+ */
+typedef struct {
+    float* latent_copy;         /**< Copy of latent state */
+    uint32_t latent_size;       /**< Size of latent state */
+    float goal_progress;        /**< Current goal alignment */
+    float coherence;            /**< Current coherence */
+    uint32_t depth;             /**< Search depth */
+} imag_mcts_state_t;
+
+/**
+ * @brief User data for MCTS callbacks
+ */
+typedef struct {
+    imagination_engine_t* engine;
+    imagination_scenario_t* scenario;
+    const imagination_goal_t* goal;
+    float* goal_features;
+    uint32_t goal_size;
+} imag_mcts_user_data_t;
+
+static uint32_t imag_mcts_get_action_count(const void* state, void* user_data) {
+    (void)state;
+    (void)user_data;
+    return IMAG_ACTION_COUNT;
+}
+
+static uint32_t imag_mcts_get_action(const void* state, uint32_t idx, void* user_data) {
+    (void)state;
+    (void)user_data;
+    return idx;
+}
+
+static void* imag_mcts_apply_action(const void* state, uint32_t action, void* user_data) {
+    const imag_mcts_state_t* s = (const imag_mcts_state_t*)state;
+    imag_mcts_user_data_t* ud = (imag_mcts_user_data_t*)user_data;
+
+    imag_mcts_state_t* new_state = nimcp_malloc(sizeof(imag_mcts_state_t));
+    if (!new_state) return NULL;
+
+    new_state->latent_size = s->latent_size;
+    new_state->depth = s->depth + 1;
+    new_state->latent_copy = nimcp_malloc(s->latent_size * sizeof(float));
+    if (!new_state->latent_copy) {
+        nimcp_free(new_state);
+        return NULL;
+    }
+    memcpy(new_state->latent_copy, s->latent_copy, s->latent_size * sizeof(float));
+
+    float noise_level = ud->engine->config.creativity_noise_level;
+
+    switch (action) {
+        case IMAG_ACTION_STEP:
+            /* Apply small noise to simulate a step */
+            for (uint32_t i = 0; i < new_state->latent_size; i++) {
+                new_state->latent_copy[i] += gaussian_noise(noise_level * 0.5f);
+            }
+            break;
+
+        case IMAG_ACTION_ADD_NOISE:
+            /* Add more creative noise */
+            for (uint32_t i = 0; i < new_state->latent_size; i++) {
+                new_state->latent_copy[i] += gaussian_noise(noise_level * 2.0f);
+            }
+            break;
+
+        case IMAG_ACTION_ROTATE:
+            /* Apply simple rotation in latent space */
+            if (new_state->latent_size >= 2) {
+                float angle = mc_random_uniform(&g_imagination_rand_seed) * 0.5f;
+                float cos_a = cosf(angle);
+                float sin_a = sinf(angle);
+                for (uint32_t i = 0; i + 1 < new_state->latent_size; i += 2) {
+                    float x = new_state->latent_copy[i];
+                    float y = new_state->latent_copy[i + 1];
+                    new_state->latent_copy[i] = x * cos_a - y * sin_a;
+                    new_state->latent_copy[i + 1] = x * sin_a + y * cos_a;
+                }
+            }
+            break;
+
+        case IMAG_ACTION_BLEND_TOWARD:
+            /* Blend toward goal features */
+            if (ud->goal_features && ud->goal_size > 0) {
+                float alpha = 0.2f;  /* 20% toward goal */
+                uint32_t min_size = new_state->latent_size < ud->goal_size ?
+                                    new_state->latent_size : ud->goal_size;
+                for (uint32_t i = 0; i < min_size; i++) {
+                    new_state->latent_copy[i] = (1.0f - alpha) * new_state->latent_copy[i]
+                                              + alpha * ud->goal_features[i];
+                }
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    /* Calculate new goal progress (cosine similarity with goal) */
+    if (ud->goal_features && ud->goal_size > 0) {
+        float dot = 0.0f, norm_l = 0.0f, norm_g = 0.0f;
+        uint32_t min_size = new_state->latent_size < ud->goal_size ?
+                            new_state->latent_size : ud->goal_size;
+        for (uint32_t i = 0; i < min_size; i++) {
+            dot += new_state->latent_copy[i] * ud->goal_features[i];
+            norm_l += new_state->latent_copy[i] * new_state->latent_copy[i];
+            norm_g += ud->goal_features[i] * ud->goal_features[i];
+        }
+        if (norm_l > 1e-10f && norm_g > 1e-10f) {
+            new_state->goal_progress = (dot / (sqrtf(norm_l) * sqrtf(norm_g)) + 1.0f) / 2.0f;
+        } else {
+            new_state->goal_progress = 0.0f;
+        }
+    } else {
+        new_state->goal_progress = s->goal_progress;
+    }
+
+    /* Calculate coherence with previous state */
+    float dot = 0.0f, norm_old = 0.0f, norm_new = 0.0f;
+    for (uint32_t i = 0; i < new_state->latent_size; i++) {
+        dot += s->latent_copy[i] * new_state->latent_copy[i];
+        norm_old += s->latent_copy[i] * s->latent_copy[i];
+        norm_new += new_state->latent_copy[i] * new_state->latent_copy[i];
+    }
+    if (norm_old > 1e-10f && norm_new > 1e-10f) {
+        new_state->coherence = (dot / (sqrtf(norm_old) * sqrtf(norm_new)) + 1.0f) / 2.0f;
+    } else {
+        new_state->coherence = 1.0f;
+    }
+
+    return new_state;
+}
+
+static float imag_mcts_evaluate(const void* state, void* user_data) {
+    const imag_mcts_state_t* s = (const imag_mcts_state_t*)state;
+    (void)user_data;
+
+    /* Reward = goal_progress + coherence bonus */
+    return s->goal_progress * 0.7f + s->coherence * 0.3f;
+}
+
+static bool imag_mcts_is_terminal(const void* state, void* user_data) {
+    const imag_mcts_state_t* s = (const imag_mcts_state_t*)state;
+    imag_mcts_user_data_t* ud = (imag_mcts_user_data_t*)user_data;
+
+    /* Terminal if goal reached or max depth */
+    if (s->goal_progress >= 0.9f) return true;
+    if (s->coherence < ud->engine->config.coherence_threshold) return true;
+    if (s->depth >= 10) return true;
+    return false;
+}
+
+static void imag_mcts_free_state(void* state, void* user_data) {
+    (void)user_data;
+    if (!state) return;
+    imag_mcts_state_t* s = (imag_mcts_state_t*)state;
+    if (s->latent_copy) nimcp_free(s->latent_copy);
+    nimcp_free(s);
+}
+
+static void* imag_mcts_clone_state(const void* state, void* user_data) {
+    (void)user_data;
+    if (!state) return NULL;
+
+    const imag_mcts_state_t* s = (const imag_mcts_state_t*)state;
+    imag_mcts_state_t* clone = nimcp_malloc(sizeof(imag_mcts_state_t));
+    if (!clone) return NULL;
+
+    clone->latent_size = s->latent_size;
+    clone->goal_progress = s->goal_progress;
+    clone->coherence = s->coherence;
+    clone->depth = s->depth;
+
+    clone->latent_copy = nimcp_malloc(s->latent_size * sizeof(float));
+    if (!clone->latent_copy) {
+        nimcp_free(clone);
+        return NULL;
+    }
+    memcpy(clone->latent_copy, s->latent_copy, s->latent_size * sizeof(float));
+
+    return clone;
+}
+
+/**
+ * @brief Use MCTS to search for goal-directed imagination path
+ *
+ * WHAT: Search for optimal sequence of imagination transformations
+ * WHY:  Find efficient path from current state to goal state
+ * HOW:  Use MCTS with transformation actions to explore state space
+ *
+ * @param engine The imagination engine
+ * @param scenario Active scenario to guide toward goal
+ * @param goal Target goal for imagination
+ * @param num_iterations MCTS iterations (0 = default 50)
+ * @return 0 on success, -1 on error
+ */
+int imagination_search_goal_mcts(
+    imagination_engine_t* engine,
+    imagination_scenario_t* scenario,
+    const imagination_goal_t* goal,
+    uint32_t num_iterations
+) {
+    if (!engine || !scenario || !goal) return -1;
+    if (!scenario->is_active || scenario->is_paused) return -1;
+
+    nimcp_mutex_lock(engine->mutex);
+
+    /* Get current latent state */
+    float* latent_data = nimcp_tensor_data(scenario->latent_state);
+    size_t latent_size = nimcp_tensor_size(scenario->latent_state);
+
+    if (!latent_data || latent_size == 0) {
+        nimcp_mutex_unlock(engine->mutex);
+        return -1;
+    }
+
+    /* Prepare goal features */
+    float* goal_features = NULL;
+    uint32_t goal_size = 0;
+    if (goal->target_features) {
+        goal_features = (float*)nimcp_tensor_data_const(goal->target_features);
+        goal_size = (uint32_t)nimcp_tensor_size(goal->target_features);
+    }
+
+    /* Create initial MCTS state */
+    imag_mcts_state_t initial_state;
+    initial_state.latent_size = (uint32_t)latent_size;
+    initial_state.latent_copy = nimcp_malloc(latent_size * sizeof(float));
+    if (!initial_state.latent_copy) {
+        nimcp_mutex_unlock(engine->mutex);
+        return -1;
+    }
+    memcpy(initial_state.latent_copy, latent_data, latent_size * sizeof(float));
+    initial_state.goal_progress = scenario->goal_progress;
+    initial_state.coherence = scenario->coherence;
+    initial_state.depth = 0;
+
+    /* Setup user data */
+    imag_mcts_user_data_t user_data = {
+        .engine = engine,
+        .scenario = scenario,
+        .goal = goal,
+        .goal_features = goal_features,
+        .goal_size = goal_size
+    };
+
+    /* Configure MCTS */
+    mcts_config_t config;
+    mcts_config_init(&config);
+    config.max_iterations = num_iterations > 0 ? num_iterations : 50;
+    config.max_depth = 10;
+    config.exploration_constant = 1.4f;
+    config.discount_factor = 0.95f;
+    config.max_nodes = 128;
+
+    config.get_action_count = imag_mcts_get_action_count;
+    config.get_action = imag_mcts_get_action;
+    config.apply_action = imag_mcts_apply_action;
+    config.evaluate = imag_mcts_evaluate;
+    config.is_terminal = imag_mcts_is_terminal;
+    config.free_state = imag_mcts_free_state;
+    config.clone_state = imag_mcts_clone_state;
+    config.user_data = &user_data;
+    config.seed = g_imagination_rand_seed;
+
+    mcts_result_t result;
+    nimcp_mc_result_t err = mcts_search(&config, &initial_state, &result);
+
+    g_imagination_rand_seed = config.seed;
+
+    nimcp_free(initial_state.latent_copy);
+
+    if (err != NIMCP_MC_OK) {
+        nimcp_mutex_unlock(engine->mutex);
+        return -1;
+    }
+
+    /* Apply the best action to the actual scenario */
+    uint32_t best_action = result.best_action;
+    float noise_level = engine->config.creativity_noise_level;
+
+    switch (best_action) {
+        case IMAG_ACTION_STEP:
+            apply_noise(scenario->latent_state, noise_level * 0.5f);
+            break;
+
+        case IMAG_ACTION_ADD_NOISE:
+            apply_noise(scenario->latent_state, noise_level * 2.0f);
+            break;
+
+        case IMAG_ACTION_ROTATE:
+            if (latent_size >= 2) {
+                float angle = mc_random_uniform(&g_imagination_rand_seed) * 0.5f;
+                float cos_a = cosf(angle);
+                float sin_a = sinf(angle);
+                for (size_t i = 0; i + 1 < latent_size; i += 2) {
+                    float x = latent_data[i];
+                    float y = latent_data[i + 1];
+                    latent_data[i] = x * cos_a - y * sin_a;
+                    latent_data[i + 1] = x * sin_a + y * cos_a;
+                }
+            }
+            break;
+
+        case IMAG_ACTION_BLEND_TOWARD:
+            if (goal_features && goal_size > 0) {
+                float alpha = 0.2f;
+                size_t min_size = latent_size < goal_size ? latent_size : goal_size;
+                for (size_t i = 0; i < min_size; i++) {
+                    latent_data[i] = (1.0f - alpha) * latent_data[i]
+                                   + alpha * goal_features[i];
+                }
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    /* Update scenario metrics */
+    if (goal_features && goal_size > 0) {
+        scenario->goal_progress = compute_coherence(scenario->latent_state,
+                                                     goal->target_features);
+    }
+    scenario->coherence = compute_coherence(scenario->latent_state,
+                                             scenario->latent_previous);
+
+    mcts_result_free(&result);
+
+    nimcp_mutex_unlock(engine->mutex);
+
+    return 0;
 }

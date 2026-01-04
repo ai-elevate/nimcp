@@ -28,6 +28,7 @@
 
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/algorithms/nimcp_sort.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -194,65 +195,57 @@ static void normalize_cpt_row(float* row, size_t row_size) {
     }
 }
 
+/*=============================================================================
+ * TOPOLOGICAL SORT CALLBACKS (for nimcp_sort.h API)
+ *============================================================================*/
+
 /**
- * @brief Compute topological order (Kahn's algorithm)
+ * @brief Get parent count for a node (callback for nimcp_topological_sort)
+ */
+static uint32_t bn_get_dep_count(uint32_t node_index, void* user_data) {
+    nimcp_bayesian_network_t bn = (nimcp_bayesian_network_t)user_data;
+    if (node_index >= bn->num_nodes) {
+        return 0;
+    }
+    return bn->nodes[node_index].num_parents;
+}
+
+/**
+ * @brief Get a specific parent of a node (callback for nimcp_topological_sort)
+ */
+static uint32_t bn_get_dep(uint32_t node_index, uint32_t dep_index, void* user_data) {
+    nimcp_bayesian_network_t bn = (nimcp_bayesian_network_t)user_data;
+    if (node_index >= bn->num_nodes) {
+        return UINT32_MAX;
+    }
+    if (dep_index >= bn->nodes[node_index].num_parents) {
+        return UINT32_MAX;
+    }
+    return bn->nodes[node_index].parents[dep_index];
+}
+
+/**
+ * @brief Compute topological order using consolidated nimcp_sort API
  */
 static bool compute_topo_order(nimcp_bayesian_network_t bn) {
-    uint32_t* in_degree = (uint32_t*)calloc(bn->num_nodes, sizeof(uint32_t));
-    if (!in_degree) {
+    if (!bn || bn->num_nodes == 0) {
         return false;
     }
 
-    /* Compute in-degrees */
-    for (uint32_t i = 0; i < bn->num_nodes; i++) {
-        for (uint32_t j = 0; j < bn->nodes[i].num_parents; j++) {
-            uint32_t parent = bn->nodes[i].parents[j];
-            if (parent < bn->num_nodes) {
-                /* Parent->child edge exists */
-            }
-        }
-        in_degree[i] = bn->nodes[i].num_parents;
-    }
+    nimcp_topo_config_t config = {
+        .node_count = bn->num_nodes,
+        .user_data = (void*)bn,
+        .get_dep_count = bn_get_dep_count,
+        .get_dep = bn_get_dep,
+        .get_dependent_count = NULL,
+        .get_dependent = NULL
+    };
 
-    /* Kahn's algorithm */
-    uint32_t* queue = (uint32_t*)malloc(bn->num_nodes * sizeof(uint32_t));
-    if (!queue) {
-        free(in_degree);
-        return false;
-    }
+    uint32_t sorted_count = 0;
+    nimcp_sort_result_t result = nimcp_topological_sort(
+        &config, bn->topo_order, bn->num_nodes, &sorted_count);
 
-    uint32_t queue_start = 0;
-    uint32_t queue_end = 0;
-
-    /* Enqueue nodes with no parents */
-    for (uint32_t i = 0; i < bn->num_nodes; i++) {
-        if (in_degree[i] == 0) {
-            queue[queue_end++] = i;
-        }
-    }
-
-    uint32_t order_index = 0;
-    while (queue_start < queue_end) {
-        uint32_t node = queue[queue_start++];
-        bn->topo_order[order_index++] = node;
-
-        /* Decrease in-degree of children */
-        for (uint32_t i = 0; i < bn->num_nodes; i++) {
-            for (uint32_t j = 0; j < bn->nodes[i].num_parents; j++) {
-                if (bn->nodes[i].parents[j] == node) {
-                    in_degree[i]--;
-                    if (in_degree[i] == 0) {
-                        queue[queue_end++] = i;
-                    }
-                }
-            }
-        }
-    }
-
-    free(queue);
-    free(in_degree);
-
-    bn->topo_valid = (order_index == bn->num_nodes);
+    bn->topo_valid = (result == NIMCP_SORT_OK && sorted_count == bn->num_nodes);
     return bn->topo_valid;
 }
 

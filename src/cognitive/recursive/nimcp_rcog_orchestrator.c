@@ -13,6 +13,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_time.h"
+#include "utils/algorithms/nimcp_sort.h"
+#include "utils/algorithms/nimcp_monte_carlo.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #include <string.h>
@@ -81,6 +83,11 @@ struct rcog_orchestrator {
 
     /* Statistics */
     rcog_orchestrator_stats_t stats;
+
+    /* MCTS for strategy selection */
+    uint32_t rand_seed;
+    bool enable_mcts_strategy;
+    uint32_t mcts_iterations;
 
     /* Thread safety */
     nimcp_mutex_t* mutex;
@@ -308,6 +315,11 @@ rcog_orchestrator_t* rcog_orchestrator_create(
     /* Initialize ID generators */
     orch->next_decomp_id = 1;
     orch->next_task_id = 1;
+
+    /* Initialize MCTS for strategy selection */
+    orch->rand_seed = mc_seed_from_time();
+    orch->enable_mcts_strategy = true;
+    orch->mcts_iterations = 30;
 
     return orch;
 }
@@ -726,6 +738,201 @@ static int decompose_adaptive(
 }
 
 /*=============================================================================
+ * MCTS STRATEGY SELECTION
+ *===========================================================================*/
+
+/**
+ * @brief State for MCTS strategy selection
+ */
+typedef struct {
+    rcog_goal_type_t goal_type;
+    uint32_t num_context_refs;
+    uint32_t current_depth;
+    uint32_t max_depth;
+    rcog_decomposition_strategy_t selected_strategy;
+    float estimated_confidence;
+    float complexity;
+} rcog_mcts_state_t;
+
+/**
+ * @brief User data for MCTS callbacks
+ */
+typedef struct {
+    rcog_orchestrator_t* orch;
+    const rcog_goal_t* goal;
+} rcog_mcts_user_data_t;
+
+static uint32_t rcog_mcts_get_action_count(const void* state, void* user_data) {
+    (void)state;
+    (void)user_data;
+    return 4;  /* 4 strategies: SEQUENTIAL, PARALLEL, HIERARCHICAL, ADAPTIVE */
+}
+
+static uint32_t rcog_mcts_get_action(const void* state, uint32_t idx, void* user_data) {
+    (void)state;
+    (void)user_data;
+    return idx;  /* Action is strategy index */
+}
+
+static void* rcog_mcts_apply_action(const void* state, uint32_t action, void* user_data) {
+    const rcog_mcts_state_t* s = (const rcog_mcts_state_t*)state;
+    (void)user_data;
+
+    rcog_mcts_state_t* new_state = nimcp_malloc(sizeof(rcog_mcts_state_t));
+    if (!new_state) return NULL;
+
+    *new_state = *s;
+    new_state->selected_strategy = (rcog_decomposition_strategy_t)action;
+
+    /* Simulate strategy effects */
+    switch (action) {
+        case RCOG_DECOMP_SEQUENTIAL:
+            /* Sequential: slower but more reliable */
+            new_state->estimated_confidence = s->estimated_confidence + 0.15f;
+            new_state->complexity = s->complexity * 0.9f;
+            break;
+        case RCOG_DECOMP_PARALLEL:
+            /* Parallel: faster for multi-context, may reduce reliability */
+            if (s->num_context_refs > 1) {
+                new_state->estimated_confidence = s->estimated_confidence + 0.2f;
+                new_state->complexity = s->complexity * 0.7f;
+            } else {
+                new_state->estimated_confidence = s->estimated_confidence + 0.1f;
+                new_state->complexity = s->complexity * 0.8f;
+            }
+            break;
+        case RCOG_DECOMP_HIERARCHICAL:
+            /* Hierarchical: good for complex goals */
+            if (s->goal_type == RCOG_GOAL_REASONING || s->goal_type == RCOG_GOAL_PLANNING) {
+                new_state->estimated_confidence = s->estimated_confidence + 0.25f;
+            } else {
+                new_state->estimated_confidence = s->estimated_confidence + 0.1f;
+            }
+            new_state->complexity = s->complexity * 0.6f;
+            break;
+        case RCOG_DECOMP_ADAPTIVE:
+        default:
+            /* Adaptive: balanced */
+            new_state->estimated_confidence = s->estimated_confidence + 0.18f;
+            new_state->complexity = s->complexity * 0.75f;
+            break;
+    }
+
+    /* Clamp confidence */
+    if (new_state->estimated_confidence > 1.0f) {
+        new_state->estimated_confidence = 1.0f;
+    }
+
+    return new_state;
+}
+
+static float rcog_mcts_evaluate(const void* state, void* user_data) {
+    const rcog_mcts_state_t* s = (const rcog_mcts_state_t*)state;
+    (void)user_data;
+
+    /* Value based on confidence and efficiency (inverse complexity) */
+    float efficiency = 1.0f - s->complexity;
+    return s->estimated_confidence * 0.7f + efficiency * 0.3f;
+}
+
+static bool rcog_mcts_is_terminal(const void* state, void* user_data) {
+    const rcog_mcts_state_t* s = (const rcog_mcts_state_t*)state;
+    (void)user_data;
+
+    /* Terminal when high confidence or low complexity */
+    return s->estimated_confidence >= 0.9f || s->complexity < 0.1f;
+}
+
+static void rcog_mcts_free_state(void* state, void* user_data) {
+    (void)user_data;
+    nimcp_free(state);
+}
+
+static void* rcog_mcts_clone_state(const void* state, void* user_data) {
+    (void)user_data;
+    if (!state) return NULL;
+
+    rcog_mcts_state_t* clone = nimcp_malloc(sizeof(rcog_mcts_state_t));
+    if (!clone) return NULL;
+
+    *clone = *(const rcog_mcts_state_t*)state;
+    return clone;
+}
+
+/**
+ * @brief Select decomposition strategy using MCTS
+ */
+static rcog_decomposition_strategy_t select_strategy_mcts(
+    rcog_orchestrator_t* orch,
+    const rcog_goal_t* goal
+) {
+    /* Create initial state */
+    rcog_mcts_state_t initial_state = {
+        .goal_type = goal->type,
+        .num_context_refs = (uint32_t)goal->num_context_refs,
+        .current_depth = orch->current_depth,
+        .max_depth = orch->effective_max_depth,
+        .selected_strategy = RCOG_DECOMP_SEQUENTIAL,
+        .estimated_confidence = 0.3f,
+        .complexity = 0.7f
+    };
+
+    /* Adjust initial complexity based on goal type */
+    switch (goal->type) {
+        case RCOG_GOAL_REASONING:
+        case RCOG_GOAL_PLANNING:
+            initial_state.complexity = 0.9f;
+            break;
+        case RCOG_GOAL_QUESTION_ANSWERING:
+        case RCOG_GOAL_EXTRACTION:
+            initial_state.complexity = 0.4f;
+            break;
+        default:
+            initial_state.complexity = 0.6f;
+    }
+
+    rcog_mcts_user_data_t user_data = {
+        .orch = orch,
+        .goal = goal
+    };
+
+    /* Configure MCTS */
+    mcts_config_t config;
+    mcts_config_init(&config);
+    config.max_iterations = orch->mcts_iterations;
+    config.max_depth = 3;
+    config.exploration_constant = 1.2f;
+    config.discount_factor = 0.9f;
+    config.max_nodes = 64;
+
+    config.get_action_count = rcog_mcts_get_action_count;
+    config.get_action = rcog_mcts_get_action;
+    config.apply_action = rcog_mcts_apply_action;
+    config.evaluate = rcog_mcts_evaluate;
+    config.is_terminal = rcog_mcts_is_terminal;
+    config.free_state = rcog_mcts_free_state;
+    config.clone_state = rcog_mcts_clone_state;
+    config.user_data = &user_data;
+    config.seed = orch->rand_seed;
+
+    mcts_result_t result;
+    nimcp_mc_result_t err = mcts_search(&config, &initial_state, &result);
+
+    orch->rand_seed = config.seed;
+
+    if (err != NIMCP_MC_OK) {
+        return RCOG_DECOMP_ADAPTIVE;  /* Fallback */
+    }
+
+    rcog_decomposition_strategy_t selected =
+        (rcog_decomposition_strategy_t)result.best_action;
+
+    mcts_result_free(&result);
+
+    return selected;
+}
+
+/*=============================================================================
  * DECOMPOSITION - MAIN FUNCTIONS
  *===========================================================================*/
 
@@ -756,7 +963,12 @@ int rcog_orchestrator_decompose(
 
     rcog_decomposition_strategy_t strategy = orch->config.default_strategy;
     if (orch->config.enable_adaptive_strategy) {
-        strategy = RCOG_DECOMP_ADAPTIVE;
+        /* Use MCTS for strategy selection when enabled */
+        if (orch->enable_mcts_strategy && !orch->current_modulation.enable_degraded_mode) {
+            strategy = select_strategy_mcts(orch, goal);
+        } else {
+            strategy = RCOG_DECOMP_ADAPTIVE;
+        }
     }
     result->metadata.strategy = strategy;
 
@@ -1412,6 +1624,67 @@ void rcog_orchestrator_clear_trace(rcog_orchestrator_t* orch) {
 }
 
 /*=============================================================================
+ * TOPOLOGICAL SORT CALLBACKS (for nimcp_sort.h API)
+ *===========================================================================*/
+
+/**
+ * @brief Context for topological sort callbacks
+ */
+typedef struct {
+    const rcog_decomposition_t* decomp;
+    uint32_t* in_degrees;  /* Precomputed in-degrees */
+} rcog_topo_context_t;
+
+/**
+ * @brief Get dependency count for a subtask (callback for nimcp_topological_sort)
+ */
+static uint32_t rcog_get_dep_count(uint32_t node_index, void* user_data) {
+    rcog_topo_context_t* ctx = (rcog_topo_context_t*)user_data;
+    if (node_index >= ctx->decomp->num_subtasks) {
+        return 0;
+    }
+    return ctx->in_degrees[node_index];
+}
+
+/**
+ * @brief Get a specific dependency of a subtask (callback for nimcp_topological_sort)
+ *
+ * This returns the index of the dependency (not the task_id).
+ * Since edges are stored as (from, to), we need to find edges where
+ * the current task is the 'to' and return the index of the 'from' task.
+ */
+static uint32_t rcog_get_dep(uint32_t node_index, uint32_t dep_index, void* user_data) {
+    rcog_topo_context_t* ctx = (rcog_topo_context_t*)user_data;
+    const rcog_decomposition_t* decomp = ctx->decomp;
+
+    if (node_index >= decomp->num_subtasks || !decomp->deps) {
+        return UINT32_MAX;
+    }
+
+    uint64_t task_id = decomp->subtasks[node_index].task_id;
+    uint32_t found = 0;
+
+    /* Find edges where this task is the destination */
+    for (size_t i = 0; i < decomp->deps->num_edges; i++) {
+        if (decomp->deps->edges[i].to_task_id == task_id) {
+            if (found == dep_index) {
+                /* Found the edge, now find the index of the source task */
+                uint64_t from_id = decomp->deps->edges[i].from_task_id;
+                for (size_t j = 0; j < decomp->num_subtasks; j++) {
+                    if (decomp->subtasks[j].task_id == from_id) {
+                        return (uint32_t)j;
+                    }
+                }
+                return UINT32_MAX;  /* Source not found */
+            }
+            found++;
+        }
+    }
+
+    return UINT32_MAX;
+}
+
+/*=============================================================================
  * UTILITY FUNCTIONS
  *===========================================================================*/
 
@@ -1479,52 +1752,67 @@ int rcog_orchestrator_get_topological_order(
         return RCOG_OK;
     }
 
-    /* Kahn's algorithm for topological sort */
-    int* in_degree = nimcp_calloc(decomp->num_subtasks, sizeof(int));
-    if (!in_degree) {
+    /* Precompute in-degrees for the callback */
+    uint32_t* in_degrees = nimcp_calloc(decomp->num_subtasks, sizeof(uint32_t));
+    if (!in_degrees) {
         return RCOG_ERROR_OUT_OF_MEMORY;
     }
 
-    /* Calculate in-degrees */
     for (size_t i = 0; i < decomp->deps->num_edges; i++) {
         uint64_t to_id = decomp->deps->edges[i].to_task_id;
         for (size_t j = 0; j < decomp->num_subtasks; j++) {
             if (decomp->subtasks[j].task_id == to_id) {
-                in_degree[j]++;
+                in_degrees[j]++;
                 break;
             }
         }
     }
 
-    /* Process nodes with zero in-degree */
-    size_t output_idx = 0;
-    bool progress = true;
-    while (progress && output_idx < decomp->num_subtasks) {
-        progress = false;
-        for (size_t i = 0; i < decomp->num_subtasks; i++) {
-            if (in_degree[i] == 0) {
-                order[output_idx++] = decomp->subtasks[i].task_id;
-                in_degree[i] = -1;  /* Mark as processed */
-                progress = true;
+    /* Set up context for callbacks */
+    rcog_topo_context_t ctx = {
+        .decomp = decomp,
+        .in_degrees = in_degrees
+    };
 
-                /* Reduce in-degree of dependent tasks */
-                for (size_t j = 0; j < decomp->deps->num_edges; j++) {
-                    if (decomp->deps->edges[j].from_task_id == decomp->subtasks[i].task_id) {
-                        uint64_t to_id = decomp->deps->edges[j].to_task_id;
-                        for (size_t k = 0; k < decomp->num_subtasks; k++) {
-                            if (decomp->subtasks[k].task_id == to_id && in_degree[k] > 0) {
-                                in_degree[k]--;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
+    nimcp_topo_config_t config = {
+        .node_count = (uint32_t)decomp->num_subtasks,
+        .user_data = &ctx,
+        .get_dep_count = rcog_get_dep_count,
+        .get_dep = rcog_get_dep,
+        .get_dependent_count = NULL,
+        .get_dependent = NULL
+    };
+
+    /* Allocate temporary index array */
+    uint32_t* sorted_indices = nimcp_calloc(decomp->num_subtasks, sizeof(uint32_t));
+    if (!sorted_indices) {
+        nimcp_free(in_degrees);
+        return RCOG_ERROR_OUT_OF_MEMORY;
+    }
+
+    uint32_t sorted_count = 0;
+    nimcp_sort_result_t result = nimcp_topological_sort(
+        &config, sorted_indices, (uint32_t)decomp->num_subtasks, &sorted_count);
+
+    /* Map indices back to task IDs */
+    for (uint32_t i = 0; i < sorted_count; i++) {
+        uint32_t idx = sorted_indices[i];
+        if (idx < decomp->num_subtasks) {
+            order[i] = decomp->subtasks[idx].task_id;
         }
     }
 
-    nimcp_free(in_degree);
-    *num_order = output_idx;
+    nimcp_free(sorted_indices);
+    nimcp_free(in_degrees);
+
+    *num_order = sorted_count;
+
+    if (result == NIMCP_SORT_ERROR_CYCLE) {
+        return RCOG_ERROR_INVALID_CONFIG;
+    }
+    if (result != NIMCP_SORT_OK) {
+        return RCOG_ERROR_OUT_OF_MEMORY;
+    }
 
     return RCOG_OK;
 }

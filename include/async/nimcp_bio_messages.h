@@ -469,6 +469,47 @@ typedef enum {
     BIO_MSG_IMAGINATION_COLLECTIVE_SHARE,             /**< Share scenario with swarm */
     BIO_MSG_IMAGINATION_COLLECTIVE_INSIGHT,           /**< Receive swarm insights */
 
+    /* Omnidirectional inference messages (0x1B00 - 0x1BFF) */
+    BIO_MSG_OMNI_PREDICT_REQUEST = 0x1B00,            /**< Request omnidirectional prediction */
+    BIO_MSG_OMNI_PREDICT_RESULT,                      /**< Prediction result */
+    BIO_MSG_OMNI_DIRECTION_SWITCH,                    /**< Switch prediction direction */
+    BIO_MSG_OMNI_PRECISION_UPDATE,                    /**< Update precision weights */
+    BIO_MSG_OMNI_FREE_ENERGY_REPORT,                  /**< Free energy computation result */
+    BIO_MSG_OMNI_MULTI_PREDICT_REQUEST,               /**< Multi-direction prediction request */
+    BIO_MSG_OMNI_MULTI_PREDICT_RESULT,                /**< Multi-direction prediction result */
+
+    /* Hopfield memory messages (0x1B10 - 0x1B1F) */
+    BIO_MSG_HOPFIELD_STORE = 0x1B10,                  /**< Store pattern in Hopfield memory */
+    BIO_MSG_HOPFIELD_RETRIEVE,                        /**< Retrieve pattern by query */
+    BIO_MSG_HOPFIELD_RESULT,                          /**< Retrieval result */
+    BIO_MSG_HOPFIELD_BATCH_RETRIEVE,                  /**< Batch retrieval request */
+    BIO_MSG_HOPFIELD_BATCH_RESULT,                    /**< Batch retrieval result */
+    BIO_MSG_HOPFIELD_TOP_K_REQUEST,                   /**< Request top-k similar patterns */
+    BIO_MSG_HOPFIELD_TOP_K_RESULT,                    /**< Top-k result */
+    BIO_MSG_HOPFIELD_ENERGY_REPORT,                   /**< Energy landscape report */
+
+    /* Predictive coding hierarchy messages (0x1B20 - 0x1B2F) */
+    BIO_MSG_PRED_HIER_FORWARD = 0x1B20,               /**< Bottom-up forward pass */
+    BIO_MSG_PRED_HIER_BACKWARD,                       /**< Top-down backward pass */
+    BIO_MSG_PRED_HIER_UPDATE,                         /**< Full belief update */
+    BIO_MSG_PRED_HIER_ERROR_PROPAGATE,                /**< Propagate prediction errors */
+    BIO_MSG_PRED_HIER_PRECISION_UPDATE,               /**< Update level precision */
+    BIO_MSG_PRED_HIER_STATE_QUERY,                    /**< Query level state */
+    BIO_MSG_PRED_HIER_STATE_RESPONSE,                 /**< Level state response */
+    BIO_MSG_PRED_HIER_FREE_ENERGY,                    /**< Hierarchy free energy */
+
+    /* Temporal replay messages (0x1B30 - 0x1B3F) */
+    BIO_MSG_REPLAY_STORE = 0x1B30,                    /**< Store transition in buffer */
+    BIO_MSG_REPLAY_SAMPLE,                            /**< Sample from buffer */
+    BIO_MSG_REPLAY_SAMPLE_RESULT,                     /**< Sample result */
+    BIO_MSG_REPLAY_FORWARD_SWEEP,                     /**< Start forward sweep */
+    BIO_MSG_REPLAY_BACKWARD_SWEEP,                    /**< Start backward sweep */
+    BIO_MSG_REPLAY_SWEEP_STEP,                        /**< Sweep step notification */
+    BIO_MSG_REPLAY_SWEEP_COMPLETE,                    /**< Sweep completed */
+    BIO_MSG_REPLAY_PRIORITY_UPDATE,                   /**< Update transition priorities */
+    BIO_MSG_REPLAY_SEQUENCE_START,                    /**< Start sequence recording */
+    BIO_MSG_REPLAY_SEQUENCE_END,                      /**< End sequence recording */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;

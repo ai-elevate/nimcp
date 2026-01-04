@@ -394,6 +394,57 @@ void nimcp_brain_qreason_reset_stats(brain_t brain);
  */
 qreason_t nimcp_brain_qreason_get_handle(brain_t brain);
 
+//=============================================================================
+// Monte Carlo Integration API
+//=============================================================================
+
+/**
+ * @brief Solve SAT using MCTS-guided search
+ *
+ * WHAT: Use Monte Carlo Tree Search for SAT solving
+ * WHY:  MCTS can find solutions faster via learned exploration (2-10x speedup)
+ * HOW:  Use qmc_solve_sat_mcts with variable-branching tree
+ *
+ * @param brain Brain handle
+ * @param query Reasoning query with CNF formula
+ * @param result Output: reasoning result
+ * @return 0 on success, -1 on error
+ */
+int nimcp_brain_qreason_solve_sat_mcts(brain_t brain,
+                                        const brain_reasoning_query_t* query,
+                                        brain_reasoning_result_t* result);
+
+/**
+ * @brief Estimate satisfiability probability via Monte Carlo
+ *
+ * WHAT: Estimate P(SAT) using random sampling
+ * WHY:  Quick estimate without full solving
+ * HOW:  Sample random assignments, check clause satisfaction
+ *
+ * @param brain Brain handle
+ * @param query Reasoning query
+ * @param num_samples Number of MC samples
+ * @param probability_out Output: estimated P(SAT)
+ * @param variance_out Output: estimate variance (optional)
+ * @return 0 on success
+ */
+int nimcp_brain_qreason_estimate_sat_prob_mc(brain_t brain,
+                                              const brain_reasoning_query_t* query,
+                                              uint32_t num_samples,
+                                              float* probability_out,
+                                              float* variance_out);
+
+/**
+ * @brief Get thread-local MC seed for brain quantum reasoning
+ *
+ * WHAT: Access the thread-local RNG seed
+ * WHY:  Allow external seeding for reproducibility
+ * HOW:  Return pointer to thread-local seed variable
+ *
+ * @return Pointer to thread-local seed
+ */
+uint32_t* nimcp_brain_qreason_get_mc_seed(void);
+
 #ifdef __cplusplus
 }
 #endif

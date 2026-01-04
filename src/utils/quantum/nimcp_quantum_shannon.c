@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "utils/quantum/nimcp_quantum_shannon.h"
+#include "utils/quantum/nimcp_quantum_monte_carlo.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -18,6 +19,9 @@
 #include <stdio.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+/* Thread-local RNG seed for Monte Carlo operations */
+static __thread uint32_t g_qshannon_mc_seed = 0;
 
 // Constants
 #define MIN_INFORMATION 1e-10f        // Minimum information content (bits)
@@ -144,9 +148,14 @@ static bool sample_synapses(neural_network_t network,
         sample_size = total_synapses;
     }
 
-    // Simple random sampling (reservoir sampling)
+    // Initialize thread-local seed if needed
+    if (g_qshannon_mc_seed == 0) {
+        g_qshannon_mc_seed = mc_seed_from_time();
+    }
+
+    // Thread-safe random sampling using MC utilities
     for (uint32_t i = 0; i < sample_size; i++) {
-        sampled_indices[i] = (uint32_t)(rand() % total_synapses);
+        sampled_indices[i] = mc_random_int(&g_qshannon_mc_seed, total_synapses);
     }
 
     return true;
@@ -1270,4 +1279,131 @@ bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_an
     nimcp_free(routing_weights);
 
     return true;
+}
+
+//=============================================================================
+// Monte Carlo Integration
+//=============================================================================
+
+/**
+ * @brief Estimate network entropy using Monte Carlo sampling
+ *
+ * WHAT: Estimate total Shannon entropy of network using sampling
+ * WHY:  Faster than O(N) direct computation for large networks
+ * HOW:  Sample nodes, estimate entropy, compute variance
+ *
+ * @param qsd Quantum Shannon context
+ * @param num_samples Number of MC samples (0 = auto)
+ * @param result Output entropy result
+ * @return true on success
+ */
+bool quantum_shannon_estimate_entropy_mc(
+    quantum_shannon_diffusion_t* qsd,
+    uint32_t num_samples,
+    qmc_entropy_result_t* result
+) {
+    if (!qsd || !result || !qsd->walker) return false;
+
+    qmc_entropy_config_t config = {
+        .num_samples = num_samples > 0 ? num_samples : 10000,
+        .use_stratified = (qsd->walker->num_nodes > 10000),
+        .num_strata = 100,
+        .seed = g_qshannon_mc_seed
+    };
+
+    qmc_result_t err = qmc_estimate_entropy(
+        qsd->walker->probabilities,
+        qsd->walker->num_nodes,
+        &config,
+        result
+    );
+
+    g_qshannon_mc_seed = config.seed;
+
+    return (err == QMC_OK);
+}
+
+/**
+ * @brief Detect bottlenecks using adaptive MCMC sampling
+ *
+ * WHAT: Find network bottlenecks with early stopping
+ * WHY:  Avoid full network scan when bottlenecks found early
+ * HOW:  Metropolis-Hastings sampling biased toward low-capacity synapses
+ *
+ * @param qsd Quantum Shannon context
+ * @param max_bottlenecks Maximum bottlenecks to find
+ * @param threshold Capacity threshold (0-1)
+ * @param bottleneck_indices Output array of bottleneck indices
+ * @param num_found Output: number of bottlenecks found
+ * @return true on success
+ */
+bool quantum_shannon_detect_bottlenecks_mc(
+    quantum_shannon_diffusion_t* qsd,
+    uint32_t max_bottlenecks,
+    float threshold,
+    uint32_t* bottleneck_indices,
+    uint32_t* num_found
+) {
+    if (!qsd || !bottleneck_indices || !num_found) return false;
+    if (!qsd->walker || !qsd->walker->network) return false;
+
+    *num_found = 0;
+
+    if (g_qshannon_mc_seed == 0) {
+        g_qshannon_mc_seed = mc_seed_from_time();
+    }
+
+    neural_network_t network = qsd->walker->network;
+    uint32_t total_synapses = get_num_synapses(network);
+    if (total_synapses == 0) return false;
+
+    /* MCMC sampling with early stopping */
+    uint32_t max_samples = total_synapses;
+    if (max_samples > 10000) max_samples = 10000;
+
+    for (uint32_t i = 0; i < max_samples && *num_found < max_bottlenecks; i++) {
+        uint32_t synapse_idx = mc_random_int(&g_qshannon_mc_seed, total_synapses);
+
+        /* Compute capacity for this synapse */
+        float capacity = compute_synapse_capacity(
+            network,
+            synapse_idx,
+            &qsd->config.shannon_config
+        );
+
+        /* Check if bottleneck */
+        float max_capacity = qsd->metrics.max_capacity;
+        if (max_capacity < MIN_CAPACITY) max_capacity = 1.0f;
+
+        float utilization = capacity / max_capacity;
+        if (utilization < threshold) {
+            /* Check for duplicates */
+            bool duplicate = false;
+            for (uint32_t j = 0; j < *num_found; j++) {
+                if (bottleneck_indices[j] == synapse_idx) {
+                    duplicate = true;
+                    break;
+                }
+            }
+
+            if (!duplicate) {
+                bottleneck_indices[*num_found] = synapse_idx;
+                (*num_found)++;
+            }
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Get thread-local MC seed for quantum shannon operations
+ *
+ * @return Pointer to seed
+ */
+uint32_t* quantum_shannon_get_mc_seed(void) {
+    if (g_qshannon_mc_seed == 0) {
+        g_qshannon_mc_seed = mc_seed_from_time();
+    }
+    return &g_qshannon_mc_seed;
 }

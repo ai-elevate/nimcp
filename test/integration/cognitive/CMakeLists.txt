@@ -85,6 +85,9 @@ add_subdirectory(collective_cognition)
 # Recursive Cognition Integration Tests (RLM-inspired)
 add_subdirectory(recursive)
 
+# Omnidirectional Inference Integration Tests
+add_subdirectory(omni)
+
 # Mental Health Guardian Integration Tests (Phase 10.5.1)
 add_subdirectory(mental_health)
 

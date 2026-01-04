@@ -541,6 +541,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_weights.c          # V-JEPA weight import
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_multimodal.c       # Multimodal joint embeddings
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_context.c          # Context-conditioned encoding
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_bidirectional.c    # Bidirectional JEPA (omnidirectional inference)
+
+    # Omnidirectional Inference Memory Components
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_hopfield_memory.c      # Hopfield associative memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_temporal_replay.c      # Temporal replay buffer
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive_hierarchy.c  # Predictive coding hierarchy
 
     # FEP Module Bridges - Bidirectional integration with FEP system
     # Cognitive FEP Bridges
@@ -1141,6 +1147,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/topology/nimcp_community_detection.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/algorithms/nimcp_centrality.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/algorithms/nimcp_graph_metrics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/algorithms/nimcp_sort.c              # Consolidated sorting/graph algorithms
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/algorithms/nimcp_monte_carlo.c       # Monte Carlo and MCTS algorithms
 
     # Utils - Other
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/time/nimcp_time.c
@@ -1161,6 +1169,7 @@ set(NIMCP_CORE_SOURCES
     # Utils - Quantum-Inspired Algorithms (Phase C: Quantum-Inspired Algorithms)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/quantum/nimcp_quantum_walk.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/quantum/nimcp_quantum_shannon.c  # Phase C4.1: Quantum Walk + Shannon Information Theory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/quantum/nimcp_quantum_monte_carlo.c  # Quantum Monte Carlo Integration
 
     # Utils - Geometry (Phase B1.1: Hyperbolic Knowledge Graph Embeddings)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/geometry/nimcp_hyperbolic.c
@@ -1304,6 +1313,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/lnn/nimcp_lnn_gradient_dao.c
     # Quantum algorithm kernels
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/quantum/nimcp_quantum_kernels.cu>
+    # Quantum Monte Carlo GPU kernels (parallel MC sampling, MCTS, SAT solving)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/quantum/nimcp_qmc_gpu.cu>
     # Inference kernels (optimized forward pass)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/inference/nimcp_inference_kernels.cu>
     # Cognitive module GPU kernels (FEP learning, attention, working memory, JEPA)
@@ -1314,6 +1325,8 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/cognitive/nimcp_jepa_gpu.cu>
     # Broca's region GPU kernels (lexical lookup, phoneme encoding, motor planning)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/cognitive/nimcp_broca_gpu.cu>
+    # Omnidirectional inference GPU kernels (bidirectional prediction, Hopfield attention, predictive hierarchy, temporal replay)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/cognitive/nimcp_omni_gpu.cu>
     # Memory consolidation GPU kernels (hippocampal replay, systems consolidation, engram operations)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/memory/nimcp_memory_consolidation_kernels.cu>
     # Existing CUDA kernels

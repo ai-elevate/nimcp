@@ -39,7 +39,7 @@
  * ╠═══════════════════════════════════════════════════════════════════════════════╣
  * ║                                                                                ║
  * ║  ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐              ║
- * ║  │  master.jsonl   │   │ subsystems/*.jsonl│   │ platforms/*.jsonl│             ║
+ * ║  │  master.jsonl   │   │ subsystems/X.jsonl│   │ platforms/X.jsonl│             ║
  * ║  │  (base wiring)  │   │  (per component)  │   │  (per tier)      │             ║
  * ║  └────────┬────────┘   └────────┬─────────┘   └────────┬─────────┘             ║
  * ║           │                     │                       │                       ║
@@ -69,10 +69,10 @@
  *
  * LOADING PRIORITY (later overrides earlier):
  * 1. master.jsonl           - Base module wiring
- * 2. subsystems/*.jsonl     - Subsystem-specific (ethics, perception, etc.)
+ * 2. subsystems/X.jsonl     - Subsystem-specific (ethics, perception, etc.)
  * 3. platforms/<tier>.jsonl - Platform tier specific
  * 4. hardware/<hw>.jsonl    - Hardware-specific (cuda, rocm, loihi, etc.)
- * 5. custom/*.jsonl         - User overrides (highest priority)
+ * 5. custom/X.jsonl         - User overrides (highest priority)
  *
  * JSONL FORMAT:
  * - Entities: {"type":"entity","name":"Module_Name","entityType":"CognitiveModule",...}
@@ -135,7 +135,7 @@ typedef struct brain_kg brain_kg_t;  /* Forward declare from nimcp_brain_kg.h */
  *
  * WHAT: Bitmask for available compute accelerators
  * WHY:  Enable hardware-specific wiring configurations
- * HOW:  Detected at runtime, used to select hardware/*.jsonl diagrams
+ * HOW:  Detected at runtime, used to select hardware/X.jsonl diagrams
  */
 typedef enum {
     WIRING_HW_NONE           = 0,           /**< No accelerators */
@@ -174,7 +174,7 @@ typedef enum {
  *
  * WHAT: Classification of modules by functional subsystem
  * WHY:  Enable subsystem-specific wiring diagrams
- * HOW:  Each module belongs to one subsystem, loaded from subsystems/*.jsonl
+ * HOW:  Each module belongs to one subsystem, loaded from subsystems/X.jsonl
  */
 typedef enum {
     WIRING_SUBSYSTEM_CORE = 0,       /**< Core infrastructure (brain, synapse) */
@@ -361,7 +361,7 @@ int wiring_diagram_load_subsystem(wiring_diagram_t* wd, wiring_subsystem_t subsy
 /**
  * @brief Load all subsystem wiring diagrams
  *
- * WHAT: Load all subsystem/*.jsonl files
+ * WHAT: Load all subsystem X.jsonl files
  * WHY:  Convenience function to load all subsystems at once
  * HOW:  Iterate WIRING_SUBSYSTEM_* and load each
  *
@@ -412,7 +412,7 @@ int wiring_diagram_load_custom(wiring_diagram_t* wd, const char* filename);
 /**
  * @brief Load all custom wiring diagrams
  *
- * WHAT: Load all custom/*.jsonl files
+ * WHAT: Load all custom X.jsonl files
  * WHY:  Apply all user customizations
  * HOW:  Iterate custom/ directory and load each
  *
@@ -532,6 +532,18 @@ uint32_t wiring_diagram_get_all_modules(
     const char** module_names,
     uint32_t max_modules
 );
+
+/**
+ * @brief Get total module count
+ *
+ * WHAT: Return the number of modules loaded in the wiring diagram
+ * WHY:  Quick check for self-assembly availability
+ * HOW:  Return module_count from wiring diagram
+ *
+ * @param wd Wiring diagram manager
+ * @return Number of modules, 0 if empty or NULL
+ */
+uint32_t wiring_diagram_get_module_count(const wiring_diagram_t* wd);
 
 /* ============================================================================
  * Dynamic Update API

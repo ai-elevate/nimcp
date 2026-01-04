@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "utils/quantum/nimcp_quantum_walk.h"
+#include "utils/quantum/nimcp_quantum_monte_carlo.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -17,6 +18,9 @@
 #include <stdio.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+/* Thread-local RNG seed for Monte Carlo operations */
+static __thread uint32_t g_qwalk_mc_seed = 0;
 
 // Mathematical constants
 #define SQRT2 1.41421356237f
@@ -307,6 +311,11 @@ quantum_walker_t* quantum_walk_create(
     // Initialize statistics
     walker->stats.total_probability = 1.0F;
     walker->stats.speedup_vs_classical = sqrtf((float)walker->num_nodes);
+
+    // Initialize thread-local MC seed if not already set
+    if (g_qwalk_mc_seed == 0) {
+        g_qwalk_mc_seed = mc_seed_from_time();
+    }
 
     return walker;
 }
@@ -818,8 +827,8 @@ bool quantum_walk_apply_decoherence(
     // HOW: Add random phase, reduce off-diagonal coherence
 
     for (uint32_t i = 0; i < walker->num_nodes; i++) {
-        // Add random phase
-        float random_phase = 2.0F * PI * ((float)rand() / (float)RAND_MAX);
+        // Add random phase using thread-safe RNG
+        float random_phase = 2.0F * PI * mc_random_uniform(&g_qwalk_mc_seed);
         quantum_amplitude_t phase_factor = cosf(random_phase) + I * sinf(random_phase);
 
         // Mix original amplitude with dephased version
@@ -828,4 +837,122 @@ bool quantum_walk_apply_decoherence(
     }
 
     return true;
+}
+
+//=============================================================================
+// Monte Carlo Integration
+//=============================================================================
+
+/**
+ * @brief Measure quantum walk with importance sampling
+ *
+ * WHAT: Sample from probability distribution using binary search
+ * WHY:  More efficient than linear cumulative for large networks
+ * HOW:  Build cumulative distribution, use binary search
+ *
+ * @param walker The quantum walker
+ * @return Measured node index
+ */
+uint32_t quantum_walk_measure_mc(quantum_walker_t* walker) {
+    if (!walker || walker->num_nodes == 0) return 0;
+
+    /* Use MC importance sampling for measurement */
+    uint32_t measured = qmc_measure_importance(
+        walker->probabilities,
+        walker->num_nodes,
+        NULL,  /* Use |amplitude|^2 as proposal */
+        &g_qwalk_mc_seed
+    );
+
+    /* Collapse to measured position */
+    quantum_walk_initialize(walker, measured);
+
+    return measured;
+}
+
+/**
+ * @brief Simulate finite-shot measurement on quantum walk
+ *
+ * WHAT: Perform N measurements, return statistics
+ * WHY:  Model realistic quantum hardware with shot noise
+ * HOW:  Multinomial sampling from probability distribution
+ *
+ * @param walker The quantum walker
+ * @param num_shots Number of measurements
+ * @param result Output measurement result (caller must free with qmc_measurement_result_free)
+ * @return true on success
+ */
+bool quantum_walk_measure_finite_shots(
+    quantum_walker_t* walker,
+    uint32_t num_shots,
+    qmc_measurement_result_t* result
+) {
+    if (!walker || !result || num_shots == 0) return false;
+
+    qmc_measurement_config_t config = {
+        .num_shots = num_shots,
+        .compute_uncertainty = true,
+        .seed = g_qwalk_mc_seed
+    };
+
+    qmc_result_t err = qmc_finite_shots(
+        walker->probabilities,
+        walker->num_nodes,
+        &config,
+        result
+    );
+
+    g_qwalk_mc_seed = config.seed;
+
+    return (err == QMC_OK);
+}
+
+/**
+ * @brief Estimate entropy of quantum walk distribution using MC
+ *
+ * WHAT: Estimate Shannon entropy via sampling
+ * WHY:  Faster than O(N) direct computation for large networks
+ * HOW:  Sample from distribution, compute -E[log(p)]
+ *
+ * @param walker The quantum walker
+ * @param num_samples Number of MC samples (0 = auto)
+ * @param result Output entropy result
+ * @return true on success
+ */
+bool quantum_walk_estimate_entropy_mc(
+    quantum_walker_t* walker,
+    uint32_t num_samples,
+    qmc_entropy_result_t* result
+) {
+    if (!walker || !result) return false;
+
+    qmc_entropy_config_t config = {
+        .num_samples = num_samples > 0 ? num_samples : 10000,
+        .use_stratified = (walker->num_nodes > 10000),
+        .num_strata = 100,
+        .seed = g_qwalk_mc_seed
+    };
+
+    qmc_result_t err = qmc_estimate_entropy(
+        walker->probabilities,
+        walker->num_nodes,
+        &config,
+        result
+    );
+
+    g_qwalk_mc_seed = config.seed;
+
+    return (err == QMC_OK);
+}
+
+/**
+ * @brief Get thread-local MC seed for quantum walk
+ *
+ * @return Pointer to seed (for external MC operations)
+ */
+uint32_t* quantum_walk_get_mc_seed(void) {
+    if (g_qwalk_mc_seed == 0) {
+        g_qwalk_mc_seed = mc_seed_from_time();
+    }
+    return &g_qwalk_mc_seed;
 }

@@ -1,0 +1,658 @@
+/**
+ * @file nimcp_omni_broca_bridge.c
+ * @brief Implementation of Omnidirectional Inference to Broca's Region Bridge
+ */
+
+#include "core/brain/regions/broca/nimcp_omni_broca_bridge.h"
+#include "core/brain/regions/broca/nimcp_broca_adapter.h"
+#include "perception/nimcp_speech_cortex.h"
+#include "cognitive/jepa/nimcp_jepa_bidirectional.h"
+#include "cognitive/predictive/nimcp_predictive_hierarchy.h"
+#include "cognitive/memory/nimcp_hopfield_memory.h"
+#include "utils/thread/nimcp_thread.h"
+
+#include <string.h>
+#include <math.h>
+
+/* ============================================================================
+ * Static Helpers
+ * ============================================================================ */
+
+static omni_phon_wm_t* phon_wm_create(uint32_t capacity, uint32_t slot_dim,
+                                       float decay_rate) {
+    omni_phon_wm_t* wm = nimcp_calloc(1, sizeof(omni_phon_wm_t));
+    if (!wm) return NULL;
+
+    wm->slots = nimcp_calloc(capacity, sizeof(float*));
+    if (!wm->slots) {
+        nimcp_free(wm);
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < capacity; i++) {
+        wm->slots[i] = nimcp_calloc(slot_dim, sizeof(float));
+        if (!wm->slots[i]) {
+            for (uint32_t j = 0; j < i; j++) {
+                nimcp_free(wm->slots[j]);
+            }
+            nimcp_free(wm->slots);
+            nimcp_free(wm);
+            return NULL;
+        }
+    }
+
+    wm->slot_dim = slot_dim;
+    wm->num_slots = capacity;
+    wm->head = 0;
+    wm->decay_rate = decay_rate;
+
+    return wm;
+}
+
+static void phon_wm_destroy(omni_phon_wm_t* wm) {
+    if (!wm) return;
+
+    if (wm->slots) {
+        for (uint32_t i = 0; i < wm->num_slots; i++) {
+            if (wm->slots[i]) {
+                nimcp_free(wm->slots[i]);
+            }
+        }
+        nimcp_free(wm->slots);
+    }
+
+    nimcp_free(wm);
+}
+
+static float compute_combined_pe(float syntax_pe, float motor_pe, float phoneme_pe) {
+    /* Weighted combination */
+    return 0.4f * syntax_pe + 0.3f * motor_pe + 0.3f * phoneme_pe;
+}
+
+static float compute_language_fe(float combined_pe, float precision) {
+    return 0.5f * precision * combined_pe * combined_pe;
+}
+
+/* ============================================================================
+ * Configuration API
+ * ============================================================================ */
+
+int omni_broca_default_config(omni_broca_config_t* config) {
+    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+
+    memset(config, 0, sizeof(omni_broca_config_t));
+
+    config->syntax_prediction_depth = OMNI_BROCA_DEFAULT_SYNTAX_DEPTH;
+    config->syntax_pe_threshold = 1.0f;
+    config->enable_hierarchical_syntax = true;
+
+    config->coarticulation_window = 3;
+    config->motor_pe_threshold = 0.5f;
+    config->enable_forward_model = true;
+
+    config->wm_capacity = 7;  /* Magic number 7±2 */
+    config->wm_decay_rate = 0.1f;
+    config->enable_rehearsal = true;
+
+    config->enable_wernicke_loop = true;
+    config->auditory_feedback_weight = 0.3f;
+
+    config->enable_bio_async = true;
+    config->enable_logging = false;
+
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Lifecycle API
+ * ============================================================================ */
+
+omni_broca_bridge_t* omni_broca_bridge_create(
+    const omni_broca_config_t* config) {
+
+    omni_broca_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_broca_bridge_t));
+    if (!bridge) return NULL;
+
+    if (config) {
+        memcpy(&bridge->config, config, sizeof(omni_broca_config_t));
+    } else {
+        omni_broca_default_config(&bridge->config);
+    }
+
+    bridge->mutex = nimcp_mutex_create(NULL);
+    if (!bridge->mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Create phonological working memory */
+    bridge->phon_wm = phon_wm_create(bridge->config.wm_capacity, 64,
+                                      bridge->config.wm_decay_rate);
+    if (!bridge->phon_wm) {
+        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Initialize syntax prediction */
+    bridge->omni_effects.syntax_pred.num_categories = OMNI_SYN_OTHER + 1;
+    bridge->omni_effects.syntax_pred.category_probs =
+        nimcp_calloc(bridge->omni_effects.syntax_pred.num_categories, sizeof(float));
+
+    bridge->omni_effects.mode = OMNI_LANG_PRODUCTION;
+
+    memset(&bridge->stats, 0, sizeof(omni_broca_stats_t));
+
+    return bridge;
+}
+
+void omni_broca_bridge_destroy(omni_broca_bridge_t* bridge) {
+    if (!bridge) return;
+
+    /* Free phonological WM */
+    if (bridge->phon_wm) {
+        phon_wm_destroy(bridge->phon_wm);
+    }
+
+    /* Free effect buffers */
+    if (bridge->omni_effects.syntax_pred.category_probs) {
+        nimcp_free(bridge->omni_effects.syntax_pred.category_probs);
+    }
+    if (bridge->omni_effects.motor_pred.motor_commands) {
+        nimcp_free(bridge->omni_effects.motor_pred.motor_commands);
+    }
+    if (bridge->omni_effects.motor_pred.coarticulation) {
+        nimcp_free(bridge->omni_effects.motor_pred.coarticulation);
+    }
+    if (bridge->omni_effects.phoneme_prediction) {
+        nimcp_free(bridge->omni_effects.phoneme_prediction);
+    }
+
+    if (bridge->broca_effects.syntax_pe) {
+        nimcp_free(bridge->broca_effects.syntax_pe);
+    }
+    if (bridge->broca_effects.motor_pe) {
+        nimcp_free(bridge->broca_effects.motor_pe);
+    }
+    if (bridge->broca_effects.phoneme_pe) {
+        nimcp_free(bridge->broca_effects.phoneme_pe);
+    }
+
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+    }
+
+    nimcp_free(bridge);
+}
+
+/* ============================================================================
+ * Connection API
+ * ============================================================================ */
+
+int omni_broca_connect_jepa(omni_broca_bridge_t* bridge,
+                             jepa_bidirectional_t* jepa) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->jepa = jepa;
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_connect_pred_hier(omni_broca_bridge_t* bridge,
+                                  predictive_hierarchy_t* pred_hier) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->pred_hier = pred_hier;
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_connect_hopfield(omni_broca_bridge_t* bridge,
+                                 hopfield_memory_t* hopfield) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->hopfield = hopfield;
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_connect_broca(omni_broca_bridge_t* bridge,
+                              broca_adapter_t* broca) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->broca = broca;
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_connect_speech_cortex(omni_broca_bridge_t* bridge,
+                                      speech_cortex_t* speech) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->speech_cortex = speech;
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Update API
+ * ============================================================================ */
+
+int omni_broca_update(omni_broca_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Compute combined PE */
+    float syntax_pe = 0.0f, motor_pe = 0.0f, phoneme_pe = 0.0f;
+
+    if (bridge->broca_effects.syntax_pe && bridge->broca_effects.syntax_dim > 0) {
+        for (uint32_t i = 0; i < bridge->broca_effects.syntax_dim; i++) {
+            syntax_pe += bridge->broca_effects.syntax_pe[i] *
+                         bridge->broca_effects.syntax_pe[i];
+        }
+        syntax_pe = sqrtf(syntax_pe / (float)bridge->broca_effects.syntax_dim);
+    }
+
+    if (bridge->broca_effects.motor_pe && bridge->broca_effects.motor_dim > 0) {
+        for (uint32_t i = 0; i < bridge->broca_effects.motor_dim; i++) {
+            motor_pe += bridge->broca_effects.motor_pe[i] *
+                        bridge->broca_effects.motor_pe[i];
+        }
+        motor_pe = sqrtf(motor_pe / (float)bridge->broca_effects.motor_dim);
+    }
+
+    if (bridge->broca_effects.phoneme_pe && bridge->broca_effects.phoneme_dim > 0) {
+        for (uint32_t i = 0; i < bridge->broca_effects.phoneme_dim; i++) {
+            phoneme_pe += bridge->broca_effects.phoneme_pe[i] *
+                          bridge->broca_effects.phoneme_pe[i];
+        }
+        phoneme_pe = sqrtf(phoneme_pe / (float)bridge->broca_effects.phoneme_dim);
+    }
+
+    bridge->broca_effects.combined_pe = compute_combined_pe(syntax_pe, motor_pe, phoneme_pe);
+    bridge->broca_effects.free_energy =
+        compute_language_fe(bridge->broca_effects.combined_pe, bridge->omni_effects.precision);
+
+    /* Check for errors */
+    bridge->broca_effects.production_error = motor_pe > bridge->config.motor_pe_threshold;
+    bridge->broca_effects.syntax_violation = syntax_pe > bridge->config.syntax_pe_threshold;
+
+    /* Update statistics */
+    bridge->stats.total_updates++;
+
+    if (bridge->omni_effects.mode == OMNI_LANG_PRODUCTION) {
+        bridge->stats.production_events++;
+    } else if (bridge->omni_effects.mode == OMNI_LANG_PARSING) {
+        bridge->stats.parsing_events++;
+    }
+
+    if (bridge->broca_effects.syntax_violation) {
+        bridge->stats.syntax_violations++;
+    }
+    if (bridge->broca_effects.production_error) {
+        bridge->stats.motor_errors++;
+    }
+
+    float n = (float)bridge->stats.total_updates;
+    bridge->stats.avg_syntax_pe =
+        (bridge->stats.avg_syntax_pe * (n - 1) + syntax_pe) / n;
+    bridge->stats.avg_motor_pe =
+        (bridge->stats.avg_motor_pe * (n - 1) + motor_pe) / n;
+    bridge->stats.avg_wm_load =
+        (bridge->stats.avg_wm_load * (n - 1) + omni_broca_wm_get_load(bridge)) / n;
+    bridge->stats.avg_free_energy =
+        (bridge->stats.avg_free_energy * (n - 1) + bridge->broca_effects.free_energy) / n;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_apply_to_broca(omni_broca_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_apply_to_omni(omni_broca_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Production API
+ * ============================================================================ */
+
+int omni_broca_begin_production(omni_broca_bridge_t* bridge,
+                                 const float* semantic_repr,
+                                 uint32_t repr_dim) {
+    if (!bridge || !semantic_repr || repr_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->omni_effects.mode = OMNI_LANG_PRODUCTION;
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_predict_syntax(omni_broca_bridge_t* bridge,
+                               omni_syntactic_prediction_t* prediction) {
+    if (!bridge || !prediction) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(bridge->mutex);
+    memcpy(prediction, &bridge->omni_effects.syntax_pred,
+           sizeof(omni_syntactic_prediction_t));
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_predict_motor(omni_broca_bridge_t* bridge,
+                              const float* phoneme,
+                              uint32_t phoneme_dim,
+                              omni_motor_prediction_t* prediction) {
+    if (!bridge || !phoneme || !prediction || phoneme_dim == 0) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    memcpy(prediction, &bridge->omni_effects.motor_pred,
+           sizeof(omni_motor_prediction_t));
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_get_production_output(omni_broca_bridge_t* bridge,
+                                      float* motor_output,
+                                      uint32_t* output_dim) {
+    if (!bridge || !motor_output || !output_dim) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    if (bridge->omni_effects.motor_pred.motor_commands &&
+        bridge->omni_effects.motor_pred.num_commands > 0) {
+        *output_dim = bridge->omni_effects.motor_pred.num_commands;
+        memcpy(motor_output, bridge->omni_effects.motor_pred.motor_commands,
+               *output_dim * sizeof(float));
+    } else {
+        *output_dim = 0;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Parsing API
+ * ============================================================================ */
+
+int omni_broca_parse_phonemes(omni_broca_bridge_t* bridge,
+                               const float* phonemes,
+                               uint32_t phoneme_dim,
+                               uint32_t num_phonemes) {
+    if (!bridge || !phonemes || phoneme_dim == 0 || num_phonemes == 0) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->omni_effects.mode = OMNI_LANG_PARSING;
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_infer_syntax(omni_broca_bridge_t* bridge,
+                             omni_syntactic_category_t* categories,
+                             uint32_t* num_categories) {
+    if (!bridge || !categories || !num_categories) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(bridge->mutex);
+    *num_categories = 0;  /* Placeholder */
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+bool omni_broca_has_syntax_violation(const omni_broca_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->broca_effects.syntax_violation;
+}
+
+/* ============================================================================
+ * Working Memory API
+ * ============================================================================ */
+
+int omni_broca_wm_push(omni_broca_bridge_t* bridge,
+                        const float* phoneme,
+                        uint32_t dim) {
+    if (!bridge || !phoneme || dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge->phon_wm) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    omni_phon_wm_t* wm = bridge->phon_wm;
+
+    /* Copy to current head position */
+    uint32_t copy_dim = dim < wm->slot_dim ? dim : wm->slot_dim;
+    memcpy(wm->slots[wm->head], phoneme, copy_dim * sizeof(float));
+
+    /* Advance head (circular) */
+    wm->head = (wm->head + 1) % wm->num_slots;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_wm_pop(omni_broca_bridge_t* bridge,
+                       float* phoneme,
+                       uint32_t* dim) {
+    if (!bridge || !phoneme || !dim) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge->phon_wm) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    omni_phon_wm_t* wm = bridge->phon_wm;
+
+    /* Move head back */
+    wm->head = (wm->head + wm->num_slots - 1) % wm->num_slots;
+
+    /* Copy from head */
+    *dim = wm->slot_dim;
+    memcpy(phoneme, wm->slots[wm->head], wm->slot_dim * sizeof(float));
+
+    /* Clear the slot */
+    memset(wm->slots[wm->head], 0, wm->slot_dim * sizeof(float));
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+float omni_broca_wm_get_load(const omni_broca_bridge_t* bridge) {
+    if (!bridge || !bridge->phon_wm) return 0.0f;
+
+    omni_phon_wm_t* wm = bridge->phon_wm;
+
+    /* Count non-empty slots */
+    uint32_t used = 0;
+    for (uint32_t i = 0; i < wm->num_slots; i++) {
+        float sum = 0.0f;
+        for (uint32_t j = 0; j < wm->slot_dim; j++) {
+            sum += fabsf(wm->slots[i][j]);
+        }
+        if (sum > 1e-6f) {
+            used++;
+        }
+    }
+
+    return (float)used / (float)wm->num_slots;
+}
+
+int omni_broca_wm_rehearse(omni_broca_bridge_t* bridge) {
+    if (!bridge || !bridge->phon_wm) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(bridge->mutex);
+    /* Rehearsal refreshes memory by replaying */
+    /* Implementation would cycle through slots */
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_wm_clear(omni_broca_bridge_t* bridge) {
+    if (!bridge || !bridge->phon_wm) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    omni_phon_wm_t* wm = bridge->phon_wm;
+    for (uint32_t i = 0; i < wm->num_slots; i++) {
+        memset(wm->slots[i], 0, wm->slot_dim * sizeof(float));
+    }
+    wm->head = 0;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Wernicke Loop API
+ * ============================================================================ */
+
+int omni_broca_send_efference_copy(omni_broca_bridge_t* bridge,
+                                    const float* motor_commands,
+                                    uint32_t num_commands) {
+    if (!bridge || !motor_commands || num_commands == 0) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    /* Would send to Wernicke for prediction comparison */
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_receive_feedback(omni_broca_bridge_t* bridge,
+                                 const float* auditory_feedback,
+                                 uint32_t feedback_dim) {
+    if (!bridge || !auditory_feedback || feedback_dim == 0) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    /* Would compare to predicted output */
+    return NIMCP_SUCCESS;
+}
+
+float omni_broca_compute_feedback_pe(const omni_broca_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+    /* Would compute mismatch between prediction and feedback */
+    return 0.0f;
+}
+
+/* ============================================================================
+ * Query API
+ * ============================================================================ */
+
+int omni_broca_get_omni_effects(const omni_broca_bridge_t* bridge,
+                                 omni_to_broca_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(((omni_broca_bridge_t*)bridge)->mutex);
+    memcpy(effects, &bridge->omni_effects, sizeof(omni_to_broca_effects_t));
+    nimcp_mutex_unlock(((omni_broca_bridge_t*)bridge)->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_get_broca_effects(const omni_broca_bridge_t* bridge,
+                                  broca_to_omni_effects_t* effects) {
+    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(((omni_broca_bridge_t*)bridge)->mutex);
+    memcpy(effects, &bridge->broca_effects, sizeof(broca_to_omni_effects_t));
+    nimcp_mutex_unlock(((omni_broca_bridge_t*)bridge)->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_get_stats(const omni_broca_bridge_t* bridge,
+                          omni_broca_stats_t* stats) {
+    if (!bridge || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(((omni_broca_bridge_t*)bridge)->mutex);
+    memcpy(stats, &bridge->stats, sizeof(omni_broca_stats_t));
+    nimcp_mutex_unlock(((omni_broca_bridge_t*)bridge)->mutex);
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_reset_stats(omni_broca_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(bridge->mutex);
+    memset(&bridge->stats, 0, sizeof(omni_broca_stats_t));
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+omni_language_mode_t omni_broca_get_mode(const omni_broca_bridge_t* bridge) {
+    if (!bridge) return OMNI_LANG_PRODUCTION;
+    return bridge->omni_effects.mode;
+}
+
+int omni_broca_set_mode(omni_broca_bridge_t* bridge,
+                         omni_language_mode_t mode) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->omni_effects.mode = mode;
+    nimcp_mutex_unlock(bridge->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Bio-Async API
+ * ============================================================================ */
+
+int omni_broca_connect_bio_async(omni_broca_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    return NIMCP_SUCCESS;
+}
+
+int omni_broca_disconnect_bio_async(omni_broca_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    return NIMCP_SUCCESS;
+}
+
+bool omni_broca_is_bio_async_connected(const omni_broca_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->config.enable_bio_async;
+}
+
+/* ============================================================================
+ * String Conversion API
+ * ============================================================================ */
+
+const char* omni_broca_area_to_string(omni_broca_area_t area) {
+    switch (area) {
+        case OMNI_BROCA_BA44: return "BA44";
+        case OMNI_BROCA_BA45: return "BA45";
+        default: return "UNKNOWN";
+    }
+}
+
+const char* omni_broca_mode_to_string(omni_language_mode_t mode) {
+    switch (mode) {
+        case OMNI_LANG_PRODUCTION: return "PRODUCTION";
+        case OMNI_LANG_PARSING: return "PARSING";
+        case OMNI_LANG_REPETITION: return "REPETITION";
+        case OMNI_LANG_MONITORING: return "MONITORING";
+        default: return "UNKNOWN";
+    }
+}
+
+const char* omni_broca_syntax_to_string(omni_syntactic_category_t cat) {
+    switch (cat) {
+        case OMNI_SYN_NOUN: return "NOUN";
+        case OMNI_SYN_VERB: return "VERB";
+        case OMNI_SYN_ADJ: return "ADJ";
+        case OMNI_SYN_ADV: return "ADV";
+        case OMNI_SYN_DET: return "DET";
+        case OMNI_SYN_PREP: return "PREP";
+        case OMNI_SYN_CONJ: return "CONJ";
+        case OMNI_SYN_PRON: return "PRON";
+        case OMNI_SYN_OTHER: return "OTHER";
+        default: return "UNKNOWN";
+    }
+}
+
+const char* omni_broca_motor_to_string(omni_motor_type_t type) {
+    switch (type) {
+        case OMNI_MOTOR_LIPS: return "LIPS";
+        case OMNI_MOTOR_TONGUE: return "TONGUE";
+        case OMNI_MOTOR_JAW: return "JAW";
+        case OMNI_MOTOR_LARYNX: return "LARYNX";
+        case OMNI_MOTOR_VELUM: return "VELUM";
+        default: return "UNKNOWN";
+    }
+}

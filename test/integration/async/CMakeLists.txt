@@ -291,3 +291,33 @@ gtest_discover_tests(integration_async_test_wiring_diagram_validation
         LABELS "integration;async;wiring;validation;dependency"
         TIMEOUT 180
 )
+
+# Test 11: Self-Assembly Integration (Phase 10: Automatic Self-Assembly)
+add_executable(integration_async_test_self_assembly
+    test_self_assembly_integration.cpp
+)
+
+target_link_libraries(integration_async_test_self_assembly
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+        stdc++fs
+)
+
+target_include_directories(integration_async_test_self_assembly
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_async_test_self_assembly PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_async_test_self_assembly
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;async;orchestrator;self-assembly"
+        TIMEOUT 180
+)

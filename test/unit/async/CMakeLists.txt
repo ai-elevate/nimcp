@@ -362,3 +362,32 @@ gtest_discover_tests(unit_async_wiring_diagram_validation
         LABELS "unit;async;wiring;validation;dependency"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Self-Assembly Unit Tests (Phase 10: Automatic Self-Assembly)
+# ============================================================================
+
+add_executable(unit_async_self_assembly
+    test_self_assembly.cpp
+)
+target_link_libraries(unit_async_self_assembly
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+        stdc++fs
+)
+target_include_directories(unit_async_self_assembly
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_async_self_assembly PRIVATE cxx_std_17)
+gtest_discover_tests(unit_async_self_assembly
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;async;orchestrator;self-assembly"
+        TIMEOUT 120
+)

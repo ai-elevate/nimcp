@@ -19,11 +19,37 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/algorithms/nimcp_monte_carlo.h"
 #include "async/nimcp_bio_router.h"
 
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+
+//=============================================================================
+// MCTS State for Action Selection
+//=============================================================================
+
+/**
+ * @brief State for MCTS action selection
+ */
+typedef struct {
+    float* cortical_input;        /**< Current cortical input */
+    float* thalamic_values;       /**< Simulated thalamic output */
+    float dopamine_level;         /**< Current dopamine level */
+    uint32_t num_actions;         /**< Number of available actions */
+    uint32_t depth;               /**< Current planning depth */
+    uint32_t selected_action;     /**< Action selected at this state */
+} bg_mcts_state_t;
+
+/**
+ * @brief User data for MCTS callbacks
+ */
+typedef struct {
+    basal_ganglia_t* bg;          /**< Basal ganglia reference */
+    const float* original_input;  /**< Original cortical input */
+    uint32_t max_depth;           /**< Maximum planning depth */
+} bg_mcts_user_data_t;
 
 //=============================================================================
 // Internal Helpers
@@ -67,6 +93,174 @@ static float compute_conflict(const basal_ganglia_t* bg) {
     /* Conflict is high when top two are close */
     if (first < 0.001f) return 0.0f;
     return 1.0f - (first - second) / first;
+}
+
+//=============================================================================
+// MCTS Callbacks for Action Selection
+//=============================================================================
+
+/**
+ * @brief Get number of available actions
+ */
+static uint32_t bg_mcts_get_action_count(const void* state, void* user_data) {
+    (void)user_data;
+    const bg_mcts_state_t* s = (const bg_mcts_state_t*)state;
+    return s->num_actions;
+}
+
+/**
+ * @brief Get action at index
+ */
+static uint32_t bg_mcts_get_action(const void* state, uint32_t idx, void* user_data) {
+    (void)state;
+    (void)user_data;
+    return idx;  /* Action ID is just the index */
+}
+
+/**
+ * @brief Apply action to state and return new state
+ */
+static void* bg_mcts_apply_action(const void* state, uint32_t action, void* user_data) {
+    const bg_mcts_state_t* s = (const bg_mcts_state_t*)state;
+    bg_mcts_user_data_t* ud = (bg_mcts_user_data_t*)user_data;
+
+    /* Allocate new state */
+    bg_mcts_state_t* new_state = nimcp_malloc(sizeof(bg_mcts_state_t));
+    if (!new_state) return NULL;
+
+    new_state->num_actions = s->num_actions;
+    new_state->depth = s->depth + 1;
+    new_state->selected_action = action;
+    new_state->dopamine_level = s->dopamine_level;
+
+    /* Allocate and copy arrays */
+    new_state->cortical_input = nimcp_malloc(s->num_actions * sizeof(float));
+    new_state->thalamic_values = nimcp_malloc(s->num_actions * sizeof(float));
+
+    if (!new_state->cortical_input || !new_state->thalamic_values) {
+        nimcp_free(new_state->cortical_input);
+        nimcp_free(new_state->thalamic_values);
+        nimcp_free(new_state);
+        return NULL;
+    }
+
+    /* Simulate effect: selected action gets boost, others slightly dampened */
+    for (uint32_t a = 0; a < s->num_actions; a++) {
+        if (a == action) {
+            /* Boost selected action based on dopamine */
+            new_state->cortical_input[a] = s->cortical_input[a] * (1.0f + 0.2f * s->dopamine_level);
+            new_state->thalamic_values[a] = s->thalamic_values[a] * 1.1f;
+        } else {
+            /* Dampen competing actions (lateral inhibition) */
+            new_state->cortical_input[a] = s->cortical_input[a] * 0.9f;
+            new_state->thalamic_values[a] = s->thalamic_values[a] * 0.95f;
+        }
+        /* Clamp values */
+        if (new_state->cortical_input[a] > 1.0f) new_state->cortical_input[a] = 1.0f;
+        if (new_state->thalamic_values[a] > 1.0f) new_state->thalamic_values[a] = 1.0f;
+    }
+
+    return new_state;
+}
+
+/**
+ * @brief Evaluate state value
+ */
+static float bg_mcts_evaluate(const void* state, void* user_data) {
+    const bg_mcts_state_t* s = (const bg_mcts_state_t*)state;
+    bg_mcts_user_data_t* ud = (bg_mcts_user_data_t*)user_data;
+
+    /* Value is based on:
+     * 1. Thalamic activation of selected action (higher = better)
+     * 2. Separation from competing actions (more = clearer decision)
+     * 3. Dopamine modulation (reward expectation)
+     */
+    float selected_value = s->thalamic_values[s->selected_action];
+
+    /* Find max competing value */
+    float max_other = 0.0f;
+    for (uint32_t a = 0; a < s->num_actions; a++) {
+        if (a != s->selected_action && s->thalamic_values[a] > max_other) {
+            max_other = s->thalamic_values[a];
+        }
+    }
+
+    /* Value = selected activation + separation + dopamine bonus */
+    float separation = selected_value - max_other;
+    float value = selected_value + 0.5f * separation + 0.2f * s->dopamine_level;
+
+    return value;
+}
+
+/**
+ * @brief Check if state is terminal
+ */
+static bool bg_mcts_is_terminal(const void* state, void* user_data) {
+    const bg_mcts_state_t* s = (const bg_mcts_state_t*)state;
+    bg_mcts_user_data_t* ud = (bg_mcts_user_data_t*)user_data;
+
+    /* Terminal if max depth reached or clear winner */
+    if (s->depth >= ud->max_depth) return true;
+
+    /* Check for clear winner (low conflict) */
+    float first = 0, second = 0;
+    for (uint32_t a = 0; a < s->num_actions; a++) {
+        if (s->thalamic_values[a] > first) {
+            second = first;
+            first = s->thalamic_values[a];
+        } else if (s->thalamic_values[a] > second) {
+            second = s->thalamic_values[a];
+        }
+    }
+
+    float conflict = (first < 0.001f) ? 0.0f : 1.0f - (first - second) / first;
+    return conflict < 0.2f;  /* Clear winner = terminal */
+}
+
+/**
+ * @brief Free state memory
+ */
+static void bg_mcts_free_state(void* state, void* user_data) {
+    (void)user_data;
+    if (!state) return;
+
+    bg_mcts_state_t* s = (bg_mcts_state_t*)state;
+    nimcp_free(s->cortical_input);
+    nimcp_free(s->thalamic_values);
+    nimcp_free(s);
+}
+
+/**
+ * @brief Clone state
+ */
+static void* bg_mcts_clone_state(const void* state, void* user_data) {
+    (void)user_data;
+    if (!state) return NULL;
+
+    const bg_mcts_state_t* s = (const bg_mcts_state_t*)state;
+
+    bg_mcts_state_t* clone = nimcp_malloc(sizeof(bg_mcts_state_t));
+    if (!clone) return NULL;
+
+    clone->num_actions = s->num_actions;
+    clone->depth = s->depth;
+    clone->selected_action = s->selected_action;
+    clone->dopamine_level = s->dopamine_level;
+
+    clone->cortical_input = nimcp_malloc(s->num_actions * sizeof(float));
+    clone->thalamic_values = nimcp_malloc(s->num_actions * sizeof(float));
+
+    if (!clone->cortical_input || !clone->thalamic_values) {
+        nimcp_free(clone->cortical_input);
+        nimcp_free(clone->thalamic_values);
+        nimcp_free(clone);
+        return NULL;
+    }
+
+    memcpy(clone->cortical_input, s->cortical_input, s->num_actions * sizeof(float));
+    memcpy(clone->thalamic_values, s->thalamic_values, s->num_actions * sizeof(float));
+
+    return clone;
 }
 
 //=============================================================================
@@ -232,6 +426,11 @@ basal_ganglia_t* basal_ganglia_create(const basal_ganglia_config_t* config) {
         goto cleanup;
     }
     nimcp_mutex_init(bg->mutex, NULL);
+
+    /* Initialize MCTS parameters */
+    bg->rand_seed = mc_seed_from_time();
+    bg->mcts_conflict_threshold = 0.6f;  /* Use MCTS when conflict > 60% */
+    bg->mcts_iterations = 50;            /* Default MCTS iterations */
 
     NIMCP_LOGGING_DEBUG("Created basal ganglia with %u actions", cfg.num_actions);
 
@@ -482,6 +681,145 @@ int basal_ganglia_action_completed(basal_ganglia_t* bg, uint32_t action_id,
         }
     }
 
+    nimcp_mutex_unlock(bg->mutex);
+
+    return 0;
+}
+
+int basal_ganglia_select_action_mcts(basal_ganglia_t* bg,
+                                      const float* cortical_input,
+                                      uint32_t num_iterations,
+                                      uint32_t* selected_action) {
+    if (!bg || !cortical_input || !selected_action) return -1;
+
+    nimcp_mutex_lock(bg->mutex);
+
+    uint64_t start_time = nimcp_time_get_ms();
+
+    /* First, run normal pathway processing to get baseline thalamic values */
+    bg->action_state = ACTION_STATE_COMPETING;
+
+    striatum_process_input(bg->striatum, cortical_input, bg->dopamine_level);
+    striatum_get_d1_output(bg->striatum, bg->direct_pathway);
+    striatum_get_d2_output(bg->striatum, bg->indirect_pathway);
+
+    globus_pallidus_set_striatal_input(bg->gpe, bg->indirect_pathway);
+    globus_pallidus_process(bg->gpe);
+
+    float gpe_output[BG_MAX_ACTIONS];
+    globus_pallidus_get_output(bg->gpe, gpe_output);
+
+    subthalamic_set_gpe_input(bg->stn, gpe_output);
+    if (bg->config.enable_hyperdirect) {
+        subthalamic_set_cortical_input(bg->stn, cortical_input, false);
+    }
+    subthalamic_process(bg->stn);
+
+    float stn_output[BG_MAX_ACTIONS];
+    subthalamic_get_output(bg->stn, stn_output);
+
+    globus_pallidus_set_striatal_input(bg->gpi, bg->direct_pathway);
+    globus_pallidus_set_stn_input(bg->gpi, stn_output);
+    globus_pallidus_set_gpe_input(bg->gpi, gpe_output);
+    globus_pallidus_process(bg->gpi);
+
+    snr_set_striatal_input(bg->snr, bg->direct_pathway);
+    snr_set_stn_input(bg->snr, stn_output);
+    snr_process(bg->snr);
+
+    float gpi_output[BG_MAX_ACTIONS];
+    float snr_output[BG_MAX_ACTIONS];
+    globus_pallidus_get_output(bg->gpi, gpi_output);
+    snr_get_output(bg->snr, snr_output);
+
+    for (uint32_t a = 0; a < bg->num_actions; a++) {
+        float inhibition = (gpi_output[a] + snr_output[a]) / 2.0f;
+        bg->thalamic_output[a] = 1.0f - inhibition;
+    }
+
+    /* Create initial MCTS state */
+    bg_mcts_state_t initial_state = {0};
+    initial_state.num_actions = bg->num_actions;
+    initial_state.depth = 0;
+    initial_state.dopamine_level = bg->dopamine_level;
+    initial_state.selected_action = 0;
+
+    initial_state.cortical_input = nimcp_malloc(bg->num_actions * sizeof(float));
+    initial_state.thalamic_values = nimcp_malloc(bg->num_actions * sizeof(float));
+
+    if (!initial_state.cortical_input || !initial_state.thalamic_values) {
+        nimcp_free(initial_state.cortical_input);
+        nimcp_free(initial_state.thalamic_values);
+        nimcp_mutex_unlock(bg->mutex);
+        return -1;
+    }
+
+    memcpy(initial_state.cortical_input, cortical_input, bg->num_actions * sizeof(float));
+    memcpy(initial_state.thalamic_values, bg->thalamic_output, bg->num_actions * sizeof(float));
+
+    /* Setup user data */
+    bg_mcts_user_data_t user_data = {
+        .bg = bg,
+        .original_input = cortical_input,
+        .max_depth = 5
+    };
+
+    /* Configure MCTS */
+    mcts_config_t config;
+    mcts_config_init(&config);
+    config.max_iterations = (num_iterations > 0) ? num_iterations : bg->mcts_iterations;
+    config.max_depth = 5;
+    config.exploration_constant = 1.4f;
+    config.discount_factor = 0.95f;
+    config.max_nodes = 256;
+
+    config.get_action_count = bg_mcts_get_action_count;
+    config.get_action = bg_mcts_get_action;
+    config.apply_action = bg_mcts_apply_action;
+    config.evaluate = bg_mcts_evaluate;
+    config.is_terminal = bg_mcts_is_terminal;
+    config.free_state = bg_mcts_free_state;
+    config.clone_state = bg_mcts_clone_state;
+    config.user_data = &user_data;
+    config.seed = bg->rand_seed;
+
+    /* Run MCTS */
+    mcts_result_t result;
+    nimcp_error_t err = mcts_search(&config, &initial_state, &result);
+
+    /* Update RNG seed */
+    bg->rand_seed = config.seed;
+
+    /* Cleanup initial state */
+    nimcp_free(initial_state.cortical_input);
+    nimcp_free(initial_state.thalamic_values);
+
+    if (err != NIMCP_MC_OK) {
+        nimcp_mutex_unlock(bg->mutex);
+        return -1;
+    }
+
+    /* Use MCTS result */
+    *selected_action = result.best_action;
+    bg->selected_action = result.best_action;
+    bg->action_state = ACTION_STATE_SELECTED;
+
+    /* Compute conflict level */
+    bg->conflict_level = compute_conflict(bg);
+
+    /* Update statistics */
+    uint64_t end_time = nimcp_time_get_ms();
+    bg->stats.total_selections++;
+    float selection_time = (float)(end_time - start_time);
+    float count = (float)bg->stats.total_selections;
+    bg->stats.avg_selection_time_ms =
+        (bg->stats.avg_selection_time_ms * (count - 1.0f) + selection_time) / count;
+    bg->stats.goal_directed_count++;
+
+    NIMCP_LOGGING_DEBUG("MCTS selected action %u (value=%.3f, iterations=%u)",
+                        result.best_action, result.best_value, result.iterations_completed);
+
+    mcts_result_free(&result);
     nimcp_mutex_unlock(bg->mutex);
 
     return 0;

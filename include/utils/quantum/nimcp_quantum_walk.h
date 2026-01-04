@@ -552,6 +552,64 @@ bool quantum_walk_apply_decoherence(
     float decoherence_strength
 );
 
+//=============================================================================
+// Monte Carlo Integration API
+//=============================================================================
+
+/* Forward declarations for QMC types */
+struct qmc_measurement_result;
+struct qmc_entropy_result;
+
+/**
+ * @brief Measure quantum walk using Monte Carlo importance sampling
+ *
+ * More efficient than linear cumulative search for large networks.
+ * Uses binary search on cumulative distribution.
+ *
+ * @param walker Quantum walker
+ * @return Measured node index
+ */
+uint32_t quantum_walk_measure_mc(quantum_walker_t* walker);
+
+/**
+ * @brief Simulate finite-shot measurement on quantum walk
+ *
+ * Models realistic quantum hardware with shot noise.
+ *
+ * @param walker Quantum walker
+ * @param num_shots Number of measurements
+ * @param result Output result (caller frees with qmc_measurement_result_free)
+ * @return true on success
+ */
+bool quantum_walk_measure_finite_shots(
+    quantum_walker_t* walker,
+    uint32_t num_shots,
+    struct qmc_measurement_result* result
+);
+
+/**
+ * @brief Estimate entropy of quantum walk using Monte Carlo
+ *
+ * Faster than O(N) direct computation for large networks.
+ *
+ * @param walker Quantum walker
+ * @param num_samples MC samples (0 = auto)
+ * @param result Output entropy estimate
+ * @return true on success
+ */
+bool quantum_walk_estimate_entropy_mc(
+    quantum_walker_t* walker,
+    uint32_t num_samples,
+    struct qmc_entropy_result* result
+);
+
+/**
+ * @brief Get thread-local MC seed for quantum walk operations
+ *
+ * @return Pointer to seed
+ */
+uint32_t* quantum_walk_get_mc_seed(void);
+
 #ifdef __cplusplus
 }
 #endif

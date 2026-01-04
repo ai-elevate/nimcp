@@ -1431,6 +1431,29 @@ const char* imagination_mode_to_string(imagination_mode_t mode);
  */
 const char* imagination_quality_to_string(imagination_quality_t quality);
 
+/*============================================================================
+ * MCTS-Based Goal-Directed Imagination
+ *============================================================================*/
+
+/**
+ * @brief Use MCTS to search for goal-directed imagination path
+ *
+ * WHAT: Search for optimal sequence of imagination transformations
+ * WHY:  Find efficient path from current state to goal state
+ * HOW:  Use MCTS with transformation actions to explore state space
+ *
+ * @param engine The imagination engine
+ * @param scenario Active scenario to guide toward goal
+ * @param goal Target goal for imagination
+ * @param num_iterations MCTS iterations (0 = default 50)
+ * @return 0 on success, -1 on error
+ */
+int imagination_search_goal_mcts(
+    imagination_engine_t* engine,
+    imagination_scenario_t* scenario,
+    const imagination_goal_t* goal,
+    uint32_t num_iterations);
+
 #ifdef __cplusplus
 }
 #endif

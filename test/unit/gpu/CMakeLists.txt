@@ -30,6 +30,7 @@ if(CUDAToolkit_FOUND)
 
     # GPU quantum and inference kernel tests
     add_gpu_test(test_quantum_kernels)
+    add_gpu_test(test_qmc_gpu)  # GPU Monte Carlo and MCTS
     add_gpu_test(test_inference_kernels)
 
     # GPU tensor and training kernel tests

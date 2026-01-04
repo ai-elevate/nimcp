@@ -10,6 +10,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/algorithms/nimcp_monte_carlo.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -30,8 +31,8 @@ struct nimcp_credit_system_struct {
     // Factorial lookup (for Shapley weights)
     double* factorial;
 
-    // Random state for Monte Carlo
-    unsigned int rand_seed;
+    // Random state for Monte Carlo (uses nimcp_monte_carlo utilities)
+    uint32_t rand_seed;
 
     // Thread safety
     nimcp_platform_mutex_t mutex;
@@ -73,14 +74,7 @@ static uint32_t popcount(uint32_t x) {
     return count;
 }
 
-static void fisher_yates_shuffle(uint32_t* array, uint32_t n, unsigned int* seed) {
-    for (uint32_t i = n - 1; i > 0; i--) {
-        uint32_t j = rand_r(seed) % (i + 1);
-        uint32_t tmp = array[i];
-        array[i] = array[j];
-        array[j] = tmp;
-    }
-}
+/* NOTE: fisher_yates_shuffle removed - using mc_shuffle_u32 from nimcp_monte_carlo.h */
 
 //=============================================================================
 // Configuration
@@ -145,7 +139,7 @@ nimcp_credit_system_t nimcp_credit_create(const nimcp_credit_config_t* config) {
         return NULL;
     }
 
-    system->rand_seed = (unsigned int)time(NULL);
+    system->rand_seed = mc_seed_from_time();
 
     return system;
 }
@@ -342,8 +336,8 @@ nimcp_error_t nimcp_credit_approximate_shapley(
 
     // Sample random permutations
     for (uint32_t sample = 0; sample < samples; sample++) {
-        // Shuffle permutation
-        fisher_yates_shuffle(permutation, n, &system->rand_seed);
+        // Shuffle permutation using consolidated Monte Carlo utility
+        mc_shuffle_u32(permutation, n, &system->rand_seed);
 
         // Compute marginal contributions in permutation order
         uint32_t coalition = 0;

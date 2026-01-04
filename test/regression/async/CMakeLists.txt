@@ -187,3 +187,35 @@ gtest_discover_tests(regression_async_test_wiring_diagram_validation
         LABELS "regression;async;wiring;validation;dependency"
         TIMEOUT 120
 )
+
+# =============================================================================
+# Self-Assembly Regression Tests (Phase 10: Automatic Self-Assembly)
+# =============================================================================
+add_executable(regression_async_test_self_assembly
+    test_self_assembly_regression.cpp
+)
+
+target_link_libraries(regression_async_test_self_assembly
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+        stdc++fs
+)
+
+target_include_directories(regression_async_test_self_assembly
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_async_test_self_assembly PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_async_test_self_assembly
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;async;orchestrator;self-assembly"
+        TIMEOUT 120
+)

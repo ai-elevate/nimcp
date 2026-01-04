@@ -10,8 +10,15 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/algorithms/nimcp_monte_carlo.h"
 #include <string.h>
 #include <math.h>
+
+//=============================================================================
+// Monte Carlo Integration - Thread-local seed
+//=============================================================================
+
+static __thread uint32_t g_gt_mc_seed = 0;
 
 //=============================================================================
 // Internal Structure
@@ -273,4 +280,200 @@ int game_theory_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Game_Theory");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+//=============================================================================
+// Monte Carlo Enhanced Functions
+//=============================================================================
+
+/**
+ * @brief Select action according to mixed strategy using MC sampling
+ *
+ * WHAT: Sample action from probability distribution
+ * WHY:  Realize mixed strategies in actual play
+ * HOW:  Use MC importance sampling
+ *
+ * @param player Player with mixed strategy
+ * @return Selected action index
+ */
+uint32_t nimcp_gt_sample_action_mc(const nimcp_player_t* player) {
+    if (!player || !player->strategy || player->num_actions == 0) {
+        return 0;
+    }
+
+    if (g_gt_mc_seed == 0) {
+        g_gt_mc_seed = mc_seed_from_time();
+    }
+
+    /* Sample using MC */
+    float r = mc_random_uniform(&g_gt_mc_seed);
+    float cumulative = 0.0f;
+
+    for (uint32_t i = 0; i < player->num_actions; i++) {
+        cumulative += player->strategy[i];
+        if (r < cumulative) {
+            return i;
+        }
+    }
+
+    return player->num_actions - 1;
+}
+
+/**
+ * @brief Estimate expected utility via Monte Carlo sampling
+ *
+ * WHAT: Compute expected payoff under mixed strategies
+ * WHY:  Evaluate strategy quality when payoff matrix is stochastic
+ * HOW:  Sample action profiles, average payoffs
+ *
+ * @param system Game theory system
+ * @param players Array of players with strategies
+ * @param num_players Number of players
+ * @param payoff_fn Payoff function (action profile -> utilities)
+ * @param num_samples Number of MC samples
+ * @param expected_utilities Output: expected utility per player
+ * @param user_data User data for payoff function
+ * @return 0 on success
+ */
+int nimcp_gt_expected_utility_mc(
+    nimcp_gt_system_t system,
+    const nimcp_player_t* players,
+    uint32_t num_players,
+    float (*payoff_fn)(const uint32_t* actions, uint32_t num_players, void* user_data),
+    uint32_t num_samples,
+    float* expected_utilities,
+    void* user_data
+) {
+    if (!system || !players || !payoff_fn || !expected_utilities || num_players == 0) {
+        return -1;
+    }
+
+    if (g_gt_mc_seed == 0) {
+        g_gt_mc_seed = mc_seed_from_time();
+    }
+
+    /* Initialize utilities to zero */
+    for (uint32_t i = 0; i < num_players; i++) {
+        expected_utilities[i] = 0.0f;
+    }
+
+    /* Allocate action profile */
+    uint32_t* actions = nimcp_calloc(num_players, sizeof(uint32_t));
+    if (!actions) return -1;
+
+    /* Monte Carlo sampling */
+    for (uint32_t s = 0; s < num_samples; s++) {
+        /* Sample action profile from mixed strategies */
+        for (uint32_t p = 0; p < num_players; p++) {
+            float r = mc_random_uniform(&g_gt_mc_seed);
+            float cumulative = 0.0f;
+            actions[p] = 0;
+
+            for (uint32_t a = 0; a < players[p].num_actions; a++) {
+                cumulative += players[p].strategy[a];
+                if (r < cumulative) {
+                    actions[p] = a;
+                    break;
+                }
+            }
+        }
+
+        /* Compute payoff and accumulate */
+        float payoff = payoff_fn(actions, num_players, user_data);
+        for (uint32_t p = 0; p < num_players; p++) {
+            expected_utilities[p] += payoff;
+        }
+    }
+
+    /* Average */
+    for (uint32_t i = 0; i < num_players; i++) {
+        expected_utilities[i] /= (float)num_samples;
+    }
+
+    nimcp_free(actions);
+    return 0;
+}
+
+/**
+ * @brief Update strategy via fictitious play with MC sampling
+ *
+ * WHAT: Update strategy using best response to opponent history
+ * WHY:  Simple learning algorithm that converges to Nash in some games
+ * HOW:  Track opponent action frequencies, compute best response
+ *
+ * @param player Player to update
+ * @param opponent_frequencies Observed frequencies of opponent actions
+ * @param num_opponent_actions Number of opponent actions
+ * @param payoff_matrix Player's payoff matrix [my_action][opp_action]
+ * @param learning_rate How fast to update (0-1)
+ * @return 0 on success
+ */
+int nimcp_gt_fictitious_play_update_mc(
+    nimcp_player_t* player,
+    const float* opponent_frequencies,
+    uint32_t num_opponent_actions,
+    const float* payoff_matrix,
+    float learning_rate
+) {
+    if (!player || !opponent_frequencies || !payoff_matrix || !player->strategy) {
+        return -1;
+    }
+
+    if (g_gt_mc_seed == 0) {
+        g_gt_mc_seed = mc_seed_from_time();
+    }
+
+    /* Compute expected payoff for each of my actions */
+    float* expected_payoffs = nimcp_calloc(player->num_actions, sizeof(float));
+    if (!expected_payoffs) return -1;
+
+    float max_payoff = -1e30f;
+    uint32_t best_action = 0;
+
+    for (uint32_t a = 0; a < player->num_actions; a++) {
+        expected_payoffs[a] = 0.0f;
+        for (uint32_t o = 0; o < num_opponent_actions; o++) {
+            expected_payoffs[a] += payoff_matrix[a * num_opponent_actions + o] * opponent_frequencies[o];
+        }
+        if (expected_payoffs[a] > max_payoff) {
+            max_payoff = expected_payoffs[a];
+            best_action = a;
+        }
+    }
+
+    /* Update strategy toward best response with noise for exploration */
+    for (uint32_t a = 0; a < player->num_actions; a++) {
+        float target = (a == best_action) ? 1.0f : 0.0f;
+        /* Add small noise for exploration */
+        float noise = mc_random_normal(&g_gt_mc_seed, 0.0f, 0.01f);
+        player->strategy[a] = (1.0f - learning_rate) * player->strategy[a] +
+                              learning_rate * target + noise;
+        if (player->strategy[a] < 0.0f) player->strategy[a] = 0.0f;
+    }
+
+    /* Normalize */
+    float sum = 0.0f;
+    for (uint32_t a = 0; a < player->num_actions; a++) {
+        sum += player->strategy[a];
+    }
+    if (sum > 0.0f) {
+        for (uint32_t a = 0; a < player->num_actions; a++) {
+            player->strategy[a] /= sum;
+        }
+    }
+
+    nimcp_free(expected_payoffs);
+    return 0;
+}
+
+/**
+ * @brief Get thread-local MC seed for game theory
+ *
+ * @return Pointer to thread-local seed
+ */
+uint32_t* nimcp_gt_get_mc_seed(void) {
+    if (g_gt_mc_seed == 0) {
+        g_gt_mc_seed = mc_seed_from_time();
+    }
+    return &g_gt_mc_seed;
 }

@@ -324,6 +324,77 @@ void nimcp_player_cleanup(nimcp_player_t* player);
  */
 void nimcp_game_outcome_init(nimcp_game_outcome_t* outcome);
 
+//=============================================================================
+// Monte Carlo Integration API
+//=============================================================================
+
+/**
+ * @brief Select action according to mixed strategy using MC sampling
+ *
+ * WHAT: Sample action from probability distribution
+ * WHY:  Realize mixed strategies in actual play
+ * HOW:  Use MC importance sampling
+ *
+ * @param player Player with mixed strategy
+ * @return Selected action index
+ */
+uint32_t nimcp_gt_sample_action_mc(const nimcp_player_t* player);
+
+/**
+ * @brief Estimate expected utility via Monte Carlo sampling
+ *
+ * WHAT: Compute expected payoff under mixed strategies
+ * WHY:  Evaluate strategy quality when payoff matrix is stochastic
+ * HOW:  Sample action profiles, average payoffs
+ *
+ * @param system Game theory system
+ * @param players Array of players with strategies
+ * @param num_players Number of players
+ * @param payoff_fn Payoff function (action profile -> utilities)
+ * @param num_samples Number of MC samples
+ * @param expected_utilities Output: expected utility per player
+ * @param user_data User data for payoff function
+ * @return 0 on success
+ */
+int nimcp_gt_expected_utility_mc(
+    nimcp_gt_system_t system,
+    const nimcp_player_t* players,
+    uint32_t num_players,
+    float (*payoff_fn)(const uint32_t* actions, uint32_t num_players, void* user_data),
+    uint32_t num_samples,
+    float* expected_utilities,
+    void* user_data
+);
+
+/**
+ * @brief Update strategy via fictitious play with MC sampling
+ *
+ * WHAT: Update strategy using best response to opponent history
+ * WHY:  Simple learning algorithm that converges to Nash in some games
+ * HOW:  Track opponent action frequencies, compute best response with exploration noise
+ *
+ * @param player Player to update
+ * @param opponent_frequencies Observed frequencies of opponent actions
+ * @param num_opponent_actions Number of opponent actions
+ * @param payoff_matrix Player's payoff matrix [my_action][opp_action]
+ * @param learning_rate How fast to update (0-1)
+ * @return 0 on success
+ */
+int nimcp_gt_fictitious_play_update_mc(
+    nimcp_player_t* player,
+    const float* opponent_frequencies,
+    uint32_t num_opponent_actions,
+    const float* payoff_matrix,
+    float learning_rate
+);
+
+/**
+ * @brief Get thread-local MC seed for game theory
+ *
+ * @return Pointer to thread-local seed
+ */
+uint32_t* nimcp_gt_get_mc_seed(void);
+
 #ifdef __cplusplus
 }
 #endif

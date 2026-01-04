@@ -863,12 +863,13 @@ static int portia_wiring_handler_callback(
 
     int registered = 0;
     for (uint32_t i = 0; i < message_count; i++) {
-        switch (message_types[i]) {
-            case BIO_MSG_TYPE_PORTIA_STATUS_QUERY:
+        /* Cast to uint16_t to allow portia-specific message types */
+        switch ((uint16_t)message_types[i]) {
+            case (uint16_t)BIO_MSG_TYPE_PORTIA_STATUS_QUERY:
                 bio_router_register_handler(ctx, message_types[i], portia_message_handler);
                 registered++;
                 break;
-            case BIO_MSG_TYPE_PORTIA_TIER_QUERY:
+            case (uint16_t)BIO_MSG_TYPE_PORTIA_TIER_QUERY:
                 bio_router_register_handler(ctx, message_types[i], portia_message_handler);
                 registered++;
                 break;

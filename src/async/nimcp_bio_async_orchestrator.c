@@ -1218,3 +1218,277 @@ int bio_orchestrator_discover_all_wiring(bio_async_orchestrator_t* orchestrator)
 
     return (int)discovered;
 }
+
+/* ============================================================================
+ * Phase 10: Automatic Self-Assembly Implementation
+ * ============================================================================ */
+
+/**
+ * WHAT: Check if self-assembly is available
+ * WHY:  Allow callers to verify before using self-assembly APIs
+ * HOW:  Check wiring_diagram is set and has modules
+ */
+bool bio_orchestrator_self_assembly_available(
+    const bio_async_orchestrator_t* orchestrator
+) {
+    if (!orchestrator) return false;
+    if (!orchestrator->wiring_diagram) return false;
+
+    /* Check if wiring diagram has any modules */
+    uint32_t count = wiring_diagram_get_module_count(orchestrator->wiring_diagram);
+    return count > 0;
+}
+
+/**
+ * WHAT: Compute startup order using KG-driven topological sort
+ * WHY:  Replace hardcoded phases with automatic dependency resolution
+ * HOW:  Delegates to wiring_diagram_get_startup_order() (Kahn's algorithm)
+ */
+int bio_orchestrator_compute_startup_order(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t* order_out,
+    uint32_t max_modules
+) {
+    if (!orchestrator || !order_out || max_modules == 0) return -1;
+
+    /* If wiring diagram available, use KG-driven ordering */
+    if (orchestrator->wiring_diagram) {
+        int count = wiring_diagram_get_startup_order(
+            orchestrator->wiring_diagram,
+            order_out,
+            max_modules
+        );
+
+        if (count > 0) {
+            if (orchestrator->config.enable_logging) {
+                NIMCP_LOGGING_DEBUG("Computed KG-driven startup order: %d modules", count);
+            }
+            return count;
+        }
+
+        /* Fall through to phase-based ordering on failure */
+        if (orchestrator->config.enable_logging) {
+            NIMCP_LOGGING_WARN("KG startup order failed, falling back to phases");
+        }
+    }
+
+    /* Fallback: phase-based ordering */
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    uint32_t count = 0;
+    for (uint32_t phase = 0; phase < BIO_STARTUP_PHASE_COUNT && count < max_modules; phase++) {
+        for (uint32_t i = 0; i < orchestrator->module_count && count < max_modules; i++) {
+            if (orchestrator->modules[i].startup_phase == phase &&
+                orchestrator->modules[i].enabled) {
+                order_out[count++] = orchestrator->modules[i].module_id;
+            }
+        }
+    }
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+
+    if (orchestrator->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Computed phase-based startup order: %u modules", count);
+    }
+
+    return (int)count;
+}
+
+/**
+ * WHAT: Start modules in KG-computed dependency order
+ * WHY:  Enable true self-assembly without hardcoded phases
+ * HOW:  Compute order, discover wiring, invoke callbacks, start each
+ */
+int bio_orchestrator_start_modules_ordered(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return -1;
+
+    /* First, discover wiring if available */
+    if (orchestrator->wiring_diagram) {
+        int discovered = bio_orchestrator_discover_all_wiring(orchestrator);
+        if (discovered > 0 && orchestrator->config.enable_logging) {
+            NIMCP_LOGGING_INFO("Self-assembly: discovered wiring for %d modules", discovered);
+        }
+    }
+
+    /* Compute startup order */
+    bio_module_id_t order[BIO_ORCHESTRATOR_MAX_MODULES];
+    int order_count = bio_orchestrator_compute_startup_order(
+        orchestrator, order, BIO_ORCHESTRATOR_MAX_MODULES);
+
+    if (order_count < 0) {
+        NIMCP_LOGGING_ERROR("Self-assembly: failed to compute startup order");
+        return -1;
+    }
+
+    if (order_count == 0) {
+        if (orchestrator->config.enable_logging) {
+            NIMCP_LOGGING_INFO("Self-assembly: no modules to start");
+        }
+        return 0;
+    }
+
+    /* Invoke handler callbacks before starting (to register message handlers) */
+    if (orchestrator->wiring_diagram) {
+        int invoked = bio_orchestrator_invoke_handler_callbacks(orchestrator);
+        if (invoked > 0 && orchestrator->config.enable_logging) {
+            NIMCP_LOGGING_INFO("Self-assembly: invoked %d handler callbacks", invoked);
+        }
+    }
+
+    /* Start modules in computed order */
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    uint32_t started = 0;
+    for (int i = 0; i < order_count; i++) {
+        bio_module_entry_t* entry = find_module(orchestrator, order[i]);
+        if (!entry) continue;
+        if (!entry->enabled) continue;
+
+        /* Mark as healthy on startup (actual health check can happen later) */
+        entry->health_status = BIO_MODULE_HEALTH_HEALTHY;
+        started++;
+
+        if (orchestrator->config.enable_logging) {
+            NIMCP_LOGGING_DEBUG("Self-assembly: started module [%u/%d] %s (0x%04X)",
+                started, order_count, entry->module_name, entry->module_id);
+        }
+    }
+
+    orchestrator->state = BIO_ORCHESTRATOR_RUNNING;
+    orchestrator->stats.active_modules = started;
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+
+    if (orchestrator->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Self-assembly: started %u modules in dependency order", started);
+    }
+
+    return (int)started;
+}
+
+/**
+ * WHAT: Stop modules in reverse dependency order
+ * WHY:  Ensure dependents stop before their dependencies
+ * HOW:  Compute startup order, traverse in reverse
+ */
+int bio_orchestrator_stop_modules_ordered(bio_async_orchestrator_t* orchestrator) {
+    if (!orchestrator) return -1;
+
+    /* Compute startup order */
+    bio_module_id_t order[BIO_ORCHESTRATOR_MAX_MODULES];
+    int order_count = bio_orchestrator_compute_startup_order(
+        orchestrator, order, BIO_ORCHESTRATOR_MAX_MODULES);
+
+    if (order_count < 0) {
+        NIMCP_LOGGING_ERROR("Self-assembly: failed to compute shutdown order");
+        return -1;
+    }
+
+    if (order_count == 0) {
+        if (orchestrator->config.enable_logging) {
+            NIMCP_LOGGING_INFO("Self-assembly: no modules to stop");
+        }
+        return 0;
+    }
+
+    /* Stop modules in REVERSE order (dependents first) */
+    nimcp_platform_mutex_lock(orchestrator->mutex);
+
+    uint32_t stopped = 0;
+    for (int i = order_count - 1; i >= 0; i--) {
+        bio_module_entry_t* entry = find_module(orchestrator, order[i]);
+        if (!entry) continue;
+
+        /* Mark health as unknown after stop */
+        entry->health_status = BIO_MODULE_HEALTH_UNKNOWN;
+        stopped++;
+
+        if (orchestrator->config.enable_logging) {
+            NIMCP_LOGGING_DEBUG("Self-assembly: stopped module [%u/%d] %s (0x%04X)",
+                stopped, order_count, entry->module_name, entry->module_id);
+        }
+    }
+
+    orchestrator->state = BIO_ORCHESTRATOR_STOPPED;
+    orchestrator->stats.active_modules = 0;
+
+    nimcp_platform_mutex_unlock(orchestrator->mutex);
+
+    if (orchestrator->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Self-assembly: stopped %u modules in reverse order", stopped);
+    }
+
+    return (int)stopped;
+}
+
+/**
+ * WHAT: Get module's computed startup position
+ * WHY:  Introspection of self-assembly results
+ * HOW:  Compute order, find module's position
+ */
+int bio_orchestrator_get_module_startup_position(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id
+) {
+    if (!orchestrator) return -1;
+
+    /* Compute startup order */
+    bio_module_id_t order[BIO_ORCHESTRATOR_MAX_MODULES];
+    int order_count = bio_orchestrator_compute_startup_order(
+        orchestrator, order, BIO_ORCHESTRATOR_MAX_MODULES);
+
+    if (order_count <= 0) return -1;
+
+    /* Find module's position */
+    for (int i = 0; i < order_count; i++) {
+        if (order[i] == module_id) {
+            return i;
+        }
+    }
+
+    return -1;  /* Not found */
+}
+
+/**
+ * WHAT: Validate self-assembly configuration
+ * WHY:  Prevent startup failures due to invalid configurations
+ * HOW:  Delegates to wiring_diagram_validate()
+ */
+int bio_orchestrator_validate_self_assembly(
+    bio_async_orchestrator_t* orchestrator,
+    wiring_validation_result_t* result
+) {
+    if (!orchestrator) return -1;
+
+    /* No wiring diagram means no self-assembly - not an error, just not available */
+    if (!orchestrator->wiring_diagram) {
+        if (result) {
+            memset(result, 0, sizeof(wiring_validation_result_t));
+            result->valid = true;  /* Trivially valid (no wiring to validate) */
+        }
+        return 0;
+    }
+
+    /* Use local result if none provided */
+    wiring_validation_result_t local_result;
+    wiring_validation_result_t* use_result = result ? result : &local_result;
+
+    int validate_result = wiring_diagram_validate(orchestrator->wiring_diagram, use_result);
+
+    if (orchestrator->config.enable_logging) {
+        if (use_result->valid) {
+            NIMCP_LOGGING_DEBUG("Self-assembly validation passed");
+        } else {
+            NIMCP_LOGGING_WARN("Self-assembly validation failed: %u errors",
+                use_result->error_count);
+            if (use_result->has_circular_deps) {
+                NIMCP_LOGGING_WARN("  - Circular dependencies detected");
+            }
+            if (use_result->has_missing_deps) {
+                NIMCP_LOGGING_WARN("  - Missing dependencies detected");
+            }
+        }
+    }
+
+    return validate_result;
+}

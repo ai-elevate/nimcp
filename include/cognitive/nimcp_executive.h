@@ -760,6 +760,93 @@ float executive_get_immune_adjusted_inhibition(executive_controller_t* exec);
  */
 void executive_set_sleep_state(executive_controller_t* exec, sleep_state_t state);
 
+//=============================================================================
+// Monte Carlo Integration API
+//=============================================================================
+
+/**
+ * @brief Select task using epsilon-greedy strategy with MC sampling
+ *
+ * WHAT: Choose task with exploration-exploitation trade-off
+ * WHY:  Enable adaptive task selection that explores sub-optimal options
+ * HOW:  With probability epsilon, pick random task; else pick best
+ *
+ * BIOLOGICAL BASIS:
+ * - Dopaminergic exploration vs exploitation trade-off
+ * - Random exploration when uncertainty is high
+ *
+ * @param exec Executive controller
+ * @param epsilon Exploration probability [0, 1]
+ * @return Selected task or NULL if no tasks
+ *
+ * COMPLEXITY: O(n) where n = number of pending tasks
+ * THREAD-SAFE: No
+ */
+task_descriptor_t* executive_select_task_epsilon_greedy_mc(
+    executive_controller_t* exec,
+    float epsilon);
+
+/**
+ * @brief Estimate task value via Monte Carlo rollouts
+ *
+ * WHAT: Estimate expected value of completing a task
+ * WHY:  Enable informed task selection based on future rewards
+ * HOW:  Simulate task completion trajectories, average outcomes
+ *
+ * BIOLOGICAL BASIS:
+ * - Prefrontal value estimation via mental simulation
+ * - Model-based reinforcement learning
+ *
+ * @param exec Executive controller
+ * @param task Task to evaluate
+ * @param num_rollouts Number of MC simulations
+ * @param discount Temporal discount factor [0, 1]
+ * @return Estimated task value
+ *
+ * COMPLEXITY: O(num_rollouts * avg_rollout_length)
+ * THREAD-SAFE: No
+ */
+float executive_estimate_task_value_mc(
+    executive_controller_t* exec,
+    const task_descriptor_t* task,
+    uint32_t num_rollouts,
+    float discount);
+
+/**
+ * @brief Select task using softmax with MC value estimation
+ *
+ * WHAT: Probabilistically select task based on estimated values
+ * WHY:  Softer exploration than epsilon-greedy, respects value estimates
+ * HOW:  Compute values via MC, apply softmax, sample
+ *
+ * BIOLOGICAL BASIS:
+ * - Temperature modulates exploration/exploitation
+ * - Low temperature = exploit best, high temperature = explore randomly
+ *
+ * @param exec Executive controller
+ * @param temperature Softmax temperature (higher = more random)
+ * @param num_rollouts MC rollouts per task for value estimation
+ * @return Selected task or NULL if no tasks
+ *
+ * COMPLEXITY: O(n * num_rollouts)
+ * THREAD-SAFE: No
+ */
+task_descriptor_t* executive_select_task_softmax_mc(
+    executive_controller_t* exec,
+    float temperature,
+    uint32_t num_rollouts);
+
+/**
+ * @brief Get thread-local MC seed for executive module
+ *
+ * WHAT: Access thread-local RNG seed
+ * WHY:  Allow external seeding for reproducibility
+ * HOW:  Return pointer to thread-local seed variable
+ *
+ * @return Pointer to thread-local seed
+ */
+uint32_t* executive_get_mc_seed(void);
+
 #ifdef __cplusplus
 }
 #endif

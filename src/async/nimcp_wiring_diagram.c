@@ -16,6 +16,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/algorithms/nimcp_sort.h"
 #include <cjson/cJSON.h>
 #include <string.h>
 #include <stdio.h>
@@ -126,6 +127,50 @@ static void write_relation_json(FILE* file, const char* from, const char* to,
     const char* rel_type);
 static void populate_config_from_json(wiring_module_config_t* config, cJSON* json,
     const char* name);
+
+/* ============================================================================
+ * Topological Sort Callback Wrappers (for nimcp_sort.h API)
+ * ============================================================================ */
+
+/**
+ * @brief Get dependency count for a module (callback for nimcp_topological_sort)
+ */
+static uint32_t wd_get_dep_count(uint32_t node_index, void* user_data) {
+    const wiring_diagram_t* wd = (const wiring_diagram_t*)user_data;
+    if (node_index >= wd->module_count || !wd->module_configs[node_index]) {
+        return 0;
+    }
+    return wd->module_configs[node_index]->depends_on_count;
+}
+
+/**
+ * @brief Get a specific dependency of a module (callback for nimcp_topological_sort)
+ *
+ * @note Returns the INDEX of the dependency module, not its module_id
+ */
+static uint32_t wd_get_dep(uint32_t node_index, uint32_t dep_index, void* user_data) {
+    const wiring_diagram_t* wd = (const wiring_diagram_t*)user_data;
+    if (node_index >= wd->module_count || !wd->module_configs[node_index]) {
+        return UINT32_MAX;
+    }
+
+    wiring_module_config_t* config = wd->module_configs[node_index];
+    if (dep_index >= config->depends_on_count) {
+        return UINT32_MAX;
+    }
+
+    /* Get the module_id of the dependency */
+    bio_module_id_t dep_id = config->depends_on[dep_index];
+
+    /* Find the index of this dependency in the module array */
+    for (uint32_t i = 0; i < wd->module_count; i++) {
+        if (wd->module_configs[i] && wd->module_configs[i]->module_id == dep_id) {
+            return i;
+        }
+    }
+
+    return UINT32_MAX;  /* Dependency not found in loaded modules */
+}
 
 /* ============================================================================
  * Lifecycle Implementation
@@ -589,6 +634,18 @@ uint32_t wiring_diagram_get_all_modules(
 
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)wd->mutex);
     return count;
+}
+
+/**
+ * @brief Get total module count
+ *
+ * WHAT: Return the number of modules loaded in the wiring diagram
+ * WHY:  Quick check for self-assembly availability
+ * HOW:  Return module_count from wiring diagram
+ */
+uint32_t wiring_diagram_get_module_count(const wiring_diagram_t* wd) {
+    if (!wd) return 0;
+    return wd->module_count;
 }
 
 /* ============================================================================
@@ -2192,89 +2249,58 @@ int wiring_diagram_get_startup_order(
         return 0;
     }
 
-    /* Kahn's algorithm for topological sort */
+    /* Use consolidated topological sort from nimcp_sort.h */
+    nimcp_topo_config_t config = {
+        .node_count = wd->module_count,
+        .user_data = (void*)wd,
+        .get_dep_count = wd_get_dep_count,
+        .get_dep = wd_get_dep,
+        .get_dependent_count = NULL,  /* Use fallback scan */
+        .get_dependent = NULL
+    };
 
-    /* Compute in-degree for each module */
-    uint32_t* in_degree = (uint32_t*)nimcp_calloc(wd->module_count, sizeof(uint32_t));
-    if (!in_degree) {
+    /* Allocate temporary index array for sorted order */
+    uint32_t* sorted_indices = (uint32_t*)nimcp_calloc(wd->module_count, sizeof(uint32_t));
+    if (!sorted_indices) {
         if (wd->mutex) {
             nimcp_platform_mutex_unlock(wd->mutex);
         }
         return -1;
-    }
-
-    /* Map module_id to index for quick lookup */
-    for (uint32_t i = 0; i < wd->module_count; i++) {
-        wiring_module_config_t* module = wd->module_configs[i];
-        if (!module) continue;
-
-        /* Count incoming edges (dependencies) */
-        in_degree[i] = module->depends_on_count;
-    }
-
-    /* Queue for modules with zero in-degree */
-    uint32_t* queue = (uint32_t*)nimcp_calloc(wd->module_count, sizeof(uint32_t));
-    if (!queue) {
-        nimcp_free(in_degree);
-        if (wd->mutex) {
-            nimcp_platform_mutex_unlock(wd->mutex);
-        }
-        return -1;
-    }
-
-    uint32_t queue_head = 0, queue_tail = 0;
-
-    /* Initialize queue with zero in-degree nodes */
-    for (uint32_t i = 0; i < wd->module_count; i++) {
-        if (in_degree[i] == 0 && wd->module_configs[i]) {
-            queue[queue_tail++] = i;
-        }
     }
 
     uint32_t sorted_count = 0;
+    nimcp_sort_result_t result = nimcp_topological_sort(
+        &config, sorted_indices, wd->module_count, &sorted_count);
 
-    while (queue_head < queue_tail && sorted_count < max_modules) {
-        uint32_t curr_idx = queue[queue_head++];
-        wiring_module_config_t* curr = wd->module_configs[curr_idx];
-
-        if (!curr) continue;
-
-        /* Add to output */
-        order_out[sorted_count++] = curr->module_id;
-
-        /* Reduce in-degree for all modules that depend on this one */
-        for (uint32_t i = 0; i < wd->module_count; i++) {
-            wiring_module_config_t* other = wd->module_configs[i];
-            if (!other) continue;
-
-            for (uint32_t j = 0; j < other->depends_on_count; j++) {
-                if (other->depends_on[j] == curr->module_id) {
-                    in_degree[i]--;
-                    if (in_degree[i] == 0) {
-                        queue[queue_tail++] = i;
-                    }
-                    break;
-                }
-            }
+    /* Map indices back to module IDs */
+    uint32_t output_count = (sorted_count < max_modules) ? sorted_count : max_modules;
+    for (uint32_t i = 0; i < output_count; i++) {
+        uint32_t idx = sorted_indices[i];
+        if (idx < wd->module_count && wd->module_configs[idx]) {
+            order_out[i] = wd->module_configs[idx]->module_id;
         }
     }
 
-    nimcp_free(in_degree);
-    nimcp_free(queue);
+    nimcp_free(sorted_indices);
 
     if (wd->mutex) {
         nimcp_platform_mutex_unlock(wd->mutex);
     }
 
-    /* Check if all modules were sorted (no cycle) */
-    if (sorted_count < wd->module_count) {
+    /* Check for cycles */
+    if (result == NIMCP_SORT_ERROR_CYCLE) {
         NIMCP_LOGGING_WARN("wiring_diagram_get_startup_order: cycle detected, only %u/%u sorted",
             sorted_count, wd->module_count);
         return -1;
     }
 
-    NIMCP_LOGGING_DEBUG("wiring_diagram_get_startup_order: computed order for %u modules", sorted_count);
-    return (int)sorted_count;
+    if (result != NIMCP_SORT_OK) {
+        NIMCP_LOGGING_ERROR("wiring_diagram_get_startup_order: sort error %d", result);
+        return -1;
+    }
+
+    NIMCP_LOGGING_DEBUG("wiring_diagram_get_startup_order: computed order for %u modules", output_count);
+    return (int)output_count;
 }
 
 int wiring_diagram_get_dependency_chain(

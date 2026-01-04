@@ -5,6 +5,7 @@
 #include "core/brain/subcortical/nimcp_bg_model_based.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/algorithms/nimcp_monte_carlo.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -51,6 +52,9 @@ struct bg_model_based {
 
     /* Planning state */
     uint32_t last_planned_action;
+
+    /* Random state (uses nimcp_monte_carlo utilities) */
+    uint32_t rand_seed;
 
     /* Statistics */
     bg_mb_stats_t stats;
@@ -169,6 +173,9 @@ bg_model_based_t* bg_mb_create(const bg_mb_config_t* config) {
 
     /* Create mutex */
     mb->mutex = nimcp_mutex_create(NULL);
+
+    /* Initialize thread-safe RNG seed */
+    mb->rand_seed = mc_seed_from_time();
 
     return mb;
 
@@ -472,8 +479,8 @@ int bg_mb_simulate_trajectory(bg_model_based_t* mb,
         trajectory->total_return += discount * reward;
         discount *= gamma;
 
-        /* Sample next state */
-        float r = (float)rand() / RAND_MAX;
+        /* Sample next state using thread-safe RNG */
+        float r = mc_random_uniform(&mb->rand_seed);
         float cumsum = 0.0f;
         uint32_t next_state = 0;
         for (uint32_t sp = 0; sp < mb->config.num_states; sp++) {
@@ -505,7 +512,7 @@ int bg_mb_prioritized_sweep(bg_model_based_t* mb, uint32_t num_updates) {
     float gamma = mb->config.discount_factor;
 
     for (uint32_t u = 0; u < num_updates; u++) {
-        uint32_t s = (uint32_t)rand() % mb->config.num_states;
+        uint32_t s = mc_random_int(&mb->rand_seed, mb->config.num_states);
 
         /* Compute V(s) = max_a Q(s,a) */
         float max_q = -1e9f;
@@ -652,8 +659,8 @@ int bg_mb_replay(bg_model_based_t* mb, uint32_t num_replays) {
     nimcp_mutex_lock(mb->mutex);
 
     for (uint32_t r = 0; r < num_replays; r++) {
-        /* Sample random experience */
-        uint32_t idx = (uint32_t)rand() % mb->replay_count;
+        /* Sample random experience using thread-safe RNG */
+        uint32_t idx = mc_random_int(&mb->rand_seed, mb->replay_count);
         mb_replay_entry_t* entry = &mb->replay_buffer[idx];
 
         /* Update models */

@@ -524,6 +524,56 @@ void quantum_shannon_print_bottlenecks(const quantum_shannon_diffusion_t* qsd);
  */
 bool quantum_shannon_verify(const quantum_shannon_diffusion_t* qsd);
 
+//=============================================================================
+// Monte Carlo Integration API
+//=============================================================================
+
+/* Forward declarations for QMC types */
+struct qmc_entropy_result;
+
+/**
+ * @brief Estimate network entropy using Monte Carlo sampling
+ *
+ * Faster than O(N) direct computation for large networks.
+ *
+ * @param qsd Quantum Shannon context
+ * @param num_samples MC samples (0 = auto)
+ * @param result Output entropy estimate
+ * @return true on success
+ */
+bool quantum_shannon_estimate_entropy_mc(
+    quantum_shannon_diffusion_t* qsd,
+    uint32_t num_samples,
+    struct qmc_entropy_result* result
+);
+
+/**
+ * @brief Detect bottlenecks using adaptive MCMC with early stopping
+ *
+ * Finds network bottlenecks faster than full scan.
+ *
+ * @param qsd Quantum Shannon context
+ * @param max_bottlenecks Maximum bottlenecks to find
+ * @param threshold Capacity threshold (0-1)
+ * @param bottleneck_indices Output array
+ * @param num_found Output: count found
+ * @return true on success
+ */
+bool quantum_shannon_detect_bottlenecks_mc(
+    quantum_shannon_diffusion_t* qsd,
+    uint32_t max_bottlenecks,
+    float threshold,
+    uint32_t* bottleneck_indices,
+    uint32_t* num_found
+);
+
+/**
+ * @brief Get thread-local MC seed for quantum shannon operations
+ *
+ * @return Pointer to seed
+ */
+uint32_t* quantum_shannon_get_mc_seed(void);
+
 #ifdef __cplusplus
 }
 #endif

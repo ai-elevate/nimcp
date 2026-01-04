@@ -122,6 +122,33 @@ int hypothesis_get_stats(const hypothesis_engine_t* engine, hypogen_stats_t* sta
 void hypothesis_reset_stats(hypothesis_engine_t* engine);
 const char* hypothesis_get_last_error(void);
 
+/* MCTS-based Hypothesis Search */
+hypogen_theory_t* hypothesis_search_mcts(
+    hypothesis_engine_t* engine,
+    hypogen_theory_t** theories,
+    uint32_t num_theories,
+    uint32_t num_iterations);
+
+/* Monte Carlo Utilities */
+hypogen_theory_t* hypothesis_sample_mc(
+    hypothesis_engine_t* engine,
+    hypogen_theory_t** theories,
+    uint32_t num_theories,
+    float temperature);
+
+float hypothesis_estimate_confidence_mc(
+    hypothesis_engine_t* engine,
+    const hypogen_theory_t* theory,
+    uint32_t num_samples);
+
+void hypothesis_add_exploration_noise_mc(
+    hypothesis_engine_t* engine,
+    hypogen_theory_t** theories,
+    uint32_t num_theories,
+    float noise_scale);
+
+uint32_t* hypothesis_get_mc_seed(hypothesis_engine_t* engine);
+
 #ifdef __cplusplus
 }
 #endif

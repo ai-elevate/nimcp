@@ -24,12 +24,20 @@
 
 #include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/algorithms/nimcp_monte_carlo.h"
+#include "utils/quantum/nimcp_quantum_monte_carlo.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <float.h>
 #include <time.h>
+
+//=============================================================================
+// Monte Carlo Integration - Thread-local seed for reproducibility
+//=============================================================================
+
+static __thread uint32_t g_qa_mc_seed = 0;
 
 //=============================================================================
 // Bio-Async State
@@ -101,9 +109,9 @@ static void init_rng(quantum_annealer_t annealer) {
 /**
  * @brief Generate random float in [0, 1)
  *
- * WHAT: Fast random number generation
+ * WHAT: Fast random number generation using Monte Carlo utilities
  * WHY:  Need many random numbers during annealing
- * HOW:  Linear congruential generator
+ * HOW:  Use thread-safe mc_random_uniform() from MC utilities
  *
  * @param annealer Annealer instance
  * @return Random float in [0, 1)
@@ -111,19 +119,24 @@ static void init_rng(quantum_annealer_t annealer) {
  * COMPLEXITY: O(1)
  */
 static float random_float(quantum_annealer_t annealer) {
-    if (!annealer || !annealer->rng_state) return 0.5F;
+    if (!annealer || !annealer->rng_state) {
+        /* Fallback to thread-local seed */
+        if (g_qa_mc_seed == 0) {
+            g_qa_mc_seed = mc_seed_from_time();
+        }
+        return mc_random_uniform(&g_qa_mc_seed);
+    }
 
-    // LCG parameters (Numerical Recipes)
-    *annealer->rng_state = (*annealer->rng_state * 1664525U + 1013904223U);
-    return (*annealer->rng_state) / 4294967296.0F;
+    /* Use annealer-specific seed via MC API for reproducibility */
+    return mc_random_uniform(annealer->rng_state);
 }
 
 /**
  * @brief Generate random Gaussian value
  *
- * WHAT: Box-Muller transform for normal distribution
+ * WHAT: Gaussian random number using Monte Carlo utilities
  * WHY:  Need Gaussian perturbations for state transitions
- * HOW:  Transform uniform random to Gaussian
+ * HOW:  Use mc_random_gaussian() from MC utilities
  *
  * @param annealer Annealer instance
  * @param mean Mean of distribution
@@ -133,17 +146,18 @@ static float random_float(quantum_annealer_t annealer) {
  * COMPLEXITY: O(1)
  */
 static float random_gaussian(quantum_annealer_t annealer, float mean, float stddev) {
-    if (!annealer) return mean;
+    uint32_t* seed;
+    if (!annealer || !annealer->rng_state) {
+        /* Fallback to thread-local seed */
+        if (g_qa_mc_seed == 0) {
+            g_qa_mc_seed = mc_seed_from_time();
+        }
+        seed = &g_qa_mc_seed;
+    } else {
+        seed = annealer->rng_state;
+    }
 
-    // Box-Muller transform
-    float u1 = random_float(annealer);
-    float u2 = random_float(annealer);
-
-    // Avoid log(0)
-    u1 = (u1 < 1e-10F) ? 1e-10F : u1;
-
-    float z = sqrtf(-2.0F * logf(u1)) * cosf(2.0F * M_PI * u2);
-    return mean + stddev * z;
+    return mc_random_normal(seed, mean, stddev);
 }
 
 /**
@@ -578,4 +592,213 @@ float quantum_anneal(
     nimcp_free(neighbor_state);
 
     return best_energy;
+}
+
+//=============================================================================
+// Monte Carlo Enhanced Functions
+//=============================================================================
+
+/**
+ * @brief Adaptive annealing using MCMC proposal learning
+ *
+ * WHAT: Quantum annealing with adaptive proposal distribution
+ * WHY:  Learn optimal step sizes from acceptance history
+ * HOW:  Use qmc_adaptive_anneal() with learned proposal covariance
+ *
+ * @param annealer Annealer instance
+ * @param energy_func Energy function to minimize
+ * @param initial_state Starting state
+ * @param optimized_state Output: best state found
+ * @param dim State dimensionality
+ * @param user_data Passed to energy function
+ * @param result Output: detailed optimization result
+ * @return Best energy found
+ */
+float quantum_annealer_optimize_adaptive_mc(
+    quantum_annealer_t annealer,
+    energy_function_t energy_func,
+    const float* initial_state,
+    float* optimized_state,
+    uint32_t dim,
+    void* user_data,
+    qmc_anneal_result_t* result
+) {
+    if (!annealer || !energy_func || !initial_state || !optimized_state || !result) {
+        return INFINITY;
+    }
+
+    /* Set up QMC adaptive annealing config */
+    qmc_anneal_config_t config = {
+        .initial_temp = annealer->config.initial_temperature,
+        .final_temp = annealer->config.final_temperature,
+        .num_iterations = annealer->config.num_iterations,
+        .quantum_strength = annealer->config.quantum_strength,
+        .strategy = QMC_PROPOSAL_ADAPTIVE,  /* Use adaptive proposal */
+        .target_acceptance = 0.234f,  /* Optimal for random walk MH */
+        .adaptation_interval = 100,
+        .seed = annealer->config.seed
+    };
+
+    /* Initialize result (qmc_adaptive_anneal allocates best_state) */
+    memset(result, 0, sizeof(*result));
+
+    /* Run adaptive annealing */
+    qmc_result_t err = qmc_adaptive_anneal(
+        (qmc_energy_fn)energy_func,
+        initial_state,
+        dim,
+        &config,
+        user_data,
+        result
+    );
+
+    if (err != QMC_OK) {
+        qmc_anneal_result_free(result);
+        return INFINITY;
+    }
+
+    /* Copy best state to output */
+    copy_state(optimized_state, result->best_state, dim);
+
+    return result->final_energy;
+}
+
+/**
+ * @brief Importance sampling for Boltzmann distribution
+ *
+ * WHAT: Sample states proportional to Boltzmann weights
+ * WHY:  Efficient sampling of low-energy configurations
+ * HOW:  Use MC importance sampling with exp(-E/T) weights
+ *
+ * @param annealer Annealer instance
+ * @param energy_func Energy function
+ * @param temperature Current temperature
+ * @param states Array of candidate states (dim x num_states)
+ * @param num_states Number of candidate states
+ * @param dim State dimensionality
+ * @param user_data Passed to energy function
+ * @return Index of sampled state
+ */
+uint32_t quantum_annealer_sample_boltzmann_mc(
+    quantum_annealer_t annealer,
+    energy_function_t energy_func,
+    float temperature,
+    const float* states,
+    uint32_t num_states,
+    uint32_t dim,
+    void* user_data
+) {
+    if (!annealer || !energy_func || !states || num_states == 0) {
+        return 0;
+    }
+
+    /* Compute Boltzmann weights */
+    float* weights = nimcp_malloc(num_states * sizeof(float));
+    if (!weights) return 0;
+
+    float max_energy = -INFINITY;
+    for (uint32_t i = 0; i < num_states; i++) {
+        float E = energy_func(&states[i * dim], dim, user_data);
+        weights[i] = E;
+        if (E > max_energy) max_energy = E;
+    }
+
+    /* Convert to Boltzmann probabilities (shifted for numerical stability) */
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < num_states; i++) {
+        weights[i] = expf(-(weights[i] - max_energy) / temperature);
+        sum += weights[i];
+    }
+
+    /* Normalize */
+    for (uint32_t i = 0; i < num_states; i++) {
+        weights[i] /= sum;
+    }
+
+    /* Sample using MC importance sampling */
+    uint32_t* seed = annealer->rng_state ? annealer->rng_state : &g_qa_mc_seed;
+    if (*seed == 0) {
+        *seed = mc_seed_from_time();
+    }
+
+    uint32_t sampled = qmc_measure_importance(weights, num_states, NULL, seed);
+
+    nimcp_free(weights);
+    return sampled;
+}
+
+/**
+ * @brief Estimate partition function via Monte Carlo
+ *
+ * WHAT: Estimate Z = Σ exp(-E_i/T) for normalization
+ * WHY:  Needed for free energy calculations
+ * HOW:  MC sampling with variance estimation
+ *
+ * @param annealer Annealer instance
+ * @param energy_func Energy function
+ * @param temperature Current temperature
+ * @param sample_states Sampled states for estimation
+ * @param num_samples Number of samples
+ * @param dim State dimensionality
+ * @param user_data Passed to energy function
+ * @param variance_out Output: variance of estimate
+ * @return Estimated partition function
+ */
+float quantum_annealer_estimate_partition_mc(
+    quantum_annealer_t annealer,
+    energy_function_t energy_func,
+    float temperature,
+    const float* sample_states,
+    uint32_t num_samples,
+    uint32_t dim,
+    void* user_data,
+    float* variance_out
+) {
+    if (!annealer || !energy_func || !sample_states || num_samples == 0) {
+        if (variance_out) *variance_out = INFINITY;
+        return 0.0f;
+    }
+
+    /* Compute Boltzmann factors */
+    float sum = 0.0f;
+    float sum_sq = 0.0f;
+    float max_energy = -INFINITY;
+
+    /* First pass: find max energy for numerical stability */
+    for (uint32_t i = 0; i < num_samples; i++) {
+        float E = energy_func(&sample_states[i * dim], dim, user_data);
+        if (E > max_energy) max_energy = E;
+    }
+
+    /* Second pass: compute shifted Boltzmann factors */
+    for (uint32_t i = 0; i < num_samples; i++) {
+        float E = energy_func(&sample_states[i * dim], dim, user_data);
+        float w = expf(-(E - max_energy) / temperature);
+        sum += w;
+        sum_sq += w * w;
+    }
+
+    /* Estimate and variance */
+    float mean = sum / num_samples;
+    float var = (sum_sq / num_samples) - (mean * mean);
+    var = var / num_samples;  /* Variance of mean */
+
+    if (variance_out) {
+        *variance_out = var;
+    }
+
+    /* Scale back by shift factor */
+    return mean * expf(-max_energy / temperature);
+}
+
+/**
+ * @brief Get thread-local MC seed for quantum annealing
+ *
+ * @return Pointer to thread-local seed
+ */
+uint32_t* quantum_annealer_get_mc_seed(void) {
+    if (g_qa_mc_seed == 0) {
+        g_qa_mc_seed = mc_seed_from_time();
+    }
+    return &g_qa_mc_seed;
 }

@@ -587,6 +587,75 @@ float curiosity_evaluate_imagined_novelty(curiosity_engine_t engine,
  */
 int curiosity_request_exploratory_imagination(curiosity_engine_t engine);
 
+//=============================================================================
+// Monte Carlo Integration API
+//=============================================================================
+
+/**
+ * @brief Select exploration action using epsilon-greedy MC strategy
+ *
+ * @param engine Curiosity engine
+ * @param epsilon Exploration probability [0, 1]
+ * @return true if should explore, false if should exploit
+ */
+bool curiosity_should_explore_mc(curiosity_engine_t engine, float epsilon);
+
+/**
+ * @brief Sample topic to explore using novelty-weighted MC sampling
+ *
+ * @param engine Curiosity engine
+ * @param concepts Array of candidate concepts
+ * @param num_concepts Number of candidates
+ * @return Index of selected concept
+ */
+uint32_t curiosity_sample_exploration_target_mc(
+    curiosity_engine_t engine,
+    const char** concepts,
+    uint32_t num_concepts);
+
+/**
+ * @brief Estimate information gain via MC simulation
+ *
+ * @param engine Curiosity engine
+ * @param topic Topic to evaluate
+ * @param num_simulations Number of MC simulations
+ * @return Expected information gain [0, 1]
+ */
+float curiosity_estimate_info_gain_mc(
+    curiosity_engine_t engine,
+    const char* topic,
+    uint32_t num_simulations);
+
+/**
+ * @brief Select question using softmax MC sampling
+ *
+ * @param engine Curiosity engine
+ * @param questions Array of generated questions
+ * @param num_questions Number of questions
+ * @param temperature Softmax temperature (higher = more random)
+ * @return Index of selected question
+ */
+uint32_t curiosity_sample_question_mc(
+    curiosity_engine_t engine,
+    const generated_question_t* questions,
+    uint32_t num_questions,
+    float temperature);
+
+/**
+ * @brief Add exploration noise to curiosity intensity
+ *
+ * @param intensity Base curiosity intensity
+ * @param noise_scale Scale of noise (std dev)
+ * @return Noisy intensity clamped to [0, 1]
+ */
+float curiosity_add_exploration_noise_mc(float intensity, float noise_scale);
+
+/**
+ * @brief Get thread-local MC seed for curiosity module
+ *
+ * @return Pointer to thread-local seed
+ */
+uint32_t* curiosity_get_mc_seed(void);
 
 #ifdef __cplusplus
 }

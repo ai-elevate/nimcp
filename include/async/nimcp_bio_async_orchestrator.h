@@ -1000,6 +1000,115 @@ const char* bio_orchestrator_state_to_string(bio_orchestrator_state_t state);
  */
 const char* bio_module_health_to_string(bio_module_health_t health);
 
+/* ============================================================================
+ * Phase 10: Automatic Self-Assembly API
+ * ============================================================================
+ *
+ * These functions enable KG-driven automatic startup ordering, replacing
+ * hardcoded startup_phase values with dynamic dependency resolution from
+ * the wiring diagram's topological sort.
+ *
+ * BIOLOGICAL BASIS:
+ * -----------------
+ * Neural development is self-organizing - neurons form connections based on
+ * molecular signals rather than explicit blueprints. Similarly, these APIs
+ * enable modules to self-assemble based on their declared dependencies.
+ */
+
+/**
+ * @brief Compute startup order from wiring diagram dependencies
+ *
+ * WHAT: Use KG-driven topological sort to determine module startup sequence
+ * WHY:  Replace hardcoded startup_phase values with automatic ordering
+ * HOW:  Calls wiring_diagram_get_startup_order() using Kahn's algorithm
+ *
+ * @param orchestrator Orchestrator with wiring diagram set
+ * @param order_out Output array for ordered module IDs (caller allocated)
+ * @param max_modules Array capacity
+ * @return Number of modules in order, -1 on error (e.g., circular deps)
+ *
+ * @note Requires wiring diagram to be set via bio_orchestrator_set_wiring_diagram()
+ * @note Falls back to hardcoded phases if wiring diagram not available
+ */
+int bio_orchestrator_compute_startup_order(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t* order_out,
+    uint32_t max_modules
+);
+
+/**
+ * @brief Start modules in KG-computed dependency order
+ *
+ * WHAT: Execute startup using wiring diagram's topological sort
+ * WHY:  Enable true self-assembly without hardcoded phase assignments
+ * HOW:  Compute order via Kahn's algorithm, start each module sequentially
+ *
+ * @param orchestrator Orchestrator
+ * @return Number of modules started, -1 on error
+ *
+ * @note Automatically discovers wiring and invokes handler callbacks
+ * @note Falls back to phase-based startup if wiring diagram not set
+ */
+int bio_orchestrator_start_modules_ordered(bio_async_orchestrator_t* orchestrator);
+
+/**
+ * @brief Stop modules in reverse dependency order
+ *
+ * WHAT: Shutdown modules in reverse topological order
+ * WHY:  Ensure dependents stop before their dependencies
+ * HOW:  Compute startup order, traverse in reverse
+ *
+ * @param orchestrator Orchestrator
+ * @return Number of modules stopped, -1 on error
+ */
+int bio_orchestrator_stop_modules_ordered(bio_async_orchestrator_t* orchestrator);
+
+/**
+ * @brief Check if self-assembly is available
+ *
+ * WHAT: Verify wiring diagram is set and valid for self-assembly
+ * WHY:  Allow callers to check before using self-assembly APIs
+ * HOW:  Check wiring_diagram is set and has modules
+ *
+ * @param orchestrator Orchestrator
+ * @return true if self-assembly is available, false otherwise
+ */
+bool bio_orchestrator_self_assembly_available(
+    const bio_async_orchestrator_t* orchestrator
+);
+
+/**
+ * @brief Get module's computed startup position
+ *
+ * WHAT: Query where a module falls in the computed startup order
+ * WHY:  Introspection of self-assembly results
+ * HOW:  Compute order, find module's position
+ *
+ * @param orchestrator Orchestrator
+ * @param module_id Module to query
+ * @return Position in startup order (0-based), -1 if not found
+ */
+int bio_orchestrator_get_module_startup_position(
+    bio_async_orchestrator_t* orchestrator,
+    bio_module_id_t module_id
+);
+
+/**
+ * @brief Validate self-assembly configuration
+ *
+ * WHAT: Check wiring diagram for circular dependencies and missing deps
+ * WHY:  Prevent startup failures due to invalid configurations
+ * HOW:  Calls wiring_diagram_validate()
+ *
+ * @param orchestrator Orchestrator
+ * @param result Output validation result (optional)
+ * @return 0 if valid, -1 if invalid
+ */
+int bio_orchestrator_validate_self_assembly(
+    bio_async_orchestrator_t* orchestrator,
+    wiring_validation_result_t* result
+);
+
 #ifdef __cplusplus
 }
 #endif

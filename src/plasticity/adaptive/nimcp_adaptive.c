@@ -39,6 +39,7 @@
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
 #include "utils/logging/nimcp_logging.h"
+#include "utils/algorithms/nimcp_sort.h"  // Consolidated sorting algorithms
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_security.h"
@@ -84,6 +85,25 @@
 
 #include "utils/platform/nimcp_platform_once.h"
 #include <stdatomic.h>
+
+/* ============================================================================
+ * Comparison function for sorting neuron importance (descending order)
+ * ============================================================================ */
+
+/**
+ * @brief Compare neuron importance for descending sort
+ *
+ * Used by nimcp_sort to rank neurons by importance (highest first).
+ */
+static int compare_neuron_importance_desc(const void* a, const void* b) {
+    const neuron_importance_t* na = (const neuron_importance_t*)a;
+    const neuron_importance_t* nb = (const neuron_importance_t*)b;
+
+    /* Descending order: higher importance first */
+    if (nb->importance > na->importance) return 1;
+    if (nb->importance < na->importance) return -1;
+    return 0;
+}
 
 static _Atomic(memory_pool_t) g_adaptive_pool = NULL;
 static nimcp_platform_once_t g_adaptive_pool_once = NIMCP_PLATFORM_ONCE_INIT;
@@ -2126,16 +2146,9 @@ uint32_t adaptive_network_rank_neurons(adaptive_network_t network, neuron_import
         rankings[i].most_active_for = NULL;  // TODO: Track pattern associations
     }
 
-    // Simple bubble sort by importance (TODO: use qsort for larger networks)
-    for (uint32_t i = 0; i < num_to_rank - 1; i++) {
-        for (uint32_t j = 0; j < num_to_rank - i - 1; j++) {
-            if (rankings[j].importance < rankings[j + 1].importance) {
-                neuron_importance_t temp = rankings[j];
-                rankings[j] = rankings[j + 1];
-                rankings[j + 1] = temp;
-            }
-        }
-    }
+    // Sort by importance (descending) using consolidated nimcp_sort
+    nimcp_sort(rankings, num_to_rank, sizeof(neuron_importance_t),
+               compare_neuron_importance_desc);
 
     return num_to_rank;
 }

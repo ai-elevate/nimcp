@@ -1263,6 +1263,18 @@ add_e2e_test(e2e_test_wiring_diagram_pipeline
 )
 
 # ============================================================================
+# Omnidirectional Inference Pipeline E2E Test (2026-01-04)
+# ============================================================================
+# WHAT: E2E test for complete omnidirectional inference pipeline
+# WHY:  Verify bidirectional JEPA, Hopfield memory, predictive hierarchy,
+#       temporal replay, and all cortical bridges work together
+# HOW:  Test full perception-to-action pipeline with all prediction directions
+add_e2e_test(e2e_test_omni_inference_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_omni_inference_pipeline.cpp
+)
+
+# ============================================================================
 # GPU Kernel Pipeline E2E Tests (2025-12-31)
 # ============================================================================
 # WHAT: E2E tests for GPU training, inference, SNN, and LNN pipelines

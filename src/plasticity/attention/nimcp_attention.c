@@ -23,10 +23,65 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/encoding/nimcp_positional_encoding.h"
+#include "utils/algorithms/nimcp_monte_carlo.h"  // MC integration
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_security.h"
 #include "core/brain/nimcp_brain_kg_helpers.h"  // KG self-awareness integration
+
+//=============================================================================
+// Monte Carlo Integration - GPU acceleration with CPU fallback
+//=============================================================================
+
+static __thread uint32_t g_attention_mc_seed = 0;
+
+#ifdef NIMCP_ENABLE_CUDA
+#include "gpu/quantum/nimcp_qmc_gpu.h"
+#include "gpu/context/nimcp_gpu_context.h"
+
+/* Module-level GPU resources - initialized on first use */
+static nimcp_gpu_context_t* g_attention_gpu_ctx = NULL;
+static qmc_gpu_rng_t g_attention_gpu_rng = NULL;
+static bool g_attention_gpu_init_attempted = false;
+
+/**
+ * @brief Initialize GPU resources for attention MC operations
+ */
+static bool attention_init_gpu_mc(void) {
+    if (g_attention_gpu_init_attempted) {
+        return g_attention_gpu_rng != NULL;
+    }
+    g_attention_gpu_init_attempted = true;
+
+    if (!qmc_gpu_is_available()) {
+        return false;
+    }
+
+    g_attention_gpu_ctx = nimcp_gpu_context_create_auto();
+    if (!g_attention_gpu_ctx) {
+        return false;
+    }
+
+    g_attention_gpu_rng = qmc_gpu_rng_create(g_attention_gpu_ctx, 4096, 0);
+    if (!g_attention_gpu_rng) {
+        nimcp_gpu_context_destroy(g_attention_gpu_ctx);
+        g_attention_gpu_ctx = NULL;
+        return false;
+    }
+
+    return true;
+}
+
+static inline bool attention_has_gpu_mc(void) {
+    if (!g_attention_gpu_init_attempted) {
+        attention_init_gpu_mc();
+    }
+    return g_attention_gpu_rng != NULL;
+}
+
+#else  /* !NIMCP_ENABLE_CUDA */
+static inline bool attention_has_gpu_mc(void) { return false; }
+#endif /* NIMCP_ENABLE_CUDA */
 
 /* WHAT: Quantum attention bridge integration
  * WHY:  O(√N) speedup for attention head selection
@@ -552,6 +607,11 @@ static bool initialize_weights(attention_head_t head)
         return false;
     }
 
+    /* Ensure MC seed is initialized */
+    if (g_attention_mc_seed == 0) {
+        g_attention_mc_seed = mc_seed_from_time();
+    }
+
     const uint32_t input_dim = head->config.input_dim;
     const uint32_t key_dim = head->config.key_dim;
     const uint32_t value_dim = head->config.value_dim;
@@ -565,24 +625,24 @@ static bool initialize_weights(attention_head_t head)
     const float value_scale = sqrtf(2.0F / (input_dim + value_dim));
     const float output_scale = sqrtf(2.0F / (value_dim + output_dim));
 
-    /* WHAT: Initialize each weight matrix
+    /* WHAT: Initialize each weight matrix using MC sampling
      * WHY:  Random initialization for symmetry breaking
      * NOTE: Single-level loops, no nesting
      */
     for (uint32_t i = 0; i < input_dim * key_dim; i++) {
-        head->query_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * query_scale;
+        head->query_weights[i] = (mc_random_uniform(&g_attention_mc_seed) - 0.5F) * query_scale;
     }
 
     for (uint32_t i = 0; i < input_dim * key_dim; i++) {
-        head->key_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * key_scale;
+        head->key_weights[i] = (mc_random_uniform(&g_attention_mc_seed) - 0.5F) * key_scale;
     }
 
     for (uint32_t i = 0; i < input_dim * value_dim; i++) {
-        head->value_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * value_scale;
+        head->value_weights[i] = (mc_random_uniform(&g_attention_mc_seed) - 0.5F) * value_scale;
     }
 
     for (uint32_t i = 0; i < value_dim * output_dim; i++) {
-        head->output_weights[i] = ((float)rand() / RAND_MAX - 0.5F) * output_scale;
+        head->output_weights[i] = (mc_random_uniform(&g_attention_mc_seed) - 0.5F) * output_scale;
     }
 
     return true;
@@ -2240,4 +2300,202 @@ bool multihead_attention_query_self_knowledge(multihead_attention_t mha)
     }
 
     return false;
+}
+
+//=============================================================================
+// Monte Carlo Integration API - GPU default with CPU fallback
+//=============================================================================
+
+/**
+ * @brief Apply stochastic attention dropout using MC sampling
+ *
+ * WHAT: Randomly zero attention weights for regularization
+ * WHY:  Prevent overfitting, encourage diverse attention patterns
+ * HOW:  GPU: Parallel random sampling (default for seq_length >= 256)
+ *       CPU: Sequential sampling (fallback)
+ *
+ * @param attention_weights Attention weights to modify in-place
+ * @param seq_length Sequence length
+ * @param dropout_rate Probability of dropping [0, 1]
+ */
+void attention_apply_dropout_mc(float* attention_weights,
+                                 uint32_t seq_length,
+                                 float dropout_rate)
+{
+    if (!attention_weights || seq_length == 0 || dropout_rate <= 0.0f) {
+        return;
+    }
+
+    float scale = 1.0f / (1.0f - dropout_rate);  /* Inverted dropout */
+
+#ifdef NIMCP_ENABLE_CUDA
+    /* Try GPU acceleration first (default for large sequences) */
+    if (attention_has_gpu_mc() && seq_length >= 256) {
+        size_t dims[] = {seq_length};
+        nimcp_gpu_tensor_t* samples = nimcp_gpu_tensor_create(
+            g_attention_gpu_ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+
+        if (samples) {
+            if (qmc_gpu_sample_uniform(g_attention_gpu_ctx, g_attention_gpu_rng, samples)) {
+                float* h_samples = nimcp_calloc(seq_length, sizeof(float));
+                if (h_samples) {
+                    cudaMemcpy(h_samples, samples->data, seq_length * sizeof(float), cudaMemcpyDeviceToHost);
+
+                    for (uint32_t i = 0; i < seq_length; i++) {
+                        if (h_samples[i] < dropout_rate) {
+                            attention_weights[i] = 0.0f;
+                        } else {
+                            attention_weights[i] *= scale;
+                        }
+                    }
+
+                    nimcp_free(h_samples);
+                    nimcp_gpu_tensor_destroy(samples);
+                    return;
+                }
+            }
+            nimcp_gpu_tensor_destroy(samples);
+        }
+    }
+#endif
+
+    /* CPU fallback */
+    if (g_attention_mc_seed == 0) {
+        g_attention_mc_seed = mc_seed_from_time();
+    }
+
+    for (uint32_t i = 0; i < seq_length; i++) {
+        if (mc_random_uniform(&g_attention_mc_seed) < dropout_rate) {
+            attention_weights[i] = 0.0f;
+        } else {
+            attention_weights[i] *= scale;
+        }
+    }
+}
+
+/**
+ * @brief Sample attention head using softmax MC sampling
+ *
+ * WHAT: Probabilistically select attention head based on importance
+ * WHY:  Enable stochastic head pruning during inference
+ * HOW:  Apply softmax to head importance, sample from distribution
+ *
+ * @param head_importances Array of head importance scores
+ * @param num_heads Number of attention heads
+ * @param temperature Softmax temperature (higher = more random)
+ * @return Index of selected head
+ */
+uint32_t attention_sample_head_mc(const float* head_importances,
+                                   uint32_t num_heads,
+                                   float temperature)
+{
+    if (!head_importances || num_heads == 0 || temperature <= 0.0f) {
+        return 0;
+    }
+
+    if (g_attention_mc_seed == 0) {
+        g_attention_mc_seed = mc_seed_from_time();
+    }
+
+    /* Find max for numerical stability */
+    float max_imp = head_importances[0];
+    for (uint32_t i = 1; i < num_heads; i++) {
+        if (head_importances[i] > max_imp) {
+            max_imp = head_importances[i];
+        }
+    }
+
+    /* Compute softmax probabilities (inline to avoid allocation) */
+    float sum_exp = 0.0f;
+    float* probs = alloca(num_heads * sizeof(float));
+
+    for (uint32_t i = 0; i < num_heads; i++) {
+        probs[i] = expf((head_importances[i] - max_imp) / temperature);
+        sum_exp += probs[i];
+    }
+
+    /* Sample from distribution */
+    float r = mc_random_uniform(&g_attention_mc_seed) * sum_exp;
+    float cumulative = 0.0f;
+
+    for (uint32_t i = 0; i < num_heads; i++) {
+        cumulative += probs[i];
+        if (r < cumulative) {
+            return i;
+        }
+    }
+
+    return num_heads - 1;
+}
+
+/**
+ * @brief Add noise to attention scores for exploration
+ *
+ * WHAT: Add Gaussian noise to attention for diverse patterns
+ * WHY:  Enable exploration during attention computation
+ * HOW:  GPU: Parallel noise generation (default for seq_length >= 256)
+ *       CPU: Sequential noise generation (fallback)
+ *
+ * @param attention_scores Scores to modify in-place
+ * @param seq_length Sequence length
+ * @param noise_scale Standard deviation of noise
+ */
+void attention_add_exploration_noise_mc(float* attention_scores,
+                                         uint32_t seq_length,
+                                         float noise_scale)
+{
+    if (!attention_scores || seq_length == 0 || noise_scale <= 0.0f) {
+        return;
+    }
+
+#ifdef NIMCP_ENABLE_CUDA
+    /* Try GPU acceleration first (default for large sequences) */
+    if (attention_has_gpu_mc() && seq_length >= 256) {
+        size_t dims[] = {seq_length};
+        nimcp_gpu_tensor_t* noise_tensor = nimcp_gpu_tensor_create(
+            g_attention_gpu_ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+
+        if (noise_tensor) {
+            if (qmc_gpu_sample_normal(g_attention_gpu_ctx, g_attention_gpu_rng,
+                                      noise_tensor, 0.0f, noise_scale)) {
+                float* h_noise = nimcp_calloc(seq_length, sizeof(float));
+                if (h_noise) {
+                    cudaMemcpy(h_noise, noise_tensor->data, seq_length * sizeof(float), cudaMemcpyDeviceToHost);
+
+                    for (uint32_t i = 0; i < seq_length; i++) {
+                        attention_scores[i] += h_noise[i];
+                    }
+
+                    nimcp_free(h_noise);
+                    nimcp_gpu_tensor_destroy(noise_tensor);
+                    return;
+                }
+            }
+            nimcp_gpu_tensor_destroy(noise_tensor);
+        }
+    }
+#endif
+
+    /* CPU fallback */
+    if (g_attention_mc_seed == 0) {
+        g_attention_mc_seed = mc_seed_from_time();
+    }
+
+    for (uint32_t i = 0; i < seq_length; i++) {
+        float noise = mc_random_normal(&g_attention_mc_seed, 0.0f, noise_scale);
+        attention_scores[i] += noise;
+    }
+}
+
+/**
+ * @brief Get thread-local MC seed for attention module
+ *
+ * @return Pointer to thread-local seed
+ */
+uint32_t* attention_get_mc_seed(void)
+{
+    if (g_attention_mc_seed == 0) {
+        g_attention_mc_seed = mc_seed_from_time();
+    }
+    return &g_attention_mc_seed;
 }
