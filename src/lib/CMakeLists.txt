@@ -83,6 +83,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_fault_tolerance.c    # Fault tolerance with parietal integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_basal_ganglia.c     # Enhanced basal ganglia action selection
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_broca.c            # Broca's region language production
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_wernicke.c         # Wernicke's region language comprehension
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_collective_cognition.c # Collective cognition subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_gpu.c              # GPU context auto-initialization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_substrate_gpu.c   # GPU substrate subsystem initialization
@@ -246,6 +247,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_syntactic_comprehension.c          # Syntactic parsing and comprehension
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c          # Quantum acceleration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_wernicke_gpu_bio_bridge.c          # GPU bio-async bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_wernicke_immune.c                  # Wernicke-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.c              # Comprehensive NLP integration
 
     # Insula - Interoception, emotional awareness, social emotions (Phase I1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/insula/nimcp_insula_adapter.c                     # Insula core adapter

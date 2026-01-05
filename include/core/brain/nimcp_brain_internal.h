@@ -921,6 +921,39 @@ struct brain_struct {
     bool broca_enabled;                                     // Broca's region enabled for this brain
     uint64_t last_broca_update_us;                          // Last Broca update timestamp
 
+    // === WERNICKE'S REGION INTEGRATION (Language Comprehension) ===
+    //
+    // Wernicke's Region (posterior STG/BA22) provides language comprehension:
+    // - Phonological Analysis: Speech sound recognition (phoneme patterns)
+    // - Lexical Access: Word recognition from phoneme sequences (cohort model)
+    // - Semantic Integration: Meaning extraction and context integration
+    // - Syntactic Comprehension: Sentence structure parsing
+    //
+    // The Wernicke adapter unifies:
+    // - Phonological Analyzer: Phoneme feature extraction
+    // - Lexical Access: Word-form to meaning mapping
+    // - Semantic Integrator: Concept activation and spreading
+    // - Syntactic Parser: Incremental sentence parsing
+    //
+    // Integrates with:
+    // - Neural Substrate: Metabolic modulation of comprehension speed
+    // - Quantum Reasoner: Grover-accelerated lexical search
+    // - Broca's Area: Arcuate fasciculus connection for production
+    // - Semantic Memory: Concept network access
+    // - GPU Acceleration: Parallel phoneme/word recognition
+    // - Omnidirectional Inference: Predictive language processing
+    //
+    struct wernicke_adapter* wernicke;                          // Wernicke's region adapter
+    struct wernicke_substrate_bridge* wernicke_substrate_bridge; // Substrate metabolic integration
+    struct wernicke_quantum_bridge* wernicke_quantum_bridge;    // Quantum-accelerated comprehension
+    struct wernicke_broca_bridge* wernicke_broca_bridge;        // Arcuate fasciculus to Broca
+    struct omni_wernicke_bridge* omni_wernicke_bridge;          // Omnidirectional inference bridge
+    struct wernicke_gpu_bio_bridge* wernicke_gpu_bridge;        // GPU bio-async bridge
+    struct wernicke_immune_bridge* wernicke_immune_bridge;      // Wernicke-immune integration
+    struct wernicke_nlp_bridge* wernicke_nlp_bridge;            // Comprehensive NLP integration
+    bool wernicke_enabled;                                       // Wernicke's region enabled
+    uint64_t last_wernicke_update_us;                           // Last Wernicke update timestamp
+
     // =========================================================================
     // BRAINSTEM INTEGRATION (Midbrain, Pons, Medulla, Reticular Formation)
     // =========================================================================
