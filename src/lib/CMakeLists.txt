@@ -235,7 +235,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.c         # Temporal thalamic bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_temporal.c                  # Temporal factory init
 
-    # Wernicke's Area - Language comprehension (posterior STG, BA 22) (Phase W1-W4)
+    # Wernicke's Area - Language comprehension (posterior STG, BA 22) (Phase W1-W5 Complete)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_wernicke_adapter.c                 # Wernicke core adapter
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_phonological_analyzer.c            # Phonological analysis layer
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_lexical_access.c                   # Lexical access (word recognition)
@@ -243,6 +243,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.c            # Arcuate fasciculus (Broca connection)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.c        # Substrate bridge (metabolic modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c             # Omnidirectional inference bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_syntactic_comprehension.c          # Syntactic parsing and comprehension
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c          # Quantum acceleration
 
     # Insula - Interoception, emotional awareness, social emotions (Phase I1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/insula/nimcp_insula_adapter.c                     # Insula core adapter

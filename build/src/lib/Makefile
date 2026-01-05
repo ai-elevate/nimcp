@@ -13073,6 +13073,222 @@ __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.c.s
 .PHONY : __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.c.s
 
+__/core/brain/regions/wernicke/nimcp_lexical_access.o: __/core/brain/regions/wernicke/nimcp_lexical_access.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_lexical_access.o
+
+# target to build an object file
+__/core/brain/regions/wernicke/nimcp_lexical_access.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_lexical_access.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_lexical_access.c.o
+
+__/core/brain/regions/wernicke/nimcp_lexical_access.i: __/core/brain/regions/wernicke/nimcp_lexical_access.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_lexical_access.i
+
+# target to preprocess a source file
+__/core/brain/regions/wernicke/nimcp_lexical_access.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_lexical_access.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_lexical_access.c.i
+
+__/core/brain/regions/wernicke/nimcp_lexical_access.s: __/core/brain/regions/wernicke/nimcp_lexical_access.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_lexical_access.s
+
+# target to generate assembly for a file
+__/core/brain/regions/wernicke/nimcp_lexical_access.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_lexical_access.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_lexical_access.c.s
+
+__/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.o: __/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.o
+
+# target to build an object file
+__/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c.o
+
+__/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.i: __/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c.i
+
+__/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.s: __/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c.s
+
+__/core/brain/regions/wernicke/nimcp_phonological_analyzer.o: __/core/brain/regions/wernicke/nimcp_phonological_analyzer.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_phonological_analyzer.o
+
+# target to build an object file
+__/core/brain/regions/wernicke/nimcp_phonological_analyzer.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_phonological_analyzer.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_phonological_analyzer.c.o
+
+__/core/brain/regions/wernicke/nimcp_phonological_analyzer.i: __/core/brain/regions/wernicke/nimcp_phonological_analyzer.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_phonological_analyzer.i
+
+# target to preprocess a source file
+__/core/brain/regions/wernicke/nimcp_phonological_analyzer.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_phonological_analyzer.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_phonological_analyzer.c.i
+
+__/core/brain/regions/wernicke/nimcp_phonological_analyzer.s: __/core/brain/regions/wernicke/nimcp_phonological_analyzer.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_phonological_analyzer.s
+
+# target to generate assembly for a file
+__/core/brain/regions/wernicke/nimcp_phonological_analyzer.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_phonological_analyzer.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_phonological_analyzer.c.s
+
+__/core/brain/regions/wernicke/nimcp_semantic_integrator.o: __/core/brain/regions/wernicke/nimcp_semantic_integrator.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_semantic_integrator.o
+
+# target to build an object file
+__/core/brain/regions/wernicke/nimcp_semantic_integrator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_semantic_integrator.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_semantic_integrator.c.o
+
+__/core/brain/regions/wernicke/nimcp_semantic_integrator.i: __/core/brain/regions/wernicke/nimcp_semantic_integrator.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_semantic_integrator.i
+
+# target to preprocess a source file
+__/core/brain/regions/wernicke/nimcp_semantic_integrator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_semantic_integrator.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_semantic_integrator.c.i
+
+__/core/brain/regions/wernicke/nimcp_semantic_integrator.s: __/core/brain/regions/wernicke/nimcp_semantic_integrator.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_semantic_integrator.s
+
+# target to generate assembly for a file
+__/core/brain/regions/wernicke/nimcp_semantic_integrator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_semantic_integrator.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_semantic_integrator.c.s
+
+__/core/brain/regions/wernicke/nimcp_syntactic_comprehension.o: __/core/brain/regions/wernicke/nimcp_syntactic_comprehension.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_syntactic_comprehension.o
+
+# target to build an object file
+__/core/brain/regions/wernicke/nimcp_syntactic_comprehension.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_syntactic_comprehension.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_syntactic_comprehension.c.o
+
+__/core/brain/regions/wernicke/nimcp_syntactic_comprehension.i: __/core/brain/regions/wernicke/nimcp_syntactic_comprehension.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_syntactic_comprehension.i
+
+# target to preprocess a source file
+__/core/brain/regions/wernicke/nimcp_syntactic_comprehension.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_syntactic_comprehension.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_syntactic_comprehension.c.i
+
+__/core/brain/regions/wernicke/nimcp_syntactic_comprehension.s: __/core/brain/regions/wernicke/nimcp_syntactic_comprehension.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_syntactic_comprehension.s
+
+# target to generate assembly for a file
+__/core/brain/regions/wernicke/nimcp_syntactic_comprehension.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_syntactic_comprehension.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_syntactic_comprehension.c.s
+
+__/core/brain/regions/wernicke/nimcp_wernicke_adapter.o: __/core/brain/regions/wernicke/nimcp_wernicke_adapter.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_adapter.o
+
+# target to build an object file
+__/core/brain/regions/wernicke/nimcp_wernicke_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_adapter.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_adapter.c.o
+
+__/core/brain/regions/wernicke/nimcp_wernicke_adapter.i: __/core/brain/regions/wernicke/nimcp_wernicke_adapter.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_adapter.i
+
+# target to preprocess a source file
+__/core/brain/regions/wernicke/nimcp_wernicke_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_adapter.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_adapter.c.i
+
+__/core/brain/regions/wernicke/nimcp_wernicke_adapter.s: __/core/brain/regions/wernicke/nimcp_wernicke_adapter.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_adapter.s
+
+# target to generate assembly for a file
+__/core/brain/regions/wernicke/nimcp_wernicke_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_adapter.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_adapter.c.s
+
+__/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.o: __/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.o
+
+# target to build an object file
+__/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.c.o
+
+__/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.i: __/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.c.i
+
+__/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.s: __/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.c.s
+
+__/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.o: __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.o
+
+# target to build an object file
+__/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c.o
+
+__/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.i: __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c.i
+
+__/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.s: __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c.s
+
+__/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.o: __/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.o
+
+# target to build an object file
+__/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.c.o
+
+__/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.i: __/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.c.i
+
+__/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.s: __/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.c.s
+
 __/core/brain/strategy/nimcp_brain_strategy.o: __/core/brain/strategy/nimcp_brain_strategy.c.o
 .PHONY : __/core/brain/strategy/nimcp_brain_strategy.o
 
@@ -32338,6 +32554,33 @@ help:
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.o"
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.i"
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.s"
+	@echo "... __/core/brain/regions/wernicke/nimcp_lexical_access.o"
+	@echo "... __/core/brain/regions/wernicke/nimcp_lexical_access.i"
+	@echo "... __/core/brain/regions/wernicke/nimcp_lexical_access.s"
+	@echo "... __/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.o"
+	@echo "... __/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.i"
+	@echo "... __/core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.s"
+	@echo "... __/core/brain/regions/wernicke/nimcp_phonological_analyzer.o"
+	@echo "... __/core/brain/regions/wernicke/nimcp_phonological_analyzer.i"
+	@echo "... __/core/brain/regions/wernicke/nimcp_phonological_analyzer.s"
+	@echo "... __/core/brain/regions/wernicke/nimcp_semantic_integrator.o"
+	@echo "... __/core/brain/regions/wernicke/nimcp_semantic_integrator.i"
+	@echo "... __/core/brain/regions/wernicke/nimcp_semantic_integrator.s"
+	@echo "... __/core/brain/regions/wernicke/nimcp_syntactic_comprehension.o"
+	@echo "... __/core/brain/regions/wernicke/nimcp_syntactic_comprehension.i"
+	@echo "... __/core/brain/regions/wernicke/nimcp_syntactic_comprehension.s"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_adapter.o"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_adapter.i"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_adapter.s"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.o"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.i"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.s"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.o"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.i"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.s"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.o"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.i"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.s"
 	@echo "... __/core/brain/strategy/nimcp_brain_strategy.o"
 	@echo "... __/core/brain/strategy/nimcp_brain_strategy.i"
 	@echo "... __/core/brain/strategy/nimcp_brain_strategy.s"
