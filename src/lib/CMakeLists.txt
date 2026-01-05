@@ -1337,6 +1337,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_thalamic_bridge.c     # Thalamic routing
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_substrate_bridge.c    # Metabolic modulation
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_logic_bridge.c        # Symbolic logic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_temporal_bridge.c     # Temporal lobe semantic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_prefrontal_bridge.c   # Prefrontal executive control
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_motor_bridge.c        # Motor articulatory feedback
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_cingulate_bridge.c    # Cingulate error monitoring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_hippocampus_bridge.c  # Hippocampus memory consolidation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_parietal_bridge.c    # Parietal spatial language processing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_insula_bridge.c      # Insula articulatory planning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_cerebellum_bridge.c  # Cerebellum timing and rhythm
 
     # Portia-Immune Integration (Phase BII-P: Adaptive intelligence immune bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/immune/nimcp_portia_attention_immune_bridge.c  # Portia attention-immune integration
