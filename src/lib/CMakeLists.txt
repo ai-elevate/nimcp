@@ -483,6 +483,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_resonance.c  # Phase 10.11.5: Motor Resonance
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_hierarchy.c  # Phase 10.11.6: Hierarchical Goals
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_immune_integration.c  # Phase 10.11.7: Mirror-Immune Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_language_bridge.c  # Phase ML1: Mirror-Language Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace.c  # Global Workspace Architecture (Global Workspace Theory)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_shannon.c  # Phase 1.5.3: Shannon Information-Weighted Competition
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_fep_bridge.c  # Global Workspace-FEP bidirectional integration
@@ -888,6 +889,20 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_audio_logic_bridge.c  # Auditory perception to reasoning
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_thalamic_bridge.c  # Mirror-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.c  # Mirror-prefrontal integration (executive control over imitation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c  # Mirror-visual integration (STS pathway, social salience)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_motor_bridge.c  # Mirror-motor integration (F5->M1 imitation execution)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.c  # Mirror-hippocampus integration (episodic action memory)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.c  # Mirror-hypothalamus integration (stress/circadian modulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_omni_bridge.c  # Mirror-omni integration (bidirectional cognitive bridge)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_multimodal.c  # Phase 10.11.8: Multi-modal action features
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_social_context.c  # Phase 10.11.9: Social context modulation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_tom_bridge.c  # Phase 10.11.10: Mirror-ToM SIMD-optimized integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.c  # Phase 10.11.11: Mirror-Emotion SIMD-optimized integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_attention_bridge.c  # Phase 10.11.12: Mirror-Attention joint attention integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_self_other.c  # Phase 10.11.13: Self-Other Distinction
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c  # Phase 10.11.14: Vicarious Reward Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_habituation.c  # Phase 10.11.15: Habituation Module
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_thalamic_bridge.c  # Personality-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_thalamic_bridge.c  # Self-awareness-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive_thalamic_bridge.c  # Predictive-thalamic integration

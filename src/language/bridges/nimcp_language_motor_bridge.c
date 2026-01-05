@@ -319,7 +319,7 @@ language_motor_bridge_t* language_motor_bridge_create(
     motor_adapter_t* motor,
     const language_motor_config_t* config)
 {
-    language_motor_bridge_t* bridge = nimcp_unified_calloc(1, sizeof(language_motor_bridge_t));
+    language_motor_bridge_t* bridge = nimcp_calloc(1, sizeof(language_motor_bridge_t));
     if (!bridge) {
         return NULL;
     }
@@ -359,7 +359,7 @@ language_motor_bridge_t* language_motor_bridge_create(
     bridge->stats.avg_timing_accuracy = 1.0f;
 
     /* Create logging context */
-    bridge->log_ctx = nimcp_log_get_context(LANGUAGE_MOTOR_MODULE_NAME);
+    bridge->log_ctx = nimcp_log_context_create(NULL, LANGUAGE_MOTOR_MODULE_NAME);
 
     bridge->is_initialized = true;
 
@@ -380,7 +380,7 @@ void language_motor_bridge_destroy(language_motor_bridge_t* bridge)
         NIMCP_LOG_INFO(bridge->log_ctx, "Language-Motor bridge destroyed");
     }
 
-    nimcp_unified_free(bridge);
+    nimcp_free(bridge);
 }
 
 int language_motor_bridge_reset(language_motor_bridge_t* bridge)

@@ -503,13 +503,12 @@ int mirror_immune_update(
         return 0;  /* Too soon */
     }
 
-    nimcp_mutex_lock(integration->mutex);
-
     /* Update social state from mirror neuron activity */
+    /* Note: mirror_immune_update_social_state acquires its own lock */
     mirror_immune_update_social_state(integration, current_time);
 
     /* Apply immune modulation to mirror neurons (Immune → Mirror) */
-    nimcp_mutex_unlock(integration->mutex);  /* Unlock before calling */
+    /* Note: mirror_immune_apply_immune_modulation acquires its own lock */
     mirror_immune_apply_immune_modulation(integration);
     nimcp_mutex_lock(integration->mutex);
 

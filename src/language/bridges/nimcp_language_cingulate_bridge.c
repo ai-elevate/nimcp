@@ -349,7 +349,7 @@ language_cingulate_bridge_t* language_cingulate_bridge_create(
     cingulate_adapter_t* cingulate,
     const language_cingulate_config_t* config)
 {
-    language_cingulate_bridge_t* bridge = nimcp_unified_calloc(1, sizeof(language_cingulate_bridge_t));
+    language_cingulate_bridge_t* bridge = nimcp_calloc(1, sizeof(language_cingulate_bridge_t));
     if (!bridge) {
         return NULL;
     }
@@ -389,7 +389,7 @@ language_cingulate_bridge_t* language_cingulate_bridge_create(
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 
     /* Create logging context */
-    bridge->log_ctx = nimcp_log_get_context(LANGUAGE_CINGULATE_MODULE_NAME);
+    bridge->log_ctx = nimcp_log_context_create(NULL, LANGUAGE_CINGULATE_MODULE_NAME);
 
     bridge->is_initialized = true;
 
@@ -410,7 +410,7 @@ void language_cingulate_bridge_destroy(language_cingulate_bridge_t* bridge)
         NIMCP_LOG_INFO(bridge->log_ctx, "Language-Cingulate bridge destroyed");
     }
 
-    nimcp_unified_free(bridge);
+    nimcp_free(bridge);
 }
 
 int language_cingulate_bridge_reset(language_cingulate_bridge_t* bridge)

@@ -6209,6 +6209,78 @@ __/cognitive/meta_learning/nimcp_meta_learning_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/meta_learning/nimcp_meta_learning_thalamic_bridge.c.s
 .PHONY : __/cognitive/meta_learning/nimcp_meta_learning_thalamic_bridge.c.s
 
+__/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.o: __/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.i: __/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.s: __/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.o: __/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.i: __/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.s: __/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_habituation.o: __/cognitive/mirror_neurons/nimcp_mirror_habituation.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_habituation.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_habituation.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_habituation.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_habituation.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_habituation.i: __/cognitive/mirror_neurons/nimcp_mirror_habituation.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_habituation.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_habituation.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_habituation.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_habituation.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_habituation.s: __/cognitive/mirror_neurons/nimcp_mirror_habituation.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_habituation.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_habituation.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_habituation.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_habituation.c.s
+
 __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.o: __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.o
 .PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.o
 
@@ -6233,6 +6305,54 @@ __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.s
 .PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.c.s
 
+__/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.o: __/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.i: __/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.s: __/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.o: __/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.i: __/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.s: __/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.c.s
+
 __/cognitive/mirror_neurons/nimcp_mirror_immune_integration.o: __/cognitive/mirror_neurons/nimcp_mirror_immune_integration.c.o
 .PHONY : __/cognitive/mirror_neurons/nimcp_mirror_immune_integration.o
 
@@ -6256,6 +6376,78 @@ __/cognitive/mirror_neurons/nimcp_mirror_immune_integration.s: __/cognitive/mirr
 __/cognitive/mirror_neurons/nimcp_mirror_immune_integration.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_immune_integration.c.s
 .PHONY : __/cognitive/mirror_neurons/nimcp_mirror_immune_integration.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_language_bridge.o: __/cognitive/mirror_neurons/nimcp_mirror_language_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_language_bridge.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_language_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_language_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_language_bridge.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_language_bridge.i: __/cognitive/mirror_neurons/nimcp_mirror_language_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_language_bridge.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_language_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_language_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_language_bridge.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_language_bridge.s: __/cognitive/mirror_neurons/nimcp_mirror_language_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_language_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_language_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_language_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_language_bridge.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.o: __/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.i: __/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.s: __/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_multimodal.o: __/cognitive/mirror_neurons/nimcp_mirror_multimodal.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_multimodal.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_multimodal.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_multimodal.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_multimodal.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_multimodal.i: __/cognitive/mirror_neurons/nimcp_mirror_multimodal.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_multimodal.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_multimodal.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_multimodal.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_multimodal.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_multimodal.s: __/cognitive/mirror_neurons/nimcp_mirror_multimodal.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_multimodal.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_multimodal.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_multimodal.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_multimodal.c.s
 
 __/cognitive/mirror_neurons/nimcp_mirror_neurons.o: __/cognitive/mirror_neurons/nimcp_mirror_neurons.c.o
 .PHONY : __/cognitive/mirror_neurons/nimcp_mirror_neurons.o
@@ -6329,6 +6521,54 @@ __/cognitive/mirror_neurons/nimcp_mirror_neurons_sleep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_neurons_sleep_bridge.c.s
 .PHONY : __/cognitive/mirror_neurons/nimcp_mirror_neurons_sleep_bridge.c.s
 
+__/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.o: __/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.i: __/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.s: __/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.o: __/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.i: __/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.s: __/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.c.s
+
 __/cognitive/mirror_neurons/nimcp_mirror_resonance.o: __/cognitive/mirror_neurons/nimcp_mirror_resonance.c.o
 .PHONY : __/cognitive/mirror_neurons/nimcp_mirror_resonance.o
 
@@ -6352,6 +6592,54 @@ __/cognitive/mirror_neurons/nimcp_mirror_resonance.s: __/cognitive/mirror_neuron
 __/cognitive/mirror_neurons/nimcp_mirror_resonance.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_resonance.c.s
 .PHONY : __/cognitive/mirror_neurons/nimcp_mirror_resonance.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_self_other.o: __/cognitive/mirror_neurons/nimcp_mirror_self_other.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_self_other.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_self_other.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_self_other.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_self_other.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_self_other.i: __/cognitive/mirror_neurons/nimcp_mirror_self_other.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_self_other.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_self_other.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_self_other.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_self_other.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_self_other.s: __/cognitive/mirror_neurons/nimcp_mirror_self_other.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_self_other.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_self_other.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_self_other.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_self_other.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_social_context.o: __/cognitive/mirror_neurons/nimcp_mirror_social_context.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_social_context.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_social_context.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_social_context.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_social_context.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_social_context.i: __/cognitive/mirror_neurons/nimcp_mirror_social_context.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_social_context.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_social_context.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_social_context.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_social_context.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_social_context.s: __/cognitive/mirror_neurons/nimcp_mirror_social_context.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_social_context.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_social_context.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_social_context.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_social_context.c.s
 
 __/cognitive/mirror_neurons/nimcp_mirror_stdp.o: __/cognitive/mirror_neurons/nimcp_mirror_stdp.c.o
 .PHONY : __/cognitive/mirror_neurons/nimcp_mirror_stdp.o
@@ -6448,6 +6736,78 @@ __/cognitive/mirror_neurons/nimcp_mirror_thalamic_bridge.s: __/cognitive/mirror_
 __/cognitive/mirror_neurons/nimcp_mirror_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_thalamic_bridge.c.s
 .PHONY : __/cognitive/mirror_neurons/nimcp_mirror_thalamic_bridge.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.o: __/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.i: __/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.s: __/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.o: __/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.i: __/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.s: __/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c.s
+
+__/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.o: __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.o
+
+# target to build an object file
+__/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.o
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.o
+
+__/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.i: __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.i
+
+# target to preprocess a source file
+__/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.i
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.i
+
+__/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.s: __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.s
+.PHONY : __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.s
 
 __/cognitive/nimcp_cognitive_meta_controller.o: __/cognitive/nimcp_cognitive_meta_controller.c.o
 .PHONY : __/cognitive/nimcp_cognitive_meta_controller.o
@@ -19553,6 +19913,54 @@ __/io/stream/nimcp_stream.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/io/stream/nimcp_stream.c.s
 .PHONY : __/io/stream/nimcp_stream.c.s
 
+__/language/bridges/nimcp_language_cerebellum_bridge.o: __/language/bridges/nimcp_language_cerebellum_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_cerebellum_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_cerebellum_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_cerebellum_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_cerebellum_bridge.c.o
+
+__/language/bridges/nimcp_language_cerebellum_bridge.i: __/language/bridges/nimcp_language_cerebellum_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_cerebellum_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_cerebellum_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_cerebellum_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_cerebellum_bridge.c.i
+
+__/language/bridges/nimcp_language_cerebellum_bridge.s: __/language/bridges/nimcp_language_cerebellum_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_cerebellum_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_cerebellum_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_cerebellum_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_cerebellum_bridge.c.s
+
+__/language/bridges/nimcp_language_cingulate_bridge.o: __/language/bridges/nimcp_language_cingulate_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_cingulate_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_cingulate_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_cingulate_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_cingulate_bridge.c.o
+
+__/language/bridges/nimcp_language_cingulate_bridge.i: __/language/bridges/nimcp_language_cingulate_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_cingulate_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_cingulate_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_cingulate_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_cingulate_bridge.c.i
+
+__/language/bridges/nimcp_language_cingulate_bridge.s: __/language/bridges/nimcp_language_cingulate_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_cingulate_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_cingulate_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_cingulate_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_cingulate_bridge.c.s
+
 __/language/bridges/nimcp_language_cognitive_bridge.o: __/language/bridges/nimcp_language_cognitive_bridge.c.o
 .PHONY : __/language/bridges/nimcp_language_cognitive_bridge.o
 
@@ -19601,6 +20009,30 @@ __/language/bridges/nimcp_language_gpu_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_gpu_bridge.c.s
 .PHONY : __/language/bridges/nimcp_language_gpu_bridge.c.s
 
+__/language/bridges/nimcp_language_hippocampus_bridge.o: __/language/bridges/nimcp_language_hippocampus_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_hippocampus_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_hippocampus_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_hippocampus_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_hippocampus_bridge.c.o
+
+__/language/bridges/nimcp_language_hippocampus_bridge.i: __/language/bridges/nimcp_language_hippocampus_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_hippocampus_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_hippocampus_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_hippocampus_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_hippocampus_bridge.c.i
+
+__/language/bridges/nimcp_language_hippocampus_bridge.s: __/language/bridges/nimcp_language_hippocampus_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_hippocampus_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_hippocampus_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_hippocampus_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_hippocampus_bridge.c.s
+
 __/language/bridges/nimcp_language_immune_bridge.o: __/language/bridges/nimcp_language_immune_bridge.c.o
 .PHONY : __/language/bridges/nimcp_language_immune_bridge.o
 
@@ -19624,6 +20056,30 @@ __/language/bridges/nimcp_language_immune_bridge.s: __/language/bridges/nimcp_la
 __/language/bridges/nimcp_language_immune_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_immune_bridge.c.s
 .PHONY : __/language/bridges/nimcp_language_immune_bridge.c.s
+
+__/language/bridges/nimcp_language_insula_bridge.o: __/language/bridges/nimcp_language_insula_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_insula_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_insula_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_insula_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_insula_bridge.c.o
+
+__/language/bridges/nimcp_language_insula_bridge.i: __/language/bridges/nimcp_language_insula_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_insula_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_insula_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_insula_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_insula_bridge.c.i
+
+__/language/bridges/nimcp_language_insula_bridge.s: __/language/bridges/nimcp_language_insula_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_insula_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_insula_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_insula_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_insula_bridge.c.s
 
 __/language/bridges/nimcp_language_logic_bridge.o: __/language/bridges/nimcp_language_logic_bridge.c.o
 .PHONY : __/language/bridges/nimcp_language_logic_bridge.o
@@ -19649,6 +20105,30 @@ __/language/bridges/nimcp_language_logic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_logic_bridge.c.s
 .PHONY : __/language/bridges/nimcp_language_logic_bridge.c.s
 
+__/language/bridges/nimcp_language_motor_bridge.o: __/language/bridges/nimcp_language_motor_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_motor_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_motor_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_motor_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_motor_bridge.c.o
+
+__/language/bridges/nimcp_language_motor_bridge.i: __/language/bridges/nimcp_language_motor_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_motor_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_motor_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_motor_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_motor_bridge.c.i
+
+__/language/bridges/nimcp_language_motor_bridge.s: __/language/bridges/nimcp_language_motor_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_motor_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_motor_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_motor_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_motor_bridge.c.s
+
 __/language/bridges/nimcp_language_omni_bridge.o: __/language/bridges/nimcp_language_omni_bridge.c.o
 .PHONY : __/language/bridges/nimcp_language_omni_bridge.o
 
@@ -19672,6 +20152,30 @@ __/language/bridges/nimcp_language_omni_bridge.s: __/language/bridges/nimcp_lang
 __/language/bridges/nimcp_language_omni_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_omni_bridge.c.s
 .PHONY : __/language/bridges/nimcp_language_omni_bridge.c.s
+
+__/language/bridges/nimcp_language_parietal_bridge.o: __/language/bridges/nimcp_language_parietal_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_parietal_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_parietal_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_parietal_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_parietal_bridge.c.o
+
+__/language/bridges/nimcp_language_parietal_bridge.i: __/language/bridges/nimcp_language_parietal_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_parietal_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_parietal_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_parietal_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_parietal_bridge.c.i
+
+__/language/bridges/nimcp_language_parietal_bridge.s: __/language/bridges/nimcp_language_parietal_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_parietal_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_parietal_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_parietal_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_parietal_bridge.c.s
 
 __/language/bridges/nimcp_language_perception_bridge.o: __/language/bridges/nimcp_language_perception_bridge.c.o
 .PHONY : __/language/bridges/nimcp_language_perception_bridge.o
@@ -19697,6 +20201,30 @@ __/language/bridges/nimcp_language_perception_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_perception_bridge.c.s
 .PHONY : __/language/bridges/nimcp_language_perception_bridge.c.s
 
+__/language/bridges/nimcp_language_prefrontal_bridge.o: __/language/bridges/nimcp_language_prefrontal_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_prefrontal_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_prefrontal_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_prefrontal_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_prefrontal_bridge.c.o
+
+__/language/bridges/nimcp_language_prefrontal_bridge.i: __/language/bridges/nimcp_language_prefrontal_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_prefrontal_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_prefrontal_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_prefrontal_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_prefrontal_bridge.c.i
+
+__/language/bridges/nimcp_language_prefrontal_bridge.s: __/language/bridges/nimcp_language_prefrontal_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_prefrontal_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_prefrontal_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_prefrontal_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_prefrontal_bridge.c.s
+
 __/language/bridges/nimcp_language_substrate_bridge.o: __/language/bridges/nimcp_language_substrate_bridge.c.o
 .PHONY : __/language/bridges/nimcp_language_substrate_bridge.o
 
@@ -19720,6 +20248,30 @@ __/language/bridges/nimcp_language_substrate_bridge.s: __/language/bridges/nimcp
 __/language/bridges/nimcp_language_substrate_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_substrate_bridge.c.s
 .PHONY : __/language/bridges/nimcp_language_substrate_bridge.c.s
+
+__/language/bridges/nimcp_language_temporal_bridge.o: __/language/bridges/nimcp_language_temporal_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_temporal_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_temporal_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_temporal_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_temporal_bridge.c.o
+
+__/language/bridges/nimcp_language_temporal_bridge.i: __/language/bridges/nimcp_language_temporal_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_temporal_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_temporal_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_temporal_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_temporal_bridge.c.i
+
+__/language/bridges/nimcp_language_temporal_bridge.s: __/language/bridges/nimcp_language_temporal_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_temporal_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_temporal_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_temporal_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_temporal_bridge.c.s
 
 __/language/bridges/nimcp_language_thalamic_bridge.o: __/language/bridges/nimcp_language_thalamic_bridge.c.o
 .PHONY : __/language/bridges/nimcp_language_thalamic_bridge.o
@@ -32128,12 +32680,36 @@ help:
 	@echo "... __/cognitive/meta_learning/nimcp_meta_learning_thalamic_bridge.o"
 	@echo "... __/cognitive/meta_learning/nimcp_meta_learning_thalamic_bridge.i"
 	@echo "... __/cognitive/meta_learning/nimcp_meta_learning_thalamic_bridge.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_attention_bridge.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_habituation.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_habituation.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_habituation.s"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.o"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.i"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_hierarchy.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_hippocampus_bridge.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_hypothalamus_bridge.s"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_immune_integration.o"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_immune_integration.i"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_immune_integration.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_language_bridge.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_language_bridge.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_language_bridge.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_motor_bridge.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_multimodal.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_multimodal.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_multimodal.s"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_neurons.o"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_neurons.i"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_neurons.s"
@@ -32143,9 +32719,21 @@ help:
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_neurons_sleep_bridge.o"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_neurons_sleep_bridge.i"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_neurons_sleep_bridge.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_omni_bridge.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.s"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_resonance.o"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_resonance.i"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_resonance.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_self_other.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_self_other.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_self_other.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_social_context.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_social_context.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_social_context.s"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_stdp.o"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_stdp.i"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_stdp.s"
@@ -32158,6 +32746,15 @@ help:
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_thalamic_bridge.o"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_thalamic_bridge.i"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_thalamic_bridge.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_tom_bridge.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.s"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.o"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.i"
+	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.s"
 	@echo "... __/cognitive/nimcp_cognitive_meta_controller.o"
 	@echo "... __/cognitive/nimcp_cognitive_meta_controller.i"
 	@echo "... __/cognitive/nimcp_cognitive_meta_controller.s"
@@ -33796,27 +34393,51 @@ help:
 	@echo "... __/io/stream/nimcp_stream.o"
 	@echo "... __/io/stream/nimcp_stream.i"
 	@echo "... __/io/stream/nimcp_stream.s"
+	@echo "... __/language/bridges/nimcp_language_cerebellum_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_cerebellum_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_cerebellum_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_cingulate_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_cingulate_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_cingulate_bridge.s"
 	@echo "... __/language/bridges/nimcp_language_cognitive_bridge.o"
 	@echo "... __/language/bridges/nimcp_language_cognitive_bridge.i"
 	@echo "... __/language/bridges/nimcp_language_cognitive_bridge.s"
 	@echo "... __/language/bridges/nimcp_language_gpu_bridge.o"
 	@echo "... __/language/bridges/nimcp_language_gpu_bridge.i"
 	@echo "... __/language/bridges/nimcp_language_gpu_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_hippocampus_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_hippocampus_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_hippocampus_bridge.s"
 	@echo "... __/language/bridges/nimcp_language_immune_bridge.o"
 	@echo "... __/language/bridges/nimcp_language_immune_bridge.i"
 	@echo "... __/language/bridges/nimcp_language_immune_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_insula_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_insula_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_insula_bridge.s"
 	@echo "... __/language/bridges/nimcp_language_logic_bridge.o"
 	@echo "... __/language/bridges/nimcp_language_logic_bridge.i"
 	@echo "... __/language/bridges/nimcp_language_logic_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_motor_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_motor_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_motor_bridge.s"
 	@echo "... __/language/bridges/nimcp_language_omni_bridge.o"
 	@echo "... __/language/bridges/nimcp_language_omni_bridge.i"
 	@echo "... __/language/bridges/nimcp_language_omni_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_parietal_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_parietal_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_parietal_bridge.s"
 	@echo "... __/language/bridges/nimcp_language_perception_bridge.o"
 	@echo "... __/language/bridges/nimcp_language_perception_bridge.i"
 	@echo "... __/language/bridges/nimcp_language_perception_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_prefrontal_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_prefrontal_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_prefrontal_bridge.s"
 	@echo "... __/language/bridges/nimcp_language_substrate_bridge.o"
 	@echo "... __/language/bridges/nimcp_language_substrate_bridge.i"
 	@echo "... __/language/bridges/nimcp_language_substrate_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_temporal_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_temporal_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_temporal_bridge.s"
 	@echo "... __/language/bridges/nimcp_language_thalamic_bridge.o"
 	@echo "... __/language/bridges/nimcp_language_thalamic_bridge.i"
 	@echo "... __/language/bridges/nimcp_language_thalamic_bridge.s"

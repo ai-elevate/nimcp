@@ -7348,6 +7348,19 @@ e2e_test_language_layer_pipeline/fast:
 .PHONY : e2e_test_language_layer_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_mirror_empathy_pipeline
+
+# Build rule for target.
+e2e_test_mirror_empathy_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mirror_empathy_pipeline
+.PHONY : e2e_test_mirror_empathy_pipeline
+
+# fast build rule for target.
+e2e_test_mirror_empathy_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_mirror_empathy_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_mirror_empathy_pipeline.dir/build
+.PHONY : e2e_test_mirror_empathy_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
 
 # Build rule for target.
@@ -11677,6 +11690,32 @@ unit_cognitive_mirror_neurons_test_mirror_sleep_bridge/fast:
 .PHONY : unit_cognitive_mirror_neurons_test_mirror_sleep_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_mirror_neurons_test_mirror_emotion_bridge
+
+# Build rule for target.
+unit_cognitive_mirror_neurons_test_mirror_emotion_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_mirror_neurons_test_mirror_emotion_bridge
+.PHONY : unit_cognitive_mirror_neurons_test_mirror_emotion_bridge
+
+# fast build rule for target.
+unit_cognitive_mirror_neurons_test_mirror_emotion_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/mirror_neurons/CMakeFiles/unit_cognitive_mirror_neurons_test_mirror_emotion_bridge.dir/build.make test/unit/cognitive/mirror_neurons/CMakeFiles/unit_cognitive_mirror_neurons_test_mirror_emotion_bridge.dir/build
+.PHONY : unit_cognitive_mirror_neurons_test_mirror_emotion_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_mirror_neurons_test_mirror_attention_bridge
+
+# Build rule for target.
+unit_cognitive_mirror_neurons_test_mirror_attention_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_mirror_neurons_test_mirror_attention_bridge
+.PHONY : unit_cognitive_mirror_neurons_test_mirror_attention_bridge
+
+# fast build rule for target.
+unit_cognitive_mirror_neurons_test_mirror_attention_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/mirror_neurons/CMakeFiles/unit_cognitive_mirror_neurons_test_mirror_attention_bridge.dir/build.make test/unit/cognitive/mirror_neurons/CMakeFiles/unit_cognitive_mirror_neurons_test_mirror_attention_bridge.dir/build
+.PHONY : unit_cognitive_mirror_neurons_test_mirror_attention_bridge/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_mirror_neurons_substrate
 
 # Build rule for target.
@@ -11690,6 +11729,19 @@ integration_cognitive_mirror_neurons_substrate/fast:
 .PHONY : integration_cognitive_mirror_neurons_substrate/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_mirror_neurons_emotion_attention
+
+# Build rule for target.
+integration_cognitive_mirror_neurons_emotion_attention: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_mirror_neurons_emotion_attention
+.PHONY : integration_cognitive_mirror_neurons_emotion_attention
+
+# fast build rule for target.
+integration_cognitive_mirror_neurons_emotion_attention/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/mirror_neurons/CMakeFiles/integration_cognitive_mirror_neurons_emotion_attention.dir/build.make test/integration/cognitive/mirror_neurons/CMakeFiles/integration_cognitive_mirror_neurons_emotion_attention.dir/build
+.PHONY : integration_cognitive_mirror_neurons_emotion_attention/fast
+
+#=============================================================================
 # Target rules for targets named regression_cognitive_mirror_neurons_substrate
 
 # Build rule for target.
@@ -11701,6 +11753,32 @@ regression_cognitive_mirror_neurons_substrate: cmake_check_build_system
 regression_cognitive_mirror_neurons_substrate/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/mirror_neurons/CMakeFiles/regression_cognitive_mirror_neurons_substrate.dir/build.make test/regression/cognitive/mirror_neurons/CMakeFiles/regression_cognitive_mirror_neurons_substrate.dir/build
 .PHONY : regression_cognitive_mirror_neurons_substrate/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_mirror_neurons_emotion_bridge
+
+# Build rule for target.
+regression_cognitive_mirror_neurons_emotion_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_mirror_neurons_emotion_bridge
+.PHONY : regression_cognitive_mirror_neurons_emotion_bridge
+
+# fast build rule for target.
+regression_cognitive_mirror_neurons_emotion_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/mirror_neurons/CMakeFiles/regression_cognitive_mirror_neurons_emotion_bridge.dir/build.make test/regression/cognitive/mirror_neurons/CMakeFiles/regression_cognitive_mirror_neurons_emotion_bridge.dir/build
+.PHONY : regression_cognitive_mirror_neurons_emotion_bridge/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_mirror_neurons_attention_bridge
+
+# Build rule for target.
+regression_cognitive_mirror_neurons_attention_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_mirror_neurons_attention_bridge
+.PHONY : regression_cognitive_mirror_neurons_attention_bridge
+
+# fast build rule for target.
+regression_cognitive_mirror_neurons_attention_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/mirror_neurons/CMakeFiles/regression_cognitive_mirror_neurons_attention_bridge.dir/build.make test/regression/cognitive/mirror_neurons/CMakeFiles/regression_cognitive_mirror_neurons_attention_bridge.dir/build
+.PHONY : regression_cognitive_mirror_neurons_attention_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_immune_brain_immune
@@ -22662,6 +22740,7 @@ help:
 	@echo "... e2e_test_medulla_pipeline"
 	@echo "... e2e_test_memory_immune_pipeline"
 	@echo "... e2e_test_mental_health_guardian"
+	@echo "... e2e_test_mirror_empathy_pipeline"
 	@echo "... e2e_test_motor_control_pipeline"
 	@echo "... e2e_test_nlp_disaster_sar"
 	@echo "... e2e_test_nlp_neural_distributed"
@@ -22782,6 +22861,7 @@ help:
 	@echo "... integration_cognitive_memory_test_engram_integration"
 	@echo "... integration_cognitive_memory_test_semantic_memory_integration"
 	@echo "... integration_cognitive_mental_health_guardian_brain"
+	@echo "... integration_cognitive_mirror_neurons_emotion_attention"
 	@echo "... integration_cognitive_mirror_neurons_substrate"
 	@echo "... integration_cognitive_parietal"
 	@echo "... integration_cognitive_salience_test_salience_fep_bridge_integration"
@@ -23049,6 +23129,8 @@ help:
 	@echo "... regression_cognitive_joy_test_joy_euphoria_backward_compat"
 	@echo "... regression_cognitive_memory_test_engram_backward_compat"
 	@echo "... regression_cognitive_memory_test_semantic_memory_backward_compat"
+	@echo "... regression_cognitive_mirror_neurons_attention_bridge"
+	@echo "... regression_cognitive_mirror_neurons_emotion_bridge"
 	@echo "... regression_cognitive_mirror_neurons_substrate"
 	@echo "... regression_cognitive_modules_api_test"
 	@echo "... regression_cognitive_sleep_bridge"
@@ -23602,6 +23684,8 @@ help:
 	@echo "... unit_cognitive_meta_learning_test_meta_learning"
 	@echo "... unit_cognitive_meta_learning_test_meta_learning_coverage"
 	@echo "... unit_cognitive_meta_learning_test_meta_learning_real"
+	@echo "... unit_cognitive_mirror_neurons_test_mirror_attention_bridge"
+	@echo "... unit_cognitive_mirror_neurons_test_mirror_emotion_bridge"
 	@echo "... unit_cognitive_mirror_neurons_test_mirror_enhancements"
 	@echo "... unit_cognitive_mirror_neurons_test_mirror_immune_integration"
 	@echo "... unit_cognitive_mirror_neurons_test_mirror_sleep_bridge"

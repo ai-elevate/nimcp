@@ -66,3 +66,55 @@
 {"type":"relation","from":"Executive_Module","to":"BIO_MSG_ATTENTION_SHIFT","relationType":"HANDLES_MESSAGE","message_type":1005}
 {"type":"relation","from":"Global_Workspace_Module","to":"BIO_MSG_ATTENTION_SHIFT","relationType":"HANDLES_MESSAGE","message_type":1005}
 {"type":"relation","from":"Mirror_Neurons_Module","to":"BIO_MSG_MIRROR_NEURON_ACTIVATION","relationType":"HANDLES_MESSAGE","message_type":1006}
+
+# Mirror neuron subsystems
+{"type":"entity","name":"mirror_hierarchy","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true}
+{"type":"entity","name":"mirror_resonance","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true}
+{"type":"entity","name":"mirror_substrate","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true}
+{"type":"entity","name":"mirror_immune","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true}
+{"type":"entity","name":"mirror_hypothalamus_bridge","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true}
+{"type":"entity","name":"mirror_omni_bridge","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true}
+{"type":"entity","name":"mirror_language_bridge","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true}
+{"type":"entity","name":"mirror_visual_bridge","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true}
+{"type":"entity","name":"mirror_motor_bridge","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true}
+{"type":"entity","name":"mirror_hippocampus_bridge","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true}
+{"type":"entity","name":"mirror_prefrontal_bridge","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true}
+{"type":"entity","name":"mirror_tom_bridge","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true,"observations":["SIMD-optimized belief state comparisons","Bidirectional mirror-ToM integration","Intention inference from action simulation","False belief detection from prediction errors"]}
+
+# Mirror neuron message handlers
+{"type":"relation","from":"mirror_hypothalamus_bridge","to":"BIO_MSG_MIRROR_OBSERVATION_START","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_MIRROR_OBSERVATION_START"}
+{"type":"relation","from":"mirror_omni_bridge","to":"BIO_MSG_MIRROR_GOAL_INFERRED","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_MIRROR_GOAL_INFERRED"}
+{"type":"relation","from":"mirror_visual_bridge","to":"BIO_MSG_VISUAL_AGENT_DETECTED","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_VISUAL_AGENT_DETECTED"}
+{"type":"relation","from":"mirror_motor_bridge","to":"BIO_MSG_MOTOR_ACTION_EXECUTED","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_MOTOR_ACTION_EXECUTED"}
+{"type":"relation","from":"mirror_motor_bridge","to":"BIO_MSG_MIRROR_RESONANCE_TRIGGERED","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_MIRROR_RESONANCE_TRIGGERED"}
+{"type":"relation","from":"mirror_tom_bridge","to":"BIO_MSG_MIRROR_TOM_INTENTION_INFER","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_MIRROR_TOM_INTENTION_INFER"}
+{"type":"relation","from":"mirror_tom_bridge","to":"BIO_MSG_MIRROR_TOM_EMPATHY_TRIGGER","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_MIRROR_TOM_EMPATHY_TRIGGER"}
+{"type":"relation","from":"mirror_tom_bridge","to":"BIO_MSG_MIRROR_TOM_FALSE_BELIEF","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_MIRROR_TOM_FALSE_BELIEF"}
+{"type":"relation","from":"mirror_tom_bridge","to":"theory_of_mind","relationType":"INTEGRATES_WITH"}
+{"type":"relation","from":"mirror_tom_bridge","to":"mirror_neurons","relationType":"INTEGRATES_WITH"}
+
+# Mirror-Emotion bridge (emotional contagion and empathy)
+{"type":"entity","name":"mirror_emotion_bridge","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true,"observations":["SIMD-optimized emotion feature comparison","Emotional contagion and empathy processing","Facial action unit pattern matching","Crisis detection and emotion regulation"]}
+{"type":"relation","from":"mirror_emotion_bridge","to":"BIO_MSG_MIRROR_NEURON_ACTIVATION","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_MIRROR_NEURON_ACTIVATION"}
+{"type":"relation","from":"mirror_emotion_bridge","to":"emotion_recognition","relationType":"INTEGRATES_WITH"}
+{"type":"relation","from":"mirror_emotion_bridge","to":"mirror_neurons","relationType":"INTEGRATES_WITH"}
+{"type":"relation","from":"mirror_emotion_bridge","to":"empathy","relationType":"INTEGRATES_WITH"}
+
+# Mirror-Attention bridge (joint attention and gaze following)
+{"type":"entity","name":"mirror_attention_bridge","entityType":"CognitiveModule","subsystem":"cognition","min_tier":0,"enabled":true,"observations":["Joint attention mechanisms","Gaze cueing and following","Saliency map integration","Social attention coordination"]}
+{"type":"relation","from":"mirror_attention_bridge","to":"BIO_MSG_ATTENTION_SHIFT","relationType":"HANDLES_MESSAGE","message_type":"BIO_MSG_ATTENTION_SHIFT"}
+{"type":"relation","from":"mirror_attention_bridge","to":"attention","relationType":"INTEGRATES_WITH"}
+{"type":"relation","from":"mirror_attention_bridge","to":"mirror_neurons","relationType":"INTEGRATES_WITH"}
+{"type":"relation","from":"mirror_attention_bridge","to":"visual_cortex","relationType":"RECEIVES_FROM"}
+
+# Cross-module integration relations
+{"type":"relation","from":"mirror_neurons","to":"theory_of_mind","relationType":"INTEGRATES_WITH"}
+{"type":"relation","from":"mirror_neurons","to":"hypothalamus","relationType":"INTEGRATES_WITH"}
+{"type":"relation","from":"mirror_neurons","to":"visual_cortex","relationType":"RECEIVES_FROM"}
+{"type":"relation","from":"mirror_neurons","to":"motor_cortex","relationType":"SENDS_TO"}
+{"type":"relation","from":"mirror_neurons","to":"broca","relationType":"INTEGRATES_WITH"}
+{"type":"relation","from":"mirror_neurons","to":"wernicke","relationType":"INTEGRATES_WITH"}
+{"type":"relation","from":"mirror_neurons","to":"hippocampus","relationType":"INTEGRATES_WITH"}
+{"type":"relation","from":"mirror_neurons","to":"prefrontal_cortex","relationType":"RECEIVES_FROM"}
+{"type":"relation","from":"mirror_neurons","to":"omni_active_inference","relationType":"INTEGRATES_WITH"}
+{"type":"relation","from":"mirror_neurons","to":"omni_world_model","relationType":"SENDS_TO"}

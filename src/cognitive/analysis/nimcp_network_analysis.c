@@ -26,10 +26,12 @@
 #include "utils/time/nimcp_time.h"
 #include "core/topology/nimcp_community_detection.h"
 #include "utils/algorithms/nimcp_graph_metrics.h"
+#include "utils/containers/nimcp_graph.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "core/brain/nimcp_brain.h"
 #include <string.h>
+#include <math.h>
 
 // Bio-async integration
 #include "async/nimcp_bio_async.h"
@@ -37,6 +39,62 @@
 #include "async/nimcp_bio_router.h"
 
 #define LOG_MODULE "network_analysis"
+
+//=============================================================================
+// Static Helpers
+//=============================================================================
+
+/**
+ * @brief Build graph representation from neural network
+ *
+ * WHAT: Convert neural network to graph data structure
+ * WHY:  Graph metrics algorithms require NimcpGraph format
+ * HOW:  Extract neurons and synapses, build adjacency list graph
+ *
+ * @param network Neural network to convert
+ * @return Graph or NULL on error (caller must free with nimcp_graph_destroy)
+ */
+static NimcpGraph* build_graph_from_network(neural_network_t network) {
+    if (!network) {
+        return NULL;
+    }
+
+    NimcpGraph* graph = nimcp_graph_create();
+    if (!graph) {
+        NIMCP_LOGGING_ERROR("build_graph_from_network: failed to create graph");
+        return NULL;
+    }
+
+    uint32_t num_neurons = neural_network_get_num_neurons(network);
+
+    // Add vertices (neurons)
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        uint32_t vertex_idx = nimcp_graph_add_vertex(graph, i, 0.0F, 0.0F, 0.0F, 0);
+        if (vertex_idx == NIMCP_INVALID_VERTEX) {
+            NIMCP_LOGGING_WARN("Failed to add vertex %u to graph", i);
+        }
+    }
+
+    // Add edges (synapses) by iterating through each neuron's synapses
+    for (uint32_t i = 0; i < num_neurons; i++) {
+        neuron_t* neuron = neural_network_get_neuron(network, i);
+        if (!neuron) continue;
+
+        for (uint32_t s = 0; s < neuron->num_synapses; s++) {
+            synapse_t* syn = &neuron->synapses[s];
+            if (syn) {
+                // Add edge with absolute weight
+                nimcp_weight_t edge_weight = fabsf(syn->weight);
+                nimcp_graph_add_edge(graph, i, syn->target_id, edge_weight);
+            }
+        }
+    }
+
+    NIMCP_LOGGING_DEBUG("Built graph: %u vertices, %u edges",
+                        graph->vertex_count, graph->edge_count);
+
+    return graph;
+}
 
 //=============================================================================
 // Lifecycle
@@ -365,18 +423,48 @@ bool network_analyzer_compute_metrics(network_analyzer_t* analyzer)
     uint32_t max_possible_connections = num_neurons * (num_neurons - 1);
     analyzer->metrics.density = (max_possible_connections > 0) ?
                                 (float)total_synapses / (float)max_possible_connections : 0.0F;
-
-    // For now, use estimates for complex metrics
-    // TODO: Implement full graph conversion and use compute_graph_metrics()
-    // These are reasonable defaults based on typical brain networks
-    analyzer->metrics.clustering_coefficient = 0.45F;  // Typical for brain networks
-    analyzer->metrics.avg_path_length = 3.0F;           // Typical for small-world networks
-    analyzer->metrics.small_worldness = 1.5F;           // (C/C_rand) / (L/L_rand)
-    analyzer->metrics.assortativity = 0.0F;             // Neutral mixing
     analyzer->metrics.num_edges = total_synapses;
 
-    NIMCP_LOGGING_INFO("Computed metrics: density=%.3f, edges=%u",
-                       analyzer->metrics.density, total_synapses);
+    // Build graph from network for advanced metrics computation
+    NimcpGraph* graph = build_graph_from_network(network);
+    if (!graph) {
+        NIMCP_LOGGING_WARN("Failed to build graph - using default metrics");
+        // Fallback to reasonable defaults
+        analyzer->metrics.clustering_coefficient = 0.45F;
+        analyzer->metrics.avg_path_length = 3.0F;
+        analyzer->metrics.small_worldness = 1.5F;
+        analyzer->metrics.assortativity = 0.0F;
+    } else {
+        // Compute real graph metrics
+        graph_metrics_t* gm = compute_graph_metrics(graph);
+        if (gm) {
+            analyzer->metrics.clustering_coefficient = gm->clustering_coefficient;
+            analyzer->metrics.avg_path_length = gm->characteristic_path_length;
+            analyzer->metrics.small_worldness = gm->small_world_coefficient;
+            analyzer->metrics.assortativity = gm->assortativity;
+
+            NIMCP_LOGGING_INFO("Real metrics: C=%.3f, L=%.2f, σ=%.2f, r=%.3f",
+                               gm->clustering_coefficient,
+                               gm->characteristic_path_length,
+                               gm->small_world_coefficient,
+                               gm->assortativity);
+
+            graph_metrics_destroy(gm);
+        } else {
+            NIMCP_LOGGING_WARN("compute_graph_metrics failed - using defaults");
+            analyzer->metrics.clustering_coefficient = 0.45F;
+            analyzer->metrics.avg_path_length = 3.0F;
+            analyzer->metrics.small_worldness = 1.5F;
+            analyzer->metrics.assortativity = 0.0F;
+        }
+
+        nimcp_graph_destroy(graph);
+    }
+
+    NIMCP_LOGGING_INFO("Computed metrics: density=%.3f, edges=%u, C=%.3f, L=%.2f",
+                       analyzer->metrics.density, total_synapses,
+                       analyzer->metrics.clustering_coefficient,
+                       analyzer->metrics.avg_path_length);
 
     analyzer->last_error[0] = '\0';  // Clear error
     return true;

@@ -144,6 +144,24 @@ typedef enum {
     BIO_MSG_AGENT_BELIEF_UPDATE,        /**< Theory of Mind: Agent belief changed */
     BIO_MSG_AGENT_INTENTION_INFERRED,   /**< Theory of Mind: Agent intention detected */
 
+    /* Mirror Neuron enhanced messages (0x0340 - 0x035F) */
+    BIO_MSG_MIRROR_OBSERVATION_START = 0x0340,  /**< Agent detected, begin observation */
+    BIO_MSG_MIRROR_OBSERVATION_END,             /**< Observation complete */
+    BIO_MSG_MIRROR_IMITATION_REQUEST,           /**< Request to imitate observed action */
+    BIO_MSG_MIRROR_IMITATION_COMPLETE,          /**< Imitation executed */
+    BIO_MSG_MIRROR_GOAL_INFERRED,               /**< Hierarchy system inferred goal */
+    BIO_MSG_MIRROR_RESONANCE_TRIGGERED,         /**< Motor resonance above threshold */
+    BIO_MSG_MIRROR_SOCIAL_CONTEXT_CHANGE,       /**< Social context updated */
+    BIO_MSG_MIRROR_EMPATHIC_AROUSAL,            /**< Empathic response triggered */
+    BIO_MSG_MIRROR_PREFRONTAL_INHIBIT,          /**< PFC inhibits imitation */
+    BIO_MSG_MIRROR_PREFRONTAL_RELEASE,          /**< PFC releases inhibition */
+    BIO_MSG_MIRROR_WORKING_MEMORY_STORE,        /**< Store action sequence in WM */
+    BIO_MSG_MIRROR_WORKING_MEMORY_RECALL,       /**< Recall action sequence from WM */
+
+    /* Cross-module integration messages (0x0350 - 0x035F) */
+    BIO_MSG_VISUAL_AGENT_DETECTED = 0x0350,     /**< From visual cortex -> mirror */
+    BIO_MSG_MOTOR_ACTION_EXECUTED,              /**< From motor -> mirror (for STDP) */
+
     /* Cingulate cortex messages (0x0360 - 0x037F) */
     BIO_MSG_CONFLICT_DETECTED = 0x0360,     /**< Cingulate: Conflict between responses detected */
     BIO_MSG_CONFLICT_RESOLVED,              /**< Cingulate: Conflict resolved */
@@ -849,10 +867,31 @@ typedef enum {
     /* Mirror neuron submodules (0x0270-0x027F) */
     BIO_MODULE_MIRROR_NEURONS_STDP = 0x0270,
     BIO_MODULE_MIRROR_NEURONS_SLEEP,
+    BIO_MODULE_MIRROR_NEURONS_FEP,                  /**< Mirror neurons FEP bridge */
+    BIO_MODULE_MIRROR_NEURONS_SUBSTRATE,            /**< Mirror neurons substrate bridge */
+    BIO_MODULE_MIRROR_NEURONS_THALAMIC,             /**< Mirror neurons thalamic bridge */
+    BIO_MODULE_MIRROR_NEURONS_IMMUNE,               /**< Mirror neurons immune bridge */
+    BIO_MODULE_MIRROR_NEURONS_HIERARCHY,            /**< Mirror neurons hierarchy system */
+    BIO_MODULE_MIRROR_NEURONS_RESONANCE,            /**< Mirror neurons motor resonance */
+    BIO_MODULE_MIRROR_HYPOTHALAMUS_BRIDGE = 0x0278, /**< Mirror-hypothalamus integration */
+    BIO_MODULE_MIRROR_OMNI_BRIDGE,                  /**< Mirror-omni inference integration */
+    BIO_MODULE_MIRROR_LANGUAGE_BRIDGE,              /**< Mirror-language integration */
+    BIO_MODULE_MIRROR_VISUAL_BRIDGE,                /**< Mirror-visual cortex integration */
+    BIO_MODULE_MIRROR_MOTOR_BRIDGE,                 /**< Mirror-motor cortex integration */
+    BIO_MODULE_MIRROR_HIPPOCAMPUS_BRIDGE,           /**< Mirror-hippocampus integration */
+    BIO_MODULE_MIRROR_PREFRONTAL_BRIDGE = 0x027E,   /**< Mirror-prefrontal integration */
+    BIO_MODULE_MIRROR_TOM_BRIDGE,                   /**< Mirror-Theory of Mind integration */
 
-    /* Wellbeing submodules (0x0278-0x027F) */
-    BIO_MODULE_WELLBEING_MENTAL_HEALTH = 0x0278,
-    BIO_MODULE_MENTAL_HEALTH_GUARDIAN = 0x0279,     /**< Mental health guardian agent */
+    /* Extended Mirror Bridges (0x0290-0x029F) */
+    BIO_MODULE_MIRROR_EMOTION_BRIDGE = 0x0290,      /**< Mirror-Emotion recognition integration */
+    BIO_MODULE_MIRROR_ATTENTION_BRIDGE,             /**< Mirror-Attention system integration */
+    BIO_MODULE_MIRROR_SELF_OTHER,                   /**< Self-Other distinction (agency, body schema) */
+    BIO_MODULE_MIRROR_VICARIOUS_REWARD,             /**< Vicarious reward bridge (basal ganglia) */
+    BIO_MODULE_MIRROR_HABITUATION,                  /**< Habituation module (response attenuation) */
+
+    /* Wellbeing submodules (0x0280-0x028F) */
+    BIO_MODULE_WELLBEING_MENTAL_HEALTH = 0x0280,
+    BIO_MODULE_MENTAL_HEALTH_GUARDIAN,              /**< Mental health guardian agent */
 
     /* Emotion modules (0x0320 - 0x032F) */
     BIO_MODULE_EMOTIONS = 0x0320,

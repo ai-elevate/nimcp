@@ -1477,6 +1477,38 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_language_layer_pipeline.cpp)
     message(STATUS "  Added Language Layer Pipeline E2E test: e2e_test_language_layer_pipeline")
 endif()
 
+# ============================================================================
+# Mirror Empathy Pipeline E2E Test (Phase 10.11.11-12)
+# ============================================================================
+# WHAT: End-to-end tests for mirror-emotion-attention empathy pipeline
+# WHY:  Validate full empathy processing from observation to response
+# HOW:  Test realistic social scenarios combining emotion and attention
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_mirror_empathy_pipeline.cpp)
+    add_executable(e2e_test_mirror_empathy_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_mirror_empathy_pipeline.cpp
+    )
+    target_include_directories(e2e_test_mirror_empathy_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/mirror_neurons
+    )
+    target_link_libraries(e2e_test_mirror_empathy_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_mirror_empathy_pipeline PRIVATE cxx_std_20)
+    target_compile_definitions(e2e_test_mirror_empathy_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_mirror_empathy_pipeline COMMAND e2e_test_mirror_empathy_pipeline)
+    set_tests_properties(e2e_test_mirror_empathy_pipeline PROPERTIES
+        LABELS "e2e;cognitive;mirror_neurons;empathy;emotion;attention"
+        TIMEOUT 180
+    )
+    message(STATUS "  Added Mirror Empathy Pipeline E2E test: e2e_test_mirror_empathy_pipeline")
+endif()
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)

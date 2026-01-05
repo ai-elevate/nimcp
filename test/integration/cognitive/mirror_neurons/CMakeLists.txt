@@ -32,3 +32,32 @@ add_test(NAME integration_cognitive_mirror_neurons_substrate
          COMMAND integration_cognitive_mirror_neurons_substrate)
 set_tests_properties(integration_cognitive_mirror_neurons_substrate PROPERTIES LABELS "integration")
 
+# ============================================================================
+# Mirror-Emotion-Attention Integration Tests (Phase 10.11.11-12)
+# ============================================================================
+# Cross-bridge integration between emotion and attention systems
+
+add_executable(integration_cognitive_mirror_neurons_emotion_attention
+    test_mirror_emotion_attention_integration.cpp
+)
+target_link_libraries(integration_cognitive_mirror_neurons_emotion_attention
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(integration_cognitive_mirror_neurons_emotion_attention
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/cognitive/mirror_neurons
+)
+target_compile_features(integration_cognitive_mirror_neurons_emotion_attention PRIVATE cxx_std_17)
+add_test(NAME integration_cognitive_mirror_neurons_emotion_attention
+         COMMAND integration_cognitive_mirror_neurons_emotion_attention)
+set_tests_properties(integration_cognitive_mirror_neurons_emotion_attention PROPERTIES
+    TIMEOUT 180
+    LABELS "integration;cognitive;mirror_neurons;emotion;attention"
+)
+

@@ -117,3 +117,67 @@ set_tests_properties(unit_cognitive_mirror_neurons_test_mirror_sleep_bridge PROP
     TIMEOUT 120
     LABELS "unit;cognitive;mirror_neurons;sleep;bridge"
 )
+
+# ============================================================================
+# Mirror-Emotion Bridge Tests (Phase 10.11.11)
+# ============================================================================
+# Tests for bidirectional mirror neuron - emotion recognition integration
+
+add_executable(unit_cognitive_mirror_neurons_test_mirror_emotion_bridge
+    test_mirror_emotion_bridge.cpp
+)
+target_link_libraries(unit_cognitive_mirror_neurons_test_mirror_emotion_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        m
+        pthread
+)
+target_include_directories(unit_cognitive_mirror_neurons_test_mirror_emotion_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/cognitive/mirror_neurons
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/tensor
+)
+target_compile_features(unit_cognitive_mirror_neurons_test_mirror_emotion_bridge PRIVATE cxx_std_17)
+add_test(NAME unit_cognitive_mirror_neurons_test_mirror_emotion_bridge
+         COMMAND unit_cognitive_mirror_neurons_test_mirror_emotion_bridge)
+set_tests_properties(unit_cognitive_mirror_neurons_test_mirror_emotion_bridge PROPERTIES
+    TIMEOUT 120
+    LABELS "unit;cognitive;mirror_neurons;emotion;bridge"
+)
+
+# ============================================================================
+# Mirror-Attention Bridge Tests (Phase 10.11.12)
+# ============================================================================
+# Tests for bidirectional mirror neuron - attention system integration
+
+add_executable(unit_cognitive_mirror_neurons_test_mirror_attention_bridge
+    test_mirror_attention_bridge.cpp
+)
+target_link_libraries(unit_cognitive_mirror_neurons_test_mirror_attention_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        m
+        pthread
+)
+target_include_directories(unit_cognitive_mirror_neurons_test_mirror_attention_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/cognitive/mirror_neurons
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/tensor
+)
+target_compile_features(unit_cognitive_mirror_neurons_test_mirror_attention_bridge PRIVATE cxx_std_17)
+add_test(NAME unit_cognitive_mirror_neurons_test_mirror_attention_bridge
+         COMMAND unit_cognitive_mirror_neurons_test_mirror_attention_bridge)
+set_tests_properties(unit_cognitive_mirror_neurons_test_mirror_attention_bridge PROPERTIES
+    TIMEOUT 120
+    LABELS "unit;cognitive;mirror_neurons;attention;bridge"
+)

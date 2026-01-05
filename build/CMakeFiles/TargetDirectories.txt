@@ -613,6 +613,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_broca_gpu_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_substrate_gpu_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_language_layer_pipeline.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_mirror_empathy_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/rebuild_cache.dir
@@ -1450,6 +1451,8 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/mirror_neurons/CMakeFiles/unit_cognitive_mirror_neurons_test_mirror_substrate.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/mirror_neurons/CMakeFiles/unit_cognitive_mirror_neurons_test_mirror_immune_integration.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/mirror_neurons/CMakeFiles/unit_cognitive_mirror_neurons_test_mirror_sleep_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/mirror_neurons/CMakeFiles/unit_cognitive_mirror_neurons_test_mirror_emotion_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/mirror_neurons/CMakeFiles/unit_cognitive_mirror_neurons_test_mirror_attention_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/mirror_neurons/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/mirror_neurons/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/mirror_neurons/CMakeFiles/rebuild_cache.dir
@@ -1458,6 +1461,7 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/mirror_neurons/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/mirror_neurons/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/mirror_neurons/CMakeFiles/integration_cognitive_mirror_neurons_substrate.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/mirror_neurons/CMakeFiles/integration_cognitive_mirror_neurons_emotion_attention.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/mirror_neurons/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/mirror_neurons/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/mirror_neurons/CMakeFiles/rebuild_cache.dir
@@ -1466,6 +1470,8 @@
 /home/bbrelin/nimcp/build/test/integration/cognitive/mirror_neurons/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/mirror_neurons/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/mirror_neurons/CMakeFiles/regression_cognitive_mirror_neurons_substrate.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/mirror_neurons/CMakeFiles/regression_cognitive_mirror_neurons_emotion_bridge.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/mirror_neurons/CMakeFiles/regression_cognitive_mirror_neurons_attention_bridge.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/mirror_neurons/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/mirror_neurons/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/mirror_neurons/CMakeFiles/rebuild_cache.dir
