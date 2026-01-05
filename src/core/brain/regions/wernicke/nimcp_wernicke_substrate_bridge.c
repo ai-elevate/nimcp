@@ -247,6 +247,11 @@ wernicke_substrate_bridge_t* wernicke_substrate_bridge_create(
     void* substrate,
     const wernicke_substrate_config_t* config
 ) {
+    /* Wernicke adapter is required */
+    if (!wernicke) {
+        return NULL;
+    }
+
     wernicke_substrate_bridge_t* bridge = calloc(1, sizeof(wernicke_substrate_bridge_t));
     if (!bridge) return NULL;
 

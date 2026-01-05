@@ -352,7 +352,7 @@ typedef void (*wernicke_word_callback_t)(
  * @brief Callback for concept activation events
  */
 typedef void (*wernicke_concept_callback_t)(
-    const wernicke_concept_t* concept,
+    const wernicke_concept_t* concept_data,
     void* user_data
 );
 
@@ -566,7 +566,7 @@ bool wernicke_predict_next_word(
 bool wernicke_get_meaning(
     wernicke_adapter_t* adapter,
     const wernicke_word_result_t* word,
-    wernicke_concept_t* concept
+    wernicke_concept_t* concept_out
 );
 
 /**
@@ -586,7 +586,7 @@ bool wernicke_disambiguate(
     wernicke_adapter_t* adapter,
     const wernicke_word_result_t* word,
     const wernicke_context_t* context,
-    wernicke_concept_t* concept
+    wernicke_concept_t* concept_out
 );
 
 /**

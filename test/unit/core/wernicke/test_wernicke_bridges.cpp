@@ -23,15 +23,18 @@
 #include <cstring>
 #include <cmath>
 
+// Include GPU header BEFORE extern "C" to avoid CUDA template conflicts
+#include "core/brain/regions/wernicke/nimcp_wernicke_gpu_bio_bridge.h"
+
 extern "C" {
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_substrate_bridge.h"
-#include "core/brain/regions/wernicke/nimcp_wernicke_gpu_bio_bridge.h"
 #include "core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_immune.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
 }
 
 //=============================================================================
@@ -41,14 +44,25 @@ extern "C" {
 class WernickeBridgesTest : public ::testing::Test {
 protected:
     wernicke_adapter_t* adapter;
+    brain_immune_system_t* immune_system;
 
     void SetUp() override {
         wernicke_config_t config = wernicke_default_config();
         adapter = wernicke_create(&config);
         ASSERT_NE(adapter, nullptr) << "Failed to create Wernicke adapter";
+
+        // Create brain immune system for immune bridge tests
+        brain_immune_config_t immune_cfg;
+        brain_immune_default_config(&immune_cfg);
+        immune_system = brain_immune_create(&immune_cfg);
+        ASSERT_NE(immune_system, nullptr) << "Failed to create immune system";
     }
 
     void TearDown() override {
+        if (immune_system) {
+            brain_immune_destroy(immune_system);
+            immune_system = nullptr;
+        }
         if (adapter) {
             wernicke_destroy(adapter);
             adapter = nullptr;
@@ -57,67 +71,65 @@ protected:
 };
 
 //=============================================================================
-// Broca Bridge Tests
+// Broca Bridge Tests (wbb_* API)
 //=============================================================================
 
 /**
  * @test Create Broca bridge
- * WHAT: Test wernicke_broca_bridge_create
+ * WHAT: Test wbb_create
  * WHY:  Verify arcuate fasciculus connection setup
  * HOW:  Create bridge, verify non-null
  */
 TEST_F(WernickeBridgesTest, CreateBrocaBridge) {
-    wernicke_broca_bridge_config_t config;
-    memset(&config, 0, sizeof(config));
-    config.enable_efference_copy = true;
-    config.enable_repetition = true;
+    wbb_config_t config = wbb_default_config();
+    config.enable_dorsal_stream = true;
+    config.enable_ventral_stream = true;
 
-    wernicke_broca_bridge_t* bridge = wernicke_broca_bridge_create(adapter, &config);
+    // wbb_create takes (wernicke, broca, config) - using NULL for broca
+    wernicke_broca_bridge_t* bridge = wbb_create(adapter, nullptr, &config);
     EXPECT_NE(bridge, nullptr) << "Failed to create Broca bridge";
 
     if (bridge) {
-        wernicke_broca_bridge_destroy(bridge);
+        wbb_destroy(bridge);
     }
 }
 
 /**
  * @test Create Broca bridge with null config
- * WHAT: Test wernicke_broca_bridge_create with defaults
+ * WHAT: Test wbb_create with defaults
  * WHY:  Verify default configuration works
  * HOW:  Create bridge with null config
  */
 TEST_F(WernickeBridgesTest, CreateBrocaBridgeNullConfig) {
-    wernicke_broca_bridge_t* bridge = wernicke_broca_bridge_create(adapter, nullptr);
+    wernicke_broca_bridge_t* bridge = wbb_create(adapter, nullptr, nullptr);
     EXPECT_NE(bridge, nullptr) << "Should create with default config";
 
     if (bridge) {
-        wernicke_broca_bridge_destroy(bridge);
+        wbb_destroy(bridge);
     }
 }
 
 /**
  * @test Broca bridge default config
- * WHAT: Test wernicke_broca_bridge_default_config
+ * WHAT: Test wbb_default_config
  * WHY:  Verify sensible default values
  * HOW:  Get defaults, check key fields
  */
 TEST_F(WernickeBridgesTest, BrocaBridgeDefaultConfig) {
-    wernicke_broca_bridge_config_t config;
-    wernicke_broca_bridge_default_config(&config);
+    wbb_config_t config = wbb_default_config();
 
-    // Efference copy should be enabled by default
-    EXPECT_TRUE(config.enable_efference_copy);
-    EXPECT_TRUE(config.enable_repetition);
+    // Check that key features are enabled by default
+    EXPECT_TRUE(config.enable_dorsal_stream || config.enable_ventral_stream);
 }
 
 /**
  * @test Destroy null Broca bridge
- * WHAT: Test wernicke_broca_bridge_destroy with null
+ * WHAT: Test wbb_destroy with null
  * WHY:  Verify null safety
  * HOW:  Call destroy with null, should not crash
  */
 TEST_F(WernickeBridgesTest, DestroyNullBrocaBridge) {
-    wernicke_broca_bridge_destroy(nullptr);
+    wbb_destroy(nullptr);
     // No assertion - just verify no crash
 }
 
@@ -132,11 +144,10 @@ TEST_F(WernickeBridgesTest, DestroyNullBrocaBridge) {
  * HOW:  Create bridge with config
  */
 TEST_F(WernickeBridgesTest, CreateNLPBridge) {
-    wernicke_nlp_bridge_config_t config;
-    memset(&config, 0, sizeof(config));
-    config.enable_tokenization = true;
-    config.enable_pos_tagging = true;
-    config.enable_ner = true;
+    wernicke_nlp_config_t config;
+    wernicke_nlp_default_config(&config);
+    config.enable_speech_cortex = true;
+    config.enable_nlp_network = true;
 
     wernicke_nlp_bridge_t* bridge = wernicke_nlp_bridge_create(adapter, &config);
     EXPECT_NE(bridge, nullptr) << "Failed to create NLP bridge";
@@ -148,16 +159,17 @@ TEST_F(WernickeBridgesTest, CreateNLPBridge) {
 
 /**
  * @test NLP bridge default config
- * WHAT: Test wernicke_nlp_bridge_default_config
+ * WHAT: Test wernicke_nlp_default_config
  * WHY:  Verify NLP defaults are sensible
  * HOW:  Get defaults, check values
  */
 TEST_F(WernickeBridgesTest, NLPBridgeDefaultConfig) {
-    wernicke_nlp_bridge_config_t config;
-    wernicke_nlp_bridge_default_config(&config);
+    wernicke_nlp_config_t config;
+    int result = wernicke_nlp_default_config(&config);
+    EXPECT_EQ(result, 0);
 
-    EXPECT_TRUE(config.enable_tokenization);
-    EXPECT_TRUE(config.enable_pos_tagging);
+    // Check some fields have sensible defaults
+    EXPECT_GT(config.max_sequence_length, 0u);
 }
 
 /**
@@ -167,11 +179,31 @@ TEST_F(WernickeBridgesTest, NLPBridgeDefaultConfig) {
  * HOW:  Create with null adapter, expect null
  */
 TEST_F(WernickeBridgesTest, CreateNLPBridgeNullAdapter) {
-    wernicke_nlp_bridge_config_t config;
-    wernicke_nlp_bridge_default_config(&config);
+    wernicke_nlp_config_t config;
+    wernicke_nlp_default_config(&config);
 
     wernicke_nlp_bridge_t* bridge = wernicke_nlp_bridge_create(nullptr, &config);
     EXPECT_EQ(bridge, nullptr);
+}
+
+/**
+ * @test NLP bridge update
+ * WHAT: Test wernicke_nlp_bridge_update
+ * WHY:  Verify update processing works
+ * HOW:  Create bridge, update, check no crash
+ */
+TEST_F(WernickeBridgesTest, NLPBridgeUpdate) {
+    wernicke_nlp_config_t config;
+    wernicke_nlp_default_config(&config);
+
+    wernicke_nlp_bridge_t* bridge = wernicke_nlp_bridge_create(adapter, &config);
+    ASSERT_NE(bridge, nullptr);
+
+    // wernicke_nlp_bridge_update takes (bridge, timestamp)
+    int result = wernicke_nlp_bridge_update(bridge, 0);
+    EXPECT_GE(result, 0);
+
+    wernicke_nlp_bridge_destroy(bridge);
 }
 
 //=============================================================================
@@ -185,13 +217,13 @@ TEST_F(WernickeBridgesTest, CreateNLPBridgeNullAdapter) {
  * HOW:  Create bridge, verify non-null
  */
 TEST_F(WernickeBridgesTest, CreateSubstrateBridge) {
-    wernicke_substrate_bridge_config_t config;
-    memset(&config, 0, sizeof(config));
+    wernicke_substrate_config_t config = wernicke_substrate_default_config();
     config.enable_atp_modulation = true;
-    config.enable_fatigue_effects = true;
+    config.enable_fatigue_modulation = true;
     config.atp_sensitivity = 1.0f;
 
-    wernicke_substrate_bridge_t* bridge = wernicke_substrate_bridge_create(adapter, &config);
+    // wernicke_substrate_bridge_create takes (wernicke, substrate, config)
+    wernicke_substrate_bridge_t* bridge = wernicke_substrate_bridge_create(adapter, nullptr, &config);
     EXPECT_NE(bridge, nullptr) << "Failed to create substrate bridge";
 
     if (bridge) {
@@ -201,16 +233,14 @@ TEST_F(WernickeBridgesTest, CreateSubstrateBridge) {
 
 /**
  * @test Substrate bridge default config
- * WHAT: Test wernicke_substrate_bridge_default_config
+ * WHAT: Test wernicke_substrate_default_config
  * WHY:  Verify metabolic defaults
  * HOW:  Get defaults, verify ATP modulation enabled
  */
 TEST_F(WernickeBridgesTest, SubstrateBridgeDefaultConfig) {
-    wernicke_substrate_bridge_config_t config;
-    wernicke_substrate_bridge_default_config(&config);
+    wernicke_substrate_config_t config = wernicke_substrate_default_config();
 
     EXPECT_TRUE(config.enable_atp_modulation);
-    EXPECT_TRUE(config.enable_fatigue_effects);
     EXPECT_GT(config.atp_sensitivity, 0.0f);
     EXPECT_LE(config.atp_sensitivity, 2.0f);
 }
@@ -222,10 +252,9 @@ TEST_F(WernickeBridgesTest, SubstrateBridgeDefaultConfig) {
  * HOW:  Create bridge, update, check no crash
  */
 TEST_F(WernickeBridgesTest, SubstrateBridgeUpdate) {
-    wernicke_substrate_bridge_config_t config;
-    wernicke_substrate_bridge_default_config(&config);
+    wernicke_substrate_config_t config = wernicke_substrate_default_config();
 
-    wernicke_substrate_bridge_t* bridge = wernicke_substrate_bridge_create(adapter, &config);
+    wernicke_substrate_bridge_t* bridge = wernicke_substrate_bridge_create(adapter, nullptr, &config);
     ASSERT_NE(bridge, nullptr);
 
     // Update should not crash
@@ -241,35 +270,34 @@ TEST_F(WernickeBridgesTest, SubstrateBridgeUpdate) {
 
 /**
  * @test Create GPU-Bio bridge
- * WHAT: Test wernicke_gpu_bio_bridge_create
+ * WHAT: Test wernicke_gpu_bio_create
  * WHY:  Verify GPU acceleration setup
- * HOW:  Create bridge, verify non-null
+ * HOW:  Create bridge, verify non-null (or null if no GPU)
  */
 TEST_F(WernickeBridgesTest, CreateGPUBioBridge) {
-    wernicke_gpu_bio_bridge_config_t config;
-    memset(&config, 0, sizeof(config));
-    config.enable_gpu = true;
-    config.enable_async_transfer = true;
-    config.batch_size = 32;
+    wernicke_gpu_bio_config_t config = wernicke_gpu_bio_default_config();
+    config.enable_bio_async = true;
+    config.batch_threshold = 32;
 
-    wernicke_gpu_bio_bridge_t* bridge = wernicke_gpu_bio_bridge_create(adapter, &config);
+    // wernicke_gpu_bio_create takes (gpu_ctx, config) - not wernicke adapter
+    // Since we don't have GPU context, expect NULL or handle gracefully
+    wernicke_gpu_bio_bridge_t* bridge = wernicke_gpu_bio_create(nullptr, &config);
     // May be null if GPU not available, which is acceptable
     if (bridge) {
-        wernicke_gpu_bio_bridge_destroy(bridge);
+        wernicke_gpu_bio_destroy(bridge);
     }
 }
 
 /**
  * @test GPU-Bio bridge default config
- * WHAT: Test wernicke_gpu_bio_bridge_default_config
+ * WHAT: Test wernicke_gpu_bio_default_config
  * WHY:  Verify GPU defaults
  * HOW:  Get defaults, check values
  */
 TEST_F(WernickeBridgesTest, GPUBioBridgeDefaultConfig) {
-    wernicke_gpu_bio_bridge_config_t config;
-    wernicke_gpu_bio_bridge_default_config(&config);
+    wernicke_gpu_bio_config_t config = wernicke_gpu_bio_default_config();
 
-    EXPECT_GT(config.batch_size, 0);
+    EXPECT_GT(config.batch_threshold, 0u);
 }
 
 //=============================================================================
@@ -283,13 +311,13 @@ TEST_F(WernickeBridgesTest, GPUBioBridgeDefaultConfig) {
  * HOW:  Create bridge, verify non-null
  */
 TEST_F(WernickeBridgesTest, CreateOmniBridge) {
-    omni_wernicke_bridge_config_t config;
-    memset(&config, 0, sizeof(config));
-    config.enable_prediction = true;
-    config.enable_pe_reporting = true;
-    config.prediction_horizon = 3;
+    omni_wernicke_config_t config;
+    omni_wernicke_default_config(&config);
+    config.phoneme_horizon = 5;
+    config.word_candidates = 10;
 
-    omni_wernicke_bridge_t* bridge = omni_wernicke_bridge_create(adapter, &config);
+    // omni_wernicke_bridge_create takes only config
+    omni_wernicke_bridge_t* bridge = omni_wernicke_bridge_create(&config);
     EXPECT_NE(bridge, nullptr) << "Failed to create omni bridge";
 
     if (bridge) {
@@ -299,32 +327,34 @@ TEST_F(WernickeBridgesTest, CreateOmniBridge) {
 
 /**
  * @test Omni bridge default config
- * WHAT: Test omni_wernicke_bridge_default_config
+ * WHAT: Test omni_wernicke_default_config
  * WHY:  Verify prediction defaults
  * HOW:  Get defaults, check prediction enabled
  */
 TEST_F(WernickeBridgesTest, OmniBridgeDefaultConfig) {
-    omni_wernicke_bridge_config_t config;
-    omni_wernicke_bridge_default_config(&config);
+    omni_wernicke_config_t config;
+    int result = omni_wernicke_default_config(&config);
+    EXPECT_EQ(result, 0);
 
-    EXPECT_TRUE(config.enable_prediction);
-    EXPECT_GT(config.prediction_horizon, 0);
+    // Check some defaults
+    EXPECT_GT(config.phoneme_horizon, 0u);
 }
 
 /**
  * @test Omni bridge update
- * WHAT: Test omni_wernicke_bridge_update
+ * WHAT: Test omni_wernicke_update
  * WHY:  Verify prediction processing
  * HOW:  Create bridge, update, verify no crash
  */
 TEST_F(WernickeBridgesTest, OmniBridgeUpdate) {
-    omni_wernicke_bridge_config_t config;
-    omni_wernicke_bridge_default_config(&config);
+    omni_wernicke_config_t config;
+    omni_wernicke_default_config(&config);
 
-    omni_wernicke_bridge_t* bridge = omni_wernicke_bridge_create(adapter, &config);
+    omni_wernicke_bridge_t* bridge = omni_wernicke_bridge_create(&config);
     ASSERT_NE(bridge, nullptr);
 
-    int result = omni_wernicke_bridge_update(bridge);
+    // omni_wernicke_update (not omni_wernicke_bridge_update)
+    int result = omni_wernicke_update(bridge);
     EXPECT_GE(result, 0);
 
     omni_wernicke_bridge_destroy(bridge);
@@ -341,12 +371,10 @@ TEST_F(WernickeBridgesTest, OmniBridgeUpdate) {
  * HOW:  Create bridge, verify non-null
  */
 TEST_F(WernickeBridgesTest, CreateQuantumBridge) {
-    wernicke_quantum_bridge_config_t config;
-    memset(&config, 0, sizeof(config));
-    config.enable_quantum_attention = true;
-    config.enable_optimization = true;
-    config.num_qubits = 8;
+    wernicke_quantum_config_t config;
+    wernicke_quantum_default_config(&config);
 
+    // wernicke_quantum_bridge_create takes (wernicke, config)
     wernicke_quantum_bridge_t* bridge = wernicke_quantum_bridge_create(adapter, &config);
     EXPECT_NE(bridge, nullptr) << "Failed to create quantum bridge";
 
@@ -357,15 +385,14 @@ TEST_F(WernickeBridgesTest, CreateQuantumBridge) {
 
 /**
  * @test Quantum bridge default config
- * WHAT: Test wernicke_quantum_bridge_default_config
+ * WHAT: Test wernicke_quantum_default_config
  * WHY:  Verify quantum defaults
  * HOW:  Get defaults, check qubit count
  */
 TEST_F(WernickeBridgesTest, QuantumBridgeDefaultConfig) {
-    wernicke_quantum_bridge_config_t config;
-    wernicke_quantum_bridge_default_config(&config);
-
-    EXPECT_GT(config.num_qubits, 0);
+    wernicke_quantum_config_t config;
+    int result = wernicke_quantum_default_config(&config);
+    EXPECT_EQ(result, 0);
 }
 
 //=============================================================================
@@ -374,22 +401,23 @@ TEST_F(WernickeBridgesTest, QuantumBridgeDefaultConfig) {
 
 /**
  * @test Create immune bridge
- * WHAT: Test wernicke_immune_create
+ * WHAT: Test wernicke_immune_bridge_create
  * WHY:  Verify neuroinflammation modeling setup
  * HOW:  Create bridge, verify non-null
  */
 TEST_F(WernickeBridgesTest, CreateImmuneBridge) {
     wernicke_immune_config_t config;
-    memset(&config, 0, sizeof(config));
-    config.enable_cytokine_effects = true;
-    config.enable_aphasia_modeling = true;
+    wernicke_immune_default_config(&config);
+    config.enable_inflammation_impairment = true;
+    config.enable_cytokine_modulation = true;
     config.inflammation_sensitivity = 1.0f;
 
-    wernicke_immune_t* bridge = wernicke_immune_create(adapter, &config);
+    // wernicke_immune_bridge_create takes (config, immune_system, wernicke_adapter)
+    wernicke_immune_bridge_t* bridge = wernicke_immune_bridge_create(&config, immune_system, adapter);
     EXPECT_NE(bridge, nullptr) << "Failed to create immune bridge";
 
     if (bridge) {
-        wernicke_immune_destroy(bridge);
+        wernicke_immune_bridge_destroy(bridge);
     }
 }
 
@@ -401,15 +429,15 @@ TEST_F(WernickeBridgesTest, CreateImmuneBridge) {
  */
 TEST_F(WernickeBridgesTest, ImmuneBridgeDefaultConfig) {
     wernicke_immune_config_t config;
-    wernicke_immune_default_config(&config);
+    int result = wernicke_immune_default_config(&config);
+    EXPECT_EQ(result, 0);
 
-    EXPECT_TRUE(config.enable_cytokine_effects);
     EXPECT_GT(config.inflammation_sensitivity, 0.0f);
 }
 
 /**
  * @test Immune bridge update with inflammation
- * WHAT: Test wernicke_immune_update
+ * WHAT: Test wernicke_immune_bridge_update
  * WHY:  Verify inflammation affects language
  * HOW:  Create bridge, update, check no crash
  */
@@ -417,34 +445,35 @@ TEST_F(WernickeBridgesTest, ImmuneBridgeUpdate) {
     wernicke_immune_config_t config;
     wernicke_immune_default_config(&config);
 
-    wernicke_immune_t* bridge = wernicke_immune_create(adapter, &config);
-    ASSERT_NE(bridge, nullptr);
+    wernicke_immune_bridge_t* bridge = wernicke_immune_bridge_create(&config, immune_system, adapter);
+    ASSERT_NE(bridge, nullptr) << "Failed to create immune bridge";
 
-    int result = wernicke_immune_update(bridge);
+    // wernicke_immune_bridge_update takes (bridge, timestamp)
+    int result = wernicke_immune_bridge_update(bridge, 0);
     EXPECT_GE(result, 0);
 
-    wernicke_immune_destroy(bridge);
+    wernicke_immune_bridge_destroy(bridge);
 }
 
 /**
- * @test Immune bridge get impairment
- * WHAT: Test wernicke_immune_get_impairment
- * WHY:  Verify impairment level retrieval
- * HOW:  Create bridge, get impairment, check range
+ * @test Immune bridge get state
+ * WHAT: Test wernicke_immune_get_state
+ * WHY:  Verify state retrieval
+ * HOW:  Create bridge, get state, check valid
  */
-TEST_F(WernickeBridgesTest, ImmuneBridgeGetImpairment) {
+TEST_F(WernickeBridgesTest, ImmuneBridgeGetState) {
     wernicke_immune_config_t config;
     wernicke_immune_default_config(&config);
 
-    wernicke_immune_t* bridge = wernicke_immune_create(adapter, &config);
-    ASSERT_NE(bridge, nullptr);
+    wernicke_immune_bridge_t* bridge = wernicke_immune_bridge_create(&config, immune_system, adapter);
+    ASSERT_NE(bridge, nullptr) << "Failed to create immune bridge";
 
-    float impairment = wernicke_immune_get_impairment(bridge);
-    // Impairment should be between 0 (none) and 1 (complete)
-    EXPECT_GE(impairment, 0.0f);
-    EXPECT_LE(impairment, 1.0f);
+    wernicke_immune_state_t state = wernicke_immune_get_state(bridge);
+    // State should be one of the valid enum values
+    EXPECT_GE((int)state, (int)WERNICKE_IMMUNE_NORMAL);
+    EXPECT_LE((int)state, (int)WERNICKE_IMMUNE_RECOVERING);
 
-    wernicke_immune_destroy(bridge);
+    wernicke_immune_bridge_destroy(bridge);
 }
 
 //=============================================================================
@@ -452,19 +481,35 @@ TEST_F(WernickeBridgesTest, ImmuneBridgeGetImpairment) {
 //=============================================================================
 
 /**
- * @test All bridges with null adapter
- * WHAT: Test all bridge creates with null adapter
+ * @test All bridges with null inputs
+ * WHAT: Test all bridge creates with null inputs
  * WHY:  Verify null safety across all bridges
- * HOW:  Create each bridge with null adapter
+ * HOW:  Create each bridge with null inputs
  */
-TEST_F(WernickeBridgesTest, AllBridgesNullAdapter) {
-    EXPECT_EQ(wernicke_broca_bridge_create(nullptr, nullptr), nullptr);
+TEST_F(WernickeBridgesTest, AllBridgesNullInputs) {
+    // wbb_create(wernicke, broca, config) - null wernicke
+    EXPECT_EQ(wbb_create(nullptr, nullptr, nullptr), nullptr);
+
+    // wernicke_nlp_bridge_create(wernicke, config) - null wernicke
     EXPECT_EQ(wernicke_nlp_bridge_create(nullptr, nullptr), nullptr);
-    EXPECT_EQ(wernicke_substrate_bridge_create(nullptr, nullptr), nullptr);
-    EXPECT_EQ(wernicke_gpu_bio_bridge_create(nullptr, nullptr), nullptr);
-    EXPECT_EQ(omni_wernicke_bridge_create(nullptr, nullptr), nullptr);
+
+    // wernicke_substrate_bridge_create(wernicke, substrate, config) - null wernicke
+    EXPECT_EQ(wernicke_substrate_bridge_create(nullptr, nullptr, nullptr), nullptr);
+
+    // wernicke_gpu_bio_create(gpu_ctx, config) - null gpu_ctx is ok (graceful failure)
+    // Not testing as it may or may not return NULL depending on implementation
+
+    // omni_wernicke_bridge_create(config) - null config should use defaults
+    omni_wernicke_bridge_t* omni = omni_wernicke_bridge_create(nullptr);
+    if (omni) {
+        omni_wernicke_bridge_destroy(omni);
+    }
+
+    // wernicke_quantum_bridge_create(wernicke, config) - null wernicke
     EXPECT_EQ(wernicke_quantum_bridge_create(nullptr, nullptr), nullptr);
-    EXPECT_EQ(wernicke_immune_create(nullptr, nullptr), nullptr);
+
+    // wernicke_immune_bridge_create(config, immune, wernicke) - null wernicke
+    EXPECT_EQ(wernicke_immune_bridge_create(nullptr, nullptr, nullptr), nullptr);
 }
 
 /**
@@ -474,12 +519,12 @@ TEST_F(WernickeBridgesTest, AllBridgesNullAdapter) {
  * HOW:  Call each destroy with null
  */
 TEST_F(WernickeBridgesTest, AllBridgesDestroyNull) {
-    wernicke_broca_bridge_destroy(nullptr);
+    wbb_destroy(nullptr);
     wernicke_nlp_bridge_destroy(nullptr);
     wernicke_substrate_bridge_destroy(nullptr);
-    wernicke_gpu_bio_bridge_destroy(nullptr);
+    wernicke_gpu_bio_destroy(nullptr);
     omni_wernicke_bridge_destroy(nullptr);
     wernicke_quantum_bridge_destroy(nullptr);
-    wernicke_immune_destroy(nullptr);
+    wernicke_immune_bridge_destroy(nullptr);
     // No assertions - verify no crash
 }

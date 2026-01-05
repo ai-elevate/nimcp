@@ -246,6 +246,11 @@ wernicke_broca_bridge_t* wbb_create(
     void* broca,
     const wbb_config_t* config
 ) {
+    /* Wernicke adapter is required for arcuate fasciculus bridge */
+    if (!wernicke) {
+        return NULL;
+    }
+
     wernicke_broca_bridge_t* bridge = calloc(1, sizeof(wernicke_broca_bridge_t));
     if (!bridge) return NULL;
 

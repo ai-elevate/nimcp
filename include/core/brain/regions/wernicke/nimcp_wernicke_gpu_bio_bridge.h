@@ -39,6 +39,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+/* Include GPU types BEFORE extern "C" (contains C++ templates) */
+#include "gpu/cognitive/nimcp_wernicke_gpu.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -48,9 +51,6 @@ extern "C" {
  *=============================================================================*/
 
 typedef struct wernicke_gpu_bio_bridge wernicke_gpu_bio_bridge_t;
-
-/* Include GPU types for proper struct definitions */
-#include "gpu/cognitive/nimcp_wernicke_gpu.h"
 
 /*=============================================================================
  * Constants

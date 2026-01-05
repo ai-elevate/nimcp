@@ -309,6 +309,12 @@ wernicke_nlp_bridge_t* wernicke_nlp_bridge_create(
     wernicke_adapter_t* wernicke,
     const wernicke_nlp_config_t* config)
 {
+    /* Wernicke adapter is required */
+    if (!wernicke) {
+        LOG_ERROR(LOG_MODULE, "Cannot create NLP bridge: wernicke adapter is NULL");
+        return NULL;
+    }
+
     wernicke_nlp_bridge_t* bridge = nimcp_calloc(1, sizeof(wernicke_nlp_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate NLP bridge");

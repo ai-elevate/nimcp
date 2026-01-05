@@ -180,6 +180,11 @@ wernicke_quantum_bridge_t* wernicke_quantum_bridge_create(
     void* wernicke,
     const wernicke_quantum_config_t* config
 ) {
+    /* Wernicke adapter is required */
+    if (!wernicke) {
+        return NULL;
+    }
+
     wernicke_quantum_bridge_t* bridge = calloc(1, sizeof(wernicke_quantum_bridge_t));
     if (!bridge) return NULL;
 

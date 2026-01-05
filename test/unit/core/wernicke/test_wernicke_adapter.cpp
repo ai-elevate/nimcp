@@ -349,7 +349,7 @@ TEST_F(WernickeAdapterTest, StoreInWorkingMemory) {
     adapter = wernicke_create(nullptr);
     ASSERT_NE(adapter, nullptr);
 
-    phoneme_t phonemes[4] = {1, 2, 3, 4};
+    phoneme_t phonemes[4] = {PHONEME_P, PHONEME_B, PHONEME_T, PHONEME_D};
     bool success = wernicke_wm_store(adapter, phonemes, 4);
     EXPECT_TRUE(success) << "Failed to store in working memory";
 
@@ -371,7 +371,7 @@ TEST_F(WernickeAdapterTest, RehearseWorkingMemory) {
     adapter = wernicke_create(nullptr);
     ASSERT_NE(adapter, nullptr);
 
-    phoneme_t phonemes[4] = {1, 2, 3, 4};
+    phoneme_t phonemes[4] = {PHONEME_P, PHONEME_B, PHONEME_T, PHONEME_D};
     wernicke_wm_store(adapter, phonemes, 4);
 
     bool success = wernicke_wm_rehearse(adapter);
@@ -388,7 +388,7 @@ TEST_F(WernickeAdapterTest, ClearWorkingMemory) {
     adapter = wernicke_create(nullptr);
     ASSERT_NE(adapter, nullptr);
 
-    phoneme_t phonemes[4] = {1, 2, 3, 4};
+    phoneme_t phonemes[4] = {PHONEME_P, PHONEME_B, PHONEME_T, PHONEME_D};
     wernicke_wm_store(adapter, phonemes, 4);
 
     wernicke_wm_clear(adapter);

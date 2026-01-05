@@ -479,17 +479,23 @@ bool wernicke_lookup_word(
         return false;
     }
 
-    /* Hash by string */
-    uint32_t hash = hash_string(word_str, adapter->lexicon_capacity);
+    if (!adapter->lexicon_table) {
+        return false;
+    }
 
-    /* Search - note: this is a simplified search by word string, not phonemes */
-    lexicon_entry_t* e = adapter->lexicon_table[hash];
-    while (e) {
-        if (strcmp(e->word.word, word_str) == 0) {
-            *entry = e->word;
-            return true;
+    /* Lexicon is indexed by phoneme hash, so we must search all buckets
+     * to find a word by its string. This is O(n) but acceptable for
+     * typical lexicon sizes. A secondary string index could be added
+     * for O(1) string lookups if needed. */
+    for (uint32_t i = 0; i < adapter->lexicon_capacity; i++) {
+        lexicon_entry_t* e = adapter->lexicon_table[i];
+        while (e) {
+            if (strcmp(e->word.word, word_str) == 0) {
+                *entry = e->word;
+                return true;
+            }
+            e = e->next;
         }
-        e = e->next;
     }
 
     return false;
@@ -518,9 +524,9 @@ bool wernicke_predict_next_word(
 bool wernicke_get_meaning(
     wernicke_adapter_t* adapter,
     const wernicke_word_result_t* word,
-    wernicke_concept_t* concept)
+    wernicke_concept_t* concept_out)
 {
-    if (!adapter || !word || !concept) {
+    if (!adapter || !word || !concept_out) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
         return false;
     }
@@ -529,20 +535,20 @@ bool wernicke_get_meaning(
 
     /* Phase 3 will implement full semantic memory integration */
     /* For now, create a basic concept from the word */
-    concept->concept_id = word->word.concept_id;
-    strncpy(concept->concept_name, word->word.word, sizeof(concept->concept_name) - 1);
-    concept->concept_name[sizeof(concept->concept_name) - 1] = '\0';
-    concept->activation = word->confidence;
-    concept->embedding = NULL;
-    concept->embedding_dim = 0;
-    concept->related_concepts = NULL;
-    concept->num_related = 0;
+    concept_out->concept_id = word->word.concept_id;
+    strncpy(concept_out->concept_name, word->word.word, sizeof(concept_out->concept_name) - 1);
+    concept_out->concept_name[sizeof(concept_out->concept_name) - 1] = '\0';
+    concept_out->activation = word->confidence;
+    concept_out->embedding = NULL;
+    concept_out->embedding_dim = 0;
+    concept_out->related_concepts = NULL;
+    concept_out->num_related = 0;
 
     adapter->stats.concepts_activated++;
 
     /* Fire callback if set */
     if (adapter->concept_callback) {
-        adapter->concept_callback(concept, adapter->concept_callback_data);
+        adapter->concept_callback(concept_out, adapter->concept_callback_data);
     }
 
     adapter->status = WERNICKE_STATUS_IDLE;
@@ -553,16 +559,16 @@ bool wernicke_disambiguate(
     wernicke_adapter_t* adapter,
     const wernicke_word_result_t* word,
     const wernicke_context_t* context,
-    wernicke_concept_t* concept)
+    wernicke_concept_t* concept_out)
 {
-    if (!adapter || !word || !concept) {
+    if (!adapter || !word || !concept_out) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
         return false;
     }
 
     /* Phase 3 will implement context-based disambiguation */
     /* For now, just return the first meaning */
-    return wernicke_get_meaning(adapter, word, concept);
+    return wernicke_get_meaning(adapter, word, concept_out);
 }
 
 bool wernicke_spread_activation(
