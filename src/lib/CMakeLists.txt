@@ -245,6 +245,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.c             # Omnidirectional inference bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_syntactic_comprehension.c          # Syntactic parsing and comprehension
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c          # Quantum acceleration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/wernicke/nimcp_wernicke_gpu_bio_bridge.c          # GPU bio-async bridge
 
     # Insula - Interoception, emotional awareness, social emotions (Phase I1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/insula/nimcp_insula_adapter.c                     # Insula core adapter
@@ -1375,6 +1376,8 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/cognitive/nimcp_jepa_gpu.cu>
     # Broca's region GPU kernels (lexical lookup, phoneme encoding, motor planning)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/cognitive/nimcp_broca_gpu.cu>
+    # Wernicke's region GPU kernels (phoneme recognition, cohort word recognition, semantic spreading)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/cognitive/nimcp_wernicke_gpu.cu>
     # Omnidirectional inference GPU kernels (bidirectional prediction, Hopfield attention, predictive hierarchy, temporal replay)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/cognitive/nimcp_omni_gpu.cu>
     # Memory consolidation GPU kernels (hippocampal replay, systems consolidation, engram operations)

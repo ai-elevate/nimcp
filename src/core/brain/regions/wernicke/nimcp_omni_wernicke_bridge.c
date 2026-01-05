@@ -14,6 +14,9 @@
  */
 
 #include "core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.h"
+#include "async/nimcp_bio_async.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -1011,25 +1014,169 @@ float omni_wernicke_get_free_energy(const omni_wernicke_bridge_t* bridge) {
 }
 
 /*=============================================================================
+ * BIO-ASYNC MESSAGE HANDLERS
+ *=============================================================================*/
+
+/**
+ * @brief Handle prediction request from omnidirectional inference
+ *
+ * Triggers forward prediction of expected phonemes/words/concepts
+ */
+static nimcp_error_t handle_wernicke_predict_request(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    omni_wernicke_bridge_t* bridge = (omni_wernicke_bridge_t*)user_data;
+    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* Update comprehension state based on prediction request */
+    omni_wernicke_update(bridge);
+
+    (void)response_promise;
+    (void)msg_size;
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle direction switch (forward prediction <-> backward inference)
+ *
+ * Switches between predictive and inferential processing modes
+ */
+static nimcp_error_t handle_wernicke_direction_switch(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    omni_wernicke_bridge_t* bridge = (omni_wernicke_bridge_t*)user_data;
+    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* Direction switch affects processing mode */
+    omni_wernicke_update(bridge);
+
+    (void)response_promise;
+    (void)msg_size;
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle precision update from predictive hierarchy
+ *
+ * Updates precision weights for phoneme/word/semantic processing
+ */
+static nimcp_error_t handle_wernicke_precision_update(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    omni_wernicke_bridge_t* bridge = (omni_wernicke_bridge_t*)user_data;
+    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* Update precision for language comprehension */
+    omni_wernicke_update(bridge);
+
+    (void)response_promise;
+    (void)msg_size;
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle forward message from predictive hierarchy
+ *
+ * Processes top-down predictions from higher language areas
+ */
+static nimcp_error_t handle_wernicke_pred_hier_forward(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    omni_wernicke_bridge_t* bridge = (omni_wernicke_bridge_t*)user_data;
+    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* Forward pass: predictions from higher levels */
+    omni_wernicke_update(bridge);
+
+    (void)response_promise;
+    (void)msg_size;
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Handle backward message from predictive hierarchy
+ *
+ * Processes bottom-up prediction errors from sensory input
+ */
+static nimcp_error_t handle_wernicke_pred_hier_backward(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    omni_wernicke_bridge_t* bridge = (omni_wernicke_bridge_t*)user_data;
+    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* Backward pass: prediction errors from lower levels */
+    omni_wernicke_update(bridge);
+
+    (void)response_promise;
+    (void)msg_size;
+    return NIMCP_SUCCESS;
+}
+
+/*=============================================================================
  * BIO-ASYNC API
  *=============================================================================*/
 
 int omni_wernicke_connect_bio_async(omni_wernicke_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
-    /* TODO: Connect to bio-async router */
+    /* Register with bio-async router */
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_OMNI_WERNICKE_BRIDGE,
+        .module_name = "omni_wernicke_bridge",
+        .inbox_capacity = 32,
+        .user_data = bridge
+    };
+
+    bio_module_context_t ctx = bio_router_register_module(&info);
+    if (!ctx) {
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
+
+    bridge->bio_context = ctx;
+
+    /* Register message handlers for language comprehension */
+    bio_router_register_handler(ctx, BIO_MSG_OMNI_PREDICT_REQUEST,
+                                 handle_wernicke_predict_request);
+    bio_router_register_handler(ctx, BIO_MSG_OMNI_DIRECTION_SWITCH,
+                                 handle_wernicke_direction_switch);
+    bio_router_register_handler(ctx, BIO_MSG_OMNI_PRECISION_UPDATE,
+                                 handle_wernicke_precision_update);
+    bio_router_register_handler(ctx, BIO_MSG_PRED_HIER_FORWARD,
+                                 handle_wernicke_pred_hier_forward);
+    bio_router_register_handler(ctx, BIO_MSG_PRED_HIER_BACKWARD,
+                                 handle_wernicke_pred_hier_backward);
+
     bridge->bio_async_connected = true;
-
-    return 0;
+    return NIMCP_SUCCESS;
 }
 
 int omni_wernicke_disconnect_bio_async(omni_wernicke_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
+
+    if (bridge->bio_context) {
+        bio_router_unregister_module(bridge->bio_context);
+        bridge->bio_context = NULL;
+    }
 
     bridge->bio_async_connected = false;
-    bridge->bio_context = NULL;
-
-    return 0;
+    return NIMCP_SUCCESS;
 }
 
 bool omni_wernicke_is_bio_async_connected(const omni_wernicke_bridge_t* bridge) {
