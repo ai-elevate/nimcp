@@ -955,6 +955,40 @@ struct brain_struct {
     uint64_t last_wernicke_update_us;                           // Last Wernicke update timestamp
 
     // =========================================================================
+    // LANGUAGE LAYER (Unified Language Processing Orchestration)
+    // =========================================================================
+    // The Language Layer unifies all language-related processing:
+    // - Wernicke's Area (BA22): Speech comprehension, phonological analysis
+    // - Broca's Area (BA44/45): Speech production, syntactic processing
+    // - Arcuate Fasciculus: Bidirectional dorsal/ventral streams
+    // - NLP Network: Token embeddings, attention, neuromodulation
+    // - Speech Cortex: Phoneme extraction, formant analysis
+    //
+    // Integration Bridges:
+    // - Perception Bridge: Speech cortex, audio cortex, visual cortex
+    // - Cognitive Bridge: Working memory, attention, semantic memory, reasoning
+    // - Training Bridge: Language learning, STDP, vocabulary expansion
+    // - Omni Bridge: Predictive language processing (JEPA, Hopfield)
+    // - Immune Bridge: Cytokine modulation, aphasia modeling
+    // - GPU Bridge: Parallel phoneme/word/semantic processing
+    // - Thalamic Bridge: Signal routing through thalamic nuclei
+    // - Substrate Bridge: Metabolic modulation (ATP, fatigue, stress)
+    // - Logic Bridge: Symbolic reasoning (entailment, consistency)
+    //
+    struct language_orchestrator* language_layer;                     // Unified language orchestrator
+    struct language_perception_bridge* language_perception_bridge;    // Perception integration
+    struct language_cognitive_bridge* language_cognitive_bridge;      // Cognitive integration
+    struct language_training_bridge* language_training_bridge;        // Training integration
+    struct language_omni_bridge* language_omni_bridge;                // Omni inference integration
+    struct language_immune_bridge* language_immune_bridge;            // Immune integration
+    struct language_gpu_bridge* language_gpu_bridge;                  // GPU acceleration
+    struct language_thalamic_bridge* language_thalamic_bridge;        // Thalamic router integration
+    struct language_substrate_bridge* language_substrate_bridge;      // Neural substrate integration
+    struct language_logic_bridge* language_logic_bridge;              // Symbolic logic integration
+    bool language_layer_enabled;                                      // Language layer enabled
+    uint64_t last_language_update_us;                                 // Last language update timestamp
+
+    // =========================================================================
     // BRAINSTEM INTEGRATION (Midbrain, Pons, Medulla, Reticular Formation)
     // =========================================================================
     // The Brainstem provides vital functions and reflex control:

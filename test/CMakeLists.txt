@@ -1280,6 +1280,33 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/security")
 endif()
 
 # ============================================================================
+# Language Layer Tests (Phase L: Language Processing)
+# ============================================================================
+# WHAT: Tests for language layer orchestrator and bridges
+# WHY:  Verify language comprehension, production, and integration
+# HOW:  Unit/integration/e2e tests for Wernicke, Broca, NLP, bridges
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/language")
+    message(STATUS "Adding language layer unit tests...")
+    add_subdirectory(unit/language)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/language")
+    message(STATUS "Adding language layer integration tests...")
+    add_subdirectory(integration/language)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/wernicke")
+    message(STATUS "Adding Wernicke unit tests...")
+    add_subdirectory(unit/core/wernicke)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/wernicke")
+    message(STATUS "Adding Wernicke integration tests...")
+    add_subdirectory(integration/wernicke)
+endif()
+
+# ============================================================================
 # Utils Logging Tests (Phase LOG-1: Enhanced Logging System)
 # ============================================================================
 

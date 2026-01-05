@@ -9,6 +9,9 @@ add_subdirectory(directives)
 # Medulla Oblongata subdirectory (Arousal, Protection, Circadian)
 add_subdirectory(medulla)
 
+# Wernicke's Area subdirectory (Language comprehension)
+# Note: wernicke subdirectory is added by test/CMakeLists.txt
+
 # ============================================================================
 # Sleep Bridge Integration Tests
 # ============================================================================

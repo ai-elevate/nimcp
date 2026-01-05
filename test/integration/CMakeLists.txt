@@ -36,3 +36,13 @@ endmacro()
 
 # GPU CPU fallback integration tests
 add_integration_gpu_test(test_gpu_cpu_fallback_integration)
+
+# =============================================================================
+# Wernicke Integration Tests
+# =============================================================================
+# Note: wernicke subdirectory is added by test/CMakeLists.txt
+
+# =============================================================================
+# Language Layer Integration Tests
+# =============================================================================
+# Note: language subdirectory is added by test/CMakeLists.txt

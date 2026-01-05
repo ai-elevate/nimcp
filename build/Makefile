@@ -7335,6 +7335,19 @@ e2e_test_substrate_gpu_pipeline/fast:
 .PHONY : e2e_test_substrate_gpu_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_language_layer_pipeline
+
+# Build rule for target.
+e2e_test_language_layer_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_language_layer_pipeline
+.PHONY : e2e_test_language_layer_pipeline
+
+# fast build rule for target.
+e2e_test_language_layer_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_language_layer_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_language_layer_pipeline.dir/build
+.PHONY : e2e_test_language_layer_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
 
 # Build rule for target.
@@ -16695,6 +16708,84 @@ regression_security_sleep_bridges/fast:
 .PHONY : regression_security_sleep_bridges/fast
 
 #=============================================================================
+# Target rules for targets named unit_language_orchestrator
+
+# Build rule for target.
+unit_language_orchestrator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_language_orchestrator
+.PHONY : unit_language_orchestrator
+
+# fast build rule for target.
+unit_language_orchestrator/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_language_orchestrator.dir/build.make test/unit/language/CMakeFiles/unit_language_orchestrator.dir/build
+.PHONY : unit_language_orchestrator/fast
+
+#=============================================================================
+# Target rules for targets named unit_language_bridges
+
+# Build rule for target.
+unit_language_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_language_bridges
+.PHONY : unit_language_bridges
+
+# fast build rule for target.
+unit_language_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_language_bridges.dir/build.make test/unit/language/CMakeFiles/unit_language_bridges.dir/build
+.PHONY : unit_language_bridges/fast
+
+#=============================================================================
+# Target rules for targets named integration_language
+
+# Build rule for target.
+integration_language: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_language
+.PHONY : integration_language
+
+# fast build rule for target.
+integration_language/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/language/CMakeFiles/integration_language.dir/build.make test/integration/language/CMakeFiles/integration_language.dir/build
+.PHONY : integration_language/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_wernicke_adapter
+
+# Build rule for target.
+unit_core_wernicke_adapter: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_wernicke_adapter
+.PHONY : unit_core_wernicke_adapter
+
+# fast build rule for target.
+unit_core_wernicke_adapter/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/wernicke/CMakeFiles/unit_core_wernicke_adapter.dir/build.make test/unit/core/wernicke/CMakeFiles/unit_core_wernicke_adapter.dir/build
+.PHONY : unit_core_wernicke_adapter/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_wernicke_bridges
+
+# Build rule for target.
+unit_core_wernicke_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_wernicke_bridges
+.PHONY : unit_core_wernicke_bridges
+
+# fast build rule for target.
+unit_core_wernicke_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/wernicke/CMakeFiles/unit_core_wernicke_bridges.dir/build.make test/unit/core/wernicke/CMakeFiles/unit_core_wernicke_bridges.dir/build
+.PHONY : unit_core_wernicke_bridges/fast
+
+#=============================================================================
+# Target rules for targets named integration_wernicke_full
+
+# Build rule for target.
+integration_wernicke_full: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_wernicke_full
+.PHONY : integration_wernicke_full
+
+# fast build rule for target.
+integration_wernicke_full/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/wernicke/CMakeFiles/integration_wernicke_full.dir/build.make test/integration/wernicke/CMakeFiles/integration_wernicke_full.dir/build
+.PHONY : integration_wernicke_full/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_logging_test_logging_basic
 
 # Build rule for target.
@@ -22565,6 +22656,7 @@ help:
 	@echo "... e2e_test_hippocampus_pipeline"
 	@echo "... e2e_test_hypothalamus_alignment_pipeline"
 	@echo "... e2e_test_introspection_pipeline"
+	@echo "... e2e_test_language_layer_pipeline"
 	@echo "... e2e_test_limbic_pipeline"
 	@echo "... e2e_test_master_connectivity"
 	@echo "... e2e_test_medulla_pipeline"
@@ -22768,6 +22860,7 @@ help:
 	@echo "... integration_jepa_fep"
 	@echo "... integration_jepa_full"
 	@echo "... integration_jepa_visual_speech"
+	@echo "... integration_language"
 	@echo "... integration_lib_cognitive_test_hierarchical_integration"
 	@echo "... integration_metabolic_cascade"
 	@echo "... integration_middleware_bio_async"
@@ -22895,6 +22988,7 @@ help:
 	@echo "... integration_utils_tensor_networks_test_mps_neural_network_integration"
 	@echo "... integration_utils_tensor_test_tensor_memory_integration"
 	@echo "... integration_utils_test_utils_integration"
+	@echo "... integration_wernicke_full"
 	@echo "... izhikevich_demo"
 	@echo "... multimodal_integration_demo"
 	@echo "... neuromodulation_integration_example"
@@ -23746,6 +23840,8 @@ help:
 	@echo "... unit_core_topology_test_fractal_topology_metrics"
 	@echo "... unit_core_topology_test_fractal_topology_real"
 	@echo "... unit_core_topology_topology_tests"
+	@echo "... unit_core_wernicke_adapter"
+	@echo "... unit_core_wernicke_bridges"
 	@echo "... unit_dragonfly_test_audio_bridge"
 	@echo "... unit_dragonfly_test_bio_async_bridge"
 	@echo "... unit_dragonfly_test_cnn_bridge"
@@ -23855,6 +23951,8 @@ help:
 	@echo "... unit_io_test_serialization"
 	@echo "... unit_io_test_stream"
 	@echo "... unit_io_test_vesicle_packaging"
+	@echo "... unit_language_bridges"
+	@echo "... unit_language_orchestrator"
 	@echo "... unit_lib_cognitive_test_hierarchical"
 	@echo "... unit_lnn_test_lnn_config"
 	@echo "... unit_lnn_test_lnn_layer"

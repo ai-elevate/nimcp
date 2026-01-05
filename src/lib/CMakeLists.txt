@@ -84,6 +84,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_basal_ganglia.c     # Enhanced basal ganglia action selection
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_broca.c            # Broca's region language production
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_wernicke.c         # Wernicke's region language comprehension
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_language.c         # Unified language layer orchestration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_collective_cognition.c # Collective cognition subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_gpu.c              # GPU context auto-initialization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_substrate_gpu.c   # GPU substrate subsystem initialization
@@ -1320,6 +1321,22 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/immune/nimcp_nlp_immune_bridge.c  # NLP-immune integration (language impairment)
     ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/immune/nimcp_spike_nlp_immune_bridge.c  # Spike NLP-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../nlp/immune/nimcp_multimodal_nlp_immune_bridge.c  # Multimodal NLP-immune integration
+
+    # Language Layer (Phase L5: Unified language processing orchestration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_orchestrator.c     # Language layer coordinator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_config.c           # Default configuration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_bio_async.c        # Bio-async messaging
+
+    # Language Layer Bridges (Phase L8: Integration bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_perception_bridge.c   # Perception integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_cognitive_bridge.c    # Cognitive integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_training_bridge.c     # Training integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_omni_bridge.c         # Omni/predictive integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_immune_bridge.c       # Immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_gpu_bridge.c          # GPU acceleration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_thalamic_bridge.c     # Thalamic routing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_substrate_bridge.c    # Metabolic modulation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_logic_bridge.c        # Symbolic logic integration
 
     # Portia-Immune Integration (Phase BII-P: Adaptive intelligence immune bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/immune/nimcp_portia_attention_immune_bridge.c  # Portia attention-immune integration

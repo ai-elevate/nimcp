@@ -10169,6 +10169,30 @@ __/core/brain/factory/init/nimcp_brain_init_kg_reader.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_kg_reader.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_kg_reader.c.s
 
+__/core/brain/factory/init/nimcp_brain_init_language.o: __/core/brain/factory/init/nimcp_brain_init_language.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_language.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_language.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_language.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_language.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_language.i: __/core/brain/factory/init/nimcp_brain_init_language.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_language.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_language.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_language.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_language.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_language.s: __/core/brain/factory/init/nimcp_brain_init_language.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_language.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_language.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_language.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_language.c.s
+
 __/core/brain/factory/init/nimcp_brain_init_medulla.o: __/core/brain/factory/init/nimcp_brain_init_medulla.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_medulla.o
 
@@ -10600,6 +10624,30 @@ __/core/brain/factory/init/nimcp_brain_init_validation.s: __/core/brain/factory/
 __/core/brain/factory/init/nimcp_brain_init_validation.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_validation.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_validation.c.s
+
+__/core/brain/factory/init/nimcp_brain_init_wernicke.o: __/core/brain/factory/init/nimcp_brain_init_wernicke.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_wernicke.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_wernicke.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_wernicke.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_wernicke.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_wernicke.i: __/core/brain/factory/init/nimcp_brain_init_wernicke.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_wernicke.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_wernicke.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_wernicke.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_wernicke.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_wernicke.s: __/core/brain/factory/init/nimcp_brain_init_wernicke.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_wernicke.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_wernicke.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_wernicke.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_wernicke.c.s
 
 __/core/brain/factory/nimcp_brain_factory.o: __/core/brain/factory/nimcp_brain_factory.c.o
 .PHONY : __/core/brain/factory/nimcp_brain_factory.o
@@ -13264,6 +13312,54 @@ __/core/brain/regions/wernicke/nimcp_wernicke_gpu_bio_bridge.s: __/core/brain/re
 __/core/brain/regions/wernicke/nimcp_wernicke_gpu_bio_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_gpu_bio_bridge.c.s
 .PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_gpu_bio_bridge.c.s
+
+__/core/brain/regions/wernicke/nimcp_wernicke_immune.o: __/core/brain/regions/wernicke/nimcp_wernicke_immune.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_immune.o
+
+# target to build an object file
+__/core/brain/regions/wernicke/nimcp_wernicke_immune.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_immune.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_immune.c.o
+
+__/core/brain/regions/wernicke/nimcp_wernicke_immune.i: __/core/brain/regions/wernicke/nimcp_wernicke_immune.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_immune.i
+
+# target to preprocess a source file
+__/core/brain/regions/wernicke/nimcp_wernicke_immune.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_immune.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_immune.c.i
+
+__/core/brain/regions/wernicke/nimcp_wernicke_immune.s: __/core/brain/regions/wernicke/nimcp_wernicke_immune.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_immune.s
+
+# target to generate assembly for a file
+__/core/brain/regions/wernicke/nimcp_wernicke_immune.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_immune.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_immune.c.s
+
+__/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.o: __/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.o
+
+# target to build an object file
+__/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.c.o
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.c.o
+
+__/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.i: __/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.c.i
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.c.i
+
+__/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.s: __/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.c.s
+.PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.c.s
 
 __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.o: __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.c.o
 .PHONY : __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.o
@@ -19456,6 +19552,294 @@ __/io/stream/nimcp_stream.s: __/io/stream/nimcp_stream.c.s
 __/io/stream/nimcp_stream.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/io/stream/nimcp_stream.c.s
 .PHONY : __/io/stream/nimcp_stream.c.s
+
+__/language/bridges/nimcp_language_cognitive_bridge.o: __/language/bridges/nimcp_language_cognitive_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_cognitive_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_cognitive_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_cognitive_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_cognitive_bridge.c.o
+
+__/language/bridges/nimcp_language_cognitive_bridge.i: __/language/bridges/nimcp_language_cognitive_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_cognitive_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_cognitive_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_cognitive_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_cognitive_bridge.c.i
+
+__/language/bridges/nimcp_language_cognitive_bridge.s: __/language/bridges/nimcp_language_cognitive_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_cognitive_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_cognitive_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_cognitive_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_cognitive_bridge.c.s
+
+__/language/bridges/nimcp_language_gpu_bridge.o: __/language/bridges/nimcp_language_gpu_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_gpu_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_gpu_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_gpu_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_gpu_bridge.c.o
+
+__/language/bridges/nimcp_language_gpu_bridge.i: __/language/bridges/nimcp_language_gpu_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_gpu_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_gpu_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_gpu_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_gpu_bridge.c.i
+
+__/language/bridges/nimcp_language_gpu_bridge.s: __/language/bridges/nimcp_language_gpu_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_gpu_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_gpu_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_gpu_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_gpu_bridge.c.s
+
+__/language/bridges/nimcp_language_immune_bridge.o: __/language/bridges/nimcp_language_immune_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_immune_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_immune_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_immune_bridge.c.o
+
+__/language/bridges/nimcp_language_immune_bridge.i: __/language/bridges/nimcp_language_immune_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_immune_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_immune_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_immune_bridge.c.i
+
+__/language/bridges/nimcp_language_immune_bridge.s: __/language/bridges/nimcp_language_immune_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_immune_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_immune_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_immune_bridge.c.s
+
+__/language/bridges/nimcp_language_logic_bridge.o: __/language/bridges/nimcp_language_logic_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_logic_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_logic_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_logic_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_logic_bridge.c.o
+
+__/language/bridges/nimcp_language_logic_bridge.i: __/language/bridges/nimcp_language_logic_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_logic_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_logic_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_logic_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_logic_bridge.c.i
+
+__/language/bridges/nimcp_language_logic_bridge.s: __/language/bridges/nimcp_language_logic_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_logic_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_logic_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_logic_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_logic_bridge.c.s
+
+__/language/bridges/nimcp_language_omni_bridge.o: __/language/bridges/nimcp_language_omni_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_omni_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_omni_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_omni_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_omni_bridge.c.o
+
+__/language/bridges/nimcp_language_omni_bridge.i: __/language/bridges/nimcp_language_omni_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_omni_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_omni_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_omni_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_omni_bridge.c.i
+
+__/language/bridges/nimcp_language_omni_bridge.s: __/language/bridges/nimcp_language_omni_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_omni_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_omni_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_omni_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_omni_bridge.c.s
+
+__/language/bridges/nimcp_language_perception_bridge.o: __/language/bridges/nimcp_language_perception_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_perception_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_perception_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_perception_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_perception_bridge.c.o
+
+__/language/bridges/nimcp_language_perception_bridge.i: __/language/bridges/nimcp_language_perception_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_perception_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_perception_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_perception_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_perception_bridge.c.i
+
+__/language/bridges/nimcp_language_perception_bridge.s: __/language/bridges/nimcp_language_perception_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_perception_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_perception_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_perception_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_perception_bridge.c.s
+
+__/language/bridges/nimcp_language_substrate_bridge.o: __/language/bridges/nimcp_language_substrate_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_substrate_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_substrate_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_substrate_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_substrate_bridge.c.o
+
+__/language/bridges/nimcp_language_substrate_bridge.i: __/language/bridges/nimcp_language_substrate_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_substrate_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_substrate_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_substrate_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_substrate_bridge.c.i
+
+__/language/bridges/nimcp_language_substrate_bridge.s: __/language/bridges/nimcp_language_substrate_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_substrate_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_substrate_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_substrate_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_substrate_bridge.c.s
+
+__/language/bridges/nimcp_language_thalamic_bridge.o: __/language/bridges/nimcp_language_thalamic_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_thalamic_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_thalamic_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_thalamic_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_thalamic_bridge.c.o
+
+__/language/bridges/nimcp_language_thalamic_bridge.i: __/language/bridges/nimcp_language_thalamic_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_thalamic_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_thalamic_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_thalamic_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_thalamic_bridge.c.i
+
+__/language/bridges/nimcp_language_thalamic_bridge.s: __/language/bridges/nimcp_language_thalamic_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_thalamic_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_thalamic_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_thalamic_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_thalamic_bridge.c.s
+
+__/language/bridges/nimcp_language_training_bridge.o: __/language/bridges/nimcp_language_training_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_training_bridge.o
+
+# target to build an object file
+__/language/bridges/nimcp_language_training_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_training_bridge.c.o
+.PHONY : __/language/bridges/nimcp_language_training_bridge.c.o
+
+__/language/bridges/nimcp_language_training_bridge.i: __/language/bridges/nimcp_language_training_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_training_bridge.i
+
+# target to preprocess a source file
+__/language/bridges/nimcp_language_training_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_training_bridge.c.i
+.PHONY : __/language/bridges/nimcp_language_training_bridge.c.i
+
+__/language/bridges/nimcp_language_training_bridge.s: __/language/bridges/nimcp_language_training_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_training_bridge.s
+
+# target to generate assembly for a file
+__/language/bridges/nimcp_language_training_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_training_bridge.c.s
+.PHONY : __/language/bridges/nimcp_language_training_bridge.c.s
+
+__/language/nimcp_language_bio_async.o: __/language/nimcp_language_bio_async.c.o
+.PHONY : __/language/nimcp_language_bio_async.o
+
+# target to build an object file
+__/language/nimcp_language_bio_async.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_language_bio_async.c.o
+.PHONY : __/language/nimcp_language_bio_async.c.o
+
+__/language/nimcp_language_bio_async.i: __/language/nimcp_language_bio_async.c.i
+.PHONY : __/language/nimcp_language_bio_async.i
+
+# target to preprocess a source file
+__/language/nimcp_language_bio_async.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_language_bio_async.c.i
+.PHONY : __/language/nimcp_language_bio_async.c.i
+
+__/language/nimcp_language_bio_async.s: __/language/nimcp_language_bio_async.c.s
+.PHONY : __/language/nimcp_language_bio_async.s
+
+# target to generate assembly for a file
+__/language/nimcp_language_bio_async.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_language_bio_async.c.s
+.PHONY : __/language/nimcp_language_bio_async.c.s
+
+__/language/nimcp_language_config.o: __/language/nimcp_language_config.c.o
+.PHONY : __/language/nimcp_language_config.o
+
+# target to build an object file
+__/language/nimcp_language_config.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_language_config.c.o
+.PHONY : __/language/nimcp_language_config.c.o
+
+__/language/nimcp_language_config.i: __/language/nimcp_language_config.c.i
+.PHONY : __/language/nimcp_language_config.i
+
+# target to preprocess a source file
+__/language/nimcp_language_config.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_language_config.c.i
+.PHONY : __/language/nimcp_language_config.c.i
+
+__/language/nimcp_language_config.s: __/language/nimcp_language_config.c.s
+.PHONY : __/language/nimcp_language_config.s
+
+# target to generate assembly for a file
+__/language/nimcp_language_config.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_language_config.c.s
+.PHONY : __/language/nimcp_language_config.c.s
+
+__/language/nimcp_language_orchestrator.o: __/language/nimcp_language_orchestrator.c.o
+.PHONY : __/language/nimcp_language_orchestrator.o
+
+# target to build an object file
+__/language/nimcp_language_orchestrator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_language_orchestrator.c.o
+.PHONY : __/language/nimcp_language_orchestrator.c.o
+
+__/language/nimcp_language_orchestrator.i: __/language/nimcp_language_orchestrator.c.i
+.PHONY : __/language/nimcp_language_orchestrator.i
+
+# target to preprocess a source file
+__/language/nimcp_language_orchestrator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_language_orchestrator.c.i
+.PHONY : __/language/nimcp_language_orchestrator.c.i
+
+__/language/nimcp_language_orchestrator.s: __/language/nimcp_language_orchestrator.c.s
+.PHONY : __/language/nimcp_language_orchestrator.s
+
+# target to generate assembly for a file
+__/language/nimcp_language_orchestrator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_language_orchestrator.c.s
+.PHONY : __/language/nimcp_language_orchestrator.c.s
 
 __/lnn/nimcp_lnn.o: __/lnn/nimcp_lnn.c.o
 .PHONY : __/lnn/nimcp_lnn.o
@@ -32239,6 +32623,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_kg_reader.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_kg_reader.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_kg_reader.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_language.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_language.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_language.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_medulla.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_medulla.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_medulla.s"
@@ -32293,6 +32680,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_validation.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_validation.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_validation.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_wernicke.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_wernicke.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_wernicke.s"
 	@echo "... __/core/brain/factory/nimcp_brain_factory.o"
 	@echo "... __/core/brain/factory/nimcp_brain_factory.i"
 	@echo "... __/core/brain/factory/nimcp_brain_factory.s"
@@ -32626,6 +33016,12 @@ help:
 	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_gpu_bio_bridge.o"
 	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_gpu_bio_bridge.i"
 	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_gpu_bio_bridge.s"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_immune.o"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_immune.i"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_immune.s"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.o"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.i"
+	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.s"
 	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.o"
 	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.i"
 	@echo "... __/core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.s"
@@ -33400,6 +33796,42 @@ help:
 	@echo "... __/io/stream/nimcp_stream.o"
 	@echo "... __/io/stream/nimcp_stream.i"
 	@echo "... __/io/stream/nimcp_stream.s"
+	@echo "... __/language/bridges/nimcp_language_cognitive_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_cognitive_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_cognitive_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_gpu_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_gpu_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_gpu_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_immune_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_immune_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_immune_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_logic_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_logic_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_logic_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_omni_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_omni_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_omni_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_perception_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_perception_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_perception_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_substrate_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_substrate_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_substrate_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_thalamic_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_thalamic_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_thalamic_bridge.s"
+	@echo "... __/language/bridges/nimcp_language_training_bridge.o"
+	@echo "... __/language/bridges/nimcp_language_training_bridge.i"
+	@echo "... __/language/bridges/nimcp_language_training_bridge.s"
+	@echo "... __/language/nimcp_language_bio_async.o"
+	@echo "... __/language/nimcp_language_bio_async.i"
+	@echo "... __/language/nimcp_language_bio_async.s"
+	@echo "... __/language/nimcp_language_config.o"
+	@echo "... __/language/nimcp_language_config.i"
+	@echo "... __/language/nimcp_language_config.s"
+	@echo "... __/language/nimcp_language_orchestrator.o"
+	@echo "... __/language/nimcp_language_orchestrator.i"
+	@echo "... __/language/nimcp_language_orchestrator.s"
 	@echo "... __/lnn/nimcp_lnn.o"
 	@echo "... __/lnn/nimcp_lnn.i"
 	@echo "... __/lnn/nimcp_lnn.s"

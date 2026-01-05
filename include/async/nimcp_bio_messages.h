@@ -1004,6 +1004,15 @@ typedef enum {
     BIO_MODULE_ANGULAR_GYRUS,
     BIO_MODULE_ARCUATE_FASCICULUS,
 
+    /* Language Layer unified (0x0810 - 0x081F) */
+    BIO_MODULE_LANGUAGE_LAYER = 0x0810,          /**< Unified language orchestrator */
+    BIO_MODULE_LANGUAGE_PERCEPTION_BRIDGE,       /**< Language-perception integration */
+    BIO_MODULE_LANGUAGE_COGNITIVE_BRIDGE,        /**< Language-cognitive integration */
+    BIO_MODULE_LANGUAGE_TRAINING_BRIDGE,         /**< Language-training integration */
+    BIO_MODULE_LANGUAGE_OMNI_BRIDGE,             /**< Language-omni inference integration */
+    BIO_MODULE_LANGUAGE_IMMUNE_BRIDGE,           /**< Language-immune integration */
+    BIO_MODULE_LANGUAGE_GPU_BRIDGE,              /**< Language GPU acceleration */
+
     /* Swarm modules (0x0B00 - 0x0BFF) */
     BIO_MODULE_SWARM_ENERGY_GOSSIP = 0x0B00,
     BIO_MODULE_SWARM_CASCADE,

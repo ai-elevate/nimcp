@@ -1441,6 +1441,42 @@ if(CUDAToolkit_FOUND AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_substrate_g
     message(STATUS "  Added GPU Substrate Pipeline E2E test: e2e_test_substrate_gpu_pipeline")
 endif()
 
+# ============================================================================
+# Language Layer Pipeline E2E Test
+# ============================================================================
+# WHAT: End-to-end tests for complete language layer pipeline
+# WHY:  Validate full language processing workflow with all bridges
+# HOW:  Test realistic language scenarios from perception to production
+#
+# PIPELINE STAGES:
+# - Perception input -> Comprehension (Wernicke) -> Semantic integration
+# - Production (Broca) -> Motor output
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_language_layer_pipeline.cpp)
+    add_executable(e2e_test_language_layer_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_language_layer_pipeline.cpp
+    )
+    target_include_directories(e2e_test_language_layer_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/language
+    )
+    target_link_libraries(e2e_test_language_layer_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_language_layer_pipeline PRIVATE cxx_std_20)
+    target_compile_definitions(e2e_test_language_layer_pipeline PRIVATE NIMCP_TESTING)
+    add_test(NAME e2e_test_language_layer_pipeline COMMAND e2e_test_language_layer_pipeline)
+    set_tests_properties(e2e_test_language_layer_pipeline PROPERTIES
+        LABELS "e2e;language;orchestrator;bridges"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Language Layer Pipeline E2E test: e2e_test_language_layer_pipeline")
+endif()
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)
