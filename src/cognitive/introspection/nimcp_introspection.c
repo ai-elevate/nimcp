@@ -28,6 +28,8 @@
 
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/introspection/nimcp_ensemble_uncertainty.h"
+#include "cognitive/introspection/nimcp_introspection_snn_bridge.h"
+#include "cognitive/introspection/nimcp_introspection_plasticity_bridge.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
@@ -146,6 +148,11 @@ struct introspection_context_struct {
 
     /* Thread safety */
     nimcp_mutex_t lock; /* Protects context */
+
+    /* SNN and Plasticity bridges */
+    introspection_snn_bridge_t* snn_bridge;
+    introspection_plasticity_bridge_t* plasticity_bridge;
+    bool bridges_enabled;
 };
 
 /* ========================================================================
@@ -392,6 +399,22 @@ introspection_context_t introspection_context_create(brain_t brain,
         sizeof(struct introspection_context_struct) + sizeof(pattern_registry_t) +
         (context->config.history_size * sizeof(activity_history_entry_t));
 
+    /* WHAT: Initialize SNN and Plasticity bridges */
+    /* WHY: Enable biologically-plausible metacognitive processing */
+    context->snn_bridge = NULL;
+    context->plasticity_bridge = NULL;
+    context->bridges_enabled = false;
+
+    introspection_snn_config_t snn_config = introspection_snn_config_default();
+    context->snn_bridge = introspection_snn_create(&snn_config);
+
+    introspection_plasticity_config_t plasticity_config = introspection_plasticity_config_default();
+    context->plasticity_bridge = introspection_plasticity_create(&plasticity_config);
+
+    if (context->snn_bridge && context->plasticity_bridge) {
+        context->bridges_enabled = true;
+    }
+
     return context;
 }
 
@@ -445,6 +468,16 @@ void introspection_context_destroy(introspection_context_t context)
     /* NOTE: ensemble is NOT owned by introspection context,
      * caller must destroy it separately. We just NULL the pointer here. */
     context->ensemble = NULL;
+
+    /* WHAT: Destroy SNN and Plasticity bridges */
+    if (context->snn_bridge) {
+        introspection_snn_destroy(context->snn_bridge);
+        context->snn_bridge = NULL;
+    }
+    if (context->plasticity_bridge) {
+        introspection_plasticity_destroy(context->plasticity_bridge);
+        context->plasticity_bridge = NULL;
+    }
 
     /* WHAT: Destroy mutex and free context */
     nimcp_mutex_destroy(&context->lock);

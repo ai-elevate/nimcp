@@ -11,6 +11,8 @@
 #define NIMCP_ETHICS_INTERNAL_H
 
 #include "cognitive/ethics/nimcp_ethics.h"
+#include "cognitive/ethics/nimcp_ethics_snn_bridge.h"
+#include "cognitive/ethics/nimcp_ethics_plasticity_bridge.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/containers/nimcp_btree.h"
 #include "utils/thread/nimcp_thread.h"
@@ -144,6 +146,11 @@ struct ethics_engine_struct {
     float last_inflammation_level;          // Cached inflammation level
     uint64_t last_immune_check_ms;          // Last immune state check time
     uint32_t immune_violations_triggered;   // Violations that triggered immune response
+
+    // SNN and Plasticity bridges
+    ethics_snn_bridge_t* snn_bridge;
+    ethics_plasticity_bridge_t* plasticity_bridge;
+    bool bridges_enabled;
 };
 
 /**

@@ -812,6 +812,12 @@ typedef struct {
     bio_module_context_t bio_ctx;
     bool bio_async_enabled;
 
+    /* Bridge modules (void* to avoid circular includes) */
+    void* snn_bridge;            /**< SNN integration bridge */
+    void* plasticity_bridge;     /**< Plasticity integration bridge */
+    void* fep_bridge;            /**< FEP integration bridge */
+    void* thalamic_bridge;       /**< Thalamic routing bridge */
+
     /* Timestamps */
     uint64_t last_update_ms;
     uint64_t last_prediction_ms;

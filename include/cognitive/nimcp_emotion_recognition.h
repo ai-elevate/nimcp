@@ -52,7 +52,12 @@ extern "C" {
  * - Basic (Ekman): 6 universal emotions
  * - Extended: 12 additional emotions for user interactions
  * - Dimensional: Valence, arousal, intensity
+ *
+ * NOTE: This comprehensive definition takes precedence over the simpler
+ * Russell-based categories in nimcp_emotional_tagging.h
  */
+#ifndef NIMCP_EMOTION_CATEGORY_T_DEFINED
+#define NIMCP_EMOTION_CATEGORY_T_DEFINED
 typedef enum {
     // === Basic Emotions (Ekman) ===
     EMOTION_HAPPINESS = 0,     /**< Joy, contentment, satisfaction */
@@ -80,6 +85,7 @@ typedef enum {
     EMOTION_COUNT,             /**< Total number of emotion categories */
     EMOTION_UNKNOWN = 255      /**< Could not determine emotion */
 } emotion_category_t;
+#endif /* NIMCP_EMOTION_CATEGORY_T_DEFINED */
 
 /**
  * WHAT: Emotion intensity levels

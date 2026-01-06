@@ -12,6 +12,8 @@
  */
 
 #include "cognitive/reasoning/nimcp_reasoning_integration.h"
+#include "cognitive/reasoning/nimcp_reasoning_snn_bridge.h"
+#include "cognitive/reasoning/nimcp_reasoning_plasticity_bridge.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -76,6 +78,11 @@ struct reasoning_integration {
     // Internal Knowledge Graph integration (self-awareness)
     kg_module_context_t kg_context;
     bool kg_connected;
+
+    // SNN and Plasticity bridges
+    reasoning_snn_bridge_t* snn_bridge;
+    reasoning_plasticity_bridge_t* plasticity_bridge;
+    bool bridges_enabled;
 };
 
 //=============================================================================
@@ -698,6 +705,21 @@ reasoning_integration_t* reasoning_integration_create_custom(
         }
     }
 
+    // Initialize SNN and Plasticity bridges
+    integration->snn_bridge = NULL;
+    integration->plasticity_bridge = NULL;
+    integration->bridges_enabled = false;
+
+    reasoning_snn_config_t snn_config = reasoning_snn_config_default();
+    integration->snn_bridge = reasoning_snn_create(&snn_config);
+
+    reasoning_plasticity_config_t plasticity_config = reasoning_plasticity_config_default();
+    integration->plasticity_bridge = reasoning_plasticity_create(&plasticity_config);
+
+    if (integration->snn_bridge && integration->plasticity_bridge) {
+        integration->bridges_enabled = true;
+    }
+
     return integration;
 }
 
@@ -714,6 +736,16 @@ void reasoning_integration_destroy(reasoning_integration_t* integration)
     if (integration->bio_async_enabled && integration->bio_ctx) {
         bio_router_unregister_module(integration->bio_ctx);
         NIMCP_LOGGING_DEBUG("Bio-async module unregistered for reasoning integration");
+    }
+
+    // Destroy SNN and Plasticity bridges
+    if (integration->snn_bridge) {
+        reasoning_snn_destroy(integration->snn_bridge);
+        integration->snn_bridge = NULL;
+    }
+    if (integration->plasticity_bridge) {
+        reasoning_plasticity_destroy(integration->plasticity_bridge);
+        integration->plasticity_bridge = NULL;
     }
 
     // Free arrays

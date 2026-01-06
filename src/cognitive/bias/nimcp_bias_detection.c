@@ -19,6 +19,10 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
+// SNN and Plasticity bridges
+#include "cognitive/bias/nimcp_bias_snn_bridge.h"
+#include "cognitive/bias/nimcp_bias_plasticity_bridge.h"
+
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -127,7 +131,29 @@ bias_detection_system_t* bias_system_create(uint32_t max_others_tracked) {
         }
     }
 
-return system;
+    // Initialize SNN and Plasticity bridges
+    system->snn_bridge = NULL;
+    system->plasticity_bridge = NULL;
+    system->bridges_enabled = false;
+
+    // Create SNN bridge with default config
+    bias_snn_config_t snn_config = bias_snn_config_default();
+    system->snn_bridge = bias_snn_create(&snn_config);
+
+    // Create Plasticity bridge with default config
+    bias_plasticity_config_t plasticity_config = bias_plasticity_config_default();
+    system->plasticity_bridge = bias_plasticity_create(&plasticity_config);
+
+    // Mark bridges enabled if both created successfully
+    if (system->snn_bridge && system->plasticity_bridge) {
+        system->bridges_enabled = true;
+        LOG_INFO("bias: SNN and Plasticity bridges enabled");
+    } else {
+        LOG_WARN("bias: Bridges partially or not created (SNN=%p, Plasticity=%p)",
+                 (void*)system->snn_bridge, (void*)system->plasticity_bridge);
+    }
+
+    return system;
 }
 
 void bias_system_destroy(bias_detection_system_t* system) {
@@ -140,6 +166,17 @@ void bias_system_destroy(bias_detection_system_t* system) {
         system->bio_ctx = NULL;
         system->bio_async_enabled = false;
     }
+
+    // Destroy SNN and Plasticity bridges
+    if (system->snn_bridge) {
+        bias_snn_destroy(system->snn_bridge);
+        system->snn_bridge = NULL;
+    }
+    if (system->plasticity_bridge) {
+        bias_plasticity_destroy(system->plasticity_bridge);
+        system->plasticity_bridge = NULL;
+    }
+    system->bridges_enabled = false;
 
     nimcp_free(system);
 }

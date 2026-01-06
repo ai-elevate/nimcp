@@ -26,6 +26,8 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/nimcp_sleep_wake.h"
 #include "cognitive/executive/nimcp_executive_sleep_bridge.h"
+#include "cognitive/executive/nimcp_executive_snn_bridge.h"
+#include "cognitive/executive/nimcp_executive_plasticity_bridge.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -173,6 +175,11 @@ struct executive_controller {
     // Quantum planning integration
     executive_quantum_bridge_t* quantum_bridge;  /**< Quantum reasoning for planning */
     bool quantum_planning_enabled;               /**< Quantum planning active */
+
+    // SNN bridge integration
+    executive_snn_bridge_t* snn_bridge;          /**< SNN integration bridge */
+    executive_plasticity_bridge_t* plasticity_bridge; /**< Plasticity integration bridge */
+    bool bridges_enabled;                        /**< SNN/Plasticity bridges active */
 
     // Internal Knowledge Graph integration (self-awareness)
     kg_module_context_t kg_context;  /**< KG access context */
@@ -779,6 +786,27 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
     }
 
     // =========================================================================
+    // SNN/PLASTICITY BRIDGES: Initialize neural bridges
+    // =========================================================================
+    exec->snn_bridge = NULL;
+    exec->plasticity_bridge = NULL;
+    exec->bridges_enabled = false;
+    {
+        executive_snn_config_t snn_config = executive_snn_config_default();
+        exec->snn_bridge = executive_snn_create(&snn_config);
+
+        executive_plasticity_config_t plasticity_config = executive_plasticity_config_default();
+        exec->plasticity_bridge = executive_plasticity_create(&plasticity_config);
+
+        if (exec->snn_bridge && exec->plasticity_bridge) {
+            exec->bridges_enabled = true;
+            LOG_INFO("SNN and Plasticity bridges initialized");
+        } else {
+            LOG_WARN("Failed to initialize SNN/Plasticity bridges");
+        }
+    }
+
+    // =========================================================================
     // BIO-ASYNC: Register with bio-router
     // =========================================================================
     exec->bio_ctx = NULL;
@@ -1008,6 +1036,16 @@ void executive_destroy(executive_controller_t* exec)
     if (exec->quantum_bridge) {
         executive_quantum_bridge_destroy(exec->quantum_bridge);
         exec->quantum_bridge = NULL;
+    }
+
+    // Destroy SNN and Plasticity bridges
+    if (exec->snn_bridge) {
+        executive_snn_destroy(exec->snn_bridge);
+        exec->snn_bridge = NULL;
+    }
+    if (exec->plasticity_bridge) {
+        executive_plasticity_destroy(exec->plasticity_bridge);
+        exec->plasticity_bridge = NULL;
     }
 
     // Destroy task mutex

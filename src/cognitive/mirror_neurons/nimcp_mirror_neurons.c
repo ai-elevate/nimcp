@@ -38,6 +38,10 @@
 #include "async/nimcp_wiring_helpers.h"
 #include "nimcp.h"  // For error codes
 
+// SNN and Plasticity bridge integration
+#include "cognitive/mirror_neurons/nimcp_mirror_snn_bridge.h"
+#include "cognitive/mirror_neurons/nimcp_mirror_plasticity_bridge.h"
+
 #define LOG_MODULE "mirror_neurons"
 
 // Logging macros
@@ -179,6 +183,11 @@ struct mirror_neurons_system {
     // Bio-async integration
     bio_module_context_t bio_ctx;      /**< Bio-async module context */
     bool bio_async_enabled;            /**< Bio-async registration status */
+
+    // SNN and Plasticity bridge integration
+    mirror_snn_bridge_t* snn_bridge;           /**< SNN bridge for spike-based computation */
+    mirror_plasticity_bridge_t* plasticity_bridge; /**< Plasticity bridge for learning rules */
+    bool bridges_enabled;                      /**< True if bridges are active */
 };
 
 //=============================================================================
@@ -767,6 +776,33 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
         MIRROR_LOG_INFO("mirror_neurons: Bio-router not initialized, skipping async registration");
     }
 
+    // Initialize SNN and Plasticity bridges
+    mirror->snn_bridge = NULL;
+    mirror->plasticity_bridge = NULL;
+    mirror->bridges_enabled = false;
+
+    // Create SNN bridge with default config
+    mirror_snn_config_t snn_config = mirror_snn_config_default();
+    mirror->snn_bridge = mirror_snn_create(&snn_config);
+    if (!mirror->snn_bridge) {
+        MIRROR_LOG_WARN("mirror_neurons: Failed to create SNN bridge - continuing without spike-based computation");
+    }
+
+    // Create Plasticity bridge with default config
+    mirror_plasticity_config_t plasticity_config = mirror_plasticity_config_default();
+    mirror->plasticity_bridge = mirror_plasticity_create(&plasticity_config);
+    if (!mirror->plasticity_bridge) {
+        MIRROR_LOG_WARN("mirror_neurons: Failed to create Plasticity bridge - continuing without unified learning");
+    }
+
+    // Mark bridges as enabled if at least one succeeded
+    if (mirror->snn_bridge || mirror->plasticity_bridge) {
+        mirror->bridges_enabled = true;
+        MIRROR_LOG_INFO("mirror_neurons: Bridge integration enabled (SNN=%s, Plasticity=%s)",
+                       mirror->snn_bridge ? "yes" : "no",
+                       mirror->plasticity_bridge ? "yes" : "no");
+    }
+
     return mirror;
 }
 
@@ -801,6 +837,20 @@ void mirror_neurons_destroy(mirror_neurons_t mirror)
     if (!mirror) {
         return;
     }
+
+    // Destroy SNN and Plasticity bridges first (before other cleanup)
+    if (mirror->snn_bridge) {
+        mirror_snn_destroy(mirror->snn_bridge);
+        mirror->snn_bridge = NULL;
+        MIRROR_LOG_INFO("mirror_neurons: SNN bridge destroyed");
+    }
+
+    if (mirror->plasticity_bridge) {
+        mirror_plasticity_destroy(mirror->plasticity_bridge);
+        mirror->plasticity_bridge = NULL;
+        MIRROR_LOG_INFO("mirror_neurons: Plasticity bridge destroyed");
+    }
+    mirror->bridges_enabled = false;
 
     // Unregister from bio-async router
     if (mirror->bio_async_enabled && mirror->bio_ctx) {

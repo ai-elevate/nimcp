@@ -49,6 +49,10 @@
 #include "async/nimcp_wiring_helpers.h"
 #include "async/nimcp_bio_router.h"
 
+// SNN and Plasticity bridge integration
+#include "cognitive/global_workspace/nimcp_gw_snn_bridge.h"
+#include "cognitive/global_workspace/nimcp_gw_plasticity_bridge.h"
+
 #define LOG_MODULE "global_workspace"
 
 //=============================================================================
@@ -105,6 +109,11 @@ struct global_workspace_struct {
     // Bio-async integration
     bio_module_context_t bio_ctx;           /**< Bio-async module context */
     bool bio_async_enabled;                 /**< Bio-async registration status */
+
+    // SNN and Plasticity bridge integration
+    gw_snn_bridge_t* snn_bridge;            /**< SNN bridge for spike-based processing */
+    gw_plasticity_bridge_t* plasticity_bridge; /**< Plasticity bridge for learning */
+    bool bridges_enabled;                   /**< Bridge integration status */
 };
 
 //=============================================================================
@@ -665,6 +674,35 @@ global_workspace_t* global_workspace_create_custom(
         NIMCP_LOGGING_DEBUG("global_workspace: Bio-router not initialized, skipping async registration");
     }
 
+    // Initialize SNN and Plasticity bridges
+    workspace->snn_bridge = NULL;
+    workspace->plasticity_bridge = NULL;
+    workspace->bridges_enabled = false;
+
+    // Create SNN bridge with default config
+    gw_snn_config_t snn_config = gw_snn_config_default();
+    workspace->snn_bridge = gw_snn_create(&snn_config);
+    if (workspace->snn_bridge) {
+        NIMCP_LOGGING_DEBUG("global_workspace: SNN bridge created successfully");
+    } else {
+        NIMCP_LOGGING_WARN("global_workspace: Failed to create SNN bridge - continuing without SNN integration");
+    }
+
+    // Create Plasticity bridge with default config
+    gw_plasticity_config_t plasticity_config = gw_plasticity_config_default();
+    workspace->plasticity_bridge = gw_plasticity_create(&plasticity_config);
+    if (workspace->plasticity_bridge) {
+        NIMCP_LOGGING_DEBUG("global_workspace: Plasticity bridge created successfully");
+    } else {
+        NIMCP_LOGGING_WARN("global_workspace: Failed to create Plasticity bridge - continuing without plasticity integration");
+    }
+
+    // Mark bridges as enabled if at least one was created
+    if (workspace->snn_bridge || workspace->plasticity_bridge) {
+        workspace->bridges_enabled = true;
+        NIMCP_LOGGING_INFO("global_workspace: SNN/Plasticity bridge integration enabled");
+    }
+
     // Note: global_workspace_t is typedef'd as a pointer, so function signature
     // expects global_workspace_t* (double pointer). Cast to match.
     return (global_workspace_t*)workspace;
@@ -685,6 +723,19 @@ void global_workspace_destroy(global_workspace_t* workspace) {
         ws->bio_async_enabled = false;
         NIMCP_LOGGING_INFO("Bio-async communication disabled for global_workspace");
     }
+
+    // Destroy SNN and Plasticity bridges
+    if (ws->snn_bridge) {
+        gw_snn_destroy(ws->snn_bridge);
+        ws->snn_bridge = NULL;
+        NIMCP_LOGGING_DEBUG("global_workspace: SNN bridge destroyed");
+    }
+    if (ws->plasticity_bridge) {
+        gw_plasticity_destroy(ws->plasticity_bridge);
+        ws->plasticity_bridge = NULL;
+        NIMCP_LOGGING_DEBUG("global_workspace: Plasticity bridge destroyed");
+    }
+    ws->bridges_enabled = false;
 
     // Free history content buffers
     if (ws->history_content != NULL) {

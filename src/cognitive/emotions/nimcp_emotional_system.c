@@ -31,6 +31,10 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_wiring_helpers.h"
+// SNN/plasticity bridges BEFORE emotional_tagging to avoid emotion_category_t conflict
+// (nimcp_emotion_recognition.h has different enum values than nimcp_emotional_tagging.h)
+#include "cognitive/emotion/nimcp_emotion_snn_bridge.h"
+#include "cognitive/emotion/nimcp_emotion_plasticity_bridge.h"
 #include "cognitive/nimcp_emotional_tagging.h"
 #include "nimcp.h"
 #include <stdlib.h>
@@ -80,6 +84,11 @@ struct emotional_system {
 
     // === Quantum Bridge ===
     emotion_quantum_bridge_t* quantum_bridge;
+
+    // === SNN and Plasticity Bridges ===
+    emotion_snn_bridge_t* snn_bridge;
+    emotion_plasticity_bridge_t* plasticity_bridge;
+    bool bridges_enabled;
 };
 
 /*=============================================================================
@@ -346,6 +355,31 @@ emotional_system_t* emotion_system_create(const emotion_config_t* config) {
         }
     }
 
+    // Initialize SNN and Plasticity bridges
+    system->snn_bridge = NULL;
+    system->plasticity_bridge = NULL;
+    system->bridges_enabled = false;
+
+    emotion_snn_config_t snn_config = emotion_snn_config_default();
+    system->snn_bridge = emotion_snn_create(&snn_config);
+    if (system->snn_bridge) {
+        LOG_INFO(LOG_MODULE, "SNN bridge initialized");
+    } else {
+        LOG_WARN(LOG_MODULE, "Failed to create SNN bridge, continuing without it");
+    }
+
+    emotion_plasticity_config_t plasticity_config = emotion_plasticity_config_default();
+    system->plasticity_bridge = emotion_plasticity_create(&plasticity_config);
+    if (system->plasticity_bridge) {
+        LOG_INFO(LOG_MODULE, "Plasticity bridge initialized");
+    } else {
+        LOG_WARN(LOG_MODULE, "Failed to create plasticity bridge, continuing without it");
+    }
+
+    if (system->snn_bridge || system->plasticity_bridge) {
+        system->bridges_enabled = true;
+    }
+
     LOG_INFO(LOG_MODULE, "Emotional system created successfully");
     return system;
 }
@@ -357,6 +391,20 @@ void emotion_system_destroy(emotional_system_t* system) {
     }
 
     LOG_DEBUG(LOG_MODULE, "Destroying emotional system");
+
+    // Destroy SNN bridge
+    if (system->snn_bridge) {
+        emotion_snn_destroy(system->snn_bridge);
+        system->snn_bridge = NULL;
+        LOG_DEBUG(LOG_MODULE, "Destroyed SNN bridge");
+    }
+
+    // Destroy plasticity bridge
+    if (system->plasticity_bridge) {
+        emotion_plasticity_destroy(system->plasticity_bridge);
+        system->plasticity_bridge = NULL;
+        LOG_DEBUG(LOG_MODULE, "Destroyed plasticity bridge");
+    }
 
     // Destroy quantum bridge
     if (system->quantum_bridge) {

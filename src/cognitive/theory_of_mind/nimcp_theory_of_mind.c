@@ -38,6 +38,13 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 
+/* Bridge integrations */
+#include "cognitive/theory_of_mind/nimcp_tom_snn_bridge.h"
+#include "cognitive/theory_of_mind/nimcp_tom_plasticity_bridge.h"
+#include "cognitive/theory_of_mind/nimcp_tom_fep_bridge.h"
+#include "cognitive/theory_of_mind/nimcp_theory_of_mind_substrate_bridge.h"
+#include "cognitive/theory_of_mind/nimcp_theory_of_mind_thalamic_bridge.h"
+
 #define LOG_MODULE "cognitive.theory_of_mind"
 #define BIO_MODULE_COGNITIVE_THEORY_OF_MIND 0x034E
 
@@ -150,6 +157,13 @@ struct theory_of_mind_s {
     float immune_impairment;                /**< Current inflammation impairment [0,1] */
     uint64_t last_immune_update_ms;        /**< Last immune state check */
     uint32_t social_stress_events;         /**< Count of social stress triggers */
+
+    // Bridge integrations
+    tom_snn_bridge_t* snn_bridge;           /**< SNN bridge for neural processing */
+    tom_plasticity_bridge_t* plasticity_bridge; /**< Plasticity bridge for learning */
+    tom_fep_bridge_t* fep_bridge;           /**< FEP bridge for free energy */
+    tom_substrate_bridge_t* substrate_bridge; /**< Substrate bridge for metabolic state */
+    tom_thalamic_bridge_t* thalamic_bridge; /**< Thalamic bridge for attention routing */
 };
 
 //=============================================================================
@@ -465,7 +479,51 @@ theory_of_mind_t tom_create(brain_t self_brain)
         }
     }
 
-return tom;
+    // Initialize bridges
+    tom->snn_bridge = NULL;
+    tom->plasticity_bridge = NULL;
+    tom->fep_bridge = NULL;
+    tom->substrate_bridge = NULL;
+    tom->thalamic_bridge = NULL;
+
+    // Create SNN bridge with default config
+    tom_snn_config_t snn_config = tom_snn_config_default();
+    tom->snn_bridge = tom_snn_create(&snn_config);
+    if (tom->snn_bridge) {
+        LOG_DEBUG("SNN bridge created");
+    }
+
+    // Create plasticity bridge with default config
+    tom_plasticity_config_t plasticity_config = tom_plasticity_config_default();
+    tom->plasticity_bridge = tom_plasticity_create(&plasticity_config);
+    if (tom->plasticity_bridge) {
+        LOG_DEBUG("Plasticity bridge created");
+    }
+
+    // Create FEP bridge with default config
+    tom_fep_config_t fep_config;
+    tom_fep_bridge_default_config(&fep_config);
+    tom->fep_bridge = tom_fep_bridge_create(&fep_config);
+    if (tom->fep_bridge) {
+        tom_fep_bridge_connect_tom(tom->fep_bridge, tom);
+        LOG_DEBUG("FEP bridge created and connected");
+    }
+
+    // Create substrate bridge (requires external substrate, initialize NULL)
+    tom_substrate_config_t substrate_config = tom_substrate_default_config();
+    tom->substrate_bridge = tom_substrate_bridge_create(tom, NULL, &substrate_config);
+    if (tom->substrate_bridge) {
+        LOG_DEBUG("Substrate bridge created");
+    }
+
+    // Create thalamic bridge (requires external router, initialize NULL)
+    tom_thalamic_config_t thalamic_config = tom_thalamic_default_config();
+    tom->thalamic_bridge = tom_thalamic_bridge_create(tom, NULL, &thalamic_config);
+    if (tom->thalamic_bridge) {
+        LOG_DEBUG("Thalamic bridge created");
+    }
+
+    return tom;
 }
 
 void tom_destroy(theory_of_mind_t tom)
@@ -473,6 +531,28 @@ void tom_destroy(theory_of_mind_t tom)
     LOG_DEBUG("Destroying module");
     if (!tom) {
         return;
+    }
+
+    // Destroy bridges
+    if (tom->snn_bridge) {
+        tom_snn_destroy(tom->snn_bridge);
+        tom->snn_bridge = NULL;
+    }
+    if (tom->plasticity_bridge) {
+        tom_plasticity_destroy(tom->plasticity_bridge);
+        tom->plasticity_bridge = NULL;
+    }
+    if (tom->fep_bridge) {
+        tom_fep_bridge_destroy(tom->fep_bridge);
+        tom->fep_bridge = NULL;
+    }
+    if (tom->substrate_bridge) {
+        tom_substrate_bridge_destroy(tom->substrate_bridge);
+        tom->substrate_bridge = NULL;
+    }
+    if (tom->thalamic_bridge) {
+        tom_thalamic_bridge_destroy(tom->thalamic_bridge);
+        tom->thalamic_bridge = NULL;
     }
 
     // Free structure
@@ -535,6 +615,82 @@ bool tom_observe(theory_of_mind_t tom, const tom_observation_t* observation)
         tom->stats.average_inference_confidence =
             (tom->stats.average_inference_confidence * (tom->stats.total_observations - 1) +
              (total_conf / 2.0F)) / tom->stats.total_observations;
+    }
+
+    //=========================================================================
+    // Bridge Processing
+    //=========================================================================
+
+    // SNN bridge: encode social context into spiking network
+    if (tom->snn_bridge) {
+        float dimensions[TOM_DIM_COUNT];
+        dimensions[TOM_DIM_BELIEF_STATE] = emotion_conf;
+        dimensions[TOM_DIM_DESIRE_STATE] = goal_conf;
+        dimensions[TOM_DIM_INTENTION] = tom->goal_confidence;
+        dimensions[TOM_DIM_PERSPECTIVE] = tom->perspective_score;
+        dimensions[TOM_DIM_EMOTION_INFERENCE] = emotion_conf;
+        dimensions[TOM_DIM_SOCIAL_CONTEXT] = 0.5f;  // Default social context
+        dimensions[TOM_DIM_DECEPTION_DETECTION] = 0.0f;
+        dimensions[TOM_DIM_SHARED_ATTENTION] = 0.5f;
+        dimensions[TOM_DIM_EMPATHIC_ACCURACY] = emotion_conf;
+        dimensions[TOM_DIM_MENTAL_SIMULATION] = tom->perspective_score;
+
+        tom_snn_encode_context(tom->snn_bridge, dimensions, TOM_DIM_COUNT);
+        tom_snn_step(tom->snn_bridge);
+    }
+
+    // Plasticity bridge: apply learning from observation
+    if (tom->plasticity_bridge) {
+        // Update eligibility traces based on observation
+        tom_plasticity_update_traces(tom->plasticity_bridge, 1.0f);
+
+        // If emotion inference was high confidence, apply learning
+        if (emotion_conf > 0.7f) {
+            tom_plasticity_learn(tom->plasticity_bridge,
+                TOM_LEARN_CORRECT_BELIEF,
+                emotion_conf,
+                0,  // Default synapse
+                1.0f);
+        }
+    }
+
+    // FEP bridge: update free energy predictions
+    if (tom->fep_bridge) {
+        // Calculate prediction error from observation vs expectation
+        float pe = fabsf(emotion_conf - 0.5f);  // Simple PE calculation
+        if (pe > 0.3f) {
+            tom_fep_infer_belief(tom->fep_bridge, pe);
+        }
+
+        // Activate empathy if emotion was detected
+        if (inferred_emotion != TOM_EMOTION_UNKNOWN &&
+            inferred_emotion != TOM_EMOTION_NEUTRAL) {
+            tom_fep_activate_empathy(tom->fep_bridge, inferred_emotion);
+        }
+
+        // Update bridge state
+        tom_fep_bridge_update(tom->fep_bridge, 1);
+    }
+
+    // Substrate bridge: update based on metabolic state
+    if (tom->substrate_bridge) {
+        tom_substrate_bridge_update(tom->substrate_bridge);
+        tom_substrate_bridge_apply_effects(tom->substrate_bridge);
+    }
+
+    // Thalamic bridge: route inference through attention mechanism
+    if (tom->thalamic_bridge) {
+        tom_thalamic_signal_t signal = {
+            .signal_type = TOM_SIGNAL_BELIEF,
+            .social_salience = emotion_conf,
+            .confidence = goal_conf,
+            .urgency = (inferred_emotion == TOM_EMOTION_FEAR ||
+                       inferred_emotion == TOM_EMOTION_ANGER) ? 0.9f : 0.5f,
+            .mental_state_data = NULL,
+            .data_size = 0,
+            .timestamp_us = nimcp_time_monotonic_ms() * 1000
+        };
+        tom_thalamic_route_inference(tom->thalamic_bridge, &signal);
     }
 
     return true;

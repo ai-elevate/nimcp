@@ -15,6 +15,8 @@
  */
 
 #include "plasticity/attention/nimcp_attention.h"
+#include "cognitive/attention/nimcp_attention_snn_bridge.h"
+#include "cognitive/attention/nimcp_attention_plasticity_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"  // Phase MP: Memory pool for hot paths
@@ -253,6 +255,13 @@ struct multihead_attention_struct {
      */
     kg_module_context_t kg_context;
     bool kg_connected;
+
+    /* WHAT: SNN and Plasticity bridge integration
+     * WHY:  Enable spike-based attention and attention-modulated learning
+     */
+    attention_snn_bridge_t* snn_bridge;
+    attention_plasticity_bridge_t* plasticity_bridge;
+    bool bridges_enabled;
 };
 
 //=============================================================================
@@ -1033,6 +1042,21 @@ multihead_attention_t multihead_attention_create(const multihead_attention_confi
         mha->config.enable_quantum_attention = false;
     }
 
+    /* WHAT: Create SNN and Plasticity bridges
+     * WHY:  Enable spike-based attention and attention-modulated learning
+     */
+    attention_snn_config_t snn_config = attention_snn_config_default();
+    snn_config.num_heads = config->num_heads;
+    mha->snn_bridge = attention_snn_create(&snn_config);
+
+    attention_plasticity_config_t plasticity_config = attention_plasticity_config_default();
+    mha->plasticity_bridge = attention_plasticity_create(&plasticity_config);
+
+    mha->bridges_enabled = (mha->snn_bridge != NULL && mha->plasticity_bridge != NULL);
+    if (!mha->bridges_enabled) {
+        NIMCP_LOGGING_WARN("SNN/Plasticity bridges not fully created, continuing without bridge integration");
+    }
+
     NIMCP_LOGGING_INFO("Created multihead attention: num_heads=%u, input_dim=%u, pe=%s, quantum=%s",
                       config->num_heads, config->input_dim,
                       config->use_positional_encoding ?
@@ -1066,6 +1090,16 @@ void multihead_attention_destroy(multihead_attention_t mha)
      */
     if (mha->pos_encoder) {
         nimcp_pos_encoder_destroy(mha->pos_encoder);
+    }
+
+    /* WHAT: Destroy SNN and Plasticity bridges
+     * WHY:  Free bridge resources before freeing main struct
+     */
+    if (mha->snn_bridge) {
+        attention_snn_destroy(mha->snn_bridge);
+    }
+    if (mha->plasticity_bridge) {
+        attention_plasticity_destroy(mha->plasticity_bridge);
     }
 
     /* NOTE: Quantum bridge cleanup would go here when integrated */

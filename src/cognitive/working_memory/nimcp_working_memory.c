@@ -39,6 +39,8 @@
 #include "core/brain/nimcp_brain_kg_helpers.h"  // KG self-awareness integration
 #define NIMCP_WORKING_MEMORY_QUANTUM_BRIDGE_IMPLEMENTATION
 #include "cognitive/memory/nimcp_working_memory_quantum_bridge.h"  // Quantum retrieval bridge
+#include "cognitive/memory/nimcp_working_memory_snn_bridge.h"      // SNN bridge
+#include "cognitive/memory/nimcp_working_memory_plasticity_bridge.h"  // Plasticity bridge
 
 #include "nimcp.h"  // For error codes
 #include "async/nimcp_bio_async.h"
@@ -157,6 +159,11 @@ struct working_memory {
     // Internal Knowledge Graph integration (self-awareness)
     kg_module_context_t kg_context;  // KG access context
     bool kg_connected;               // Internal KG is connected
+
+    // SNN and Plasticity bridge integration
+    wm_snn_bridge_t* snn_bridge;           // SNN integration bridge
+    wm_plasticity_bridge_t* plasticity_bridge;  // Plasticity integration bridge
+    bool bridges_enabled;                  // Whether bridges are active
 };
 
 //=============================================================================
@@ -781,6 +788,34 @@ working_memory_t* working_memory_create_custom(
                  qconfig.max_items, qconfig.item_embedding_dim);
     }
 
+    // Initialize SNN and Plasticity bridges
+    wm->snn_bridge = NULL;
+    wm->plasticity_bridge = NULL;
+    wm->bridges_enabled = false;
+
+    // Create SNN bridge with default config
+    wm_snn_config_t snn_config = wm_snn_config_default();
+    snn_config.max_slots = config->capacity;
+    wm->snn_bridge = wm_snn_create(&snn_config);
+    if (!wm->snn_bridge) {
+        LOG_WARN("Failed to create SNN bridge - continuing without SNN integration");
+    }
+
+    // Create Plasticity bridge with default config
+    wm_plasticity_config_t plasticity_config = wm_plasticity_config_default();
+    wm->plasticity_bridge = wm_plasticity_create(&plasticity_config);
+    if (!wm->plasticity_bridge) {
+        LOG_WARN("Failed to create Plasticity bridge - continuing without plasticity integration");
+    }
+
+    // Mark bridges as enabled if at least one succeeded
+    if (wm->snn_bridge || wm->plasticity_bridge) {
+        wm->bridges_enabled = true;
+        LOG_INFO("SNN/Plasticity bridges enabled: snn=%s, plasticity=%s",
+                 wm->snn_bridge ? "yes" : "no",
+                 wm->plasticity_bridge ? "yes" : "no");
+    }
+
     return wm;
 }
 
@@ -839,6 +874,17 @@ void working_memory_destroy(working_memory_t* wm) {
         working_memory_quantum_bridge_destroy(wm->quantum_bridge);
         wm->quantum_bridge = NULL;
     }
+
+    // Destroy SNN and Plasticity bridges
+    if (wm->snn_bridge) {
+        wm_snn_destroy(wm->snn_bridge);
+        wm->snn_bridge = NULL;
+    }
+    if (wm->plasticity_bridge) {
+        wm_plasticity_destroy(wm->plasticity_bridge);
+        wm->plasticity_bridge = NULL;
+    }
+    wm->bridges_enabled = false;
 
     // Destroy mutex
     nimcp_platform_mutex_destroy(&wm->mutex);

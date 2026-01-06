@@ -21,6 +21,10 @@
 #include "async/nimcp_bio_router.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 
+// SNN and Plasticity bridges
+#include "cognitive/epistemic/nimcp_epistemic_snn_bridge.h"
+#include "cognitive/epistemic/nimcp_epistemic_plasticity_bridge.h"
+
 #define LOG_MODULE "epistemic"
 
 //=============================================================================
@@ -82,6 +86,11 @@ struct epistemic_filter_struct {
     // Bio-async integration
     bio_module_context_t bio_ctx;  /**< Bio-async module context */
     bool bio_async_enabled;        /**< Bio-async registration status */
+
+    // SNN and Plasticity bridges
+    epistemic_snn_bridge_t* snn_bridge;         /**< SNN integration bridge */
+    epistemic_plasticity_bridge_t* plasticity_bridge;  /**< Plasticity integration bridge */
+    bool bridges_enabled;                       /**< Whether bridges are active */
 };
 
 //=============================================================================
@@ -275,6 +284,61 @@ epistemic_filter_t epistemic_filter_create(float skepticism_level) {
         NIMCP_LOGGING_DEBUG("epistemic: Bio-router not initialized, skipping async registration");
     }
 
+    // Initialize SNN and Plasticity bridges
+    filter->snn_bridge = NULL;
+    filter->plasticity_bridge = NULL;
+    filter->bridges_enabled = false;
+
+    // Create SNN bridge with default config
+    epistemic_snn_config_t snn_config = {
+        .max_sources = EPISTEMIC_SNN_MAX_SOURCES,
+        .neurons_per_dim = EPISTEMIC_SNN_NEURONS_PER_DIM,
+        .input_dim = EPISTEMIC_SNN_INPUT_DIM,
+        .hidden_dim = EPISTEMIC_SNN_HIDDEN_DIM,
+        .dt_ms = 1.0f,
+        .evidence_gain = 1.0f,
+        .uncertainty_gain = 1.0f,
+        .bias_detection_threshold = 0.5f,
+        .encoding_type = EPISTEMIC_SNN_ENCODE_RATE,
+        .enable_source_tracking = true,
+        .enable_bias_detection = true,
+        .enable_conspiracy_detection = true,
+        .enable_bio_async = filter->bio_async_enabled
+    };
+    filter->snn_bridge = epistemic_snn_create(&snn_config);
+
+    // Create Plasticity bridge with default config
+    epistemic_plasticity_config_t plasticity_config = {
+        .stdp_ltp_window_ms = 20.0f,
+        .stdp_ltd_window_ms = 20.0f,
+        .stdp_a_plus = 0.01f,
+        .stdp_a_minus = 0.0105f,
+        .stdp_tau_plus = 20.0f,
+        .stdp_tau_minus = 20.0f,
+        .enable_source_learning = true,
+        .source_correct_ltp = 0.02f,
+        .source_incorrect_ltd = 0.01f,
+        .enable_bias_learning = true,
+        .bias_detection_ltp = 0.015f,
+        .bias_correction_reward = 0.1f,
+        .enable_evidence_weighting = true,
+        .evidence_quality_gain = 1.0f,
+        .evidence_recency_decay = 0.95f,
+        .enable_bcm = true,
+        .bcm_threshold_tau = 1000.0f,
+        .bcm_activity_tau = 100.0f
+    };
+    filter->plasticity_bridge = epistemic_plasticity_create(&plasticity_config);
+
+    // Mark bridges enabled if both created successfully
+    if (filter->snn_bridge && filter->plasticity_bridge) {
+        filter->bridges_enabled = true;
+        NIMCP_LOGGING_INFO("epistemic: SNN and Plasticity bridges enabled");
+    } else {
+        NIMCP_LOGGING_WARN("epistemic: Bridges partially or not created (SNN=%p, Plasticity=%p)",
+                          (void*)filter->snn_bridge, (void*)filter->plasticity_bridge);
+    }
+
     return filter;
 }
 
@@ -288,6 +352,17 @@ void epistemic_filter_destroy(epistemic_filter_t filter) {
         filter->bio_async_enabled = false;
         NIMCP_LOGGING_INFO("Bio-async communication disabled for epistemic");
     }
+
+    // Destroy SNN and Plasticity bridges
+    if (filter->snn_bridge) {
+        epistemic_snn_destroy(filter->snn_bridge);
+        filter->snn_bridge = NULL;
+    }
+    if (filter->plasticity_bridge) {
+        epistemic_plasticity_destroy(filter->plasticity_bridge);
+        filter->plasticity_bridge = NULL;
+    }
+    filter->bridges_enabled = false;
 
     nimcp_free(filter);
 }

@@ -43,6 +43,10 @@
 #include "async/nimcp_wiring_helpers.h"
 #include "nimcp.h"  // For error codes
 
+// SNN and Plasticity bridges
+#include "cognitive/salience/nimcp_salience_snn_bridge.h"
+#include "cognitive/salience/nimcp_salience_plasticity_bridge.h"
+
 // SIMD intrinsics for vectorized novelty computation
 #if defined(__AVX2__)
 #include <immintrin.h>
@@ -726,6 +730,11 @@ struct salience_evaluator_struct {
     // Cross-modal fusion state
     modality_state_t modalities[SALIENCE_MODALITY_COUNT];
     salience_fusion_strategy_t fusion_strategy;
+
+    // SNN and Plasticity bridges
+    salience_snn_bridge_t* snn_bridge;             /**< SNN integration bridge */
+    salience_plasticity_bridge_t* plasticity_bridge;  /**< Plasticity integration bridge */
+    bool bridges_enabled;                          /**< Whether bridges are active */
 };
 
 //=============================================================================
@@ -1266,6 +1275,28 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
     }
     eval->fusion_strategy = config->fusion_strategy;
 
+    // Initialize SNN and Plasticity bridges
+    eval->snn_bridge = NULL;
+    eval->plasticity_bridge = NULL;
+    eval->bridges_enabled = false;
+
+    // Create SNN bridge with default config
+    salience_snn_config_t snn_config = salience_snn_config_default();
+    eval->snn_bridge = salience_snn_create(&snn_config);
+
+    // Create Plasticity bridge with default config
+    salience_plasticity_config_t plasticity_config = salience_plasticity_config_default();
+    eval->plasticity_bridge = salience_plasticity_create(&plasticity_config);
+
+    // Mark bridges enabled if both created successfully
+    if (eval->snn_bridge && eval->plasticity_bridge) {
+        eval->bridges_enabled = true;
+        LOG_INFO("salience: SNN and Plasticity bridges enabled");
+    } else {
+        LOG_WARN("salience: Bridges partially or not created (SNN=%p, Plasticity=%p)",
+                 (void*)eval->snn_bridge, (void*)eval->plasticity_bridge);
+    }
+
     return eval;
 }
 
@@ -1303,6 +1334,17 @@ void salience_evaluator_destroy(salience_evaluator_t eval)
     if (eval->history_entry_pool) {
         memory_pool_destroy(eval->history_entry_pool);
     }
+
+    // Destroy SNN and Plasticity bridges
+    if (eval->snn_bridge) {
+        salience_snn_destroy(eval->snn_bridge);
+        eval->snn_bridge = NULL;
+    }
+    if (eval->plasticity_bridge) {
+        salience_plasticity_destroy(eval->plasticity_bridge);
+        eval->plasticity_bridge = NULL;
+    }
+    eval->bridges_enabled = false;
 
     nimcp_mutex_destroy(&eval->eval_lock);
 

@@ -22,6 +22,8 @@
 #define LOG_MODULE "meta_learning"
 
 #include "cognitive/nimcp_meta_learning.h"
+#include "cognitive/meta_learning/nimcp_meta_learning_snn_bridge.h"
+#include "cognitive/meta_learning/nimcp_meta_learning_plasticity_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -118,6 +120,11 @@ struct meta_learner_s {
     // Bio-async integration
     bio_module_context_t bio_ctx;   /**< Bio-async module context */
     bool bio_async_enabled;         /**< Bio-async registration status */
+
+    // SNN and Plasticity bridge integration
+    meta_learning_snn_bridge_t* snn_bridge;           /**< SNN bridge for spike-based meta-learning */
+    meta_learning_plasticity_bridge_t* plasticity_bridge; /**< Plasticity bridge for synaptic learning */
+    bool bridges_enabled;                              /**< Bridge integration status */
 };
 
 //=============================================================================
@@ -275,7 +282,31 @@ meta_learner_t meta_learner_create(const meta_learning_config_t* config,
         }
     }
 
-return meta;
+    // =========================================================================
+    // INITIALIZE: SNN and Plasticity bridges
+    // =========================================================================
+
+    meta->snn_bridge = NULL;
+    meta->plasticity_bridge = NULL;
+    meta->bridges_enabled = false;
+
+    // Create SNN bridge with default config
+    meta_learning_snn_config_t snn_config = meta_learning_snn_config_default();
+    meta->snn_bridge = meta_learning_snn_create(&snn_config);
+
+    // Create Plasticity bridge with default config
+    meta_learning_plasticity_config_t plasticity_config = meta_learning_plasticity_config_default();
+    meta->plasticity_bridge = meta_learning_plasticity_create(&plasticity_config);
+
+    // Set bridges_enabled if both bridges created successfully
+    if (meta->snn_bridge && meta->plasticity_bridge) {
+        meta->bridges_enabled = true;
+        NIMCP_LOGGING_DEBUG("Meta-learner bridges enabled: SNN and Plasticity");
+    } else {
+        NIMCP_LOGGING_DEBUG("Meta-learner bridges partially enabled or disabled");
+    }
+
+    return meta;
 }
 
 /**
@@ -293,6 +324,17 @@ void meta_learner_destroy(meta_learner_t meta)
     if (!meta) {
         return;
     }
+
+    // Destroy SNN and Plasticity bridges
+    if (meta->snn_bridge) {
+        meta_learning_snn_destroy(meta->snn_bridge);
+        meta->snn_bridge = NULL;
+    }
+    if (meta->plasticity_bridge) {
+        meta_learning_plasticity_destroy(meta->plasticity_bridge);
+        meta->plasticity_bridge = NULL;
+    }
+    meta->bridges_enabled = false;
 
     // Free task history
     if (meta->task_history) {

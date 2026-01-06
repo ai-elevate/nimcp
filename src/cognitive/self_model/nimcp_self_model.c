@@ -4,6 +4,8 @@
 
 #include "cognitive/nimcp_self_model.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/self_model/nimcp_self_model_snn_bridge.h"
+#include "cognitive/self_model/nimcp_self_model_plasticity_bridge.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -39,6 +41,11 @@ struct self_model_system {
     // Internal Knowledge Graph integration
     kg_module_context_t kg_context; /**< KG access context */
     bool kg_connected;              /**< Internal KG is connected */
+
+    // SNN and Plasticity bridges
+    self_model_snn_bridge_t* snn_bridge;           /**< SNN integration bridge */
+    self_model_plasticity_bridge_t* plasticity_bridge; /**< Plasticity integration bridge */
+    bool bridges_enabled;                          /**< Bridge integration status */
 };
 
 // ============================================================================
@@ -181,7 +188,22 @@ self_model_system_t self_model_create(const char* name,
         }
     }
 
-return system;
+    // Create SNN and Plasticity bridges
+    system->snn_bridge = NULL;
+    system->plasticity_bridge = NULL;
+    system->bridges_enabled = false;
+
+    self_model_snn_config_t snn_config = self_model_snn_config_default();
+    system->snn_bridge = self_model_snn_create(&snn_config);
+
+    self_model_plasticity_config_t plasticity_config = self_model_plasticity_config_default();
+    system->plasticity_bridge = self_model_plasticity_create(&plasticity_config);
+
+    if (system->snn_bridge && system->plasticity_bridge) {
+        system->bridges_enabled = true;
+    }
+
+    return system;
 }
 
 void self_model_destroy(self_model_system_t system)
@@ -190,6 +212,17 @@ void self_model_destroy(self_model_system_t system)
     if (!system) {
         return;
     }
+
+    // Destroy bridges before freeing struct
+    if (system->snn_bridge) {
+        self_model_snn_destroy(system->snn_bridge);
+        system->snn_bridge = NULL;
+    }
+    if (system->plasticity_bridge) {
+        self_model_plasticity_destroy(system->plasticity_bridge);
+        system->plasticity_bridge = NULL;
+    }
+    system->bridges_enabled = false;
 
     nimcp_mutex_destroy(&system->mutex);
     nimcp_free(system);

@@ -36,6 +36,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// Forward declarations for bridge types
+typedef struct bias_snn_bridge bias_snn_bridge_t;
+typedef struct bias_plasticity_bridge bias_plasticity_bridge_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -325,6 +329,10 @@ typedef struct {
     void* bio_ctx;                  /**< bio_module_context_t pointer */
     bool bio_async_enabled;         /**< Bio-async registration status */
 
+    // SNN and Plasticity bridges
+    bias_snn_bridge_t* snn_bridge;          /**< SNN integration bridge */
+    bias_plasticity_bridge_t* plasticity_bridge;  /**< Plasticity integration bridge */
+    bool bridges_enabled;                   /**< Whether bridges are active */
 } bias_detection_system_t;
 
 //=============================================================================

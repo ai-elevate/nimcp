@@ -15,6 +15,8 @@
 
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/ethics/nimcp_ethics_internal.h"
+#include "cognitive/ethics/nimcp_ethics_snn_bridge.h"
+#include "cognitive/ethics/nimcp_ethics_plasticity_bridge.h"
 #include "nimcp.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -449,6 +451,21 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
     engine->asimov_violations = 0;
     memset(engine->asimov_laws_hash, 0, sizeof(engine->asimov_laws_hash));
 
+    // Initialize SNN and Plasticity bridges
+    engine->snn_bridge = NULL;
+    engine->plasticity_bridge = NULL;
+    engine->bridges_enabled = false;
+
+    ethics_snn_config_t snn_config = ethics_snn_config_default();
+    engine->snn_bridge = ethics_snn_create(&snn_config);
+
+    ethics_plasticity_config_t plasticity_config = ethics_plasticity_config_default();
+    engine->plasticity_bridge = ethics_plasticity_create(&plasticity_config);
+
+    if (engine->snn_bridge && engine->plasticity_bridge) {
+        engine->bridges_enabled = true;
+    }
+
     // Add foundational Golden Rule policy
     add_golden_rule_policy(engine);
 
@@ -517,6 +534,16 @@ void ethics_engine_destroy(ethics_engine_t engine)
     }
     if (engine->empathy_net) {
         empathy_network_destroy(engine->empathy_net);
+    }
+
+    // Cleanup SNN and Plasticity bridges
+    if (engine->snn_bridge) {
+        ethics_snn_destroy(engine->snn_bridge);
+        engine->snn_bridge = NULL;
+    }
+    if (engine->plasticity_bridge) {
+        ethics_plasticity_destroy(engine->plasticity_bridge);
+        engine->plasticity_bridge = NULL;
     }
 
     // Free storage arrays

@@ -50,7 +50,12 @@ extern "C" {
  * @brief Emotion categories derived from valence-arousal space
  *
  * Based on Russell's circumplex model quadrants
+ *
+ * NOTE: If nimcp_emotion_recognition.h is included first, its more comprehensive
+ * emotion_category_t (Ekman + extended) will be used instead of this simpler version.
  */
+#ifndef NIMCP_EMOTION_CATEGORY_T_DEFINED
+#define NIMCP_EMOTION_CATEGORY_T_DEFINED
 typedef enum {
     EMOTION_CAT_NEUTRAL,      /**< valence ≈ 0, arousal < 0.3 (no strong emotion) */
     EMOTION_CAT_JOY,          /**< valence > 0.5, arousal > 0.5 (happy, excited) */
@@ -62,6 +67,7 @@ typedef enum {
     EMOTION_CAT_ANXIETY,      /**< valence < -0.2, arousal > 0.5 (worried, tense) */
     EMOTION_CAT_BOREDOM       /**< valence < 0, arousal < 0.2 (disinterested) */
 } emotion_category_t;
+#endif /* NIMCP_EMOTION_CATEGORY_T_DEFINED */
 
 //=============================================================================
 // Core Types

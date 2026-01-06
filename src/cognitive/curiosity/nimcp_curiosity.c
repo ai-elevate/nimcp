@@ -4,6 +4,8 @@
 //=============================================================================
 
 #include "cognitive/curiosity/nimcp_curiosity.h"
+#include "cognitive/curiosity/nimcp_curiosity_snn_bridge.h"
+#include "cognitive/curiosity/nimcp_curiosity_plasticity_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -272,6 +274,11 @@ struct curiosity_engine_struct {
 
     // Immune system integration
     void* immune_bridge;  // curiosity_immune_bridge_t*, void* to avoid circular dependency
+
+    // SNN and Plasticity bridges
+    curiosity_snn_bridge_t* snn_bridge;
+    curiosity_plasticity_bridge_t* plasticity_bridge;
+    bool bridges_enabled;
 };
 
 //=============================================================================
@@ -938,6 +945,21 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
         }
     }
 
+    // Initialize SNN and Plasticity bridges
+    engine->snn_bridge = NULL;
+    engine->plasticity_bridge = NULL;
+    engine->bridges_enabled = false;
+
+    curiosity_snn_config_t snn_config = curiosity_snn_config_default();
+    engine->snn_bridge = curiosity_snn_create(&snn_config);
+
+    curiosity_plasticity_config_t plasticity_config = curiosity_plasticity_config_default();
+    engine->plasticity_bridge = curiosity_plasticity_create(&plasticity_config);
+
+    if (engine->snn_bridge && engine->plasticity_bridge) {
+        engine->bridges_enabled = true;
+    }
+
     return engine;
 }
 
@@ -981,6 +1003,15 @@ void curiosity_engine_destroy(curiosity_engine_t engine)
     // REFACTORED: No brain destruction needed - we only hold a reference
     // parent_brain is owned by caller and will be destroyed by them
     // Previously destroyed gap_detector and question_prioritizer brains here
+
+    if (engine->snn_bridge) {
+        curiosity_snn_destroy(engine->snn_bridge);
+        engine->snn_bridge = NULL;
+    }
+    if (engine->plasticity_bridge) {
+        curiosity_plasticity_destroy(engine->plasticity_bridge);
+        engine->plasticity_bridge = NULL;
+    }
 
     nimcp_free(engine);
 }

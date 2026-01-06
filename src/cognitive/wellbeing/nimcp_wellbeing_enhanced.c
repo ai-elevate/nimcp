@@ -20,6 +20,12 @@
 #include <string.h>
 #include <math.h>
 
+/* Bridge module includes */
+#include "cognitive/wellbeing/nimcp_wellbeing_snn_bridge.h"
+#include "cognitive/wellbeing/nimcp_wellbeing_plasticity_bridge.h"
+#include "cognitive/wellbeing/nimcp_wellbeing_fep_bridge.h"
+#include "cognitive/wellbeing/nimcp_wellbeing_thalamic_bridge.h"
+
 /* ============================================================================
  * Constants
  * ============================================================================ */
@@ -897,6 +903,31 @@ enhanced_wellbeing_system_t* enhanced_wellbeing_create(
         return NULL;
     }
 
+    /* Initialize SNN bridge */
+    wellbeing_snn_config_t snn_config = wellbeing_snn_config_default();
+    system->snn_bridge = wellbeing_snn_create(&snn_config);
+    if (!system->snn_bridge) {
+        NIMCP_LOGGING_WARN("Failed to create SNN bridge - continuing without it");
+    }
+
+    /* Initialize plasticity bridge */
+    wellbeing_plasticity_config_t plasticity_config = wellbeing_plasticity_config_default();
+    system->plasticity_bridge = wellbeing_plasticity_create(&plasticity_config);
+    if (!system->plasticity_bridge) {
+        NIMCP_LOGGING_WARN("Failed to create plasticity bridge - continuing without it");
+    }
+
+    /* Initialize FEP bridge */
+    wellbeing_fep_config_t fep_config;
+    wellbeing_fep_bridge_default_config(&fep_config);
+    system->fep_bridge = wellbeing_fep_bridge_create(&fep_config);
+    if (!system->fep_bridge) {
+        NIMCP_LOGGING_WARN("Failed to create FEP bridge - continuing without it");
+    }
+
+    /* Thalamic bridge requires router - will be connected later via connect API */
+    system->thalamic_bridge = NULL;
+
     NIMCP_LOGGING_INFO("Enhanced wellbeing system created (version %s)",
                       ENHANCED_WELLBEING_VERSION);
 
@@ -916,6 +947,24 @@ void enhanced_wellbeing_destroy(enhanced_wellbeing_system_t* system) {
     /* Disconnect bio-async */
     if (system->bio_async_enabled) {
         enhanced_wellbeing_disconnect_bio_async(system);
+    }
+
+    /* Destroy bridges */
+    if (system->snn_bridge) {
+        wellbeing_snn_destroy((wellbeing_snn_bridge_t*)system->snn_bridge);
+        system->snn_bridge = NULL;
+    }
+    if (system->plasticity_bridge) {
+        wellbeing_plasticity_destroy((wellbeing_plasticity_bridge_t*)system->plasticity_bridge);
+        system->plasticity_bridge = NULL;
+    }
+    if (system->fep_bridge) {
+        wellbeing_fep_bridge_destroy((wellbeing_fep_bridge_t*)system->fep_bridge);
+        system->fep_bridge = NULL;
+    }
+    if (system->thalamic_bridge) {
+        wellbeing_thalamic_bridge_destroy((wellbeing_thalamic_bridge_t*)system->thalamic_bridge);
+        system->thalamic_bridge = NULL;
     }
 
     /* Destroy mutex */
@@ -1174,6 +1223,47 @@ int enhanced_wellbeing_update(
     update_sleep_effects(system);
     update_mental_health_effects(system);
     update_free_energy_effects(system);
+
+    /* Update SNN bridge - encode wellbeing dimensions into spike patterns */
+    if (system->snn_bridge) {
+        wellbeing_snn_bridge_t* snn = (wellbeing_snn_bridge_t*)system->snn_bridge;
+        float dims[WELLBEING_DIM_COUNT];
+        dims[WELLBEING_DIM_HEDONIC] = 1.0f - system->current_distress.distress_score;
+        dims[WELLBEING_DIM_EUDAIMONIC] = system->eudaimonic.eudaimonic_score;
+        dims[WELLBEING_DIM_VITALITY] = 1.0f - system->substrate_effects.total_substrate_distress;
+        dims[WELLBEING_DIM_RESILIENCE] = system->mental_health_effects.stress_resilience;
+        dims[WELLBEING_DIM_STRESS] = system->mental_health_effects.chronic_stress_accumulation;
+        dims[WELLBEING_DIM_BALANCE] = system->eudaimonic.autonomy;
+        dims[WELLBEING_DIM_FLOURISHING] = system->eudaimonic.eudaimonic_score;
+        wellbeing_snn_encode_state(snn, dims, WELLBEING_DIM_COUNT);
+        wellbeing_snn_simulate(snn, (float)delta_ms);
+    }
+
+    /* Update plasticity bridge - homeostatic adjustment */
+    if (system->plasticity_bridge) {
+        wellbeing_plasticity_bridge_t* plasticity =
+            (wellbeing_plasticity_bridge_t*)system->plasticity_bridge;
+        wellbeing_plasticity_update_traces(plasticity, (float)delta_ms);
+        wellbeing_plasticity_homeostatic_update(plasticity, (float)delta_ms);
+        float reward = system->current_wellbeing_score - 0.5f;
+        wellbeing_plasticity_apply_reward(plasticity, reward);
+    }
+
+    /* Update FEP bridge */
+    if (system->fep_bridge) {
+        wellbeing_fep_bridge_t* fep = (wellbeing_fep_bridge_t*)system->fep_bridge;
+        wellbeing_fep_bridge_update(fep);
+    }
+
+    /* Update thalamic bridge - route wellbeing status */
+    if (system->thalamic_bridge) {
+        wellbeing_thalamic_bridge_t* thalamic =
+            (wellbeing_thalamic_bridge_t*)system->thalamic_bridge;
+        float stability = 1.0f - system->prediction.trajectory_slope;
+        wellbeing_thalamic_route_status(thalamic,
+                                        system->current_wellbeing_score,
+                                        stability);
+    }
 
     /* Update eudaimonic wellbeing */
     update_eudaimonic_wellbeing(system);
