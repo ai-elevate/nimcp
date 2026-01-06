@@ -215,3 +215,53 @@ set_tests_properties(unit_cognitive_wellbeing_enhanced PROPERTIES
     LABELS "unit;wellbeing;enhanced"
     TIMEOUT 180
 )
+
+# Wellbeing SNN Bridge Unit Tests
+add_executable(unit_cognitive_wellbeing_snn_bridge
+    test_wellbeing_snn_bridge.cpp
+)
+target_link_libraries(unit_cognitive_wellbeing_snn_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+target_include_directories(unit_cognitive_wellbeing_snn_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(unit_cognitive_wellbeing_snn_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_wellbeing_snn_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;wellbeing;snn"
+        TIMEOUT 120
+)
+
+# Wellbeing Plasticity Bridge Unit Tests
+add_executable(unit_cognitive_wellbeing_plasticity_bridge
+    test_wellbeing_plasticity_bridge.cpp
+)
+target_link_libraries(unit_cognitive_wellbeing_plasticity_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+target_include_directories(unit_cognitive_wellbeing_plasticity_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(unit_cognitive_wellbeing_plasticity_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_wellbeing_plasticity_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;wellbeing;plasticity"
+        TIMEOUT 120
+)

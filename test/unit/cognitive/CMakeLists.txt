@@ -263,6 +263,78 @@ gtest_discover_tests(unit_cognitive_test_curiosity_enhanced
 )
 
 # ============================================================================
+# Curiosity SNN Bridge Tests
+# ============================================================================
+# WHAT: Unit tests for Curiosity-SNN bidirectional integration
+# WHY:  Verify curiosity dimension encoding, novelty detection, exploration drive
+# HOW:  Test lifecycle, encoding, simulation, detection, callbacks
+# ============================================================================
+
+add_executable(unit_cognitive_test_curiosity_snn_bridge
+    curiosity/test_curiosity_snn_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_curiosity_snn_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_curiosity_snn_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_curiosity_snn_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_curiosity_snn_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;curiosity;snn"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Curiosity Plasticity Bridge Tests
+# ============================================================================
+# WHAT: Unit tests for Curiosity-Plasticity bidirectional integration
+# WHY:  Verify learning, STDP, synapse protection, reward modulation
+# HOW:  Test lifecycle, synapse management, learning, consolidation
+# ============================================================================
+
+add_executable(unit_cognitive_test_curiosity_plasticity_bridge
+    curiosity/test_curiosity_plasticity_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_curiosity_plasticity_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_curiosity_plasticity_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_cognitive_test_curiosity_plasticity_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_curiosity_plasticity_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;curiosity;plasticity"
+        TIMEOUT 120
+)
+
+# ============================================================================
 # Cognitive FEP Bridge Tests (Comprehensive)
 # ============================================================================
 # WHAT: Unit tests for Cognitive-FEP bidirectional integration bridges
@@ -355,6 +427,9 @@ add_subdirectory(attention)
 # Emotion tests (includes substrate bridge)
 add_subdirectory(emotion)
 
+# Ethics tests (SNN/plasticity bridges)
+add_subdirectory(ethics)
+
 # Executive tests (includes substrate bridge)
 add_subdirectory(executive)
 
@@ -367,8 +442,20 @@ add_subdirectory(memory)
 # Theory of Mind tests (includes substrate bridge)
 add_subdirectory(tom)
 
+# Theory of Mind SNN/Plasticity bridge tests
+add_subdirectory(theory_of_mind)
+
 # Parietal Lobe tests (Phase 7.2 - Mathematical/Scientific Reasoning)
 add_subdirectory(parietal)
+
+# Meta Learning SNN/Plasticity bridge tests
+add_subdirectory(meta_learning)
+
+# Note: introspection and mirror_neurons subdirectories are added from
+# test/CMakeLists.txt to avoid duplicate target issues
+
+# Self Model SNN/Plasticity bridge tests
+add_subdirectory(self_model)
 
 # ============================================================================
 # Self-Awareness Coordinator Tests (Phase 1: Self-Awareness Unification)
@@ -1564,3 +1651,78 @@ gtest_discover_tests(unit_cognitive_test_temporal_replay
         LABELS "unit;cognitive;memory;replay;omni"
         TIMEOUT 120
 )
+
+# Global Workspace - SNN Bridge Unit Tests
+add_executable(unit_cognitive_gw_snn_bridge
+    global_workspace/test_gw_snn_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_gw_snn_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_gw_snn_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_gw_snn_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_gw_snn_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;global_workspace;snn"
+        TIMEOUT 120
+)
+
+# Global Workspace - Plasticity Bridge Unit Tests
+add_executable(unit_cognitive_gw_plasticity_bridge
+    global_workspace/test_gw_plasticity_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_gw_plasticity_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_gw_plasticity_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_gw_plasticity_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_gw_plasticity_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;global_workspace;plasticity"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Epistemic SNN/Plasticity Bridge Tests
+# ============================================================================
+add_subdirectory(epistemic)
+
+# ============================================================================
+# Cognitive Bias SNN/Plasticity Bridge Tests
+# ============================================================================
+add_subdirectory(bias)
+
+# ============================================================================
+# Salience SNN/Plasticity Bridge Tests
+# ============================================================================
+add_subdirectory(salience)

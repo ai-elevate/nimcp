@@ -91,6 +91,41 @@ add_subdirectory(omni)
 # Mental Health Guardian Integration Tests (Phase 10.5.1)
 add_subdirectory(mental_health)
 
+# Emotion SNN-Plasticity Integration Tests
+add_subdirectory(emotion)
+
+# Ethics SNN-Plasticity Integration Tests
+add_subdirectory(ethics)
+
+# Attention SNN-Plasticity Integration Tests
+add_subdirectory(attention)
+
+# Memory SNN-Plasticity Integration Tests
+add_subdirectory(memory)
+
+# Executive SNN-Plasticity Integration Tests
+add_subdirectory(executive)
+
+# Global Workspace SNN-Plasticity Integration Tests
+add_subdirectory(global_workspace)
+
+# Theory of Mind SNN-Plasticity Integration Tests
+add_subdirectory(theory_of_mind)
+
+# Introspection SNN-Plasticity Integration Tests
+add_subdirectory(introspection)
+
+# Meta Learning SNN-Plasticity Integration Tests
+add_subdirectory(meta_learning)
+
+# Mirror Neurons SNN-Plasticity Integration Tests
+add_subdirectory(mirror_neurons)
+
+# Self Model SNN-Plasticity Integration Tests
+add_subdirectory(self_model)
+
+# NOTE: Wellbeing and Memory integration tests are added via test/CMakeLists.txt to avoid duplicates
+
 # Curiosity - FEP Bridge Integration Test
 add_executable(integration_cognitive_curiosity_fep_bridge
     curiosity/test_curiosity_fep_bridge_integration.cpp
@@ -148,3 +183,41 @@ gtest_discover_tests(integration_cognitive_curiosity_enhanced
         LABELS "integration;cognitive;curiosity;enhanced"
         TIMEOUT 180
 )
+
+# Curiosity SNN-Plasticity Integration Tests
+add_executable(integration_cognitive_curiosity_snn_plasticity
+    curiosity/test_curiosity_snn_plasticity_integration.cpp
+)
+
+target_link_libraries(integration_cognitive_curiosity_snn_plasticity
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_cognitive_curiosity_snn_plasticity
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_cognitive_curiosity_snn_plasticity PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_cognitive_curiosity_snn_plasticity
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;curiosity;snn;plasticity"
+        TIMEOUT 180
+)
+
+# Epistemic SNN-Plasticity Integration Tests
+add_subdirectory(epistemic)
+
+# Cognitive Bias SNN-Plasticity Integration Tests
+add_subdirectory(bias)
+
+# Salience SNN-Plasticity Integration Tests
+add_subdirectory(salience)

@@ -94,12 +94,6 @@ examples/integrated_demo: examples/CMakeFiles/integrated_demo.dir/integrated_lea
 examples/integrated_demo: examples/CMakeFiles/integrated_demo.dir/build.make
 examples/integrated_demo: lib/libnimcp.so.2.6.2
 examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libpython3.12.so
-examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libcudart.so
-examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libcublas.so
-examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libcublasLt.so
-examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libculibos.a
-examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libcufft.so
-examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libcurand.so
 examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libssl.so
 examples/integrated_demo: /usr/lib/x86_64-linux-gnu/libcrypto.so
 examples/integrated_demo: examples/CMakeFiles/integrated_demo.dir/link.txt

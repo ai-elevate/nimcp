@@ -1,0 +1,774 @@
+/**
+ * @file nimcp_salience_snn_bridge.c
+ * @brief Salience - SNN Bidirectional Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2026-01-06
+ *
+ * WHAT: Implementation of SNN bridge for salience-based attention
+ * WHY:  Enable biologically-plausible attention through spike-based salience processing
+ * HOW:  Encode novelty, surprise, and urgency as spike patterns
+ */
+
+#include "cognitive/salience/nimcp_salience_snn_bridge.h"
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+
+//=============================================================================
+// Internal Structures
+//=============================================================================
+
+typedef struct {
+    float membrane_potential;
+    float threshold;
+    float spike_rate;
+    uint32_t spike_count;
+    float refractory_remaining;
+    float input_current;
+} salience_neuron_t;
+
+typedef struct {
+    float* features;
+    uint32_t feature_count;
+    uint64_t timestamp_us;
+} history_entry_t;
+
+struct salience_snn_bridge {
+    salience_snn_config_t config;
+    salience_snn_state_t state;
+
+    // Neuron populations per channel
+    salience_neuron_t** channel_neurons;
+    uint32_t num_channels;
+
+    // Output neurons
+    salience_neuron_t* output_neurons;
+    uint32_t num_output_neurons;
+
+    // History for novelty detection
+    history_entry_t* history;
+    uint32_t history_count;
+    uint32_t history_head;
+
+    // Prediction buffer
+    float* prediction;
+    uint32_t prediction_count;
+
+    // Per-channel activation levels
+    float channel_activations[SALIENCE_SNN_CHANNEL_COUNT];
+
+    // Output state
+    salience_snn_output_t last_output;
+
+    // Statistics
+    salience_snn_stats_t stats;
+
+    // Callbacks
+    salience_snn_spike_callback_t spike_callback;
+    void* spike_callback_data;
+    salience_snn_threshold_callback_t threshold_callback;
+    void* threshold_callback_data;
+
+    // Bio-async
+    bool bio_async_connected;
+
+    // Simulation time
+    uint64_t sim_time_us;
+};
+
+//=============================================================================
+// Helper Functions
+//=============================================================================
+
+static float clamp(float value, float min_val, float max_val) {
+    if (value < min_val) return min_val;
+    if (value > max_val) return max_val;
+    return value;
+}
+
+static void reset_neuron(salience_neuron_t* neuron) {
+    neuron->membrane_potential = 0.0f;
+    neuron->threshold = 1.0f;
+    neuron->spike_rate = 0.0f;
+    neuron->spike_count = 0;
+    neuron->refractory_remaining = 0.0f;
+    neuron->input_current = 0.0f;
+}
+
+static bool neuron_step(salience_neuron_t* neuron, float dt_ms, float input) {
+    const float tau_membrane = 20.0f;
+    const float refractory_period = 2.0f;
+
+    if (neuron->refractory_remaining > 0.0f) {
+        neuron->refractory_remaining -= dt_ms;
+        return false;
+    }
+
+    float decay = expf(-dt_ms / tau_membrane);
+    neuron->membrane_potential = neuron->membrane_potential * decay + input * (1.0f - decay);
+
+    if (neuron->membrane_potential >= neuron->threshold) {
+        neuron->membrane_potential = 0.0f;
+        neuron->refractory_remaining = refractory_period;
+        neuron->spike_count++;
+        return true;
+    }
+
+    return false;
+}
+
+static float compute_distance(const float* a, const float* b, uint32_t count) {
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < count; i++) {
+        float diff = a[i] - b[i];
+        sum += diff * diff;
+    }
+    return sqrtf(sum / count);
+}
+
+//=============================================================================
+// Lifecycle Functions
+//=============================================================================
+
+salience_snn_config_t salience_snn_config_default(void) {
+    salience_snn_config_t config = {
+        .max_features = SALIENCE_SNN_MAX_FEATURES,
+        .neurons_per_dim = SALIENCE_SNN_NEURONS_PER_DIM,
+        .history_depth = 32,
+        .dt_ms = 1.0f,
+        .novelty_threshold = 0.6f,
+        .surprise_threshold = 0.5f,
+        .urgency_threshold = 0.7f,
+        .novelty_weight = 0.3f,
+        .surprise_weight = 0.4f,
+        .urgency_weight = 0.3f,
+        .encoding_type = SALIENCE_SNN_ENCODE_RATE,
+        .enable_multimodal = true,
+        .enable_history = true,
+        .enable_prediction = true,
+        .enable_bio_async = false
+    };
+    return config;
+}
+
+salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) {
+    if (!config) return NULL;
+
+    salience_snn_bridge_t* bridge = calloc(1, sizeof(salience_snn_bridge_t));
+    if (!bridge) return NULL;
+
+    bridge->config = *config;
+    bridge->state = SALIENCE_SNN_STATE_IDLE;
+    bridge->num_channels = SALIENCE_SNN_CHANNEL_COUNT;
+
+    // Allocate neurons per channel
+    bridge->channel_neurons = calloc(bridge->num_channels, sizeof(salience_neuron_t*));
+    if (!bridge->channel_neurons) {
+        free(bridge);
+        return NULL;
+    }
+
+    for (uint32_t c = 0; c < bridge->num_channels; c++) {
+        bridge->channel_neurons[c] = calloc(config->neurons_per_dim, sizeof(salience_neuron_t));
+        if (!bridge->channel_neurons[c]) {
+            salience_snn_destroy(bridge);
+            return NULL;
+        }
+        for (uint32_t n = 0; n < config->neurons_per_dim; n++) {
+            reset_neuron(&bridge->channel_neurons[c][n]);
+        }
+    }
+
+    // Allocate output neurons
+    bridge->num_output_neurons = config->neurons_per_dim * 2;
+    bridge->output_neurons = calloc(bridge->num_output_neurons, sizeof(salience_neuron_t));
+    if (!bridge->output_neurons) {
+        salience_snn_destroy(bridge);
+        return NULL;
+    }
+    for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        reset_neuron(&bridge->output_neurons[n]);
+    }
+
+    // Allocate history
+    if (config->enable_history) {
+        bridge->history = calloc(config->history_depth, sizeof(history_entry_t));
+        if (!bridge->history) {
+            salience_snn_destroy(bridge);
+            return NULL;
+        }
+        for (uint32_t i = 0; i < config->history_depth; i++) {
+            bridge->history[i].features = calloc(config->max_features, sizeof(float));
+            if (!bridge->history[i].features) {
+                salience_snn_destroy(bridge);
+                return NULL;
+            }
+        }
+    }
+
+    // Allocate prediction buffer
+    if (config->enable_prediction) {
+        bridge->prediction = calloc(config->max_features, sizeof(float));
+        if (!bridge->prediction) {
+            salience_snn_destroy(bridge);
+            return NULL;
+        }
+    }
+
+    return bridge;
+}
+
+void salience_snn_destroy(salience_snn_bridge_t* bridge) {
+    if (!bridge) return;
+
+    if (bridge->channel_neurons) {
+        for (uint32_t c = 0; c < bridge->num_channels; c++) {
+            free(bridge->channel_neurons[c]);
+        }
+        free(bridge->channel_neurons);
+    }
+    free(bridge->output_neurons);
+
+    if (bridge->history) {
+        for (uint32_t i = 0; i < bridge->config.history_depth; i++) {
+            free(bridge->history[i].features);
+        }
+        free(bridge->history);
+    }
+
+    free(bridge->prediction);
+    free(bridge);
+}
+
+int salience_snn_reset(salience_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    bridge->state = SALIENCE_SNN_STATE_IDLE;
+    bridge->sim_time_us = 0;
+
+    // Reset neurons
+    for (uint32_t c = 0; c < bridge->num_channels; c++) {
+        for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+            reset_neuron(&bridge->channel_neurons[c][n]);
+        }
+    }
+    for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        reset_neuron(&bridge->output_neurons[n]);
+    }
+
+    // Reset activations
+    memset(bridge->channel_activations, 0, sizeof(bridge->channel_activations));
+
+    // Reset history
+    bridge->history_count = 0;
+    bridge->history_head = 0;
+
+    // Reset output
+    memset(&bridge->last_output, 0, sizeof(salience_snn_output_t));
+
+    return 0;
+}
+
+//=============================================================================
+// Encoding Functions
+//=============================================================================
+
+int salience_snn_encode_features(
+    salience_snn_bridge_t* bridge,
+    const float* features,
+    uint32_t feature_count
+) {
+    if (!bridge || !features) return -1;
+
+    bridge->state = SALIENCE_SNN_STATE_ENCODING;
+
+    // Compute novelty from history
+    float novelty = 0.0f;
+    if (bridge->config.enable_history && bridge->history_count > 0) {
+        novelty = salience_snn_compute_novelty(bridge, features, feature_count);
+    }
+
+    // Compute intensity from feature magnitude
+    float intensity = 0.0f;
+    for (uint32_t i = 0; i < feature_count; i++) {
+        intensity += fabsf(features[i]);
+    }
+    intensity /= feature_count;
+
+    // Encode into channel neurons
+    for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+        bridge->channel_neurons[SALIENCE_SNN_CHANNEL_NOVELTY][n].input_current = novelty * 2.0f;
+        bridge->channel_neurons[SALIENCE_SNN_CHANNEL_INTENSITY][n].input_current = intensity * 2.0f;
+    }
+
+    // Add to history
+    if (bridge->config.enable_history) {
+        salience_snn_add_to_history(bridge, features, feature_count);
+    }
+
+    bridge->stats.total_evaluations++;
+    return 0;
+}
+
+int salience_snn_encode_with_prediction(
+    salience_snn_bridge_t* bridge,
+    const float* features,
+    uint32_t feature_count,
+    const float* prediction,
+    uint32_t prediction_count
+) {
+    if (!bridge || !features) return -1;
+
+    // First encode features
+    salience_snn_encode_features(bridge, features, feature_count);
+
+    // Compute surprise from prediction error
+    if (prediction && prediction_count > 0) {
+        uint32_t compare_count = feature_count < prediction_count ? feature_count : prediction_count;
+        float surprise = compute_distance(features, prediction, compare_count);
+        surprise = clamp(surprise, 0.0f, 1.0f);
+
+        for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+            bridge->channel_neurons[SALIENCE_SNN_CHANNEL_SURPRISE][n].input_current = surprise * 2.0f;
+        }
+
+        // Store prediction for later
+        if (bridge->prediction) {
+            memcpy(bridge->prediction, prediction, prediction_count * sizeof(float));
+            bridge->prediction_count = prediction_count;
+        }
+    }
+
+    return 0;
+}
+
+int salience_snn_encode_temporal(
+    salience_snn_bridge_t* bridge,
+    const float* features,
+    uint32_t feature_count,
+    uint64_t timestamp_us
+) {
+    if (!bridge || !features) return -1;
+
+    // Encode features
+    salience_snn_encode_features(bridge, features, feature_count);
+
+    // Compute urgency from temporal dynamics
+    float urgency = 0.0f;
+    if (bridge->history_count > 0 && bridge->config.enable_history) {
+        // Check for rapid changes
+        uint32_t recent_idx = (bridge->history_head + bridge->config.history_depth - 1) %
+                              bridge->config.history_depth;
+        uint64_t time_delta = timestamp_us - bridge->history[recent_idx].timestamp_us;
+
+        if (time_delta > 0 && time_delta < 100000) {  // Within 100ms
+            float change_rate = compute_distance(features, bridge->history[recent_idx].features,
+                                                feature_count);
+            urgency = change_rate * (100000.0f / time_delta);  // Scale by temporal proximity
+            urgency = clamp(urgency, 0.0f, 1.0f);
+        }
+    }
+
+    for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+        bridge->channel_neurons[SALIENCE_SNN_CHANNEL_URGENCY][n].input_current = urgency * 2.0f;
+    }
+
+    return 0;
+}
+
+//=============================================================================
+// Simulation Functions
+//=============================================================================
+
+int salience_snn_simulate(salience_snn_bridge_t* bridge, float duration_ms) {
+    if (!bridge) return -1;
+
+    bridge->state = SALIENCE_SNN_STATE_SIMULATING;
+
+    float dt = bridge->config.dt_ms;
+    int steps = (int)(duration_ms / dt);
+
+    for (int step = 0; step < steps; step++) {
+        salience_snn_step(bridge);
+    }
+
+    bridge->state = SALIENCE_SNN_STATE_IDLE;
+    return 0;
+}
+
+int salience_snn_step(salience_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    float dt = bridge->config.dt_ms;
+
+    // Step all channel neurons
+    for (uint32_t c = 0; c < bridge->num_channels; c++) {
+        float channel_activity = 0.0f;
+        for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+            float input = bridge->channel_neurons[c][n].input_current;
+            if (neuron_step(&bridge->channel_neurons[c][n], dt, input)) {
+                channel_activity += 1.0f;
+                bridge->stats.total_spikes++;
+            }
+        }
+        bridge->channel_activations[c] = channel_activity / bridge->config.neurons_per_dim;
+    }
+
+    // Output neurons integrate weighted channel activity
+    float weighted_input =
+        bridge->channel_activations[SALIENCE_SNN_CHANNEL_NOVELTY] * bridge->config.novelty_weight +
+        bridge->channel_activations[SALIENCE_SNN_CHANNEL_SURPRISE] * bridge->config.surprise_weight +
+        bridge->channel_activations[SALIENCE_SNN_CHANNEL_URGENCY] * bridge->config.urgency_weight +
+        bridge->channel_activations[SALIENCE_SNN_CHANNEL_INTENSITY] * 0.2f;
+
+    for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        if (neuron_step(&bridge->output_neurons[n], dt, weighted_input)) {
+            bridge->stats.total_spikes++;
+        }
+    }
+
+    bridge->sim_time_us += (uint64_t)(dt * 1000.0f);
+    return 0;
+}
+
+int salience_snn_forward(
+    salience_snn_bridge_t* bridge,
+    const float* inputs,
+    uint32_t input_count
+) {
+    if (!bridge || !inputs) return -1;
+
+    // Distribute inputs across channels
+    uint32_t per_channel = input_count / bridge->num_channels;
+    for (uint32_t c = 0; c < bridge->num_channels && c * per_channel < input_count; c++) {
+        float sum = 0.0f;
+        for (uint32_t i = 0; i < per_channel && (c * per_channel + i) < input_count; i++) {
+            sum += inputs[c * per_channel + i];
+        }
+        sum /= per_channel;
+
+        for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+            bridge->channel_neurons[c][n].input_current = sum;
+        }
+    }
+
+    return salience_snn_step(bridge);
+}
+
+//=============================================================================
+// Decoding Functions
+//=============================================================================
+
+int salience_snn_decode_salience(
+    salience_snn_bridge_t* bridge,
+    salience_snn_output_t* output
+) {
+    if (!bridge || !output) return -1;
+
+    bridge->state = SALIENCE_SNN_STATE_EVALUATING;
+
+    output->novelty = bridge->channel_activations[SALIENCE_SNN_CHANNEL_NOVELTY];
+    output->surprise = bridge->channel_activations[SALIENCE_SNN_CHANNEL_SURPRISE];
+    output->urgency = bridge->channel_activations[SALIENCE_SNN_CHANNEL_URGENCY];
+    output->intensity = bridge->channel_activations[SALIENCE_SNN_CHANNEL_INTENSITY];
+
+    // Combined salience
+    output->combined_salience =
+        output->novelty * bridge->config.novelty_weight +
+        output->surprise * bridge->config.surprise_weight +
+        output->urgency * bridge->config.urgency_weight;
+
+    // Find dominant channel
+    float max_activation = 0.0f;
+    output->dominant_channel = SALIENCE_SNN_CHANNEL_NOVELTY;
+    for (uint32_t c = 0; c < SALIENCE_SNN_CHANNEL_COUNT; c++) {
+        if (bridge->channel_activations[c] > max_activation) {
+            max_activation = bridge->channel_activations[c];
+            output->dominant_channel = (salience_snn_channel_t)c;
+        }
+    }
+
+    // Confidence based on output neuron activity consistency
+    float output_activity = 0.0f;
+    float output_variance = 0.0f;
+    for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        output_activity += bridge->output_neurons[n].membrane_potential;
+    }
+    output_activity /= bridge->num_output_neurons;
+
+    for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        float diff = bridge->output_neurons[n].membrane_potential - output_activity;
+        output_variance += diff * diff;
+    }
+    output_variance /= bridge->num_output_neurons;
+    output->confidence = clamp(1.0f - sqrtf(output_variance), 0.0f, 1.0f);
+
+    // High salience detection
+    output->high_salience = (output->combined_salience > 0.6f);
+
+    bridge->last_output = *output;
+
+    // Update stats
+    if (output->novelty > bridge->config.novelty_threshold) {
+        bridge->stats.high_novelty_events++;
+        if (bridge->threshold_callback) {
+            bridge->threshold_callback(bridge, SALIENCE_SNN_CHANNEL_NOVELTY, output->novelty,
+                                      bridge->threshold_callback_data);
+        }
+    }
+    if (output->surprise > bridge->config.surprise_threshold) {
+        bridge->stats.high_surprise_events++;
+        if (bridge->threshold_callback) {
+            bridge->threshold_callback(bridge, SALIENCE_SNN_CHANNEL_SURPRISE, output->surprise,
+                                      bridge->threshold_callback_data);
+        }
+    }
+    if (output->urgency > bridge->config.urgency_threshold) {
+        bridge->stats.high_urgency_events++;
+        if (bridge->threshold_callback) {
+            bridge->threshold_callback(bridge, SALIENCE_SNN_CHANNEL_URGENCY, output->urgency,
+                                      bridge->threshold_callback_data);
+        }
+    }
+
+    bridge->stats.mean_salience = bridge->stats.mean_salience * 0.99f + output->combined_salience * 0.01f;
+    bridge->stats.mean_novelty = bridge->stats.mean_novelty * 0.99f + output->novelty * 0.01f;
+    bridge->stats.mean_surprise = bridge->stats.mean_surprise * 0.99f + output->surprise * 0.01f;
+
+    bridge->state = SALIENCE_SNN_STATE_IDLE;
+    return 0;
+}
+
+float salience_snn_get_combined_salience(salience_snn_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+    return bridge->last_output.combined_salience;
+}
+
+float salience_snn_get_novelty(salience_snn_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+    return bridge->last_output.novelty;
+}
+
+float salience_snn_get_surprise(salience_snn_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+    return bridge->last_output.surprise;
+}
+
+float salience_snn_get_urgency(salience_snn_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+    return bridge->last_output.urgency;
+}
+
+salience_snn_channel_t salience_snn_get_dominant_channel(salience_snn_bridge_t* bridge) {
+    if (!bridge) return SALIENCE_SNN_CHANNEL_NOVELTY;
+    return bridge->last_output.dominant_channel;
+}
+
+//=============================================================================
+// History Functions
+//=============================================================================
+
+int salience_snn_add_to_history(
+    salience_snn_bridge_t* bridge,
+    const float* features,
+    uint32_t feature_count
+) {
+    if (!bridge || !features || !bridge->history) return -1;
+
+    uint32_t copy_count = feature_count < bridge->config.max_features ?
+                          feature_count : bridge->config.max_features;
+
+    memcpy(bridge->history[bridge->history_head].features, features, copy_count * sizeof(float));
+    bridge->history[bridge->history_head].feature_count = copy_count;
+    bridge->history[bridge->history_head].timestamp_us = bridge->sim_time_us;
+
+    bridge->history_head = (bridge->history_head + 1) % bridge->config.history_depth;
+    if (bridge->history_count < bridge->config.history_depth) {
+        bridge->history_count++;
+    }
+
+    return 0;
+}
+
+int salience_snn_clear_history(salience_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    bridge->history_count = 0;
+    bridge->history_head = 0;
+
+    return 0;
+}
+
+float salience_snn_compute_novelty(
+    salience_snn_bridge_t* bridge,
+    const float* features,
+    uint32_t feature_count
+) {
+    if (!bridge || !features || !bridge->history || bridge->history_count == 0) {
+        return 1.0f;  // No history = maximum novelty
+    }
+
+    float min_distance = 1000.0f;
+
+    for (uint32_t i = 0; i < bridge->history_count; i++) {
+        uint32_t compare_count = feature_count < bridge->history[i].feature_count ?
+                                 feature_count : bridge->history[i].feature_count;
+        float distance = compute_distance(features, bridge->history[i].features, compare_count);
+        if (distance < min_distance) {
+            min_distance = distance;
+        }
+    }
+
+    // Convert distance to novelty (closer = less novel)
+    float novelty = 1.0f - expf(-min_distance * 2.0f);
+    return clamp(novelty, 0.0f, 1.0f);
+}
+
+//=============================================================================
+// State Query Functions
+//=============================================================================
+
+int salience_snn_get_channel_state(
+    salience_snn_bridge_t* bridge,
+    salience_snn_channel_t channel,
+    salience_channel_state_t* state
+) {
+    if (!bridge || !state || channel >= SALIENCE_SNN_CHANNEL_COUNT) return -1;
+
+    state->channel = channel;
+    state->activation = bridge->channel_activations[channel];
+
+    uint32_t total_spikes = 0;
+    for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+        total_spikes += bridge->channel_neurons[channel][n].spike_count;
+    }
+    state->spike_count = total_spikes;
+    state->spike_rate = (float)total_spikes / bridge->config.neurons_per_dim;
+    state->confidence = bridge->last_output.confidence;
+
+    return 0;
+}
+
+int salience_snn_get_state(
+    salience_snn_bridge_t* bridge,
+    salience_snn_bridge_state_t* state
+) {
+    if (!bridge || !state) return -1;
+
+    state->state = bridge->state;
+
+    float total = 0.0f;
+    for (uint32_t c = 0; c < bridge->num_channels; c++) {
+        total += bridge->channel_activations[c];
+    }
+    state->total_activity = total;
+
+    state->combined_salience = bridge->last_output.combined_salience;
+    state->novelty = bridge->last_output.novelty;
+    state->surprise = bridge->last_output.surprise;
+    state->urgency = bridge->last_output.urgency;
+
+    state->high_salience_count = bridge->stats.high_novelty_events +
+                                  bridge->stats.high_surprise_events +
+                                  bridge->stats.high_urgency_events;
+
+    return 0;
+}
+
+int salience_snn_get_stats(salience_snn_bridge_t* bridge, salience_snn_stats_t* stats) {
+    if (!bridge || !stats) return -1;
+    *stats = bridge->stats;
+    return 0;
+}
+
+int salience_snn_reset_stats(salience_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    memset(&bridge->stats, 0, sizeof(salience_snn_stats_t));
+    return 0;
+}
+
+//=============================================================================
+// Callback Registration
+//=============================================================================
+
+int salience_snn_register_spike_callback(
+    salience_snn_bridge_t* bridge,
+    salience_snn_spike_callback_t callback,
+    void* user_data
+) {
+    if (!bridge) return -1;
+    bridge->spike_callback = callback;
+    bridge->spike_callback_data = user_data;
+    return 0;
+}
+
+int salience_snn_register_threshold_callback(
+    salience_snn_bridge_t* bridge,
+    salience_snn_threshold_callback_t callback,
+    void* user_data
+) {
+    if (!bridge) return -1;
+    bridge->threshold_callback = callback;
+    bridge->threshold_callback_data = user_data;
+    return 0;
+}
+
+//=============================================================================
+// Bio-Async Integration
+//=============================================================================
+
+int salience_snn_bio_async_connect(salience_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->config.enable_bio_async) return -1;
+    bridge->bio_async_connected = true;
+    return 0;
+}
+
+int salience_snn_bio_async_disconnect(salience_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    bridge->bio_async_connected = false;
+    return 0;
+}
+
+bool salience_snn_is_bio_async_connected(salience_snn_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->bio_async_connected;
+}
+
+//=============================================================================
+// Weight Configuration
+//=============================================================================
+
+int salience_snn_set_weights(
+    salience_snn_bridge_t* bridge,
+    float novelty_weight,
+    float surprise_weight,
+    float urgency_weight
+) {
+    if (!bridge) return -1;
+
+    // Normalize weights
+    float total = novelty_weight + surprise_weight + urgency_weight;
+    if (total > 0.0f) {
+        bridge->config.novelty_weight = novelty_weight / total;
+        bridge->config.surprise_weight = surprise_weight / total;
+        bridge->config.urgency_weight = urgency_weight / total;
+    }
+
+    return 0;
+}
+
+int salience_snn_set_thresholds(
+    salience_snn_bridge_t* bridge,
+    float novelty_threshold,
+    float surprise_threshold,
+    float urgency_threshold
+) {
+    if (!bridge) return -1;
+
+    bridge->config.novelty_threshold = clamp(novelty_threshold, 0.0f, 1.0f);
+    bridge->config.surprise_threshold = clamp(surprise_threshold, 0.0f, 1.0f);
+    bridge->config.urgency_threshold = clamp(urgency_threshold, 0.0f, 1.0f);
+
+    return 0;
+}

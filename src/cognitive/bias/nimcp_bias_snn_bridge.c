@@ -1,0 +1,716 @@
+/**
+ * @file nimcp_bias_snn_bridge.c
+ * @brief Cognitive Bias - SNN Bidirectional Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2026-01-06
+ *
+ * WHAT: Implementation of SNN bridge for cognitive bias detection
+ * WHY:  Enable biologically-plausible bias detection through spike-based processing
+ * HOW:  Encode decision contexts as spike patterns, decode bias detection from population activity
+ */
+
+#include "cognitive/bias/nimcp_bias_snn_bridge.h"
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+
+//=============================================================================
+// Internal Structures
+//=============================================================================
+
+typedef struct {
+    float membrane_potential;
+    float threshold;
+    float spike_rate;
+    uint32_t spike_count;
+    float refractory_remaining;
+    float input_current;
+    float adaptation;
+} bias_neuron_t;
+
+struct bias_snn_bridge {
+    bias_snn_config_t config;
+    bias_snn_state_t state;
+
+    // Neuron populations per bias type
+    bias_neuron_t** bias_neurons;      // [type][neuron]
+    uint32_t num_types;
+
+    // Conflict detection neurons
+    bias_neuron_t* conflict_neurons;
+    uint32_t num_conflict_neurons;
+
+    // Output neurons
+    bias_neuron_t* output_neurons;
+    uint32_t num_output_neurons;
+
+    // Current input state
+    float anchor_value;
+    float recent_weight;
+    float emotional_valence;
+    float prior_belief;
+    float prediction_error;
+
+    // Per-type activation levels
+    float* type_activations;
+    float* type_confidences;
+
+    // Output state
+    bias_snn_output_t last_output;
+
+    // Statistics
+    bias_snn_stats_t stats;
+
+    // Callbacks
+    bias_snn_detection_callback_t detection_callback;
+    void* detection_callback_data;
+    bias_snn_conflict_callback_t conflict_callback;
+    void* conflict_callback_data;
+
+    // Bio-async
+    bool bio_async_connected;
+
+    // Simulation time
+    uint64_t sim_time_us;
+};
+
+//=============================================================================
+// Helper Functions
+//=============================================================================
+
+static float clamp(float value, float min_val, float max_val) {
+    if (value < min_val) return min_val;
+    if (value > max_val) return max_val;
+    return value;
+}
+
+static void reset_neuron(bias_neuron_t* neuron) {
+    neuron->membrane_potential = 0.0f;
+    neuron->threshold = 1.0f;
+    neuron->spike_rate = 0.0f;
+    neuron->spike_count = 0;
+    neuron->refractory_remaining = 0.0f;
+    neuron->input_current = 0.0f;
+    neuron->adaptation = 0.0f;
+}
+
+static bool neuron_step(bias_neuron_t* neuron, float dt_ms, float input) {
+    const float tau_membrane = 20.0f;
+    const float tau_adaptation = 100.0f;
+    const float refractory_period = 2.0f;
+    const float adaptation_strength = 0.1f;
+
+    if (neuron->refractory_remaining > 0.0f) {
+        neuron->refractory_remaining -= dt_ms;
+        return false;
+    }
+
+    // Leaky integrate with adaptation
+    float decay = expf(-dt_ms / tau_membrane);
+    float effective_input = input - neuron->adaptation;
+    neuron->membrane_potential = neuron->membrane_potential * decay + effective_input * (1.0f - decay);
+
+    // Adaptation decay
+    float adapt_decay = expf(-dt_ms / tau_adaptation);
+    neuron->adaptation *= adapt_decay;
+
+    // Check for spike
+    if (neuron->membrane_potential >= neuron->threshold) {
+        neuron->membrane_potential = 0.0f;
+        neuron->refractory_remaining = refractory_period;
+        neuron->spike_count++;
+        neuron->adaptation += adaptation_strength;
+        return true;
+    }
+
+    return false;
+}
+
+static const char* bias_type_names[] = {
+    "confirmation",
+    "availability",
+    "anchoring",
+    "recency",
+    "optimism",
+    "pessimism",
+    "framing",
+    "sunk_cost"
+};
+
+//=============================================================================
+// Lifecycle Functions
+//=============================================================================
+
+bias_snn_config_t bias_snn_config_default(void) {
+    bias_snn_config_t config = {
+        .max_bias_types = BIAS_SNN_MAX_BIAS_TYPES,
+        .neurons_per_type = BIAS_SNN_NEURONS_PER_TYPE,
+        .input_dim = BIAS_SNN_INPUT_DIM,
+        .hidden_dim = BIAS_SNN_HIDDEN_DIM,
+        .dt_ms = 1.0f,
+        .bias_detection_threshold = 0.6f,
+        .conflict_threshold = 0.5f,
+        .baseline_activation = 0.1f,
+        .encoding_type = BIAS_SNN_ENCODE_RATE,
+        .enable_conflict_detection = true,
+        .enable_metacognitive_monitoring = true,
+        .enable_bio_async = false
+    };
+    return config;
+}
+
+bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
+    if (!config) return NULL;
+
+    bias_snn_bridge_t* bridge = calloc(1, sizeof(bias_snn_bridge_t));
+    if (!bridge) return NULL;
+
+    bridge->config = *config;
+    bridge->state = BIAS_SNN_STATE_IDLE;
+    bridge->num_types = BIAS_SNN_TYPE_COUNT;
+
+    // Allocate neurons per bias type
+    bridge->bias_neurons = calloc(bridge->num_types, sizeof(bias_neuron_t*));
+    if (!bridge->bias_neurons) {
+        free(bridge);
+        return NULL;
+    }
+
+    for (uint32_t t = 0; t < bridge->num_types; t++) {
+        bridge->bias_neurons[t] = calloc(config->neurons_per_type, sizeof(bias_neuron_t));
+        if (!bridge->bias_neurons[t]) {
+            for (uint32_t i = 0; i < t; i++) {
+                free(bridge->bias_neurons[i]);
+            }
+            free(bridge->bias_neurons);
+            free(bridge);
+            return NULL;
+        }
+        for (uint32_t n = 0; n < config->neurons_per_type; n++) {
+            reset_neuron(&bridge->bias_neurons[t][n]);
+        }
+    }
+
+    // Allocate conflict detection neurons
+    bridge->num_conflict_neurons = config->neurons_per_type;
+    bridge->conflict_neurons = calloc(bridge->num_conflict_neurons, sizeof(bias_neuron_t));
+    if (!bridge->conflict_neurons) {
+        bias_snn_destroy(bridge);
+        return NULL;
+    }
+    for (uint32_t n = 0; n < bridge->num_conflict_neurons; n++) {
+        reset_neuron(&bridge->conflict_neurons[n]);
+    }
+
+    // Allocate output neurons
+    bridge->num_output_neurons = config->neurons_per_type * 2;
+    bridge->output_neurons = calloc(bridge->num_output_neurons, sizeof(bias_neuron_t));
+    if (!bridge->output_neurons) {
+        bias_snn_destroy(bridge);
+        return NULL;
+    }
+    for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        reset_neuron(&bridge->output_neurons[n]);
+    }
+
+    // Allocate activation arrays
+    bridge->type_activations = calloc(bridge->num_types, sizeof(float));
+    bridge->type_confidences = calloc(bridge->num_types, sizeof(float));
+    if (!bridge->type_activations || !bridge->type_confidences) {
+        bias_snn_destroy(bridge);
+        return NULL;
+    }
+
+    return bridge;
+}
+
+void bias_snn_destroy(bias_snn_bridge_t* bridge) {
+    if (!bridge) return;
+
+    if (bridge->bias_neurons) {
+        for (uint32_t t = 0; t < bridge->num_types; t++) {
+            free(bridge->bias_neurons[t]);
+        }
+        free(bridge->bias_neurons);
+    }
+    free(bridge->conflict_neurons);
+    free(bridge->output_neurons);
+    free(bridge->type_activations);
+    free(bridge->type_confidences);
+    free(bridge);
+}
+
+int bias_snn_reset(bias_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    bridge->state = BIAS_SNN_STATE_IDLE;
+    bridge->sim_time_us = 0;
+
+    // Reset all neurons
+    for (uint32_t t = 0; t < bridge->num_types; t++) {
+        for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+            reset_neuron(&bridge->bias_neurons[t][n]);
+        }
+    }
+    for (uint32_t n = 0; n < bridge->num_conflict_neurons; n++) {
+        reset_neuron(&bridge->conflict_neurons[n]);
+    }
+    for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        reset_neuron(&bridge->output_neurons[n]);
+    }
+
+    // Reset activations
+    memset(bridge->type_activations, 0, bridge->num_types * sizeof(float));
+    memset(bridge->type_confidences, 0, bridge->num_types * sizeof(float));
+
+    // Reset inputs
+    bridge->anchor_value = 0.0f;
+    bridge->recent_weight = 0.0f;
+    bridge->emotional_valence = 0.0f;
+    bridge->prior_belief = 0.5f;
+    bridge->prediction_error = 0.0f;
+
+    // Reset output
+    memset(&bridge->last_output, 0, sizeof(bias_snn_output_t));
+
+    return 0;
+}
+
+//=============================================================================
+// Encoding Functions
+//=============================================================================
+
+int bias_snn_encode_evidence(
+    bias_snn_bridge_t* bridge,
+    const float* evidence,
+    uint32_t evidence_count,
+    float prior_belief
+) {
+    if (!bridge) return -1;
+
+    bridge->state = BIAS_SNN_STATE_ENCODING;
+    bridge->prior_belief = clamp(prior_belief, 0.0f, 1.0f);
+
+    // Compute evidence statistics for bias detection
+    float evidence_mean = 0.0f;
+    float evidence_var = 0.0f;
+
+    if (evidence && evidence_count > 0) {
+        for (uint32_t i = 0; i < evidence_count; i++) {
+            evidence_mean += evidence[i];
+        }
+        evidence_mean /= evidence_count;
+
+        for (uint32_t i = 0; i < evidence_count; i++) {
+            float diff = evidence[i] - evidence_mean;
+            evidence_var += diff * diff;
+        }
+        evidence_var /= evidence_count;
+    }
+
+    // Confirmation bias detection: evidence aligned with prior
+    float confirmation_signal = fabsf(evidence_mean - prior_belief) < 0.2f ?
+                                prior_belief * 1.5f : 0.0f;
+    for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+        bridge->bias_neurons[BIAS_SNN_TYPE_CONFIRMATION][n].input_current = confirmation_signal;
+    }
+
+    bridge->stats.total_detections++;
+    return 0;
+}
+
+int bias_snn_encode_decision_context(
+    bias_snn_bridge_t* bridge,
+    float anchor_value,
+    float recent_evidence_weight,
+    float emotional_valence
+) {
+    if (!bridge) return -1;
+
+    bridge->state = BIAS_SNN_STATE_ENCODING;
+    bridge->anchor_value = anchor_value;
+    bridge->recent_weight = clamp(recent_evidence_weight, 0.0f, 1.0f);
+    bridge->emotional_valence = clamp(emotional_valence, -1.0f, 1.0f);
+
+    // Anchoring bias: strong anchor effect
+    float anchoring_signal = fabsf(anchor_value) * 2.0f;
+    for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+        bridge->bias_neurons[BIAS_SNN_TYPE_ANCHORING][n].input_current = anchoring_signal;
+    }
+
+    // Recency bias: over-weighting recent evidence
+    float recency_signal = recent_evidence_weight > 0.7f ? recent_evidence_weight * 2.0f : 0.0f;
+    for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+        bridge->bias_neurons[BIAS_SNN_TYPE_RECENCY][n].input_current = recency_signal;
+    }
+
+    // Optimism/Pessimism bias: based on emotional valence
+    if (emotional_valence > 0.3f) {
+        for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+            bridge->bias_neurons[BIAS_SNN_TYPE_OPTIMISM][n].input_current = emotional_valence * 2.0f;
+        }
+    } else if (emotional_valence < -0.3f) {
+        for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+            bridge->bias_neurons[BIAS_SNN_TYPE_PESSIMISM][n].input_current = -emotional_valence * 2.0f;
+        }
+    }
+
+    return 0;
+}
+
+int bias_snn_encode_prediction_error(
+    bias_snn_bridge_t* bridge,
+    float prediction_error,
+    float prediction_confidence
+) {
+    if (!bridge) return -1;
+
+    bridge->prediction_error = prediction_error;
+
+    // Large prediction errors with high confidence may indicate bias
+    float pe_magnitude = fabsf(prediction_error);
+    if (pe_magnitude > 0.5f && prediction_confidence > 0.7f) {
+        // Availability bias: systematic PE in one direction
+        float availability_signal = pe_magnitude * prediction_confidence;
+        for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+            bridge->bias_neurons[BIAS_SNN_TYPE_AVAILABILITY][n].input_current = availability_signal;
+        }
+    }
+
+    return 0;
+}
+
+//=============================================================================
+// Simulation Functions
+//=============================================================================
+
+int bias_snn_simulate(bias_snn_bridge_t* bridge, float duration_ms) {
+    if (!bridge) return -1;
+
+    bridge->state = BIAS_SNN_STATE_SIMULATING;
+
+    float dt = bridge->config.dt_ms;
+    int steps = (int)(duration_ms / dt);
+
+    for (int step = 0; step < steps; step++) {
+        bias_snn_step(bridge);
+    }
+
+    bridge->state = BIAS_SNN_STATE_IDLE;
+    return 0;
+}
+
+int bias_snn_step(bias_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    float dt = bridge->config.dt_ms;
+
+    // Step all bias type neurons and track activity
+    for (uint32_t t = 0; t < bridge->num_types; t++) {
+        float type_activity = 0.0f;
+        for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+            float input = bridge->bias_neurons[t][n].input_current + bridge->config.baseline_activation;
+            if (neuron_step(&bridge->bias_neurons[t][n], dt, input)) {
+                type_activity += 1.0f;
+                bridge->stats.total_spikes++;
+            }
+        }
+        bridge->type_activations[t] = type_activity / bridge->config.neurons_per_type;
+    }
+
+    // Conflict detection - multiple bias types active simultaneously
+    if (bridge->config.enable_conflict_detection) {
+        float conflict_input = 0.0f;
+        int active_count = 0;
+        for (uint32_t t = 0; t < bridge->num_types; t++) {
+            if (bridge->type_activations[t] > 0.3f) {
+                active_count++;
+                conflict_input += bridge->type_activations[t];
+            }
+        }
+        if (active_count > 1) {
+            conflict_input *= (float)active_count / bridge->num_types;
+        }
+
+        for (uint32_t n = 0; n < bridge->num_conflict_neurons; n++) {
+            if (neuron_step(&bridge->conflict_neurons[n], dt, conflict_input)) {
+                bridge->stats.total_spikes++;
+            }
+        }
+    }
+
+    // Output neurons integrate all activity
+    float total_input = 0.0f;
+    for (uint32_t t = 0; t < bridge->num_types; t++) {
+        total_input += bridge->type_activations[t];
+    }
+    total_input /= bridge->num_types;
+
+    for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        if (neuron_step(&bridge->output_neurons[n], dt, total_input)) {
+            bridge->stats.total_spikes++;
+        }
+    }
+
+    bridge->sim_time_us += (uint64_t)(dt * 1000.0f);
+    return 0;
+}
+
+int bias_snn_forward(
+    bias_snn_bridge_t* bridge,
+    const float* inputs,
+    uint32_t input_count
+) {
+    if (!bridge || !inputs) return -1;
+
+    // Distribute inputs to bias type neurons
+    uint32_t inputs_per_type = input_count / bridge->num_types;
+    for (uint32_t t = 0; t < bridge->num_types && t * inputs_per_type < input_count; t++) {
+        float sum = 0.0f;
+        for (uint32_t i = 0; i < inputs_per_type && (t * inputs_per_type + i) < input_count; i++) {
+            sum += inputs[t * inputs_per_type + i];
+        }
+        sum /= inputs_per_type;
+
+        for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+            bridge->bias_neurons[t][n].input_current = sum;
+        }
+    }
+
+    return bias_snn_step(bridge);
+}
+
+//=============================================================================
+// Detection Functions
+//=============================================================================
+
+int bias_snn_detect_biases(
+    bias_snn_bridge_t* bridge,
+    bias_snn_output_t* output
+) {
+    if (!bridge || !output) return -1;
+
+    bridge->state = BIAS_SNN_STATE_DETECTING;
+
+    // Copy per-type activations to output
+    float max_activation = 0.0f;
+    bias_snn_type_t dominant = BIAS_SNN_TYPE_CONFIRMATION;
+    float total_activation = 0.0f;
+
+    for (uint32_t t = 0; t < BIAS_SNN_TYPE_COUNT; t++) {
+        output->bias_magnitudes[t] = bridge->type_activations[t];
+        total_activation += bridge->type_activations[t];
+
+        if (bridge->type_activations[t] > max_activation) {
+            max_activation = bridge->type_activations[t];
+            dominant = (bias_snn_type_t)t;
+        }
+    }
+
+    output->overall_bias_level = total_activation / BIAS_SNN_TYPE_COUNT;
+    output->dominant_bias = dominant;
+    output->bias_detected = (max_activation > bridge->config.bias_detection_threshold);
+
+    // Compute conflict level
+    float conflict_activity = 0.0f;
+    for (uint32_t n = 0; n < bridge->num_conflict_neurons; n++) {
+        conflict_activity += bridge->conflict_neurons[n].membrane_potential;
+    }
+    output->conflict_level = clamp(conflict_activity / bridge->num_conflict_neurons, 0.0f, 1.0f);
+
+    // Metacognitive awareness
+    if (bridge->config.enable_metacognitive_monitoring) {
+        output->metacognitive_awareness = output->conflict_level * 0.5f +
+                                         (output->bias_detected ? 0.5f : 0.0f);
+    } else {
+        output->metacognitive_awareness = 0.0f;
+    }
+
+    // Detection confidence based on activation strength
+    output->detection_confidence = max_activation > 0.0f ?
+                                   clamp(max_activation / 1.0f, 0.0f, 1.0f) : 0.0f;
+
+    bridge->last_output = *output;
+
+    // Update stats
+    if (output->bias_detected) {
+        switch (dominant) {
+            case BIAS_SNN_TYPE_CONFIRMATION:
+                bridge->stats.confirmation_detections++;
+                break;
+            case BIAS_SNN_TYPE_AVAILABILITY:
+                bridge->stats.availability_detections++;
+                break;
+            case BIAS_SNN_TYPE_ANCHORING:
+                bridge->stats.anchoring_detections++;
+                break;
+            default:
+                break;
+        }
+
+        if (bridge->detection_callback) {
+            bridge->detection_callback(bridge, dominant, max_activation,
+                                      output->detection_confidence,
+                                      bridge->detection_callback_data);
+        }
+    }
+
+    if (output->conflict_level > bridge->config.conflict_threshold && bridge->conflict_callback) {
+        bridge->conflict_callback(bridge, output->conflict_level, bridge->conflict_callback_data);
+    }
+
+    bridge->stats.mean_bias_level =
+        bridge->stats.mean_bias_level * 0.99f + output->overall_bias_level * 0.01f;
+    bridge->stats.mean_conflict =
+        bridge->stats.mean_conflict * 0.99f + output->conflict_level * 0.01f;
+
+    bridge->state = BIAS_SNN_STATE_IDLE;
+    return 0;
+}
+
+float bias_snn_get_bias_level(bias_snn_bridge_t* bridge, bias_snn_type_t type) {
+    if (!bridge || type >= BIAS_SNN_TYPE_COUNT) return 0.0f;
+    return bridge->type_activations[type];
+}
+
+float bias_snn_get_overall_bias(bias_snn_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+    return bridge->last_output.overall_bias_level;
+}
+
+float bias_snn_get_conflict_level(bias_snn_bridge_t* bridge) {
+    if (!bridge) return 0.0f;
+    return bridge->last_output.conflict_level;
+}
+
+bias_snn_type_t bias_snn_get_dominant_bias(bias_snn_bridge_t* bridge) {
+    if (!bridge) return BIAS_SNN_TYPE_CONFIRMATION;
+    return bridge->last_output.dominant_bias;
+}
+
+//=============================================================================
+// State Query Functions
+//=============================================================================
+
+int bias_snn_get_type_state(
+    bias_snn_bridge_t* bridge,
+    bias_snn_type_t type,
+    bias_type_state_t* state
+) {
+    if (!bridge || !state || type >= BIAS_SNN_TYPE_COUNT) return -1;
+
+    state->type = type;
+    state->activation = bridge->type_activations[type];
+    state->confidence = bridge->type_confidences[type];
+
+    // Compute spike count and rate
+    uint32_t total_spikes = 0;
+    for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+        total_spikes += bridge->bias_neurons[type][n].spike_count;
+    }
+    state->spike_count = total_spikes;
+    state->spike_rate = (float)total_spikes / bridge->config.neurons_per_type;
+
+    state->conflict_level = bridge->last_output.conflict_level;
+
+    return 0;
+}
+
+int bias_snn_get_state(
+    bias_snn_bridge_t* bridge,
+    bias_snn_bridge_state_t* state
+) {
+    if (!bridge || !state) return -1;
+
+    state->state = bridge->state;
+
+    // Compute total activity
+    float total = 0.0f;
+    for (uint32_t t = 0; t < bridge->num_types; t++) {
+        total += bridge->type_activations[t];
+    }
+    state->total_activity = total;
+
+    state->mean_bias_level = bridge->stats.mean_bias_level;
+    state->max_bias_level = bridge->last_output.overall_bias_level;
+    state->dominant_bias = bridge->last_output.dominant_bias;
+    state->metacognitive_awareness = bridge->last_output.metacognitive_awareness;
+
+    // Count active biases
+    uint32_t active = 0;
+    for (uint32_t t = 0; t < bridge->num_types; t++) {
+        if (bridge->type_activations[t] > 0.3f) active++;
+    }
+    state->active_biases = active;
+
+    return 0;
+}
+
+int bias_snn_get_stats(bias_snn_bridge_t* bridge, bias_snn_stats_t* stats) {
+    if (!bridge || !stats) return -1;
+    *stats = bridge->stats;
+    return 0;
+}
+
+int bias_snn_reset_stats(bias_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    memset(&bridge->stats, 0, sizeof(bias_snn_stats_t));
+    return 0;
+}
+
+//=============================================================================
+// Callback Registration
+//=============================================================================
+
+int bias_snn_register_detection_callback(
+    bias_snn_bridge_t* bridge,
+    bias_snn_detection_callback_t callback,
+    void* user_data
+) {
+    if (!bridge) return -1;
+    bridge->detection_callback = callback;
+    bridge->detection_callback_data = user_data;
+    return 0;
+}
+
+int bias_snn_register_conflict_callback(
+    bias_snn_bridge_t* bridge,
+    bias_snn_conflict_callback_t callback,
+    void* user_data
+) {
+    if (!bridge) return -1;
+    bridge->conflict_callback = callback;
+    bridge->conflict_callback_data = user_data;
+    return 0;
+}
+
+//=============================================================================
+// Bio-Async Integration
+//=============================================================================
+
+int bias_snn_bio_async_connect(bias_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->config.enable_bio_async) return -1;
+    bridge->bio_async_connected = true;
+    return 0;
+}
+
+int bias_snn_bio_async_disconnect(bias_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    bridge->bio_async_connected = false;
+    return 0;
+}
+
+bool bias_snn_is_bio_async_connected(bias_snn_bridge_t* bridge) {
+    if (!bridge) return false;
+    return bridge->bio_async_connected;
+}
+
+//=============================================================================
+// Utility Functions
+//=============================================================================
+
+const char* bias_snn_type_name(bias_snn_type_t type) {
+    if (type >= BIAS_SNN_TYPE_COUNT) return "unknown";
+    return bias_type_names[type];
+}

@@ -1509,6 +1509,550 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_mirror_empathy_pipeline.cpp)
     message(STATUS "  Added Mirror Empathy Pipeline E2E test: e2e_test_mirror_empathy_pipeline")
 endif()
 
+# ============================================================================
+# Mirror SNN-Plasticity Learning Pipeline E2E Test
+# ============================================================================
+# WHAT: End-to-end tests for mirror SNN and plasticity learning integration
+# WHY:  Validate full learning pipeline from observation to behavioral adaptation
+# HOW:  Test realistic learning scenarios with spike encoding and STDP
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_mirror_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_mirror_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_mirror_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_mirror_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/mirror_neurons
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_mirror_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_mirror_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_mirror_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_mirror_snn_plasticity_pipeline COMMAND e2e_test_mirror_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_mirror_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;mirror_neurons;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Mirror SNN-Plasticity Pipeline E2E test: e2e_test_mirror_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Ethics-SNN-Plasticity Pipeline E2E Tests
+# ============================================================================
+# WHAT: End-to-end tests for ethics SNN and plasticity learning integration
+# WHY:  Validate full ethical reasoning pipeline with protected synapses
+# HOW:  Test moral scenarios, harm detection, and value learning
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_ethics_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_ethics_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_ethics_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_ethics_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/ethics
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_ethics_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_ethics_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_ethics_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_ethics_snn_plasticity_pipeline COMMAND e2e_test_ethics_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_ethics_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;ethics;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Ethics SNN-Plasticity Pipeline E2E test: e2e_test_ethics_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Wellbeing SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test wellbeing + SNN + plasticity integration
+# WHY:  Verify complete wellbeing learning pipeline
+# HOW:  Test flourishing scenarios, stress detection, and protected synapses
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_wellbeing_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_wellbeing_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_wellbeing_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_wellbeing_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/wellbeing
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_wellbeing_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_wellbeing_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_wellbeing_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_wellbeing_snn_plasticity_pipeline COMMAND e2e_test_wellbeing_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_wellbeing_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;wellbeing;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Wellbeing SNN-Plasticity Pipeline E2E test: e2e_test_wellbeing_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Introspection SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test introspection + SNN + plasticity integration
+# WHY:  Verify complete metacognitive learning pipeline
+# HOW:  Test calibration scenarios, confidence learning, and protected synapses
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_introspection_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_introspection_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_introspection_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_introspection_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/introspection
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_introspection_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_introspection_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_introspection_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_introspection_snn_plasticity_pipeline COMMAND e2e_test_introspection_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_introspection_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;introspection;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Introspection SNN-Plasticity Pipeline E2E test: e2e_test_introspection_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Attention SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test attention + SNN + plasticity integration
+# WHY:  Verify complete attention learning pipeline
+# HOW:  Test focus scenarios, habituation learning, and protected synapses
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_attention_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_attention_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_attention_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_attention_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/attention
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_attention_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_attention_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_attention_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_attention_snn_plasticity_pipeline COMMAND e2e_test_attention_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_attention_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;attention;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Attention SNN-Plasticity Pipeline E2E test: e2e_test_attention_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Emotion SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test emotion + SNN + plasticity integration
+# WHY:  Verify complete emotional conditioning learning pipeline
+# HOW:  Test conditioning scenarios, extinction learning, and protected synapses
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_emotion_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_emotion_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_emotion_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_emotion_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/emotion
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_emotion_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_emotion_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_emotion_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_emotion_snn_plasticity_pipeline COMMAND e2e_test_emotion_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_emotion_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;emotion;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Emotion SNN-Plasticity Pipeline E2E test: e2e_test_emotion_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Working Memory SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test working memory + SNN + plasticity integration
+# WHY:  Verify complete memory maintenance and consolidation learning pipeline
+# HOW:  Test encoding scenarios, consolidation learning, and protected synapses
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_memory_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_memory_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_memory_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_memory_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/memory
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_memory_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_memory_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_memory_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_memory_snn_plasticity_pipeline COMMAND e2e_test_memory_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_memory_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;memory;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Working Memory SNN-Plasticity Pipeline E2E test: e2e_test_memory_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Curiosity SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test curiosity + SNN + plasticity integration
+# WHY:  Verify complete exploration-driven learning pipeline
+# HOW:  Test novelty scenarios, exploration learning, and protected synapses
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_curiosity_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_curiosity_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_curiosity_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_curiosity_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/curiosity
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_curiosity_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_curiosity_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_curiosity_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_curiosity_snn_plasticity_pipeline COMMAND e2e_test_curiosity_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_curiosity_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;curiosity;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Curiosity SNN-Plasticity Pipeline E2E test: e2e_test_curiosity_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Global Workspace SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Full conscious access learning pipeline tests
+# WHY:  Verify complete GWT-based broadcast learning pipeline
+# HOW:  Test broadcast scenarios, ignition learning, and protected synapses
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_gw_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_gw_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_gw_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_gw_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/global_workspace
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_gw_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_gw_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_gw_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_gw_snn_plasticity_pipeline COMMAND e2e_test_gw_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_gw_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;global_workspace;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Global Workspace SNN-Plasticity Pipeline E2E test: e2e_test_gw_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Self Model SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test self model + SNN + plasticity integration
+# WHY:  Verify complete self-awareness learning pipeline
+# HOW:  Test agency scenarios, boundary detection, and protected synapses
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_self_model_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_self_model_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_self_model_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_self_model_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/self_model
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_self_model_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_self_model_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_self_model_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_self_model_snn_plasticity_pipeline COMMAND e2e_test_self_model_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_self_model_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;self_model;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Self Model SNN-Plasticity Pipeline E2E test: e2e_test_self_model_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Theory of Mind SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test theory of mind + SNN + plasticity integration
+# WHY:  Verify complete social cognition learning pipeline
+# HOW:  Test belief attribution, perspective-taking, empathy, and protected synapses
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_tom_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_tom_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_tom_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_tom_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/theory_of_mind
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_tom_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_tom_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_tom_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_tom_snn_plasticity_pipeline COMMAND e2e_test_tom_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_tom_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;theory_of_mind;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Theory of Mind SNN-Plasticity Pipeline E2E test: e2e_test_tom_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Reasoning SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test reasoning + SNN + plasticity integration
+# WHY:  Verify complete logical reasoning learning pipeline
+# HOW:  Test deduction scenarios, causal chains, and protected synapses
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_reasoning_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_reasoning_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_reasoning_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_reasoning_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/reasoning
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_reasoning_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_reasoning_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_reasoning_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_reasoning_snn_plasticity_pipeline COMMAND e2e_test_reasoning_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_reasoning_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;reasoning;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Reasoning SNN-Plasticity Pipeline E2E test: e2e_test_reasoning_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Meta Learning SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test meta learning + SNN + plasticity integration
+# WHY:  Verify complete learning-to-learn pipeline
+# HOW:  Test transfer learning, strategy selection, and protected synapses
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_meta_learning_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_meta_learning_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_meta_learning_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_meta_learning_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/meta_learning
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_meta_learning_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_meta_learning_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_meta_learning_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_meta_learning_snn_plasticity_pipeline COMMAND e2e_test_meta_learning_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_meta_learning_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;meta_learning;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Meta Learning SNN-Plasticity Pipeline E2E test: e2e_test_meta_learning_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Epistemic SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test epistemic filtering + SNN + plasticity integration
+# WHY:  Verify complete evidence evaluation and source reliability pipeline
+# HOW:  Test quality assessment, bias detection, belief revision, learning
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_epistemic_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_epistemic_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_epistemic_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_epistemic_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/epistemic
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_epistemic_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_epistemic_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_epistemic_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_epistemic_snn_plasticity_pipeline COMMAND e2e_test_epistemic_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_epistemic_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;epistemic;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Epistemic SNN-Plasticity Pipeline E2E test: e2e_test_epistemic_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Bias SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test cognitive bias detection + SNN + plasticity integration
+# WHY:  Verify complete bias detection and correction pipeline
+# HOW:  Test bias encoding, conflict detection, metacognitive monitoring, learning
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_bias_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_bias_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_bias_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_bias_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/bias
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_bias_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_bias_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_bias_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_bias_snn_plasticity_pipeline COMMAND e2e_test_bias_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_bias_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;bias;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Bias SNN-Plasticity Pipeline E2E test: e2e_test_bias_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
+# Salience SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test salience detection + SNN + plasticity integration
+# WHY:  Verify complete salience processing and habituation pipeline
+# HOW:  Test novelty detection, urgency evaluation, habituation learning
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_salience_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_salience_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_salience_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_salience_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/salience
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_salience_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_salience_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_salience_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_salience_snn_plasticity_pipeline COMMAND e2e_test_salience_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_salience_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;salience;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Salience SNN-Plasticity Pipeline E2E test: e2e_test_salience_snn_plasticity_pipeline")
+endif()
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)

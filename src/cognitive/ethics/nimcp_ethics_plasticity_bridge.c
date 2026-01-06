@@ -1,0 +1,875 @@
+/**
+ * @file nimcp_ethics_plasticity_bridge.c
+ * @brief Ethics Engine - Plasticity Bidirectional Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2026-01-06
+ */
+
+#include "cognitive/ethics/nimcp_ethics_plasticity_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/time/nimcp_time.h"
+
+#include <string.h>
+#include <math.h>
+#include <stdio.h>
+
+//=============================================================================
+// Internal Structures
+//=============================================================================
+
+struct ethics_plasticity_bridge {
+    ethics_plasticity_config_t config;
+    nimcp_mutex_t* mutex;
+
+    /* State */
+    ethics_plasticity_state_t state;
+    uint64_t current_time_us;
+    bool bio_async_connected;
+
+    /* Synapses */
+    ethics_plasticity_synapse_t* synapses;
+    uint32_t synapse_count;
+    uint32_t synapse_capacity;
+
+    /* Principle state */
+    ethics_principle_state_t principles;
+
+    /* Global modulation */
+    float global_learning_rate;
+    float dopamine_level;
+
+    /* Callbacks */
+    ethics_weight_change_cb weight_callback;
+    void* weight_callback_data;
+    ethics_principle_update_cb principle_callback;
+    void* principle_callback_data;
+
+    /* Statistics */
+    ethics_plasticity_stats_t stats;
+};
+
+//=============================================================================
+// Helper Functions
+//=============================================================================
+
+static inline float clamp_f(float x, float min_val, float max_val) {
+    if (x < min_val) return min_val;
+    if (x > max_val) return max_val;
+    return x;
+}
+
+static ethics_plasticity_synapse_t* find_synapse(
+    ethics_plasticity_bridge_t* bridge,
+    uint32_t synapse_id)
+{
+    for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        if (bridge->synapses[i].synapse_id == synapse_id) {
+            return &bridge->synapses[i];
+        }
+    }
+    return NULL;
+}
+
+static float compute_stdp_update(
+    ethics_plasticity_bridge_t* bridge,
+    int64_t dt_us)
+{
+    float dt_ms = (float)dt_us / 1000.0f;
+
+    if (dt_ms > 0) {
+        /* Post after pre: potentiation */
+        return bridge->config.stdp_a_plus *
+               expf(-dt_ms / bridge->config.stdp_tau_plus_ms);
+    } else {
+        /* Pre after post: depression */
+        return -bridge->config.stdp_a_minus *
+               expf(dt_ms / bridge->config.stdp_tau_minus_ms);
+    }
+}
+
+//=============================================================================
+// Lifecycle Functions
+//=============================================================================
+
+ethics_plasticity_config_t ethics_plasticity_config_default(void) {
+    ethics_plasticity_config_t config = {
+        .base_learning_rate = ETHICS_PLASTICITY_DEFAULT_LR,
+        .stdp_tau_plus_ms = 20.0f,
+        .stdp_tau_minus_ms = 20.0f,
+        .stdp_a_plus = 0.01f,
+        .stdp_a_minus = 0.012f,
+
+        .bcm_tau_ms = 1000.0f,
+        .bcm_target_rate = 0.5f,
+
+        .homeostatic_tau_ms = 10000.0f,
+        .target_sensitivity = 0.5f,
+
+        .reward_learning_boost = 2.0f,
+        .punishment_learning_boost = 1.5f,
+        .dopamine_modulation = 1.0f,
+
+        .weight_min = 0.0f,
+        .weight_max = 1.0f,
+
+        .protect_first_law = true,
+        .protect_golden_rule = true,
+        .protection_strength = 0.9f,
+
+        .max_synapses = ETHICS_PLASTICITY_MAX_SYNAPSES,
+
+        .enable_bio_async = false
+    };
+    return config;
+}
+
+ethics_plasticity_bridge_t* ethics_plasticity_create(
+    const ethics_plasticity_config_t* config)
+{
+    ethics_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(ethics_plasticity_bridge_t));
+    if (!bridge) return NULL;
+
+    if (config) {
+        bridge->config = *config;
+    } else {
+        bridge->config = ethics_plasticity_config_default();
+    }
+
+    /* Create mutex */
+    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
+    bridge->mutex = nimcp_mutex_create(&mutex_attr);
+    if (!bridge->mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Allocate synapse array */
+    bridge->synapse_capacity = bridge->config.max_synapses;
+    bridge->synapses = nimcp_calloc(bridge->synapse_capacity,
+                                    sizeof(ethics_plasticity_synapse_t));
+    if (!bridge->synapses) {
+        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Initialize principle state */
+    bridge->principles.harm_sensitivity = 0.5f;
+    bridge->principles.fairness_sensitivity = 0.5f;
+    bridge->principles.empathy_strength = 0.5f;
+    bridge->principles.golden_rule_strength = 0.8f;
+    bridge->principles.first_law_strength = 1.0f;
+    bridge->principles.learning_rate_mod = 1.0f;
+    bridge->principles.last_learning_us = 0;
+
+    bridge->global_learning_rate = 1.0f;
+    bridge->dopamine_level = 0.5f;
+    bridge->state = ETHICS_PLASTICITY_STATE_IDLE;
+    bridge->current_time_us = nimcp_time_get_us();
+    bridge->bio_async_connected = false;
+
+    return bridge;
+}
+
+void ethics_plasticity_destroy(ethics_plasticity_bridge_t* bridge) {
+    if (!bridge) return;
+
+    if (bridge->synapses) nimcp_free(bridge->synapses);
+    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+
+    nimcp_free(bridge);
+}
+
+int ethics_plasticity_reset(ethics_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Reset synapses to initial weights */
+    for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        bridge->synapses[i].weight = bridge->synapses[i].initial_weight;
+        bridge->synapses[i].eligibility_trace = 0.0f;
+        bridge->synapses[i].bcm_threshold = 0.5f;
+        bridge->synapses[i].avg_activity = 0.0f;
+    }
+
+    /* Reset principle state */
+    bridge->principles.harm_sensitivity = 0.5f;
+    bridge->principles.fairness_sensitivity = 0.5f;
+    bridge->principles.empathy_strength = 0.5f;
+    bridge->principles.golden_rule_strength = 0.8f;
+    bridge->principles.first_law_strength = 1.0f;
+    bridge->principles.learning_rate_mod = 1.0f;
+
+    bridge->global_learning_rate = 1.0f;
+    bridge->dopamine_level = 0.5f;
+    bridge->state = ETHICS_PLASTICITY_STATE_IDLE;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+//=============================================================================
+// Synapse Management
+//=============================================================================
+
+int ethics_plasticity_register_synapse(
+    ethics_plasticity_bridge_t* bridge,
+    uint32_t synapse_id,
+    ethics_synapse_type_t type,
+    float initial_weight)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Check if already exists */
+    if (find_synapse(bridge, synapse_id)) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+
+    /* Check capacity */
+    if (bridge->synapse_count >= bridge->synapse_capacity) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+
+    /* Add synapse */
+    ethics_plasticity_synapse_t* synapse = &bridge->synapses[bridge->synapse_count];
+    synapse->synapse_id = synapse_id;
+    synapse->type = type;
+    synapse->weight = clamp_f(initial_weight,
+                              bridge->config.weight_min,
+                              bridge->config.weight_max);
+    synapse->initial_weight = synapse->weight;
+    synapse->eligibility_trace = 0.0f;
+    synapse->bcm_threshold = 0.5f;
+    synapse->avg_activity = 0.0f;
+    synapse->last_update_us = nimcp_time_get_us();
+    synapse->update_count = 0;
+
+    /* Auto-protect First Law and Golden Rule synapses */
+    synapse->is_protected = false;
+    if (bridge->config.protect_first_law && type == ETHICS_SYNAPSE_FIRST_LAW) {
+        synapse->is_protected = true;
+    }
+    if (bridge->config.protect_golden_rule && type == ETHICS_SYNAPSE_GOLDEN_RULE) {
+        synapse->is_protected = true;
+    }
+
+    bridge->synapse_count++;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int ethics_plasticity_unregister_synapse(
+    ethics_plasticity_bridge_t* bridge,
+    uint32_t synapse_id)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        if (bridge->synapses[i].synapse_id == synapse_id) {
+            /* Move last synapse to this position */
+            if (i < bridge->synapse_count - 1) {
+                bridge->synapses[i] = bridge->synapses[bridge->synapse_count - 1];
+            }
+            bridge->synapse_count--;
+            nimcp_mutex_unlock(bridge->mutex);
+            return 0;
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return -1;
+}
+
+int ethics_plasticity_get_synapse(
+    ethics_plasticity_bridge_t* bridge,
+    uint32_t synapse_id,
+    ethics_plasticity_synapse_t* synapse)
+{
+    if (!bridge || !synapse) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    ethics_plasticity_synapse_t* found = find_synapse(bridge, synapse_id);
+    if (found) {
+        *synapse = *found;
+        nimcp_mutex_unlock(bridge->mutex);
+        return 0;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return -1;
+}
+
+//=============================================================================
+// Learning Functions
+//=============================================================================
+
+int ethics_plasticity_learn(
+    ethics_plasticity_bridge_t* bridge,
+    ethics_learn_event_t event_type,
+    float context_activation,
+    float outcome_value,
+    uint64_t timestamp)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->state = ETHICS_PLASTICITY_STATE_LEARNING;
+
+    if (timestamp == 0) {
+        timestamp = nimcp_time_get_us();
+    }
+
+    context_activation = clamp_f(context_activation, 0.0f, 1.0f);
+    outcome_value = clamp_f(outcome_value, -1.0f, 1.0f);
+
+    /* Compute learning rate with modulation */
+    float lr = bridge->config.base_learning_rate *
+               bridge->global_learning_rate *
+               bridge->principles.learning_rate_mod;
+
+    /* Apply reward/punishment boost */
+    if (outcome_value > 0) {
+        lr *= bridge->config.reward_learning_boost;
+        bridge->stats.positive_outcomes++;
+    } else if (outcome_value < 0) {
+        lr *= bridge->config.punishment_learning_boost;
+        bridge->stats.negative_outcomes++;
+    }
+
+    /* Dopamine modulation */
+    lr *= (0.5f + bridge->dopamine_level * bridge->config.dopamine_modulation);
+
+    /* Update synapses based on event type */
+    ethics_synapse_type_t target_type;
+    switch (event_type) {
+        case ETHICS_LEARN_HARM_AVOIDED:
+        case ETHICS_LEARN_HARM_CAUSED:
+            target_type = ETHICS_SYNAPSE_HARM_DETECTION;
+            bridge->stats.harm_avoidance_events++;
+            break;
+        case ETHICS_LEARN_GOLDEN_RULE_APPLIED:
+            target_type = ETHICS_SYNAPSE_GOLDEN_RULE;
+            break;
+        case ETHICS_LEARN_FIRST_LAW_ACTIVATED:
+            target_type = ETHICS_SYNAPSE_FIRST_LAW;
+            bridge->stats.first_law_activations++;
+            break;
+        case ETHICS_LEARN_CONFLICT_RESOLVED:
+            target_type = ETHICS_SYNAPSE_CONFLICT;
+            break;
+        default:
+            target_type = ETHICS_SYNAPSE_OUTCOME;
+            break;
+    }
+
+    /* Update matching synapses */
+    for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        ethics_plasticity_synapse_t* syn = &bridge->synapses[i];
+
+        if (syn->type == target_type || target_type == ETHICS_SYNAPSE_OUTCOME) {
+            /* Check protection */
+            if (syn->is_protected) {
+                float protected_lr = lr * (1.0f - bridge->config.protection_strength);
+                if (protected_lr < 0.001f) {
+                    bridge->stats.protected_updates_blocked++;
+                    continue;
+                }
+                lr = protected_lr;
+            }
+
+            float old_weight = syn->weight;
+
+            /* Compute weight update */
+            float delta = lr * context_activation * outcome_value;
+
+            /* Apply update */
+            syn->weight += delta;
+            syn->weight = clamp_f(syn->weight,
+                                  bridge->config.weight_min,
+                                  bridge->config.weight_max);
+
+            /* Update eligibility trace */
+            syn->eligibility_trace = context_activation;
+
+            syn->last_update_us = timestamp;
+            syn->update_count++;
+
+            bridge->stats.weight_updates++;
+            bridge->stats.mean_weight_change =
+                0.9f * bridge->stats.mean_weight_change +
+                0.1f * fabsf(syn->weight - old_weight);
+
+            if (delta > 0) {
+                bridge->stats.total_potentiation += delta;
+            } else {
+                bridge->stats.total_depression += fabsf(delta);
+            }
+
+            /* Fire callback */
+            if (bridge->weight_callback) {
+                nimcp_mutex_unlock(bridge->mutex);
+                bridge->weight_callback(syn->synapse_id, syn->type,
+                                       old_weight, syn->weight,
+                                       event_type, bridge->weight_callback_data);
+                nimcp_mutex_lock(bridge->mutex);
+            }
+        }
+    }
+
+    /* Update principle state based on event */
+    switch (event_type) {
+        case ETHICS_LEARN_HARM_AVOIDED:
+            bridge->principles.harm_sensitivity += lr * 0.1f;
+            break;
+        case ETHICS_LEARN_HARM_CAUSED:
+            bridge->principles.harm_sensitivity += lr * 0.2f;
+            break;
+        case ETHICS_LEARN_GOLDEN_RULE_APPLIED:
+            bridge->principles.golden_rule_strength += lr * outcome_value * 0.1f;
+            break;
+        case ETHICS_LEARN_FIRST_LAW_ACTIVATED:
+            bridge->principles.first_law_strength =
+                fmaxf(bridge->principles.first_law_strength, 0.9f);
+            break;
+        default:
+            break;
+    }
+
+    bridge->principles.last_learning_us = timestamp;
+    bridge->stats.total_learning_events++;
+
+    bridge->state = ETHICS_PLASTICITY_STATE_IDLE;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+float ethics_plasticity_apply_stdp(
+    ethics_plasticity_bridge_t* bridge,
+    uint32_t synapse_id,
+    uint64_t pre_spike_time,
+    uint64_t post_spike_time)
+{
+    if (!bridge) return 0.0f;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    ethics_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
+    if (!syn) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return 0.0f;
+    }
+
+    /* Check protection */
+    if (syn->is_protected) {
+        nimcp_mutex_unlock(bridge->mutex);
+        bridge->stats.protected_updates_blocked++;
+        return 0.0f;
+    }
+
+    int64_t dt = (int64_t)post_spike_time - (int64_t)pre_spike_time;
+    float delta = compute_stdp_update(bridge, dt);
+
+    float old_weight = syn->weight;
+    syn->weight += delta;
+    syn->weight = clamp_f(syn->weight,
+                          bridge->config.weight_min,
+                          bridge->config.weight_max);
+
+    syn->last_update_us = nimcp_time_get_us();
+    syn->update_count++;
+    bridge->stats.weight_updates++;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return syn->weight - old_weight;
+}
+
+int ethics_plasticity_apply_reward(
+    ethics_plasticity_bridge_t* bridge,
+    float reward)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    reward = clamp_f(reward, -1.0f, 1.0f);
+
+    /* Update dopamine level */
+    bridge->dopamine_level = 0.8f * bridge->dopamine_level + 0.2f * (reward + 1.0f) / 2.0f;
+
+    /* Apply reward-modulated update to all synapses with eligibility */
+    float lr = bridge->config.base_learning_rate * bridge->global_learning_rate;
+
+    for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        ethics_plasticity_synapse_t* syn = &bridge->synapses[i];
+
+        if (syn->eligibility_trace > 0.01f && !syn->is_protected) {
+            float delta = lr * syn->eligibility_trace * reward;
+            syn->weight += delta;
+            syn->weight = clamp_f(syn->weight,
+                                  bridge->config.weight_min,
+                                  bridge->config.weight_max);
+            bridge->stats.weight_updates++;
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int ethics_plasticity_update_traces(
+    ethics_plasticity_bridge_t* bridge,
+    float dt_ms)
+{
+    if (!bridge || dt_ms <= 0) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    float decay = expf(-dt_ms / bridge->config.stdp_tau_plus_ms);
+
+    for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        bridge->synapses[i].eligibility_trace *= decay;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int ethics_plasticity_update_bcm(
+    ethics_plasticity_bridge_t* bridge,
+    float dt_ms)
+{
+    if (!bridge || dt_ms <= 0) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    float alpha = dt_ms / bridge->config.bcm_tau_ms;
+
+    for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        ethics_plasticity_synapse_t* syn = &bridge->synapses[i];
+
+        /* Update BCM threshold towards average activity */
+        syn->bcm_threshold += alpha * (syn->avg_activity - syn->bcm_threshold);
+        syn->bcm_threshold = clamp_f(syn->bcm_threshold, 0.1f, 0.9f);
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int ethics_plasticity_homeostatic_update(
+    ethics_plasticity_bridge_t* bridge,
+    float target_activity)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    target_activity = clamp_f(target_activity, 0.0f, 1.0f);
+
+    /* Compute current average weight */
+    float mean_weight = 0.0f;
+    for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        mean_weight += bridge->synapses[i].weight;
+    }
+    if (bridge->synapse_count > 0) {
+        mean_weight /= (float)bridge->synapse_count;
+    }
+
+    /* Scale weights to achieve target */
+    float scale = bridge->config.target_sensitivity / (mean_weight + 0.001f);
+    scale = clamp_f(scale, 0.9f, 1.1f); /* Limit scaling */
+
+    for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        if (!bridge->synapses[i].is_protected) {
+            bridge->synapses[i].weight *= scale;
+            bridge->synapses[i].weight = clamp_f(
+                bridge->synapses[i].weight,
+                bridge->config.weight_min,
+                bridge->config.weight_max
+            );
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int ethics_plasticity_consolidate(ethics_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->state = ETHICS_PLASTICITY_STATE_CONSOLIDATING;
+
+    /* Consolidation: strengthen strong weights, weaken weak ones */
+    for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        ethics_plasticity_synapse_t* syn = &bridge->synapses[i];
+
+        if (!syn->is_protected) {
+            float mid = (bridge->config.weight_max + bridge->config.weight_min) / 2.0f;
+
+            if (syn->weight > mid) {
+                /* Strengthen */
+                syn->weight += 0.01f * (bridge->config.weight_max - syn->weight);
+            } else {
+                /* Weaken */
+                syn->weight -= 0.01f * (syn->weight - bridge->config.weight_min);
+            }
+
+            syn->weight = clamp_f(syn->weight,
+                                  bridge->config.weight_min,
+                                  bridge->config.weight_max);
+        }
+
+        /* Clear eligibility traces */
+        syn->eligibility_trace = 0.0f;
+    }
+
+    bridge->state = ETHICS_PLASTICITY_STATE_IDLE;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+//=============================================================================
+// Principle Protection
+//=============================================================================
+
+int ethics_plasticity_protect_synapse(
+    ethics_plasticity_bridge_t* bridge,
+    uint32_t synapse_id)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    ethics_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
+    if (syn) {
+        syn->is_protected = true;
+        nimcp_mutex_unlock(bridge->mutex);
+        return 0;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return -1;
+}
+
+int ethics_plasticity_unprotect_synapse(
+    ethics_plasticity_bridge_t* bridge,
+    uint32_t synapse_id)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    ethics_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
+    if (syn) {
+        syn->is_protected = false;
+        nimcp_mutex_unlock(bridge->mutex);
+        return 0;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return -1;
+}
+
+int ethics_plasticity_protect_first_law(ethics_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    int count = 0;
+    for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        if (bridge->synapses[i].type == ETHICS_SYNAPSE_FIRST_LAW) {
+            bridge->synapses[i].is_protected = true;
+            count++;
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return count;
+}
+
+int ethics_plasticity_protect_golden_rule(ethics_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    int count = 0;
+    for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        if (bridge->synapses[i].type == ETHICS_SYNAPSE_GOLDEN_RULE) {
+            bridge->synapses[i].is_protected = true;
+            count++;
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return count;
+}
+
+//=============================================================================
+// State Query Functions
+//=============================================================================
+
+int ethics_plasticity_get_principle_state(
+    ethics_plasticity_bridge_t* bridge,
+    ethics_principle_state_t* state)
+{
+    if (!bridge || !state) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    *state = bridge->principles;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int ethics_plasticity_get_state(
+    ethics_plasticity_bridge_t* bridge,
+    ethics_plasticity_bridge_state_t* state)
+{
+    if (!bridge || !state) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    state->state = bridge->state;
+    state->active_synapses = bridge->synapse_count;
+    state->learning_rate_effective = bridge->config.base_learning_rate *
+                                     bridge->global_learning_rate *
+                                     bridge->principles.learning_rate_mod;
+
+    /* Compute weight statistics */
+    state->mean_weight = 0.0f;
+    state->weight_variance = 0.0f;
+
+    if (bridge->synapse_count > 0) {
+        for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+            state->mean_weight += bridge->synapses[i].weight;
+        }
+        state->mean_weight /= (float)bridge->synapse_count;
+
+        for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+            float diff = bridge->synapses[i].weight - state->mean_weight;
+            state->weight_variance += diff * diff;
+        }
+        state->weight_variance /= (float)bridge->synapse_count;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int ethics_plasticity_get_stats(
+    ethics_plasticity_bridge_t* bridge,
+    ethics_plasticity_stats_t* stats)
+{
+    if (!bridge || !stats) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    *stats = bridge->stats;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int ethics_plasticity_reset_stats(ethics_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    memset(&bridge->stats, 0, sizeof(ethics_plasticity_stats_t));
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+//=============================================================================
+// Callback Registration
+//=============================================================================
+
+int ethics_plasticity_set_weight_callback(
+    ethics_plasticity_bridge_t* bridge,
+    ethics_weight_change_cb callback,
+    void* user_data)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->weight_callback = callback;
+    bridge->weight_callback_data = user_data;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int ethics_plasticity_set_principle_callback(
+    ethics_plasticity_bridge_t* bridge,
+    ethics_principle_update_cb callback,
+    void* user_data)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->principle_callback = callback;
+    bridge->principle_callback_data = user_data;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+//=============================================================================
+// Bio-Async Integration
+//=============================================================================
+
+int ethics_plasticity_bio_async_connect(ethics_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->config.enable_bio_async) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->bio_async_connected = true;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int ethics_plasticity_bio_async_disconnect(ethics_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->bio_async_connected = false;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+bool ethics_plasticity_is_bio_async_connected(ethics_plasticity_bridge_t* bridge) {
+    if (!bridge) return false;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bool connected = bridge->bio_async_connected;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return connected;
+}

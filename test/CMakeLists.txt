@@ -390,18 +390,12 @@ set_tests_properties(
   PROPERTIES TIMEOUT 60
 )
 
-set_tests_properties(
-  unit_cognitive_ethics_test_ethics_comprehensive
-  PROPERTIES TIMEOUT 120
-)
-
 # Integration tests with heavyweight brain initialization
-set_tests_properties(
-  integration_cognitive_executive_test_executive_portia_integration
-  integration_cognitive_consolidation_test_systems_consolidation_integration
-  integration_cognitive_curiosity_test_curiosity_fep_bridge_integration
-  PROPERTIES TIMEOUT 180
-)
+# Note: These tests may not exist in all configurations - set properties conditionally
+# set_tests_properties requires tests to exist, so we use cmake_test_exists check
+# Removed: integration_cognitive_executive_test_executive_portia_integration (doesn't exist)
+# Removed: integration_cognitive_consolidation_test_systems_consolidation_integration (doesn't exist)
+# Removed: integration_cognitive_curiosity_test_curiosity_fep_bridge_integration (doesn't exist)
 
 # Disabled test that doesn't exist
 # set_tests_properties(
@@ -568,21 +562,8 @@ endif()
 # ============================================================================
 # Cognitive Introspection Tests (Phase 1.5.4)
 # ============================================================================
-
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cognitive/introspection")
-    message(STATUS "Adding cognitive introspection unit tests...")
-    add_subdirectory(unit/cognitive/introspection)
-endif()
-
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive/introspection")
-    message(STATUS "Adding cognitive introspection integration tests...")
-    add_subdirectory(integration/cognitive/introspection)
-endif()
-
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/introspection")
-    message(STATUS "Adding cognitive introspection regression tests...")
-    add_subdirectory(regression/cognitive/introspection)
-endif()
+# NOTE: Introspection tests are now included via unit/cognitive, integration/cognitive,
+# and regression/cognitive subdirectory CMakeLists.txt files to avoid duplicates.
 
 # ============================================================================
 # Cognitive Bio-Async Tests
@@ -603,20 +584,8 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/bio_async")
     add_subdirectory(regression/cognitive/bio_async)
 endif()
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cognitive/mirror_neurons")
-    message(STATUS "Adding cognitive mirror neurons unit tests...")
-    add_subdirectory(unit/cognitive/mirror_neurons)
-endif()
-
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/cognitive/mirror_neurons")
-    message(STATUS "Adding cognitive mirror neurons integration tests...")
-    add_subdirectory(integration/cognitive/mirror_neurons)
-endif()
-
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/mirror_neurons")
-    message(STATUS "Adding cognitive mirror neurons regression tests...")
-    add_subdirectory(regression/cognitive/mirror_neurons)
-endif()
+# NOTE: Mirror neurons tests are now included via unit/cognitive, integration/cognitive,
+# and regression/cognitive subdirectory CMakeLists.txt files to avoid duplicates.
 
 # ============================================================================
 # Cognitive Immune System Tests

@@ -347,6 +347,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_hyperbolic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_combinatorial_harm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_warfare.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_snn_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_ethics_plasticity_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_hyperbolic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_cow.c
@@ -355,22 +357,30 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_enhanced.c  # Enhanced Curiosity (10 enhancements: boredom, interest decay, types, anxiety, social, meta, contagion, surprise, fatigue, counterfactual)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_snn_bridge.c  # Curiosity-SNN integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_plasticity_bridge.c  # Curiosity-Plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_introspection.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_ensemble_uncertainty.c  # Real Ensemble Uncertainty Quantification
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_connectivity_health.c  # Phase 1.5.4: Connectivity Health Assessment
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_consciousness_metrics.c  # Consciousness Metrics (IIT Φ)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_temporal_patterns.c  # Temporal Pattern Analysis
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_introspection_snn_bridge.c  # Introspection-SNN integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/introspection/nimcp_introspection_plasticity_bridge.c  # Introspection-Plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_prediction.c  # Predictive Distress Modeling
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_enhanced.c  # Enhanced Wellbeing Core (includes substrate, sleep, mental health integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_eudaimonic.c  # Eudaimonic Wellbeing
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_free_energy_bridge.c  # Free Energy Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_resources.c  # Platform Resource Metrics
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_snn_bridge.c  # Wellbeing-SNN integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_plasticity_bridge.c  # Wellbeing-Plasticity integration
     # NOTE: homeostasis, substrate_bridge, sleep_bridge, mental_health_bridge are already in enhanced.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/logic/nimcp_symbolic_logic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/epistemic/nimcp_epistemic_filter.c  # Phase 9.2: Bias prevention
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/epistemic/nimcp_epistemic_snn_bridge.c  # Epistemic-SNN integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/epistemic/nimcp_epistemic_plasticity_bridge.c  # Epistemic-Plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory.c  # Phase 10.1: Working Memory
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_recovery_episodic_memory.c  # Phase 10: Episodic Memory for Recovery History
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_fault_working_memory.c  # Phase 10: Working Memory for Active Fault Context
@@ -390,6 +400,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_emotion_attention.c  # Emotion-modulated attention system
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_emotion_consolidation.c  # Emotion-modulated consolidation
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive.c  # Phase 10.3: Executive Functions
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive_snn_bridge.c  # Executive-SNN integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_executive_plasticity_bridge.c  # Executive-Plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake.c  # Phase 10.4: Sleep/Wake Cycle
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health.c  # Phase 10.5: Mental Health Monitoring
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health_guardian.c  # Phase 10.5.1: Mental Health Guardian (independent monitor)
@@ -397,6 +409,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/empathetic_response/nimcp_empathetic_response.c  # Phase 11: Part I.2: Empathetic Response
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/autobiographical_memory/nimcp_autobiographical_memory.c  # Phase 12: Autobiographical Memory
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model.c  # Phase 12: Explicit Self-Model
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model_snn_bridge.c  # Self-model-SNN integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model_plasticity_bridge.c  # Self-model-Plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality.c  # Phase 12: Personality, Gender, and Sexual Identity
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/grief/nimcp_grief_and_loss.c  # Phase E1: Grief, Loss, and Death Understanding
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/joy/nimcp_joy_euphoria.c  # Phase E2: Joy, Euphoria, and Value-Aligned Success
@@ -406,6 +420,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bias/nimcp_bias_detection.c  # Phase E6: Bias Detection (Racial, LGBTQ+, Gender, Misogyny, Age, Disability, Religious, Socioeconomic)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_extended.c  # Phase 12: Advanced Self-Awareness (metacognition, agency, safety)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_theory_of_mind.c  # Phase 10.6: Theory of Mind
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_tom_snn_bridge.c  # Theory of Mind-SNN integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_tom_plasticity_bridge.c  # Theory of Mind-Plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_self_awareness_coordinator.c  # Self-Awareness Unification: Orchestrates introspection, self-model, autobio, ToM
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_self_awareness_feedback.c    # Self-Awareness Feedback: Policies, history, analysis
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations.c  # Phase 10.7: Natural Explanations
@@ -422,6 +438,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_integration.c  # Reasoning integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/integration/nimcp_reasoning_attention.c  # Attention integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/integration/nimcp_reasoning_curiosity.c  # Curiosity integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_snn_bridge.c  # Reasoning-SNN integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_plasticity_bridge.c  # Reasoning-Plasticity integration
 
     # Brain Immune System (Coordination Layer for FT/Security Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune.c  # B/T cells, antibodies, cytokines coordination
@@ -487,6 +505,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace.c  # Global Workspace Architecture (Global Workspace Theory)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_shannon.c  # Phase 1.5.3: Shannon Information-Weighted Competition
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_global_workspace_fep_bridge.c  # Global Workspace-FEP bidirectional integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_gw_snn_bridge.c  # GW-SNN bidirectional integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_gw_plasticity_bridge.c  # GW-Plasticity bidirectional integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/analysis/nimcp_network_analysis.c  # Network topology analysis and community detection
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram.c  # Phase M1: Memory Engrams (explicit memory traces)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_systems_consolidation.c  # Phase M2: Systems Consolidation (hippocampus → cortex transfer)
@@ -856,12 +876,18 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive_substrate_bridge.c  # Predictive-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/curiosity/nimcp_curiosity_substrate_bridge.c  # Curiosity-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bias/nimcp_bias_substrate_bridge.c  # Bias-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bias/nimcp_bias_snn_bridge.c  # Bias-SNN integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bias/nimcp_bias_plasticity_bridge.c  # Bias-Plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/epistemic/nimcp_epistemic_substrate_bridge.c  # Epistemic-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations_substrate_bridge.c  # Explanations-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience_substrate_bridge.c  # Salience-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience_snn_bridge.c  # Salience-SNN integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience_plasticity_bridge.c  # Salience-Plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model_substrate_bridge.c  # Self-model-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake_substrate_bridge.c  # Sleep-wake-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning_substrate_bridge.c  # Meta-learning-substrate integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning_snn_bridge.c  # Meta-learning-SNN integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning_plasticity_bridge.c  # Meta-learning-Plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/grief/nimcp_grief_substrate_bridge.c  # Grief-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/joy/nimcp_joy_substrate_bridge.c  # Joy-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/love_loyalty_friendship/nimcp_llf_substrate_bridge.c  # LLF-substrate integration
@@ -903,6 +929,25 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_self_other.c  # Phase 10.11.13: Self-Other Distinction
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_vicarious_reward.c  # Phase 10.11.14: Vicarious Reward Bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_habituation.c  # Phase 10.11.15: Habituation Module
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_snn_bridge.c  # SNN integration for mirror neurons
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_plasticity_bridge.c  # Plasticity integration for mirror neurons
+    # Emotion SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion/nimcp_emotion_snn_bridge.c  # SNN integration for emotion system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion/nimcp_emotion_plasticity_bridge.c  # Plasticity integration for emotion system
+    # Attention SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_attention_snn_bridge.c  # SNN integration for attention system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/attention/nimcp_attention_plasticity_bridge.c  # Plasticity integration for attention system
+    # Working Memory SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_working_memory_snn_bridge.c  # SNN integration for working memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_working_memory_plasticity_bridge.c  # Plasticity integration for working memory
+    # Core SNN sources (needed by mirror_snn_bridge and other SNN integrations)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_config.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_network.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_encoding.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_training.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_bio_async.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_immune.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_ternary.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_thalamic_bridge.c  # Personality-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_thalamic_bridge.c  # Self-awareness-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive_thalamic_bridge.c  # Predictive-thalamic integration
@@ -1434,6 +1479,8 @@ set(NIMCP_CORE_SOURCES
 
     # GPU context stubs (only compiled if CUDA is NOT available)
     $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/context/nimcp_gpu_context_stub.c>
+    # GPU module stubs (wernicke_gpu, tensor_gpu, graph_gpu - only if CUDA NOT available)
+    $<$<NOT:$<BOOL:${CUDAToolkit_FOUND}>>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/stubs/nimcp_gpu_stubs.c>
 
     # Kernel backend CPU implementation (always compiled - provides CPU fallback)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/backend/nimcp_kernel_backend.c

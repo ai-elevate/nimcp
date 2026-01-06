@@ -31,5 +31,18 @@ add_test_binary(
 # TODO: Convert test_executive_swarm_integration.c from libcheck to GTest
 message(STATUS "  [SKIP] test_executive_swarm_integration.c - uses libcheck (not GTest)")
 
+# SNN and Plasticity bridge tests
+add_test_binary(
+    unit_cognitive_executive_test_executive_snn_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_executive_snn_bridge.cpp
+    unit
+)
+
+add_test_binary(
+    unit_cognitive_executive_test_executive_plasticity_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_executive_plasticity_bridge.cpp
+    unit
+)
+
 # Substrate bridge tests
 add_subdirectory(substrate)

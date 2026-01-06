@@ -60,6 +60,51 @@ add_subdirectory(recursive)
 # Omnidirectional Inference Regression Tests
 add_subdirectory(omni)
 
+# Emotion Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(emotion)
+
+# Ethics Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(ethics)
+
+# Attention Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(attention)
+
+# Global Workspace Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(global_workspace)
+
+# Executive Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(executive)
+
+# Self Model Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(self_model)
+
+# Introspection Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(introspection)
+
+# Mirror Neurons Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(mirror_neurons)
+
+# Meta Learning Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(meta_learning)
+
+# Wellbeing Bridge Regression Tests - added from test/CMakeLists.txt (line 621)
+# to avoid duplicate add_subdirectory errors
+
+# Theory of Mind Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(theory_of_mind)
+
+# Memory Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(memory)
+
+# Epistemic Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(epistemic)
+
+# Cognitive Bias Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(bias)
+
+# Salience Bridge Regression Tests (SNN and Plasticity)
+add_subdirectory(salience)
+
 # ============================================================================
 # Cognitive Bridge Completeness Tests
 # ============================================================================

@@ -181,3 +181,65 @@ set_tests_properties(unit_cognitive_mirror_neurons_test_mirror_attention_bridge 
     TIMEOUT 120
     LABELS "unit;cognitive;mirror_neurons;attention;bridge"
 )
+
+# ============================================================================
+# Mirror-SNN Bridge Tests (SNN Integration)
+# ============================================================================
+# Tests for bidirectional mirror neuron - SNN module integration
+
+add_executable(unit_cognitive_mirror_neurons_test_mirror_snn_bridge
+    test_mirror_snn_bridge.cpp
+)
+target_link_libraries(unit_cognitive_mirror_neurons_test_mirror_snn_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        m
+        pthread
+)
+target_include_directories(unit_cognitive_mirror_neurons_test_mirror_snn_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/cognitive/mirror_neurons
+        ${CMAKE_SOURCE_DIR}/src/snn
+)
+target_compile_features(unit_cognitive_mirror_neurons_test_mirror_snn_bridge PRIVATE cxx_std_17)
+add_test(NAME unit_cognitive_mirror_neurons_test_mirror_snn_bridge
+         COMMAND unit_cognitive_mirror_neurons_test_mirror_snn_bridge)
+set_tests_properties(unit_cognitive_mirror_neurons_test_mirror_snn_bridge PROPERTIES
+    TIMEOUT 120
+    LABELS "unit;cognitive;mirror_neurons;snn;bridge"
+)
+
+# ============================================================================
+# Mirror-Plasticity Bridge Tests (Plasticity Integration)
+# ============================================================================
+# Tests for bidirectional mirror neuron - plasticity module integration
+
+add_executable(unit_cognitive_mirror_neurons_test_mirror_plasticity_bridge
+    test_mirror_plasticity_bridge.cpp
+)
+target_link_libraries(unit_cognitive_mirror_neurons_test_mirror_plasticity_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        m
+        pthread
+)
+target_include_directories(unit_cognitive_mirror_neurons_test_mirror_plasticity_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/cognitive/mirror_neurons
+        ${CMAKE_SOURCE_DIR}/src/plasticity
+)
+target_compile_features(unit_cognitive_mirror_neurons_test_mirror_plasticity_bridge PRIVATE cxx_std_17)
+add_test(NAME unit_cognitive_mirror_neurons_test_mirror_plasticity_bridge
+         COMMAND unit_cognitive_mirror_neurons_test_mirror_plasticity_bridge)
+set_tests_properties(unit_cognitive_mirror_neurons_test_mirror_plasticity_bridge PROPERTIES
+    TIMEOUT 120
+    LABELS "unit;cognitive;mirror_neurons;plasticity;bridge"
+)

@@ -1,0 +1,825 @@
+/**
+ * @file nimcp_wellbeing_snn_bridge.c
+ * @brief Wellbeing - SNN Bidirectional Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2026-01-06
+ */
+
+#include "cognitive/wellbeing/nimcp_wellbeing_snn_bridge.h"
+#include "snn/nimcp_snn_network.h"
+#include "snn/nimcp_snn_config.h"
+#include "core/neuron_types/nimcp_neuron_types.h"
+#include "core/synapse_types/nimcp_synapse_types.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/time/nimcp_time.h"
+
+#include <string.h>
+#include <math.h>
+#include <stdio.h>
+
+//=============================================================================
+// Internal Structures
+//=============================================================================
+
+struct wellbeing_snn_bridge {
+    wellbeing_snn_config_t config;
+    snn_network_t* snn;
+    nimcp_mutex_t* mutex;
+
+    /* State */
+    wellbeing_snn_state_t state;
+    uint64_t current_time_us;
+    bool bio_async_connected;
+
+    /* Dimension state */
+    wellbeing_dim_state_t dim_states[WELLBEING_SNN_MAX_DIMENSIONS];
+
+    /* Buffers */
+    float* encoding_buffer;
+    float* output_buffer;
+    float* assessment_buffer;
+
+    /* Assessment state */
+    wellbeing_assessment_t last_assessment;
+    float stress_signal;
+    float balance_signal;
+
+    /* Previous state for change detection */
+    float* prev_state;
+
+    /* Callbacks */
+    wellbeing_snn_stress_callback_t stress_callback;
+    void* stress_callback_data;
+    wellbeing_snn_assessment_callback_t assessment_callback;
+    void* assessment_callback_data;
+    wellbeing_snn_balance_callback_t balance_callback;
+    void* balance_callback_data;
+
+    /* Statistics */
+    wellbeing_snn_stats_t stats;
+};
+
+//=============================================================================
+// Helper Functions
+//=============================================================================
+
+static inline float clamp_f(float x, float min_val, float max_val) {
+    if (x < min_val) return min_val;
+    if (x > max_val) return max_val;
+    return x;
+}
+
+static void softmax(float* values, uint32_t n) {
+    if (n == 0) return;
+
+    float max_val = values[0];
+    for (uint32_t i = 1; i < n; i++) {
+        if (values[i] > max_val) max_val = values[i];
+    }
+
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        values[i] = expf(values[i] - max_val);
+        sum += values[i];
+    }
+
+    if (sum > 0.0f) {
+        for (uint32_t i = 0; i < n; i++) {
+            values[i] /= sum;
+        }
+    }
+}
+
+//=============================================================================
+// Lifecycle Functions
+//=============================================================================
+
+wellbeing_snn_config_t wellbeing_snn_config_default(void) {
+    wellbeing_snn_config_t config = {
+        .num_dimensions = WELLBEING_DIM_COUNT,
+        .neurons_per_dim = WELLBEING_SNN_NEURONS_PER_DIM,
+        .hidden_dim = 128,
+
+        .dt_ms = 1.0f,
+        .encoding_window_ms = WELLBEING_SNN_ENCODING_WINDOW,
+        .integration_tau_ms = 100.0f,
+
+        .encoding = WELLBEING_SNN_ENCODE_POPULATION,
+        .encoding_gain = 1.0f,
+        .baseline_rate_hz = 5.0f,
+        .max_rate_hz = 100.0f,
+
+        .decoding = WELLBEING_SNN_DECODE_INTEGRATION,
+        .flourishing_threshold = 0.7f,
+        .stress_threshold = WELLBEING_SNN_STRESS_THRESHOLD,
+        .balance_threshold = 0.6f,
+
+        .enable_competition = true,
+        .inhibition_strength = 0.3f,
+        .enable_stress_detection = true,
+        .vitality_weight = 1.0f,
+
+        .enable_homeostasis = true,
+        .homeostatic_gain = 1.5f,
+        .enable_resilience_tracking = true,
+
+        .enable_bio_async = false,
+        .enable_plasticity_integration = true
+    };
+    return config;
+}
+
+wellbeing_snn_bridge_t* wellbeing_snn_create(const wellbeing_snn_config_t* config) {
+    wellbeing_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(wellbeing_snn_bridge_t));
+    if (!bridge) return NULL;
+
+    if (config) {
+        bridge->config = *config;
+    } else {
+        bridge->config = wellbeing_snn_config_default();
+    }
+
+    /* Validate config */
+    if (bridge->config.num_dimensions == 0 ||
+        bridge->config.num_dimensions > WELLBEING_SNN_MAX_DIMENSIONS) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Create mutex */
+    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
+    bridge->mutex = nimcp_mutex_create(&mutex_attr);
+    if (!bridge->mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Create SNN network */
+    snn_config_t snn_config;
+    uint32_t input_dim = bridge->config.num_dimensions * bridge->config.neurons_per_dim;
+    uint32_t hidden_dim = bridge->config.hidden_dim;
+    uint32_t output_dim = 8; /* hedonic, eudaimonic, vitality, resilience, social, stress, balance, flourishing */
+
+    snn_config_feedforward(&snn_config, input_dim, hidden_dim, output_dim);
+    snn_config.dt = bridge->config.dt_ms;
+    snn_config.enable_bio_async = bridge->config.enable_bio_async;
+
+    bridge->snn = snn_network_create(&snn_config);
+    if (!bridge->snn) {
+        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Allocate buffers */
+    bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
+    bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
+    bridge->assessment_buffer = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+    bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+
+    if (!bridge->encoding_buffer || !bridge->output_buffer ||
+        !bridge->assessment_buffer || !bridge->prev_state) {
+        wellbeing_snn_destroy(bridge);
+        return NULL;
+    }
+
+    /* Initialize dimension states */
+    for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        bridge->dim_states[i].activation = 0.0f;
+        bridge->dim_states[i].accumulated_evidence = 0.0f;
+        bridge->dim_states[i].spike_count = 0;
+        bridge->dim_states[i].mean_rate_hz = bridge->config.baseline_rate_hz;
+        bridge->dim_states[i].last_spike_time_us = 0;
+    }
+
+    /* Initialize assessment to neutral */
+    bridge->last_assessment.hedonic_tone = 0.5f;
+    bridge->last_assessment.eudaimonic_level = 0.5f;
+    bridge->last_assessment.vitality_level = 0.5f;
+    bridge->last_assessment.resilience_score = 0.5f;
+    bridge->last_assessment.social_connection = 0.5f;
+    bridge->last_assessment.autonomy_level = 0.5f;
+    bridge->last_assessment.competence_level = 0.5f;
+    bridge->last_assessment.stress_level = 0.3f;
+    bridge->last_assessment.stress_detected = false;
+    bridge->last_assessment.balance_achieved = false;
+    bridge->last_assessment.flourishing_score = 0.5f;
+    bridge->last_assessment.integration_score = 0.5f;
+
+    bridge->state = WELLBEING_SNN_STATE_IDLE;
+    bridge->current_time_us = 0;
+    bridge->bio_async_connected = false;
+    bridge->stress_signal = 0.0f;
+    bridge->balance_signal = 0.0f;
+
+    return bridge;
+}
+
+void wellbeing_snn_destroy(wellbeing_snn_bridge_t* bridge) {
+    if (!bridge) return;
+
+    if (bridge->snn) {
+        snn_network_destroy(bridge->snn);
+    }
+
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+    }
+
+    nimcp_free(bridge->encoding_buffer);
+    nimcp_free(bridge->output_buffer);
+    nimcp_free(bridge->assessment_buffer);
+    nimcp_free(bridge->prev_state);
+    nimcp_free(bridge);
+}
+
+int wellbeing_snn_reset(wellbeing_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Reset SNN network */
+    if (bridge->snn) {
+        snn_network_reset(bridge->snn);
+    }
+
+    /* Reset dimension states */
+    for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        bridge->dim_states[i].activation = 0.0f;
+        bridge->dim_states[i].accumulated_evidence = 0.0f;
+        bridge->dim_states[i].spike_count = 0;
+        bridge->dim_states[i].mean_rate_hz = bridge->config.baseline_rate_hz;
+        bridge->dim_states[i].last_spike_time_us = 0;
+    }
+
+    /* Reset assessment */
+    memset(&bridge->last_assessment, 0, sizeof(wellbeing_assessment_t));
+    bridge->last_assessment.hedonic_tone = 0.5f;
+    bridge->last_assessment.eudaimonic_level = 0.5f;
+    bridge->last_assessment.vitality_level = 0.5f;
+    bridge->last_assessment.resilience_score = 0.5f;
+    bridge->last_assessment.flourishing_score = 0.5f;
+
+    /* Reset buffers */
+    uint32_t input_dim = bridge->config.num_dimensions * bridge->config.neurons_per_dim;
+    memset(bridge->encoding_buffer, 0, input_dim * sizeof(float));
+    memset(bridge->output_buffer, 0, 8 * sizeof(float));
+    memset(bridge->assessment_buffer, 0, bridge->config.num_dimensions * sizeof(float));
+    memset(bridge->prev_state, 0, bridge->config.num_dimensions * sizeof(float));
+
+    bridge->state = WELLBEING_SNN_STATE_IDLE;
+    bridge->stress_signal = 0.0f;
+    bridge->balance_signal = 0.0f;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+//=============================================================================
+// Encoding Functions
+//=============================================================================
+
+int wellbeing_snn_encode_state(
+    wellbeing_snn_bridge_t* bridge,
+    const float* dimensions,
+    uint32_t num_dims
+) {
+    if (!bridge || !dimensions) return -1;
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->state = WELLBEING_SNN_STATE_ENCODING;
+
+    uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
+    int total_spikes = 0;
+
+    /* Population encoding for each dimension */
+    for (uint32_t d = 0; d < num_dims; d++) {
+        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float rate = bridge->config.baseline_rate_hz +
+                    value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
+
+        /* Update dimension state */
+        bridge->dim_states[d].activation = value;
+        bridge->dim_states[d].mean_rate_hz = rate;
+
+        /* Population encode */
+        for (uint32_t n = 0; n < neurons_per_dim; n++) {
+            float preferred = (float)n / (neurons_per_dim - 1);
+            float diff = value - preferred;
+            float tuning = expf(-diff * diff / 0.1f);
+            uint32_t idx = d * neurons_per_dim + n;
+            bridge->encoding_buffer[idx] = tuning * bridge->config.encoding_gain;
+            if (bridge->encoding_buffer[idx] > 0.5f) {
+                total_spikes++;
+                bridge->dim_states[d].spike_count++;
+            }
+        }
+    }
+
+    /* Calculate balance signal (variance of dimensions) */
+    float mean = 0.0f;
+    for (uint32_t d = 0; d < num_dims; d++) {
+        mean += dimensions[d];
+    }
+    mean /= num_dims;
+
+    float variance = 0.0f;
+    for (uint32_t d = 0; d < num_dims; d++) {
+        float diff = dimensions[d] - mean;
+        variance += diff * diff;
+    }
+    variance /= num_dims;
+
+    /* Low variance = good balance */
+    bridge->balance_signal = 1.0f - sqrtf(variance);
+
+    /* Store previous state */
+    for (uint32_t d = 0; d < num_dims; d++) {
+        bridge->prev_state[d] = dimensions[d];
+    }
+
+    bridge->stats.total_spikes += total_spikes;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return total_spikes;
+}
+
+int wellbeing_snn_encode_hedonic(
+    wellbeing_snn_bridge_t* bridge,
+    float pleasure,
+    float pain
+) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    float dims[WELLBEING_DIM_COUNT] = {0};
+    dims[WELLBEING_DIM_HEDONIC] = clamp_f(pleasure - pain * 0.5f, 0.0f, 1.0f);
+    dims[WELLBEING_DIM_STRESS] = clamp_f(pain, 0.0f, 1.0f);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return wellbeing_snn_encode_state(bridge, dims, 2);
+}
+
+int wellbeing_snn_encode_eudaimonic(
+    wellbeing_snn_bridge_t* bridge,
+    float meaning,
+    float purpose,
+    float growth
+) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    float dims[WELLBEING_DIM_COUNT] = {0};
+    dims[WELLBEING_DIM_EUDAIMONIC] = clamp_f((meaning + purpose + growth) / 3.0f, 0.0f, 1.0f);
+    dims[WELLBEING_DIM_AUTONOMY] = clamp_f(purpose * 0.8f, 0.0f, 1.0f);
+    dims[WELLBEING_DIM_COMPETENCE] = clamp_f(growth * 0.9f, 0.0f, 1.0f);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return wellbeing_snn_encode_state(bridge, dims, 3);
+}
+
+int wellbeing_snn_encode_stress(
+    wellbeing_snn_bridge_t* bridge,
+    float stress_level,
+    bool chronic
+) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    float dims[WELLBEING_DIM_COUNT] = {0};
+    float adjusted_stress = clamp_f(stress_level, 0.0f, 1.0f);
+    if (chronic) {
+        adjusted_stress *= 1.3f;
+        adjusted_stress = clamp_f(adjusted_stress, 0.0f, 1.0f);
+    }
+
+    dims[WELLBEING_DIM_STRESS] = adjusted_stress;
+    dims[WELLBEING_DIM_VITALITY] = 1.0f - adjusted_stress * 0.5f;
+    dims[WELLBEING_DIM_RESILIENCE] = clamp_f(1.0f - adjusted_stress * 0.3f, 0.0f, 1.0f);
+
+    bridge->stress_signal = adjusted_stress;
+
+    if (adjusted_stress > bridge->config.stress_threshold) {
+        bridge->last_assessment.stress_detected = true;
+        bridge->stats.stress_detections++;
+
+        if (bridge->stress_callback) {
+            bridge->stress_callback(bridge, adjusted_stress,
+                                   bridge->current_time_us, bridge->stress_callback_data);
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return wellbeing_snn_encode_state(bridge, dims, 3);
+}
+
+int wellbeing_snn_encode_social(
+    wellbeing_snn_bridge_t* bridge,
+    float belongingness,
+    float support,
+    float loneliness
+) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    float dims[WELLBEING_DIM_COUNT] = {0};
+    float social = (belongingness + support) / 2.0f - loneliness * 0.5f;
+    dims[WELLBEING_DIM_SOCIAL_CONNECTION] = clamp_f(social, 0.0f, 1.0f);
+    dims[WELLBEING_DIM_HEDONIC] = clamp_f(belongingness * 0.3f, 0.0f, 1.0f);
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return wellbeing_snn_encode_state(bridge, dims, 2);
+}
+
+//=============================================================================
+// Simulation Functions
+//=============================================================================
+
+int wellbeing_snn_simulate(wellbeing_snn_bridge_t* bridge, float duration_ms) {
+    if (!bridge) return -1;
+    if (duration_ms <= 0.0f) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->state = WELLBEING_SNN_STATE_SIMULATING;
+
+    float dt = bridge->config.dt_ms;
+    uint32_t steps = (uint32_t)(duration_ms / dt);
+
+    /* Set inputs before simulation */
+    if (bridge->snn) {
+        uint32_t input_size = bridge->config.num_dimensions * bridge->config.neurons_per_dim;
+        snn_network_set_inputs(bridge->snn, bridge->encoding_buffer, input_size);
+    }
+
+    for (uint32_t s = 0; s < steps; s++) {
+        if (bridge->snn) {
+            snn_network_step(bridge->snn, dt);
+        }
+
+        /* Update evidence integration */
+        float decay = expf(-dt / bridge->config.integration_tau_ms);
+        for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+            bridge->dim_states[d].accumulated_evidence *= decay;
+            bridge->dim_states[d].accumulated_evidence +=
+                bridge->dim_states[d].activation * dt / bridge->config.integration_tau_ms;
+        }
+
+        bridge->current_time_us += (uint64_t)(dt * 1000.0f);
+        bridge->stats.total_simulations++;
+    }
+
+    /* Get output from SNN */
+    if (bridge->snn) {
+        snn_network_get_outputs(bridge->snn, bridge->output_buffer, 8);
+    }
+
+    /* Decode outputs */
+    bridge->last_assessment.hedonic_tone = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_assessment.eudaimonic_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_assessment.vitality_level = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_assessment.resilience_score = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_assessment.social_connection = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_assessment.stress_level = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+
+    /* Calculate flourishing as weighted combination */
+    float flourishing = (bridge->last_assessment.hedonic_tone * 0.2f +
+                        bridge->last_assessment.eudaimonic_level * 0.25f +
+                        bridge->last_assessment.vitality_level * 0.15f +
+                        bridge->last_assessment.resilience_score * 0.2f +
+                        bridge->last_assessment.social_connection * 0.2f) *
+                        (1.0f - bridge->last_assessment.stress_level * 0.3f);
+    bridge->last_assessment.flourishing_score = clamp_f(flourishing, 0.0f, 1.0f);
+
+    /* Check balance */
+    bridge->last_assessment.balance_achieved = bridge->balance_signal > bridge->config.balance_threshold;
+    if (bridge->last_assessment.balance_achieved) {
+        bridge->stats.balance_achievements++;
+    }
+
+    /* Check flourishing threshold */
+    if (bridge->last_assessment.flourishing_score > bridge->config.flourishing_threshold) {
+        bridge->stats.flourishing_detections++;
+    }
+
+    /* Check stress threshold */
+    if (bridge->last_assessment.stress_level > bridge->config.stress_threshold) {
+        bridge->last_assessment.stress_detected = true;
+        bridge->stats.stress_detections++;
+
+        if (bridge->stress_callback) {
+            bridge->stress_callback(bridge, bridge->last_assessment.stress_level,
+                                   bridge->current_time_us, bridge->stress_callback_data);
+        }
+    } else {
+        bridge->last_assessment.stress_detected = false;
+    }
+
+    bridge->stats.total_evaluations++;
+    bridge->state = WELLBEING_SNN_STATE_IDLE;
+
+    /* Invoke assessment callback */
+    if (bridge->assessment_callback) {
+        bridge->assessment_callback(bridge, &bridge->last_assessment, bridge->assessment_callback_data);
+    }
+
+    /* Invoke balance callback if changed */
+    if (bridge->balance_callback) {
+        bridge->balance_callback(bridge, bridge->balance_signal,
+                                bridge->last_assessment.balance_achieved, bridge->balance_callback_data);
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int wellbeing_snn_step(wellbeing_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    return wellbeing_snn_simulate(bridge, bridge->config.dt_ms);
+}
+
+int wellbeing_snn_forward(
+    wellbeing_snn_bridge_t* bridge,
+    const float* inputs,
+    uint32_t input_count
+) {
+    if (!bridge || !inputs) return -1;
+
+    int spike_count = wellbeing_snn_encode_state(bridge, inputs, input_count);
+    if (spike_count < 0) return -1;
+
+    if (wellbeing_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        return -1;
+    }
+
+    return spike_count;
+}
+
+//=============================================================================
+// Decoding Functions
+//=============================================================================
+
+int wellbeing_snn_get_assessment(
+    wellbeing_snn_bridge_t* bridge,
+    wellbeing_assessment_t* assessment
+) {
+    if (!bridge || !assessment) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    *assessment = bridge->last_assessment;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int wellbeing_snn_get_activations(
+    wellbeing_snn_bridge_t* bridge,
+    float* activations,
+    uint32_t num_dims
+) {
+    if (!bridge || !activations) return -1;
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    for (uint32_t d = 0; d < num_dims; d++) {
+        activations[d] = bridge->dim_states[d].activation;
+    }
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+bool wellbeing_snn_check_stress(
+    wellbeing_snn_bridge_t* bridge,
+    float* stress_level
+) {
+    if (!bridge) return false;
+
+    nimcp_mutex_lock(bridge->mutex);
+    float level = bridge->last_assessment.stress_level;
+    if (stress_level) {
+        *stress_level = level;
+    }
+    bool detected = level > bridge->config.stress_threshold;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return detected;
+}
+
+bool wellbeing_snn_check_flourishing(
+    wellbeing_snn_bridge_t* bridge,
+    float* flourishing_level
+) {
+    if (!bridge) return false;
+
+    nimcp_mutex_lock(bridge->mutex);
+    float level = bridge->last_assessment.flourishing_score;
+    if (flourishing_level) {
+        *flourishing_level = level;
+    }
+    bool detected = level > bridge->config.flourishing_threshold;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return detected;
+}
+
+bool wellbeing_snn_check_balance(
+    wellbeing_snn_bridge_t* bridge,
+    float* balance_score
+) {
+    if (!bridge) return false;
+
+    nimcp_mutex_lock(bridge->mutex);
+    float score = bridge->balance_signal;
+    if (balance_score) {
+        *balance_score = score;
+    }
+    bool achieved = bridge->last_assessment.balance_achieved;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return achieved;
+}
+
+//=============================================================================
+// State Query Functions
+//=============================================================================
+
+int wellbeing_snn_get_dim_state(
+    wellbeing_snn_bridge_t* bridge,
+    uint32_t dim,
+    wellbeing_dim_state_t* state
+) {
+    if (!bridge || !state) return -1;
+    if (dim >= bridge->config.num_dimensions) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    *state = bridge->dim_states[dim];
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int wellbeing_snn_get_state(
+    wellbeing_snn_bridge_t* bridge,
+    wellbeing_snn_bridge_state_t* state
+) {
+    if (!bridge || !state) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    state->state = bridge->state;
+    state->mean_wellbeing = bridge->last_assessment.flourishing_score;
+    state->stress_signal = bridge->stress_signal;
+    state->balance_signal = bridge->balance_signal;
+
+    /* Count active dimensions */
+    state->active_dimensions = 0;
+    state->total_activity = 0.0f;
+    for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        if (bridge->dim_states[d].activation > 0.1f) {
+            state->active_dimensions++;
+        }
+        state->total_activity += bridge->dim_states[d].activation;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int wellbeing_snn_get_stats(wellbeing_snn_bridge_t* bridge, wellbeing_snn_stats_t* stats) {
+    if (!bridge || !stats) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    *stats = bridge->stats;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int wellbeing_snn_reset_stats(wellbeing_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    memset(&bridge->stats, 0, sizeof(wellbeing_snn_stats_t));
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+float wellbeing_snn_get_flourishing(wellbeing_snn_bridge_t* bridge) {
+    if (!bridge) return -1.0f;
+
+    nimcp_mutex_lock(bridge->mutex);
+    float flourishing = bridge->last_assessment.flourishing_score;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return flourishing;
+}
+
+float wellbeing_snn_get_total_activity(wellbeing_snn_bridge_t* bridge) {
+    if (!bridge) return -1.0f;
+
+    nimcp_mutex_lock(bridge->mutex);
+    float total = 0.0f;
+    for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        total += bridge->dim_states[d].activation;
+    }
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return total;
+}
+
+//=============================================================================
+// Callback Registration
+//=============================================================================
+
+int wellbeing_snn_register_stress_callback(
+    wellbeing_snn_bridge_t* bridge,
+    wellbeing_snn_stress_callback_t callback,
+    void* user_data
+) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->stress_callback = callback;
+    bridge->stress_callback_data = user_data;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int wellbeing_snn_register_assessment_callback(
+    wellbeing_snn_bridge_t* bridge,
+    wellbeing_snn_assessment_callback_t callback,
+    void* user_data
+) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->assessment_callback = callback;
+    bridge->assessment_callback_data = user_data;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int wellbeing_snn_register_balance_callback(
+    wellbeing_snn_bridge_t* bridge,
+    wellbeing_snn_balance_callback_t callback,
+    void* user_data
+) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->balance_callback = callback;
+    bridge->balance_callback_data = user_data;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+//=============================================================================
+// Bio-Async Integration
+//=============================================================================
+
+int wellbeing_snn_bio_async_connect(wellbeing_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    if (!bridge->config.enable_bio_async) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    /* Bio-async connection would be implemented here */
+    bridge->bio_async_connected = true;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int wellbeing_snn_bio_async_disconnect(wellbeing_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->bio_async_connected = false;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+bool wellbeing_snn_is_bio_async_connected(wellbeing_snn_bridge_t* bridge) {
+    if (!bridge) return false;
+
+    nimcp_mutex_lock(bridge->mutex);
+    bool connected = bridge->bio_async_connected;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return connected;
+}
