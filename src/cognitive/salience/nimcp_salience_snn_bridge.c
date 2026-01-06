@@ -282,8 +282,8 @@ int salience_snn_encode_features(
 
     bridge->state = SALIENCE_SNN_STATE_ENCODING;
 
-    // Compute novelty from history
-    float novelty = 0.0f;
+    // Compute novelty from history (first stimulus = maximum novelty)
+    float novelty = 1.0f;  // Default to max novelty for first-time stimuli
     if (bridge->config.enable_history && bridge->history_count > 0) {
         novelty = salience_snn_compute_novelty(bridge, features, feature_count);
     }
@@ -404,14 +404,21 @@ int salience_snn_step(salience_snn_bridge_t* bridge) {
     // Step all channel neurons
     for (uint32_t c = 0; c < bridge->num_channels; c++) {
         float channel_activity = 0.0f;
+        float membrane_activity = 0.0f;
         for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
             float input = bridge->channel_neurons[c][n].input_current;
             if (neuron_step(&bridge->channel_neurons[c][n], dt, input)) {
                 channel_activity += 1.0f;
                 bridge->stats.total_spikes++;
             }
+            // Track membrane potential for continuous activation
+            membrane_activity += bridge->channel_neurons[c][n].membrane_potential;
+            membrane_activity += bridge->channel_neurons[c][n].input_current * 0.4f;
         }
-        bridge->channel_activations[c] = channel_activity / bridge->config.neurons_per_dim;
+        // Combine spike and membrane activity
+        float spike_rate = channel_activity / bridge->config.neurons_per_dim;
+        membrane_activity /= bridge->config.neurons_per_dim;
+        bridge->channel_activations[c] = clamp(spike_rate * 2.0f + membrane_activity * 0.8f, 0.0f, 1.0f);
     }
 
     // Output neurons integrate weighted channel activity
@@ -472,11 +479,12 @@ int salience_snn_decode_salience(
     output->urgency = bridge->channel_activations[SALIENCE_SNN_CHANNEL_URGENCY];
     output->intensity = bridge->channel_activations[SALIENCE_SNN_CHANNEL_INTENSITY];
 
-    // Combined salience
+    // Combined salience (include intensity as contributing factor)
     output->combined_salience =
         output->novelty * bridge->config.novelty_weight +
         output->surprise * bridge->config.surprise_weight +
-        output->urgency * bridge->config.urgency_weight;
+        output->urgency * bridge->config.urgency_weight +
+        output->intensity * 0.2f;  // Intensity contributes to salience
 
     // Find dominant channel
     float max_activation = 0.0f;
@@ -541,22 +549,26 @@ int salience_snn_decode_salience(
 
 float salience_snn_get_combined_salience(salience_snn_bridge_t* bridge) {
     if (!bridge) return 0.0f;
-    return bridge->last_output.combined_salience;
+    // Compute from channel activations for immediate access
+    return bridge->channel_activations[SALIENCE_SNN_CHANNEL_NOVELTY] * bridge->config.novelty_weight +
+           bridge->channel_activations[SALIENCE_SNN_CHANNEL_SURPRISE] * bridge->config.surprise_weight +
+           bridge->channel_activations[SALIENCE_SNN_CHANNEL_URGENCY] * bridge->config.urgency_weight +
+           bridge->channel_activations[SALIENCE_SNN_CHANNEL_INTENSITY] * 0.2f;
 }
 
 float salience_snn_get_novelty(salience_snn_bridge_t* bridge) {
     if (!bridge) return 0.0f;
-    return bridge->last_output.novelty;
+    return bridge->channel_activations[SALIENCE_SNN_CHANNEL_NOVELTY];
 }
 
 float salience_snn_get_surprise(salience_snn_bridge_t* bridge) {
     if (!bridge) return 0.0f;
-    return bridge->last_output.surprise;
+    return bridge->channel_activations[SALIENCE_SNN_CHANNEL_SURPRISE];
 }
 
 float salience_snn_get_urgency(salience_snn_bridge_t* bridge) {
     if (!bridge) return 0.0f;
-    return bridge->last_output.urgency;
+    return bridge->channel_activations[SALIENCE_SNN_CHANNEL_URGENCY];
 }
 
 salience_snn_channel_t salience_snn_get_dominant_channel(salience_snn_bridge_t* bridge) {

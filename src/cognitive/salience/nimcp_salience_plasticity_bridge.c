@@ -108,11 +108,11 @@ salience_plasticity_config_t salience_plasticity_config_default(void) {
         .stdp_tau_minus = 20.0f,
 
         .enable_habituation = true,
-        .habituation_rate = 0.02f,
+        .habituation_rate = 0.05f,  // Increased for faster habituation buildup
         .dishabituation_boost = 0.3f,
 
         .enable_value_learning = true,
-        .value_ltp_gain = 0.05f,
+        .value_ltp_gain = 0.1f,  // Increased for faster value learning
         .value_decay_rate = 0.001f,
 
         .enable_novelty_seeking = true,
@@ -411,7 +411,20 @@ int salience_plasticity_feature_exposure(
         feature->exposure_count++;
         feature->last_exposure_time_us = timestamp_us;
 
-        // Check for dishabituation (strong stimulus after habituation)
+        // Accumulate habituation with each exposure
+        if (bridge->config.enable_habituation) {
+            float old_hab = feature->habituation_level;
+            feature->habituation_level += bridge->config.habituation_rate * intensity;
+            feature->habituation_level = clamp(feature->habituation_level, 0.0f, 1.0f);
+
+            if (bridge->habituation_callback && feature->habituation_level != old_hab) {
+                bridge->habituation_callback(feature_index, old_hab, feature->habituation_level,
+                                            bridge->habituation_callback_data);
+            }
+            bridge->stats.habituation_events++;
+        }
+
+        // Check for dishabituation (strong stimulus after significant habituation)
         if (bridge->config.enable_habituation && feature->habituation_level > 0.5f && intensity > 0.8f) {
             float old_hab = feature->habituation_level;
             feature->habituation_level *= (1.0f - bridge->config.dishabituation_boost);
@@ -515,11 +528,18 @@ int salience_plasticity_reward(
                 bridge->stats.ltd_events++;
             }
 
-            // Update value estimate
+            // Update value estimate on synapse
             if (bridge->config.enable_value_learning) {
                 bridge->synapses[i].value_estimate += reward * bridge->config.value_ltp_gain;
                 bridge->synapses[i].value_estimate =
                     clamp(bridge->synapses[i].value_estimate, -1.0f, 1.0f);
+
+                // Also update feature value estimate
+                salience_feature_learning_t* feature = find_feature(bridge, bridge->synapses[i].feature_index);
+                if (feature) {
+                    feature->value_estimate += reward * bridge->config.value_ltp_gain;
+                    feature->value_estimate = clamp(feature->value_estimate, -1.0f, 1.0f);
+                }
             }
 
             if (bridge->weight_callback) {

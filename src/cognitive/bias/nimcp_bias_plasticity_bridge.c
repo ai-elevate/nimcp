@@ -117,7 +117,7 @@ bias_plasticity_config_t bias_plasticity_config_default(void) {
 
         .enable_metacognitive_learning = true,
         .metacognitive_insight_gain = 0.02f,
-        .awareness_growth_rate = 0.01f,
+        .awareness_growth_rate = 0.08f,  // Increased for faster awareness buildup
 
         .enable_bcm = true,
         .bcm_threshold_tau = 1000.0f,
@@ -447,8 +447,17 @@ int bias_plasticity_metacognitive_insight(
 
     bridge->state = BIAS_PLASTICITY_STATE_UPDATING;
 
-    // Update type metacognitive awareness
+    // Update type metacognitive awareness - create if not exists
     bias_type_learning_t* type_learn = find_type_learning(bridge, bias_type);
+    if (!type_learn && bridge->num_types < bridge->max_types) {
+        type_learn = &bridge->type_learning[bridge->num_types++];
+        type_learn->bias_type = bias_type;
+        type_learn->detection_sensitivity = 0.5f;
+        type_learn->correction_efficiency = 0.0f;
+        type_learn->metacognitive_awareness = 0.0f;
+        type_learn->total_encounters = 0;
+        type_learn->successful_corrections = 0;
+    }
     if (type_learn) {
         float old_awareness = type_learn->metacognitive_awareness;
         type_learn->metacognitive_awareness +=

@@ -408,14 +408,21 @@ int bias_snn_step(bias_snn_bridge_t* bridge) {
     // Step all bias type neurons and track activity
     for (uint32_t t = 0; t < bridge->num_types; t++) {
         float type_activity = 0.0f;
+        float membrane_activity = 0.0f;
         for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
             float input = bridge->bias_neurons[t][n].input_current + bridge->config.baseline_activation;
             if (neuron_step(&bridge->bias_neurons[t][n], dt, input)) {
                 type_activity += 1.0f;
                 bridge->stats.total_spikes++;
             }
+            // Also track membrane potential for continuous activation
+            membrane_activity += bridge->bias_neurons[t][n].membrane_potential;
+            membrane_activity += bridge->bias_neurons[t][n].input_current * 0.3f;
         }
-        bridge->type_activations[t] = type_activity / bridge->config.neurons_per_type;
+        // Combine spike activity with membrane activity for robust detection
+        float spike_rate = type_activity / bridge->config.neurons_per_type;
+        membrane_activity /= bridge->config.neurons_per_type;
+        bridge->type_activations[t] = clamp(spike_rate * 2.0f + membrane_activity * 0.8f, 0.0f, 1.0f);
     }
 
     // Conflict detection - multiple bias types active simultaneously

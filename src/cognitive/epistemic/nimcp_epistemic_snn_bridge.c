@@ -253,13 +253,8 @@ int epistemic_snn_reset(epistemic_snn_bridge_t* bridge) {
         reset_neuron(&bridge->output_neurons[i]);
     }
 
-    // Reset sources
-    if (bridge->sources) {
-        for (uint32_t i = 0; i < bridge->config.max_sources; i++) {
-            bridge->sources[i].active = false;
-        }
-        bridge->num_sources = 0;
-    }
+    // Note: Sources are NOT reset - source reliability is learned state
+    // that should persist across neural resets. Only neuron states are cleared.
 
     // Reset inputs
     bridge->current_evidence_quality = 0.0f;
@@ -473,30 +468,53 @@ int epistemic_snn_decode_assessment(
 ) {
     if (!bridge || !output) return -1;
 
-    // Decode from output population
-    float output_rate = compute_population_rate(bridge->output_neurons,
-                                                bridge->num_output_neurons, 100.0f);
-    float evidence_rate = compute_population_rate(bridge->evidence_neurons,
-                                                  bridge->num_evidence_neurons, 100.0f);
-    float reliability_rate = compute_population_rate(bridge->reliability_neurons,
-                                                     bridge->num_reliability_neurons, 100.0f);
-    float bias_rate = compute_population_rate(bridge->bias_neurons,
-                                              bridge->num_bias_neurons, 100.0f);
+    // Compute average membrane potential activity (more responsive than spike rates)
+    float evidence_activity = 0.0f;
+    for (uint32_t i = 0; i < bridge->num_evidence_neurons; i++) {
+        evidence_activity += bridge->evidence_neurons[i].membrane_potential;
+        evidence_activity += bridge->evidence_neurons[i].evidence_input * 0.5f;
+    }
+    evidence_activity /= bridge->num_evidence_neurons;
 
-    // Normalize rates to [0,1]
-    output->epistemic_quality = clamp(output_rate / 100.0f, 0.0f, 1.0f);
-    output->evidence_strength = clamp(evidence_rate / 100.0f, 0.0f, 1.0f);
-    output->source_reliability = clamp(reliability_rate / 100.0f, 0.0f, 1.0f);
-    output->bias_magnitude = clamp(bias_rate / 50.0f, 0.0f, 1.0f);
+    float reliability_activity = 0.0f;
+    for (uint32_t i = 0; i < bridge->num_reliability_neurons; i++) {
+        reliability_activity += bridge->reliability_neurons[i].membrane_potential;
+        reliability_activity += bridge->reliability_neurons[i].reliability_input * 0.5f;
+    }
+    reliability_activity /= bridge->num_reliability_neurons;
 
-    // Compute uncertainty from variance in output activity
+    float bias_activity = 0.0f;
+    for (uint32_t i = 0; i < bridge->num_bias_neurons; i++) {
+        bias_activity += bridge->bias_neurons[i].membrane_potential;
+        bias_activity += bridge->bias_neurons[i].bias_input * 0.5f;
+    }
+    bias_activity /= bridge->num_bias_neurons;
+
+    // Combine inputs with membrane activity for robust output
+    float combined_evidence = bridge->current_evidence_quality * 0.6f + evidence_activity * 0.4f;
+    float combined_reliability = bridge->current_source_reliability * 0.6f + reliability_activity * 0.4f;
+
+    // Epistemic quality: weighted combination of evidence and reliability, reduced by bias
+    output->epistemic_quality = clamp(combined_evidence * combined_reliability * 1.2f - bias_activity * 0.3f, 0.0f, 1.0f);
+    output->evidence_strength = clamp(combined_evidence, 0.0f, 1.0f);
+    output->source_reliability = clamp(combined_reliability, 0.0f, 1.0f);
+    output->bias_magnitude = clamp(bias_activity, 0.0f, 1.0f);
+
+    // Compute uncertainty from variance in output membrane potentials
+    float mean_potential = 0.0f;
+    for (uint32_t i = 0; i < bridge->num_output_neurons; i++) {
+        mean_potential += bridge->output_neurons[i].membrane_potential;
+    }
+    mean_potential /= bridge->num_output_neurons;
+
     float variance = 0.0f;
     for (uint32_t i = 0; i < bridge->num_output_neurons; i++) {
-        float diff = bridge->output_neurons[i].spike_count - output_rate;
+        float diff = bridge->output_neurons[i].membrane_potential - mean_potential;
         variance += diff * diff;
     }
     variance /= bridge->num_output_neurons;
-    output->uncertainty = clamp(sqrtf(variance) / 10.0f, 0.0f, 1.0f);
+    // Higher variance means less certainty; also factor in evidence quality
+    output->uncertainty = clamp(1.0f - output->epistemic_quality + sqrtf(variance), 0.0f, 1.0f);
 
     // Bias detection
     output->bias_detected = (output->bias_magnitude > bridge->config.bias_detection_threshold);
