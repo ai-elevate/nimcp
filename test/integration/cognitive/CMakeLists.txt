@@ -221,3 +221,6 @@ add_subdirectory(bias)
 
 # Salience SNN-Plasticity Integration Tests
 add_subdirectory(salience)
+
+# Cognitive Integration Hub and Bridges Integration Tests
+add_subdirectory(integration)

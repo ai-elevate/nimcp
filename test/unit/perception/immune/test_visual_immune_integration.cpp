@@ -299,10 +299,10 @@ TEST_F(VisualImmuneIntegrationTest, ModulateNeurotransmittersNoInflammation) {
         visual_cortex_get_neuromod_state(visual_cortex, 2);
 
     if (ach_state) {
-        EXPECT_GE(ach_state->tonic_level, 0.4f);
+        EXPECT_GE(phasic_tonic_get_tonic_level(ach_state), 0.4f);
     }
     if (ne_state) {
-        EXPECT_LE(ne_state->tonic_level, 0.5f);
+        EXPECT_LE(phasic_tonic_get_tonic_level(ne_state), 0.5f);
     }
 }
 
@@ -324,8 +324,8 @@ TEST_F(VisualImmuneIntegrationTest, ModulateNeurotransmittersWithInflammation) {
 
     if (ach_state && ne_state) {
         /* ACh reduced, NE increased */
-        EXPECT_LT(ach_state->tonic_level, 0.5f);
-        EXPECT_GT(ne_state->tonic_level, 0.3f);
+        EXPECT_LT(phasic_tonic_get_tonic_level(ach_state), 0.5f);
+        EXPECT_GT(phasic_tonic_get_tonic_level(ne_state), 0.3f);
     }
 }
 

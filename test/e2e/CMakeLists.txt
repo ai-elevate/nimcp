@@ -2053,6 +2053,72 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_salience_snn_plasticity_pipeline.
     message(STATUS "  Added Salience SNN-Plasticity Pipeline E2E test: e2e_test_salience_snn_plasticity_pipeline")
 endif()
 
+# ============================================================================
+# Cognitive Integration Pipeline E2E Test
+# ============================================================================
+# WHAT: Test cognitive integration hub and bridges working together
+# WHY:  Verify complete intra-layer cognitive processing pipeline
+# HOW:  Test emotion-memory, attention-wm, curiosity-reasoning, ethics-executive, etc.
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cognitive_integration_pipeline.cpp)
+    add_executable(e2e_test_cognitive_integration_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cognitive_integration_pipeline.cpp
+    )
+    target_include_directories(e2e_test_cognitive_integration_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/integration
+    )
+    target_link_libraries(e2e_test_cognitive_integration_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_cognitive_integration_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_cognitive_integration_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_cognitive_integration_pipeline COMMAND e2e_test_cognitive_integration_pipeline)
+    set_tests_properties(e2e_test_cognitive_integration_pipeline PROPERTIES
+        LABELS "e2e;cognitive;integration;hub;bridges"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Cognitive Integration Pipeline E2E test: e2e_test_cognitive_integration_pipeline")
+endif()
+
+# ============================================================================
+# Cognitive SNN-Plasticity Integration E2E Test
+# ============================================================================
+# WHAT: Test intra-layer bridges work alongside inter-layer SNN/plasticity bridges
+# WHY:  Verify cross-layer integration for complete cognitive processing
+# HOW:  Test cognitive hub with SNN and plasticity bridges
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cognitive_snn_plasticity_integration.cpp)
+    add_executable(e2e_test_cognitive_snn_plasticity_integration
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cognitive_snn_plasticity_integration.cpp
+    )
+    target_include_directories(e2e_test_cognitive_snn_plasticity_integration PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/integration
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_cognitive_snn_plasticity_integration PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_cognitive_snn_plasticity_integration PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_cognitive_snn_plasticity_integration PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_cognitive_snn_plasticity_integration COMMAND e2e_test_cognitive_snn_plasticity_integration)
+    set_tests_properties(e2e_test_cognitive_snn_plasticity_integration PROPERTIES
+        LABELS "e2e;cognitive;integration;snn;plasticity"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Cognitive SNN-Plasticity Integration E2E test: e2e_test_cognitive_snn_plasticity_integration")
+endif()
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)

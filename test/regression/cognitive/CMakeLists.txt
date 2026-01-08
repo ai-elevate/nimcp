@@ -105,6 +105,9 @@ add_subdirectory(bias)
 # Salience Bridge Regression Tests (SNN and Plasticity)
 add_subdirectory(salience)
 
+# Cognitive Integration Hub and Bridges Regression Tests
+add_subdirectory(integration)
+
 # ============================================================================
 # Cognitive Bridge Completeness Tests
 # ============================================================================

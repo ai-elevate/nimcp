@@ -1726,3 +1726,8 @@ add_subdirectory(bias)
 # Salience SNN/Plasticity Bridge Tests
 # ============================================================================
 add_subdirectory(salience)
+
+# ============================================================================
+# Cognitive Integration Bridge Tests (Emotion-Executive, GW-Cognitive)
+# ============================================================================
+add_subdirectory(integration)

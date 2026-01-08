@@ -424,6 +424,15 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_tom_plasticity_bridge.c  # Theory of Mind-Plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_self_awareness_coordinator.c  # Self-Awareness Unification: Orchestrates introspection, self-model, autobio, ToM
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_self_awareness_feedback.c    # Self-Awareness Feedback: Policies, history, analysis
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_cognitive_integration_hub.c  # Cognitive Integration Hub: Module registration, event pub/sub, queries
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_curiosity_reasoning_bridge.c  # Curiosity-Reasoning bidirectional integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_emotion_memory_bridge.c  # Emotion-Memory bidirectional integration (amygdala-hippocampus)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_attention_wm_bridge.c  # Attention-Working Memory integration bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_emotion_executive_bridge.c  # Emotion-Executive Function integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_ethics_executive_bridge.c  # Ethics-Executive integration (ethical constraints, veto)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_tom_social_bridge.c  # Theory of Mind-Social integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_gw_cognitive_bridge.c  # Global Workspace-Cognitive broadcast/competition bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_self_introspection_bridge.c  # Self-Model-Introspection integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations.c  # Phase 10.7: Natural Explanations
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning.c  # Phase 10.8: Meta-Learning
 
