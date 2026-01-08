@@ -536,18 +536,19 @@ TEST_F(CollectiveFEPIntegrationTest, WeModeWithFEP) {
     /* Enter we-mode */
     shared_intentionality_t* si = collective_cognition_get_intentionality(cc);
     ASSERT_NE(si, nullptr);
-    int enter_result = shared_intentionality_enter_we_mode(si);
-    /* We-mode entry may require additional setup (active instances), skip if not available */
-    if (enter_result != 0) {
-        GTEST_SKIP() << "We-mode entry not available (may need active instances)";
+
+    /* Register instances with shared intentionality (separate from collective_cognition registration) */
+    for (uint32_t i = 1; i <= 4; i++) {
+        ASSERT_EQ(shared_intentionality_register_instance(si, i), 0);
     }
 
-    /* Capture initial state - we-mode may require multiple instances to be truly active */
-    bool initially_active = shared_intentionality_is_we_mode_active(si);
-    if (!initially_active) {
-        /* We-mode may need multiple collective instances to be truly active */
-        GTEST_SKIP() << "We-mode not active after enter (may need multiple instances)";
-    }
+    int enter_result = shared_intentionality_enter_we_mode(si);
+    /* We-mode entry may require additional setup (active instances), skip if not available */
+    ASSERT_EQ(enter_result, 0) << "We-mode entry should succeed with 4 registered instances";
+
+    /* Verify we-mode is active with multiple instances */
+    ASSERT_TRUE(shared_intentionality_is_we_mode_active(si))
+        << "We-mode should be active after entering with 4 instances";
 
     /* Run FEP updates */
     uint64_t start_time = get_current_time_ms();

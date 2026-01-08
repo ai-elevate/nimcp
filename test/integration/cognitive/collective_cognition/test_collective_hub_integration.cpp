@@ -570,6 +570,11 @@ TEST_F(CollectiveHubIntegrationTest, SharedGoalEventCoordination) {
     shared_intentionality_t* si = collective_cognition_get_intentionality(cc);
     ASSERT_NE(si, nullptr);
 
+    /* Register agents/instances with shared intentionality before goal operations */
+    for (uint32_t i = 1; i <= 4; i++) {
+        ASSERT_EQ(shared_intentionality_register_instance(si, i), 0);
+    }
+
     shared_goal_t goal;
     memset(&goal, 0, sizeof(goal));
     snprintf(goal.description, sizeof(goal.description),
@@ -577,17 +582,12 @@ TEST_F(CollectiveHubIntegrationTest, SharedGoalEventCoordination) {
     goal.priority = 0.9f;
 
     uint32_t goal_id = shared_intentionality_propose_goal(si, &goal);
-    if (goal_id == 0) {
-        GTEST_SKIP() << "Goal proposal not available (may need registered agents)";
-    }
-    EXPECT_GT(goal_id, 0u);
+    ASSERT_GT(goal_id, 0u) << "Goal proposal should succeed with registered agents";
 
-    /* All agents commit - skip if commitment fails (needs agent registration) */
+    /* All agents commit */
     for (uint32_t i = 1; i <= 4; i++) {
-        int commit_result = shared_intentionality_commit_to_goal(si, goal_id, i, 0.85f);
-        if (commit_result != 0) {
-            GTEST_SKIP() << "Goal commitment not available (agents may need registration)";
-        }
+        ASSERT_EQ(shared_intentionality_commit_to_goal(si, goal_id, i, 0.85f), 0)
+            << "Goal commitment should succeed for registered instance " << i;
     }
 
     /* Agents subscribe to learning complete (goal completion) */
@@ -683,6 +683,7 @@ TEST_F(CollectiveHubIntegrationTest, PhiBroadcast) {
 TEST_F(CollectiveHubIntegrationTest, SocialCategoryBroadcast) {
     register_collective_modules();
     register_agent_modules();
+    register_other_modules();  /* Register social system module for category broadcast */
 
     /* All social modules subscribe to social signals */
     for (uint32_t mod_id : {MODULE_COLLECTIVE_MAIN, MODULE_COLLECTIVE_HYPERSCAN,
@@ -707,11 +708,7 @@ TEST_F(CollectiveHubIntegrationTest, SocialCategoryBroadcast) {
     int ret = cognitive_hub_publish_to_category(hub, MODULE_SOCIAL_SYSTEM,
                                                  COG_CATEGORY_SOCIAL,
                                                  COG_EVENT_SOCIAL_SIGNAL, &event);
-    if (ret != 0) {
-        /* Category broadcast may require modules registered with that category */
-        GTEST_SKIP() << "Category broadcast not available (modules may need category registration)";
-    }
-    EXPECT_EQ(ret, 0);
+    ASSERT_EQ(ret, 0) << "Category broadcast should succeed with social system module registered";
 
     /* All social category modules should receive */
     EXPECT_GE(g_tracker.social_signal_events.load(), 7);
