@@ -15,4 +15,18 @@ add_test_binary(
     integration
 )
 
+# Integration Test: FEP bridge integration
+add_test_binary(
+    test_rcog_fep_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_rcog_fep_integration.cpp
+    integration
+)
+
+# Integration Test: Cognitive Hub bridge integration
+add_test_binary(
+    test_rcog_hub_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_rcog_hub_integration.cpp
+    integration
+)
+
 message(STATUS "  Configured recursive cognition integration tests")

@@ -275,3 +275,63 @@ gtest_discover_tests(unit_cognitive_test_self_introspection_bridge
         LABELS "unit;cognitive;integration;self;introspection"
         TIMEOUT 120
 )
+
+# Collective-Hub Bridge Tests
+add_executable(unit_cognitive_test_collective_hub_bridge
+    test_collective_hub_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_collective_hub_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_collective_hub_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_collective_hub_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_collective_hub_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;integration;collective;hub"
+        TIMEOUT 120
+)
+
+# Rcog-Hub Bridge Tests
+add_executable(unit_cognitive_test_rcog_hub_bridge
+    test_rcog_hub_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_rcog_hub_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_rcog_hub_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_rcog_hub_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_rcog_hub_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;integration;rcog;hub"
+        TIMEOUT 120
+)

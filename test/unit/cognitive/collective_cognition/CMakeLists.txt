@@ -161,3 +161,35 @@ gtest_discover_tests(unit_cognitive_test_shared_intentionality
         LABELS "unit;cognitive;collective_cognition;intentionality"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Test: Collective FEP Bridge (Free Energy Principle integration)
+# ============================================================================
+add_executable(unit_cognitive_test_collective_fep_bridge
+    test_collective_fep_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_collective_fep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_collective_fep_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_collective_fep_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_collective_fep_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;collective_cognition;fep;bridge"
+        TIMEOUT 120
+)

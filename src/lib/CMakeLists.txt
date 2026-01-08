@@ -434,6 +434,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_gw_cognitive_bridge.c  # Global Workspace-Cognitive broadcast/competition bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_self_introspection_bridge.c  # Self-Model-Introspection integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_cognitive_integration_fep.c  # Cognitive Integration-FEP orchestrator bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_collective_hub_bridge.c  # Collective Cognition-Hub integration bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_rcog_hub_bridge.c  # Recursive Cognition-Hub integration bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations.c  # Phase 10.7: Natural Explanations
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning.c  # Phase 10.8: Meta-Learning
 
@@ -956,6 +958,7 @@ set(NIMCP_CORE_SOURCES
     # Collective Cognition SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/collective_cognition/nimcp_collective_snn_bridge.c  # SNN integration for collective cognition
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/collective_cognition/nimcp_collective_plasticity_bridge.c  # Plasticity integration for collective cognition
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/collective_cognition/nimcp_collective_fep_bridge.c  # FEP orchestrator integration for collective cognition
     # Consolidation SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation_snn_bridge.c  # SNN integration for consolidation
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation_plasticity_bridge.c  # Plasticity integration for consolidation
@@ -989,9 +992,10 @@ set(NIMCP_CORE_SOURCES
     # Predictive SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive_snn_bridge.c  # SNN integration for predictive
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive_plasticity_bridge.c  # Plasticity integration for predictive
-    # Recursive Cognition SNN/Plasticity Integration
+    # Recursive Cognition SNN/Plasticity/FEP Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_snn_bridge.c  # SNN integration for recursive cognition
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_plasticity_bridge.c  # Plasticity integration for recursive cognition
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_fep_bridge.c  # FEP orchestrator integration for recursive cognition
     # Self-Awareness SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_snn_bridge.c  # SNN integration for self-awareness
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_plasticity_bridge.c  # Plasticity integration for self-awareness

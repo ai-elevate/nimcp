@@ -302,7 +302,71 @@ gtest_discover_tests(integration_collective_cognition_portia
 )
 
 # ----------------------------------------------------------------------------
-# Test 10: Full Collective Cognition Cross-Module Integration
+# Test 10: Collective Cognition + FEP Orchestrator Integration
+# ----------------------------------------------------------------------------
+add_executable(integration_collective_fep
+    test_collective_fep_integration.cpp
+)
+
+target_link_libraries(integration_collective_fep
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_collective_fep
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_collective_fep PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_collective_fep
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;collective_cognition;fep;orchestrator"
+        TIMEOUT 180
+)
+
+# ----------------------------------------------------------------------------
+# Test 11: Collective Cognition + Cognitive Hub Integration
+# ----------------------------------------------------------------------------
+add_executable(integration_collective_hub
+    test_collective_hub_integration.cpp
+)
+
+target_link_libraries(integration_collective_hub
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_collective_hub
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_collective_hub PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_collective_hub
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;collective_cognition;hub;coordination"
+        TIMEOUT 180
+)
+
+# ----------------------------------------------------------------------------
+# Test 12: Full Collective Cognition Cross-Module Integration
 # TODO: Create test_collective_cognition_full_integration.cpp
 # ----------------------------------------------------------------------------
 # add_executable(integration_collective_cognition_full

@@ -66,4 +66,11 @@ add_test_binary(
     unit
 )
 
-message(STATUS "  Configured 7 recursive cognition unit tests")
+# Test 8: FEP Bridge
+add_test_binary(
+    test_rcog_fep_bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_rcog_fep_bridge.cpp
+    unit
+)
+
+message(STATUS "  Configured 8 recursive cognition unit tests")

@@ -2119,6 +2119,42 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_cognitive_snn_plasticity_integrat
     message(STATUS "  Added Cognitive SNN-Plasticity Integration E2E test: e2e_test_cognitive_snn_plasticity_integration")
 endif()
 
+# ============================================================================
+# Recursive-Collective Cognition Integration E2E Test
+# ============================================================================
+# WHAT: Test recursive and collective cognition bridge integrations end-to-end
+# WHY:  Verify recursive task decomposition works with collective intelligence
+# HOW:  Test complete pipelines with both module bridges coordinated by FEP
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_rcog_collective_integration.cpp)
+    add_executable(e2e_test_rcog_collective_integration
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_rcog_collective_integration.cpp
+    )
+    target_include_directories(e2e_test_rcog_collective_integration PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/recursive
+        ${CMAKE_SOURCE_DIR}/include/cognitive/collective_cognition
+        ${CMAKE_SOURCE_DIR}/include/cognitive/free_energy
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_rcog_collective_integration PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_rcog_collective_integration PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_rcog_collective_integration PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_rcog_collective_integration COMMAND e2e_test_rcog_collective_integration)
+    set_tests_properties(e2e_test_rcog_collective_integration PROPERTIES
+        LABELS "e2e;cognitive;recursive;collective;integration;snn;plasticity;fep"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Recursive-Collective Cognition Integration E2E test: e2e_test_rcog_collective_integration")
+endif()
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)

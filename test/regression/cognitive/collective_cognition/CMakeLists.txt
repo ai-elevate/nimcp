@@ -164,3 +164,36 @@ gtest_discover_tests(regression_collective_cognition_integration_stability
         LABELS "regression;cognitive;collective_cognition;integration"
         TIMEOUT 600
 )
+
+# ----------------------------------------------------------------------------
+# Regression Test 6: SNN/Plasticity Bridge Integration
+# ----------------------------------------------------------------------------
+add_executable(regression_collective_bridge
+    test_collective_bridge_regression.cpp
+)
+
+target_link_libraries(regression_collective_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_collective_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(regression_collective_bridge PRIVATE cxx_std_17)
+target_compile_options(regression_collective_bridge PRIVATE -O2)
+
+gtest_discover_tests(regression_collective_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;collective_cognition;bridge;snn;plasticity"
+        TIMEOUT 300
+)
