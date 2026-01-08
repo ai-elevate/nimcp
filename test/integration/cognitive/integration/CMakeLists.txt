@@ -305,3 +305,39 @@ gtest_discover_tests(integration_cognitive_test_imagination_reasoning_integratio
         LABELS "integration;cognitive;imagination;reasoning"
         TIMEOUT 180
 )
+
+# ============================================================================
+# Tier 3 FEP Bridges Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Tier 3 FEP bridges (FEP bridges for Tier 2 Hub bridges)
+# WHY:  Validate FEP integration with Hub bridges for prediction error minimization
+# HOW:  Test complete FEP-Hub bridge integration scenarios
+# ============================================================================
+add_executable(integration_cognitive_test_tier3_fep_bridges_integration
+    test_tier3_fep_bridges_integration.cpp
+)
+
+target_link_libraries(integration_cognitive_test_tier3_fep_bridges_integration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_cognitive_test_tier3_fep_bridges_integration
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_cognitive_test_tier3_fep_bridges_integration PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_cognitive_test_tier3_fep_bridges_integration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;tier3;fep;bridges"
+        TIMEOUT 180
+)

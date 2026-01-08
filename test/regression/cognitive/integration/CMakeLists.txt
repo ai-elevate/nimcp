@@ -140,3 +140,39 @@ gtest_discover_tests(regression_cognitive_test_tier2_hub_bridges_regression
         LABELS "regression;cognitive;integration;tier2;hub;bridges"
         TIMEOUT 300
 )
+
+# ============================================================================
+# Tier 3 FEP Bridges Regression Tests
+# ============================================================================
+# WHAT: Regression tests for Tier 3 FEP bridges (FEP bridges for Tier 2 Hub bridges)
+# WHY:  Ensure FEP bridge behavior stability, free energy bounds, and state consistency
+# HOW:  Test baseline values, state transitions, boundary conditions, reset stability
+# ============================================================================
+add_executable(regression_cognitive_test_tier3_fep_bridges_regression
+    test_tier3_fep_bridges_regression.cpp
+)
+
+target_link_libraries(regression_cognitive_test_tier3_fep_bridges_regression
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_cognitive_test_tier3_fep_bridges_regression
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(regression_cognitive_test_tier3_fep_bridges_regression PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_cognitive_test_tier3_fep_bridges_regression
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;integration;tier3;fep;bridges"
+        TIMEOUT 300
+)

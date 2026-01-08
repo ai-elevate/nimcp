@@ -2230,6 +2230,39 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_tier2_hub_bridges.cpp)
     message(STATUS "  Added Tier 2 Hub Bridges E2E test: e2e_test_tier2_hub_bridges")
 endif()
 
+# ============================================================================
+# Tier 3 FEP Bridges E2E Test (FEP bridges for Tier 2 Hub bridges)
+# ============================================================================
+# WHAT: Test all Tier 3 FEP bridges (FEP integration for Hub bridges)
+# WHY:  Verify Tier 2 Hub bridges integrate correctly with FEP orchestrator
+# HOW:  Test complete pipelines with all 5 FEP bridges for Hub bridges
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_tier3_fep_bridges.cpp)
+    add_executable(e2e_test_tier3_fep_bridges
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_tier3_fep_bridges.cpp
+    )
+    target_include_directories(e2e_test_tier3_fep_bridges PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/integration
+        ${CMAKE_SOURCE_DIR}/include/cognitive/free_energy
+    )
+    target_link_libraries(e2e_test_tier3_fep_bridges PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_tier3_fep_bridges PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_tier3_fep_bridges PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_tier3_fep_bridges COMMAND e2e_test_tier3_fep_bridges)
+    set_tests_properties(e2e_test_tier3_fep_bridges PROPERTIES
+        LABELS "e2e;cognitive;fep;tier3;imagination_reasoning;game_theory_executive;mirror_empathy;salience_attention;predictive_attention;integration"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Tier 3 FEP Bridges E2E test: e2e_test_tier3_fep_bridges")
+endif()
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)

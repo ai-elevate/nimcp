@@ -485,3 +485,153 @@ gtest_discover_tests(unit_cognitive_test_imagination_reasoning_bridge
         LABELS "unit;cognitive;integration;imagination;reasoning"
         TIMEOUT 120
 )
+
+# Salience-Attention FEP Bridge Tests
+add_executable(unit_cognitive_test_salience_attention_fep_bridge
+    test_salience_attention_fep_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_salience_attention_fep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_salience_attention_fep_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_salience_attention_fep_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_salience_attention_fep_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;integration;salience;attention;fep"
+        TIMEOUT 120
+)
+
+# Mirror-Empathy FEP Bridge Tests
+add_executable(unit_cognitive_test_mirror_empathy_fep_bridge
+    test_mirror_empathy_fep_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_mirror_empathy_fep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_mirror_empathy_fep_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_mirror_empathy_fep_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_mirror_empathy_fep_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;integration;mirror;empathy;fep"
+        TIMEOUT 120
+)
+
+# Game Theory-Executive FEP Bridge Tests
+add_executable(unit_cognitive_test_game_theory_executive_fep_bridge
+    test_game_theory_executive_fep_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_game_theory_executive_fep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_game_theory_executive_fep_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_game_theory_executive_fep_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_game_theory_executive_fep_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;integration;game_theory;executive;fep"
+        TIMEOUT 120
+)
+
+# Predictive-Attention FEP Bridge Tests
+add_executable(unit_cognitive_test_predictive_attention_fep_bridge
+    test_predictive_attention_fep_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_predictive_attention_fep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_predictive_attention_fep_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_predictive_attention_fep_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_predictive_attention_fep_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;integration;predictive;attention;fep"
+        TIMEOUT 120
+)
+
+# Imagination-Reasoning FEP Bridge Tests
+add_executable(unit_cognitive_test_imagination_reasoning_fep_bridge
+    test_imagination_reasoning_fep_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_imagination_reasoning_fep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_imagination_reasoning_fep_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_imagination_reasoning_fep_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_imagination_reasoning_fep_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;integration;imagination;reasoning;fep"
+        TIMEOUT 120
+)
