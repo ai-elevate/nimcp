@@ -559,6 +559,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/integration/nimcp_gt_tom.c  # Theory of Mind - opponent modeling
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_gt_spatial.c  # Population/spatial games, replicator dynamics, network effects
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_gt_learning.c  # Q-learning, CFR, fictitious play, opponent modeling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory_fep_bridge.c  # FEP orchestrator integration for game theory
 
     # Parietal Lobe - Mathematical/Scientific Reasoning (Phase 7.2)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_number_sense.c           # Approximate Number System (Weber-Fechner, subitizing)
@@ -575,6 +576,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_civil_engineering.c       # CE: Geotechnical, hydraulics, structural optimization
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_quantum_bridge.c # Parietal quantum bridge API (different from core/brain/regions version)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_fep_parietal_bridge.c     # FEP-Parietal bridge (predictive processing, active inference)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_fep_bridge.c    # Parietal-FEP orchestrator integration bridge
     # Phase 6: Intuitive Reasoning & Discovery Engines
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_intuitive_reasoning.c    # Core intuitive reasoning (hunches, plausibility, leaps)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_analogical_reasoning.c   # Cross-domain transfer (structure mapping, analogy)
@@ -974,9 +976,10 @@ set(NIMCP_CORE_SOURCES
     # Imagination SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_imagination_snn_bridge.c  # SNN integration for imagination
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_imagination_plasticity_bridge.c  # Plasticity integration for imagination
-    # JEPA SNN/Plasticity Integration
+    # JEPA SNN/Plasticity/FEP Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_snn_bridge.c  # SNN integration for JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_plasticity_bridge.c  # Plasticity integration for JEPA
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_fep_bridge.c  # FEP orchestrator integration for JEPA
     # Knowledge SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_snn_bridge.c  # SNN integration for knowledge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_plasticity_bridge.c  # Plasticity integration for knowledge
@@ -1005,9 +1008,10 @@ set(NIMCP_CORE_SOURCES
     # Sleep-Wake SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake_snn_bridge.c  # SNN integration for sleep-wake
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake_plasticity_bridge.c  # Plasticity integration for sleep-wake
-    # Social SNN/Plasticity Integration
+    # Social SNN/Plasticity/FEP Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_social_snn_bridge.c  # SNN integration for social
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_social_plasticity_bridge.c  # Plasticity integration for social
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_social_fep_bridge.c  # FEP orchestrator integration for social
     # Core SNN sources (needed by mirror_snn_bridge and other SNN integrations)
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_config.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_network.c
@@ -1095,6 +1099,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_prefrontal_imagination_bridge.c  # Prefrontal-imagination bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_gw_imagination_bridge.c  # Global workspace-imagination bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_sleep_imagination_bridge.c  # Sleep-imagination bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_imagination_fep_bridge.c  # FEP orchestrator integration bridge
 
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c

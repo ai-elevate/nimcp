@@ -3857,6 +3857,30 @@ __/cognitive/game_theory/nimcp_game_theory.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_game_theory.c.s
 .PHONY : __/cognitive/game_theory/nimcp_game_theory.c.s
 
+__/cognitive/game_theory/nimcp_game_theory_fep_bridge.o: __/cognitive/game_theory/nimcp_game_theory_fep_bridge.c.o
+.PHONY : __/cognitive/game_theory/nimcp_game_theory_fep_bridge.o
+
+# target to build an object file
+__/cognitive/game_theory/nimcp_game_theory_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_game_theory_fep_bridge.c.o
+.PHONY : __/cognitive/game_theory/nimcp_game_theory_fep_bridge.c.o
+
+__/cognitive/game_theory/nimcp_game_theory_fep_bridge.i: __/cognitive/game_theory/nimcp_game_theory_fep_bridge.c.i
+.PHONY : __/cognitive/game_theory/nimcp_game_theory_fep_bridge.i
+
+# target to preprocess a source file
+__/cognitive/game_theory/nimcp_game_theory_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_game_theory_fep_bridge.c.i
+.PHONY : __/cognitive/game_theory/nimcp_game_theory_fep_bridge.c.i
+
+__/cognitive/game_theory/nimcp_game_theory_fep_bridge.s: __/cognitive/game_theory/nimcp_game_theory_fep_bridge.c.s
+.PHONY : __/cognitive/game_theory/nimcp_game_theory_fep_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/game_theory/nimcp_game_theory_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/game_theory/nimcp_game_theory_fep_bridge.c.s
+.PHONY : __/cognitive/game_theory/nimcp_game_theory_fep_bridge.c.s
+
 __/cognitive/game_theory/nimcp_game_theory_plasticity_bridge.o: __/cognitive/game_theory/nimcp_game_theory_plasticity_bridge.c.o
 .PHONY : __/cognitive/game_theory/nimcp_game_theory_plasticity_bridge.o
 
@@ -4504,6 +4528,30 @@ __/cognitive/imagination/nimcp_imagination_engine.s: __/cognitive/imagination/ni
 __/cognitive/imagination/nimcp_imagination_engine.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_imagination_engine.c.s
 .PHONY : __/cognitive/imagination/nimcp_imagination_engine.c.s
+
+__/cognitive/imagination/nimcp_imagination_fep_bridge.o: __/cognitive/imagination/nimcp_imagination_fep_bridge.c.o
+.PHONY : __/cognitive/imagination/nimcp_imagination_fep_bridge.o
+
+# target to build an object file
+__/cognitive/imagination/nimcp_imagination_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_imagination_fep_bridge.c.o
+.PHONY : __/cognitive/imagination/nimcp_imagination_fep_bridge.c.o
+
+__/cognitive/imagination/nimcp_imagination_fep_bridge.i: __/cognitive/imagination/nimcp_imagination_fep_bridge.c.i
+.PHONY : __/cognitive/imagination/nimcp_imagination_fep_bridge.i
+
+# target to preprocess a source file
+__/cognitive/imagination/nimcp_imagination_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_imagination_fep_bridge.c.i
+.PHONY : __/cognitive/imagination/nimcp_imagination_fep_bridge.c.i
+
+__/cognitive/imagination/nimcp_imagination_fep_bridge.s: __/cognitive/imagination/nimcp_imagination_fep_bridge.c.s
+.PHONY : __/cognitive/imagination/nimcp_imagination_fep_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/imagination/nimcp_imagination_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/imagination/nimcp_imagination_fep_bridge.c.s
+.PHONY : __/cognitive/imagination/nimcp_imagination_fep_bridge.c.s
 
 __/cognitive/imagination/nimcp_imagination_plasticity_bridge.o: __/cognitive/imagination/nimcp_imagination_plasticity_bridge.c.o
 .PHONY : __/cognitive/imagination/nimcp_imagination_plasticity_bridge.o
@@ -6088,6 +6136,30 @@ __/cognitive/jepa/nimcp_jepa_context.s: __/cognitive/jepa/nimcp_jepa_context.c.s
 __/cognitive/jepa/nimcp_jepa_context.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_context.c.s
 .PHONY : __/cognitive/jepa/nimcp_jepa_context.c.s
+
+__/cognitive/jepa/nimcp_jepa_fep_bridge.o: __/cognitive/jepa/nimcp_jepa_fep_bridge.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_fep_bridge.o
+
+# target to build an object file
+__/cognitive/jepa/nimcp_jepa_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_fep_bridge.c.o
+.PHONY : __/cognitive/jepa/nimcp_jepa_fep_bridge.c.o
+
+__/cognitive/jepa/nimcp_jepa_fep_bridge.i: __/cognitive/jepa/nimcp_jepa_fep_bridge.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_fep_bridge.i
+
+# target to preprocess a source file
+__/cognitive/jepa/nimcp_jepa_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_fep_bridge.c.i
+.PHONY : __/cognitive/jepa/nimcp_jepa_fep_bridge.c.i
+
+__/cognitive/jepa/nimcp_jepa_fep_bridge.s: __/cognitive/jepa/nimcp_jepa_fep_bridge.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_fep_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/jepa/nimcp_jepa_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/jepa/nimcp_jepa_fep_bridge.c.s
+.PHONY : __/cognitive/jepa/nimcp_jepa_fep_bridge.c.s
 
 __/cognitive/jepa/nimcp_jepa_latent.o: __/cognitive/jepa/nimcp_jepa_latent.c.o
 .PHONY : __/cognitive/jepa/nimcp_jepa_latent.o
@@ -8945,6 +9017,30 @@ __/cognitive/parietal/nimcp_parietal.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_parietal.c.s
 .PHONY : __/cognitive/parietal/nimcp_parietal.c.s
 
+__/cognitive/parietal/nimcp_parietal_fep_bridge.o: __/cognitive/parietal/nimcp_parietal_fep_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_parietal_fep_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_parietal_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_parietal_fep_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_parietal_fep_bridge.c.o
+
+__/cognitive/parietal/nimcp_parietal_fep_bridge.i: __/cognitive/parietal/nimcp_parietal_fep_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_parietal_fep_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_parietal_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_parietal_fep_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_parietal_fep_bridge.c.i
+
+__/cognitive/parietal/nimcp_parietal_fep_bridge.s: __/cognitive/parietal/nimcp_parietal_fep_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_parietal_fep_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_parietal_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_parietal_fep_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_parietal_fep_bridge.c.s
+
 __/cognitive/parietal/nimcp_parietal_plasticity_bridge.o: __/cognitive/parietal/nimcp_parietal_plasticity_bridge.c.o
 .PHONY : __/cognitive/parietal/nimcp_parietal_plasticity_bridge.o
 
@@ -11104,6 +11200,30 @@ __/cognitive/social/nimcp_love_loyalty_friendship.s: __/cognitive/social/nimcp_l
 __/cognitive/social/nimcp_love_loyalty_friendship.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/social/nimcp_love_loyalty_friendship.c.s
 .PHONY : __/cognitive/social/nimcp_love_loyalty_friendship.c.s
+
+__/cognitive/social/nimcp_social_fep_bridge.o: __/cognitive/social/nimcp_social_fep_bridge.c.o
+.PHONY : __/cognitive/social/nimcp_social_fep_bridge.o
+
+# target to build an object file
+__/cognitive/social/nimcp_social_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/social/nimcp_social_fep_bridge.c.o
+.PHONY : __/cognitive/social/nimcp_social_fep_bridge.c.o
+
+__/cognitive/social/nimcp_social_fep_bridge.i: __/cognitive/social/nimcp_social_fep_bridge.c.i
+.PHONY : __/cognitive/social/nimcp_social_fep_bridge.i
+
+# target to preprocess a source file
+__/cognitive/social/nimcp_social_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/social/nimcp_social_fep_bridge.c.i
+.PHONY : __/cognitive/social/nimcp_social_fep_bridge.c.i
+
+__/cognitive/social/nimcp_social_fep_bridge.s: __/cognitive/social/nimcp_social_fep_bridge.c.s
+.PHONY : __/cognitive/social/nimcp_social_fep_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/social/nimcp_social_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/social/nimcp_social_fep_bridge.c.s
+.PHONY : __/cognitive/social/nimcp_social_fep_bridge.c.s
 
 __/cognitive/social/nimcp_social_plasticity_bridge.o: __/cognitive/social/nimcp_social_plasticity_bridge.c.o
 .PHONY : __/cognitive/social/nimcp_social_plasticity_bridge.o
@@ -33394,6 +33514,9 @@ help:
 	@echo "... __/cognitive/game_theory/nimcp_game_theory.o"
 	@echo "... __/cognitive/game_theory/nimcp_game_theory.i"
 	@echo "... __/cognitive/game_theory/nimcp_game_theory.s"
+	@echo "... __/cognitive/game_theory/nimcp_game_theory_fep_bridge.o"
+	@echo "... __/cognitive/game_theory/nimcp_game_theory_fep_bridge.i"
+	@echo "... __/cognitive/game_theory/nimcp_game_theory_fep_bridge.s"
 	@echo "... __/cognitive/game_theory/nimcp_game_theory_plasticity_bridge.o"
 	@echo "... __/cognitive/game_theory/nimcp_game_theory_plasticity_bridge.i"
 	@echo "... __/cognitive/game_theory/nimcp_game_theory_plasticity_bridge.s"
@@ -33475,6 +33598,9 @@ help:
 	@echo "... __/cognitive/imagination/nimcp_imagination_engine.o"
 	@echo "... __/cognitive/imagination/nimcp_imagination_engine.i"
 	@echo "... __/cognitive/imagination/nimcp_imagination_engine.s"
+	@echo "... __/cognitive/imagination/nimcp_imagination_fep_bridge.o"
+	@echo "... __/cognitive/imagination/nimcp_imagination_fep_bridge.i"
+	@echo "... __/cognitive/imagination/nimcp_imagination_fep_bridge.s"
 	@echo "... __/cognitive/imagination/nimcp_imagination_plasticity_bridge.o"
 	@echo "... __/cognitive/imagination/nimcp_imagination_plasticity_bridge.i"
 	@echo "... __/cognitive/imagination/nimcp_imagination_plasticity_bridge.s"
@@ -33673,6 +33799,9 @@ help:
 	@echo "... __/cognitive/jepa/nimcp_jepa_context.o"
 	@echo "... __/cognitive/jepa/nimcp_jepa_context.i"
 	@echo "... __/cognitive/jepa/nimcp_jepa_context.s"
+	@echo "... __/cognitive/jepa/nimcp_jepa_fep_bridge.o"
+	@echo "... __/cognitive/jepa/nimcp_jepa_fep_bridge.i"
+	@echo "... __/cognitive/jepa/nimcp_jepa_fep_bridge.s"
 	@echo "... __/cognitive/jepa/nimcp_jepa_latent.o"
 	@echo "... __/cognitive/jepa/nimcp_jepa_latent.i"
 	@echo "... __/cognitive/jepa/nimcp_jepa_latent.s"
@@ -34030,6 +34159,9 @@ help:
 	@echo "... __/cognitive/parietal/nimcp_parietal.o"
 	@echo "... __/cognitive/parietal/nimcp_parietal.i"
 	@echo "... __/cognitive/parietal/nimcp_parietal.s"
+	@echo "... __/cognitive/parietal/nimcp_parietal_fep_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_parietal_fep_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_parietal_fep_bridge.s"
 	@echo "... __/cognitive/parietal/nimcp_parietal_plasticity_bridge.o"
 	@echo "... __/cognitive/parietal/nimcp_parietal_plasticity_bridge.i"
 	@echo "... __/cognitive/parietal/nimcp_parietal_plasticity_bridge.s"
@@ -34300,6 +34432,9 @@ help:
 	@echo "... __/cognitive/social/nimcp_love_loyalty_friendship.o"
 	@echo "... __/cognitive/social/nimcp_love_loyalty_friendship.i"
 	@echo "... __/cognitive/social/nimcp_love_loyalty_friendship.s"
+	@echo "... __/cognitive/social/nimcp_social_fep_bridge.o"
+	@echo "... __/cognitive/social/nimcp_social_fep_bridge.i"
+	@echo "... __/cognitive/social/nimcp_social_fep_bridge.s"
 	@echo "... __/cognitive/social/nimcp_social_plasticity_bridge.o"
 	@echo "... __/cognitive/social/nimcp_social_plasticity_bridge.i"
 	@echo "... __/cognitive/social/nimcp_social_plasticity_bridge.s"

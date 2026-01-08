@@ -565,3 +565,36 @@ gtest_discover_tests(unit_parietal_intuition_integrations
         LABELS "unit;cognitive;parietal;intuition-integrations;phase6"
         TIMEOUT 120
 )
+
+#=============================================================================
+# Parietal FEP Orchestrator Bridge Tests
+#=============================================================================
+
+add_executable(unit_parietal_fep_bridge
+    test_parietal_fep_bridge.cpp
+)
+
+target_link_libraries(unit_parietal_fep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_parietal_fep_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_parietal_fep_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_parietal_fep_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;fep-bridge"
+        TIMEOUT 90
+)

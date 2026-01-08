@@ -102,6 +102,35 @@ gtest_discover_tests(integration_jepa_e2e
 )
 
 # -----------------------------------------------------------------------------
+# JEPA FEP Bridge Integration Tests
+# -----------------------------------------------------------------------------
+# WHAT: Tests JEPA FEP bridge integration with FEP orchestrator
+# WHY:  Verify embedding prediction, representation quality, collapse detection
+# HOW:  Real module interactions with FEP update cycles
+
+add_executable(integration_jepa_fep_bridge
+    test_jepa_fep_bridge_integration.cpp
+)
+target_link_libraries(integration_jepa_fep_bridge PRIVATE
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    Threads::Threads
+    m
+)
+target_include_directories(integration_jepa_fep_bridge PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/test
+)
+target_compile_features(integration_jepa_fep_bridge PRIVATE cxx_std_17)
+target_compile_definitions(integration_jepa_fep_bridge PRIVATE NIMCP_TESTING)
+gtest_discover_tests(integration_jepa_fep_bridge
+    PROPERTIES LABELS "integration;cognitive;jepa;fep;bridge"
+    TIMEOUT 180
+)
+
+# -----------------------------------------------------------------------------
 # Combined JEPA Integration Test (for full pipeline testing)
 # -----------------------------------------------------------------------------
 add_executable(integration_jepa_full

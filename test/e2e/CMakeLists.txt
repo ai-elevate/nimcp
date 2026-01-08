@@ -2155,6 +2155,43 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_rcog_collective_integration.cpp)
     message(STATUS "  Added Recursive-Collective Cognition Integration E2E test: e2e_test_rcog_collective_integration")
 endif()
 
+# ============================================================================
+# Tier 1 FEP Bridges E2E Test
+# ============================================================================
+# WHAT: Test all Tier 1 FEP bridges (game_theory, imagination, parietal, social, jepa)
+# WHY:  Verify all Tier 1 cognitive bridges integrate correctly with FEP orchestrator
+# HOW:  Test complete pipelines with all 5 bridges coordinated by FEP orchestration
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_tier1_fep_bridges.cpp)
+    add_executable(e2e_test_tier1_fep_bridges
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_tier1_fep_bridges.cpp
+    )
+    target_include_directories(e2e_test_tier1_fep_bridges PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/game_theory
+        ${CMAKE_SOURCE_DIR}/include/cognitive/imagination
+        ${CMAKE_SOURCE_DIR}/include/cognitive/parietal
+        ${CMAKE_SOURCE_DIR}/include/cognitive/social
+        ${CMAKE_SOURCE_DIR}/include/cognitive/jepa
+        ${CMAKE_SOURCE_DIR}/include/cognitive/free_energy
+    )
+    target_link_libraries(e2e_test_tier1_fep_bridges PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_tier1_fep_bridges PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_tier1_fep_bridges PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_tier1_fep_bridges COMMAND e2e_test_tier1_fep_bridges)
+    set_tests_properties(e2e_test_tier1_fep_bridges PROPERTIES
+        LABELS "e2e;cognitive;fep;tier1;game_theory;imagination;parietal;social;jepa;integration"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Tier 1 FEP Bridges E2E test: e2e_test_tier1_fep_bridges")
+endif()
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)

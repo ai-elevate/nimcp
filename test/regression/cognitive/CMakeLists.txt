@@ -108,6 +108,15 @@ add_subdirectory(salience)
 # Cognitive Integration Hub and Bridges Regression Tests
 add_subdirectory(integration)
 
+# Parietal FEP Bridge Regression Tests
+add_subdirectory(parietal)
+
+# Imagination FEP Bridge Regression Tests
+add_subdirectory(imagination)
+
+# Social Cognition FEP Bridge Regression Tests
+add_subdirectory(social)
+
 # ============================================================================
 # Cognitive Bridge Completeness Tests
 # ============================================================================

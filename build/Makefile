@@ -822,6 +822,19 @@ unit_cognitive_game_theory_test_credit_assignment/fast:
 .PHONY : unit_cognitive_game_theory_test_credit_assignment/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_game_theory_test_game_theory_fep_bridge
+
+# Build rule for target.
+unit_cognitive_game_theory_test_game_theory_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_game_theory_test_game_theory_fep_bridge
+.PHONY : unit_cognitive_game_theory_test_game_theory_fep_bridge
+
+# fast build rule for target.
+unit_cognitive_game_theory_test_game_theory_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_game_theory_test_game_theory_fep_bridge.dir/build.make test/CMakeFiles/unit_cognitive_game_theory_test_game_theory_fep_bridge.dir/build
+.PHONY : unit_cognitive_game_theory_test_game_theory_fep_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_game_theory_test_gt_auction_ext
 
 # Build rule for target.
@@ -1043,6 +1056,19 @@ unit_cognitive_imagination_test_imagination_engine/fast:
 .PHONY : unit_cognitive_imagination_test_imagination_engine/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_imagination_test_imagination_fep_bridge
+
+# Build rule for target.
+unit_cognitive_imagination_test_imagination_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_imagination_test_imagination_fep_bridge
+.PHONY : unit_cognitive_imagination_test_imagination_fep_bridge
+
+# fast build rule for target.
+unit_cognitive_imagination_test_imagination_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_imagination_test_imagination_fep_bridge.dir/build.make test/CMakeFiles/unit_cognitive_imagination_test_imagination_fep_bridge.dir/build
+.PHONY : unit_cognitive_imagination_test_imagination_fep_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_jepa_test_jepa_bidirectional
 
 # Build rule for target.
@@ -1067,6 +1093,19 @@ unit_cognitive_jepa_test_jepa_context: cmake_check_build_system
 unit_cognitive_jepa_test_jepa_context/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_jepa_test_jepa_context.dir/build.make test/CMakeFiles/unit_cognitive_jepa_test_jepa_context.dir/build
 .PHONY : unit_cognitive_jepa_test_jepa_context/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_jepa_test_jepa_fep_bridge
+
+# Build rule for target.
+unit_cognitive_jepa_test_jepa_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_jepa_test_jepa_fep_bridge
+.PHONY : unit_cognitive_jepa_test_jepa_fep_bridge
+
+# fast build rule for target.
+unit_cognitive_jepa_test_jepa_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_jepa_test_jepa_fep_bridge.dir/build.make test/CMakeFiles/unit_cognitive_jepa_test_jepa_fep_bridge.dir/build
+.PHONY : unit_cognitive_jepa_test_jepa_fep_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_jepa_test_jepa_latent
@@ -7101,6 +7140,19 @@ e2e_test_rcog_collective_integration/fast:
 .PHONY : e2e_test_rcog_collective_integration/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_tier1_fep_bridges
+
+# Build rule for target.
+e2e_test_tier1_fep_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_tier1_fep_bridges
+.PHONY : e2e_test_tier1_fep_bridges
+
+# fast build rule for target.
+e2e_test_tier1_fep_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_tier1_fep_bridges.dir/build.make test/e2e/CMakeFiles/e2e_test_tier1_fep_bridges.dir/build
+.PHONY : e2e_test_tier1_fep_bridges/fast
+
+#=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
 
 # Build rule for target.
@@ -10130,6 +10182,19 @@ unit_cognitive_test_gt_spatial/fast:
 .PHONY : unit_cognitive_test_gt_spatial/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_test_gt_fep_bridge
+
+# Build rule for target.
+unit_cognitive_test_gt_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_gt_fep_bridge
+.PHONY : unit_cognitive_test_gt_fep_bridge
+
+# fast build rule for target.
+unit_cognitive_test_gt_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_fep_bridge.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_gt_fep_bridge.dir/build
+.PHONY : unit_cognitive_test_gt_fep_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_test_phase7_bridges
 
 # Build rule for target.
@@ -10286,6 +10351,19 @@ unit_cognitive_test_imagination_engine/fast:
 .PHONY : unit_cognitive_test_imagination_engine/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_test_imagination_fep_bridge
+
+# Build rule for target.
+unit_cognitive_test_imagination_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_imagination_fep_bridge
+.PHONY : unit_cognitive_test_imagination_fep_bridge
+
+# fast build rule for target.
+unit_cognitive_test_imagination_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_imagination_fep_bridge.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_imagination_fep_bridge.dir/build
+.PHONY : unit_cognitive_test_imagination_fep_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_test_jepa_bidirectional
 
 # Build rule for target.
@@ -10362,6 +10440,19 @@ unit_cognitive_gw_plasticity_bridge: cmake_check_build_system
 unit_cognitive_gw_plasticity_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_gw_plasticity_bridge.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_gw_plasticity_bridge.dir/build
 .PHONY : unit_cognitive_gw_plasticity_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_jepa_fep_bridge
+
+# Build rule for target.
+unit_cognitive_test_jepa_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_jepa_fep_bridge
+.PHONY : unit_cognitive_test_jepa_fep_bridge
+
+# fast build rule for target.
+unit_cognitive_test_jepa_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/CMakeFiles/unit_cognitive_test_jepa_fep_bridge.dir/build.make test/unit/cognitive/CMakeFiles/unit_cognitive_test_jepa_fep_bridge.dir/build
+.PHONY : unit_cognitive_test_jepa_fep_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_working_memory_test_working_memory_pe
@@ -11235,6 +11326,19 @@ unit_parietal_intuition_integrations/fast:
 .PHONY : unit_parietal_intuition_integrations/fast
 
 #=============================================================================
+# Target rules for targets named unit_parietal_fep_bridge
+
+# Build rule for target.
+unit_parietal_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_fep_bridge
+.PHONY : unit_parietal_fep_bridge
+
+# fast build rule for target.
+unit_parietal_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_fep_bridge.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_fep_bridge.dir/build
+.PHONY : unit_parietal_fep_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_meta_learning_snn_bridge
 
 # Build rule for target.
@@ -11480,6 +11584,19 @@ test_rcog_fep_bridge: cmake_check_build_system
 test_rcog_fep_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/recursive/CMakeFiles/test_rcog_fep_bridge.dir/build.make test/unit/cognitive/recursive/CMakeFiles/test_rcog_fep_bridge.dir/build
 .PHONY : test_rcog_fep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named test_social_fep_bridge
+
+# Build rule for target.
+test_social_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_social_fep_bridge
+.PHONY : test_social_fep_bridge
+
+# fast build rule for target.
+test_social_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/social/CMakeFiles/test_social_fep_bridge.dir/build.make test/unit/cognitive/social/CMakeFiles/test_social_fep_bridge.dir/build
+.PHONY : test_social_fep_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_epistemic_snn_bridge
@@ -12236,6 +12353,19 @@ regression_jepa/fast:
 .PHONY : regression_jepa/fast
 
 #=============================================================================
+# Target rules for targets named regression_jepa_fep_bridge
+
+# Build rule for target.
+regression_jepa_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_jepa_fep_bridge
+.PHONY : regression_jepa_fep_bridge
+
+# fast build rule for target.
+regression_jepa_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/jepa/CMakeFiles/regression_jepa_fep_bridge.dir/build.make test/regression/cognitive/jepa/CMakeFiles/regression_jepa_fep_bridge.dir/build
+.PHONY : regression_jepa_fep_bridge/fast
+
+#=============================================================================
 # Target rules for targets named regression_game_theory
 
 # Build rule for target.
@@ -12247,6 +12377,19 @@ regression_game_theory: cmake_check_build_system
 regression_game_theory/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/game_theory/CMakeFiles/regression_game_theory.dir/build.make test/regression/cognitive/game_theory/CMakeFiles/regression_game_theory.dir/build
 .PHONY : regression_game_theory/fast
+
+#=============================================================================
+# Target rules for targets named regression_game_theory_fep
+
+# Build rule for target.
+regression_game_theory_fep: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_game_theory_fep
+.PHONY : regression_game_theory_fep
+
+# fast build rule for target.
+regression_game_theory_fep/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/game_theory/CMakeFiles/regression_game_theory_fep.dir/build.make test/regression/cognitive/game_theory/CMakeFiles/regression_game_theory_fep.dir/build
+.PHONY : regression_game_theory_fep/fast
 
 #=============================================================================
 # Target rules for targets named test_protocol_control_message
@@ -15070,6 +15213,19 @@ integration_cognitive_gt_hemispheric/fast:
 .PHONY : integration_cognitive_gt_hemispheric/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_gt_fep
+
+# Build rule for target.
+integration_cognitive_gt_fep: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_gt_fep
+.PHONY : integration_cognitive_gt_fep
+
+# fast build rule for target.
+integration_cognitive_gt_fep/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/game_theory/CMakeFiles/integration_cognitive_gt_fep.dir/build.make test/integration/cognitive/game_theory/CMakeFiles/integration_cognitive_gt_fep.dir/build
+.PHONY : integration_cognitive_gt_fep/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_parietal
 
 # Build rule for target.
@@ -15081,6 +15237,19 @@ integration_cognitive_parietal: cmake_check_build_system
 integration_cognitive_parietal/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/parietal/CMakeFiles/integration_cognitive_parietal.dir/build.make test/integration/cognitive/parietal/CMakeFiles/integration_cognitive_parietal.dir/build
 .PHONY : integration_cognitive_parietal/fast
+
+#=============================================================================
+# Target rules for targets named integration_parietal_fep
+
+# Build rule for target.
+integration_parietal_fep: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_parietal_fep
+.PHONY : integration_parietal_fep
+
+# fast build rule for target.
+integration_parietal_fep/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/parietal/CMakeFiles/integration_parietal_fep.dir/build.make test/integration/cognitive/parietal/CMakeFiles/integration_parietal_fep.dir/build
+.PHONY : integration_parietal_fep/fast
 
 #=============================================================================
 # Target rules for targets named integration_thalamic_substrate_bridges
@@ -15707,6 +15876,32 @@ integration_cognitive_test_hub_orchestrator_integration/fast:
 .PHONY : integration_cognitive_test_hub_orchestrator_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_imagination_fep
+
+# Build rule for target.
+integration_imagination_fep: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_imagination_fep
+.PHONY : integration_imagination_fep
+
+# fast build rule for target.
+integration_imagination_fep/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/imagination/CMakeFiles/integration_imagination_fep.dir/build.make test/integration/cognitive/imagination/CMakeFiles/integration_imagination_fep.dir/build
+.PHONY : integration_imagination_fep/fast
+
+#=============================================================================
+# Target rules for targets named integration_social_fep
+
+# Build rule for target.
+integration_social_fep: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_social_fep
+.PHONY : integration_social_fep
+
+# fast build rule for target.
+integration_social_fep/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/social/CMakeFiles/integration_social_fep.dir/build.make test/integration/cognitive/social/CMakeFiles/integration_social_fep.dir/build
+.PHONY : integration_social_fep/fast
+
+#=============================================================================
 # Target rules for targets named regression_cognitive_emotion_performance
 
 # Build rule for target.
@@ -16186,6 +16381,45 @@ regression_cognitive_test_integration_performance_regression: cmake_check_build_
 regression_cognitive_test_integration_performance_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/integration/CMakeFiles/regression_cognitive_test_integration_performance_regression.dir/build.make test/regression/cognitive/integration/CMakeFiles/regression_cognitive_test_integration_performance_regression.dir/build
 .PHONY : regression_cognitive_test_integration_performance_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_parietal_fep_orchestrator_bridge
+
+# Build rule for target.
+regression_parietal_fep_orchestrator_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_parietal_fep_orchestrator_bridge
+.PHONY : regression_parietal_fep_orchestrator_bridge
+
+# fast build rule for target.
+regression_parietal_fep_orchestrator_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/parietal/CMakeFiles/regression_parietal_fep_orchestrator_bridge.dir/build.make test/regression/cognitive/parietal/CMakeFiles/regression_parietal_fep_orchestrator_bridge.dir/build
+.PHONY : regression_parietal_fep_orchestrator_bridge/fast
+
+#=============================================================================
+# Target rules for targets named regression_imagination_fep
+
+# Build rule for target.
+regression_imagination_fep: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_imagination_fep
+.PHONY : regression_imagination_fep
+
+# fast build rule for target.
+regression_imagination_fep/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/imagination/CMakeFiles/regression_imagination_fep.dir/build.make test/regression/cognitive/imagination/CMakeFiles/regression_imagination_fep.dir/build
+.PHONY : regression_imagination_fep/fast
+
+#=============================================================================
+# Target rules for targets named regression_social_fep
+
+# Build rule for target.
+regression_social_fep: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_social_fep
+.PHONY : regression_social_fep
+
+# fast build rule for target.
+regression_social_fep/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/social/CMakeFiles/regression_social_fep.dir/build.make test/regression/cognitive/social/CMakeFiles/regression_social_fep.dir/build
+.PHONY : regression_social_fep/fast
 
 #=============================================================================
 # Target rules for targets named integration_brain_regions_test_visual_cortex_integration
@@ -19280,6 +19514,19 @@ integration_jepa_e2e: cmake_check_build_system
 integration_jepa_e2e/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/jepa/CMakeFiles/integration_jepa_e2e.dir/build.make test/integration/jepa/CMakeFiles/integration_jepa_e2e.dir/build
 .PHONY : integration_jepa_e2e/fast
+
+#=============================================================================
+# Target rules for targets named integration_jepa_fep_bridge
+
+# Build rule for target.
+integration_jepa_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_jepa_fep_bridge
+.PHONY : integration_jepa_fep_bridge
+
+# fast build rule for target.
+integration_jepa_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/jepa/CMakeFiles/integration_jepa_fep_bridge.dir/build.make test/integration/jepa/CMakeFiles/integration_jepa_fep_bridge.dir/build
+.PHONY : integration_jepa_fep_bridge/fast
 
 #=============================================================================
 # Target rules for targets named integration_jepa_full
@@ -22936,6 +23183,7 @@ help:
 	@echo "... e2e_test_ternary_neural_network"
 	@echo "... e2e_test_ternary_swarm_consensus"
 	@echo "... e2e_test_thalamus_pipeline"
+	@echo "... e2e_test_tier1_fep_bridges"
 	@echo "... e2e_test_tom_snn_plasticity_pipeline"
 	@echo "... e2e_test_training_logic_pipeline"
 	@echo "... e2e_test_unified_training_integration"
@@ -22992,6 +23240,7 @@ help:
 	@echo "... integration_cognitive_executive_snn_plasticity"
 	@echo "... integration_cognitive_fault_tolerance_emotional_tagging"
 	@echo "... integration_cognitive_grief_test_grief_and_loss_integration"
+	@echo "... integration_cognitive_gt_fep"
 	@echo "... integration_cognitive_gt_global_workspace"
 	@echo "... integration_cognitive_gt_hemispheric"
 	@echo "... integration_cognitive_gw_snn_plasticity"
@@ -23087,6 +23336,7 @@ help:
 	@echo "... integration_gpu_test_gpu_integration"
 	@echo "... integration_gpu_test_gpu_neuron_integration"
 	@echo "... integration_gpu_test_gpu_spike_event_integration"
+	@echo "... integration_imagination_fep"
 	@echo "... integration_information_test_quantum_shannon_integration"
 	@echo "... integration_information_test_shannon_integration"
 	@echo "... integration_io_test_io_integration"
@@ -23094,6 +23344,7 @@ help:
 	@echo "... integration_jepa_context"
 	@echo "... integration_jepa_e2e"
 	@echo "... integration_jepa_fep"
+	@echo "... integration_jepa_fep_bridge"
 	@echo "... integration_jepa_full"
 	@echo "... integration_jepa_visual_speech"
 	@echo "... integration_language"
@@ -23138,6 +23389,7 @@ help:
 	@echo "... integration_optimization_test_cross_modal_integration"
 	@echo "... integration_optimization_test_dynamic_adaptation_integration"
 	@echo "... integration_optimization_test_multi_objective_integration"
+	@echo "... integration_parietal_fep"
 	@echo "... integration_parietal_test_parietal_fep_integration"
 	@echo "... integration_perception_test_cochlea_integration"
 	@echo "... integration_plasticity_adaptive_test_adaptive_integration"
@@ -23188,6 +23440,7 @@ help:
 	@echo "... integration_security_test_swarm_security"
 	@echo "... integration_snn_test_bridge_integration"
 	@echo "... integration_snn_test_integration"
+	@echo "... integration_social_fep"
 	@echo "... integration_swarm_immune_bridges"
 	@echo "... integration_swarm_sleep_bridges"
 	@echo "... integration_ternary_test_attention_ternary_integration"
@@ -23352,7 +23605,9 @@ help:
 	@echo "... regression_fault_tolerance_test_fault_tolerance_regression"
 	@echo "... regression_fep_bridges"
 	@echo "... regression_game_theory"
+	@echo "... regression_game_theory_fep"
 	@echo "... regression_glial_performance"
+	@echo "... regression_imagination_fep"
 	@echo "... regression_information_test_quantum_shannon_backward_compat"
 	@echo "... regression_information_test_shannon_backward_compat"
 	@echo "... regression_io_test_dataio_regression"
@@ -23363,6 +23618,7 @@ help:
 	@echo "... regression_io_test_stream_regression"
 	@echo "... regression_io_test_vesicle_packaging_backward_compat"
 	@echo "... regression_jepa"
+	@echo "... regression_jepa_fep_bridge"
 	@echo "... regression_microglia_performance"
 	@echo "... regression_middleware_bio_async"
 	@echo "... regression_middleware_buffering_integration_buffer"
@@ -23413,6 +23669,7 @@ help:
 	@echo "... regression_optimization_test_dynamic_adaptation_backward_compat"
 	@echo "... regression_optimization_test_multi_objective_backward_compat"
 	@echo "... regression_parietal_fep"
+	@echo "... regression_parietal_fep_orchestrator_bridge"
 	@echo "... regression_plasticity_adaptive_test_adaptive_backward_compat"
 	@echo "... regression_plasticity_adaptive_test_adaptive_routing_backward_compat"
 	@echo "... regression_plasticity_astrocyte_test_astrocyte_regression"
@@ -23485,6 +23742,7 @@ help:
 	@echo "... regression_security_test_validation_performance"
 	@echo "... regression_snn_test_bridge_regression"
 	@echo "... regression_snn_test_regression"
+	@echo "... regression_social_fep"
 	@echo "... regression_swarm_bridges"
 	@echo "... regression_test_brain_oscillations_regression"
 	@echo "... regression_test_brain_resize_backward_compat"
@@ -23661,6 +23919,7 @@ help:
 	@echo "... test_snn_training_integration_bridge"
 	@echo "... test_snn_visual_bridge"
 	@echo "... test_snn_wellbeing_bridge"
+	@echo "... test_social_fep_bridge"
 	@echo "... test_sparse_synapse"
 	@echo "... test_swarm_brain"
 	@echo "... test_swarm_brain_fep_bridge"
@@ -23790,6 +24049,7 @@ help:
 	@echo "... unit_cognitive_game_theory_test_auction"
 	@echo "... unit_cognitive_game_theory_test_bargaining"
 	@echo "... unit_cognitive_game_theory_test_credit_assignment"
+	@echo "... unit_cognitive_game_theory_test_game_theory_fep_bridge"
 	@echo "... unit_cognitive_game_theory_test_gt_auction_ext"
 	@echo "... unit_cognitive_game_theory_test_gt_coalition"
 	@echo "... unit_cognitive_game_theory_test_gt_equilibrium"
@@ -23809,6 +24069,7 @@ help:
 	@echo "... unit_cognitive_gw_plasticity_bridge"
 	@echo "... unit_cognitive_gw_snn_bridge"
 	@echo "... unit_cognitive_imagination_test_imagination_engine"
+	@echo "... unit_cognitive_imagination_test_imagination_fep_bridge"
 	@echo "... unit_cognitive_immune_attention_bridge"
 	@echo "... unit_cognitive_immune_brain_immune"
 	@echo "... unit_cognitive_immune_bridge_coordinator"
@@ -23833,6 +24094,7 @@ help:
 	@echo "... unit_cognitive_jepa_multimodal"
 	@echo "... unit_cognitive_jepa_test_jepa_bidirectional"
 	@echo "... unit_cognitive_jepa_test_jepa_context"
+	@echo "... unit_cognitive_jepa_test_jepa_fep_bridge"
 	@echo "... unit_cognitive_jepa_test_jepa_latent"
 	@echo "... unit_cognitive_jepa_test_jepa_masking"
 	@echo "... unit_cognitive_jepa_test_jepa_multimodal"
@@ -23905,6 +24167,7 @@ help:
 	@echo "... unit_cognitive_test_gt_coalition"
 	@echo "... unit_cognitive_test_gt_equilibrium"
 	@echo "... unit_cognitive_test_gt_fairness"
+	@echo "... unit_cognitive_test_gt_fep_bridge"
 	@echo "... unit_cognitive_test_gt_learning"
 	@echo "... unit_cognitive_test_gt_mechanism"
 	@echo "... unit_cognitive_test_gt_repeated"
@@ -23913,8 +24176,10 @@ help:
 	@echo "... unit_cognitive_test_hopfield_memory"
 	@echo "... unit_cognitive_test_hyperscanning"
 	@echo "... unit_cognitive_test_imagination_engine"
+	@echo "... unit_cognitive_test_imagination_fep_bridge"
 	@echo "... unit_cognitive_test_jepa_bidirectional"
 	@echo "... unit_cognitive_test_jepa_context"
+	@echo "... unit_cognitive_test_jepa_fep_bridge"
 	@echo "... unit_cognitive_test_jepa_predictor"
 	@echo "... unit_cognitive_test_meta_controller"
 	@echo "... unit_cognitive_test_phase7_bridges"
@@ -24277,6 +24542,7 @@ help:
 	@echo "... unit_parietal_conceptual_blending"
 	@echo "... unit_parietal_counterfactual"
 	@echo "... unit_parietal_equation_manipulation"
+	@echo "... unit_parietal_fep_bridge"
 	@echo "... unit_parietal_hypothesis_generation"
 	@echo "... unit_parietal_insight_discovery"
 	@echo "... unit_parietal_intuition_integrations"

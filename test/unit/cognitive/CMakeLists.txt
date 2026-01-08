@@ -1090,6 +1090,36 @@ gtest_discover_tests(unit_cognitive_test_gt_spatial
         TIMEOUT 180
 )
 
+# Game Theory - FEP Bridge Tests
+add_executable(unit_cognitive_test_gt_fep_bridge
+    game_theory/test_game_theory_fep_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_gt_fep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_gt_fep_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_gt_fep_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_gt_fep_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;game_theory;fep"
+        TIMEOUT 180
+)
+
 # ============================================================================
 # Phase 7 Substrate/Thalamic Bridge Tests
 # ============================================================================
@@ -1461,6 +1491,11 @@ add_subdirectory(collective_cognition)
 add_subdirectory(recursive)
 
 # ============================================================================
+# Social Cognition Tests
+# ============================================================================
+add_subdirectory(social)
+
+# ============================================================================
 # Social Tests
 # ============================================================================
 add_executable(unit_cognitive_test_social
@@ -1522,6 +1557,44 @@ gtest_discover_tests(unit_cognitive_test_imagination_engine
     PROPERTIES
         LABELS "unit;cognitive;imagination"
         TIMEOUT 180
+)
+
+# ============================================================================
+# Imagination FEP Bridge Tests
+# ============================================================================
+# WHAT: Unit tests for Imagination-FEP bidirectional integration
+# WHY:  Verify free energy computation from simulation divergence and
+#       counterfactual costs, prediction accuracy tracking
+# HOW:  Test lifecycle, registration, metrics, callbacks, FEP update cycle
+# ============================================================================
+
+add_executable(unit_cognitive_test_imagination_fep_bridge
+    imagination/test_imagination_fep_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_imagination_fep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_imagination_fep_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_imagination_fep_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_imagination_fep_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;imagination;fep"
+        TIMEOUT 120
 )
 
 # ============================================================================
@@ -1731,3 +1804,41 @@ add_subdirectory(salience)
 # Cognitive Integration Bridge Tests (Emotion-Executive, GW-Cognitive)
 # ============================================================================
 add_subdirectory(integration)
+
+# ============================================================================
+# JEPA FEP Bridge Tests
+# ============================================================================
+# WHAT: Unit tests for JEPA-FEP bidirectional integration
+# WHY:  Verify free energy computation from embedding prediction error,
+#       representation quality, and collapse detection
+# HOW:  Test lifecycle, registration, metrics, callbacks, FEP update cycle
+# ============================================================================
+
+add_executable(unit_cognitive_test_jepa_fep_bridge
+    jepa/test_jepa_fep_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_jepa_fep_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_jepa_fep_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_test_jepa_fep_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_jepa_fep_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;jepa;fep"
+        TIMEOUT 120
+)

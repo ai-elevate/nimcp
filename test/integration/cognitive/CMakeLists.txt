@@ -224,3 +224,9 @@ add_subdirectory(salience)
 
 # Cognitive Integration Hub and Bridges Integration Tests
 add_subdirectory(integration)
+
+# Imagination FEP Integration Tests
+add_subdirectory(imagination)
+
+# Social Cognition FEP Bridge Integration Tests
+add_subdirectory(social)
