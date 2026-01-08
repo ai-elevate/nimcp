@@ -57,10 +57,10 @@ protected:
     void SetUp() override {
         // Create SNN bridge with full meta-learning dimensions
         meta_learning_snn_config_t snn_config = meta_learning_snn_config_default();
-        snn_config.num_dimensions = META_LEARNING_DIM_COUNT;
+        snn_config.num_dimensions = META_DIM_COUNT;
         snn_config.neurons_per_dim = 32;
         snn_config.dt_ms = 1.0f;
-        snn_config.enable_learning_to_learn = true;
+        snn_config.enable_transfer_detection = true;
         snn_config.enable_bio_async = false;
 
         snn_bridge = meta_learning_snn_create(&snn_config);
@@ -76,7 +76,7 @@ protected:
         ASSERT_NE(plasticity_bridge, nullptr) << "Failed to create Plasticity bridge";
 
         // Register base synapses for plasticity
-        for (uint32_t i = 0; i < META_LEARNING_DIM_COUNT; i++) {
+        for (uint32_t i = 0; i < META_DIM_COUNT; i++) {
             meta_learning_plasticity_register_synapse(plasticity_bridge, i,
                 META_SYNAPSE_STRATEGY, 0.5f);
         }
@@ -112,7 +112,7 @@ protected:
     };
 
     void generate_scenario(float* dims, MetaLearningScenario scenario) {
-        memset(dims, 0, sizeof(float) * META_LEARNING_DIM_COUNT);
+        memset(dims, 0, sizeof(float) * META_DIM_COUNT);
 
         switch (scenario) {
             case HIGH_TRANSFER_SUCCESS:
@@ -154,6 +154,7 @@ protected:
                 dims[META_DIM_PRIOR_KNOWLEDGE] = 0.2f;
                 dims[META_DIM_TRANSFER] = 0.3f;
                 dims[META_DIM_LEARNING_TO_LEARN] = 0.9f;  // Must rely on learning-to-learn
+                dims[META_DIM_LEARNING_RATE] = 0.7f;       // Higher learning rate for novel tasks
                 break;
 
             case CURRICULUM_PROGRESSION:
@@ -184,11 +185,11 @@ protected:
     EvaluationResult run_evaluation(MetaLearningScenario scenario) {
         EvaluationResult result = {0};
 
-        float dims[META_LEARNING_DIM_COUNT];
+        float dims[META_DIM_COUNT];
         generate_scenario(dims, scenario);
 
         // Encode and simulate
-        result.spike_count = meta_learning_snn_encode_state(snn_bridge, dims, META_LEARNING_DIM_COUNT);
+        result.spike_count = meta_learning_snn_encode_state(snn_bridge, dims, META_DIM_COUNT);
         meta_learning_snn_simulate(snn_bridge, 30.0f);
 
         // Get insight
@@ -196,17 +197,17 @@ protected:
         meta_learning_snn_get_insight(snn_bridge, &insight);
 
         result.learning_rate_level = insight.learning_rate_level;
-        result.transfer_level = insight.transfer_level;
-        result.generalization = insight.generalization;
+        result.transfer_level = insight.transfer_potential;
+        result.generalization = insight.generalization_score;
 
         // Check strategy switch detection
         float strategy_switch;
-        result.strategy_switch_detected = meta_learning_snn_check_strategy_switch(snn_bridge, &strategy_switch);
+        result.strategy_switch_detected = meta_learning_snn_check_state_change(snn_bridge, &strategy_switch);
 
         // Update stats
         stats.total_evaluations++;
         stats.learning_rate_history.push_back(insight.learning_rate_level);
-        stats.generalization_scores.push_back(insight.generalization);
+        stats.generalization_scores.push_back(insight.generalization_score);
 
         if (result.strategy_switch_detected) {
             stats.strategy_switches++;
@@ -228,7 +229,7 @@ TEST_F(MetaLearningSNNPlasticityE2E, CompletePipelineInitialization) {
     // Check synapse registration
     meta_learning_plasticity_bridge_state_t state;
     meta_learning_plasticity_get_state(plasticity_bridge, &state);
-    EXPECT_GT(state.active_synapses, (uint32_t)META_LEARNING_DIM_COUNT);  // Base + protected
+    EXPECT_GT(state.active_synapses, (uint32_t)META_DIM_COUNT);  // Base + protected
 }
 
 TEST_F(MetaLearningSNNPlasticityE2E, SingleEvaluationPipeline) {
@@ -313,12 +314,12 @@ TEST_F(MetaLearningSNNPlasticityE2E, StrategyAdaptation) {
         // Strategy switch scenario
         auto switch_result = run_evaluation(STRATEGY_SWITCH);
         meta_learning_plasticity_learn(plasticity_bridge,
-            META_LEARN_STRATEGY_SWITCH, 0.3f, 200, switch_result.learning_rate_level);
+            META_LEARN_STRATEGY_EFFECTIVE, 0.3f, 200, switch_result.learning_rate_level);
 
         // Rapid adaptation scenario
         auto adapt_result = run_evaluation(RAPID_ADAPTATION);
         meta_learning_plasticity_learn(plasticity_bridge,
-            META_LEARN_ADAPTATION_FAST, 0.3f, 201, adapt_result.learning_rate_level);
+            META_LEARN_RATE_CORRECT, 0.3f, 201, adapt_result.learning_rate_level);
 
         // BCM and homeostatic updates
         meta_learning_plasticity_update_bcm(plasticity_bridge, 0.5f);
@@ -329,7 +330,8 @@ TEST_F(MetaLearningSNNPlasticityE2E, StrategyAdaptation) {
     meta_learning_plasticity_stats_t stats;
     meta_learning_plasticity_get_stats(plasticity_bridge, &stats);
     EXPECT_GT(stats.total_learning_events, 0u);
-    EXPECT_GT(stats.strategy_switch_events, 0u);
+    /* Check correct_rate_events since we use META_LEARN_RATE_CORRECT */
+    EXPECT_GT(stats.correct_rate_events, 0u);
 }
 
 //=============================================================================
@@ -358,7 +360,7 @@ TEST_F(MetaLearningSNNPlasticityE2E, TaskSimilarityProcessing) {
                 low_similarity_count++;
             }
             meta_learning_plasticity_learn(plasticity_bridge,
-                META_LEARN_NEW_DOMAIN, 0.5f, 3, result.learning_rate_level);
+                META_LEARN_TRANSFER_SUCCESS, 0.5f, 3, result.learning_rate_level);
         }
     }
 
@@ -433,7 +435,7 @@ TEST_F(MetaLearningSNNPlasticityE2E, CurriculumProgressionLearning) {
 
         // Apply learning for all curriculum progression scenarios
         meta_learning_plasticity_learn(plasticity_bridge,
-            META_LEARN_CURRICULUM_ADVANCE, 0.5f, 300 + (trial % 5),
+            META_LEARN_GENERALIZATION_SUCCESS, 0.5f, 300 + (trial % 5),
             result.learning_rate_level > 0.0f ? result.learning_rate_level : 0.5f);
         learning_events++;
     }
@@ -460,7 +462,7 @@ TEST_F(MetaLearningSNNPlasticityE2E, ConsolidationAndRetention) {
         auto result = run_evaluation(CONSOLIDATION_TEST);
 
         float consolidation_level;
-        meta_learning_snn_check_consolidation(snn_bridge, &consolidation_level);
+        meta_learning_snn_check_adaptation(snn_bridge, &consolidation_level);
 
         total_consolidation += consolidation_level;
         if (consolidation_level > 0.0f || result.generalization > 0.0f) {
@@ -469,7 +471,7 @@ TEST_F(MetaLearningSNNPlasticityE2E, ConsolidationAndRetention) {
 
         // Always apply learning for consolidation scenarios
         meta_learning_plasticity_learn(plasticity_bridge,
-            META_LEARN_CONSOLIDATION, 0.5f, 3, consolidation_level);
+            META_LEARN_TRANSFER_SUCCESS, 0.5f, 3, consolidation_level);
         learning_events++;
     }
 
@@ -509,19 +511,19 @@ TEST_F(MetaLearningSNNPlasticityE2E, CompleteMetaLearningWorkflow) {
                     event = META_LEARN_TRANSFER_FAILURE;
                     break;
                 case STRATEGY_SWITCH:
-                    event = META_LEARN_STRATEGY_SWITCH;
+                    event = META_LEARN_STRATEGY_EFFECTIVE;
                     break;
                 case RAPID_ADAPTATION:
-                    event = META_LEARN_ADAPTATION_FAST;
+                    event = META_LEARN_RATE_CORRECT;
                     break;
                 case CURRICULUM_PROGRESSION:
-                    event = META_LEARN_CURRICULUM_ADVANCE;
+                    event = META_LEARN_GENERALIZATION_SUCCESS;
                     break;
                 case CONSOLIDATION_TEST:
-                    event = META_LEARN_CONSOLIDATION;
+                    event = META_LEARN_TRANSFER_SUCCESS;
                     break;
                 default:
-                    event = META_LEARN_GENERALIZATION;
+                    event = META_LEARN_GENERALIZATION_SUCCESS;
                     break;
             }
 
@@ -642,7 +644,7 @@ TEST_F(MetaLearningSNNPlasticityE2E, StatisticsAccuracy) {
 
         // Apply learning
         meta_learning_plasticity_learn(plasticity_bridge,
-            META_LEARN_TRANSFER_SUCCESS, 0.1f, i % META_LEARNING_DIM_COUNT, 0.5f);
+            META_LEARN_TRANSFER_SUCCESS, 0.1f, i % META_DIM_COUNT, 0.5f);
     }
 
     // Verify stats match

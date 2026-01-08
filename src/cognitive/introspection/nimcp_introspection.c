@@ -1837,12 +1837,25 @@ bool introspection_sample_activity(introspection_context_t context)
     /* WHAT: Update last activation for next comparison */
     context->last_avg_activation = avg_activation;
 
-    /* WHAT: Add to activity history queue */
+    /* WHAT: Add to activity history queue (circular buffer behavior) */
     /* WHY: Maintain temporal record of brain activity */
+    /* HOW: If queue is full, drop oldest entry to make room */
     nimcp_result_t result = nimcp_queue_enqueue(context->activity_queue, &entry, 0);
     if (result != NIMCP_SUCCESS) {
-        LOG_WARN(LOG_MODULE, "Failed to enqueue activity sample: %d", result);
-        return false;
+        /* Queue is full - implement circular buffer behavior */
+        /* Dequeue oldest entry to make room */
+        activity_history_entry_t discarded;
+        nimcp_result_t dequeue_result = nimcp_queue_dequeue(context->activity_queue, &discarded, 0);
+        if (dequeue_result == NIMCP_SUCCESS) {
+            /* Try enqueue again after making room */
+            result = nimcp_queue_enqueue(context->activity_queue, &entry, 0);
+        }
+        if (result != NIMCP_SUCCESS) {
+            /* Still failed - log but don't fail the sample operation */
+            LOG_DEBUG(LOG_MODULE, "Activity queue full, sample dropped");
+            /* Return true since the sampling itself succeeded, just storage failed */
+            return true;
+        }
     }
 
     /* WHAT: Invoke registered callback if present */

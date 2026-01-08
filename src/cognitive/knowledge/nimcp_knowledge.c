@@ -5,6 +5,8 @@
 
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/knowledge/nimcp_knowledge_snn_bridge.h"
+#include "cognitive/knowledge/nimcp_knowledge_plasticity_bridge.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -160,6 +162,11 @@ struct knowledge_system_struct {
     // Bio-async integration
     bio_module_context_t bio_ctx;   /**< Bio-async module context */
     bool bio_async_enabled;         /**< Bio-async registration status */
+
+    // SNN and Plasticity bridges
+    knowledge_snn_bridge_t* snn_bridge;           /**< SNN bridge for neural encoding */
+    knowledge_plasticity_bridge_t* plasticity_bridge;  /**< Plasticity bridge for learning */
+    bool bridges_enabled;                         /**< Bridges enabled flag */
 };
 
 //=============================================================================
@@ -1164,6 +1171,21 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
         LOG_DEBUG("knowledge: Bio-router not initialized, skipping async registration");
     }
 
+    // Initialize SNN and Plasticity bridges
+    knowledge_snn_config_t snn_config = knowledge_snn_config_default();
+    system->snn_bridge = knowledge_snn_create(&snn_config);
+
+    knowledge_plasticity_config_t plasticity_config = knowledge_plasticity_config_default();
+    system->plasticity_bridge = knowledge_plasticity_create(&plasticity_config);
+
+    system->bridges_enabled = (system->snn_bridge != NULL && system->plasticity_bridge != NULL);
+    if (system->bridges_enabled) {
+        LOG_INFO(LOG_MODULE, "Knowledge SNN and Plasticity bridges initialized");
+    } else {
+        LOG_WARN(LOG_MODULE, "Knowledge bridges partially failed - SNN:%p Plasticity:%p",
+                 (void*)system->snn_bridge, (void*)system->plasticity_bridge);
+    }
+
     return system;
 }
 
@@ -1295,6 +1317,17 @@ void knowledge_system_destroy(knowledge_system_t system)
     if (system->knowledge_brain) {
         brain_destroy(system->knowledge_brain);
     }
+
+    // Destroy SNN and Plasticity bridges
+    if (system->snn_bridge) {
+        knowledge_snn_destroy(system->snn_bridge);
+        system->snn_bridge = NULL;
+    }
+    if (system->plasticity_bridge) {
+        knowledge_plasticity_destroy(system->plasticity_bridge);
+        system->plasticity_bridge = NULL;
+    }
+    system->bridges_enabled = false;
 
     nimcp_free(system);
 }

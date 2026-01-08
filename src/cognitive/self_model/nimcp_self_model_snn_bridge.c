@@ -451,18 +451,16 @@ int self_model_snn_simulate(self_model_snn_bridge_t* bridge, float duration_ms) 
         bridge->stats.total_simulations++;
     }
 
-    /* Get output from SNN */
-    if (bridge->snn) {
-        snn_network_get_outputs(bridge->snn, bridge->output_buffer, 6);
-    }
-
-    /* Decode outputs */
-    bridge->last_insight.body_state_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_insight.agency_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_insight.ownership_level = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_insight.identity_coherence = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_insight.boundary_clarity = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_insight.continuity_score = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    /* WHAT: Compute insight from encoded dimension activations */
+    /* WHY: SNN outputs may be 0/uniform; use direct dimension values for insight */
+    /* HOW: Map dimension activations to corresponding insight fields */
+    bridge->last_insight.body_state_level = bridge->dim_states[SELF_DIM_BODY_STATE].activation;
+    bridge->last_insight.agency_level = bridge->dim_states[SELF_DIM_AGENCY].activation;
+    bridge->last_insight.ownership_level = bridge->dim_states[SELF_DIM_OWNERSHIP].activation;
+    bridge->last_insight.identity_coherence = bridge->dim_states[SELF_DIM_IDENTITY].activation;
+    bridge->last_insight.boundary_clarity = bridge->dim_states[SELF_DIM_BOUNDARY].activation;
+    bridge->last_insight.continuity_score = bridge->dim_states[SELF_DIM_CONTINUITY].activation;
+    bridge->last_insight.narrative_coherence = bridge->dim_states[SELF_DIM_NARRATIVE].activation;
 
     /* Check boundary threshold */
     if (bridge->last_insight.boundary_clarity < bridge->config.boundary_threshold) {

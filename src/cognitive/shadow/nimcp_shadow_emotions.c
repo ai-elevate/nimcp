@@ -5,6 +5,8 @@
  */
 
 #include "cognitive/nimcp_shadow_emotions.h"
+#include "cognitive/shadow/nimcp_shadow_snn_bridge.h"
+#include "cognitive/shadow/nimcp_shadow_plasticity_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -196,12 +198,41 @@ shadow_emotion_system_t* shadow_system_create(uint32_t max_others_tracked) {
         }
     }
 
+    // Initialize SNN and Plasticity bridges
+    system->snn_bridge = NULL;
+    system->plasticity_bridge = NULL;
+    system->bridges_enabled = false;
+
+    shadow_snn_config_t snn_config = shadow_snn_config_default();
+    system->snn_bridge = shadow_snn_create(&snn_config);
+
+    shadow_plasticity_config_t plasticity_config = shadow_plasticity_config_default();
+    system->plasticity_bridge = shadow_plasticity_create(&plasticity_config);
+
+    if (system->snn_bridge && system->plasticity_bridge) {
+        system->bridges_enabled = true;
+        LOG_INFO(LOG_MODULE, "SNN/Plasticity bridges initialized successfully");
+    } else {
+        LOG_WARN(LOG_MODULE, "Failed to initialize one or more bridges");
+    }
+
     return system;
 }
 
 void shadow_system_destroy(shadow_emotion_system_t* system) {
     LOG_DEBUG("Destroying module");
     if (!system) return;
+
+    // Destroy SNN and Plasticity bridges
+    if (system->snn_bridge) {
+        shadow_snn_destroy((shadow_snn_bridge_t*)system->snn_bridge);
+        system->snn_bridge = NULL;
+    }
+    if (system->plasticity_bridge) {
+        shadow_plasticity_destroy((shadow_plasticity_bridge_t*)system->plasticity_bridge);
+        system->plasticity_bridge = NULL;
+    }
+    system->bridges_enabled = false;
 
     if (system->detected_in_others) {
         nimcp_free(system->detected_in_others);

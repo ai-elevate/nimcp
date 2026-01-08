@@ -45,6 +45,10 @@
 #include <stdbool.h>
 #include "cognitive/nimcp_emotional_tagging.h"
 
+/* Forward declarations for bridge types */
+typedef struct social_snn_bridge social_snn_bridge_t;
+typedef struct social_plasticity_bridge social_plasticity_bridge_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -287,6 +291,11 @@ typedef struct {
     // Bio-async integration
     void* bio_ctx;                  /**< bio_module_context_t pointer */
     bool bio_async_enabled;         /**< Bio-async registration status */
+
+    // SNN and Plasticity bridges
+    social_snn_bridge_t* snn_bridge;          /**< SNN integration bridge */
+    social_plasticity_bridge_t* plasticity_bridge;  /**< Plasticity integration bridge */
+    bool bridges_enabled;                      /**< Bridge integration status */
 
 } social_bond_system_t;
 

@@ -367,6 +367,11 @@ typedef struct {
     void* bio_ctx;                  /**< bio_module_context_t pointer */
     bool bio_async_enabled;         /**< Bio-async registration status */
 
+    // SNN/Plasticity bridge integration
+    void* snn_bridge;               /**< shadow_snn_bridge_t pointer */
+    void* plasticity_bridge;        /**< shadow_plasticity_bridge_t pointer */
+    bool bridges_enabled;           /**< Bridge integration status */
+
 } shadow_emotion_system_t;
 
 //=============================================================================

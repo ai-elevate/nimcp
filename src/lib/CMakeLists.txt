@@ -863,7 +863,7 @@ set(NIMCP_CORE_SOURCES
     # Note: Using consolidation/nimcp_consolidation_substrate_bridge.c instead of memory version (more complete API)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation_substrate_bridge.c  # Consolidation-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_substrate_bridge.c  # Reasoning-substrate integration (inference depth)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/tom/nimcp_tom_substrate_bridge.c  # ToM-substrate integration (mentalizing capacity)
+    # Note: Using theory_of_mind/nimcp_theory_of_mind_substrate_bridge.c instead (has tom_substrate_bridge_update API)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory_substrate_bridge.c  # Working memory-substrate integration (capacity, decay)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_substrate_bridge.c  # Wellbeing-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_gw_substrate_bridge.c  # GW-substrate integration
@@ -940,6 +940,60 @@ set(NIMCP_CORE_SOURCES
     # Working Memory SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_working_memory_snn_bridge.c  # SNN integration for working memory
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_working_memory_plasticity_bridge.c  # Plasticity integration for working memory
+    # Autobiographical Memory SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/autobiographical_memory/nimcp_autobio_snn_bridge.c  # SNN integration for autobiographical memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/autobiographical_memory/nimcp_autobio_plasticity_bridge.c  # Plasticity integration for autobiographical memory
+    # Collective Cognition SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/collective_cognition/nimcp_collective_snn_bridge.c  # SNN integration for collective cognition
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/collective_cognition/nimcp_collective_plasticity_bridge.c  # Plasticity integration for collective cognition
+    # Consolidation SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation_snn_bridge.c  # SNN integration for consolidation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation_plasticity_bridge.c  # Plasticity integration for consolidation
+    # Empathetic Response SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/empathetic_response/nimcp_empathy_snn_bridge.c  # SNN integration for empathetic response
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/empathetic_response/nimcp_empathy_plasticity_bridge.c  # Plasticity integration for empathetic response
+    # Free Energy SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_snn_bridge.c  # SNN integration for free energy
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_fep_plasticity_bridge.c  # Plasticity integration for free energy
+    # Game Theory SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory_snn_bridge.c  # SNN integration for game theory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory_plasticity_bridge.c  # Plasticity integration for game theory
+    # Imagination SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_imagination_snn_bridge.c  # SNN integration for imagination
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_imagination_plasticity_bridge.c  # Plasticity integration for imagination
+    # JEPA SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_snn_bridge.c  # SNN integration for JEPA
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_plasticity_bridge.c  # Plasticity integration for JEPA
+    # Knowledge SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_snn_bridge.c  # SNN integration for knowledge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_plasticity_bridge.c  # Plasticity integration for knowledge
+    # Mental Health SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health_snn_bridge.c  # SNN integration for mental health
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health_plasticity_bridge.c  # Plasticity integration for mental health
+    # Parietal SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_snn_bridge.c  # SNN integration for parietal
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_plasticity_bridge.c  # Plasticity integration for parietal
+    # Personality SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_snn_bridge.c  # SNN integration for personality
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_plasticity_bridge.c  # Plasticity integration for personality
+    # Predictive SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive_snn_bridge.c  # SNN integration for predictive
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive/nimcp_predictive_plasticity_bridge.c  # Plasticity integration for predictive
+    # Recursive Cognition SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_snn_bridge.c  # SNN integration for recursive cognition
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/recursive/nimcp_rcog_plasticity_bridge.c  # Plasticity integration for recursive cognition
+    # Self-Awareness SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_snn_bridge.c  # SNN integration for self-awareness
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness/nimcp_self_awareness_plasticity_bridge.c  # Plasticity integration for self-awareness
+    # Shadow SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/shadow/nimcp_shadow_snn_bridge.c  # SNN integration for shadow
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/shadow/nimcp_shadow_plasticity_bridge.c  # Plasticity integration for shadow
+    # Sleep-Wake SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake_snn_bridge.c  # SNN integration for sleep-wake
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake_plasticity_bridge.c  # Plasticity integration for sleep-wake
+    # Social SNN/Plasticity Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_social_snn_bridge.c  # SNN integration for social
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_social_plasticity_bridge.c  # Plasticity integration for social
     # Core SNN sources (needed by mirror_snn_bridge and other SNN integrations)
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_config.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_network.c
@@ -977,7 +1031,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory_substrate_bridge.c  # Game-theory-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune_substrate_bridge.c  # Brain-immune-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_social_substrate_bridge.c  # Social-substrate integration
-    # Note: nimcp_theory_of_mind_substrate_bridge.c removed - duplicate of nimcp_tom_substrate_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_theory_of_mind_substrate_bridge.c  # ToM-substrate integration (complete API)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune_substrate_bridge.c  # Predictive-immune-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness_extended/nimcp_self_awareness_extended_substrate_bridge.c  # Self-awareness-ext-substrate integration
 
@@ -999,8 +1053,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory_thalamic_bridge.c  # Game-theory-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune_thalamic_bridge.c  # Brain-immune-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_social_thalamic_bridge.c  # Social-thalamic integration
-    # Note: Using tom thalamic bridge instead of theory_of_mind (more complete implementation)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/tom/nimcp_tom_thalamic_bridge.c  # ToM-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/tom/nimcp_tom_thalamic_bridge.c  # ToM-thalamic integration (with route_inference API)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune_thalamic_bridge.c  # Predictive-immune-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness_extended/nimcp_self_awareness_extended_thalamic_bridge.c  # Self-awareness-ext-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/analysis/nimcp_analysis_thalamic_bridge.c  # Analysis-thalamic integration

@@ -298,7 +298,7 @@ TEST_F(ReasoningSNNPlasticityE2E, WeakDeductionLearning) {
 
         // Learn from weak deduction - should trigger caution
         reasoning_plasticity_learn(plasticity_bridge,
-            REASON_LEARN_INSUFFICIENT_EVIDENCE, 0.5f, 1, result.deduction_strength);
+            REASON_LEARN_INVALID_CONCLUSION, 0.5f, 1, result.deduction_strength);
     }
 
     // Average validity should be lower for weak deduction
@@ -328,7 +328,7 @@ TEST_F(ReasoningSNNPlasticityE2E, DeductionConsistencyImprovement) {
         // Weak deduction scenario
         auto weak_result = run_evaluation(WEAK_DEDUCTION);
         reasoning_plasticity_learn(plasticity_bridge,
-            REASON_LEARN_INSUFFICIENT_EVIDENCE, 0.3f, 201, weak_result.logical_validity);
+            REASON_LEARN_INVALID_CONCLUSION, 0.3f, 201, weak_result.logical_validity);
 
         // BCM and homeostatic updates
         reasoning_plasticity_update_bcm(plasticity_bridge, 0.5f);
@@ -435,7 +435,7 @@ TEST_F(ReasoningSNNPlasticityE2E, EvidenceAccumulationLearning) {
 
         // Apply learning for all evidence scenarios
         reasoning_plasticity_learn(plasticity_bridge,
-            REASON_LEARN_EVIDENCE_STRONG, 0.5f, 300 + (trial % 5),
+            REASON_LEARN_EVIDENCE_INTEGRATED, 0.5f, 300 + (trial % 5),
             result.logical_validity > 0.0f ? result.logical_validity : 0.5f);
         learning_events++;
     }
@@ -466,7 +466,7 @@ TEST_F(ReasoningSNNPlasticityE2E, InductiveLearning) {
 
         // Learn from induction
         reasoning_plasticity_learn(plasticity_bridge,
-            REASON_LEARN_PATTERN_GENERALIZED, 0.5f, 3, inference.induction_strength);
+            REASON_LEARN_ANALOGY_MATCHED, 0.5f, 3, inference.induction_strength);
     }
 
     // Should detect induction signals
@@ -496,7 +496,7 @@ TEST_F(ReasoningSNNPlasticityE2E, LogicalConflictDetection) {
 
         // Always apply learning for conflict scenarios
         reasoning_plasticity_learn(plasticity_bridge,
-            REASON_LEARN_CONFLICT_DETECTED, 0.5f, 4, conflict_level);
+            REASON_LEARN_CONFLICT_RESOLVED, 0.5f, 4, conflict_level);
         learning_events++;
     }
 
@@ -532,22 +532,22 @@ TEST_F(ReasoningSNNPlasticityE2E, CompleteReasoningWorkflow) {
                     event = REASON_LEARN_VALID_CONCLUSION;
                     break;
                 case WEAK_DEDUCTION:
-                    event = REASON_LEARN_INSUFFICIENT_EVIDENCE;
+                    event = REASON_LEARN_INVALID_CONCLUSION;
                     break;
                 case CAUSAL_CHAIN:
                     event = REASON_LEARN_CAUSAL_CONFIRMED;
                     break;
                 case EVIDENCE_HEAVY:
-                    event = REASON_LEARN_EVIDENCE_STRONG;
+                    event = REASON_LEARN_EVIDENCE_INTEGRATED;
                     break;
                 case LOGICAL_CONFLICT:
-                    event = REASON_LEARN_CONFLICT_DETECTED;
+                    event = REASON_LEARN_CONFLICT_RESOLVED;
                     break;
                 case ABDUCTIVE_INFERENCE:
-                    event = REASON_LEARN_HYPOTHESIS_ACCEPTED;
+                    event = REASON_LEARN_VALID_CONCLUSION;
                     break;
                 default:
-                    event = REASON_LEARN_PATTERN_GENERALIZED;
+                    event = REASON_LEARN_ANALOGY_MATCHED;
                     break;
             }
 

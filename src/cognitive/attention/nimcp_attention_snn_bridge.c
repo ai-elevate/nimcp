@@ -434,6 +434,11 @@ int attention_snn_encode_weights(
     for (uint32_t h = 0; h < num_heads; h++) {
         float weight = clamp_f(attention_weights[h], 0.0f, 1.0f);
 
+        /* WHAT: Store encoded weight for focus/sparsity calculation */
+        /* WHY: get_focus_strength computes variance from attention_weights */
+        /* HOW: Copy input weights to internal state during encoding */
+        bridge->attention.attention_weights[h] = weight;
+
         /* Calculate firing rate based on attention weight */
         float rate = bridge->config.baseline_rate_hz +
                     weight * rate_scale *
@@ -506,6 +511,7 @@ int attention_snn_encode_salience(
         bridge->attention.salience_map[i] = salience[i];
     }
 
+    bridge->stats.total_forward_passes++;
     bridge->stats.total_spikes_generated += (uint64_t)total_active;
     bridge->state = ATTENTION_SNN_STATE_IDLE;
 
@@ -668,6 +674,9 @@ int attention_snn_simulate(attention_snn_bridge_t* bridge, float duration_ms) {
         snn_network_step(bridge->snn, bridge->config.dt_ms);
     }
 
+    /* NOTE: attention_weights are set during encode_weights and preserved */
+    /* NOTE: SNN dynamics affect competition_buffer via compete() function */
+
     bridge->state = ATTENTION_SNN_STATE_IDLE;
 
     nimcp_mutex_unlock(bridge->mutex);
@@ -715,6 +724,21 @@ int attention_snn_compete(attention_snn_bridge_t* bridge, float duration_ms) {
         energy += bridge->competition_buffer[h] * bridge->competition_buffer[h];
     }
     bridge->stats.competition_convergence_rate = energy / (float)bridge->config.num_heads;
+
+    /* WHAT: Update attention weights from competition results */
+    /* WHY: Focus strength and sparsity metrics read from attention_weights */
+    /* HOW: Normalize competition buffer values to [0,1] and copy */
+    float max_val = 0.0f;
+    for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+        if (bridge->competition_buffer[h] > max_val) {
+            max_val = bridge->competition_buffer[h];
+        }
+    }
+    if (max_val > 0.0f) {
+        for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+            bridge->attention.attention_weights[h] = bridge->competition_buffer[h] / max_val;
+        }
+    }
 
     bridge->state = ATTENTION_SNN_STATE_IDLE;
 

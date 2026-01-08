@@ -9,6 +9,8 @@
 
 #include "cognitive/parietal/nimcp_parietal.h"
 #include "cognitive/parietal/nimcp_parietal_quantum_bridge.h"
+#include "cognitive/parietal/nimcp_parietal_snn_bridge.h"
+#include "cognitive/parietal/nimcp_parietal_plasticity_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
@@ -92,6 +94,15 @@ struct parietal_lobe {
 
     /* FEP-Parietal Bridge */
     fep_parietal_bridge_t* fep_parietal_bridge;
+
+    /* SNN Bridge */
+    parietal_snn_bridge_t* snn_bridge;
+
+    /* Plasticity Bridge */
+    parietal_plasticity_bridge_t* plasticity_bridge;
+
+    /* Bridges enabled flag */
+    bool bridges_enabled;
 
     /* Physics Neural Network */
     physics_nn_t* physics_nn;
@@ -494,6 +505,18 @@ parietal_lobe_t* parietal_create_custom(const parietal_config_t* config) {
         parietal->fep_parietal_bridge = fep_parietal_bridge_create(&cfg.fep_parietal_config);
     }
 
+    /* Create SNN bridge with default config */
+    parietal_snn_config_t snn_config = parietal_snn_config_default();
+    parietal->snn_bridge = parietal_snn_create(&snn_config);
+
+    /* Create Plasticity bridge with default config */
+    parietal_plasticity_config_t plasticity_config = parietal_plasticity_config_default();
+    parietal->plasticity_bridge = parietal_plasticity_create(&plasticity_config);
+
+    /* Mark bridges as enabled if both created successfully */
+    parietal->bridges_enabled = (parietal->snn_bridge != NULL) &&
+                                 (parietal->plasticity_bridge != NULL);
+
     /* Allocate pending requests array */
     parietal->pending_requests = calloc(PARIETAL_MAX_PENDING_REQUESTS,
                                          sizeof(pending_request_t));
@@ -535,6 +558,12 @@ void parietal_destroy(parietal_lobe_t* parietal) {
 
     /* Destroy FEP-Parietal bridge */
     fep_parietal_bridge_destroy(parietal->fep_parietal_bridge);
+
+    /* Destroy SNN bridge */
+    parietal_snn_destroy(parietal->snn_bridge);
+
+    /* Destroy Plasticity bridge */
+    parietal_plasticity_destroy(parietal->plasticity_bridge);
 
     /* Destroy physics NN */
     physics_nn_destroy(parietal->physics_nn);

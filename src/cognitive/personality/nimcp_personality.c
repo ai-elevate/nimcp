@@ -14,6 +14,8 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #include "cognitive/nimcp_personality.h"
+#include "cognitive/personality/nimcp_personality_snn_bridge.h"
+#include "cognitive/personality/nimcp_personality_plasticity_bridge.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -39,6 +41,14 @@
 static bio_module_context_t personality_bio_ctx = NULL;
 static bool personality_bio_async_enabled = false;
 
+//=============================================================================
+// SNN and Plasticity Bridge Integration
+//=============================================================================
+
+static personality_snn_bridge_t* personality_snn_bridge = NULL;
+static personality_plasticity_bridge_t* personality_plasticity_bridge = NULL;
+static bool personality_bridges_enabled = false;
+
 __attribute__((constructor))
 static void personality_bio_init(void) {
     if (!bio_router_is_initialized()) {
@@ -54,6 +64,17 @@ static void personality_bio_init(void) {
     if (personality_bio_ctx) {
         personality_bio_async_enabled = true;
     }
+
+    /* Initialize SNN and Plasticity bridges */
+    personality_snn_config_t snn_config = personality_snn_config_default();
+    personality_plasticity_config_t plasticity_config = personality_plasticity_config_default();
+
+    personality_snn_bridge = personality_snn_create(&snn_config);
+    personality_plasticity_bridge = personality_plasticity_create(&plasticity_config);
+
+    if (personality_snn_bridge && personality_plasticity_bridge) {
+        personality_bridges_enabled = true;
+    }
 }
 
 __attribute__((destructor))
@@ -63,6 +84,17 @@ static void personality_bio_cleanup(void) {
         personality_bio_ctx = NULL;
         personality_bio_async_enabled = false;
     }
+
+    /* Destroy SNN and Plasticity bridges */
+    if (personality_snn_bridge) {
+        personality_snn_destroy(personality_snn_bridge);
+        personality_snn_bridge = NULL;
+    }
+    if (personality_plasticity_bridge) {
+        personality_plasticity_destroy(personality_plasticity_bridge);
+        personality_plasticity_bridge = NULL;
+    }
+    personality_bridges_enabled = false;
 }
 
 //=============================================================================

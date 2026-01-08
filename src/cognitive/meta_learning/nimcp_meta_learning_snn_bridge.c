@@ -442,18 +442,17 @@ int meta_learning_snn_simulate(meta_learning_snn_bridge_t* bridge, float duratio
         bridge->stats.total_simulations++;
     }
 
-    /* Get output from SNN */
-    if (bridge->snn) {
-        snn_network_get_outputs(bridge->snn, bridge->output_buffer, 6);
-    }
-
-    /* Decode outputs */
-    bridge->last_insight.learning_rate_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_insight.adaptation_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_insight.transfer_potential = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_insight.generalization_score = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->strategy_signal = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_insight.consolidation_score = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    /* WHAT: Compute insight from encoded dimension activations */
+    /* WHY: SNN outputs may be 0/uniform; use direct dimension values for insight */
+    /* HOW: Map dimension activations to corresponding insight fields */
+    bridge->last_insight.learning_rate_level = bridge->dim_states[META_DIM_LEARNING_RATE].activation;
+    bridge->last_insight.adaptation_level = bridge->dim_states[META_DIM_ADAPTATION_SPEED].activation;
+    bridge->last_insight.transfer_potential = bridge->dim_states[META_DIM_TRANSFER].activation;
+    bridge->last_insight.generalization_score = bridge->dim_states[META_DIM_GENERALIZATION].activation;
+    bridge->strategy_signal = bridge->dim_states[META_DIM_STRATEGY_SELECT].activation;
+    bridge->last_insight.consolidation_score = bridge->dim_states[META_DIM_CONSOLIDATION].activation;
+    bridge->last_insight.task_similarity = bridge->dim_states[META_DIM_TASK_SIMILARITY].activation;
+    bridge->last_insight.meta_learning_progress = bridge->dim_states[META_DIM_LEARNING_TO_LEARN].activation;
 
     /* Check adaptation threshold */
     if (bridge->last_insight.adaptation_level > bridge->config.adaptation_threshold) {

@@ -4,6 +4,8 @@
  */
 
 #include "cognitive/nimcp_love_loyalty_friendship.h"
+#include "cognitive/social/nimcp_social_snn_bridge.h"
+#include "cognitive/social/nimcp_social_plasticity_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -96,6 +98,22 @@ social_bond_system_t* social_bond_system_create(void) {
         }
     }
 
+    // Initialize SNN and Plasticity bridges
+    system->snn_bridge = NULL;
+    system->plasticity_bridge = NULL;
+    system->bridges_enabled = false;
+
+    social_snn_config_t snn_config = social_snn_config_default();
+    system->snn_bridge = social_snn_create(&snn_config);
+
+    social_plasticity_config_t plasticity_config = social_plasticity_config_default();
+    system->plasticity_bridge = social_plasticity_create(&plasticity_config);
+
+    if (system->snn_bridge && system->plasticity_bridge) {
+        system->bridges_enabled = true;
+        LOG_DEBUG("SNN and Plasticity bridges initialized");
+    }
+
 return system;
 }
 
@@ -106,6 +124,18 @@ void social_bond_system_destroy(social_bond_system_t* system) {
     // HOW:  Free main structure
 
     if (!system) return;
+
+    // Destroy SNN and Plasticity bridges
+    if (system->snn_bridge) {
+        social_snn_destroy(system->snn_bridge);
+        system->snn_bridge = NULL;
+    }
+    if (system->plasticity_bridge) {
+        social_plasticity_destroy(system->plasticity_bridge);
+        system->plasticity_bridge = NULL;
+    }
+    system->bridges_enabled = false;
+
     // Unregister from bio-router
     if (system->bio_async_enabled && system->bio_ctx) {
         bio_router_unregister_module(system->bio_ctx);

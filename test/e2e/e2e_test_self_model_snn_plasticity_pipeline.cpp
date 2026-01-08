@@ -277,7 +277,7 @@ TEST_F(SelfModelSNNPlasticityE2E, AgencyDisruptionLearning) {
 
         // Learn agency disruption - should decrease agency confidence
         self_model_plasticity_learn(plasticity_bridge,
-            SELF_LEARN_AGENCY_DISRUPTED, 0.5f, 0, result.agency_level);
+            SELF_LEARN_AGENCY_VIOLATED, 0.5f, 0, result.agency_level);
 
         // Apply STDP
         self_model_plasticity_apply_stdp(plasticity_bridge, 0,
@@ -328,7 +328,7 @@ TEST_F(SelfModelSNNPlasticityE2E, AgencyCalibrationImprovement) {
         // Disruption scenario
         auto disruption_result = run_evaluation(AGENCY_DISRUPTION);
         self_model_plasticity_learn(plasticity_bridge,
-            SELF_LEARN_AGENCY_DISRUPTED, 0.3f, 201, disruption_result.agency_level);
+            SELF_LEARN_AGENCY_VIOLATED, 0.3f, 201, disruption_result.agency_level);
 
         // BCM and homeostatic updates
         self_model_plasticity_update_bcm(plasticity_bridge, 0.5f);
@@ -339,8 +339,8 @@ TEST_F(SelfModelSNNPlasticityE2E, AgencyCalibrationImprovement) {
     self_model_plasticity_stats_t stats;
     self_model_plasticity_get_stats(plasticity_bridge, &stats);
     EXPECT_GT(stats.total_learning_events, 0u);
-    EXPECT_GT(stats.agency_confirm_events, 0u);
-    EXPECT_GT(stats.agency_disrupt_events, 0u);
+    EXPECT_GT(stats.agency_confirmed_events, 0u);
+    EXPECT_GT(stats.agency_violated_events, 0u);
 }
 
 //=============================================================================
@@ -387,7 +387,7 @@ TEST_F(SelfModelSNNPlasticityE2E, IdentityProtectionIntegrity) {
 
         // Try various learning operations on protected synapse
         self_model_plasticity_learn(plasticity_bridge,
-            SELF_LEARN_AGENCY_DISRUPTED, -1.0f, 100, result.agency_level);
+            SELF_LEARN_AGENCY_VIOLATED, -1.0f, 100, result.agency_level);
         self_model_plasticity_apply_stdp(plasticity_bridge, 100,
             (float)trial, (float)trial + 10.0f);
         self_model_plasticity_apply_reward(plasticity_bridge, -1.0f);
@@ -410,7 +410,7 @@ TEST_F(SelfModelSNNPlasticityE2E, BoundarySynapseProtection) {
     for (int i = 0; i < 50; i++) {
         self_model_plasticity_apply_stdp(plasticity_bridge, 101, (float)i, (float)i + 5.0f);
         self_model_plasticity_learn(plasticity_bridge,
-            SELF_LEARN_AGENCY_DISRUPTED, 1.0f, 101, 0.9f);
+            SELF_LEARN_AGENCY_VIOLATED, 1.0f, 101, 0.9f);
     }
 
     // Weight must remain unchanged
@@ -436,7 +436,7 @@ TEST_F(SelfModelSNNPlasticityE2E, BodyStateChangeLearning) {
 
         // Apply learning for all body state change scenarios
         self_model_plasticity_learn(plasticity_bridge,
-            SELF_LEARN_BODY_STATE_UPDATE, 0.5f, 300 + (trial % 5),
+            SELF_LEARN_NARRATIVE_UPDATED, 0.5f, 300 + (trial % 5),
             result.agency_level > 0.0f ? result.agency_level : 0.5f);
         learning_events++;
     }
@@ -472,7 +472,7 @@ TEST_F(SelfModelSNNPlasticityE2E, IdentityContinuityMaintenance) {
 
         // Always apply learning for identity scenarios
         self_model_plasticity_learn(plasticity_bridge,
-            SELF_LEARN_IDENTITY_MAINTAINED, 0.5f, 3, result.identity_coherence);
+            SELF_LEARN_IDENTITY_REINFORCED, 0.5f, 3, result.identity_coherence);
         learning_events++;
     }
 
@@ -508,22 +508,22 @@ TEST_F(SelfModelSNNPlasticityE2E, CompleteSelfModelWorkflow) {
                     event = SELF_LEARN_AGENCY_CONFIRMED;
                     break;
                 case AGENCY_DISRUPTION:
-                    event = SELF_LEARN_AGENCY_DISRUPTED;
+                    event = SELF_LEARN_AGENCY_VIOLATED;
                     break;
                 case BOUNDARY_VIOLATION:
                     event = SELF_LEARN_BOUNDARY_VIOLATED;
                     break;
                 case BODY_STATE_CHANGE:
-                    event = SELF_LEARN_BODY_STATE_UPDATE;
+                    event = SELF_LEARN_NARRATIVE_UPDATED;
                     break;
                 case IDENTITY_STABLE:
-                    event = SELF_LEARN_IDENTITY_MAINTAINED;
+                    event = SELF_LEARN_IDENTITY_REINFORCED;
                     break;
                 case CONTINUITY_MAINTAINED:
                     event = SELF_LEARN_CONTINUITY_MAINTAINED;
                     break;
                 default:
-                    event = SELF_LEARN_NARRATIVE_UPDATE;
+                    event = SELF_LEARN_NARRATIVE_UPDATED;
                     break;
             }
 

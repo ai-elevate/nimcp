@@ -143,34 +143,29 @@ TEST_F(AutoActivityHistoryIntegrationTest, SamplingReflectsProcessingActivity) {
 TEST_F(AutoActivityHistoryIntegrationTest, PeriodicSamplingWithIntervals) {
     if (context == nullptr) GTEST_SKIP();
 
-    uint64_t start_time = nimcp_time_monotonic_ms();
-    uint32_t sample_interval_ms = 100;
+    uint32_t sample_interval_ms = 50;  // Shorter interval for test reliability
 
     // Set sampling interval
     introspection_set_sample_interval(context, sample_interval_ms);
 
     // Simulate periodic sampling over time
+    // We explicitly sample after each processing interval to ensure samples are captured
     for (int i = 0; i < 5; i++) {
-        uint64_t current_time = nimcp_time_monotonic_ms();
-
-        // Check if it's time to sample
-        uint64_t elapsed = current_time - start_time;
-        if (elapsed >= sample_interval_ms * (i + 1)) {
-            introspection_sample_activity(context);
-        }
-
         // Do some processing
         process_multiple_inputs(2);
 
-        // Wait for next sample interval
+        // Wait for interval
         std::this_thread::sleep_for(std::chrono::milliseconds(sample_interval_ms));
+
+        // Explicitly sample after each interval (simulating periodic sampling behavior)
+        introspection_sample_activity(context);
     }
 
     // Verify we have multiple samples
     uint32_t num_entries = 0;
     activity_history_entry_t* history = brain_get_activity_history(context, &num_entries);
 
-    EXPECT_GE(num_entries, 3);  // Should have captured several samples
+    EXPECT_GE(num_entries, 3);  // Should have captured several samples (5 iterations = 5 samples)
 
     if (history != nullptr) {
         free(history);

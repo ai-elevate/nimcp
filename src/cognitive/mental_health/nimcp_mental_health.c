@@ -18,6 +18,8 @@
  */
 
 #include "cognitive/nimcp_mental_health.h"
+#include "cognitive/mental_health/nimcp_mental_health_snn_bridge.h"
+#include "cognitive/mental_health/nimcp_mental_health_plasticity_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -134,6 +136,11 @@ struct mental_health_monitor {
     // Medulla integration (brainstem signals)
     void* brain_ref;                       /**< Brain reference for medulla queries */
     bool medulla_connected;                /**< Medulla integration enabled */
+
+    // SNN and Plasticity bridge integration
+    mental_health_snn_bridge_t* snn_bridge;           /**< SNN bridge for neural encoding */
+    mental_health_plasticity_bridge_t* plasticity_bridge; /**< Plasticity bridge for learning */
+    bool bridges_enabled;                             /**< Bridges initialization status */
 };
 
 // =============================================================================
@@ -318,6 +325,27 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
     monitor->brain_ref = NULL;
     monitor->medulla_connected = false;
 
+    // Initialize SNN and Plasticity bridges
+    monitor->snn_bridge = NULL;
+    monitor->plasticity_bridge = NULL;
+    monitor->bridges_enabled = false;
+
+    // Create SNN bridge with default config
+    mental_health_snn_config_t snn_config = mental_health_snn_config_default();
+    monitor->snn_bridge = mental_health_snn_create(&snn_config);
+
+    // Create plasticity bridge with default config
+    mental_health_plasticity_config_t plasticity_config = mental_health_plasticity_config_default();
+    monitor->plasticity_bridge = mental_health_plasticity_create(&plasticity_config);
+
+    // Mark bridges as enabled if both created successfully
+    if (monitor->snn_bridge && monitor->plasticity_bridge) {
+        monitor->bridges_enabled = true;
+        LOG_DEBUG("SNN and Plasticity bridges initialized successfully");
+    } else {
+        LOG_WARN("Failed to initialize one or more bridges");
+    }
+
     // Initialize all scores to zero
     memset(monitor->disorder_scores, 0, sizeof(monitor->disorder_scores));
     memset(monitor->disorder_severities, 0, sizeof(monitor->disorder_severities));
@@ -386,6 +414,22 @@ void mental_health_destroy(mental_health_monitor_t* monitor)
             nimcp_free(monitor->score_history[i]);
         }
     }
+
+    // =========================================================================
+    // CLEANUP: Destroy SNN and Plasticity bridges
+    // =========================================================================
+
+    if (monitor->snn_bridge) {
+        mental_health_snn_destroy(monitor->snn_bridge);
+        monitor->snn_bridge = NULL;
+    }
+
+    if (monitor->plasticity_bridge) {
+        mental_health_plasticity_destroy(monitor->plasticity_bridge);
+        monitor->plasticity_bridge = NULL;
+    }
+
+    monitor->bridges_enabled = false;
 
     // =========================================================================
     // CLEANUP: Free main structure
@@ -1498,6 +1542,212 @@ const char* severity_to_string(disorder_severity_t severity)
 const char* mental_health_get_last_error(void)
 {
     return last_error[0] != '\0' ? last_error : "No error";
+}
+
+// =============================================================================
+// SNN/PLASTICITY BRIDGE INTEGRATION
+// =============================================================================
+
+/**
+ * @brief Process mental health state through SNN and plasticity bridges
+ *
+ * WHAT: Encode current mental health markers into SNN, process learning events
+ * WHY:  Enable biologically-plausible mental health state encoding and learning
+ * HOW:  Encode mood/anxiety/depression dimensions, apply plasticity based on outcomes
+ *
+ * BIOLOGICAL BASIS:
+ * - Encodes mood state for population coding in amygdala-prefrontal circuits
+ * - Anxiety encoded through threat detection pathways
+ * - Depression markers processed through reward/anhedonia circuits
+ * - Plasticity enables learning of coping strategies and resilience
+ *
+ * @param monitor Mental health monitor (non-NULL)
+ * @return 0 on success, -1 on failure
+ *
+ * COMPLEXITY: O(1) - fixed number of encoding operations
+ */
+int mental_health_process_bridges(mental_health_monitor_t* monitor)
+{
+    // =========================================================================
+    // GUARD: Validate inputs
+    // =========================================================================
+
+    if (!monitor) {
+        set_error("NULL monitor in mental_health_process_bridges");
+        return -1;
+    }
+
+    if (!monitor->bridges_enabled) {
+        return 0; /* Bridges not enabled, silently succeed */
+    }
+
+    // =========================================================================
+    // ENCODING: Encode current markers into SNN
+    // =========================================================================
+
+    /* Extract key mental health dimensions from current markers */
+    float mood_level = 0.0f;
+    float anxiety_level = 0.0f;
+    float depression_level = 0.0f;
+    float stress_level = 0.0f;
+
+    /* Calculate mood from neurotransmitter balance */
+    /* High serotonin + moderate dopamine = positive mood */
+    float serotonin = monitor->current_markers.serotonin_avg;
+    float dopamine = monitor->current_markers.dopamine_avg;
+    mood_level = (serotonin * 0.6f + dopamine * 0.4f) * 2.0f - 1.0f; /* [-1, 1] */
+
+    /* Anxiety from norepinephrine and emotional volatility */
+    float norepinephrine = monitor->current_markers.norepinephrine_avg;
+    float volatility = monitor->current_markers.emotional_volatility;
+    anxiety_level = (norepinephrine * 0.5f + volatility * 0.5f);
+
+    /* Depression from low engagement, low dopamine, high emotional flatness */
+    float engagement = monitor->current_markers.engagement_level;
+    float flatness = monitor->current_markers.emotional_flatness;
+    depression_level = (1.0f - engagement) * 0.4f + (1.0f - dopamine) * 0.3f + flatness * 0.3f;
+
+    /* Stress from inflammation and cytokine markers */
+    float inflammation = monitor->current_markers.inflammation_level;
+    stress_level = inflammation * 0.5f + anxiety_level * 0.3f + (1.0f - serotonin) * 0.2f;
+
+    /* Encode into SNN bridge */
+    if (monitor->snn_bridge) {
+        /* Encode mood state with stability based on variance */
+        float stability = 1.0f - monitor->current_markers.dopamine_variance;
+        mental_health_snn_encode_mood(monitor->snn_bridge, mood_level, stability);
+
+        /* Encode anxiety level */
+        uint32_t threat_count = monitor->current_markers.active_threats;
+        mental_health_snn_encode_anxiety(monitor->snn_bridge, anxiety_level, threat_count);
+
+        /* Encode depression markers with anhedonia */
+        float anhedonia = 1.0f - engagement;
+        mental_health_snn_encode_depression(monitor->snn_bridge, depression_level, anhedonia);
+
+        /* Encode stress response */
+        uint32_t stressor_type = (inflammation > 0.5f) ? 1 : 0; /* chronic if high inflammation */
+        mental_health_snn_encode_stress(monitor->snn_bridge, stress_level, stressor_type);
+
+        /* Run simulation to process encodings */
+        mental_health_snn_simulate(monitor->snn_bridge, MENTAL_HEALTH_SNN_ENCODING_WINDOW);
+    }
+
+    // =========================================================================
+    // PLASTICITY: Apply learning based on state changes
+    // =========================================================================
+
+    if (monitor->plasticity_bridge) {
+        /* Apply current stress level to modulate learning */
+        mental_health_plasticity_apply_stress(monitor->plasticity_bridge, stress_level);
+
+        /* Update BCM thresholds */
+        mental_health_plasticity_update_bcm(monitor->plasticity_bridge, 1.0f);
+
+        /* Update eligibility traces */
+        mental_health_plasticity_update_traces(monitor->plasticity_bridge, 1.0f);
+
+        /* Check for mood improvement and apply learning */
+        static float prev_mood = 0.0f;
+        if (mood_level > prev_mood + 0.1f) {
+            /* Mood improved - reinforce current coping strategies */
+            mental_health_plasticity_learn(
+                monitor->plasticity_bridge,
+                MENTAL_HEALTH_LEARN_MOOD_IMPROVED,
+                mood_level - prev_mood,
+                0, /* synapse_id would be set by actual registration */
+                1.0f /* full context */
+            );
+        } else if (mood_level < prev_mood - 0.1f) {
+            /* Mood declined */
+            mental_health_plasticity_learn(
+                monitor->plasticity_bridge,
+                MENTAL_HEALTH_LEARN_MOOD_DECLINED,
+                prev_mood - mood_level,
+                0,
+                1.0f
+            );
+        }
+        prev_mood = mood_level;
+
+        /* Check for resilience under stress */
+        if (stress_level > 0.6f && mood_level > 0.0f) {
+            /* Maintaining positive mood despite stress = resilience */
+            mental_health_plasticity_learn(
+                monitor->plasticity_bridge,
+                MENTAL_HEALTH_LEARN_RESILIENCE_DEMONSTRATED,
+                mood_level * (1.0f + stress_level),
+                0,
+                stress_level
+            );
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Get emotional state from SNN bridge
+ *
+ * WHAT: Retrieve decoded emotional state from SNN activity
+ * WHY:  Expose neural-encoded emotional state for external monitoring
+ * HOW:  Query SNN bridge for current emotional state
+ *
+ * @param monitor Mental health monitor (non-NULL)
+ * @param state Output emotional state structure (non-NULL)
+ * @return 0 on success, -1 on failure
+ */
+int mental_health_get_emotional_state(mental_health_monitor_t* monitor,
+                                      mental_health_emotional_state_t* state)
+{
+    if (!monitor || !state) {
+        return -1;
+    }
+
+    if (!monitor->snn_bridge || !monitor->bridges_enabled) {
+        /* Return default state if bridges not available */
+        memset(state, 0, sizeof(mental_health_emotional_state_t));
+        state->mood_level = 0.0f;
+        state->anxiety_level = 0.3f;
+        state->depression_level = 0.2f;
+        state->regulation_capacity = 0.7f;
+        state->resilience_factor = 0.5f;
+        return 0;
+    }
+
+    return mental_health_snn_get_emotional_state(monitor->snn_bridge, state);
+}
+
+/**
+ * @brief Get regulation state from plasticity bridge
+ *
+ * WHAT: Retrieve learned regulation capacities from plasticity bridge
+ * WHY:  Expose learned coping and resilience factors
+ * HOW:  Query plasticity bridge for current regulation state
+ *
+ * @param monitor Mental health monitor (non-NULL)
+ * @param state Output regulation state structure (non-NULL)
+ * @return 0 on success, -1 on failure
+ */
+int mental_health_get_regulation_state(mental_health_monitor_t* monitor,
+                                       mental_health_regulation_state_t* state)
+{
+    if (!monitor || !state) {
+        return -1;
+    }
+
+    if (!monitor->plasticity_bridge || !monitor->bridges_enabled) {
+        /* Return default state if bridges not available */
+        memset(state, 0, sizeof(mental_health_regulation_state_t));
+        state->mood_regulation_strength = 0.5f;
+        state->anxiety_coping_calibration = 0.5f;
+        state->depression_resistance = 0.5f;
+        state->stress_resilience = 0.5f;
+        state->learning_rate_mod = 1.0f;
+        return 0;
+    }
+
+    return mental_health_plasticity_get_regulation_state(monitor->plasticity_bridge, state);
 }
 
 // =============================================================================

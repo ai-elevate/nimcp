@@ -16,6 +16,8 @@
 #include "cognitive/recursive/nimcp_rcog_imagination_bridge.h"
 #include "cognitive/recursive/nimcp_rcog_collective_bridge.h"
 #include "cognitive/recursive/nimcp_rcog_brain_kg_bridge.h"
+#include "cognitive/recursive/nimcp_rcog_snn_bridge.h"
+#include "cognitive/recursive/nimcp_rcog_plasticity_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
@@ -66,6 +68,9 @@ struct rcog_engine {
     struct rcog_imagination_bridge* imagination_bridge;
     struct rcog_collective_bridge* collective_bridge;
     struct rcog_brain_kg_bridge* brain_kg_bridge;
+    rcog_snn_bridge_t* snn_bridge;
+    rcog_plasticity_bridge_t* plasticity_bridge;
+    bool bridges_enabled;
 
     /* Active requests */
     rcog_active_request_t requests[RCOG_ENGINE_MAX_CONCURRENT_GOALS];
@@ -333,6 +338,16 @@ int rcog_engine_init(rcog_engine_t* engine) {
 
     engine->subsystems_connected = true;
 
+    /* Create SNN and plasticity bridges with default configs */
+    rcog_snn_config_t snn_config = rcog_snn_config_default();
+    engine->snn_bridge = rcog_snn_create(&snn_config);
+
+    rcog_plasticity_config_t plasticity_config = rcog_plasticity_config_default();
+    engine->plasticity_bridge = rcog_plasticity_create(&plasticity_config);
+
+    /* Bridges are optional - don't fail init if they can't be created */
+    engine->bridges_enabled = (engine->snn_bridge != NULL && engine->plasticity_bridge != NULL);
+
     /* Register builtin tools if configured */
     if (engine->config.register_l1_builtins) {
         rcog_tool_router_register_l1_builtins(engine->tool_router);
@@ -452,6 +467,19 @@ void rcog_engine_destroy(rcog_engine_t* engine) {
         rcog_context_store_destroy(engine->context_store);
         engine->context_store = NULL;
     }
+
+    /* Destroy SNN and plasticity bridges */
+    if (engine->snn_bridge) {
+        rcog_snn_destroy(engine->snn_bridge);
+        engine->snn_bridge = NULL;
+    }
+
+    if (engine->plasticity_bridge) {
+        rcog_plasticity_destroy(engine->plasticity_bridge);
+        engine->plasticity_bridge = NULL;
+    }
+
+    engine->bridges_enabled = false;
 
     /* Clean up active request handles */
     for (uint32_t i = 0; i < RCOG_ENGINE_MAX_CONCURRENT_GOALS; i++) {

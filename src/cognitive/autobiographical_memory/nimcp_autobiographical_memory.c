@@ -12,6 +12,8 @@
 #define LOG_MODULE "autobiographical_memory"
 
 #include "cognitive/nimcp_autobiographical_memory.h"
+#include "cognitive/autobiographical_memory/nimcp_autobio_snn_bridge.h"
+#include "cognitive/autobiographical_memory/nimcp_autobio_plasticity_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -61,6 +63,11 @@ struct autobiographical_memory_system {
     // Bio-async integration
     void* bio_ctx;                  /**< bio_module_context_t pointer */
     bool bio_async_enabled;         /**< Bio-async registration status */
+
+    // SNN and Plasticity bridge integration
+    autobio_snn_bridge_t* snn_bridge;           /**< SNN bridge for memory encoding */
+    autobio_plasticity_bridge_t* plasticity_bridge; /**< Plasticity bridge for consolidation */
+    bool bridges_enabled;                        /**< Bridges initialization status */
 };
 
 /*=============================================================================
@@ -303,7 +310,33 @@ autobiographical_memory_t autobio_create(uint32_t capacity)
         }
     }
 
-return system;
+    // Initialize SNN and Plasticity bridges
+    system->bridges_enabled = false;
+    system->snn_bridge = NULL;
+    system->plasticity_bridge = NULL;
+
+    // Create SNN bridge with default config
+    autobio_snn_config_t snn_config = autobio_snn_config_default();
+    system->snn_bridge = autobio_snn_create(&snn_config);
+    if (system->snn_bridge) {
+        LOG_INFO("Autobiographical memory: SNN bridge initialized");
+    } else {
+        LOG_WARN("Autobiographical memory: Failed to initialize SNN bridge");
+    }
+
+    // Create Plasticity bridge with default config
+    autobio_plasticity_config_t plasticity_config = autobio_plasticity_config_default();
+    system->plasticity_bridge = autobio_plasticity_create(&plasticity_config);
+    if (system->plasticity_bridge) {
+        LOG_INFO("Autobiographical memory: Plasticity bridge initialized");
+    } else {
+        LOG_WARN("Autobiographical memory: Failed to initialize plasticity bridge");
+    }
+
+    // Mark bridges as enabled if both initialized successfully
+    system->bridges_enabled = (system->snn_bridge != NULL && system->plasticity_bridge != NULL);
+
+    return system;
 }
 
 /*=============================================================================
@@ -342,6 +375,17 @@ void autobio_destroy(autobiographical_memory_t system)
     if (!system) {
         return;
     }
+
+    // Destroy SNN and Plasticity bridges
+    if (system->snn_bridge) {
+        autobio_snn_destroy(system->snn_bridge);
+        system->snn_bridge = NULL;
+    }
+    if (system->plasticity_bridge) {
+        autobio_plasticity_destroy(system->plasticity_bridge);
+        system->plasticity_bridge = NULL;
+    }
+    system->bridges_enabled = false;
 
     // Unregister from bio-router
     if (system->bio_async_enabled && system->bio_ctx) {
@@ -767,6 +811,243 @@ bool autobio_generate_timeline_summary(autobiographical_memory_t system,
     }
 
     return true;
+}
+
+/* ============================================================================
+ * SNN/Plasticity Bridge Integration Functions
+ * ============================================================================ */
+
+/**
+ * @brief Encode a memory into the SNN bridge for neural processing
+ *
+ * WHAT: Encode memory attributes into SNN spike patterns
+ * WHY:  Enable biologically-plausible memory processing
+ * HOW:  Convert memory dimensions to neural activations
+ *
+ * @param system Memory system
+ * @param memory_id ID of memory to encode
+ * @return Spike count on success, -1 on failure
+ */
+int autobio_encode_memory_to_snn(autobiographical_memory_t system, uint64_t memory_id)
+{
+    if (!system || memory_id == 0 || !system->bridges_enabled || !system->snn_bridge) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(&system->mutex);
+
+    // Find the memory
+    autobiographical_memory_entry_t* mem = NULL;
+    for (uint32_t i = 0; i < system->count; i++) {
+        if (system->memories[i].memory_id == memory_id) {
+            mem = &system->memories[i];
+            break;
+        }
+    }
+
+    if (!mem) {
+        nimcp_mutex_unlock(&system->mutex);
+        return -1;
+    }
+
+    // Calculate recency (0=distant, 1=now)
+    uint64_t current_time = get_current_time_ms();
+    uint64_t age_ms = current_time - mem->timestamp_ms;
+    float recency = expf(-(float)age_ms / (1000.0f * 60.0f * 60.0f * 24.0f * 7.0f)); // ~1 week decay
+
+    nimcp_mutex_unlock(&system->mutex);
+
+    // Encode episodic trace (importance, self-relevance, vividness)
+    int spikes1 = autobio_snn_encode_episodic(
+        system->snn_bridge,
+        mem->importance,
+        mem->self_relevance,
+        mem->memory_strength
+    );
+
+    // Encode temporal context
+    int spikes2 = autobio_snn_encode_temporal(
+        system->snn_bridge,
+        recency,
+        mem->timestamp_ms
+    );
+
+    // Encode emotional components
+    // Convert valence enum to float: -2 to 2 -> -1 to 1
+    float valence_f = (float)mem->valence / 2.0f;
+    int spikes3 = autobio_snn_encode_emotional(
+        system->snn_bridge,
+        valence_f,
+        mem->emotional_intensity,
+        mem->arousal
+    );
+
+    // Simulate memory processing
+    if (autobio_snn_simulate(system->snn_bridge, 50.0f) < 0) {
+        return -1;
+    }
+
+    int total_spikes = 0;
+    if (spikes1 > 0) total_spikes += spikes1;
+    if (spikes2 > 0) total_spikes += spikes2;
+    if (spikes3 > 0) total_spikes += spikes3;
+
+    LOG_DEBUG("Encoded memory %lu to SNN: spikes=%d, importance=%.2f, recency=%.2f",
+              (unsigned long)memory_id, total_spikes, mem->importance, recency);
+
+    return total_spikes;
+}
+
+/**
+ * @brief Apply plasticity learning for memory consolidation
+ *
+ * WHAT: Strengthen memory traces through plasticity rules
+ * WHY:  Enable memory consolidation and reinforcement
+ * HOW:  Apply STDP and emotional modulation to synapses
+ *
+ * @param system Memory system
+ * @param memory_id ID of memory to consolidate
+ * @param emotional_boost Emotional intensity boost [0-1]
+ * @return 0 on success, -1 on failure
+ */
+int autobio_apply_consolidation_plasticity(autobiographical_memory_t system,
+                                            uint64_t memory_id,
+                                            float emotional_boost)
+{
+    if (!system || memory_id == 0 || !system->bridges_enabled || !system->plasticity_bridge) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(&system->mutex);
+
+    // Find the memory
+    autobiographical_memory_entry_t* mem = NULL;
+    for (uint32_t i = 0; i < system->count; i++) {
+        if (system->memories[i].memory_id == memory_id) {
+            mem = &system->memories[i];
+            break;
+        }
+    }
+
+    if (!mem) {
+        nimcp_mutex_unlock(&system->mutex);
+        return -1;
+    }
+
+    float importance = mem->importance;
+    float self_relevance = mem->self_relevance;
+    bool is_core = mem->is_core_memory;
+    uint32_t times_recalled = mem->times_recalled;
+
+    nimcp_mutex_unlock(&system->mutex);
+
+    // Register episodic synapse if not already (use memory_id as synapse_id)
+    autobio_plasticity_register_synapse(
+        system->plasticity_bridge,
+        (uint32_t)memory_id,
+        AUTOBIO_SYNAPSE_EPISODIC,
+        0.5f
+    );
+
+    // Apply learning based on retrieval success
+    if (times_recalled > 0) {
+        autobio_plasticity_learn(
+            system->plasticity_bridge,
+            AUTOBIO_LEARN_RETRIEVAL_SUCCESS,
+            importance,
+            (uint32_t)memory_id,
+            self_relevance
+        );
+    }
+
+    // Apply emotional boost if significant
+    if (emotional_boost > 0.1f) {
+        autobio_plasticity_apply_emotional_boost(system->plasticity_bridge, emotional_boost);
+        autobio_plasticity_learn(
+            system->plasticity_bridge,
+            AUTOBIO_LEARN_EMOTIONAL_BOOST,
+            emotional_boost,
+            (uint32_t)memory_id,
+            self_relevance
+        );
+    }
+
+    // Mark as core memory learning if applicable
+    if (is_core) {
+        autobio_plasticity_learn(
+            system->plasticity_bridge,
+            AUTOBIO_LEARN_CORE_MEMORY,
+            importance,
+            (uint32_t)memory_id,
+            1.0f
+        );
+    }
+
+    // Self-relevance modulation
+    if (self_relevance > 0.7f) {
+        autobio_plasticity_learn(
+            system->plasticity_bridge,
+            AUTOBIO_LEARN_SELF_RELEVANCE_HIGH,
+            self_relevance,
+            (uint32_t)memory_id,
+            importance
+        );
+    }
+
+    // Consolidate the learning
+    autobio_plasticity_consolidate(system->plasticity_bridge);
+
+    LOG_DEBUG("Applied consolidation plasticity to memory %lu: emotional_boost=%.2f",
+              (unsigned long)memory_id, emotional_boost);
+
+    return 0;
+}
+
+/**
+ * @brief Get SNN recall state for a memory
+ *
+ * @param system Memory system
+ * @param recall Output recall state
+ * @return 0 on success, -1 on failure
+ */
+int autobio_get_snn_recall_state(autobiographical_memory_t system, autobio_recall_t* recall)
+{
+    if (!system || !recall || !system->bridges_enabled || !system->snn_bridge) {
+        return -1;
+    }
+
+    return autobio_snn_get_recall(system->snn_bridge, recall);
+}
+
+/**
+ * @brief Get plasticity consolidation state
+ *
+ * @param system Memory system
+ * @param state Output consolidation state
+ * @return 0 on success, -1 on failure
+ */
+int autobio_get_consolidation_state(autobiographical_memory_t system,
+                                     autobio_consolidation_state_t* state)
+{
+    if (!system || !state || !system->bridges_enabled || !system->plasticity_bridge) {
+        return -1;
+    }
+
+    return autobio_plasticity_get_consolidation_state(system->plasticity_bridge, state);
+}
+
+/**
+ * @brief Check if SNN/plasticity bridges are enabled
+ *
+ * @param system Memory system
+ * @return true if bridges are enabled and operational
+ */
+bool autobio_bridges_enabled(autobiographical_memory_t system)
+{
+    if (!system) {
+        return false;
+    }
+    return system->bridges_enabled;
 }
 
 /* ============================================================================

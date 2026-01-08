@@ -848,6 +848,571 @@ bool nimcp_gpu_zeros(
     return true;
 }
 
+/* GEMM: C = alpha * A @ B + beta * C */
+bool nimcp_gpu_gemm(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* A,
+    const nimcp_gpu_tensor_t* B,
+    nimcp_gpu_tensor_t* C,
+    float alpha,
+    float beta,
+    bool trans_a,
+    bool trans_b)
+{
+    (void)ctx;
+    if (!A || !B || !C) return false;
+    if (!A->data || !B->data || !C->data) return false;
+
+    /* Get dimensions */
+    size_t M = trans_a ? A->dims[1] : A->dims[0];
+    size_t K_a = trans_a ? A->dims[0] : A->dims[1];
+    size_t K_b = trans_b ? B->dims[1] : B->dims[0];
+    size_t N = trans_b ? B->dims[0] : B->dims[1];
+
+    if (K_a != K_b) return false;  /* Dimension mismatch */
+
+    float* a = (float*)A->data;
+    float* b = (float*)B->data;
+    float* c = (float*)C->data;
+
+    /* Naive CPU GEMM */
+    for (size_t i = 0; i < M; i++) {
+        for (size_t j = 0; j < N; j++) {
+            float sum = 0.0f;
+            for (size_t k = 0; k < K_a; k++) {
+                size_t a_idx = trans_a ? (k * M + i) : (i * K_a + k);
+                size_t b_idx = trans_b ? (j * K_b + k) : (k * N + j);
+                sum += a[a_idx] * b[b_idx];
+            }
+            size_t c_idx = i * N + j;
+            c[c_idx] = alpha * sum + beta * c[c_idx];
+        }
+    }
+    return true;
+}
+
+bool nimcp_gpu_gemm_batched(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* A,
+    const nimcp_gpu_tensor_t* B,
+    nimcp_gpu_tensor_t* C,
+    float alpha,
+    float beta,
+    bool trans_a,
+    bool trans_b)
+{
+    (void)ctx;
+    if (!A || !B || !C) return false;
+    if (!A->data || !B->data || !C->data) return false;
+    if (A->ndim < 3 || B->ndim < 3 || C->ndim < 3) return false;
+
+    size_t batch_size = A->dims[0];
+    size_t M = trans_a ? A->dims[2] : A->dims[1];
+    size_t K = trans_a ? A->dims[1] : A->dims[2];
+    size_t N = trans_b ? B->dims[1] : B->dims[2];
+
+    float* a = (float*)A->data;
+    float* b = (float*)B->data;
+    float* c = (float*)C->data;
+
+    size_t a_batch_stride = M * K;
+    size_t b_batch_stride = K * N;
+    size_t c_batch_stride = M * N;
+
+    for (size_t batch = 0; batch < batch_size; batch++) {
+        float* a_batch = a + batch * a_batch_stride;
+        float* b_batch = b + batch * b_batch_stride;
+        float* c_batch = c + batch * c_batch_stride;
+
+        for (size_t i = 0; i < M; i++) {
+            for (size_t j = 0; j < N; j++) {
+                float sum = 0.0f;
+                for (size_t k = 0; k < K; k++) {
+                    size_t a_idx = trans_a ? (k * M + i) : (i * K + k);
+                    size_t b_idx = trans_b ? (j * K + k) : (k * N + j);
+                    sum += a_batch[a_idx] * b_batch[b_idx];
+                }
+                size_t c_idx = i * N + j;
+                c_batch[c_idx] = alpha * sum + beta * c_batch[c_idx];
+            }
+        }
+    }
+    return true;
+}
+
+bool nimcp_gpu_gemv(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* A,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* y,
+    float alpha,
+    float beta,
+    bool trans_a)
+{
+    (void)ctx;
+    if (!A || !x || !y) return false;
+    if (!A->data || !x->data || !y->data) return false;
+
+    size_t M = trans_a ? A->dims[1] : A->dims[0];
+    size_t N = trans_a ? A->dims[0] : A->dims[1];
+
+    float* a = (float*)A->data;
+    float* xv = (float*)x->data;
+    float* yv = (float*)y->data;
+
+    for (size_t i = 0; i < M; i++) {
+        float sum = 0.0f;
+        for (size_t j = 0; j < N; j++) {
+            size_t a_idx = trans_a ? (j * M + i) : (i * N + j);
+            sum += a[a_idx] * xv[j];
+        }
+        yv[i] = alpha * sum + beta * yv[i];
+    }
+    return true;
+}
+
+bool nimcp_gpu_add(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* a,
+    const nimcp_gpu_tensor_t* b,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!a || !b || !out) return false;
+    if (!a->data || !b->data || !out->data) return false;
+
+    float* av = (float*)a->data;
+    float* bv = (float*)b->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = av[i % a->numel] + bv[i % b->numel];
+    }
+    return true;
+}
+
+bool nimcp_gpu_sub(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* a,
+    const nimcp_gpu_tensor_t* b,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!a || !b || !out) return false;
+    if (!a->data || !b->data || !out->data) return false;
+
+    float* av = (float*)a->data;
+    float* bv = (float*)b->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = av[i % a->numel] - bv[i % b->numel];
+    }
+    return true;
+}
+
+bool nimcp_gpu_mul(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* a,
+    const nimcp_gpu_tensor_t* b,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!a || !b || !out) return false;
+    if (!a->data || !b->data || !out->data) return false;
+
+    float* av = (float*)a->data;
+    float* bv = (float*)b->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = av[i % a->numel] * bv[i % b->numel];
+    }
+    return true;
+}
+
+bool nimcp_gpu_div(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* a,
+    const nimcp_gpu_tensor_t* b,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!a || !b || !out) return false;
+    if (!a->data || !b->data || !out->data) return false;
+
+    float* av = (float*)a->data;
+    float* bv = (float*)b->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = av[i % a->numel] / bv[i % b->numel];
+    }
+    return true;
+}
+
+bool nimcp_gpu_add_scalar(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* a,
+    float scalar,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!a || !out) return false;
+    if (!a->data || !out->data) return false;
+
+    float* av = (float*)a->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = av[i] + scalar;
+    }
+    return true;
+}
+
+bool nimcp_gpu_mul_scalar(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* a,
+    float scalar,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!a || !out) return false;
+    if (!a->data || !out->data) return false;
+
+    float* av = (float*)a->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = av[i] * scalar;
+    }
+    return true;
+}
+
+bool nimcp_gpu_relu(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = xv[i] > 0 ? xv[i] : 0;
+    }
+    return true;
+}
+
+bool nimcp_gpu_leaky_relu(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* out,
+    float alpha)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = xv[i] > 0 ? xv[i] : alpha * xv[i];
+    }
+    return true;
+}
+
+bool nimcp_gpu_sigmoid(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = 1.0f / (1.0f + expf(-xv[i]));
+    }
+    return true;
+}
+
+bool nimcp_gpu_tanh(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = tanhf(xv[i]);
+    }
+    return true;
+}
+
+bool nimcp_gpu_gelu(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    const float sqrt_2_pi = 0.7978845608028654f;
+    const float coeff = 0.044715f;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        float xi = xv[i];
+        float x3 = xi * xi * xi;
+        float inner = sqrt_2_pi * (xi + coeff * x3);
+        ov[i] = 0.5f * xi * (1.0f + tanhf(inner));
+    }
+    return true;
+}
+
+bool nimcp_gpu_silu(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        float xi = xv[i];
+        ov[i] = xi / (1.0f + expf(-xi));
+    }
+    return true;
+}
+
+bool nimcp_gpu_softmax(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    /* Compute softmax along last dimension */
+    size_t last_dim = (x->ndim > 0) ? x->dims[x->ndim - 1] : x->numel;
+    size_t num_rows = x->numel / last_dim;
+
+    for (size_t row = 0; row < num_rows; row++) {
+        float* row_in = xv + row * last_dim;
+        float* row_out = ov + row * last_dim;
+
+        /* Find max for numerical stability */
+        float max_val = row_in[0];
+        for (size_t i = 1; i < last_dim; i++) {
+            if (row_in[i] > max_val) max_val = row_in[i];
+        }
+
+        /* Compute exp and sum */
+        float sum = 0.0f;
+        for (size_t i = 0; i < last_dim; i++) {
+            row_out[i] = expf(row_in[i] - max_val);
+            sum += row_out[i];
+        }
+
+        /* Normalize */
+        for (size_t i = 0; i < last_dim; i++) {
+            row_out[i] /= sum;
+        }
+    }
+    return true;
+}
+
+bool nimcp_gpu_log_softmax(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    size_t last_dim = (x->ndim > 0) ? x->dims[x->ndim - 1] : x->numel;
+    size_t num_rows = x->numel / last_dim;
+
+    for (size_t row = 0; row < num_rows; row++) {
+        float* row_in = xv + row * last_dim;
+        float* row_out = ov + row * last_dim;
+
+        float max_val = row_in[0];
+        for (size_t i = 1; i < last_dim; i++) {
+            if (row_in[i] > max_val) max_val = row_in[i];
+        }
+
+        float sum = 0.0f;
+        for (size_t i = 0; i < last_dim; i++) {
+            sum += expf(row_in[i] - max_val);
+        }
+        float log_sum = logf(sum);
+
+        for (size_t i = 0; i < last_dim; i++) {
+            row_out[i] = row_in[i] - max_val - log_sum;
+        }
+    }
+    return true;
+}
+
+bool nimcp_gpu_exp(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = expf(xv[i]);
+    }
+    return true;
+}
+
+bool nimcp_gpu_log(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = logf(xv[i]);
+    }
+    return true;
+}
+
+bool nimcp_gpu_sqrt(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = sqrtf(xv[i]);
+    }
+    return true;
+}
+
+bool nimcp_gpu_pow(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    float exponent,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = powf(xv[i], exponent);
+    }
+    return true;
+}
+
+bool nimcp_gpu_abs(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        ov[i] = fabsf(xv[i]);
+    }
+    return true;
+}
+
+bool nimcp_gpu_clamp(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* x,
+    float min_val,
+    float max_val,
+    nimcp_gpu_tensor_t* out)
+{
+    (void)ctx;
+    if (!x || !out) return false;
+    if (!x->data || !out->data) return false;
+
+    float* xv = (float*)x->data;
+    float* ov = (float*)out->data;
+
+    for (size_t i = 0; i < out->numel; i++) {
+        float v = xv[i];
+        if (v < min_val) v = min_val;
+        if (v > max_val) v = max_val;
+        ov[i] = v;
+    }
+    return true;
+}
+
+bool nimcp_gpu_copy(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* src,
+    nimcp_gpu_tensor_t* dst)
+{
+    (void)ctx;
+    if (!src || !dst) return false;
+    if (!src->data || !dst->data) return false;
+
+    size_t to_copy = src->numel < dst->numel ? src->numel : dst->numel;
+    memcpy(dst->data, src->data, to_copy * sizeof(float));
+    return true;
+}
+
+/* nimcp_gpu_memcpy and nimcp_gpu_memcpy_async are in nimcp_gpu_context_stub.c */
+
 /*=============================================================================
  * Graph GPU Stubs (gpu/graph/nimcp_graph_gpu.h)
  *=============================================================================*/
@@ -862,4 +1427,1084 @@ void nimcp_gpu_graph_destroy(nimcp_gpu_graph_t* graph) {
     free(graph->d_col_indices);
     free(graph->d_edge_weights);
     free(graph);
+}
+
+/*=============================================================================
+ * JEPA GPU Stubs (gpu/cognitive/nimcp_jepa_gpu.h)
+ *=============================================================================*/
+
+#include "gpu/cognitive/nimcp_jepa_gpu.h"
+
+/* Forward declaration for tensor destroy */
+extern void nimcp_gpu_tensor_destroy(nimcp_gpu_tensor_t* tensor);
+
+/* Helper to create a layer with CPU-backed tensors */
+static bool create_cpu_layer(
+    nimcp_jepa_gpu_layer_t* layer,
+    uint32_t in_dim,
+    uint32_t out_dim,
+    nimcp_jepa_gpu_activation_t activation)
+{
+    if (!layer) return false;
+
+    layer->in_dim = in_dim;
+    layer->out_dim = out_dim;
+    layer->activation = activation;
+
+    /* Create weight tensor [out_dim x in_dim] */
+    size_t weight_dims[2] = { out_dim, in_dim };
+    layer->weights = nimcp_gpu_tensor_create(NULL, weight_dims, 2, NIMCP_GPU_PRECISION_FP32);
+    if (!layer->weights) return false;
+
+    /* Create bias tensor [out_dim] */
+    size_t bias_dims[1] = { out_dim };
+    layer->bias = nimcp_gpu_tensor_create(NULL, bias_dims, 1, NIMCP_GPU_PRECISION_FP32);
+    if (!layer->bias) {
+        nimcp_gpu_tensor_destroy(layer->weights);
+        layer->weights = NULL;
+        return false;
+    }
+
+    /* Initialize gradients to NULL (not needed for inference) */
+    layer->grad_w = NULL;
+    layer->grad_b = NULL;
+
+    return true;
+}
+
+static void destroy_cpu_layer(nimcp_jepa_gpu_layer_t* layer) {
+    if (!layer) return;
+    if (layer->weights) nimcp_gpu_tensor_destroy(layer->weights);
+    if (layer->bias) nimcp_gpu_tensor_destroy(layer->bias);
+    if (layer->grad_w) nimcp_gpu_tensor_destroy(layer->grad_w);
+    if (layer->grad_b) nimcp_gpu_tensor_destroy(layer->grad_b);
+    layer->weights = NULL;
+    layer->bias = NULL;
+    layer->grad_w = NULL;
+    layer->grad_b = NULL;
+}
+
+nimcp_jepa_gpu_predictor_t* nimcp_jepa_gpu_predictor_create(
+    nimcp_gpu_context_t* ctx,
+    uint32_t input_dim,
+    uint32_t hidden_dim,
+    uint32_t output_dim,
+    uint32_t num_layers,
+    nimcp_jepa_gpu_activation_t activation)
+{
+    if (num_layers == 0) return NULL;
+
+    nimcp_jepa_gpu_predictor_t* pred = calloc(1, sizeof(nimcp_jepa_gpu_predictor_t));
+    if (!pred) return NULL;
+
+    pred->ctx = ctx;
+    pred->input_dim = input_dim;
+    pred->hidden_dim = hidden_dim;
+    pred->output_dim = output_dim;
+    pred->num_layers = num_layers;
+
+    /* Allocate layers array */
+    pred->layers = calloc(num_layers, sizeof(nimcp_jepa_gpu_layer_t));
+    if (!pred->layers) {
+        free(pred);
+        return NULL;
+    }
+
+    /* Create each layer */
+    for (uint32_t i = 0; i < num_layers; i++) {
+        uint32_t in_size = (i == 0) ? input_dim : hidden_dim;
+        uint32_t out_size = (i == num_layers - 1) ? output_dim : hidden_dim;
+        nimcp_jepa_gpu_activation_t layer_act = (i == num_layers - 1) ? NIMCP_JEPA_ACT_NONE : activation;
+
+        if (!create_cpu_layer(&pred->layers[i], in_size, out_size, layer_act)) {
+            /* Cleanup on failure */
+            for (uint32_t j = 0; j < i; j++) {
+                destroy_cpu_layer(&pred->layers[j]);
+            }
+            free(pred->layers);
+            free(pred);
+            return NULL;
+        }
+    }
+
+    /* Allocate activation buffers (optional for stubs) */
+    pred->activations = NULL;
+    pred->pre_activations = NULL;
+
+    return pred;
+}
+
+void nimcp_jepa_gpu_predictor_destroy(nimcp_jepa_gpu_predictor_t* predictor) {
+    if (!predictor) return;
+
+    if (predictor->layers) {
+        for (uint32_t i = 0; i < predictor->num_layers; i++) {
+            destroy_cpu_layer(&predictor->layers[i]);
+        }
+        free(predictor->layers);
+    }
+
+    /* Free activation buffers if allocated */
+    if (predictor->activations) {
+        for (uint32_t i = 0; i < predictor->num_layers; i++) {
+            if (predictor->activations[i]) {
+                nimcp_gpu_tensor_destroy(predictor->activations[i]);
+            }
+        }
+        free(predictor->activations);
+    }
+    if (predictor->pre_activations) {
+        for (uint32_t i = 0; i < predictor->num_layers; i++) {
+            if (predictor->pre_activations[i]) {
+                nimcp_gpu_tensor_destroy(predictor->pre_activations[i]);
+            }
+        }
+        free(predictor->pre_activations);
+    }
+
+    free(predictor);
+}
+
+bool nimcp_jepa_gpu_predictor_upload_weights(
+    nimcp_jepa_gpu_predictor_t* predictor,
+    uint32_t layer_idx,
+    const float* weights,
+    const float* bias)
+{
+    if (!predictor || layer_idx >= predictor->num_layers) return false;
+    if (!weights || !bias) return false;
+
+    nimcp_jepa_gpu_layer_t* layer = &predictor->layers[layer_idx];
+    if (!layer->weights || !layer->bias) return false;
+    if (!layer->weights->data || !layer->bias->data) return false;
+
+    /* Copy weights: [out_dim x in_dim] */
+    size_t weight_size = layer->out_dim * layer->in_dim * sizeof(float);
+    memcpy(layer->weights->data, weights, weight_size);
+
+    /* Copy bias: [out_dim] */
+    size_t bias_size = layer->out_dim * sizeof(float);
+    memcpy(layer->bias->data, bias, bias_size);
+
+    return true;
+}
+
+bool nimcp_jepa_gpu_predictor_download_weights(
+    const nimcp_jepa_gpu_predictor_t* predictor,
+    uint32_t layer_idx,
+    float* weights,
+    float* bias)
+{
+    if (!predictor || layer_idx >= predictor->num_layers) return false;
+    if (!weights || !bias) return false;
+
+    const nimcp_jepa_gpu_layer_t* layer = &predictor->layers[layer_idx];
+    if (!layer->weights || !layer->bias) return false;
+    if (!layer->weights->data || !layer->bias->data) return false;
+
+    /* Copy weights: [out_dim x in_dim] */
+    size_t weight_size = layer->out_dim * layer->in_dim * sizeof(float);
+    memcpy(weights, layer->weights->data, weight_size);
+
+    /* Copy bias: [out_dim] */
+    size_t bias_size = layer->out_dim * sizeof(float);
+    memcpy(bias, layer->bias->data, bias_size);
+
+    return true;
+}
+
+/* CPU GELU activation */
+static float cpu_gelu(float x) {
+    const float sqrt_2_pi = 0.7978845608028654f;
+    const float coeff = 0.044715f;
+    float x3 = x * x * x;
+    float inner = sqrt_2_pi * (x + coeff * x3);
+    return 0.5f * x * (1.0f + tanhf(inner));
+}
+
+static float cpu_apply_activation(float x, nimcp_jepa_gpu_activation_t act) {
+    switch (act) {
+        case NIMCP_JEPA_ACT_NONE:    return x;
+        case NIMCP_JEPA_ACT_RELU:    return x > 0 ? x : 0;
+        case NIMCP_JEPA_ACT_GELU:    return cpu_gelu(x);
+        case NIMCP_JEPA_ACT_TANH:    return tanhf(x);
+        case NIMCP_JEPA_ACT_SIGMOID: return 1.0f / (1.0f + expf(-x));
+        default:                     return x;
+    }
+}
+
+bool nimcp_jepa_gpu_forward_predict(
+    nimcp_jepa_gpu_predictor_t* predictor,
+    const nimcp_gpu_tensor_t* context,
+    nimcp_gpu_tensor_t* prediction)
+{
+    if (!predictor || !context || !prediction) return false;
+    if (!context->data || !prediction->data) return false;
+    if (!predictor->layers) return false;
+
+    uint32_t batch_size = (uint32_t)context->dims[0];
+    float* input = (float*)context->data;
+    float* output = (float*)prediction->data;
+
+    /* Allocate temp buffers for intermediate layers */
+    float* temp1 = calloc(batch_size * predictor->hidden_dim, sizeof(float));
+    float* temp2 = calloc(batch_size * predictor->hidden_dim, sizeof(float));
+    if (!temp1 || !temp2) {
+        free(temp1);
+        free(temp2);
+        return false;
+    }
+
+    float* current_input = input;
+    float* current_output = temp1;
+
+    /* Forward through each layer */
+    for (uint32_t layer_idx = 0; layer_idx < predictor->num_layers; layer_idx++) {
+        nimcp_jepa_gpu_layer_t* layer = &predictor->layers[layer_idx];
+        if (!layer->weights || !layer->bias) {
+            free(temp1);
+            free(temp2);
+            return false;
+        }
+
+        float* weights = (float*)layer->weights->data;
+        float* biases = (float*)layer->bias->data;
+        uint32_t in_dim = layer->in_dim;
+        uint32_t out_dim = layer->out_dim;
+
+        if (layer_idx == predictor->num_layers - 1) {
+            current_output = output;
+        }
+
+        /* Matrix multiply: output = weights @ input + bias */
+        for (uint32_t b = 0; b < batch_size; b++) {
+            for (uint32_t o = 0; o < out_dim; o++) {
+                float sum = biases[o];
+                for (uint32_t i = 0; i < in_dim; i++) {
+                    sum += weights[o * in_dim + i] * current_input[b * in_dim + i];
+                }
+                /* Apply activation */
+                sum = cpu_apply_activation(sum, layer->activation);
+                current_output[b * out_dim + o] = sum;
+            }
+        }
+
+        /* Swap buffers */
+        current_input = current_output;
+        current_output = (current_output == temp1) ? temp2 : temp1;
+    }
+
+    free(temp1);
+    free(temp2);
+    return true;
+}
+
+bool nimcp_jepa_gpu_forward_conditioned(
+    nimcp_jepa_gpu_predictor_t* predictor,
+    const nimcp_gpu_tensor_t* state,
+    const nimcp_gpu_tensor_t* action,
+    nimcp_gpu_tensor_t* next_state)
+{
+    (void)predictor; (void)state; (void)action; (void)next_state;
+    /* CPU fallback: not implemented - return false */
+    return false;
+}
+
+nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(
+    nimcp_gpu_context_t* ctx,
+    uint32_t state_dim,
+    uint32_t action_dim,
+    uint32_t hidden_dim,
+    uint32_t num_layers)
+{
+    if (num_layers == 0) return NULL;
+
+    nimcp_jepa_gpu_inverse_t* inv = calloc(1, sizeof(nimcp_jepa_gpu_inverse_t));
+    if (!inv) return NULL;
+
+    inv->ctx = ctx;
+    inv->state_dim = state_dim;
+    inv->action_dim = action_dim;
+    inv->num_layers = num_layers;
+
+    /* Allocate layers array */
+    inv->layers = calloc(num_layers, sizeof(nimcp_jepa_gpu_layer_t));
+    if (!inv->layers) {
+        free(inv);
+        return NULL;
+    }
+
+    /* Input is concatenated (state_t, state_next), output is action */
+    uint32_t input_dim = state_dim * 2;
+    for (uint32_t i = 0; i < num_layers; i++) {
+        uint32_t in_size = (i == 0) ? input_dim : hidden_dim;
+        uint32_t out_size = (i == num_layers - 1) ? action_dim : hidden_dim;
+        nimcp_jepa_gpu_activation_t act = (i == num_layers - 1) ? NIMCP_JEPA_ACT_TANH : NIMCP_JEPA_ACT_RELU;
+
+        if (!create_cpu_layer(&inv->layers[i], in_size, out_size, act)) {
+            /* Cleanup on failure */
+            for (uint32_t j = 0; j < i; j++) {
+                destroy_cpu_layer(&inv->layers[j]);
+            }
+            free(inv->layers);
+            free(inv);
+            return NULL;
+        }
+
+        /* Initialize weights with small random values */
+        float* weights = (float*)inv->layers[i].weights->data;
+        for (size_t j = 0; j < inv->layers[i].weights->numel; j++) {
+            weights[j] = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
+        }
+    }
+
+    return inv;
+}
+
+void nimcp_jepa_gpu_inverse_destroy(nimcp_jepa_gpu_inverse_t* inverse) {
+    if (!inverse) return;
+
+    if (inverse->layers) {
+        for (uint32_t i = 0; i < inverse->num_layers; i++) {
+            destroy_cpu_layer(&inverse->layers[i]);
+        }
+        free(inverse->layers);
+    }
+    free(inverse);
+}
+
+bool nimcp_jepa_gpu_inverse_infer(
+    nimcp_jepa_gpu_inverse_t* inverse,
+    const nimcp_gpu_tensor_t* state_t,
+    const nimcp_gpu_tensor_t* state_next,
+    nimcp_gpu_tensor_t* action)
+{
+    if (!inverse || !state_t || !state_next || !action) return false;
+    if (!state_t->data || !state_next->data || !action->data) return false;
+    if (!inverse->layers) return false;
+
+    uint32_t batch_size = (uint32_t)state_t->dims[0];
+    float* s_t = (float*)state_t->data;
+    float* s_next = (float*)state_next->data;
+    float* act_out = (float*)action->data;
+
+    /* Concatenate states */
+    uint32_t input_dim = inverse->state_dim * 2;
+
+    /* Get hidden_dim from first layer's output dim (or second layer's input dim) */
+    uint32_t hidden_dim = (inverse->num_layers > 1) ? inverse->layers[0].out_dim : inverse->layers[0].in_dim;
+
+    float* concat = calloc(batch_size * input_dim, sizeof(float));
+    float* temp1 = calloc(batch_size * hidden_dim, sizeof(float));
+    float* temp2 = calloc(batch_size * hidden_dim, sizeof(float));
+
+    if (!concat || !temp1 || !temp2) {
+        free(concat);
+        free(temp1);
+        free(temp2);
+        return false;
+    }
+
+    /* Build concatenated input */
+    for (uint32_t b = 0; b < batch_size; b++) {
+        memcpy(concat + b * input_dim, s_t + b * inverse->state_dim, inverse->state_dim * sizeof(float));
+        memcpy(concat + b * input_dim + inverse->state_dim, s_next + b * inverse->state_dim, inverse->state_dim * sizeof(float));
+    }
+
+    float* current_input = concat;
+    float* current_output = temp1;
+
+    /* Forward through layers */
+    for (uint32_t layer_idx = 0; layer_idx < inverse->num_layers; layer_idx++) {
+        nimcp_jepa_gpu_layer_t* layer = &inverse->layers[layer_idx];
+        float* weights = (float*)layer->weights->data;
+        float* biases = (float*)layer->bias->data;
+        uint32_t in_dim = layer->in_dim;
+        uint32_t out_dim = layer->out_dim;
+
+        if (layer_idx == inverse->num_layers - 1) {
+            current_output = act_out;
+        }
+
+        for (uint32_t b = 0; b < batch_size; b++) {
+            for (uint32_t o = 0; o < out_dim; o++) {
+                float sum = biases[o];
+                for (uint32_t i = 0; i < in_dim; i++) {
+                    sum += weights[o * in_dim + i] * current_input[b * in_dim + i];
+                }
+                /* Apply layer activation */
+                sum = cpu_apply_activation(sum, layer->activation);
+                current_output[b * out_dim + o] = sum;
+            }
+        }
+
+        current_input = current_output;
+        current_output = (current_output == temp1) ? temp2 : temp1;
+    }
+
+    free(concat);
+    free(temp1);
+    free(temp2);
+    return true;
+}
+
+bool nimcp_jepa_gpu_apply_mask(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* latent,
+    const nimcp_gpu_tensor_t* mask,
+    nimcp_gpu_tensor_t* masked)
+{
+    (void)ctx;
+    if (!latent || !mask || !masked) return false;
+    if (!latent->data || !mask->data || !masked->data) return false;
+
+    float* lat = (float*)latent->data;
+    float* m = (float*)mask->data;
+    float* out = (float*)masked->data;
+
+    for (size_t i = 0; i < latent->numel; i++) {
+        out[i] = lat[i] * m[i % mask->numel];
+    }
+    return true;
+}
+
+bool nimcp_jepa_gpu_generate_block_mask(
+    nimcp_gpu_context_t* ctx,
+    nimcp_gpu_tensor_t* mask,
+    uint32_t block_size,
+    float mask_ratio)
+{
+    (void)ctx;
+    if (!mask || !mask->data) return false;
+
+    float* m = (float*)mask->data;
+    size_t numel = mask->numel;
+
+    /* Initialize all to 1 (unmasked) */
+    for (size_t i = 0; i < numel; i++) {
+        m[i] = 1.0f;
+    }
+
+    /* Create block masks */
+    size_t num_blocks = numel / block_size;
+    size_t blocks_to_mask = (size_t)(num_blocks * mask_ratio);
+
+    for (size_t b = 0; b < blocks_to_mask; b++) {
+        size_t block_idx = (size_t)rand() % num_blocks;
+        size_t start = block_idx * block_size;
+        for (uint32_t j = 0; j < block_size && start + j < numel; j++) {
+            m[start + j] = 0.0f;
+        }
+    }
+
+    return true;
+}
+
+bool nimcp_jepa_gpu_apply_soft_mask(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* latent,
+    const nimcp_gpu_tensor_t* weights,
+    nimcp_gpu_tensor_t* masked)
+{
+    /* Same as apply_mask for CPU fallback */
+    return nimcp_jepa_gpu_apply_mask(ctx, latent, weights, masked);
+}
+
+bool nimcp_jepa_gpu_compute_loss(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* prediction,
+    const nimcp_gpu_tensor_t* target,
+    const nimcp_gpu_tensor_t* mask,
+    float* loss)
+{
+    (void)ctx;
+    if (!prediction || !target || !loss) return false;
+    if (!prediction->data || !target->data) return false;
+
+    float* pred = (float*)prediction->data;
+    float* tgt = (float*)target->data;
+    float* m = mask ? (float*)mask->data : NULL;
+
+    double sum = 0.0;
+    double count = 0.0;
+
+    for (size_t i = 0; i < prediction->numel; i++) {
+        float weight = m ? m[i % (m ? mask->numel : 1)] : 1.0f;
+        if (weight > 0.0f) {
+            float diff = pred[i] - tgt[i];
+            sum += weight * diff * diff;
+            count += weight;
+        }
+    }
+
+    *loss = count > 0 ? (float)(sum / count) : 0.0f;
+    return true;
+}
+
+bool nimcp_jepa_gpu_compute_precision_loss(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* prediction,
+    const nimcp_gpu_tensor_t* target,
+    const nimcp_gpu_tensor_t* precision,
+    float* loss)
+{
+    /* Use precision as weights */
+    return nimcp_jepa_gpu_compute_loss(ctx, prediction, target, precision, loss);
+}
+
+bool nimcp_jepa_gpu_backward(
+    nimcp_jepa_gpu_predictor_t* predictor,
+    const nimcp_gpu_tensor_t* grad_output,
+    nimcp_gpu_tensor_t* grad_input)
+{
+    (void)predictor; (void)grad_output; (void)grad_input;
+    /* CPU fallback: not implemented */
+    return false;
+}
+
+bool nimcp_jepa_gpu_update_weights(
+    nimcp_jepa_gpu_predictor_t* predictor,
+    float learning_rate,
+    float weight_decay)
+{
+    (void)predictor; (void)learning_rate; (void)weight_decay;
+    /* CPU fallback: not implemented */
+    return false;
+}
+
+int nimcp_jepa_gpu_download_latent(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_gpu_tensor_t* gpu_latent,
+    float* cpu_data,
+    size_t max_elements)
+{
+    (void)ctx;
+    if (!gpu_latent || !cpu_data) return -1;
+
+    size_t to_copy = gpu_latent->numel < max_elements ? gpu_latent->numel : max_elements;
+    memcpy(cpu_data, gpu_latent->data, to_copy * sizeof(float));
+    return (int)to_copy;
+}
+
+bool nimcp_jepa_gpu_upload_latent(
+    nimcp_gpu_context_t* ctx,
+    const float* cpu_data,
+    size_t num_elements,
+    nimcp_gpu_tensor_t* gpu_latent)
+{
+    (void)ctx;
+    if (!cpu_data || !gpu_latent || !gpu_latent->data) return false;
+
+    size_t to_copy = gpu_latent->numel < num_elements ? gpu_latent->numel : num_elements;
+    memcpy(gpu_latent->data, cpu_data, to_copy * sizeof(float));
+    return true;
+}
+
+bool nimcp_jepa_gpu_synchronize(nimcp_gpu_context_t* ctx) {
+    (void)ctx;
+    return true;  /* No-op for CPU */
+}
+
+/*=============================================================================
+ * Broca GPU Stubs (gpu/cognitive/nimcp_broca_gpu.h)
+ *=============================================================================*/
+
+#include "gpu/cognitive/nimcp_broca_gpu.h"
+
+/* Internal CPU-based Broca context for fallback */
+struct broca_gpu_context {
+    nimcp_gpu_context_t* gpu_ctx;
+    broca_gpu_config_t config;
+    broca_gpu_lexical_entry_t* lexicon;
+    uint32_t lexicon_size;
+    uint32_t lexicon_capacity;
+    uint32_t* wm_word_ids;
+    float* wm_activations;
+    uint32_t wm_count;
+    broca_gpu_stats_t stats;
+};
+
+broca_gpu_config_t broca_gpu_default_config(void) {
+    broca_gpu_config_t config = {
+        .max_lexicon_size = 10000,
+        .max_batch_size = 256,
+        .max_phonemes_per_word = 16,
+        .max_articulators = 6,
+        .working_memory_slots = 7,
+        .enable_coarticulation = true,
+        .enable_async_transfer = false,
+        .activation_decay_rate = 0.05f
+    };
+    return config;
+}
+
+broca_gpu_context_t* broca_gpu_create(
+    nimcp_gpu_context_t* gpu_ctx,
+    const broca_gpu_config_t* config)
+{
+    broca_gpu_context_t* ctx = calloc(1, sizeof(broca_gpu_context_t));
+    if (!ctx) return NULL;
+
+    ctx->gpu_ctx = gpu_ctx;
+    ctx->config = config ? *config : broca_gpu_default_config();
+
+    /* Allocate lexicon storage */
+    ctx->lexicon_capacity = ctx->config.max_lexicon_size;
+    ctx->lexicon = calloc(ctx->lexicon_capacity, sizeof(broca_gpu_lexical_entry_t));
+    if (!ctx->lexicon) {
+        free(ctx);
+        return NULL;
+    }
+
+    /* Allocate working memory */
+    ctx->wm_word_ids = calloc(ctx->config.working_memory_slots, sizeof(uint32_t));
+    ctx->wm_activations = calloc(ctx->config.working_memory_slots, sizeof(float));
+    if (!ctx->wm_word_ids || !ctx->wm_activations) {
+        free(ctx->lexicon);
+        free(ctx->wm_word_ids);
+        free(ctx->wm_activations);
+        free(ctx);
+        return NULL;
+    }
+
+    return ctx;
+}
+
+void broca_gpu_destroy(broca_gpu_context_t* ctx) {
+    if (!ctx) return;
+    free(ctx->lexicon);
+    free(ctx->wm_word_ids);
+    free(ctx->wm_activations);
+    free(ctx);
+}
+
+bool broca_gpu_synchronize(broca_gpu_context_t* ctx) {
+    (void)ctx;
+    return true;  /* No-op for CPU */
+}
+
+bool broca_gpu_upload_lexicon(
+    broca_gpu_context_t* ctx,
+    const broca_gpu_lexical_entry_t* entries,
+    uint32_t count)
+{
+    if (!ctx || !entries) return false;
+    if (ctx->lexicon_size + count > ctx->lexicon_capacity) return false;
+
+    memcpy(ctx->lexicon + ctx->lexicon_size, entries, count * sizeof(broca_gpu_lexical_entry_t));
+    ctx->lexicon_size += count;
+    return true;
+}
+
+bool broca_gpu_clear_lexicon(broca_gpu_context_t* ctx) {
+    if (!ctx) return false;
+    ctx->lexicon_size = 0;
+    return true;
+}
+
+uint32_t broca_gpu_get_lexicon_size(const broca_gpu_context_t* ctx) {
+    return ctx ? ctx->lexicon_size : 0;
+}
+
+bool broca_gpu_batch_lexical_lookup(
+    broca_gpu_context_t* ctx,
+    const uint32_t* word_ids,
+    uint32_t count,
+    broca_gpu_lookup_result_t* results)
+{
+    if (!ctx || !word_ids || !results) return false;
+
+    for (uint32_t i = 0; i < count; i++) {
+        results[i].word_id = word_ids[i];
+        results[i].found = false;
+        results[i].phoneme_count = 0;
+        results[i].frequency = 0.0f;
+
+        /* Linear search (CPU fallback) */
+        for (uint32_t j = 0; j < ctx->lexicon_size; j++) {
+            if (ctx->lexicon[j].word_id == word_ids[i]) {
+                results[i].found = true;
+                results[i].phoneme_count = ctx->lexicon[j].phoneme_count;
+                memcpy(results[i].phonemes, ctx->lexicon[j].phonemes, 16);
+                results[i].frequency = ctx->lexicon[j].frequency;
+                break;
+            }
+        }
+    }
+    ctx->stats.lexical_lookups += count;
+    return true;
+}
+
+bool broca_gpu_find_top_activated(
+    broca_gpu_context_t* ctx,
+    uint32_t top_n,
+    broca_gpu_lexical_entry_t* results,
+    uint32_t* actual_count)
+{
+    if (!ctx || !results || !actual_count) return false;
+
+    /* Simple bubble-sort top-N for CPU fallback */
+    uint32_t found = 0;
+    for (uint32_t i = 0; i < ctx->lexicon_size && found < top_n; i++) {
+        /* Find entry with max activation not yet selected */
+        float max_act = -1.0f;
+        uint32_t max_idx = 0;
+        bool found_any = false;
+
+        for (uint32_t j = 0; j < ctx->lexicon_size; j++) {
+            if (ctx->lexicon[j].activation > max_act) {
+                bool already_found = false;
+                for (uint32_t k = 0; k < found; k++) {
+                    if (results[k].word_id == ctx->lexicon[j].word_id) {
+                        already_found = true;
+                        break;
+                    }
+                }
+                if (!already_found) {
+                    max_act = ctx->lexicon[j].activation;
+                    max_idx = j;
+                    found_any = true;
+                }
+            }
+        }
+        if (found_any) {
+            results[found++] = ctx->lexicon[max_idx];
+        }
+    }
+    *actual_count = found;
+    return true;
+}
+
+bool broca_gpu_update_activations(
+    broca_gpu_context_t* ctx,
+    const uint32_t* word_ids,
+    uint32_t count,
+    float boost_amount,
+    float decay_rate)
+{
+    if (!ctx) return false;
+
+    /* Apply decay to all */
+    for (uint32_t i = 0; i < ctx->lexicon_size; i++) {
+        ctx->lexicon[i].activation *= decay_rate;
+    }
+
+    /* Apply boost to specified words */
+    if (word_ids && count > 0) {
+        for (uint32_t i = 0; i < count; i++) {
+            for (uint32_t j = 0; j < ctx->lexicon_size; j++) {
+                if (ctx->lexicon[j].word_id == word_ids[i]) {
+                    ctx->lexicon[j].activation += boost_amount;
+                    if (ctx->lexicon[j].activation > 1.0f) {
+                        ctx->lexicon[j].activation = 1.0f;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool broca_gpu_encode_phonemes(
+    broca_gpu_context_t* ctx,
+    const uint32_t* word_ids,
+    uint32_t word_count,
+    uint8_t* phoneme_buffer,
+    uint32_t buffer_size,
+    uint32_t* phoneme_count,
+    uint32_t* word_boundaries)
+{
+    if (!ctx || !word_ids || !phoneme_buffer || !phoneme_count) return false;
+
+    uint32_t offset = 0;
+    for (uint32_t i = 0; i < word_count; i++) {
+        if (word_boundaries) word_boundaries[i] = offset;
+
+        /* Find word in lexicon */
+        for (uint32_t j = 0; j < ctx->lexicon_size; j++) {
+            if (ctx->lexicon[j].word_id == word_ids[i]) {
+                uint32_t pc = ctx->lexicon[j].phoneme_count;
+                if (offset + pc > buffer_size) {
+                    *phoneme_count = offset;
+                    return true;
+                }
+                memcpy(phoneme_buffer + offset, ctx->lexicon[j].phonemes, pc);
+                offset += pc;
+                break;
+            }
+        }
+    }
+    *phoneme_count = offset;
+    ctx->stats.phonemes_encoded += offset;
+    return true;
+}
+
+bool broca_gpu_apply_coarticulation(
+    broca_gpu_context_t* ctx,
+    uint8_t* phonemes,
+    uint32_t phoneme_count,
+    float coarticulation_strength)
+{
+    (void)ctx; (void)phonemes; (void)phoneme_count; (void)coarticulation_strength;
+    /* CPU fallback: no-op (coarticulation requires full phoneme feature model) */
+    return true;
+}
+
+bool broca_gpu_generate_motor_commands(
+    broca_gpu_context_t* ctx,
+    const uint8_t* phonemes,
+    uint32_t phoneme_count,
+    broca_gpu_motor_command_t* commands,
+    uint32_t max_commands,
+    uint32_t* command_count,
+    float base_timestamp)
+{
+    if (!ctx || !phonemes || !commands || !command_count) return false;
+
+    uint32_t num_arts = ctx->config.max_articulators;
+    uint32_t cmd_idx = 0;
+    float timestamp = base_timestamp;
+    float phoneme_duration = 100.0f;  /* ms per phoneme */
+
+    for (uint32_t p = 0; p < phoneme_count && cmd_idx < max_commands; p++) {
+        /* Generate one command per articulator per phoneme */
+        for (uint32_t a = 0; a < num_arts && cmd_idx < max_commands; a++) {
+            commands[cmd_idx].articulator = (uint8_t)a;
+            commands[cmd_idx].phoneme = phonemes[p];
+            commands[cmd_idx].position = 0.5f + 0.3f * sinf((float)(phonemes[p] + a));
+            commands[cmd_idx].velocity = 1.0f;
+            commands[cmd_idx].timestamp_ms = timestamp;
+            cmd_idx++;
+        }
+        timestamp += phoneme_duration;
+    }
+
+    *command_count = cmd_idx;
+    ctx->stats.motor_commands += cmd_idx;
+    return true;
+}
+
+bool broca_gpu_adjust_timing(
+    broca_gpu_context_t* ctx,
+    broca_gpu_motor_command_t* commands,
+    uint32_t command_count,
+    float rate_multiplier)
+{
+    (void)ctx;
+    if (!commands) return false;
+
+    for (uint32_t i = 0; i < command_count; i++) {
+        commands[i].timestamp_ms *= rate_multiplier;
+    }
+    return true;
+}
+
+bool broca_gpu_wm_push(
+    broca_gpu_context_t* ctx,
+    const uint32_t* word_ids,
+    uint32_t count,
+    float initial_activation)
+{
+    if (!ctx || !word_ids) return false;
+
+    for (uint32_t i = 0; i < count; i++) {
+        if (ctx->wm_count < ctx->config.working_memory_slots) {
+            ctx->wm_word_ids[ctx->wm_count] = word_ids[i];
+            ctx->wm_activations[ctx->wm_count] = initial_activation;
+            ctx->wm_count++;
+        } else {
+            /* Shift and add */
+            for (uint32_t j = 0; j < ctx->wm_count - 1; j++) {
+                ctx->wm_word_ids[j] = ctx->wm_word_ids[j + 1];
+                ctx->wm_activations[j] = ctx->wm_activations[j + 1];
+            }
+            ctx->wm_word_ids[ctx->wm_count - 1] = word_ids[i];
+            ctx->wm_activations[ctx->wm_count - 1] = initial_activation;
+        }
+    }
+    ctx->stats.wm_operations++;
+    return true;
+}
+
+bool broca_gpu_wm_get_contents(
+    broca_gpu_context_t* ctx,
+    uint32_t* word_ids,
+    float* activations,
+    uint32_t max_count,
+    uint32_t* actual_count)
+{
+    if (!ctx || !word_ids || !actual_count) return false;
+
+    uint32_t to_copy = ctx->wm_count < max_count ? ctx->wm_count : max_count;
+    memcpy(word_ids, ctx->wm_word_ids, to_copy * sizeof(uint32_t));
+    if (activations) {
+        memcpy(activations, ctx->wm_activations, to_copy * sizeof(float));
+    }
+    *actual_count = to_copy;
+    return true;
+}
+
+bool broca_gpu_wm_apply_decay(
+    broca_gpu_context_t* ctx,
+    float decay_factor,
+    float threshold)
+{
+    if (!ctx) return false;
+
+    uint32_t new_count = 0;
+    for (uint32_t i = 0; i < ctx->wm_count; i++) {
+        ctx->wm_activations[i] *= decay_factor;
+        if (ctx->wm_activations[i] >= threshold) {
+            ctx->wm_word_ids[new_count] = ctx->wm_word_ids[i];
+            ctx->wm_activations[new_count] = ctx->wm_activations[i];
+            new_count++;
+        }
+    }
+    ctx->wm_count = new_count;
+    return true;
+}
+
+bool broca_gpu_wm_clear(broca_gpu_context_t* ctx) {
+    if (!ctx) return false;
+    ctx->wm_count = 0;
+    return true;
+}
+
+bool broca_gpu_produce_utterance(
+    broca_gpu_context_t* ctx,
+    const uint32_t* word_ids,
+    uint32_t word_count,
+    broca_gpu_motor_command_t* commands,
+    uint32_t max_commands,
+    uint32_t* command_count,
+    float base_timestamp)
+{
+    if (!ctx || !word_ids || !commands || !command_count) return false;
+
+    /* Allocate phoneme buffer */
+    uint32_t max_phonemes = word_count * ctx->config.max_phonemes_per_word;
+    uint8_t* phonemes = calloc(max_phonemes, sizeof(uint8_t));
+    if (!phonemes) return false;
+
+    uint32_t phoneme_count = 0;
+    bool result = broca_gpu_encode_phonemes(ctx, word_ids, word_count, phonemes,
+                                            max_phonemes, &phoneme_count, NULL);
+    if (!result) {
+        free(phonemes);
+        return false;
+    }
+
+    result = broca_gpu_generate_motor_commands(ctx, phonemes, phoneme_count,
+                                               commands, max_commands, command_count,
+                                               base_timestamp);
+    free(phonemes);
+    return result;
+}
+
+bool broca_gpu_get_stats(const broca_gpu_context_t* ctx, broca_gpu_stats_t* stats) {
+    if (!ctx || !stats) return false;
+    *stats = ctx->stats;
+    stats->gpu_memory_used = ctx->lexicon_size * sizeof(broca_gpu_lexical_entry_t) +
+                             ctx->config.working_memory_slots * (sizeof(uint32_t) + sizeof(float));
+    return true;
+}
+
+void broca_gpu_reset_stats(broca_gpu_context_t* ctx) {
+    if (ctx) {
+        memset(&ctx->stats, 0, sizeof(broca_gpu_stats_t));
+    }
+}
+
+/* CPU reference implementations */
+bool broca_cpu_batch_lexical_lookup(
+    const broca_gpu_lexical_entry_t* lexicon,
+    uint32_t lexicon_size,
+    const uint32_t* word_ids,
+    uint32_t count,
+    broca_gpu_lookup_result_t* results)
+{
+    if (!lexicon || !word_ids || !results) return false;
+
+    for (uint32_t i = 0; i < count; i++) {
+        results[i].word_id = word_ids[i];
+        results[i].found = false;
+        results[i].phoneme_count = 0;
+        results[i].frequency = 0.0f;
+
+        for (uint32_t j = 0; j < lexicon_size; j++) {
+            if (lexicon[j].word_id == word_ids[i]) {
+                results[i].found = true;
+                results[i].phoneme_count = lexicon[j].phoneme_count;
+                memcpy(results[i].phonemes, lexicon[j].phonemes, 16);
+                results[i].frequency = lexicon[j].frequency;
+                break;
+            }
+        }
+    }
+    return true;
+}
+
+bool broca_cpu_encode_phonemes(
+    const broca_gpu_lexical_entry_t* lexicon,
+    uint32_t lexicon_size,
+    const uint32_t* word_ids,
+    uint32_t word_count,
+    uint8_t* phoneme_buffer,
+    uint32_t buffer_size,
+    uint32_t* phoneme_count,
+    uint32_t* word_boundaries)
+{
+    if (!lexicon || !word_ids || !phoneme_buffer || !phoneme_count) return false;
+
+    uint32_t offset = 0;
+    for (uint32_t i = 0; i < word_count; i++) {
+        if (word_boundaries) word_boundaries[i] = offset;
+
+        for (uint32_t j = 0; j < lexicon_size; j++) {
+            if (lexicon[j].word_id == word_ids[i]) {
+                uint32_t pc = lexicon[j].phoneme_count;
+                if (offset + pc > buffer_size) {
+                    *phoneme_count = offset;
+                    return true;
+                }
+                memcpy(phoneme_buffer + offset, lexicon[j].phonemes, pc);
+                offset += pc;
+                break;
+            }
+        }
+    }
+    *phoneme_count = offset;
+    return true;
+}
+
+bool broca_cpu_generate_motor_commands(
+    const uint8_t* phonemes,
+    uint32_t phoneme_count,
+    broca_gpu_motor_command_t* commands,
+    uint32_t max_commands,
+    uint32_t* command_count,
+    float base_timestamp,
+    uint32_t num_articulators)
+{
+    if (!phonemes || !commands || !command_count) return false;
+
+    uint32_t cmd_idx = 0;
+    float timestamp = base_timestamp;
+    float phoneme_duration = 100.0f;
+
+    for (uint32_t p = 0; p < phoneme_count && cmd_idx < max_commands; p++) {
+        for (uint32_t a = 0; a < num_articulators && cmd_idx < max_commands; a++) {
+            commands[cmd_idx].articulator = (uint8_t)a;
+            commands[cmd_idx].phoneme = phonemes[p];
+            commands[cmd_idx].position = 0.5f + 0.3f * sinf((float)(phonemes[p] + a));
+            commands[cmd_idx].velocity = 1.0f;
+            commands[cmd_idx].timestamp_ms = timestamp;
+            cmd_idx++;
+        }
+        timestamp += phoneme_duration;
+    }
+
+    *command_count = cmd_idx;
+    return true;
 }

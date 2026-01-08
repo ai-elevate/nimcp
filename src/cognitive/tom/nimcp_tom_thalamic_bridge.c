@@ -146,6 +146,39 @@ int tom_thalamic_route_perspective(
     return tom_thalamic_route_signal(bridge, &signal);
 }
 
+int tom_thalamic_route_inference(tom_thalamic_bridge_t* bridge, const tom_thalamic_signal_t* signal) {
+    if (!bridge || !signal) return -1;
+    /* Apply attention gating */
+    if (bridge->config.enable_attention_gating &&
+        signal->social_relevance < bridge->config.min_urgency_threshold) {
+        bridge->stats.signals_gated++;
+        return 0;
+    }
+    /* Count the inference based on signal type */
+    switch (signal->signal_type) {
+        case TOM_SIGNAL_BELIEF_ATTR:
+            bridge->stats.belief_attributions++;
+            break;
+        case TOM_SIGNAL_INTENT_INFER:
+            bridge->stats.intent_inferences++;
+            break;
+        case TOM_SIGNAL_EMOTION_ATTR:
+            bridge->stats.emotion_attributions++;
+            break;
+        case TOM_SIGNAL_PERSPECTIVE:
+            bridge->stats.perspective_takes++;
+            break;
+    }
+    /* Update average confidence */
+    uint64_t total = bridge->stats.belief_attributions + bridge->stats.intent_inferences +
+                     bridge->stats.emotion_attributions + bridge->stats.perspective_takes;
+    if (total > 0) {
+        bridge->stats.avg_confidence = (bridge->stats.avg_confidence * (total - 1) +
+                                        signal->confidence) / total;
+    }
+    return 0;
+}
+
 int tom_thalamic_set_attention(tom_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);

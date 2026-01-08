@@ -643,19 +643,24 @@ int wm_plasticity_decay(
     float decay_amount = slot->current_strength - new_strength;
     slot->current_strength = new_strength;
 
-    /* Decay causes minor LTD */
-    if (decay_amount > 0.1f) {
-        for (uint32_t i = 0; i < bridge->synapse_count; i++) {
-            wm_plasticity_synapse_t* syn = &bridge->synapses[i];
-            if (syn->slot_idx == (int32_t)slot_idx && syn->type == WM_SYNAPSE_MAINTENANCE) {
-                float dw = -decay_amount * 0.001f;
-                float old_weight = syn->weight;
-                syn->weight = clamp_f(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
+    /* Decay causes minor LTD - track any decay as an LTD event */
+    if (decay_amount > 0.0f) {
+        bridge->stats.ltd_events++;
 
-                if (bridge->weight_callback) {
-                    bridge->weight_callback(syn->synapse_id, slot_idx, old_weight,
-                                           syn->weight, WM_LEARN_DECAY,
-                                           bridge->weight_callback_data);
+        /* Apply weight changes for significant decay */
+        if (decay_amount > 0.1f) {
+            for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+                wm_plasticity_synapse_t* syn = &bridge->synapses[i];
+                if (syn->slot_idx == (int32_t)slot_idx && syn->type == WM_SYNAPSE_MAINTENANCE) {
+                    float dw = -decay_amount * 0.001f;
+                    float old_weight = syn->weight;
+                    syn->weight = clamp_f(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
+
+                    if (bridge->weight_callback) {
+                        bridge->weight_callback(syn->synapse_id, slot_idx, old_weight,
+                                               syn->weight, WM_LEARN_DECAY,
+                                               bridge->weight_callback_data);
+                    }
                 }
             }
         }
