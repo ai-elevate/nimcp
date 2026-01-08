@@ -7153,6 +7153,19 @@ e2e_test_tier1_fep_bridges/fast:
 .PHONY : e2e_test_tier1_fep_bridges/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_tier2_hub_bridges
+
+# Build rule for target.
+e2e_test_tier2_hub_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_tier2_hub_bridges
+.PHONY : e2e_test_tier2_hub_bridges
+
+# fast build rule for target.
+e2e_test_tier2_hub_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_tier2_hub_bridges.dir/build.make test/e2e/CMakeFiles/e2e_test_tier2_hub_bridges.dir/build
+.PHONY : e2e_test_tier2_hub_bridges/fast
+
+#=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
 
 # Build rule for target.
@@ -11820,6 +11833,71 @@ unit_cognitive_test_rcog_hub_bridge/fast:
 .PHONY : unit_cognitive_test_rcog_hub_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_test_salience_attention_bridge
+
+# Build rule for target.
+unit_cognitive_test_salience_attention_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_salience_attention_bridge
+.PHONY : unit_cognitive_test_salience_attention_bridge
+
+# fast build rule for target.
+unit_cognitive_test_salience_attention_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_salience_attention_bridge.dir/build.make test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_salience_attention_bridge.dir/build
+.PHONY : unit_cognitive_test_salience_attention_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_predictive_attention_bridge
+
+# Build rule for target.
+unit_cognitive_test_predictive_attention_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_predictive_attention_bridge
+.PHONY : unit_cognitive_test_predictive_attention_bridge
+
+# fast build rule for target.
+unit_cognitive_test_predictive_attention_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_predictive_attention_bridge.dir/build.make test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_predictive_attention_bridge.dir/build
+.PHONY : unit_cognitive_test_predictive_attention_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_mirror_empathy_bridge
+
+# Build rule for target.
+unit_cognitive_test_mirror_empathy_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_mirror_empathy_bridge
+.PHONY : unit_cognitive_test_mirror_empathy_bridge
+
+# fast build rule for target.
+unit_cognitive_test_mirror_empathy_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_mirror_empathy_bridge.dir/build.make test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_mirror_empathy_bridge.dir/build
+.PHONY : unit_cognitive_test_mirror_empathy_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_game_theory_executive_bridge
+
+# Build rule for target.
+unit_cognitive_test_game_theory_executive_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_game_theory_executive_bridge
+.PHONY : unit_cognitive_test_game_theory_executive_bridge
+
+# fast build rule for target.
+unit_cognitive_test_game_theory_executive_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_game_theory_executive_bridge.dir/build.make test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_game_theory_executive_bridge.dir/build
+.PHONY : unit_cognitive_test_game_theory_executive_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_test_imagination_reasoning_bridge
+
+# Build rule for target.
+unit_cognitive_test_imagination_reasoning_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_imagination_reasoning_bridge
+.PHONY : unit_cognitive_test_imagination_reasoning_bridge
+
+# fast build rule for target.
+unit_cognitive_test_imagination_reasoning_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_imagination_reasoning_bridge.dir/build.make test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_imagination_reasoning_bridge.dir/build
+.PHONY : unit_cognitive_test_imagination_reasoning_bridge/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_bio_async_test
 
 # Build rule for target.
@@ -15876,6 +15954,71 @@ integration_cognitive_test_hub_orchestrator_integration/fast:
 .PHONY : integration_cognitive_test_hub_orchestrator_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_test_salience_attention_integration
+
+# Build rule for target.
+integration_cognitive_test_salience_attention_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_test_salience_attention_integration
+.PHONY : integration_cognitive_test_salience_attention_integration
+
+# fast build rule for target.
+integration_cognitive_test_salience_attention_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_salience_attention_integration.dir/build.make test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_salience_attention_integration.dir/build
+.PHONY : integration_cognitive_test_salience_attention_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_test_predictive_attention_integration
+
+# Build rule for target.
+integration_cognitive_test_predictive_attention_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_test_predictive_attention_integration
+.PHONY : integration_cognitive_test_predictive_attention_integration
+
+# fast build rule for target.
+integration_cognitive_test_predictive_attention_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_predictive_attention_integration.dir/build.make test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_predictive_attention_integration.dir/build
+.PHONY : integration_cognitive_test_predictive_attention_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_test_mirror_empathy_integration
+
+# Build rule for target.
+integration_cognitive_test_mirror_empathy_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_test_mirror_empathy_integration
+.PHONY : integration_cognitive_test_mirror_empathy_integration
+
+# fast build rule for target.
+integration_cognitive_test_mirror_empathy_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_mirror_empathy_integration.dir/build.make test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_mirror_empathy_integration.dir/build
+.PHONY : integration_cognitive_test_mirror_empathy_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_test_game_theory_executive_integration
+
+# Build rule for target.
+integration_cognitive_test_game_theory_executive_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_test_game_theory_executive_integration
+.PHONY : integration_cognitive_test_game_theory_executive_integration
+
+# fast build rule for target.
+integration_cognitive_test_game_theory_executive_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_game_theory_executive_integration.dir/build.make test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_game_theory_executive_integration.dir/build
+.PHONY : integration_cognitive_test_game_theory_executive_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_test_imagination_reasoning_integration
+
+# Build rule for target.
+integration_cognitive_test_imagination_reasoning_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_test_imagination_reasoning_integration
+.PHONY : integration_cognitive_test_imagination_reasoning_integration
+
+# fast build rule for target.
+integration_cognitive_test_imagination_reasoning_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_imagination_reasoning_integration.dir/build.make test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_imagination_reasoning_integration.dir/build
+.PHONY : integration_cognitive_test_imagination_reasoning_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_imagination_fep
 
 # Build rule for target.
@@ -16381,6 +16524,19 @@ regression_cognitive_test_integration_performance_regression: cmake_check_build_
 regression_cognitive_test_integration_performance_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/integration/CMakeFiles/regression_cognitive_test_integration_performance_regression.dir/build.make test/regression/cognitive/integration/CMakeFiles/regression_cognitive_test_integration_performance_regression.dir/build
 .PHONY : regression_cognitive_test_integration_performance_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_test_tier2_hub_bridges_regression
+
+# Build rule for target.
+regression_cognitive_test_tier2_hub_bridges_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_test_tier2_hub_bridges_regression
+.PHONY : regression_cognitive_test_tier2_hub_bridges_regression
+
+# fast build rule for target.
+regression_cognitive_test_tier2_hub_bridges_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/integration/CMakeFiles/regression_cognitive_test_tier2_hub_bridges_regression.dir/build.make test/regression/cognitive/integration/CMakeFiles/regression_cognitive_test_tier2_hub_bridges_regression.dir/build
+.PHONY : regression_cognitive_test_tier2_hub_bridges_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_parietal_fep_orchestrator_bridge
@@ -23184,6 +23340,7 @@ help:
 	@echo "... e2e_test_ternary_swarm_consensus"
 	@echo "... e2e_test_thalamus_pipeline"
 	@echo "... e2e_test_tier1_fep_bridges"
+	@echo "... e2e_test_tier2_hub_bridges"
 	@echo "... e2e_test_tom_snn_plasticity_pipeline"
 	@echo "... e2e_test_training_logic_pipeline"
 	@echo "... e2e_test_unified_training_integration"
@@ -23275,9 +23432,14 @@ help:
 	@echo "... integration_cognitive_substrate_bridges"
 	@echo "... integration_cognitive_test_attention_wm_integration"
 	@echo "... integration_cognitive_test_emotion_memory_integration"
+	@echo "... integration_cognitive_test_game_theory_executive_integration"
 	@echo "... integration_cognitive_test_hub_module_integration"
 	@echo "... integration_cognitive_test_hub_orchestrator_integration"
+	@echo "... integration_cognitive_test_imagination_reasoning_integration"
+	@echo "... integration_cognitive_test_mirror_empathy_integration"
 	@echo "... integration_cognitive_test_multi_bridge_integration"
+	@echo "... integration_cognitive_test_predictive_attention_integration"
+	@echo "... integration_cognitive_test_salience_attention_integration"
 	@echo "... integration_cognitive_tom_snn_plasticity"
 	@echo "... integration_cognitive_wellbeing_enhanced"
 	@echo "... integration_cognitive_wellbeing_snn_plasticity"
@@ -23559,6 +23721,7 @@ help:
 	@echo "... regression_cognitive_test_bridge_regression"
 	@echo "... regression_cognitive_test_hub_regression"
 	@echo "... regression_cognitive_test_integration_performance_regression"
+	@echo "... regression_cognitive_test_tier2_hub_bridges_regression"
 	@echo "... regression_cognitive_thalamic_routing"
 	@echo "... regression_cognitive_tom_snn_plasticity"
 	@echo "... regression_cognitive_wellbeing_enhanced"
@@ -24161,6 +24324,7 @@ help:
 	@echo "... unit_cognitive_test_game_theory_auction"
 	@echo "... unit_cognitive_test_game_theory_bargaining"
 	@echo "... unit_cognitive_test_game_theory_credit"
+	@echo "... unit_cognitive_test_game_theory_executive_bridge"
 	@echo "... unit_cognitive_test_game_theory_integration"
 	@echo "... unit_cognitive_test_global_workspace_immune"
 	@echo "... unit_cognitive_test_gt_auction_ext"
@@ -24177,14 +24341,18 @@ help:
 	@echo "... unit_cognitive_test_hyperscanning"
 	@echo "... unit_cognitive_test_imagination_engine"
 	@echo "... unit_cognitive_test_imagination_fep_bridge"
+	@echo "... unit_cognitive_test_imagination_reasoning_bridge"
 	@echo "... unit_cognitive_test_jepa_bidirectional"
 	@echo "... unit_cognitive_test_jepa_context"
 	@echo "... unit_cognitive_test_jepa_fep_bridge"
 	@echo "... unit_cognitive_test_jepa_predictor"
 	@echo "... unit_cognitive_test_meta_controller"
+	@echo "... unit_cognitive_test_mirror_empathy_bridge"
 	@echo "... unit_cognitive_test_phase7_bridges"
+	@echo "... unit_cognitive_test_predictive_attention_bridge"
 	@echo "... unit_cognitive_test_predictive_hierarchy"
 	@echo "... unit_cognitive_test_rcog_hub_bridge"
+	@echo "... unit_cognitive_test_salience_attention_bridge"
 	@echo "... unit_cognitive_test_self_awareness_extended"
 	@echo "... unit_cognitive_test_self_introspection_bridge"
 	@echo "... unit_cognitive_test_shared_intentionality"

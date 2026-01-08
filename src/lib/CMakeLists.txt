@@ -436,6 +436,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_cognitive_integration_fep.c  # Cognitive Integration-FEP orchestrator bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_collective_hub_bridge.c  # Collective Cognition-Hub integration bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_rcog_hub_bridge.c  # Recursive Cognition-Hub integration bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_game_theory_executive_bridge.c  # Game Theory-Executive Hub integration bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_mirror_empathy_bridge.c  # Mirror Neurons-Empathetic Response integration bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_imagination_reasoning_bridge.c  # Imagination-Reasoning Hub integration bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_salience_attention_bridge.c  # Salience-Attention Hub integration bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_predictive_attention_bridge.c  # Predictive-Attention Hub integration bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations.c  # Phase 10.7: Natural Explanations
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning.c  # Phase 10.8: Meta-Learning
 

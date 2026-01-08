@@ -335,3 +335,153 @@ gtest_discover_tests(unit_cognitive_test_rcog_hub_bridge
         LABELS "unit;cognitive;integration;rcog;hub"
         TIMEOUT 120
 )
+
+# Salience-Attention Bridge Tests
+add_executable(unit_cognitive_test_salience_attention_bridge
+    test_salience_attention_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_salience_attention_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_salience_attention_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_salience_attention_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_salience_attention_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;integration;salience;attention"
+        TIMEOUT 120
+)
+
+# Predictive-Attention Bridge Tests
+add_executable(unit_cognitive_test_predictive_attention_bridge
+    test_predictive_attention_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_predictive_attention_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_predictive_attention_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_predictive_attention_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_predictive_attention_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;integration;predictive;attention"
+        TIMEOUT 120
+)
+
+# Mirror-Empathy Bridge Tests
+add_executable(unit_cognitive_test_mirror_empathy_bridge
+    test_mirror_empathy_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_mirror_empathy_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_mirror_empathy_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_mirror_empathy_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_mirror_empathy_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;integration;mirror;empathy"
+        TIMEOUT 120
+)
+
+# Game Theory-Executive Bridge Tests
+add_executable(unit_cognitive_test_game_theory_executive_bridge
+    test_game_theory_executive_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_game_theory_executive_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_game_theory_executive_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_game_theory_executive_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_game_theory_executive_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;integration;game_theory;executive"
+        TIMEOUT 120
+)
+
+# Imagination-Reasoning Bridge Tests
+add_executable(unit_cognitive_test_imagination_reasoning_bridge
+    test_imagination_reasoning_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_imagination_reasoning_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_imagination_reasoning_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_imagination_reasoning_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_imagination_reasoning_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;integration;imagination;reasoning"
+        TIMEOUT 120
+)

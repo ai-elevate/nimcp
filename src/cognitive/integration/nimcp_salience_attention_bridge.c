@@ -1,0 +1,1111 @@
+/**
+ * @file nimcp_salience_attention_bridge.c
+ * @brief Salience-Attention Cognitive Integration Hub Bridge Implementation
+ * @version 1.0.0
+ * @date 2026-01-08
+ *
+ * WHAT: Bridge connecting salience detection to attention allocation
+ * WHY:  Enable bidirectional communication between salience and attention
+ * HOW:  Implements event subscription, publication, and query handling
+ *
+ * BIOLOGICAL BASIS:
+ * - Models bottom-up attention capture by salient stimuli (superior colliculus)
+ * - Models top-down attention modulation of salience sensitivity (prefrontal cortex)
+ * - Priority maps integrate bottom-up salience with top-down goals (parietal cortex)
+ *
+ * @author NIMCP Development Team
+ */
+
+#include "cognitive/integration/nimcp_salience_attention_bridge.h"
+#include "cognitive/integration/nimcp_cognitive_integration_hub.h"
+#include "cognitive/integration/nimcp_cognitive_event_types.h"
+#include "cognitive/salience/nimcp_salience.h"
+#include "plasticity/attention/nimcp_attention.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/memory/nimcp_memory.h"
+#include <string.h>
+#include <time.h>
+
+/* ============================================================================
+ * Internal Constants
+ * ============================================================================ */
+
+#define SALIENCE_ATTENTION_BRIDGE_NAME "SalienceAttention"
+
+/* ============================================================================
+ * Internal Structures
+ * ============================================================================ */
+
+/**
+ * @brief Internal salience-attention bridge structure
+ */
+struct salience_attention_bridge {
+    salience_attention_config_t config;      /**< Bridge configuration */
+    cognitive_integration_hub_t hub;          /**< Connected cognitive hub */
+    salience_evaluator_t salience;            /**< Connected salience evaluator */
+    multihead_attention_t attention;          /**< Connected attention module */
+
+    /* State */
+    bool initialized;                         /**< Initialization flag */
+    bool registered;                          /**< Hub registration status */
+
+    /* Callbacks */
+    sa_salience_callback_t salience_callback;
+    void* salience_callback_user_data;
+    sa_attention_callback_t attention_callback;
+    void* attention_callback_user_data;
+    sa_priority_callback_t priority_callback;
+    void* priority_callback_user_data;
+    sa_eval_request_callback_t eval_callback;
+    void* eval_callback_user_data;
+
+    /* Cached state */
+    uint64_t current_focus_id;                /**< Current attention focus */
+    float current_focus_strength;             /**< Current focus strength */
+    float peak_salience;                      /**< Peak salience observed */
+    uint32_t detection_count;                 /**< Salience detections */
+
+    /* Statistics */
+    salience_attention_stats_t stats;         /**< Bridge statistics */
+
+    /* Synchronization */
+    nimcp_mutex_t* mutex;                     /**< Thread safety mutex */
+};
+
+/* ============================================================================
+ * Internal Helper Functions
+ * ============================================================================ */
+
+/**
+ * @brief Get current timestamp in milliseconds
+ */
+static uint64_t get_timestamp_ms(void) {
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+        return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+    }
+    return 0;
+}
+
+/**
+ * @brief Clamp a float value to a range
+ */
+static float clamp_float(float value, float min, float max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+/* ============================================================================
+ * Hub Event Callback (internal)
+ * ============================================================================ */
+
+/**
+ * @brief Internal callback for cognitive hub events
+ *
+ * WHAT: Handle events from cognitive hub
+ * WHY:  Dispatch to appropriate user callbacks
+ * HOW:  Parse event type and payload, invoke registered callback
+ *
+ * @param event Event data from hub
+ * @param user_data Bridge pointer
+ * @return 0 on success, -1 on error
+ */
+static int salience_attention_on_event(const cognitive_event_data_t* event, void* user_data) {
+    if (!event || !user_data) {
+        return -1;
+    }
+
+    salience_attention_bridge_t* bridge = (salience_attention_bridge_t*)user_data;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Update statistics */
+    bridge->stats.events_received++;
+    bridge->stats.total_events++;
+    bridge->stats.last_event_timestamp = get_timestamp_ms();
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    /* Dispatch based on event type */
+    switch (event->event_type) {
+        case COG_EVENT_ATTENTION_SHIFT: {
+            /* Handle attention shift events */
+            nimcp_mutex_lock(bridge->mutex);
+            sa_attention_callback_t callback = bridge->attention_callback;
+            void* cb_data = bridge->attention_callback_user_data;
+            nimcp_mutex_unlock(bridge->mutex);
+
+            if (callback && event->payload && event->payload_size >= sizeof(attention_focus_t)) {
+                const attention_focus_t* focus = (const attention_focus_t*)event->payload;
+
+                /* Update cached state */
+                nimcp_mutex_lock(bridge->mutex);
+                bridge->current_focus_id = focus->focus_id;
+                bridge->current_focus_strength = focus->focus_strength;
+                bridge->stats.attention_shifts++;
+                nimcp_mutex_unlock(bridge->mutex);
+
+                callback(focus, cb_data);
+            }
+            break;
+        }
+
+        case COG_EVENT_STATE_CHANGE: {
+            /* Handle state change events - could be salience updates */
+            nimcp_mutex_lock(bridge->mutex);
+            sa_salience_callback_t callback = bridge->salience_callback;
+            void* cb_data = bridge->salience_callback_user_data;
+            nimcp_mutex_unlock(bridge->mutex);
+
+            if (callback && event->payload && event->payload_size >= sizeof(salient_item_t)) {
+                const salient_item_t* item = (const salient_item_t*)event->payload;
+
+                /* Check if this is from salience module (check source) */
+                /* Update cached state */
+                nimcp_mutex_lock(bridge->mutex);
+                if (item->salience_score > bridge->peak_salience) {
+                    bridge->peak_salience = item->salience_score;
+                }
+                bridge->detection_count++;
+                bridge->stats.salience_detections++;
+
+                /* Update average */
+                float total = bridge->stats.avg_salience_score * (bridge->stats.salience_detections - 1);
+                bridge->stats.avg_salience_score = (total + item->salience_score) / bridge->stats.salience_detections;
+                nimcp_mutex_unlock(bridge->mutex);
+
+                int result = callback(item, cb_data);
+
+                if (result == 0) {
+                    nimcp_mutex_lock(bridge->mutex);
+                    bridge->stats.salience_detections++;
+                    nimcp_mutex_unlock(bridge->mutex);
+                }
+            }
+            break;
+        }
+
+        case COG_EVENT_DECISION_MADE: {
+            /* Handle priority update events (mapped to decision) */
+            nimcp_mutex_lock(bridge->mutex);
+            sa_priority_callback_t callback = bridge->priority_callback;
+            void* cb_data = bridge->priority_callback_user_data;
+            nimcp_mutex_unlock(bridge->mutex);
+
+            if (callback && event->payload && event->payload_size >= sizeof(priority_update_payload_t)) {
+                const priority_update_payload_t* update = (const priority_update_payload_t*)event->payload;
+
+                callback(update->priorities, update->num_priorities, cb_data);
+
+                nimcp_mutex_lock(bridge->mutex);
+                bridge->stats.priority_updates++;
+                nimcp_mutex_unlock(bridge->mutex);
+            }
+            break;
+        }
+
+        case COG_EVENT_INPUT_RECEIVED: {
+            /* Handle evaluation request events */
+            nimcp_mutex_lock(bridge->mutex);
+            sa_eval_request_callback_t callback = bridge->eval_callback;
+            void* cb_data = bridge->eval_callback_user_data;
+            nimcp_mutex_unlock(bridge->mutex);
+
+            if (callback && event->payload && event->payload_size >= sizeof(salience_eval_request_t)) {
+                const salience_eval_request_t* request = (const salience_eval_request_t*)event->payload;
+
+                callback(request, cb_data);
+
+                nimcp_mutex_lock(bridge->mutex);
+                bridge->stats.evaluation_requests++;
+                nimcp_mutex_unlock(bridge->mutex);
+            }
+            break;
+        }
+
+        default:
+            /* Unhandled event type - not an error */
+            break;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Internal query handler for salience-attention state queries
+ *
+ * @param query Incoming query
+ * @param result Output result
+ * @param context Bridge pointer
+ * @return 0 on success, -1 on error
+ */
+static int salience_attention_query_handler(
+    const cognitive_query_t* query,
+    cognitive_query_result_t* result,
+    void* context
+) {
+    if (!query || !result || !context) {
+        return -1;
+    }
+
+    salience_attention_bridge_t* bridge = (salience_attention_bridge_t*)context;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Update query stats */
+    bridge->stats.queries_handled++;
+
+    /* Get module references */
+    salience_evaluator_t salience = bridge->salience;
+    multihead_attention_t attention = bridge->attention;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    /* Initialize result */
+    result->status = 0;
+    result->result_data = NULL;
+    result->result_size = 0;
+    result->error_message[0] = '\0';
+
+    /* Handle query based on type */
+    switch (query->query_type) {
+        case COG_QUERY_STATUS: {
+            /* Return bridge status */
+            const char* status = bridge->registered ? "registered" : "not_registered";
+            size_t len = strlen(status) + 1;
+            char* status_str = nimcp_malloc(len);
+            if (status_str) {
+                strncpy(status_str, status, len);
+                result->result_data = status_str;
+                result->result_size = len;
+            }
+            break;
+        }
+
+        case COG_QUERY_STATE: {
+            /* Return detailed state */
+            typedef struct {
+                uint64_t current_focus;
+                float focus_strength;
+                float peak_salience;
+                uint32_t detection_count;
+            } sa_state_summary_t;
+
+            sa_state_summary_t* summary = nimcp_malloc(sizeof(sa_state_summary_t));
+            if (summary) {
+                nimcp_mutex_lock(bridge->mutex);
+                summary->current_focus = bridge->current_focus_id;
+                summary->focus_strength = bridge->current_focus_strength;
+                summary->peak_salience = bridge->peak_salience;
+                summary->detection_count = bridge->detection_count;
+                nimcp_mutex_unlock(bridge->mutex);
+
+                result->result_data = summary;
+                result->result_size = sizeof(sa_state_summary_t);
+            }
+            break;
+        }
+
+        case COG_QUERY_ATTENTION: {
+            /* Return attention state */
+            if (attention) {
+                attention_stats_t att_stats;
+                if (multihead_attention_get_stats(attention, &att_stats)) {
+                    typedef struct {
+                        uint64_t forward_calls;
+                        float avg_attention_entropy;
+                        float avg_gate_activation;
+                        uint32_t active_heads;
+                    } attention_summary_t;
+
+                    attention_summary_t* att_summary = nimcp_malloc(sizeof(attention_summary_t));
+                    if (att_summary) {
+                        att_summary->forward_calls = att_stats.forward_calls;
+                        att_summary->avg_attention_entropy = att_stats.avg_attention_entropy;
+                        att_summary->avg_gate_activation = att_stats.avg_gate_activation;
+                        att_summary->active_heads = att_stats.active_heads;
+
+                        result->result_data = att_summary;
+                        result->result_size = sizeof(attention_summary_t);
+                    }
+                }
+            } else {
+                strncpy(result->error_message, "Attention module not connected",
+                        sizeof(result->error_message) - 1);
+                result->status = -1;
+            }
+            break;
+        }
+
+        case COG_QUERY_METRICS: {
+            /* Return performance metrics */
+            salience_attention_stats_t* metrics = nimcp_malloc(sizeof(salience_attention_stats_t));
+            if (metrics) {
+                nimcp_mutex_lock(bridge->mutex);
+                *metrics = bridge->stats;
+                nimcp_mutex_unlock(bridge->mutex);
+
+                result->result_data = metrics;
+                result->result_size = sizeof(salience_attention_stats_t);
+            }
+            break;
+        }
+
+        default:
+            strncpy(result->error_message, "Unsupported query type",
+                    sizeof(result->error_message) - 1);
+            result->status = -1;
+            break;
+    }
+
+    return result->status;
+}
+
+/* ============================================================================
+ * Lifecycle Implementation
+ * ============================================================================ */
+
+int salience_attention_bridge_default_config(salience_attention_config_t* config) {
+    if (!config) {
+        return -1;
+    }
+
+    config->module_id = SALIENCE_ATTENTION_DEFAULT_MODULE_ID;
+    config->enable_logging = false;
+    config->salience_threshold = SALIENCE_ATTENTION_DEFAULT_THRESHOLD;
+    config->attention_shift_weight = 0.8f;
+    config->priority_weight = 0.5f;
+    config->auto_subscribe_attention = true;
+    config->auto_subscribe_state = true;
+    config->enable_query_handler = true;
+
+    return 0;
+}
+
+salience_attention_bridge_t* salience_attention_bridge_create(
+    const salience_attention_config_t* config
+) {
+    /* Allocate bridge structure */
+    salience_attention_bridge_t* bridge = (salience_attention_bridge_t*)nimcp_calloc(
+        1, sizeof(salience_attention_bridge_t));
+    if (!bridge) {
+        return NULL;
+    }
+
+    /* Apply configuration */
+    if (config) {
+        bridge->config = *config;
+    } else {
+        salience_attention_bridge_default_config(&bridge->config);
+    }
+
+    /* Create mutex for thread safety */
+    bridge->mutex = nimcp_mutex_create(NULL);
+    if (!bridge->mutex) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Initialize state */
+    bridge->hub = NULL;
+    bridge->salience = NULL;
+    bridge->attention = NULL;
+    bridge->registered = false;
+
+    /* Initialize callbacks */
+    bridge->salience_callback = NULL;
+    bridge->salience_callback_user_data = NULL;
+    bridge->attention_callback = NULL;
+    bridge->attention_callback_user_data = NULL;
+    bridge->priority_callback = NULL;
+    bridge->priority_callback_user_data = NULL;
+    bridge->eval_callback = NULL;
+    bridge->eval_callback_user_data = NULL;
+
+    /* Initialize cached state */
+    bridge->current_focus_id = 0;
+    bridge->current_focus_strength = 0.0f;
+    bridge->peak_salience = 0.0f;
+    bridge->detection_count = 0;
+
+    /* Initialize stats */
+    memset(&bridge->stats, 0, sizeof(salience_attention_stats_t));
+
+    bridge->initialized = true;
+
+    return bridge;
+}
+
+void salience_attention_bridge_destroy(salience_attention_bridge_t* bridge) {
+    if (!bridge) {
+        return;
+    }
+
+    /* Unregister from hub if registered */
+    if (bridge->registered) {
+        salience_attention_bridge_unregister_from_hub(bridge);
+    }
+
+    /* Destroy mutex */
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_free(bridge->mutex);
+        bridge->mutex = NULL;
+    }
+
+    bridge->initialized = false;
+
+    nimcp_free(bridge);
+}
+
+/* ============================================================================
+ * Hub Registration Implementation
+ * ============================================================================ */
+
+int salience_attention_bridge_register_with_hub(
+    salience_attention_bridge_t* bridge,
+    cognitive_integration_hub_t hub
+) {
+    if (!bridge || !bridge->initialized || !hub) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Check if already registered */
+    if (bridge->registered) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+
+    /* Store hub reference */
+    bridge->hub = hub;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    /* Register module with hub */
+    int result = cognitive_hub_register_module(
+        hub,
+        bridge->config.module_id,
+        COG_CATEGORY_PERCEPTION,  /* Salience is perception-related */
+        SALIENCE_ATTENTION_BRIDGE_NAME,
+        bridge
+    );
+
+    if (result != 0) {
+        nimcp_mutex_lock(bridge->mutex);
+        bridge->hub = NULL;
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+
+    /* Subscribe to configured event types */
+    if (bridge->config.auto_subscribe_attention) {
+        result = cognitive_hub_subscribe(
+            hub,
+            bridge->config.module_id,
+            COG_EVENT_ATTENTION_SHIFT,
+            salience_attention_on_event,
+            bridge
+        );
+        /* Non-fatal if subscription fails */
+    }
+
+    if (bridge->config.auto_subscribe_state) {
+        result = cognitive_hub_subscribe(
+            hub,
+            bridge->config.module_id,
+            COG_EVENT_STATE_CHANGE,
+            salience_attention_on_event,
+            bridge
+        );
+        /* Non-fatal */
+    }
+
+    /* Also subscribe to decision events for priority updates */
+    cognitive_hub_subscribe(
+        hub,
+        bridge->config.module_id,
+        COG_EVENT_DECISION_MADE,
+        salience_attention_on_event,
+        bridge
+    );
+
+    /* Subscribe to input events for evaluation requests */
+    cognitive_hub_subscribe(
+        hub,
+        bridge->config.module_id,
+        COG_EVENT_INPUT_RECEIVED,
+        salience_attention_on_event,
+        bridge
+    );
+
+    /* Register query handler if enabled */
+    if (bridge->config.enable_query_handler) {
+        result = cognitive_hub_register_query_handler(
+            hub,
+            bridge->config.module_id,
+            salience_attention_query_handler
+        );
+        /* Non-fatal */
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->registered = true;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int salience_attention_bridge_unregister_from_hub(
+    salience_attention_bridge_t* bridge
+) {
+    if (!bridge || !bridge->initialized) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    if (!bridge->registered || !bridge->hub) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+
+    cognitive_integration_hub_t hub = bridge->hub;
+    uint32_t module_id = bridge->config.module_id;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    /* Unsubscribe from events */
+    if (bridge->config.auto_subscribe_attention) {
+        cognitive_hub_unsubscribe(hub, module_id, COG_EVENT_ATTENTION_SHIFT);
+    }
+    if (bridge->config.auto_subscribe_state) {
+        cognitive_hub_unsubscribe(hub, module_id, COG_EVENT_STATE_CHANGE);
+    }
+    cognitive_hub_unsubscribe(hub, module_id, COG_EVENT_DECISION_MADE);
+    cognitive_hub_unsubscribe(hub, module_id, COG_EVENT_INPUT_RECEIVED);
+
+    /* Unregister module from hub */
+    cognitive_hub_unregister_module(hub, module_id);
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->hub = NULL;
+    bridge->registered = false;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+bool salience_attention_bridge_is_registered(
+    const salience_attention_bridge_t* bridge
+) {
+    if (!bridge || !bridge->initialized) {
+        return false;
+    }
+
+    /* Cast away const for mutex lock */
+    salience_attention_bridge_t* mutable_bridge = (salience_attention_bridge_t*)bridge;
+
+    nimcp_mutex_lock(mutable_bridge->mutex);
+    bool registered = bridge->registered;
+    nimcp_mutex_unlock(mutable_bridge->mutex);
+
+    return registered;
+}
+
+/* ============================================================================
+ * Module Connection Implementation
+ * ============================================================================ */
+
+int salience_attention_bridge_set_salience(
+    salience_attention_bridge_t* bridge,
+    salience_evaluator_t evaluator
+) {
+    if (!bridge || !bridge->initialized) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->salience = evaluator;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int salience_attention_bridge_set_attention(
+    salience_attention_bridge_t* bridge,
+    multihead_attention_t attention
+) {
+    if (!bridge || !bridge->initialized) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->attention = attention;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Event Callback Registration Implementation
+ * ============================================================================ */
+
+int salience_attention_bridge_set_salience_callback(
+    salience_attention_bridge_t* bridge,
+    sa_salience_callback_t callback,
+    void* user_data
+) {
+    if (!bridge || !bridge->initialized) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->salience_callback = callback;
+    bridge->salience_callback_user_data = user_data;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int salience_attention_bridge_set_attention_callback(
+    salience_attention_bridge_t* bridge,
+    sa_attention_callback_t callback,
+    void* user_data
+) {
+    if (!bridge || !bridge->initialized) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->attention_callback = callback;
+    bridge->attention_callback_user_data = user_data;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int salience_attention_bridge_set_priority_callback(
+    salience_attention_bridge_t* bridge,
+    sa_priority_callback_t callback,
+    void* user_data
+) {
+    if (!bridge || !bridge->initialized) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->priority_callback = callback;
+    bridge->priority_callback_user_data = user_data;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int salience_attention_bridge_set_eval_callback(
+    salience_attention_bridge_t* bridge,
+    sa_eval_request_callback_t callback,
+    void* user_data
+) {
+    if (!bridge || !bridge->initialized) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->eval_callback = callback;
+    bridge->eval_callback_user_data = user_data;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Event Publication Implementation
+ * ============================================================================ */
+
+int salience_attention_publish_salience_detection(
+    salience_attention_bridge_t* bridge,
+    const salient_item_t* item,
+    float score
+) {
+    if (!bridge || !bridge->initialized || !item) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    if (!bridge->registered || !bridge->hub) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+
+    cognitive_integration_hub_t hub = bridge->hub;
+    uint32_t module_id = bridge->config.module_id;
+    float threshold = bridge->config.salience_threshold;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    /* Create payload */
+    salience_detection_payload_t payload;
+    payload.item = *item;
+    payload.item.salience_score = clamp_float(score, 0.0f, 1.0f);
+    payload.captured_attention = (score >= threshold);
+
+    /* Create event data */
+    cognitive_event_data_t event;
+    event.event_type = COG_EVENT_STATE_CHANGE;  /* Salience is a state change */
+    event.source_module_id = module_id;
+    event.timestamp = get_timestamp_ms() * 1000;  /* Convert to microseconds */
+    event.priority = (score > 0.8f) ? COG_PRIORITY_HIGH :
+                     (score > 0.5f) ? COG_PRIORITY_NORMAL : COG_PRIORITY_LOW;
+    event.payload = &payload;
+    event.payload_size = sizeof(payload);
+
+    /* Publish to hub */
+    int result = cognitive_hub_publish(hub, module_id, COG_EVENT_STATE_CHANGE, &event);
+
+    if (result == 0) {
+        nimcp_mutex_lock(bridge->mutex);
+        bridge->stats.events_published++;
+        bridge->stats.salience_detections++;
+
+        /* Update peak salience */
+        if (score > bridge->peak_salience) {
+            bridge->peak_salience = score;
+        }
+        bridge->detection_count++;
+
+        /* Update average */
+        uint64_t count = bridge->stats.salience_detections;
+        float total = bridge->stats.avg_salience_score * (count - 1);
+        bridge->stats.avg_salience_score = (total + score) / count;
+
+        nimcp_mutex_unlock(bridge->mutex);
+    }
+
+    return result;
+}
+
+int salience_attention_request_attention_shift(
+    salience_attention_bridge_t* bridge,
+    const attention_target_t* target
+) {
+    if (!bridge || !bridge->initialized || !target) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    if (!bridge->registered || !bridge->hub) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+
+    cognitive_integration_hub_t hub = bridge->hub;
+    uint32_t module_id = bridge->config.module_id;
+    float shift_weight = bridge->config.attention_shift_weight;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    /* Create payload */
+    attention_shift_payload_t payload;
+    payload.target = *target;
+    payload.shift_weight = clamp_float(shift_weight, 0.0f, 1.0f);
+
+    /* Create event data */
+    cognitive_event_data_t event;
+    event.event_type = COG_EVENT_ATTENTION_SHIFT;
+    event.source_module_id = module_id;
+    event.timestamp = get_timestamp_ms() * 1000;
+    event.priority = (target->urgency > 0.8f) ? COG_PRIORITY_HIGH :
+                     (target->urgency > 0.5f) ? COG_PRIORITY_NORMAL : COG_PRIORITY_LOW;
+    event.payload = &payload;
+    event.payload_size = sizeof(payload);
+
+    /* Publish to hub */
+    int result = cognitive_hub_publish(hub, module_id, COG_EVENT_ATTENTION_SHIFT, &event);
+
+    if (result == 0) {
+        nimcp_mutex_lock(bridge->mutex);
+        bridge->stats.events_published++;
+        bridge->stats.attention_shifts++;
+        nimcp_mutex_unlock(bridge->mutex);
+    }
+
+    return result;
+}
+
+int salience_attention_publish_priority_update(
+    salience_attention_bridge_t* bridge,
+    const attention_priority_t* priorities,
+    uint32_t num_priorities
+) {
+    if (!bridge || !bridge->initialized || !priorities || num_priorities == 0) {
+        return -1;
+    }
+
+    if (num_priorities > SALIENCE_ATTENTION_MAX_PRIORITIES) {
+        num_priorities = SALIENCE_ATTENTION_MAX_PRIORITIES;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    if (!bridge->registered || !bridge->hub) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+
+    cognitive_integration_hub_t hub = bridge->hub;
+    uint32_t module_id = bridge->config.module_id;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    /* Create payload */
+    priority_update_payload_t payload;
+    memcpy(payload.priorities, priorities, num_priorities * sizeof(attention_priority_t));
+    payload.num_priorities = num_priorities;
+    payload.timestamp = get_timestamp_ms();
+
+    /* Create event data */
+    cognitive_event_data_t event;
+    event.event_type = COG_EVENT_DECISION_MADE;  /* Priority updates are decisions */
+    event.source_module_id = module_id;
+    event.timestamp = payload.timestamp * 1000;
+    event.priority = COG_PRIORITY_NORMAL;
+    event.payload = &payload;
+    event.payload_size = sizeof(payload);
+
+    /* Publish to hub */
+    int result = cognitive_hub_publish(hub, module_id, COG_EVENT_DECISION_MADE, &event);
+
+    if (result == 0) {
+        nimcp_mutex_lock(bridge->mutex);
+        bridge->stats.events_published++;
+        bridge->stats.priority_updates++;
+        nimcp_mutex_unlock(bridge->mutex);
+    }
+
+    return result;
+}
+
+int salience_attention_notify_attention_focus(
+    salience_attention_bridge_t* bridge,
+    const attention_focus_t* focus
+) {
+    if (!bridge || !bridge->initialized || !focus) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    if (!bridge->registered || !bridge->hub) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+
+    cognitive_integration_hub_t hub = bridge->hub;
+    uint32_t module_id = bridge->config.module_id;
+
+    /* Update cached state */
+    bridge->current_focus_id = focus->focus_id;
+    bridge->current_focus_strength = focus->focus_strength;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    /* Create event data */
+    cognitive_event_data_t event;
+    event.event_type = COG_EVENT_ATTENTION_SHIFT;
+    event.source_module_id = module_id;
+    event.timestamp = get_timestamp_ms() * 1000;
+    event.priority = COG_PRIORITY_NORMAL;
+    event.payload = (void*)focus;
+    event.payload_size = sizeof(attention_focus_t);
+
+    /* Publish to hub */
+    int result = cognitive_hub_publish(hub, module_id, COG_EVENT_ATTENTION_SHIFT, &event);
+
+    if (result == 0) {
+        nimcp_mutex_lock(bridge->mutex);
+        bridge->stats.events_published++;
+        bridge->stats.focus_notifications++;
+
+        /* Update average attention strength */
+        uint64_t count = bridge->stats.focus_notifications;
+        float total = bridge->stats.avg_attention_strength * (count - 1);
+        bridge->stats.avg_attention_strength = (total + focus->focus_strength) / count;
+
+        nimcp_mutex_unlock(bridge->mutex);
+    }
+
+    return result;
+}
+
+int salience_attention_request_salience_evaluation(
+    salience_attention_bridge_t* bridge,
+    const salience_eval_request_t* request
+) {
+    if (!bridge || !bridge->initialized || !request) {
+        return -1;
+    }
+
+    if (request->num_items == 0 || request->num_items > SALIENCE_ATTENTION_MAX_ITEMS) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    if (!bridge->registered || !bridge->hub) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
+    }
+
+    cognitive_integration_hub_t hub = bridge->hub;
+    uint32_t module_id = bridge->config.module_id;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    /* Create event data */
+    cognitive_event_data_t event;
+    event.event_type = COG_EVENT_INPUT_RECEIVED;  /* Evaluation request is input */
+    event.source_module_id = module_id;
+    event.timestamp = get_timestamp_ms() * 1000;
+    event.priority = COG_PRIORITY_NORMAL;
+    event.payload = (void*)request;
+    event.payload_size = sizeof(salience_eval_request_t);
+
+    /* Publish to hub */
+    int result = cognitive_hub_publish(hub, module_id, COG_EVENT_INPUT_RECEIVED, &event);
+
+    if (result == 0) {
+        nimcp_mutex_lock(bridge->mutex);
+        bridge->stats.events_published++;
+        bridge->stats.evaluation_requests++;
+        nimcp_mutex_unlock(bridge->mutex);
+    }
+
+    return result;
+}
+
+/* ============================================================================
+ * Query Implementation
+ * ============================================================================ */
+
+int salience_attention_bridge_get_salience_state(
+    const salience_attention_bridge_t* bridge,
+    float* avg_salience,
+    float* peak_salience,
+    uint32_t* detection_count
+) {
+    if (!bridge || !bridge->initialized) {
+        return -1;
+    }
+
+    /* Cast away const for mutex lock */
+    salience_attention_bridge_t* mutable_bridge = (salience_attention_bridge_t*)bridge;
+
+    nimcp_mutex_lock(mutable_bridge->mutex);
+
+    if (avg_salience) *avg_salience = bridge->stats.avg_salience_score;
+    if (peak_salience) *peak_salience = bridge->peak_salience;
+    if (detection_count) *detection_count = bridge->detection_count;
+
+    nimcp_mutex_unlock(mutable_bridge->mutex);
+
+    return 0;
+}
+
+int salience_attention_bridge_get_attention_state(
+    const salience_attention_bridge_t* bridge,
+    uint64_t* current_focus,
+    float* focus_strength,
+    uint32_t* num_targets
+) {
+    if (!bridge || !bridge->initialized) {
+        return -1;
+    }
+
+    /* Cast away const for mutex lock */
+    salience_attention_bridge_t* mutable_bridge = (salience_attention_bridge_t*)bridge;
+
+    nimcp_mutex_lock(mutable_bridge->mutex);
+
+    if (current_focus) *current_focus = bridge->current_focus_id;
+    if (focus_strength) *focus_strength = bridge->current_focus_strength;
+    if (num_targets) *num_targets = (uint32_t)bridge->stats.attention_shifts;
+
+    nimcp_mutex_unlock(mutable_bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Statistics Implementation
+ * ============================================================================ */
+
+int salience_attention_bridge_get_stats(
+    const salience_attention_bridge_t* bridge,
+    salience_attention_stats_t* stats
+) {
+    if (!bridge || !bridge->initialized || !stats) {
+        return -1;
+    }
+
+    /* Cast away const for mutex lock */
+    salience_attention_bridge_t* mutable_bridge = (salience_attention_bridge_t*)bridge;
+
+    nimcp_mutex_lock(mutable_bridge->mutex);
+    *stats = bridge->stats;
+    nimcp_mutex_unlock(mutable_bridge->mutex);
+
+    return 0;
+}
+
+int salience_attention_bridge_reset_stats(salience_attention_bridge_t* bridge) {
+    if (!bridge || !bridge->initialized) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    memset(&bridge->stats, 0, sizeof(salience_attention_stats_t));
+    bridge->peak_salience = 0.0f;
+    bridge->detection_count = 0;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Configuration Implementation
+ * ============================================================================ */
+
+int salience_attention_bridge_set_threshold(
+    salience_attention_bridge_t* bridge,
+    float threshold
+) {
+    if (!bridge || !bridge->initialized) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->config.salience_threshold = clamp_float(threshold, 0.0f, 1.0f);
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+int salience_attention_bridge_set_shift_weight(
+    salience_attention_bridge_t* bridge,
+    float weight
+) {
+    if (!bridge || !bridge->initialized) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->config.attention_shift_weight = clamp_float(weight, 0.0f, 1.0f);
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}

@@ -155,3 +155,153 @@ gtest_discover_tests(integration_cognitive_test_hub_orchestrator_integration
         LABELS "integration;cognitive;hub;orchestrator"
         TIMEOUT 180
 )
+
+# Salience-Attention Integration Tests
+add_executable(integration_cognitive_test_salience_attention_integration
+    test_salience_attention_integration.cpp
+)
+
+target_link_libraries(integration_cognitive_test_salience_attention_integration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_cognitive_test_salience_attention_integration
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_cognitive_test_salience_attention_integration PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_cognitive_test_salience_attention_integration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;salience;attention"
+        TIMEOUT 180
+)
+
+# Predictive-Attention Integration Tests
+add_executable(integration_cognitive_test_predictive_attention_integration
+    test_predictive_attention_integration.cpp
+)
+
+target_link_libraries(integration_cognitive_test_predictive_attention_integration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_cognitive_test_predictive_attention_integration
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_cognitive_test_predictive_attention_integration PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_cognitive_test_predictive_attention_integration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;predictive;attention"
+        TIMEOUT 180
+)
+
+# Mirror-Empathy Integration Tests
+add_executable(integration_cognitive_test_mirror_empathy_integration
+    test_mirror_empathy_integration.cpp
+)
+
+target_link_libraries(integration_cognitive_test_mirror_empathy_integration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_cognitive_test_mirror_empathy_integration
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_cognitive_test_mirror_empathy_integration PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_cognitive_test_mirror_empathy_integration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;mirror;empathy"
+        TIMEOUT 180
+)
+
+# Game Theory-Executive Integration Tests
+add_executable(integration_cognitive_test_game_theory_executive_integration
+    test_game_theory_executive_integration.cpp
+)
+
+target_link_libraries(integration_cognitive_test_game_theory_executive_integration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_cognitive_test_game_theory_executive_integration
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_cognitive_test_game_theory_executive_integration PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_cognitive_test_game_theory_executive_integration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;game_theory;executive"
+        TIMEOUT 180
+)
+
+# Imagination-Reasoning Integration Tests
+add_executable(integration_cognitive_test_imagination_reasoning_integration
+    test_imagination_reasoning_integration.cpp
+)
+
+target_link_libraries(integration_cognitive_test_imagination_reasoning_integration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_cognitive_test_imagination_reasoning_integration
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(integration_cognitive_test_imagination_reasoning_integration PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_cognitive_test_imagination_reasoning_integration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;imagination;reasoning"
+        TIMEOUT 180
+)

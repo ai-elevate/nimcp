@@ -5729,6 +5729,30 @@ __/cognitive/integration/nimcp_ethics_executive_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_ethics_executive_bridge.c.s
 .PHONY : __/cognitive/integration/nimcp_ethics_executive_bridge.c.s
 
+__/cognitive/integration/nimcp_game_theory_executive_bridge.o: __/cognitive/integration/nimcp_game_theory_executive_bridge.c.o
+.PHONY : __/cognitive/integration/nimcp_game_theory_executive_bridge.o
+
+# target to build an object file
+__/cognitive/integration/nimcp_game_theory_executive_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_game_theory_executive_bridge.c.o
+.PHONY : __/cognitive/integration/nimcp_game_theory_executive_bridge.c.o
+
+__/cognitive/integration/nimcp_game_theory_executive_bridge.i: __/cognitive/integration/nimcp_game_theory_executive_bridge.c.i
+.PHONY : __/cognitive/integration/nimcp_game_theory_executive_bridge.i
+
+# target to preprocess a source file
+__/cognitive/integration/nimcp_game_theory_executive_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_game_theory_executive_bridge.c.i
+.PHONY : __/cognitive/integration/nimcp_game_theory_executive_bridge.c.i
+
+__/cognitive/integration/nimcp_game_theory_executive_bridge.s: __/cognitive/integration/nimcp_game_theory_executive_bridge.c.s
+.PHONY : __/cognitive/integration/nimcp_game_theory_executive_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/integration/nimcp_game_theory_executive_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_game_theory_executive_bridge.c.s
+.PHONY : __/cognitive/integration/nimcp_game_theory_executive_bridge.c.s
+
 __/cognitive/integration/nimcp_gw_cognitive_bridge.o: __/cognitive/integration/nimcp_gw_cognitive_bridge.c.o
 .PHONY : __/cognitive/integration/nimcp_gw_cognitive_bridge.o
 
@@ -5753,6 +5777,78 @@ __/cognitive/integration/nimcp_gw_cognitive_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_gw_cognitive_bridge.c.s
 .PHONY : __/cognitive/integration/nimcp_gw_cognitive_bridge.c.s
 
+__/cognitive/integration/nimcp_imagination_reasoning_bridge.o: __/cognitive/integration/nimcp_imagination_reasoning_bridge.c.o
+.PHONY : __/cognitive/integration/nimcp_imagination_reasoning_bridge.o
+
+# target to build an object file
+__/cognitive/integration/nimcp_imagination_reasoning_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_imagination_reasoning_bridge.c.o
+.PHONY : __/cognitive/integration/nimcp_imagination_reasoning_bridge.c.o
+
+__/cognitive/integration/nimcp_imagination_reasoning_bridge.i: __/cognitive/integration/nimcp_imagination_reasoning_bridge.c.i
+.PHONY : __/cognitive/integration/nimcp_imagination_reasoning_bridge.i
+
+# target to preprocess a source file
+__/cognitive/integration/nimcp_imagination_reasoning_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_imagination_reasoning_bridge.c.i
+.PHONY : __/cognitive/integration/nimcp_imagination_reasoning_bridge.c.i
+
+__/cognitive/integration/nimcp_imagination_reasoning_bridge.s: __/cognitive/integration/nimcp_imagination_reasoning_bridge.c.s
+.PHONY : __/cognitive/integration/nimcp_imagination_reasoning_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/integration/nimcp_imagination_reasoning_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_imagination_reasoning_bridge.c.s
+.PHONY : __/cognitive/integration/nimcp_imagination_reasoning_bridge.c.s
+
+__/cognitive/integration/nimcp_mirror_empathy_bridge.o: __/cognitive/integration/nimcp_mirror_empathy_bridge.c.o
+.PHONY : __/cognitive/integration/nimcp_mirror_empathy_bridge.o
+
+# target to build an object file
+__/cognitive/integration/nimcp_mirror_empathy_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_mirror_empathy_bridge.c.o
+.PHONY : __/cognitive/integration/nimcp_mirror_empathy_bridge.c.o
+
+__/cognitive/integration/nimcp_mirror_empathy_bridge.i: __/cognitive/integration/nimcp_mirror_empathy_bridge.c.i
+.PHONY : __/cognitive/integration/nimcp_mirror_empathy_bridge.i
+
+# target to preprocess a source file
+__/cognitive/integration/nimcp_mirror_empathy_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_mirror_empathy_bridge.c.i
+.PHONY : __/cognitive/integration/nimcp_mirror_empathy_bridge.c.i
+
+__/cognitive/integration/nimcp_mirror_empathy_bridge.s: __/cognitive/integration/nimcp_mirror_empathy_bridge.c.s
+.PHONY : __/cognitive/integration/nimcp_mirror_empathy_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/integration/nimcp_mirror_empathy_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_mirror_empathy_bridge.c.s
+.PHONY : __/cognitive/integration/nimcp_mirror_empathy_bridge.c.s
+
+__/cognitive/integration/nimcp_predictive_attention_bridge.o: __/cognitive/integration/nimcp_predictive_attention_bridge.c.o
+.PHONY : __/cognitive/integration/nimcp_predictive_attention_bridge.o
+
+# target to build an object file
+__/cognitive/integration/nimcp_predictive_attention_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_predictive_attention_bridge.c.o
+.PHONY : __/cognitive/integration/nimcp_predictive_attention_bridge.c.o
+
+__/cognitive/integration/nimcp_predictive_attention_bridge.i: __/cognitive/integration/nimcp_predictive_attention_bridge.c.i
+.PHONY : __/cognitive/integration/nimcp_predictive_attention_bridge.i
+
+# target to preprocess a source file
+__/cognitive/integration/nimcp_predictive_attention_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_predictive_attention_bridge.c.i
+.PHONY : __/cognitive/integration/nimcp_predictive_attention_bridge.c.i
+
+__/cognitive/integration/nimcp_predictive_attention_bridge.s: __/cognitive/integration/nimcp_predictive_attention_bridge.c.s
+.PHONY : __/cognitive/integration/nimcp_predictive_attention_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/integration/nimcp_predictive_attention_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_predictive_attention_bridge.c.s
+.PHONY : __/cognitive/integration/nimcp_predictive_attention_bridge.c.s
+
 __/cognitive/integration/nimcp_rcog_hub_bridge.o: __/cognitive/integration/nimcp_rcog_hub_bridge.c.o
 .PHONY : __/cognitive/integration/nimcp_rcog_hub_bridge.o
 
@@ -5776,6 +5872,30 @@ __/cognitive/integration/nimcp_rcog_hub_bridge.s: __/cognitive/integration/nimcp
 __/cognitive/integration/nimcp_rcog_hub_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_rcog_hub_bridge.c.s
 .PHONY : __/cognitive/integration/nimcp_rcog_hub_bridge.c.s
+
+__/cognitive/integration/nimcp_salience_attention_bridge.o: __/cognitive/integration/nimcp_salience_attention_bridge.c.o
+.PHONY : __/cognitive/integration/nimcp_salience_attention_bridge.o
+
+# target to build an object file
+__/cognitive/integration/nimcp_salience_attention_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_salience_attention_bridge.c.o
+.PHONY : __/cognitive/integration/nimcp_salience_attention_bridge.c.o
+
+__/cognitive/integration/nimcp_salience_attention_bridge.i: __/cognitive/integration/nimcp_salience_attention_bridge.c.i
+.PHONY : __/cognitive/integration/nimcp_salience_attention_bridge.i
+
+# target to preprocess a source file
+__/cognitive/integration/nimcp_salience_attention_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_salience_attention_bridge.c.i
+.PHONY : __/cognitive/integration/nimcp_salience_attention_bridge.c.i
+
+__/cognitive/integration/nimcp_salience_attention_bridge.s: __/cognitive/integration/nimcp_salience_attention_bridge.c.s
+.PHONY : __/cognitive/integration/nimcp_salience_attention_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/integration/nimcp_salience_attention_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/integration/nimcp_salience_attention_bridge.c.s
+.PHONY : __/cognitive/integration/nimcp_salience_attention_bridge.c.s
 
 __/cognitive/integration/nimcp_self_introspection_bridge.o: __/cognitive/integration/nimcp_self_introspection_bridge.c.o
 .PHONY : __/cognitive/integration/nimcp_self_introspection_bridge.o
@@ -33748,12 +33868,27 @@ help:
 	@echo "... __/cognitive/integration/nimcp_ethics_executive_bridge.o"
 	@echo "... __/cognitive/integration/nimcp_ethics_executive_bridge.i"
 	@echo "... __/cognitive/integration/nimcp_ethics_executive_bridge.s"
+	@echo "... __/cognitive/integration/nimcp_game_theory_executive_bridge.o"
+	@echo "... __/cognitive/integration/nimcp_game_theory_executive_bridge.i"
+	@echo "... __/cognitive/integration/nimcp_game_theory_executive_bridge.s"
 	@echo "... __/cognitive/integration/nimcp_gw_cognitive_bridge.o"
 	@echo "... __/cognitive/integration/nimcp_gw_cognitive_bridge.i"
 	@echo "... __/cognitive/integration/nimcp_gw_cognitive_bridge.s"
+	@echo "... __/cognitive/integration/nimcp_imagination_reasoning_bridge.o"
+	@echo "... __/cognitive/integration/nimcp_imagination_reasoning_bridge.i"
+	@echo "... __/cognitive/integration/nimcp_imagination_reasoning_bridge.s"
+	@echo "... __/cognitive/integration/nimcp_mirror_empathy_bridge.o"
+	@echo "... __/cognitive/integration/nimcp_mirror_empathy_bridge.i"
+	@echo "... __/cognitive/integration/nimcp_mirror_empathy_bridge.s"
+	@echo "... __/cognitive/integration/nimcp_predictive_attention_bridge.o"
+	@echo "... __/cognitive/integration/nimcp_predictive_attention_bridge.i"
+	@echo "... __/cognitive/integration/nimcp_predictive_attention_bridge.s"
 	@echo "... __/cognitive/integration/nimcp_rcog_hub_bridge.o"
 	@echo "... __/cognitive/integration/nimcp_rcog_hub_bridge.i"
 	@echo "... __/cognitive/integration/nimcp_rcog_hub_bridge.s"
+	@echo "... __/cognitive/integration/nimcp_salience_attention_bridge.o"
+	@echo "... __/cognitive/integration/nimcp_salience_attention_bridge.i"
+	@echo "... __/cognitive/integration/nimcp_salience_attention_bridge.s"
 	@echo "... __/cognitive/integration/nimcp_self_introspection_bridge.o"
 	@echo "... __/cognitive/integration/nimcp_self_introspection_bridge.i"
 	@echo "... __/cognitive/integration/nimcp_self_introspection_bridge.s"

@@ -598,6 +598,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_cognitive_snn_plasticity_integration.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_rcog_collective_integration.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_tier1_fep_bridges.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_tier2_hub_bridges.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/rebuild_cache.dir
@@ -1475,6 +1476,11 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_self_introspection_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_collective_hub_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_rcog_hub_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_salience_attention_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_predictive_attention_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_mirror_empathy_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_game_theory_executive_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_imagination_reasoning_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/integration/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/integration/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/integration/CMakeFiles/rebuild_cache.dir
@@ -2501,6 +2507,11 @@
 /home/bbrelin/nimcp/build/test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_attention_wm_integration.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_multi_bridge_integration.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_hub_orchestrator_integration.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_salience_attention_integration.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_predictive_attention_integration.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_mirror_empathy_integration.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_game_theory_executive_integration.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/integration/CMakeFiles/integration_cognitive_test_imagination_reasoning_integration.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/integration/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/integration/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/integration/CMakeFiles/rebuild_cache.dir
@@ -2680,6 +2691,7 @@
 /home/bbrelin/nimcp/build/test/regression/cognitive/integration/CMakeFiles/regression_cognitive_test_hub_regression.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/integration/CMakeFiles/regression_cognitive_test_bridge_regression.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/integration/CMakeFiles/regression_cognitive_test_integration_performance_regression.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/integration/CMakeFiles/regression_cognitive_test_tier2_hub_bridges_regression.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/integration/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/integration/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/integration/CMakeFiles/rebuild_cache.dir

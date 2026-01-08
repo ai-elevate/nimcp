@@ -2192,6 +2192,44 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_tier1_fep_bridges.cpp)
     message(STATUS "  Added Tier 1 FEP Bridges E2E test: e2e_test_tier1_fep_bridges")
 endif()
 
+# ============================================================================
+# Tier 2 Hub Bridges E2E Test
+# ============================================================================
+# WHAT: Test all Tier 2 Hub bridges (imagination_reasoning, game_theory_executive,
+#       mirror_empathy, salience_attention, predictive_attention)
+# WHY:  Verify all Tier 2 cognitive bridges integrate correctly with cognitive hub
+# HOW:  Test complete pipelines with all 5 bridges coordinated by cognitive hub
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_tier2_hub_bridges.cpp)
+    add_executable(e2e_test_tier2_hub_bridges
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_tier2_hub_bridges.cpp
+    )
+    target_include_directories(e2e_test_tier2_hub_bridges PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/integration
+        ${CMAKE_SOURCE_DIR}/include/cognitive/imagination
+        ${CMAKE_SOURCE_DIR}/include/cognitive/game_theory
+        ${CMAKE_SOURCE_DIR}/include/cognitive/social
+        ${CMAKE_SOURCE_DIR}/include/cognitive/attention
+        ${CMAKE_SOURCE_DIR}/include/cognitive/prediction
+    )
+    target_link_libraries(e2e_test_tier2_hub_bridges PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_tier2_hub_bridges PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_tier2_hub_bridges PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_tier2_hub_bridges COMMAND e2e_test_tier2_hub_bridges)
+    set_tests_properties(e2e_test_tier2_hub_bridges PROPERTIES
+        LABELS "e2e;cognitive;hub;tier2;imagination;reasoning;game_theory;executive;mirror;empathy;salience;attention;predictive;integration"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Tier 2 Hub Bridges E2E test: e2e_test_tier2_hub_bridges")
+endif()
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)
