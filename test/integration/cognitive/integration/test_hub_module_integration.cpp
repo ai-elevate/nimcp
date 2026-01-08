@@ -416,22 +416,7 @@ TEST_F(HubModuleIntegrationTest, ModuleQueryChain) {
     /* Register three modules for A -> B -> C query chain */
     int ret;
 
-    ret = cognitive_hub_register_module(hub, MODULE_PERCEPTION_1,
-                                         COG_CATEGORY_PERCEPTION,
-                                         "module_a", nullptr);
-    ASSERT_EQ(ret, 0);
-
-    ret = cognitive_hub_register_module(hub, MODULE_MEMORY_1,
-                                         COG_CATEGORY_MEMORY,
-                                         "module_b", nullptr);
-    ASSERT_EQ(ret, 0);
-
-    ret = cognitive_hub_register_module(hub, MODULE_REASONING_1,
-                                         COG_CATEGORY_REASONING,
-                                         "module_c", nullptr);
-    ASSERT_EQ(ret, 0);
-
-    /* Set up query handlers for B and C */
+    /* Set up query handler contexts for B and C */
     QueryChainContext ctx_b;
     ctx_b.hub = hub;
     ctx_b.my_module_id = MODULE_MEMORY_1;
@@ -443,6 +428,22 @@ TEST_F(HubModuleIntegrationTest, ModuleQueryChain) {
     ctx_c.my_module_id = MODULE_REASONING_1;
     ctx_c.next_module_id = 0;  /* C is end of chain */
     ctx_c.query_count = 0;
+
+    /* Register modules - pass context for B and C so query handler can use it */
+    ret = cognitive_hub_register_module(hub, MODULE_PERCEPTION_1,
+                                         COG_CATEGORY_PERCEPTION,
+                                         "module_a", nullptr);
+    ASSERT_EQ(ret, 0);
+
+    ret = cognitive_hub_register_module(hub, MODULE_MEMORY_1,
+                                         COG_CATEGORY_MEMORY,
+                                         "module_b", &ctx_b);
+    ASSERT_EQ(ret, 0);
+
+    ret = cognitive_hub_register_module(hub, MODULE_REASONING_1,
+                                         COG_CATEGORY_REASONING,
+                                         "module_c", &ctx_c);
+    ASSERT_EQ(ret, 0);
 
     ret = cognitive_hub_register_query_handler(hub, MODULE_MEMORY_1, chained_query_handler);
     ASSERT_EQ(ret, 0);
@@ -458,8 +459,7 @@ TEST_F(HubModuleIntegrationTest, ModuleQueryChain) {
     cognitive_query_result_t result;
     memset(&result, 0, sizeof(result));
 
-    /* Note: In a real implementation, B would need ctx_b passed via module context */
-    /* For this test, we verify the query reaches B */
+    /* Query from A to B - B will forward to C using its context */
     ret = cognitive_hub_query_module(hub, MODULE_PERCEPTION_1, MODULE_MEMORY_1,
                                       &query, &result);
     EXPECT_EQ(ret, 0);

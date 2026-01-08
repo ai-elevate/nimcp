@@ -320,8 +320,9 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
         return NULL;
     }
 
-    /* Create mutex */
-    hub->mutex = nimcp_mutex_create(NULL);
+    /* Create mutex - use recursive mutex to allow nested calls from callbacks */
+    mutex_attr_t mutex_attr = { .type = MUTEX_TYPE_RECURSIVE };
+    hub->mutex = nimcp_mutex_create(&mutex_attr);
     if (!hub->mutex) {
         nimcp_free(hub->subscription_counts);
         for (int i = 0; i < COG_EVENT_COUNT; i++) {

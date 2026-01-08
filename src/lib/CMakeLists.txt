@@ -433,6 +433,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_tom_social_bridge.c  # Theory of Mind-Social integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_gw_cognitive_bridge.c  # Global Workspace-Cognitive broadcast/competition bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_self_introspection_bridge.c  # Self-Model-Introspection integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_cognitive_integration_fep.c  # Cognitive Integration-FEP orchestrator bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations.c  # Phase 10.7: Natural Explanations
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning.c  # Phase 10.8: Meta-Learning
 

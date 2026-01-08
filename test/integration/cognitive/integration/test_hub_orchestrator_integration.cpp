@@ -408,9 +408,16 @@ TEST_F(HubOrchestratorIntegrationTest, CallbackErrorContinuesDelivery) {
                              counting_callback, &success_counter);
 
     /* Publish - both should be called despite first failing */
+    cognitive_event_data_t event;
+    memset(&event, 0, sizeof(event));
+    event.event_type = COG_EVENT_INPUT_RECEIVED;
+    event.source_module_id = MODULE_PUBLISHER_1;
+    event.priority = COG_PRIORITY_NORMAL;
+
     int ret = cognitive_hub_publish(hub, MODULE_PUBLISHER_1, COG_EVENT_INPUT_RECEIVED,
-                                     nullptr);
-    /* Publish should still succeed */
+                                     &event);
+    /* Publish should succeed */
+    EXPECT_EQ(ret, 0);
     /* The success_counter should have been incremented */
 
     /* Stats should show deliveries */

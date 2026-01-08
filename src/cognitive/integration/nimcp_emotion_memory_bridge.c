@@ -388,8 +388,9 @@ int emotion_memory_on_retrieval(
     emotional_tag_t* tag = find_tag_unlocked(bridge, memory_id);
 
     if (!tag) {
+        /* No emotional tag for this memory - not an error, just no emotion */
         nimcp_platform_mutex_unlock(bridge->mutex);
-        return -1;  /* Memory not found */
+        return 0;  /* Success - emotion_out initialized with has_emotion = false */
     }
 
     /* Compute emotional response scaled by sensitivity */
