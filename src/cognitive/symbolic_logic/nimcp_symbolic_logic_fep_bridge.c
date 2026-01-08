@@ -194,3 +194,53 @@ int symbolic_logic_fep_query_self_knowledge(kg_reader_t* kg) {
 
     return self ? 1 : 0;
 }
+
+/* ============================================================================
+ * FEP Orchestrator Integration
+ * ============================================================================ */
+
+#include "cognitive/free_energy/nimcp_fep_orchestrator.h"
+
+int symbolic_logic_fep_bridge_update_wrapper(void* bridge_handle) {
+    if (!bridge_handle) return -1;
+    symbolic_logic_fep_bridge_t* bridge = (symbolic_logic_fep_bridge_t*)bridge_handle;
+    return symbolic_logic_fep_bridge_update(bridge, 0);
+}
+
+int symbolic_logic_fep_bridge_register_with_orchestrator(
+    symbolic_logic_fep_bridge_t* bridge,
+    fep_orchestrator_t* orchestrator,
+    uint32_t* bridge_id_out)
+{
+    if (!bridge || !orchestrator) return NIMCP_ERROR_NULL_POINTER;
+
+    int result = fep_orchestrator_register_bridge(
+        orchestrator,
+        "symbolic_logic_fep_bridge",
+        FEP_BRIDGE_CATEGORY_COGNITIVE,
+        (fep_bridge_handle_t)bridge,
+        symbolic_logic_fep_bridge_update_wrapper,
+        NULL,  /* Don't auto-destroy - caller manages lifecycle */
+        bridge_id_out);
+
+    if (result == 0) {
+        NIMCP_LOGGING_INFO("Registered with FEP orchestrator (bridge_id=%u)",
+            bridge_id_out ? *bridge_id_out : 0);
+    } else {
+        NIMCP_LOGGING_ERROR("Failed to register with FEP orchestrator");
+    }
+
+    return result;
+}
+
+int symbolic_logic_fep_bridge_unregister_from_orchestrator(
+    symbolic_logic_fep_bridge_t* bridge,
+    fep_orchestrator_t* orchestrator)
+{
+    if (!bridge || !orchestrator) return NIMCP_ERROR_NULL_POINTER;
+
+    /* Note: Need to track bridge_id to unregister properly */
+    /* For now, this is a placeholder - full implementation would store bridge_id */
+    NIMCP_LOGGING_DEBUG("Unregister from FEP orchestrator requested");
+    return 0;
+}

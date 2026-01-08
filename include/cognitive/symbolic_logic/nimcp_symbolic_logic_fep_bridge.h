@@ -143,6 +143,19 @@ int symbolic_logic_fep_bridge_connect_bio_async(symbolic_logic_fep_bridge_t* bri
 int symbolic_logic_fep_bridge_disconnect_bio_async(symbolic_logic_fep_bridge_t* bridge);
 bool symbolic_logic_fep_bridge_is_bio_async_connected(const symbolic_logic_fep_bridge_t* bridge);
 
+/* FEP Orchestrator Integration */
+struct fep_orchestrator;
+int symbolic_logic_fep_bridge_register_with_orchestrator(
+    symbolic_logic_fep_bridge_t* bridge,
+    struct fep_orchestrator* orchestrator,
+    uint32_t* bridge_id_out);
+int symbolic_logic_fep_bridge_unregister_from_orchestrator(
+    symbolic_logic_fep_bridge_t* bridge,
+    struct fep_orchestrator* orchestrator);
+
+/* Update wrapper for FEP orchestrator callback */
+int symbolic_logic_fep_bridge_update_wrapper(void* bridge_handle);
+
 #ifdef __cplusplus
 }
 #endif

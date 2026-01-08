@@ -1842,3 +1842,40 @@ gtest_discover_tests(unit_cognitive_test_jepa_fep_bridge
         LABELS "unit;cognitive;jepa;fep"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Symbolic Logic Integration Tests
+# ============================================================================
+# WHAT: Unit tests for symbolic logic cognitive layer integration
+# WHY:  Verify FEP orchestrator and cognitive hub integration
+# HOW:  Test hub bridge, FEP registration, inter-module communication
+# ============================================================================
+
+add_executable(unit_cognitive_test_symbolic_logic_integration
+    symbolic_logic/test_symbolic_logic_integration.cpp
+)
+
+target_link_libraries(unit_cognitive_test_symbolic_logic_integration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_symbolic_logic_integration
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_cognitive_test_symbolic_logic_integration PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_symbolic_logic_integration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;symbolic_logic;integration"
+        TIMEOUT 120
+)
