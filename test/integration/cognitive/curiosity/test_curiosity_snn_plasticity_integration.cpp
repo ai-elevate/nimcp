@@ -20,10 +20,8 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/curiosity/nimcp_curiosity_snn_bridge.h"
 #include "cognitive/curiosity/nimcp_curiosity_plasticity_bridge.h"
-}
 
 class CuriositySNNPlasticityIntegration : public ::testing::Test {
 protected:

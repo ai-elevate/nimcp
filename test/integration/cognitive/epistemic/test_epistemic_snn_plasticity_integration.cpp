@@ -14,10 +14,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
 #include "cognitive/epistemic/nimcp_epistemic_snn_bridge.h"
 #include "cognitive/epistemic/nimcp_epistemic_plasticity_bridge.h"
-}
 
 class EpistemicSnnPlasticityIntegrationTest : public ::testing::Test {
 protected:

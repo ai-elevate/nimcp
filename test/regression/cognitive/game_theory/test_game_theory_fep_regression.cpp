@@ -31,11 +31,9 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
 #include "cognitive/game_theory/nimcp_game_theory_fep_bridge.h"
 #include "cognitive/game_theory/nimcp_game_theory.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
-}
 
 /* ============================================================================
  * Test Constants - Known Good Baselines

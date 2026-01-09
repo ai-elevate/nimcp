@@ -26,9 +26,7 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
 #include "cognitive/recursive/nimcp_rcog_fep_bridge.h"
-}
 
 /* ============================================================================
  * Global Test Helpers

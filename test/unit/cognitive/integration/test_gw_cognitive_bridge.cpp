@@ -12,9 +12,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/integration/nimcp_gw_cognitive_bridge.h"
-}
 
 /* ============================================================================
  * Test Callback Helpers

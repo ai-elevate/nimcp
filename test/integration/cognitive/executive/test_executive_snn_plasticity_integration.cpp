@@ -27,10 +27,8 @@
 #include <chrono>
 #include <atomic>
 
-extern "C" {
 #include "cognitive/executive/nimcp_executive_snn_bridge.h"
 #include "cognitive/executive/nimcp_executive_plasticity_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

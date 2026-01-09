@@ -23,10 +23,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
 #include "cognitive/curiosity/nimcp_curiosity_snn_bridge.h"
 #include "cognitive/curiosity/nimcp_curiosity_plasticity_bridge.h"
-}
 
 //=============================================================================
 // SNN Bridge Regression Tests

@@ -106,6 +106,7 @@ gtest_discover_tests(integration_bio_async_cross_bridge
 # ----------------------------------------------------------------------------
 # Metabolic Cascade Integration Tests
 # ----------------------------------------------------------------------------
+# NOTE: ToM substrate bridge API now unified (cognitive/tom/ provides all functions)
 add_executable(integration_metabolic_cascade
     test_metabolic_cascade_integration.cpp
 )

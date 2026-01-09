@@ -147,6 +147,17 @@ typedef struct {
 int tom_substrate_default_config(tom_substrate_config_t* config);
 
 /**
+ * Get default ToM substrate configuration (backward compat)
+ *
+ * WHAT: Returns a default configuration struct
+ * WHY: Old API used return-struct pattern
+ * HOW: Creates and returns a config with default values
+ *
+ * @return Default configuration struct
+ */
+tom_substrate_config_t tom_substrate_get_default_config(void);
+
+/**
  * Create ToM substrate bridge
  *
  * WHAT: Creates bridge between ToM module and neural substrate
@@ -320,6 +331,38 @@ int tom_substrate_get_stats(
     const tom_substrate_bridge_t* bridge,
     tom_substrate_stats_t* stats
 );
+
+/* ============================================================================
+ * Backward Compatibility API (theory_of_mind namespace)
+ * ============================================================================
+ * These functions provide backward compatibility with the older API used by
+ * nimcp_theory_of_mind.c. They are aliases/wrappers for the new unified API.
+ * ============================================================================ */
+
+/**
+ * Update bridge (backward compat wrapper)
+ * Alias for tom_substrate_update()
+ */
+int tom_substrate_bridge_update(tom_substrate_bridge_t* bridge);
+
+/**
+ * Apply effects via bio-async (backward compat)
+ * Broadcasts ToM substrate effects via bio-async messaging
+ */
+int tom_substrate_bridge_apply_effects(tom_substrate_bridge_t* bridge);
+
+/**
+ * Get effects (backward compat wrapper)
+ * Alias for tom_substrate_get_effects()
+ */
+int tom_substrate_bridge_get_effects(const tom_substrate_bridge_t* bridge,
+                                     tom_substrate_effects_t* effects);
+
+/**
+ * Register with bio-async router (backward compat)
+ * Alias for tom_substrate_connect_bio_async()
+ */
+int tom_substrate_bridge_register_bio_async(tom_substrate_bridge_t* bridge, bio_router_t* router);
 
 #ifdef __cplusplus
 }

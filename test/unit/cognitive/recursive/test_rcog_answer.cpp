@@ -14,10 +14,8 @@
 #include <string.h>
 #include <math.h>
 
-extern "C" {
 #include "cognitive/recursive/nimcp_rcog_types.h"
 #include "cognitive/recursive/nimcp_rcog_answer.h"
-}
 
 //=============================================================================
 // Test Fixtures

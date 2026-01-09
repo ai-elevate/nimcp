@@ -9,9 +9,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/bias/nimcp_bias_plasticity_bridge.h"
-}
 
 class BiasPlasticityBridgeTest : public ::testing::Test {
 protected:

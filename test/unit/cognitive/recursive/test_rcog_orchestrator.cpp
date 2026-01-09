@@ -13,12 +13,10 @@
 #include <gtest/gtest.h>
 #include <string.h>
 
-extern "C" {
 #include "cognitive/recursive/nimcp_rcog_types.h"
 #include "cognitive/recursive/nimcp_rcog_orchestrator.h"
 #include "cognitive/recursive/nimcp_rcog_context_store.h"
 #include "cognitive/recursive/nimcp_rcog_answer.h"
-}
 
 //=============================================================================
 // Test Fixtures

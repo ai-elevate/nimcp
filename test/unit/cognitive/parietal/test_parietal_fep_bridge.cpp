@@ -33,9 +33,7 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
 #include "cognitive/parietal/nimcp_parietal_fep_bridge.h"
-}
 
 /* ============================================================================
  * Global Test Helpers

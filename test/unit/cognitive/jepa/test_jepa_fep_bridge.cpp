@@ -28,12 +28,10 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
 #include "cognitive/jepa/nimcp_jepa_fep_bridge.h"
 #include "cognitive/jepa/nimcp_jepa_predictor.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 namespace {
 

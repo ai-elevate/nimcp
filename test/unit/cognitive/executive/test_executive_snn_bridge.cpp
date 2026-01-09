@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/executive/nimcp_executive_snn_bridge.h"
-}
 
 class ExecutiveSNNBridgeTest : public ::testing::Test {
 protected:

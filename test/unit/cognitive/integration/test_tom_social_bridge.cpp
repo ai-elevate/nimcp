@@ -9,9 +9,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/integration/nimcp_tom_social_bridge.h"
-}
 
 class TomSocialBridgeTest : public ::testing::Test {
 protected:

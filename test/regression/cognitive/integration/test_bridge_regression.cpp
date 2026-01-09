@@ -30,7 +30,6 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/integration/nimcp_emotion_memory_bridge.h"
 #include "cognitive/integration/nimcp_attention_wm_bridge.h"
 #include "cognitive/integration/nimcp_curiosity_reasoning_bridge.h"
@@ -38,7 +37,6 @@ extern "C" {
 #include "cognitive/integration/nimcp_self_introspection_bridge.h"
 #include "cognitive/integration/nimcp_tom_social_bridge.h"
 #include "cognitive/integration/nimcp_gw_cognitive_bridge.h"
-}
 
 /* ============================================================================
  * Test Fixtures

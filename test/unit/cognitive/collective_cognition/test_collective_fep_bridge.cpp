@@ -21,10 +21,8 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
 #include "cognitive/collective_cognition/nimcp_collective_fep_bridge.h"
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
-}
 
 /* ============================================================================
  * MOCK FEP ORCHESTRATOR (minimal mock for testing)

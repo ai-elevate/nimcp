@@ -1,5 +1,6 @@
 # Cognitive Substrate Bridges Integration Tests
 # Tests integration of all 8 cognitive substrate bridges with shared neural substrate
+# NOTE: ToM substrate bridge API now unified (cognitive/tom/ provides all functions)
 
 add_executable(integration_cognitive_substrate_bridges
     test_cognitive_substrate_bridges_integration.cpp

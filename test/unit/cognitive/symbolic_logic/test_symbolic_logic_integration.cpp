@@ -12,12 +12,10 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/symbolic_logic/nimcp_symbolic_logic_hub_bridge.h"
 #include "cognitive/symbolic_logic/nimcp_symbolic_logic_fep_bridge.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
-}
 
 //=============================================================================
 // Hub Bridge Tests

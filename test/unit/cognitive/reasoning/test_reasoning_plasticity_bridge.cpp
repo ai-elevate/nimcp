@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/reasoning/nimcp_reasoning_plasticity_bridge.h"
-}
 
 class ReasoningPlasticityBridgeTest : public ::testing::Test {
 protected:

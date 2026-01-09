@@ -29,7 +29,6 @@
 #include <vector>
 #include <random>
 
-extern "C" {
 // Recursive Cognition
 #include "cognitive/recursive/nimcp_rcog_engine.h"
 #include "cognitive/recursive/nimcp_rcog_snn_bridge.h"
@@ -45,7 +44,6 @@ extern "C" {
 
 // FEP Integration
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
-}
 
 //=============================================================================
 // Test Constants

@@ -9,9 +9,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/salience/nimcp_salience_plasticity_bridge.h"
-}
 
 class SaliencePlasticityBridgeTest : public ::testing::Test {
 protected:

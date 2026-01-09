@@ -28,10 +28,8 @@
 #include <chrono>
 #include <atomic>
 
-extern "C" {
 #include "cognitive/meta_learning/nimcp_meta_learning_snn_bridge.h"
 #include "cognitive/meta_learning/nimcp_meta_learning_plasticity_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

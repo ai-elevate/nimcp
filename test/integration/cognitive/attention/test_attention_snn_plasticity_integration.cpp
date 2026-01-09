@@ -49,9 +49,7 @@
 #include "cognitive/attention/nimcp_attention_snn_bridge.h"
 #include "cognitive/attention/nimcp_attention_plasticity_bridge.h"
 
-extern "C" {
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

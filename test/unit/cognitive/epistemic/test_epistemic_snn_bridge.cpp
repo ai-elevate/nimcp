@@ -9,9 +9,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/epistemic/nimcp_epistemic_snn_bridge.h"
-}
 
 class EpistemicSnnBridgeTest : public ::testing::Test {
 protected:

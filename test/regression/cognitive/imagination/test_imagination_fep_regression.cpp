@@ -27,12 +27,10 @@
 #include <numeric>
 #include <algorithm>
 
-extern "C" {
 #include "cognitive/imagination/nimcp_imagination_fep_bridge.h"
 #include "cognitive/imagination/nimcp_imagination_engine.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 /* ============================================================================
  * Regression Test Constants

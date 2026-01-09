@@ -26,12 +26,10 @@
 #include <vector>
 #include <memory>
 
-extern "C" {
 #include "cognitive/introspection/nimcp_introspection_snn_bridge.h"
 #include "cognitive/introspection/nimcp_introspection_plasticity_bridge.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

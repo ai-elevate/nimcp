@@ -34,9 +34,7 @@
 #include "cognitive/mirror_neurons/nimcp_mirror_snn_bridge.h"
 #include "cognitive/mirror_neurons/nimcp_mirror_plasticity_bridge.h"
 
-extern "C" {
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

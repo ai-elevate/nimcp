@@ -25,11 +25,9 @@
 #include <chrono>
 #include <atomic>
 
-extern "C" {
 #include "cognitive/integration/nimcp_predictive_attention_bridge.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
-}
 
 /* ============================================================================
  * Test Constants

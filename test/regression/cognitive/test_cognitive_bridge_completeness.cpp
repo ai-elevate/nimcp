@@ -140,7 +140,6 @@
 
 // Neural substrate for testing
 #include "core/neural_substrate/nimcp_neural_substrate.h"
-}
 
 /* ============================================================================
  * Test Fixture

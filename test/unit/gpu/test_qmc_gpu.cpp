@@ -34,9 +34,7 @@
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 
 // CPU Monte Carlo for comparison
-extern "C" {
 #include "utils/algorithms/nimcp_monte_carlo.h"
-}
 
 //=============================================================================
 // Test Fixture

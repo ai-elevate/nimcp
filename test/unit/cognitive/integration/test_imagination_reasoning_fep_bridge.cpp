@@ -31,9 +31,7 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
 #include "cognitive/integration/nimcp_imagination_reasoning_fep_bridge.h"
-}
 
 /* ============================================================================
  * Global Test Helpers

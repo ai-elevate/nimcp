@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/global_workspace/nimcp_gw_plasticity_bridge.h"
-}
 
 class GWPlasticityBridgeTest : public ::testing::Test {
 protected:

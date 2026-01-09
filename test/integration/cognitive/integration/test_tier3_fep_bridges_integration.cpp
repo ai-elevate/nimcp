@@ -19,13 +19,11 @@
 #include <thread>
 #include <vector>
 
-extern "C" {
 #include "cognitive/integration/nimcp_imagination_reasoning_fep_bridge.h"
 #include "cognitive/integration/nimcp_game_theory_executive_fep_bridge.h"
 #include "cognitive/integration/nimcp_mirror_empathy_fep_bridge.h"
 #include "cognitive/integration/nimcp_salience_attention_fep_bridge.h"
 #include "cognitive/integration/nimcp_predictive_attention_fep_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

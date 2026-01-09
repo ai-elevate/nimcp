@@ -27,7 +27,6 @@
 #include <thread>
 #include <vector>
 
-extern "C" {
 // Tier 3 FEP Bridges (FEP bridges for Tier 2 Hub bridges)
 #include "cognitive/integration/nimcp_imagination_reasoning_fep_bridge.h"
 #include "cognitive/integration/nimcp_game_theory_executive_fep_bridge.h"
@@ -37,7 +36,6 @@ extern "C" {
 
 // FEP Orchestrator
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
-}
 
 //=============================================================================
 // Test Constants

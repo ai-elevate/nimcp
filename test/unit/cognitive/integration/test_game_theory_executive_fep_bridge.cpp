@@ -32,9 +32,7 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
 #include "cognitive/integration/nimcp_game_theory_executive_fep_bridge.h"
-}
 
 /* ============================================================================
  * Global Test Helpers

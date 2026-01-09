@@ -25,11 +25,9 @@
 #include <fstream>
 #include <filesystem>
 
-extern "C" {
 #include "async/nimcp_wiring_diagram.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
-}
 
 //=============================================================================
 // Test Fixture

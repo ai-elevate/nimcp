@@ -22,10 +22,8 @@
 #include <chrono>
 #include <vector>
 
-extern "C" {
 #include "cognitive/global_workspace/nimcp_gw_snn_bridge.h"
 #include "cognitive/global_workspace/nimcp_gw_plasticity_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

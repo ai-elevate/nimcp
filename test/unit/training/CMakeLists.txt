@@ -279,3 +279,6 @@ set_tests_properties(unit_training_test_adv_gs
     PROPERTIES
         LABELS "unit;training;adversarial;gradient-scaling;adv;gs"
         TIMEOUT 180)
+
+# Training Integration Hub Unit Tests
+add_subdirectory(integration)

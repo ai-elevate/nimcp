@@ -22,9 +22,7 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
-}
 
 //=============================================================================
 // Test Fixture

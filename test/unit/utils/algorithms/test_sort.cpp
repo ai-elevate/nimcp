@@ -14,9 +14,7 @@
 #include <algorithm>
 #include <random>
 
-extern "C" {
 #include "utils/algorithms/nimcp_sort.h"
-}
 
 /* ============================================================================
  * Test Fixtures

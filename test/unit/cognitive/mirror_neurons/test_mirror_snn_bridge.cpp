@@ -15,9 +15,7 @@
 // Note: Header has its own extern "C" guards; CUDA headers can't be in extern "C"
 #include "cognitive/mirror_neurons/nimcp_mirror_snn_bridge.h"
 
-extern "C" {
 #include "utils/time/nimcp_time.h"
-}
 
 #include <cmath>
 #include <cstring>

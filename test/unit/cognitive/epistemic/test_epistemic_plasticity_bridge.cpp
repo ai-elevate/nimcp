@@ -9,9 +9,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/epistemic/nimcp_epistemic_plasticity_bridge.h"
-}
 
 class EpistemicPlasticityBridgeTest : public ::testing::Test {
 protected:

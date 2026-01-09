@@ -21,12 +21,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "cognitive/emotion/nimcp_emotion_snn_bridge.h"
 #include "cognitive/emotion/nimcp_emotion_plasticity_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-}
 
 #include <cstring>
 #include <cmath>

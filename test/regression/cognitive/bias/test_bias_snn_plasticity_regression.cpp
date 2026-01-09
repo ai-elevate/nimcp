@@ -13,10 +13,8 @@
 #include <cmath>
 #include <chrono>
 
-extern "C" {
 #include "cognitive/bias/nimcp_bias_snn_bridge.h"
 #include "cognitive/bias/nimcp_bias_plasticity_bridge.h"
-}
 
 class BiasRegressionTest : public ::testing::Test {
 protected:

@@ -20,12 +20,10 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
 #include "cognitive/imagination/nimcp_imagination_fep_bridge.h"
 #include "cognitive/imagination/nimcp_imagination_engine.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
-}
 
 /* ============================================================================
  * Test Constants

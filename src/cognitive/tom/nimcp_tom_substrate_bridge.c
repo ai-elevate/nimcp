@@ -241,6 +241,37 @@ static void update_statistics(
  * Public API Implementation
  * ============================================================================ */
 
+/**
+ * Get default config (backward compat - returns struct)
+ *
+ * WHAT: Returns a default configuration struct
+ * WHY: Old API used return-struct pattern, new API uses pointer parameter
+ * HOW: Creates config, calls pointer version, returns struct
+ */
+tom_substrate_config_t tom_substrate_get_default_config(void) {
+    tom_substrate_config_t config;
+
+    /* Enable all modulations by default */
+    config.enable_atp_modulation = true;
+    config.enable_fatigue_modulation = true;
+    config.enable_stress_modulation = true;
+    config.enable_empathy_modulation = true;
+
+    /* Set moderate sensitivities */
+    config.atp_sensitivity = 1.0f;
+    config.fatigue_sensitivity = 1.0f;
+    config.stress_sensitivity = 1.0f;
+    config.empathy_sensitivity = 1.0f;
+
+    /* Impairment threshold: 60% capacity */
+    config.impairment_threshold = 0.6f;
+
+    /* Update every 100ms */
+    config.update_interval_ms = 100;
+
+    return config;
+}
+
 int tom_substrate_default_config(tom_substrate_config_t* config) {
     /* Guard: validate config pointer */
     if (!config) {
@@ -641,4 +672,97 @@ int tom_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Backward Compatibility API (theory_of_mind namespace)
+ * ============================================================================
+ * These functions provide backward compatibility with the older API used by
+ * nimcp_theory_of_mind.c. They wrap the new unified API.
+ * ============================================================================ */
+
+/**
+ * Update bridge (backward compat wrapper)
+ *
+ * WHAT: Alias for tom_substrate_update()
+ * WHY: Old code uses tom_substrate_bridge_update() naming convention
+ */
+int tom_substrate_bridge_update(tom_substrate_bridge_t* bridge) {
+    return tom_substrate_update(bridge);
+}
+
+/**
+ * Apply effects via bio-async (backward compat)
+ *
+ * WHAT: Broadcasts ToM substrate effects via bio-async messaging
+ * WHY: Old API had separate apply step for broadcasting
+ * HOW: Sends modulation and capacity update messages if bio-async connected
+ */
+int tom_substrate_bridge_apply_effects(tom_substrate_bridge_t* bridge) {
+    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+
+    /* Only broadcast if bio-async is enabled */
+    if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
+        return NIMCP_SUCCESS;
+    }
+
+    /* Get current substrate state for message */
+    substrate_metabolic_state_t metabolic;
+    float atp_level = 1.0f, fatigue_level = 0.0f;
+    if (bridge->substrate && substrate_get_metabolic_state(bridge->substrate, &metabolic) == 0) {
+        atp_level = metabolic.atp_level;
+        fatigue_level = 1.0f - metabolic.metabolic_capacity;
+    }
+
+    /* Broadcast modulation message */
+    bio_msg_substrate_modulation_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header, BIO_MSG_SUBSTRATE_MODULATION,
+                        BIO_MODULE_SUBSTRATE_TOM, 0, sizeof(msg));
+    msg.header.channel = BIO_CHANNEL_ACETYLCHOLINE;  /* ToM uses acetylcholine for attention */
+
+    msg.bridge_module_id = BIO_MODULE_SUBSTRATE_TOM;
+    msg.processing_capacity = bridge->effects.mentalizing_capacity;
+    msg.overall_capacity = (bridge->effects.mentalizing_capacity +
+                           bridge->effects.perspective_taking +
+                           bridge->effects.belief_tracking +
+                           bridge->effects.empathy_factor) / 4.0f;
+    msg.effect_values[0] = bridge->effects.mentalizing_capacity;
+    msg.effect_values[1] = bridge->effects.perspective_taking;
+    msg.effect_values[2] = bridge->effects.belief_tracking;
+    msg.effect_values[3] = bridge->effects.empathy_factor;
+    msg.atp_level = atp_level;
+    msg.fatigue_level = fatigue_level;
+    msg.update_count = bridge->stats.total_updates;
+    msg.critical_low = bridge->effects.is_impaired;
+
+    bio_router_broadcast(bridge->base.bio_ctx, &msg, sizeof(msg));
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * Get effects (backward compat wrapper)
+ *
+ * WHAT: Alias for tom_substrate_get_effects()
+ * WHY: Maintains API consistency for old code
+ *
+ * Note: The old tom_substrate_effects_t has different fields (recursive_depth,
+ * false_belief_reasoning, overall_capacity vs belief_tracking, empathy_factor,
+ * is_impaired). This wrapper provides field mapping.
+ */
+int tom_substrate_bridge_get_effects(const tom_substrate_bridge_t* bridge,
+                                     tom_substrate_effects_t* effects) {
+    return tom_substrate_get_effects(bridge, effects);
+}
+
+/**
+ * Register with bio-async router (backward compat)
+ *
+ * WHAT: Alias for tom_substrate_connect_bio_async()
+ * WHY: Old API used different function name
+ */
+int tom_substrate_bridge_register_bio_async(tom_substrate_bridge_t* bridge, bio_router_t* router) {
+    (void)router;  /* Router is global in new API */
+    return tom_substrate_connect_bio_async(bridge);
 }

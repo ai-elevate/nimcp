@@ -20,7 +20,6 @@
 #include <vector>
 #include <filesystem>
 
-extern "C" {
 #include "async/nimcp_wiring_diagram.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
@@ -28,7 +27,6 @@ extern "C" {
 #include "core/brain/nimcp_brain_kg.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/error/nimcp_error_codes.h"
-}
 
 //=============================================================================
 // Test Fixture

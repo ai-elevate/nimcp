@@ -7,9 +7,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "cognitive/integration/nimcp_curiosity_reasoning_bridge.h"
-}
 
 /**
  * @brief Test fixture for Curiosity-Reasoning bridge tests

@@ -33,9 +33,7 @@
 #include "cognitive/attention/nimcp_attention_snn_bridge.h"
 #include "cognitive/attention/nimcp_attention_plasticity_bridge.h"
 
-extern "C" {
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture: Attention-SNN Bridge

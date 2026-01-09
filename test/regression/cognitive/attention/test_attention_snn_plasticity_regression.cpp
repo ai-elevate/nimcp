@@ -23,10 +23,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
 #include "cognitive/attention/nimcp_attention_snn_bridge.h"
 #include "cognitive/attention/nimcp_attention_plasticity_bridge.h"
-}
 
 //=============================================================================
 // SNN Bridge Regression Tests

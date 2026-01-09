@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/wellbeing/nimcp_wellbeing_snn_bridge.h"
-}
 
 class WellbeingSNNBridgeTest : public ::testing::Test {
 protected:

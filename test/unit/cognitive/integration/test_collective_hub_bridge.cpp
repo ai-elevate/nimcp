@@ -20,12 +20,10 @@
 #include <cstring>
 #include <atomic>
 
-extern "C" {
 #include "cognitive/integration/nimcp_collective_hub_bridge.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
-}
 
 /* ============================================================================
  * GLOBAL TEST HELPERS

@@ -32,7 +32,6 @@
 // Forward declarations for internal functions (exposed for testing)
 //=============================================================================
 
-extern "C" {
 // Radix sort API
 typedef struct nimcp_radix_sort_ctx nimcp_radix_sort_ctx_t;
 nimcp_radix_sort_ctx_t* nimcp_radix_sort_create(void* gpu_ctx, size_t max_elements);

@@ -27,7 +27,6 @@
 // Include GPU headers BEFORE extern "C" to avoid CUDA template conflicts
 #include "gpu/context/nimcp_gpu_context.h"
 
-extern "C" {
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.h"
@@ -36,7 +35,6 @@ extern "C" {
 #include "core/brain/regions/wernicke/nimcp_wernicke_immune.h"
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
-}
 
 //=============================================================================
 // Test Fixture

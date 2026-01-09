@@ -13,10 +13,8 @@
 #include <cmath>
 #include <chrono>
 
-extern "C" {
 #include "cognitive/salience/nimcp_salience_snn_bridge.h"
 #include "cognitive/salience/nimcp_salience_plasticity_bridge.h"
-}
 
 class SalienceRegressionTest : public ::testing::Test {
 protected:

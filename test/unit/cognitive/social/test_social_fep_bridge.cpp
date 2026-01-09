@@ -30,9 +30,7 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
 #include "cognitive/social/nimcp_social_fep_bridge.h"
-}
 
 /* ============================================================================
  * Global Test Helpers

@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/ethics/nimcp_ethics_snn_bridge.h"
-}
 
 class EthicsSNNBridgeTest : public ::testing::Test {
 protected:

@@ -12,9 +12,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/integration/nimcp_emotion_executive_bridge.h"
-}
 
 class EmotionExecutiveBridgeTest : public ::testing::Test {
 protected:

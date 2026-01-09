@@ -14,10 +14,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
 #include "cognitive/bias/nimcp_bias_snn_bridge.h"
 #include "cognitive/bias/nimcp_bias_plasticity_bridge.h"
-}
 
 class BiasSnnPlasticityIntegrationTest : public ::testing::Test {
 protected:

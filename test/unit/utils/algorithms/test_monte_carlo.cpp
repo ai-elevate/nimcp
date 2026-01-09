@@ -14,9 +14,7 @@
 #include <cmath>
 #include <numeric>
 
-extern "C" {
 #include "utils/algorithms/nimcp_monte_carlo.h"
-}
 
 /* ============================================================================
  * Test Fixtures

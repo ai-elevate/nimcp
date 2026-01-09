@@ -25,7 +25,6 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
 #include "language/nimcp_language_orchestrator.h"
 #include "language/nimcp_language_config.h"
 #include "language/bridges/nimcp_language_perception_bridge.h"
@@ -37,7 +36,6 @@ extern "C" {
 #include "language/bridges/nimcp_language_thalamic_bridge.h"
 #include "language/bridges/nimcp_language_substrate_bridge.h"
 #include "language/bridges/nimcp_language_logic_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

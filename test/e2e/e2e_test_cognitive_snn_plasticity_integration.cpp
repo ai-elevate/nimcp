@@ -20,7 +20,6 @@
 #include <thread>
 #include <cstring>
 
-extern "C" {
 // Cognitive integration layer
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_emotion_memory_bridge.h"
@@ -31,7 +30,6 @@ extern "C" {
 
 // Plasticity bridges (inter-layer)
 #include "cognitive/emotion/nimcp_emotion_plasticity_bridge.h"
-}
 
 // =============================================================================
 // Test Constants
@@ -237,7 +235,7 @@ TEST_F(CognitiveSNNPlasticityIntegrationTest, PlasticityBridgeWithHub) {
     ASSERT_EQ(0, emotion_plasticity_register_synapse(emotion_plasticity,
         synapse_id,
         EMOTION_SYNAPSE_STIMULUS_TO_EMOTION,
-        EMOTION_JOY,
+        EMOTION_HAPPINESS,
         0.5f));
 
     // Subscribe to learning events
@@ -252,12 +250,12 @@ TEST_F(CognitiveSNNPlasticityIntegrationTest, PlasticityBridgeWithHub) {
 
     // Record stimulus (pre-synaptic)
     ASSERT_EQ(0, emotion_plasticity_stimulus(emotion_plasticity,
-        EMOTION_JOY, 0.8f, timestamp));
+        EMOTION_HAPPINESS, 0.8f, timestamp));
 
     // Record response (post-synaptic) with small delay
     timestamp += 10000;  // 10ms later
     ASSERT_EQ(0, emotion_plasticity_response(emotion_plasticity,
-        EMOTION_JOY, 0.7f, timestamp));
+        EMOTION_HAPPINESS, 0.7f, timestamp));
 
     // Update plasticity
     ASSERT_EQ(0, emotion_plasticity_update(emotion_plasticity, 10.0f));
@@ -292,17 +290,17 @@ TEST_F(CognitiveSNNPlasticityIntegrationTest, PlasticityRewardModulation) {
     ASSERT_EQ(0, emotion_plasticity_register_synapse(emotion_plasticity,
         synapse_id,
         EMOTION_SYNAPSE_EMOTION_TO_RESPONSE,
-        EMOTION_JOY,
+        EMOTION_HAPPINESS,
         0.5f));
 
     uint64_t timestamp = GetTimestampUs();
 
     // Stimulus-response pair
     ASSERT_EQ(0, emotion_plasticity_stimulus(emotion_plasticity,
-        EMOTION_JOY, 0.6f, timestamp));
+        EMOTION_HAPPINESS, 0.6f, timestamp));
     timestamp += 20000;
     ASSERT_EQ(0, emotion_plasticity_response(emotion_plasticity,
-        EMOTION_JOY, 0.5f, timestamp));
+        EMOTION_HAPPINESS, 0.5f, timestamp));
 
     // Provide reward
     timestamp += 50000;
@@ -315,7 +313,7 @@ TEST_F(CognitiveSNNPlasticityIntegrationTest, PlasticityRewardModulation) {
     // Get response modulation
     float modulation = 0.0f;
     ASSERT_EQ(0, emotion_plasticity_get_response_modulation(emotion_plasticity,
-        EMOTION_JOY, &modulation));
+        EMOTION_HAPPINESS, &modulation));
 
     // Modulation should be positive after reward
     EXPECT_GE(modulation, 0.0f);
@@ -485,12 +483,12 @@ TEST_F(CognitiveSNNPlasticityIntegrationTest, LearningAcrossLayers) {
     for (int trial = 0; trial < 10; trial++) {
         // Stimulus
         ASSERT_EQ(0, emotion_plasticity_stimulus(emotion_plasticity,
-            EMOTION_JOY, 0.7f, timestamp));
+            EMOTION_HAPPINESS, 0.7f, timestamp));
         timestamp += 10000;
 
         // Response
         ASSERT_EQ(0, emotion_plasticity_response(emotion_plasticity,
-            EMOTION_JOY, 0.6f + trial * 0.02f, timestamp));
+            EMOTION_HAPPINESS, 0.6f + trial * 0.02f, timestamp));
         timestamp += 50000;
 
         // Reward (positive reinforcement)
@@ -504,7 +502,7 @@ TEST_F(CognitiveSNNPlasticityIntegrationTest, LearningAcrossLayers) {
 
     // Get learned sensitivity
     float sensitivity = emotion_plasticity_get_sensitivity(emotion_plasticity,
-        EMOTION_JOY);
+        EMOTION_HAPPINESS);
 
     // SNN processing should now reflect learned associations
     // Modulate SNN by learned arousal level
@@ -659,7 +657,7 @@ TEST_F(CognitiveSNNPlasticityIntegrationTest, GWBroadcastIntegration) {
 TEST_F(CognitiveSNNPlasticityIntegrationTest, CrossLayerErrorHandling) {
     // NULL parameters
     EXPECT_EQ(-1, emotion_snn_encode_valence_arousal(nullptr, 0.5f, 0.5f, 0.5f));
-    EXPECT_EQ(-1, emotion_plasticity_stimulus(nullptr, EMOTION_JOY, 0.5f, 0));
+    EXPECT_EQ(-1, emotion_plasticity_stimulus(nullptr, EMOTION_HAPPINESS, 0.5f, 0));
     EXPECT_EQ(-1, emotion_memory_tag_memory(nullptr, 1, 0.5f, 0.5f));
 
     // Invalid synapse operations
@@ -675,7 +673,7 @@ TEST_F(CognitiveSNNPlasticityIntegrationTest, CrossLayerErrorHandling) {
 
     uint32_t synapse_id = 999;
     ASSERT_EQ(0, emotion_plasticity_register_synapse(emotion_plasticity,
-        synapse_id, EMOTION_SYNAPSE_STIMULUS_TO_EMOTION, EMOTION_JOY, 0.5f));
+        synapse_id, EMOTION_SYNAPSE_STIMULUS_TO_EMOTION, EMOTION_HAPPINESS, 0.5f));
 
     // Hub should still work
     cognitive_event_data_t event = {};
@@ -695,9 +693,9 @@ TEST_F(CognitiveSNNPlasticityIntegrationTest, StatsResetAcrossLayers) {
     ASSERT_EQ(0, emotion_snn_simulate(emotion_snn, 50.0f));
 
     ASSERT_EQ(0, emotion_plasticity_register_synapse(emotion_plasticity,
-        1, EMOTION_SYNAPSE_STIMULUS_TO_EMOTION, EMOTION_JOY, 0.5f));
+        1, EMOTION_SYNAPSE_STIMULUS_TO_EMOTION, EMOTION_HAPPINESS, 0.5f));
     ASSERT_EQ(0, emotion_plasticity_stimulus(emotion_plasticity,
-        EMOTION_JOY, 0.5f, GetTimestampUs()));
+        EMOTION_HAPPINESS, 0.5f, GetTimestampUs()));
 
     ASSERT_EQ(0, emotion_memory_tag_memory(emotion_memory, 1, 0.5f, 0.5f));
 

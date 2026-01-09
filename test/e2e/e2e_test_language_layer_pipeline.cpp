@@ -28,7 +28,6 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
 #include "language/nimcp_language_orchestrator.h"
 #include "language/nimcp_language_config.h"
 #include "language/nimcp_language_types.h"
@@ -42,7 +41,6 @@ extern "C" {
 #include "language/bridges/nimcp_language_substrate_bridge.h"
 #include "language/bridges/nimcp_language_logic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // E2E Test Fixture

@@ -9,9 +9,7 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/bias/nimcp_bias_snn_bridge.h"
-}
 
 class BiasSnnBridgeTest : public ::testing::Test {
 protected:

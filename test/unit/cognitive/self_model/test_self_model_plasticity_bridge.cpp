@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/self_model/nimcp_self_model_plasticity_bridge.h"
-}
 
 class SelfModelPlasticityBridgeTest : public ::testing::Test {
 protected:

@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/executive/nimcp_executive_plasticity_bridge.h"
-}
 
 class ExecutivePlasticityBridgeTest : public ::testing::Test {
 protected:

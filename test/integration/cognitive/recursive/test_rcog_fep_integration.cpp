@@ -16,7 +16,6 @@
 #include <thread>
 #include <atomic>
 
-extern "C" {
 #include "cognitive/recursive/nimcp_rcog_types.h"
 #include "cognitive/recursive/nimcp_rcog_engine.h"
 #include "cognitive/recursive/nimcp_rcog_context_store.h"
@@ -25,7 +24,6 @@ extern "C" {
 #include "cognitive/recursive/nimcp_rcog_answer.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
-}
 
 /* ============================================================================
  * Test Constants

@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/introspection/nimcp_introspection_snn_bridge.h"
-}
 
 class IntrospectionSNNBridgeTest : public ::testing::Test {
 protected:

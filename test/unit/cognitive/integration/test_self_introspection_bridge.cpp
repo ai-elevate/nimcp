@@ -10,9 +10,7 @@
 #include <cstring>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/integration/nimcp_self_introspection_bridge.h"
-}
 
 class SelfIntrospectionBridgeTest : public ::testing::Test {
 protected:

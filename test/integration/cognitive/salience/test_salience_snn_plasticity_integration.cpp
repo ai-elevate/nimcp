@@ -14,10 +14,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
 #include "cognitive/salience/nimcp_salience_snn_bridge.h"
 #include "cognitive/salience/nimcp_salience_plasticity_bridge.h"
-}
 
 class SalienceSnnPlasticityIntegrationTest : public ::testing::Test {
 protected:

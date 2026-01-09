@@ -15,10 +15,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
 #include "perception/nimcp_cochlea.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Constants

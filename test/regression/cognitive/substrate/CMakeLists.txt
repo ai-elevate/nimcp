@@ -12,7 +12,7 @@
 # - introspection_substrate_bridge
 # - memory_consolidation_substrate_bridge
 # - reasoning_substrate_bridge
-# - tom_substrate_bridge
+# - tom_substrate_bridge (unified API)
 # - working_memory_substrate_bridge
 #
 # Test categories (~34 tests total):

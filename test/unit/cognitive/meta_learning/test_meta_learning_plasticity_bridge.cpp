@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/meta_learning/nimcp_meta_learning_plasticity_bridge.h"
-}
 
 class MetaLearningPlasticityBridgeTest : public ::testing::Test {
 protected:

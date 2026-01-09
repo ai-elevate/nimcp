@@ -534,6 +534,25 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_systems_consolidation.c  # Phase M2: Systems Consolidation (hippocampus → cortex transfer)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_wm_transfer.c  # Phase M3: Working Memory Transfer (WM → engram encoding)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_semantic_memory.c  # Phase M4: Semantic Memory Network (concept network with spreading activation)
+
+    # Prime Resonant Memory Core (Phase PR: Content-addressable memory with prime signatures)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_quaternion.c  # Phase PR-1.1: Quaternion math for memory state encoding
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_prime_signature.c  # Phase PR-2.1: Prime factorization signatures for content-addressable memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_fractal.c  # Phase PR-1.3: Fractal analysis for memory dynamics
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_pink_noise.c  # Phase PR-1.2: Pink noise extension for memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_resonance.c  # Phase PR-2.2: Resonance scoring engine (4-component similarity)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_memory_node.c  # Phase PR-3.1: COW-enabled memory nodes with prime signatures and quaternion states
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_plasticity_bridge.c  # Phase PR-6.1: Plasticity bridge (STDP, BCM, homeostatic)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_snn_bridge.c  # Phase PR-6.2: SNN bridge (spike integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_kg_bridge.c  # Phase PR-6.3: Knowledge graph bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_curriculum_bridge.c  # Phase PR-6.4: Curriculum learning bridge (resonance-guided curriculum)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_entanglement.c  # Phase PR-4.1: Entanglement graph for memory associations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_z_ladder.c  # Phase PR-5.1: Z-ladder for memory tier management
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_kuramoto.c  # Phase PR-4.2: Kuramoto oscillator coupling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_source_memory.c  # Phase PR-7.1: Source memory for origin tracking and reality monitoring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_theta_gamma.c  # Phase PR-4.3: Theta-gamma phase coupling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_pink_noise_bridge.c  # Phase PR-6.5: Pink noise integration bridge
+
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_fractal_cognitive.c  # Fractal cognitive processing
     ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/nimcp_hierarchical.c
 
@@ -888,7 +907,7 @@ set(NIMCP_CORE_SOURCES
     # Note: Using consolidation/nimcp_consolidation_substrate_bridge.c instead of memory version (more complete API)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation_substrate_bridge.c  # Consolidation-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_substrate_bridge.c  # Reasoning-substrate integration (inference depth)
-    # Note: Using theory_of_mind/nimcp_theory_of_mind_substrate_bridge.c instead (has tom_substrate_bridge_update API)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/tom/nimcp_tom_substrate_bridge.c  # ToM-substrate integration (unified API with backward compat)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/working_memory/nimcp_working_memory_substrate_bridge.c  # Working memory-substrate integration (capacity, decay)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_substrate_bridge.c  # Wellbeing-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_gw_substrate_bridge.c  # GW-substrate integration
@@ -1060,7 +1079,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/game_theory/nimcp_game_theory_substrate_bridge.c  # Game-theory-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune_substrate_bridge.c  # Brain-immune-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/social/nimcp_social_substrate_bridge.c  # Social-substrate integration
-    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_theory_of_mind_substrate_bridge.c  # ToM-substrate integration (complete API)
+    # Note: ToM-substrate bridge now unified in cognitive/tom/nimcp_tom_substrate_bridge.c (line 899)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune_substrate_bridge.c  # Predictive-immune-substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_awareness_extended/nimcp_self_awareness_extended_substrate_bridge.c  # Self-awareness-ext-substrate integration
 
@@ -1734,6 +1753,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_adversarial_training.c  # Adversarial: PGD, TRADES, AWP, certified defense
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_gradient_scaling.c      # Gradient: surrogates (SNN), layer-wise LR, adaptive clipping
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_auto_architecture.c    # NAS: architecture search (evolutionary, RL, DARTS, pruning)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/integration/nimcp_training_integration_hub.c  # Training integration hub for inter-module communication
 
     # NOTE: nimcp_training_plasticity_bridge_bioasync_handlers.c is included via #include
     # in nimcp_training_plasticity_bridge.c, not compiled separately (uses internal types)

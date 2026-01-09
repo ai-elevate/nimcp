@@ -17,7 +17,6 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
 #include "cognitive/recursive/nimcp_rcog_types.h"
 #include "cognitive/recursive/nimcp_rcog_engine.h"
 #include "cognitive/recursive/nimcp_rcog_context_store.h"
@@ -25,7 +24,6 @@ extern "C" {
 #include "cognitive/recursive/nimcp_rcog_delegation_pool.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
-}
 
 /* ============================================================================
  * Test Constants

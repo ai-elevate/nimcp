@@ -10,9 +10,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/integration/nimcp_ethics_executive_bridge.h"
-}
 
 class EthicsExecutiveBridgeTest : public ::testing::Test {
 protected:

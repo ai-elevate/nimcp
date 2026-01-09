@@ -22,12 +22,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "cognitive/global_workspace/nimcp_gw_snn_bridge.h"
 #include "cognitive/global_workspace/nimcp_gw_plasticity_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-}
 
 #include <cstring>
 #include <cmath>

@@ -23,10 +23,8 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
 #include "cognitive/emotion/nimcp_emotion_snn_bridge.h"
 #include "cognitive/emotion/nimcp_emotion_plasticity_bridge.h"
-}
 
 //=============================================================================
 // SNN Bridge Regression Tests

@@ -14,7 +14,6 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
 #include "perception/nimcp_cochlea.h"
 #include "perception/bridges/nimcp_cochlea_medulla_bridge.h"
 #include "perception/bridges/nimcp_cochlea_thalamic_bridge.h"
@@ -31,7 +30,6 @@ extern "C" {
 #include "perception/bridges/nimcp_cochlea_bio_async_bridge.h"
 #include "perception/bridges/nimcp_cochlea_verification_bridge.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Constants

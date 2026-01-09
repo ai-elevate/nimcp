@@ -21,10 +21,8 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "cognitive/salience/nimcp_salience_snn_bridge.h"
 #include "cognitive/salience/nimcp_salience_plasticity_bridge.h"
-}
 
 #include <cstring>
 #include <cmath>

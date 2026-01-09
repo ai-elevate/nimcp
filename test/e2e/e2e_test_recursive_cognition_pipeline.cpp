@@ -20,14 +20,12 @@
 #include <chrono>
 #include <vector>
 
-extern "C" {
 #include "cognitive/recursive/nimcp_rcog_types.h"
 #include "cognitive/recursive/nimcp_rcog_collective_bridge.h"
 #include "cognitive/recursive/nimcp_rcog_imagination_bridge.h"
 #include "cognitive/recursive/nimcp_rcog_immune_bridge.h"
 #include "cognitive/recursive/nimcp_rcog_bio_async_bridge.h"
 #include "cognitive/recursive/nimcp_rcog_brain_kg_bridge.h"
-}
 
 // Dummy tool handler for registration tests
 static rcog_error_t e2e_dummy_tool_handler(

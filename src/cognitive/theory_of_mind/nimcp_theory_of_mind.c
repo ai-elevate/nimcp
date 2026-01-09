@@ -510,8 +510,8 @@ theory_of_mind_t tom_create(brain_t self_brain)
     }
 
     // Create substrate bridge (requires external substrate, initialize NULL)
-    tom_substrate_config_t substrate_config = tom_substrate_default_config();
-    tom->substrate_bridge = tom_substrate_bridge_create(tom, NULL, &substrate_config);
+    tom_substrate_config_t substrate_config = tom_substrate_get_default_config();
+    tom->substrate_bridge = tom_substrate_bridge_create(&substrate_config, tom, NULL);
     if (tom->substrate_bridge) {
         LOG_DEBUG("Substrate bridge created");
     }

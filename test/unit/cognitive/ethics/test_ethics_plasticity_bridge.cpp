@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/ethics/nimcp_ethics_plasticity_bridge.h"
-}
 
 class EthicsPlasticityBridgeTest : public ::testing::Test {
 protected:

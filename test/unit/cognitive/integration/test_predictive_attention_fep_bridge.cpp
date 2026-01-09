@@ -32,9 +32,7 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
 #include "cognitive/integration/nimcp_predictive_attention_fep_bridge.h"
-}
 
 /* ============================================================================
  * Global Test Helpers

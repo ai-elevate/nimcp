@@ -13,11 +13,9 @@
 #include <gtest/gtest.h>
 #include <string.h>
 
-extern "C" {
 #include "cognitive/recursive/nimcp_rcog_types.h"
 #include "cognitive/recursive/nimcp_rcog_tool_router.h"
 #include "cognitive/recursive/nimcp_rcog_context_store.h"
-}
 
 //=============================================================================
 // Test Helpers

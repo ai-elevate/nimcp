@@ -31,7 +31,6 @@
 #include "gpu/nimcp_execution_mode.h"
 
 // C linkage headers
-extern "C" {
 // Forward declarations for memory operations if needed
 }
 

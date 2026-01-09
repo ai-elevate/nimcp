@@ -22,11 +22,9 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
 #include "cognitive/integration/nimcp_mirror_empathy_bridge.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
-}
 
 /* ============================================================================
  * Test Constants

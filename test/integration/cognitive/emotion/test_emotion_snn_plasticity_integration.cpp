@@ -35,9 +35,7 @@
 #include "cognitive/emotion/nimcp_emotion_snn_bridge.h"
 #include "cognitive/emotion/nimcp_emotion_plasticity_bridge.h"
 
-extern "C" {
 #include "utils/time/nimcp_time.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -41,7 +41,6 @@
 #include <vector>
 #include <random>
 
-extern "C" {
 // Tier 1 FEP Bridges
 #include "cognitive/game_theory/nimcp_game_theory_fep_bridge.h"
 #include "cognitive/imagination/nimcp_imagination_fep_bridge.h"
@@ -51,7 +50,6 @@ extern "C" {
 
 // FEP Orchestrator
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
-}
 
 //=============================================================================
 // Test Constants

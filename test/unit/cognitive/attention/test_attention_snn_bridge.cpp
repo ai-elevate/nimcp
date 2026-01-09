@@ -15,9 +15,7 @@
 // Note: Header has its own extern "C" guards
 #include "cognitive/attention/nimcp_attention_snn_bridge.h"
 
-extern "C" {
 #include "utils/time/nimcp_time.h"
-}
 
 #include <cmath>
 #include <cstring>

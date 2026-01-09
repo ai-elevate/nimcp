@@ -17,13 +17,11 @@
 #include <filesystem>
 #include <fstream>
 
-extern "C" {
 #include "async/nimcp_wiring_diagram.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "core/brain/nimcp_brain_kg.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture

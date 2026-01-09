@@ -27,11 +27,9 @@
 #include <thread>
 #include <vector>
 
-extern "C" {
 #include "cognitive/collective_cognition/nimcp_collective_snn_bridge.h"
 #include "cognitive/collective_cognition/nimcp_collective_plasticity_bridge.h"
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
-}
 
 //=============================================================================
 // Test Fixture

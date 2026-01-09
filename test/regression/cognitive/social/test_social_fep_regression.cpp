@@ -28,11 +28,9 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
 #include "cognitive/social/nimcp_social_fep_bridge.h"
 #include "cognitive/nimcp_love_loyalty_friendship.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
-}
 
 /* ============================================================================
  * Regression Test Constants

@@ -15,7 +15,6 @@
 #include <thread>
 #include <chrono>
 
-extern "C" {
 #include "cognitive/recursive/nimcp_rcog_types.h"
 #include "cognitive/recursive/nimcp_rcog_engine.h"
 #include "cognitive/recursive/nimcp_rcog_context_store.h"
@@ -23,7 +22,6 @@ extern "C" {
 #include "cognitive/recursive/nimcp_rcog_delegation_pool.h"
 #include "cognitive/recursive/nimcp_rcog_tool_router.h"
 #include "cognitive/recursive/nimcp_rcog_answer.h"
-}
 
 //=============================================================================
 // Test Fixtures

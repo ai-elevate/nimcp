@@ -468,7 +468,6 @@ static MockSleepSystem g_mock_sleep;
 }  // namespace
 
 // Mock implementations - these override the weak symbols from the library
-extern "C" {
 
 sleep_state_t sleep_get_current_state(sleep_system_t sys) {
     (void)sys;
@@ -494,7 +493,6 @@ bool sleep_unregister_state_callback(sleep_system_t sys, sleep_state_callback_t 
     return true;
 }
 
-}  // extern "C"
 
 class SwarmBidirectionalSleepE2ETest : public ::testing::Test {
 protected:

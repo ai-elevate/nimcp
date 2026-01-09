@@ -26,11 +26,9 @@
 #include <vector>
 #include <chrono>
 
-extern "C" {
 #include "cognitive/integration/nimcp_imagination_reasoning_bridge.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
-}
 
 /* ============================================================================
  * Test Fixture

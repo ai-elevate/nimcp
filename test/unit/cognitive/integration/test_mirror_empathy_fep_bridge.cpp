@@ -30,9 +30,7 @@
 #include <atomic>
 #include <vector>
 
-extern "C" {
 #include "cognitive/integration/nimcp_mirror_empathy_fep_bridge.h"
-}
 
 /* ============================================================================
  * Global Test Helpers

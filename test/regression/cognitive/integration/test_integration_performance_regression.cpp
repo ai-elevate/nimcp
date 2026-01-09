@@ -27,7 +27,6 @@
 #include <algorithm>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
 #include "cognitive/integration/nimcp_emotion_memory_bridge.h"
@@ -36,7 +35,6 @@ extern "C" {
 #include "cognitive/integration/nimcp_ethics_executive_bridge.h"
 #include "cognitive/integration/nimcp_tom_social_bridge.h"
 #include "cognitive/integration/nimcp_gw_cognitive_bridge.h"
-}
 
 /* ============================================================================
  * Performance Thresholds (in microseconds unless noted)

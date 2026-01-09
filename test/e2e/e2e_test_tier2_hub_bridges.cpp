@@ -11,7 +11,6 @@
 #include <thread>
 #include <vector>
 
-extern "C" {
 #include "cognitive/integration/nimcp_imagination_reasoning_bridge.h"
 #include "cognitive/integration/nimcp_game_theory_executive_bridge.h"
 #include "cognitive/integration/nimcp_mirror_empathy_bridge.h"
@@ -19,7 +18,6 @@ extern "C" {
 #include "cognitive/integration/nimcp_predictive_attention_bridge.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
-}
 
 static constexpr int NUM_TIER2_BRIDGES = 5;
 static constexpr int STRESS_ITERATIONS = 100;

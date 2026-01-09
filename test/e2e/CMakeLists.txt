@@ -1952,6 +1952,40 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_meta_learning_snn_plasticity_pipe
 endif()
 
 # ============================================================================
+# Executive SNN-Plasticity Pipeline E2E Test
+# ============================================================================
+# WHAT: Test executive + SNN + plasticity integration
+# WHY:  Verify complete cognitive control learning pipeline
+# HOW:  Test planning, inhibition, task switching, and protected synapses
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_executive_snn_plasticity_pipeline.cpp)
+    add_executable(e2e_test_executive_snn_plasticity_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_executive_snn_plasticity_pipeline.cpp
+    )
+    target_include_directories(e2e_test_executive_snn_plasticity_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/cognitive/executive
+        ${CMAKE_SOURCE_DIR}/include/snn
+        ${CMAKE_SOURCE_DIR}/include/plasticity
+    )
+    target_link_libraries(e2e_test_executive_snn_plasticity_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_executive_snn_plasticity_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_executive_snn_plasticity_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_executive_snn_plasticity_pipeline COMMAND e2e_test_executive_snn_plasticity_pipeline)
+    set_tests_properties(e2e_test_executive_snn_plasticity_pipeline PROPERTIES
+        LABELS "e2e;cognitive;executive;snn;plasticity;learning"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Executive SNN-Plasticity Pipeline E2E test: e2e_test_executive_snn_plasticity_pipeline")
+endif()
+
+# ============================================================================
 # Epistemic SNN-Plasticity Pipeline E2E Test
 # ============================================================================
 # WHAT: Test epistemic filtering + SNN + plasticity integration

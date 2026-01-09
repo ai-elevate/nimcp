@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/reasoning/nimcp_reasoning_snn_bridge.h"
-}
 
 class ReasoningSNNBridgeTest : public ::testing::Test {
 protected:

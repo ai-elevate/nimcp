@@ -35,7 +35,6 @@
 #include <algorithm>
 #include <numeric>
 
-extern "C" {
 // Cognitive Integration Hub
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
@@ -46,7 +45,6 @@ extern "C" {
 #include "cognitive/integration/nimcp_mirror_empathy_bridge.h"
 #include "cognitive/integration/nimcp_salience_attention_bridge.h"
 #include "cognitive/integration/nimcp_predictive_attention_bridge.h"
-}
 
 //=============================================================================
 // Test Constants

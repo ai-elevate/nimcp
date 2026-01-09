@@ -23,7 +23,6 @@
 #include <vector>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_emotion_memory_bridge.h"
 #include "cognitive/integration/nimcp_attention_wm_bridge.h"
@@ -33,7 +32,6 @@ extern "C" {
 #include "cognitive/integration/nimcp_self_introspection_bridge.h"
 #include "cognitive/integration/nimcp_emotion_executive_bridge.h"
 #include "cognitive/integration/nimcp_gw_cognitive_bridge.h"
-}
 
 // =============================================================================
 // Test Constants

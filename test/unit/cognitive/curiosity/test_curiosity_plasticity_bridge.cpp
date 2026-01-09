@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/curiosity/nimcp_curiosity_plasticity_bridge.h"
-}
 
 class CuriosityPlasticityBridgeTest : public ::testing::Test {
 protected:

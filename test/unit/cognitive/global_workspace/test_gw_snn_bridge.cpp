@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/global_workspace/nimcp_gw_snn_bridge.h"
-}
 
 class GWSNNBridgeTest : public ::testing::Test {
 protected:

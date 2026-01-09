@@ -12,9 +12,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "cognitive/memory/nimcp_working_memory_snn_bridge.h"
-}
 
 #include <cmath>
 #include <cstring>

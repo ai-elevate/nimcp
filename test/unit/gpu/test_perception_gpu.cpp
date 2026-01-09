@@ -24,7 +24,6 @@
 #include <cuda_runtime.h>
 
 // External declarations for visual kernel functions
-extern "C" {
 
 // Optical flow types and functions
 typedef struct nimcp_optical_flow_params {
@@ -92,7 +91,6 @@ int nimcp_stft_mel_filterbank(nimcp_stft_ctx_t* ctx, const float* power_spectrum
                               float* mel_spectrum, int num_mels, float fmin, float fmax,
                               float sample_rate, int num_frames, int num_bins);
 
-} // extern "C"
 
 // Dummy GPU context for testing (just needs to be non-NULL)
 static int g_dummy_gpu_ctx = 1;

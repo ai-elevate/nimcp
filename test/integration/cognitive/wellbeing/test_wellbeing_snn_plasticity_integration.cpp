@@ -28,10 +28,8 @@
 #include <chrono>
 #include <atomic>
 
-extern "C" {
 #include "cognitive/wellbeing/nimcp_wellbeing_snn_bridge.h"
 #include "cognitive/wellbeing/nimcp_wellbeing_plasticity_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

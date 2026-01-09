@@ -7,10 +7,8 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "core/brain/nimcp_brain_kg.h"
 #include "utils/memory/nimcp_memory.h"
-}
 
 class BrainKGMessageIndexTest : public ::testing::Test {
 protected:

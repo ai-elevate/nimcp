@@ -28,10 +28,8 @@
 #include <chrono>
 #include <atomic>
 
-extern "C" {
 #include "cognitive/introspection/nimcp_introspection_snn_bridge.h"
 #include "cognitive/introspection/nimcp_introspection_plasticity_bridge.h"
-}
 
 //=============================================================================
 // Test Fixture

@@ -30,9 +30,7 @@
 #include "cognitive/emotion/nimcp_emotion_snn_bridge.h"
 #include "cognitive/emotion/nimcp_emotion_plasticity_bridge.h"
 
-extern "C" {
 #include "utils/memory/nimcp_memory.h"
-}
 
 //=============================================================================
 // Test Fixture: Emotion-SNN Bridge

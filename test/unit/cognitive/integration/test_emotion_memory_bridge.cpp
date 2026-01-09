@@ -7,9 +7,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "cognitive/integration/nimcp_emotion_memory_bridge.h"
-}
 
 /**
  * @brief Test fixture for Emotion-Memory bridge tests

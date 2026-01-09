@@ -27,11 +27,9 @@
 #include <thread>
 #include <vector>
 
-extern "C" {
 #include "cognitive/recursive/nimcp_rcog_snn_bridge.h"
 #include "cognitive/recursive/nimcp_rcog_plasticity_bridge.h"
 #include "cognitive/recursive/nimcp_rcog_engine.h"
-}
 
 //=============================================================================
 // Test Fixture

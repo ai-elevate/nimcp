@@ -18,14 +18,12 @@
 #include <cmath>
 #include <cstring>
 
-extern "C" {
 #include "cognitive/recursive/nimcp_rcog_types.h"
 #include "cognitive/recursive/nimcp_rcog_collective_bridge.h"
 #include "cognitive/recursive/nimcp_rcog_imagination_bridge.h"
 #include "cognitive/recursive/nimcp_rcog_immune_bridge.h"
 #include "cognitive/recursive/nimcp_rcog_bio_async_bridge.h"
 #include "cognitive/recursive/nimcp_rcog_brain_kg_bridge.h"
-}
 
 /* ============================================================================
  * Test Fixture Base

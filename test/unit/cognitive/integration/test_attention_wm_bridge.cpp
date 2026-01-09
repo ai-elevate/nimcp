@@ -7,9 +7,7 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "cognitive/integration/nimcp_attention_wm_bridge.h"
-}
 
 /**
  * @brief Test fixture for Attention-WM bridge tests

@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/theory_of_mind/nimcp_tom_plasticity_bridge.h"
-}
 
 class TOMPlasticityBridgeTest : public ::testing::Test {
 protected:

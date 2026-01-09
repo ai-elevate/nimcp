@@ -22,11 +22,9 @@
 #include <cmath>
 #include <chrono>
 
-extern "C" {
 #include "language/nimcp_language_orchestrator.h"
 #include "language/nimcp_language_config.h"
 #include "language/nimcp_language_types.h"
-}
 
 //=============================================================================
 // Test Fixture

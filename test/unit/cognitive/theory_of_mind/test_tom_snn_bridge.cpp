@@ -6,9 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "cognitive/theory_of_mind/nimcp_tom_snn_bridge.h"
-}
 
 class TOMSNNBridgeTest : public ::testing::Test {
 protected:
