@@ -903,28 +903,32 @@ int pr_continual_replay_sample(
         if (to_sample == 0) continue;
 
         /* Get memories from tier */
-        z_ladder_tier_t z_tier = (z_ladder_tier_t)t;
-        size_t tier_size = z_ladder_tier_count(ladder, z_tier);
+        pr_memory_tier_t z_tier = (pr_memory_tier_t)t;
+        size_t tier_size = z_ladder_get_count(ladder, z_tier);
         if (tier_size == 0) continue;
 
+        /* Get all nodes from tier for sampling */
+        pr_memory_node_t** tier_nodes = (pr_memory_node_t**)malloc(tier_size * sizeof(pr_memory_node_t*));
+        if (!tier_nodes) continue;
+
+        size_t actual_count = 0;
+        if (z_ladder_get_nodes(ladder, z_tier, tier_nodes, tier_size, &actual_count) != Z_LADDER_SUCCESS) {
+            free(tier_nodes);
+            continue;
+        }
+
         /* Sample randomly from tier (simplified - full impl would use importance) */
-        for (size_t s = 0; s < to_sample && total_sampled < batch_size; s++) {
+        for (size_t s = 0; s < to_sample && total_sampled < batch_size && actual_count > 0; s++) {
             /* Random index in tier */
-            size_t idx = (size_t)(rand() % (int)tier_size);
+            size_t idx = (size_t)(rand() % (int)actual_count);
 
             /* Get node from tier */
-            uint64_t node_id;
-            if (z_ladder_get_at_index(ladder, z_tier, idx, &node_id) != 0) {
-                continue;
-            }
-
-            /* Get node data */
-            pr_memory_node_t* node = z_ladder_get_node(ladder, node_id);
+            pr_memory_node_t* node = tier_nodes[idx];
             if (!node) continue;
 
             /* Fill sample */
             pr_continual_replay_sample_t* sample = &samples[total_sampled];
-            sample->node_id = node_id;
+            sample->node_id = pr_memory_node_get_id(node);
             sample->tier = (pr_continual_tier_t)t;
             sample->importance = pr_continual_combined_importance(bridge, node, 0.0f);
             sample->resonance = 0.5f;  /* Would compute with context in full impl */
@@ -938,6 +942,8 @@ int pr_continual_replay_sample(
             bridge->stats.replay_samples_total++;
             bridge->stats.replay_per_tier[t]++;
         }
+
+        free(tier_nodes);
     }
 
     *samples_returned = total_sampled;
@@ -1256,16 +1262,22 @@ int pr_continual_consolidate_task(
 
     /* Iterate through tiers Z0-Z2 looking for promotion candidates */
     for (int t = 0; t < PR_CONTINUAL_NUM_TIERS - 1; t++) {
-        z_ladder_tier_t z_tier = (z_ladder_tier_t)t;
-        size_t tier_size = z_ladder_tier_count(ladder, z_tier);
+        pr_memory_tier_t z_tier = (pr_memory_tier_t)t;
+        size_t tier_size = z_ladder_get_count(ladder, z_tier);
+        if (tier_size == 0) continue;
 
-        for (size_t idx = 0; idx < tier_size; idx++) {
-            uint64_t node_id;
-            if (z_ladder_get_at_index(ladder, z_tier, idx, &node_id) != 0) {
-                continue;
-            }
+        /* Get all nodes from tier */
+        pr_memory_node_t** tier_nodes = (pr_memory_node_t**)malloc(tier_size * sizeof(pr_memory_node_t*));
+        if (!tier_nodes) continue;
 
-            pr_memory_node_t* node = z_ladder_get_node(ladder, node_id);
+        size_t actual_count = 0;
+        if (z_ladder_get_nodes(ladder, z_tier, tier_nodes, tier_size, &actual_count) != Z_LADDER_SUCCESS) {
+            free(tier_nodes);
+            continue;
+        }
+
+        for (size_t idx = 0; idx < actual_count; idx++) {
+            pr_memory_node_t* node = tier_nodes[idx];
             if (!node) continue;
 
             /* Compute importance */
@@ -1275,11 +1287,14 @@ int pr_continual_consolidate_task(
             float promotion_thresh = bridge->config.protection_threshold[t + 1];
             if (importance >= promotion_thresh) {
                 /* Promote to next tier */
+                uint64_t node_id = pr_memory_node_get_id(node);
                 if (z_ladder_promote(ladder, node_id) == 0) {
                     consolidated++;
                 }
             }
         }
+
+        free(tier_nodes);
     }
 
     /* Prune low-importance edges from entanglement graph */

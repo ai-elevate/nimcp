@@ -29,8 +29,12 @@ This plan implements **ALL remaining incomplete features** across NIMCP with:
 | Extrapolation (Remaining 15%) | 3 modules | ~4,500 | ~90 |
 | Embodiment (Remaining 40%) | 4 modules | ~2,800 | ~56 |
 | Superhuman (Remaining 50%) | 7 modules | ~15,000 | ~300 |
-| Integration Layers (All) | 40 modules | ~274,000 | ~3,010 |
-| **TOTAL** | **~40 modules + full integration** | **~426,300** | **~6,056** |
+| Integration Layers (All) | 40 modules | ~304,000 | ~3,280 |
+| GPU Module Integration | 70 headers | ~35,000 | ~300 |
+| Information Theory Integration | 4 headers | ~18,000 | ~160 |
+| Plasticity Module Integration | 100+ headers | ~40,000 | ~350 |
+| Security Module Integration | 44 headers | ~45,000 | ~400 |
+| **TOTAL** | **~40 modules + full integration** | **~594,300** | **~7,536** |
 
 ---
 
@@ -3255,7 +3259,4447 @@ nimcp_status_t nimcp_language_learn_production(
 | `test/integration/language/test_language_semantic_memory_integration.cpp` | 25 |
 | **Total** | **250** |
 
-### 24. Updated Scope Summary
+### 24. Perception Module Integration
+
+**Priority**: Critical
+**Dependencies**: Thalamus, Cognitive layer, Training system, Bio-async
+**Est. LOC**: 30,000 | **Tests**: 270
+
+The Perception Module provides comprehensive sensory processing (visual, auditory, speech) that must integrate with all cognitive modules to enable multimodal perception and grounding.
+
+#### 24.1 Perception Module Architecture
+
+```
+                          SENSORY INPUT
+                               │
+        ┌──────────────────────┼──────────────────────┐
+        │                      │                      │
+        ▼                      ▼                      ▼
+   ┌─────────┐           ┌─────────┐           ┌─────────┐
+   │ RETINA  │           │ COCHLEA │           │  OTHER  │
+   │ (UV/NIR │           │ (BM/HC/ │           │ (Touch/ │
+   │ Thermal)│           │  ANF)   │           │  Smell) │
+   └────┬────┘           └────┬────┘           └────┬────┘
+        │                      │                      │
+        ▼                      ▼                      ▼
+   ┌─────────┐           ┌─────────┐           ┌─────────┐
+   │ VISUAL  │           │ AUDIO   │           │ SPEECH  │
+   │ CORTEX  │           │ CORTEX  │           │ CORTEX  │
+   │ (V1-V5) │           │  (A1)   │           │(STG/BA) │
+   └────┬────┘           └────┬────┘           └────┬────┘
+        │                      │                      │
+        └──────────────────────┼──────────────────────┘
+                               │
+                               ▼
+                    ┌──────────────────┐
+                    │ OCCIPITAL ADAPTER│
+                    │ (Dorsal/Ventral  │
+                    │     Streams)     │
+                    └────────┬─────────┘
+                             │
+          ┌──────────────────┼──────────────────┐
+          ▼                  ▼                  ▼
+    ┌──────────┐      ┌──────────┐      ┌──────────┐
+    │ Cognitive│      │ Language │      │ Training │
+    │   Layer  │      │  Layer   │      │  Layer   │
+    └──────────┘      └──────────┘      └──────────┘
+```
+
+#### 24.2 Perception Layer Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| Visual Cortex | `nimcp_visual_cortex.h/c` | V1-style visual processing (CNN/Gabor) |
+| Audio Cortex | `nimcp_audio_cortex.h/c` | Auditory processing (FFT, MFCC) |
+| Speech Cortex | `nimcp_speech_cortex.h/c` | Phoneme recognition, formant analysis |
+| Retina | `nimcp_retina.h/c` | Extended-spectrum (UV/NIR/Thermal-IR) |
+| Cochlea | `nimcp_cochlea.h/c` | Complete auditory front-end (BM/HC/ANF) |
+| Occipital Adapter | `nimcp_occipital_adapter.h/c` | Visual hierarchy (V1-V5) |
+| Basilar Membrane | `nimcp_basilar_membrane.h/c` | Frequency decomposition |
+| Hair Cells | `nimcp_hair_cells.h/c` | Mechano-electrical transduction |
+| Auditory Nerve | `nimcp_auditory_nerve.h/c` | Spike generation |
+
+#### 24.3 Visual Cortex (V1-V5 Hierarchy)
+
+```c
+// Visual processing areas (Brodmann areas)
+typedef enum {
+    VISUAL_AREA_V1,      // Primary visual cortex (BA17) - edges, orientation
+    VISUAL_AREA_V2,      // Secondary visual (BA18) - contours, texture
+    VISUAL_AREA_V3,      // Dynamic form processing (BA19)
+    VISUAL_AREA_V4,      // Color constancy, complex form (BA19)
+    VISUAL_AREA_V5_MT    // Motion detection, optic flow (BA19/37)
+} visual_area_t;
+
+// Visual processing streams
+typedef enum {
+    VISUAL_STREAM_DORSAL,   // "Where" pathway: V1 → V2 → V3 → V5/MT → Parietal
+    VISUAL_STREAM_VENTRAL,  // "What" pathway: V1 → V2 → V4 → Temporal
+    VISUAL_STREAM_BOTH
+} visual_stream_t;
+
+// Feature types detected
+typedef enum {
+    VISUAL_FEATURE_EDGE,          // Edge/contour
+    VISUAL_FEATURE_ORIENTATION,   // Orientation (0-180°)
+    VISUAL_FEATURE_COLOR,         // Color (hue, saturation)
+    VISUAL_FEATURE_TEXTURE,       // Texture pattern
+    VISUAL_FEATURE_MOTION,        // Motion direction/speed
+    VISUAL_FEATURE_DEPTH,         // Depth/disparity
+    VISUAL_FEATURE_FORM,          // Shape/form
+    VISUAL_FEATURE_FACE,          // Face-specific
+    VISUAL_FEATURE_OBJECT         // Object identity
+} visual_feature_type_t;
+
+// Convolution layer configuration (V1 Gabor filters)
+typedef struct {
+    uint32_t input_width;
+    uint32_t input_height;
+    uint32_t input_channels;      // 1=grayscale, 3=RGB
+    uint32_t num_filters;
+    uint32_t kernel_size;
+    uint32_t stride;
+    uint32_t padding;
+    visual_activation_type_t activation;
+} conv_layer_config_t;
+```
+
+#### 24.4 Extended-Spectrum Retina
+
+```c
+// Photoreceptor types (extended wavelength detection)
+typedef enum {
+    PHOTORECEPTOR_ROD,                   // Low-light (498nm)
+    PHOTORECEPTOR_CONE_S,                // Blue (420nm)
+    PHOTORECEPTOR_CONE_M,                // Green (534nm)
+    PHOTORECEPTOR_CONE_L,                // Red (564nm)
+    PHOTORECEPTOR_CONE_UV,               // UV SWS1 opsin (360nm) - bird-like
+    PHOTORECEPTOR_CONE_NIR,              // NIR quantum dot (850nm)
+    PHOTORECEPTOR_THERMORECEPTOR_LWIR    // Thermal-IR pit organ (8-14µm) - snake-like
+} photoreceptor_type_t;
+
+// Vision enhancement modes
+typedef enum {
+    VISION_MODE_NORMAL,   // Standard human vision
+    VISION_MODE_EAGLE,    // 4-5x acuity, UV, motion tracking
+    VISION_MODE_CAT       // Night vision, tapetum lucidum
+} vision_mode_t;
+
+// Wavelength bands
+#define RETINA_UV_RANGE      300-400nm    // SWS1 opsin peak: 360nm
+#define RETINA_VISIBLE_RANGE 400-700nm    // Standard RGB
+#define RETINA_NIR_RANGE     700-1100nm   // Quantum dot detection
+#define RETINA_THERMAL_RANGE 8-14µm       // Atmospheric window (LWIR)
+```
+
+#### 24.5 Cochlear Processing Pipeline
+
+```c
+// Complete auditory pathway: Audio → BM → OHC → IHC → ANF
+typedef struct {
+    bm_output_t* bm_output;              // Basilar membrane frequency decomposition
+    hc_bank_output_t* hc_output;         // Hair cell transduction
+    anf_output_t* anf_output;            // Auditory nerve spikes
+    dog_localization_t* dog_localization;// Dog sound localization (if enabled)
+    echolocation_result_t* echo_result;  // Bat echolocation (if enabled)
+    float* channel_energy;               // Per-channel energy
+    float peak_frequency_hz;             // Dominant frequency
+    float overall_level_db;              // Overall level (dB SPL)
+} cochlea_output_t;
+
+// Species-specific hearing modes
+typedef enum {
+    BM_HEARING_HUMAN,    // 20 Hz - 20 kHz
+    BM_HEARING_DOG,      // 67 Hz - 65 kHz, enhanced localization
+    BM_HEARING_BAT,      // 1 kHz - 200 kHz, echolocation
+    BM_HEARING_HYBRID    // Combined capabilities
+} bm_hearing_mode_t;
+
+// Cochlea configuration
+typedef struct {
+    uint32_t sample_rate;
+    uint32_t num_channels;
+    bm_hearing_mode_t hearing_mode;
+    bm_config_t bm_config;               // Basilar membrane
+    hc_bank_config_t hc_config;          // Hair cells
+    anf_config_t anf_config;             // Auditory nerve
+    bool enable_extended_hearing;
+    bool enable_ohc_amplification;       // Active gain
+    bool enable_phase_locking;
+    bool enable_bio_async;
+} cochlea_config_t;
+```
+
+#### 24.6 Audio Cortex (A1)
+
+```c
+// Audio cortex configuration
+typedef struct {
+    uint32_t sample_rate;                // Hz
+    uint32_t frame_size;                 // Samples
+    uint32_t num_freq_bins;              // FFT bins
+    uint32_t num_mel_filters;            // Mel-scale filters
+    uint32_t num_mfcc;                   // MFCC coefficients
+    uint8_t num_channels;                // 1=mono, 2=stereo
+    bool enable_attention;               // Attention mechanisms
+    bool enable_memory;                  // Auditory memory
+    bool enable_fractal_topology;        // Scale-free A1 topology
+    float hub_ratio;                     // Fraction of hub neurons
+    bool enable_bio_async;
+} audio_cortex_config_t;
+
+// Auditory memory entry
+typedef struct {
+    float* features;                     // Audio feature vector
+    float salience;                      // Memory salience [0-1]
+    uint64_t timestamp;
+    char context[64];
+} auditory_memory_t;
+
+// Audio attention map
+typedef struct {
+    float* values;                       // Attention weights
+    uint32_t num_freq;                   // Frequency bins
+    uint32_t num_time;                   // Time frames
+} audio_attention_map_t;
+```
+
+#### 24.7 Speech Cortex (STG/Wernicke)
+
+```c
+// Phoneme categories (IPA subset for English - 44 phonemes)
+typedef enum {
+    // Vowels (12)
+    PHONEME_IY, PHONEME_IH, PHONEME_EY, PHONEME_EH,   // Front vowels
+    PHONEME_AE, PHONEME_AA, PHONEME_AO, PHONEME_OW,   // Back vowels
+    PHONEME_UH, PHONEME_UW, PHONEME_AH, PHONEME_ER,   // Central/R-colored
+
+    // Consonants: Stops (6)
+    PHONEME_P, PHONEME_B, PHONEME_T, PHONEME_D, PHONEME_K, PHONEME_G,
+
+    // Consonants: Fricatives (9)
+    PHONEME_F, PHONEME_V, PHONEME_TH, PHONEME_DH,
+    PHONEME_S, PHONEME_Z, PHONEME_SH, PHONEME_ZH, PHONEME_H,
+
+    // Consonants: Nasals (3)
+    PHONEME_M, PHONEME_N, PHONEME_NG,
+
+    // Consonants: Approximants (4)
+    PHONEME_L, PHONEME_R, PHONEME_W, PHONEME_Y,
+
+    // Affricates (2)
+    PHONEME_CH, PHONEME_JH,
+
+    // Special
+    PHONEME_SILENCE, PHONEME_UNKNOWN,
+    PHONEME_COUNT
+} phoneme_t;
+
+// Speech processing constants
+#define SPEECH_NUM_FORMANTS 4            // F1, F2, F3, F4
+#define SPEECH_MAX_PHONOLOGICAL_BUFFER 9 // Miller's 7±2
+#define SPEECH_PHONEME_FRAME_MS 20       // 10-25ms typical
+```
+
+#### 24.8 Perception Bridges
+
+| Bridge | File | Purpose |
+|--------|------|---------|
+| Visual FEP Bridge | `nimcp_visual_cortex_fep_bridge.h` | Free energy principle for vision |
+| Audio FEP Bridge | `nimcp_audio_cortex_fep_bridge.h` | Free energy principle for audio |
+| Speech FEP Bridge | `nimcp_speech_cortex_fep_bridge.h` | Free energy principle for speech |
+| Visual JEPA Bridge | `nimcp_visual_jepa_bridge.h` | JEPA predictive processing |
+| Speech JEPA Bridge | `nimcp_speech_jepa_bridge.h` | JEPA for speech prediction |
+| Visual Cortical Bridge | `nimcp_visual_cortical_bridge.h` | Cortical column integration |
+| Audio Cortical Bridge | `nimcp_audio_cortical_bridge.h` | Cortical column integration |
+| Speech Cortical Bridge | `nimcp_speech_cortical_bridge.h` | Cortical column integration |
+| Visual Immune Bridge | `nimcp_visual_immune_bridge.h` | Immune effects on vision |
+| Audio Immune Bridge | `nimcp_audio_immune_bridge.h` | Immune effects on hearing |
+| Speech Immune Bridge | `nimcp_speech_immune_bridge.h` | Immune effects on speech |
+| Retina Sleep Bridge | `nimcp_retina_sleep_bridge.h` | Sleep effects on vision |
+| Audio Sleep Bridge | `nimcp_audio_cortex_sleep_bridge.h` | Sleep effects on hearing |
+| Visual GPU Bridge | `nimcp_visual_cortex_gpu.h` | GPU acceleration |
+| Audio GPU Bridge | `nimcp_audio_cortex_gpu.h` | GPU acceleration |
+| Speech GPU Bridge | `nimcp_speech_cortex_gpu.h` | GPU acceleration |
+| Cochlea Thalamic Bridge | `nimcp_cochlea_thalamic_bridge.h` | MGN relay, attention gating |
+| Cochlea Broca Bridge | `nimcp_cochlea_broca_bridge.h` | Speech perception |
+| Cochlea Occipital Bridge | `nimcp_cochlea_occipital_bridge.h` | Audiovisual binding |
+| Omni Sensory Bridge | `nimcp_omni_sensory_bridge.h` | Predictive perception |
+
+#### 24.9 Perception-Cognitive Integration
+
+| Cognitive Module | Perception Integration | Direction |
+|-----------------|------------------------|-----------|
+| Attention | Visual/auditory salience, gating | Perception → Cognitive |
+| Working Memory | Visual/phonological buffer | Bidirectional |
+| Emotion | Affective visual/auditory cues | Perception → Cognitive |
+| Reasoning | Visual scene understanding | Perception → Cognitive |
+| Executive | Perceptual task switching | Cognitive → Perception |
+| Curiosity | Novelty detection | Bidirectional |
+| Self-Model | Body perception, proprioception | Perception → Cognitive |
+| ToM | Face perception, gaze tracking | Perception → Cognitive |
+| Mirror Neurons | Action observation | Perception → Cognitive |
+| Semantic Memory | Object/sound recognition | Bidirectional |
+| Episodic Memory | Visual/auditory scene encoding | Perception → Cognitive |
+| Language | Speech perception, reading | Perception → Language |
+
+#### 24.10 Perception Bio-Async Messages
+
+```c
+// Perception-related bio-async message types
+typedef enum {
+    // Visual messages
+    BIO_MSG_VISUAL_FRAME_INPUT,           // New visual frame
+    BIO_MSG_VISUAL_FEATURE_DETECTED,      // Feature detected (edge, face, etc.)
+    BIO_MSG_VISUAL_MOTION_DETECTED,       // Motion event
+    BIO_MSG_VISUAL_SACCADE_REQUEST,       // Saccade generation
+    BIO_MSG_VISUAL_ATTENTION_SHIFT,       // Attention shift
+
+    // Auditory messages
+    BIO_MSG_AUDIO_FRAME_INPUT,            // New audio frame
+    BIO_MSG_AUDIO_ONSET_DETECTED,         // Sound onset
+    BIO_MSG_AUDIO_PITCH_DETECTED,         // Pitch extraction
+    BIO_MSG_AUDIO_LOCALIZATION,           // Sound localization
+    BIO_MSG_AUDIO_MEMORY_MATCH,           // Auditory memory match
+
+    // Speech messages
+    BIO_MSG_SPEECH_PHONEME_DETECTED,      // Phoneme recognized
+    BIO_MSG_SPEECH_WORD_BOUNDARY,         // Word boundary detected
+    BIO_MSG_SPEECH_FORMANT_UPDATE,        // Formant frequencies
+    BIO_MSG_SPEECH_PROSODY_UPDATE,        // Prosodic information
+
+    // Cochlea messages
+    BIO_MSG_COCHLEA_SPIKE_TRAIN,          // ANF spike output
+    BIO_MSG_COCHLEA_ENERGY_UPDATE,        // Channel energy
+    BIO_MSG_COCHLEA_ECHOLOCATION,         // Bat mode echo
+
+    // Cross-modal messages
+    BIO_MSG_PERCEPTION_AUDIOVISUAL_SYNC,  // AV synchronization
+    BIO_MSG_PERCEPTION_MULTIMODAL_FUSION, // Multimodal binding
+    BIO_MSG_PERCEPTION_ATTENTION_MODULATION, // Attention effect
+
+    BIO_MSG_PERCEPTION_COUNT
+} nimcp_perception_msg_type_t;
+```
+
+#### 24.11 Perception-Cognitive Integration API
+
+```c
+// Perception integration context for cognitive modules
+typedef struct {
+    // Visual processing
+    visual_cortex_t* visual_cortex;
+    occipital_adapter_t* occipital;
+    retina_t* retina;
+
+    // Auditory processing
+    audio_cortex_t* audio_cortex;
+    cochlea_t* cochlea;
+    speech_cortex_t* speech_cortex;
+
+    // Feature extraction interface
+    bool (*get_visual_features)(visual_feature_t* features, uint32_t* count);
+    bool (*get_audio_features)(audio_feature_t* features, uint32_t* count);
+    bool (*get_speech_features)(speech_feature_t* features, uint32_t* count);
+
+    // Attention modulation interface
+    bool (*set_visual_attention)(const attention_map_t* attention);
+    bool (*set_audio_attention)(const audio_attention_map_t* attention);
+
+    // Multimodal fusion
+    bool (*fuse_audiovisual)(audiovisual_binding_t* binding);
+
+    // Bio-async integration
+    nimcp_bio_async_handler_t bio_handler;
+    nimcp_bio_router_t* router;
+} nimcp_perception_cognitive_integration_t;
+
+// Initialize perception for cognitive module
+nimcp_status_t nimcp_perception_init_cognitive_integration(
+    nimcp_perception_cognitive_integration_t* integration,
+    visual_cortex_t* visual,
+    audio_cortex_t* audio,
+    speech_cortex_t* speech,
+    nimcp_bio_router_t* router);
+
+// Process visual input and extract features
+nimcp_status_t nimcp_perception_process_visual(
+    nimcp_perception_cognitive_integration_t* integration,
+    const float* image,
+    uint32_t width,
+    uint32_t height,
+    uint32_t channels);
+
+// Process audio input and extract features
+nimcp_status_t nimcp_perception_process_audio(
+    nimcp_perception_cognitive_integration_t* integration,
+    const float* audio,
+    uint32_t num_samples,
+    uint32_t sample_rate);
+```
+
+#### 24.12 Audiovisual Integration
+
+```c
+// McGurk effect and audiovisual binding
+typedef struct {
+    // Visual speech cues
+    float* lip_shape;                     // Lip shape features
+    float* face_motion;                   // Face motion vectors
+    uint32_t visual_phoneme_hypothesis;   // Visual phoneme guess
+
+    // Audio speech cues
+    float* audio_features;                // Audio features
+    uint32_t audio_phoneme_hypothesis;    // Audio phoneme guess
+
+    // Fused result
+    uint32_t fused_phoneme;               // Final phoneme decision
+    float fusion_confidence;              // Confidence in fusion
+    bool mcgurk_detected;                 // McGurk effect detected
+
+    // Timing
+    float av_sync_offset_ms;              // AV synchronization offset
+    bool av_synchronized;
+
+    // Bio-async
+    nimcp_bio_async_handler_t bio_handler;
+} nimcp_audiovisual_binding_t;
+
+// Perform audiovisual binding
+nimcp_status_t nimcp_perception_bind_audiovisual(
+    nimcp_perception_cognitive_integration_t* integration,
+    const float* visual_input,
+    const float* audio_input,
+    nimcp_audiovisual_binding_t* binding);
+
+// Detect McGurk effect (visual override of auditory)
+nimcp_status_t nimcp_perception_detect_mcgurk(
+    nimcp_audiovisual_binding_t* binding);
+```
+
+#### 24.13 Extended Perception Modes
+
+```c
+// Extended perception configuration
+typedef struct {
+    // Vision enhancements
+    vision_mode_t vision_mode;            // Normal, Eagle, Cat
+    bool enable_uv_vision;                // UV detection
+    bool enable_nir_vision;               // Near-infrared
+    bool enable_thermal_vision;           // Thermal-IR
+
+    // Hearing enhancements
+    bm_hearing_mode_t hearing_mode;       // Human, Dog, Bat, Hybrid
+    bool enable_echolocation;             // Bat-style echolocation
+    bool enable_ultrasonic;               // Ultrasonic detection
+
+    // Cross-modal
+    bool enable_synesthesia;              // Cross-modal binding
+    bool enable_sensory_substitution;     // Substitute one sense for another
+
+    // Bio-async
+    nimcp_bio_async_handler_t bio_handler;
+} nimcp_extended_perception_config_t;
+
+// Enable extended perception mode
+nimcp_status_t nimcp_perception_enable_extended(
+    nimcp_perception_cognitive_integration_t* integration,
+    const nimcp_extended_perception_config_t* config);
+```
+
+#### 24.14 Perception Training Integration
+
+```c
+// Perception learning configuration
+typedef struct {
+    // Visual learning
+    bool enable_visual_learning;
+    float visual_learning_rate;
+    bool enable_gabor_adaptation;         // Adapt V1 Gabor filters
+
+    // Auditory learning
+    bool enable_auditory_learning;
+    float auditory_learning_rate;
+    bool enable_tonotopic_adaptation;     // Adapt A1 tonotopy
+
+    // Speech learning
+    bool enable_speech_learning;
+    float speech_learning_rate;
+    bool enable_phoneme_boundary_learning;// Learn phoneme boundaries
+
+    // Curriculum
+    nimcp_curriculum_strategy_t curriculum;
+
+    // Training stats
+    float visual_recognition_accuracy;
+    float auditory_recognition_accuracy;
+    float speech_recognition_accuracy;
+} nimcp_perception_training_config_t;
+
+// Initialize perception learning
+nimcp_status_t nimcp_perception_init_training(
+    nimcp_perception_cognitive_integration_t* integration,
+    const nimcp_perception_training_config_t* config);
+
+// Learn from perception feedback
+nimcp_status_t nimcp_perception_learn_from_feedback(
+    nimcp_perception_cognitive_integration_t* integration,
+    const perception_feedback_t* feedback);
+```
+
+#### 24.15 Perception Integration Tests
+
+| Test File | Test Count |
+|-----------|------------|
+| `test/integration/perception/test_visual_cortex_integration.cpp` | 30 |
+| `test/integration/perception/test_audio_cortex_integration.cpp` | 25 |
+| `test/integration/perception/test_speech_cortex_integration.cpp` | 25 |
+| `test/integration/perception/test_cochlea_integration.cpp` | 25 |
+| `test/integration/perception/test_retina_integration.cpp` | 20 |
+| `test/integration/perception/test_occipital_adapter_integration.cpp` | 25 |
+| `test/integration/perception/test_perception_fep_bridges.cpp` | 20 |
+| `test/integration/perception/test_perception_jepa_bridges.cpp` | 20 |
+| `test/integration/perception/test_audiovisual_binding.cpp` | 20 |
+| `test/integration/perception/test_extended_perception_modes.cpp` | 20 |
+| `test/integration/perception/test_perception_bioasync_integration.cpp` | 20 |
+| `test/integration/perception/test_perception_cognitive_integration.cpp` | 20 |
+| **Total** | **270** |
+
+### 25. GPU Module Integration
+
+**Priority**: High
+**Dependencies**: All cognitive modules, Training, Perception, Language
+**Est. LOC**: 35,000 | **Tests**: 300
+
+#### 25.1 GPU Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        GPU Acceleration Layer                                │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                     Execution Mode Selection                          │  │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐│  │
+│  │  │    CPU     │  │    GPU      │  │  Distributed │  │   Hybrid     ││  │
+│  │  │ Sequential │  │   CUDA/     │  │   CPU/GPU    │  │  CPU + GPU   ││  │
+│  │  │  Parallel  │  │   ROCm      │  │   Clusters   │  │  Offload     ││  │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └──────────────┘│  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                     │                                       │
+│  ┌──────────────────────────────────┴────────────────────────────────────┐ │
+│  │                      Multi-GPU Manager                                 │ │
+│  │  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────────────┐  │ │
+│  │  │ GPU 0  │  │ GPU 1  │  │ GPU 2  │  │ GPU 3  │  │  P2P Memory    │  │ │
+│  │  │ 0-25%  │  │ 25-50% │  │ 50-75% │  │ 75-100%│  │  Transfers     │  │ │
+│  │  └────────┘  └────────┘  └────────┘  └────────┘  └────────────────┘  │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                     │                                       │
+│  ┌──────────────────────────────────┴────────────────────────────────────┐ │
+│  │                      GPU Tensor Operations                             │ │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐  │ │
+│  │  │   cuBLAS    │  │   Custom    │  │    cuFFT    │  │   Mixed      │  │ │
+│  │  │    GEMM     │  │   Kernels   │  │    FFT      │  │  Precision   │  │ │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └──────────────┘  │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                     │                                       │
+│  ┌──────────────────────────────────┴────────────────────────────────────┐ │
+│  │                GPU Module Implementations                              │ │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐        │ │
+│  │  │Training │ │Inference│ │ SNN GPU │ │ CNN GPU │ │LNN GPU  │        │ │
+│  │  │  GPU    │ │   GPU   │ │ Kernels │ │ Kernels │ │ ODE     │        │ │
+│  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘        │ │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐        │ │
+│  │  │Emotion  │ │Reasoning│ │ Memory  │ │ Swarm   │ │ Sleep   │        │ │
+│  │  │  GPU    │ │   GPU   │ │Consolid │ │  GPU    │ │  GPU    │        │ │
+│  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘        │ │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐        │ │
+│  │  │Visual   │ │ Audio   │ │ Speech  │ │Dragonfly│ │ Portia  │        │ │
+│  │  │Cortex   │ │ Cortex  │ │ Cortex  │ │ Vision  │ │   GPU   │        │ │
+│  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘        │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                     │                                       │
+│  ┌──────────────────────────────────┴────────────────────────────────────┐ │
+│  │              Memory Management & Optimization                          │ │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐  │ │
+│  │  │  GPU Pool   │  │   Async     │  │  Prefetch   │  │  Gradient    │  │ │
+│  │  │  Factory    │  │  Transfer   │  │   Manager   │  │ Checkpoint   │  │ │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └──────────────┘  │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 25.2 GPU Core Components
+
+| Component | Header | Purpose |
+|-----------|--------|---------|
+| GPU Neuron | `nimcp_gpu_neuron.h` | P2P neuron computation on GPU |
+| Execution Mode | `nimcp_execution_mode.h` | CPU/GPU/Distributed mode selection |
+| Multi-GPU | `nimcp_multigpu.h` | Multi-GPU work distribution |
+| GPU Context | `nimcp_gpu_context.h` | CUDA context management |
+| Spike Event | `nimcp_spike_event.h` | GPU spike event queues |
+
+#### 25.3 Execution Mode Types
+
+```c
+// Execution modes (from nimcp_execution_mode.h)
+typedef enum {
+    EXEC_MODE_CPU_SEQUENTIAL,    // CPU single-threaded
+    EXEC_MODE_CPU_PARALLEL,      // CPU multi-threaded
+    EXEC_MODE_GPU_CUDA,          // NVIDIA GPU (CUDA)
+    EXEC_MODE_GPU_ROCM,          // AMD GPU (ROCm)
+    EXEC_MODE_GPU_OPENCL,        // OpenCL (cross-platform)
+    EXEC_MODE_DISTRIBUTED_CPU,   // Distributed across CPU nodes
+    EXEC_MODE_DISTRIBUTED_GPU,   // Distributed across GPU nodes
+    EXEC_MODE_HYBRID,            // CPU + GPU hybrid
+    EXEC_MODE_AUTO               // Auto-detect best mode
+} execution_mode_t;
+
+// Hardware capabilities detection
+typedef struct {
+    // CPU capabilities
+    bool cpu_available;
+    uint32_t cpu_cores;
+    uint32_t cpu_threads;
+    bool cpu_avx2;               // AVX2 SIMD support
+    bool cpu_avx512;             // AVX512 SIMD support
+
+    // GPU capabilities
+    bool cuda_available;
+    bool rocm_available;
+    bool opencl_available;
+    uint32_t gpu_count;
+    uint32_t gpu_compute_units;  // CUDA cores or compute units
+    uint64_t gpu_memory_mb;      // GPU memory in MB
+    uint32_t gpu_compute_capability;
+
+    // Network capabilities (for distributed)
+    bool network_available;
+    uint32_t network_nodes;
+    uint32_t network_bandwidth_mbps;
+
+    execution_mode_t recommended_mode;
+} hardware_capabilities_t;
+
+// Execution context
+execution_context_t execution_context_create(const execution_config_t* config);
+void execution_context_destroy(execution_context_t ctx);
+execution_mode_t execution_get_recommended_mode(uint32_t num_neurons, uint32_t num_synapses);
+```
+
+#### 25.4 GPU Tensor Operations
+
+```c
+// GPU precision modes (from nimcp_tensor_gpu.h)
+typedef enum {
+    NIMCP_GPU_PRECISION_FP32 = 0,   // Full precision (32-bit float)
+    NIMCP_GPU_PRECISION_FP16 = 1,   // Half precision (16-bit float)
+    NIMCP_GPU_PRECISION_BF16 = 2,   // Brain float (16-bit)
+    NIMCP_GPU_PRECISION_INT8 = 3,   // Quantized 8-bit integer
+    NIMCP_GPU_PRECISION_TF32 = 4,   // Tensor Float 32 (Ampere+)
+    NIMCP_GPU_PRECISION_UINT32 = 5, // Unsigned 32-bit integer
+    NIMCP_GPU_PRECISION_INT32 = 6   // Signed 32-bit integer
+} nimcp_gpu_precision_t;
+
+// GPU tensor structure
+typedef struct nimcp_gpu_tensor_s {
+    void* data;                      // Device memory pointer
+    size_t* dims;                    // Dimension sizes
+    size_t* strides;                 // Strides per dimension
+    uint32_t ndim;                   // Number of dimensions
+    size_t numel;                    // Total elements
+    size_t elem_size;                // Element size in bytes
+    nimcp_gpu_precision_t precision; // Data precision
+    nimcp_tensor_layout_t layout;    // Memory layout
+    nimcp_gpu_context_t* ctx;        // GPU context
+    bool owns_data;                  // Ownership flag
+} nimcp_gpu_tensor_t;
+
+// GEMM operations (cuBLAS integration)
+bool nimcp_gpu_gemm(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* A,
+                    const nimcp_gpu_tensor_t* B, nimcp_gpu_tensor_t* C,
+                    float alpha, float beta, bool trans_a, bool trans_b);
+bool nimcp_gpu_gemm_batched(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* A,
+                             const nimcp_gpu_tensor_t* B, nimcp_gpu_tensor_t* C,
+                             float alpha, float beta, bool trans_a, bool trans_b);
+
+// Element-wise operations
+bool nimcp_gpu_add(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* a,
+                   const nimcp_gpu_tensor_t* b, nimcp_gpu_tensor_t* out);
+bool nimcp_gpu_mul(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* a,
+                   const nimcp_gpu_tensor_t* b, nimcp_gpu_tensor_t* out);
+
+// Activation functions (GPU kernels)
+bool nimcp_gpu_relu(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp_gpu_tensor_t* out);
+bool nimcp_gpu_sigmoid(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp_gpu_tensor_t* out);
+bool nimcp_gpu_gelu(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp_gpu_tensor_t* out);
+bool nimcp_gpu_silu(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp_gpu_tensor_t* out);
+bool nimcp_gpu_softmax(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x, nimcp_gpu_tensor_t* out);
+
+// Reductions (warp-shuffle optimized)
+bool nimcp_gpu_sum(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
+                   nimcp_gpu_tensor_t* out, int axis, bool keepdims);
+bool nimcp_gpu_mean(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
+                    nimcp_gpu_tensor_t* out, int axis, bool keepdims);
+bool nimcp_gpu_max(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
+                   nimcp_gpu_tensor_t* out, int axis, bool keepdims);
+
+// FFT operations (cuFFT integration)
+bool nimcp_gpu_fft_1d(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
+                       nimcp_gpu_tensor_t* out, bool inverse);
+bool nimcp_gpu_rfft(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
+                    nimcp_gpu_tensor_t* out);
+
+// CPU-GPU tensor conversion
+nimcp_gpu_tensor_t* nimcp_gpu_tensor_from_cpu(nimcp_gpu_context_t* ctx,
+                                               const nimcp_tensor_t* cpu_tensor);
+nimcp_tensor_t* nimcp_cpu_tensor_from_gpu(const nimcp_gpu_tensor_t* gpu_tensor);
+```
+
+#### 25.5 GPU Training Operations
+
+```c
+// Loss function types (from nimcp_training_gpu.h)
+typedef enum {
+    NIMCP_LOSS_MSE = 0,           // Mean Squared Error
+    NIMCP_LOSS_MAE = 1,           // Mean Absolute Error
+    NIMCP_LOSS_CROSS_ENTROPY = 2, // Cross Entropy (classification)
+    NIMCP_LOSS_BCE = 3,           // Binary Cross Entropy
+    NIMCP_LOSS_FOCAL = 4,         // Focal Loss (imbalanced data)
+    NIMCP_LOSS_HUBER = 5,         // Huber Loss (robust regression)
+    NIMCP_LOSS_COSINE = 6,        // Cosine Similarity Loss
+    NIMCP_LOSS_HINGE = 7,         // Hinge Loss (SVM-style)
+    NIMCP_LOSS_KL_DIV = 8         // KL Divergence
+} nimcp_loss_type_t;
+
+// Optimizer types
+typedef enum {
+    NIMCP_OPTIM_SGD = 0,          // Stochastic Gradient Descent
+    NIMCP_OPTIM_SGD_MOMENTUM = 1, // SGD with Momentum
+    NIMCP_OPTIM_ADAM = 2,         // Adam optimizer
+    NIMCP_OPTIM_ADAMW = 3,        // AdamW (decoupled weight decay)
+    NIMCP_OPTIM_RMSPROP = 4,      // RMSprop
+    NIMCP_OPTIM_ADAGRAD = 5,      // AdaGrad
+    NIMCP_OPTIM_ADADELTA = 6,     // AdaDelta
+    NIMCP_OPTIM_NADAM = 7         // Nesterov Adam
+} nimcp_optim_type_t;
+
+// Loss functions with GPU kernels
+bool nimcp_gpu_loss_mse(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* pred,
+                        const nimcp_gpu_tensor_t* target, float* loss, nimcp_gpu_tensor_t* grad);
+bool nimcp_gpu_loss_cross_entropy(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* logits,
+                                   const nimcp_gpu_tensor_t* target, float* loss,
+                                   nimcp_gpu_tensor_t* grad, int reduction);
+bool nimcp_gpu_loss_focal(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* pred,
+                          const nimcp_gpu_tensor_t* target, float* loss,
+                          nimcp_gpu_tensor_t* grad, float alpha, float gamma);
+
+// Gradient operations
+bool nimcp_gpu_gradient_clip_norm(nimcp_gpu_context_t* ctx, nimcp_gpu_tensor_t** grads,
+                                   size_t n_grads, float max_norm, float* total_norm);
+bool nimcp_gpu_gradient_scale(nimcp_gpu_context_t* ctx, nimcp_gpu_tensor_t* grad, float scale);
+
+// Optimizer GPU kernels
+bool nimcp_gpu_optim_adam(nimcp_gpu_context_t* ctx, nimcp_gpu_tensor_t* param,
+                          const nimcp_gpu_tensor_t* grad, nimcp_optim_state_t* state);
+bool nimcp_gpu_optim_adamw(nimcp_gpu_context_t* ctx, nimcp_gpu_tensor_t* param,
+                           const nimcp_gpu_tensor_t* grad, nimcp_optim_state_t* state);
+bool nimcp_gpu_optim_sgd(nimcp_gpu_context_t* ctx, nimcp_gpu_tensor_t* param,
+                         const nimcp_gpu_tensor_t* grad, nimcp_optim_state_t* state);
+
+// Backpropagation GPU kernels
+bool nimcp_gpu_backward_linear(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
+                                const nimcp_gpu_tensor_t* weight, const nimcp_gpu_tensor_t* grad_output,
+                                nimcp_gpu_tensor_t* grad_input, nimcp_gpu_tensor_t* grad_weight,
+                                nimcp_gpu_tensor_t* grad_bias);
+bool nimcp_gpu_backward_relu(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
+                              const nimcp_gpu_tensor_t* grad_output, nimcp_gpu_tensor_t* grad_input);
+bool nimcp_gpu_backward_batchnorm(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* x,
+                                   const nimcp_gpu_tensor_t* gamma, const nimcp_gpu_tensor_t* mean,
+                                   const nimcp_gpu_tensor_t* var, const nimcp_gpu_tensor_t* grad_output,
+                                   nimcp_gpu_tensor_t* grad_input, nimcp_gpu_tensor_t* grad_gamma,
+                                   nimcp_gpu_tensor_t* grad_beta, float eps);
+
+// Learning rate schedulers
+float nimcp_lr_cosine(float max_lr, float min_lr, uint64_t step, uint64_t total_steps);
+float nimcp_lr_warmup_linear(float max_lr, uint64_t step, uint64_t warmup_steps, uint64_t total_steps);
+```
+
+#### 25.6 Multi-GPU Support
+
+```c
+// Multi-GPU partition strategies (from nimcp_multigpu.h)
+typedef enum {
+    MULTIGPU_PARTITION_LAYER,    // Split by network layers (deep networks)
+    MULTIGPU_PARTITION_NEURON,   // Split by neurons (wide networks)
+    MULTIGPU_PARTITION_HYBRID,   // Mix of layer + neuron (adaptive)
+    MULTIGPU_PARTITION_DYNAMIC,  // Runtime-adaptive based on performance
+    MULTIGPU_PARTITION_AUTO      // Auto-select based on network topology
+} multigpu_partition_strategy_t;
+
+// Load balancing strategies
+typedef enum {
+    MULTIGPU_LOADBALANCE_STATIC,    // Fixed allocation (fastest)
+    MULTIGPU_LOADBALANCE_DYNAMIC,   // Redistribute based on utilization
+    MULTIGPU_LOADBALANCE_ADAPTIVE   // Learn optimal distribution
+} multigpu_loadbalance_strategy_t;
+
+// Multi-GPU configuration
+typedef struct {
+    uint32_t num_devices;                     // Number of GPUs (0 = all)
+    int* device_ids;                          // Specific device IDs
+    bool enable_peer_access;                  // Enable GPU-to-GPU P2P
+    multigpu_partition_strategy_t partition_strategy;
+    multigpu_loadbalance_strategy_t loadbalance_strategy;
+    uint64_t max_memory_per_gpu;              // Max memory per GPU
+    bool enable_unified_memory;               // CUDA unified memory
+    bool pin_host_memory;                     // Pin CPU memory
+    uint32_t streams_per_device;              // CUDA streams per GPU
+    bool enable_concurrent_kernels;           // Concurrent kernel execution
+    bool enable_async_transfers;              // Async memory transfers
+    uint32_t loadbalance_interval;            // Check balance every N iterations
+    float imbalance_threshold;                // Rebalance threshold (default: 0.15)
+    bool enable_work_stealing;                // Allow idle GPUs to steal work
+} multigpu_config_t;
+
+// Multi-GPU operations
+multigpu_context_t multigpu_context_create(const multigpu_config_t* config);
+void multigpu_context_destroy(multigpu_context_t ctx);
+bool multigpu_partition_network(multigpu_context_t ctx, uint32_t num_layers,
+                                 const uint32_t* neurons_per_layer);
+bool multigpu_rebalance_work(multigpu_context_t ctx);
+bool multigpu_broadcast(multigpu_context_t ctx, const void* host_data,
+                        void** device_ptrs, size_t size);
+bool multigpu_gather(multigpu_context_t ctx, void** device_ptrs,
+                     void* host_data, size_t size_per_gpu);
+bool multigpu_sync_devices(multigpu_context_t ctx, uint32_t src_device,
+                           uint32_t dst_device, const void* src_data,
+                           void* dst_data, size_t size);
+```
+
+#### 25.7 GPU Module Headers (70 Files)
+
+| Category | Headers | Purpose |
+|----------|---------|---------|
+| **Core** | `nimcp_gpu_neuron.h`, `nimcp_execution_mode.h`, `nimcp_multigpu.h`, `nimcp_spike_event.h` | Core GPU infrastructure |
+| **Context** | `nimcp_gpu_context.h` | CUDA/ROCm context management |
+| **Tensor** | `nimcp_tensor_gpu.h`, `nimcp_tensor_fp16.h`, `nimcp_amp_autocast.h` | GPU tensor operations |
+| **Training** | `nimcp_training_gpu.h`, `nimcp_gradient_checkpoint.h`, `nimcp_activation_checkpoint.h` | GPU training kernels |
+| **Inference** | `nimcp_inference_gpu.h`, `nimcp_int8_inference.h`, `nimcp_tensorrt_export.h` | Optimized inference |
+| **Memory** | `nimcp_gpu_pool.h`, `nimcp_gpu_pool_factory.h`, `nimcp_memory_consolidation_gpu.h` | GPU memory management |
+| **Transfer** | `nimcp_async_transfer.h`, `nimcp_prefetch.h` | Async data transfer |
+| **Detection** | `nimcp_gpu_detect.h`, `nimcp_simd_detect.h`, `nimcp_network_detect.h` | Hardware detection |
+| **Neural** | `nimcp_synapse_gpu.h`, `nimcp_axon_gpu.h`, `nimcp_dendrite_gpu.h` | Neural structure GPU |
+| **SNN** | `nimcp_snn_gpu.h`, `nimcp_plasticity_gpu.h` | Spiking neural network GPU |
+| **CNN** | `nimcp_cnn_gpu.h` | Convolutional neural network GPU |
+| **LNN** | `nimcp_lnn_gpu.h`, `nimcp_lnn_ode_gpu.h`, `nimcp_lnn_gradient_dao.h` | Liquid neural network GPU |
+| **Cognitive** | `nimcp_emotion_gpu.h`, `nimcp_reasoning_gpu.h`, `nimcp_metalearning_gpu.h` | Cognitive module GPU |
+| **Language** | `nimcp_wernicke_gpu.h`, `nimcp_broca_gpu.h` | Language processing GPU |
+| **Perception** | `nimcp_visual_cortex_gpu.h`, `nimcp_audio_cortex_gpu.h`, `nimcp_speech_cortex_gpu.h` | Perception GPU |
+| **Specialized** | `nimcp_dragonfly_vision_gpu.h`, `nimcp_portia_gpu.h`, `nimcp_swarm_gpu.h`, `nimcp_sleep_gpu.h` | Specialized system GPU |
+| **Glial** | `nimcp_myelin_gpu.h` | Glial/myelin GPU |
+| **Quantum** | `nimcp_quantum_gpu.h`, `nimcp_qmc_gpu.h` | Quantum computing GPU |
+| **Oscillations** | `nimcp_oscillations_gpu.h` | Brain oscillations GPU |
+| **Regions** | `nimcp_regions_gpu.h`, `nimcp_occipital_gpu_bridge.h`, `nimcp_hypothalamus_gpu.h` | Brain regions GPU |
+| **Neuromodulators** | `nimcp_neuromodulator_gpu.h` | Neuromodulator GPU |
+| **Knowledge** | `nimcp_knowledge_graph_gpu.h`, `nimcp_graph_gpu.h`, `nimcp_graph_dao.h` | Knowledge graph GPU |
+| **Substrate** | `nimcp_substrate_gpu.h` | Neural substrate GPU |
+| **Sparse** | `nimcp_sparse_gpu.h` | Sparse tensor GPU |
+| **Ternary** | `nimcp_ternary_gpu.h` | Ternary neural network GPU |
+| **Topology** | `nimcp_topology_gpu.h` | Network topology GPU |
+| **Backend** | `nimcp_kernel_backend.h` | Kernel backend abstraction |
+| **Common** | `nimcp_cuda_utils.h`, `nimcp_gpu_common.h` | Common GPU utilities |
+| **GraphQL** | `nimcp_graphql_utils.h` | GraphQL integration |
+| **Immune** | `nimcp_gpu_neuron_immune_bridge.h`, `nimcp_gpu_execution_immune_bridge.h`, `nimcp_multigpu_immune_bridge.h` | GPU immune integration |
+| **JEPA** | `nimcp_jepa_gpu.h` | Joint Embedding Prediction GPU |
+| **Omni** | `nimcp_omni_gpu.h` | Omnidirectional inference GPU |
+
+#### 25.8 GPU-Cognitive Module Bridges
+
+| Cognitive Module | GPU Header | Purpose |
+|------------------|------------|---------|
+| Emotion | `nimcp_emotion_gpu.h` | GPU-accelerated emotional valence computation |
+| Reasoning | `nimcp_reasoning_gpu.h` | GPU-accelerated inference and deduction |
+| Meta-Learning | `nimcp_metalearning_gpu.h` | GPU-accelerated meta-learning loops |
+| Memory Consolidation | `nimcp_memory_consolidation_gpu.h` | GPU-accelerated memory replay |
+| Swarm | `nimcp_swarm_gpu.h`, `nimcp_swarm_memory_gpu.h` | Collective intelligence GPU |
+| Dragonfly | `nimcp_dragonfly_vision_gpu.h` | Target tracking GPU |
+| Portia | `nimcp_portia_gpu.h` | Resource adaptation GPU |
+| Sleep | `nimcp_sleep_gpu.h` | Sleep cycle GPU |
+| Visual Cortex | `nimcp_visual_cortex_gpu.h` | V1-V5 GPU processing |
+| Audio Cortex | `nimcp_audio_cortex_gpu.h` | A1 GPU processing |
+| Speech Cortex | `nimcp_speech_cortex_gpu.h` | Phoneme recognition GPU |
+| Wernicke | `nimcp_wernicke_gpu.h` | Language comprehension GPU |
+| Broca | `nimcp_broca_gpu.h` | Language production GPU |
+| Occipital | `nimcp_occipital_gpu_bridge.h` | Visual processing GPU |
+| Hypothalamus | `nimcp_hypothalamus_gpu.h`, `nimcp_hypothalamus_qmc_gpu.h` | Homeostasis GPU |
+
+#### 25.9 GPU Bio-Async Integration
+
+```c
+// GPU bio-async message types
+typedef enum {
+    GPU_MSG_TENSOR_READY,           // Tensor computation complete on GPU
+    GPU_MSG_TRANSFER_COMPLETE,      // Host-device transfer complete
+    GPU_MSG_KERNEL_LAUNCH,          // GPU kernel launched
+    GPU_MSG_SYNC_COMPLETE,          // GPU synchronization complete
+    GPU_MSG_MULTI_GPU_GATHER,       // Multi-GPU gather complete
+    GPU_MSG_MULTI_GPU_BROADCAST,    // Multi-GPU broadcast complete
+    GPU_MSG_MEMORY_WARNING,         // GPU memory pressure
+    GPU_MSG_DEVICE_ERROR,           // GPU device error
+    GPU_MSG_EXECUTION_MODE_CHANGE   // Execution mode changed
+} nimcp_gpu_msg_type_t;
+
+// GPU tensor ready message
+typedef struct {
+    nimcp_bio_msg_header_t header;
+    nimcp_gpu_tensor_t* tensor;
+    nimcp_gpu_context_t* ctx;
+    uint64_t kernel_time_ns;        // Kernel execution time
+    uint64_t transfer_time_ns;      // Data transfer time
+} nimcp_gpu_tensor_ready_msg_t;
+
+// GPU execution mode change message
+typedef struct {
+    nimcp_bio_msg_header_t header;
+    execution_mode_t old_mode;
+    execution_mode_t new_mode;
+    const char* reason;             // Why mode changed
+} nimcp_gpu_mode_change_msg_t;
+
+// GPU memory warning message
+typedef struct {
+    nimcp_bio_msg_header_t header;
+    uint64_t used_bytes;
+    uint64_t total_bytes;
+    float utilization;              // 0-1
+    uint32_t device_id;
+} nimcp_gpu_memory_warning_msg_t;
+```
+
+#### 25.10 GPU Memory Management
+
+```c
+// GPU memory pool configuration
+typedef struct {
+    uint64_t initial_size;          // Initial pool size (bytes)
+    uint64_t max_size;              // Maximum pool size
+    uint32_t block_size;            // Allocation block size
+    bool enable_defragmentation;    // Enable defragmentation
+    bool use_stream_ordered;        // Use CUDA stream-ordered allocation
+} nimcp_gpu_pool_config_t;
+
+// GPU pool factory
+nimcp_gpu_pool_t* nimcp_gpu_pool_factory_create(nimcp_gpu_context_t* ctx,
+                                                  const nimcp_gpu_pool_config_t* config);
+void* nimcp_gpu_pool_alloc(nimcp_gpu_pool_t* pool, size_t size);
+void nimcp_gpu_pool_free(nimcp_gpu_pool_t* pool, void* ptr);
+
+// Async transfer manager
+typedef struct {
+    nimcp_gpu_context_t* ctx;
+    uint32_t num_streams;           // Number of transfer streams
+    bool enable_pinned_memory;      // Use pinned host memory
+    bool enable_double_buffering;   // Double buffer transfers
+} nimcp_async_transfer_config_t;
+
+nimcp_async_transfer_t* nimcp_async_transfer_create(const nimcp_async_transfer_config_t* config);
+bool nimcp_async_transfer_h2d(nimcp_async_transfer_t* mgr, void* dst,
+                               const void* src, size_t size, int stream_id);
+bool nimcp_async_transfer_d2h(nimcp_async_transfer_t* mgr, void* dst,
+                               const void* src, size_t size, int stream_id);
+
+// Prefetch manager
+typedef struct {
+    nimcp_gpu_context_t* ctx;
+    uint32_t prefetch_distance;     // How far ahead to prefetch
+    float memory_threshold;         // Don't prefetch above this utilization
+} nimcp_prefetch_config_t;
+
+nimcp_prefetch_t* nimcp_prefetch_create(const nimcp_prefetch_config_t* config);
+bool nimcp_prefetch_tensor(nimcp_prefetch_t* mgr, const nimcp_tensor_t* tensor);
+bool nimcp_prefetch_batch(nimcp_prefetch_t* mgr, nimcp_tensor_t** tensors, size_t count);
+
+// Gradient checkpointing (memory optimization)
+typedef struct {
+    bool enable_checkpointing;
+    uint32_t checkpoint_interval;   // Checkpoint every N layers
+    float memory_budget_fraction;   // Target memory usage (0-1)
+    bool enable_rematerialization;  // Recompute vs store
+} nimcp_gradient_checkpoint_config_t;
+
+nimcp_gradient_checkpoint_t* nimcp_gradient_checkpoint_create(const nimcp_gradient_checkpoint_config_t* config);
+bool nimcp_gradient_checkpoint_forward(nimcp_gradient_checkpoint_t* mgr, nimcp_gpu_tensor_t* activation);
+bool nimcp_gradient_checkpoint_backward(nimcp_gradient_checkpoint_t* mgr, nimcp_gpu_tensor_t* grad);
+```
+
+#### 25.11 GPU Inference Optimization
+
+```c
+// INT8 quantization for inference
+typedef struct {
+    float scale;                    // Quantization scale
+    int8_t zero_point;              // Zero point
+    float* calibration_data;        // Calibration histogram
+    uint32_t calibration_samples;
+} nimcp_int8_quant_params_t;
+
+// Quantize tensor to INT8
+bool nimcp_gpu_quantize_int8(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* fp32_tensor,
+                              nimcp_gpu_tensor_t* int8_tensor, nimcp_int8_quant_params_t* params);
+
+// INT8 matrix multiplication
+bool nimcp_gpu_gemm_int8(nimcp_gpu_context_t* ctx, const nimcp_gpu_tensor_t* A_int8,
+                          const nimcp_gpu_tensor_t* B_int8, nimcp_gpu_tensor_t* C_int32,
+                          const nimcp_int8_quant_params_t* params_a,
+                          const nimcp_int8_quant_params_t* params_b);
+
+// TensorRT export
+typedef struct {
+    const char* model_name;
+    const char* output_path;
+    bool enable_fp16;
+    bool enable_int8;
+    uint32_t max_batch_size;
+    uint64_t max_workspace_size;
+} nimcp_tensorrt_export_config_t;
+
+bool nimcp_tensorrt_export_model(const nimcp_gpu_tensor_t** weights, size_t num_weights,
+                                  const nimcp_tensorrt_export_config_t* config);
+
+// Mixed precision (AMP) autocast
+typedef struct {
+    nimcp_gpu_precision_t default_precision;
+    nimcp_gpu_precision_t matmul_precision;    // Typically FP16
+    nimcp_gpu_precision_t softmax_precision;   // Typically FP32
+    nimcp_gpu_precision_t loss_precision;      // Typically FP32
+    float loss_scale;                          // Dynamic loss scaling
+} nimcp_amp_config_t;
+
+nimcp_amp_context_t* nimcp_amp_create(const nimcp_amp_config_t* config);
+bool nimcp_amp_autocast_begin(nimcp_amp_context_t* ctx);
+bool nimcp_amp_autocast_end(nimcp_amp_context_t* ctx);
+bool nimcp_amp_scale_loss(nimcp_amp_context_t* ctx, float* loss);
+bool nimcp_amp_unscale_gradients(nimcp_amp_context_t* ctx, nimcp_gpu_tensor_t** grads, size_t n);
+```
+
+#### 25.12 GPU Brain Factory Integration
+
+```c
+// Brain factory GPU initialization
+nimcp_status_t nimcp_brain_init_gpu(nimcp_brain_t* brain, const nimcp_brain_config_t* config) {
+    NIMCP_LOG_INFO("Initializing GPU acceleration layer");
+
+    // Detect hardware capabilities
+    hardware_capabilities_t caps;
+    execution_detect_capabilities(&caps);
+
+    if (caps.gpu_count == 0) {
+        NIMCP_LOG_WARN("No GPU detected, using CPU mode");
+        brain->gpu_ctx = NULL;
+        brain->execution_mode = EXEC_MODE_CPU_PARALLEL;
+        return NIMCP_OK;
+    }
+
+    // Create GPU context
+    nimcp_gpu_context_config_t gpu_config = {
+        .device_id = 0,
+        .enable_profiling = config->enable_gpu_profiling,
+        .enable_async = true
+    };
+    brain->gpu_ctx = nimcp_gpu_context_create(&gpu_config);
+
+    // Create multi-GPU context if multiple GPUs
+    if (caps.gpu_count > 1 && config->enable_multi_gpu) {
+        multigpu_config_t mgpu_config = multigpu_default_config();
+        mgpu_config.num_devices = caps.gpu_count;
+        mgpu_config.partition_strategy = MULTIGPU_PARTITION_HYBRID;
+        brain->multigpu_ctx = multigpu_context_create(&mgpu_config);
+    }
+
+    // Create GPU memory pool
+    nimcp_gpu_pool_config_t pool_config = {
+        .initial_size = 256 * 1024 * 1024,  // 256 MB
+        .max_size = caps.gpu_memory_mb * 1024 * 1024 * 0.8,  // 80% of GPU memory
+        .enable_defragmentation = true
+    };
+    brain->gpu_pool = nimcp_gpu_pool_factory_create(brain->gpu_ctx, &pool_config);
+
+    // Create async transfer manager
+    nimcp_async_transfer_config_t transfer_config = {
+        .ctx = brain->gpu_ctx,
+        .num_streams = 4,
+        .enable_pinned_memory = true,
+        .enable_double_buffering = true
+    };
+    brain->gpu_transfer = nimcp_async_transfer_create(&transfer_config);
+
+    // Determine optimal execution mode
+    brain->execution_mode = execution_get_recommended_mode(
+        config->max_neurons,
+        config->avg_synapses_per_neuron
+    );
+
+    // Register GPU bio-async handlers
+    nimcp_bio_router_register(brain->router, NIMCP_MSG_TYPE_GPU_TENSOR_READY,
+                               gpu_tensor_ready_handler, brain->gpu_ctx);
+    nimcp_bio_router_register(brain->router, NIMCP_MSG_TYPE_GPU_MEMORY_WARNING,
+                               gpu_memory_warning_handler, brain->gpu_ctx);
+
+    // Initialize GPU immune bridges
+    nimcp_gpu_neuron_immune_bridge_init(&brain->gpu_immune_bridge, brain->immune);
+    nimcp_gpu_execution_immune_bridge_init(&brain->exec_immune_bridge, brain->immune);
+    if (brain->multigpu_ctx) {
+        nimcp_multigpu_immune_bridge_init(&brain->multigpu_immune_bridge, brain->immune);
+    }
+
+    NIMCP_LOG_INFO("GPU layer initialized: %d GPU(s), mode=%d, memory=%.1f GB",
+                   caps.gpu_count, brain->execution_mode,
+                   caps.gpu_memory_mb / 1024.0);
+
+    return NIMCP_OK;
+}
+```
+
+#### 25.13 GPU Performance Heuristics
+
+| Network Size | Recommended Mode | Expected Speedup |
+|--------------|------------------|------------------|
+| < 1K neurons | CPU Sequential | 1x (baseline) |
+| 1K-10K neurons | CPU Parallel | 2-4x |
+| 10K-100K neurons | GPU CUDA | 10-50x |
+| 100K-1M neurons | Multi-GPU (2-4) | 50-200x |
+| > 1M neurons | Distributed GPU (8+) | 200-1000x |
+
+#### 25.14 GPU Integration Tests
+
+| Test File | Test Count |
+|-----------|------------|
+| `test/unit/gpu/test_gpu_context.cpp` | 15 |
+| `test/unit/gpu/test_execution_mode.cpp` | 20 |
+| `test/unit/gpu/test_gpu_tensor.cpp` | 30 |
+| `test/unit/gpu/test_gpu_gemm.cpp` | 25 |
+| `test/unit/gpu/test_gpu_activations.cpp` | 20 |
+| `test/unit/gpu/test_gpu_reductions.cpp` | 15 |
+| `test/unit/gpu/test_gpu_fft.cpp` | 10 |
+| `test/unit/gpu/test_gpu_training.cpp` | 25 |
+| `test/unit/gpu/test_gpu_loss_functions.cpp` | 15 |
+| `test/unit/gpu/test_gpu_optimizers.cpp` | 20 |
+| `test/unit/gpu/test_gpu_backward.cpp` | 25 |
+| `test/unit/gpu/test_multigpu.cpp` | 20 |
+| `test/unit/gpu/test_gpu_pool.cpp` | 15 |
+| `test/unit/gpu/test_async_transfer.cpp` | 10 |
+| `test/unit/gpu/test_gradient_checkpoint.cpp` | 10 |
+| `test/unit/gpu/test_int8_inference.cpp` | 15 |
+| `test/unit/gpu/test_amp_autocast.cpp` | 10 |
+| **Total** | **300** |
+
+### 26. Information Theory Module Integration
+
+**Priority**: High
+**Dependencies**: All cognitive modules, Perception, Bio-Async
+**Est. LOC**: 18,000 | **Tests**: 160
+
+#### 26.1 Information Theory Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    Information Theory Layer                                  │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                   Shannon Information Theory                          │  │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────┐  │  │
+│  │  │    Channel      │  │    Shannon      │  │     Mutual          │  │  │
+│  │  │    Capacity     │  │    Entropy      │  │   Information       │  │  │
+│  │  │  C = B×log₂(1+SNR)│ │ H(X)=-Σp(x)log₂p(x)│ │ I(X;Y)=H(X)+H(Y)-H(X,Y)│ │  │
+│  │  └─────────────────┘  └─────────────────┘  └─────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                     │                                       │
+│  ┌──────────────────────────────────┴────────────────────────────────────┐ │
+│  │                   Analysis Levels                                      │ │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐  │ │
+│  │  │  Synapse    │  │   Neuron    │  │   Network   │  │  Bottleneck  │  │ │
+│  │  │  Metrics    │  │   Metrics   │  │   Metrics   │  │  Detection   │  │ │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └──────────────┘  │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                     │                                       │
+│  ┌──────────────────────────────────┴────────────────────────────────────┐ │
+│  │                   Cross-Modal Integration                              │ │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐  │ │
+│  │  │  Channel    │  │Multi-Modal  │  │  Routing    │  │   McGurk     │  │ │
+│  │  │  Analysis   │  │Integration  │  │   Graph     │  │   Effect     │  │ │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └──────────────┘  │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                     │                                       │
+│  ┌──────────────────────────────────┴────────────────────────────────────┐ │
+│  │              Cognitive Module Integration                              │ │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐        │ │
+│  │  │Attention│ │ Memory  │ │Reasoning│ │Perception│ │Language │        │ │
+│  │  │  Info   │ │  Info   │ │  Info   │ │  Info   │ │  Info   │        │ │
+│  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘        │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 26.2 Core Components
+
+| Component | Header | Purpose |
+|-----------|--------|---------|
+| Shannon Metrics | `nimcp_shannon.h` | Core information theory computations |
+| Cross-Modal | `nimcp_cross_modal.h` | Multi-sensory information integration |
+| Shannon Immune | `nimcp_shannon_immune_bridge.h` | Immune system integration |
+| Cross-Modal Immune | `nimcp_cross_modal_immune_bridge.h` | Cross-modal immune integration |
+
+#### 26.3 Shannon Information Theory Types
+
+```c
+// Synapse-level Shannon metrics (from nimcp_shannon.h)
+typedef struct {
+    float channel_capacity;      // C bits/second (Shannon capacity)
+    float shannon_entropy;       // H(X) bits (uncertainty)
+    float mutual_information;    // I(pre;post) bits (correlation)
+    float information_rate;      // dI/dt bits/second (throughput)
+    float coding_efficiency;     // H/C_max ratio 0-1 (capacity utilization)
+    float signal_power;          // Signal strength
+    float noise_power;           // Noise level
+    float snr;                   // Signal-to-noise ratio
+    float bandwidth;             // Effective bandwidth (Hz)
+} shannon_synapse_metrics_t;
+
+// Neuron-level Shannon metrics
+typedef struct {
+    uint64_t neuron_id;          // Neuron identifier
+    float state_entropy;         // H(state) bits
+    float spike_entropy;         // H(spikes) bits (temporal)
+    float input_information;     // Total input info (bits/second)
+    float output_information;    // Total output info (bits/second)
+    float information_gain;      // Output - Input (bits/second)
+    float total_input_capacity;  // Sum of input synapse capacities
+    float total_output_capacity; // Sum of output synapse capacities
+    uint32_t num_inputs;         // Number of input synapses
+    uint32_t num_outputs;        // Number of output synapses
+} shannon_neuron_metrics_t;
+
+// Network-level Shannon metrics
+typedef struct {
+    float total_capacity;        // Sum of all synapse capacities (bits/s)
+    float total_entropy;         // Network state entropy (bits)
+    float mutual_information;    // Network-level I(input;output)
+    float information_rate;      // Current throughput (bits/s)
+    float average_efficiency;    // Mean coding efficiency 0-1
+    float bottleneck_score;      // 0-1: 1=no bottlenecks, 0=severe
+    uint32_t num_bottlenecks;    // Count of low-capacity synapses
+    uint32_t num_neurons;        // Total neurons analyzed
+    uint32_t num_synapses;       // Total synapses analyzed
+} shannon_network_metrics_t;
+
+// Probability distributions
+typedef struct {
+    float* probabilities;        // p(x) for each state [num_states]
+    uint32_t num_states;         // Number of discrete states
+    float total_probability;     // Should be 1.0 (validation)
+} shannon_distribution_t;
+
+typedef struct {
+    float* joint_probabilities;  // p(x,y) [num_x_states × num_y_states]
+    uint32_t num_x_states;       // Number of X states
+    uint32_t num_y_states;       // Number of Y states
+    float total_probability;     // Should be 1.0
+} shannon_joint_distribution_t;
+
+// Bottleneck detection
+typedef struct {
+    uint64_t synapse_id;         // ID of bottleneck synapse
+    float capacity;              // Actual capacity (bits/s)
+    float demand;                // Desired information flow (bits/s)
+    float bottleneck_ratio;      // demand / capacity (>1 = bottleneck)
+    float suggested_weight;      // Recommended weight to fix bottleneck
+} shannon_bottleneck_t;
+```
+
+#### 26.4 Core Shannon Functions
+
+```c
+// Shannon-Hartley channel capacity: C = B × log₂(1 + SNR)
+float shannon_channel_capacity(float bandwidth, float snr);
+
+// Shannon entropy: H(X) = -Σ p(x) log₂ p(x)
+float shannon_entropy(const shannon_distribution_t* distribution);
+float shannon_entropy_array(const float* probabilities, uint32_t num_states);
+
+// Mutual information: I(X;Y) = H(X) + H(Y) - H(X,Y)
+float shannon_mutual_information(const shannon_joint_distribution_t* joint_distribution);
+
+// Conditional entropy: H(Y|X) = H(X,Y) - H(X)
+float shannon_conditional_entropy(const shannon_joint_distribution_t* joint_distribution);
+
+// KL divergence: D(P||Q) = Σ p(x) log₂(p(x)/q(x))
+float shannon_kl_divergence(const shannon_distribution_t* p, const shannon_distribution_t* q);
+
+// Synapse analysis
+shannon_synapse_metrics_t shannon_analyze_synapse(
+    float weight, float pre_firing_rate, float noise_level,
+    float bandwidth, const shannon_config_t* config);
+
+// Information-theoretic plasticity: optimize weight for capacity
+float shannon_optimize_synapse_weight(
+    float current_weight, float target_capacity, float pre_firing_rate,
+    float noise_level, float learning_rate);
+
+// Neuron analysis
+shannon_neuron_metrics_t shannon_analyze_neuron(
+    uint64_t neuron_id,
+    const shannon_synapse_metrics_t* input_synapses, uint32_t num_inputs,
+    const shannon_synapse_metrics_t* output_synapses, uint32_t num_outputs,
+    float neuron_state, const uint64_t* spike_history, uint32_t history_length,
+    const shannon_config_t* config);
+
+// Network analysis
+shannon_network_metrics_t shannon_analyze_network(
+    const shannon_synapse_metrics_t* synapse_metrics, uint32_t num_synapses,
+    const shannon_neuron_metrics_t* neuron_metrics, uint32_t num_neurons,
+    const shannon_config_t* config);
+
+// Bottleneck detection
+uint32_t shannon_detect_bottlenecks(
+    const shannon_synapse_metrics_t* synapse_metrics, uint32_t num_synapses,
+    float bottleneck_threshold, shannon_bottleneck_t* bottlenecks, uint32_t max_bottlenecks);
+
+// Information flow rate
+float shannon_information_flow_rate(
+    const shannon_synapse_metrics_t* synapse_metrics, uint32_t num_synapses,
+    float time_window_ms);
+
+// Fast log₂ approximation (5-10x faster, ±0.5% error)
+float shannon_log2_fast(float x);
+
+// SNR conversion
+float shannon_snr_to_db(float snr_linear);
+float shannon_snr_from_db(float snr_db);
+```
+
+#### 26.5 Cross-Modal Information Flow
+
+```c
+// Cross-modal channel (from nimcp_cross_modal.h)
+typedef struct {
+    char source_modality[32];     // Source cortex (e.g., "visual")
+    char dest_modality[32];       // Dest cortex (e.g., "audio")
+
+    // Shannon metrics
+    float source_entropy;         // H(source) in bits
+    float dest_entropy;           // H(dest) in bits
+    float mutual_information;     // I(source;dest) in bits
+    float transfer_efficiency;    // I(source;dest) / H(source)
+    float channel_capacity;       // Maximum bits/sec
+    float information_rate;       // Actual bits/sec
+
+    // Bottleneck detection
+    bool is_bottleneck;           // True if efficiency < threshold
+    float bottleneck_severity;    // 0-1, higher = more severe
+
+    uint64_t timestamp_ms;
+    uint32_t sample_count;
+} cross_modal_channel_t;
+
+// Multi-modal integration metrics
+typedef struct {
+    uint32_t num_modalities;      // Number of input modalities (2-4)
+    char modality_names[4][32];   // Modality names
+
+    // Individual entropies
+    float individual_entropy[4];  // H(M_i) for each modality
+
+    // Joint metrics
+    float joint_entropy;          // H(M1, M2, ..., Mn)
+    float total_mutual_info;      // Sum of pairwise I(M_i;M_j)
+    float redundancy;             // Overlap between modalities
+    float synergy;                // Information only in combination
+
+    // Integration efficiency
+    float integration_efficiency; // joint / sum(individual)
+    bool is_integrating_well;     // True if efficiency > threshold
+} multi_modal_integration_t;
+
+// Routing graph for cross-modal pathways
+typedef struct {
+    uint32_t num_modalities;
+    char modality_names[10][32];
+    cross_modal_channel_t* channels[10][10];  // Adjacency matrix
+    float total_capacity;
+    float total_information_rate;
+    float network_efficiency;
+    uint32_t num_bottlenecks;
+} cross_modal_routing_graph_t;
+
+// Cross-modal API
+cross_modal_channel_t cross_modal_analyze_channel(
+    const char* source_modality, const char* dest_modality,
+    const float* source_features, uint32_t source_dim,
+    const float* dest_features, uint32_t dest_dim,
+    uint32_t num_samples, const shannon_config_t* config);
+
+multi_modal_integration_t cross_modal_analyze_integration(
+    const float** features, const uint32_t* dims, uint32_t num_modalities,
+    uint32_t num_samples, const char** modality_names, const shannon_config_t* config);
+
+// Synergy computation (explains McGurk effect)
+float cross_modal_compute_synergy(const multi_modal_integration_t* integration);
+
+// Routing graph operations
+cross_modal_routing_graph_t* cross_modal_create_routing_graph(
+    const char** modality_names, uint32_t num_modalities);
+bool cross_modal_update_routing_graph(
+    cross_modal_routing_graph_t* graph, uint32_t source_id, uint32_t dest_id,
+    const cross_modal_channel_t* channel);
+bool cross_modal_detect_bottlenecks(
+    const cross_modal_routing_graph_t* graph, float efficiency_threshold,
+    cross_modal_channel_t* bottlenecks, uint32_t max_bottlenecks, uint32_t* num_bottlenecks);
+float cross_modal_find_optimal_route(
+    const cross_modal_routing_graph_t* graph, uint32_t source_id, uint32_t dest_id,
+    uint32_t* path, uint32_t max_path_length, uint32_t* path_length);
+void cross_modal_destroy_routing_graph(cross_modal_routing_graph_t* graph);
+```
+
+#### 26.6 Biological Applications
+
+| Application | Description | NIMCP Integration |
+|-------------|-------------|-------------------|
+| **Synapse Optimization** | Maximize channel capacity via weight adjustment | Plasticity bridges |
+| **Bottleneck Detection** | Identify low-capacity synapses | Network analysis |
+| **Information Flow** | Track bits/second through network | Bio-async messaging |
+| **McGurk Effect** | Visual + audio synergy in speech | Cross-modal integration |
+| **Audiovisual Speech** | Lip reading improves comprehension 30% | Multi-modal integration |
+| **Attention Allocation** | Route resources to high-info regions | Attention bridge |
+| **Compression** | Preserve information while reducing parameters | Training integration |
+
+#### 26.7 Information Theory Bridges
+
+| Bridge | Header | Purpose |
+|--------|--------|---------|
+| Shannon-SNN Bridge | `nimcp_shannon_snn_bridge.h` | Information flow in spiking networks |
+| Shannon-Plasticity Bridge | `nimcp_shannon_plasticity_bridge.h` | Information-theoretic learning rules |
+| Shannon-FEP Bridge | `nimcp_shannon_fep_bridge.h` | Free energy and entropy connection |
+| Shannon-Attention Bridge | `nimcp_shannon_attention_bridge.h` | Allocate attention to high-info regions |
+| Shannon-Memory Bridge | `nimcp_shannon_memory_bridge.h` | Information content in memories |
+| Shannon-Perception Bridge | `nimcp_shannon_perception_bridge.h` | Sensory information metrics |
+| Shannon-Language Bridge | `nimcp_shannon_language_bridge.h` | Language information theory |
+| Shannon-Reasoning Bridge | `nimcp_shannon_reasoning_bridge.h` | Inference information gain |
+| Shannon-Immune Bridge | `nimcp_shannon_immune_bridge.h` | Abnormal information patterns |
+| Cross-Modal-Perception Bridge | `nimcp_cross_modal_perception_bridge.h` | Multi-sensory integration |
+| Cross-Modal-Language Bridge | `nimcp_cross_modal_language_bridge.h` | Audiovisual speech |
+| Cross-Modal-Attention Bridge | `nimcp_cross_modal_attention_bridge.h` | Cross-modal attention |
+| Cross-Modal-Immune Bridge | `nimcp_cross_modal_immune_bridge.h` | Cross-modal anomaly detection |
+| Shannon-Substrate Bridge | `nimcp_shannon_substrate_bridge.h` | Bio-async information messages |
+
+#### 26.8 Bio-Async Message Types
+
+```c
+// Information theory bio-async messages
+typedef enum {
+    INFO_MSG_ENTROPY_COMPUTED,        // Entropy calculation complete
+    INFO_MSG_MUTUAL_INFO_COMPUTED,    // Mutual information computed
+    INFO_MSG_BOTTLENECK_DETECTED,     // Information bottleneck found
+    INFO_MSG_CAPACITY_CHANGED,        // Channel capacity changed
+    INFO_MSG_EFFICIENCY_LOW,          // Coding efficiency below threshold
+    INFO_MSG_SYNERGY_DETECTED,        // Cross-modal synergy found
+    INFO_MSG_REDUNDANCY_HIGH,         // High redundancy between modalities
+    INFO_MSG_OPTIMAL_ROUTE_FOUND,     // Optimal cross-modal route computed
+    INFO_MSG_INFORMATION_FLOW_UPDATE  // Information flow rate update
+} nimcp_info_theory_msg_type_t;
+
+// Bottleneck detection message
+typedef struct {
+    nimcp_bio_msg_header_t header;
+    uint64_t synapse_id;
+    float capacity;
+    float demand;
+    float bottleneck_ratio;
+    float suggested_weight;
+} nimcp_bottleneck_msg_t;
+
+// Cross-modal synergy message
+typedef struct {
+    nimcp_bio_msg_header_t header;
+    char source_modality[32];
+    char dest_modality[32];
+    float synergy_bits;               // Positive = emergence
+    float integration_efficiency;
+} nimcp_synergy_msg_t;
+
+// Information flow update message
+typedef struct {
+    nimcp_bio_msg_header_t header;
+    float network_capacity;           // Total capacity (bits/s)
+    float information_rate;           // Actual throughput (bits/s)
+    float efficiency;                 // rate / capacity
+    uint32_t num_bottlenecks;
+} nimcp_info_flow_msg_t;
+```
+
+#### 26.9 Cognitive Integration Table
+
+| Cognitive Module | Information Theory Application |
+|------------------|-------------------------------|
+| **Attention** | Allocate attention to high mutual information regions |
+| **Memory** | Measure information content of memories |
+| **Reasoning** | Compute information gain from inference |
+| **Perception** | Multi-sensory information integration |
+| **Language** | Audiovisual speech synergy (McGurk effect) |
+| **Emotion** | Emotional information in cross-modal signals |
+| **Executive** | Information-theoretic decision making |
+| **Working Memory** | Information capacity constraints |
+| **Salience** | High-entropy events as salient |
+| **Meta-Learning** | Learning to maximize information gain |
+
+#### 26.10 Brain Factory Integration
+
+```c
+// Brain factory information theory initialization
+nimcp_status_t nimcp_brain_init_information_theory(
+    nimcp_brain_t* brain, const nimcp_brain_config_t* config) {
+
+    NIMCP_LOG_INFO("Initializing information theory layer");
+
+    // Allocate information theory system
+    brain->info_theory = nimcp_pool_alloc(brain->pool, sizeof(nimcp_info_theory_system_t));
+
+    // Initialize Shannon analysis
+    nimcp_shannon_config_t shannon_config = shannon_default_config();
+    brain->info_theory->shannon_config = shannon_config;
+
+    // Initialize cross-modal routing graph
+    const char* modalities[] = {"visual", "auditory", "somatosensory", "language", "motor"};
+    brain->info_theory->routing_graph = cross_modal_create_routing_graph(modalities, 5);
+
+    // Register bio-async handlers
+    nimcp_bio_router_register(brain->router, NIMCP_MSG_TYPE_INFO_BOTTLENECK,
+                               info_bottleneck_handler, brain->info_theory);
+    nimcp_bio_router_register(brain->router, NIMCP_MSG_TYPE_INFO_SYNERGY,
+                               info_synergy_handler, brain->info_theory);
+    nimcp_bio_router_register(brain->router, NIMCP_MSG_TYPE_INFO_FLOW_UPDATE,
+                               info_flow_handler, brain->info_theory);
+
+    // Register with immune system
+    nimcp_immune_register_sensor(brain->immune,
+                                  &brain->info_theory->immune_sensor,
+                                  IMMUNE_SENSOR_INFORMATION);
+
+    // Initialize bridges
+    nimcp_shannon_snn_bridge_init(&brain->info_theory->snn_bridge, brain->snn);
+    nimcp_shannon_plasticity_bridge_init(&brain->info_theory->plasticity_bridge, brain->plasticity);
+    nimcp_shannon_fep_bridge_init(&brain->info_theory->fep_bridge, brain->fep);
+    nimcp_shannon_attention_bridge_init(&brain->info_theory->attention_bridge, brain->attention);
+    nimcp_shannon_perception_bridge_init(&brain->info_theory->perception_bridge, brain->perception);
+    nimcp_cross_modal_perception_bridge_init(&brain->info_theory->cross_modal_perception, brain->perception);
+
+    NIMCP_LOG_INFO("Information theory layer initialized with %d modalities", 5);
+
+    return NIMCP_OK;
+}
+```
+
+#### 26.11 Performance Characteristics
+
+| Operation | Complexity | Typical Time |
+|-----------|------------|--------------|
+| Channel capacity | O(1) | 1 μs |
+| Shannon entropy | O(N) states | 10 μs |
+| Mutual information | O(N × M) | 100 μs |
+| Synapse analysis | O(1) | 5 μs |
+| Network analysis | O(S + N) | 1 ms |
+| Bottleneck detection | O(S log S) | 5 ms |
+| Cross-modal routing | O(V² log V) | 100 μs |
+
+#### 26.12 Information Theory Integration Tests
+
+| Test File | Test Count |
+|-----------|------------|
+| `test/unit/information/test_shannon_entropy.cpp` | 15 |
+| `test/unit/information/test_shannon_capacity.cpp` | 10 |
+| `test/unit/information/test_mutual_information.cpp` | 15 |
+| `test/unit/information/test_kl_divergence.cpp` | 10 |
+| `test/unit/information/test_synapse_analysis.cpp` | 15 |
+| `test/unit/information/test_neuron_analysis.cpp` | 10 |
+| `test/unit/information/test_network_analysis.cpp` | 15 |
+| `test/unit/information/test_bottleneck_detection.cpp` | 10 |
+| `test/unit/information/test_cross_modal_channel.cpp` | 10 |
+| `test/unit/information/test_multi_modal_integration.cpp` | 15 |
+| `test/unit/information/test_routing_graph.cpp` | 10 |
+| `test/unit/information/test_synergy_computation.cpp` | 10 |
+| `test/integration/information/test_shannon_snn_integration.cpp` | 10 |
+| `test/integration/information/test_shannon_perception_integration.cpp` | 5 |
+| **Total** | **160** |
+
+### 27. Plasticity Module Integration
+
+**Priority**: Critical
+**Dependencies**: SNN, Training, Sleep, Immune, Neuromodulators
+**Est. LOC**: 40,000 | **Tests**: 350
+
+#### 27.1 Plasticity Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       PLASTICITY COORDINATOR                                 │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                    MECHANISM REGISTRY                                 │  │
+│  │  ┌──────┐ ┌──────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │  │
+│  │  │ STDP │ │ BCM  │ │Homeosta  │ │Eligibili │ │Dendritic │           │  │
+│  │  │      │ │      │ │  tic     │ │   ty     │ │          │           │  │
+│  │  └──────┘ └──────┘ └──────────┘ └──────────┘ └──────────┘           │  │
+│  │  ┌──────┐ ┌──────────┐ ┌──────────────┐                              │  │
+│  │  │ STP  │ │Adaptive  │ │Predictive    │                              │  │
+│  │  │      │ │          │ │Coding        │                              │  │
+│  │  └──────┘ └──────────┘ └──────────────┘                              │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                     STATE MACHINE                                     │  │
+│  │    ACQUISITION → CONSOLIDATION → MAINTENANCE → STABILIZING            │  │
+│  │         ↑              ↓              ↓              ↓                │  │
+│  │         └──────────────┴──────────────┴──────────────┘                │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │              CONFLICT RESOLUTION & SCHEDULING                         │  │
+│  │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐        │  │
+│  │  │  STDP vs BCM    │ │ Time-Multiplex  │ │ Energy Budget   │        │  │
+│  │  │  Arbitration    │ │  STP/STDP/BCM   │ │   Tracking      │        │  │
+│  │  └─────────────────┘ └─────────────────┘ └─────────────────┘        │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                SUPPORTING MECHANISMS                                  │  │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌──────────┐ ┌─────────────┐  │  │
+│  │  │Astrocyte│ │Calcium  │ │Structu- │ │Metaplas- │ │Heterosynap- │  │  │
+│  │  │Plastic. │ │Dynamics │ │ral      │ │ticity    │ │tic          │  │  │
+│  │  └─────────┘ └─────────┘ └─────────┘ └──────────┘ └─────────────┘  │  │
+│  │  ┌─────────┐ ┌─────────────┐ ┌──────────┐                          │  │
+│  │  │Protein  │ │Neuromodula- │ │Pink Noise│                          │  │
+│  │  │Synthesis│ │tors         │ │          │                          │  │
+│  │  └─────────┘ └─────────────┘ └──────────┘                          │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                   INTEGRATION LAYER                                   │  │
+│  │   Brain Immune System        Bio-Async Router        Sleep System    │  │
+│  │   ──────────────────         ──────────────────      ────────────    │  │
+│  │   Inflammation → LR↓         Inter-mechanism msg     Consolidation   │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 27.2 Core Plasticity Mechanisms (8 Types)
+
+| Mechanism | Header | Mathematical Rule | Timescale |
+|-----------|--------|-------------------|-----------|
+| **STDP** | `nimcp_stdp.h` | Δw = η × A⁺e^(-Δt/τ⁺) or A⁻e^(Δt/τ⁻) | 10ms |
+| **BCM** | `nimcp_bcm.h` | Δw = η × post × (post - θ) × pre | 50ms |
+| **Homeostatic** | `nimcp_homeostatic.h` | w_scaled = w × (target/actual)^α | 1s |
+| **Eligibility** | `nimcp_eligibility_trace.h` | e(t) = e(t-1) × λ + spike(t) | 10ms |
+| **Dendritic** | `nimcp_dendritic.h` | Compartmental plasticity | 10ms |
+| **STP** | `nimcp_stp.h` | U, x dynamics (depression/facilitation) | 1ms |
+| **Adaptive** | `nimcp_adaptive.h` | Threshold adaptation | 100ms |
+| **Predictive** | `nimcp_predictive_coding.h` | Prediction error minimization | 20ms |
+
+#### 27.3 STDP (Spike-Timing-Dependent Plasticity)
+
+```c
+// STDP synapse state (from nimcp_stdp.h)
+typedef struct {
+    // Synaptic weight
+    float weight;               // Current weight [0, w_max]
+    float w_max;                // Maximum weight (default: 1.0)
+    float w_min;                // Minimum weight (default: 0.0)
+
+    // Learning parameters
+    float learning_rate;        // Base learning rate (default: 0.01)
+    float a_plus;               // LTP amplitude (default: 0.005)
+    float a_minus;              // LTD amplitude (default: 0.00525)
+    float tau_plus;             // LTP time constant [ms] (default: 20)
+    float tau_minus;            // LTD time constant [ms] (default: 20)
+
+    // Spike timing traces
+    float pre_trace;            // Presynaptic trace
+    float post_trace;           // Postsynaptic trace
+
+    // Dopamine modulation (three-factor learning)
+    bool enable_da_modulation;  // Use dopamine modulation
+    float da_modulation_gain;   // DA concentration → LR scaling
+    float burst_amplification;  // LR multiplier during bursts (3x)
+
+    // Sleep state modulation
+    sleep_state_t current_sleep_state;
+
+    // Statistics
+    uint64_t num_potentiation_events;
+    uint64_t num_depression_events;
+    float total_ltp;
+    float total_ltd;
+} stdp_synapse_t;
+
+// STDP API
+void stdp_synapse_init(stdp_synapse_t* synapse);
+float stdp_pre_spike(stdp_synapse_t* synapse, float current_time);
+float stdp_post_spike(stdp_synapse_t* synapse, float current_time);
+
+// Three-factor learning (dopamine-modulated)
+float stdp_pre_spike_modulated(stdp_synapse_t* synapse, float current_time,
+                                neuromodulator_system_t neuromod);
+float stdp_post_spike_modulated(stdp_synapse_t* synapse, float current_time,
+                                 neuromodulator_system_t neuromod);
+float stdp_get_da_modulation_factor(const stdp_synapse_t* synapse,
+                                     neuromodulator_system_t neuromod);
+```
+
+#### 27.4 BCM (Bienenstock-Cooper-Munro) Learning
+
+```c
+// BCM synapse state (from nimcp_bcm.h)
+typedef struct {
+    float weight;             // Synaptic weight (0-1)
+    float threshold;          // Sliding modification threshold θ
+    float avg_post_activity;  // Running average of post-synaptic activity
+    float eligibility;        // Eligibility trace for delayed reward
+    sleep_state_t current_sleep_state;
+} bcm_synapse_t;
+
+// BCM learning parameters
+typedef struct {
+    float learning_rate;              // η: Base learning rate (0.001-0.1)
+    float threshold_time_constant;    // τ_θ: Threshold adaptation timescale
+    float activity_time_constant;     // τ_a: Activity averaging timescale
+    float min_threshold;              // Minimum θ (prevents over-depression)
+    float max_threshold;              // Maximum θ (prevents runaway)
+    bool enable_quantum_bcm;          // Enable quantum threshold optimization
+} bcm_params_t;
+
+// BCM Rule: Δw = η × post × (post - θ) × pre
+//           θ̇ = (post² - θ) / τ
+bcm_synapse_t bcm_synapse_init(float initial_weight, float initial_threshold);
+float bcm_update_threshold(bcm_synapse_t* synapse, float post_activity,
+                           const bcm_params_t* params, float dt);
+float bcm_compute_weight_change(const bcm_synapse_t* synapse, float pre_activity,
+                                 float post_activity, const bcm_params_t* params);
+```
+
+#### 27.5 Homeostatic Plasticity
+
+```c
+// Homeostatic mechanism types (from nimcp_homeostatic.h)
+typedef enum {
+    HOMEOSTATIC_SYNAPTIC_SCALING,     // Multiplicative scaling of all synapses
+    HOMEOSTATIC_INTRINSIC_PLASTICITY, // Threshold/excitability adjustment
+    HOMEOSTATIC_METAPLASTICITY,       // Sliding BCM threshold
+    HOMEOSTATIC_STRUCTURAL,           // Synapse addition/removal
+    HOMEOSTATIC_COMBINED              // Multiple mechanisms together
+} homeostatic_mechanism_t;
+
+// Synaptic scaling: w_scaled = w × (target_rate / actual_rate)^α
+typedef struct {
+    float target_rate;           // Target firing rate (Hz)
+    float scaling_time_constant; // τ_scale: Time constant for scaling
+    float scaling_exponent;      // α: 0.5=sublinear, 1.0=linear, 2.0=supralinear
+    float min_scaling_factor;    // Minimum multiplicative factor
+    float max_scaling_factor;    // Maximum multiplicative factor
+} synaptic_scaling_params_t;
+
+// Intrinsic plasticity: dθ/dt = (actual_rate - target_rate) / τ_ip
+typedef struct {
+    float target_rate;           // Target firing rate (Hz)
+    float threshold_tau;         // τ_θ: Time constant for threshold adaptation
+    float gain_tau;              // τ_g: Time constant for gain adaptation
+    float min_threshold;         // Minimum firing threshold
+    float max_threshold;         // Maximum firing threshold
+} intrinsic_plasticity_params_t;
+```
+
+#### 27.6 Plasticity Coordinator
+
+```c
+// Plasticity mechanism types (from nimcp_plasticity_coordinator.h)
+typedef enum {
+    PLASTICITY_TYPE_STDP = 0,          // Spike-timing-dependent plasticity
+    PLASTICITY_TYPE_BCM,               // Bienenstock-Cooper-Munro
+    PLASTICITY_TYPE_HOMEOSTATIC,       // Homeostatic plasticity
+    PLASTICITY_TYPE_ELIGIBILITY,       // Eligibility traces
+    PLASTICITY_TYPE_DENDRITIC,         // Dendritic plasticity
+    PLASTICITY_TYPE_STP,               // Short-term plasticity
+    PLASTICITY_TYPE_ADAPTIVE,          // Adaptive threshold
+    PLASTICITY_TYPE_PREDICTIVE,        // Predictive coding
+    PLASTICITY_TYPE_COUNT              // Total types (8)
+} plasticity_mechanism_type_t;
+
+// Plasticity coordinator states (learning phases)
+typedef enum {
+    PLASTICITY_STATE_ACQUISITION = 0,  // New learning (STDP+BCM active)
+    PLASTICITY_STATE_CONSOLIDATION,    // Memory consolidation
+    PLASTICITY_STATE_MAINTENANCE,      // Stable state (minimal plasticity)
+    PLASTICITY_STATE_STABILIZING,      // Preventing runaway (homeostatic dominant)
+} plasticity_coordinator_state_t;
+
+// Conflict resolution strategies
+typedef enum {
+    CONFLICT_RESOLUTION_STDP_DOMINANT = 0,  // STDP wins (precise timing)
+    CONFLICT_RESOLUTION_BCM_DOMINANT,       // BCM wins (rate-based)
+    CONFLICT_RESOLUTION_AVERAGE,            // Average the signals
+    CONFLICT_RESOLUTION_WEIGHTED_AVERAGE,   // Weighted by mechanism priority
+    CONFLICT_RESOLUTION_IMMUNE_MODULATED,   // Brain immune modulates
+    CONFLICT_RESOLUTION_ENERGY_LIMITED,     // Lowest energy cost wins
+} conflict_resolution_strategy_t;
+
+// Coordinator API
+plasticity_coordinator_t* plasticity_coordinator_create(
+    const plasticity_coordinator_config_t* config);
+int plasticity_coordinator_register_mechanism(
+    plasticity_coordinator_t* coordinator, const char* name,
+    plasticity_mechanism_type_t type, plasticity_mechanism_handle_t handle,
+    plasticity_mechanism_update_fn_t update_fn, float priority,
+    float energy_cost, uint64_t update_interval_ms, uint32_t* mechanism_id_out);
+int plasticity_coordinator_update(plasticity_coordinator_t* coordinator,
+                                   uint64_t current_time_ms, float dt);
+int plasticity_coordinator_resolve_conflict(
+    plasticity_coordinator_t* coordinator, uint32_t synapse_id,
+    plasticity_mechanism_type_t type_a, float weight_change_a,
+    plasticity_mechanism_type_t type_b, float weight_change_b,
+    float* resolved_change_out);
+```
+
+#### 27.7 Supporting Mechanisms
+
+| Mechanism | Header | Purpose |
+|-----------|--------|---------|
+| **Astrocyte** | `nimcp_astrocyte_plasticity.h` | Glial modulation of synaptic plasticity |
+| **Calcium** | `nimcp_calcium_dynamics.h` | Ca²⁺-dependent plasticity rules |
+| **Structural** | `nimcp_structural_plasticity.h` | Synapse formation/elimination |
+| **Metaplasticity** | `nimcp_extended_metaplasticity.h` | Plasticity of plasticity |
+| **Heterosynaptic** | `nimcp_heterosynaptic.h` | Cross-synapse effects |
+| **Protein Synthesis** | `nimcp_protein_synthesis.h` | Late-phase LTP consolidation |
+| **Neuromodulators** | `nimcp_spatial_neuromod.h` | Dopamine, serotonin, ACh effects |
+| **Pink Noise** | `nimcp_pink_noise.h` | 1/f noise in plasticity |
+| **Triplet STDP** | `nimcp_triplet_stdp.h` | Three-spike STDP rule |
+| **Quantum STDP** | `nimcp_quantum_stdp_optimizer.h` | Quantum optimization of STDP |
+
+#### 27.8 Energy Costs Per Update
+
+| Mechanism | Energy Cost | Update Interval |
+|-----------|-------------|-----------------|
+| STP | 0.3 ATP units | 1 ms |
+| Eligibility | 0.5 ATP units | 10 ms |
+| STDP | 1.0 ATP units | 10 ms |
+| Adaptive | 1.0 ATP units | 100 ms |
+| Dendritic | 1.5 ATP units | 10 ms |
+| BCM | 2.0 ATP units | 50 ms |
+| Predictive | 2.5 ATP units | 20 ms |
+| Homeostatic | 3.0 ATP units | 1000 ms |
+
+#### 27.9 Plasticity Bridges (100+ Headers)
+
+| Category | Bridges | Purpose |
+|----------|---------|---------|
+| **FEP Bridges** | `nimcp_stdp_fep_bridge.h`, `nimcp_bcm_fep_bridge.h`, `nimcp_homeostatic_fep_bridge.h`, etc. | Free energy principle integration |
+| **Sleep Bridges** | `nimcp_stdp_sleep_bridge.h`, `nimcp_bcm_sleep_bridge.h`, etc. | Sleep-state modulation |
+| **Immune Bridges** | `nimcp_stdp_immune_bridge.h`, `nimcp_bcm_immune_bridge.h`, etc. | Inflammation effects |
+| **Pink Noise Bridges** | `nimcp_stdp_pink_noise_bridge.h`, `nimcp_bcm_pink_noise_bridge.h`, etc. | 1/f noise modulation |
+| **Quantum Bridges** | `nimcp_stdp_quantum_bridge.h`, `nimcp_bcm_quantum_bridge.h`, etc. | Quantum optimization |
+| **Substrate Bridges** | `nimcp_plasticity_substrate_bridge.h`, `nimcp_neuromod_substrate_bridge.h` | Bio-async integration |
+| **Orchestrator Bridges** | `nimcp_neuron_orchestrator_bridge.h`, `nimcp_axon_orchestrator_bridge.h`, `nimcp_dendrite_orchestrator_bridge.h` | Neural orchestration |
+| **Component Bridges** | `nimcp_synapse_plasticity_bridge.h`, `nimcp_dendrite_plasticity_bridge.h`, `nimcp_axon_plasticity_bridge.h` | Neural component integration |
+
+#### 27.10 Bio-Async Message Types
+
+```c
+// Plasticity bio-async messages
+typedef enum {
+    PLASTICITY_MSG_LTP_EVENT,             // Long-term potentiation occurred
+    PLASTICITY_MSG_LTD_EVENT,             // Long-term depression occurred
+    PLASTICITY_MSG_THRESHOLD_CHANGED,     // BCM/homeostatic threshold changed
+    PLASTICITY_MSG_CONSOLIDATION_START,   // Entering consolidation phase
+    PLASTICITY_MSG_CONSOLIDATION_END,     // Exiting consolidation phase
+    PLASTICITY_MSG_CONFLICT_DETECTED,     // Multiple mechanisms disagree
+    PLASTICITY_MSG_CONFLICT_RESOLVED,     // Conflict was resolved
+    PLASTICITY_MSG_ENERGY_LOW,            // Energy budget exceeded
+    PLASTICITY_MSG_STATE_TRANSITION,      // Coordinator state changed
+    PLASTICITY_MSG_STRUCTURAL_CHANGE,     // Synapse added/removed
+    PLASTICITY_MSG_METAPLASTICITY_UPDATE  // Plasticity-of-plasticity changed
+} nimcp_plasticity_msg_type_t;
+
+// LTP/LTD event message
+typedef struct {
+    nimcp_bio_msg_header_t header;
+    uint64_t synapse_id;
+    plasticity_mechanism_type_t mechanism;
+    float weight_before;
+    float weight_after;
+    float weight_change;
+    bool is_potentiation;           // true=LTP, false=LTD
+    float dopamine_level;           // If modulated
+} nimcp_plasticity_event_msg_t;
+
+// Conflict resolution message
+typedef struct {
+    nimcp_bio_msg_header_t header;
+    uint32_t synapse_id;
+    plasticity_mechanism_type_t mechanism_a;
+    plasticity_mechanism_type_t mechanism_b;
+    float weight_change_a;
+    float weight_change_b;
+    float resolved_weight_change;
+    conflict_resolution_strategy_t strategy_used;
+} nimcp_plasticity_conflict_msg_t;
+```
+
+#### 27.11 Cognitive Module Integration
+
+| Cognitive Module | Plasticity Application |
+|------------------|------------------------|
+| **Memory** | Eligibility traces → long-term consolidation |
+| **Attention** | STDP strengthens attended pathways |
+| **Emotion** | Dopamine-modulated three-factor learning |
+| **Sleep** | Consolidation phase, homeostatic reset |
+| **Learning** | BCM threshold sliding, metaplasticity |
+| **Executive** | Predictive coding updates |
+| **Reasoning** | Structural plasticity for new connections |
+
+#### 27.12 Brain Factory Integration
+
+```c
+// Brain factory plasticity initialization
+nimcp_status_t nimcp_brain_init_plasticity(nimcp_brain_t* brain,
+                                            const nimcp_brain_config_t* config) {
+    NIMCP_LOG_INFO("Initializing plasticity layer");
+
+    // Create plasticity coordinator
+    plasticity_coordinator_config_t coord_config;
+    plasticity_coordinator_default_config(&coord_config);
+    brain->plasticity_coordinator = plasticity_coordinator_create(&coord_config);
+
+    // Initialize core mechanisms
+    brain->stdp = stdp_module_init(brain->security_ctx);
+    brain->bcm = bcm_module_init(&brain->bcm_config);
+    brain->homeostatic = homeostatic_system_create(&brain->homeostatic_config);
+    brain->eligibility = eligibility_system_create();
+    brain->stp = stp_system_create();
+
+    // Register mechanisms with coordinator
+    plasticity_coordinator_register_mechanism(
+        brain->plasticity_coordinator, "stdp_main", PLASTICITY_TYPE_STDP,
+        brain->stdp, stdp_update_fn, NULL, 0.8f, PLASTICITY_ENERGY_COST_STDP,
+        PLASTICITY_UPDATE_INTERVAL_STDP, NULL);
+
+    plasticity_coordinator_register_mechanism(
+        brain->plasticity_coordinator, "bcm_main", PLASTICITY_TYPE_BCM,
+        brain->bcm, bcm_update_fn, NULL, 0.6f, PLASTICITY_ENERGY_COST_BCM,
+        PLASTICITY_UPDATE_INTERVAL_BCM, NULL);
+
+    // Connect to brain immune
+    plasticity_coordinator_connect_brain_immune(brain->plasticity_coordinator,
+                                                 brain->immune);
+
+    // Connect to bio-async
+    plasticity_coordinator_connect_bio_async(brain->plasticity_coordinator);
+
+    // Initialize all bridges
+    nimcp_stdp_fep_bridge_init(&brain->stdp_fep_bridge, brain->fep);
+    nimcp_stdp_sleep_bridge_init(&brain->stdp_sleep_bridge, brain->sleep);
+    nimcp_bcm_fep_bridge_init(&brain->bcm_fep_bridge, brain->fep);
+    nimcp_homeostatic_fep_bridge_init(&brain->homeostatic_fep_bridge, brain->fep);
+
+    NIMCP_LOG_INFO("Plasticity layer initialized: 8 mechanisms, coordinator active");
+
+    return NIMCP_OK;
+}
+```
+
+#### 27.13 Plasticity Integration Tests
+
+| Test File | Test Count |
+|-----------|------------|
+| `test/unit/plasticity/test_stdp.cpp` | 25 |
+| `test/unit/plasticity/test_stdp_dopamine_modulation.cpp` | 20 |
+| `test/unit/plasticity/test_bcm.cpp` | 20 |
+| `test/unit/plasticity/test_bcm_threshold.cpp` | 15 |
+| `test/unit/plasticity/test_homeostatic_scaling.cpp` | 20 |
+| `test/unit/plasticity/test_homeostatic_intrinsic.cpp` | 15 |
+| `test/unit/plasticity/test_eligibility_traces.cpp` | 15 |
+| `test/unit/plasticity/test_stp.cpp` | 15 |
+| `test/unit/plasticity/test_dendritic.cpp` | 15 |
+| `test/unit/plasticity/test_predictive_coding.cpp` | 15 |
+| `test/unit/plasticity/test_structural_plasticity.cpp` | 10 |
+| `test/unit/plasticity/test_metaplasticity.cpp` | 15 |
+| `test/unit/plasticity/test_calcium_dynamics.cpp` | 15 |
+| `test/unit/plasticity/test_protein_synthesis.cpp` | 10 |
+| `test/unit/plasticity/test_astrocyte_plasticity.cpp` | 10 |
+| `test/unit/plasticity/test_coordinator.cpp` | 25 |
+| `test/unit/plasticity/test_conflict_resolution.cpp` | 20 |
+| `test/unit/plasticity/test_coordinator_state_machine.cpp` | 15 |
+| `test/integration/plasticity/test_stdp_bcm_integration.cpp` | 15 |
+| `test/integration/plasticity/test_plasticity_sleep_integration.cpp` | 10 |
+| `test/integration/plasticity/test_plasticity_immune_integration.cpp` | 10 |
+| **Total** | **350** |
+
+### 28. Security Module Integration
+
+**Priority**: Critical
+**Dependencies**: Blood-Brain Barrier, Immune System, Bio-Async, Encryption
+**Est. LOC**: 45,000 | **Tests**: 400
+
+#### 28.1 Security Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           NIMCP SECURITY LAYER                               │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                    BLOOD-BRAIN BARRIER (Perimeter)                     │  │
+│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐      │  │
+│  │  │   Input     │ │    Code     │ │   Memory    │ │   Access    │      │  │
+│  │  │ Validation  │ │  Signing    │ │  Boundary   │ │   Control   │      │  │
+│  │  │   Gates     │ │ Verifier    │ │  Monitor    │ │  Enforcer   │      │  │
+│  │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘      │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                    THREAT DETECTION LAYER                             │  │
+│  │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐        │  │
+│  │  │    Anomaly      │ │    Pattern      │ │   Rate          │        │  │
+│  │  │   Detector      │ │    Database     │ │   Limiter       │        │  │
+│  │  │  (Bayesian ML)  │ │   (Signatures)  │ │  (Token Bucket) │        │  │
+│  │  └─────────────────┘ └─────────────────┘ └─────────────────┘        │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                     POLICY ENGINE                                     │  │
+│  │    ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐      │  │
+│  │    │  NSPL   │ ──▶ │   AST   │ ──▶ │Bytecode │ ──▶ │  Eval   │      │  │
+│  │    │ Parser  │     │         │     │Compiler │     │ Engine  │      │  │
+│  │    └─────────┘     └─────────┘     └─────────┘     └─────────┘      │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                   CRYPTOGRAPHY LAYER                                  │  │
+│  │  ┌─────────────┐ ┌─────────────────┐ ┌─────────────────────────────┐│  │
+│  │  │  AES-256   │ │  Post-Quantum   │ │       Key Derivation        ││  │
+│  │  │    GCM     │ │  Kyber+Dilithium│ │  HKDF, Argon2, scrypt       ││  │
+│  │  └─────────────┘ └─────────────────┘ └─────────────────────────────┘│  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                   INTEGRATION LAYER                                   │  │
+│  │   Brain Immune System        Bio-Async Router        Audit Logger    │  │
+│  │   ──────────────────         ──────────────────      ────────────    │  │
+│  │   Threat → Antigen           Security messaging      Encrypted logs  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 28.2 Core Security Components (44 Headers)
+
+| Component | Header | Purpose |
+|-----------|--------|---------|
+| **Core Security** | `nimcp_security.h` | Directive protection, input validation, encryption |
+| **Blood-Brain Barrier** | `nimcp_blood_brain_barrier.h` | 4-layer perimeter defense |
+| **Anomaly Detector** | `nimcp_anomaly_detector.h` | Bayesian ML-based detection |
+| **Rate Limiter** | `nimcp_rate_limiter.h` | Token bucket/sliding window rate limiting |
+| **Policy Engine** | `nimcp_policy_engine.h` | Declarative security policy language |
+| **Policy AST** | `nimcp_policy_ast.h` | Abstract syntax tree for policies |
+| **Policy Parser** | `nimcp_policy_parser.h` | NSPL language parser |
+| **Post-Quantum** | `nimcp_post_quantum.h` | CRYSTALS-Kyber/Dilithium cryptography |
+| **Key Derivation** | `nimcp_key_derivation.h` | HKDF, Argon2, scrypt |
+| **Pattern Database** | `nimcp_pattern_db.h` | Threat signature matching |
+| **Continuous Monitor** | `nimcp_continuous_monitor.h` | Real-time security monitoring |
+| **Encrypted Audit** | `nimcp_encrypted_audit.h` | Tamper-proof audit logs |
+| **Security Audit** | `nimcp_security_audit.h` | Security event auditing |
+| **Security Integration** | `nimcp_security_integration.h` | Cross-module integration |
+| **Capability** | `nimcp_capability.h` | Capability-based access control |
+| **CFI** | `nimcp_cfi.h` | Control-flow integrity |
+| **Shadow Stack** | `nimcp_shadow_stack.h` | Return address protection |
+| **TOCTOU Guard** | `nimcp_toctou_guard.h` | Time-of-check/time-of-use protection |
+| **Path Traversal** | `nimcp_path_traversal.h` | Path injection prevention |
+| **Shell Detector** | `nimcp_shell_detector.h` | Shell injection detection |
+| **Supply Chain** | `nimcp_supply_chain.h` | Supply chain security |
+| **Security Math** | `nimcp_security_math.h` | Constant-time operations |
+| **Constant Time** | `nimcp_constant_time.h` | Side-channel resistant operations |
+| **Security Level** | `nimcp_security_level.h` | Security level management |
+| **Security Coverage** | `nimcp_security_coverage.h` | Security coverage analysis |
+| **Security Consensus** | `nimcp_security_consensus.h` | Distributed security consensus |
+| **Security Fractal** | `nimcp_security_fractal.h` | Fractal security patterns |
+| **BBB Helpers** | `nimcp_bbb_helpers.h` | BBB utility functions |
+| **BBB Enhanced Detection** | `nimcp_bbb_enhanced_detection.h` | Enhanced threat detection |
+| **Checkpoints** | `nimcp_checkpoints.h` | Security checkpoints |
+| **Security Recovery Bridge** | `nimcp_security_recovery_bridge.h` | Recovery integration |
+| **Security Perception Bridge** | `nimcp_security_perception_bridge.h` | Perception integration |
+| **Security FEP Bridge** | `nimcp_security_fep_bridge.h` | Free energy principle integration |
+
+#### 28.3 Blood-Brain Barrier (BBB) - Perimeter Defense
+
+```c
+// BBB threat types (from nimcp_blood_brain_barrier.h)
+typedef enum {
+    BBB_THREAT_NONE = 0,              // No threat detected
+    BBB_THREAT_BUFFER_OVERFLOW,       // Stack/heap buffer overflow
+    BBB_THREAT_FORMAT_STRING,         // Format string vulnerability
+    BBB_THREAT_INTEGER_OVERFLOW,      // Integer overflow/underflow
+    BBB_THREAT_SQL_INJECTION,         // SQL injection attempt
+    BBB_THREAT_CODE_INJECTION,        // Generic code injection
+    BBB_THREAT_SHELLCODE,             // Shellcode detected
+    BBB_THREAT_ROP_CHAIN,             // Return-Oriented Programming
+    BBB_THREAT_INVALID_SIGNATURE,     // Code signature invalid
+    BBB_THREAT_MEMORY_VIOLATION,      // Memory bounds violation
+    BBB_THREAT_UNAUTHORIZED_ACCESS,   // Access control violation
+    BBB_THREAT_DATA_TAMPERING,        // Data integrity violation
+    BBB_THREAT_PATH_TRAVERSAL,        // Path traversal attack
+    BBB_THREAT_SHELL_INJECTION,       // Shell command injection
+    BBB_THREAT_UNKNOWN                // Unknown threat type
+} bbb_threat_type_t;
+
+// BBB severity levels
+typedef enum {
+    BBB_SEVERITY_NONE = 0,            // No threat
+    BBB_SEVERITY_LOW = 1,             // Log only
+    BBB_SEVERITY_MEDIUM = 2,          // Block and alert
+    BBB_SEVERITY_HIGH = 3,            // Quarantine and alert
+    BBB_SEVERITY_CRITICAL = 4         // System lockdown
+} bbb_severity_t;
+
+// BBB configuration
+typedef struct {
+    bbb_input_config_t input;         // Input gate configuration
+    bbb_signing_config_t signing;     // Code signing configuration
+    bbb_memory_config_t memory;       // Memory boundary configuration
+    bbb_access_config_t access;       // Access control configuration
+    bool strict_mode;                 // Enable strict security mode
+    bbb_action_t default_action;      // Default action for threats
+    void (*alert_callback)(bbb_threat_type_t, bbb_severity_t, const char*);
+} bbb_config_t;
+
+// BBB API
+bbb_system_t bbb_system_create(const bbb_config_t* config);
+bool bbb_validate_input(bbb_system_t system, const void* data, size_t size,
+                        bbb_validation_result_t* result);
+bool bbb_validate_string(bbb_system_t system, const char* str,
+                         bbb_validation_result_t* result);
+bool bbb_verify_signature(bbb_system_t system, const void* data, size_t size,
+                          const uint8_t* signature, size_t sig_size);
+bool bbb_check_memory_access(bbb_system_t system, const void* address,
+                             size_t size, bool write);
+bool bbb_check_access(bbb_system_t system, const bbb_subject_t* subject,
+                      const bbb_object_t* object, uint32_t access_type);
+bool bbb_quarantine_region(bbb_system_t system, void* address, size_t size);
+bool bbb_connect_immune(bbb_system_t system, brain_immune_system_t* immune_system);
+```
+
+#### 28.4 Anomaly Detector (Bayesian ML)
+
+```c
+// Anomaly detection features (from nimcp_anomaly_detector.h)
+#define NIMCP_FEATURE_LENGTH 0
+#define NIMCP_FEATURE_ENTROPY 1
+#define NIMCP_FEATURE_ALPHA_RATIO 2
+#define NIMCP_FEATURE_NUMERIC_RATIO 3
+#define NIMCP_FEATURE_SPECIAL_RATIO 4
+#define NIMCP_FEATURE_CONTROL_RATIO 5
+#define NIMCP_FEATURE_BIGRAM_ENTROPY 6
+#define NIMCP_FEATURE_TRIGRAM_ENTROPY 7
+#define NIMCP_FEATURE_NESTING_DEPTH 8
+#define NIMCP_FEATURE_REQUEST_RATE 9
+#define NIMCP_FEATURE_BURST_SCORE 10
+#define NIMCP_FEATURE_REPEAT_RATIO 11
+#define NIMCP_FEATURE_COUNT 12
+
+// Anomaly detection result
+typedef struct {
+    float anomaly_score;               // 0.0 (normal) to 1.0 (highly anomalous)
+    float confidence;                  // Confidence in score [0.0, 1.0]
+    float content_score;               // Content anomaly score
+    float behavior_score;              // Behavior anomaly score
+    float timing_score;                // Timing anomaly score
+    uint32_t triggered_features;       // Bitmask of triggered features
+    char explanation[256];             // Human-readable explanation
+    uint64_t timestamp_us;             // Detection timestamp
+} nimcp_anomaly_result_t;
+
+// Anomaly detector API
+nimcp_anomaly_detector_t nimcp_anomaly_detector_create(const nimcp_anomaly_config_t* config);
+nimcp_error_t nimcp_anomaly_detect(nimcp_anomaly_detector_t detector, const void* input,
+                                    size_t input_len, nimcp_anomaly_result_t* result);
+nimcp_error_t nimcp_anomaly_train(nimcp_anomaly_detector_t detector, const void* input,
+                                   size_t input_len, bool is_normal);
+nimcp_error_t nimcp_anomaly_save_model(nimcp_anomaly_detector_t detector, const char* filepath);
+nimcp_error_t nimcp_anomaly_load_model(nimcp_anomaly_detector_t detector, const char* filepath);
+
+// Bayesian network API
+nimcp_bayesian_network_t nimcp_bn_create(uint32_t num_nodes);
+nimcp_error_t nimcp_bn_add_edge(nimcp_bayesian_network_t bn, uint32_t parent, uint32_t child);
+nimcp_error_t nimcp_bn_infer(nimcp_bayesian_network_t bn, const float* evidence, float* posteriors);
+nimcp_error_t nimcp_bn_learn(nimcp_bayesian_network_t bn, const float* sample);
+```
+
+#### 28.5 Rate Limiter (Token Bucket)
+
+```c
+// Rate limiting algorithms (from nimcp_rate_limiter.h)
+typedef enum {
+    RATE_LIMIT_TOKEN_BUCKET = 0,  // Classic token bucket
+    RATE_LIMIT_SLIDING_WINDOW,    // Sliding window counter
+    RATE_LIMIT_FIXED_WINDOW,      // Fixed window counter
+    RATE_LIMIT_LEAKY_BUCKET       // Leaky bucket (smoother)
+} nimcp_rate_limit_algorithm_t;
+
+// Penalty actions
+typedef enum {
+    PENALTY_NONE = 0,
+    PENALTY_WARN,
+    PENALTY_REDUCE_RATE_25,       // Reduce rate by 25%
+    PENALTY_REDUCE_RATE_50,       // Reduce rate by 50%
+    PENALTY_REDUCE_RATE_75,       // Reduce rate by 75%
+    PENALTY_BLOCK_TEMPORARY,
+    PENALTY_BLOCK_PERMANENT
+} nimcp_penalty_action_t;
+
+// Rate limiter configuration
+typedef struct {
+    float requests_per_second;      // Rate limit (requests/sec)
+    uint32_t burst_size;            // Maximum burst tokens
+    nimcp_rate_limit_algorithm_t algorithm;
+    bool per_client;                // Separate limit per client
+    bool per_resource;              // Separate limit per resource
+    nimcp_penalty_config_t penalty; // Penalty configuration
+    bool enable_statistics;
+} nimcp_rate_limit_config_t;
+
+// Rate limiter API
+nimcp_rate_limiter_t nimcp_rate_limiter_create(const nimcp_rate_limit_config_t* config);
+bool nimcp_rate_limiter_allow(nimcp_rate_limiter_t limiter, const char* client_id);
+bool nimcp_rate_limiter_acquire(nimcp_rate_limiter_t limiter, const char* client_id, uint32_t count);
+uint64_t nimcp_rate_limiter_time_until_ready(nimcp_rate_limiter_t limiter, const char* client_id);
+nimcp_error_t nimcp_rate_limiter_block_client(nimcp_rate_limiter_t limiter, const char* client_id);
+nimcp_error_t nimcp_rate_limiter_register_bio_async(nimcp_rate_limiter_t limiter);
+```
+
+#### 28.6 Policy Engine (NSPL Language)
+
+```c
+// Policy action types (from nimcp_policy_engine.h)
+typedef enum {
+    NIMCP_POLICY_ACTION_ALLOW,
+    NIMCP_POLICY_ACTION_DENY,
+    NIMCP_POLICY_ACTION_THROTTLE,
+    NIMCP_POLICY_ACTION_LOG,
+    NIMCP_POLICY_ACTION_ALERT,
+    NIMCP_POLICY_ACTION_CUSTOM
+} nimcp_policy_action_t;
+
+// Policy evaluation result
+typedef struct {
+    nimcp_policy_action_t action;
+    nimcp_policy_severity_t severity;
+    char* message;
+    char* rule_name;
+    nimcp_policy_value_t* params;
+    size_t num_params;
+    bool should_log;
+    uint64_t eval_time_ns;
+} nimcp_policy_result_t;
+
+// Policy engine API
+nimcp_policy_engine_t nimcp_policy_engine_create(const nimcp_policy_engine_config_t* config);
+nimcp_error_t nimcp_policy_engine_load(nimcp_policy_engine_t engine, const char* policy_text,
+                                        nimcp_policy_t* policy);
+nimcp_error_t nimcp_policy_engine_load_file(nimcp_policy_engine_t engine, const char* filepath,
+                                             nimcp_policy_t* policy);
+nimcp_error_t nimcp_policy_evaluate(nimcp_policy_engine_t engine, nimcp_policy_context_t ctx,
+                                     nimcp_policy_result_t* result);
+nimcp_error_t nimcp_policy_engine_reload(nimcp_policy_engine_t engine);  // Hot-reload
+```
+
+#### 28.7 Post-Quantum Cryptography
+
+```c
+// Kyber security variants (from nimcp_post_quantum.h)
+typedef enum {
+    NIMCP_PQ_KYBER_512,   // NIST Level 1 - 128-bit security
+    NIMCP_PQ_KYBER_768,   // NIST Level 3 - 192-bit security
+    NIMCP_PQ_KYBER_1024   // NIST Level 5 - 256-bit security
+} nimcp_kyber_variant_t;
+
+// Dilithium security variants
+typedef enum {
+    NIMCP_PQ_DILITHIUM_2,  // NIST Level 2 - 128-bit security
+    NIMCP_PQ_DILITHIUM_3,  // NIST Level 3 - 192-bit security
+    NIMCP_PQ_DILITHIUM_5   // NIST Level 5 - 256-bit security
+} nimcp_dilithium_variant_t;
+
+// Kyber KEM API
+nimcp_error_t nimcp_kyber_keygen(nimcp_kyber_variant_t variant, nimcp_kyber_keypair_t* keypair);
+nimcp_error_t nimcp_kyber_encapsulate(nimcp_kyber_variant_t variant, const uint8_t* public_key,
+                                       uint8_t* ciphertext, size_t* ciphertext_len,
+                                       uint8_t* shared_secret, size_t shared_secret_len);
+nimcp_error_t nimcp_kyber_decapsulate(nimcp_kyber_variant_t variant, const uint8_t* secret_key,
+                                       const uint8_t* ciphertext, size_t ciphertext_len,
+                                       uint8_t* shared_secret, size_t shared_secret_len);
+
+// Dilithium signature API
+nimcp_error_t nimcp_dilithium_keygen(nimcp_dilithium_variant_t variant,
+                                      nimcp_dilithium_keypair_t* keypair);
+nimcp_error_t nimcp_dilithium_sign(nimcp_dilithium_variant_t variant, const uint8_t* secret_key,
+                                    const uint8_t* message, size_t message_len,
+                                    uint8_t* signature, size_t* signature_len);
+nimcp_error_t nimcp_dilithium_verify(nimcp_dilithium_variant_t variant, const uint8_t* public_key,
+                                      const uint8_t* message, size_t message_len,
+                                      const uint8_t* signature, size_t signature_len);
+
+// Hybrid classical+PQ operations
+nimcp_error_t nimcp_hybrid_key_exchange(nimcp_pq_context_t ctx, const uint8_t* classical_private,
+                                         const uint8_t* classical_public, const uint8_t* pq_public,
+                                         size_t pq_public_len, uint8_t* combined_secret,
+                                         size_t secret_len);
+nimcp_error_t nimcp_hybrid_sign(nimcp_pq_context_t ctx, const uint8_t* classical_key,
+                                 const uint8_t* pq_key, size_t pq_key_len,
+                                 const uint8_t* message, size_t message_len,
+                                 uint8_t* signature, size_t* signature_len);
+```
+
+#### 28.8 Biological Attack Defense
+
+```c
+// Biological attack types (from nimcp_security.h)
+typedef enum {
+    NIMCP_BIO_ATTACK_NONE = 0,
+    NIMCP_BIO_ATTACK_EXCITOTOXICITY,      // Runaway excitation
+    NIMCP_BIO_ATTACK_SYNAPTIC_POISONING,  // Malicious weight updates
+    NIMCP_BIO_ATTACK_NEUROMOD_HIJACK,     // Dopamine manipulation
+    NIMCP_BIO_ATTACK_HEBBIAN_POISON,      // STDP exploitation
+    NIMCP_BIO_ATTACK_HOMEOSTATIC_BYPASS   // BCM/eligibility disable
+} nimcp_bio_attack_type_t;
+
+// Biological defense thresholds
+#define NIMCP_ACTIVITY_WARNING_THRESHOLD 0.8f   // 80% network activity - warning
+#define NIMCP_ACTIVITY_DANGER_THRESHOLD 0.95f   // 95% network activity - emergency
+#define NIMCP_MAX_WEIGHT_DELTA_PER_STEP 0.1f    // Max 10% weight change per step
+#define NIMCP_MAX_NEUROMOD_RATE 0.2f            // Max 20% neuromodulator change per step
+
+// Biological defense API
+nimcp_bio_attack_type_t nimcp_security_monitor_excitotoxicity(void* network,
+                                                               nimcp_activity_stats_t* stats);
+bool nimcp_security_validate_weight_change(float old_weight, float new_weight, float max_delta);
+bool nimcp_security_validate_neuromodulator_change(float old_level, float new_level, float max_rate);
+nimcp_bio_attack_type_t nimcp_security_verify_plasticity_integrity(void* network,
+                                                                     uint32_t* bcm_disabled,
+                                                                     uint32_t* elig_disabled);
+nimcp_result_t nimcp_security_emergency_inhibit(void* network);
+```
+
+#### 28.9 Security Bridges
+
+| Bridge Type | Headers | Purpose |
+|-------------|---------|---------|
+| **FEP Bridges** | `nimcp_security_fep_bridge.h`, `nimcp_anomaly_detector_fep_bridge.h`, `nimcp_rate_limiter_fep_bridge.h`, `nimcp_blood_brain_barrier_fep_bridge.h`, `nimcp_pattern_db_fep_bridge.h` | Free energy principle integration |
+| **Sleep Bridges** | `security/sleep/nimcp_bbb_sleep_bridge.h`, `security/sleep/nimcp_anomaly_detector_sleep_bridge.h`, `security/sleep/nimcp_rate_limiter_sleep_bridge.h`, `security/sleep/nimcp_pattern_db_sleep_bridge.h` | Sleep-state security modulation |
+| **Immune Bridges** | `security/immune/nimcp_anomaly_immune_bridge.h`, `security/immune/nimcp_rate_limiter_immune_bridge.h`, `security/immune/nimcp_pattern_db_immune_bridge.h` | Threat → Antigen presentation |
+| **Recovery Bridge** | `nimcp_security_recovery_bridge.h` | Security incident recovery |
+| **Perception Bridge** | `nimcp_security_perception_bridge.h` | Perceptual security analysis |
+
+#### 28.10 Bio-Async Message Types
+
+```c
+// Security bio-async messages
+typedef enum {
+    SECURITY_MSG_THREAT_DETECTED,         // Threat detected by any component
+    SECURITY_MSG_THREAT_BLOCKED,          // Threat was blocked
+    SECURITY_MSG_THREAT_QUARANTINED,      // Threat was quarantined
+    SECURITY_MSG_ANOMALY_DETECTED,        // Anomaly detector triggered
+    SECURITY_MSG_RATE_LIMIT_EXCEEDED,     // Rate limit exceeded
+    SECURITY_MSG_POLICY_VIOLATION,        // Policy engine denied action
+    SECURITY_MSG_SIGNATURE_INVALID,       // Code signature verification failed
+    SECURITY_MSG_MEMORY_VIOLATION,        // Memory boundary violation
+    SECURITY_MSG_ACCESS_DENIED,           // Access control denied
+    SECURITY_MSG_BIO_ATTACK_DETECTED,     // Biological attack detected
+    SECURITY_MSG_LOCKDOWN_INITIATED,      // System entering lockdown
+    SECURITY_MSG_LOCKDOWN_RELEASED,       // Lockdown released
+    SECURITY_MSG_KEY_ROTATION,            // Cryptographic key rotated
+    SECURITY_MSG_AUDIT_EVENT              // Security audit event
+} nimcp_security_msg_type_t;
+
+// Threat detection message
+typedef struct {
+    nimcp_bio_msg_header_t header;
+    bbb_threat_type_t threat_type;
+    bbb_severity_t severity;
+    bbb_action_t action_taken;
+    uint64_t source_module_id;
+    uint8_t threat_hash[32];
+    char description[256];
+} nimcp_security_threat_msg_t;
+
+// Anomaly detection message
+typedef struct {
+    nimcp_bio_msg_header_t header;
+    float anomaly_score;
+    float confidence;
+    uint32_t triggered_features;
+    char explanation[256];
+} nimcp_security_anomaly_msg_t;
+
+// Bio attack message
+typedef struct {
+    nimcp_bio_msg_header_t header;
+    nimcp_bio_attack_type_t attack_type;
+    float activity_level;
+    uint32_t affected_neurons;
+    bool emergency_response_triggered;
+} nimcp_security_bio_attack_msg_t;
+```
+
+#### 28.11 Brain Factory Integration
+
+```c
+// Brain factory security initialization
+nimcp_status_t nimcp_brain_init_security(nimcp_brain_t* brain,
+                                          const nimcp_brain_config_t* config) {
+    NIMCP_LOG_INFO("Initializing security layer");
+
+    // Create Blood-Brain Barrier
+    bbb_config_t bbb_config = bbb_default_config();
+    bbb_config.strict_mode = config->security_strict_mode;
+    brain->bbb = bbb_system_create(&bbb_config);
+
+    // Connect BBB to immune system
+    bbb_connect_immune(brain->bbb, brain->immune);
+
+    // Create anomaly detector
+    nimcp_anomaly_config_t anomaly_config = nimcp_anomaly_detector_default_config();
+    anomaly_config.enable_bio_async = true;
+    brain->anomaly_detector = nimcp_anomaly_detector_create(&anomaly_config);
+
+    // Create rate limiter
+    nimcp_rate_limit_config_t rl_config = nimcp_rate_limiter_default_config();
+    rl_config.requests_per_second = config->max_requests_per_second;
+    brain->rate_limiter = nimcp_rate_limiter_create(&rl_config);
+
+    // Create policy engine
+    nimcp_policy_engine_config_t pe_config = {
+        .max_policies = 100,
+        .enable_hot_reload = true,
+        .policy_directory = config->policy_directory,
+        .bio_router = brain->bio_router
+    };
+    brain->policy_engine = nimcp_policy_engine_create(&pe_config);
+
+    // Initialize post-quantum cryptography
+    nimcp_pq_config_t pq_config = {
+        .default_kyber_variant = NIMCP_PQ_KYBER_768,
+        .default_dilithium_variant = NIMCP_PQ_DILITHIUM_3,
+        .hybrid_config = { .enable_classical = true, .enable_pq = true, .require_both = true }
+    };
+    brain->pq_context = nimcp_pq_context_create(&pq_config);
+
+    // Register with bio-async
+    nimcp_rate_limiter_register_bio_async(brain->rate_limiter);
+
+    // Initialize all security bridges
+    nimcp_security_fep_bridge_init(&brain->security_fep_bridge, brain->fep);
+    nimcp_bbb_sleep_bridge_init(&brain->bbb_sleep_bridge, brain->sleep);
+    nimcp_anomaly_immune_bridge_init(&brain->anomaly_immune_bridge, brain->immune);
+
+    // Load security policies
+    if (config->security_policy_file) {
+        nimcp_policy_t policy;
+        nimcp_policy_engine_load_file(brain->policy_engine, config->security_policy_file, &policy);
+    }
+
+    NIMCP_LOG_INFO("Security layer initialized: BBB active, anomaly detector trained, "
+                   "post-quantum crypto enabled");
+
+    return NIMCP_OK;
+}
+```
+
+#### 28.12 Security Integration Tests
+
+| Test File | Test Count |
+|-----------|------------|
+| `test/unit/security/test_bbb_input_validation.cpp` | 30 |
+| `test/unit/security/test_bbb_code_signing.cpp` | 25 |
+| `test/unit/security/test_bbb_memory_boundary.cpp` | 25 |
+| `test/unit/security/test_bbb_access_control.cpp` | 25 |
+| `test/unit/security/test_bbb_threat_detection.cpp` | 20 |
+| `test/unit/security/test_anomaly_detector.cpp` | 30 |
+| `test/unit/security/test_anomaly_bayesian_network.cpp` | 20 |
+| `test/unit/security/test_anomaly_feature_extraction.cpp` | 15 |
+| `test/unit/security/test_rate_limiter_token_bucket.cpp` | 20 |
+| `test/unit/security/test_rate_limiter_sliding_window.cpp` | 15 |
+| `test/unit/security/test_rate_limiter_penalties.cpp` | 15 |
+| `test/unit/security/test_policy_engine_parser.cpp` | 20 |
+| `test/unit/security/test_policy_engine_eval.cpp` | 20 |
+| `test/unit/security/test_policy_hot_reload.cpp` | 10 |
+| `test/unit/security/test_post_quantum_kyber.cpp` | 20 |
+| `test/unit/security/test_post_quantum_dilithium.cpp` | 20 |
+| `test/unit/security/test_post_quantum_hybrid.cpp` | 15 |
+| `test/unit/security/test_bio_attack_defense.cpp` | 20 |
+| `test/unit/security/test_encryption_aes_gcm.cpp` | 15 |
+| `test/integration/security/test_bbb_immune_integration.cpp` | 15 |
+| `test/integration/security/test_security_bio_async_integration.cpp` | 15 |
+| `test/integration/security/test_security_policy_integration.cpp` | 10 |
+| **Total** | **400** |
+
+### 29. Async Module Integration
+
+**Priority**: Critical (Core Infrastructure)
+**Dependencies**: All modules depend on async for communication
+**Est. LOC**: 50,000 | **Tests**: 350
+
+#### 29.1 Async Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        BIO-ASYNC COORDINATION LAYER                          │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                    NEUROMODULATOR CHANNELS                            │  │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐                │  │
+│  │  │ Dopamine │ │Serotonin │ │Norepine- │ │Acetylcho-│                │  │
+│  │  │   (DA)   │ │  (5-HT)  │ │phrine(NE)│ │line(ACh) │                │  │
+│  │  │Reward/   │ │Mood/     │ │Alertness/│ │Attention/│                │  │
+│  │  │Motivation│ │Wellbeing │ │Arousal   │ │Learning  │                │  │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘                │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                     PHASE COUPLING (KURAMOTO)                         │  │
+│  │    ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐     │  │
+│  │    │ Delta   │ │ Theta   │ │ Alpha   │ │ Beta    │ │ Gamma   │     │  │
+│  │    │ 0.5-4Hz │ │ 4-8Hz   │ │ 8-13Hz  │ │ 13-30Hz │ │ 30-100Hz│     │  │
+│  │    │Deep     │ │Memory   │ │Relax    │ │Active   │ │Binding  │     │  │
+│  │    │Sleep    │ │Encoding │ │Idle     │ │Thinking │ │Attention│     │  │
+│  │    └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘     │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                    PREDICTIVE CODING (BAYESIAN)                       │  │
+│  │  ┌───────────────────┐ ┌───────────────────┐ ┌───────────────────┐  │  │
+│  │  │ Prediction Engine │ │ Error Computation │ │ Precision Weight  │  │  │
+│  │  │ P(x|context)      │ │ error = actual -  │ │ π = 1/σ² controls │  │  │
+│  │  │                   │ │     predicted     │ │ belief updates    │  │  │
+│  │  └───────────────────┘ └───────────────────┘ └───────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                    GLIAL WAVE PROPAGATION                             │  │
+│  │  ┌───────────────────┐ ┌───────────────────┐ ┌───────────────────┐  │  │
+│  │  │ Calcium Waves     │ │ Astrocyte Network │ │ Neuromodulator    │  │  │
+│  │  │ IP3-mediated      │ │ Gap junctions     │ │ Uptake/Release    │  │  │
+│  │  │ 20μm/s propagation│ │ Spatial buffering │ │ Glutamate cycling │  │  │
+│  │  └───────────────────┘ └───────────────────┘ └───────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                        BIO-ROUTER                                     │  │
+│  │   ┌─────────────────────────────────────────────────────────────┐   │  │
+│  │   │                  MODULE REGISTRY                             │   │  │
+│  │   │  Module → Handler Registration → Inbox/Outbox Queues        │   │  │
+│  │   └─────────────────────────────────────────────────────────────┘   │  │
+│  │   ┌──────────────┐ ┌──────────────┐ ┌──────────────┐              │  │
+│  │   │ Send/Receive │ │ Broadcast    │ │ Brain KG     │              │  │
+│  │   │ Point-to-    │ │ Publish/     │ │ Integration  │              │  │
+│  │   │ Point        │ │ Subscribe    │ │ Sync state   │              │  │
+│  │   └──────────────┘ └──────────────┘ └──────────────┘              │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                      WIRING DIAGRAM                                   │  │
+│  │   ┌─────────────────────────────────────────────────────────────┐   │  │
+│  │   │                  JSONL CONFIGURATION                         │   │  │
+│  │   │  Hardware Profiles → Subsystem Registry → Dependencies      │   │  │
+│  │   └─────────────────────────────────────────────────────────────┘   │  │
+│  │   ┌──────────────┐ ┌──────────────┐ ┌──────────────┐              │  │
+│  │   │ Dynamic Load │ │ Brain KG     │ │ Validation   │              │  │
+│  │   │ Runtime      │ │ Sync         │ │ Dependency   │              │  │
+│  │   │ Module Init  │ │ Bidirectional│ │ Resolution   │              │  │
+│  │   └──────────────┘ └──────────────┘ └──────────────┘              │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 29.2 Bio-Async Core Components (nimcp_bio_async.h)
+
+| Component | Type/Struct | Purpose | Biological Basis |
+|-----------|-------------|---------|------------------|
+| **Neuromodulator Channel** | `nimcp_bio_channel_type_t` | DA/5-HT/NE/ACh signaling | Diffuse neuromodulator systems |
+| **Bio Promise** | `nimcp_bio_promise_t` | Async operation futures | Neural prediction signals |
+| **Phase Sync** | `nimcp_phase_sync_t` | Kuramoto oscillator coupling | Brain rhythm synchronization |
+| **Predictive Coder** | `nimcp_predictive_t` | Bayesian prediction engine | Predictive coding hierarchy |
+| **Glial Wave** | `nimcp_glial_wave_t` | Calcium wave propagation | Astrocyte signaling network |
+| **Bio Config** | `nimcp_bio_async_config_t` | System configuration | N/A |
+
+#### 29.3 Neuromodulator Channel Types
+
+```c
+// Neuromodulator channel types (from nimcp_bio_async.h)
+typedef enum {
+    NIMCP_BIO_CHANNEL_DOPAMINE,       // Reward, motivation, motor control
+    NIMCP_BIO_CHANNEL_SEROTONIN,      // Mood, emotion, sleep-wake
+    NIMCP_BIO_CHANNEL_NOREPINEPHRINE, // Alertness, arousal, attention
+    NIMCP_BIO_CHANNEL_ACETYLCHOLINE   // Learning, memory, attention
+} nimcp_bio_channel_type_t;
+
+// Oscillation bands for phase coupling
+typedef enum {
+    NIMCP_OSCILLATION_DELTA = 0,  // 0.5-4 Hz: Deep sleep, unconscious
+    NIMCP_OSCILLATION_THETA,       // 4-8 Hz: Memory encoding, navigation
+    NIMCP_OSCILLATION_ALPHA,       // 8-13 Hz: Relaxed wakefulness, inhibition
+    NIMCP_OSCILLATION_BETA,        // 13-30 Hz: Active thinking, motor
+    NIMCP_OSCILLATION_GAMMA        // 30-100 Hz: Binding, attention, consciousness
+} nimcp_oscillation_band_t;
+
+// Predictive coding state
+typedef enum {
+    NIMCP_PREDICTIVE_IDLE,           // Waiting for input
+    NIMCP_PREDICTIVE_PREDICTING,     // Generating prediction
+    NIMCP_PREDICTIVE_ERROR_COMPUTED, // Prediction error ready
+    NIMCP_PREDICTIVE_UPDATING        // Updating beliefs
+} nimcp_predictive_state_t;
+
+// Glial wave state
+typedef enum {
+    NIMCP_GLIAL_WAVE_DORMANT,     // No active wave
+    NIMCP_GLIAL_WAVE_INITIATING,  // Wave starting (IP3 release)
+    NIMCP_GLIAL_WAVE_PROPAGATING, // Wave spreading (20 μm/s)
+    NIMCP_GLIAL_WAVE_DECAYING     // Wave amplitude decreasing
+} nimcp_glial_wave_state_t;
+```
+
+#### 29.4 Bio Promise API (Async Operations)
+
+```c
+// Bio promise for async operations (from nimcp_bio_async.h)
+typedef struct {
+    uint64_t id;                      // Unique promise ID
+    nimcp_bio_channel_type_t channel; // Associated neuromodulator
+    nimcp_bio_promise_state_t state;  // PENDING/FULFILLED/REJECTED
+    void* result;                     // Result data
+    size_t result_size;               // Result size
+    void (*on_fulfill)(void*);        // Success callback
+    void (*on_reject)(void*, int);    // Error callback
+    void* user_data;                  // Callback context
+    uint64_t deadline_ms;             // Timeout deadline
+} nimcp_bio_promise_t;
+
+// Bio promise API
+nimcp_bio_promise_t* nimcp_bio_promise_create(nimcp_bio_channel_type_t channel);
+nimcp_error_t nimcp_bio_promise_then(nimcp_bio_promise_t* promise,
+                                      void (*on_fulfill)(void*),
+                                      void (*on_reject)(void*, int),
+                                      void* user_data);
+nimcp_error_t nimcp_bio_promise_fulfill(nimcp_bio_promise_t* promise,
+                                         void* result, size_t size);
+nimcp_error_t nimcp_bio_promise_reject(nimcp_bio_promise_t* promise, int error);
+nimcp_error_t nimcp_bio_promise_await(nimcp_bio_promise_t* promise,
+                                       void** result, uint32_t timeout_ms);
+void nimcp_bio_promise_destroy(nimcp_bio_promise_t* promise);
+```
+
+#### 29.5 Phase Synchronization (Kuramoto Oscillators)
+
+```c
+// Phase synchronization system (from nimcp_bio_async.h)
+typedef struct {
+    uint32_t num_oscillators;           // Number of coupled oscillators
+    float* phases;                      // Phase array [0, 2π]
+    float* natural_frequencies;         // ω_i natural frequencies
+    float coupling_strength;            // K: Global coupling constant
+    float** coupling_matrix;            // K_ij: Pairwise coupling
+    nimcp_oscillation_band_t band;      // Target frequency band
+    float coherence;                    // Order parameter r (0-1)
+    float mean_phase;                   // Mean phase ψ
+    uint64_t update_count;              // Number of updates
+} nimcp_phase_sync_t;
+
+// Phase sync API
+nimcp_phase_sync_t* nimcp_phase_sync_create(uint32_t num_oscillators,
+                                             nimcp_oscillation_band_t band);
+nimcp_error_t nimcp_phase_sync_set_coupling(nimcp_phase_sync_t* sync,
+                                             float global_coupling);
+nimcp_error_t nimcp_phase_sync_update(nimcp_phase_sync_t* sync, float dt);
+float nimcp_phase_sync_get_coherence(const nimcp_phase_sync_t* sync);
+float nimcp_phase_sync_get_mean_phase(const nimcp_phase_sync_t* sync);
+nimcp_error_t nimcp_phase_sync_inject_phase(nimcp_phase_sync_t* sync,
+                                             uint32_t oscillator_id,
+                                             float target_phase);
+void nimcp_phase_sync_destroy(nimcp_phase_sync_t* sync);
+
+// Kuramoto model update: dθ_i/dt = ω_i + (K/N) × Σ sin(θ_j - θ_i)
+// Order parameter: r × e^(iψ) = (1/N) × Σ e^(iθ_j)
+```
+
+#### 29.6 Predictive Coding Engine (Bayesian)
+
+```c
+// Predictive coding engine (from nimcp_bio_async.h)
+typedef struct {
+    nimcp_predictive_state_t state;     // Current processing state
+    float* predictions;                  // P(x|context) predictions
+    float* actuals;                      // Observed values
+    float* prediction_errors;            // error = actual - predicted
+    float* precisions;                   // π = 1/σ² precision weights
+    uint32_t dimension;                  // State dimension
+    float learning_rate;                 // Belief update rate
+    float precision_decay;               // Precision temporal decay
+    uint64_t prediction_count;           // Total predictions made
+    float cumulative_error;              // Sum of squared errors
+} nimcp_predictive_t;
+
+// Predictive coding API
+nimcp_predictive_t* nimcp_predictive_create(uint32_t dimension);
+nimcp_error_t nimcp_predictive_set_context(nimcp_predictive_t* pred,
+                                            const float* context, uint32_t len);
+nimcp_error_t nimcp_predictive_generate(nimcp_predictive_t* pred);
+nimcp_error_t nimcp_predictive_compute_error(nimcp_predictive_t* pred,
+                                              const float* actual);
+nimcp_error_t nimcp_predictive_update_beliefs(nimcp_predictive_t* pred);
+float nimcp_predictive_get_surprise(const nimcp_predictive_t* pred);
+void nimcp_predictive_destroy(nimcp_predictive_t* pred);
+
+// Bayesian update: P(x|y) ∝ P(y|x) × P(x)
+// Precision-weighted error: Δbelief = π × error × learning_rate
+```
+
+#### 29.7 Glial Wave Propagation
+
+```c
+// Glial wave system (from nimcp_bio_async.h)
+typedef struct {
+    nimcp_glial_wave_state_t state;      // Wave propagation state
+    float* calcium_concentrations;        // [Ca²⁺] per astrocyte
+    uint32_t num_astrocytes;              // Grid size
+    float propagation_speed;              // ~20 μm/s
+    float wave_amplitude;                 // Current amplitude
+    float decay_rate;                     // Amplitude decay constant
+    uint32_t origin_x, origin_y;          // Wave origin point
+    float radius;                         // Current wave radius
+    uint64_t start_time_ms;               // Wave initiation time
+} nimcp_glial_wave_t;
+
+// Glial wave API
+nimcp_glial_wave_t* nimcp_glial_wave_create(uint32_t grid_width,
+                                             uint32_t grid_height);
+nimcp_error_t nimcp_glial_wave_initiate(nimcp_glial_wave_t* wave,
+                                         uint32_t origin_x, uint32_t origin_y,
+                                         float amplitude);
+nimcp_error_t nimcp_glial_wave_propagate(nimcp_glial_wave_t* wave, float dt);
+float nimcp_glial_wave_get_calcium(const nimcp_glial_wave_t* wave,
+                                    uint32_t x, uint32_t y);
+bool nimcp_glial_wave_is_active(const nimcp_glial_wave_t* wave);
+void nimcp_glial_wave_destroy(nimcp_glial_wave_t* wave);
+```
+
+#### 29.8 Bio-Router Message System (nimcp_bio_router.h)
+
+| Component | Type/Struct | Purpose |
+|-----------|-------------|---------|
+| **Bio Router** | `bio_router_t` | Central message routing hub |
+| **Module Context** | `bio_module_context_t` | Per-module registration state |
+| **Message Handler** | `bio_message_handler_t` | Message processing callback |
+| **Module Config** | `bio_module_config_t` | Module registration config |
+| **Inbox/Outbox** | Internal queues | Message buffering |
+| **Brain KG Sync** | `bio_router_set_brain_kg()` | Knowledge graph integration |
+
+```c
+// Bio router types (from nimcp_bio_router.h)
+typedef struct bio_router bio_router_t;
+typedef struct bio_module_context bio_module_context_t;
+
+// Message handler callback
+typedef nimcp_error_t (*bio_message_handler_t)(
+    bio_module_context_t* ctx,
+    const char* source_module,
+    const void* message,
+    size_t message_size,
+    void* user_data
+);
+
+// Module configuration
+typedef struct {
+    const char* module_name;              // Unique module identifier
+    bio_message_handler_t handler;        // Message handler function
+    void* user_data;                      // Handler context
+    uint32_t inbox_capacity;              // Inbox queue size
+    uint32_t outbox_capacity;             // Outbox queue size
+    bool enable_predictive_protocol;      // Use predictive messaging
+    nimcp_bio_channel_type_t channel;     // Associated neuromodulator
+} bio_module_config_t;
+
+// Bio router API
+bio_router_t* bio_router_create(const char* router_name);
+nimcp_error_t bio_router_register_module(bio_router_t* router,
+                                          const bio_module_config_t* config,
+                                          bio_module_context_t** out_ctx);
+nimcp_error_t bio_router_unregister_module(bio_router_t* router,
+                                            const char* module_name);
+nimcp_error_t bio_router_send(bio_router_t* router,
+                               const char* source_module,
+                               const char* dest_module,
+                               const void* message, size_t size);
+nimcp_error_t bio_router_broadcast(bio_router_t* router,
+                                    const char* source_module,
+                                    const void* message, size_t size);
+nimcp_error_t bio_router_process_pending(bio_router_t* router);
+nimcp_error_t bio_router_set_brain_kg(bio_router_t* router,
+                                       nimcp_brain_kg_t* kg);
+nimcp_error_t bio_router_sync_to_kg(bio_router_t* router);
+nimcp_error_t bio_router_set_glial_coordinator(bio_router_t* router,
+                                                nimcp_glial_wave_t* glial);
+void bio_router_destroy(bio_router_t* router);
+```
+
+#### 29.9 Wiring Diagram System (nimcp_wiring_diagram.h)
+
+| Component | Type/Struct | Purpose |
+|-----------|-------------|---------|
+| **Wiring Diagram** | `wiring_diagram_t` | Runtime module configuration |
+| **Module Entry** | `wiring_module_entry_t` | Individual module spec |
+| **Hardware Profile** | `wiring_hw_flags_t` | Hardware capability flags |
+| **Subsystem** | `wiring_subsystem_t` | Module group organization |
+| **Validation** | `wiring_validation_result_t` | Dependency/config validation |
+
+```c
+// Hardware capability flags (from nimcp_wiring_diagram.h)
+typedef enum {
+    WIRING_HW_NONE       = 0,
+    WIRING_HW_CUDA       = (1 << 0),   // NVIDIA CUDA
+    WIRING_HW_ROCM       = (1 << 1),   // AMD ROCm
+    WIRING_HW_LOIHI      = (1 << 2),   // Intel Loihi neuromorphic
+    WIRING_HW_SPINNAKER  = (1 << 3),   // SpiNNaker neuromorphic
+    WIRING_HW_TRUENORTH  = (1 << 4),   // IBM TrueNorth
+    WIRING_HW_FPGA       = (1 << 5),   // Generic FPGA
+    WIRING_HW_NPU        = (1 << 6),   // Neural Processing Unit
+    WIRING_HW_DSP        = (1 << 7)    // Digital Signal Processor
+} wiring_hw_flags_t;
+
+// Subsystem categories
+typedef enum {
+    WIRING_SUBSYSTEM_CORE = 0,
+    WIRING_SUBSYSTEM_ETHICS,
+    WIRING_SUBSYSTEM_PERCEPTION,
+    WIRING_SUBSYSTEM_COGNITION,
+    WIRING_SUBSYSTEM_MEMORY,
+    WIRING_SUBSYSTEM_EMOTION,
+    WIRING_SUBSYSTEM_IMMUNE,
+    WIRING_SUBSYSTEM_PLASTICITY,
+    WIRING_SUBSYSTEM_RECURSIVE,
+    WIRING_SUBSYSTEM_SOCIAL,
+    WIRING_SUBSYSTEM_COUNT
+} wiring_subsystem_t;
+
+// Module entry specification
+typedef struct {
+    char name[64];                   // Module identifier
+    char so_path[256];               // Shared library path
+    wiring_subsystem_t subsystem;    // Subsystem category
+    wiring_hw_flags_t hw_required;   // Required hardware
+    wiring_hw_flags_t hw_optional;   // Optional hardware acceleration
+    char dependencies[8][64];        // Required modules
+    uint32_t num_dependencies;       // Dependency count
+    bool enabled;                    // Runtime enable flag
+    uint32_t priority;               // Load order priority
+} wiring_module_entry_t;
+
+// Wiring diagram API
+wiring_diagram_t* wiring_diagram_create(void);
+nimcp_error_t wiring_diagram_load_jsonl(wiring_diagram_t* diagram,
+                                         const char* filepath);
+nimcp_error_t wiring_diagram_load_for_profile(wiring_diagram_t* diagram,
+                                               wiring_hw_flags_t hw_profile);
+nimcp_error_t wiring_diagram_add_module(wiring_diagram_t* diagram,
+                                         const wiring_module_entry_t* entry);
+nimcp_error_t wiring_diagram_remove_module(wiring_diagram_t* diagram,
+                                            const char* name);
+nimcp_error_t wiring_diagram_validate(const wiring_diagram_t* diagram,
+                                       wiring_validation_result_t* result);
+nimcp_error_t wiring_diagram_resolve_dependencies(wiring_diagram_t* diagram);
+nimcp_error_t wiring_diagram_sync_to_brain_kg(wiring_diagram_t* diagram,
+                                               nimcp_brain_kg_t* kg);
+nimcp_error_t wiring_diagram_sync_from_brain_kg(wiring_diagram_t* diagram,
+                                                 nimcp_brain_kg_t* kg);
+wiring_module_entry_t* wiring_diagram_get_module(wiring_diagram_t* diagram,
+                                                  const char* name);
+uint32_t wiring_diagram_get_load_order(const wiring_diagram_t* diagram,
+                                        const char** ordered_names,
+                                        uint32_t max_count);
+void wiring_diagram_destroy(wiring_diagram_t* diagram);
+```
+
+#### 29.10 Bio-Async Message Types
+
+```c
+// Standard bio-async message types for inter-module communication
+typedef enum {
+    // Neuromodulator signals
+    BIO_MSG_DOPAMINE_BURST,           // Reward signal
+    BIO_MSG_DOPAMINE_DIP,             // Negative prediction error
+    BIO_MSG_SEROTONIN_RELEASE,        // Mood/wellbeing signal
+    BIO_MSG_NOREPINEPHRINE_SURGE,     // Alertness signal
+    BIO_MSG_ACETYLCHOLINE_RELEASE,    // Attention/learning signal
+
+    // Phase coupling
+    BIO_MSG_PHASE_SYNC_REQUEST,       // Request phase alignment
+    BIO_MSG_PHASE_SYNC_ACK,           // Phase alignment achieved
+    BIO_MSG_COHERENCE_UPDATE,         // Coherence level changed
+
+    // Predictive coding
+    BIO_MSG_PREDICTION_REQUEST,       // Request prediction
+    BIO_MSG_PREDICTION_RESULT,        // Prediction generated
+    BIO_MSG_PREDICTION_ERROR,         // Error signal
+    BIO_MSG_PRECISION_UPDATE,         // Precision weight changed
+
+    // Glial signaling
+    BIO_MSG_GLIAL_WAVE_INITIATED,     // Wave started
+    BIO_MSG_GLIAL_WAVE_ARRIVED,       // Wave reached location
+    BIO_MSG_CALCIUM_SPIKE,            // Local calcium event
+
+    // Module coordination
+    BIO_MSG_MODULE_READY,             // Module initialization complete
+    BIO_MSG_MODULE_BUSY,              // Module processing
+    BIO_MSG_MODULE_ERROR,             // Module error occurred
+    BIO_MSG_SHUTDOWN_REQUEST,         // Graceful shutdown
+    BIO_MSG_HEARTBEAT                 // Module alive signal
+} bio_message_type_t;
+
+// Generic bio message structure
+typedef struct {
+    bio_message_type_t type;          // Message type
+    uint64_t timestamp_ms;            // Message creation time
+    uint64_t sequence_number;         // Monotonic sequence
+    char source_module[64];           // Sender module name
+    uint32_t payload_size;            // Payload size in bytes
+    uint8_t payload[];                // Variable-length payload
+} bio_message_t;
+```
+
+#### 29.11 Brain Factory Async Integration
+
+**File**: `src/core/brain/factory/init/nimcp_brain_init_async.c`
+
+```c
+nimcp_error_t nimcp_brain_init_async(nimcp_brain_t* brain,
+                                      const nimcp_brain_config_t* config) {
+    NIMCP_LOG_INFO("Initializing bio-async coordination layer");
+
+    // Create bio-async configuration
+    nimcp_bio_async_config_t async_config = {
+        .num_channels = 4,  // DA, 5-HT, NE, ACh
+        .enable_phase_coupling = true,
+        .enable_predictive_coding = true,
+        .enable_glial_waves = true,
+        .default_coupling_strength = 0.5f,
+        .prediction_dimension = 128,
+        .glial_grid_size = 64
+    };
+
+    // Initialize bio-async system
+    brain->bio_async = nimcp_bio_async_create(&async_config);
+    if (!brain->bio_async) {
+        NIMCP_LOG_ERROR("Failed to create bio-async system");
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    // Create bio router
+    brain->bio_router = bio_router_create("brain_router");
+    if (!brain->bio_router) {
+        NIMCP_LOG_ERROR("Failed to create bio router");
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    // Connect router to brain knowledge graph
+    if (brain->knowledge_graph) {
+        bio_router_set_brain_kg(brain->bio_router, brain->knowledge_graph);
+    }
+
+    // Create wiring diagram
+    brain->wiring_diagram = wiring_diagram_create();
+    if (!brain->wiring_diagram) {
+        NIMCP_LOG_ERROR("Failed to create wiring diagram");
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    // Load hardware-specific configuration
+    wiring_hw_flags_t hw_profile = WIRING_HW_NONE;
+    if (config->enable_cuda) hw_profile |= WIRING_HW_CUDA;
+    if (config->enable_neuromorphic) hw_profile |= WIRING_HW_LOIHI | WIRING_HW_SPINNAKER;
+
+    if (config->wiring_config_path) {
+        wiring_diagram_load_jsonl(brain->wiring_diagram, config->wiring_config_path);
+    } else {
+        wiring_diagram_load_for_profile(brain->wiring_diagram, hw_profile);
+    }
+
+    // Validate and resolve dependencies
+    wiring_validation_result_t validation;
+    wiring_diagram_validate(brain->wiring_diagram, &validation);
+    if (!validation.is_valid) {
+        NIMCP_LOG_WARNING("Wiring diagram validation issues: %s", validation.message);
+    }
+    wiring_diagram_resolve_dependencies(brain->wiring_diagram);
+
+    // Sync wiring diagram to brain KG
+    if (brain->knowledge_graph) {
+        wiring_diagram_sync_to_brain_kg(brain->wiring_diagram, brain->knowledge_graph);
+    }
+
+    // Initialize phase synchronization for each oscillation band
+    for (int band = NIMCP_OSCILLATION_DELTA; band <= NIMCP_OSCILLATION_GAMMA; band++) {
+        brain->phase_syncs[band] = nimcp_phase_sync_create(
+            config->num_neurons / 100,  // Subsample for efficiency
+            (nimcp_oscillation_band_t)band
+        );
+    }
+
+    // Initialize predictive coding engine
+    brain->predictive = nimcp_predictive_create(async_config.prediction_dimension);
+
+    // Initialize glial wave system
+    brain->glial_wave = nimcp_glial_wave_create(
+        async_config.glial_grid_size,
+        async_config.glial_grid_size
+    );
+    bio_router_set_glial_coordinator(brain->bio_router, brain->glial_wave);
+
+    // Connect to immune system for inflammation-based neuromodulator effects
+    if (brain->immune) {
+        nimcp_bio_async_immune_bridge_init(&brain->bio_async_immune_bridge,
+                                            brain->bio_async, brain->immune);
+    }
+
+    NIMCP_LOG_INFO("Bio-async layer initialized: router=%p, wiring=%p, "
+                   "phase_syncs=5, predictive=%p, glial=%p",
+                   brain->bio_router, brain->wiring_diagram,
+                   brain->predictive, brain->glial_wave);
+
+    return NIMCP_OK;
+}
+```
+
+#### 29.12 Async Module Integration Tests
+
+| Test File | Test Count |
+|-----------|------------|
+| `test/unit/async/test_bio_promise.cpp` | 20 |
+| `test/unit/async/test_bio_promise_chaining.cpp` | 15 |
+| `test/unit/async/test_bio_promise_timeout.cpp` | 10 |
+| `test/unit/async/test_phase_sync_kuramoto.cpp` | 25 |
+| `test/unit/async/test_phase_sync_coherence.cpp` | 15 |
+| `test/unit/async/test_phase_sync_injection.cpp` | 10 |
+| `test/unit/async/test_predictive_coding.cpp` | 20 |
+| `test/unit/async/test_predictive_error.cpp` | 15 |
+| `test/unit/async/test_predictive_precision.cpp` | 10 |
+| `test/unit/async/test_glial_wave_propagation.cpp` | 20 |
+| `test/unit/async/test_glial_wave_calcium.cpp` | 15 |
+| `test/unit/async/test_bio_router_registration.cpp` | 20 |
+| `test/unit/async/test_bio_router_messaging.cpp` | 25 |
+| `test/unit/async/test_bio_router_broadcast.cpp` | 15 |
+| `test/unit/async/test_bio_router_kg_integration.cpp` | 15 |
+| `test/unit/async/test_wiring_diagram_load.cpp` | 15 |
+| `test/unit/async/test_wiring_diagram_validation.cpp` | 20 |
+| `test/unit/async/test_wiring_diagram_dependencies.cpp` | 15 |
+| `test/unit/async/test_wiring_diagram_kg_sync.cpp` | 15 |
+| `test/integration/async/test_bio_async_immune_integration.cpp` | 10 |
+| `test/integration/async/test_bio_async_cognitive_integration.cpp` | 15 |
+| `test/integration/async/test_wiring_brain_factory_integration.cpp` | 10 |
+| `test/integration/async/test_phase_sync_attention_integration.cpp` | 10 |
+| **Total** | **350** |
+
+### 30. Utils Module Integration
+
+**Priority**: Critical (Core Infrastructure)
+**Dependencies**: All modules depend on utils for foundational operations
+**Est. LOC**: 70,000 | **Tests**: 500
+
+#### 30.1 Utils Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         UTILS FOUNDATIONAL LAYER                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                    CORE DATA STRUCTURES                               │  │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │  │
+│  │  │ Tensor   │ │Hash Table│ │ B-Tree   │ │Ring Buff │ │ Graph    │  │  │
+│  │  │ N-dim    │ │ O(1)     │ │ O(log n) │ │Lock-free │ │ Adjacency│  │  │
+│  │  │ Calculus │ │ lookup   │ │ ordered  │ │ SPSC     │ │ Lists    │  │  │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘  │  │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐              │  │
+│  │  │ Vector   │ │ Queue    │ │ Min Heap │ │ DArray   │              │  │
+│  │  │ Dynamic  │ │ FIFO     │ │ Priority │ │ Dynamic  │              │  │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘              │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                    MEMORY MANAGEMENT                                  │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                 │  │
+│  │  │ Memory Pool  │ │ Buffer Pool  │ │ Unified Mem  │                 │  │
+│  │  │ O(1) alloc   │ │ Pre-alloc    │ │ CPU+GPU      │                 │  │
+│  │  │ Free-list    │ │ Reusable     │ │ Migration    │                 │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘                 │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                 │  │
+│  │  │ CoW Manager  │ │ Page CoW     │ │ Guard Pages  │                 │  │
+│  │  │ Copy-on-     │ │ Lazy copy    │ │ Corruption   │                 │  │
+│  │  │ Write        │ │ Efficiency   │ │ Detection    │                 │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘                 │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                    THREADING & CONCURRENCY                            │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                 │  │
+│  │  │ Thread Pool  │ │ Mutex/RWLock │ │ Atomics      │                 │  │
+│  │  │ Work queue   │ │ NIMCP layer  │ │ Lock-free    │                 │  │
+│  │  │ Task submit  │ │ Platform abs │ │ Primitives   │                 │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘                 │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                 │  │
+│  │  │ Barrier      │ │ Semaphore    │ │ Deadlock Det │                 │  │
+│  │  │ Sync point   │ │ Counting     │ │ Cycle detect │                 │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘                 │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                    FAULT TOLERANCE (24 headers)                       │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                 │  │
+│  │  │ Checkpoint   │ │ Recovery     │ │ Graceful     │                 │  │
+│  │  │ Atomic save  │ │ Auto-restore │ │ Degradation  │                 │  │
+│  │  │ Compression  │ │ Brain state  │ │ 5 tiers      │                 │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘                 │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                 │  │
+│  │  │ Health Mon   │ │ Byzantine FT │ │ Chaos Eng    │                 │  │
+│  │  │ Heartbeats   │ │ Consensus    │ │ Fault inject │                 │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘                 │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                    TERNARY LOGIC (9 headers)                          │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                 │  │
+│  │  │ Trit Types   │ │ Kleene Logic │ │ Packed Store │                 │  │
+│  │  │ -1/0/+1      │ │ 3-valued ops │ │ 2-bit/Base243│                 │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘                 │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                 │  │
+│  │  │ Trit Vector  │ │ Trit Matrix  │ │ Trit Tensor  │                 │  │
+│  │  │ SIMD ops     │ │ Matrix mul   │ │ N-dim        │                 │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘                 │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                    ALGORITHMS (6 headers)                             │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                 │  │
+│  │  │ Monte Carlo  │ │ Graph Metrics│ │ Louvain      │                 │  │
+│  │  │ MCTS, MCMC   │ │ Centrality   │ │ Community    │                 │  │
+│  │  │ Importance   │ │ Degree/Close │ │ Detection    │                 │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘                 │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                 │  │
+│  │  │ Modularity   │ │ Centrality   │ │ Sort         │                 │  │
+│  │  │ Q metric     │ │ Betweenness  │ │ Quick/Merge  │                 │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘                 │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                │                                            │
+│  ┌────────────────────────────┴─────────────────────────────────────────┐  │
+│  │              SUPPORTING INFRASTRUCTURE                                │  │
+│  │   Logging │ Config │ JSON │ Serialization │ Metrics │ Platform      │  │
+│  │   Signal  │ Gabor  │ FFT  │ Hilbert       │ KD-Tree │ Quantum Walk  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 30.2 Utils Module Organization (33 Subdirectories)
+
+| Subdirectory | Headers | Purpose |
+|--------------|---------|---------|
+| **algorithms** | 6 | Monte Carlo, graph metrics, Louvain, centrality, sort |
+| **bridge** | 2 | Bridge base class, GPU bridge utilities |
+| **cache** | 1 | Generic caching infrastructure |
+| **code** | 4 | DWARF symbols, hot injection, recompiler, source cache |
+| **config** | 7 | Configuration management, validation, dynamic config |
+| **containers** | 9 | Hash table, B-tree, graph, queue, ring buffer, vector, heap |
+| **dispatch** | 1 | Function dispatch infrastructure |
+| **encoding** | 1 | Positional encoding for transformers |
+| **error** | 1 | Error code definitions |
+| **fault_tolerance** | 24 | Checkpoint, recovery, degradation, health monitoring |
+| **gabor** | 1 | Gabor filters for visual processing |
+| **geometry** | 1 | Hyperbolic geometry operations |
+| **json** | 1 | JSON parsing and generation |
+| **list** | 1 | Linked list implementation |
+| **logging** | 1 | Async logging with rotation |
+| **math** | 1 | Complex number mathematics |
+| **memory** | 11 | Memory pools, CoW, unified memory, guards |
+| **metrics** | 1 | Performance metrics collection |
+| **numerical** | 1 | Numerical integration |
+| **platform** | 11 | Platform abstraction (mutex, thread, time, tier) |
+| **quantum** | 5 | Quantum walk, quantum Monte Carlo, quantum Shannon |
+| **queue_manager** | 1 | Queue management infrastructure |
+| **serialization** | 1 | Binary serialization |
+| **signal** | 3 | Hilbert transform, signal filtering, signal handler |
+| **spatial** | 1 | KD-tree spatial indexing |
+| **spectral** | 1 | FFT implementation |
+| **tensor** | 3 | N-dim tensors, SIMD ops, tensor operations |
+| **tensor_networks** | 2 | MPS, SVD decomposition |
+| **ternary** | 9 | Three-valued logic system |
+| **thread** | 7 | Thread pool, atomics, barrier, semaphore, deadlock |
+| **time** | 1 | Time utilities |
+| **validation** | 2 | Input validation utilities |
+| **TOTAL** | **122** | |
+
+#### 30.3 Tensor Library (nimcp_tensor.h)
+
+```c
+// Tensor data types (from nimcp_tensor.h)
+typedef enum {
+    NIMCP_DTYPE_F32 = 0,    // 32-bit float (default)
+    NIMCP_DTYPE_F64 = 1,    // 64-bit double
+    NIMCP_DTYPE_F16 = 2,    // 16-bit half precision
+    NIMCP_DTYPE_BF16 = 3,   // Brain float 16
+    NIMCP_DTYPE_I32 = 4,    // 32-bit signed integer
+    NIMCP_DTYPE_I64 = 5,    // 64-bit signed integer
+    NIMCP_DTYPE_I8 = 6,     // 8-bit signed integer
+    NIMCP_DTYPE_U8 = 7,     // 8-bit unsigned integer
+    NIMCP_DTYPE_BOOL = 8,   // Boolean
+    NIMCP_DTYPE_C64 = 9,    // Complex float (2x32-bit)
+    NIMCP_DTYPE_C128 = 10   // Complex double (2x64-bit)
+} nimcp_dtype_t;
+
+// Tensor structure (max 8 dimensions)
+#define NIMCP_TENSOR_MAX_RANK 8
+
+// Core tensor API
+nimcp_tensor_t* nimcp_tensor_create(const size_t* dims, size_t rank, nimcp_dtype_t dtype);
+void nimcp_tensor_destroy(nimcp_tensor_t* tensor);
+nimcp_tensor_t* nimcp_tensor_clone(const nimcp_tensor_t* tensor);
+nimcp_tensor_t* nimcp_tensor_view(nimcp_tensor_t* tensor, const size_t* start, const size_t* end);
+
+// Element access
+float nimcp_tensor_get_f32(const nimcp_tensor_t* tensor, const size_t* indices);
+void nimcp_tensor_set_f32(nimcp_tensor_t* tensor, const size_t* indices, float value);
+
+// Operations
+nimcp_tensor_t* nimcp_tensor_add(const nimcp_tensor_t* a, const nimcp_tensor_t* b);
+nimcp_tensor_t* nimcp_tensor_mul(const nimcp_tensor_t* a, const nimcp_tensor_t* b);
+nimcp_tensor_t* nimcp_tensor_matmul(const nimcp_tensor_t* a, const nimcp_tensor_t* b);
+nimcp_tensor_t* nimcp_tensor_transpose(const nimcp_tensor_t* tensor, const size_t* perm);
+
+// Reductions
+nimcp_tensor_t* nimcp_tensor_sum(const nimcp_tensor_t* tensor, int axis);
+nimcp_tensor_t* nimcp_tensor_mean(const nimcp_tensor_t* tensor, int axis);
+nimcp_tensor_t* nimcp_tensor_max(const nimcp_tensor_t* tensor, int axis);
+
+// Calculus
+nimcp_tensor_t* nimcp_tensor_gradient(const nimcp_tensor_t* tensor);
+nimcp_tensor_t* nimcp_tensor_jacobian(const nimcp_tensor_t* tensor);
+nimcp_tensor_t* nimcp_tensor_hessian(const nimcp_tensor_t* tensor);
+
+// Einstein summation
+nimcp_tensor_t* nimcp_tensor_einsum(const char* equation,
+                                     const nimcp_tensor_t** tensors, size_t num_tensors);
+```
+
+#### 30.4 Memory Pool System (nimcp_memory_pool.h)
+
+```c
+// Memory pool configuration (from nimcp_memory_pool.h)
+typedef struct {
+    size_t block_size;          // Size of each memory block
+    size_t num_blocks;          // Number of blocks in pool
+    size_t alignment;           // Memory alignment (power of 2)
+    bool enable_tracking;       // Track allocation statistics
+    bool enable_guard_pages;    // Enable memory corruption detection
+} memory_pool_config_t;
+
+// Memory pool statistics
+typedef struct {
+    size_t total_blocks;        // Total blocks in pool
+    size_t allocated_blocks;    // Currently allocated blocks
+    size_t free_blocks;         // Currently free blocks
+    size_t peak_allocated;      // Peak allocation count
+    size_t total_allocations;   // Total allocations made
+    size_t failed_allocations;  // Failed allocation attempts
+    size_t pool_size_bytes;     // Total pool size in bytes
+} memory_pool_stats_t;
+
+// Memory pool API - O(1) allocation
+memory_pool_t memory_pool_create(const memory_pool_config_t* config);
+void memory_pool_destroy(memory_pool_t pool);
+void* memory_pool_acquire(memory_pool_t pool);
+void memory_pool_release(memory_pool_t pool, void* block);
+void memory_pool_stats(memory_pool_t pool, memory_pool_stats_t* stats);
+```
+
+#### 30.5 Thread Pool System (nimcp_thread_pool.h)
+
+```c
+// Thread pool API (from nimcp_thread_pool.h)
+#define NIMCP_POOL_MAX_THREADS 64
+#define NIMCP_POOL_MAX_QUEUE 1024
+
+// Task function signature
+typedef void (*nimcp_task_fn)(void* arg);
+
+// Thread pool API
+nimcp_thread_pool_t* nimcp_pool_create(size_t num_threads);
+void nimcp_pool_destroy(nimcp_thread_pool_t* pool);
+nimcp_result_t nimcp_pool_submit(nimcp_thread_pool_t* pool, nimcp_task_fn task, void* arg);
+nimcp_result_t nimcp_pool_wait(nimcp_thread_pool_t* pool);
+size_t nimcp_pool_pending(nimcp_thread_pool_t* pool);
+size_t nimcp_pool_active(nimcp_thread_pool_t* pool);
+```
+
+#### 30.6 Hash Table (nimcp_hash_table.h)
+
+```c
+// Hash key types (from nimcp_hash_table.h)
+typedef enum {
+    HASH_KEY_STRING,  // Null-terminated string keys
+    HASH_KEY_UINT32,  // 32-bit unsigned integer keys
+    HASH_KEY_UINT64,  // 64-bit unsigned integer keys
+    HASH_KEY_CUSTOM   // Custom key type with user-provided hash/compare
+} hash_key_type_t;
+
+// Hash algorithms
+typedef enum {
+    HASH_ALG_FNV1A,    // Fast, good distribution for strings
+    HASH_ALG_DJB2,     // Simple, fast for strings
+    HASH_ALG_MURMUR3,  // Excellent distribution for integers
+    HASH_ALG_CUSTOM    // User-provided hash function
+} hash_algorithm_t;
+
+// Hash table configuration
+typedef struct {
+    size_t initial_buckets;       // Initial bucket count
+    hash_key_type_t key_type;     // Key type
+    hash_algorithm_t hash_algorithm;
+    bool case_insensitive;        // For string keys
+    float load_factor_threshold;  // When to resize (default: 0.75)
+} hash_table_config_t;
+
+// Hash table API - O(1) average
+hash_table_t* hash_table_create(const hash_table_config_t* config);
+void hash_table_destroy(hash_table_t* table);
+bool hash_table_insert_string(hash_table_t* table, const char* key, void* value, size_t size);
+void* hash_table_lookup_string(hash_table_t* table, const char* key);
+bool hash_table_remove_string(hash_table_t* table, const char* key);
+size_t hash_table_size(const hash_table_t* table);
+```
+
+#### 30.7 Ternary Logic System (nimcp_ternary.h)
+
+```c
+// Ternary (trit) values (from nimcp_ternary_types.h)
+typedef enum {
+    TRIT_NEGATIVE = -1,  // Inhibitory, LTD, reject, FORBID
+    TRIT_UNKNOWN  =  0,  // Silent, neutral, abstain, NEUTRAL
+    TRIT_POSITIVE = +1   // Excitatory, LTP, accept, ALLOW
+} trit_t;
+
+// Packing modes for memory efficiency
+typedef enum {
+    TERNARY_PACK_NONE,      // 1 trit/byte (fast access)
+    TERNARY_PACK_2BIT,      // 4 trits/byte (balanced)
+    TERNARY_PACK_BASE243    // 5 trits/byte (max compression)
+} ternary_pack_mode_t;
+
+// Ternary vector API
+trit_vector_t* trit_vector_create(size_t length, ternary_pack_mode_t mode);
+void trit_vector_destroy(trit_vector_t* vec);
+trit_t trit_vector_get(const trit_vector_t* vec, size_t index);
+void trit_vector_set(trit_vector_t* vec, size_t index, trit_t value);
+
+// Ternary logic operations (Kleene three-valued logic)
+trit_t trit_and(trit_t a, trit_t b);   // AND: -1 absorbs, +1 if both +1
+trit_t trit_or(trit_t a, trit_t b);    // OR: +1 absorbs, -1 if both -1
+trit_t trit_not(trit_t a);             // NOT: -1 <-> +1, 0 -> 0
+
+// Conversion from floats (quantization)
+trit_vector_t* trit_vector_from_floats(const float* values, size_t count,
+                                        float threshold, ternary_pack_mode_t mode);
+
+// Module integrations
+// SNN: Ternary synaptic weights (20x memory savings)
+// Ethics: FORBID/NEUTRAL/ALLOW decisions
+// Swarm: DISAGREE/ABSTAIN/AGREE voting
+// Plasticity: LTD/STABLE/LTP updates
+```
+
+#### 30.8 Fault Tolerance - Checkpoint System (nimcp_checkpoint.h)
+
+```c
+// Checkpoint header format (from nimcp_checkpoint.h)
+typedef struct {
+    char magic[9];          // "NIMCP-CKP"
+    uint8_t version_major;  // Major version
+    uint8_t version_minor;  // Minor version
+    uint32_t flags;         // Compression, incremental, encrypted
+    uint64_t timestamp;     // Unix timestamp
+    uint32_t crc32;         // Checksum
+    uint32_t data_size;     // Data section size
+} checkpoint_header_t;
+
+// Checkpoint flags
+#define CHECKPOINT_FLAG_COMPRESSED   0x00000001
+#define CHECKPOINT_FLAG_INCREMENTAL  0x00000002
+#define CHECKPOINT_FLAG_ENCRYPTED    0x00000004
+#define CHECKPOINT_FLAG_SUBSYSTEMS   0x00000008
+
+// Checkpoint API
+nimcp_result_t checkpoint_save(brain_t brain, const char* path);
+nimcp_result_t checkpoint_save_ex(brain_t brain, const char* path,
+                                   const checkpoint_options_t* options);
+nimcp_result_t checkpoint_load(brain_t* brain, const char* path);
+bool checkpoint_validate(const char* path);
+nimcp_result_t recovery_auto_restore(brain_t* brain, const char* checkpoint_dir);
+```
+
+#### 30.9 Fault Tolerance - Graceful Degradation (nimcp_graceful_degradation.h)
+
+```c
+// Degradation tiers (from nimcp_graceful_degradation.h)
+typedef enum {
+    GD_TIER_FULL = 0,       // Full functionality
+    GD_TIER_STANDARD,       // Non-essential disabled
+    GD_TIER_REDUCED,        // Quality reduced
+    GD_TIER_MINIMAL,        // Core functions only
+    GD_TIER_EMERGENCY       // Survival mode
+} gd_tier_t;
+
+// Feature priority levels
+typedef enum {
+    GD_PRIORITY_CRITICAL = 0,   // Must always run
+    GD_PRIORITY_HIGH,           // Run except emergency
+    GD_PRIORITY_MEDIUM,         // Run in standard+
+    GD_PRIORITY_LOW,            // Run only in full
+    GD_PRIORITY_OPTIONAL        // Luxury feature
+} gd_priority_t;
+
+// Resource types to monitor
+typedef enum {
+    GD_RESOURCE_CPU = 0,        // CPU utilization
+    GD_RESOURCE_MEMORY,         // Memory usage
+    GD_RESOURCE_GPU,            // GPU utilization
+    GD_RESOURCE_NETWORK,        // Network bandwidth
+    GD_RESOURCE_POWER,          // Power consumption
+    GD_RESOURCE_LATENCY,        // Response latency
+    GD_RESOURCE_THROUGHPUT      // Processing throughput
+} gd_resource_t;
+
+// Graceful degradation API
+gd_manager_t* gd_manager_create(const gd_config_t* config);
+void gd_manager_destroy(gd_manager_t* manager);
+gd_tier_t gd_manager_get_current_tier(const gd_manager_t* manager);
+void gd_manager_update_resource(gd_manager_t* manager, gd_resource_t resource, float value);
+bool gd_manager_is_feature_enabled(const gd_manager_t* manager, const char* feature_name);
+```
+
+#### 30.10 Monte Carlo Algorithms (nimcp_monte_carlo.h)
+
+```c
+// Monte Carlo sampling methods (from nimcp_monte_carlo.h)
+typedef enum {
+    MC_SAMPLE_UNIFORM,              // Simple uniform random sampling
+    MC_SAMPLE_IMPORTANCE,           // Importance sampling with weights
+    MC_SAMPLE_STRATIFIED,           // Stratified sampling
+    MC_SAMPLE_METROPOLIS_HASTINGS   // MCMC
+} mc_sampling_method_t;
+
+// MCTS configuration
+typedef struct {
+    float exploration_constant;     // UCB1 exploration (default: sqrt(2))
+    float discount_factor;          // Value backprop discount
+    uint32_t max_iterations;        // MCTS iterations
+    uint32_t max_depth;             // Tree depth limit
+    mc_gpu_mode_t gpu_mode;         // GPU acceleration
+} mcts_config_t;
+
+// MCTS API
+mcts_t* mcts_create(const mcts_config_t* config);
+void mcts_destroy(mcts_t* mcts);
+nimcp_mc_result_t mcts_search(mcts_t* mcts, const void* root_state,
+                               mcts_callbacks_t* callbacks);
+uint32_t mcts_get_best_action(const mcts_t* mcts);
+float mcts_get_action_value(const mcts_t* mcts, uint32_t action);
+
+// Monte Carlo integration
+typedef struct {
+    mc_sampling_method_t method;
+    uint32_t num_samples;
+    uint32_t burnin;                // For MCMC
+    bool parallel;                  // Use thread pool
+} mc_integration_config_t;
+
+float mc_integrate(mc_target_fn target, const mc_integration_config_t* config, void* ctx);
+```
+
+#### 30.11 Logging System (nimcp_logging.h)
+
+```c
+// Log levels (from nimcp_logging.h)
+typedef enum {
+    NIMCP_LOG_LEVEL_TRACE = 0,
+    NIMCP_LOG_LEVEL_DEBUG,
+    NIMCP_LOG_LEVEL_INFO,
+    NIMCP_LOG_LEVEL_WARN,
+    NIMCP_LOG_LEVEL_ERROR,
+    NIMCP_LOG_LEVEL_FATAL
+} nimcp_log_level_t;
+
+// Logging configuration
+typedef struct {
+    nimcp_log_level_t min_level;    // Minimum level to log
+    bool async_mode;                 // Use async logging
+    size_t ring_buffer_size;         // Async buffer size
+    const char* log_file_path;       // File output path
+    bool enable_console;             // Console output
+    bool enable_colors;              // ANSI colors
+    bool enable_json;                // JSON format
+    size_t max_file_size;            // Rotation size
+    uint32_t max_rotated_files;      // Keep N rotated files
+} nimcp_log_config_t;
+
+// Logging macros
+#define NIMCP_LOG_TRACE(fmt, ...) nimcp_log(NIMCP_LOG_LEVEL_TRACE, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define NIMCP_LOG_DEBUG(fmt, ...) nimcp_log(NIMCP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define NIMCP_LOG_INFO(fmt, ...)  nimcp_log(NIMCP_LOG_LEVEL_INFO, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define NIMCP_LOG_WARN(fmt, ...)  nimcp_log(NIMCP_LOG_LEVEL_WARN, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define NIMCP_LOG_ERROR(fmt, ...) nimcp_log(NIMCP_LOG_LEVEL_ERROR, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define NIMCP_LOG_FATAL(fmt, ...) nimcp_log(NIMCP_LOG_LEVEL_FATAL, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+
+// Logging API
+nimcp_result_t nimcp_log_init(const nimcp_log_config_t* config);
+void nimcp_log_shutdown(void);
+void nimcp_log(nimcp_log_level_t level, const char* file, int line, const char* fmt, ...);
+void nimcp_log_set_level(nimcp_log_level_t level);
+void nimcp_log_flush(void);
+```
+
+#### 30.12 Platform Abstraction Layer (nimcp_platform.h)
+
+```c
+// Platform tiers (from nimcp_platform_tier.h)
+typedef enum {
+    PLATFORM_TIER_FULL,         // All features enabled
+    PLATFORM_TIER_MEDIUM,       // Most features
+    PLATFORM_TIER_CONSTRAINED,  // Limited resources
+    PLATFORM_TIER_MINIMAL       // Bare minimum
+} platform_tier_t;
+
+// Platform threading API (from nimcp_thread.h)
+typedef struct nimcp_mutex nimcp_mutex_t;
+typedef struct nimcp_cond nimcp_cond_t;
+typedef struct nimcp_rwlock nimcp_rwlock_t;
+
+// Mutex API
+nimcp_mutex_t* nimcp_mutex_create(const mutex_attr_t* attr);
+void nimcp_mutex_destroy(nimcp_mutex_t* mutex);
+nimcp_result_t nimcp_mutex_lock(nimcp_mutex_t* mutex);
+nimcp_result_t nimcp_mutex_unlock(nimcp_mutex_t* mutex);
+nimcp_result_t nimcp_mutex_trylock(nimcp_mutex_t* mutex);
+
+// RWLock API
+nimcp_rwlock_t* nimcp_rwlock_create(void);
+void nimcp_rwlock_destroy(nimcp_rwlock_t* rwlock);
+nimcp_result_t nimcp_rwlock_rdlock(nimcp_rwlock_t* rwlock);
+nimcp_result_t nimcp_rwlock_wrlock(nimcp_rwlock_t* rwlock);
+nimcp_result_t nimcp_rwlock_unlock(nimcp_rwlock_t* rwlock);
+
+// Condition variable API
+nimcp_cond_t* nimcp_cond_create(void);
+void nimcp_cond_destroy(nimcp_cond_t* cond);
+nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex);
+nimcp_result_t nimcp_cond_signal(nimcp_cond_t* cond);
+nimcp_result_t nimcp_cond_broadcast(nimcp_cond_t* cond);
+```
+
+#### 30.13 Brain Factory Utils Integration
+
+**File**: `src/core/brain/factory/init/nimcp_brain_init_utils.c`
+
+```c
+nimcp_error_t nimcp_brain_init_utils(nimcp_brain_t* brain,
+                                      const nimcp_brain_config_t* config) {
+    NIMCP_LOG_INFO("Initializing utils infrastructure");
+
+    // Initialize logging system
+    nimcp_log_config_t log_config = {
+        .min_level = config->log_level,
+        .async_mode = true,
+        .ring_buffer_size = NIMCP_LOG_DEFAULT_BUFFER_SIZE,
+        .log_file_path = config->log_file,
+        .enable_console = config->enable_console_log,
+        .enable_colors = true,
+        .max_file_size = NIMCP_LOG_DEFAULT_MAX_FILE_SIZE,
+        .max_rotated_files = 5
+    };
+    nimcp_log_init(&log_config);
+
+    // Create memory pools for brain components
+    memory_pool_config_t pool_config = {
+        .block_size = config->memory_block_size,
+        .num_blocks = config->memory_pool_blocks,
+        .alignment = 64,
+        .enable_tracking = config->enable_memory_tracking,
+        .enable_guard_pages = config->debug_mode
+    };
+    brain->memory_pool = memory_pool_create(&pool_config);
+    if (!brain->memory_pool) {
+        NIMCP_LOG_ERROR("Failed to create brain memory pool");
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    // Create thread pool for parallel operations
+    size_t num_threads = config->num_worker_threads;
+    if (num_threads == 0) {
+        num_threads = nimcp_system_get_cpu_count();
+    }
+    brain->thread_pool = nimcp_pool_create(num_threads);
+    if (!brain->thread_pool) {
+        NIMCP_LOG_ERROR("Failed to create thread pool");
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    // Initialize graceful degradation manager
+    gd_config_t gd_config = {
+        .initial_tier = GD_TIER_FULL,
+        .enable_auto_degradation = true,
+        .hysteresis_percent = GD_HYSTERESIS_PERCENT
+    };
+    brain->degradation_manager = gd_manager_create(&gd_config);
+
+    // Initialize checkpoint system
+    checkpoint_config_t ckpt_config = {
+        .checkpoint_dir = config->checkpoint_dir,
+        .enable_compression = true,
+        .enable_auto_checkpoint = config->enable_auto_checkpoint,
+        .checkpoint_interval_ms = config->checkpoint_interval_ms
+    };
+    brain->checkpoint_manager = checkpoint_manager_create(&ckpt_config);
+
+    // Initialize health monitor
+    health_config_t health_config = {
+        .heartbeat_interval_ms = 1000,
+        .timeout_ms = 5000,
+        .enable_self_healing = true
+    };
+    brain->health_monitor = health_monitor_create(&health_config);
+
+    // Register with bio-async router
+    if (brain->bio_router) {
+        bio_module_config_t utils_module = {
+            .module_name = "utils",
+            .handler = utils_message_handler,
+            .user_data = brain,
+            .inbox_capacity = 256,
+            .enable_predictive_protocol = false
+        };
+        bio_router_register_module(brain->bio_router, &utils_module, &brain->utils_ctx);
+    }
+
+    // Connect to immune system for resource monitoring
+    if (brain->immune) {
+        nimcp_utils_immune_bridge_init(&brain->utils_immune_bridge,
+                                        brain->degradation_manager, brain->immune);
+    }
+
+    NIMCP_LOG_INFO("Utils infrastructure initialized: memory_pool=%p, thread_pool=%p, "
+                   "degradation=%p, checkpoint=%p, health=%p",
+                   brain->memory_pool, brain->thread_pool,
+                   brain->degradation_manager, brain->checkpoint_manager,
+                   brain->health_monitor);
+
+    return NIMCP_OK;
+}
+```
+
+#### 30.14 Utils Module Integration Tests
+
+| Test File | Test Count |
+|-----------|------------|
+| `test/unit/utils/tensor/test_tensor_create.cpp` | 20 |
+| `test/unit/utils/tensor/test_tensor_ops.cpp` | 25 |
+| `test/unit/utils/tensor/test_tensor_einsum.cpp` | 15 |
+| `test/unit/utils/tensor/test_tensor_calculus.cpp` | 15 |
+| `test/unit/utils/memory/test_memory_pool.cpp` | 20 |
+| `test/unit/utils/memory/test_memory_cow.cpp` | 15 |
+| `test/unit/utils/memory/test_unified_memory.cpp` | 10 |
+| `test/unit/utils/containers/test_hash_table.cpp` | 25 |
+| `test/unit/utils/containers/test_btree.cpp` | 15 |
+| `test/unit/utils/containers/test_ring_buffer.cpp` | 15 |
+| `test/unit/utils/containers/test_graph.cpp` | 15 |
+| `test/unit/utils/thread/test_thread_pool.cpp` | 20 |
+| `test/unit/utils/thread/test_mutex.cpp` | 15 |
+| `test/unit/utils/thread/test_atomics.cpp` | 15 |
+| `test/unit/utils/thread/test_deadlock_detector.cpp` | 10 |
+| `test/unit/utils/fault_tolerance/test_checkpoint.cpp` | 25 |
+| `test/unit/utils/fault_tolerance/test_recovery.cpp` | 20 |
+| `test/unit/utils/fault_tolerance/test_graceful_degradation.cpp` | 20 |
+| `test/unit/utils/fault_tolerance/test_health_monitor.cpp` | 15 |
+| `test/unit/utils/fault_tolerance/test_byzantine_ft.cpp` | 10 |
+| `test/unit/utils/ternary/test_trit_logic.cpp` | 15 |
+| `test/unit/utils/ternary/test_trit_vector.cpp` | 15 |
+| `test/unit/utils/ternary/test_trit_packing.cpp` | 15 |
+| `test/unit/utils/algorithms/test_monte_carlo.cpp` | 20 |
+| `test/unit/utils/algorithms/test_mcts.cpp` | 15 |
+| `test/unit/utils/algorithms/test_graph_metrics.cpp` | 15 |
+| `test/unit/utils/logging/test_logging.cpp` | 15 |
+| `test/unit/utils/logging/test_async_logging.cpp` | 10 |
+| `test/unit/utils/config/test_config.cpp` | 10 |
+| `test/unit/utils/json/test_json.cpp` | 10 |
+| `test/unit/utils/serialization/test_serialization.cpp` | 10 |
+| `test/integration/utils/test_utils_brain_factory.cpp` | 15 |
+| `test/integration/utils/test_utils_bio_async.cpp` | 10 |
+| `test/integration/utils/test_utils_immune.cpp` | 10 |
+| **Total** | **500** |
+
+### 31. Core Module Integration
+
+**Priority**: Critical (Foundation of entire system)
+**Dependencies**: All other modules (core provides foundation)
+**Est. LOC**: 100,000 | **Tests**: 700
+
+#### 31.1 Core Module Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                           CORE MODULE (323 headers, 68 subdirs)                      │
+│  ┌───────────────────────────────────────────────────────────────────────────────┐  │
+│  │                              BRAIN FACTORY                                     │  │
+│  │  ┌──────────────┐ ┌───────────────┐ ┌────────────────┐ ┌────────────────┐    │  │
+│  │  │Brain Config  │ │Config Builder │ │Brain Creation  │ │Component Init  │    │  │
+│  │  │ Builder      │ │  Validators   │ │  O(n) Time     │ │  30+ Modules   │    │  │
+│  │  └──────────────┘ └───────────────┘ └────────────────┘ └────────────────┘    │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                        │                                             │
+│  ┌─────────────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                         BRAIN KNOWLEDGE GRAPH                                  │  │
+│  │  ┌────────────────────────────────────────────────────────────────────────┐   │  │
+│  │  │  Node Types: CORE | CORTICAL | SUBCORTICAL | BRAINSTEM | COGNITIVE     │   │  │
+│  │  │              PERCEPTION | PLASTICITY | TRAINING | SWARM | SECURITY     │   │  │
+│  │  │              INTEGRATION | COORDINATOR | UTILITY                        │   │  │
+│  │  └────────────────────────────────────────────────────────────────────────┘   │  │
+│  │  ┌────────────────────────────────────────────────────────────────────────┐   │  │
+│  │  │  Edge Types: CONNECTS_TO | SENDS_TO | RECEIVES_FROM | INTEGRATES_WITH  │   │  │
+│  │  │              MODULATES | EXCITES | INHIBITS | COORDINATES_WITH | DEPENDS_ON │  │
+│  │  └────────────────────────────────────────────────────────────────────────┘   │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                        │                                             │
+│  ┌─────────────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                        BRAIN REGIONS (13 regions, 77 headers)                  │  │
+│  │  ┌──────────┐ ┌───────────┐ ┌────────────┐ ┌───────────┐ ┌────────────┐      │  │
+│  │  │Brainstem │ │  Broca    │ │Cerebellum  │ │Cingulate  │ │Hippocampus │      │  │
+│  │  │  (core)  │ │(language) │ │  (motor)   │ │(conflict) │ │  (memory)  │      │  │
+│  │  └──────────┘ └───────────┘ └────────────┘ └───────────┘ └────────────┘      │  │
+│  │  ┌──────────┐ ┌───────────┐ ┌────────────┐ ┌───────────┐ ┌────────────┐      │  │
+│  │  │Hypothala │ │  Insula   │ │   Motor    │ │ Occipital │ │  Parietal  │      │  │
+│  │  │(homestas)│ │(interocep)│ │  (action)  │ │  (visual) │ │ (spatial)  │      │  │
+│  │  └──────────┘ └───────────┘ └────────────┘ └───────────┘ └────────────┘      │  │
+│  │  ┌──────────┐ ┌───────────┐ ┌────────────┐                                    │  │
+│  │  │Prefrontal│ │ Temporal  │ │ Wernicke   │                                    │  │
+│  │  │(execute) │ │ (auditory)│ │(comprehen) │                                    │  │
+│  │  └──────────┘ └───────────┘ └────────────┘                                    │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                        │                                             │
+│  ┌─────────────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                         CORTICAL COLUMNS (27 headers)                          │  │
+│  │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────────────────────┐  │  │
+│  │  │   Minicolumns   │ │  Hypercolumns   │ │    Sleep Bridges (8 types)      │  │  │
+│  │  │  (~80-100 neur) │ │ (col. groups)   │ │  STDP, BCM, STP, Homeostatic,   │  │  │
+│  │  │  Layer 2/3,4,5/6│ │  Mexican hat    │ │  Eligibility, Protein, IO, FB   │  │  │
+│  │  └─────────────────┘ └─────────────────┘ └─────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                        │                                             │
+│  ┌─────────────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                         NEURAL SUBSTRATE                                       │  │
+│  │  ┌─────────────────────────────────┐ ┌─────────────────────────────────────┐  │  │
+│  │  │   METABOLIC SUBSTRATE           │ │     PHYSICAL SUBSTRATE              │  │  │
+│  │  │  • ATP (energy currency)        │ │  • Temperature (36-38°C)            │  │  │
+│  │  │  • O2  (oxidative metabolism)   │ │  • Membrane integrity (0-1)         │  │  │
+│  │  │  • Glucose (fuel)               │ │  • Ion balance (Na/K/Ca/Cl)         │  │  │
+│  │  └─────────────────────────────────┘ └─────────────────────────────────────┘  │  │
+│  │  ┌─────────────────────────────────────────────────────────────────────────┐  │  │
+│  │  │              MODULATION OUTPUTS                                          │  │  │
+│  │  │  firing_rate | transmission_efficiency | conduction_velocity | plasticity│  │  │
+│  │  └─────────────────────────────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                        │                                             │
+│  ┌─────────────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                         NEURON MODELS (Plugin Architecture)                    │  │
+│  │  ┌───────────┐ ┌───────────┐ ┌─────────────────┐ ┌───────┐ ┌───────────────┐ │  │
+│  │  │    LIF    │ │Izhikevich │ │ Two-Compartment │ │  AdEx │ │Hodgkin-Huxley │ │  │
+│  │  │(simplest) │ │(efficient)│ │   (dendritic)   │ │(adapt)│ │ (biophysical) │ │  │
+│  │  └───────────┘ └───────────┘ └─────────────────┘ └───────┘ └───────────────┘ │  │
+│  │  ODE Integration: Euler | RK2 | RK4 (Strategy Pattern)                        │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                        │                                             │
+│  ┌─────────────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                         SUPPORTING SYSTEMS                                     │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────────┐ │  │
+│  │  │  Directives  │ │   Sensory    │ │   Topology   │ │    Synapse Types     │ │  │
+│  │  │  (9 headers) │ │  (6 headers) │ │  (4 headers) │ │  AMPA/NMDA/GABA/etc  │ │  │
+│  │  │  Ethics/Harm │ │Visual/Audit/ │ │Network Struct│ │  Neuromodulatory     │ │  │
+│  │  │  Prevention  │ │ Somatosens   │ │              │ │                      │ │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────────────┘ │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 31.2 Core Module Component Summary
+
+| Category | Subdirs | Headers | Purpose |
+|----------|---------|---------|---------|
+| **Brain Factory** | 3 | 35+ | Brain creation, initialization, configuration |
+| **Brain Regions** | 13 | 77 | All cortical/subcortical regions |
+| **Cortical Columns** | 2 | 27 | Minicolumns, hypercolumns, sleep bridges |
+| **Neural Substrate** | 1 | 8 | Metabolic/physical modeling |
+| **Neuron Models** | 1 | 12 | LIF, Izhikevich, HH, AdEx, etc. |
+| **Synapse Types** | 1 | 15 | AMPA, NMDA, GABA, neuromodulatory |
+| **Directives** | 1 | 9 | Ethics, harm prevention, safety |
+| **Sensory Systems** | 3 | 6 | Visual, auditory, somatosensory |
+| **Topology** | 1 | 4 | Network structure definitions |
+| **Brain KG** | 1 | 5 | Internal knowledge graph |
+| **Other Core** | 41 | 125+ | Various core functionality |
+| **Total** | **68** | **323** | **Complete core infrastructure** |
+
+#### 31.3 Brain Factory System
+
+```c
+// Brain factory configuration (from nimcp_brain_factory.h)
+typedef struct nimcp_brain_config {
+    // Core parameters
+    size_t neuron_count;                    // Total neurons (default: 86B scaled)
+    size_t synapse_count;                   // Total synapses (default: 100T scaled)
+    float simulation_timestep_ms;           // Simulation dt (default: 1.0)
+
+    // Memory management
+    size_t memory_pool_size;                // Memory pool size
+    size_t working_memory_capacity;         // WM slots (default: 7±2)
+
+    // Component flags
+    bool enable_immune_system;              // Brain immune (default: true)
+    bool enable_sleep_system;               // Sleep/circadian (default: true)
+    bool enable_quantum_effects;            // Quantum coherence (default: false)
+    bool enable_glial_cells;                // Astrocytes (default: true)
+
+    // Platform tier
+    nimcp_platform_tier_t platform_tier;    // FULL/MEDIUM/CONSTRAINED/MINIMAL
+
+    // Logging
+    nimcp_log_level_t log_level;            // Default: INFO
+    const char* log_file;                   // Optional log file
+
+    // Brain regions to enable
+    uint32_t enabled_regions;               // Bitmask of regions
+} nimcp_brain_config_t;
+
+// Brain factory API
+nimcp_brain_config_t nimcp_brain_config_default(void);
+nimcp_brain_config_builder_t* nimcp_brain_config_builder_create(void);
+nimcp_brain_config_builder_t* nimcp_brain_config_builder_set_neuron_count(
+    nimcp_brain_config_builder_t* builder, size_t count);
+nimcp_brain_config_builder_t* nimcp_brain_config_builder_enable_region(
+    nimcp_brain_config_builder_t* builder, nimcp_brain_region_t region);
+nimcp_brain_config_t nimcp_brain_config_builder_build(
+    nimcp_brain_config_builder_t* builder);
+
+// Brain creation (O(n) time complexity)
+nimcp_brain_t* nimcp_brain_create(const nimcp_brain_config_t* config);
+void nimcp_brain_destroy(nimcp_brain_t* brain);
+
+// Component initialization (30+ init functions)
+nimcp_status_t nimcp_brain_init_snn(nimcp_brain_t* brain);
+nimcp_status_t nimcp_brain_init_plasticity(nimcp_brain_t* brain);
+nimcp_status_t nimcp_brain_init_cognitive(nimcp_brain_t* brain);
+nimcp_status_t nimcp_brain_init_perception(nimcp_brain_t* brain);
+nimcp_status_t nimcp_brain_init_immune(nimcp_brain_t* brain);
+nimcp_status_t nimcp_brain_init_sleep(nimcp_brain_t* brain);
+nimcp_status_t nimcp_brain_init_thalamus(nimcp_brain_t* brain);
+nimcp_status_t nimcp_brain_init_hypothalamus(nimcp_brain_t* brain);
+nimcp_status_t nimcp_brain_init_bio_async(nimcp_brain_t* brain);
+// ... 20+ more init functions
+```
+
+#### 31.4 Brain Knowledge Graph (Self-Awareness)
+
+```c
+// Brain KG node types (from nimcp_brain_kg.h)
+typedef enum {
+    BRAIN_KG_NODE_CORE = 0,           // Core infrastructure
+    BRAIN_KG_NODE_CORTICAL,           // Cortical regions
+    BRAIN_KG_NODE_SUBCORTICAL,        // Subcortical structures
+    BRAIN_KG_NODE_BRAINSTEM,          // Brainstem nuclei
+    BRAIN_KG_NODE_COGNITIVE,          // Cognitive systems
+    BRAIN_KG_NODE_PERCEPTION,         // Perceptual systems
+    BRAIN_KG_NODE_PLASTICITY,         // Learning systems
+    BRAIN_KG_NODE_TRAINING,           // Training infrastructure
+    BRAIN_KG_NODE_SWARM,              // Swarm intelligence
+    BRAIN_KG_NODE_SECURITY,           // Security components
+    BRAIN_KG_NODE_INTEGRATION,        // Integration bridges
+    BRAIN_KG_NODE_COORDINATOR,        // Coordination systems
+    BRAIN_KG_NODE_UTILITY,            // Utility components
+    BRAIN_KG_NODE_COUNT
+} brain_kg_node_type_t;
+
+// Brain KG edge types
+typedef enum {
+    BRAIN_KG_EDGE_CONNECTS_TO = 0,    // Structural connection
+    BRAIN_KG_EDGE_SENDS_TO,           // Unidirectional data flow
+    BRAIN_KG_EDGE_RECEIVES_FROM,      // Reverse data flow
+    BRAIN_KG_EDGE_INTEGRATES_WITH,    // Bidirectional integration
+    BRAIN_KG_EDGE_MODULATES,          // Modulatory influence
+    BRAIN_KG_EDGE_EXCITES,            // Excitatory connection
+    BRAIN_KG_EDGE_INHIBITS,           // Inhibitory connection
+    BRAIN_KG_EDGE_COORDINATES_WITH,   // Coordination relationship
+    BRAIN_KG_EDGE_DEPENDS_ON,         // Dependency relationship
+    BRAIN_KG_EDGE_COUNT
+} brain_kg_edge_type_t;
+
+// Brain KG node structure
+typedef struct {
+    uint32_t id;                       // Unique node ID
+    brain_kg_node_type_t type;         // Node type
+    char name[64];                     // Human-readable name
+    void* component_ptr;               // Pointer to actual component
+    uint32_t edge_count;               // Number of edges
+    uint32_t* edge_ids;                // Edge ID array
+    float health_status;               // Component health (0-1)
+    uint64_t last_updated_ms;          // Last update timestamp
+} brain_kg_node_t;
+
+// Brain KG API
+nimcp_brain_kg_t* nimcp_brain_kg_create(nimcp_brain_t* brain);
+void nimcp_brain_kg_destroy(nimcp_brain_kg_t* kg);
+
+// CRUD operations
+nimcp_status_t nimcp_brain_kg_add_node(nimcp_brain_kg_t* kg,
+    const char* name, brain_kg_node_type_t type, void* component,
+    uint32_t* node_id_out);
+nimcp_status_t nimcp_brain_kg_add_edge(nimcp_brain_kg_t* kg,
+    uint32_t from_id, uint32_t to_id, brain_kg_edge_type_t type,
+    float weight, uint32_t* edge_id_out);
+nimcp_status_t nimcp_brain_kg_remove_node(nimcp_brain_kg_t* kg, uint32_t node_id);
+nimcp_status_t nimcp_brain_kg_remove_edge(nimcp_brain_kg_t* kg, uint32_t edge_id);
+
+// Query operations
+nimcp_status_t nimcp_brain_kg_get_node(nimcp_brain_kg_t* kg, uint32_t node_id,
+    brain_kg_node_t* node_out);
+nimcp_status_t nimcp_brain_kg_find_nodes_by_type(nimcp_brain_kg_t* kg,
+    brain_kg_node_type_t type, uint32_t* node_ids, uint32_t* count);
+nimcp_status_t nimcp_brain_kg_get_neighbors(nimcp_brain_kg_t* kg,
+    uint32_t node_id, brain_kg_edge_type_t edge_type,
+    uint32_t* neighbor_ids, uint32_t* count);
+nimcp_status_t nimcp_brain_kg_path_exists(nimcp_brain_kg_t* kg,
+    uint32_t from_id, uint32_t to_id, bool* exists);
+
+// Self-awareness queries
+nimcp_status_t nimcp_brain_kg_get_component_health(nimcp_brain_kg_t* kg,
+    uint32_t node_id, float* health_out);
+nimcp_status_t nimcp_brain_kg_get_active_pathways(nimcp_brain_kg_t* kg,
+    uint32_t** pathway_ids, uint32_t* count);
+nimcp_status_t nimcp_brain_kg_introspect(nimcp_brain_kg_t* kg,
+    brain_kg_introspection_result_t* result);
+```
+
+#### 31.5 Brain Regions (13 Regions, 77 Headers)
+
+| Region | Headers | Primary Functions |
+|--------|---------|-------------------|
+| **Brainstem** | 6 | Autonomic control, arousal, vital functions |
+| **Broca** | 8 | Speech production, language output |
+| **Cerebellum** | 7 | Motor coordination, timing, learning |
+| **Cingulate** | 5 | Error detection, conflict monitoring, emotion |
+| **Hippocampus** | 8 | Memory formation, spatial navigation |
+| **Hypothalamus** | 6 | Homeostasis, hormone regulation, motivation |
+| **Insula** | 5 | Interoception, emotion awareness, empathy |
+| **Motor** | 7 | Movement planning, execution, sequences |
+| **Occipital** | 6 | Visual processing, object recognition |
+| **Parietal** | 5 | Spatial processing, attention, integration |
+| **Prefrontal** | 8 | Executive function, decision making, planning |
+| **Temporal** | 6 | Auditory processing, semantic memory |
+| **Wernicke** | 8 | Language comprehension, speech perception |
+
+#### 31.6 Cortical Columns
+
+```c
+// Cortical minicolumn (from nimcp_cortical_column.h)
+typedef struct {
+    uint32_t id;                        // Minicolumn ID
+    uint32_t hypercolumn_id;            // Parent hypercolumn
+
+    // Layer populations (canonical microcircuit)
+    nimcp_layer_t layer_2_3;            // Superficial pyramidal (cortico-cortical)
+    nimcp_layer_t layer_4;              // Granular (thalamic input)
+    nimcp_layer_t layer_5_6;            // Deep pyramidal (output)
+
+    // Neuron counts (~80-100 per minicolumn)
+    uint32_t neuron_count;
+    uint32_t excitatory_count;          // ~80%
+    uint32_t inhibitory_count;          // ~20%
+
+    // Local connectivity
+    float lateral_inhibition_strength;   // Mexican hat pattern
+    float vertical_excitation_strength;  // Inter-layer connections
+
+    // State
+    float average_firing_rate;
+    float columnar_activation;           // 0-1 activation level
+
+    // Integration
+    nimcp_bio_async_handler_t bio_handler;
+    nimcp_immune_sensor_t immune_sensor;
+    nimcp_logger_t* logger;
+} nimcp_minicolumn_t;
+
+// Hypercolumn (group of minicolumns)
+typedef struct {
+    uint32_t id;                         // Hypercolumn ID
+    uint32_t region_id;                  // Parent brain region
+
+    // Minicolumn array
+    nimcp_minicolumn_t* minicolumns;
+    uint32_t minicolumn_count;           // Typically 50-100
+
+    // Feature selectivity
+    float preferred_orientation;         // For V1
+    float preferred_frequency;           // For A1
+    float receptive_field_center[3];     // x, y, z
+
+    // Lateral inhibition (Mexican hat)
+    float center_excitation_radius;
+    float surround_inhibition_radius;
+    float inhibition_strength;
+
+    // State
+    float winner_take_all_threshold;
+} nimcp_hypercolumn_t;
+
+// Cortical column API
+nimcp_minicolumn_t* nimcp_minicolumn_create(const nimcp_minicolumn_config_t* config);
+void nimcp_minicolumn_destroy(nimcp_minicolumn_t* col);
+nimcp_status_t nimcp_minicolumn_update(nimcp_minicolumn_t* col,
+    const float* inputs, float dt);
+nimcp_status_t nimcp_minicolumn_get_output(nimcp_minicolumn_t* col,
+    float* outputs, uint32_t* count);
+
+nimcp_hypercolumn_t* nimcp_hypercolumn_create(const nimcp_hypercolumn_config_t* config);
+void nimcp_hypercolumn_destroy(nimcp_hypercolumn_t* hcol);
+nimcp_status_t nimcp_hypercolumn_update(nimcp_hypercolumn_t* hcol,
+    const float* inputs, float dt);
+nimcp_status_t nimcp_hypercolumn_apply_lateral_inhibition(nimcp_hypercolumn_t* hcol);
+```
+
+#### 31.7 Neural Substrate
+
+```c
+// Metabolic substrate (from nimcp_neural_substrate.h)
+typedef struct {
+    // Energy currency
+    float atp_level;                     // 0-1 (normalized)
+    float atp_production_rate;           // ATP/ms
+    float atp_consumption_rate;          // ATP/ms
+
+    // Oxygen metabolism
+    float o2_level;                      // 0-1 (normalized)
+    float o2_extraction_fraction;        // OEF (default: 0.3-0.4)
+
+    // Glucose metabolism
+    float glucose_level;                 // 0-1 (normalized)
+    float glucose_uptake_rate;           // Glc/ms
+    float lactate_level;                 // Astrocyte-neuron lactate shuttle
+
+    // Derived metrics
+    float metabolic_rate;                // CMRO2 (cerebral metabolic rate O2)
+    float energy_efficiency;             // Work output / ATP consumed
+} nimcp_metabolic_substrate_t;
+
+// Physical substrate
+typedef struct {
+    // Temperature
+    float temperature_celsius;           // Brain temp (36-38°C)
+    float thermal_stress;                // 0-1
+
+    // Membrane integrity
+    float membrane_integrity;            // 0-1
+    float lipid_peroxidation;            // Oxidative damage marker
+
+    // Ion balance
+    float na_intracellular;              // [Na+]i (mM)
+    float k_extracellular;               // [K+]o (mM)
+    float ca_intracellular;              // [Ca2+]i (nM to μM)
+    float cl_intracellular;              // [Cl-]i (mM)
+
+    // pH
+    float intracellular_ph;              // ~7.2
+    float extracellular_ph;              // ~7.4
+} nimcp_physical_substrate_t;
+
+// Substrate modulation outputs
+typedef struct {
+    float firing_rate_modifier;          // 0-2 (1 = normal)
+    float transmission_efficiency;       // 0-1
+    float conduction_velocity_modifier;  // 0-2
+    float plasticity_capacity;           // 0-1 (learning capability)
+} nimcp_substrate_modulation_t;
+
+// Neural substrate API
+nimcp_neural_substrate_t* nimcp_neural_substrate_create(
+    const nimcp_neural_substrate_config_t* config);
+void nimcp_neural_substrate_destroy(nimcp_neural_substrate_t* substrate);
+nimcp_status_t nimcp_neural_substrate_update(nimcp_neural_substrate_t* substrate,
+    float activity_level, float dt);
+nimcp_status_t nimcp_neural_substrate_get_modulation(
+    nimcp_neural_substrate_t* substrate,
+    nimcp_substrate_modulation_t* modulation_out);
+nimcp_status_t nimcp_neural_substrate_inject_atp(
+    nimcp_neural_substrate_t* substrate, float amount);
+nimcp_status_t nimcp_neural_substrate_set_temperature(
+    nimcp_neural_substrate_t* substrate, float temp_celsius);
+```
+
+#### 31.8 Neuron Models (Plugin Architecture)
+
+```c
+// Neuron model types (from nimcp_neuron_model.h)
+typedef enum {
+    NEURON_MODEL_LIF = 0,               // Leaky Integrate-and-Fire
+    NEURON_MODEL_IZHIKEVICH,            // Izhikevich 2003
+    NEURON_MODEL_TWO_COMPARTMENT,       // Soma + dendrite
+    NEURON_MODEL_ADEX,                  // Adaptive Exponential IF
+    NEURON_MODEL_HODGKIN_HUXLEY,        // Full biophysical
+    NEURON_MODEL_COUNT
+} nimcp_neuron_model_type_t;
+
+// ODE integration methods
+typedef enum {
+    ODE_METHOD_EULER = 0,               // First-order Euler
+    ODE_METHOD_RK2,                     // Second-order Runge-Kutta
+    ODE_METHOD_RK4,                     // Fourth-order Runge-Kutta
+} nimcp_ode_method_t;
+
+// Neuron model interface (Strategy Pattern)
+typedef struct nimcp_neuron_model_vtable {
+    nimcp_status_t (*init)(void* state, const void* params);
+    nimcp_status_t (*update)(void* state, float I_ext, float dt,
+                              nimcp_ode_method_t method);
+    nimcp_status_t (*reset)(void* state);
+    nimcp_status_t (*get_voltage)(const void* state, float* V);
+    nimcp_status_t (*check_spike)(const void* state, bool* spiked);
+    nimcp_status_t (*get_state_size)(size_t* size);
+    nimcp_status_t (*serialize)(const void* state, uint8_t* buffer, size_t* size);
+    nimcp_status_t (*deserialize)(void* state, const uint8_t* buffer, size_t size);
+    void (*destroy)(void* state);
+} nimcp_neuron_model_vtable_t;
+
+// Neuron model handle
+typedef struct {
+    nimcp_neuron_model_type_t type;
+    const nimcp_neuron_model_vtable_t* vtable;
+    void* state;
+    nimcp_logger_t* logger;
+} nimcp_neuron_model_t;
+
+// LIF parameters
+typedef struct {
+    float tau_m;                         // Membrane time constant (ms)
+    float V_rest;                        // Resting potential (mV)
+    float V_thresh;                      // Spike threshold (mV)
+    float V_reset;                       // Reset potential (mV)
+    float R_m;                           // Membrane resistance (MΩ)
+    float t_ref;                         // Refractory period (ms)
+} nimcp_lif_params_t;
+
+// Izhikevich parameters
+typedef struct {
+    float a;                             // Recovery time constant
+    float b;                             // Sensitivity of recovery
+    float c;                             // Reset voltage (mV)
+    float d;                             // Reset recovery increment
+} nimcp_izhikevich_params_t;
+
+// Neuron model factory
+nimcp_neuron_model_t* nimcp_neuron_model_create(nimcp_neuron_model_type_t type,
+    const void* params);
+void nimcp_neuron_model_destroy(nimcp_neuron_model_t* model);
+
+// Convenience functions
+nimcp_neuron_model_t* nimcp_neuron_model_create_lif(const nimcp_lif_params_t* params);
+nimcp_neuron_model_t* nimcp_neuron_model_create_izhikevich(
+    const nimcp_izhikevich_params_t* params);
+nimcp_neuron_model_t* nimcp_neuron_model_create_hh(
+    const nimcp_hh_params_t* params);
+```
+
+#### 31.9 Directives System (Ethics & Safety)
+
+| Directive | Header | Purpose |
+|-----------|--------|---------|
+| **Core Directives** | `nimcp_directives.h` | Central directive management |
+| **Harm Prevention** | `nimcp_harm_prevention.h` | Prevent harmful outputs |
+| **Ethics Engine** | `nimcp_ethics_engine.h` | Ethical reasoning |
+| **Safety Constraints** | `nimcp_safety_constraints.h` | Hard safety limits |
+| **Value Alignment** | `nimcp_value_alignment.h` | Human value alignment |
+| **Consent Checker** | `nimcp_consent_checker.h` | Action consent verification |
+| **Transparency** | `nimcp_transparency.h` | Decision explainability |
+| **Override Protocol** | `nimcp_override_protocol.h` | Emergency overrides |
+| **Audit Log** | `nimcp_audit_log.h` | Action audit trail |
+
+#### 31.10 Core Module Bridges
+
+| Bridge | File | Purpose |
+|--------|------|---------|
+| **Factory-Immune** | `nimcp_factory_immune_bridge.h/c` | Immune system initialization |
+| **Factory-BioAsync** | `nimcp_factory_bio_async_bridge.h/c` | Bio-async initialization |
+| **Factory-Logging** | `nimcp_factory_logging_bridge.h/c` | Logging initialization |
+| **KG-Introspection** | `nimcp_kg_introspection_bridge.h/c` | Self-awareness queries |
+| **KG-Hub** | `nimcp_kg_hub_bridge.h/c` | Cognitive hub integration |
+| **Column-SNN** | `nimcp_column_snn_bridge.h/c` | SNN population in columns |
+| **Column-Plasticity** | `nimcp_column_plasticity_bridge.h/c` | Column-level plasticity |
+| **Column-Sleep** | `nimcp_column_sleep_bridge.h/c` | Sleep state effects |
+| **Substrate-Immune** | `nimcp_substrate_immune_bridge.h/c` | Metabolic immune effects |
+| **Substrate-SNN** | `nimcp_substrate_snn_bridge.h/c` | Metabolic SNN modulation |
+| **Model-SNN** | `nimcp_model_snn_bridge.h/c` | Neuron model integration |
+| **Region-FEP** | `nimcp_region_fep_bridge.h/c` | FEP per brain region |
+| **Region-Hub** | `nimcp_region_hub_bridge.h/c` | Region cognitive hub integration |
+| **Directive-Executive** | `nimcp_directive_executive_bridge.h/c` | Directive enforcement |
+
+#### 31.11 Core Module Integration with Brain Factory
+
+```c
+// File: src/core/brain/factory/nimcp_brain_factory_integration.c
+
+nimcp_status_t nimcp_brain_factory_full_integration(
+    nimcp_brain_t* brain,
+    const nimcp_brain_config_t* config) {
+
+    NIMCP_LOG_INFO(brain->logger, "Beginning full brain integration");
+
+    //=========================================================================
+    // Phase 1: Core Infrastructure
+    //=========================================================================
+
+    // Initialize memory pool
+    brain->memory_pool = nimcp_memory_pool_create(config->memory_pool_size);
+    NIMCP_RETURN_IF_ERROR(brain->memory_pool != NULL);
+
+    // Initialize logging
+    brain->logger = nimcp_logger_create(config->log_level, config->log_file);
+    NIMCP_RETURN_IF_ERROR(brain->logger != NULL);
+
+    // Initialize bio-async router
+    brain->bio_router = nimcp_bio_router_create(brain->memory_pool);
+    NIMCP_RETURN_IF_ERROR(brain->bio_router != NULL);
+
+    // Initialize immune system
+    if (config->enable_immune_system) {
+        NIMCP_RETURN_IF_ERROR(nimcp_brain_init_immune(brain) == NIMCP_OK);
+    }
+
+    //=========================================================================
+    // Phase 2: Brain Knowledge Graph
+    //=========================================================================
+
+    brain->kg = nimcp_brain_kg_create(brain);
+    NIMCP_RETURN_IF_ERROR(brain->kg != NULL);
+
+    // Register core components in KG
+    nimcp_brain_kg_register_component(brain->kg, "memory_pool",
+        BRAIN_KG_NODE_UTILITY, brain->memory_pool);
+    nimcp_brain_kg_register_component(brain->kg, "bio_router",
+        BRAIN_KG_NODE_INTEGRATION, brain->bio_router);
+    nimcp_brain_kg_register_component(brain->kg, "immune_system",
+        BRAIN_KG_NODE_CORE, brain->immune);
+
+    //=========================================================================
+    // Phase 3: Neural Substrate
+    //=========================================================================
+
+    brain->neural_substrate = nimcp_neural_substrate_create(
+        &config->substrate_config);
+    NIMCP_RETURN_IF_ERROR(brain->neural_substrate != NULL);
+
+    // Connect substrate to immune system
+    nimcp_substrate_immune_bridge_init(
+        &brain->substrate_immune_bridge,
+        brain->neural_substrate, brain->immune);
+
+    //=========================================================================
+    // Phase 4: Neuron Models (Plugin Registry)
+    //=========================================================================
+
+    brain->neuron_model_registry = nimcp_neuron_model_registry_create();
+
+    // Register all model types
+    nimcp_neuron_model_registry_register(brain->neuron_model_registry,
+        NEURON_MODEL_LIF, &lif_vtable);
+    nimcp_neuron_model_registry_register(brain->neuron_model_registry,
+        NEURON_MODEL_IZHIKEVICH, &izhikevich_vtable);
+    nimcp_neuron_model_registry_register(brain->neuron_model_registry,
+        NEURON_MODEL_ADEX, &adex_vtable);
+    nimcp_neuron_model_registry_register(brain->neuron_model_registry,
+        NEURON_MODEL_TWO_COMPARTMENT, &two_compartment_vtable);
+    nimcp_neuron_model_registry_register(brain->neuron_model_registry,
+        NEURON_MODEL_HODGKIN_HUXLEY, &hh_vtable);
+
+    //=========================================================================
+    // Phase 5: Cortical Columns
+    //=========================================================================
+
+    brain->cortical_system = nimcp_cortical_system_create(brain->memory_pool);
+
+    // Initialize hypercolumns per enabled region
+    for (int r = 0; r < BRAIN_REGION_COUNT; r++) {
+        if (config->enabled_regions & (1 << r)) {
+            uint32_t hypercolumn_count = get_region_hypercolumn_count(r);
+            for (uint32_t h = 0; h < hypercolumn_count; h++) {
+                nimcp_hypercolumn_t* hcol = nimcp_hypercolumn_create(
+                    &get_hypercolumn_config(r, h));
+                nimcp_cortical_system_add_hypercolumn(
+                    brain->cortical_system, r, hcol);
+            }
+        }
+    }
+
+    // Initialize column sleep bridges
+    nimcp_column_sleep_bridges_init(brain->cortical_system, brain->sleep_system);
+
+    //=========================================================================
+    // Phase 6: Brain Regions
+    //=========================================================================
+
+    // Initialize each enabled region
+    if (config->enabled_regions & REGION_PREFRONTAL) {
+        NIMCP_RETURN_IF_ERROR(nimcp_brain_init_prefrontal(brain) == NIMCP_OK);
+    }
+    if (config->enabled_regions & REGION_TEMPORAL) {
+        NIMCP_RETURN_IF_ERROR(nimcp_brain_init_temporal(brain) == NIMCP_OK);
+    }
+    if (config->enabled_regions & REGION_PARIETAL) {
+        NIMCP_RETURN_IF_ERROR(nimcp_brain_init_parietal(brain) == NIMCP_OK);
+    }
+    if (config->enabled_regions & REGION_OCCIPITAL) {
+        NIMCP_RETURN_IF_ERROR(nimcp_brain_init_occipital(brain) == NIMCP_OK);
+    }
+    if (config->enabled_regions & REGION_HIPPOCAMPUS) {
+        NIMCP_RETURN_IF_ERROR(nimcp_brain_init_hippocampus(brain) == NIMCP_OK);
+    }
+    if (config->enabled_regions & REGION_BROCA) {
+        NIMCP_RETURN_IF_ERROR(nimcp_brain_init_broca(brain) == NIMCP_OK);
+    }
+    if (config->enabled_regions & REGION_WERNICKE) {
+        NIMCP_RETURN_IF_ERROR(nimcp_brain_init_wernicke(brain) == NIMCP_OK);
+    }
+    // ... other regions
+
+    //=========================================================================
+    // Phase 7: Directives System
+    //=========================================================================
+
+    brain->directives = nimcp_directives_create(brain->memory_pool);
+    nimcp_harm_prevention_init(&brain->directives->harm_prevention);
+    nimcp_ethics_engine_init(&brain->directives->ethics_engine);
+    nimcp_safety_constraints_init(&brain->directives->safety_constraints);
+
+    // Connect directives to executive function
+    nimcp_directive_executive_bridge_init(
+        &brain->directive_executive_bridge,
+        brain->directives, brain->executive);
+
+    //=========================================================================
+    // Phase 8: Sensory Systems
+    //=========================================================================
+
+    brain->sensory = nimcp_sensory_system_create(brain->memory_pool);
+
+    // Visual pathway (V1 → V2 → V4 → IT → PFC)
+    nimcp_visual_pathway_init(&brain->sensory->visual, brain->occipital);
+
+    // Auditory pathway (A1 → belt → parabelt → STS → PFC)
+    nimcp_auditory_pathway_init(&brain->sensory->auditory, brain->temporal);
+
+    // Somatosensory pathway (S1 → S2 → parietal)
+    nimcp_somatosensory_pathway_init(&brain->sensory->somatosensory, brain->parietal);
+
+    //=========================================================================
+    // Phase 9: Final Integration
+    //=========================================================================
+
+    // Build KG edges for all connections
+    nimcp_brain_kg_build_edges(brain->kg);
+
+    // Validate integration integrity
+    NIMCP_RETURN_IF_ERROR(nimcp_brain_validate_integration(brain) == NIMCP_OK);
+
+    NIMCP_LOG_INFO(brain->logger, "Brain integration complete: %d regions, "
+        "%d hypercolumns, %d components",
+        __builtin_popcount(config->enabled_regions),
+        nimcp_cortical_system_get_hypercolumn_count(brain->cortical_system),
+        nimcp_brain_kg_get_node_count(brain->kg));
+
+    return NIMCP_OK;
+}
+```
+
+#### 31.12 Core Module Performance Requirements
+
+| Operation | Complexity | Typical Time |
+|-----------|------------|--------------|
+| Brain creation | O(N) neurons | 100 ms |
+| Region initialization | O(R) regions | 10 ms per region |
+| Hypercolumn update | O(M) minicolumns | 100 μs |
+| Minicolumn update | O(N) neurons | 10 μs |
+| Neuron model update | O(1) | 1 μs (LIF) to 100 μs (HH) |
+| KG query | O(V + E) | 10 μs |
+| Substrate update | O(1) | 5 μs |
+| Directive check | O(D) directives | 1 μs |
+
+#### 31.13 Core Module Integration Tests
+
+| Test File | Test Count |
+|-----------|------------|
+| `test/unit/core/brain/test_brain_create.cpp` | 25 |
+| `test/unit/core/brain/test_brain_config.cpp` | 20 |
+| `test/unit/core/brain/test_brain_config_builder.cpp` | 15 |
+| `test/unit/core/brain/test_brain_destroy.cpp` | 10 |
+| `test/unit/core/brain/factory/test_brain_factory.cpp` | 25 |
+| `test/unit/core/brain/factory/test_brain_init_snn.cpp` | 15 |
+| `test/unit/core/brain/factory/test_brain_init_cognitive.cpp` | 15 |
+| `test/unit/core/brain/factory/test_brain_init_perception.cpp` | 15 |
+| `test/unit/core/brain/kg/test_brain_kg_create.cpp` | 20 |
+| `test/unit/core/brain/kg/test_brain_kg_nodes.cpp` | 25 |
+| `test/unit/core/brain/kg/test_brain_kg_edges.cpp` | 25 |
+| `test/unit/core/brain/kg/test_brain_kg_queries.cpp` | 20 |
+| `test/unit/core/brain/kg/test_brain_kg_introspection.cpp` | 15 |
+| `test/unit/core/cortical_columns/test_minicolumn.cpp` | 25 |
+| `test/unit/core/cortical_columns/test_hypercolumn.cpp` | 25 |
+| `test/unit/core/cortical_columns/test_lateral_inhibition.cpp` | 15 |
+| `test/unit/core/cortical_columns/test_column_sleep_bridges.cpp` | 20 |
+| `test/unit/core/neural_substrate/test_metabolic_substrate.cpp` | 25 |
+| `test/unit/core/neural_substrate/test_physical_substrate.cpp` | 20 |
+| `test/unit/core/neural_substrate/test_substrate_modulation.cpp` | 15 |
+| `test/unit/core/neuron_models/test_lif_model.cpp` | 20 |
+| `test/unit/core/neuron_models/test_izhikevich_model.cpp` | 20 |
+| `test/unit/core/neuron_models/test_adex_model.cpp` | 15 |
+| `test/unit/core/neuron_models/test_hh_model.cpp` | 25 |
+| `test/unit/core/neuron_models/test_model_registry.cpp` | 15 |
+| `test/unit/core/directives/test_directives.cpp` | 20 |
+| `test/unit/core/directives/test_harm_prevention.cpp` | 20 |
+| `test/unit/core/directives/test_ethics_engine.cpp` | 15 |
+| `test/unit/core/directives/test_safety_constraints.cpp` | 15 |
+| `test/unit/core/brain/regions/test_prefrontal.cpp` | 15 |
+| `test/unit/core/brain/regions/test_temporal.cpp` | 15 |
+| `test/unit/core/brain/regions/test_hippocampus.cpp` | 15 |
+| `test/unit/core/brain/regions/test_occipital.cpp` | 15 |
+| `test/unit/core/brain/regions/test_parietal.cpp` | 15 |
+| `test/unit/core/sensory/test_visual_pathway.cpp` | 15 |
+| `test/unit/core/sensory/test_auditory_pathway.cpp` | 15 |
+| `test/unit/core/sensory/test_somatosensory_pathway.cpp` | 10 |
+| `test/integration/core/test_brain_factory_integration.cpp` | 25 |
+| `test/integration/core/test_brain_kg_integration.cpp` | 20 |
+| `test/integration/core/test_cortical_column_integration.cpp` | 20 |
+| `test/integration/core/test_neural_substrate_integration.cpp` | 15 |
+| `test/integration/core/test_neuron_model_integration.cpp` | 15 |
+| `test/integration/core/test_region_hub_integration.cpp` | 15 |
+| `test/regression/core/test_brain_factory_regression.cpp` | 15 |
+| `test/regression/core/test_brain_kg_regression.cpp` | 10 |
+| `test/regression/core/test_cortical_column_regression.cpp` | 10 |
+| `test/e2e/e2e_test_brain_creation_pipeline.cpp` | 15 |
+| `test/e2e/e2e_test_full_integration_pipeline.cpp` | 20 |
+| **Total** | **700** |
+
+### 32. Updated Scope Summary
 
 | Category | Items | Est. LOC | Tests |
 |----------|-------|----------|-------|
@@ -3281,7 +7725,15 @@ nimcp_status_t nimcp_language_learn_production(
 | **Quantum Integration** | **40 modules** | **~24,000** | **~210** |
 | **Training Integration** | **40 modules** | **~26,000** | **~230** |
 | **Language Integration** | **40 modules** | **~28,000** | **~250** |
-| **TOTAL** | **~40 modules + full integration** | **~426,300** | **~6,056** |
+| **Perception Integration** | **40 modules** | **~30,000** | **~270** |
+| **GPU Module Integration** | **70 headers** | **~35,000** | **~300** |
+| **Information Theory Integration** | **4 headers** | **~18,000** | **~160** |
+| **Plasticity Module Integration** | **100+ headers** | **~40,000** | **~350** |
+| **Security Module Integration** | **44 headers** | **~45,000** | **~400** |
+| **Async Module Integration** | **18 headers** | **~50,000** | **~350** |
+| **Utils Module Integration** | **122 headers** | **~70,000** | **~500** |
+| **Core Module Integration** | **323 headers** | **~100,000** | **~700** |
+| **TOTAL** | **~40 modules + full integration** | **~814,300** | **~9,086** |
 
 ---
 
@@ -5055,7 +9507,23 @@ ctest -j$(nproc) --output-on-failure
 | **Omnidirectional Integration** | **40 modules** | **12,000** | **240** |
 | **Hypothalamus Integration** | **40 modules** | **8,000** | **105** |
 | **Full-Stack Integration** | **4 test suites** | **-** | **50** |
-| **GRAND TOTAL** | **~40 modules + full integration** | **~215,300** | **~4,246** |
+| **Thalamic/Middleware Integration** | **40 modules** | **16,000** | **140** |
+| **Neural Substrate Integration** | **40 modules** | **12,000** | **115** |
+| **Motor Cortex Integration** | **40 modules** | **15,000** | **150** |
+| **Portia Integration** | **40 modules** | **14,000** | **125** |
+| **Swarm Integration** | **40 modules** | **18,000** | **150** |
+| **Dragonfly Integration** | **40 modules** | **16,000** | **130** |
+| **Sleep Integration** | **40 modules** | **20,000** | **170** |
+| **Glial Integration** | **40 modules** | **22,000** | **190** |
+| **Quantum Integration** | **40 modules** | **24,000** | **210** |
+| **Training Integration** | **40 modules** | **26,000** | **230** |
+| **Language Integration** | **40 modules** | **28,000** | **250** |
+| **Perception Integration** | **40 modules** | **30,000** | **270** |
+| **GPU Module Integration** | **70 headers** | **35,000** | **300** |
+| **Information Theory Integration** | **4 headers** | **18,000** | **160** |
+| **Plasticity Module Integration** | **100+ headers** | **40,000** | **350** |
+| **Security Module Integration** | **44 headers** | **45,000** | **400** |
+| **GRAND TOTAL** | **~40 modules + full integration** | **~594,300** | **~7,536** |
 
 ### Key Requirements Checklist
 

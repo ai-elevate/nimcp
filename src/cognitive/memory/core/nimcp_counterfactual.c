@@ -1492,12 +1492,12 @@ bool counterfactual_analysis_copy(
 // Statistics and Utility Functions
 //=============================================================================
 
-bool counterfactual_get_stats(
+bool pr_counterfactual_get_stats(
     counterfactual_system_t system,
     counterfactual_stats_t* stats)
 {
     if (!system || !stats) {
-        set_error("NULL pointer in counterfactual_get_stats");
+        set_error("NULL pointer in pr_counterfactual_get_stats");
         return false;
     }
 
@@ -1508,12 +1508,12 @@ bool counterfactual_get_stats(
     return true;
 }
 
-void counterfactual_reset_stats(counterfactual_system_t system) {
+void pr_counterfactual_reset_stats(counterfactual_system_t system) {
     if (!system) return;
     memset(&system->stats, 0, sizeof(system->stats));
 }
 
-const char* counterfactual_get_last_error(void) {
+const char* pr_counterfactual_get_last_error(void) {
     return s_last_error[0] ? s_last_error : NULL;
 }
 

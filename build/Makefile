@@ -7231,6 +7231,19 @@ e2e_test_tier3_fep_bridges/fast:
 .PHONY : e2e_test_tier3_fep_bridges/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_training_symbolic_logic_pipeline
+
+# Build rule for target.
+e2e_test_training_symbolic_logic_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_training_symbolic_logic_pipeline
+.PHONY : e2e_test_training_symbolic_logic_pipeline
+
+# fast build rule for target.
+e2e_test_training_symbolic_logic_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_training_symbolic_logic_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_training_symbolic_logic_pipeline.dir/build
+.PHONY : e2e_test_training_symbolic_logic_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
 
 # Build rule for target.
@@ -23065,6 +23078,19 @@ regression_training_test_cnn_cortex_bridge_regression/fast:
 .PHONY : regression_training_test_cnn_cortex_bridge_regression/fast
 
 #=============================================================================
+# Target rules for targets named regression_training_symbolic_logic_hub
+
+# Build rule for target.
+regression_training_symbolic_logic_hub: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_symbolic_logic_hub
+.PHONY : regression_training_symbolic_logic_hub
+
+# fast build rule for target.
+regression_training_symbolic_logic_hub/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_symbolic_logic_hub.dir/build.make test/regression/training/CMakeFiles/regression_training_symbolic_logic_hub.dir/build
+.PHONY : regression_training_symbolic_logic_hub/fast
+
+#=============================================================================
 # Target rules for targets named unit_training_test_cnn_backprop
 
 # Build rule for target.
@@ -23182,6 +23208,19 @@ unit_test_training_integration_hub/fast:
 .PHONY : unit_test_training_integration_hub/fast
 
 #=============================================================================
+# Target rules for targets named unit_test_training_symbolic_logic_hub_bridge
+
+# Build rule for target.
+unit_test_training_symbolic_logic_hub_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_training_symbolic_logic_hub_bridge
+.PHONY : unit_test_training_symbolic_logic_hub_bridge
+
+# fast build rule for target.
+unit_test_training_symbolic_logic_hub_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/integration/CMakeFiles/unit_test_training_symbolic_logic_hub_bridge.dir/build.make test/unit/training/integration/CMakeFiles/unit_test_training_symbolic_logic_hub_bridge.dir/build
+.PHONY : unit_test_training_symbolic_logic_hub_bridge/fast
+
+#=============================================================================
 # Target rules for targets named integration_training_test_cnn_backprop_integration
 
 # Build rule for target.
@@ -23193,6 +23232,19 @@ integration_training_test_cnn_backprop_integration: cmake_check_build_system
 integration_training_test_cnn_backprop_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/training/CMakeFiles/integration_training_test_cnn_backprop_integration.dir/build.make test/integration/training/CMakeFiles/integration_training_test_cnn_backprop_integration.dir/build
 .PHONY : integration_training_test_cnn_backprop_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_training_symbolic_logic_hub
+
+# Build rule for target.
+integration_training_symbolic_logic_hub: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_training_symbolic_logic_hub
+.PHONY : integration_training_symbolic_logic_hub
+
+# fast build rule for target.
+integration_training_symbolic_logic_hub/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/training/CMakeFiles/integration_training_symbolic_logic_hub.dir/build.make test/integration/training/CMakeFiles/integration_training_symbolic_logic_hub.dir/build
+.PHONY : integration_training_symbolic_logic_hub/fast
 
 #=============================================================================
 # Target rules for targets named integration_training_test_cnn_cortex_integration
@@ -24205,6 +24257,7 @@ help:
 	@echo "... e2e_test_tier3_fep_bridges"
 	@echo "... e2e_test_tom_snn_plasticity_pipeline"
 	@echo "... e2e_test_training_logic_pipeline"
+	@echo "... e2e_test_training_symbolic_logic_pipeline"
 	@echo "... e2e_test_unified_training_integration"
 	@echo "... e2e_test_visual_pipeline"
 	@echo "... e2e_test_wellbeing_enhanced_pipeline"
@@ -24483,6 +24536,7 @@ help:
 	@echo "... integration_ternary_test_sparse_ternary_integration"
 	@echo "... integration_ternary_test_training_ternary_integration"
 	@echo "... integration_thalamic_substrate_bridges"
+	@echo "... integration_training_symbolic_logic_hub"
 	@echo "... integration_training_test_cnn_backprop_integration"
 	@echo "... integration_training_test_cnn_cortex_integration"
 	@echo "... integration_utils_containers_test_queue_integration"
@@ -24794,6 +24848,7 @@ help:
 	@echo "... regression_test_performance_regression"
 	@echo "... regression_test_quantum_routing_efficiency"
 	@echo "... regression_test_routing_efficiency_regression"
+	@echo "... regression_training_symbolic_logic_hub"
 	@echo "... regression_training_test_cnn_backprop_regression"
 	@echo "... regression_training_test_cnn_cortex_bridge_regression"
 	@echo "... regression_utils_containers_test_queue_regression"
@@ -25768,6 +25823,7 @@ help:
 	@echo "... unit_test_brain_full_simulation"
 	@echo "... unit_test_comprehensive_integration"
 	@echo "... unit_test_training_integration_hub"
+	@echo "... unit_test_training_symbolic_logic_hub_bridge"
 	@echo "... unit_training_test_adv_gs"
 	@echo "... unit_training_test_amp_distributed"
 	@echo "... unit_training_test_auto_architecture_nas"

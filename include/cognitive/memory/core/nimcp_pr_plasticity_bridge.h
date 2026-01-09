@@ -119,6 +119,7 @@
 #include "nimcp_entanglement.h"
 #include "nimcp_resonance.h"
 #include "nimcp_quaternion.h"
+#include "nimcp_pr_memory_node.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -223,13 +224,13 @@ typedef enum {
 
 /**
  * @brief Memory tier indices (matching Z-Ladder)
+ * Uses pr_memory_tier_t from nimcp_pr_memory_node.h
+ * These aliases provided for backwards compatibility
  */
-typedef enum {
-    PR_TIER_Z0 = 0,  /**< Working memory tier */
-    PR_TIER_Z1 = 1,  /**< Short-term memory tier */
-    PR_TIER_Z2 = 2,  /**< Long-term memory tier */
-    PR_TIER_Z3 = 3   /**< Deep storage tier */
-} pr_memory_tier_t;
+#define PR_TIER_Z0 PR_MEMORY_TIER_Z0
+#define PR_TIER_Z1 PR_MEMORY_TIER_Z1
+#define PR_TIER_Z2 PR_MEMORY_TIER_Z2
+#define PR_TIER_Z3 PR_MEMORY_TIER_Z3
 
 /**
  * @brief STDP parameters for memory plasticity

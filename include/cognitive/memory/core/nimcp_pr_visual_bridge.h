@@ -31,6 +31,10 @@
 #include "perception/nimcp_retina.h"
 #include "perception/nimcp_visual_cortex_fep_bridge.h"
 
+/* Forward declaration for resonance engine */
+struct resonance_engine_struct;
+typedef struct resonance_engine_struct resonance_engine_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -552,6 +552,48 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_source_memory.c  # Phase PR-7.1: Source memory for origin tracking and reality monitoring
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_theta_gamma.c  # Phase PR-4.3: Theta-gamma phase coupling
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_pink_noise_bridge.c  # Phase PR-6.5: Pink noise integration bridge
+    # Phase 6: Training Layer Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_loss_bridge.c  # Phase PR-6.1: Loss bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_optimizer_bridge.c  # Phase PR-6.2: Optimizer bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_meta_bridge.c  # Phase PR-6.3: Meta-learning bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_continual_bridge.c  # Phase PR-6.5: Continual learning bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_training_plasticity.c  # Phase PR-6.6: Training-plasticity extension
+    # Phase 7: Perception Layer Integration (temporarily disabled - need API updates)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_visual_bridge.c  # Phase PR-7.1: Visual perception bridge
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_audio_bridge.c  # Phase PR-7.2: Audio perception bridge
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_speech_bridge.c  # Phase PR-7.3: Speech perception bridge
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_omni_bridge.c  # Phase PR-7.4: Omni-sensory bridge
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_attention_bridge.c  # Phase PR-7.5: Attention bridge
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_predictive_bridge.c  # Phase PR-7.6: Predictive bridge
+    # Phase 8: Enhancement Layer Part 1
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_metamemory.c  # Phase PR-8.1: Metamemory (FOK, TOT, JOL)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_metamemory_monitor.c  # Phase PR-8.2: Metamemory monitoring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_prospective.c  # Phase PR-8.3: Prospective memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_prospective_scheduler.c  # Phase PR-8.4: Prospective scheduler
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_reconsolidation.c  # Phase PR-8.5: Reconsolidation
+    # Phase 9: Enhancement Layer Part 2
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_procedural.c  # Phase PR-9.1: Procedural memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_skill_acquisition.c  # Phase PR-9.2: Skill acquisition
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_future_thinking.c  # Phase PR-9.3: Episodic future thinking
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_counterfactual.c  # Phase PR-9.4: Counterfactual reasoning
+    # Phase 10: Enhancement Layer Part 3
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_social_memory.c  # Phase PR-10.1: Social memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_collective_memory.c  # Phase PR-10.2: Collective memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_transactive.c  # Phase PR-10.3: Transactive memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_schemas.c  # Phase PR-10.4: Schema system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_gist.c  # Phase PR-10.5: Gist extraction
+    # Phase 11: Enhancement Layer Part 4
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_spaced_repetition.c  # Phase PR-11.1: Spaced repetition
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_flashbulb.c  # Phase PR-11.2: Flashbulb memory
+    # Phase 12: Module Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_bio_bridge.c  # Phase PR-12.1: Bio-async bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_immune_bridge.c  # Phase PR-12.2: Immune bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_cognitive_bridge.c  # Phase PR-12.4: Cognitive hub bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_hypo_bridge.c  # Phase PR-12.5: Hypothalamus bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_cerebellum_bridge.c  # Phase PR-12.7: Cerebellum bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_sleep_bridge.c  # Phase PR-12.8: Sleep-wake bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_mental_health_bridge.c  # Phase PR-12.9: Mental health bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_logging_bridge.c  # Phase PR-12.3: Logging bridge
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_fractal_cognitive.c  # Fractal cognitive processing
     ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/nimcp_hierarchical.c
@@ -1754,6 +1796,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_gradient_scaling.c      # Gradient: surrogates (SNN), layer-wise LR, adaptive clipping
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_auto_architecture.c    # NAS: architecture search (evolutionary, RL, DARTS, pruning)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/integration/nimcp_training_integration_hub.c  # Training integration hub for inter-module communication
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/integration/nimcp_training_symbolic_logic_hub_bridge.c  # Symbolic logic + training hub bridge
 
     # NOTE: nimcp_training_plasticity_bridge_bioasync_handlers.c is included via #include
     # in nimcp_training_plasticity_bridge.c, not compiled separately (uses internal types)

@@ -2297,6 +2297,38 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_tier3_fep_bridges.cpp)
     message(STATUS "  Added Tier 3 FEP Bridges E2E test: e2e_test_tier3_fep_bridges")
 endif()
 
+# ============================================================================
+# Training Symbolic Logic Hub Pipeline E2E Test
+# ============================================================================
+# WHAT: Test training symbolic logic hub bridge in complete training pipeline
+# WHY:  Verify logic-guided training decisions, rule learning, early stopping
+# HOW:  Simulate full training loop with logic-based LR, curriculum, and constraints
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_training_symbolic_logic_pipeline.cpp)
+    add_executable(e2e_test_training_symbolic_logic_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_training_symbolic_logic_pipeline.cpp
+    )
+    target_include_directories(e2e_test_training_symbolic_logic_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/training/integration
+    )
+    target_link_libraries(e2e_test_training_symbolic_logic_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_training_symbolic_logic_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_training_symbolic_logic_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_training_symbolic_logic_pipeline COMMAND e2e_test_training_symbolic_logic_pipeline)
+    set_tests_properties(e2e_test_training_symbolic_logic_pipeline PROPERTIES
+        LABELS "e2e;training;symbolic-logic;hub;curriculum;lr;early-stopping"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Training Symbolic Logic Pipeline E2E test: e2e_test_training_symbolic_logic_pipeline")
+endif()
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)

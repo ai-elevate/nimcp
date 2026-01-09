@@ -404,7 +404,7 @@ NIMCP_EXPORT bool counterfactual_config_validate(const counterfactual_config_t* 
  * Example:
  *   counterfactual_system_t cf = counterfactual_create(graph, mgr, NULL);
  *   if (!cf) {
- *       fprintf(stderr, "Failed: %s\n", counterfactual_get_last_error());
+ *       fprintf(stderr, "Failed: %s\n", pr_counterfactual_get_last_error());
  *   }
  */
 NIMCP_EXPORT counterfactual_system_t counterfactual_create(
@@ -920,7 +920,7 @@ NIMCP_EXPORT bool counterfactual_analysis_copy(
  * @param stats Output statistics structure
  * @return true on success, false if system is NULL
  */
-NIMCP_EXPORT bool counterfactual_get_stats(
+NIMCP_EXPORT bool pr_counterfactual_get_stats(
     counterfactual_system_t system,
     counterfactual_stats_t* stats
 );
@@ -930,14 +930,14 @@ NIMCP_EXPORT bool counterfactual_get_stats(
  *
  * @param system System to reset
  */
-NIMCP_EXPORT void counterfactual_reset_stats(counterfactual_system_t system);
+NIMCP_EXPORT void pr_counterfactual_reset_stats(counterfactual_system_t system);
 
 /**
  * @brief Get last error message
  *
  * @return Error string or NULL if no error
  */
-NIMCP_EXPORT const char* counterfactual_get_last_error(void);
+NIMCP_EXPORT const char* pr_counterfactual_get_last_error(void);
 
 /**
  * @brief Get counterfactual type name as string

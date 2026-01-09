@@ -1,0 +1,1891 @@
+//=============================================================================
+// nimcp_pr_sleep_bridge.c - Prime Resonant Sleep-Wake Bridge Implementation
+//=============================================================================
+/**
+ * @file nimcp_pr_sleep_bridge.c
+ * @brief Implementation of sleep stage-based memory consolidation
+ *
+ * See nimcp_pr_sleep_bridge.h for detailed documentation.
+ *
+ * @author NIMCP Development Team
+ * @date 2026-01-09
+ * @version 1.0.0
+ */
+
+#include "cognitive/memory/core/nimcp_pr_sleep_bridge.h"
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
+#include <time.h>
+
+// Platform layer for thread safety
+#ifdef NIMCP_HAS_THREADS
+#include "platform/thread/nimcp_mutex.h"
+#endif
+
+//=============================================================================
+// Internal Constants
+//=============================================================================
+
+/** Magic number for validation */
+#define PR_SLEEP_MAGIC              0x534C4550U  // "SLEP"
+
+/** Minimum stage time before transition (simulated ms) */
+#define PR_SLEEP_MIN_STAGE_TIME_MS  1000
+
+/** Maximum replay history default */
+#define PR_SLEEP_MAX_HISTORY_DEFAULT 1000
+
+/** Typical NREM-REM cycle count before wake */
+#define PR_SLEEP_CYCLES_BEFORE_WAKE 4
+
+//=============================================================================
+// Internal Structures
+//=============================================================================
+
+/**
+ * @brief Internal sleep bridge structure
+ */
+struct pr_sleep_bridge_struct {
+    /** Validation magic */
+    uint32_t magic;
+
+    /** Configuration */
+    pr_sleep_config_t config;
+
+    /** Current state */
+    pr_sleep_stage_t current_stage;
+    pr_sleep_stage_state_t stage_states[PR_SLEEP_STAGE_COUNT];
+    uint32_t nrem_rem_cycle_count;  /**< Cycles since sleep onset */
+    uint64_t sleep_onset_time_ms;   /**< When entered sleep */
+
+    /** External references */
+    z_ladder_t ladder;
+    entangle_graph_t graph;
+
+    /** Replay buffer */
+    pr_replay_candidate_t* replay_buffer;
+    size_t replay_buffer_count;
+    size_t replay_buffer_capacity;
+
+    /** Replay history */
+    pr_replay_event_t* replay_history;
+    size_t replay_history_count;
+    size_t replay_history_capacity;
+    size_t replay_history_head;  /**< Circular buffer head */
+
+    /** Statistics */
+    pr_sleep_stats_t stats;
+
+    /** Callbacks */
+    pr_replay_callback_t replay_callback;
+    void* replay_callback_data;
+    pr_stage_callback_t stage_callback;
+    void* stage_callback_data;
+    pr_sleep_promotion_callback_t promotion_callback;
+    void* promotion_callback_data;
+
+    /** Thread safety */
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_t* mutex;
+#endif
+
+    /** Timestamps */
+    uint64_t last_consolidation_time_ms;
+    uint64_t creation_time_ms;
+};
+
+//=============================================================================
+// Static Function Declarations
+//=============================================================================
+
+static uint64_t get_current_time_ms(void);
+static float clamp_float(float value, float min_val, float max_val);
+static float compute_replay_priority(
+    const pr_sleep_bridge_t bridge,
+    const pr_memory_node_t* node,
+    pr_sleep_stage_t stage
+);
+static pr_memory_type_t infer_memory_type(const pr_memory_node_t* node);
+static int compare_replay_priority(const void* a, const void* b);
+static void record_replay_event(
+    pr_sleep_bridge_t bridge,
+    const pr_replay_event_t* event
+);
+static float get_stage_promotion_boost(pr_sleep_stage_t stage, const pr_sleep_config_t* config);
+static int consolidate_wake(pr_sleep_bridge_t bridge);
+static int consolidate_n1(pr_sleep_bridge_t bridge);
+static int consolidate_n2(pr_sleep_bridge_t bridge);
+static int consolidate_n3_sws(pr_sleep_bridge_t bridge);
+static int consolidate_rem(pr_sleep_bridge_t bridge);
+
+//=============================================================================
+// Configuration Functions
+//=============================================================================
+
+NIMCP_EXPORT pr_sleep_config_t pr_sleep_config_default(void) {
+    pr_sleep_config_t config;
+    memset(&config, 0, sizeof(config));
+
+    // Replay configuration
+    config.replay_buffer_capacity = PR_SLEEP_DEFAULT_REPLAY_BUFFER;
+    config.max_replay_per_cycle = PR_SLEEP_MAX_REPLAY_PER_CYCLE;
+    config.replay_compression = PR_SLEEP_REPLAY_COMPRESSION;
+    config.min_replay_strength = PR_SLEEP_MIN_REPLAY_STRENGTH;
+
+    // Stage-specific parameters
+    config.sws_promotion_boost = PR_SLEEP_SWS_PROMOTION_BOOST;
+    config.sws_consolidation_factor = 1.5f;
+    config.rem_emotional_factor = PR_SLEEP_REM_EMOTIONAL_FACTOR;
+    config.rem_prune_threshold = PR_SLEEP_REM_PRUNE_THRESHOLD;
+
+    // Cycles per stage (default values)
+    config.cycles_per_stage[PR_SLEEP_STAGE_WAKE] = 1;
+    config.cycles_per_stage[PR_SLEEP_STAGE_N1] = 3;
+    config.cycles_per_stage[PR_SLEEP_STAGE_N2] = 5;
+    config.cycles_per_stage[PR_SLEEP_STAGE_N3] = PR_SLEEP_DEFAULT_CYCLES;
+    config.cycles_per_stage[PR_SLEEP_STAGE_REM] = 7;
+
+    // Consolidation parameters
+    config.consolidation_delta = PR_SLEEP_CONSOLIDATION_DELTA;
+    config.association_strengthen_delta = PR_SLEEP_ASSOC_STRENGTHEN_DELTA;
+    config.wake_decay_rate = PR_SLEEP_WAKE_DECAY_RATE;
+    config.enable_reverse_replay = true;
+    config.enable_random_replay = true;
+
+    // Integration parameters
+    config.enable_theta_gamma_sync = false;
+    config.enable_entanglement_update = true;
+    config.track_replay_history = true;
+    config.max_replay_history = PR_SLEEP_MAX_HISTORY_DEFAULT;
+
+    return config;
+}
+
+NIMCP_EXPORT bool pr_sleep_config_validate(const pr_sleep_config_t* config) {
+    if (!config) {
+        return false;
+    }
+
+    // Check replay configuration
+    if (config->replay_buffer_capacity == 0) {
+        return false;
+    }
+    if (config->max_replay_per_cycle == 0) {
+        return false;
+    }
+    if (config->replay_compression <= 0.0f) {
+        return false;
+    }
+
+    // Check factors are in valid range
+    if (config->min_replay_strength < 0.0f || config->min_replay_strength > 1.0f) {
+        return false;
+    }
+    if (config->sws_promotion_boost < 0.0f || config->sws_promotion_boost > 1.0f) {
+        return false;
+    }
+    if (config->rem_emotional_factor < 0.0f || config->rem_emotional_factor > 1.0f) {
+        return false;
+    }
+    if (config->rem_prune_threshold < 0.0f || config->rem_prune_threshold > 1.0f) {
+        return false;
+    }
+
+    // Check deltas are positive
+    if (config->consolidation_delta <= 0.0f) {
+        return false;
+    }
+    if (config->association_strengthen_delta <= 0.0f) {
+        return false;
+    }
+
+    return true;
+}
+
+//=============================================================================
+// Lifecycle Functions
+//=============================================================================
+
+NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* config) {
+    pr_sleep_config_t cfg;
+
+    if (config) {
+        if (!pr_sleep_config_validate(config)) {
+            return NULL;
+        }
+        cfg = *config;
+    } else {
+        cfg = pr_sleep_config_default();
+    }
+
+    // Allocate bridge structure
+    pr_sleep_bridge_t bridge = (pr_sleep_bridge_t)calloc(1, sizeof(struct pr_sleep_bridge_struct));
+    if (!bridge) {
+        return NULL;
+    }
+
+    bridge->magic = PR_SLEEP_MAGIC;
+    bridge->config = cfg;
+    bridge->current_stage = PR_SLEEP_STAGE_WAKE;
+    bridge->creation_time_ms = get_current_time_ms();
+
+    // Allocate replay buffer
+    bridge->replay_buffer_capacity = cfg.replay_buffer_capacity;
+    bridge->replay_buffer = (pr_replay_candidate_t*)calloc(
+        bridge->replay_buffer_capacity, sizeof(pr_replay_candidate_t));
+    if (!bridge->replay_buffer) {
+        free(bridge);
+        return NULL;
+    }
+    bridge->replay_buffer_count = 0;
+
+    // Allocate replay history if enabled
+    if (cfg.track_replay_history && cfg.max_replay_history > 0) {
+        bridge->replay_history_capacity = cfg.max_replay_history;
+        bridge->replay_history = (pr_replay_event_t*)calloc(
+            bridge->replay_history_capacity, sizeof(pr_replay_event_t));
+        if (!bridge->replay_history) {
+            free(bridge->replay_buffer);
+            free(bridge);
+            return NULL;
+        }
+    }
+
+    // Initialize stage states
+    for (int i = 0; i < PR_SLEEP_STAGE_COUNT; i++) {
+        bridge->stage_states[i].stage = (pr_sleep_stage_t)i;
+        bridge->stage_states[i].total_time_ms = 0;
+    }
+
+    // Set initial stage state
+    bridge->stage_states[PR_SLEEP_STAGE_WAKE].entry_time_ms = bridge->creation_time_ms;
+
+    // Initialize mutex if threading is available
+#ifdef NIMCP_HAS_THREADS
+    bridge->mutex = nimcp_mutex_create(NULL);
+    if (!bridge->mutex) {
+        free(bridge->replay_history);
+        free(bridge->replay_buffer);
+        free(bridge);
+        return NULL;
+    }
+#endif
+
+    return bridge;
+}
+
+NIMCP_EXPORT void pr_sleep_bridge_destroy(pr_sleep_bridge_t bridge) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return;
+    }
+
+    // Invalidate magic
+    bridge->magic = 0;
+
+#ifdef NIMCP_HAS_THREADS
+    if (bridge->mutex) {
+        nimcp_mutex_destroy(bridge->mutex);
+    }
+#endif
+
+    if (bridge->replay_history) {
+        free(bridge->replay_history);
+    }
+
+    if (bridge->replay_buffer) {
+        free(bridge->replay_buffer);
+    }
+
+    free(bridge);
+}
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_set_ladder(
+    pr_sleep_bridge_t bridge,
+    z_ladder_t ladder
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(bridge->mutex);
+#endif
+
+    bridge->ladder = ladder;
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(bridge->mutex);
+#endif
+
+    return PR_SLEEP_SUCCESS;
+}
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_set_entanglement(
+    pr_sleep_bridge_t bridge,
+    entangle_graph_t graph
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(bridge->mutex);
+#endif
+
+    bridge->graph = graph;
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(bridge->mutex);
+#endif
+
+    return PR_SLEEP_SUCCESS;
+}
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_reset(pr_sleep_bridge_t bridge) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(bridge->mutex);
+#endif
+
+    // Reset to wake state
+    bridge->current_stage = PR_SLEEP_STAGE_WAKE;
+    bridge->nrem_rem_cycle_count = 0;
+    bridge->sleep_onset_time_ms = 0;
+
+    // Clear stage states
+    for (int i = 0; i < PR_SLEEP_STAGE_COUNT; i++) {
+        memset(&bridge->stage_states[i], 0, sizeof(pr_sleep_stage_state_t));
+        bridge->stage_states[i].stage = (pr_sleep_stage_t)i;
+    }
+
+    // Clear replay buffer
+    bridge->replay_buffer_count = 0;
+
+    // Clear replay history
+    bridge->replay_history_count = 0;
+    bridge->replay_history_head = 0;
+
+    // Clear statistics
+    memset(&bridge->stats, 0, sizeof(pr_sleep_stats_t));
+
+    // Reset timestamps
+    uint64_t now = get_current_time_ms();
+    bridge->stage_states[PR_SLEEP_STAGE_WAKE].entry_time_ms = now;
+    bridge->last_consolidation_time_ms = now;
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(bridge->mutex);
+#endif
+
+    return PR_SLEEP_SUCCESS;
+}
+
+//=============================================================================
+// Stage Management Functions
+//=============================================================================
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_set_stage(
+    pr_sleep_bridge_t bridge,
+    pr_sleep_stage_t stage
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+    if (stage >= PR_SLEEP_STAGE_COUNT) {
+        return PR_SLEEP_ERROR_INVALID_STAGE;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(bridge->mutex);
+#endif
+
+    pr_sleep_stage_t old_stage = bridge->current_stage;
+    uint64_t now = get_current_time_ms();
+
+    // Update old stage's total time
+    uint64_t stage_duration = now - bridge->stage_states[old_stage].entry_time_ms;
+    bridge->stage_states[old_stage].total_time_ms += stage_duration;
+    bridge->stats.time_per_stage_ms[old_stage] += stage_duration;
+
+    // Transition to new stage
+    bridge->current_stage = stage;
+    bridge->stage_states[stage].entry_time_ms = now;
+    bridge->stage_states[stage].consolidation_cycles = 0;
+    bridge->stage_states[stage].memories_replayed = 0;
+    bridge->stage_states[stage].promotions = 0;
+    bridge->stats.entries_per_stage[stage]++;
+
+    // Set dominant frequency based on stage
+    switch (stage) {
+        case PR_SLEEP_STAGE_WAKE:
+            bridge->stage_states[stage].dominant_frequency = 10.0f;  // Alpha
+            break;
+        case PR_SLEEP_STAGE_N1:
+            bridge->stage_states[stage].dominant_frequency = 6.0f;   // Theta
+            break;
+        case PR_SLEEP_STAGE_N2:
+            bridge->stage_states[stage].dominant_frequency = PR_SLEEP_SPINDLE_FREQ;
+            break;
+        case PR_SLEEP_STAGE_N3:
+            bridge->stage_states[stage].dominant_frequency = PR_SLEEP_SLOW_WAVE_FREQ;
+            break;
+        case PR_SLEEP_STAGE_REM:
+            bridge->stage_states[stage].dominant_frequency = 6.0f;   // Theta
+            break;
+        default:
+            bridge->stage_states[stage].dominant_frequency = 0.0f;
+            break;
+    }
+
+    // Track sleep onset
+    if (old_stage == PR_SLEEP_STAGE_WAKE && stage != PR_SLEEP_STAGE_WAKE) {
+        bridge->sleep_onset_time_ms = now;
+        bridge->nrem_rem_cycle_count = 0;
+    }
+
+    // Track wake time
+    if (stage == PR_SLEEP_STAGE_WAKE && old_stage != PR_SLEEP_STAGE_WAKE) {
+        bridge->stats.last_wake_time_ms = now;
+    }
+
+    // Track NREM-REM cycle completion
+    if (old_stage == PR_SLEEP_STAGE_REM && stage != PR_SLEEP_STAGE_WAKE) {
+        bridge->nrem_rem_cycle_count++;
+        bridge->stats.total_sleep_cycles++;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(bridge->mutex);
+#endif
+
+    // Invoke callback (outside lock)
+    if (bridge->stage_callback) {
+        bridge->stage_callback(old_stage, stage, bridge->stage_callback_data);
+    }
+
+    return PR_SLEEP_SUCCESS;
+}
+
+NIMCP_EXPORT pr_sleep_stage_t pr_sleep_bridge_get_stage(const pr_sleep_bridge_t bridge) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return PR_SLEEP_STAGE_WAKE;
+    }
+    return bridge->current_stage;
+}
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_get_stage_state(
+    const pr_sleep_bridge_t bridge,
+    pr_sleep_stage_state_t* state
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC || !state) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(((pr_sleep_bridge_t)bridge)->mutex);
+#endif
+
+    *state = bridge->stage_states[bridge->current_stage];
+
+    // Update current stage time
+    uint64_t now = get_current_time_ms();
+    state->total_time_ms = bridge->stage_states[bridge->current_stage].total_time_ms +
+                           (now - state->entry_time_ms);
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(((pr_sleep_bridge_t)bridge)->mutex);
+#endif
+
+    return PR_SLEEP_SUCCESS;
+}
+
+NIMCP_EXPORT pr_sleep_stage_t pr_sleep_bridge_advance_stage(pr_sleep_bridge_t bridge) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return PR_SLEEP_STAGE_WAKE;
+    }
+
+    pr_sleep_stage_t current = bridge->current_stage;
+    pr_sleep_stage_t next;
+
+    switch (current) {
+        case PR_SLEEP_STAGE_WAKE:
+            next = PR_SLEEP_STAGE_N1;
+            break;
+        case PR_SLEEP_STAGE_N1:
+            next = PR_SLEEP_STAGE_N2;
+            break;
+        case PR_SLEEP_STAGE_N2:
+            next = PR_SLEEP_STAGE_N3;
+            break;
+        case PR_SLEEP_STAGE_N3:
+            // First time to REM, then cycle between N2-N3-REM
+            next = PR_SLEEP_STAGE_REM;
+            break;
+        case PR_SLEEP_STAGE_REM:
+            // After several cycles, wake up
+            if (bridge->nrem_rem_cycle_count >= PR_SLEEP_CYCLES_BEFORE_WAKE - 1) {
+                next = PR_SLEEP_STAGE_WAKE;
+            } else {
+                next = PR_SLEEP_STAGE_N2;  // Go back to N2, not N1
+            }
+            break;
+        default:
+            next = PR_SLEEP_STAGE_WAKE;
+            break;
+    }
+
+    pr_sleep_bridge_set_stage(bridge, next);
+    return next;
+}
+
+NIMCP_EXPORT bool pr_sleep_bridge_is_sleeping(const pr_sleep_bridge_t bridge) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return false;
+    }
+    return bridge->current_stage != PR_SLEEP_STAGE_WAKE;
+}
+
+NIMCP_EXPORT bool pr_sleep_bridge_is_deep_sleep(const pr_sleep_bridge_t bridge) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return false;
+    }
+    return bridge->current_stage == PR_SLEEP_STAGE_N3;
+}
+
+//=============================================================================
+// Consolidation Functions
+//=============================================================================
+
+NIMCP_EXPORT int pr_sleep_bridge_consolidate(pr_sleep_bridge_t bridge) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return -1;
+    }
+
+    if (!bridge->ladder) {
+        return -1;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(bridge->mutex);
+#endif
+
+    int processed = 0;
+
+    switch (bridge->current_stage) {
+        case PR_SLEEP_STAGE_WAKE:
+            processed = consolidate_wake(bridge);
+            break;
+        case PR_SLEEP_STAGE_N1:
+            processed = consolidate_n1(bridge);
+            break;
+        case PR_SLEEP_STAGE_N2:
+            processed = consolidate_n2(bridge);
+            break;
+        case PR_SLEEP_STAGE_N3:
+            processed = consolidate_n3_sws(bridge);
+            break;
+        case PR_SLEEP_STAGE_REM:
+            processed = consolidate_rem(bridge);
+            break;
+        default:
+            processed = 0;
+            break;
+    }
+
+    // Update statistics
+    bridge->stage_states[bridge->current_stage].consolidation_cycles++;
+    bridge->stats.cycles_per_stage[bridge->current_stage]++;
+    bridge->last_consolidation_time_ms = get_current_time_ms();
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(bridge->mutex);
+#endif
+
+    return processed;
+}
+
+NIMCP_EXPORT int pr_sleep_bridge_consolidate_cycles(
+    pr_sleep_bridge_t bridge,
+    uint32_t num_cycles
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return -1;
+    }
+
+    if (num_cycles == 0) {
+        num_cycles = bridge->config.cycles_per_stage[bridge->current_stage];
+    }
+
+    int total_processed = 0;
+    for (uint32_t i = 0; i < num_cycles; i++) {
+        int processed = pr_sleep_bridge_consolidate(bridge);
+        if (processed < 0) {
+            return total_processed > 0 ? total_processed : -1;
+        }
+        total_processed += processed;
+    }
+
+    return total_processed;
+}
+
+NIMCP_EXPORT int pr_sleep_bridge_run_sleep_cycles(
+    pr_sleep_bridge_t bridge,
+    uint32_t num_cycles
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return -1;
+    }
+
+    int total_processed = 0;
+
+    for (uint32_t cycle = 0; cycle < num_cycles; cycle++) {
+        // N1
+        pr_sleep_bridge_set_stage(bridge, PR_SLEEP_STAGE_N1);
+        total_processed += pr_sleep_bridge_consolidate_cycles(bridge, 0);
+
+        // N2
+        pr_sleep_bridge_set_stage(bridge, PR_SLEEP_STAGE_N2);
+        total_processed += pr_sleep_bridge_consolidate_cycles(bridge, 0);
+
+        // N3 (SWS) - most consolidation happens here
+        pr_sleep_bridge_set_stage(bridge, PR_SLEEP_STAGE_N3);
+        total_processed += pr_sleep_bridge_consolidate_cycles(bridge, 0);
+
+        // REM
+        pr_sleep_bridge_set_stage(bridge, PR_SLEEP_STAGE_REM);
+        total_processed += pr_sleep_bridge_consolidate_cycles(bridge, 0);
+    }
+
+    // Return to wake
+    pr_sleep_bridge_set_stage(bridge, PR_SLEEP_STAGE_WAKE);
+
+    return total_processed;
+}
+
+//=============================================================================
+// Memory Replay Functions
+//=============================================================================
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_get_replay_candidates(
+    pr_sleep_bridge_t bridge,
+    pr_replay_candidate_t* candidates,
+    size_t max_candidates,
+    size_t* count
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC || !candidates || !count) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+    if (!bridge->ladder) {
+        return PR_SLEEP_ERROR_NO_LADDER;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(bridge->mutex);
+#endif
+
+    *count = 0;
+    size_t candidate_count = 0;
+    uint64_t current_time = get_current_time_ms();
+
+    // Clear internal buffer
+    bridge->replay_buffer_count = 0;
+
+    // Iterate through Z0 and Z1 tiers (primary replay candidates)
+    for (int tier = PR_MEMORY_TIER_Z0; tier <= PR_MEMORY_TIER_Z1; tier++) {
+        pr_memory_node_t* nodes[256];
+        size_t node_count;
+
+        z_ladder_error_t err = z_ladder_get_nodes(
+            bridge->ladder,
+            (pr_memory_tier_t)tier,
+            nodes,
+            256,
+            &node_count
+        );
+
+        if (err != Z_LADDER_SUCCESS) {
+            continue;
+        }
+
+        for (size_t i = 0; i < node_count && candidate_count < max_candidates; i++) {
+            pr_memory_node_t* node = nodes[i];
+            if (!node) continue;
+
+            // Check minimum strength
+            if (node->current_strength < bridge->config.min_replay_strength) {
+                continue;
+            }
+
+            // Compute replay priority
+            float priority = compute_replay_priority(bridge, node, bridge->current_stage);
+            if (priority <= 0.0f) {
+                continue;
+            }
+
+            // Fill candidate structure
+            pr_replay_candidate_t* cand = &candidates[candidate_count];
+            cand->node_id = node->node_id;
+            cand->tier = node->tier;
+            cand->strength = node->current_strength;
+
+            nimcp_quaternion_t state = pr_memory_node_get_state(node);
+            cand->emotional_magnitude = fabsf(state.x);
+            cand->salience = state.y;
+            cand->entanglement_count = pr_memory_node_get_entanglement_count(node);
+            cand->age_ms = current_time - node->created_time_ms;
+            cand->replay_priority = priority;
+            cand->type = infer_memory_type(node);
+            cand->is_novel = (cand->age_ms < 24 * 60 * 60 * 1000);  // < 24 hours
+
+            candidate_count++;
+        }
+    }
+
+    // Sort by replay priority (descending)
+    if (candidate_count > 1) {
+        qsort(candidates, candidate_count, sizeof(pr_replay_candidate_t),
+              compare_replay_priority);
+    }
+
+    *count = candidate_count;
+
+    // Copy to internal buffer
+    size_t to_copy = candidate_count < bridge->replay_buffer_capacity ?
+                     candidate_count : bridge->replay_buffer_capacity;
+    memcpy(bridge->replay_buffer, candidates, to_copy * sizeof(pr_replay_candidate_t));
+    bridge->replay_buffer_count = to_copy;
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(bridge->mutex);
+#endif
+
+    return PR_SLEEP_SUCCESS;
+}
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_replay(
+    pr_sleep_bridge_t bridge,
+    uint64_t node_id,
+    pr_replay_direction_t direction,
+    pr_replay_event_t* event
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+    if (!bridge->ladder) {
+        return PR_SLEEP_ERROR_NO_LADDER;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(bridge->mutex);
+#endif
+
+    // Find the node
+    pr_memory_node_t* node = z_ladder_find(bridge->ladder, node_id);
+    if (!node) {
+#ifdef NIMCP_HAS_THREADS
+        nimcp_mutex_unlock(bridge->mutex);
+#endif
+        return PR_SLEEP_ERROR_REPLAY_FAILED;
+    }
+
+    // Record pre-replay state
+    pr_replay_event_t ev;
+    memset(&ev, 0, sizeof(ev));
+    ev.node_id = node_id;
+    ev.stage = bridge->current_stage;
+    ev.direction = direction;
+    ev.strength_before = node->current_strength;
+    ev.tier_before = node->tier;
+    ev.timestamp_ms = get_current_time_ms();
+
+    // Apply consolidation based on stage
+    float consolidation_boost = bridge->config.consolidation_delta;
+    if (bridge->current_stage == PR_SLEEP_STAGE_N3) {
+        consolidation_boost *= bridge->config.sws_consolidation_factor;
+    }
+
+    // Reinforce memory
+    float new_strength = pr_memory_node_reinforce(node, consolidation_boost);
+    ev.strength_after = new_strength;
+    ev.consolidation_gained = new_strength - ev.strength_before;
+
+    // Update quaternion consolidation component
+    nimcp_quaternion_t state = pr_memory_node_get_state(node);
+    state.w = clamp_float(state.w + consolidation_boost * 0.5f, 0.0f, 1.0f);
+    pr_memory_node_update_state(node, state);
+
+    // Check for promotion eligibility
+    float promotion_boost = get_stage_promotion_boost(bridge->current_stage, &bridge->config);
+    float eligibility = node->promotion_eligibility + promotion_boost;
+    node->promotion_eligibility = clamp_float(eligibility, 0.0f, 1.0f);
+
+    ev.was_promoted = false;
+    ev.tier_after = node->tier;
+
+    // Attempt promotion if eligible
+    if (pr_memory_node_check_eligibility(node) && node->tier < PR_MEMORY_TIER_Z3) {
+        pr_memory_tier_t old_tier = node->tier;
+        z_ladder_error_t promote_err = z_ladder_promote(bridge->ladder, node_id);
+        if (promote_err == Z_LADDER_SUCCESS) {
+            ev.was_promoted = true;
+            ev.tier_after = node->tier;
+            bridge->stats.total_promotions++;
+            bridge->stage_states[bridge->current_stage].promotions++;
+
+            // Invoke promotion callback
+            if (bridge->promotion_callback) {
+#ifdef NIMCP_HAS_THREADS
+                nimcp_mutex_unlock(bridge->mutex);
+#endif
+                bridge->promotion_callback(
+                    node_id, old_tier, ev.tier_after,
+                    bridge->current_stage, bridge->promotion_callback_data);
+#ifdef NIMCP_HAS_THREADS
+                nimcp_mutex_lock(bridge->mutex);
+#endif
+            }
+        }
+    }
+
+    // Update statistics
+    bridge->stats.total_replays++;
+    bridge->stage_states[bridge->current_stage].memories_replayed++;
+
+    switch (direction) {
+        case PR_REPLAY_FORWARD:
+            bridge->stats.forward_replays++;
+            break;
+        case PR_REPLAY_REVERSE:
+            bridge->stats.reverse_replays++;
+            break;
+        case PR_REPLAY_RANDOM:
+            bridge->stats.random_replays++;
+            break;
+    }
+
+    // Record event in history
+    record_replay_event(bridge, &ev);
+
+    // Copy event to output if requested
+    if (event) {
+        *event = ev;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(bridge->mutex);
+#endif
+
+    // Invoke replay callback (outside lock)
+    if (bridge->replay_callback) {
+        bridge->replay_callback(&ev, bridge->replay_callback_data);
+    }
+
+    return PR_SLEEP_SUCCESS;
+}
+
+NIMCP_EXPORT int pr_sleep_bridge_replay_sequence(
+    pr_sleep_bridge_t bridge,
+    const uint64_t* node_ids,
+    size_t count,
+    pr_replay_direction_t direction
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC || !node_ids || count == 0) {
+        return -1;
+    }
+
+    int successful_replays = 0;
+
+    // Determine iteration order based on direction
+    if (direction == PR_REPLAY_FORWARD) {
+        for (size_t i = 0; i < count; i++) {
+            pr_replay_event_t event;
+            event.sequence_position = (uint32_t)i;
+            if (pr_sleep_bridge_replay(bridge, node_ids[i], direction, &event) == PR_SLEEP_SUCCESS) {
+                successful_replays++;
+            }
+        }
+    } else if (direction == PR_REPLAY_REVERSE) {
+        for (size_t i = count; i > 0; i--) {
+            pr_replay_event_t event;
+            event.sequence_position = (uint32_t)(count - i);
+            if (pr_sleep_bridge_replay(bridge, node_ids[i - 1], direction, &event) == PR_SLEEP_SUCCESS) {
+                successful_replays++;
+            }
+        }
+    } else {
+        // Random order - use simple Fisher-Yates shuffle
+        uint64_t* shuffled = (uint64_t*)malloc(count * sizeof(uint64_t));
+        if (!shuffled) {
+            return -1;
+        }
+        memcpy(shuffled, node_ids, count * sizeof(uint64_t));
+
+        for (size_t i = count - 1; i > 0; i--) {
+            size_t j = rand() % (i + 1);
+            uint64_t temp = shuffled[i];
+            shuffled[i] = shuffled[j];
+            shuffled[j] = temp;
+        }
+
+        for (size_t i = 0; i < count; i++) {
+            pr_replay_event_t event;
+            event.sequence_position = (uint32_t)i;
+            if (pr_sleep_bridge_replay(bridge, shuffled[i], direction, &event) == PR_SLEEP_SUCCESS) {
+                successful_replays++;
+            }
+        }
+
+        free(shuffled);
+    }
+
+    // Strengthen associations between co-replayed memories
+    if (successful_replays > 1 && bridge->config.enable_entanglement_update) {
+        pr_sleep_bridge_strengthen_associations(bridge, node_ids, count);
+    }
+
+    return successful_replays;
+}
+
+//=============================================================================
+// Z-Ladder Promotion Functions
+//=============================================================================
+
+NIMCP_EXPORT int pr_sleep_bridge_promote_z_ladder(pr_sleep_bridge_t bridge) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return -1;
+    }
+
+    if (!bridge->ladder) {
+        return -1;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(bridge->mutex);
+#endif
+
+    int promoted = 0;
+    float promotion_boost = get_stage_promotion_boost(bridge->current_stage, &bridge->config);
+
+    // Check Z0 and Z1 for promotion candidates
+    for (int tier = PR_MEMORY_TIER_Z0; tier <= PR_MEMORY_TIER_Z2; tier++) {
+        pr_memory_node_t* nodes[256];
+        size_t node_count;
+
+        z_ladder_error_t err = z_ladder_get_nodes(
+            bridge->ladder,
+            (pr_memory_tier_t)tier,
+            nodes,
+            256,
+            &node_count
+        );
+
+        if (err != Z_LADDER_SUCCESS) {
+            continue;
+        }
+
+        for (size_t i = 0; i < node_count; i++) {
+            pr_memory_node_t* node = nodes[i];
+            if (!node) continue;
+
+            // Apply sleep boost to eligibility
+            float boosted_eligibility = node->promotion_eligibility + promotion_boost;
+
+            // Check if eligible with boost
+            bool eligible = (boosted_eligibility >= PR_NODE_PROMOTION_THRESHOLD - promotion_boost) &&
+                           (node->current_strength >= 0.5f - promotion_boost * 0.5f);
+
+            if (eligible) {
+                pr_memory_tier_t old_tier = node->tier;
+                z_ladder_error_t promote_err = z_ladder_promote(bridge->ladder, node->node_id);
+                if (promote_err == Z_LADDER_SUCCESS) {
+                    promoted++;
+                    bridge->stats.total_promotions++;
+                    bridge->stage_states[bridge->current_stage].promotions++;
+
+                    if (bridge->promotion_callback) {
+#ifdef NIMCP_HAS_THREADS
+                        nimcp_mutex_unlock(bridge->mutex);
+#endif
+                        bridge->promotion_callback(
+                            node->node_id, old_tier, node->tier,
+                            bridge->current_stage, bridge->promotion_callback_data);
+#ifdef NIMCP_HAS_THREADS
+                        nimcp_mutex_lock(bridge->mutex);
+#endif
+                    }
+                }
+            }
+        }
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(bridge->mutex);
+#endif
+
+    return promoted;
+}
+
+NIMCP_EXPORT bool pr_sleep_bridge_promote_memory(
+    pr_sleep_bridge_t bridge,
+    uint64_t node_id
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return false;
+    }
+
+    if (!bridge->ladder) {
+        return false;
+    }
+
+    z_ladder_error_t err = z_ladder_promote(bridge->ladder, node_id);
+    if (err == Z_LADDER_SUCCESS) {
+        bridge->stats.total_promotions++;
+        return true;
+    }
+
+    return false;
+}
+
+NIMCP_EXPORT float pr_sleep_bridge_get_promotion_eligibility(
+    pr_sleep_bridge_t bridge,
+    uint64_t node_id
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return -1.0f;
+    }
+
+    if (!bridge->ladder) {
+        return -1.0f;
+    }
+
+    pr_memory_node_t* node = z_ladder_find(bridge->ladder, node_id);
+    if (!node) {
+        return -1.0f;
+    }
+
+    float boost = get_stage_promotion_boost(bridge->current_stage, &bridge->config);
+    return clamp_float(node->promotion_eligibility + boost, 0.0f, 1.0f);
+}
+
+//=============================================================================
+// Emotional Processing Functions (REM)
+//=============================================================================
+
+NIMCP_EXPORT int pr_sleep_bridge_emotional_process(pr_sleep_bridge_t bridge) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return -1;
+    }
+
+    // Only process during REM
+    if (bridge->current_stage != PR_SLEEP_STAGE_REM) {
+        return 0;
+    }
+
+    if (!bridge->ladder) {
+        return -1;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(bridge->mutex);
+#endif
+
+    int processed = 0;
+    float total_reduction = 0.0f;
+
+    // Iterate through all tiers looking for emotional memories
+    for (int tier = PR_MEMORY_TIER_Z0; tier < PR_MEMORY_TIER_COUNT; tier++) {
+        pr_memory_node_t* nodes[256];
+        size_t node_count;
+
+        z_ladder_error_t err = z_ladder_get_nodes(
+            bridge->ladder,
+            (pr_memory_tier_t)tier,
+            nodes,
+            256,
+            &node_count
+        );
+
+        if (err != Z_LADDER_SUCCESS) {
+            continue;
+        }
+
+        for (size_t i = 0; i < node_count; i++) {
+            pr_memory_node_t* node = nodes[i];
+            if (!node) continue;
+
+            nimcp_quaternion_t state = pr_memory_node_get_state(node);
+            float emotional_mag = fabsf(state.x);
+
+            // Process if above threshold
+            if (emotional_mag >= PR_SLEEP_MIN_EMOTIONAL_MAG) {
+                // Reduce emotional magnitude while preserving sign
+                float reduction = emotional_mag * bridge->config.rem_emotional_factor;
+                float new_emotion = state.x * (1.0f - bridge->config.rem_emotional_factor);
+                state.x = new_emotion;
+
+                pr_memory_node_update_state(node, state);
+
+                processed++;
+                total_reduction += reduction;
+            }
+        }
+    }
+
+    // Update statistics
+    bridge->stats.emotional_memories_processed += processed;
+    if (processed > 0) {
+        bridge->stats.avg_emotional_reduction =
+            (bridge->stats.avg_emotional_reduction * (bridge->stats.emotional_memories_processed - processed) +
+             total_reduction) / bridge->stats.emotional_memories_processed;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(bridge->mutex);
+#endif
+
+    return processed;
+}
+
+NIMCP_EXPORT float pr_sleep_bridge_process_emotional_memory(
+    pr_sleep_bridge_t bridge,
+    uint64_t node_id
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return -1.0f;
+    }
+
+    if (!bridge->ladder) {
+        return -1.0f;
+    }
+
+    pr_memory_node_t* node = z_ladder_find(bridge->ladder, node_id);
+    if (!node) {
+        return -1.0f;
+    }
+
+    nimcp_quaternion_t state = pr_memory_node_get_state(node);
+    float new_emotion = state.x * (1.0f - bridge->config.rem_emotional_factor);
+    state.x = new_emotion;
+
+    pr_memory_node_update_state(node, state);
+
+    return fabsf(new_emotion);
+}
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_get_emotional_memories(
+    pr_sleep_bridge_t bridge,
+    pr_replay_candidate_t* candidates,
+    size_t max_candidates,
+    size_t* count
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC || !candidates || !count) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+    if (!bridge->ladder) {
+        return PR_SLEEP_ERROR_NO_LADDER;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(bridge->mutex);
+#endif
+
+    *count = 0;
+    size_t candidate_count = 0;
+    uint64_t current_time = get_current_time_ms();
+
+    // Iterate through all tiers
+    for (int tier = PR_MEMORY_TIER_Z0; tier < PR_MEMORY_TIER_COUNT && candidate_count < max_candidates; tier++) {
+        pr_memory_node_t* nodes[256];
+        size_t node_count;
+
+        z_ladder_error_t err = z_ladder_get_nodes(
+            bridge->ladder,
+            (pr_memory_tier_t)tier,
+            nodes,
+            256,
+            &node_count
+        );
+
+        if (err != Z_LADDER_SUCCESS) {
+            continue;
+        }
+
+        for (size_t i = 0; i < node_count && candidate_count < max_candidates; i++) {
+            pr_memory_node_t* node = nodes[i];
+            if (!node) continue;
+
+            nimcp_quaternion_t state = pr_memory_node_get_state(node);
+            float emotional_mag = fabsf(state.x);
+
+            // Only include emotional memories
+            if (emotional_mag < PR_SLEEP_MIN_EMOTIONAL_MAG) {
+                continue;
+            }
+
+            pr_replay_candidate_t* cand = &candidates[candidate_count];
+            cand->node_id = node->node_id;
+            cand->tier = node->tier;
+            cand->strength = node->current_strength;
+            cand->emotional_magnitude = emotional_mag;
+            cand->salience = state.y;
+            cand->entanglement_count = pr_memory_node_get_entanglement_count(node);
+            cand->age_ms = current_time - node->created_time_ms;
+            cand->replay_priority = emotional_mag * cand->salience;
+            cand->type = PR_MEMORY_TYPE_EMOTIONAL;
+            cand->is_novel = (cand->age_ms < 24 * 60 * 60 * 1000);
+
+            candidate_count++;
+        }
+    }
+
+    *count = candidate_count;
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(bridge->mutex);
+#endif
+
+    return PR_SLEEP_SUCCESS;
+}
+
+//=============================================================================
+// Association Management Functions
+//=============================================================================
+
+NIMCP_EXPORT int pr_sleep_bridge_strengthen_associations(
+    pr_sleep_bridge_t bridge,
+    const uint64_t* node_ids,
+    size_t count
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC || !node_ids || count < 2) {
+        return 0;
+    }
+
+    if (!bridge->graph || !bridge->config.enable_entanglement_update) {
+        return 0;
+    }
+
+    int strengthened = 0;
+
+    // Strengthen associations between adjacent pairs in the sequence
+    for (size_t i = 0; i < count - 1; i++) {
+        float new_weight = entangle_strengthen_edge(
+            bridge->graph,
+            node_ids[i],
+            node_ids[i + 1],
+            bridge->config.association_strengthen_delta
+        );
+
+        if (new_weight >= 0.0f) {
+            strengthened++;
+        }
+    }
+
+    bridge->stats.associations_strengthened += strengthened;
+
+    return strengthened;
+}
+
+NIMCP_EXPORT int pr_sleep_bridge_prune_weak_associations(pr_sleep_bridge_t bridge) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return 0;
+    }
+
+    // Only prune during REM
+    if (bridge->current_stage != PR_SLEEP_STAGE_REM) {
+        return 0;
+    }
+
+    if (!bridge->graph || !bridge->config.enable_entanglement_update) {
+        return 0;
+    }
+
+    size_t pruned = entangle_prune_weak(bridge->graph, bridge->config.rem_prune_threshold);
+    bridge->stats.associations_pruned += pruned;
+
+    return (int)pruned;
+}
+
+//=============================================================================
+// Callback Functions
+//=============================================================================
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_set_replay_callback(
+    pr_sleep_bridge_t bridge,
+    pr_replay_callback_t callback,
+    void* user_data
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+    bridge->replay_callback = callback;
+    bridge->replay_callback_data = user_data;
+
+    return PR_SLEEP_SUCCESS;
+}
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_set_stage_callback(
+    pr_sleep_bridge_t bridge,
+    pr_stage_callback_t callback,
+    void* user_data
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+    bridge->stage_callback = callback;
+    bridge->stage_callback_data = user_data;
+
+    return PR_SLEEP_SUCCESS;
+}
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_set_promotion_callback(
+    pr_sleep_bridge_t bridge,
+    pr_sleep_promotion_callback_t callback,
+    void* user_data
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+    bridge->promotion_callback = callback;
+    bridge->promotion_callback_data = user_data;
+
+    return PR_SLEEP_SUCCESS;
+}
+
+//=============================================================================
+// Statistics Functions
+//=============================================================================
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_get_stats(
+    const pr_sleep_bridge_t bridge,
+    pr_sleep_stats_t* stats
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC || !stats) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(((pr_sleep_bridge_t)bridge)->mutex);
+#endif
+
+    *stats = bridge->stats;
+
+    // Update current stage time
+    uint64_t now = get_current_time_ms();
+    uint64_t current_stage_time = now - bridge->stage_states[bridge->current_stage].entry_time_ms;
+    stats->time_per_stage_ms[bridge->current_stage] += current_stage_time;
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(((pr_sleep_bridge_t)bridge)->mutex);
+#endif
+
+    return PR_SLEEP_SUCCESS;
+}
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_reset_stats(pr_sleep_bridge_t bridge) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(bridge->mutex);
+#endif
+
+    memset(&bridge->stats, 0, sizeof(pr_sleep_stats_t));
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(bridge->mutex);
+#endif
+
+    return PR_SLEEP_SUCCESS;
+}
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_get_replay_history(
+    const pr_sleep_bridge_t bridge,
+    pr_replay_event_t* events,
+    size_t max_events,
+    size_t* count
+) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC || !events || !count) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+    if (!bridge->replay_history || !bridge->config.track_replay_history) {
+        *count = 0;
+        return PR_SLEEP_SUCCESS;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(((pr_sleep_bridge_t)bridge)->mutex);
+#endif
+
+    size_t to_copy = bridge->replay_history_count < max_events ?
+                     bridge->replay_history_count : max_events;
+
+    // Copy from circular buffer (most recent first)
+    for (size_t i = 0; i < to_copy; i++) {
+        size_t idx = (bridge->replay_history_head + bridge->replay_history_capacity - 1 - i) %
+                     bridge->replay_history_capacity;
+        events[i] = bridge->replay_history[idx];
+    }
+
+    *count = to_copy;
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(((pr_sleep_bridge_t)bridge)->mutex);
+#endif
+
+    return PR_SLEEP_SUCCESS;
+}
+
+NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_clear_replay_history(pr_sleep_bridge_t bridge) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        return PR_SLEEP_ERROR_NULL_POINTER;
+    }
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_lock(bridge->mutex);
+#endif
+
+    bridge->replay_history_count = 0;
+    bridge->replay_history_head = 0;
+
+#ifdef NIMCP_HAS_THREADS
+    nimcp_mutex_unlock(bridge->mutex);
+#endif
+
+    return PR_SLEEP_SUCCESS;
+}
+
+//=============================================================================
+// Utility Functions
+//=============================================================================
+
+NIMCP_EXPORT const char* pr_sleep_error_string(pr_sleep_error_t error) {
+    switch (error) {
+        case PR_SLEEP_SUCCESS:
+            return "Success";
+        case PR_SLEEP_ERROR_NULL_POINTER:
+            return "Null pointer";
+        case PR_SLEEP_ERROR_INVALID_STAGE:
+            return "Invalid sleep stage";
+        case PR_SLEEP_ERROR_NO_MEMORY:
+            return "Memory allocation failed";
+        case PR_SLEEP_ERROR_NOT_INITIALIZED:
+            return "Bridge not initialized";
+        case PR_SLEEP_ERROR_INVALID_CONFIG:
+            return "Invalid configuration";
+        case PR_SLEEP_ERROR_NO_LADDER:
+            return "Z-ladder not set";
+        case PR_SLEEP_ERROR_REPLAY_FAILED:
+            return "Replay operation failed";
+        case PR_SLEEP_ERROR_STAGE_LOCKED:
+            return "Stage transition blocked";
+        default:
+            return "Unknown error";
+    }
+}
+
+NIMCP_EXPORT const char* pr_sleep_stage_name(pr_sleep_stage_t stage) {
+    switch (stage) {
+        case PR_SLEEP_STAGE_WAKE:
+            return "Wake";
+        case PR_SLEEP_STAGE_N1:
+            return "N1 (Light Sleep)";
+        case PR_SLEEP_STAGE_N2:
+            return "N2 (Sleep Spindles)";
+        case PR_SLEEP_STAGE_N3:
+            return "N3 (Slow-Wave Sleep)";
+        case PR_SLEEP_STAGE_REM:
+            return "REM (Rapid Eye Movement)";
+        default:
+            return "Unknown";
+    }
+}
+
+NIMCP_EXPORT const char* pr_replay_direction_name(pr_replay_direction_t direction) {
+    switch (direction) {
+        case PR_REPLAY_FORWARD:
+            return "Forward";
+        case PR_REPLAY_REVERSE:
+            return "Reverse";
+        case PR_REPLAY_RANDOM:
+            return "Random";
+        default:
+            return "Unknown";
+    }
+}
+
+NIMCP_EXPORT const char* pr_memory_type_name(pr_memory_type_t type) {
+    switch (type) {
+        case PR_MEMORY_TYPE_DECLARATIVE:
+            return "Declarative";
+        case PR_MEMORY_TYPE_PROCEDURAL:
+            return "Procedural";
+        case PR_MEMORY_TYPE_EMOTIONAL:
+            return "Emotional";
+        case PR_MEMORY_TYPE_SEMANTIC:
+            return "Semantic";
+        case PR_MEMORY_TYPE_EPISODIC:
+            return "Episodic";
+        default:
+            return "Unknown";
+    }
+}
+
+NIMCP_EXPORT void pr_sleep_bridge_print_summary(const pr_sleep_bridge_t bridge) {
+    if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        printf("Sleep Bridge: Invalid\n");
+        return;
+    }
+
+    printf("=== Sleep Bridge Summary ===\n");
+    printf("Current Stage: %s\n", pr_sleep_stage_name(bridge->current_stage));
+    printf("NREM-REM Cycles: %u\n", bridge->nrem_rem_cycle_count);
+    printf("Total Replays: %lu\n", (unsigned long)bridge->stats.total_replays);
+    printf("Total Promotions: %lu\n", (unsigned long)bridge->stats.total_promotions);
+    printf("Emotional Processed: %lu\n", (unsigned long)bridge->stats.emotional_memories_processed);
+    printf("Associations Strengthened: %lu\n", (unsigned long)bridge->stats.associations_strengthened);
+    printf("Associations Pruned: %lu\n", (unsigned long)bridge->stats.associations_pruned);
+
+    printf("\nTime per Stage (ms):\n");
+    for (int i = 0; i < PR_SLEEP_STAGE_COUNT; i++) {
+        printf("  %s: %lu\n", pr_sleep_stage_name((pr_sleep_stage_t)i),
+               (unsigned long)bridge->stats.time_per_stage_ms[i]);
+    }
+
+    printf("=============================\n");
+}
+
+NIMCP_EXPORT uint64_t pr_sleep_current_time_ms(void) {
+    return get_current_time_ms();
+}
+
+NIMCP_EXPORT bool pr_sleep_bridge_validate(const pr_sleep_bridge_t bridge) {
+    if (!bridge) {
+        return false;
+    }
+
+    if (bridge->magic != PR_SLEEP_MAGIC) {
+        return false;
+    }
+
+    if (bridge->current_stage >= PR_SLEEP_STAGE_COUNT) {
+        return false;
+    }
+
+    if (bridge->replay_buffer_count > bridge->replay_buffer_capacity) {
+        return false;
+    }
+
+    if (bridge->config.track_replay_history) {
+        if (bridge->replay_history_count > bridge->replay_history_capacity) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+//=============================================================================
+// Static Helper Functions
+//=============================================================================
+
+static uint64_t get_current_time_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
+
+static float clamp_float(float value, float min_val, float max_val) {
+    if (value < min_val) return min_val;
+    if (value > max_val) return max_val;
+    return value;
+}
+
+static float compute_replay_priority(
+    const pr_sleep_bridge_t bridge,
+    const pr_memory_node_t* node,
+    pr_sleep_stage_t stage
+) {
+    if (!node) return 0.0f;
+
+    float priority = 0.0f;
+
+    nimcp_quaternion_t state = pr_memory_node_get_state(node);
+    float emotional_mag = fabsf(state.x);
+    float salience = state.y;
+    float consolidation = state.w;
+
+    // Base priority from strength and salience
+    priority = node->current_strength * 0.3f + salience * 0.3f;
+
+    // Stage-specific adjustments
+    switch (stage) {
+        case PR_SLEEP_STAGE_N3:
+            // SWS prefers declarative, well-consolidated memories
+            if (node->tier <= PR_MEMORY_TIER_Z1) {
+                priority += 0.3f;  // Boost recent memories
+            }
+            priority += consolidation * 0.2f;
+            break;
+
+        case PR_SLEEP_STAGE_REM:
+            // REM prefers emotional and procedural memories
+            priority += emotional_mag * 0.4f;
+            break;
+
+        case PR_SLEEP_STAGE_N2:
+            // N2 is transitional, moderate all factors
+            priority += 0.1f;
+            break;
+
+        default:
+            break;
+    }
+
+    // Boost for entangled memories (well-connected)
+    uint32_t entangle_count = pr_memory_node_get_entanglement_count(node);
+    if (entangle_count > 0) {
+        priority += 0.1f * (1.0f - 1.0f / (1.0f + entangle_count * 0.1f));
+    }
+
+    return clamp_float(priority, 0.0f, 1.0f);
+}
+
+static pr_memory_type_t infer_memory_type(const pr_memory_node_t* node) {
+    if (!node) return PR_MEMORY_TYPE_DECLARATIVE;
+
+    nimcp_quaternion_t state = pr_memory_node_get_state(node);
+    float emotional_mag = fabsf(state.x);
+
+    // Emotional if high emotional magnitude
+    if (emotional_mag >= PR_SLEEP_MIN_EMOTIONAL_MAG) {
+        return PR_MEMORY_TYPE_EMOTIONAL;
+    }
+
+    // Default to declarative/episodic for Z0/Z1, semantic for Z2/Z3
+    if (node->tier <= PR_MEMORY_TIER_Z1) {
+        return PR_MEMORY_TYPE_EPISODIC;
+    } else {
+        return PR_MEMORY_TYPE_SEMANTIC;
+    }
+}
+
+static int compare_replay_priority(const void* a, const void* b) {
+    const pr_replay_candidate_t* ca = (const pr_replay_candidate_t*)a;
+    const pr_replay_candidate_t* cb = (const pr_replay_candidate_t*)b;
+
+    // Descending order (highest priority first)
+    if (ca->replay_priority > cb->replay_priority) return -1;
+    if (ca->replay_priority < cb->replay_priority) return 1;
+    return 0;
+}
+
+static void record_replay_event(
+    pr_sleep_bridge_t bridge,
+    const pr_replay_event_t* event
+) {
+    if (!bridge->replay_history || !bridge->config.track_replay_history) {
+        return;
+    }
+
+    // Circular buffer insertion
+    bridge->replay_history[bridge->replay_history_head] = *event;
+    bridge->replay_history_head = (bridge->replay_history_head + 1) % bridge->replay_history_capacity;
+
+    if (bridge->replay_history_count < bridge->replay_history_capacity) {
+        bridge->replay_history_count++;
+    }
+}
+
+static float get_stage_promotion_boost(pr_sleep_stage_t stage, const pr_sleep_config_t* config) {
+    switch (stage) {
+        case PR_SLEEP_STAGE_N3:
+            return config->sws_promotion_boost;
+        case PR_SLEEP_STAGE_N2:
+            return config->sws_promotion_boost * 0.5f;
+        case PR_SLEEP_STAGE_REM:
+            return config->sws_promotion_boost * 0.3f;
+        default:
+            return 0.0f;
+    }
+}
+
+//=============================================================================
+// Stage-Specific Consolidation Functions
+//=============================================================================
+
+static int consolidate_wake(pr_sleep_bridge_t bridge) {
+    // During wake, apply decay but no consolidation replay
+    // This simulates normal forgetting during waking hours
+
+    z_ladder_apply_decay(bridge->ladder, bridge->config.wake_decay_rate);
+
+    return 0;
+}
+
+static int consolidate_n1(pr_sleep_bridge_t bridge) {
+    // N1 is transitional - light stabilization
+    // Minimal replay, mainly theta-driven stabilization
+
+    pr_replay_candidate_t candidates[20];
+    size_t count;
+
+    pr_sleep_error_t err = pr_sleep_bridge_get_replay_candidates(
+        bridge, candidates, 20, &count);
+
+    if (err != PR_SLEEP_SUCCESS || count == 0) {
+        return 0;
+    }
+
+    // Replay only top few candidates
+    size_t to_replay = count < 5 ? count : 5;
+    int replayed = 0;
+
+    for (size_t i = 0; i < to_replay; i++) {
+        if (pr_sleep_bridge_replay(bridge, candidates[i].node_id,
+                                   PR_REPLAY_FORWARD, NULL) == PR_SLEEP_SUCCESS) {
+            replayed++;
+        }
+    }
+
+    return replayed;
+}
+
+static int consolidate_n2(pr_sleep_bridge_t bridge) {
+    // N2 features sleep spindles (12-14Hz) that gate hippocampal-neocortical transfer
+    // Moderate replay with spindle-gating simulation
+
+    pr_replay_candidate_t candidates[50];
+    size_t count;
+
+    pr_sleep_error_t err = pr_sleep_bridge_get_replay_candidates(
+        bridge, candidates, 50, &count);
+
+    if (err != PR_SLEEP_SUCCESS || count == 0) {
+        return 0;
+    }
+
+    // Replay moderate number of candidates
+    size_t to_replay = count < 20 ? count : 20;
+    int replayed = 0;
+
+    for (size_t i = 0; i < to_replay; i++) {
+        if (pr_sleep_bridge_replay(bridge, candidates[i].node_id,
+                                   PR_REPLAY_FORWARD, NULL) == PR_SLEEP_SUCCESS) {
+            replayed++;
+        }
+    }
+
+    // Attempt some promotions
+    pr_sleep_bridge_promote_z_ladder(bridge);
+
+    return replayed;
+}
+
+static int consolidate_n3_sws(pr_sleep_bridge_t bridge) {
+    // N3/SWS is the primary declarative memory consolidation stage
+    // Maximum replay with hippocampal sharp-wave ripples
+
+    pr_replay_candidate_t candidates[100];
+    size_t count;
+
+    pr_sleep_error_t err = pr_sleep_bridge_get_replay_candidates(
+        bridge, candidates, 100, &count);
+
+    if (err != PR_SLEEP_SUCCESS || count == 0) {
+        return 0;
+    }
+
+    // Replay maximum candidates
+    size_t to_replay = count < bridge->config.max_replay_per_cycle ?
+                       count : bridge->config.max_replay_per_cycle;
+
+    // Build replay sequence
+    uint64_t* replay_ids = (uint64_t*)malloc(to_replay * sizeof(uint64_t));
+    if (!replay_ids) {
+        return 0;
+    }
+
+    for (size_t i = 0; i < to_replay; i++) {
+        replay_ids[i] = candidates[i].node_id;
+    }
+
+    // Forward replay (primary in SWS)
+    int replayed = pr_sleep_bridge_replay_sequence(bridge, replay_ids, to_replay,
+                                                   PR_REPLAY_FORWARD);
+
+    // Reverse replay for a subset (if enabled)
+    if (bridge->config.enable_reverse_replay && to_replay > 5) {
+        size_t reverse_count = to_replay / 4;
+        pr_sleep_bridge_replay_sequence(bridge, replay_ids, reverse_count,
+                                        PR_REPLAY_REVERSE);
+    }
+
+    free(replay_ids);
+
+    // Promote eligible memories (main promotion happens in SWS)
+    pr_sleep_bridge_promote_z_ladder(bridge);
+
+    return replayed;
+}
+
+static int consolidate_rem(pr_sleep_bridge_t bridge) {
+    // REM is for procedural, emotional processing, and creative recombination
+
+    int total_processed = 0;
+
+    // 1. Emotional processing
+    int emotional = pr_sleep_bridge_emotional_process(bridge);
+    total_processed += emotional;
+
+    // 2. Get replay candidates (emphasizing emotional/procedural)
+    pr_replay_candidate_t candidates[50];
+    size_t count;
+
+    pr_sleep_error_t err = pr_sleep_bridge_get_replay_candidates(
+        bridge, candidates, 50, &count);
+
+    if (err == PR_SLEEP_SUCCESS && count > 0) {
+        // Replay with random order (creative recombination)
+        size_t to_replay = count < 30 ? count : 30;
+
+        uint64_t* replay_ids = (uint64_t*)malloc(to_replay * sizeof(uint64_t));
+        if (replay_ids) {
+            for (size_t i = 0; i < to_replay; i++) {
+                replay_ids[i] = candidates[i].node_id;
+            }
+
+            pr_replay_direction_t direction = bridge->config.enable_random_replay ?
+                                              PR_REPLAY_RANDOM : PR_REPLAY_FORWARD;
+
+            int replayed = pr_sleep_bridge_replay_sequence(bridge, replay_ids, to_replay,
+                                                           direction);
+            total_processed += replayed;
+
+            free(replay_ids);
+        }
+    }
+
+    // 3. Prune weak associations
+    int pruned = pr_sleep_bridge_prune_weak_associations(bridge);
+    (void)pruned;  // Tracked in stats
+
+    // 4. Some promotion (less than SWS)
+    pr_sleep_bridge_promote_z_ladder(bridge);
+
+    return total_processed;
+}
