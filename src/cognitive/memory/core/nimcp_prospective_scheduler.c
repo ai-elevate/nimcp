@@ -1779,7 +1779,7 @@ int prospective_scheduler_notify_event(
         // Check signature similarity if both signatures present
         bool signature_match = true;
         if (intent->event_trigger.cue_signature && event_signature) {
-            float similarity = prime_signature_similarity(
+            float similarity = prime_sig_similarity(
                 intent->event_trigger.cue_signature,
                 event_signature,
                 PRIME_SIG_SIMILARITY_COSINE

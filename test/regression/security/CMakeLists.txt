@@ -309,3 +309,51 @@ target_include_directories(regression_security_sleep_bridges
 add_test(NAME regression_security_sleep_bridges
          COMMAND regression_security_sleep_bridges)
 set_tests_properties(regression_security_sleep_bridges PROPERTIES LABELS "regression;security")
+
+# ============================================================================
+# Security Bridges Regression Tests
+# ============================================================================
+# WHAT: Comprehensive regression tests for security bridges
+# WHY:  Ensure backward compatibility and consistent behavior for:
+#       - Security-Async Bridge (bio-async router integration)
+#       - Security-Logging Bridge (audit trail)
+#       - Security-Immune Unified Bridge (immune system integration)
+# HOW:  Test API stability, configuration, detection, performance,
+#       statistics, state machines, and bidirectional flow
+# ============================================================================
+
+add_executable(regression_security_bridges
+    test_security_bridges_regression.cpp
+)
+target_link_libraries(regression_security_bridges
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/async
+        ${CMAKE_SOURCE_DIR}/include/security/logging
+        ${CMAKE_SOURCE_DIR}/include/security/immune
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/security/async
+        ${CMAKE_SOURCE_DIR}/src/security/logging
+        ${CMAKE_SOURCE_DIR}/src/security/immune
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME regression_security_bridges
+         COMMAND regression_security_bridges)
+set_tests_properties(regression_security_bridges PROPERTIES
+    LABELS "regression;security;bridges"
+    TIMEOUT 300
+)

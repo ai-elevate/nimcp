@@ -382,6 +382,81 @@ set_tests_properties(unit_security_test_security_perception_bridge PROPERTIES
     TIMEOUT 120
 )
 
+# ============================================================================
+# Security-Async Bridge Unit Tests
+# ============================================================================
+# WHAT: Unit tests for Security-Async Bridge (Bio-Async Integration)
+# WHY:  Verify security event broadcasting, threat intel sharing, emergency modes
+# HOW:  Test lifecycle, connections, bidirectional effects, threat intelligence
+# ============================================================================
+
+add_executable(unit_security_test_security_async_bridge
+    test_security_async_bridge.cpp
+)
+target_link_libraries(unit_security_test_security_async_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(unit_security_test_security_async_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/async
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(unit_security_test_security_async_bridge PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_security_async_bridge
+         COMMAND unit_security_test_security_async_bridge)
+set_tests_properties(unit_security_test_security_async_bridge PROPERTIES
+    LABELS "unit;security;async;bridge"
+    TIMEOUT 120
+)
+
+# ============================================================================
+# Security-Logging Bridge Unit Tests
+# ============================================================================
+# WHAT: Unit tests for Security-Logging Bridge (Audit & Pattern Detection)
+# WHY:  Verify security event logging, pattern analysis, bidirectional effects
+# HOW:  Test lifecycle, connections, core logging, streaming, queries, export
+# ============================================================================
+
+add_executable(unit_security_test_security_logging_bridge
+    test_security_logging_bridge.cpp
+)
+target_link_libraries(unit_security_test_security_logging_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(unit_security_test_security_logging_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/logging
+        ${CMAKE_SOURCE_DIR}/include/utils/logging
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(unit_security_test_security_logging_bridge PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_security_logging_bridge
+         COMMAND unit_security_test_security_logging_bridge)
+set_tests_properties(unit_security_test_security_logging_bridge PROPERTIES
+    LABELS "unit;security;logging;bridge"
+    TIMEOUT 120
+)
+
 # Security Immune Bridge Tests
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/immune/CMakeLists.txt")
     add_subdirectory(immune)

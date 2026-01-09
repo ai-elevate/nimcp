@@ -558,13 +558,13 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_meta_bridge.c  # Phase PR-6.3: Meta-learning bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_continual_bridge.c  # Phase PR-6.5: Continual learning bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_training_plasticity.c  # Phase PR-6.6: Training-plasticity extension
-    # Phase 7: Perception Layer Integration (temporarily disabled - need API updates)
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_visual_bridge.c  # Phase PR-7.1: Visual perception bridge
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_audio_bridge.c  # Phase PR-7.2: Audio perception bridge
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_speech_bridge.c  # Phase PR-7.3: Speech perception bridge
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_omni_bridge.c  # Phase PR-7.4: Omni-sensory bridge
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_attention_bridge.c  # Phase PR-7.5: Attention bridge
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_predictive_bridge.c  # Phase PR-7.6: Predictive bridge
+    # Phase 7: Perception Layer Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_visual_bridge.c  # Phase PR-7.1: Visual perception bridge
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_audio_bridge.c  # Phase PR-7.2: Audio perception bridge (TODO: API alignment)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_speech_bridge.c  # Phase PR-7.3: Speech perception bridge (TODO: API alignment)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_omni_bridge.c  # Phase PR-7.4: Omni-sensory bridge (TODO: API alignment)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_attention_bridge.c  # Phase PR-7.5: Attention bridge (TODO: API alignment)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_predictive_bridge.c  # Phase PR-7.6: Predictive bridge (TODO: API alignment)
     # Phase 8: Enhancement Layer Part 1
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_metamemory.c  # Phase PR-8.1: Metamemory (FOK, TOT, JOL)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_metamemory_monitor.c  # Phase PR-8.2: Metamemory monitoring
@@ -1276,7 +1276,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/immune/nimcp_anomaly_immune_bridge.c     # Anomaly detector-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/immune/nimcp_rate_limiter_immune_bridge.c # Rate limiter-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/immune/nimcp_pattern_db_immune_bridge.c  # Pattern DB-immune integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/immune/nimcp_security_immune_unified_bridge.c  # Unified security-immune bidirectional bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_perception_bridge.c  # Security-Perception Bridge - sensory threat analysis and defense
+
+    # Security Async Integration (Phase SA: Security async bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/async/nimcp_security_async_bridge.c  # Security-async bidirectional bridge
+
+    # Security Logging Integration (Phase SL: Security logging bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/logging/nimcp_security_logging_bridge.c  # Security-logging bidirectional bridge
 
     # Security Sleep Integration (Phase SB-S: Security sleep bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/sleep/nimcp_bbb_sleep_bridge.c

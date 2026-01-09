@@ -331,6 +331,129 @@ set_tests_properties(integration_security_test_swarm_security PROPERTIES
 )
 
 # ============================================================================
+# Security-Logging Bridge Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Security-Logging Bridge
+# WHY:  Verify bidirectional data flow between security and logging systems
+# HOW:  Test event flow, pattern detection, audit integration, and feedback loops
+# ============================================================================
+
+# Security-Logging Bridge Integration Tests (28 tests)
+add_executable(integration_security_test_security_logging
+    test_security_logging_integration.cpp
+)
+target_link_libraries(integration_security_test_security_logging
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_security_logging
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/logging
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/include/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/async
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME integration_security_test_security_logging
+         COMMAND integration_security_test_security_logging)
+set_tests_properties(integration_security_test_security_logging PROPERTIES
+    LABELS "integration;security;logging"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Async Bridge Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Security-Async Bridge (bidirectional)
+# WHY:  Verify security event coordination across bio-async system
+# HOW:  Test broadcasts, threat intel sharing, emergency mode, concurrent ops
+# ============================================================================
+
+# Security-Async Bridge Integration Tests (26 tests)
+add_executable(integration_security_test_security_async
+    test_security_async_integration.cpp
+)
+target_link_libraries(integration_security_test_security_async
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_security_async
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/async
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/async
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME integration_security_test_security_async
+         COMMAND integration_security_test_security_async)
+set_tests_properties(integration_security_test_security_async PROPERTIES
+    LABELS "integration;security;async;bio-router"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Immune Unified Bridge Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Security-Immune Unified Bridge
+# WHY:  Verify bidirectional coordination between all security components
+#       (BBB, anomaly detector, pattern DB, rate limiter, policy engine)
+#       and the brain immune system through the unified bridge.
+# HOW:  Test threat-to-immune response, immune modulation of security,
+#       tolerance system, memory cell formation, and full bidirectional flows
+# ============================================================================
+
+# Security-Immune Unified Bridge Integration Tests (24 tests)
+add_executable(integration_security_test_security_immune
+    test_security_immune_integration.cpp
+)
+target_link_libraries(integration_security_test_security_immune
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_security_immune
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/immune
+        ${CMAKE_SOURCE_DIR}/include/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src/async
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME integration_security_test_security_immune
+         COMMAND integration_security_test_security_immune)
+set_tests_properties(integration_security_test_security_immune PROPERTIES
+    LABELS "integration;security;immune"
+    TIMEOUT 300
+)
+
+# ============================================================================
 # Security Sleep Bridge Integration Tests
 # ============================================================================
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sleep/CMakeLists.txt")

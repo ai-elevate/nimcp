@@ -7699,7 +7699,783 @@ nimcp_status_t nimcp_brain_factory_full_integration(
 | `test/e2e/e2e_test_full_integration_pipeline.cpp` | 20 |
 | **Total** | **700** |
 
-### 32. Updated Scope Summary
+### 32. Cognitive Module Integration
+
+**Priority**: Critical (Heart of the system)
+**Dependencies**: Core, Async, Utils, Plasticity, SNN
+**Est. LOC**: 150,000 | **Tests**: 1,000
+
+#### 32.1 Cognitive Module Architecture Overview
+
+```
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│                        COGNITIVE MODULE (575 headers, 64 subdirs)                          │
+│  ┌─────────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                           META-CONTROLLER (ACC/dlPFC/rPFC/OFC)                       │  │
+│  │  ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐ ┌───────────────┐  │  │
+│  │  │Resource Arbitra- │ │Metacognitive     │ │Affective Meta-   │ │Subsystem      │  │  │
+│  │  │tion Layer        │ │Control Layer     │ │control Layer     │ │Coordination   │  │  │
+│  │  │• WM Slot Alloc   │ │• Uncertainty     │ │• Emotion→Prior   │ │• WM, Exec     │  │  │
+│  │  │• Attention Focus │ │• Confidence Est  │ │• Stress→Capacity │ │• Attn, Curio  │  │  │
+│  │  │• Learning Rate   │ │• Performance     │ │• Arousal→Focus   │ │• GW, Emotion  │  │  │
+│  │  └──────────────────┘ └──────────────────┘ └──────────────────┘ └───────────────┘  │  │
+│  └─────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                           │                                                │
+│  ┌────────────────────────────────────────┴────────────────────────────────────────────┐  │
+│  │                    COGNITIVE INTEGRATION HUB (Mediator Pattern)                      │  │
+│  │  ┌─────────────────────────────────────────────────────────────────────────────┐   │  │
+│  │  │  Event-Driven Communication | Cross-Module Queries | Publish-Subscribe       │   │  │
+│  │  │  23 Integration Bridges: Attention↔WM, Emotion↔Memory, Ethics↔Executive...   │   │  │
+│  │  └─────────────────────────────────────────────────────────────────────────────┘   │  │
+│  └─────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                           │                                                │
+│  ┌────────────────────────────────────────┴────────────────────────────────────────────┐  │
+│  │                           GLOBAL WORKSPACE (Baars/Dehaene)                           │  │
+│  │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │  │
+│  │  │ Broadcast Buffer│ │ Competition     │ │ Ignition       │ │ Subscriber     │   │  │
+│  │  │ (limited cap)   │ │ (salience-based)│ │ Threshold      │ │ Notification   │   │  │
+│  │  │ ~1 chunk/time   │ │ Winner-take-all │ │ 0.6 default    │ │ Parallel access│   │  │
+│  │  └─────────────────┘ └─────────────────┘ └─────────────────┘ └─────────────────┘   │  │
+│  └─────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                           │                                                │
+│  ┌───────────────┬───────────────┬────────┴──────┬───────────────┬───────────────────┐  │
+│  │ WORKING MEM   │  EXECUTIVE    │  ATTENTION    │  REASONING    │    EMOTION        │  │
+│  │ ────────────  │  ──────────   │  ──────────   │  ──────────   │    ────────       │  │
+│  │ 7±2 items     │ Task queue    │ Focus bids    │ Forward chain │ Valence/arousal   │  │
+│  │ dlPFC persist │ Goal maintain │ Salience map  │ Backward chain│ Emotion tensor    │  │
+│  │ Decay/refresh │ Set-shifting  │ Top-down/BU   │ Unification   │ 8 basic emotions  │  │
+│  │ Positional    │ Inhibition    │ Conflict res  │ Quantum reas  │ Emotional tagging │  │
+│  └───────────────┴───────────────┴───────────────┴───────────────┴───────────────────┘  │
+│                                           │                                                │
+│  ┌───────────────┬───────────────┬────────┴──────┬───────────────┬───────────────────┐  │
+│  │ CURIOSITY     │ INTROSPECTION │  SELF-MODEL   │ THEORY OF MIND│   META-LEARNING   │  │
+│  │ ────────────  │  ──────────   │  ──────────   │  ──────────   │   ────────────    │  │
+│  │ Explore/Exp   │ Self-monitor  │ Body schema   │ Belief track  │ Learn-to-learn    │  │
+│  │ Novelty seek  │ Uncertainty   │ Agency sense  │ Intention inf │ Strategy select   │  │
+│  │ Info gain     │ Metacognition │ Temporal self │ Perspective   │ Hyperparameter    │  │
+│  │ Quantum bridge│ Confidence    │ Narrative ID  │ False belief  │ Task transfer     │  │
+│  └───────────────┴───────────────┴───────────────┴───────────────┴───────────────────┘  │
+│                                           │                                                │
+│  ┌───────────────┬───────────────┬────────┴──────┬───────────────┬───────────────────┐  │
+│  │ ETHICS        │ IMAGINATION   │ GAME THEORY   │   SOCIAL      │ MIRROR NEURONS    │  │
+│  │ ────────────  │  ──────────   │  ──────────   │   ────────    │ ────────────────  │  │
+│  │ Core direct   │ Mental simul  │ Nash equilib  │ Social norms  │ Action observ     │  │
+│  │ Harm prevent  │ Counterfact   │ Prisoner dilem│ Reputation    │ Empathy mapping   │  │
+│  │ Value align   │ Creative gen  │ Tit-for-tat   │ Trust model   │ Imitation learn   │  │
+│  │ Combinatorial │ FEP bridge    │ FEP bridge    │ FEP bridge    │ FEP bridge        │  │
+│  └───────────────┴───────────────┴───────────────┴───────────────┴───────────────────┘  │
+│                                           │                                                │
+│  ┌───────────────┬───────────────┬────────┴──────┬───────────────┬───────────────────┐  │
+│  │ RECURSIVE COG │ BIAS DETECT   │  EPISTEMIC    │   SALIENCE    │  WELLBEING        │  │
+│  │ ────────────  │  ──────────   │  ──────────   │   ──────────  │  ────────────     │  │
+│  │ Self-referent │ Cognitive bias│ Knowledge     │ Priority calc │ Mental health     │  │
+│  │ Tool router   │ Anchoring     │ Epistemic val │ Relevance     │ Stress monitor    │  │
+│  │ Delegation    │ Confirmation  │ Uncertainty   │ Surprise      │ Burnout detect    │  │
+│  │ Context store │ Availability  │ Humility      │ FEP bridge    │ Recovery          │  │
+│  └───────────────┴───────────────┴───────────────┴───────────────┴───────────────────┘  │
+│                                           │                                                │
+│  ┌───────────────┬───────────────┬────────┴──────┬───────────────┬───────────────────┐  │
+│  │AUTOBIO MEMORY │ CONSOLIDATION │ COLLECTIVE    │   JEPA        │  PARIETAL         │  │
+│  │ ────────────  │  ──────────   │  ──────────   │   ────────    │  ────────────     │  │
+│  │ Life events   │ Sleep consol  │ Swarm cognit  │ Joint embed   │ Spatial process   │  │
+│  │ Self-narrative│ Replay        │ Shared intent │ Prediction    │ Number sense      │  │
+│  │ Emotion tag   │ Systems/Synap │ Hyperscanning │ Abstraction   │ Body schema       │  │
+│  │ FEP bridge    │ FEP bridge    │ FEP bridge    │ FEP bridge    │ FEP bridge        │  │
+│  └───────────────┴───────────────┴───────────────┴───────────────┴───────────────────┘  │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 32.2 Cognitive Module Category Summary
+
+| Category | Subdirectories | Headers | Purpose |
+|----------|----------------|---------|---------|
+| **Core Cognition** | attention, executive, reasoning, memory | 65+ | Fundamental cognitive processes |
+| **Emotional Systems** | emotion, emotions, emotional_tagging, emotion_tensor, emotion_recognition | 30+ | Emotional processing and tagging |
+| **Social Cognition** | theory_of_mind, tom, social, mirror_neurons, empathetic_response | 35+ | Social understanding and empathy |
+| **Meta-cognition** | introspection, self_model, self_awareness, meta_learning | 30+ | Self-reflection and learning-to-learn |
+| **Higher Cognition** | curiosity, imagination, game_theory, symbolic_logic | 40+ | Complex reasoning and planning |
+| **Memory Systems** | working_memory, memory, autobiographical_memory, consolidation | 50+ | All memory types |
+| **Ethics & Values** | ethics, bias, wellbeing, mental_health | 25+ | Ethical reasoning and wellbeing |
+| **Integration** | integration, global_workspace, recursive | 45+ | Module coordination |
+| **Specialized** | epistemic, salience, parietal, jepa, collective_cognition | 40+ | Domain-specific processing |
+| **Emotional States** | grief, joy, love_loyalty_friendship, shadow_emotions, remorse | 25+ | Complex emotional states |
+| **Root-level** | (37 headers directly in /cognitive/) | 37 | Core interfaces and bridges |
+| **Total** | **64 subdirectories** | **575** | **Complete cognitive infrastructure** |
+
+#### 32.3 Global Workspace Theory Implementation
+
+```c
+// Global Workspace types (from nimcp_global_workspace.h)
+typedef struct {
+    uint32_t capacity_dim;              // Workspace capacity (default: 256 floats)
+    float ignition_threshold;           // Competition threshold (default: 0.6)
+    uint32_t max_subscribers;           // Maximum subscriber modules
+    uint32_t broadcast_duration_ms;     // How long content stays broadcast
+    bool enable_competition;            // Enable competition mechanism
+    bool enable_async;                  // Async broadcast delivery
+} global_workspace_config_t;
+
+// Cognitive module identifiers
+typedef enum {
+    MODULE_WORKING_MEMORY = 0,
+    MODULE_EXECUTIVE,
+    MODULE_ATTENTION,
+    MODULE_REASONING,
+    MODULE_EMOTION,
+    MODULE_CURIOSITY,
+    MODULE_THEORY_OF_MIND,
+    MODULE_INTROSPECTION,
+    MODULE_SELF_MODEL,
+    MODULE_META_LEARNING,
+    MODULE_ETHICS,
+    MODULE_IMAGINATION,
+    MODULE_COUNT
+} cognitive_module_t;
+
+// Global Workspace API
+global_workspace_config_t global_workspace_default_config(void);
+global_workspace_t* global_workspace_create(const global_workspace_config_t* config);
+void global_workspace_destroy(global_workspace_t* ws);
+
+// Subscription
+int global_workspace_subscribe(global_workspace_t* ws, cognitive_module_t module);
+int global_workspace_unsubscribe(global_workspace_t* ws, cognitive_module_t module);
+
+// Competition for workspace access
+bool global_workspace_compete(global_workspace_t* ws, cognitive_module_t source,
+                               const float* content, uint32_t dim, float salience);
+
+// Broadcast reading
+bool global_workspace_read_broadcast(global_workspace_t* ws, float* content,
+                                      uint32_t max_dim, uint32_t* actual_dim,
+                                      cognitive_module_t* source);
+
+// Statistics
+int global_workspace_get_stats(const global_workspace_t* ws,
+                                global_workspace_stats_t* stats);
+```
+
+#### 32.4 Cognitive Meta-Controller
+
+```c
+// Meta-controller state (from nimcp_cognitive_meta_controller.h)
+typedef struct {
+    // Resource arbitration
+    uint32_t wm_slots_allocated;        // Current WM slot allocation (max 7±2)
+    float attention_focus_strength;      // Current attention focus (0-1)
+    float learning_rate_modifier;        // Learning rate scaling factor
+
+    // Metacognitive state
+    float uncertainty_level;             // Epistemic uncertainty (0-1)
+    float confidence_level;              // Metacognitive confidence (0-1)
+    float performance_tracker;           // Recent success rate (0-1)
+
+    // Affective metacontrol
+    float emotional_valence;             // Current valence (-1 to +1)
+    float stress_level;                  // Stress → capacity reduction (0-1)
+    float arousal_level;                 // Arousal → focus width (inverted-U)
+
+    // Subsystem handles
+    working_memory_t* working_memory;
+    executive_controller_t* executive;
+    attention_system_t* attention;
+    curiosity_system_t* curiosity;
+    global_workspace_t* global_workspace;
+    emotional_system_t* emotion;
+    brain_immune_system_t* immune;
+
+    // Bio-async integration
+    nimcp_bio_async_handler_t bio_handler;
+    nimcp_bio_router_t* router;
+
+    // Logging
+    nimcp_logger_t* logger;
+    nimcp_metrics_t* metrics;
+} cognitive_meta_controller_t;
+
+// Arbitration policies
+typedef enum {
+    ARBITRATION_WINNER_TAKE_ALL = 0,    // Highest priority wins
+    ARBITRATION_WEIGHTED_FUSION,         // Weighted average of priorities
+    ARBITRATION_EMOTION_BIASED,          // Emotion modulates priority
+    ARBITRATION_UNCERTAINTY_DRIVEN,      // Uncertainty → exploration
+    ARBITRATION_IMMUNE_MODULATED         // Immune state affects allocation
+} arbitration_policy_t;
+
+// Meta-controller API
+cognitive_meta_controller_t* cognitive_meta_controller_create(
+    const cognitive_meta_controller_config_t* config);
+void cognitive_meta_controller_destroy(cognitive_meta_controller_t* mc);
+
+// Resource arbitration
+int cognitive_meta_controller_allocate_wm_slot(cognitive_meta_controller_t* mc,
+    cognitive_module_t requester, float priority, uint32_t* slot_id_out);
+int cognitive_meta_controller_resolve_attention_conflict(
+    cognitive_meta_controller_t* mc, float* salience_bids,
+    uint32_t bid_count, uint32_t* winner_out);
+float cognitive_meta_controller_get_learning_rate_modifier(
+    const cognitive_meta_controller_t* mc);
+
+// Metacognitive control
+int cognitive_meta_controller_update_uncertainty(
+    cognitive_meta_controller_t* mc, float new_uncertainty);
+int cognitive_meta_controller_update_confidence(
+    cognitive_meta_controller_t* mc, cognitive_module_t module, float confidence);
+float cognitive_meta_controller_get_explore_exploit_ratio(
+    const cognitive_meta_controller_t* mc);
+```
+
+#### 32.5 Cognitive Integration Hub
+
+```c
+// Cognitive event types (from nimcp_cognitive_event_types.h)
+typedef enum {
+    COG_EVENT_ATTENTION_SHIFT = 0,      // Attention focus changed
+    COG_EVENT_WM_ITEM_ADDED,            // Item added to working memory
+    COG_EVENT_WM_ITEM_EVICTED,          // Item evicted from working memory
+    COG_EVENT_EMOTION_CHANGE,           // Emotional state changed
+    COG_EVENT_GOAL_ACTIVATED,           // New goal activated
+    COG_EVENT_GOAL_COMPLETED,           // Goal completed
+    COG_EVENT_CONFLICT_DETECTED,        // Cognitive conflict detected
+    COG_EVENT_UNCERTAINTY_HIGH,         // Uncertainty above threshold
+    COG_EVENT_INSIGHT,                  // Insight/aha moment
+    COG_EVENT_ERROR_DETECTED,           // Error detected (ACC)
+    COG_EVENT_BROADCAST,                // Global workspace broadcast
+    COG_EVENT_COUNT
+} cognitive_event_type_t;
+
+// Cognitive categories
+typedef enum {
+    COG_CATEGORY_ATTENTION = 0,
+    COG_CATEGORY_MEMORY,
+    COG_CATEGORY_EXECUTIVE,
+    COG_CATEGORY_EMOTION,
+    COG_CATEGORY_REASONING,
+    COG_CATEGORY_SOCIAL,
+    COG_CATEGORY_METACOGNITION,
+    COG_CATEGORY_COUNT
+} cognitive_category_t;
+
+// Hub configuration
+typedef struct {
+    uint32_t max_modules;               // Maximum registered modules (default: 64)
+    uint32_t max_subscriptions;         // Maximum total subscriptions (default: 256)
+    bool enable_async;                  // Enable async event delivery (default: true)
+    uint32_t event_queue_size;          // Async event queue size (default: 1024)
+} cognitive_hub_config_t;
+
+// Hub API
+cognitive_hub_config_t cognitive_hub_default_config(void);
+cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* config);
+void cognitive_hub_destroy(cognitive_integration_hub_t hub);
+
+// Module registration
+int cognitive_hub_register_module(cognitive_integration_hub_t hub,
+    const char* name, cognitive_category_t category, void* context,
+    uint32_t* module_id_out);
+int cognitive_hub_unregister_module(cognitive_integration_hub_t hub, uint32_t module_id);
+
+// Event subscription
+int cognitive_hub_subscribe(cognitive_integration_hub_t hub, uint32_t module_id,
+    cognitive_event_type_t event_type, cognitive_event_callback_t callback);
+int cognitive_hub_publish(cognitive_integration_hub_t hub,
+    cognitive_event_type_t event_type, const cognitive_event_t* event);
+
+// Cross-module queries
+int cognitive_hub_query(cognitive_integration_hub_t hub, uint32_t target_module_id,
+    cognitive_query_type_t query_type, const void* query_data,
+    void* response_data, size_t response_size);
+```
+
+#### 32.6 Working Memory System
+
+```c
+// Working memory item (from nimcp_working_memory.h)
+typedef struct {
+    uint32_t item_id;                   // Unique item ID
+    float* content;                     // Item content vector
+    uint32_t content_dim;               // Content dimensionality
+    float salience;                     // Current salience (0-1)
+    float decay_rate;                   // Decay rate per second
+    uint64_t creation_time_ms;          // When item was added
+    uint64_t last_refresh_ms;           // Last attention refresh
+    emotional_tag_t emotional_tag;      // Emotional significance
+    uint32_t source_module;             // Which module added this
+    positional_encoding_t pos_encoding; // Serial position encoding
+} wm_item_t;
+
+// Working memory configuration
+typedef struct {
+    uint32_t capacity;                  // Max items (default: 7)
+    uint32_t item_dim;                  // Item dimensionality
+    float decay_time_constant_ms;       // Decay τ (default: 5000ms)
+    float refresh_boost;                // Attention refresh multiplier
+    bool enable_emotional_tagging;      // Tag items with emotion
+    bool enable_positional_encoding;    // Position-based encoding
+    sleep_state_t initial_sleep_state;  // Initial sleep state
+} working_memory_config_t;
+
+// Working memory API
+working_memory_t* working_memory_create(const working_memory_config_t* config);
+void working_memory_destroy(working_memory_t* wm);
+
+// Item management
+int working_memory_add(working_memory_t* wm, const float* content, uint32_t dim,
+                       float salience, cognitive_module_t source, uint32_t* item_id_out);
+int working_memory_get(const working_memory_t* wm, uint32_t item_id, wm_item_t* item_out);
+int working_memory_refresh(working_memory_t* wm, uint32_t item_id);
+int working_memory_remove(working_memory_t* wm, uint32_t item_id);
+
+// Decay and eviction
+int working_memory_decay_step(working_memory_t* wm, float dt_ms);
+int working_memory_evict_lowest_salience(working_memory_t* wm, uint32_t* evicted_id);
+
+// Query
+uint32_t working_memory_get_current_size(const working_memory_t* wm);
+int working_memory_get_all_items(const working_memory_t* wm, wm_item_t* items,
+                                  uint32_t max_items, uint32_t* actual_count);
+```
+
+#### 32.7 Recursive Cognition System
+
+```c
+// Recursive cognition types (from nimcp_rcog_types.h)
+typedef enum {
+    RCOG_STATE_IDLE = 0,
+    RCOG_STATE_ANALYZING,
+    RCOG_STATE_DELEGATING,
+    RCOG_STATE_AWAITING_RESULTS,
+    RCOG_STATE_INTEGRATING,
+    RCOG_STATE_COMPLETE
+} rcog_state_t;
+
+// Recursion depth limits
+typedef struct {
+    uint32_t max_depth;                 // Maximum recursion depth (default: 10)
+    uint32_t max_delegations;           // Max concurrent delegations
+    uint64_t timeout_ms;                // Per-delegation timeout
+    float delegation_cost_factor;       // Cost multiplier per depth
+} rcog_limits_t;
+
+// Tool router for recursive queries
+typedef struct {
+    const char* tool_name;              // Tool identifier
+    tool_capability_t capabilities;     // What this tool can do
+    tool_invoke_fn_t invoke_fn;         // Invocation function
+    void* context;                      // Tool-specific context
+} rcog_tool_t;
+
+// Recursive cognition orchestrator API
+rcog_orchestrator_t* rcog_orchestrator_create(const rcog_config_t* config);
+void rcog_orchestrator_destroy(rcog_orchestrator_t* orch);
+
+// Query processing
+int rcog_process_query(rcog_orchestrator_t* orch, const rcog_query_t* query,
+                       rcog_answer_t* answer_out);
+int rcog_process_async(rcog_orchestrator_t* orch, const rcog_query_t* query,
+                       rcog_task_id_t* task_id_out);
+int rcog_get_result(rcog_orchestrator_t* orch, rcog_task_id_t task_id,
+                    rcog_answer_t* answer_out);
+
+// Tool registration
+int rcog_register_tool(rcog_orchestrator_t* orch, const rcog_tool_t* tool);
+int rcog_unregister_tool(rcog_orchestrator_t* orch, const char* tool_name);
+
+// Context management
+int rcog_context_store_set(rcog_orchestrator_t* orch, const char* key,
+                            const void* value, size_t value_size);
+int rcog_context_store_get(rcog_orchestrator_t* orch, const char* key,
+                            void* value_out, size_t* value_size);
+```
+
+#### 32.8 Theory of Mind System
+
+```c
+// Theory of Mind types (from nimcp_theory_of_mind.h)
+typedef struct {
+    uint32_t agent_id;                  // Agent being modeled
+    float* belief_state;                // Agent's believed world state
+    float* desire_state;                // Agent's goals/desires
+    float* intention_state;             // Agent's current intentions
+    float confidence;                   // Confidence in this model
+    uint64_t last_updated_ms;           // Last update time
+} agent_mental_model_t;
+
+// Perspective types
+typedef enum {
+    PERSPECTIVE_SELF = 0,
+    PERSPECTIVE_FIRST_ORDER,            // What X believes
+    PERSPECTIVE_SECOND_ORDER,           // What X believes Y believes
+    PERSPECTIVE_THIRD_ORDER,            // What X believes Y believes Z believes
+    PERSPECTIVE_MAX_ORDER = 5           // Practical limit
+} perspective_order_t;
+
+// Theory of Mind API
+theory_of_mind_t* theory_of_mind_create(const tom_config_t* config);
+void theory_of_mind_destroy(theory_of_mind_t* tom);
+
+// Agent modeling
+int tom_create_agent_model(theory_of_mind_t* tom, uint32_t agent_id,
+                           agent_mental_model_t* model_out);
+int tom_update_belief(theory_of_mind_t* tom, uint32_t agent_id,
+                      const float* observed_action, uint32_t action_dim);
+int tom_predict_action(const theory_of_mind_t* tom, uint32_t agent_id,
+                       float* predicted_action, uint32_t max_dim);
+
+// Perspective taking
+int tom_take_perspective(theory_of_mind_t* tom, uint32_t agent_id,
+                         perspective_order_t order, float* perspective_out);
+bool tom_false_belief_test(const theory_of_mind_t* tom, uint32_t agent_id,
+                           const float* reality, const float* agent_belief);
+```
+
+#### 32.9 Ethics and Safety System
+
+```c
+// Ethics types (from nimcp_ethics.h)
+typedef enum {
+    ETHICS_SAFE = 0,                    // Action is safe
+    ETHICS_CAUTION,                     // Proceed with caution
+    ETHICS_WARN,                        // Warning - potential harm
+    ETHICS_BLOCK,                       // Block - definite harm
+    ETHICS_EMERGENCY_STOP               // Emergency stop
+} ethics_verdict_t;
+
+// Core directives
+typedef enum {
+    DIRECTIVE_NO_HARM = 0,              // Do not cause harm
+    DIRECTIVE_HONESTY,                  // Be truthful
+    DIRECTIVE_PRIVACY,                  // Protect privacy
+    DIRECTIVE_CONSENT,                  // Respect consent
+    DIRECTIVE_FAIRNESS,                 // Treat fairly
+    DIRECTIVE_TRANSPARENCY,             // Be transparent
+    DIRECTIVE_COUNT
+} core_directive_t;
+
+// Ethics engine API
+ethics_engine_t* ethics_engine_create(const ethics_config_t* config);
+void ethics_engine_destroy(ethics_engine_t* ethics);
+
+// Action evaluation
+ethics_verdict_t ethics_evaluate_action(const ethics_engine_t* ethics,
+                                         const action_t* proposed_action);
+int ethics_get_explanation(const ethics_engine_t* ethics,
+                           const action_t* action, char* explanation, size_t max_len);
+
+// Combinatorial harm detection
+bool ethics_check_combinatorial_harm(const ethics_engine_t* ethics,
+                                      const action_t* actions, uint32_t action_count);
+
+// Harm prevention
+int harm_prevention_init(harm_prevention_t* hp);
+bool harm_prevention_check(const harm_prevention_t* hp, const action_t* action);
+```
+
+#### 32.10 Cognitive Module Bridge Summary
+
+| Category | Bridges | Count |
+|----------|---------|-------|
+| **Attention Bridges** | SNN, Plasticity, FEP, Substrate, Thalamic, Sleep, GPU | 7 |
+| **Emotion Bridges** | SNN, Plasticity, FEP, Substrate, Thalamic, Quantum | 6 |
+| **Executive Bridges** | SNN, Plasticity, FEP, Substrate, Thalamic, Sleep, Quantum, Middleware | 8 |
+| **Reasoning Bridges** | SNN, Plasticity, FEP, Substrate, Thalamic, Sleep, Quantum | 7 |
+| **Memory Bridges** | SNN, Plasticity, FEP, Substrate, Thalamic, Sleep, Quantum | 7 |
+| **Curiosity Bridges** | SNN, Plasticity, FEP, Substrate, Thalamic, Sleep, Quantum | 7 |
+| **Theory of Mind Bridges** | SNN, Plasticity, FEP, Substrate | 4 |
+| **Ethics Bridges** | SNN, Plasticity, FEP, Substrate, Thalamic | 5 |
+| **Integration Bridges** | 23 cross-module bridges (Attention↔WM, Emotion↔Memory, etc.) | 23 |
+| **Recursive Bridges** | FEP, Immune, Brain-KG, Imagination, Collective, Bio-Async | 6 |
+| **Collective Bridges** | FEP, Plasticity, SNN, Immune, Hub | 5 |
+| **Other Cognitive Bridges** | Salience, Epistemic, Wellbeing, Bias, Introspection, Self-Model | 30+ |
+| **Total Cognitive Bridges** | | **~120** |
+
+#### 32.11 Cognitive Module Integration with Brain Factory
+
+```c
+// File: src/core/brain/factory/init/nimcp_brain_init_cognitive.c
+
+nimcp_status_t nimcp_brain_init_cognitive(
+    nimcp_brain_t* brain,
+    const nimcp_brain_config_t* config) {
+
+    NIMCP_LOG_INFO(brain->logger, "Initializing cognitive systems");
+
+    //=========================================================================
+    // Phase 1: Meta-Controller (Central Coordinator)
+    //=========================================================================
+
+    cognitive_meta_controller_config_t mc_config = cognitive_meta_controller_default_config();
+    mc_config.arbitration_policy = ARBITRATION_WEIGHTED_FUSION;
+    brain->cognitive_meta_controller = cognitive_meta_controller_create(&mc_config);
+    NIMCP_RETURN_IF_ERROR(brain->cognitive_meta_controller != NULL);
+
+    // Register with bio-async router
+    nimcp_bio_router_register(brain->router, NIMCP_MSG_TYPE_COGNITIVE,
+                              cognitive_msg_handler, brain->cognitive_meta_controller);
+
+    //=========================================================================
+    // Phase 2: Global Workspace (Conscious Access)
+    //=========================================================================
+
+    global_workspace_config_t gw_config = global_workspace_default_config();
+    gw_config.capacity_dim = config->global_workspace_dim;
+    gw_config.ignition_threshold = 0.6f;
+    brain->global_workspace = global_workspace_create(&gw_config);
+    NIMCP_RETURN_IF_ERROR(brain->global_workspace != NULL);
+
+    //=========================================================================
+    // Phase 3: Cognitive Integration Hub
+    //=========================================================================
+
+    cognitive_hub_config_t hub_config = cognitive_hub_default_config();
+    hub_config.max_modules = 64;
+    hub_config.enable_async = true;
+    brain->cognitive_hub = cognitive_hub_create(&hub_config);
+    NIMCP_RETURN_IF_ERROR(brain->cognitive_hub != NULL);
+
+    //=========================================================================
+    // Phase 4: Core Cognitive Systems
+    //=========================================================================
+
+    // Working Memory (7±2 items, dlPFC)
+    working_memory_config_t wm_config = working_memory_default_config();
+    wm_config.capacity = config->working_memory_capacity;
+    wm_config.enable_emotional_tagging = true;
+    brain->working_memory = working_memory_create(&wm_config);
+
+    // Executive Controller (Goal management, task switching)
+    brain->executive = executive_controller_create(&config->executive_config);
+
+    // Attention System (Salience-based focus)
+    brain->attention = attention_system_create(&config->attention_config);
+
+    // Reasoning Engine (Forward/backward chaining)
+    brain->reasoning = reasoning_engine_create(&config->reasoning_config);
+
+    // Emotional System (Valence, arousal, 8 basic emotions)
+    brain->emotion = emotional_system_create(&config->emotion_config);
+
+    //=========================================================================
+    // Phase 5: Higher Cognitive Systems
+    //=========================================================================
+
+    // Curiosity (Exploration vs exploitation)
+    brain->curiosity = curiosity_system_create(&config->curiosity_config);
+
+    // Introspection (Self-monitoring)
+    brain->introspection = introspection_system_create(&config->introspection_config);
+
+    // Self-Model (Body schema, agency, temporal self)
+    brain->self_model = self_model_create(&config->self_model_config);
+
+    // Theory of Mind (Belief tracking, perspective taking)
+    brain->theory_of_mind = theory_of_mind_create(&config->tom_config);
+
+    // Meta-Learning (Learn-to-learn)
+    brain->meta_learning = meta_learning_create(&config->meta_learning_config);
+
+    //=========================================================================
+    // Phase 6: Ethics and Safety
+    //=========================================================================
+
+    // Ethics Engine (Core directives, harm prevention)
+    brain->ethics = ethics_engine_create(&config->ethics_config);
+
+    // Connect ethics to executive for action gating
+    nimcp_ethics_executive_bridge_init(&brain->ethics_executive_bridge,
+                                        brain->ethics, brain->executive);
+
+    //=========================================================================
+    // Phase 7: Social Cognition
+    //=========================================================================
+
+    // Mirror Neurons (Action observation, empathy)
+    brain->mirror_neurons = mirror_neuron_system_create(&config->mirror_config);
+
+    // Imagination (Mental simulation, counterfactual)
+    brain->imagination = imagination_system_create(&config->imagination_config);
+
+    // Game Theory (Nash equilibrium, cooperation)
+    brain->game_theory = game_theory_create(&config->game_theory_config);
+
+    //=========================================================================
+    // Phase 8: Recursive Cognition
+    //=========================================================================
+
+    rcog_config_t rcog_config = rcog_default_config();
+    rcog_config.max_depth = 10;
+    brain->rcog_orchestrator = rcog_orchestrator_create(&rcog_config);
+
+    // Register recursive cognition tools
+    rcog_register_tool(brain->rcog_orchestrator, &reasoning_tool);
+    rcog_register_tool(brain->rcog_orchestrator, &memory_tool);
+    rcog_register_tool(brain->rcog_orchestrator, &imagination_tool);
+
+    //=========================================================================
+    // Phase 9: Connect Meta-Controller to All Subsystems
+    //=========================================================================
+
+    cognitive_meta_controller_connect(brain->cognitive_meta_controller,
+        brain->working_memory, brain->executive, brain->attention,
+        brain->curiosity, brain->global_workspace, brain->emotion,
+        brain->immune);
+
+    //=========================================================================
+    // Phase 10: Register All Modules with Cognitive Hub
+    //=========================================================================
+
+    cognitive_hub_register_module(brain->cognitive_hub, "working_memory",
+        COG_CATEGORY_MEMORY, brain->working_memory, NULL);
+    cognitive_hub_register_module(brain->cognitive_hub, "executive",
+        COG_CATEGORY_EXECUTIVE, brain->executive, NULL);
+    cognitive_hub_register_module(brain->cognitive_hub, "attention",
+        COG_CATEGORY_ATTENTION, brain->attention, NULL);
+    cognitive_hub_register_module(brain->cognitive_hub, "reasoning",
+        COG_CATEGORY_REASONING, brain->reasoning, NULL);
+    cognitive_hub_register_module(brain->cognitive_hub, "emotion",
+        COG_CATEGORY_EMOTION, brain->emotion, NULL);
+    cognitive_hub_register_module(brain->cognitive_hub, "theory_of_mind",
+        COG_CATEGORY_SOCIAL, brain->theory_of_mind, NULL);
+    cognitive_hub_register_module(brain->cognitive_hub, "introspection",
+        COG_CATEGORY_METACOGNITION, brain->introspection, NULL);
+    // ... register all modules
+
+    //=========================================================================
+    // Phase 11: Initialize All Bridges
+    //=========================================================================
+
+    // Attention bridges
+    nimcp_attention_snn_bridge_init(&brain->attention->snn_bridge, brain->snn);
+    nimcp_attention_plasticity_bridge_init(&brain->attention->plasticity_bridge, brain->plasticity);
+    nimcp_attention_fep_bridge_init(&brain->attention->fep_bridge, brain->fep);
+
+    // Emotion bridges
+    nimcp_emotion_snn_bridge_init(&brain->emotion->snn_bridge, brain->snn);
+    nimcp_emotion_plasticity_bridge_init(&brain->emotion->plasticity_bridge, brain->plasticity);
+
+    // Integration bridges
+    nimcp_attention_wm_bridge_init(&brain->attention_wm_bridge,
+                                    brain->attention, brain->working_memory);
+    nimcp_emotion_memory_bridge_init(&brain->emotion_memory_bridge,
+                                      brain->emotion, brain->working_memory);
+    nimcp_emotion_executive_bridge_init(&brain->emotion_executive_bridge,
+                                         brain->emotion, brain->executive);
+    nimcp_curiosity_reasoning_bridge_init(&brain->curiosity_reasoning_bridge,
+                                           brain->curiosity, brain->reasoning);
+    // ... initialize all 23 integration bridges
+
+    //=========================================================================
+    // Phase 12: Subscribe Modules to Global Workspace
+    //=========================================================================
+
+    global_workspace_subscribe(brain->global_workspace, MODULE_WORKING_MEMORY);
+    global_workspace_subscribe(brain->global_workspace, MODULE_EXECUTIVE);
+    global_workspace_subscribe(brain->global_workspace, MODULE_ATTENTION);
+    global_workspace_subscribe(brain->global_workspace, MODULE_REASONING);
+    global_workspace_subscribe(brain->global_workspace, MODULE_EMOTION);
+    global_workspace_subscribe(brain->global_workspace, MODULE_CURIOSITY);
+    global_workspace_subscribe(brain->global_workspace, MODULE_THEORY_OF_MIND);
+    global_workspace_subscribe(brain->global_workspace, MODULE_INTROSPECTION);
+    global_workspace_subscribe(brain->global_workspace, MODULE_ETHICS);
+
+    NIMCP_LOG_INFO(brain->logger, "Cognitive systems initialized: %d modules, "
+        "%d bridges, GW capacity %d",
+        MODULE_COUNT, 120, config->global_workspace_dim);
+
+    return NIMCP_OK;
+}
+```
+
+#### 32.12 Cognitive Module Performance Requirements
+
+| Operation | Complexity | Typical Time |
+|-----------|------------|--------------|
+| WM add item | O(N) N=7 | 10 μs |
+| WM decay step | O(N) | 5 μs |
+| GW compete | O(S) subscribers | 50 μs |
+| GW broadcast | O(S) | 100 μs |
+| Hub event publish | O(S) subscribers | 20 μs |
+| Meta-controller arbitrate | O(M) modules | 100 μs |
+| ToM perspective (1st order) | O(D) dim | 1 ms |
+| ToM perspective (2nd order) | O(D²) | 10 ms |
+| Ethics evaluate | O(A) actions | 100 μs |
+| Recursive query | O(depth × tool) | 10-100 ms |
+
+#### 32.13 Cognitive Module Integration Tests
+
+| Test File | Test Count |
+|-----------|------------|
+| `test/unit/cognitive/meta_controller/test_meta_controller.cpp` | 30 |
+| `test/unit/cognitive/meta_controller/test_arbitration.cpp` | 25 |
+| `test/unit/cognitive/meta_controller/test_metacognition.cpp` | 20 |
+| `test/unit/cognitive/global_workspace/test_gw_create.cpp` | 15 |
+| `test/unit/cognitive/global_workspace/test_gw_competition.cpp` | 25 |
+| `test/unit/cognitive/global_workspace/test_gw_broadcast.cpp` | 20 |
+| `test/unit/cognitive/global_workspace/test_gw_snn_bridge.cpp` | 15 |
+| `test/unit/cognitive/global_workspace/test_gw_plasticity_bridge.cpp` | 15 |
+| `test/unit/cognitive/integration/test_cognitive_hub.cpp` | 30 |
+| `test/unit/cognitive/integration/test_event_types.cpp` | 15 |
+| `test/unit/cognitive/integration/test_cross_module_bridges.cpp` | 40 |
+| `test/unit/cognitive/working_memory/test_wm_create.cpp` | 15 |
+| `test/unit/cognitive/working_memory/test_wm_add_remove.cpp` | 20 |
+| `test/unit/cognitive/working_memory/test_wm_decay.cpp` | 15 |
+| `test/unit/cognitive/working_memory/test_wm_eviction.cpp` | 15 |
+| `test/unit/cognitive/working_memory/test_wm_snn_bridge.cpp` | 15 |
+| `test/unit/cognitive/working_memory/test_wm_plasticity_bridge.cpp` | 15 |
+| `test/unit/cognitive/executive/test_executive_controller.cpp` | 25 |
+| `test/unit/cognitive/executive/test_goal_management.cpp` | 20 |
+| `test/unit/cognitive/executive/test_task_switching.cpp` | 15 |
+| `test/unit/cognitive/executive/test_executive_bridges.cpp` | 20 |
+| `test/unit/cognitive/attention/test_attention_system.cpp` | 25 |
+| `test/unit/cognitive/attention/test_salience.cpp` | 15 |
+| `test/unit/cognitive/attention/test_attention_bridges.cpp` | 25 |
+| `test/unit/cognitive/reasoning/test_reasoning_engine.cpp` | 25 |
+| `test/unit/cognitive/reasoning/test_forward_chaining.cpp` | 15 |
+| `test/unit/cognitive/reasoning/test_backward_chaining.cpp` | 15 |
+| `test/unit/cognitive/reasoning/test_reasoning_bridges.cpp` | 20 |
+| `test/unit/cognitive/emotion/test_emotional_system.cpp` | 25 |
+| `test/unit/cognitive/emotion/test_emotion_tensor.cpp` | 20 |
+| `test/unit/cognitive/emotion/test_emotional_tagging.cpp` | 15 |
+| `test/unit/cognitive/emotion/test_emotion_bridges.cpp` | 25 |
+| `test/unit/cognitive/curiosity/test_curiosity_system.cpp` | 20 |
+| `test/unit/cognitive/curiosity/test_exploration.cpp` | 15 |
+| `test/unit/cognitive/curiosity/test_curiosity_bridges.cpp` | 15 |
+| `test/unit/cognitive/introspection/test_introspection.cpp` | 20 |
+| `test/unit/cognitive/introspection/test_self_monitoring.cpp` | 15 |
+| `test/unit/cognitive/self_model/test_self_model.cpp` | 20 |
+| `test/unit/cognitive/self_model/test_body_schema.cpp` | 10 |
+| `test/unit/cognitive/theory_of_mind/test_tom_create.cpp` | 15 |
+| `test/unit/cognitive/theory_of_mind/test_belief_tracking.cpp` | 20 |
+| `test/unit/cognitive/theory_of_mind/test_perspective_taking.cpp` | 20 |
+| `test/unit/cognitive/theory_of_mind/test_false_belief.cpp` | 10 |
+| `test/unit/cognitive/theory_of_mind/test_tom_bridges.cpp` | 15 |
+| `test/unit/cognitive/ethics/test_ethics_engine.cpp` | 25 |
+| `test/unit/cognitive/ethics/test_harm_prevention.cpp` | 20 |
+| `test/unit/cognitive/ethics/test_core_directives.cpp` | 15 |
+| `test/unit/cognitive/ethics/test_combinatorial_harm.cpp` | 10 |
+| `test/unit/cognitive/ethics/test_ethics_bridges.cpp` | 15 |
+| `test/unit/cognitive/recursive/test_rcog_orchestrator.cpp` | 25 |
+| `test/unit/cognitive/recursive/test_rcog_engine.cpp` | 20 |
+| `test/unit/cognitive/recursive/test_rcog_tool_router.cpp` | 15 |
+| `test/unit/cognitive/recursive/test_rcog_delegation.cpp` | 15 |
+| `test/unit/cognitive/recursive/test_rcog_bridges.cpp` | 20 |
+| `test/unit/cognitive/mirror_neurons/test_mirror_system.cpp` | 20 |
+| `test/unit/cognitive/mirror_neurons/test_mirror_bridges.cpp` | 15 |
+| `test/unit/cognitive/imagination/test_imagination.cpp` | 20 |
+| `test/unit/cognitive/imagination/test_counterfactual.cpp` | 15 |
+| `test/unit/cognitive/game_theory/test_game_theory.cpp` | 20 |
+| `test/unit/cognitive/game_theory/test_nash_equilibrium.cpp` | 15 |
+| `test/integration/cognitive/test_cognitive_pipeline.cpp` | 30 |
+| `test/integration/cognitive/test_gw_integration.cpp` | 20 |
+| `test/integration/cognitive/test_meta_controller_integration.cpp` | 20 |
+| `test/integration/cognitive/test_cross_bridge_integration.cpp` | 25 |
+| `test/regression/cognitive/test_cognitive_regression.cpp` | 20 |
+| `test/regression/cognitive/test_gw_regression.cpp` | 10 |
+| `test/e2e/e2e_test_cognitive_pipeline.cpp` | 25 |
+| `test/e2e/e2e_test_recursive_cognition.cpp` | 15 |
+| **Total** | **1,000** |
+
+### 33. Updated Scope Summary
 
 | Category | Items | Est. LOC | Tests |
 |----------|-------|----------|-------|
@@ -7733,7 +8509,8 @@ nimcp_status_t nimcp_brain_factory_full_integration(
 | **Async Module Integration** | **18 headers** | **~50,000** | **~350** |
 | **Utils Module Integration** | **122 headers** | **~70,000** | **~500** |
 | **Core Module Integration** | **323 headers** | **~100,000** | **~700** |
-| **TOTAL** | **~40 modules + full integration** | **~814,300** | **~9,086** |
+| **Cognitive Module Integration** | **575 headers** | **~150,000** | **~1,000** |
+| **TOTAL** | **~40 modules + full integration** | **~964,300** | **~10,086** |
 
 ---
 

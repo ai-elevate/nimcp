@@ -5827,6 +5827,19 @@ e2e_test_security_attack_simulation/fast:
 .PHONY : e2e_test_security_attack_simulation/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_security_bridges_pipeline
+
+# Build rule for target.
+e2e_test_security_bridges_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_security_bridges_pipeline
+.PHONY : e2e_test_security_bridges_pipeline
+
+# fast build rule for target.
+e2e_test_security_bridges_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_security_bridges_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_security_bridges_pipeline.dir/build
+.PHONY : e2e_test_security_bridges_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_swarm_formation
 
 # Build rule for target.
@@ -17787,6 +17800,32 @@ unit_security_test_security_perception_bridge/fast:
 .PHONY : unit_security_test_security_perception_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_security_test_security_async_bridge
+
+# Build rule for target.
+unit_security_test_security_async_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_async_bridge
+.PHONY : unit_security_test_security_async_bridge
+
+# fast build rule for target.
+unit_security_test_security_async_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_security_async_bridge.dir/build.make test/unit/security/CMakeFiles/unit_security_test_security_async_bridge.dir/build
+.PHONY : unit_security_test_security_async_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_security_logging_bridge
+
+# Build rule for target.
+unit_security_test_security_logging_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_logging_bridge
+.PHONY : unit_security_test_security_logging_bridge
+
+# fast build rule for target.
+unit_security_test_security_logging_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_security_logging_bridge.dir/build.make test/unit/security/CMakeFiles/unit_security_test_security_logging_bridge.dir/build
+.PHONY : unit_security_test_security_logging_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_security_immune_pattern_db
 
 # Build rule for target.
@@ -17798,6 +17837,19 @@ unit_security_immune_pattern_db: cmake_check_build_system
 unit_security_immune_pattern_db/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/security/immune/CMakeFiles/unit_security_immune_pattern_db.dir/build.make test/unit/security/immune/CMakeFiles/unit_security_immune_pattern_db.dir/build
 .PHONY : unit_security_immune_pattern_db/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_immune_unified_bridge
+
+# Build rule for target.
+unit_security_immune_unified_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_immune_unified_bridge
+.PHONY : unit_security_immune_unified_bridge
+
+# fast build rule for target.
+unit_security_immune_unified_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/immune/CMakeFiles/unit_security_immune_unified_bridge.dir/build.make test/unit/security/immune/CMakeFiles/unit_security_immune_unified_bridge.dir/build
+.PHONY : unit_security_immune_unified_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_security_sleep_bridges
@@ -17941,6 +17993,45 @@ integration_security_test_swarm_security: cmake_check_build_system
 integration_security_test_swarm_security/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_swarm_security.dir/build.make test/integration/security/CMakeFiles/integration_security_test_swarm_security.dir/build
 .PHONY : integration_security_test_swarm_security/fast
+
+#=============================================================================
+# Target rules for targets named integration_security_test_security_logging
+
+# Build rule for target.
+integration_security_test_security_logging: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_security_logging
+.PHONY : integration_security_test_security_logging
+
+# fast build rule for target.
+integration_security_test_security_logging/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_security_logging.dir/build.make test/integration/security/CMakeFiles/integration_security_test_security_logging.dir/build
+.PHONY : integration_security_test_security_logging/fast
+
+#=============================================================================
+# Target rules for targets named integration_security_test_security_async
+
+# Build rule for target.
+integration_security_test_security_async: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_security_async
+.PHONY : integration_security_test_security_async
+
+# fast build rule for target.
+integration_security_test_security_async/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_security_async.dir/build.make test/integration/security/CMakeFiles/integration_security_test_security_async.dir/build
+.PHONY : integration_security_test_security_async/fast
+
+#=============================================================================
+# Target rules for targets named integration_security_test_security_immune
+
+# Build rule for target.
+integration_security_test_security_immune: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_security_immune
+.PHONY : integration_security_test_security_immune
+
+# fast build rule for target.
+integration_security_test_security_immune/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_security_immune.dir/build.make test/integration/security/CMakeFiles/integration_security_test_security_immune.dir/build
+.PHONY : integration_security_test_security_immune/fast
 
 #=============================================================================
 # Target rules for targets named integration_security_sleep_bridges
@@ -18162,6 +18253,19 @@ regression_security_sleep_bridges: cmake_check_build_system
 regression_security_sleep_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_sleep_bridges.dir/build.make test/regression/security/CMakeFiles/regression_security_sleep_bridges.dir/build
 .PHONY : regression_security_sleep_bridges/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_bridges
+
+# Build rule for target.
+regression_security_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_bridges
+.PHONY : regression_security_bridges
+
+# fast build rule for target.
+regression_security_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_bridges.dir/build.make test/regression/security/CMakeFiles/regression_security_bridges.dir/build
+.PHONY : regression_security_bridges/fast
 
 #=============================================================================
 # Target rules for targets named unit_language_orchestrator
@@ -24232,6 +24336,7 @@ help:
 	@echo "... e2e_test_salience_snn_plasticity_pipeline"
 	@echo "... e2e_test_second_messenger_pipeline"
 	@echo "... e2e_test_security_attack_simulation"
+	@echo "... e2e_test_security_bridges_pipeline"
 	@echo "... e2e_test_self_model_snn_plasticity_pipeline"
 	@echo "... e2e_test_server_swarm_pipeline"
 	@echo "... e2e_test_sleep_bridge_pipeline"
@@ -24524,6 +24629,9 @@ help:
 	@echo "... integration_security_test_key_derivation"
 	@echo "... integration_security_test_math_integration"
 	@echo "... integration_security_test_pattern_db"
+	@echo "... integration_security_test_security_async"
+	@echo "... integration_security_test_security_immune"
+	@echo "... integration_security_test_security_logging"
 	@echo "... integration_security_test_swarm_security"
 	@echo "... integration_snn_test_bridge_integration"
 	@echo "... integration_snn_test_integration"
@@ -24821,6 +24929,7 @@ help:
 	@echo "... regression_portia_test_tier_switch_stability"
 	@echo "... regression_quantum_bridges"
 	@echo "... regression_rcog_bridge"
+	@echo "... regression_security_bridges"
 	@echo "... regression_security_sleep_bridges"
 	@echo "... regression_security_test_anomaly_detector"
 	@echo "... regression_security_test_bbb_regression"
@@ -25788,6 +25897,7 @@ help:
 	@echo "... unit_quantum_test_quantum_sat"
 	@echo "... unit_quantum_test_quantum_superposition"
 	@echo "... unit_security_immune_pattern_db"
+	@echo "... unit_security_immune_unified_bridge"
 	@echo "... unit_security_sleep_bridges"
 	@echo "... unit_security_test_anomaly_detector"
 	@echo "... unit_security_test_bayesian_network"
@@ -25803,11 +25913,13 @@ help:
 	@echo "... unit_security_test_policy_parser"
 	@echo "... unit_security_test_post_quantum"
 	@echo "... unit_security_test_security"
+	@echo "... unit_security_test_security_async_bridge"
 	@echo "... unit_security_test_security_comprehensive"
 	@echo "... unit_security_test_security_consensus"
 	@echo "... unit_security_test_security_coverage"
 	@echo "... unit_security_test_security_integration"
 	@echo "... unit_security_test_security_level"
+	@echo "... unit_security_test_security_logging_bridge"
 	@echo "... unit_security_test_security_perception_bridge"
 	@echo "... unit_security_test_shell_detector"
 	@echo "... unit_security_test_supply_chain"

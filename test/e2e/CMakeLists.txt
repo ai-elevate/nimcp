@@ -181,6 +181,12 @@ add_e2e_test(e2e_test_security_attack_simulation
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_security_attack_simulation.cpp
 )
 
+# Security Bridges Pipeline E2E Tests
+add_e2e_test(e2e_test_security_bridges_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_security_bridges_pipeline.cpp
+)
+
 # Swarm E2E Tests
 add_e2e_test(e2e_test_swarm_formation
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp

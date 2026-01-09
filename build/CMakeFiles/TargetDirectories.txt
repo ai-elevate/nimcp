@@ -496,6 +496,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_bio_async_plasticity_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_bio_async_cognitive_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_security_attack_simulation.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_security_bridges_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_swarm_formation.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_swarm_threat_response.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_asymmetric_swarm.dir
@@ -2991,6 +2992,8 @@
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_nan_inf_validation.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_fep_bridges.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_security_perception_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_security_async_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_security_logging_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/rebuild_cache.dir
@@ -2999,6 +3002,7 @@
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/security/immune/CMakeFiles/unit_security_immune_pattern_db.dir
+/home/bbrelin/nimcp/build/test/unit/security/immune/CMakeFiles/unit_security_immune_unified_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/security/immune/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/security/immune/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/security/immune/CMakeFiles/rebuild_cache.dir
@@ -3024,6 +3028,9 @@
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_pattern_db.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_encrypted_audit.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_swarm_security.dir
+/home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_security_logging.dir
+/home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_security_async.dir
+/home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_security_immune.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/rebuild_cache.dir
@@ -3055,6 +3062,7 @@
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_test_post_quantum.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_test_supply_chain.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_sleep_bridges.dir
+/home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_bridges.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/rebuild_cache.dir

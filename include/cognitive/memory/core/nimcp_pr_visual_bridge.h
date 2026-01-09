@@ -301,7 +301,7 @@ struct pr_visual_bridge_t {
     pr_memory_node_t* current_visual_memory;
 
     /** Visual memory entanglement graph */
-    entangle_graph_t* visual_entanglement;
+    entangle_graph_t visual_entanglement;
 
     /** Prime signature configuration */
     prime_sig_config_t sig_config;
@@ -659,7 +659,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_get_memory_pe(
  * @param bridge Bridge instance
  * @return Entanglement graph or NULL if not available
  */
-NIMCP_EXPORT entangle_graph_t* pr_visual_bridge_get_visual_entanglement(
+NIMCP_EXPORT entangle_graph_t pr_visual_bridge_get_visual_entanglement(
     pr_visual_bridge_t* bridge);
 
 /**
