@@ -34,5 +34,9 @@ add_hypothalamus_test(test_hypothalamus_training_bridge)
 # predictive coding, pain modulation, sleep gating, thermal salience)
 add_hypothalamus_test(test_hypothalamus_perception_bridge)
 
+# Logic bridge tests (motivated reasoning, wishful thinking, drive-logic integration,
+# FEP prediction, predicate-drive mapping, conclusion processing)
+add_hypothalamus_test(test_hypothalamus_logic_bridge)
+
 # Add FEP bridge tests subdirectory
 add_subdirectory(fep)

@@ -56,3 +56,6 @@ add_hypothalamus_integration_test(test_hypothalamus_training_integration)
 
 # Hypothalamus-Perception bridge integration tests - Tests perception modulation integration
 add_hypothalamus_integration_test(test_hypothalamus_perception_bridge_integration)
+
+# Hypothalamus-Logic bridge integration tests - Tests motivated reasoning and logic-driven drive updates
+add_hypothalamus_integration_test(test_hypothalamus_logic_bridge_integration)

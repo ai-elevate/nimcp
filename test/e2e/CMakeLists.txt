@@ -1207,6 +1207,19 @@ add_e2e_test(e2e_test_hypothalamus_perception_pipeline
 )
 
 # ============================================================================
+# Hypothalamus Logic Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for Hypothalamus-Logic Bridge integration
+# WHY:  Verify motivated reasoning (hot cognition) and logic-driven drive updates
+# HOW:  Test complete pipelines: hungry agent food search, fearful agent threat
+#       assessment, curious agent exploration, conflicting drives, goal lifecycle,
+#       FEP prediction loops, and extended simulation stability
+# ============================================================================
+add_e2e_test(e2e_test_hypothalamus_logic_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypothalamus_logic_pipeline.cpp
+)
+
+# ============================================================================
 # Motor Control Pipeline E2E Test
 # ============================================================================
 # WHAT: E2E tests for motor control and execution
