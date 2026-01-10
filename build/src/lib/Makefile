@@ -16913,6 +16913,30 @@ __/core/brain/regions/hypothalamus/nimcp_hypothalamus_snc_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/nimcp_hypothalamus_snc_bridge.c.s
 .PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_snc_bridge.c.s
 
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.o: __/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c.o
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.o
+
+# target to build an object file
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c.o
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c.o
+
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.i: __/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c.i
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c.i
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c.i
+
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.s: __/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c.s
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c.s
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c.s
+
 __/core/brain/regions/hypothalamus/nimcp_hypothalamus_wellbeing_bridge.o: __/core/brain/regions/hypothalamus/nimcp_hypothalamus_wellbeing_bridge.c.o
 .PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_wellbeing_bridge.o
 
@@ -39010,6 +39034,9 @@ help:
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_snc_bridge.o"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_snc_bridge.i"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_snc_bridge.s"
+	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.o"
+	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.i"
+	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.s"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_wellbeing_bridge.o"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_wellbeing_bridge.i"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_wellbeing_bridge.s"

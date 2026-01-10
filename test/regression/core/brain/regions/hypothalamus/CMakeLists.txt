@@ -26,3 +26,6 @@ add_hypothalamus_regression_test(test_hypothalamus_orchestrator_regression)
 
 # FEP bridges regression tests
 add_hypothalamus_regression_test(test_hypo_fep_bridges_regression)
+
+# Hypothalamus-Training bridge regression tests
+add_hypothalamus_regression_test(test_hypothalamus_training_regression)

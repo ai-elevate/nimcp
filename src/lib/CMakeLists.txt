@@ -238,6 +238,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_bias_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_tom_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_predictive_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.c   # Hypothalamus-training integration bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_hypothalamus.c              # Hypothalamus factory init
 
     # Hippocampus - Episodic memory, spatial navigation, pattern separation/completion (Phase H1)

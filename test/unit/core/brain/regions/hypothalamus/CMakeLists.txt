@@ -27,5 +27,8 @@ add_hypothalamus_test(test_nimcp_hypothalamus_alignment)
 # Orchestrator tests (bridge coordination, event routing, drive management)
 add_hypothalamus_test(test_hypothalamus_orchestrator)
 
+# Training bridge tests (drive-modulated learning, homeostatic regulation)
+add_hypothalamus_test(test_hypothalamus_training_bridge)
+
 # Add FEP bridge tests subdirectory
 add_subdirectory(fep)

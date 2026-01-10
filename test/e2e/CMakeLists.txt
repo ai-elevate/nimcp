@@ -2440,6 +2440,38 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypo_fep_cognitive_pipeline.cpp)
     message(STATUS "  Added Hypothalamus FEP-Cognitive Pipeline E2E test: e2e_test_hypo_fep_cognitive_pipeline")
 endif()
 
+# ============================================================================
+# Hypothalamus Training Pipeline E2E Test
+# ============================================================================
+# WHAT: Test hypothalamus-training bridge integration
+# WHY:  Verify drive-modulated learning, homeostatic regulation, consolidation
+# HOW:  Simulate complete training scenarios through the bridge
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypothalamus_training_pipeline.cpp)
+    add_executable(e2e_test_hypothalamus_training_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypothalamus_training_pipeline.cpp
+    )
+    target_include_directories(e2e_test_hypothalamus_training_pipeline PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/core/brain/regions/hypothalamus
+    )
+    target_link_libraries(e2e_test_hypothalamus_training_pipeline PRIVATE
+        nimcp
+        GTest::GTest
+        GTest::Main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_hypothalamus_training_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_hypothalamus_training_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_hypothalamus_training_pipeline COMMAND e2e_test_hypothalamus_training_pipeline)
+    set_tests_properties(e2e_test_hypothalamus_training_pipeline PROPERTIES
+        LABELS "e2e;hypothalamus;training;drives;homeostatic;consolidation"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Hypothalamus Training Pipeline E2E test: e2e_test_hypothalamus_training_pipeline")
+endif()
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)

@@ -608,6 +608,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_training_symbolic_logic_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_hypothalamus_orchestrator_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_hypo_fep_cognitive_pipeline.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_hypothalamus_training_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/rebuild_cache.dir
@@ -1776,6 +1777,7 @@
 /home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_integration.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypo_fep_integration.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypo_bio_async_integration.dir
+/home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypothalamus_training_integration.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/rebuild_cache.dir
@@ -1831,6 +1833,7 @@
 /home/bbrelin/nimcp/build/test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_regression.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypo_fep_bridges_regression.dir
+/home/bbrelin/nimcp/build/test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypothalamus_training_regression.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/regions/hypothalamus/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/regions/hypothalamus/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/regions/hypothalamus/CMakeFiles/rebuild_cache.dir
@@ -1952,6 +1955,7 @@
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_adapter.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_hypothalamus_training_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/rebuild_cache.dir
@@ -2571,7 +2575,6 @@
 /home/bbrelin/nimcp/build/test/integration/cognitive/social/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/regression_cognitive_emotion_performance.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/regression_cognitive_working_memory_pe_test.dir
-/home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/regression_cognitive_bridge_completeness.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/regression_cognitive_thalamic_routing.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/regression_cognitive_guardian_intervention.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/test.dir

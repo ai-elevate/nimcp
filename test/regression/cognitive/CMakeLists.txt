@@ -120,33 +120,34 @@ add_subdirectory(social)
 # ============================================================================
 # Cognitive Bridge Completeness Tests
 # ============================================================================
-add_executable(regression_cognitive_bridge_completeness
-    test_cognitive_bridge_completeness.cpp
-)
+# DISABLED: test_cognitive_bridge_completeness.cpp not yet implemented
+# add_executable(regression_cognitive_bridge_completeness
+#     test_cognitive_bridge_completeness.cpp
+# )
+#
+# target_link_libraries(regression_cognitive_bridge_completeness
+#     PRIVATE
+#         nimcp
+#         GTest::gtest
+#         GTest::gtest_main
+#         Threads::Threads
+#         m
+# )
 
-target_link_libraries(regression_cognitive_bridge_completeness
-    PRIVATE
-        nimcp
-        GTest::gtest
-        GTest::gtest_main
-        Threads::Threads
-        m
-)
-
-target_include_directories(regression_cognitive_bridge_completeness
-    PRIVATE
-        ${PROJECT_SOURCE_DIR}/include
-        ${PROJECT_SOURCE_DIR}/src
-)
-
-target_compile_features(regression_cognitive_bridge_completeness PRIVATE cxx_std_17)
-
-gtest_discover_tests(regression_cognitive_bridge_completeness
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    PROPERTIES
-        LABELS "regression;cognitive;bridge;completeness"
-        TIMEOUT 180
-)
+# target_include_directories(regression_cognitive_bridge_completeness
+#     PRIVATE
+#         ${PROJECT_SOURCE_DIR}/include
+#         ${PROJECT_SOURCE_DIR}/src
+# )
+#
+# target_compile_features(regression_cognitive_bridge_completeness PRIVATE cxx_std_17)
+#
+# gtest_discover_tests(regression_cognitive_bridge_completeness
+#     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+#     PROPERTIES
+#         LABELS "regression;cognitive;bridge;completeness"
+#         TIMEOUT 180
+# )
 
 # ============================================================================
 # Cognitive Thalamic Routing Tests
