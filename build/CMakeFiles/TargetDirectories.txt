@@ -3162,6 +3162,7 @@
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_epistemic.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_distributed_training.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_hippocampus.dir
+/home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_orchestrator.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/rebuild_cache.dir

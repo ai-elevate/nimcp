@@ -288,7 +288,7 @@ TEST_F(SecurityPerformanceRegressionTest, PatternMatchingPerformance)
 
     // Add some patterns first
     nimcp_pattern_entry_t entry;
-    entry.pattern = "(?i)select.*from";
+    entry.pattern = "select.*from";  // Case handled by NIMCP_PATTERN_FLAG_CASE_INSENSITIVE
     entry.category = NIMCP_PATTERN_SQL_INJECTION;
     entry.priority = 10;
     entry.weight = 1.0f;
@@ -505,25 +505,33 @@ protected:
         pattern_db_ = nimcp_pattern_db_create(nullptr);
         ASSERT_NE(pattern_db_, nullptr);
 
-        // Add SQL injection patterns
+        // Add SQL injection patterns (using POSIX ERE syntax - no (?i) or \b)
         nimcp_pattern_entry_t sql_patterns[] = {
-            {"(?i)\\bunion\\b.*\\bselect\\b", NIMCP_PATTERN_SQL_INJECTION, 10, 1.0f, "UNION SELECT", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
-            {"(?i)\\bor\\b.*['\"]?\\s*=\\s*['\"]?", NIMCP_PATTERN_SQL_INJECTION, 10, 1.0f, "OR equals", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
-            {"(?i)\\b(select|insert|update|delete|drop|truncate)\\b", NIMCP_PATTERN_SQL_INJECTION, 8, 0.8f, "SQL keywords", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
-            {"['\"][;]", NIMCP_PATTERN_SQL_INJECTION, 9, 0.9f, "Quote semicolon", 0},
-            {"--\\s*$", NIMCP_PATTERN_SQL_INJECTION, 7, 0.7f, "SQL comment", 0}
+            {"union[[:space:]]+.*select", NIMCP_PATTERN_SQL_INJECTION, 10, 1.0f, "UNION SELECT", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
+            {"[[:space:]]or[[:space:]]+.*=", NIMCP_PATTERN_SQL_INJECTION, 10, 1.0f, "OR equals", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
+            {"(select|insert|update|delete|drop|truncate)[[:space:]]", NIMCP_PATTERN_SQL_INJECTION, 8, 0.8f, "SQL keywords", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
+            {"['\"];", NIMCP_PATTERN_SQL_INJECTION, 9, 0.9f, "Quote semicolon", 0},
+            {"'[[:space:]]*--", NIMCP_PATTERN_SQL_INJECTION, 9, 0.9f, "Quote comment", 0},
+            {"--[[:space:]]*$", NIMCP_PATTERN_SQL_INJECTION, 7, 0.7f, "SQL comment", 0},
+            {"'[[:space:]]*or[[:space:]]+'", NIMCP_PATTERN_SQL_INJECTION, 10, 1.0f, "OR string comparison", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
+            {"exec[[:space:]]", NIMCP_PATTERN_SQL_INJECTION, 8, 0.8f, "EXEC command", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
+            {"load_file", NIMCP_PATTERN_SQL_INJECTION, 9, 0.9f, "LOAD_FILE", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE}
         };
 
         for (const auto& pattern : sql_patterns) {
             nimcp_pattern_db_add(pattern_db_, &pattern, nullptr);
         }
 
-        // Add prompt injection patterns
+        // Add prompt injection patterns (using POSIX ERE syntax)
         nimcp_pattern_entry_t prompt_patterns[] = {
-            {"(?i)ignore\\s+(previous|above|all)\\s+(instructions?|prompts?)", NIMCP_PATTERN_PROMPT_INJECTION, 10, 1.0f, "Ignore instructions", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
-            {"(?i)you\\s+are\\s+now\\s+a", NIMCP_PATTERN_PROMPT_INJECTION, 9, 0.9f, "Role override", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
-            {"(?i)system\\s*:\\s*", NIMCP_PATTERN_PROMPT_INJECTION, 8, 0.8f, "System prefix", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
-            {"(?i)\\[\\[?system\\]\\]?", NIMCP_PATTERN_PROMPT_INJECTION, 8, 0.8f, "System tag", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE}
+            {"ignore[[:space:]]+(previous|above|all)[[:space:]]+(instruction|prompt)", NIMCP_PATTERN_PROMPT_INJECTION, 10, 1.0f, "Ignore instructions", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
+            {"you[[:space:]]+are[[:space:]]+now", NIMCP_PATTERN_PROMPT_INJECTION, 9, 0.9f, "Role override", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
+            {"system[[:space:]]*:", NIMCP_PATTERN_PROMPT_INJECTION, 8, 0.8f, "System prefix", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
+            {"\\[+system\\]+", NIMCP_PATTERN_PROMPT_INJECTION, 8, 0.8f, "System tag", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
+            {"new[[:space:]]+instructions", NIMCP_PATTERN_PROMPT_INJECTION, 9, 0.9f, "New instructions", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
+            {"forget[[:space:]]+(everything|all)", NIMCP_PATTERN_PROMPT_INJECTION, 9, 0.9f, "Forget directive", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
+            {"ignore[[:space:]]+the[[:space:]]+above", NIMCP_PATTERN_PROMPT_INJECTION, 9, 0.9f, "Ignore above", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE},
+            {"override[[:space:]]+(all[[:space:]]+)?safety", NIMCP_PATTERN_PROMPT_INJECTION, 10, 1.0f, "Override safety", NIMCP_PATTERN_FLAG_CASE_INSENSITIVE}
         };
 
         for (const auto& pattern : prompt_patterns) {
@@ -681,7 +689,7 @@ protected:
 
         // Add patterns but ensure they don't over-trigger
         nimcp_pattern_entry_t entry;
-        entry.pattern = "(?i)\\bunion\\s+select\\b";
+        entry.pattern = "union[[:space:]]+select";  // POSIX ERE syntax
         entry.category = NIMCP_PATTERN_SQL_INJECTION;
         entry.priority = 10;
         entry.weight = 1.0f;

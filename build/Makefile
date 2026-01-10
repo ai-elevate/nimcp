@@ -18372,6 +18372,19 @@ integration_security_test_hippocampus/fast:
 .PHONY : integration_security_test_hippocampus/fast
 
 #=============================================================================
+# Target rules for targets named integration_security_test_orchestrator
+
+# Build rule for target.
+integration_security_test_orchestrator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_orchestrator
+.PHONY : integration_security_test_orchestrator
+
+# fast build rule for target.
+integration_security_test_orchestrator/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_orchestrator.dir/build.make test/integration/security/CMakeFiles/integration_security_test_orchestrator.dir/build
+.PHONY : integration_security_test_orchestrator/fast
+
+#=============================================================================
 # Target rules for targets named integration_security_sleep_bridges
 
 # Build rule for target.
@@ -25106,6 +25119,7 @@ help:
 	@echo "... integration_security_test_knowledge_graph"
 	@echo "... integration_security_test_math_integration"
 	@echo "... integration_security_test_module_integration"
+	@echo "... integration_security_test_orchestrator"
 	@echo "... integration_security_test_pattern_db"
 	@echo "... integration_security_test_security_async"
 	@echo "... integration_security_test_security_immune"

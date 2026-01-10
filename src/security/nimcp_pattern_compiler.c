@@ -387,36 +387,38 @@ uint32_t nimcp_pattern_estimate_complexity(const char* pattern) {
  * HOW:  Predefined patterns for each category
  */
 const char* nimcp_pattern_get_default(nimcp_pattern_category_t category) {
+    // Note: Patterns use POSIX ERE syntax (no (?i) or \b)
+    // Case-insensitivity should be applied via NIMCP_PATTERN_FLAG_CASE_INSENSITIVE flag
     static const char* defaults[] = {
-        // SQL_INJECTION
-        "(?i)(union|select|insert|update|delete|drop|create|alter|exec|execute).*?(from|into|table|database)",
+        // SQL_INJECTION - matches common SQL injection patterns
+        "(union|select|insert|update|delete|drop|create|alter|exec|execute)[[:space:]].*(from|into|table|database)",
 
-        // XSS
-        "(?i)(<script|javascript:|onerror=|onload=|<iframe|<object|<embed)",
+        // XSS - matches script tags and javascript event handlers
+        "(<script|javascript:|onerror=|onload=|<iframe|<object|<embed)",
 
-        // SHELL_INJECTION
-        "(?i)(;|\\||&&|\\$\\(|`|>|<|>>|<<)",
+        // SHELL_INJECTION - matches shell metacharacters
+        "(;|\\||&&|\\$\\(|`|>|<|>>|<<)",
 
-        // PATH_TRAVERSAL
+        // PATH_TRAVERSAL - matches directory traversal patterns
         "(\\.\\.[\\/\\\\]|\\.\\.\\.[\\/\\\\]|%2e%2e[\\/\\\\])",
 
-        // FORMAT_STRING
+        // FORMAT_STRING - matches format string specifiers
         "(%[0-9]*[sdxnp]|%[0-9]*\\$[sdxnp])",
 
-        // PROMPT_INJECTION
-        "(?i)(ignore previous|disregard all|new instructions|you are now|system:|<\\|system\\|>)",
+        // PROMPT_INJECTION - matches prompt injection attempts
+        "(ignore[[:space:]]+(previous|all)|disregard[[:space:]]+all|new[[:space:]]+instructions|you[[:space:]]+are[[:space:]]+now|system[[:space:]]*:)",
 
-        // BUFFER_OVERFLOW
-        "([A]{100,}|[0]{100,}|\\x00{50,})",
+        // BUFFER_OVERFLOW - matches long repetitive patterns
+        "([A]{100,}|[0]{100,})",
 
-        // LDAP_INJECTION
+        // LDAP_INJECTION - matches LDAP metacharacters
         "(\\*|\\(|\\)|\\||&)",
 
-        // XML_INJECTION
-        "(?i)(<!ENTITY|<!DOCTYPE|<\\?xml|SYSTEM)",
+        // XML_INJECTION - matches XML injection patterns
+        "(<!ENTITY|<!DOCTYPE|<\\?xml|SYSTEM)",
 
-        // COMMAND_INJECTION
-        "(?i)(cmd\\.exe|/bin/sh|powershell|bash|exec|system|popen)",
+        // COMMAND_INJECTION - matches command execution patterns
+        "(cmd\\.exe|/bin/sh|powershell|bash|exec|system|popen)",
 
         // CUSTOM
         ""

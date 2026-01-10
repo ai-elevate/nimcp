@@ -822,3 +822,45 @@ set_tests_properties(integration_security_test_hippocampus PROPERTIES
     LABELS "integration;security;hippocampus;bridge"
     TIMEOUT 300
 )
+
+# ============================================================================
+# Security Orchestrator Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Security Orchestrator
+# WHY:  Verify coordination of all security bridges, FEP bridges, and the
+#       Unified Security Facade. The orchestrator is the central hub for
+#       security event routing and threat assessment.
+# HOW:  Test multi-bridge registration, event subscription/publishing,
+#       threat aggregation, lockdown coordination, multi-module correlation,
+#       recovery procedures, thread safety, and performance
+# ============================================================================
+
+add_executable(integration_security_test_orchestrator
+    test_security_orchestrator_integration.cpp
+)
+target_link_libraries(integration_security_test_orchestrator
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_orchestrator
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/cognitive/integration
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(integration_security_test_orchestrator PRIVATE cxx_std_17)
+add_test(NAME integration_security_test_orchestrator
+         COMMAND integration_security_test_orchestrator)
+set_tests_properties(integration_security_test_orchestrator PROPERTIES
+    LABELS "integration;security;orchestrator;bridge"
+    TIMEOUT 300
+)

@@ -1313,6 +1313,25 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/sleep/nimcp_rate_limiter_sleep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/sleep/nimcp_pattern_db_sleep_bridge.c
 
+    # Unified Security Facade - High-level API for entire security subsystem
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_facade.c
+
+    # Security FEP Bridges (Phase SF: Security-FEP integration for cognitive bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/distributed/nimcp_security_distributed_training_fep_bridge.c   # Distributed Training-FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/knowledge_graph/nimcp_security_kg_fep_bridge.c                 # Knowledge Graph-FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/game_theory/nimcp_security_game_theory_fep_bridge.c            # Game Theory-FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/imagination/nimcp_security_imagination_fep_bridge.c            # Imagination-FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/continual_learning/nimcp_security_continual_learning_fep_bridge.c  # Continual Learning-FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/epistemic/nimcp_security_epistemic_fep_bridge.c                # Epistemic-FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/collective/nimcp_security_collective_fep_bridge.c              # Collective Cognition-FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/hippocampus/nimcp_security_hippocampus_fep_bridge.c            # Hippocampus-FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/language/nimcp_security_language_fep_bridge.c                  # Language-FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/async/nimcp_security_async_fep_bridge.c                        # Async-FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/logging/nimcp_security_logging_fep_bridge.c                    # Logging-FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/immune/nimcp_security_immune_fep_bridge.c                      # Immune-FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/training/nimcp_security_training_fep_bridge.c                  # Training-FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/memory/nimcp_security_memory_fep_bridge.c                      # Memory-FEP bridge
+
     # Utils - Memory & Thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory_guards.c

@@ -29201,6 +29201,30 @@ __/security/async/nimcp_security_async_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/async/nimcp_security_async_bridge.c.s
 .PHONY : __/security/async/nimcp_security_async_bridge.c.s
 
+__/security/async/nimcp_security_async_fep_bridge.o: __/security/async/nimcp_security_async_fep_bridge.c.o
+.PHONY : __/security/async/nimcp_security_async_fep_bridge.o
+
+# target to build an object file
+__/security/async/nimcp_security_async_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/async/nimcp_security_async_fep_bridge.c.o
+.PHONY : __/security/async/nimcp_security_async_fep_bridge.c.o
+
+__/security/async/nimcp_security_async_fep_bridge.i: __/security/async/nimcp_security_async_fep_bridge.c.i
+.PHONY : __/security/async/nimcp_security_async_fep_bridge.i
+
+# target to preprocess a source file
+__/security/async/nimcp_security_async_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/async/nimcp_security_async_fep_bridge.c.i
+.PHONY : __/security/async/nimcp_security_async_fep_bridge.c.i
+
+__/security/async/nimcp_security_async_fep_bridge.s: __/security/async/nimcp_security_async_fep_bridge.c.s
+.PHONY : __/security/async/nimcp_security_async_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/async/nimcp_security_async_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/async/nimcp_security_async_fep_bridge.c.s
+.PHONY : __/security/async/nimcp_security_async_fep_bridge.c.s
+
 __/security/collective/nimcp_security_collective_bridge.o: __/security/collective/nimcp_security_collective_bridge.c.o
 .PHONY : __/security/collective/nimcp_security_collective_bridge.o
 
@@ -29224,6 +29248,30 @@ __/security/collective/nimcp_security_collective_bridge.s: __/security/collectiv
 __/security/collective/nimcp_security_collective_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/collective/nimcp_security_collective_bridge.c.s
 .PHONY : __/security/collective/nimcp_security_collective_bridge.c.s
+
+__/security/collective/nimcp_security_collective_fep_bridge.o: __/security/collective/nimcp_security_collective_fep_bridge.c.o
+.PHONY : __/security/collective/nimcp_security_collective_fep_bridge.o
+
+# target to build an object file
+__/security/collective/nimcp_security_collective_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/collective/nimcp_security_collective_fep_bridge.c.o
+.PHONY : __/security/collective/nimcp_security_collective_fep_bridge.c.o
+
+__/security/collective/nimcp_security_collective_fep_bridge.i: __/security/collective/nimcp_security_collective_fep_bridge.c.i
+.PHONY : __/security/collective/nimcp_security_collective_fep_bridge.i
+
+# target to preprocess a source file
+__/security/collective/nimcp_security_collective_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/collective/nimcp_security_collective_fep_bridge.c.i
+.PHONY : __/security/collective/nimcp_security_collective_fep_bridge.c.i
+
+__/security/collective/nimcp_security_collective_fep_bridge.s: __/security/collective/nimcp_security_collective_fep_bridge.c.s
+.PHONY : __/security/collective/nimcp_security_collective_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/collective/nimcp_security_collective_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/collective/nimcp_security_collective_fep_bridge.c.s
+.PHONY : __/security/collective/nimcp_security_collective_fep_bridge.c.s
 
 __/security/continual/nimcp_security_continual_learning_bridge.o: __/security/continual/nimcp_security_continual_learning_bridge.c.o
 .PHONY : __/security/continual/nimcp_security_continual_learning_bridge.o
@@ -29249,6 +29297,30 @@ __/security/continual/nimcp_security_continual_learning_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/continual/nimcp_security_continual_learning_bridge.c.s
 .PHONY : __/security/continual/nimcp_security_continual_learning_bridge.c.s
 
+__/security/continual_learning/nimcp_security_continual_learning_fep_bridge.o: __/security/continual_learning/nimcp_security_continual_learning_fep_bridge.c.o
+.PHONY : __/security/continual_learning/nimcp_security_continual_learning_fep_bridge.o
+
+# target to build an object file
+__/security/continual_learning/nimcp_security_continual_learning_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/continual_learning/nimcp_security_continual_learning_fep_bridge.c.o
+.PHONY : __/security/continual_learning/nimcp_security_continual_learning_fep_bridge.c.o
+
+__/security/continual_learning/nimcp_security_continual_learning_fep_bridge.i: __/security/continual_learning/nimcp_security_continual_learning_fep_bridge.c.i
+.PHONY : __/security/continual_learning/nimcp_security_continual_learning_fep_bridge.i
+
+# target to preprocess a source file
+__/security/continual_learning/nimcp_security_continual_learning_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/continual_learning/nimcp_security_continual_learning_fep_bridge.c.i
+.PHONY : __/security/continual_learning/nimcp_security_continual_learning_fep_bridge.c.i
+
+__/security/continual_learning/nimcp_security_continual_learning_fep_bridge.s: __/security/continual_learning/nimcp_security_continual_learning_fep_bridge.c.s
+.PHONY : __/security/continual_learning/nimcp_security_continual_learning_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/continual_learning/nimcp_security_continual_learning_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/continual_learning/nimcp_security_continual_learning_fep_bridge.c.s
+.PHONY : __/security/continual_learning/nimcp_security_continual_learning_fep_bridge.c.s
+
 __/security/distributed/nimcp_security_distributed_training_bridge.o: __/security/distributed/nimcp_security_distributed_training_bridge.c.o
 .PHONY : __/security/distributed/nimcp_security_distributed_training_bridge.o
 
@@ -29273,6 +29345,30 @@ __/security/distributed/nimcp_security_distributed_training_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/distributed/nimcp_security_distributed_training_bridge.c.s
 .PHONY : __/security/distributed/nimcp_security_distributed_training_bridge.c.s
 
+__/security/distributed/nimcp_security_distributed_training_fep_bridge.o: __/security/distributed/nimcp_security_distributed_training_fep_bridge.c.o
+.PHONY : __/security/distributed/nimcp_security_distributed_training_fep_bridge.o
+
+# target to build an object file
+__/security/distributed/nimcp_security_distributed_training_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/distributed/nimcp_security_distributed_training_fep_bridge.c.o
+.PHONY : __/security/distributed/nimcp_security_distributed_training_fep_bridge.c.o
+
+__/security/distributed/nimcp_security_distributed_training_fep_bridge.i: __/security/distributed/nimcp_security_distributed_training_fep_bridge.c.i
+.PHONY : __/security/distributed/nimcp_security_distributed_training_fep_bridge.i
+
+# target to preprocess a source file
+__/security/distributed/nimcp_security_distributed_training_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/distributed/nimcp_security_distributed_training_fep_bridge.c.i
+.PHONY : __/security/distributed/nimcp_security_distributed_training_fep_bridge.c.i
+
+__/security/distributed/nimcp_security_distributed_training_fep_bridge.s: __/security/distributed/nimcp_security_distributed_training_fep_bridge.c.s
+.PHONY : __/security/distributed/nimcp_security_distributed_training_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/distributed/nimcp_security_distributed_training_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/distributed/nimcp_security_distributed_training_fep_bridge.c.s
+.PHONY : __/security/distributed/nimcp_security_distributed_training_fep_bridge.c.s
+
 __/security/epistemic/nimcp_security_epistemic_bridge.o: __/security/epistemic/nimcp_security_epistemic_bridge.c.o
 .PHONY : __/security/epistemic/nimcp_security_epistemic_bridge.o
 
@@ -29296,6 +29392,30 @@ __/security/epistemic/nimcp_security_epistemic_bridge.s: __/security/epistemic/n
 __/security/epistemic/nimcp_security_epistemic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/epistemic/nimcp_security_epistemic_bridge.c.s
 .PHONY : __/security/epistemic/nimcp_security_epistemic_bridge.c.s
+
+__/security/epistemic/nimcp_security_epistemic_fep_bridge.o: __/security/epistemic/nimcp_security_epistemic_fep_bridge.c.o
+.PHONY : __/security/epistemic/nimcp_security_epistemic_fep_bridge.o
+
+# target to build an object file
+__/security/epistemic/nimcp_security_epistemic_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/epistemic/nimcp_security_epistemic_fep_bridge.c.o
+.PHONY : __/security/epistemic/nimcp_security_epistemic_fep_bridge.c.o
+
+__/security/epistemic/nimcp_security_epistemic_fep_bridge.i: __/security/epistemic/nimcp_security_epistemic_fep_bridge.c.i
+.PHONY : __/security/epistemic/nimcp_security_epistemic_fep_bridge.i
+
+# target to preprocess a source file
+__/security/epistemic/nimcp_security_epistemic_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/epistemic/nimcp_security_epistemic_fep_bridge.c.i
+.PHONY : __/security/epistemic/nimcp_security_epistemic_fep_bridge.c.i
+
+__/security/epistemic/nimcp_security_epistemic_fep_bridge.s: __/security/epistemic/nimcp_security_epistemic_fep_bridge.c.s
+.PHONY : __/security/epistemic/nimcp_security_epistemic_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/epistemic/nimcp_security_epistemic_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/epistemic/nimcp_security_epistemic_fep_bridge.c.s
+.PHONY : __/security/epistemic/nimcp_security_epistemic_fep_bridge.c.s
 
 __/security/executive/nimcp_security_executive_bridge.o: __/security/executive/nimcp_security_executive_bridge.c.o
 .PHONY : __/security/executive/nimcp_security_executive_bridge.o
@@ -29345,6 +29465,30 @@ __/security/game_theory/nimcp_security_game_theory_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/game_theory/nimcp_security_game_theory_bridge.c.s
 .PHONY : __/security/game_theory/nimcp_security_game_theory_bridge.c.s
 
+__/security/game_theory/nimcp_security_game_theory_fep_bridge.o: __/security/game_theory/nimcp_security_game_theory_fep_bridge.c.o
+.PHONY : __/security/game_theory/nimcp_security_game_theory_fep_bridge.o
+
+# target to build an object file
+__/security/game_theory/nimcp_security_game_theory_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/game_theory/nimcp_security_game_theory_fep_bridge.c.o
+.PHONY : __/security/game_theory/nimcp_security_game_theory_fep_bridge.c.o
+
+__/security/game_theory/nimcp_security_game_theory_fep_bridge.i: __/security/game_theory/nimcp_security_game_theory_fep_bridge.c.i
+.PHONY : __/security/game_theory/nimcp_security_game_theory_fep_bridge.i
+
+# target to preprocess a source file
+__/security/game_theory/nimcp_security_game_theory_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/game_theory/nimcp_security_game_theory_fep_bridge.c.i
+.PHONY : __/security/game_theory/nimcp_security_game_theory_fep_bridge.c.i
+
+__/security/game_theory/nimcp_security_game_theory_fep_bridge.s: __/security/game_theory/nimcp_security_game_theory_fep_bridge.c.s
+.PHONY : __/security/game_theory/nimcp_security_game_theory_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/game_theory/nimcp_security_game_theory_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/game_theory/nimcp_security_game_theory_fep_bridge.c.s
+.PHONY : __/security/game_theory/nimcp_security_game_theory_fep_bridge.c.s
+
 __/security/hippocampus/nimcp_security_hippocampus_bridge.o: __/security/hippocampus/nimcp_security_hippocampus_bridge.c.o
 .PHONY : __/security/hippocampus/nimcp_security_hippocampus_bridge.o
 
@@ -29369,6 +29513,30 @@ __/security/hippocampus/nimcp_security_hippocampus_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/hippocampus/nimcp_security_hippocampus_bridge.c.s
 .PHONY : __/security/hippocampus/nimcp_security_hippocampus_bridge.c.s
 
+__/security/hippocampus/nimcp_security_hippocampus_fep_bridge.o: __/security/hippocampus/nimcp_security_hippocampus_fep_bridge.c.o
+.PHONY : __/security/hippocampus/nimcp_security_hippocampus_fep_bridge.o
+
+# target to build an object file
+__/security/hippocampus/nimcp_security_hippocampus_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/hippocampus/nimcp_security_hippocampus_fep_bridge.c.o
+.PHONY : __/security/hippocampus/nimcp_security_hippocampus_fep_bridge.c.o
+
+__/security/hippocampus/nimcp_security_hippocampus_fep_bridge.i: __/security/hippocampus/nimcp_security_hippocampus_fep_bridge.c.i
+.PHONY : __/security/hippocampus/nimcp_security_hippocampus_fep_bridge.i
+
+# target to preprocess a source file
+__/security/hippocampus/nimcp_security_hippocampus_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/hippocampus/nimcp_security_hippocampus_fep_bridge.c.i
+.PHONY : __/security/hippocampus/nimcp_security_hippocampus_fep_bridge.c.i
+
+__/security/hippocampus/nimcp_security_hippocampus_fep_bridge.s: __/security/hippocampus/nimcp_security_hippocampus_fep_bridge.c.s
+.PHONY : __/security/hippocampus/nimcp_security_hippocampus_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/hippocampus/nimcp_security_hippocampus_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/hippocampus/nimcp_security_hippocampus_fep_bridge.c.s
+.PHONY : __/security/hippocampus/nimcp_security_hippocampus_fep_bridge.c.s
+
 __/security/imagination/nimcp_security_imagination_bridge.o: __/security/imagination/nimcp_security_imagination_bridge.c.o
 .PHONY : __/security/imagination/nimcp_security_imagination_bridge.o
 
@@ -29392,6 +29560,30 @@ __/security/imagination/nimcp_security_imagination_bridge.s: __/security/imagina
 __/security/imagination/nimcp_security_imagination_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/imagination/nimcp_security_imagination_bridge.c.s
 .PHONY : __/security/imagination/nimcp_security_imagination_bridge.c.s
+
+__/security/imagination/nimcp_security_imagination_fep_bridge.o: __/security/imagination/nimcp_security_imagination_fep_bridge.c.o
+.PHONY : __/security/imagination/nimcp_security_imagination_fep_bridge.o
+
+# target to build an object file
+__/security/imagination/nimcp_security_imagination_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/imagination/nimcp_security_imagination_fep_bridge.c.o
+.PHONY : __/security/imagination/nimcp_security_imagination_fep_bridge.c.o
+
+__/security/imagination/nimcp_security_imagination_fep_bridge.i: __/security/imagination/nimcp_security_imagination_fep_bridge.c.i
+.PHONY : __/security/imagination/nimcp_security_imagination_fep_bridge.i
+
+# target to preprocess a source file
+__/security/imagination/nimcp_security_imagination_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/imagination/nimcp_security_imagination_fep_bridge.c.i
+.PHONY : __/security/imagination/nimcp_security_imagination_fep_bridge.c.i
+
+__/security/imagination/nimcp_security_imagination_fep_bridge.s: __/security/imagination/nimcp_security_imagination_fep_bridge.c.s
+.PHONY : __/security/imagination/nimcp_security_imagination_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/imagination/nimcp_security_imagination_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/imagination/nimcp_security_imagination_fep_bridge.c.s
+.PHONY : __/security/imagination/nimcp_security_imagination_fep_bridge.c.s
 
 __/security/immune/nimcp_anomaly_immune_bridge.o: __/security/immune/nimcp_anomaly_immune_bridge.c.o
 .PHONY : __/security/immune/nimcp_anomaly_immune_bridge.o
@@ -29465,6 +29657,30 @@ __/security/immune/nimcp_rate_limiter_immune_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_rate_limiter_immune_bridge.c.s
 .PHONY : __/security/immune/nimcp_rate_limiter_immune_bridge.c.s
 
+__/security/immune/nimcp_security_immune_fep_bridge.o: __/security/immune/nimcp_security_immune_fep_bridge.c.o
+.PHONY : __/security/immune/nimcp_security_immune_fep_bridge.o
+
+# target to build an object file
+__/security/immune/nimcp_security_immune_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_security_immune_fep_bridge.c.o
+.PHONY : __/security/immune/nimcp_security_immune_fep_bridge.c.o
+
+__/security/immune/nimcp_security_immune_fep_bridge.i: __/security/immune/nimcp_security_immune_fep_bridge.c.i
+.PHONY : __/security/immune/nimcp_security_immune_fep_bridge.i
+
+# target to preprocess a source file
+__/security/immune/nimcp_security_immune_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_security_immune_fep_bridge.c.i
+.PHONY : __/security/immune/nimcp_security_immune_fep_bridge.c.i
+
+__/security/immune/nimcp_security_immune_fep_bridge.s: __/security/immune/nimcp_security_immune_fep_bridge.c.s
+.PHONY : __/security/immune/nimcp_security_immune_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/immune/nimcp_security_immune_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_security_immune_fep_bridge.c.s
+.PHONY : __/security/immune/nimcp_security_immune_fep_bridge.c.s
+
 __/security/immune/nimcp_security_immune_unified_bridge.o: __/security/immune/nimcp_security_immune_unified_bridge.c.o
 .PHONY : __/security/immune/nimcp_security_immune_unified_bridge.o
 
@@ -29513,6 +29729,30 @@ __/security/knowledge/nimcp_security_knowledge_graph_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/knowledge/nimcp_security_knowledge_graph_bridge.c.s
 .PHONY : __/security/knowledge/nimcp_security_knowledge_graph_bridge.c.s
 
+__/security/knowledge_graph/nimcp_security_kg_fep_bridge.o: __/security/knowledge_graph/nimcp_security_kg_fep_bridge.c.o
+.PHONY : __/security/knowledge_graph/nimcp_security_kg_fep_bridge.o
+
+# target to build an object file
+__/security/knowledge_graph/nimcp_security_kg_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/knowledge_graph/nimcp_security_kg_fep_bridge.c.o
+.PHONY : __/security/knowledge_graph/nimcp_security_kg_fep_bridge.c.o
+
+__/security/knowledge_graph/nimcp_security_kg_fep_bridge.i: __/security/knowledge_graph/nimcp_security_kg_fep_bridge.c.i
+.PHONY : __/security/knowledge_graph/nimcp_security_kg_fep_bridge.i
+
+# target to preprocess a source file
+__/security/knowledge_graph/nimcp_security_kg_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/knowledge_graph/nimcp_security_kg_fep_bridge.c.i
+.PHONY : __/security/knowledge_graph/nimcp_security_kg_fep_bridge.c.i
+
+__/security/knowledge_graph/nimcp_security_kg_fep_bridge.s: __/security/knowledge_graph/nimcp_security_kg_fep_bridge.c.s
+.PHONY : __/security/knowledge_graph/nimcp_security_kg_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/knowledge_graph/nimcp_security_kg_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/knowledge_graph/nimcp_security_kg_fep_bridge.c.s
+.PHONY : __/security/knowledge_graph/nimcp_security_kg_fep_bridge.c.s
+
 __/security/language/nimcp_security_language_bridge.o: __/security/language/nimcp_security_language_bridge.c.o
 .PHONY : __/security/language/nimcp_security_language_bridge.o
 
@@ -29536,6 +29776,30 @@ __/security/language/nimcp_security_language_bridge.s: __/security/language/nimc
 __/security/language/nimcp_security_language_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/language/nimcp_security_language_bridge.c.s
 .PHONY : __/security/language/nimcp_security_language_bridge.c.s
+
+__/security/language/nimcp_security_language_fep_bridge.o: __/security/language/nimcp_security_language_fep_bridge.c.o
+.PHONY : __/security/language/nimcp_security_language_fep_bridge.o
+
+# target to build an object file
+__/security/language/nimcp_security_language_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/language/nimcp_security_language_fep_bridge.c.o
+.PHONY : __/security/language/nimcp_security_language_fep_bridge.c.o
+
+__/security/language/nimcp_security_language_fep_bridge.i: __/security/language/nimcp_security_language_fep_bridge.c.i
+.PHONY : __/security/language/nimcp_security_language_fep_bridge.i
+
+# target to preprocess a source file
+__/security/language/nimcp_security_language_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/language/nimcp_security_language_fep_bridge.c.i
+.PHONY : __/security/language/nimcp_security_language_fep_bridge.c.i
+
+__/security/language/nimcp_security_language_fep_bridge.s: __/security/language/nimcp_security_language_fep_bridge.c.s
+.PHONY : __/security/language/nimcp_security_language_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/language/nimcp_security_language_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/language/nimcp_security_language_fep_bridge.c.s
+.PHONY : __/security/language/nimcp_security_language_fep_bridge.c.s
 
 __/security/logging/nimcp_security_logging_bridge.o: __/security/logging/nimcp_security_logging_bridge.c.o
 .PHONY : __/security/logging/nimcp_security_logging_bridge.o
@@ -29561,6 +29825,30 @@ __/security/logging/nimcp_security_logging_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/logging/nimcp_security_logging_bridge.c.s
 .PHONY : __/security/logging/nimcp_security_logging_bridge.c.s
 
+__/security/logging/nimcp_security_logging_fep_bridge.o: __/security/logging/nimcp_security_logging_fep_bridge.c.o
+.PHONY : __/security/logging/nimcp_security_logging_fep_bridge.o
+
+# target to build an object file
+__/security/logging/nimcp_security_logging_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/logging/nimcp_security_logging_fep_bridge.c.o
+.PHONY : __/security/logging/nimcp_security_logging_fep_bridge.c.o
+
+__/security/logging/nimcp_security_logging_fep_bridge.i: __/security/logging/nimcp_security_logging_fep_bridge.c.i
+.PHONY : __/security/logging/nimcp_security_logging_fep_bridge.i
+
+# target to preprocess a source file
+__/security/logging/nimcp_security_logging_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/logging/nimcp_security_logging_fep_bridge.c.i
+.PHONY : __/security/logging/nimcp_security_logging_fep_bridge.c.i
+
+__/security/logging/nimcp_security_logging_fep_bridge.s: __/security/logging/nimcp_security_logging_fep_bridge.c.s
+.PHONY : __/security/logging/nimcp_security_logging_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/logging/nimcp_security_logging_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/logging/nimcp_security_logging_fep_bridge.c.s
+.PHONY : __/security/logging/nimcp_security_logging_fep_bridge.c.s
+
 __/security/memory/nimcp_security_memory_bridge.o: __/security/memory/nimcp_security_memory_bridge.c.o
 .PHONY : __/security/memory/nimcp_security_memory_bridge.o
 
@@ -29584,6 +29872,30 @@ __/security/memory/nimcp_security_memory_bridge.s: __/security/memory/nimcp_secu
 __/security/memory/nimcp_security_memory_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/memory/nimcp_security_memory_bridge.c.s
 .PHONY : __/security/memory/nimcp_security_memory_bridge.c.s
+
+__/security/memory/nimcp_security_memory_fep_bridge.o: __/security/memory/nimcp_security_memory_fep_bridge.c.o
+.PHONY : __/security/memory/nimcp_security_memory_fep_bridge.o
+
+# target to build an object file
+__/security/memory/nimcp_security_memory_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/memory/nimcp_security_memory_fep_bridge.c.o
+.PHONY : __/security/memory/nimcp_security_memory_fep_bridge.c.o
+
+__/security/memory/nimcp_security_memory_fep_bridge.i: __/security/memory/nimcp_security_memory_fep_bridge.c.i
+.PHONY : __/security/memory/nimcp_security_memory_fep_bridge.i
+
+# target to preprocess a source file
+__/security/memory/nimcp_security_memory_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/memory/nimcp_security_memory_fep_bridge.c.i
+.PHONY : __/security/memory/nimcp_security_memory_fep_bridge.c.i
+
+__/security/memory/nimcp_security_memory_fep_bridge.s: __/security/memory/nimcp_security_memory_fep_bridge.c.s
+.PHONY : __/security/memory/nimcp_security_memory_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/memory/nimcp_security_memory_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/memory/nimcp_security_memory_fep_bridge.c.s
+.PHONY : __/security/memory/nimcp_security_memory_fep_bridge.c.s
 
 __/security/nimcp_anomaly_detector.o: __/security/nimcp_anomaly_detector.c.o
 .PHONY : __/security/nimcp_anomaly_detector.o
@@ -30545,6 +30857,30 @@ __/security/nimcp_security_coverage.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_coverage.c.s
 .PHONY : __/security/nimcp_security_coverage.c.s
 
+__/security/nimcp_security_facade.o: __/security/nimcp_security_facade.c.o
+.PHONY : __/security/nimcp_security_facade.o
+
+# target to build an object file
+__/security/nimcp_security_facade.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_facade.c.o
+.PHONY : __/security/nimcp_security_facade.c.o
+
+__/security/nimcp_security_facade.i: __/security/nimcp_security_facade.c.i
+.PHONY : __/security/nimcp_security_facade.i
+
+# target to preprocess a source file
+__/security/nimcp_security_facade.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_facade.c.i
+.PHONY : __/security/nimcp_security_facade.c.i
+
+__/security/nimcp_security_facade.s: __/security/nimcp_security_facade.c.s
+.PHONY : __/security/nimcp_security_facade.s
+
+# target to generate assembly for a file
+__/security/nimcp_security_facade.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_security_facade.c.s
+.PHONY : __/security/nimcp_security_facade.c.s
+
 __/security/nimcp_security_fep_bridge.o: __/security/nimcp_security_fep_bridge.c.o
 .PHONY : __/security/nimcp_security_fep_bridge.o
 
@@ -31000,6 +31336,30 @@ __/security/training/nimcp_security_training_bridge.s: __/security/training/nimc
 __/security/training/nimcp_security_training_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/training/nimcp_security_training_bridge.c.s
 .PHONY : __/security/training/nimcp_security_training_bridge.c.s
+
+__/security/training/nimcp_security_training_fep_bridge.o: __/security/training/nimcp_security_training_fep_bridge.c.o
+.PHONY : __/security/training/nimcp_security_training_fep_bridge.o
+
+# target to build an object file
+__/security/training/nimcp_security_training_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/training/nimcp_security_training_fep_bridge.c.o
+.PHONY : __/security/training/nimcp_security_training_fep_bridge.c.o
+
+__/security/training/nimcp_security_training_fep_bridge.i: __/security/training/nimcp_security_training_fep_bridge.c.i
+.PHONY : __/security/training/nimcp_security_training_fep_bridge.i
+
+# target to preprocess a source file
+__/security/training/nimcp_security_training_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/training/nimcp_security_training_fep_bridge.c.i
+.PHONY : __/security/training/nimcp_security_training_fep_bridge.c.i
+
+__/security/training/nimcp_security_training_fep_bridge.s: __/security/training/nimcp_security_training_fep_bridge.c.s
+.PHONY : __/security/training/nimcp_security_training_fep_bridge.s
+
+# target to generate assembly for a file
+__/security/training/nimcp_security_training_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/training/nimcp_security_training_fep_bridge.c.s
+.PHONY : __/security/training/nimcp_security_training_fep_bridge.c.s
 
 __/snn/nimcp_snn_bio_async.o: __/snn/nimcp_snn_bio_async.c.o
 .PHONY : __/snn/nimcp_snn_bio_async.o
@@ -39730,30 +40090,54 @@ help:
 	@echo "... __/security/async/nimcp_security_async_bridge.o"
 	@echo "... __/security/async/nimcp_security_async_bridge.i"
 	@echo "... __/security/async/nimcp_security_async_bridge.s"
+	@echo "... __/security/async/nimcp_security_async_fep_bridge.o"
+	@echo "... __/security/async/nimcp_security_async_fep_bridge.i"
+	@echo "... __/security/async/nimcp_security_async_fep_bridge.s"
 	@echo "... __/security/collective/nimcp_security_collective_bridge.o"
 	@echo "... __/security/collective/nimcp_security_collective_bridge.i"
 	@echo "... __/security/collective/nimcp_security_collective_bridge.s"
+	@echo "... __/security/collective/nimcp_security_collective_fep_bridge.o"
+	@echo "... __/security/collective/nimcp_security_collective_fep_bridge.i"
+	@echo "... __/security/collective/nimcp_security_collective_fep_bridge.s"
 	@echo "... __/security/continual/nimcp_security_continual_learning_bridge.o"
 	@echo "... __/security/continual/nimcp_security_continual_learning_bridge.i"
 	@echo "... __/security/continual/nimcp_security_continual_learning_bridge.s"
+	@echo "... __/security/continual_learning/nimcp_security_continual_learning_fep_bridge.o"
+	@echo "... __/security/continual_learning/nimcp_security_continual_learning_fep_bridge.i"
+	@echo "... __/security/continual_learning/nimcp_security_continual_learning_fep_bridge.s"
 	@echo "... __/security/distributed/nimcp_security_distributed_training_bridge.o"
 	@echo "... __/security/distributed/nimcp_security_distributed_training_bridge.i"
 	@echo "... __/security/distributed/nimcp_security_distributed_training_bridge.s"
+	@echo "... __/security/distributed/nimcp_security_distributed_training_fep_bridge.o"
+	@echo "... __/security/distributed/nimcp_security_distributed_training_fep_bridge.i"
+	@echo "... __/security/distributed/nimcp_security_distributed_training_fep_bridge.s"
 	@echo "... __/security/epistemic/nimcp_security_epistemic_bridge.o"
 	@echo "... __/security/epistemic/nimcp_security_epistemic_bridge.i"
 	@echo "... __/security/epistemic/nimcp_security_epistemic_bridge.s"
+	@echo "... __/security/epistemic/nimcp_security_epistemic_fep_bridge.o"
+	@echo "... __/security/epistemic/nimcp_security_epistemic_fep_bridge.i"
+	@echo "... __/security/epistemic/nimcp_security_epistemic_fep_bridge.s"
 	@echo "... __/security/executive/nimcp_security_executive_bridge.o"
 	@echo "... __/security/executive/nimcp_security_executive_bridge.i"
 	@echo "... __/security/executive/nimcp_security_executive_bridge.s"
 	@echo "... __/security/game_theory/nimcp_security_game_theory_bridge.o"
 	@echo "... __/security/game_theory/nimcp_security_game_theory_bridge.i"
 	@echo "... __/security/game_theory/nimcp_security_game_theory_bridge.s"
+	@echo "... __/security/game_theory/nimcp_security_game_theory_fep_bridge.o"
+	@echo "... __/security/game_theory/nimcp_security_game_theory_fep_bridge.i"
+	@echo "... __/security/game_theory/nimcp_security_game_theory_fep_bridge.s"
 	@echo "... __/security/hippocampus/nimcp_security_hippocampus_bridge.o"
 	@echo "... __/security/hippocampus/nimcp_security_hippocampus_bridge.i"
 	@echo "... __/security/hippocampus/nimcp_security_hippocampus_bridge.s"
+	@echo "... __/security/hippocampus/nimcp_security_hippocampus_fep_bridge.o"
+	@echo "... __/security/hippocampus/nimcp_security_hippocampus_fep_bridge.i"
+	@echo "... __/security/hippocampus/nimcp_security_hippocampus_fep_bridge.s"
 	@echo "... __/security/imagination/nimcp_security_imagination_bridge.o"
 	@echo "... __/security/imagination/nimcp_security_imagination_bridge.i"
 	@echo "... __/security/imagination/nimcp_security_imagination_bridge.s"
+	@echo "... __/security/imagination/nimcp_security_imagination_fep_bridge.o"
+	@echo "... __/security/imagination/nimcp_security_imagination_fep_bridge.i"
+	@echo "... __/security/imagination/nimcp_security_imagination_fep_bridge.s"
 	@echo "... __/security/immune/nimcp_anomaly_immune_bridge.o"
 	@echo "... __/security/immune/nimcp_anomaly_immune_bridge.i"
 	@echo "... __/security/immune/nimcp_anomaly_immune_bridge.s"
@@ -39763,21 +40147,36 @@ help:
 	@echo "... __/security/immune/nimcp_rate_limiter_immune_bridge.o"
 	@echo "... __/security/immune/nimcp_rate_limiter_immune_bridge.i"
 	@echo "... __/security/immune/nimcp_rate_limiter_immune_bridge.s"
+	@echo "... __/security/immune/nimcp_security_immune_fep_bridge.o"
+	@echo "... __/security/immune/nimcp_security_immune_fep_bridge.i"
+	@echo "... __/security/immune/nimcp_security_immune_fep_bridge.s"
 	@echo "... __/security/immune/nimcp_security_immune_unified_bridge.o"
 	@echo "... __/security/immune/nimcp_security_immune_unified_bridge.i"
 	@echo "... __/security/immune/nimcp_security_immune_unified_bridge.s"
 	@echo "... __/security/knowledge/nimcp_security_knowledge_graph_bridge.o"
 	@echo "... __/security/knowledge/nimcp_security_knowledge_graph_bridge.i"
 	@echo "... __/security/knowledge/nimcp_security_knowledge_graph_bridge.s"
+	@echo "... __/security/knowledge_graph/nimcp_security_kg_fep_bridge.o"
+	@echo "... __/security/knowledge_graph/nimcp_security_kg_fep_bridge.i"
+	@echo "... __/security/knowledge_graph/nimcp_security_kg_fep_bridge.s"
 	@echo "... __/security/language/nimcp_security_language_bridge.o"
 	@echo "... __/security/language/nimcp_security_language_bridge.i"
 	@echo "... __/security/language/nimcp_security_language_bridge.s"
+	@echo "... __/security/language/nimcp_security_language_fep_bridge.o"
+	@echo "... __/security/language/nimcp_security_language_fep_bridge.i"
+	@echo "... __/security/language/nimcp_security_language_fep_bridge.s"
 	@echo "... __/security/logging/nimcp_security_logging_bridge.o"
 	@echo "... __/security/logging/nimcp_security_logging_bridge.i"
 	@echo "... __/security/logging/nimcp_security_logging_bridge.s"
+	@echo "... __/security/logging/nimcp_security_logging_fep_bridge.o"
+	@echo "... __/security/logging/nimcp_security_logging_fep_bridge.i"
+	@echo "... __/security/logging/nimcp_security_logging_fep_bridge.s"
 	@echo "... __/security/memory/nimcp_security_memory_bridge.o"
 	@echo "... __/security/memory/nimcp_security_memory_bridge.i"
 	@echo "... __/security/memory/nimcp_security_memory_bridge.s"
+	@echo "... __/security/memory/nimcp_security_memory_fep_bridge.o"
+	@echo "... __/security/memory/nimcp_security_memory_fep_bridge.i"
+	@echo "... __/security/memory/nimcp_security_memory_fep_bridge.s"
 	@echo "... __/security/nimcp_anomaly_detector.o"
 	@echo "... __/security/nimcp_anomaly_detector.i"
 	@echo "... __/security/nimcp_anomaly_detector.s"
@@ -39898,6 +40297,9 @@ help:
 	@echo "... __/security/nimcp_security_coverage.o"
 	@echo "... __/security/nimcp_security_coverage.i"
 	@echo "... __/security/nimcp_security_coverage.s"
+	@echo "... __/security/nimcp_security_facade.o"
+	@echo "... __/security/nimcp_security_facade.i"
+	@echo "... __/security/nimcp_security_facade.s"
 	@echo "... __/security/nimcp_security_fep_bridge.o"
 	@echo "... __/security/nimcp_security_fep_bridge.i"
 	@echo "... __/security/nimcp_security_fep_bridge.s"
@@ -39955,6 +40357,9 @@ help:
 	@echo "... __/security/training/nimcp_security_training_bridge.o"
 	@echo "... __/security/training/nimcp_security_training_bridge.i"
 	@echo "... __/security/training/nimcp_security_training_bridge.s"
+	@echo "... __/security/training/nimcp_security_training_fep_bridge.o"
+	@echo "... __/security/training/nimcp_security_training_fep_bridge.i"
+	@echo "... __/security/training/nimcp_security_training_fep_bridge.s"
 	@echo "... __/snn/nimcp_snn_bio_async.o"
 	@echo "... __/snn/nimcp_snn_bio_async.i"
 	@echo "... __/snn/nimcp_snn_bio_async.s"
