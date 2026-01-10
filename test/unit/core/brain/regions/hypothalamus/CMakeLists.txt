@@ -23,3 +23,9 @@ add_hypothalamus_test(test_nimcp_hypothalamus_adapter)
 
 # Alignment hardening tests (Phase 19)
 add_hypothalamus_test(test_nimcp_hypothalamus_alignment)
+
+# Orchestrator tests (bridge coordination, event routing, drive management)
+add_hypothalamus_test(test_hypothalamus_orchestrator)
+
+# Add FEP bridge tests subdirectory
+add_subdirectory(fep)

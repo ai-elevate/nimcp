@@ -48,6 +48,9 @@ extern "C" {
 #include "async/nimcp_bio_messages.h"
 #include "utils/thread/nimcp_thread.h"
 
+/* Forward declaration of orchestrator type (avoid header conflict) */
+typedef struct hypo_orchestrator_struct* hypo_orchestrator_t;
+
 /*=============================================================================
  * CONSTANTS
  *===========================================================================*/
@@ -60,6 +63,15 @@ extern "C" {
 
 /** @brief Maximum HPA axis stages */
 #define HYPO_IMMUNE_HPA_STAGES     4
+
+/** @brief Sleep-immune coupling factor */
+#define HYPO_IMMUNE_SLEEP_FACTOR   0.12f
+
+/** @brief Acute phase response duration (microseconds) */
+#define HYPO_IMMUNE_ACUTE_PHASE_DURATION_US  (6 * 3600 * 1000000ULL)  /* 6 hours */
+
+/** @brief Sickness behavior onset threshold (inflammation) */
+#define HYPO_IMMUNE_SICKNESS_ONSET_THRESHOLD  0.25f
 
 /** @brief Fever setpoint increase per unit IL-1β (°C equivalent) */
 #define HYPO_IMMUNE_FEVER_FACTOR   0.05f
@@ -117,6 +129,21 @@ typedef enum {
     CIRCADIAN_IMMUNE_NIGHT,     /**< Night: enhanced innate immunity */
     CIRCADIAN_IMMUNE_MORNING    /**< Morning: peak inflammation potential */
 } hypo_circadian_immune_t;
+
+/**
+ * @brief Sleep-immune interaction state
+ *
+ * BIOLOGICAL BASIS: Sleep profoundly affects immune function:
+ * - Sleep deprivation increases pro-inflammatory cytokines
+ * - Deep sleep enhances immune cell production
+ * - Infection increases sleep drive (sickness behavior)
+ */
+typedef enum {
+    SLEEP_IMMUNE_NORMAL = 0,    /**< Normal sleep-immune balance */
+    SLEEP_IMMUNE_DEPRIVED,      /**< Sleep deprivation, elevated inflammation */
+    SLEEP_IMMUNE_RESTORATIVE,   /**< Deep sleep, enhanced immune function */
+    SLEEP_IMMUNE_SICKNESS       /**< Sickness-induced hypersomnia */
+} hypo_sleep_immune_t;
 
 /*=============================================================================
  * DATA STRUCTURES
@@ -190,6 +217,43 @@ typedef struct {
 } hypo_immune_modulation_t;
 
 /**
+ * @brief Simplified cytokine tracking for API compatibility
+ *
+ * BIOLOGICAL BASIS: Key cytokines that mediate hypothalamus-immune crosstalk
+ */
+typedef struct {
+    float il1_beta;             /**< IL-1β level [0, 1] - Primary fever inducer */
+    float il6;                  /**< IL-6 level [0, 1] - Acute phase response */
+    float tnf_alpha;            /**< TNF-α level [0, 1] - Inflammation amplifier */
+    float il10;                 /**< IL-10 level [0, 1] - Anti-inflammatory */
+    float ifn_gamma;            /**< IFN-γ level [0, 1] - Immunomodulatory */
+    float cortisol;             /**< Cortisol level [0, 1] - HPA feedback */
+} hypo_immune_cytokines_t;
+
+/**
+ * @brief Unified immune state for queries
+ *
+ * Provides complete snapshot of hypothalamus-immune integration state
+ */
+typedef struct {
+    hypo_immune_cytokines_t cytokines;  /**< Current cytokine levels */
+    float inflammation_level;           /**< Overall inflammation [0, 1] */
+    float fever_signal;                 /**< Fever magnitude [0, 1] */
+    float sickness_behavior;            /**< Sickness behavior intensity [0, 1] */
+    float immune_activation;            /**< Overall immune activation [0, 1] */
+    bool acute_phase_response;          /**< Acute phase response active */
+
+    /* Additional state */
+    hypo_sickness_level_t sickness_level;  /**< Sickness severity level */
+    hypo_hpa_state_t hpa_state;            /**< HPA axis state */
+    hypo_circadian_immune_t circadian;     /**< Circadian immune phase */
+    hypo_sleep_immune_t sleep_immune;      /**< Sleep-immune interaction */
+
+    /* Timing */
+    uint64_t last_update_us;            /**< Last state update timestamp */
+} hypo_immune_state_t;
+
+/**
  * @brief Hypothalamus-Immune bridge configuration
  */
 typedef struct {
@@ -216,6 +280,18 @@ typedef struct {
     /* Alignment integration */
     bool use_as_safety_mode;    /**< Use sickness behavior for safety mode */
     float safety_trigger;       /**< Alignment threat level to trigger */
+
+    /* Extended configuration (bidirectional coupling) */
+    float cortisol_immune_suppression;  /**< How much cortisol suppresses immune [0, 1] */
+    float cytokine_stress_sensitivity;  /**< HPA sensitivity to cytokines [0, 1] */
+    float fever_threshold;              /**< IL-1/IL-6 level to trigger fever */
+    float sickness_behavior_threshold;  /**< When to induce sickness behavior */
+    bool enable_bidirectional;          /**< Enable full bidirectional coupling */
+    bool enable_bio_async;              /**< Enable bio-async messaging */
+
+    /* Sleep-immune parameters */
+    float sleep_immune_coupling;        /**< Sleep-immune interaction strength */
+    bool enable_sleep_modulation;       /**< Enable sleep-based immune modulation */
 } hypo_immune_config_t;
 
 /**
@@ -253,6 +329,216 @@ void hypo_immune_bridge_destroy(hypo_immune_bridge_t* bridge);
  * @param config Output configuration
  */
 void hypo_immune_bridge_default_config(hypo_immune_config_t* config);
+
+/*=============================================================================
+ * CONNECTION & UPDATE FUNCTIONS
+ *===========================================================================*/
+
+/**
+ * @brief Connect bridge to orchestrator and immune system
+ *
+ * WHAT: Establishes bidirectional connection between hypothalamus and immune
+ * WHY:  Enables coordinated neuroimmune responses
+ * HOW:  Registers callbacks, sets up bio-async channels
+ *
+ * @param bridge Bridge handle
+ * @param orch Hypothalamus orchestrator handle
+ * @param immune Brain immune system handle
+ * @return 0 on success, -1 on error
+ */
+int hypo_immune_connect(
+    hypo_immune_bridge_t* bridge,
+    hypo_orchestrator_t orch,
+    brain_immune_system_t* immune);
+
+/**
+ * @brief Unified update function with delta time
+ *
+ * WHAT: Advances all bridge state by delta time
+ * WHY:  Single entry point for time-based updates
+ * HOW:  Updates HPA dynamics, circadian phase, sickness behavior
+ *
+ * @param bridge Bridge handle
+ * @param delta_ms Time elapsed since last update (milliseconds)
+ * @return 0 on success, -1 on error
+ */
+int hypo_immune_update(hypo_immune_bridge_t* bridge, uint64_t delta_ms);
+
+/**
+ * @brief Receive simplified cytokines from external source
+ *
+ * WHAT: Simplified API for receiving cytokine updates
+ * WHY:  Easier integration with external immune modules
+ * HOW:  Converts simplified structure to internal format
+ *
+ * @param bridge Bridge handle
+ * @param cytokines Simplified cytokine state
+ * @return 0 on success, -1 on error
+ */
+int hypo_immune_receive_cytokines(
+    hypo_immune_bridge_t* bridge,
+    const hypo_immune_cytokines_t* cytokines);
+
+/**
+ * @brief Send cortisol to immune system
+ *
+ * WHAT: Sends current cortisol level to brain immune system
+ * WHY:  Cortisol modulates immune response (glucocorticoid effects)
+ * HOW:  Updates immune system's cortisol-mediated suppression
+ *
+ * @param bridge Bridge handle
+ * @param cortisol Cortisol level [0, 1]
+ * @return 0 on success, -1 on error
+ */
+int hypo_immune_send_cortisol(hypo_immune_bridge_t* bridge, float cortisol);
+
+/*=============================================================================
+ * UNIFIED STATE QUERIES
+ *===========================================================================*/
+
+/**
+ * @brief Get complete unified immune state
+ *
+ * WHAT: Returns comprehensive snapshot of hypothalamus-immune state
+ * WHY:  Single query for all relevant metrics
+ * HOW:  Aggregates cytokines, sickness, HPA, circadian, sleep-immune
+ *
+ * @param bridge Bridge handle
+ * @param state Output unified state
+ * @return 0 on success, -1 on error
+ */
+int hypo_immune_get_state(
+    const hypo_immune_bridge_t* bridge,
+    hypo_immune_state_t* state);
+
+/**
+ * @brief Get current inflammation level
+ *
+ * WHAT: Quick query for overall inflammation
+ * WHY:  Common query needed by many modules
+ * HOW:  Returns cached inflammation calculation
+ *
+ * @param bridge Bridge handle
+ * @return Inflammation level [0, 1], or 0 on error
+ */
+float hypo_immune_get_inflammation(const hypo_immune_bridge_t* bridge);
+
+/**
+ * @brief Get fever signal strength
+ *
+ * WHAT: Returns hypothalamic fever signal
+ * WHY:  Needed by thermoregulation and other modules
+ * HOW:  Computed from IL-1β and IL-6 levels
+ *
+ * @param bridge Bridge handle
+ * @return Fever signal [0, 1], or 0 on error
+ */
+float hypo_immune_get_fever_signal(const hypo_immune_bridge_t* bridge);
+
+/**
+ * @brief Check if sickness behavior is active
+ *
+ * WHAT: Boolean check for sickness behavior state
+ * WHY:  Quick check for behavior modulation decisions
+ * HOW:  Returns true if sickness level >= SICKNESS_MILD
+ *
+ * @param bridge Bridge handle
+ * @return true if sickness behavior is active
+ */
+bool hypo_immune_is_sickness_behavior(const hypo_immune_bridge_t* bridge);
+
+/*=============================================================================
+ * MODULATION & CONTROL
+ *===========================================================================*/
+
+/**
+ * @brief Modulate immune response via cortisol
+ *
+ * WHAT: Applies suppression factor to immune response
+ * WHY:  Implements HPA-mediated immune modulation
+ * HOW:  Sends suppression signal via bio-async or direct call
+ *
+ * @param bridge Bridge handle
+ * @param suppression Suppression level [0, 1] (0=none, 1=max)
+ * @return 0 on success, -1 on error
+ */
+int hypo_immune_modulate_immune_response(
+    hypo_immune_bridge_t* bridge,
+    float suppression);
+
+/**
+ * @brief Trigger acute phase response
+ *
+ * WHAT: Initiates systemic acute phase response
+ * WHY:  Coordinated response to significant infection/injury
+ * HOW:  Elevates pro-inflammatory cytokines, activates sickness behavior
+ *
+ * BIOLOGICAL BASIS:
+ * The acute phase response includes:
+ * - Fever induction
+ * - Anorexia
+ * - Fatigue and hypersomnia
+ * - Social withdrawal
+ * - Elevated acute phase proteins (via liver)
+ *
+ * @param bridge Bridge handle
+ * @return 0 on success, -1 on error
+ */
+int hypo_immune_trigger_acute_phase(hypo_immune_bridge_t* bridge);
+
+/**
+ * @brief End acute phase response
+ *
+ * WHAT: Terminates acute phase response
+ * WHY:  Return to normal homeostatic state
+ * HOW:  Elevates anti-inflammatory cytokines, reduces sickness behavior
+ *
+ * @param bridge Bridge handle
+ * @return 0 on success, -1 on error
+ */
+int hypo_immune_end_acute_phase(hypo_immune_bridge_t* bridge);
+
+/*=============================================================================
+ * SLEEP-IMMUNE INTERACTION
+ *===========================================================================*/
+
+/**
+ * @brief Update sleep-immune interaction state
+ *
+ * WHAT: Updates sleep-immune coupling based on sleep state
+ * WHY:  Sleep profoundly affects immune function and vice versa
+ * HOW:  Modulates cytokine levels based on sleep quality
+ *
+ * @param bridge Bridge handle
+ * @param sleep_quality Sleep quality [0, 1] (0=deprived, 1=restorative)
+ * @param is_sleeping Whether currently sleeping
+ * @return 0 on success, -1 on error
+ */
+int hypo_immune_update_sleep(
+    hypo_immune_bridge_t* bridge,
+    float sleep_quality,
+    bool is_sleeping);
+
+/**
+ * @brief Get sleep-immune state
+ *
+ * @param bridge Bridge handle
+ * @return Current sleep-immune interaction state
+ */
+hypo_sleep_immune_t hypo_immune_get_sleep_state(
+    const hypo_immune_bridge_t* bridge);
+
+/**
+ * @brief Get sickness-induced sleep drive
+ *
+ * WHAT: Returns increased sleep drive due to sickness
+ * WHY:  Sickness behavior includes hypersomnia
+ * HOW:  Computed from pro-inflammatory cytokine levels
+ *
+ * @param bridge Bridge handle
+ * @return Additional sleep drive [0, 1], or 0 on error
+ */
+float hypo_immune_get_sickness_sleep_drive(const hypo_immune_bridge_t* bridge);
 
 /*=============================================================================
  * CYTOKINE → HYPOTHALAMUS (Immune → Drive Modulation)

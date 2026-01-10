@@ -76,6 +76,8 @@ typedef enum {
  * BIOLOGICAL BASIS: Maps to homeostatic and psychological needs
  * ALIGNMENT BASIS: These are the "reward function parameters" per Byrnes
  */
+#ifndef HYPO_DRIVE_TYPE_DEFINED
+#define HYPO_DRIVE_TYPE_DEFINED
 typedef enum {
     /* Physiological drives (survival) */
     HYPO_DRIVE_HUNGER = 0,          /**< Food-seeking motivation */
@@ -92,6 +94,7 @@ typedef enum {
 
     HYPO_DRIVE_COUNT
 } hypo_drive_type_t;
+#endif /* HYPO_DRIVE_TYPE_DEFINED */
 
 /*=============================================================================
  * ALIGNMENT MODES (BYRNES' KEY INSIGHT)

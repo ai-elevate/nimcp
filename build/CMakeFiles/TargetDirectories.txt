@@ -496,7 +496,6 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_bio_async_plasticity_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_bio_async_cognitive_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_security_attack_simulation.dir
-/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_security_bridges_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_swarm_formation.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_swarm_threat_response.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_asymmetric_swarm.dir
@@ -607,6 +606,8 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_tier3_fep_bridges.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_security_module_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_training_symbolic_logic_pipeline.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_hypothalamus_orchestrator_pipeline.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_hypo_fep_cognitive_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/rebuild_cache.dir
@@ -1772,6 +1773,9 @@
 /home/bbrelin/nimcp/build/test/integration/core/brain/regions/broca/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/regions/broca/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integration.dir
+/home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_integration.dir
+/home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypo_fep_integration.dir
+/home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypo_bio_async_integration.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/regions/hypothalamus/CMakeFiles/rebuild_cache.dir
@@ -1825,6 +1829,8 @@
 /home/bbrelin/nimcp/build/test/regression/core/brain/regions/cerebellum/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/regions/cerebellum/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression.dir
+/home/bbrelin/nimcp/build/test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_regression.dir
+/home/bbrelin/nimcp/build/test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypo_fep_bridges_regression.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/regions/hypothalamus/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/regions/hypothalamus/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/regions/hypothalamus/CMakeFiles/rebuild_cache.dir
@@ -1945,6 +1951,7 @@
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hippocampus/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_adapter.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/rebuild_cache.dir
@@ -1952,6 +1959,18 @@
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_bio_async_fep_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_salience_fep_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_curiosity_fep_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_reasoning_fep_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_global_workspace_fep_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/insula/CMakeFiles/unit_core_brain_regions_insula_test_nimcp_insula_adapter.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/insula/CMakeFiles/unit_core_brain_regions_insula_test_nimcp_insula_quantum_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/regions/insula/CMakeFiles/test.dir

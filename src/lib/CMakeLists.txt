@@ -218,6 +218,26 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_broca_bridge.c  # Broca bridge (speech modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_quantum_bridge.c  # Quantum homeostatic optimization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_alignment.c       # Alignment hardening & introspection (Phase 19)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_orchestrator.c    # Hypothalamus orchestrator (bridge coordination)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_bio_async_bridge.c  # Unified bio-async integration bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_cognitive_hub_bridge.c  # Cognitive hub integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.c  # Logging integration bridge
+    # Hypothalamus FEP Bridges (drive-FEP integration for cognitive modules)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_bio_async_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_immune_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_logging_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_salience_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_reasoning_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_global_workspace_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_introspection_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_curiosity_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_game_theory_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_imagination_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_epistemic_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_collective_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_bias_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_tom_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/fep/nimcp_hypo_predictive_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_hypothalamus.c              # Hypothalamus factory init
 
     # Hippocampus - Episodic memory, spatial navigation, pattern separation/completion (Phase H1)

@@ -20,3 +20,9 @@ endmacro()
 
 # Alignment regression tests (Phase 19)
 add_hypothalamus_regression_test(test_hypothalamus_alignment_regression)
+
+# Orchestrator regression tests
+add_hypothalamus_regression_test(test_hypothalamus_orchestrator_regression)
+
+# FEP bridges regression tests
+add_hypothalamus_regression_test(test_hypo_fep_bridges_regression)

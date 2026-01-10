@@ -18,6 +18,14 @@
 #include <string.h>
 
 /*=============================================================================
+ * ORCHESTRATOR INTEGRATION (OPTIONAL)
+ *
+ * Note: We cannot include the orchestrator header due to a naming conflict
+ * with hypo_drive_state_t. The orchestrator connection functionality is
+ * implemented via bio-async messaging instead of direct function calls.
+ *===========================================================================*/
+
+/*=============================================================================
  * INTERNAL STRUCTURES
  *===========================================================================*/
 
@@ -28,6 +36,7 @@ struct hypo_immune_bridge {
     /* External references */
     hypo_drive_system_handle_t* drives;
     brain_immune_system_t* immune;
+    hypo_orchestrator_t orchestrator;
 
     /* Configuration */
     hypo_immune_config_t config;
@@ -46,9 +55,26 @@ struct hypo_immune_bridge {
     bool in_safety_mode;
     float safety_mode_level;
 
+    /* Acute phase response */
+    bool acute_phase_active;
+    uint64_t acute_phase_start_us;
+
+    /* Sleep-immune interaction */
+    hypo_sleep_immune_t sleep_immune_state;
+    float sleep_quality;
+    bool is_sleeping;
+    float sickness_sleep_drive;
+
     /* Bio-async */
     bio_module_context_t bio_ctx;
     bool bio_registered;
+
+    /* Orchestrator registration */
+    uint32_t orch_bridge_id;
+    bool orch_registered;
+
+    /* Last update time for delta calculations */
+    uint64_t last_update_us;
 
     /* Statistics */
     hypo_immune_bridge_stats_t stats;
@@ -104,6 +130,18 @@ void hypo_immune_bridge_default_config(hypo_immune_config_t* config) {
     /* Alignment integration */
     config->use_as_safety_mode = true;
     config->safety_trigger = 0.6f;
+
+    /* Extended configuration (bidirectional coupling) */
+    config->cortisol_immune_suppression = HYPO_IMMUNE_CORTISOL_SUPPRESSION;
+    config->cytokine_stress_sensitivity = 0.5f;
+    config->fever_threshold = 0.3f;
+    config->sickness_behavior_threshold = HYPO_IMMUNE_SICKNESS_ONSET_THRESHOLD;
+    config->enable_bidirectional = true;
+    config->enable_bio_async = true;
+
+    /* Sleep-immune parameters */
+    config->sleep_immune_coupling = HYPO_IMMUNE_SLEEP_FACTOR;
+    config->enable_sleep_modulation = true;
 }
 
 hypo_immune_bridge_t* hypo_immune_bridge_create(
@@ -150,6 +188,18 @@ hypo_immune_bridge_t* hypo_immune_bridge_create(
         bridge->modulations[i].is_modulated = false;
     }
 
+    /* Initialize sleep-immune state */
+    bridge->sleep_immune_state = SLEEP_IMMUNE_NORMAL;
+    bridge->sleep_quality = 1.0f;
+    bridge->is_sleeping = false;
+    bridge->sickness_sleep_drive = 0.0f;
+
+    /* Initialize circadian modulation */
+    bridge->circadian_modulation = 1.0f;
+
+    /* Initialize timing */
+    bridge->last_update_us = nimcp_time_get_us();
+
     /* Create mutex */
     mutex_attr_t attr;
     attr.type = MUTEX_TYPE_RECURSIVE;
@@ -166,6 +216,9 @@ hypo_immune_bridge_t* hypo_immune_bridge_create(
 
 void hypo_immune_bridge_destroy(hypo_immune_bridge_t* bridge) {
     if (!bridge) return;
+
+    /* Note: Orchestrator unregistration handled via bio-async cleanup */
+    bridge->orch_registered = false;
 
     if (bridge->bio_registered) {
         hypo_immune_bridge_unregister_bio(bridge);
@@ -847,4 +900,398 @@ static nimcp_error_t immune_handle_antigen_detected(
     }
 
     return NIMCP_SUCCESS;
+}
+
+/*=============================================================================
+ * CONNECTION & UPDATE FUNCTIONS
+ *===========================================================================*/
+
+int hypo_immune_connect(
+    hypo_immune_bridge_t* bridge,
+    hypo_orchestrator_t orch,
+    brain_immune_system_t* immune)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->orchestrator = orch;
+    bridge->immune = immune;
+
+    /* Note: Direct orchestrator registration is not available due to header
+     * conflicts. The bridge operates via bio-async messaging for orchestrator
+     * communication. Set the registered flag based on orchestrator availability. */
+    if (orch) {
+        bridge->orch_registered = true;
+        nimcp_log(LOG_LEVEL_INFO,
+            "hypo_immune_bridge: connected to orchestrator (via bio-async)");
+    }
+
+    /* Register bio-async if enabled */
+    if (bridge->config.enable_bio_async && !bridge->bio_registered) {
+        hypo_immune_bridge_register_bio(bridge, false);
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int hypo_immune_update(hypo_immune_bridge_t* bridge, uint64_t delta_ms)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    float dt = (float)delta_ms / 1000.0f;
+    uint64_t now = nimcp_time_get_us();
+
+    /* Update HPA dynamics based on current stress and cytokine levels */
+    float cytokine_stress = 0.0f;
+    if (bridge->config.enable_bidirectional) {
+        /* Cytokines induce HPA axis activation */
+        float pro_inflam = compute_pro_inflammatory_total(&bridge->cytokines);
+        cytokine_stress = pro_inflam * bridge->config.cytokine_stress_sensitivity;
+    }
+    compute_hpa_dynamics(bridge, dt);
+
+    /* If cytokines are high, they contribute to stress response */
+    if (cytokine_stress > 0.1f) {
+        bridge->hpa.acute_stress = fmaxf(bridge->hpa.acute_stress, cytokine_stress);
+    }
+
+    /* Update sickness behavior */
+    update_sickness_from_cytokines(bridge);
+    hypo_immune_bridge_compute_sickness_level(bridge);
+
+    /* Update sleep-immune interaction */
+    if (bridge->config.enable_sleep_modulation) {
+        /* Compute sickness-induced sleep drive */
+        float pro_inflam = compute_pro_inflammatory_total(&bridge->cytokines);
+        bridge->sickness_sleep_drive = pro_inflam * HYPO_IMMUNE_SLEEP_FACTOR;
+
+        /* Update sleep-immune state based on current conditions */
+        if (bridge->sickness.level >= SICKNESS_MODERATE) {
+            bridge->sleep_immune_state = SLEEP_IMMUNE_SICKNESS;
+        } else if (bridge->sleep_quality < 0.3f && !bridge->is_sleeping) {
+            bridge->sleep_immune_state = SLEEP_IMMUNE_DEPRIVED;
+        } else if (bridge->is_sleeping && bridge->sleep_quality > 0.7f) {
+            bridge->sleep_immune_state = SLEEP_IMMUNE_RESTORATIVE;
+        } else {
+            bridge->sleep_immune_state = SLEEP_IMMUNE_NORMAL;
+        }
+    }
+
+    /* Check acute phase duration */
+    if (bridge->acute_phase_active) {
+        uint64_t duration = now - bridge->acute_phase_start_us;
+        if (duration > HYPO_IMMUNE_ACUTE_PHASE_DURATION_US) {
+            /* Auto-end acute phase after duration */
+            hypo_immune_end_acute_phase(bridge);
+        }
+    }
+
+    /* Apply effects if bidirectional coupling enabled */
+    if (bridge->config.enable_bidirectional && bridge->immune) {
+        hypo_immune_bridge_apply_cortisol_effects(bridge);
+    }
+
+    bridge->last_update_us = now;
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int hypo_immune_receive_cytokines(
+    hypo_immune_bridge_t* bridge,
+    const hypo_immune_cytokines_t* cytokines)
+{
+    if (!bridge || !cytokines) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Convert simplified cytokines to internal format */
+    bridge->cytokines.il1_beta = cytokines->il1_beta;
+    bridge->cytokines.il6 = cytokines->il6;
+    bridge->cytokines.tnf_alpha = cytokines->tnf_alpha;
+    bridge->cytokines.il10 = cytokines->il10;
+    bridge->cytokines.ifn_gamma = cytokines->ifn_gamma;
+    /* Note: cortisol comes from HPA, not external */
+    bridge->cytokines.last_update_us = nimcp_time_get_us();
+
+    bridge->stats.cytokine_updates++;
+
+    /* Update derived state */
+    update_sickness_from_cytokines(bridge);
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int hypo_immune_send_cortisol(hypo_immune_bridge_t* bridge, float cortisol)
+{
+    if (!bridge) return -1;
+    if (cortisol < 0.0f || cortisol > 1.0f) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Update internal cortisol level */
+    bridge->hpa.cortisol_level = cortisol;
+
+    /* If immune system connected, send cortisol signal */
+    if (bridge->immune && bridge->config.enable_bidirectional) {
+        /* Compute immune suppression from cortisol */
+        float suppression = hypo_immune_bridge_get_immune_suppression(bridge);
+
+        /* Broadcast via bio-async if enabled */
+        if (bridge->bio_registered) {
+            hypo_immune_bridge_broadcast_cortisol(bridge);
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+/*=============================================================================
+ * UNIFIED STATE QUERIES
+ *===========================================================================*/
+
+int hypo_immune_get_state(
+    const hypo_immune_bridge_t* bridge,
+    hypo_immune_state_t* state)
+{
+    if (!bridge || !state) return -1;
+
+    nimcp_mutex_lock(((hypo_immune_bridge_t*)bridge)->mutex);
+
+    memset(state, 0, sizeof(*state));
+
+    /* Copy cytokine levels */
+    state->cytokines.il1_beta = bridge->cytokines.il1_beta;
+    state->cytokines.il6 = bridge->cytokines.il6;
+    state->cytokines.tnf_alpha = bridge->cytokines.tnf_alpha;
+    state->cytokines.il10 = bridge->cytokines.il10;
+    state->cytokines.ifn_gamma = bridge->cytokines.ifn_gamma;
+    state->cytokines.cortisol = bridge->hpa.cortisol_level;
+
+    /* Copy inflammation and sickness */
+    state->inflammation_level = bridge->sickness.inflammation_level;
+    state->fever_signal = bridge->sickness.fever_magnitude;
+    state->sickness_level = bridge->sickness.level;
+
+    /* Compute overall sickness behavior intensity */
+    state->sickness_behavior = (bridge->sickness.fever_magnitude +
+                                bridge->sickness.anorexia_magnitude +
+                                bridge->sickness.fatigue_magnitude +
+                                bridge->sickness.social_withdrawal) / 4.0f;
+
+    /* Compute immune activation from pro-inflammatory cytokines */
+    state->immune_activation = compute_pro_inflammatory_total(&bridge->cytokines);
+
+    /* Acute phase state */
+    state->acute_phase_response = bridge->acute_phase_active;
+
+    /* HPA and circadian state */
+    state->hpa_state = bridge->hpa.state;
+    state->circadian = bridge->circadian_phase;
+    state->sleep_immune = bridge->sleep_immune_state;
+
+    /* Timing */
+    state->last_update_us = bridge->last_update_us;
+
+    nimcp_mutex_unlock(((hypo_immune_bridge_t*)bridge)->mutex);
+    return 0;
+}
+
+float hypo_immune_get_inflammation(const hypo_immune_bridge_t* bridge)
+{
+    if (!bridge) return 0.0f;
+    return bridge->sickness.inflammation_level;
+}
+
+float hypo_immune_get_fever_signal(const hypo_immune_bridge_t* bridge)
+{
+    if (!bridge) return 0.0f;
+    return bridge->sickness.fever_magnitude;
+}
+
+bool hypo_immune_is_sickness_behavior(const hypo_immune_bridge_t* bridge)
+{
+    if (!bridge) return false;
+    return bridge->sickness.level >= SICKNESS_MILD;
+}
+
+/*=============================================================================
+ * MODULATION & CONTROL
+ *===========================================================================*/
+
+int hypo_immune_modulate_immune_response(
+    hypo_immune_bridge_t* bridge,
+    float suppression)
+{
+    if (!bridge) return -1;
+    if (suppression < 0.0f || suppression > 1.0f) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* If immune system connected, apply suppression */
+    if (bridge->immune) {
+        /* The brain immune system doesn't have a direct suppression API,
+         * but we can broadcast cortisol-mediated suppression via bio-async */
+        if (bridge->bio_registered) {
+            struct {
+                bio_message_header_t header;
+                float cortisol_level;
+                float immune_suppression;
+                uint8_t hpa_state;
+            } msg;
+
+            msg.header.type = BIO_MSG_HYPO_IMMUNE_CORTISOL_STATE;
+            msg.header.timestamp_us = nimcp_time_get_us();
+            msg.header.source_module = HYPO_IMMUNE_BRIDGE_MODULE_ID;
+            msg.header.target_module = 0;
+            msg.header.flags = BIO_MSG_FLAG_BROADCAST;
+            msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
+
+            msg.cortisol_level = bridge->hpa.cortisol_level;
+            msg.immune_suppression = suppression;
+            msg.hpa_state = (uint8_t)bridge->hpa.state;
+
+            bio_router_broadcast(bridge->bio_ctx, &msg.header, sizeof(msg));
+            bridge->stats.messages_sent++;
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int hypo_immune_trigger_acute_phase(hypo_immune_bridge_t* bridge)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    if (bridge->acute_phase_active) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return 0;  /* Already active */
+    }
+
+    bridge->acute_phase_active = true;
+    bridge->acute_phase_start_us = nimcp_time_get_us();
+
+    /* Elevate pro-inflammatory cytokines */
+    bridge->cytokines.il1_beta = fminf(bridge->cytokines.il1_beta + 0.3f, 1.0f);
+    bridge->cytokines.il6 = fminf(bridge->cytokines.il6 + 0.4f, 1.0f);
+    bridge->cytokines.tnf_alpha = fminf(bridge->cytokines.tnf_alpha + 0.2f, 1.0f);
+
+    /* Trigger sickness behavior */
+    update_sickness_from_cytokines(bridge);
+    hypo_immune_bridge_compute_sickness_level(bridge);
+    hypo_immune_bridge_apply_sickness_behavior(bridge);
+
+    /* Broadcast sickness state */
+    if (bridge->bio_registered) {
+        hypo_immune_bridge_broadcast_sickness(bridge);
+        hypo_immune_bridge_broadcast_fever(bridge);
+    }
+
+    nimcp_log(LOG_LEVEL_INFO, "hypo_immune_bridge: acute phase response triggered");
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+int hypo_immune_end_acute_phase(hypo_immune_bridge_t* bridge)
+{
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    if (!bridge->acute_phase_active) {
+        nimcp_mutex_unlock(bridge->mutex);
+        return 0;  /* Not active */
+    }
+
+    bridge->acute_phase_active = false;
+
+    /* Elevate anti-inflammatory cytokines for resolution */
+    bridge->cytokines.il10 = fminf(bridge->cytokines.il10 + 0.3f, 1.0f);
+    bridge->cytokines.tgf_beta = fminf(bridge->cytokines.tgf_beta + 0.2f, 1.0f);
+
+    /* Gradually reduce pro-inflammatory (will decay naturally) */
+    bridge->cytokines.il1_beta *= 0.7f;
+    bridge->cytokines.il6 *= 0.7f;
+    bridge->cytokines.tnf_alpha *= 0.7f;
+
+    /* Update state */
+    update_sickness_from_cytokines(bridge);
+    hypo_immune_bridge_compute_sickness_level(bridge);
+
+    /* Broadcast resolution */
+    if (bridge->bio_registered) {
+        hypo_immune_bridge_broadcast_sickness(bridge);
+    }
+
+    nimcp_log(LOG_LEVEL_INFO, "hypo_immune_bridge: acute phase response ended");
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+/*=============================================================================
+ * SLEEP-IMMUNE INTERACTION
+ *===========================================================================*/
+
+int hypo_immune_update_sleep(
+    hypo_immune_bridge_t* bridge,
+    float sleep_quality,
+    bool is_sleeping)
+{
+    if (!bridge) return -1;
+    if (sleep_quality < 0.0f || sleep_quality > 1.0f) return -1;
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->sleep_quality = sleep_quality;
+    bridge->is_sleeping = is_sleeping;
+
+    /* Sleep deprivation increases pro-inflammatory cytokines */
+    if (!is_sleeping && sleep_quality < 0.3f) {
+        float deprivation_factor = (0.3f - sleep_quality) * bridge->config.sleep_immune_coupling;
+        bridge->cytokines.il1_beta = fminf(bridge->cytokines.il1_beta + deprivation_factor * 0.1f, 1.0f);
+        bridge->cytokines.il6 = fminf(bridge->cytokines.il6 + deprivation_factor * 0.1f, 1.0f);
+        bridge->sleep_immune_state = SLEEP_IMMUNE_DEPRIVED;
+    }
+    /* Restorative sleep enhances immune function (reduces inflammation) */
+    else if (is_sleeping && sleep_quality > 0.7f) {
+        float restoration_factor = (sleep_quality - 0.7f) * bridge->config.sleep_immune_coupling;
+        bridge->cytokines.il10 = fminf(bridge->cytokines.il10 + restoration_factor * 0.05f, 1.0f);
+        bridge->sleep_immune_state = SLEEP_IMMUNE_RESTORATIVE;
+    }
+    /* Sickness induces hypersomnia */
+    else if (bridge->sickness.level >= SICKNESS_MODERATE) {
+        bridge->sleep_immune_state = SLEEP_IMMUNE_SICKNESS;
+    }
+    else {
+        bridge->sleep_immune_state = SLEEP_IMMUNE_NORMAL;
+    }
+
+    /* Update derived state */
+    update_sickness_from_cytokines(bridge);
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+hypo_sleep_immune_t hypo_immune_get_sleep_state(const hypo_immune_bridge_t* bridge)
+{
+    if (!bridge) return SLEEP_IMMUNE_NORMAL;
+    return bridge->sleep_immune_state;
+}
+
+float hypo_immune_get_sickness_sleep_drive(const hypo_immune_bridge_t* bridge)
+{
+    if (!bridge) return 0.0f;
+    return bridge->sickness_sleep_drive;
 }

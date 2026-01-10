@@ -5827,19 +5827,6 @@ e2e_test_security_attack_simulation/fast:
 .PHONY : e2e_test_security_attack_simulation/fast
 
 #=============================================================================
-# Target rules for targets named e2e_test_security_bridges_pipeline
-
-# Build rule for target.
-e2e_test_security_bridges_pipeline: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_security_bridges_pipeline
-.PHONY : e2e_test_security_bridges_pipeline
-
-# fast build rule for target.
-e2e_test_security_bridges_pipeline/fast:
-	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_security_bridges_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_security_bridges_pipeline.dir/build
-.PHONY : e2e_test_security_bridges_pipeline/fast
-
-#=============================================================================
 # Target rules for targets named e2e_test_swarm_formation
 
 # Build rule for target.
@@ -7268,6 +7255,32 @@ e2e_test_training_symbolic_logic_pipeline: cmake_check_build_system
 e2e_test_training_symbolic_logic_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_training_symbolic_logic_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_training_symbolic_logic_pipeline.dir/build
 .PHONY : e2e_test_training_symbolic_logic_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_hypothalamus_orchestrator_pipeline
+
+# Build rule for target.
+e2e_test_hypothalamus_orchestrator_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_hypothalamus_orchestrator_pipeline
+.PHONY : e2e_test_hypothalamus_orchestrator_pipeline
+
+# fast build rule for target.
+e2e_test_hypothalamus_orchestrator_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_hypothalamus_orchestrator_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_hypothalamus_orchestrator_pipeline.dir/build
+.PHONY : e2e_test_hypothalamus_orchestrator_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_hypo_fep_cognitive_pipeline
+
+# Build rule for target.
+e2e_test_hypo_fep_cognitive_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_hypo_fep_cognitive_pipeline
+.PHONY : e2e_test_hypo_fep_cognitive_pipeline
+
+# fast build rule for target.
+e2e_test_hypo_fep_cognitive_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_hypo_fep_cognitive_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_hypo_fep_cognitive_pipeline.dir/build
+.PHONY : e2e_test_hypo_fep_cognitive_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
@@ -13133,6 +13146,45 @@ integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integrat
 .PHONY : integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_integration
+
+# Build rule for target.
+integration_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_integration
+.PHONY : integration_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_integration
+
+# fast build rule for target.
+integration_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_integration.dir/build.make test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_integration.dir/build
+.PHONY : integration_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_hypothalamus_test_hypo_fep_integration
+
+# Build rule for target.
+integration_core_brain_regions_hypothalamus_test_hypo_fep_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_hypothalamus_test_hypo_fep_integration
+.PHONY : integration_core_brain_regions_hypothalamus_test_hypo_fep_integration
+
+# fast build rule for target.
+integration_core_brain_regions_hypothalamus_test_hypo_fep_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypo_fep_integration.dir/build.make test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypo_fep_integration.dir/build
+.PHONY : integration_core_brain_regions_hypothalamus_test_hypo_fep_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_hypothalamus_test_hypo_bio_async_integration
+
+# Build rule for target.
+integration_core_brain_regions_hypothalamus_test_hypo_bio_async_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_hypothalamus_test_hypo_bio_async_integration
+.PHONY : integration_core_brain_regions_hypothalamus_test_hypo_bio_async_integration
+
+# fast build rule for target.
+integration_core_brain_regions_hypothalamus_test_hypo_bio_async_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypo_bio_async_integration.dir/build.make test/integration/core/brain/regions/hypothalamus/CMakeFiles/integration_core_brain_regions_hypothalamus_test_hypo_bio_async_integration.dir/build
+.PHONY : integration_core_brain_regions_hypothalamus_test_hypo_bio_async_integration/fast
+
+#=============================================================================
 # Target rules for targets named regression_core_brain_oscillation_backward_compat
 
 # Build rule for target.
@@ -13274,6 +13326,32 @@ regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regressio
 regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression.dir/build.make test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression.dir/build
 .PHONY : regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_regression
+
+# Build rule for target.
+regression_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_regression
+.PHONY : regression_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_regression
+
+# fast build rule for target.
+regression_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_regression.dir/build.make test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_regression.dir/build
+.PHONY : regression_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_brain_regions_hypothalamus_test_hypo_fep_bridges_regression
+
+# Build rule for target.
+regression_core_brain_regions_hypothalamus_test_hypo_fep_bridges_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_brain_regions_hypothalamus_test_hypo_fep_bridges_regression
+.PHONY : regression_core_brain_regions_hypothalamus_test_hypo_fep_bridges_regression
+
+# fast build rule for target.
+regression_core_brain_regions_hypothalamus_test_hypo_fep_bridges_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypo_fep_bridges_regression.dir/build.make test/regression/core/brain/regions/hypothalamus/CMakeFiles/regression_core_brain_regions_hypothalamus_test_hypo_fep_bridges_regression.dir/build
+.PHONY : regression_core_brain_regions_hypothalamus_test_hypo_fep_bridges_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_brain_regions_test_signal_propagation_regression
@@ -13742,6 +13820,84 @@ unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment: cmake_ch
 unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment.dir/build.make test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment.dir/build
 .PHONY : unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator
+
+# Build rule for target.
+unit_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator
+.PHONY : unit_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator
+
+# fast build rule for target.
+unit_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator.dir/build.make test/unit/core/brain/regions/hypothalamus/CMakeFiles/unit_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator.dir/build
+.PHONY : unit_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_hypothalamus_fep_test_hypo_bio_async_fep_bridge
+
+# Build rule for target.
+unit_core_brain_regions_hypothalamus_fep_test_hypo_bio_async_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_hypothalamus_fep_test_hypo_bio_async_fep_bridge
+.PHONY : unit_core_brain_regions_hypothalamus_fep_test_hypo_bio_async_fep_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_hypothalamus_fep_test_hypo_bio_async_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_bio_async_fep_bridge.dir/build.make test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_bio_async_fep_bridge.dir/build
+.PHONY : unit_core_brain_regions_hypothalamus_fep_test_hypo_bio_async_fep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_hypothalamus_fep_test_hypo_salience_fep_bridge
+
+# Build rule for target.
+unit_core_brain_regions_hypothalamus_fep_test_hypo_salience_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_hypothalamus_fep_test_hypo_salience_fep_bridge
+.PHONY : unit_core_brain_regions_hypothalamus_fep_test_hypo_salience_fep_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_hypothalamus_fep_test_hypo_salience_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_salience_fep_bridge.dir/build.make test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_salience_fep_bridge.dir/build
+.PHONY : unit_core_brain_regions_hypothalamus_fep_test_hypo_salience_fep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_hypothalamus_fep_test_hypo_curiosity_fep_bridge
+
+# Build rule for target.
+unit_core_brain_regions_hypothalamus_fep_test_hypo_curiosity_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_hypothalamus_fep_test_hypo_curiosity_fep_bridge
+.PHONY : unit_core_brain_regions_hypothalamus_fep_test_hypo_curiosity_fep_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_hypothalamus_fep_test_hypo_curiosity_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_curiosity_fep_bridge.dir/build.make test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_curiosity_fep_bridge.dir/build
+.PHONY : unit_core_brain_regions_hypothalamus_fep_test_hypo_curiosity_fep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_hypothalamus_fep_test_hypo_reasoning_fep_bridge
+
+# Build rule for target.
+unit_core_brain_regions_hypothalamus_fep_test_hypo_reasoning_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_hypothalamus_fep_test_hypo_reasoning_fep_bridge
+.PHONY : unit_core_brain_regions_hypothalamus_fep_test_hypo_reasoning_fep_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_hypothalamus_fep_test_hypo_reasoning_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_reasoning_fep_bridge.dir/build.make test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_reasoning_fep_bridge.dir/build
+.PHONY : unit_core_brain_regions_hypothalamus_fep_test_hypo_reasoning_fep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_hypothalamus_fep_test_hypo_global_workspace_fep_bridge
+
+# Build rule for target.
+unit_core_brain_regions_hypothalamus_fep_test_hypo_global_workspace_fep_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_hypothalamus_fep_test_hypo_global_workspace_fep_bridge
+.PHONY : unit_core_brain_regions_hypothalamus_fep_test_hypo_global_workspace_fep_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_hypothalamus_fep_test_hypo_global_workspace_fep_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_global_workspace_fep_bridge.dir/build.make test/unit/core/brain/regions/hypothalamus/fep/CMakeFiles/unit_core_brain_regions_hypothalamus_fep_test_hypo_global_workspace_fep_bridge.dir/build
+.PHONY : unit_core_brain_regions_hypothalamus_fep_test_hypo_global_workspace_fep_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_brain_regions_insula_test_nimcp_insula_adapter
@@ -24770,7 +24926,9 @@ help:
 	@echo "... e2e_test_gpu_training_pipeline"
 	@echo "... e2e_test_gw_snn_plasticity_pipeline"
 	@echo "... e2e_test_hippocampus_pipeline"
+	@echo "... e2e_test_hypo_fep_cognitive_pipeline"
 	@echo "... e2e_test_hypothalamus_alignment_pipeline"
+	@echo "... e2e_test_hypothalamus_orchestrator_pipeline"
 	@echo "... e2e_test_introspection_pipeline"
 	@echo "... e2e_test_introspection_snn_plasticity_pipeline"
 	@echo "... e2e_test_language_layer_pipeline"
@@ -24817,7 +24975,6 @@ help:
 	@echo "... e2e_test_salience_snn_plasticity_pipeline"
 	@echo "... e2e_test_second_messenger_pipeline"
 	@echo "... e2e_test_security_attack_simulation"
-	@echo "... e2e_test_security_bridges_pipeline"
 	@echo "... e2e_test_security_module_pipeline"
 	@echo "... e2e_test_self_model_snn_plasticity_pipeline"
 	@echo "... e2e_test_server_swarm_pipeline"
@@ -24962,7 +25119,10 @@ help:
 	@echo "... integration_core_brain_factory_test_factory_integration"
 	@echo "... integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration"
 	@echo "... integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline"
+	@echo "... integration_core_brain_regions_hypothalamus_test_hypo_bio_async_integration"
+	@echo "... integration_core_brain_regions_hypothalamus_test_hypo_fep_integration"
 	@echo "... integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integration"
+	@echo "... integration_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_integration"
 	@echo "... integration_core_brain_subcortical_amygdala_test"
 	@echo "... integration_core_brain_subcortical_test"
 	@echo "... integration_core_brain_subcortical_thalamus_test"
@@ -25263,7 +25423,9 @@ help:
 	@echo "... regression_core_brain_oscillation_backward_compat"
 	@echo "... regression_core_brain_regions_broca_test_nimcp_broca_regression"
 	@echo "... regression_core_brain_regions_cerebellum_test_cerebellum_regression"
+	@echo "... regression_core_brain_regions_hypothalamus_test_hypo_fep_bridges_regression"
 	@echo "... regression_core_brain_regions_hypothalamus_test_hypothalamus_alignment_regression"
+	@echo "... regression_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_regression"
 	@echo "... regression_core_brain_regions_test_contextual_regression"
 	@echo "... regression_core_brain_regions_test_language_bridge_regression"
 	@echo "... regression_core_brain_regions_test_language_production_bridge_regression"
@@ -25977,6 +26139,12 @@ help:
 	@echo "... unit_core_brain_regions_cingulate_test_nimcp_cingulate_adapter"
 	@echo "... unit_core_brain_regions_cingulate_test_nimcp_cingulate_quantum_bridge"
 	@echo "... unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter"
+	@echo "... unit_core_brain_regions_hypothalamus_fep_test_hypo_bio_async_fep_bridge"
+	@echo "... unit_core_brain_regions_hypothalamus_fep_test_hypo_curiosity_fep_bridge"
+	@echo "... unit_core_brain_regions_hypothalamus_fep_test_hypo_global_workspace_fep_bridge"
+	@echo "... unit_core_brain_regions_hypothalamus_fep_test_hypo_reasoning_fep_bridge"
+	@echo "... unit_core_brain_regions_hypothalamus_fep_test_hypo_salience_fep_bridge"
+	@echo "... unit_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator"
 	@echo "... unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_adapter"
 	@echo "... unit_core_brain_regions_hypothalamus_test_nimcp_hypothalamus_alignment"
 	@echo "... unit_core_brain_regions_insula_test_nimcp_insula_adapter"
