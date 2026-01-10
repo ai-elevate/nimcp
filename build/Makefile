@@ -12080,6 +12080,19 @@ unit_cognitive_test_imagination_reasoning_fep_bridge/fast:
 .PHONY : unit_cognitive_test_imagination_reasoning_fep_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_test_security_cognitive_hub_bridge
+
+# Build rule for target.
+unit_cognitive_test_security_cognitive_hub_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_test_security_cognitive_hub_bridge
+.PHONY : unit_cognitive_test_security_cognitive_hub_bridge
+
+# fast build rule for target.
+unit_cognitive_test_security_cognitive_hub_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_security_cognitive_hub_bridge.dir/build.make test/unit/cognitive/integration/CMakeFiles/unit_cognitive_test_security_cognitive_hub_bridge.dir/build
+.PHONY : unit_cognitive_test_security_cognitive_hub_bridge/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_bio_async_test
 
 # Build rule for target.
@@ -17956,6 +17969,123 @@ unit_security_rcog_bridge/fast:
 .PHONY : unit_security_rcog_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_security_test_security_distributed_training_bridge
+
+# Build rule for target.
+unit_security_test_security_distributed_training_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_distributed_training_bridge
+.PHONY : unit_security_test_security_distributed_training_bridge
+
+# fast build rule for target.
+unit_security_test_security_distributed_training_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/distributed/CMakeFiles/unit_security_test_security_distributed_training_bridge.dir/build.make test/unit/security/distributed/CMakeFiles/unit_security_test_security_distributed_training_bridge.dir/build
+.PHONY : unit_security_test_security_distributed_training_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_security_knowledge_graph_bridge
+
+# Build rule for target.
+unit_security_test_security_knowledge_graph_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_knowledge_graph_bridge
+.PHONY : unit_security_test_security_knowledge_graph_bridge
+
+# fast build rule for target.
+unit_security_test_security_knowledge_graph_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/knowledge/CMakeFiles/unit_security_test_security_knowledge_graph_bridge.dir/build.make test/unit/security/knowledge/CMakeFiles/unit_security_test_security_knowledge_graph_bridge.dir/build
+.PHONY : unit_security_test_security_knowledge_graph_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_security_game_theory_bridge
+
+# Build rule for target.
+unit_security_test_security_game_theory_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_game_theory_bridge
+.PHONY : unit_security_test_security_game_theory_bridge
+
+# fast build rule for target.
+unit_security_test_security_game_theory_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/game_theory/CMakeFiles/unit_security_test_security_game_theory_bridge.dir/build.make test/unit/security/game_theory/CMakeFiles/unit_security_test_security_game_theory_bridge.dir/build
+.PHONY : unit_security_test_security_game_theory_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_security_imagination_bridge
+
+# Build rule for target.
+unit_security_test_security_imagination_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_imagination_bridge
+.PHONY : unit_security_test_security_imagination_bridge
+
+# fast build rule for target.
+unit_security_test_security_imagination_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/imagination/CMakeFiles/unit_security_test_security_imagination_bridge.dir/build.make test/unit/security/imagination/CMakeFiles/unit_security_test_security_imagination_bridge.dir/build
+.PHONY : unit_security_test_security_imagination_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_security_continual_learning_bridge
+
+# Build rule for target.
+unit_security_test_security_continual_learning_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_continual_learning_bridge
+.PHONY : unit_security_test_security_continual_learning_bridge
+
+# fast build rule for target.
+unit_security_test_security_continual_learning_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/continual/CMakeFiles/unit_security_test_security_continual_learning_bridge.dir/build.make test/unit/security/continual/CMakeFiles/unit_security_test_security_continual_learning_bridge.dir/build
+.PHONY : unit_security_test_security_continual_learning_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_security_epistemic_bridge
+
+# Build rule for target.
+unit_security_test_security_epistemic_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_epistemic_bridge
+.PHONY : unit_security_test_security_epistemic_bridge
+
+# fast build rule for target.
+unit_security_test_security_epistemic_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/epistemic/CMakeFiles/unit_security_test_security_epistemic_bridge.dir/build.make test/unit/security/epistemic/CMakeFiles/unit_security_test_security_epistemic_bridge.dir/build
+.PHONY : unit_security_test_security_epistemic_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_security_collective_bridge
+
+# Build rule for target.
+unit_security_test_security_collective_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_collective_bridge
+.PHONY : unit_security_test_security_collective_bridge
+
+# fast build rule for target.
+unit_security_test_security_collective_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/collective/CMakeFiles/unit_security_test_security_collective_bridge.dir/build.make test/unit/security/collective/CMakeFiles/unit_security_test_security_collective_bridge.dir/build
+.PHONY : unit_security_test_security_collective_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_security_hippocampus_bridge
+
+# Build rule for target.
+unit_security_test_security_hippocampus_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_hippocampus_bridge
+.PHONY : unit_security_test_security_hippocampus_bridge
+
+# fast build rule for target.
+unit_security_test_security_hippocampus_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/hippocampus/CMakeFiles/unit_security_test_security_hippocampus_bridge.dir/build.make test/unit/security/hippocampus/CMakeFiles/unit_security_test_security_hippocampus_bridge.dir/build
+.PHONY : unit_security_test_security_hippocampus_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_security_orchestrator
+
+# Build rule for target.
+unit_security_test_security_orchestrator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_orchestrator
+.PHONY : unit_security_test_security_orchestrator
+
+# fast build rule for target.
+unit_security_test_security_orchestrator/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/orchestrator/CMakeFiles/unit_security_test_security_orchestrator.dir/build.make test/unit/security/orchestrator/CMakeFiles/unit_security_test_security_orchestrator.dir/build
+.PHONY : unit_security_test_security_orchestrator/fast
+
+#=============================================================================
 # Target rules for targets named integration_security_test_bbb_integration
 
 # Build rule for target.
@@ -18136,6 +18266,110 @@ integration_security_test_module_integration: cmake_check_build_system
 integration_security_test_module_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_module_integration.dir/build.make test/integration/security/CMakeFiles/integration_security_test_module_integration.dir/build
 .PHONY : integration_security_test_module_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_security_test_knowledge_graph
+
+# Build rule for target.
+integration_security_test_knowledge_graph: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_knowledge_graph
+.PHONY : integration_security_test_knowledge_graph
+
+# fast build rule for target.
+integration_security_test_knowledge_graph/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_knowledge_graph.dir/build.make test/integration/security/CMakeFiles/integration_security_test_knowledge_graph.dir/build
+.PHONY : integration_security_test_knowledge_graph/fast
+
+#=============================================================================
+# Target rules for targets named integration_security_test_collective
+
+# Build rule for target.
+integration_security_test_collective: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_collective
+.PHONY : integration_security_test_collective
+
+# fast build rule for target.
+integration_security_test_collective/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_collective.dir/build.make test/integration/security/CMakeFiles/integration_security_test_collective.dir/build
+.PHONY : integration_security_test_collective/fast
+
+#=============================================================================
+# Target rules for targets named integration_security_test_game_theory
+
+# Build rule for target.
+integration_security_test_game_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_game_theory
+.PHONY : integration_security_test_game_theory
+
+# fast build rule for target.
+integration_security_test_game_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_game_theory.dir/build.make test/integration/security/CMakeFiles/integration_security_test_game_theory.dir/build
+.PHONY : integration_security_test_game_theory/fast
+
+#=============================================================================
+# Target rules for targets named integration_security_test_imagination
+
+# Build rule for target.
+integration_security_test_imagination: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_imagination
+.PHONY : integration_security_test_imagination
+
+# fast build rule for target.
+integration_security_test_imagination/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_imagination.dir/build.make test/integration/security/CMakeFiles/integration_security_test_imagination.dir/build
+.PHONY : integration_security_test_imagination/fast
+
+#=============================================================================
+# Target rules for targets named integration_security_test_continual_learning
+
+# Build rule for target.
+integration_security_test_continual_learning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_continual_learning
+.PHONY : integration_security_test_continual_learning
+
+# fast build rule for target.
+integration_security_test_continual_learning/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_continual_learning.dir/build.make test/integration/security/CMakeFiles/integration_security_test_continual_learning.dir/build
+.PHONY : integration_security_test_continual_learning/fast
+
+#=============================================================================
+# Target rules for targets named integration_security_test_epistemic
+
+# Build rule for target.
+integration_security_test_epistemic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_epistemic
+.PHONY : integration_security_test_epistemic
+
+# fast build rule for target.
+integration_security_test_epistemic/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_epistemic.dir/build.make test/integration/security/CMakeFiles/integration_security_test_epistemic.dir/build
+.PHONY : integration_security_test_epistemic/fast
+
+#=============================================================================
+# Target rules for targets named integration_security_test_distributed_training
+
+# Build rule for target.
+integration_security_test_distributed_training: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_distributed_training
+.PHONY : integration_security_test_distributed_training
+
+# fast build rule for target.
+integration_security_test_distributed_training/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_distributed_training.dir/build.make test/integration/security/CMakeFiles/integration_security_test_distributed_training.dir/build
+.PHONY : integration_security_test_distributed_training/fast
+
+#=============================================================================
+# Target rules for targets named integration_security_test_hippocampus
+
+# Build rule for target.
+integration_security_test_hippocampus: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_hippocampus
+.PHONY : integration_security_test_hippocampus
+
+# fast build rule for target.
+integration_security_test_hippocampus/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_hippocampus.dir/build.make test/integration/security/CMakeFiles/integration_security_test_hippocampus.dir/build
+.PHONY : integration_security_test_hippocampus/fast
 
 #=============================================================================
 # Target rules for targets named integration_security_sleep_bridges
@@ -18396,6 +18630,110 @@ regression_security_module: cmake_check_build_system
 regression_security_module/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_module.dir/build.make test/regression/security/CMakeFiles/regression_security_module.dir/build
 .PHONY : regression_security_module/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_knowledge_graph
+
+# Build rule for target.
+regression_security_knowledge_graph: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_knowledge_graph
+.PHONY : regression_security_knowledge_graph
+
+# fast build rule for target.
+regression_security_knowledge_graph/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_knowledge_graph.dir/build.make test/regression/security/CMakeFiles/regression_security_knowledge_graph.dir/build
+.PHONY : regression_security_knowledge_graph/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_collective
+
+# Build rule for target.
+regression_security_collective: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_collective
+.PHONY : regression_security_collective
+
+# fast build rule for target.
+regression_security_collective/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_collective.dir/build.make test/regression/security/CMakeFiles/regression_security_collective.dir/build
+.PHONY : regression_security_collective/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_game_theory
+
+# Build rule for target.
+regression_security_game_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_game_theory
+.PHONY : regression_security_game_theory
+
+# fast build rule for target.
+regression_security_game_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_game_theory.dir/build.make test/regression/security/CMakeFiles/regression_security_game_theory.dir/build
+.PHONY : regression_security_game_theory/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_imagination
+
+# Build rule for target.
+regression_security_imagination: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_imagination
+.PHONY : regression_security_imagination
+
+# fast build rule for target.
+regression_security_imagination/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_imagination.dir/build.make test/regression/security/CMakeFiles/regression_security_imagination.dir/build
+.PHONY : regression_security_imagination/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_epistemic
+
+# Build rule for target.
+regression_security_epistemic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_epistemic
+.PHONY : regression_security_epistemic
+
+# fast build rule for target.
+regression_security_epistemic/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_epistemic.dir/build.make test/regression/security/CMakeFiles/regression_security_epistemic.dir/build
+.PHONY : regression_security_epistemic/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_distributed_training
+
+# Build rule for target.
+regression_security_distributed_training: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_distributed_training
+.PHONY : regression_security_distributed_training
+
+# fast build rule for target.
+regression_security_distributed_training/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_distributed_training.dir/build.make test/regression/security/CMakeFiles/regression_security_distributed_training.dir/build
+.PHONY : regression_security_distributed_training/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_continual_learning
+
+# Build rule for target.
+regression_security_continual_learning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_continual_learning
+.PHONY : regression_security_continual_learning
+
+# fast build rule for target.
+regression_security_continual_learning/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_continual_learning.dir/build.make test/regression/security/CMakeFiles/regression_security_continual_learning.dir/build
+.PHONY : regression_security_continual_learning/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_hippocampus
+
+# Build rule for target.
+regression_security_hippocampus: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_hippocampus
+.PHONY : regression_security_hippocampus
+
+# fast build rule for target.
+regression_security_hippocampus/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_hippocampus.dir/build.make test/regression/security/CMakeFiles/regression_security_hippocampus.dir/build
+.PHONY : regression_security_hippocampus/fast
 
 #=============================================================================
 # Target rules for targets named unit_language_orchestrator
@@ -24754,10 +25092,18 @@ help:
 	@echo "... integration_security_test_anomaly_detector"
 	@echo "... integration_security_test_bbb_bio_router"
 	@echo "... integration_security_test_bbb_integration"
+	@echo "... integration_security_test_collective"
 	@echo "... integration_security_test_constant_time"
+	@echo "... integration_security_test_continual_learning"
+	@echo "... integration_security_test_distributed_training"
 	@echo "... integration_security_test_encrypted_audit"
+	@echo "... integration_security_test_epistemic"
 	@echo "... integration_security_test_framework"
+	@echo "... integration_security_test_game_theory"
+	@echo "... integration_security_test_hippocampus"
+	@echo "... integration_security_test_imagination"
 	@echo "... integration_security_test_key_derivation"
+	@echo "... integration_security_test_knowledge_graph"
 	@echo "... integration_security_test_math_integration"
 	@echo "... integration_security_test_module_integration"
 	@echo "... integration_security_test_pattern_db"
@@ -25062,6 +25408,14 @@ help:
 	@echo "... regression_quantum_bridges"
 	@echo "... regression_rcog_bridge"
 	@echo "... regression_security_bridges"
+	@echo "... regression_security_collective"
+	@echo "... regression_security_continual_learning"
+	@echo "... regression_security_distributed_training"
+	@echo "... regression_security_epistemic"
+	@echo "... regression_security_game_theory"
+	@echo "... regression_security_hippocampus"
+	@echo "... regression_security_imagination"
+	@echo "... regression_security_knowledge_graph"
 	@echo "... regression_security_module"
 	@echo "... regression_security_module_bridges"
 	@echo "... regression_security_sleep_bridges"
@@ -25537,6 +25891,7 @@ help:
 	@echo "... unit_cognitive_test_rcog_hub_bridge"
 	@echo "... unit_cognitive_test_salience_attention_bridge"
 	@echo "... unit_cognitive_test_salience_attention_fep_bridge"
+	@echo "... unit_cognitive_test_security_cognitive_hub_bridge"
 	@echo "... unit_cognitive_test_self_awareness_extended"
 	@echo "... unit_cognitive_test_self_introspection_bridge"
 	@echo "... unit_cognitive_test_shared_intentionality"
@@ -26049,15 +26404,24 @@ help:
 	@echo "... unit_security_test_post_quantum"
 	@echo "... unit_security_test_security"
 	@echo "... unit_security_test_security_async_bridge"
+	@echo "... unit_security_test_security_collective_bridge"
 	@echo "... unit_security_test_security_comprehensive"
 	@echo "... unit_security_test_security_consensus"
+	@echo "... unit_security_test_security_continual_learning_bridge"
 	@echo "... unit_security_test_security_coverage"
+	@echo "... unit_security_test_security_distributed_training_bridge"
+	@echo "... unit_security_test_security_epistemic_bridge"
 	@echo "... unit_security_test_security_executive_bridge"
+	@echo "... unit_security_test_security_game_theory_bridge"
+	@echo "... unit_security_test_security_hippocampus_bridge"
+	@echo "... unit_security_test_security_imagination_bridge"
 	@echo "... unit_security_test_security_integration"
+	@echo "... unit_security_test_security_knowledge_graph_bridge"
 	@echo "... unit_security_test_security_language_bridge"
 	@echo "... unit_security_test_security_level"
 	@echo "... unit_security_test_security_logging_bridge"
 	@echo "... unit_security_test_security_memory_bridge"
+	@echo "... unit_security_test_security_orchestrator"
 	@echo "... unit_security_test_security_perception_bridge"
 	@echo "... unit_security_test_security_perception_input_bridge"
 	@echo "... unit_security_test_security_training_bridge"

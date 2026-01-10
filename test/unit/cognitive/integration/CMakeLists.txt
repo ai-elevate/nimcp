@@ -635,3 +635,33 @@ gtest_discover_tests(unit_cognitive_test_imagination_reasoning_fep_bridge
         LABELS "unit;cognitive;integration;imagination;reasoning;fep"
         TIMEOUT 120
 )
+
+# Security-Cognitive Hub Bridge Tests
+add_executable(unit_cognitive_test_security_cognitive_hub_bridge
+    test_security_cognitive_hub_bridge.cpp
+)
+
+target_link_libraries(unit_cognitive_test_security_cognitive_hub_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_cognitive_test_security_cognitive_hub_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(unit_cognitive_test_security_cognitive_hub_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_cognitive_test_security_cognitive_hub_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;integration;security;cognitive;hub"
+        TIMEOUT 120
+)
