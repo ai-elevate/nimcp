@@ -505,3 +505,53 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/rcog/CMakeLists.txt")
     add_subdirectory(rcog)
 endif()
+
+# ============================================================================
+# Security Cognitive Bridge Unit Tests (Phase SCB)
+# ============================================================================
+# WHAT: Unit tests for Security Cognitive Bridges
+# WHY:  Verify security integration with cognitive modules (distributed training,
+#       knowledge graph, game theory, imagination, continual learning, epistemic,
+#       collective cognition, hippocampus)
+# HOW:  Test lifecycle, validation, threat detection, and bidirectional effects
+# ============================================================================
+
+# Security-Distributed Training Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/distributed/CMakeLists.txt")
+    add_subdirectory(distributed)
+endif()
+
+# Security-Knowledge Graph Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/knowledge/CMakeLists.txt")
+    add_subdirectory(knowledge)
+endif()
+
+# Security-Game Theory Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/game_theory/CMakeLists.txt")
+    add_subdirectory(game_theory)
+endif()
+
+# Security-Imagination Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/imagination/CMakeLists.txt")
+    add_subdirectory(imagination)
+endif()
+
+# Security-Continual Learning Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/continual/CMakeLists.txt")
+    add_subdirectory(continual)
+endif()
+
+# Security-Epistemic Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/epistemic/CMakeLists.txt")
+    add_subdirectory(epistemic)
+endif()
+
+# Security-Collective Cognition Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/collective/CMakeLists.txt")
+    add_subdirectory(collective)
+endif()
+
+# Security-Hippocampus Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hippocampus/CMakeLists.txt")
+    add_subdirectory(hippocampus)
+endif()

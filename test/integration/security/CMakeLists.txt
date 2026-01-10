@@ -501,3 +501,324 @@ set_tests_properties(integration_security_test_module_integration PROPERTIES
     LABELS "integration;security;module;perception;language;executive;memory;training;rcog"
     TIMEOUT 300
 )
+
+# ============================================================================
+# Security-Knowledge Graph Bridge Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Security-Knowledge Graph Bridge
+# WHY:  Verify knowledge graph protection across multi-query scenarios
+# HOW:  Test batch queries, access control, privacy isolation, threat response
+# ============================================================================
+
+add_executable(integration_security_test_knowledge_graph
+    test_security_knowledge_graph_integration.cpp
+)
+target_link_libraries(integration_security_test_knowledge_graph
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_knowledge_graph
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/knowledge
+        ${CMAKE_SOURCE_DIR}/include/cognitive/knowledge
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(integration_security_test_knowledge_graph PRIVATE cxx_std_17)
+add_test(NAME integration_security_test_knowledge_graph
+         COMMAND integration_security_test_knowledge_graph)
+set_tests_properties(integration_security_test_knowledge_graph PROPERTIES
+    LABELS "integration;security;knowledge;bridge"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Collective Cognition Bridge Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Security-Collective Cognition Bridge
+# WHY:  Verify security integration with collective cognition systems
+# HOW:  Test Byzantine detection, consensus verification, swarm monitoring,
+#       emergent pattern validation, trust scoring, and bidirectional effects
+# ============================================================================
+
+add_executable(integration_security_test_collective
+    test_security_collective_integration.cpp
+)
+target_link_libraries(integration_security_test_collective
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_collective
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/collective
+        ${CMAKE_SOURCE_DIR}/include/cognitive/collective_cognition
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/include/utils
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(integration_security_test_collective PRIVATE cxx_std_17)
+add_test(NAME integration_security_test_collective
+         COMMAND integration_security_test_collective)
+set_tests_properties(integration_security_test_collective PROPERTIES
+    LABELS "integration;security;collective;bridge"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Game Theory Bridge Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Security-Game Theory Bridge
+# WHY:  Verify game-theoretic security integration across multi-player scenarios
+# HOW:  Test payoff validation, coalition monitoring, mechanism verification,
+#       equilibrium checking, manipulation detection, and bidirectional effects
+# ============================================================================
+
+add_executable(integration_security_test_game_theory
+    test_security_game_theory_integration.cpp
+)
+target_link_libraries(integration_security_test_game_theory
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_game_theory
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/game_theory
+        ${CMAKE_SOURCE_DIR}/include/cognitive/game_theory
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(integration_security_test_game_theory PRIVATE cxx_std_17)
+add_test(NAME integration_security_test_game_theory
+         COMMAND integration_security_test_game_theory)
+set_tests_properties(integration_security_test_game_theory PROPERTIES
+    LABELS "integration;security;game_theory;bridge"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Imagination Bridge Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Security-Imagination Bridge
+# WHY:  Verify imagination security integration across multi-simulation scenarios
+# HOW:  Test sandbox management, confabulation detection, reasoning bounds,
+#       reality grounding, simulation integrity, and bidirectional effects
+# ============================================================================
+
+add_executable(integration_security_test_imagination
+    test_security_imagination_integration.cpp
+)
+target_link_libraries(integration_security_test_imagination
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_imagination
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/imagination
+        ${CMAKE_SOURCE_DIR}/include/cognitive/imagination
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(integration_security_test_imagination PRIVATE cxx_std_17)
+add_test(NAME integration_security_test_imagination
+         COMMAND integration_security_test_imagination)
+set_tests_properties(integration_security_test_imagination PROPERTIES
+    LABELS "integration;security;imagination;bridge"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Continual Learning Bridge Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Security-Continual Learning Bridge
+# WHY:  Verify security integration with always-on learning systems
+# HOW:  Test forgetting protection, drift validation, replay integrity,
+#       retention monitoring, LR manipulation detection, and bidirectional effects
+# ============================================================================
+
+add_executable(integration_security_test_continual_learning
+    test_security_continual_learning_integration.cpp
+)
+target_link_libraries(integration_security_test_continual_learning
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_continual_learning
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/continual
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(integration_security_test_continual_learning PRIVATE cxx_std_17)
+add_test(NAME integration_security_test_continual_learning
+         COMMAND integration_security_test_continual_learning)
+set_tests_properties(integration_security_test_continual_learning PROPERTIES
+    LABELS "integration;security;continual_learning;bridge"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Epistemic Bridge Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Security-Epistemic Bridge
+# WHY:  Verify security integration with epistemic reasoning systems
+# HOW:  Test confidence validation, belief verification, uncertainty enforcement,
+#       evidence chain validation, attack detection, and bidirectional effects
+# ============================================================================
+
+add_executable(integration_security_test_epistemic
+    test_security_epistemic_integration.cpp
+)
+target_link_libraries(integration_security_test_epistemic
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_epistemic
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/epistemic
+        ${CMAKE_SOURCE_DIR}/include/cognitive/epistemic
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/include/utils/bridge
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(integration_security_test_epistemic PRIVATE cxx_std_17)
+add_test(NAME integration_security_test_epistemic
+         COMMAND integration_security_test_epistemic)
+set_tests_properties(integration_security_test_epistemic PROPERTIES
+    LABELS "integration;security;epistemic;bridge"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Distributed Training Bridge Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Security-Distributed Training Bridge
+# WHY:  Verify distributed/federated training protection across multi-worker scenarios
+# HOW:  Test Byzantine fault tolerance, gradient validation, worker trust scoring,
+#       secure checkpointing, threat escalation, and bidirectional effects
+# ============================================================================
+
+add_executable(integration_security_test_distributed_training
+    test_security_distributed_training_integration.cpp
+)
+target_link_libraries(integration_security_test_distributed_training
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_distributed_training
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/distributed
+        ${CMAKE_SOURCE_DIR}/include/training
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(integration_security_test_distributed_training PRIVATE cxx_std_17)
+add_test(NAME integration_security_test_distributed_training
+         COMMAND integration_security_test_distributed_training)
+set_tests_properties(integration_security_test_distributed_training PROPERTIES
+    LABELS "integration;security;distributed;training;bridge"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Hippocampus Bridge Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Security-Hippocampus Bridge (Memory Consolidation Defense)
+# WHY:  Verify security integration with hippocampus/memory consolidation systems
+# HOW:  Test sleep-phase protection workflows, consolidation verification,
+#       memory injection detection and blocking, replay validation, coherence
+#       checking, bio-async integration, and bidirectional effects
+# ============================================================================
+
+add_executable(integration_security_test_hippocampus
+    test_security_hippocampus_integration.cpp
+)
+target_link_libraries(integration_security_test_hippocampus
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_hippocampus
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/hippocampus
+        ${CMAKE_SOURCE_DIR}/include/core/hippocampus
+        ${CMAKE_SOURCE_DIR}/include/cognitive/memory
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(integration_security_test_hippocampus PRIVATE cxx_std_17)
+add_test(NAME integration_security_test_hippocampus
+         COMMAND integration_security_test_hippocampus)
+set_tests_properties(integration_security_test_hippocampus PROPERTIES
+    LABELS "integration;security;hippocampus;bridge"
+    TIMEOUT 300
+)

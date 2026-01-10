@@ -448,3 +448,330 @@ set_tests_properties(regression_security_module PROPERTIES
     LABELS "regression;security;performance;memory;accuracy;integration"
     TIMEOUT 600
 )
+
+# ============================================================================
+# Security-Knowledge Graph Bridge Regression Tests
+# ============================================================================
+# WHAT: Regression tests for Security-Knowledge Graph Bridge
+# WHY:  Ensure consistent performance, API stability, and security properties
+# HOW:  Test query latency, detection rates, memory usage, API stability
+# ============================================================================
+
+add_executable(regression_security_knowledge_graph
+    test_security_knowledge_graph_regression.cpp
+)
+target_link_libraries(regression_security_knowledge_graph
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_knowledge_graph
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/knowledge
+        ${CMAKE_SOURCE_DIR}/include/cognitive/knowledge
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(regression_security_knowledge_graph PRIVATE cxx_std_17)
+add_test(NAME regression_security_knowledge_graph
+         COMMAND regression_security_knowledge_graph)
+set_tests_properties(regression_security_knowledge_graph PROPERTIES
+    LABELS "regression;security;knowledge;performance;memory"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Collective Cognition Bridge Regression Tests
+# ============================================================================
+# WHAT: Regression tests for Security-Collective Cognition Bridge
+# WHY:  Ensure consistent performance, API stability, and security properties
+# HOW:  Test invariants, state consistency, boundary conditions, thread safety
+# ============================================================================
+
+add_executable(regression_security_collective
+    test_security_collective_regression.cpp
+)
+target_link_libraries(regression_security_collective
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_collective
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/collective
+        ${CMAKE_SOURCE_DIR}/include/cognitive/collective_cognition
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/include/utils
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(regression_security_collective PRIVATE cxx_std_17)
+add_test(NAME regression_security_collective
+         COMMAND regression_security_collective)
+set_tests_properties(regression_security_collective PROPERTIES
+    LABELS "regression;security;collective;performance;memory"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Game Theory Bridge Regression Tests
+# ============================================================================
+# WHAT: Regression tests for Security-Game Theory Bridge
+# WHY:  Ensure consistent performance, API stability, and security properties
+# HOW:  Test performance thresholds, detection rates, memory usage, stats accuracy
+# ============================================================================
+
+add_executable(regression_security_game_theory
+    test_security_game_theory_regression.cpp
+)
+target_link_libraries(regression_security_game_theory
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_game_theory
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/game_theory
+        ${CMAKE_SOURCE_DIR}/include/cognitive/game_theory
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(regression_security_game_theory PRIVATE cxx_std_17)
+add_test(NAME regression_security_game_theory
+         COMMAND regression_security_game_theory)
+set_tests_properties(regression_security_game_theory PROPERTIES
+    LABELS "regression;security;game_theory;performance;memory"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Imagination Bridge Regression Tests
+# ============================================================================
+# WHAT: Regression tests for Security-Imagination Bridge
+# WHY:  Ensure consistent performance, API stability, and security properties
+# HOW:  Test performance thresholds, detection rates, memory usage, stats accuracy
+# ============================================================================
+
+add_executable(regression_security_imagination
+    test_security_imagination_regression.cpp
+)
+target_link_libraries(regression_security_imagination
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_imagination
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/imagination
+        ${CMAKE_SOURCE_DIR}/include/cognitive/imagination
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(regression_security_imagination PRIVATE cxx_std_17)
+add_test(NAME regression_security_imagination
+         COMMAND regression_security_imagination)
+set_tests_properties(regression_security_imagination PROPERTIES
+    LABELS "regression;security;imagination;performance;memory"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Epistemic Bridge Regression Tests
+# ============================================================================
+# WHAT: Regression tests for Security-Epistemic Bridge
+# WHY:  Ensure API stability, performance baselines, and security guarantees
+# HOW:  Test default configs, boundary conditions, performance baselines
+# ============================================================================
+
+add_executable(regression_security_epistemic
+    test_security_epistemic_regression.cpp
+)
+target_link_libraries(regression_security_epistemic
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_epistemic
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/epistemic
+        ${CMAKE_SOURCE_DIR}/include/cognitive/epistemic
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/include/utils/bridge
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(regression_security_epistemic PRIVATE cxx_std_17)
+add_test(NAME regression_security_epistemic
+         COMMAND regression_security_epistemic)
+set_tests_properties(regression_security_epistemic PROPERTIES
+    LABELS "regression;security;epistemic;performance;memory"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Distributed Training Bridge Regression Tests
+# ============================================================================
+# WHAT: Regression tests for Security-Distributed Training Bridge
+# WHY:  Ensure API stability, performance baselines, and security guarantees
+# HOW:  Test Byzantine detection accuracy, worker trust consistency, gradient
+#       validation bounds, checkpoint integrity, memory stability, and thread safety
+# ============================================================================
+
+add_executable(regression_security_distributed_training
+    test_security_distributed_training_regression.cpp
+)
+target_link_libraries(regression_security_distributed_training
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_distributed_training
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/distributed
+        ${CMAKE_SOURCE_DIR}/include/training
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(regression_security_distributed_training PRIVATE cxx_std_17)
+add_test(NAME regression_security_distributed_training
+         COMMAND regression_security_distributed_training)
+set_tests_properties(regression_security_distributed_training PROPERTIES
+    LABELS "regression;security;distributed;training;performance;memory"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Continual Learning Bridge Regression Tests
+# ============================================================================
+# WHAT: Regression tests for Security-Continual Learning Bridge
+# WHY:  Ensure API stability, performance baselines, and security guarantees
+# HOW:  Test catastrophic forgetting protection accuracy, concept drift validation
+#       consistency, memory replay integrity bounds, retention monitoring stability,
+#       learning rate manipulation detection, memory stability, and thread safety
+# ============================================================================
+
+add_executable(regression_security_continual_learning
+    test_security_continual_learning_regression.cpp
+)
+target_link_libraries(regression_security_continual_learning
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_continual_learning
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/continual
+        ${CMAKE_SOURCE_DIR}/include/training
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/include/utils/bridge
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(regression_security_continual_learning PRIVATE cxx_std_17)
+add_test(NAME regression_security_continual_learning
+         COMMAND regression_security_continual_learning)
+set_tests_properties(regression_security_continual_learning PROPERTIES
+    LABELS "regression;security;continual;learning;performance;memory"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security-Hippocampus Bridge Regression Tests
+# ============================================================================
+# WHAT: Regression tests for Security-Hippocampus Bridge (Memory Consolidation Defense)
+# WHY:  Ensure API stability, performance baselines, and security guarantees
+# HOW:  Test memory leaks, thread safety, numerical stability, boundary conditions,
+#       circular buffer handling, state corruption prevention, and performance stability
+# ============================================================================
+
+add_executable(regression_security_hippocampus
+    test_security_hippocampus_regression.cpp
+)
+target_link_libraries(regression_security_hippocampus
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_hippocampus
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/hippocampus
+        ${CMAKE_SOURCE_DIR}/include/core/hippocampus
+        ${CMAKE_SOURCE_DIR}/include/cognitive/memory
+        ${CMAKE_SOURCE_DIR}/include/async
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(regression_security_hippocampus PRIVATE cxx_std_17)
+add_test(NAME regression_security_hippocampus
+         COMMAND regression_security_hippocampus)
+set_tests_properties(regression_security_hippocampus PROPERTIES
+    LABELS "regression;security;hippocampus;performance;memory"
+    TIMEOUT 300
+)

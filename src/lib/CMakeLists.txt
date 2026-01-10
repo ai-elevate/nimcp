@@ -1287,6 +1287,16 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/training/nimcp_security_training_bridge.c          # Security-Training Bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/rcog/nimcp_security_rcog_bridge.c                  # Security-RCog Bridge
 
+    # Security Cognitive Bridges (Phase SCB: Cognitive module security integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/distributed/nimcp_security_distributed_training_bridge.c  # Security-Distributed Training Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/knowledge/nimcp_security_knowledge_graph_bridge.c         # Security-Knowledge Graph Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/game_theory/nimcp_security_game_theory_bridge.c           # Security-Game Theory Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/imagination/nimcp_security_imagination_bridge.c           # Security-Imagination Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/continual/nimcp_security_continual_learning_bridge.c      # Security-Continual Learning Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/epistemic/nimcp_security_epistemic_bridge.c               # Security-Epistemic Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/collective/nimcp_security_collective_bridge.c             # Security-Collective Cognition Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/hippocampus/nimcp_security_hippocampus_bridge.c           # Security-Hippocampus Bridge
+
     # Security Async Integration (Phase SA: Security async bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/async/nimcp_security_async_bridge.c  # Security-async bidirectional bridge
 
