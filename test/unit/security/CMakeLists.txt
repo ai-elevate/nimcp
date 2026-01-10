@@ -555,3 +555,8 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hippocampus/CMakeLists.txt")
     add_subdirectory(hippocampus)
 endif()
+
+# Security Orchestrator Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/orchestrator/CMakeLists.txt")
+    add_subdirectory(orchestrator)
+endif()

@@ -1297,6 +1297,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/collective/nimcp_security_collective_bridge.c             # Security-Collective Cognition Bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/hippocampus/nimcp_security_hippocampus_bridge.c           # Security-Hippocampus Bridge
 
+    # Security Orchestrator (Phase SO: Central security coordination)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_orchestrator.c                             # Security Orchestrator - central bridge coordination
+
     # Security Async Integration (Phase SA: Security async bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/async/nimcp_security_async_bridge.c  # Security-async bidirectional bridge
 
