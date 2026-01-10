@@ -29,3 +29,6 @@ add_hypothalamus_regression_test(test_hypo_fep_bridges_regression)
 
 # Hypothalamus-Training bridge regression tests
 add_hypothalamus_regression_test(test_hypothalamus_training_regression)
+
+# Hypothalamus-Perception bridge regression tests (Phase 17.5)
+add_hypothalamus_regression_test(test_hypothalamus_perception_bridge_regression)

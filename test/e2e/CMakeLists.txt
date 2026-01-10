@@ -1195,6 +1195,18 @@ add_e2e_test(e2e_test_hypothalamus_alignment_pipeline
 )
 
 # ============================================================================
+# Hypothalamus Perception Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for Hypothalamus-Perception Bridge integration
+# WHY:  Verify drive-perception modulation and sensory feedback to drives
+# HOW:  Test interoception, chemosensory, predictive coding, pain modulation,
+#       sleep gating, thermal salience in complete pipeline scenarios
+# ============================================================================
+add_e2e_test(e2e_test_hypothalamus_perception_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypothalamus_perception_pipeline.cpp
+)
+
+# ============================================================================
 # Motor Control Pipeline E2E Test
 # ============================================================================
 # WHAT: E2E tests for motor control and execution

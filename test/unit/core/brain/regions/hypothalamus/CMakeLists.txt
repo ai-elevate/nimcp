@@ -30,5 +30,9 @@ add_hypothalamus_test(test_hypothalamus_orchestrator)
 # Training bridge tests (drive-modulated learning, homeostatic regulation)
 add_hypothalamus_test(test_hypothalamus_training_bridge)
 
+# Perception bridge tests (sensory modulation, interoception, chemosensory,
+# predictive coding, pain modulation, sleep gating, thermal salience)
+add_hypothalamus_test(test_hypothalamus_perception_bridge)
+
 # Add FEP bridge tests subdirectory
 add_subdirectory(fep)

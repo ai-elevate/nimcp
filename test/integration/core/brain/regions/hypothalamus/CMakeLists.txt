@@ -53,3 +53,6 @@ add_hypothalamus_integration_test(test_hypo_bio_async_integration)
 
 # Hypothalamus-Training bridge integration tests - Tests training system integration
 add_hypothalamus_integration_test(test_hypothalamus_training_integration)
+
+# Hypothalamus-Perception bridge integration tests - Tests perception modulation integration
+add_hypothalamus_integration_test(test_hypothalamus_perception_bridge_integration)
