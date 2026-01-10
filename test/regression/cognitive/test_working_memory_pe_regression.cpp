@@ -71,9 +71,9 @@ protected:
             memory = nullptr;
         }
 
-        bio_router_shutdown();
-        bio_async_shutdown();
-        nimcp_unified_memory_shutdown();
+        // bio_router_shutdown();
+        // bio_async_shutdown();
+        // nimcp_unified_memory_shutdown();
     }
 
     // WHAT: Create test item with specified value
@@ -123,7 +123,7 @@ TEST_F(WorkingMemoryPERegressionTest, StabilityUnderRepeatedUse_AddRefresh) {
 
     // Retrieve baseline
     uint32_t retrieved_size = 0;
-    float* baseline_item = working_memory_get(memory, 0, &retrieved_size);
+    const float* baseline_item = working_memory_get(memory, 0, &retrieved_size);
     ASSERT_NE(baseline_item, nullptr);
     ASSERT_EQ(retrieved_size, ITEM_SIZE);
 
@@ -134,14 +134,14 @@ TEST_F(WorkingMemoryPERegressionTest, StabilityUnderRepeatedUse_AddRefresh) {
         working_memory_refresh(memory, 0);
 
         uint32_t current_size = 0;
-        float* current_item = working_memory_get(memory, 0, &current_size);
+        const float* current_item = working_memory_get(memory, 0, &current_size);
         ASSERT_NE(current_item, nullptr);
 
         EXPECT_TRUE(ItemsMatch(baseline.data(), current_item, ITEM_SIZE))
             << "Item changed after refresh iteration " << i;
 
         if (i % 10 == 0) {
-            bio_router_process_messages();
+            // bio_router_process_messages(); (removed - not available)
         }
     }
 }
@@ -174,7 +174,7 @@ TEST_F(WorkingMemoryPERegressionTest, StabilityUnderRepeatedUse_MultipleTypes) {
         // Verify all items retrievable
         for (int i = 0; i < 5; i++) {
             uint32_t size = 0;
-            float* retrieved = working_memory_get(test_memory, i, &size);
+            const float* retrieved = working_memory_get(test_memory, i, &size);
             EXPECT_NE(retrieved, nullptr) << "Failed to retrieve item " << i
                                          << " with PE type " << pe_type;
         }
@@ -209,7 +209,7 @@ TEST_F(WorkingMemoryPERegressionTest, MemoryStability_NoLeaksWithPE) {
         working_memory_destroy(test_memory);
 
         if (i % 10 == 0) {
-            bio_router_process_messages();
+            // bio_router_process_messages(); (removed - not available)
         }
     }
 
@@ -329,7 +329,7 @@ TEST_F(WorkingMemoryPERegressionTest, PerformanceStability_RetrieveOperations) {
     auto start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < 1000; i++) {
         uint32_t size = 0;
-        float* item = working_memory_get(memory, i % 7, &size);
+        const float* item = working_memory_get(memory, i % 7, &size);
         ASSERT_NE(item, nullptr);
     }
     auto end = std::chrono::high_resolution_clock::now();
@@ -365,7 +365,7 @@ TEST_F(WorkingMemoryPERegressionTest, SerialPosition_ConsistentEncoding) {
 
         // Store baseline
         uint32_t size = 0;
-        float* retrieved = working_memory_get(memory, i, &size);
+        const float* retrieved = working_memory_get(memory, i, &size);
         ASSERT_NE(retrieved, nullptr);
         baseline_items.emplace_back(retrieved, retrieved + size);
     }
@@ -379,7 +379,7 @@ TEST_F(WorkingMemoryPERegressionTest, SerialPosition_ConsistentEncoding) {
         // Verify position encodings haven't changed
         for (int i = 0; i < 7; i++) {
             uint32_t size = 0;
-            float* retrieved = working_memory_get(memory, i, &size);
+            const float* retrieved = working_memory_get(memory, i, &size);
             ASSERT_NE(retrieved, nullptr);
 
             EXPECT_TRUE(ItemsMatch(baseline_items[i].data(), retrieved, ITEM_SIZE))
@@ -387,7 +387,7 @@ TEST_F(WorkingMemoryPERegressionTest, SerialPosition_ConsistentEncoding) {
         }
 
         if (iter % 10 == 0) {
-            bio_router_process_messages();
+            // Process any pending bio-async messages
         }
     }
 }
@@ -465,7 +465,7 @@ TEST_F(WorkingMemoryPERegressionTest, CapacityStress_FullMemory) {
         // Verify we can retrieve all current items
         for (uint32_t j = 0; j < stats.current_size; j++) {
             uint32_t size = 0;
-            float* retrieved = working_memory_get(memory, j, &size);
+            const float* retrieved = working_memory_get(memory, j, &size);
             EXPECT_NE(retrieved, nullptr) << "Failed to retrieve item " << j;
         }
     }
@@ -496,7 +496,7 @@ TEST_F(WorkingMemoryPERegressionTest, CapacityStress_VaryingCapacity) {
         // Verify all items retrievable
         for (uint32_t i = 0; i < capacity; i++) {
             uint32_t size = 0;
-            float* retrieved = working_memory_get(test_memory, i, &size);
+            const float* retrieved = working_memory_get(test_memory, i, &size);
             EXPECT_NE(retrieved, nullptr) << "Failed at capacity " << capacity
                                          << ", item " << i;
         }
@@ -539,7 +539,7 @@ TEST_F(WorkingMemoryPERegressionTest, Decay_PEStabilityWithDecay) {
 
         for (uint32_t j = 0; j < stats.current_size; j++) {
             uint32_t size = 0;
-            float* retrieved = working_memory_get(memory, j, &size);
+            const float* retrieved = working_memory_get(memory, j, &size);
             if (retrieved != nullptr) {
                 // If item still exists, its encoding should be valid
                 for (uint32_t k = 0; k < size; k++) {

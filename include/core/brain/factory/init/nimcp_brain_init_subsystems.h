@@ -105,6 +105,11 @@ bool nimcp_brain_factory_init_swarm_module_registry_subsystem(brain_t brain);
 // Must be initialized early - provides foundational regulation
 bool nimcp_brain_factory_init_medulla_subsystem(brain_t brain);
 
+// === HYPOTHALAMUS SUBSYSTEM (Homeostatic Regulation) ===
+// Master regulator of homeostasis: temperature, hunger, thirst, circadian, HPA axis
+// Depends on: Medulla (for arousal input), Connects to: Emotional, Sleep, Immune
+bool nimcp_brain_factory_init_hypothalamus_subsystem(brain_t brain);
+
 // === PARIETAL LOBE SUBSYSTEM (Phase 7.2) ===
 // Mathematical/Scientific reasoning (number sense, spatial, equations)
 // Provides quantitative and scientific cognition capabilities

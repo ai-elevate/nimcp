@@ -262,8 +262,10 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->lazy_glial_init = lazy;
     config->lazy_cortical_init = lazy;
     config->lazy_topographic_init = lazy;
+    config->lazy_pr_memory_init = lazy;
     config->enable_dendrites = !minimal;
     config->enable_axons = !minimal;
+    config->enable_pr_memory = !minimal;  // PR memory enabled by default (except minimal mode)
 
     // === CORTICAL COLUMNS CONFIGURATION ===
     // Disable cortical columns for TINY/SMALL brains (huge memory savings: ~48MB)

@@ -59,3 +59,6 @@ add_hypothalamus_integration_test(test_hypothalamus_perception_bridge_integratio
 
 # Hypothalamus-Logic bridge integration tests - Tests motivated reasoning and logic-driven drive updates
 add_hypothalamus_integration_test(test_hypothalamus_logic_bridge_integration)
+
+# Internal bus integration tests - Tests bidirectional communication between hypothalamus modules
+add_hypothalamus_integration_test(test_hypothalamus_internal_bus_integration)

@@ -590,8 +590,10 @@ typedef struct {
     bool lazy_glial_init;     /**< Defer glial integration creation (default: false) */
     bool lazy_cortical_init;  /**< Defer cortical columns creation until first use (default: false) */
     bool lazy_topographic_init; /**< Defer topographic maps creation until first use (default: false) */
+    bool lazy_pr_memory_init; /**< Defer Prime Resonant memory creation (default: false) */
     bool enable_dendrites;    /**< Enable dendrite subsystem entirely (default: true) */
     bool enable_axons;        /**< Enable axon subsystem entirely (default: true) */
+    bool enable_pr_memory;    /**< Enable Prime Resonant memory system (default: true) */
 
     // === PHASE 5.3: SENSORY PROCESSING ===
     bool enable_visual_cortex; /**< Enable visual cortex (V1) for image processing */

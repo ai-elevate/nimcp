@@ -219,6 +219,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_quantum_bridge.c  # Quantum homeostatic optimization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_alignment.c       # Alignment hardening & introspection (Phase 19)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_orchestrator.c    # Hypothalamus orchestrator (bridge coordination)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.c     # Internal bus (intra-module communication)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_bio_async_bridge.c  # Unified bio-async integration bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_cognitive_hub_bridge.c  # Cognitive hub integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.c  # Logging integration bridge
@@ -583,11 +584,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_training_plasticity.c  # Phase PR-6.6: Training-plasticity extension
     # Phase 7: Perception Layer Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_visual_bridge.c  # Phase PR-7.1: Visual perception bridge
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_audio_bridge.c  # Phase PR-7.2: Audio perception bridge (TODO: API alignment)
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_speech_bridge.c  # Phase PR-7.3: Speech perception bridge (TODO: API alignment)
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_omni_bridge.c  # Phase PR-7.4: Omni-sensory bridge (TODO: API alignment)
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_attention_bridge.c  # Phase PR-7.5: Attention bridge (TODO: API alignment)
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_predictive_bridge.c  # Phase PR-7.6: Predictive bridge (TODO: API alignment)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_audio_bridge.c  # Phase PR-7.2: Audio perception bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_speech_bridge.c  # Phase PR-7.3: Speech perception bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_omni_bridge.c  # Phase PR-7.4: Omni-sensory bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_attention_bridge.c  # Phase PR-7.5: Attention bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_pr_predictive_bridge.c  # Phase PR-7.6: Predictive bridge
     # Phase 8: Enhancement Layer Part 1
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_metamemory.c  # Phase PR-8.1: Metamemory (FOK, TOT, JOL)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/core/nimcp_metamemory_monitor.c  # Phase PR-8.2: Metamemory monitoring

@@ -38,5 +38,8 @@ add_hypothalamus_test(test_hypothalamus_perception_bridge)
 # FEP prediction, predicate-drive mapping, conclusion processing)
 add_hypothalamus_test(test_hypothalamus_logic_bridge)
 
+# Internal bus tests (pub-sub, modulation, thread safety)
+add_hypothalamus_test(test_hypothalamus_internal_bus)
+
 # Add FEP bridge tests subdirectory
 add_subdirectory(fep)

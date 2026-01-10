@@ -1292,6 +1292,33 @@ struct brain_struct {
     // Provides tensor-based batch operations for large-scale simulations.
     //
     struct substrate_gpu_context* substrate_gpu_ctx;                  // Unified substrate GPU context
+
+    // =========================================================================
+    // PRIME RESONANT MEMORY SYSTEM (Content-Addressable Consolidation)
+    // =========================================================================
+    // The Prime Resonant (PR) Memory System provides biologically-inspired
+    // memory consolidation and retrieval:
+    // - Z-Ladder: Four-tier consolidation (Z0-working, Z1-short, Z2-long, Z3-permanent)
+    // - Theta-Gamma: Phase-gated encoding (0-90°) and retrieval (180-270°) windows
+    // - Entanglement: Associative memory graph with resonance-weighted edges
+    // - Prime Signatures: Content-addressable indexing via prime factorization
+    // - Quaternion State: 4D encoding of consolidation/emotion/salience/accessibility
+    //
+    // Integrates with:
+    // - Hippocampus: Z-Ladder consolidation maps to hippocampal memory stages
+    // - Working Memory: Z0 tier corresponds to prefrontal working memory buffer
+    // - Sleep System: Consolidation accelerated during sleep stages
+    // - Emotional System: Salience affects promotion/decay rates
+    // - Training System: PR bridges connect to plasticity mechanisms
+    // - Perception: Visual/audio/speech bridges encode sensory memories
+    //
+    struct z_ladder_struct* pr_z_ladder;                              // Z-Ladder memory tier manager
+    struct theta_gamma_manager_internal* pr_theta_gamma;              // Theta-gamma phase coupling
+    struct entangle_graph_struct* pr_entanglement;                    // Memory entanglement graph
+    bool pr_memory_enabled;                                           // PR memory system enabled
+    bool pr_lazy_init;                                                // Defer PR memory initialization
+    uint64_t last_pr_consolidation_us;                                // Last consolidation timestamp
+    uint64_t pr_consolidation_interval_us;                            // Consolidation interval (default: 100ms)
 };
 
 //=============================================================================

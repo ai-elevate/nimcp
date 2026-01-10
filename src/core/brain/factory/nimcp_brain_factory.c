@@ -188,6 +188,9 @@ extern void set_error(const char* format, ...);
 // Medulla Oblongata subsystem macro (brainstem autonomic regulation)
 #define init_medulla_subsystem                      nimcp_brain_factory_init_medulla_subsystem
 
+// Hypothalamus subsystem macro (homeostatic regulation, circadian, HPA axis)
+#define init_hypothalamus_subsystem                 nimcp_brain_factory_init_hypothalamus_subsystem
+
 // Parietal Lobe subsystem macro (mathematical/scientific reasoning)
 #define init_parietal_subsystem                     nimcp_brain_factory_init_parietal_subsystem
 
@@ -703,6 +706,21 @@ brain_t brain_create_custom(const brain_config_t* config)
     // - Circadian Rhythm: 24-hour biological clock simulation
     // - Brainstem Coupling: Coordination with other brainstem nuclei
     if (!init_medulla_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // HYPOTHALAMUS (HOMEOSTATIC REGULATION)
+    // ========================================================================
+
+    // Initialize hypothalamus for homeostatic regulation:
+    // - Temperature Regulation: Thermostat-like setpoint maintenance
+    // - Hunger/Thirst: Drive states for resource acquisition
+    // - Circadian Integration: Sleep-wake coordination with medulla
+    // - HPA Axis: Stress response coordination (cortisol regulation)
+    // - Autonomic Balance: Sympathetic/parasympathetic coordination
+    // BIOLOGICAL: Master regulator connecting drives to behavior
+    // DEPENDS ON: Medulla (for arousal input)
+    // CONNECTS TO: Emotional, Sleep, Immune, Wellbeing systems
+    if (!init_hypothalamus_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // PARIETAL LOBE (MATHEMATICAL/SCIENTIFIC REASONING)

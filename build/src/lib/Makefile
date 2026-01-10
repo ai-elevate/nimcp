@@ -7529,6 +7529,54 @@ __/cognitive/memory/core/nimcp_metamemory_monitor.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_metamemory_monitor.c.s
 .PHONY : __/cognitive/memory/core/nimcp_metamemory_monitor.c.s
 
+__/cognitive/memory/core/nimcp_pr_attention_bridge.o: __/cognitive/memory/core/nimcp_pr_attention_bridge.c.o
+.PHONY : __/cognitive/memory/core/nimcp_pr_attention_bridge.o
+
+# target to build an object file
+__/cognitive/memory/core/nimcp_pr_attention_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_attention_bridge.c.o
+.PHONY : __/cognitive/memory/core/nimcp_pr_attention_bridge.c.o
+
+__/cognitive/memory/core/nimcp_pr_attention_bridge.i: __/cognitive/memory/core/nimcp_pr_attention_bridge.c.i
+.PHONY : __/cognitive/memory/core/nimcp_pr_attention_bridge.i
+
+# target to preprocess a source file
+__/cognitive/memory/core/nimcp_pr_attention_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_attention_bridge.c.i
+.PHONY : __/cognitive/memory/core/nimcp_pr_attention_bridge.c.i
+
+__/cognitive/memory/core/nimcp_pr_attention_bridge.s: __/cognitive/memory/core/nimcp_pr_attention_bridge.c.s
+.PHONY : __/cognitive/memory/core/nimcp_pr_attention_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/memory/core/nimcp_pr_attention_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_attention_bridge.c.s
+.PHONY : __/cognitive/memory/core/nimcp_pr_attention_bridge.c.s
+
+__/cognitive/memory/core/nimcp_pr_audio_bridge.o: __/cognitive/memory/core/nimcp_pr_audio_bridge.c.o
+.PHONY : __/cognitive/memory/core/nimcp_pr_audio_bridge.o
+
+# target to build an object file
+__/cognitive/memory/core/nimcp_pr_audio_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_audio_bridge.c.o
+.PHONY : __/cognitive/memory/core/nimcp_pr_audio_bridge.c.o
+
+__/cognitive/memory/core/nimcp_pr_audio_bridge.i: __/cognitive/memory/core/nimcp_pr_audio_bridge.c.i
+.PHONY : __/cognitive/memory/core/nimcp_pr_audio_bridge.i
+
+# target to preprocess a source file
+__/cognitive/memory/core/nimcp_pr_audio_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_audio_bridge.c.i
+.PHONY : __/cognitive/memory/core/nimcp_pr_audio_bridge.c.i
+
+__/cognitive/memory/core/nimcp_pr_audio_bridge.s: __/cognitive/memory/core/nimcp_pr_audio_bridge.c.s
+.PHONY : __/cognitive/memory/core/nimcp_pr_audio_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/memory/core/nimcp_pr_audio_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_audio_bridge.c.s
+.PHONY : __/cognitive/memory/core/nimcp_pr_audio_bridge.c.s
+
 __/cognitive/memory/core/nimcp_pr_bio_bridge.o: __/cognitive/memory/core/nimcp_pr_bio_bridge.c.o
 .PHONY : __/cognitive/memory/core/nimcp_pr_bio_bridge.o
 
@@ -7841,6 +7889,30 @@ __/cognitive/memory/core/nimcp_pr_meta_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_meta_bridge.c.s
 .PHONY : __/cognitive/memory/core/nimcp_pr_meta_bridge.c.s
 
+__/cognitive/memory/core/nimcp_pr_omni_bridge.o: __/cognitive/memory/core/nimcp_pr_omni_bridge.c.o
+.PHONY : __/cognitive/memory/core/nimcp_pr_omni_bridge.o
+
+# target to build an object file
+__/cognitive/memory/core/nimcp_pr_omni_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_omni_bridge.c.o
+.PHONY : __/cognitive/memory/core/nimcp_pr_omni_bridge.c.o
+
+__/cognitive/memory/core/nimcp_pr_omni_bridge.i: __/cognitive/memory/core/nimcp_pr_omni_bridge.c.i
+.PHONY : __/cognitive/memory/core/nimcp_pr_omni_bridge.i
+
+# target to preprocess a source file
+__/cognitive/memory/core/nimcp_pr_omni_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_omni_bridge.c.i
+.PHONY : __/cognitive/memory/core/nimcp_pr_omni_bridge.c.i
+
+__/cognitive/memory/core/nimcp_pr_omni_bridge.s: __/cognitive/memory/core/nimcp_pr_omni_bridge.c.s
+.PHONY : __/cognitive/memory/core/nimcp_pr_omni_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/memory/core/nimcp_pr_omni_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_omni_bridge.c.s
+.PHONY : __/cognitive/memory/core/nimcp_pr_omni_bridge.c.s
+
 __/cognitive/memory/core/nimcp_pr_optimizer_bridge.o: __/cognitive/memory/core/nimcp_pr_optimizer_bridge.c.o
 .PHONY : __/cognitive/memory/core/nimcp_pr_optimizer_bridge.o
 
@@ -7937,6 +8009,30 @@ __/cognitive/memory/core/nimcp_pr_plasticity_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_plasticity_bridge.c.s
 .PHONY : __/cognitive/memory/core/nimcp_pr_plasticity_bridge.c.s
 
+__/cognitive/memory/core/nimcp_pr_predictive_bridge.o: __/cognitive/memory/core/nimcp_pr_predictive_bridge.c.o
+.PHONY : __/cognitive/memory/core/nimcp_pr_predictive_bridge.o
+
+# target to build an object file
+__/cognitive/memory/core/nimcp_pr_predictive_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_predictive_bridge.c.o
+.PHONY : __/cognitive/memory/core/nimcp_pr_predictive_bridge.c.o
+
+__/cognitive/memory/core/nimcp_pr_predictive_bridge.i: __/cognitive/memory/core/nimcp_pr_predictive_bridge.c.i
+.PHONY : __/cognitive/memory/core/nimcp_pr_predictive_bridge.i
+
+# target to preprocess a source file
+__/cognitive/memory/core/nimcp_pr_predictive_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_predictive_bridge.c.i
+.PHONY : __/cognitive/memory/core/nimcp_pr_predictive_bridge.c.i
+
+__/cognitive/memory/core/nimcp_pr_predictive_bridge.s: __/cognitive/memory/core/nimcp_pr_predictive_bridge.c.s
+.PHONY : __/cognitive/memory/core/nimcp_pr_predictive_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/memory/core/nimcp_pr_predictive_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_predictive_bridge.c.s
+.PHONY : __/cognitive/memory/core/nimcp_pr_predictive_bridge.c.s
+
 __/cognitive/memory/core/nimcp_pr_sleep_bridge.o: __/cognitive/memory/core/nimcp_pr_sleep_bridge.c.o
 .PHONY : __/cognitive/memory/core/nimcp_pr_sleep_bridge.o
 
@@ -7984,6 +8080,30 @@ __/cognitive/memory/core/nimcp_pr_snn_bridge.s: __/cognitive/memory/core/nimcp_p
 __/cognitive/memory/core/nimcp_pr_snn_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_snn_bridge.c.s
 .PHONY : __/cognitive/memory/core/nimcp_pr_snn_bridge.c.s
+
+__/cognitive/memory/core/nimcp_pr_speech_bridge.o: __/cognitive/memory/core/nimcp_pr_speech_bridge.c.o
+.PHONY : __/cognitive/memory/core/nimcp_pr_speech_bridge.o
+
+# target to build an object file
+__/cognitive/memory/core/nimcp_pr_speech_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_speech_bridge.c.o
+.PHONY : __/cognitive/memory/core/nimcp_pr_speech_bridge.c.o
+
+__/cognitive/memory/core/nimcp_pr_speech_bridge.i: __/cognitive/memory/core/nimcp_pr_speech_bridge.c.i
+.PHONY : __/cognitive/memory/core/nimcp_pr_speech_bridge.i
+
+# target to preprocess a source file
+__/cognitive/memory/core/nimcp_pr_speech_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_speech_bridge.c.i
+.PHONY : __/cognitive/memory/core/nimcp_pr_speech_bridge.c.i
+
+__/cognitive/memory/core/nimcp_pr_speech_bridge.s: __/cognitive/memory/core/nimcp_pr_speech_bridge.c.s
+.PHONY : __/cognitive/memory/core/nimcp_pr_speech_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/memory/core/nimcp_pr_speech_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/memory/core/nimcp_pr_speech_bridge.c.s
+.PHONY : __/cognitive/memory/core/nimcp_pr_speech_bridge.c.s
 
 __/cognitive/memory/core/nimcp_pr_training_plasticity.o: __/cognitive/memory/core/nimcp_pr_training_plasticity.c.o
 .PHONY : __/cognitive/memory/core/nimcp_pr_training_plasticity.o
@@ -16745,6 +16865,30 @@ __/core/brain/regions/hypothalamus/nimcp_hypothalamus_insula_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/nimcp_hypothalamus_insula_bridge.c.s
 .PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_insula_bridge.c.s
 
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.o: __/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.c.o
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.o
+
+# target to build an object file
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.c.o
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.c.o
+
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.i: __/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.c.i
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.i
+
+# target to preprocess a source file
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.c.i
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.c.i
+
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.s: __/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.c.s
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.s
+
+# target to generate assembly for a file
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.c.s
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.c.s
+
 __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.o: __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.c.o
 .PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.o
 
@@ -16768,6 +16912,30 @@ __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.s: __/core/
 __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.c.s
 .PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.c.s
+
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.o: __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.c.o
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.o
+
+# target to build an object file
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.c.o
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.c.o
+
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.i: __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.c.i
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.c.i
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.c.i
+
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.s: __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.c.s
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.c.s
+.PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.c.s
 
 __/core/brain/regions/hypothalamus/nimcp_hypothalamus_medulla_bridge.o: __/core/brain/regions/hypothalamus/nimcp_hypothalamus_medulla_bridge.c.o
 .PHONY : __/core/brain/regions/hypothalamus/nimcp_hypothalamus_medulla_bridge.o
@@ -37861,6 +38029,12 @@ help:
 	@echo "... __/cognitive/memory/core/nimcp_metamemory_monitor.o"
 	@echo "... __/cognitive/memory/core/nimcp_metamemory_monitor.i"
 	@echo "... __/cognitive/memory/core/nimcp_metamemory_monitor.s"
+	@echo "... __/cognitive/memory/core/nimcp_pr_attention_bridge.o"
+	@echo "... __/cognitive/memory/core/nimcp_pr_attention_bridge.i"
+	@echo "... __/cognitive/memory/core/nimcp_pr_attention_bridge.s"
+	@echo "... __/cognitive/memory/core/nimcp_pr_audio_bridge.o"
+	@echo "... __/cognitive/memory/core/nimcp_pr_audio_bridge.i"
+	@echo "... __/cognitive/memory/core/nimcp_pr_audio_bridge.s"
 	@echo "... __/cognitive/memory/core/nimcp_pr_bio_bridge.o"
 	@echo "... __/cognitive/memory/core/nimcp_pr_bio_bridge.i"
 	@echo "... __/cognitive/memory/core/nimcp_pr_bio_bridge.s"
@@ -37900,6 +38074,9 @@ help:
 	@echo "... __/cognitive/memory/core/nimcp_pr_meta_bridge.o"
 	@echo "... __/cognitive/memory/core/nimcp_pr_meta_bridge.i"
 	@echo "... __/cognitive/memory/core/nimcp_pr_meta_bridge.s"
+	@echo "... __/cognitive/memory/core/nimcp_pr_omni_bridge.o"
+	@echo "... __/cognitive/memory/core/nimcp_pr_omni_bridge.i"
+	@echo "... __/cognitive/memory/core/nimcp_pr_omni_bridge.s"
 	@echo "... __/cognitive/memory/core/nimcp_pr_optimizer_bridge.o"
 	@echo "... __/cognitive/memory/core/nimcp_pr_optimizer_bridge.i"
 	@echo "... __/cognitive/memory/core/nimcp_pr_optimizer_bridge.s"
@@ -37912,12 +38089,18 @@ help:
 	@echo "... __/cognitive/memory/core/nimcp_pr_plasticity_bridge.o"
 	@echo "... __/cognitive/memory/core/nimcp_pr_plasticity_bridge.i"
 	@echo "... __/cognitive/memory/core/nimcp_pr_plasticity_bridge.s"
+	@echo "... __/cognitive/memory/core/nimcp_pr_predictive_bridge.o"
+	@echo "... __/cognitive/memory/core/nimcp_pr_predictive_bridge.i"
+	@echo "... __/cognitive/memory/core/nimcp_pr_predictive_bridge.s"
 	@echo "... __/cognitive/memory/core/nimcp_pr_sleep_bridge.o"
 	@echo "... __/cognitive/memory/core/nimcp_pr_sleep_bridge.i"
 	@echo "... __/cognitive/memory/core/nimcp_pr_sleep_bridge.s"
 	@echo "... __/cognitive/memory/core/nimcp_pr_snn_bridge.o"
 	@echo "... __/cognitive/memory/core/nimcp_pr_snn_bridge.i"
 	@echo "... __/cognitive/memory/core/nimcp_pr_snn_bridge.s"
+	@echo "... __/cognitive/memory/core/nimcp_pr_speech_bridge.o"
+	@echo "... __/cognitive/memory/core/nimcp_pr_speech_bridge.i"
+	@echo "... __/cognitive/memory/core/nimcp_pr_speech_bridge.s"
 	@echo "... __/cognitive/memory/core/nimcp_pr_training_plasticity.o"
 	@echo "... __/cognitive/memory/core/nimcp_pr_training_plasticity.i"
 	@echo "... __/cognitive/memory/core/nimcp_pr_training_plasticity.s"
@@ -39013,9 +39196,15 @@ help:
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_insula_bridge.o"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_insula_bridge.i"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_insula_bridge.s"
+	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.o"
+	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.i"
+	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_internal_bus.s"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.o"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.i"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.s"
+	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.o"
+	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.i"
+	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.s"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_medulla_bridge.o"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_medulla_bridge.i"
 	@echo "... __/core/brain/regions/hypothalamus/nimcp_hypothalamus_medulla_bridge.s"

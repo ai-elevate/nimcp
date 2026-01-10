@@ -35,3 +35,6 @@ add_hypothalamus_regression_test(test_hypothalamus_perception_bridge_regression)
 
 # Hypothalamus-Logic bridge regression tests
 add_hypothalamus_regression_test(test_hypothalamus_logic_bridge_regression)
+
+# Hypothalamus Internal Bus regression tests
+add_hypothalamus_regression_test(test_hypothalamus_internal_bus_regression)

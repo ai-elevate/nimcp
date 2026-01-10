@@ -1195,6 +1195,18 @@ add_e2e_test(e2e_test_hypothalamus_alignment_pipeline
 )
 
 # ============================================================================
+# Brain Init Hypothalamus Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for Brain Factory Hypothalamus Initialization Pipeline
+# WHY:  Verify full pipeline from brain creation through hypothalamus operation
+# HOW:  Test brain creation, hypothalamus init, circadian rhythm, HPA axis,
+#       homeostatic regulation, autonomic control, quantum bridge, cleanup
+# ============================================================================
+add_e2e_test(e2e_test_brain_init_hypothalamus_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_brain_init_hypothalamus_pipeline.cpp
+)
+
+# ============================================================================
 # Hypothalamus Perception Pipeline E2E Test
 # ============================================================================
 # WHAT: E2E tests for Hypothalamus-Perception Bridge integration
@@ -1217,6 +1229,18 @@ add_e2e_test(e2e_test_hypothalamus_perception_pipeline
 # ============================================================================
 add_e2e_test(e2e_test_hypothalamus_logic_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypothalamus_logic_pipeline.cpp
+)
+
+# ============================================================================
+# Hypothalamus Parietal Integration E2E Test
+# ============================================================================
+# WHAT: E2E tests for Hypothalamus-Parietal integration
+# WHY:  Verify hypothalamus drive states can coexist with parietal reasoning
+# HOW:  Test both systems initialized, update together, stress/fatigue effects,
+#       drive states and mathematical reasoning, autonomic balance, cleanup
+# ============================================================================
+add_e2e_test(e2e_test_hypothalamus_parietal_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypothalamus_parietal_integration.cpp
 )
 
 # ============================================================================
@@ -2495,6 +2519,40 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypothalamus_training_pipeline.cp
         TIMEOUT 300
     )
     message(STATUS "  Added Hypothalamus Training Pipeline E2E test: e2e_test_hypothalamus_training_pipeline")
+endif()
+
+# ============================================================================
+# Hypothalamus Internal Bus Pipeline E2E Test
+# ============================================================================
+# WHAT: Test hypothalamus internal message bus for module cross-talk
+# WHY:  Verify bidirectional communication between hypothalamus modules:
+#       circadian ↔ drives ↔ HPA axis ↔ homeostasis ↔ autonomic
+# HOW:  Test circadian phases, stress response, sleep pressure, meal timing,
+#       fight-or-flight, relaxation, multi-module interaction, modulation rules
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypothalamus_internal_bus_pipeline.cpp)
+    add_executable(e2e_test_hypothalamus_internal_bus_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypothalamus_internal_bus_pipeline.cpp
+    )
+    target_include_directories(e2e_test_hypothalamus_internal_bus_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/core/brain/regions/hypothalamus
+    )
+    target_link_libraries(e2e_test_hypothalamus_internal_bus_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_hypothalamus_internal_bus_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_hypothalamus_internal_bus_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_hypothalamus_internal_bus_pipeline COMMAND e2e_test_hypothalamus_internal_bus_pipeline)
+    set_tests_properties(e2e_test_hypothalamus_internal_bus_pipeline PROPERTIES
+        LABELS "e2e;hypothalamus;internal-bus;circadian;stress;modulation;drives"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Hypothalamus Internal Bus Pipeline E2E test: e2e_test_hypothalamus_internal_bus_pipeline")
 endif()
 
 # Include GPU E2E test subdirectory
