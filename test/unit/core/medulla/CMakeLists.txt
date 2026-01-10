@@ -74,4 +74,12 @@ target_include_directories(unit_core_medulla_immune_bridge PRIVATE ${MEDULLA_TES
 target_link_libraries(unit_core_medulla_immune_bridge ${MEDULLA_TEST_LIBS})
 add_test(NAME unit_core_medulla_immune_bridge COMMAND unit_core_medulla_immune_bridge --gtest_brief=1)
 
+# Medulla-Cerebellum Bridge Tests
+add_executable(unit_core_medulla_cerebellum_bridge
+    test_medulla_cerebellum_bridge.cpp
+)
+target_include_directories(unit_core_medulla_cerebellum_bridge PRIVATE ${MEDULLA_TEST_INCLUDES})
+target_link_libraries(unit_core_medulla_cerebellum_bridge ${MEDULLA_TEST_LIBS})
+add_test(NAME unit_core_medulla_cerebellum_bridge COMMAND unit_core_medulla_cerebellum_bridge --gtest_brief=1)
+
 message(STATUS "Medulla unit tests configured")

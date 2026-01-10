@@ -148,26 +148,35 @@ static void calculate_wedge_formation_position(const nimcp_flocking_engine_t *en
  * Vector Utilities Implementation
  * ======================================================================== */
 
-float nimcp_vec3_length(nimcp_vec3_t v) {
+static float flocking_vec3_length(nimcp_vec3_t v) {
     return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
-nimcp_vec3_t nimcp_vec3_normalize(nimcp_vec3_t v) {
-    float len = nimcp_vec3_length(v);
+static nimcp_vec3_t flocking_vec3_normalize(nimcp_vec3_t v) {
+    float len = flocking_vec3_length(v);
     if (len < NIMCP_FLOCKING_EPSILON) {
         return nimcp_vec3_create(0, 0, 0);
     }
     return nimcp_vec3_div(v, len);
 }
 
+/* Public wrappers matching header declarations */
+float nimcp_vec3_length(nimcp_vec3_t v) {
+    return flocking_vec3_length(v);
+}
+
+nimcp_vec3_t nimcp_vec3_normalize(nimcp_vec3_t v) {
+    return flocking_vec3_normalize(v);
+}
+
 float nimcp_vec3_distance(nimcp_vec3_t a, nimcp_vec3_t b) {
-    return nimcp_vec3_length(nimcp_vec3_sub(a, b));
+    return flocking_vec3_length(nimcp_vec3_sub(a, b));
 }
 
 nimcp_vec3_t nimcp_vec3_limit(nimcp_vec3_t v, float max) {
-    float len = nimcp_vec3_length(v);
+    float len = flocking_vec3_length(v);
     if (len > max) {
-        return nimcp_vec3_mul(nimcp_vec3_normalize(v), max);
+        return nimcp_vec3_mul(flocking_vec3_normalize(v), max);
     }
     return v;
 }

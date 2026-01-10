@@ -62,6 +62,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_neuromod.c            # Neuromodulation subsystems (474 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cognitive.c           # Cognitive subsystems (731 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_memory.c              # Memory subsystems (418 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_pr_memory.c          # Prime Resonant memory subsystem
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/internal/nimcp_brain_pr_memory.c                   # Brain-PR memory integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_plasticity.c          # Plasticity subsystems (553 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_monitoring.c          # Monitoring subsystems (476 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_structural.c          # Structural subsystems (624 lines)
@@ -2026,6 +2028,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_circadian.c               # Circadian rhythm modulation
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_medulla.c                 # Main orchestrator
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_medulla_immune_bridge.c   # Medulla-immune integration bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/medulla/nimcp_medulla_cerebellum_bridge.c # Medulla-cerebellum inferior olive bridge
 
     # Brain factory medulla initialization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_medulla.c  # Medulla subsystem init

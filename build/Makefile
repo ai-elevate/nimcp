@@ -1862,6 +1862,19 @@ unit_core_brain_test_brain_persistence_integration/fast:
 .PHONY : unit_core_brain_test_brain_persistence_integration/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_brain_test_brain_pr_memory
+
+# Build rule for target.
+unit_core_brain_test_brain_pr_memory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_test_brain_pr_memory
+.PHONY : unit_core_brain_test_brain_pr_memory
+
+# fast build rule for target.
+unit_core_brain_test_brain_pr_memory/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_test_brain_pr_memory.dir/build.make test/CMakeFiles/unit_core_brain_test_brain_pr_memory.dir/build
+.PHONY : unit_core_brain_test_brain_pr_memory/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_brain_test_brain_resize_bio_async
 
 # Build rule for target.
@@ -3851,6 +3864,19 @@ integration_api_test_api_multimodal/fast:
 .PHONY : integration_api_test_api_multimodal/fast
 
 #=============================================================================
+# Target rules for targets named integration_brain_test_brain_pr_memory_integration
+
+# Build rule for target.
+integration_brain_test_brain_pr_memory_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_brain_test_brain_pr_memory_integration
+.PHONY : integration_brain_test_brain_pr_memory_integration
+
+# fast build rule for target.
+integration_brain_test_brain_pr_memory_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_brain_test_brain_pr_memory_integration.dir/build.make test/CMakeFiles/integration_brain_test_brain_pr_memory_integration.dir/build
+.PHONY : integration_brain_test_brain_pr_memory_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_cerebellum_test_cerebellum_vestibular_integration
 
 # Build rule for target.
@@ -4655,6 +4681,19 @@ regression_algorithms_test_community_detection_regression: cmake_check_build_sys
 regression_algorithms_test_community_detection_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_algorithms_test_community_detection_regression.dir/build.make test/CMakeFiles/regression_algorithms_test_community_detection_regression.dir/build
 .PHONY : regression_algorithms_test_community_detection_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_brain_test_brain_pr_memory_regression
+
+# Build rule for target.
+regression_brain_test_brain_pr_memory_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_brain_test_brain_pr_memory_regression
+.PHONY : regression_brain_test_brain_pr_memory_regression
+
+# fast build rule for target.
+regression_brain_test_brain_pr_memory_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_brain_test_brain_pr_memory_regression.dir/build.make test/CMakeFiles/regression_brain_test_brain_pr_memory_regression.dir/build
+.PHONY : regression_brain_test_brain_pr_memory_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_btree_test_btree_regression
@@ -6282,6 +6321,19 @@ e2e_test_medulla_pipeline/fast:
 .PHONY : e2e_test_medulla_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_medulla_cerebellum_pipeline
+
+# Build rule for target.
+e2e_test_medulla_cerebellum_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_medulla_cerebellum_pipeline
+.PHONY : e2e_test_medulla_cerebellum_pipeline
+
+# fast build rule for target.
+e2e_test_medulla_cerebellum_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_medulla_cerebellum_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_medulla_cerebellum_pipeline.dir/build
+.PHONY : e2e_test_medulla_cerebellum_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_game_theory_pipeline
 
 # Build rule for target.
@@ -6878,6 +6930,19 @@ e2e_test_brain_initialization_subsystems: cmake_check_build_system
 e2e_test_brain_initialization_subsystems/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_brain_initialization_subsystems.dir/build.make test/e2e/CMakeFiles/e2e_test_brain_initialization_subsystems.dir/build
 .PHONY : e2e_test_brain_initialization_subsystems/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_brain_pr_memory_pipeline
+
+# Build rule for target.
+e2e_test_brain_pr_memory_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_brain_pr_memory_pipeline
+.PHONY : e2e_test_brain_pr_memory_pipeline
+
+# fast build rule for target.
+e2e_test_brain_pr_memory_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_brain_pr_memory_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_brain_pr_memory_pipeline.dir/build
+.PHONY : e2e_test_brain_pr_memory_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_wiring_diagram_pipeline
@@ -9532,6 +9597,19 @@ unit_core_medulla_immune_bridge/fast:
 .PHONY : unit_core_medulla_immune_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_medulla_cerebellum_bridge
+
+# Build rule for target.
+unit_core_medulla_cerebellum_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_medulla_cerebellum_bridge
+.PHONY : unit_core_medulla_cerebellum_bridge
+
+# fast build rule for target.
+unit_core_medulla_cerebellum_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/medulla/CMakeFiles/unit_core_medulla_cerebellum_bridge.dir/build.make test/unit/core/medulla/CMakeFiles/unit_core_medulla_cerebellum_bridge.dir/build
+.PHONY : unit_core_medulla_cerebellum_bridge/fast
+
+#=============================================================================
 # Target rules for targets named integration_core_medulla
 
 # Build rule for target.
@@ -9545,6 +9623,19 @@ integration_core_medulla/fast:
 .PHONY : integration_core_medulla/fast
 
 #=============================================================================
+# Target rules for targets named test_medulla_cerebellum_bridge_integration
+
+# Build rule for target.
+test_medulla_cerebellum_bridge_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_medulla_cerebellum_bridge_integration
+.PHONY : test_medulla_cerebellum_bridge_integration
+
+# fast build rule for target.
+test_medulla_cerebellum_bridge_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/medulla/CMakeFiles/test_medulla_cerebellum_bridge_integration.dir/build.make test/integration/core/medulla/CMakeFiles/test_medulla_cerebellum_bridge_integration.dir/build
+.PHONY : test_medulla_cerebellum_bridge_integration/fast
+
+#=============================================================================
 # Target rules for targets named regression_core_medulla
 
 # Build rule for target.
@@ -9556,6 +9647,19 @@ regression_core_medulla: cmake_check_build_system
 regression_core_medulla/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/core/medulla/CMakeFiles/regression_core_medulla.dir/build.make test/regression/core/medulla/CMakeFiles/regression_core_medulla.dir/build
 .PHONY : regression_core_medulla/fast
+
+#=============================================================================
+# Target rules for targets named test_medulla_cerebellum_bridge_regression
+
+# Build rule for target.
+test_medulla_cerebellum_bridge_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_medulla_cerebellum_bridge_regression
+.PHONY : test_medulla_cerebellum_bridge_regression
+
+# fast build rule for target.
+test_medulla_cerebellum_bridge_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/medulla/CMakeFiles/test_medulla_cerebellum_bridge_regression.dir/build.make test/regression/core/medulla/CMakeFiles/test_medulla_cerebellum_bridge_regression.dir/build
+.PHONY : test_medulla_cerebellum_bridge_regression/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_cerebellum_test_cerebellum_substrate_bridge
@@ -25165,6 +25269,7 @@ help:
 	@echo "... e2e_test_brain_init_hypothalamus_pipeline"
 	@echo "... e2e_test_brain_initialization_subsystems"
 	@echo "... e2e_test_brain_pipeline"
+	@echo "... e2e_test_brain_pr_memory_pipeline"
 	@echo "... e2e_test_bridge_pipelines"
 	@echo "... e2e_test_broca_gpu_pipeline"
 	@echo "... e2e_test_cerebellum_pipeline"
@@ -25213,6 +25318,7 @@ help:
 	@echo "... e2e_test_language_layer_pipeline"
 	@echo "... e2e_test_limbic_pipeline"
 	@echo "... e2e_test_master_connectivity"
+	@echo "... e2e_test_medulla_cerebellum_pipeline"
 	@echo "... e2e_test_medulla_pipeline"
 	@echo "... e2e_test_memory_immune_pipeline"
 	@echo "... e2e_test_memory_snn_plasticity_pipeline"
@@ -25315,6 +25421,7 @@ help:
 	@echo "... integration_brain_regions_test_occipital_integration"
 	@echo "... integration_brain_regions_test_signal_propagation_integration"
 	@echo "... integration_brain_regions_test_visual_cortex_integration"
+	@echo "... integration_brain_test_brain_pr_memory_integration"
 	@echo "... integration_cerebellum_test_cerebellum_vestibular_integration"
 	@echo "... integration_cognitive_attention_snn_plasticity"
 	@echo "... integration_cognitive_bias_snn_plasticity"
@@ -25637,6 +25744,7 @@ help:
 	@echo "... regression_brain_regions_test_prefrontal_backward_compat"
 	@echo "... regression_brain_regions_test_region_api_stability"
 	@echo "... regression_brain_regions_test_signal_propagation_regression"
+	@echo "... regression_brain_test_brain_pr_memory_regression"
 	@echo "... regression_bridges_test_bridge_memory_leaks"
 	@echo "... regression_bridges_test_quantum_bridge_stability"
 	@echo "... regression_bridges_test_substrate_bridge_stability"
@@ -25965,6 +26073,8 @@ help:
 	@echo "... test_immune_threat_logic"
 	@echo "... test_knowledge_base_interface"
 	@echo "... test_learning_stability"
+	@echo "... test_medulla_cerebellum_bridge_integration"
+	@echo "... test_medulla_cerebellum_bridge_regression"
 	@echo "... test_neural_logic"
 	@echo "... test_neural_logic_brain_integration"
 	@echo "... test_neural_logic_circuit_builder"
@@ -26504,6 +26614,7 @@ help:
 	@echo "... unit_core_brain_test_brain_oscillations_real"
 	@echo "... unit_core_brain_test_brain_persistence"
 	@echo "... unit_core_brain_test_brain_persistence_integration"
+	@echo "... unit_core_brain_test_brain_pr_memory"
 	@echo "... unit_core_brain_test_brain_resize_bio_async"
 	@echo "... unit_core_brain_test_brain_save_load_simple"
 	@echo "... unit_core_brain_test_brain_snapshot_operations"
@@ -26524,6 +26635,7 @@ help:
 	@echo "... unit_core_medulla_arousal_state"
 	@echo "... unit_core_medulla_brain_integration"
 	@echo "... unit_core_medulla_brainstem_coupling"
+	@echo "... unit_core_medulla_cerebellum_bridge"
 	@echo "... unit_core_medulla_circadian"
 	@echo "... unit_core_medulla_immune_bridge"
 	@echo "... unit_core_medulla_orchestrator"

@@ -400,6 +400,12 @@ add_e2e_test(e2e_test_medulla_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_medulla_pipeline.cpp
 )
 
+# Medulla-Cerebellum Bridge Pipeline E2E Test (Inferior Olive Error Signaling)
+add_e2e_test(e2e_test_medulla_cerebellum_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_medulla_cerebellum_pipeline.cpp
+)
+
 # Game Theory Pipeline E2E Test (Auctions, Bargaining, Credit Assignment)
 add_e2e_test(e2e_test_game_theory_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
@@ -1315,6 +1321,17 @@ add_e2e_test(e2e_test_swarm_memory_consolidation
 add_e2e_test(e2e_test_brain_initialization_subsystems
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_brain_initialization_subsystems.cpp
+)
+
+# ============================================================================
+# Brain PR Memory Pipeline E2E Test (2026-01-10)
+# ============================================================================
+# WHAT: E2E test for Prime Resonant memory brain integration
+# WHY:  Verify Z-Ladder, theta-gamma, and entanglement work with brain lifecycle
+# HOW:  Test complete PR memory pipeline from creation through operation
+add_e2e_test(e2e_test_brain_pr_memory_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_brain_pr_memory_pipeline.cpp
 )
 
 # ============================================================================

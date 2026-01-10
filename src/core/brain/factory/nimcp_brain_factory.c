@@ -113,6 +113,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 #include "core/brain/factory/init/nimcp_brain_init_basal_ganglia.h"
+#include "core/brain/factory/init/nimcp_brain_init_pr_memory.h"
 #include "core/brain/factory/validation/nimcp_brain_validation.h"
 
 #define LOG_MODULE "BRAIN_FACTORY"
@@ -216,6 +217,9 @@ extern void set_error(const char* format, ...);
 
 // Enhanced Basal Ganglia subsystem macro (action selection & motor control)
 #define init_basal_ganglia_subsystem                nimcp_brain_factory_init_basal_ganglia_subsystem
+
+// Prime Resonant Memory subsystem macro (content-addressable consolidation)
+#define init_pr_memory_subsystem                    nimcp_brain_factory_init_pr_memory_subsystem
 
 //=============================================================================
 // Main Factory Functions
@@ -571,6 +575,12 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Phase 10.2: Memory consolidation (heavy - engram formation, replay)
     if (!brain->config.lazy_consolidation_init) {
         if (!init_consolidation_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
+
+    // Prime Resonant Memory System (content-addressable consolidation)
+    // Provides: Z-Ladder (4-tier memory), theta-gamma coupling, entanglement graph
+    if (brain->config.enable_pr_memory && !brain->config.lazy_pr_memory_init) {
+        if (!init_pr_memory_subsystem(brain)) { brain_destroy(brain); return NULL; }
     }
 
     // Phase 10.3: Executive functions (heavy - Portia integration, planning)

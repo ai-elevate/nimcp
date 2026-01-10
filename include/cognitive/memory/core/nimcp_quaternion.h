@@ -678,7 +678,7 @@ NIMCP_EXPORT nimcp_quaternion_t quat_scale(nimcp_quaternion_t q, float s);
 NIMCP_EXPORT nimcp_quat_config_t quat_default_config(void);
 
 /**
- * @brief Create a 3D vector
+ * @brief Create a 3D vector (quaternion module version)
  *
  * @param x X component
  * @param y Y component
@@ -686,31 +686,33 @@ NIMCP_EXPORT nimcp_quat_config_t quat_default_config(void);
  * @return Vector with specified components
  *
  * Performance: ~2ns
+ * @note Use this version when working with quaternion rotations
  */
-NIMCP_EXPORT nimcp_vec3_t vec3_create(float x, float y, float z);
+NIMCP_EXPORT nimcp_vec3_t quat_vec3_create(float x, float y, float z);
 
 /**
- * @brief Normalize a 3D vector
+ * @brief Normalize a 3D vector (quaternion module version)
  *
  * @param v Input vector
  * @return Unit vector in same direction (or zero vector if input is zero)
  *
  * Performance: ~15ns
+ * @note Use this version when working with quaternion rotations
  */
-NIMCP_EXPORT nimcp_vec3_t vec3_normalize(nimcp_vec3_t v);
+NIMCP_EXPORT nimcp_vec3_t quat_vec3_normalize(nimcp_vec3_t v);
 
 /**
- * @brief Compute 3D vector magnitude
+ * @brief Compute 3D vector magnitude (quaternion module version)
  *
  * @param v Input vector
  * @return |v| = sqrt(x^2 + y^2 + z^2)
  *
  * Performance: ~12ns
  */
-NIMCP_EXPORT float vec3_magnitude(nimcp_vec3_t v);
+NIMCP_EXPORT float quat_vec3_magnitude(nimcp_vec3_t v);
 
 /**
- * @brief Compute 3D dot product
+ * @brief Compute 3D dot product (quaternion module version)
  *
  * @param v1 First vector
  * @param v2 Second vector
@@ -718,7 +720,7 @@ NIMCP_EXPORT float vec3_magnitude(nimcp_vec3_t v);
  *
  * Performance: ~5ns
  */
-NIMCP_EXPORT float vec3_dot(nimcp_vec3_t v1, nimcp_vec3_t v2);
+NIMCP_EXPORT float quat_vec3_dot(nimcp_vec3_t v1, nimcp_vec3_t v2);
 
 #ifdef __cplusplus
 }

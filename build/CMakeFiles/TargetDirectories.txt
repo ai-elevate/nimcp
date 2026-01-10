@@ -184,6 +184,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_oscillations_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_persistence.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_persistence_integration.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_pr_memory.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_resize_bio_async.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_save_load_simple.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_snapshot_operations.dir
@@ -337,6 +338,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_api_test_api_cross_module.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_api_test_api_end_to_end.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_api_test_api_multimodal.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/integration_brain_test_brain_pr_memory_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_cerebellum_test_cerebellum_vestibular_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_cognitive_consolidation_test_systems_consolidation_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_cognitive_curiosity_test_curiosity_enhanced_integration.dir
@@ -399,6 +401,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_utils_tensor_networks_test_mps_neural_network_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_utils_test_utils_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_algorithms_test_community_detection_regression.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/regression_brain_test_brain_pr_memory_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_btree_test_btree_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_btree_test_ethics_btree_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_cognitive_consolidation_test_systems_consolidation_backward_compat.dir
@@ -531,6 +534,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_coordinator_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_core_directives_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_medulla_pipeline.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_medulla_cerebellum_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_game_theory_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_parietal_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_code_immune_pipeline.dir
@@ -577,6 +581,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_visual_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_swarm_memory_consolidation.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_brain_initialization_subsystems.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_brain_pr_memory_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_wiring_diagram_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_omni_inference_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_gpu_nn_training_pipeline.dir
@@ -1012,6 +1017,7 @@
 /home/bbrelin/nimcp/build/test/unit/core/medulla/CMakeFiles/unit_core_medulla_orchestrator.dir
 /home/bbrelin/nimcp/build/test/unit/core/medulla/CMakeFiles/unit_core_medulla_brain_integration.dir
 /home/bbrelin/nimcp/build/test/unit/core/medulla/CMakeFiles/unit_core_medulla_immune_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/core/medulla/CMakeFiles/unit_core_medulla_cerebellum_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/core/medulla/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/core/medulla/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/core/medulla/CMakeFiles/rebuild_cache.dir
@@ -1020,6 +1026,7 @@
 /home/bbrelin/nimcp/build/test/unit/core/medulla/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/core/medulla/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/integration_core_medulla.dir
+/home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/test_medulla_cerebellum_bridge_integration.dir
 /home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/rebuild_cache.dir
@@ -1028,6 +1035,7 @@
 /home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/integration/core/medulla/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/core/medulla/CMakeFiles/regression_core_medulla.dir
+/home/bbrelin/nimcp/build/test/regression/core/medulla/CMakeFiles/test_medulla_cerebellum_bridge_regression.dir
 /home/bbrelin/nimcp/build/test/regression/core/medulla/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/core/medulla/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/core/medulla/CMakeFiles/rebuild_cache.dir

@@ -67,7 +67,7 @@ nimcp_quaternion_t quat_create(float w, float x, float y, float z) {
 
 nimcp_quaternion_t quat_from_axis_angle(nimcp_vec3_t axis, float angle) {
     // Normalize axis first
-    float mag = vec3_magnitude(axis);
+    float mag = quat_vec3_magnitude(axis);
     if (mag < QUAT_EPSILON) {
         // Zero axis: return identity
         return quat_identity();
@@ -701,7 +701,7 @@ nimcp_quat_config_t quat_default_config(void) {
 // Vector Helper Functions
 //=============================================================================
 
-nimcp_vec3_t vec3_create(float x, float y, float z) {
+nimcp_vec3_t quat_vec3_create(float x, float y, float z) {
     nimcp_vec3_t v;
     v.x = x;
     v.y = y;
@@ -709,7 +709,7 @@ nimcp_vec3_t vec3_create(float x, float y, float z) {
     return v;
 }
 
-nimcp_vec3_t vec3_normalize(nimcp_vec3_t v) {
+nimcp_vec3_t quat_vec3_normalize(nimcp_vec3_t v) {
     float mag_sq = v.x * v.x + v.y * v.y + v.z * v.z;
 
     if (mag_sq < QUAT_EPSILON * QUAT_EPSILON) {
@@ -727,10 +727,10 @@ nimcp_vec3_t vec3_normalize(nimcp_vec3_t v) {
     return result;
 }
 
-float vec3_magnitude(nimcp_vec3_t v) {
+float quat_vec3_magnitude(nimcp_vec3_t v) {
     return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
-float vec3_dot(nimcp_vec3_t v1, nimcp_vec3_t v2) {
+float quat_vec3_dot(nimcp_vec3_t v1, nimcp_vec3_t v2) {
     return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 }

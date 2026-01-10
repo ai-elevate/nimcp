@@ -958,8 +958,23 @@ int medulla_test_set_circadian(medulla_t medulla, circadian_phase_t phase) {
         return -1;
     }
 
+    /* Map phase to circadian time (middle of each phase's range) */
+    float phase_time;
+    switch (phase) {
+        case CIRCADIAN_PHASE_EARLY_MORNING: phase_time = 7.5f; break;   /* [6,9) */
+        case CIRCADIAN_PHASE_MORNING:       phase_time = 10.5f; break;  /* [9,12) */
+        case CIRCADIAN_PHASE_AFTERNOON:     phase_time = 13.5f; break;  /* [12,15) */
+        case CIRCADIAN_PHASE_EVENING:       phase_time = 16.5f; break;  /* [15,18) */
+        case CIRCADIAN_PHASE_LATE_EVENING:  phase_time = 19.5f; break;  /* [18,21) */
+        case CIRCADIAN_PHASE_NIGHT:         phase_time = 22.5f; break;  /* [21,24) */
+        case CIRCADIAN_PHASE_DEEP_NIGHT:    phase_time = 1.5f; break;   /* [0,3) */
+        case CIRCADIAN_PHASE_PRE_DAWN:      phase_time = 4.5f; break;   /* [3,6) */
+        default: phase_time = 10.5f; break;
+    }
+
     nimcp_platform_mutex_lock(medulla->mutex);
     medulla->circadian_phase = phase;
+    medulla->current_circadian_time = phase_time;
     nimcp_platform_mutex_unlock(medulla->mutex);
     return 0;
 }
