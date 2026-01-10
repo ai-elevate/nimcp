@@ -7244,6 +7244,19 @@ e2e_test_tier3_fep_bridges/fast:
 .PHONY : e2e_test_tier3_fep_bridges/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_security_module_pipeline
+
+# Build rule for target.
+e2e_test_security_module_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_security_module_pipeline
+.PHONY : e2e_test_security_module_pipeline
+
+# fast build rule for target.
+e2e_test_security_module_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_security_module_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_security_module_pipeline.dir/build
+.PHONY : e2e_test_security_module_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_training_symbolic_logic_pipeline
 
 # Build rule for target.
@@ -17865,6 +17878,84 @@ unit_security_sleep_bridges/fast:
 .PHONY : unit_security_sleep_bridges/fast
 
 #=============================================================================
+# Target rules for targets named unit_security_test_security_perception_input_bridge
+
+# Build rule for target.
+unit_security_test_security_perception_input_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_perception_input_bridge
+.PHONY : unit_security_test_security_perception_input_bridge
+
+# fast build rule for target.
+unit_security_test_security_perception_input_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/perception/CMakeFiles/unit_security_test_security_perception_input_bridge.dir/build.make test/unit/security/perception/CMakeFiles/unit_security_test_security_perception_input_bridge.dir/build
+.PHONY : unit_security_test_security_perception_input_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_security_language_bridge
+
+# Build rule for target.
+unit_security_test_security_language_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_language_bridge
+.PHONY : unit_security_test_security_language_bridge
+
+# fast build rule for target.
+unit_security_test_security_language_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/language/CMakeFiles/unit_security_test_security_language_bridge.dir/build.make test/unit/security/language/CMakeFiles/unit_security_test_security_language_bridge.dir/build
+.PHONY : unit_security_test_security_language_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_security_executive_bridge
+
+# Build rule for target.
+unit_security_test_security_executive_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_executive_bridge
+.PHONY : unit_security_test_security_executive_bridge
+
+# fast build rule for target.
+unit_security_test_security_executive_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/executive/CMakeFiles/unit_security_test_security_executive_bridge.dir/build.make test/unit/security/executive/CMakeFiles/unit_security_test_security_executive_bridge.dir/build
+.PHONY : unit_security_test_security_executive_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_security_memory_bridge
+
+# Build rule for target.
+unit_security_test_security_memory_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_memory_bridge
+.PHONY : unit_security_test_security_memory_bridge
+
+# fast build rule for target.
+unit_security_test_security_memory_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/memory/CMakeFiles/unit_security_test_security_memory_bridge.dir/build.make test/unit/security/memory/CMakeFiles/unit_security_test_security_memory_bridge.dir/build
+.PHONY : unit_security_test_security_memory_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_security_training_bridge
+
+# Build rule for target.
+unit_security_test_security_training_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_security_training_bridge
+.PHONY : unit_security_test_security_training_bridge
+
+# fast build rule for target.
+unit_security_test_security_training_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/training/CMakeFiles/unit_security_test_security_training_bridge.dir/build.make test/unit/security/training/CMakeFiles/unit_security_test_security_training_bridge.dir/build
+.PHONY : unit_security_test_security_training_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_rcog_bridge
+
+# Build rule for target.
+unit_security_rcog_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_rcog_bridge
+.PHONY : unit_security_rcog_bridge
+
+# fast build rule for target.
+unit_security_rcog_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/rcog/CMakeFiles/unit_security_rcog_bridge.dir/build.make test/unit/security/rcog/CMakeFiles/unit_security_rcog_bridge.dir/build
+.PHONY : unit_security_rcog_bridge/fast
+
+#=============================================================================
 # Target rules for targets named integration_security_test_bbb_integration
 
 # Build rule for target.
@@ -18032,6 +18123,19 @@ integration_security_test_security_immune: cmake_check_build_system
 integration_security_test_security_immune/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_security_immune.dir/build.make test/integration/security/CMakeFiles/integration_security_test_security_immune.dir/build
 .PHONY : integration_security_test_security_immune/fast
+
+#=============================================================================
+# Target rules for targets named integration_security_test_module_integration
+
+# Build rule for target.
+integration_security_test_module_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_security_test_module_integration
+.PHONY : integration_security_test_module_integration
+
+# fast build rule for target.
+integration_security_test_module_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/CMakeFiles/integration_security_test_module_integration.dir/build.make test/integration/security/CMakeFiles/integration_security_test_module_integration.dir/build
+.PHONY : integration_security_test_module_integration/fast
 
 #=============================================================================
 # Target rules for targets named integration_security_sleep_bridges
@@ -18266,6 +18370,32 @@ regression_security_bridges: cmake_check_build_system
 regression_security_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_bridges.dir/build.make test/regression/security/CMakeFiles/regression_security_bridges.dir/build
 .PHONY : regression_security_bridges/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_module_bridges
+
+# Build rule for target.
+regression_security_module_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_module_bridges
+.PHONY : regression_security_module_bridges
+
+# fast build rule for target.
+regression_security_module_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_module_bridges.dir/build.make test/regression/security/CMakeFiles/regression_security_module_bridges.dir/build
+.PHONY : regression_security_module_bridges/fast
+
+#=============================================================================
+# Target rules for targets named regression_security_module
+
+# Build rule for target.
+regression_security_module: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_security_module
+.PHONY : regression_security_module
+
+# fast build rule for target.
+regression_security_module/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/security/CMakeFiles/regression_security_module.dir/build.make test/regression/security/CMakeFiles/regression_security_module.dir/build
+.PHONY : regression_security_module/fast
 
 #=============================================================================
 # Target rules for targets named unit_language_orchestrator
@@ -24337,6 +24467,7 @@ help:
 	@echo "... e2e_test_second_messenger_pipeline"
 	@echo "... e2e_test_security_attack_simulation"
 	@echo "... e2e_test_security_bridges_pipeline"
+	@echo "... e2e_test_security_module_pipeline"
 	@echo "... e2e_test_self_model_snn_plasticity_pipeline"
 	@echo "... e2e_test_server_swarm_pipeline"
 	@echo "... e2e_test_sleep_bridge_pipeline"
@@ -24628,6 +24759,7 @@ help:
 	@echo "... integration_security_test_framework"
 	@echo "... integration_security_test_key_derivation"
 	@echo "... integration_security_test_math_integration"
+	@echo "... integration_security_test_module_integration"
 	@echo "... integration_security_test_pattern_db"
 	@echo "... integration_security_test_security_async"
 	@echo "... integration_security_test_security_immune"
@@ -24930,6 +25062,8 @@ help:
 	@echo "... regression_quantum_bridges"
 	@echo "... regression_rcog_bridge"
 	@echo "... regression_security_bridges"
+	@echo "... regression_security_module"
+	@echo "... regression_security_module_bridges"
 	@echo "... regression_security_sleep_bridges"
 	@echo "... regression_security_test_anomaly_detector"
 	@echo "... regression_security_test_bbb_regression"
@@ -25898,6 +26032,7 @@ help:
 	@echo "... unit_quantum_test_quantum_superposition"
 	@echo "... unit_security_immune_pattern_db"
 	@echo "... unit_security_immune_unified_bridge"
+	@echo "... unit_security_rcog_bridge"
 	@echo "... unit_security_sleep_bridges"
 	@echo "... unit_security_test_anomaly_detector"
 	@echo "... unit_security_test_bayesian_network"
@@ -25917,10 +26052,15 @@ help:
 	@echo "... unit_security_test_security_comprehensive"
 	@echo "... unit_security_test_security_consensus"
 	@echo "... unit_security_test_security_coverage"
+	@echo "... unit_security_test_security_executive_bridge"
 	@echo "... unit_security_test_security_integration"
+	@echo "... unit_security_test_security_language_bridge"
 	@echo "... unit_security_test_security_level"
 	@echo "... unit_security_test_security_logging_bridge"
+	@echo "... unit_security_test_security_memory_bridge"
 	@echo "... unit_security_test_security_perception_bridge"
+	@echo "... unit_security_test_security_perception_input_bridge"
+	@echo "... unit_security_test_security_training_bridge"
 	@echo "... unit_security_test_shell_detector"
 	@echo "... unit_security_test_supply_chain"
 	@echo "... unit_shannon_monitor_bio_async"

@@ -357,3 +357,94 @@ set_tests_properties(regression_security_bridges PROPERTIES
     LABELS "regression;security;bridges"
     TIMEOUT 300
 )
+
+# ============================================================================
+# Security Module Bridge Regression Tests (Phase SMB)
+# ============================================================================
+# WHAT: Regression tests for Security Module Bridges
+# WHY:  Ensure API stability and consistent behavior across versions
+# HOW:  Test backward compatibility, performance baselines, and thread safety
+#       for perception, language, executive, memory, training, and rcog bridges
+# ============================================================================
+
+add_executable(regression_security_module_bridges
+    test_security_module_regression.cpp
+)
+target_link_libraries(regression_security_module_bridges
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_module_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/perception
+        ${CMAKE_SOURCE_DIR}/include/security/language
+        ${CMAKE_SOURCE_DIR}/include/security/executive
+        ${CMAKE_SOURCE_DIR}/include/security/memory
+        ${CMAKE_SOURCE_DIR}/include/security/training
+        ${CMAKE_SOURCE_DIR}/include/security/rcog
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME regression_security_module_bridges
+         COMMAND regression_security_module_bridges)
+set_tests_properties(regression_security_module_bridges PROPERTIES
+    LABELS "regression;security;module;perception;language;executive;memory;training;rcog"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# Security Module Comprehensive Regression Tests
+# ============================================================================
+# WHAT: Comprehensive regression tests to ensure security bridges don't regress
+# WHY:  Guarantee consistent performance, accuracy, and security properties
+# HOW:  Performance benchmarks, detection rate validation, memory checks,
+#       false positive monitoring, security guarantee verification, integration stability
+#
+# TEST CATEGORIES:
+# 1. Performance Regression    - Timing bounds for security operations
+# 2. Memory Regression         - No leaks in create/destroy cycles
+# 3. Detection Accuracy        - Maintain detection rates >= baseline
+# 4. False Positive Regression - Keep false positive rates low
+# 5. Security Guarantees       - Critical security properties hold
+# 6. Integration Stability     - Multi-bridge scenarios remain stable
+# ============================================================================
+
+add_executable(regression_security_module
+    test_security_module_regression.cpp
+)
+target_link_libraries(regression_security_module
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(regression_security_module
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/perception
+        ${CMAKE_SOURCE_DIR}/include/security/language
+        ${CMAKE_SOURCE_DIR}/include/security/executive
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME regression_security_module
+         COMMAND regression_security_module)
+set_tests_properties(regression_security_module PROPERTIES
+    LABELS "regression;security;performance;memory;accuracy;integration"
+    TIMEOUT 600
+)

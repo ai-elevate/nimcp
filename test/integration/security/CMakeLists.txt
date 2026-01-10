@@ -459,3 +459,45 @@ set_tests_properties(integration_security_test_security_immune PROPERTIES
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sleep/CMakeLists.txt")
     add_subdirectory(sleep)
 endif()
+
+# ============================================================================
+# Security Module Integration Tests (Phase SMB)
+# ============================================================================
+# WHAT: Integration tests for Security Module Bridges
+# WHY:  Verify cross-module security workflows and threat coordination
+# HOW:  Test complete security pipelines across perception, language, executive,
+#       memory, training, and rcog modules
+# ============================================================================
+
+add_executable(integration_security_test_module_integration
+    test_security_module_integration.cpp
+)
+target_link_libraries(integration_security_test_module_integration
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(integration_security_test_module_integration
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/perception
+        ${CMAKE_SOURCE_DIR}/include/security/language
+        ${CMAKE_SOURCE_DIR}/include/security/executive
+        ${CMAKE_SOURCE_DIR}/include/security/memory
+        ${CMAKE_SOURCE_DIR}/include/security/training
+        ${CMAKE_SOURCE_DIR}/include/security/rcog
+        ${CMAKE_SOURCE_DIR}/src/security
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME integration_security_test_module_integration
+         COMMAND integration_security_test_module_integration)
+set_tests_properties(integration_security_test_module_integration PROPERTIES
+    LABELS "integration;security;module;perception;language;executive;memory;training;rcog"
+    TIMEOUT 300
+)

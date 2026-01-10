@@ -29177,6 +29177,30 @@ __/security/async/nimcp_security_async_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/async/nimcp_security_async_bridge.c.s
 .PHONY : __/security/async/nimcp_security_async_bridge.c.s
 
+__/security/executive/nimcp_security_executive_bridge.o: __/security/executive/nimcp_security_executive_bridge.c.o
+.PHONY : __/security/executive/nimcp_security_executive_bridge.o
+
+# target to build an object file
+__/security/executive/nimcp_security_executive_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/executive/nimcp_security_executive_bridge.c.o
+.PHONY : __/security/executive/nimcp_security_executive_bridge.c.o
+
+__/security/executive/nimcp_security_executive_bridge.i: __/security/executive/nimcp_security_executive_bridge.c.i
+.PHONY : __/security/executive/nimcp_security_executive_bridge.i
+
+# target to preprocess a source file
+__/security/executive/nimcp_security_executive_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/executive/nimcp_security_executive_bridge.c.i
+.PHONY : __/security/executive/nimcp_security_executive_bridge.c.i
+
+__/security/executive/nimcp_security_executive_bridge.s: __/security/executive/nimcp_security_executive_bridge.c.s
+.PHONY : __/security/executive/nimcp_security_executive_bridge.s
+
+# target to generate assembly for a file
+__/security/executive/nimcp_security_executive_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/executive/nimcp_security_executive_bridge.c.s
+.PHONY : __/security/executive/nimcp_security_executive_bridge.c.s
+
 __/security/immune/nimcp_anomaly_immune_bridge.o: __/security/immune/nimcp_anomaly_immune_bridge.c.o
 .PHONY : __/security/immune/nimcp_anomaly_immune_bridge.o
 
@@ -29273,6 +29297,30 @@ __/security/immune/nimcp_security_immune_unified_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/immune/nimcp_security_immune_unified_bridge.c.s
 .PHONY : __/security/immune/nimcp_security_immune_unified_bridge.c.s
 
+__/security/language/nimcp_security_language_bridge.o: __/security/language/nimcp_security_language_bridge.c.o
+.PHONY : __/security/language/nimcp_security_language_bridge.o
+
+# target to build an object file
+__/security/language/nimcp_security_language_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/language/nimcp_security_language_bridge.c.o
+.PHONY : __/security/language/nimcp_security_language_bridge.c.o
+
+__/security/language/nimcp_security_language_bridge.i: __/security/language/nimcp_security_language_bridge.c.i
+.PHONY : __/security/language/nimcp_security_language_bridge.i
+
+# target to preprocess a source file
+__/security/language/nimcp_security_language_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/language/nimcp_security_language_bridge.c.i
+.PHONY : __/security/language/nimcp_security_language_bridge.c.i
+
+__/security/language/nimcp_security_language_bridge.s: __/security/language/nimcp_security_language_bridge.c.s
+.PHONY : __/security/language/nimcp_security_language_bridge.s
+
+# target to generate assembly for a file
+__/security/language/nimcp_security_language_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/language/nimcp_security_language_bridge.c.s
+.PHONY : __/security/language/nimcp_security_language_bridge.c.s
+
 __/security/logging/nimcp_security_logging_bridge.o: __/security/logging/nimcp_security_logging_bridge.c.o
 .PHONY : __/security/logging/nimcp_security_logging_bridge.o
 
@@ -29296,6 +29344,30 @@ __/security/logging/nimcp_security_logging_bridge.s: __/security/logging/nimcp_s
 __/security/logging/nimcp_security_logging_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/logging/nimcp_security_logging_bridge.c.s
 .PHONY : __/security/logging/nimcp_security_logging_bridge.c.s
+
+__/security/memory/nimcp_security_memory_bridge.o: __/security/memory/nimcp_security_memory_bridge.c.o
+.PHONY : __/security/memory/nimcp_security_memory_bridge.o
+
+# target to build an object file
+__/security/memory/nimcp_security_memory_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/memory/nimcp_security_memory_bridge.c.o
+.PHONY : __/security/memory/nimcp_security_memory_bridge.c.o
+
+__/security/memory/nimcp_security_memory_bridge.i: __/security/memory/nimcp_security_memory_bridge.c.i
+.PHONY : __/security/memory/nimcp_security_memory_bridge.i
+
+# target to preprocess a source file
+__/security/memory/nimcp_security_memory_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/memory/nimcp_security_memory_bridge.c.i
+.PHONY : __/security/memory/nimcp_security_memory_bridge.c.i
+
+__/security/memory/nimcp_security_memory_bridge.s: __/security/memory/nimcp_security_memory_bridge.c.s
+.PHONY : __/security/memory/nimcp_security_memory_bridge.s
+
+# target to generate assembly for a file
+__/security/memory/nimcp_security_memory_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/memory/nimcp_security_memory_bridge.c.s
+.PHONY : __/security/memory/nimcp_security_memory_bridge.c.s
 
 __/security/nimcp_anomaly_detector.o: __/security/nimcp_anomaly_detector.c.o
 .PHONY : __/security/nimcp_anomaly_detector.o
@@ -30521,6 +30593,54 @@ __/security/nimcp_toctou_guard.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/nimcp_toctou_guard.c.s
 .PHONY : __/security/nimcp_toctou_guard.c.s
 
+__/security/perception/nimcp_security_perception_input_bridge.o: __/security/perception/nimcp_security_perception_input_bridge.c.o
+.PHONY : __/security/perception/nimcp_security_perception_input_bridge.o
+
+# target to build an object file
+__/security/perception/nimcp_security_perception_input_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/perception/nimcp_security_perception_input_bridge.c.o
+.PHONY : __/security/perception/nimcp_security_perception_input_bridge.c.o
+
+__/security/perception/nimcp_security_perception_input_bridge.i: __/security/perception/nimcp_security_perception_input_bridge.c.i
+.PHONY : __/security/perception/nimcp_security_perception_input_bridge.i
+
+# target to preprocess a source file
+__/security/perception/nimcp_security_perception_input_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/perception/nimcp_security_perception_input_bridge.c.i
+.PHONY : __/security/perception/nimcp_security_perception_input_bridge.c.i
+
+__/security/perception/nimcp_security_perception_input_bridge.s: __/security/perception/nimcp_security_perception_input_bridge.c.s
+.PHONY : __/security/perception/nimcp_security_perception_input_bridge.s
+
+# target to generate assembly for a file
+__/security/perception/nimcp_security_perception_input_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/perception/nimcp_security_perception_input_bridge.c.s
+.PHONY : __/security/perception/nimcp_security_perception_input_bridge.c.s
+
+__/security/rcog/nimcp_security_rcog_bridge.o: __/security/rcog/nimcp_security_rcog_bridge.c.o
+.PHONY : __/security/rcog/nimcp_security_rcog_bridge.o
+
+# target to build an object file
+__/security/rcog/nimcp_security_rcog_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/rcog/nimcp_security_rcog_bridge.c.o
+.PHONY : __/security/rcog/nimcp_security_rcog_bridge.c.o
+
+__/security/rcog/nimcp_security_rcog_bridge.i: __/security/rcog/nimcp_security_rcog_bridge.c.i
+.PHONY : __/security/rcog/nimcp_security_rcog_bridge.i
+
+# target to preprocess a source file
+__/security/rcog/nimcp_security_rcog_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/rcog/nimcp_security_rcog_bridge.c.i
+.PHONY : __/security/rcog/nimcp_security_rcog_bridge.c.i
+
+__/security/rcog/nimcp_security_rcog_bridge.s: __/security/rcog/nimcp_security_rcog_bridge.c.s
+.PHONY : __/security/rcog/nimcp_security_rcog_bridge.s
+
+# target to generate assembly for a file
+__/security/rcog/nimcp_security_rcog_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/rcog/nimcp_security_rcog_bridge.c.s
+.PHONY : __/security/rcog/nimcp_security_rcog_bridge.c.s
+
 __/security/sleep/nimcp_anomaly_detector_sleep_bridge.o: __/security/sleep/nimcp_anomaly_detector_sleep_bridge.c.o
 .PHONY : __/security/sleep/nimcp_anomaly_detector_sleep_bridge.o
 
@@ -30616,6 +30736,30 @@ __/security/sleep/nimcp_rate_limiter_sleep_bridge.s: __/security/sleep/nimcp_rat
 __/security/sleep/nimcp_rate_limiter_sleep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/sleep/nimcp_rate_limiter_sleep_bridge.c.s
 .PHONY : __/security/sleep/nimcp_rate_limiter_sleep_bridge.c.s
+
+__/security/training/nimcp_security_training_bridge.o: __/security/training/nimcp_security_training_bridge.c.o
+.PHONY : __/security/training/nimcp_security_training_bridge.o
+
+# target to build an object file
+__/security/training/nimcp_security_training_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/training/nimcp_security_training_bridge.c.o
+.PHONY : __/security/training/nimcp_security_training_bridge.c.o
+
+__/security/training/nimcp_security_training_bridge.i: __/security/training/nimcp_security_training_bridge.c.i
+.PHONY : __/security/training/nimcp_security_training_bridge.i
+
+# target to preprocess a source file
+__/security/training/nimcp_security_training_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/training/nimcp_security_training_bridge.c.i
+.PHONY : __/security/training/nimcp_security_training_bridge.c.i
+
+__/security/training/nimcp_security_training_bridge.s: __/security/training/nimcp_security_training_bridge.c.s
+.PHONY : __/security/training/nimcp_security_training_bridge.s
+
+# target to generate assembly for a file
+__/security/training/nimcp_security_training_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/training/nimcp_security_training_bridge.c.s
+.PHONY : __/security/training/nimcp_security_training_bridge.c.s
 
 __/snn/nimcp_snn_bio_async.o: __/snn/nimcp_snn_bio_async.c.o
 .PHONY : __/snn/nimcp_snn_bio_async.o
@@ -39343,6 +39487,9 @@ help:
 	@echo "... __/security/async/nimcp_security_async_bridge.o"
 	@echo "... __/security/async/nimcp_security_async_bridge.i"
 	@echo "... __/security/async/nimcp_security_async_bridge.s"
+	@echo "... __/security/executive/nimcp_security_executive_bridge.o"
+	@echo "... __/security/executive/nimcp_security_executive_bridge.i"
+	@echo "... __/security/executive/nimcp_security_executive_bridge.s"
 	@echo "... __/security/immune/nimcp_anomaly_immune_bridge.o"
 	@echo "... __/security/immune/nimcp_anomaly_immune_bridge.i"
 	@echo "... __/security/immune/nimcp_anomaly_immune_bridge.s"
@@ -39355,9 +39502,15 @@ help:
 	@echo "... __/security/immune/nimcp_security_immune_unified_bridge.o"
 	@echo "... __/security/immune/nimcp_security_immune_unified_bridge.i"
 	@echo "... __/security/immune/nimcp_security_immune_unified_bridge.s"
+	@echo "... __/security/language/nimcp_security_language_bridge.o"
+	@echo "... __/security/language/nimcp_security_language_bridge.i"
+	@echo "... __/security/language/nimcp_security_language_bridge.s"
 	@echo "... __/security/logging/nimcp_security_logging_bridge.o"
 	@echo "... __/security/logging/nimcp_security_logging_bridge.i"
 	@echo "... __/security/logging/nimcp_security_logging_bridge.s"
+	@echo "... __/security/memory/nimcp_security_memory_bridge.o"
+	@echo "... __/security/memory/nimcp_security_memory_bridge.i"
+	@echo "... __/security/memory/nimcp_security_memory_bridge.s"
 	@echo "... __/security/nimcp_anomaly_detector.o"
 	@echo "... __/security/nimcp_anomaly_detector.i"
 	@echo "... __/security/nimcp_anomaly_detector.s"
@@ -39511,6 +39664,12 @@ help:
 	@echo "... __/security/nimcp_toctou_guard.o"
 	@echo "... __/security/nimcp_toctou_guard.i"
 	@echo "... __/security/nimcp_toctou_guard.s"
+	@echo "... __/security/perception/nimcp_security_perception_input_bridge.o"
+	@echo "... __/security/perception/nimcp_security_perception_input_bridge.i"
+	@echo "... __/security/perception/nimcp_security_perception_input_bridge.s"
+	@echo "... __/security/rcog/nimcp_security_rcog_bridge.o"
+	@echo "... __/security/rcog/nimcp_security_rcog_bridge.i"
+	@echo "... __/security/rcog/nimcp_security_rcog_bridge.s"
 	@echo "... __/security/sleep/nimcp_anomaly_detector_sleep_bridge.o"
 	@echo "... __/security/sleep/nimcp_anomaly_detector_sleep_bridge.i"
 	@echo "... __/security/sleep/nimcp_anomaly_detector_sleep_bridge.s"
@@ -39523,6 +39682,9 @@ help:
 	@echo "... __/security/sleep/nimcp_rate_limiter_sleep_bridge.o"
 	@echo "... __/security/sleep/nimcp_rate_limiter_sleep_bridge.i"
 	@echo "... __/security/sleep/nimcp_rate_limiter_sleep_bridge.s"
+	@echo "... __/security/training/nimcp_security_training_bridge.o"
+	@echo "... __/security/training/nimcp_security_training_bridge.i"
+	@echo "... __/security/training/nimcp_security_training_bridge.s"
 	@echo "... __/snn/nimcp_snn_bio_async.o"
 	@echo "... __/snn/nimcp_snn_bio_async.i"
 	@echo "... __/snn/nimcp_snn_bio_async.s"

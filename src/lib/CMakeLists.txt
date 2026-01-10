@@ -1279,6 +1279,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/immune/nimcp_security_immune_unified_bridge.c  # Unified security-immune bidirectional bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_perception_bridge.c  # Security-Perception Bridge - sensory threat analysis and defense
 
+    # Security Module Bridges (Phase SMB: Security module integration bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/perception/nimcp_security_perception_input_bridge.c  # Security-Perception Input Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/language/nimcp_security_language_bridge.c          # Security-Language Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/executive/nimcp_security_executive_bridge.c        # Security-Executive Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/memory/nimcp_security_memory_bridge.c              # Security-Memory Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/training/nimcp_security_training_bridge.c          # Security-Training Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/rcog/nimcp_security_rcog_bridge.c                  # Security-RCog Bridge
+
     # Security Async Integration (Phase SA: Security async bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/async/nimcp_security_async_bridge.c  # Security-async bidirectional bridge
 

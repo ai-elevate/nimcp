@@ -466,3 +466,42 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sleep/CMakeLists.txt")
     add_subdirectory(sleep)
 endif()
+
+# ============================================================================
+# Security Module Bridge Unit Tests (Phase SMB)
+# ============================================================================
+# WHAT: Unit tests for Security Module Bridges
+# WHY:  Verify security integration with perception, language, executive,
+#       memory, training, and rcog modules
+# HOW:  Test lifecycle, validation, threat detection, and bidirectional effects
+# ============================================================================
+
+# Security-Perception Input Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/perception/CMakeLists.txt")
+    add_subdirectory(perception)
+endif()
+
+# Security-Language Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/language/CMakeLists.txt")
+    add_subdirectory(language)
+endif()
+
+# Security-Executive Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/executive/CMakeLists.txt")
+    add_subdirectory(executive)
+endif()
+
+# Security-Memory Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/memory/CMakeLists.txt")
+    add_subdirectory(memory)
+endif()
+
+# Security-Training Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/training/CMakeLists.txt")
+    add_subdirectory(training)
+endif()
+
+# Security-RCog Bridge Unit Tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/rcog/CMakeLists.txt")
+    add_subdirectory(rcog)
+endif()

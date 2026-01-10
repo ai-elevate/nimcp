@@ -2304,6 +2304,45 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_tier3_fep_bridges.cpp)
 endif()
 
 # ============================================================================
+# Security Module Pipeline E2E Test (Phase SMB)
+# ============================================================================
+# WHAT: End-to-end tests for complete security module integration pipeline
+# WHY:  Verify threat detection and security workflows across all module bridges
+# HOW:  Test complete security scenarios spanning perception, language, executive,
+#       memory, training, and rcog modules with coordinated threat response
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_security_module_pipeline.cpp)
+    add_executable(e2e_test_security_module_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_security_module_pipeline.cpp
+    )
+    target_include_directories(e2e_test_security_module_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/include/security/perception
+        ${CMAKE_SOURCE_DIR}/include/security/language
+        ${CMAKE_SOURCE_DIR}/include/security/executive
+        ${CMAKE_SOURCE_DIR}/include/security/memory
+        ${CMAKE_SOURCE_DIR}/include/security/training
+        ${CMAKE_SOURCE_DIR}/include/security/rcog
+    )
+    target_link_libraries(e2e_test_security_module_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_security_module_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_security_module_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_security_module_pipeline COMMAND e2e_test_security_module_pipeline)
+    set_tests_properties(e2e_test_security_module_pipeline PROPERTIES
+        LABELS "e2e;security;module;perception;language;executive;memory;training;rcog;pipeline"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Security Module Pipeline E2E test: e2e_test_security_module_pipeline")
+endif()
+
+# ============================================================================
 # Training Symbolic Logic Hub Pipeline E2E Test
 # ============================================================================
 # WHAT: Test training symbolic logic hub bridge in complete training pipeline

@@ -344,8 +344,8 @@ TEST_F(SecurityBridgesPipelineE2ETest, FullSecurityPipeline) {
     // Report through BBB validation
     bbb_validation_result_t validation;
     const char* test_input = "'; DROP TABLE users; --";
-    result = bbb_validate_string(bbb_system_, test_input, strlen(test_input), &validation);
-    EXPECT_EQ(result, 0);
+    bool is_valid = bbb_validate_string(bbb_system_, test_input, &validation);
+    EXPECT_FALSE(is_valid);  // Malicious input should be invalid
 
     // Broadcast threat via async bridge
     result = security_async_broadcast_threat(
@@ -432,10 +432,10 @@ TEST_F(SecurityBridgesPipelineE2ETest, ThreatDetectionPipeline) {
     const char* malicious_input = "'; DROP TABLE users; --";
     bbb_validation_result_t validation;
 
-    int result = bbb_validate_string(bbb_system_, malicious_input, strlen(malicious_input), &validation);
-    EXPECT_EQ(result, 0);
-    EXPECT_FALSE(validation.is_valid);
-    EXPECT_EQ(validation.threat_type, BBB_THREAT_SQL_INJECTION);
+    bool is_valid = bbb_validate_string(bbb_system_, malicious_input, &validation);
+    EXPECT_FALSE(is_valid);  // Should be invalid
+    EXPECT_FALSE(validation.valid);
+    EXPECT_EQ(validation.threat, BBB_THREAT_SQL_INJECTION);
     EXPECT_GE(validation.severity, BBB_SEVERITY_HIGH);
 
     E2E_STAGE_END();
@@ -443,9 +443,9 @@ TEST_F(SecurityBridgesPipelineE2ETest, ThreatDetectionPipeline) {
     // Stage 2: Broadcast threat via async
     E2E_STAGE_BEGIN("Broadcast via async", 500);
 
-    result = security_async_broadcast_threat(
+    int result = security_async_broadcast_threat(
         async_bridge_,
-        validation.threat_type,
+        validation.threat,
         validation.severity,
         "SQL injection attack detected in user input",
         nullptr
@@ -463,7 +463,7 @@ TEST_F(SecurityBridgesPipelineE2ETest, ThreatDetectionPipeline) {
 
     result = security_logging_log_bbb(
         logging_bridge_,
-        validation.threat_type,
+        validation.threat,
         validation.severity,
         BBB_ACTION_BLOCK,
         "SQL injection blocked - malicious input rejected"
@@ -481,7 +481,7 @@ TEST_F(SecurityBridgesPipelineE2ETest, ThreatDetectionPipeline) {
     uint32_t antigen_id;
     result = sec_immune_unified_present_bbb_threat(
         immune_bridge_,
-        validation.threat_type,
+        validation.threat,
         validation.severity,
         threat_hash,
         sizeof(threat_hash),
@@ -657,23 +657,22 @@ TEST_F(SecurityBridgesPipelineE2ETest, EmergencyModePipeline) {
     GenerateThreatHash(critical_threat_data, sizeof(critical_threat_data), 999);
 
     // Report critical threat through BBB
-    bbb_threat_report_t critical_report;
-    memset(&critical_report, 0, sizeof(critical_report));
-    critical_report.threat_type = BBB_THREAT_STACK_OVERFLOW;
-    critical_report.severity = BBB_SEVERITY_CRITICAL;
-    critical_report.timestamp_us = GetTimestampUs();
-    memcpy(critical_report.threat_hash, critical_threat_data, 32);
-    snprintf(critical_report.description, sizeof(critical_report.description),
-             "Critical stack overflow attack detected");
-
-    int result = bbb_report_threat(bbb_system_, &critical_report);
-    EXPECT_EQ(result, 0);
+    bbb_threat_report_t critical_report = bbb_report_threat(
+        bbb_system_,
+        BBB_THREAT_BUFFER_OVERFLOW,
+        BBB_SEVERITY_CRITICAL,
+        "Critical stack overflow attack detected",
+        nullptr,
+        critical_threat_data,
+        sizeof(critical_threat_data)
+    );
+    EXPECT_NE(critical_report.timestamp, 0u);
 
     // Present to immune system
     uint32_t antigen_id;
-    result = sec_immune_unified_present_bbb_threat(
+    int result = sec_immune_unified_present_bbb_threat(
         immune_bridge_,
-        critical_report.threat_type,
+        critical_report.type,
         critical_report.severity,
         critical_threat_data,
         sizeof(critical_threat_data),
@@ -899,15 +898,16 @@ TEST_F(SecurityBridgesPipelineE2ETest, PatternLearningPipeline) {
     EXPECT_NE(check_result, 0);  // Should not find existing memory
 
     // Report threat
-    bbb_threat_report_t novel_report;
-    memset(&novel_report, 0, sizeof(novel_report));
-    novel_report.threat_type = BBB_THREAT_HEAP_OVERFLOW;
-    novel_report.severity = BBB_SEVERITY_HIGH;
-    novel_report.timestamp_us = GetTimestampUs();
-    memcpy(novel_report.threat_hash, novel_threat_hash, 32);
-
-    int result = bbb_report_threat(bbb_system_, &novel_report);
-    EXPECT_EQ(result, 0);
+    bbb_threat_report_t novel_report = bbb_report_threat(
+        bbb_system_,
+        BBB_THREAT_BUFFER_OVERFLOW,
+        BBB_SEVERITY_HIGH,
+        "Novel threat",
+        nullptr,
+        novel_threat_hash,
+        sizeof(novel_threat_hash)
+    );
+    EXPECT_NE(novel_report.timestamp, 0u);
 
     E2E_STAGE_END();
 
@@ -915,20 +915,20 @@ TEST_F(SecurityBridgesPipelineE2ETest, PatternLearningPipeline) {
     E2E_STAGE_BEGIN("Present to immune system", 500);
 
     uint32_t antigen_id;
-    int result = sec_immune_unified_present_bbb_threat(
+    int present_result = sec_immune_unified_present_bbb_threat(
         immune_bridge_,
-        novel_report.threat_type,
+        novel_report.type,
         novel_report.severity,
         novel_threat_hash,
         sizeof(novel_threat_hash),
         &antigen_id
     );
-    EXPECT_EQ(result, 0);
+    EXPECT_EQ(present_result, 0);
     EXPECT_GT(antigen_id, 0u);
 
     // Update immune system
-    result = sec_immune_unified_update(immune_bridge_);
-    EXPECT_EQ(result, 0);
+    int update_result = sec_immune_unified_update(immune_bridge_);
+    EXPECT_EQ(update_result, 0);
 
     E2E_STAGE_END();
 
@@ -936,13 +936,13 @@ TEST_F(SecurityBridgesPipelineE2ETest, PatternLearningPipeline) {
     E2E_STAGE_BEGIN("Form memory cell", 500);
 
     uint32_t memory_id;
-    int result = sec_immune_unified_form_memory(
+    int form_result = sec_immune_unified_form_memory(
         immune_bridge_,
         antigen_id,
         0,  // antibody_id
         &memory_id
     );
-    EXPECT_EQ(result, 0);
+    EXPECT_EQ(form_result, 0);
     EXPECT_GT(memory_id, 0u);
 
     E2E_STAGE_END();
@@ -950,17 +950,17 @@ TEST_F(SecurityBridgesPipelineE2ETest, PatternLearningPipeline) {
     // Stage 4: Sync pattern to database
     E2E_STAGE_BEGIN("Sync pattern to DB", 500);
 
-    int result = sec_immune_unified_sync_memory_to_pattern(immune_bridge_, memory_id);
-    EXPECT_EQ(result, 0);
+    int sync_result = sec_immune_unified_sync_memory_to_pattern(immune_bridge_, memory_id);
+    EXPECT_EQ(sync_result, 0);
 
     // Broadcast pattern update
-    result = security_async_broadcast_pattern_update(
+    int broadcast_result = security_async_broadcast_pattern_update(
         async_bridge_,
         0,  // Pattern ID assigned by DB
-        NIMCP_PATTERN_CATEGORY_MEMORY_ATTACK,
+        NIMCP_PATTERN_BUFFER_OVERFLOW,
         true  // Is new
     );
-    EXPECT_EQ(result, 0);
+    EXPECT_EQ(broadcast_result, 0);
 
     E2E_STAGE_END();
 
@@ -971,22 +971,22 @@ TEST_F(SecurityBridgesPipelineE2ETest, PatternLearningPipeline) {
 
     // Check if memory exists now
     uint32_t found_memory;
-    int result = sec_immune_unified_check_memory(
+    int memory_check_result = sec_immune_unified_check_memory(
         immune_bridge_,
         novel_threat_hash,
         sizeof(novel_threat_hash),
         &found_memory
     );
-    EXPECT_EQ(result, 0);  // Should find memory now
+    EXPECT_EQ(memory_check_result, 0);  // Should find memory now
     EXPECT_EQ(found_memory, memory_id);
 
     // Trigger secondary response
-    result = sec_immune_unified_secondary_response(
+    int sec_result = sec_immune_unified_secondary_response(
         immune_bridge_,
         found_memory,
         antigen_id
     );
-    EXPECT_EQ(result, 0);
+    EXPECT_EQ(sec_result, 0);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -1121,10 +1121,10 @@ TEST_F(SecurityBridgesPipelineE2ETest, HighLoadPipeline) {
         threads.emplace_back([this, t, threats_per_thread, &total_processed, &total_errors]() {
             for (int i = 0; i < threats_per_thread; i++) {
                 bbb_threat_type_t type = static_cast<bbb_threat_type_t>(
-                    (t + i) % BBB_THREAT_TYPE_COUNT
+                    1 + ((t + i) % 10)  // 10 threat types (skip NONE)
                 );
                 bbb_severity_t severity = static_cast<bbb_severity_t>(
-                    i % BBB_SEVERITY_COUNT
+                    (i % 4)  // 4 severity levels
                 );
 
                 char desc[256];
@@ -1230,18 +1230,19 @@ TEST_F(SecurityBridgesPipelineE2ETest, RecoveryPipeline) {
             BBB_THREAT_SHELLCODE + (i % 3)
         );
 
-        bbb_threat_report_t report;
-        memset(&report, 0, sizeof(report));
-        report.threat_type = threat_type;
-        report.severity = BBB_SEVERITY_HIGH;
-        report.timestamp_us = GetTimestampUs();
-        memcpy(report.threat_hash, threat_data, 32);
-
-        int result = bbb_report_threat(bbb_system_, &report);
-        EXPECT_EQ(result, 0);
+        bbb_threat_report_t report = bbb_report_threat(
+            bbb_system_,
+            threat_type,
+            BBB_SEVERITY_HIGH,
+            "Test threat",
+            nullptr,
+            threat_data,
+            sizeof(threat_data)
+        );
+        EXPECT_NE(report.timestamp, 0u);
 
         uint32_t antigen_id;
-        result = sec_immune_unified_present_bbb_threat(
+        int ret = sec_immune_unified_present_bbb_threat(
             immune_bridge_,
             threat_type,
             BBB_SEVERITY_HIGH,
@@ -1249,7 +1250,7 @@ TEST_F(SecurityBridgesPipelineE2ETest, RecoveryPipeline) {
             sizeof(threat_data),
             &antigen_id
         );
-        EXPECT_EQ(result, 0);
+        EXPECT_EQ(ret, 0);
     }
 
     // Update immune system to process attacks
@@ -1262,8 +1263,8 @@ TEST_F(SecurityBridgesPipelineE2ETest, RecoveryPipeline) {
     E2E_STAGE_BEGIN("Neutralize threats", 500);
 
     // Quarantine affected regions
-    int result = bbb_quarantine_region(bbb_system_, 0x1000, 0x2000);
-    EXPECT_EQ(result, 0);
+    bool quarantined = bbb_quarantine_region(bbb_system_, reinterpret_cast<void*>(0x1000), 0x2000);
+    EXPECT_TRUE(quarantined);
 
     E2E_STAGE_END();
 
@@ -1272,8 +1273,8 @@ TEST_F(SecurityBridgesPipelineE2ETest, RecoveryPipeline) {
 
     // Simulate recovery time passing - update multiple times
     for (int i = 0; i < 10; i++) {
-        int result = sec_immune_unified_update(immune_bridge_);
-        EXPECT_EQ(result, 0);
+        int update_result = sec_immune_unified_update(immune_bridge_);
+        EXPECT_EQ(update_result, 0);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
@@ -1317,7 +1318,7 @@ TEST_F(SecurityBridgesPipelineE2ETest, CrossModuleCorrelationPipeline) {
     int result = security_async_receive_threat_report(
         async_bridge_,
         1,  // Network module
-        BBB_THREAT_SCAN_PATTERN,
+        BBB_THREAT_CODE_INJECTION,
         nullptr,
         0.7f
     );
@@ -1327,7 +1328,7 @@ TEST_F(SecurityBridgesPipelineE2ETest, CrossModuleCorrelationPipeline) {
     result = security_async_receive_threat_report(
         async_bridge_,
         2,  // Memory module
-        BBB_THREAT_HEAP_OVERFLOW,
+        BBB_THREAT_BUFFER_OVERFLOW,
         nullptr,
         0.65f
     );
@@ -1417,7 +1418,7 @@ TEST_F(SecurityBridgesPipelineE2ETest, CytokineModulationPipeline) {
     // Stage 2: Update to process
     E2E_STAGE_BEGIN("Update immune system", 500);
 
-    int result = sec_immune_unified_update(immune_bridge_);
+    result = sec_immune_unified_update(immune_bridge_);
     EXPECT_EQ(result, 0);
 
     E2E_STAGE_END();
@@ -1425,7 +1426,7 @@ TEST_F(SecurityBridgesPipelineE2ETest, CytokineModulationPipeline) {
     // Stage 3: Apply cytokine effects
     E2E_STAGE_BEGIN("Apply cytokine effects", 500);
 
-    int result = sec_immune_unified_apply_cytokine_effects(immune_bridge_);
+    result = sec_immune_unified_apply_cytokine_effects(immune_bridge_);
     EXPECT_EQ(result, 0);
 
     E2E_STAGE_END();
@@ -1433,7 +1434,7 @@ TEST_F(SecurityBridgesPipelineE2ETest, CytokineModulationPipeline) {
     // Stage 4: Apply inflammation modulation
     E2E_STAGE_BEGIN("Apply inflammation modulation", 500);
 
-    int result = sec_immune_unified_apply_inflammation(immune_bridge_);
+    result = sec_immune_unified_apply_inflammation(immune_bridge_);
     EXPECT_EQ(result, 0);
 
     E2E_STAGE_END();
@@ -1445,7 +1446,7 @@ TEST_F(SecurityBridgesPipelineE2ETest, CytokineModulationPipeline) {
     GenerateThreatHash(high_threat_data, sizeof(high_threat_data), 222);
 
     uint32_t high_antigen_id;
-    int result = sec_immune_unified_present_bbb_threat(
+    result = sec_immune_unified_present_bbb_threat(
         immune_bridge_,
         BBB_THREAT_SHELLCODE,
         BBB_SEVERITY_HIGH,
@@ -1489,8 +1490,8 @@ TEST_F(SecurityBridgesPipelineE2ETest, ThreatIntelCachePipeline) {
         for (size_t j = 0; j < 32; j++) {
             entry.threat_hash[j] = static_cast<uint8_t>(i * 31 + j);
         }
-        entry.threat_type = static_cast<bbb_threat_type_t>(i % BBB_THREAT_TYPE_COUNT);
-        entry.severity = static_cast<bbb_severity_t>(i % BBB_SEVERITY_COUNT);
+        entry.threat_type = static_cast<bbb_threat_type_t>(i % 5);  // Use fixed value
+        entry.severity = static_cast<bbb_severity_t>(i % 4);  // Use fixed value
         entry.source_node = static_cast<uint32_t>(i);
         entry.first_seen_ms = 1704067200000ULL + i * 60000;
         entry.last_seen_ms = entry.first_seen_ms + 30000;
@@ -1536,7 +1537,7 @@ TEST_F(SecurityBridgesPipelineE2ETest, ThreatIntelCachePipeline) {
     // Stage 4: Clear and verify
     E2E_STAGE_BEGIN("Clear cache", 300);
 
-    int result = security_async_clear_threat_intel(async_bridge_);
+    result = security_async_clear_threat_intel(async_bridge_);
     EXPECT_EQ(result, 0);
 
     result = security_async_get_intel_stats(async_bridge_, &count, &confirmed);
