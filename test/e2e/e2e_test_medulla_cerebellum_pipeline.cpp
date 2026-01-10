@@ -691,7 +691,7 @@ TEST_F(MedullaCerebellumE2E, IOModel_RefractoryPeriod) {
 
     int in_refractory = 0;
     for (uint32_t i = 0; i < io_state.num_neurons; i++) {
-        if (io_state.neurons[i].in_refractory) {
+        if (io_state.neurons[i].is_refractory) {
             in_refractory++;
         }
     }
@@ -715,9 +715,9 @@ TEST_F(MedullaCerebellumE2E, IOModel_ErrorDistribution) {
     int neurons_with_error = 0;
 
     for (uint32_t i = 0; i < io_state.num_neurons; i++) {
-        if (std::fabs(io_state.neurons[i].accumulated_error) > 0.01f) {
+        if (std::fabs(io_state.neurons[i].error_accumulator) > 0.01f) {
             neurons_with_error++;
-            total_error += std::fabs(io_state.neurons[i].accumulated_error);
+            total_error += std::fabs(io_state.neurons[i].error_accumulator);
         }
     }
     EXPECT_GE(neurons_with_error, 0);
