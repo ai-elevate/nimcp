@@ -2075,6 +2075,65 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_cognitive_bridge.c  # Occipital-cognitive integration (all cognitive modules)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_collective_bridge.c  # Occipital-collective cognition integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/hypothalamus/nimcp_hypothalamus_thalamic_bridge.c  # Hypothalamus-thalamic integration (Midline)
+
+    # Integration Layer Infrastructure (Phase: Comprehensive Implementation Plan)
+    # Core layer infrastructure
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/core/nimcp_layer_types.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/core/nimcp_layer_coordinator.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/core/nimcp_layer_registry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/core/nimcp_inter_layer_router.c
+
+    # Intra-layer coordinators (9 layers)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/intra/physics/nimcp_physics_intra_coordinator.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/intra/chemistry/nimcp_chemistry_intra_coordinator.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/intra/biology/nimcp_biology_intra_coordinator.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/intra/sensory/nimcp_sensory_intra_coordinator.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/intra/memory/nimcp_memory_intra_coordinator.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/intra/executive/nimcp_executive_intra_coordinator.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/intra/integration_layer/nimcp_integration_intra_coordinator.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c
+
+    # Inter-layer bridges (13 bridges)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/sensory_memory/nimcp_sensory_memory_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/sensory_executive/nimcp_sensory_executive_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/memory_executive/nimcp_memory_executive_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/memory_integration/nimcp_memory_integration_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/executive_integration/nimcp_executive_integration_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c
+
+    # Module adapters - Physics layer
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/physics/nimcp_hh_dynamics_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/physics/nimcp_ephaptic_coupling_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/physics/nimcp_thermodynamics_adapter.c
+
+    # Module adapters - Chemistry layer
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/chemistry/nimcp_calcium_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/chemistry/nimcp_metabolic_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/chemistry/nimcp_neurotransmitter_adapter.c
+
+    # Module adapters - Neuromodulatory layer
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/neuromod/nimcp_neuromod_pool_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.c
+
+    # Module adapters - Sensory layer
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/sensory/nimcp_visual_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/sensory/nimcp_auditory_adapter.c
+
+    # Module adapters - Memory layer
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/memory/nimcp_pr_memory_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/memory/nimcp_hippocampus_adapter.c
+
+    # Module adapters - Executive layer
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/executive/nimcp_basal_ganglia_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/executive/nimcp_pfc_adapter.c
 )
 
 # Core library

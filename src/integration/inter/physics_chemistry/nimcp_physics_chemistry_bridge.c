@@ -1,0 +1,127 @@
+/**
+ * @file nimcp_physics_chemistry_bridge.c
+ * @brief Physics-Chemistry Inter-Layer Bridge Implementation
+ * @version 1.0.0
+ * @date 2026-01-10
+ */
+
+#include "integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.h"
+#include <string.h>
+#include <stdlib.h>
+
+struct nimcp_physics_chemistry_bridge_struct {
+    nimcp_physics_chemistry_config_t config;
+    nimcp_layer_registry_t registry;
+    nimcp_physics_intra_t physics;
+    nimcp_chemistry_intra_t chemistry;
+    nimcp_physics_chemistry_state_t state;
+    nimcp_physics_chemistry_stats_t stats;
+    bool is_initialized;
+};
+
+nimcp_physics_chemistry_config_t nimcp_physics_chemistry_default_config(void) {
+    nimcp_physics_chemistry_config_t config = {
+        .energy_coupling_strength = 0.8f,
+        .thermal_coupling_strength = 0.9f,
+        .diffusion_coupling_strength = 0.7f,
+        .update_interval_ms = 10,
+        .enable_thermodynamic_constraints = true,
+        .enable_logging = false,
+        .enable_metrics = true
+    };
+    return config;
+}
+
+nimcp_physics_chemistry_bridge_t nimcp_physics_chemistry_create(const nimcp_physics_chemistry_config_t* config) {
+    nimcp_physics_chemistry_bridge_t bridge = (nimcp_physics_chemistry_bridge_t)calloc(1, sizeof(struct nimcp_physics_chemistry_bridge_struct));
+    if (!bridge) return NULL;
+    bridge->config = config ? *config : nimcp_physics_chemistry_default_config();
+    bridge->state.bridge_coherence = 1.0f;
+    bridge->state.current_temperature = 310.0f;
+    return bridge;
+}
+
+void nimcp_physics_chemistry_destroy(nimcp_physics_chemistry_bridge_t bridge) {
+    if (!bridge) return;
+    if (bridge->is_initialized) nimcp_physics_chemistry_shutdown(bridge);
+    free(bridge);
+}
+
+nimcp_layer_error_t nimcp_physics_chemistry_init(
+    nimcp_physics_chemistry_bridge_t bridge,
+    nimcp_layer_registry_t registry,
+    nimcp_physics_intra_t physics,
+    nimcp_chemistry_intra_t chemistry
+) {
+    if (!bridge || !registry) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (bridge->is_initialized) return NIMCP_LAYER_ERR_ALREADY_REGISTERED;
+    bridge->registry = registry;
+    bridge->physics = physics;
+    bridge->chemistry = chemistry;
+    bridge->is_initialized = true;
+    return NIMCP_LAYER_OK;
+}
+
+nimcp_layer_error_t nimcp_physics_chemistry_shutdown(nimcp_physics_chemistry_bridge_t bridge) {
+    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    bridge->is_initialized = false;
+    return NIMCP_LAYER_OK;
+}
+
+nimcp_layer_error_t nimcp_physics_chemistry_update(nimcp_physics_chemistry_bridge_t bridge, float dt) {
+    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+
+    /* Temperature affects reaction rates via Arrhenius relationship */
+    float temp_factor = bridge->state.current_temperature / 310.0f;
+    bridge->state.reaction_rate_modifier = temp_factor * bridge->config.thermal_coupling_strength;
+
+    /* Energy availability for reactions */
+    bridge->state.energy_available *= (1.0f - dt * 0.01f);
+
+    /* Diffusion rate depends on temperature */
+    bridge->state.diffusion_rate = temp_factor * bridge->config.diffusion_coupling_strength;
+
+    /* Update average stats */
+    bridge->stats.avg_energy_transfer = bridge->stats.avg_energy_transfer * 0.99f + bridge->state.energy_available * 0.01f;
+    bridge->stats.avg_thermal_coupling = bridge->stats.avg_thermal_coupling * 0.99f + bridge->state.reaction_rate_modifier * 0.01f;
+
+    return NIMCP_LAYER_OK;
+}
+
+nimcp_layer_error_t nimcp_physics_chemistry_transfer_bottom_up(nimcp_physics_chemistry_bridge_t bridge, const nimcp_layer_msg_t* msg) {
+    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    bridge->state.bottom_up_messages++;
+    bridge->stats.energy_state_transfers++;
+    return NIMCP_LAYER_OK;
+}
+
+nimcp_layer_error_t nimcp_physics_chemistry_transfer_top_down(nimcp_physics_chemistry_bridge_t bridge, const nimcp_layer_msg_t* msg) {
+    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    bridge->state.top_down_messages++;
+    bridge->stats.reaction_heat_events++;
+    return NIMCP_LAYER_OK;
+}
+
+nimcp_layer_error_t nimcp_physics_chemistry_get_state(nimcp_physics_chemistry_bridge_t bridge, nimcp_physics_chemistry_state_t* state_out) {
+    if (!bridge || !state_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    *state_out = bridge->state;
+    return NIMCP_LAYER_OK;
+}
+
+nimcp_layer_error_t nimcp_physics_chemistry_get_stats(nimcp_physics_chemistry_bridge_t bridge, nimcp_physics_chemistry_stats_t* stats_out) {
+    if (!bridge || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    *stats_out = bridge->stats;
+    return NIMCP_LAYER_OK;
+}
+
+float nimcp_physics_chemistry_get_coherence(nimcp_physics_chemistry_bridge_t bridge) {
+    return bridge ? bridge->state.bridge_coherence : -1.0f;
+}
+
+nimcp_layer_error_t nimcp_physics_chemistry_reset_stats(nimcp_physics_chemistry_bridge_t bridge) {
+    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
+    return NIMCP_LAYER_OK;
+}

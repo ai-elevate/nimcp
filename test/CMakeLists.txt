@@ -1623,6 +1623,18 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/parietal")
 endif()
 
 # ============================================================================
+# Layer Infrastructure Unit Tests
+# ============================================================================
+# WHAT: Unit tests for the 9-layer hierarchical integration framework
+# WHY:  Verify correct operation of layer coordinators, bridges, and routing
+# HOW:  GTest-based tests for lifecycle, messaging, and state management
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/integration")
+    message(STATUS "Adding layer infrastructure unit tests...")
+    add_subdirectory(unit/integration)
+endif()
+
+# ============================================================================
 # Extended Timeout Configuration (Applied AFTER all tests are registered)
 # ============================================================================
 # WHAT: Extended timeouts for heavyweight brain tests

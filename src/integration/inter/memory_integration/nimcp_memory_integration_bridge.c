@@ -1,0 +1,141 @@
+/**
+ * @file nimcp_memory_integration_bridge.c
+ * @brief Memory-Integration Inter-Layer Bridge Implementation
+ * @version 1.0.0
+ * @date 2026-01-10
+ */
+
+#include "integration/inter/memory_integration/nimcp_memory_integration_bridge.h"
+#include <string.h>
+#include <stdlib.h>
+
+struct nimcp_memory_integration_bridge_struct {
+    nimcp_memory_integration_config_t config;
+    nimcp_layer_registry_t registry;
+    nimcp_memory_intra_t memory;
+    nimcp_integration_intra_t integration;
+    nimcp_memory_integration_state_t state;
+    nimcp_memory_integration_stats_t stats;
+    bool is_initialized;
+};
+
+nimcp_memory_integration_config_t nimcp_memory_integration_default_config(void) {
+    nimcp_memory_integration_config_t config = {
+        .gw_entry_threshold = 0.6f,
+        .conscious_recall_coupling = 0.8f,
+        .arousal_modulation_gain = 0.7f,
+        .consolidation_trigger_threshold = 0.7f,
+        .encoding_gate_coupling = 0.75f,
+        .retrieval_priority_coupling = 0.65f,
+        .update_interval_ms = 10,
+        .enable_conscious_access = true,
+        .enable_logging = false,
+        .enable_metrics = true
+    };
+    return config;
+}
+
+nimcp_memory_integration_bridge_t nimcp_memory_integration_create(const nimcp_memory_integration_config_t* config) {
+    nimcp_memory_integration_bridge_t bridge = (nimcp_memory_integration_bridge_t)calloc(1, sizeof(struct nimcp_memory_integration_bridge_struct));
+    if (!bridge) return NULL;
+    bridge->config = config ? *config : nimcp_memory_integration_default_config();
+    bridge->state.bridge_coherence = 1.0f;
+    bridge->state.gw_entry_level = 0.5f;
+    bridge->state.encoding_gate_level = 0.5f;
+    return bridge;
+}
+
+void nimcp_memory_integration_destroy(nimcp_memory_integration_bridge_t bridge) {
+    if (!bridge) return;
+    if (bridge->is_initialized) nimcp_memory_integration_shutdown(bridge);
+    free(bridge);
+}
+
+nimcp_layer_error_t nimcp_memory_integration_init(
+    nimcp_memory_integration_bridge_t bridge,
+    nimcp_layer_registry_t registry,
+    nimcp_memory_intra_t memory,
+    nimcp_integration_intra_t integration
+) {
+    if (!bridge || !registry) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (bridge->is_initialized) return NIMCP_LAYER_ERR_ALREADY_REGISTERED;
+    bridge->registry = registry;
+    bridge->memory = memory;
+    bridge->integration = integration;
+    bridge->is_initialized = true;
+    return NIMCP_LAYER_OK;
+}
+
+nimcp_layer_error_t nimcp_memory_integration_shutdown(nimcp_memory_integration_bridge_t bridge) {
+    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    bridge->is_initialized = false;
+    return NIMCP_LAYER_OK;
+}
+
+nimcp_layer_error_t nimcp_memory_integration_update(nimcp_memory_integration_bridge_t bridge, float dt) {
+    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+
+    /* Memory retrieval entry to global workspace */
+    bridge->state.gw_entry_level *= (1.0f - dt * 0.01f);
+
+    /* Conscious recall strength */
+    bridge->state.conscious_recall_strength *= (1.0f - dt * 0.02f);
+    bridge->state.conscious_recall_strength += dt * bridge->config.conscious_recall_coupling * 0.02f;
+
+    /* Arousal modulation */
+    bridge->state.arousal_modulation *= (1.0f - dt * 0.015f);
+
+    /* Consolidation trigger */
+    bridge->state.consolidation_trigger *= (1.0f - dt * 0.03f);
+
+    /* Encoding gate level */
+    bridge->state.encoding_gate_level *= (1.0f - dt * 0.02f);
+    bridge->state.encoding_gate_level += dt * bridge->config.encoding_gate_coupling * 0.02f;
+
+    /* Retrieval priority decay */
+    bridge->state.retrieval_priority *= (1.0f - dt * 0.025f);
+
+    /* Update averages */
+    bridge->stats.avg_conscious_access = bridge->stats.avg_conscious_access * 0.99f + bridge->state.conscious_recall_strength * 0.01f;
+    bridge->stats.avg_consolidation_rate = bridge->stats.avg_consolidation_rate * 0.99f + bridge->state.consolidation_trigger * 0.01f;
+
+    return NIMCP_LAYER_OK;
+}
+
+nimcp_layer_error_t nimcp_memory_integration_transfer_bottom_up(nimcp_memory_integration_bridge_t bridge, const nimcp_layer_msg_t* msg) {
+    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    bridge->state.bottom_up_messages++;
+    bridge->stats.gw_entries++;
+    return NIMCP_LAYER_OK;
+}
+
+nimcp_layer_error_t nimcp_memory_integration_transfer_top_down(nimcp_memory_integration_bridge_t bridge, const nimcp_layer_msg_t* msg) {
+    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    bridge->state.top_down_messages++;
+    bridge->stats.consolidation_triggers++;
+    return NIMCP_LAYER_OK;
+}
+
+nimcp_layer_error_t nimcp_memory_integration_get_state(nimcp_memory_integration_bridge_t bridge, nimcp_memory_integration_state_t* state_out) {
+    if (!bridge || !state_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    *state_out = bridge->state;
+    return NIMCP_LAYER_OK;
+}
+
+nimcp_layer_error_t nimcp_memory_integration_get_stats(nimcp_memory_integration_bridge_t bridge, nimcp_memory_integration_stats_t* stats_out) {
+    if (!bridge || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    *stats_out = bridge->stats;
+    return NIMCP_LAYER_OK;
+}
+
+float nimcp_memory_integration_get_coherence(nimcp_memory_integration_bridge_t bridge) {
+    return bridge ? bridge->state.bridge_coherence : -1.0f;
+}
+
+nimcp_layer_error_t nimcp_memory_integration_reset_stats(nimcp_memory_integration_bridge_t bridge) {
+    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
+    return NIMCP_LAYER_OK;
+}
