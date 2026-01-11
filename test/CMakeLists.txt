@@ -1623,6 +1623,30 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/parietal")
 endif()
 
 # ============================================================================
+# Chemistry Layer Regression Tests
+# ============================================================================
+# WHAT: Regression tests for chemistry layer modules (pH, gasotransmitters)
+# WHY:  Ensure numerical stability, boundary conditions, and performance baselines
+# HOW:  Subdirectory-based test organization
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/chemistry")
+    message(STATUS "Adding chemistry layer regression tests...")
+    add_subdirectory(regression/chemistry)
+endif()
+
+# ============================================================================
+# Biology Layer Regression Tests
+# ============================================================================
+# WHAT: Regression tests for biology layer modules (neurovascular, etc.)
+# WHY:  Ensure numerical stability, boundary conditions, and performance baselines
+# HOW:  Subdirectory-based test organization
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/biology")
+    message(STATUS "Adding biology layer regression tests...")
+    add_subdirectory(regression/biology)
+endif()
+
+# ============================================================================
 # Layer Infrastructure Unit Tests
 # ============================================================================
 # WHAT: Unit tests for the 9-layer hierarchical integration framework
@@ -1632,6 +1656,54 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/integration")
     message(STATUS "Adding layer infrastructure unit tests...")
     add_subdirectory(unit/integration)
+endif()
+
+# ============================================================================
+# Chemistry Layer Unit Tests
+# ============================================================================
+# WHAT: Unit tests for chemistry layer modules (pH dynamics, gasotransmitters)
+# WHY:  Verify chemical signaling and regulation mechanisms
+# HOW:  Subdirectory-based test organization
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/chemistry")
+    message(STATUS "Adding chemistry layer unit tests...")
+    add_subdirectory(unit/chemistry)
+endif()
+
+# ============================================================================
+# Biology Layer Unit Tests
+# ============================================================================
+# WHAT: Unit tests for biology layer modules (epigenetics, neurogenesis, neurovascular)
+# WHY:  Verify biological processes and regulation mechanisms
+# HOW:  Subdirectory-based test organization
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/biology")
+    message(STATUS "Adding biology layer unit tests...")
+    add_subdirectory(unit/biology)
+endif()
+
+# ============================================================================
+# Chemistry Layer Integration Tests
+# ============================================================================
+# WHAT: Integration tests for chemistry layer modules (pH, gasotransmitters)
+# WHY:  Verify chemical signaling integration with neural systems
+# HOW:  Subdirectory-based test organization
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/chemistry")
+    message(STATUS "Adding chemistry layer integration tests...")
+    add_subdirectory(integration/chemistry)
+endif()
+
+# ============================================================================
+# Biology Layer Integration Tests
+# ============================================================================
+# WHAT: Integration tests for biology layer modules (neurovascular, etc.)
+# WHY:  Verify biological process integration with neural systems
+# HOW:  Subdirectory-based test organization
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/biology")
+    message(STATUS "Adding biology layer integration tests...")
+    add_subdirectory(integration/biology)
 endif()
 
 # ============================================================================

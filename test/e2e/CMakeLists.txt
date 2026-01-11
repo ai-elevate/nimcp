@@ -2582,6 +2582,18 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/ternary/CMakeLists.txt)
     add_subdirectory(ternary)
 endif()
 
+# Include Chemistry Layer E2E test subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/chemistry/CMakeLists.txt)
+    message(STATUS "Adding Chemistry Layer E2E tests...")
+    add_subdirectory(chemistry)
+endif()
+
+# Include Biology Layer E2E test subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/biology/CMakeLists.txt)
+    message(STATUS "Adding Biology Layer E2E tests...")
+    add_subdirectory(biology)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")
