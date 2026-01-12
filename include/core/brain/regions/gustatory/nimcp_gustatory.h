@@ -299,6 +299,14 @@ typedef struct {
     bool hebbian_enabled;
 } gust_plasticity_bridge_t;
 
+typedef struct {
+    bool initialized;
+    void* runtime;                     /* Bio-async runtime context */
+    uint32_t subscription_mask;        /* Message types to receive */
+    uint32_t messages_sent;
+    uint32_t messages_received;
+} gust_bio_async_embed_t;
+
 /*=============================================================================
  * CONFIGURATION AND MAIN STRUCTURE
  *===========================================================================*/
@@ -370,6 +378,7 @@ typedef struct {
     gust_logging_bridge_t logging_bridge;
     gust_snn_bridge_t snn_bridge;
     gust_plasticity_bridge_t plasticity_bridge;
+    gust_bio_async_embed_t bio_async_embed;
 
     /* Statistics */
     uint32_t updates_processed;
@@ -443,6 +452,7 @@ int gust_init_ofc_bridge(nimcp_gustatory_t* gust, void* ofc);
 int gust_init_logging_bridge(nimcp_gustatory_t* gust, void* logger);
 int gust_init_snn_bridge(nimcp_gustatory_t* gust, void* snn);
 int gust_init_plasticity_bridge(nimcp_gustatory_t* gust, void* plasticity, void* stdp);
+int gust_init_bio_async_bridge(nimcp_gustatory_t* gust, void* runtime);
 
 /*=============================================================================
  * BIDIRECTIONAL FLOW

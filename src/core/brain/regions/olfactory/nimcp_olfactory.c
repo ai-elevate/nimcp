@@ -423,6 +423,16 @@ int olfact_init_plasticity_bridge(nimcp_olfactory_t* olfact, void* plasticity, v
     return 0;
 }
 
+int olfact_init_bio_async_bridge(nimcp_olfactory_t* olfact, void* runtime) {
+    if (!olfact) return -1;
+    olfact->bio_async_embed.runtime = runtime;
+    olfact->bio_async_embed.subscription_mask = 0xFFFFFFFF; /* Subscribe to all */
+    olfact->bio_async_embed.messages_sent = 0;
+    olfact->bio_async_embed.messages_received = 0;
+    olfact->bio_async_embed.initialized = (runtime != NULL);
+    return 0;
+}
+
 /* Bidirectional flow */
 int olfact_process_incoming(nimcp_olfactory_t* olfact) {
     if (!olfact) return -1;

@@ -383,6 +383,16 @@ int gust_init_plasticity_bridge(nimcp_gustatory_t* gust, void* plasticity, void*
     return 0;
 }
 
+int gust_init_bio_async_bridge(nimcp_gustatory_t* gust, void* runtime) {
+    if (!gust) return -1;
+    gust->bio_async_embed.runtime = runtime;
+    gust->bio_async_embed.subscription_mask = 0xFFFFFFFF; /* Subscribe to all */
+    gust->bio_async_embed.messages_sent = 0;
+    gust->bio_async_embed.messages_received = 0;
+    gust->bio_async_embed.initialized = (runtime != NULL);
+    return 0;
+}
+
 /* Bidirectional flow */
 int gust_process_incoming(nimcp_gustatory_t* gust) {
     if (!gust) return -1;

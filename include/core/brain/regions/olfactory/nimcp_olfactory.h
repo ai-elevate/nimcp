@@ -282,6 +282,14 @@ typedef struct {
     bool hebbian_enabled;
 } olfact_plasticity_bridge_t;
 
+typedef struct {
+    bool initialized;
+    void* runtime;                     /* Bio-async runtime context */
+    uint32_t subscription_mask;        /* Message types to receive */
+    uint32_t messages_sent;
+    uint32_t messages_received;
+} olfact_bio_async_embed_t;
+
 /*=============================================================================
  * CONFIGURATION AND MAIN STRUCTURE
  *===========================================================================*/
@@ -356,6 +364,7 @@ typedef struct {
     olfact_logging_bridge_t logging_bridge;
     olfact_snn_bridge_t snn_bridge;
     olfact_plasticity_bridge_t plasticity_bridge;
+    olfact_bio_async_embed_t bio_async_embed;
 
     /* Statistics */
     uint32_t updates_processed;
@@ -469,6 +478,7 @@ int olfact_init_hypothalamus_bridge(nimcp_olfactory_t* olfact, void* hypothalamu
 int olfact_init_logging_bridge(nimcp_olfactory_t* olfact, void* logger);
 int olfact_init_snn_bridge(nimcp_olfactory_t* olfact, void* snn);
 int olfact_init_plasticity_bridge(nimcp_olfactory_t* olfact, void* plasticity, void* stdp);
+int olfact_init_bio_async_bridge(nimcp_olfactory_t* olfact, void* runtime);
 
 /*=============================================================================
  * BIDIRECTIONAL FLOW

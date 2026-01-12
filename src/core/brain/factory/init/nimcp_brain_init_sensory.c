@@ -284,6 +284,13 @@ bool nimcp_brain_factory_init_olfactory_subsystem(brain_t brain) {
         }
     }
 
+    /* Register with bio-async if enabled */
+    if (brain->bio_async_enabled) {
+        if (olfact_init_bio_async_bridge(olfact, brain) == 0) {
+            NIMCP_LOGGING_DEBUG("Olfactory bio-async bridge connected");
+        }
+    }
+
     NIMCP_LOGGING_INFO("Olfactory subsystem initialized: "
                        "receptors=%d, glomeruli=%d, piriform=%d neurons, "
                        "hypothalamus=%s, immune=%s, plasticity=%s",
@@ -408,6 +415,13 @@ bool nimcp_brain_factory_init_gustatory_subsystem(brain_t brain) {
     if (brain->plasticity_coordinator_enabled && brain->plasticity_coordinator) {
         if (gust_init_snn_bridge(gust, brain->plasticity_coordinator) == 0) {
             NIMCP_LOGGING_DEBUG("Gustatory-SNN bridge connected");
+        }
+    }
+
+    /* Register with bio-async if enabled */
+    if (brain->bio_async_enabled) {
+        if (gust_init_bio_async_bridge(gust, brain) == 0) {
+            NIMCP_LOGGING_DEBUG("Gustatory bio-async bridge connected");
         }
     }
 
