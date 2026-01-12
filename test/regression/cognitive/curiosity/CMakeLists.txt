@@ -69,3 +69,39 @@ gtest_discover_tests(regression_cognitive_curiosity_snn_plasticity
         LABELS "regression;cognitive;curiosity;snn;plasticity"
         TIMEOUT 180
 )
+
+# ============================================================================
+# Curiosity QMC Regression Tests (Step 10 MC Integration)
+# ============================================================================
+# WHAT: Regression tests for QMC-based uncertainty and empowerment in curiosity
+# WHY:  Ensure stability, determinism, performance, memory safety
+# HOW:  Stress tests, bounds checking, determinism verification, memory checks
+# ============================================================================
+
+add_executable(regression_cognitive_curiosity_qmc
+    test_curiosity_qmc_regression.cpp
+)
+
+target_link_libraries(regression_cognitive_curiosity_qmc
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_cognitive_curiosity_qmc
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_cognitive_curiosity_qmc PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_cognitive_curiosity_qmc
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;curiosity;qmc"
+        TIMEOUT 300
+)

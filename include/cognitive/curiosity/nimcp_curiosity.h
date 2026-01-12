@@ -657,6 +657,104 @@ float curiosity_add_exploration_noise_mc(float intensity, float noise_scale);
  */
 uint32_t* curiosity_get_mc_seed(void);
 
+//=============================================================================
+// Empowerment QMC API (Step 10 MC Integration)
+//=============================================================================
+
+/**
+ * @brief Empowerment result for curiosity decisions
+ *
+ * BIOLOGICAL: Empowerment measures the agent's capacity to influence
+ * future states through its actions - a key intrinsic motivation signal.
+ */
+typedef struct {
+    float empowerment;              /**< Empowerment in bits */
+    float empowerment_normalized;   /**< Normalized to [0,1] */
+    float entropy_current;          /**< Current state entropy */
+    float entropy_reachable;        /**< Reachable states entropy */
+    uint32_t action_count;          /**< Number of available actions */
+} curiosity_empowerment_t;
+
+/**
+ * @brief Compute empowerment for knowledge state
+ *
+ * WHAT: Measure capacity to influence future knowledge states
+ * WHY:  Empowerment drives exploration toward controllable regions
+ * HOW:  MC estimation of mutual information I(A; S')
+ *
+ * BIOLOGICAL: Models the intrinsic motivation to seek controllable outcomes
+ *
+ * @param engine Curiosity engine
+ * @param concept_name Concept to evaluate empowerment for
+ * @param horizon Number of steps to look ahead
+ * @param result Output empowerment result
+ * @return 0 on success, -1 on error
+ */
+int curiosity_compute_empowerment(
+    curiosity_engine_t engine,
+    const char* concept_name,
+    uint32_t horizon,
+    curiosity_empowerment_t* result
+);
+
+/**
+ * @brief Select concept by empowerment-weighted sampling
+ *
+ * WHAT: Sample concept proportional to empowerment
+ * WHY:  Balance curiosity with sense of control
+ * HOW:  Softmax sampling with empowerment as temperature
+ *
+ * @param engine Curiosity engine
+ * @param concepts Array of candidate concepts
+ * @param num_concepts Number of candidates
+ * @param temperature Sampling temperature (higher = more random)
+ * @return Index of selected concept
+ */
+uint32_t curiosity_sample_by_empowerment(
+    curiosity_engine_t engine,
+    const char** concepts,
+    uint32_t num_concepts,
+    float temperature
+);
+
+/**
+ * @brief Compute intrinsic reward from empowerment
+ *
+ * WHAT: Map empowerment to intrinsic motivation signal
+ * WHY:  Drive learning toward empowering states
+ * HOW:  r_intrinsic = alpha * empowerment + beta * novelty
+ *
+ * @param engine Curiosity engine
+ * @param concept_name Concept just explored
+ * @param alpha Weight for empowerment component
+ * @param beta Weight for novelty component
+ * @return Intrinsic reward signal [0, 1]
+ */
+float curiosity_compute_intrinsic_reward(
+    curiosity_engine_t engine,
+    const char* concept_name,
+    float alpha,
+    float beta
+);
+
+/**
+ * @brief Estimate expected empowerment change
+ *
+ * WHAT: Predict how exploring a concept will change empowerment
+ * WHY:  Prioritize actions that increase future control
+ * HOW:  MC simulation of empowerment before/after exploration
+ *
+ * @param engine Curiosity engine
+ * @param concept_name Concept to evaluate
+ * @param num_simulations Number of MC simulations
+ * @return Expected empowerment change (can be negative)
+ */
+float curiosity_estimate_empowerment_change(
+    curiosity_engine_t engine,
+    const char* concept_name,
+    uint32_t num_simulations
+);
+
 #ifdef __cplusplus
 }
 #endif

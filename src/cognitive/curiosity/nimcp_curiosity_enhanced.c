@@ -20,6 +20,8 @@
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/algorithms/nimcp_monte_carlo.h"
+#include "utils/quantum/nimcp_quantum_monte_carlo.h"
 #include "async/nimcp_bio_router.h"
 #include "nimcp.h"
 
@@ -86,6 +88,12 @@ struct curiosity_enhanced_system_s {
 
     /* Quantum bridge */
     curiosity_quantum_bridge_t* quantum_bridge;
+
+    /* QMC integration */
+    curiosity_qmc_config_t qmc_config;
+    curiosity_qmc_stats_t qmc_stats;
+    uint32_t qmc_seed;
+    uint64_t total_topic_visits;
 
     /* Bio-async */
     bio_module_context_t bio_ctx;
@@ -904,6 +912,12 @@ curiosity_enhanced_system_t* curiosity_enhanced_create(
                               quantum_config.max_topics, quantum_config.exploration_steps);
         }
     }
+
+    /* Initialize QMC configuration */
+    curiosity_enhanced_qmc_default_config(&sys->qmc_config);
+    memset(&sys->qmc_stats, 0, sizeof(sys->qmc_stats));
+    sys->qmc_seed = (uint32_t)sys->creation_time_ms;
+    sys->total_topic_visits = 0;
 
     NIMCP_LOGGING_INFO("Created enhanced curiosity system with %d enhancements%s",
                        sys->config.enable_all_enhancements ? 10 : 0,
@@ -1769,4 +1783,676 @@ int curiosity_enhanced_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Quantum Monte Carlo Implementation
+ * ============================================================================ */
+
+/* Simple LCG for fast MC sampling */
+static uint32_t qmc_lcg_next(uint32_t* seed) {
+    *seed = (*seed * 1103515245 + 12345) & 0x7fffffff;
+    return *seed;
+}
+
+static float qmc_uniform(uint32_t* seed) {
+    return (float)qmc_lcg_next(seed) / (float)0x7fffffff;
+}
+
+/* Box-Muller for Gaussian samples */
+static float qmc_gaussian(uint32_t* seed, float mean, float std) {
+    float u1 = qmc_uniform(seed);
+    float u2 = qmc_uniform(seed);
+
+    /* Avoid log(0) */
+    if (u1 < 1e-10f) u1 = 1e-10f;
+
+    float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
+    return mean + std * z;
+}
+
+void curiosity_enhanced_qmc_default_config(curiosity_qmc_config_t* config) {
+    if (!config) return;
+
+    memset(config, 0, sizeof(*config));
+    config->num_samples = 1000;
+    config->burnin = 100;
+    config->uncertainty_threshold = 0.3f;
+    config->exploration_bonus = 0.2f;
+    config->enable_empowerment = true;
+    config->empowerment_horizon = 3;
+    config->temperature = 1.0f;
+    config->seed = 0;  /* Time-based */
+}
+
+int curiosity_enhanced_set_qmc_config(
+    curiosity_enhanced_system_t* system,
+    const curiosity_qmc_config_t* config) {
+
+    if (!system || !config) return NIMCP_ERROR_NULL_ARG;
+
+    nimcp_platform_mutex_lock(system->mutex);
+    system->qmc_config = *config;
+
+    if (config->seed != 0) {
+        system->qmc_seed = config->seed;
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    NIMCP_LOGGING_DEBUG("Updated QMC config: samples=%u, threshold=%.2f, empowerment=%s",
+                       config->num_samples, config->uncertainty_threshold,
+                       config->enable_empowerment ? "enabled" : "disabled");
+
+    return 0;
+}
+
+int curiosity_enhanced_estimate_uncertainty(
+    curiosity_enhanced_system_t* system,
+    const char* topic,
+    curiosity_qmc_uncertainty_t* result) {
+
+    if (!system || !topic || !result) return NIMCP_ERROR_NULL_ARG;
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    memset(result, 0, sizeof(*result));
+
+    /* Get base interest for topic */
+    interest_entry_t* entry = (interest_entry_t*)hash_table_lookup_string(
+        system->interest_table, topic);
+
+    float base_interest = entry ? entry->interest.current_interest : 0.5f;
+    float exposure_count = entry ? (float)entry->interest.exposure_count : 0.0f;
+
+    /* Bootstrap sampling for uncertainty estimation */
+    uint32_t num_samples = system->qmc_config.num_samples;
+    float* samples = (float*)nimcp_malloc(num_samples * sizeof(float));
+
+    if (!samples) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return NIMCP_ERROR;
+    }
+
+    float sum = 0.0f;
+    float sum_sq = 0.0f;
+
+    /* Sample interest with noise proportional to uncertainty */
+    float noise_scale = 1.0f / (1.0f + exposure_count * 0.1f);  /* More exposures = less noise */
+
+    for (uint32_t i = 0; i < num_samples; i++) {
+        float sample = qmc_gaussian(&system->qmc_seed, base_interest, noise_scale * 0.2f);
+        sample = clampf(sample, 0.0f, 1.0f);
+        samples[i] = sample;
+        sum += sample;
+        sum_sq += sample * sample;
+    }
+
+    /* Compute statistics */
+    result->mean_interest = sum / (float)num_samples;
+    result->variance = (sum_sq / (float)num_samples) - (result->mean_interest * result->mean_interest);
+    if (result->variance < 0.0f) result->variance = 0.0f;
+    result->std_error = sqrtf(result->variance / (float)num_samples);
+
+    /* 95% confidence interval */
+    result->confidence_95_lower = result->mean_interest - 1.96f * result->std_error;
+    result->confidence_95_upper = result->mean_interest + 1.96f * result->std_error;
+    result->confidence_95_lower = clampf(result->confidence_95_lower, 0.0f, 1.0f);
+    result->confidence_95_upper = clampf(result->confidence_95_upper, 0.0f, 1.0f);
+
+    /* Decompose uncertainty */
+    result->epistemic_uncertainty = noise_scale * 0.5f;  /* Reducible with more data */
+    result->aleatoric_uncertainty = sqrtf(result->variance) - result->epistemic_uncertainty;
+    if (result->aleatoric_uncertainty < 0.0f) result->aleatoric_uncertainty = 0.0f;
+
+    result->effective_samples = num_samples;
+
+    nimcp_free(samples);
+
+    /* Update statistics */
+    system->qmc_stats.uncertainty_estimations++;
+    system->qmc_stats.mc_samples_total += num_samples;
+
+    float alpha = 0.01f;
+    system->qmc_stats.avg_epistemic_uncertainty =
+        alpha * result->epistemic_uncertainty +
+        (1.0f - alpha) * system->qmc_stats.avg_epistemic_uncertainty;
+
+    if (result->epistemic_uncertainty > system->qmc_config.uncertainty_threshold) {
+        system->qmc_stats.high_uncertainty_topics++;
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return 0;
+}
+
+int curiosity_enhanced_estimate_uncertainty_batch(
+    curiosity_enhanced_system_t* system,
+    const char** topics,
+    uint32_t num_topics,
+    curiosity_qmc_uncertainty_t* results) {
+
+    if (!system || !topics || !results) return NIMCP_ERROR_NULL_ARG;
+    if (num_topics == 0) return 0;
+
+    for (uint32_t i = 0; i < num_topics; i++) {
+        int ret = curiosity_enhanced_estimate_uncertainty(system, topics[i], &results[i]);
+        if (ret != 0) {
+            memset(&results[i], 0, sizeof(results[i]));
+        }
+    }
+
+    return 0;
+}
+
+int curiosity_enhanced_compute_empowerment(
+    curiosity_enhanced_system_t* system,
+    const char* topic,
+    uint32_t horizon,
+    curiosity_empowerment_result_t* result) {
+
+    if (!system || !topic || !result) return NIMCP_ERROR_NULL_ARG;
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    memset(result, 0, sizeof(*result));
+
+    if (horizon == 0) {
+        horizon = system->qmc_config.empowerment_horizon;
+    }
+
+    /* Empowerment = max I(A; S') over action distributions
+     * Approximated via MC sampling of reachable states */
+
+    /* Count available "actions" (related topics in graph) */
+    uint32_t num_actions = 0;
+    if (system->quantum_bridge) {
+        num_actions = curiosity_quantum_get_graph_size(system->quantum_bridge);
+    }
+    if (num_actions == 0) {
+        num_actions = 4;  /* Default action space */
+    }
+    if (num_actions > 64) {
+        num_actions = 64;  /* Cap for MC efficiency */
+    }
+
+    result->num_actions = num_actions;
+    result->action_empowerment = (float*)nimcp_calloc(num_actions, sizeof(float));
+
+    if (!result->action_empowerment) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return NIMCP_ERROR;
+    }
+
+    /* MC estimation of empowerment */
+    uint32_t num_samples = system->qmc_config.num_samples;
+    float* state_counts = (float*)nimcp_calloc(num_actions * num_actions, sizeof(float));
+
+    if (!state_counts) {
+        nimcp_free(result->action_empowerment);
+        result->action_empowerment = NULL;
+        nimcp_platform_mutex_unlock(system->mutex);
+        return NIMCP_ERROR;
+    }
+
+    /* Simulate action-state transitions */
+    for (uint32_t s = 0; s < num_samples; s++) {
+        uint32_t action = qmc_lcg_next(&system->qmc_seed) % num_actions;
+        uint32_t next_state;
+
+        /* Transition model: action has high probability of leading to corresponding state */
+        float p = qmc_uniform(&system->qmc_seed);
+        if (p < 0.7f) {
+            next_state = action;  /* Deterministic component */
+        } else {
+            next_state = qmc_lcg_next(&system->qmc_seed) % num_actions;  /* Random */
+        }
+
+        state_counts[action * num_actions + next_state] += 1.0f;
+    }
+
+    /* Compute mutual information I(A; S') */
+    float* p_a = (float*)nimcp_calloc(num_actions, sizeof(float));
+    float* p_s = (float*)nimcp_calloc(num_actions, sizeof(float));
+
+    if (!p_a || !p_s) {
+        nimcp_free(state_counts);
+        nimcp_free(result->action_empowerment);
+        result->action_empowerment = NULL;
+        if (p_a) nimcp_free(p_a);
+        if (p_s) nimcp_free(p_s);
+        nimcp_platform_mutex_unlock(system->mutex);
+        return NIMCP_ERROR;
+    }
+
+    /* Marginal distributions */
+    for (uint32_t a = 0; a < num_actions; a++) {
+        for (uint32_t s = 0; s < num_actions; s++) {
+            float count = state_counts[a * num_actions + s];
+            p_a[a] += count;
+            p_s[s] += count;
+        }
+    }
+
+    /* Normalize */
+    float total = (float)num_samples;
+    for (uint32_t i = 0; i < num_actions; i++) {
+        p_a[i] /= total;
+        p_s[i] /= total;
+    }
+
+    /* Compute entropy H(S') */
+    float H_s = 0.0f;
+    for (uint32_t s = 0; s < num_actions; s++) {
+        if (p_s[s] > 1e-10f) {
+            H_s -= p_s[s] * logf(p_s[s]);
+        }
+    }
+
+    /* Compute conditional entropy H(S'|A) */
+    float H_s_given_a = 0.0f;
+    for (uint32_t a = 0; a < num_actions; a++) {
+        if (p_a[a] < 1e-10f) continue;
+
+        float action_total = 0.0f;
+        for (uint32_t s = 0; s < num_actions; s++) {
+            action_total += state_counts[a * num_actions + s];
+        }
+
+        for (uint32_t s = 0; s < num_actions; s++) {
+            float p_s_given_a = state_counts[a * num_actions + s] / (action_total + 1e-10f);
+            if (p_s_given_a > 1e-10f) {
+                H_s_given_a -= p_a[a] * p_s_given_a * logf(p_s_given_a);
+            }
+        }
+
+        /* Per-action empowerment */
+        float action_entropy = 0.0f;
+        for (uint32_t s = 0; s < num_actions; s++) {
+            float p = state_counts[a * num_actions + s] / (action_total + 1e-10f);
+            if (p > 1e-10f) {
+                action_entropy -= p * logf(p);
+            }
+        }
+        result->action_empowerment[a] = action_entropy / logf(2.0f);
+    }
+
+    /* Mutual information I(A; S') = H(S') - H(S'|A) */
+    float mutual_info = H_s - H_s_given_a;
+    if (mutual_info < 0.0f) mutual_info = 0.0f;
+
+    /* Convert to bits */
+    result->empowerment = mutual_info / logf(2.0f);
+    result->entropy_current = H_s / logf(2.0f);
+    result->entropy_reachable = H_s / logf(2.0f);
+    result->channel_capacity = logf((float)num_actions) / logf(2.0f);
+
+    /* Normalize empowerment to [0, 1] */
+    if (result->channel_capacity > 0.0f) {
+        result->empowerment_normalized = result->empowerment / result->channel_capacity;
+        result->empowerment_normalized = clampf(result->empowerment_normalized, 0.0f, 1.0f);
+    }
+
+    nimcp_free(state_counts);
+    nimcp_free(p_a);
+    nimcp_free(p_s);
+
+    /* Update statistics */
+    system->qmc_stats.empowerment_calculations++;
+    system->qmc_stats.mc_samples_total += num_samples;
+
+    float alpha = 0.01f;
+    system->qmc_stats.avg_empowerment =
+        alpha * result->empowerment + (1.0f - alpha) * system->qmc_stats.avg_empowerment;
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    NIMCP_LOGGING_DEBUG("Computed empowerment for '%s': %.3f bits (%.1f%% of capacity)",
+                       topic, result->empowerment,
+                       result->empowerment_normalized * 100.0f);
+
+    return 0;
+}
+
+void curiosity_empowerment_result_free(curiosity_empowerment_result_t* result) {
+    if (!result) return;
+
+    if (result->action_empowerment) {
+        nimcp_free(result->action_empowerment);
+        result->action_empowerment = NULL;
+    }
+}
+
+float curiosity_enhanced_sample_by_uncertainty(
+    curiosity_enhanced_system_t* system,
+    const char** topics,
+    uint32_t num_topics,
+    char* selected_topic) {
+
+    if (!system || !topics || num_topics == 0 || !selected_topic) return -1.0f;
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    /* Compute uncertainty-weighted scores */
+    float* scores = (float*)nimcp_malloc(num_topics * sizeof(float));
+    if (!scores) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return -1.0f;
+    }
+
+    float total_score = 0.0f;
+
+    for (uint32_t i = 0; i < num_topics; i++) {
+        curiosity_qmc_uncertainty_t uncertainty;
+
+        /* Estimate uncertainty (unlock/lock to avoid recursion issues) */
+        nimcp_platform_mutex_unlock(system->mutex);
+        int ret = curiosity_enhanced_estimate_uncertainty(system, topics[i], &uncertainty);
+        nimcp_platform_mutex_lock(system->mutex);
+
+        if (ret == 0) {
+            /* Score = interest × (1 + epistemic_uncertainty) */
+            float interest = uncertainty.mean_interest;
+            float bonus = 1.0f + uncertainty.epistemic_uncertainty * 2.0f;
+            scores[i] = interest * bonus;
+        } else {
+            scores[i] = 0.5f;  /* Default score */
+        }
+
+        total_score += scores[i];
+    }
+
+    /* Normalize and sample */
+    if (total_score < 1e-10f) {
+        /* Uniform sampling */
+        uint32_t idx = qmc_lcg_next(&system->qmc_seed) % num_topics;
+        strncpy(selected_topic, topics[idx], 255);
+        selected_topic[255] = '\0';
+        nimcp_free(scores);
+        nimcp_platform_mutex_unlock(system->mutex);
+        return 0.5f;
+    }
+
+    float r = qmc_uniform(&system->qmc_seed) * total_score;
+    float cumsum = 0.0f;
+    uint32_t selected_idx = 0;
+
+    for (uint32_t i = 0; i < num_topics; i++) {
+        cumsum += scores[i];
+        if (r <= cumsum) {
+            selected_idx = i;
+            break;
+        }
+    }
+
+    strncpy(selected_topic, topics[selected_idx], 255);
+    selected_topic[255] = '\0';
+
+    float selected_uncertainty = scores[selected_idx] / total_score;
+    nimcp_free(scores);
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return selected_uncertainty;
+}
+
+float curiosity_enhanced_get_exploration_bonus(
+    curiosity_enhanced_system_t* system,
+    const char* topic) {
+
+    if (!system || !topic) return 0.0f;
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    /* UCB-style exploration bonus */
+    interest_entry_t* entry = (interest_entry_t*)hash_table_lookup_string(
+        system->interest_table, topic);
+
+    uint64_t visits = entry ? entry->interest.exposure_count : 0;
+    uint64_t total = system->total_topic_visits;
+
+    if (total == 0) {
+        nimcp_platform_mutex_unlock(system->mutex);
+        return system->qmc_config.exploration_bonus;  /* Max bonus for unvisited */
+    }
+
+    /* UCB1: sqrt(2 * ln(N) / n) */
+    float bonus;
+    if (visits == 0) {
+        bonus = system->qmc_config.exploration_bonus;
+    } else {
+        float log_total = logf((float)(total + 1));
+        bonus = sqrtf(2.0f * log_total / (float)(visits + 1));
+        bonus *= system->qmc_config.exploration_bonus;
+        bonus = clampf(bonus, 0.0f, system->qmc_config.exploration_bonus);
+    }
+
+    system->qmc_stats.total_exploration_bonus += bonus;
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return bonus;
+}
+
+float curiosity_enhanced_update_interest_mc(
+    curiosity_enhanced_system_t* system,
+    const char* topic,
+    float observed_interest,
+    float observation_noise) {
+
+    if (!system || !topic) return 0.0f;
+
+    observed_interest = clampf(observed_interest, 0.0f, 1.0f);
+    observation_noise = clampf(observation_noise, 0.01f, 1.0f);
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    interest_entry_t* entry = (interest_entry_t*)hash_table_lookup_string(
+        system->interest_table, topic);
+
+    float prior_mean = entry ? entry->interest.current_interest : 0.5f;
+    float prior_var = entry ? 1.0f / (1.0f + (float)entry->interest.exposure_count * 0.1f) : 0.25f;
+
+    /* Bayesian update with Gaussian likelihood */
+    float likelihood_var = observation_noise * observation_noise;
+
+    /* Posterior: weighted combination of prior and likelihood */
+    float posterior_var = 1.0f / (1.0f / prior_var + 1.0f / likelihood_var);
+    float posterior_mean = posterior_var * (prior_mean / prior_var + observed_interest / likelihood_var);
+
+    posterior_mean = clampf(posterior_mean, 0.0f, 1.0f);
+
+    /* Update entry */
+    if (entry) {
+        entry->interest.current_interest = posterior_mean;
+        entry->interest.exposure_count++;
+        entry->interest.last_exposure_ms = get_time_ms();
+    }
+
+    system->total_topic_visits++;
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return posterior_mean;
+}
+
+float curiosity_enhanced_estimate_info_gain_qmc(
+    curiosity_enhanced_system_t* system,
+    const char* topic) {
+
+    if (!system || !topic) return 0.0f;
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    /* Information gain = KL divergence from prior to posterior */
+    interest_entry_t* entry = (interest_entry_t*)hash_table_lookup_string(
+        system->interest_table, topic);
+
+    float prior_mean = entry ? entry->interest.current_interest : 0.5f;
+    float exposure_count = entry ? (float)entry->interest.exposure_count : 0.0f;
+
+    /* Prior variance */
+    float prior_var = 1.0f / (1.0f + exposure_count * 0.1f);
+
+    /* Expected posterior variance after observation */
+    float obs_noise = 0.2f;  /* Typical observation noise */
+    float posterior_var = 1.0f / (1.0f / prior_var + 1.0f / (obs_noise * obs_noise));
+
+    /* Information gain = 0.5 * log(prior_var / posterior_var) */
+    float info_gain = 0.5f * logf(prior_var / posterior_var);
+
+    /* Adjust for interest level (higher interest = more valuable information) */
+    info_gain *= (0.5f + prior_mean * 0.5f);
+
+    /* Convert to bits */
+    info_gain /= logf(2.0f);
+    info_gain = clampf(info_gain, 0.0f, 5.0f);
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return info_gain;
+}
+
+uint32_t curiosity_enhanced_plan_exploration_mcts(
+    curiosity_enhanced_system_t* system,
+    const char* start_topic,
+    uint32_t horizon,
+    char** exploration_path,
+    uint32_t max_path_length) {
+
+    if (!system || !exploration_path || max_path_length == 0) return 0;
+
+    if (horizon == 0) {
+        horizon = system->qmc_config.empowerment_horizon;
+    }
+
+    nimcp_platform_mutex_lock(system->mutex);
+
+    /* Simple MCTS-style planning via rollouts */
+    uint32_t path_length = 0;
+    uint32_t num_rollouts = system->qmc_config.num_samples / 10;
+    if (num_rollouts < 10) num_rollouts = 10;
+
+    /* Collect topics from quantum bridge if available */
+    uint32_t num_topics = 0;
+    char** available_topics = NULL;
+
+    if (system->quantum_bridge) {
+        num_topics = curiosity_quantum_get_graph_size(system->quantum_bridge);
+        if (num_topics > 0) {
+            available_topics = (char**)nimcp_malloc(num_topics * sizeof(char*));
+            if (available_topics) {
+                for (uint32_t i = 0; i < num_topics; i++) {
+                    available_topics[i] = (char*)nimcp_malloc(256);
+                    if (available_topics[i] && system->quantum_bridge->topics[i].is_active) {
+                        strncpy(available_topics[i], system->quantum_bridge->topics[i].topic, 255);
+                        available_topics[i][255] = '\0';
+                    } else if (available_topics[i]) {
+                        available_topics[i][0] = '\0';
+                    }
+                }
+            }
+        }
+    }
+
+    if (num_topics == 0) {
+        /* No topics available */
+        nimcp_platform_mutex_unlock(system->mutex);
+        return 0;
+    }
+
+    /* Greedy rollout-based planning */
+    char current_topic[256];
+    if (start_topic) {
+        strncpy(current_topic, start_topic, 255);
+        current_topic[255] = '\0';
+    } else if (available_topics && available_topics[0][0] != '\0') {
+        strncpy(current_topic, available_topics[0], 255);
+        current_topic[255] = '\0';
+    } else {
+        /* Cleanup and return */
+        if (available_topics) {
+            for (uint32_t i = 0; i < num_topics; i++) {
+                if (available_topics[i]) nimcp_free(available_topics[i]);
+            }
+            nimcp_free(available_topics);
+        }
+        nimcp_platform_mutex_unlock(system->mutex);
+        return 0;
+    }
+
+    for (uint32_t step = 0; step < horizon && path_length < max_path_length; step++) {
+        float* scores = (float*)nimcp_calloc(num_topics, sizeof(float));
+        if (!scores) break;
+
+        /* Evaluate each candidate topic */
+        for (uint32_t t = 0; t < num_topics; t++) {
+            if (available_topics[t][0] == '\0') continue;
+
+            /* Score = info_gain + exploration_bonus */
+            nimcp_platform_mutex_unlock(system->mutex);
+            float info_gain = curiosity_enhanced_estimate_info_gain_qmc(system, available_topics[t]);
+            float bonus = curiosity_enhanced_get_exploration_bonus(system, available_topics[t]);
+            nimcp_platform_mutex_lock(system->mutex);
+
+            scores[t] = info_gain + bonus;
+        }
+
+        /* Select best topic */
+        float best_score = -1.0f;
+        uint32_t best_idx = 0;
+        for (uint32_t t = 0; t < num_topics; t++) {
+            if (scores[t] > best_score) {
+                best_score = scores[t];
+                best_idx = t;
+            }
+        }
+
+        nimcp_free(scores);
+
+        if (best_score <= 0.0f) break;
+
+        /* Add to path */
+        if (exploration_path[path_length]) {
+            strncpy(exploration_path[path_length], available_topics[best_idx], 255);
+            exploration_path[path_length][255] = '\0';
+        }
+        path_length++;
+
+        /* Update current */
+        strncpy(current_topic, available_topics[best_idx], 255);
+    }
+
+    /* Cleanup */
+    if (available_topics) {
+        for (uint32_t i = 0; i < num_topics; i++) {
+            if (available_topics[i]) nimcp_free(available_topics[i]);
+        }
+        nimcp_free(available_topics);
+    }
+
+    nimcp_platform_mutex_unlock(system->mutex);
+
+    return path_length;
+}
+
+int curiosity_enhanced_get_qmc_stats(
+    const curiosity_enhanced_system_t* system,
+    curiosity_qmc_stats_t* stats) {
+
+    if (!system || !stats) return NIMCP_ERROR_NULL_ARG;
+
+    *stats = system->qmc_stats;
+    return 0;
+}
+
+void curiosity_enhanced_reset_qmc_stats(
+    curiosity_enhanced_system_t* system) {
+
+    if (!system) return;
+
+    nimcp_platform_mutex_lock(system->mutex);
+    memset(&system->qmc_stats, 0, sizeof(system->qmc_stats));
+    nimcp_platform_mutex_unlock(system->mutex);
 }

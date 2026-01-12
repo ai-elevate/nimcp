@@ -337,6 +337,71 @@ typedef struct curiosity_social_config_s {
 typedef struct curiosity_quantum_bridge_s curiosity_quantum_bridge_t;
 
 /* ============================================================================
+ * Quantum Monte Carlo Integration for Curiosity
+ * ============================================================================ */
+
+/**
+ * @brief QMC configuration for curiosity uncertainty estimation
+ *
+ * WHAT: Configure QMC-based uncertainty quantification
+ * WHY:  Better decision-making with uncertainty-aware exploration
+ * HOW:  Use MC sampling to estimate confidence in curiosity assessments
+ */
+typedef struct curiosity_qmc_config_s {
+    uint32_t num_samples;           /**< MC samples for estimation (default: 1000) */
+    uint32_t burnin;                /**< Burn-in for MCMC (default: 100) */
+    float uncertainty_threshold;     /**< Threshold for high uncertainty [0,1] */
+    float exploration_bonus;         /**< Bonus for high-uncertainty topics [0,1] */
+    bool enable_empowerment;         /**< Enable empowerment calculation */
+    uint32_t empowerment_horizon;    /**< Steps for empowerment lookahead */
+    float temperature;               /**< Temperature for Boltzmann sampling */
+    uint32_t seed;                   /**< RNG seed (0 = time-based) */
+} curiosity_qmc_config_t;
+
+/**
+ * @brief Result of QMC uncertainty estimation
+ */
+typedef struct curiosity_qmc_uncertainty_s {
+    float mean_interest;            /**< Mean interest estimate */
+    float variance;                 /**< Interest variance */
+    float std_error;                /**< Standard error */
+    float confidence_95_lower;      /**< 95% CI lower bound */
+    float confidence_95_upper;      /**< 95% CI upper bound */
+    float epistemic_uncertainty;    /**< Model uncertainty (reducible) */
+    float aleatoric_uncertainty;    /**< Inherent randomness (irreducible) */
+    uint32_t effective_samples;     /**< Effective sample size */
+} curiosity_qmc_uncertainty_t;
+
+/**
+ * @brief Result of empowerment calculation
+ *
+ * BIOLOGICAL: Empowerment measures the agent's capacity to influence
+ * future states - a key intrinsic motivation signal
+ */
+typedef struct curiosity_empowerment_result_s {
+    float empowerment;              /**< Total empowerment (bits) */
+    float empowerment_normalized;   /**< Normalized to [0,1] */
+    float* action_empowerment;      /**< Empowerment per action */
+    uint32_t num_actions;           /**< Number of actions */
+    float entropy_current;          /**< Current state entropy */
+    float entropy_reachable;        /**< Reachable states entropy */
+    float channel_capacity;         /**< Information channel capacity */
+} curiosity_empowerment_result_t;
+
+/**
+ * @brief QMC statistics for curiosity module
+ */
+typedef struct curiosity_qmc_stats_s {
+    uint64_t uncertainty_estimations;   /**< Total uncertainty estimates */
+    uint64_t empowerment_calculations;  /**< Total empowerment calcs */
+    uint64_t mc_samples_total;          /**< Total MC samples drawn */
+    uint64_t high_uncertainty_topics;   /**< Topics with high uncertainty */
+    float avg_epistemic_uncertainty;    /**< Average epistemic uncertainty */
+    float avg_empowerment;              /**< Average empowerment */
+    float total_exploration_bonus;      /**< Total bonus from uncertainty */
+} curiosity_qmc_stats_t;
+
+/* ============================================================================
  * Enhancement 6: Meta-Curiosity
  * ============================================================================ */
 
@@ -1428,6 +1493,225 @@ int curiosity_enhanced_add_quantum_topic(
 float curiosity_enhanced_quantum_evaluate_novelty(
     curiosity_enhanced_system_t* system,
     const char* topic
+);
+
+/* ============================================================================
+ * Quantum Monte Carlo Functions
+ * ============================================================================ */
+
+/**
+ * @brief Get default QMC configuration
+ *
+ * WHAT: Initialize QMC config with sensible defaults
+ * WHY:  Ensure valid configuration before use
+ * HOW:  Set samples=1000, burnin=100, threshold=0.3
+ *
+ * @param config Configuration to initialize
+ */
+void curiosity_enhanced_qmc_default_config(curiosity_qmc_config_t* config);
+
+/**
+ * @brief Set QMC configuration for curiosity system
+ *
+ * WHAT: Configure QMC parameters
+ * WHY:  Customize uncertainty estimation behavior
+ * HOW:  Store config in system
+ *
+ * @param system System handle
+ * @param config QMC configuration
+ * @return 0 on success, negative on error
+ */
+int curiosity_enhanced_set_qmc_config(
+    curiosity_enhanced_system_t* system,
+    const curiosity_qmc_config_t* config
+);
+
+/**
+ * @brief Estimate uncertainty in topic interest
+ *
+ * WHAT: Quantify confidence in interest assessment
+ * WHY:  Uncertainty-aware exploration (explore high-uncertainty topics)
+ * HOW:  Bootstrap sampling with interest variance estimation
+ *
+ * BIOLOGICAL: Norepinephrine signals uncertainty, drives exploration
+ *
+ * @param system System handle
+ * @param topic Topic to assess
+ * @param result Output uncertainty result
+ * @return 0 on success, negative on error
+ */
+int curiosity_enhanced_estimate_uncertainty(
+    curiosity_enhanced_system_t* system,
+    const char* topic,
+    curiosity_qmc_uncertainty_t* result
+);
+
+/**
+ * @brief Batch uncertainty estimation for multiple topics
+ *
+ * WHAT: Estimate uncertainty for many topics efficiently
+ * WHY:  Amortize MC overhead across batch
+ * HOW:  Parallel MC sampling with shared random state
+ *
+ * @param system System handle
+ * @param topics Array of topic names
+ * @param num_topics Number of topics
+ * @param results Output array of uncertainty results
+ * @return 0 on success, negative on error
+ */
+int curiosity_enhanced_estimate_uncertainty_batch(
+    curiosity_enhanced_system_t* system,
+    const char** topics,
+    uint32_t num_topics,
+    curiosity_qmc_uncertainty_t* results
+);
+
+/**
+ * @brief Compute empowerment for topic exploration
+ *
+ * WHAT: Measure capacity to influence future knowledge states
+ * WHY:  Empowerment is a key intrinsic motivation signal
+ * HOW:  Estimate mutual information I(A; S') between actions and future states
+ *
+ * BIOLOGICAL: Models the "sense of control" that drives exploration
+ *
+ * @param system System handle
+ * @param topic Starting topic
+ * @param horizon Number of steps to look ahead
+ * @param result Output empowerment result
+ * @return 0 on success, negative on error
+ */
+int curiosity_enhanced_compute_empowerment(
+    curiosity_enhanced_system_t* system,
+    const char* topic,
+    uint32_t horizon,
+    curiosity_empowerment_result_t* result
+);
+
+/**
+ * @brief Free empowerment result resources
+ *
+ * @param result Result to free
+ */
+void curiosity_empowerment_result_free(curiosity_empowerment_result_t* result);
+
+/**
+ * @brief Select exploration target using uncertainty-based sampling
+ *
+ * WHAT: Sample topic proportional to uncertainty × interest
+ * WHY:  Balance curiosity with epistemic exploration
+ * HOW:  Thompson sampling with uncertainty estimates
+ *
+ * @param system System handle
+ * @param topics Array of candidate topics
+ * @param num_topics Number of topics
+ * @param selected_topic Output: selected topic name (256 bytes min)
+ * @return Uncertainty score of selected topic
+ */
+float curiosity_enhanced_sample_by_uncertainty(
+    curiosity_enhanced_system_t* system,
+    const char** topics,
+    uint32_t num_topics,
+    char* selected_topic
+);
+
+/**
+ * @brief Compute uncertainty-weighted exploration bonus
+ *
+ * WHAT: Bonus for exploring uncertain topics
+ * WHY:  UCB-style exploration in curiosity space
+ * HOW:  bonus = exploration_bonus * sqrt(2 * ln(N) / n_topic)
+ *
+ * @param system System handle
+ * @param topic Topic to evaluate
+ * @return Exploration bonus [0, exploration_bonus]
+ */
+float curiosity_enhanced_get_exploration_bonus(
+    curiosity_enhanced_system_t* system,
+    const char* topic
+);
+
+/**
+ * @brief Update topic interest with MC sampling
+ *
+ * WHAT: Update interest using MC-estimated posterior
+ * WHY:  Bayesian update of interest beliefs
+ * HOW:  Importance sampling for posterior estimation
+ *
+ * @param system System handle
+ * @param topic Topic to update
+ * @param observed_interest Observed interest signal [0,1]
+ * @param observation_noise Noise in observation [0,1]
+ * @return Updated interest estimate
+ */
+float curiosity_enhanced_update_interest_mc(
+    curiosity_enhanced_system_t* system,
+    const char* topic,
+    float observed_interest,
+    float observation_noise
+);
+
+/**
+ * @brief Estimate information gain using MC simulation
+ *
+ * WHAT: Expected KL divergence from exploring topic
+ * WHY:  Information-theoretic exploration bonus
+ * HOW:  Sample knowledge states, compute expected KL
+ *
+ * @param system System handle
+ * @param topic Topic to evaluate
+ * @return Expected information gain (bits)
+ */
+float curiosity_enhanced_estimate_info_gain_qmc(
+    curiosity_enhanced_system_t* system,
+    const char* topic
+);
+
+/**
+ * @brief Run MCTS for exploration planning
+ *
+ * WHAT: Plan exploration sequence using MCTS
+ * WHY:  Long-horizon exploration optimization
+ * HOW:  Build tree of topic transitions, select best sequence
+ *
+ * @param system System handle
+ * @param start_topic Starting topic
+ * @param horizon Planning horizon (steps)
+ * @param exploration_path Output: planned topics (array of 256-byte strings)
+ * @param max_path_length Maximum path length
+ * @return Number of topics in path
+ */
+uint32_t curiosity_enhanced_plan_exploration_mcts(
+    curiosity_enhanced_system_t* system,
+    const char* start_topic,
+    uint32_t horizon,
+    char** exploration_path,
+    uint32_t max_path_length
+);
+
+/**
+ * @brief Get QMC statistics
+ *
+ * WHAT: Query accumulated QMC statistics
+ * WHY:  Monitor MC performance and exploration
+ * HOW:  Copy stats data
+ *
+ * @param system System handle
+ * @param stats Output statistics
+ * @return 0 on success, negative on error
+ */
+int curiosity_enhanced_get_qmc_stats(
+    const curiosity_enhanced_system_t* system,
+    curiosity_qmc_stats_t* stats
+);
+
+/**
+ * @brief Reset QMC statistics
+ *
+ * @param system System handle
+ */
+void curiosity_enhanced_reset_qmc_stats(
+    curiosity_enhanced_system_t* system
 );
 
 #ifdef __cplusplus
