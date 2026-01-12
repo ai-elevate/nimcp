@@ -382,6 +382,12 @@ add_e2e_test(e2e_test_fep_orchestrator_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_fep_orchestrator_pipeline.cpp
 )
 
+# JEPA QMC Pipeline E2E Test (Quantum Monte Carlo Enhanced JEPA)
+add_e2e_test(e2e_test_jepa_qmc_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_jepa_qmc_pipeline.cpp
+)
+
 # Coordinator Pipeline E2E Test (6 Coordinator/Orchestrator Integration)
 add_e2e_test(e2e_test_coordinator_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp

@@ -6984,6 +6984,19 @@ e2e_test_fep_orchestrator_pipeline/fast:
 .PHONY : e2e_test_fep_orchestrator_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_jepa_qmc_pipeline
+
+# Build rule for target.
+e2e_test_jepa_qmc_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_jepa_qmc_pipeline
+.PHONY : e2e_test_jepa_qmc_pipeline
+
+# fast build rule for target.
+e2e_test_jepa_qmc_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_jepa_qmc_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_jepa_qmc_pipeline.dir/build
+.PHONY : e2e_test_jepa_qmc_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_coordinator_pipeline
 
 # Build rule for target.
@@ -27021,6 +27034,7 @@ help:
 	@echo "... e2e_test_hypothalamus_training_pipeline"
 	@echo "... e2e_test_introspection_pipeline"
 	@echo "... e2e_test_introspection_snn_plasticity_pipeline"
+	@echo "... e2e_test_jepa_qmc_pipeline"
 	@echo "... e2e_test_language_layer_pipeline"
 	@echo "... e2e_test_limbic_pipeline"
 	@echo "... e2e_test_master_connectivity"

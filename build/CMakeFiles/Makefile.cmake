@@ -1310,6 +1310,7 @@ set(CMAKE_DEPEND_INFO_FILES
   "test/e2e/CMakeFiles/e2e_test_wellbeing_enhanced_pipeline.dir/DependInfo.cmake"
   "test/e2e/CMakeFiles/e2e_test_fep_bridges_pipeline.dir/DependInfo.cmake"
   "test/e2e/CMakeFiles/e2e_test_fep_orchestrator_pipeline.dir/DependInfo.cmake"
+  "test/e2e/CMakeFiles/e2e_test_jepa_qmc_pipeline.dir/DependInfo.cmake"
   "test/e2e/CMakeFiles/e2e_test_coordinator_pipeline.dir/DependInfo.cmake"
   "test/e2e/CMakeFiles/e2e_test_core_directives_pipeline.dir/DependInfo.cmake"
   "test/e2e/CMakeFiles/e2e_test_medulla_pipeline.dir/DependInfo.cmake"
