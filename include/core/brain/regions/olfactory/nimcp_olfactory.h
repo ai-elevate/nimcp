@@ -265,6 +265,23 @@ typedef struct {
     char log_prefix[32];
 } olfact_logging_bridge_t;
 
+typedef struct {
+    bool initialized;
+    void* snn;
+    uint32_t* neuron_ids;        /* Mapped SNN neuron IDs for olfactory bulb */
+    uint32_t num_mapped_neurons;
+    float snn_activation_gain;
+} olfact_snn_bridge_t;
+
+typedef struct {
+    bool initialized;
+    void* plasticity_coordinator;
+    void* stdp_context;
+    float learning_rate;
+    float olfactory_plasticity_gate;   /* Modulates plasticity for odor learning */
+    bool hebbian_enabled;
+} olfact_plasticity_bridge_t;
+
 /*=============================================================================
  * CONFIGURATION AND MAIN STRUCTURE
  *===========================================================================*/
@@ -337,6 +354,8 @@ typedef struct {
     olfact_ofc_bridge_t ofc_bridge;
     olfact_hypothalamus_bridge_t hypothalamus_bridge;
     olfact_logging_bridge_t logging_bridge;
+    olfact_snn_bridge_t snn_bridge;
+    olfact_plasticity_bridge_t plasticity_bridge;
 
     /* Statistics */
     uint32_t updates_processed;
@@ -448,6 +467,8 @@ int olfact_init_entorhinal_bridge(nimcp_olfactory_t* olfact, void* entorhinal);
 int olfact_init_ofc_bridge(nimcp_olfactory_t* olfact, void* ofc);
 int olfact_init_hypothalamus_bridge(nimcp_olfactory_t* olfact, void* hypothalamus);
 int olfact_init_logging_bridge(nimcp_olfactory_t* olfact, void* logger);
+int olfact_init_snn_bridge(nimcp_olfactory_t* olfact, void* snn);
+int olfact_init_plasticity_bridge(nimcp_olfactory_t* olfact, void* plasticity, void* stdp);
 
 /*=============================================================================
  * BIDIRECTIONAL FLOW

@@ -362,6 +362,27 @@ int gust_init_logging_bridge(nimcp_gustatory_t* gust, void* logger) {
     return 0;
 }
 
+int gust_init_snn_bridge(nimcp_gustatory_t* gust, void* snn) {
+    if (!gust) return -1;
+    gust->snn_bridge.snn = snn;
+    gust->snn_bridge.neuron_ids = NULL;
+    gust->snn_bridge.num_mapped_neurons = 0;
+    gust->snn_bridge.snn_activation_gain = 1.0f;
+    gust->snn_bridge.initialized = (snn != NULL);
+    return 0;
+}
+
+int gust_init_plasticity_bridge(nimcp_gustatory_t* gust, void* plasticity, void* stdp) {
+    if (!gust) return -1;
+    gust->plasticity_bridge.plasticity_coordinator = plasticity;
+    gust->plasticity_bridge.stdp_context = stdp;
+    gust->plasticity_bridge.learning_rate = 0.01f;
+    gust->plasticity_bridge.gustatory_plasticity_gate = 1.0f;
+    gust->plasticity_bridge.hebbian_enabled = true;
+    gust->plasticity_bridge.initialized = (plasticity != NULL || stdp != NULL);
+    return 0;
+}
+
 /* Bidirectional flow */
 int gust_process_incoming(nimcp_gustatory_t* gust) {
     if (!gust) return -1;

@@ -282,6 +282,23 @@ typedef struct {
     char log_prefix[32];
 } gust_logging_bridge_t;
 
+typedef struct {
+    bool initialized;
+    void* snn;
+    uint32_t* neuron_ids;        /* Mapped SNN neuron IDs for taste cortex */
+    uint32_t num_mapped_neurons;
+    float snn_activation_gain;
+} gust_snn_bridge_t;
+
+typedef struct {
+    bool initialized;
+    void* plasticity_coordinator;
+    void* stdp_context;
+    float learning_rate;
+    float gustatory_plasticity_gate;   /* Modulates plasticity for taste learning */
+    bool hebbian_enabled;
+} gust_plasticity_bridge_t;
+
 /*=============================================================================
  * CONFIGURATION AND MAIN STRUCTURE
  *===========================================================================*/
@@ -351,6 +368,8 @@ typedef struct {
     gust_insula_bridge_t insula_bridge;
     gust_ofc_bridge_t ofc_bridge;
     gust_logging_bridge_t logging_bridge;
+    gust_snn_bridge_t snn_bridge;
+    gust_plasticity_bridge_t plasticity_bridge;
 
     /* Statistics */
     uint32_t updates_processed;
@@ -422,6 +441,8 @@ int gust_init_olfactory_bridge(nimcp_gustatory_t* gust, void* olfactory);
 int gust_init_insula_bridge(nimcp_gustatory_t* gust, void* insula);
 int gust_init_ofc_bridge(nimcp_gustatory_t* gust, void* ofc);
 int gust_init_logging_bridge(nimcp_gustatory_t* gust, void* logger);
+int gust_init_snn_bridge(nimcp_gustatory_t* gust, void* snn);
+int gust_init_plasticity_bridge(nimcp_gustatory_t* gust, void* plasticity, void* stdp);
 
 /*=============================================================================
  * BIDIRECTIONAL FLOW

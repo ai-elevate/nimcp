@@ -402,6 +402,27 @@ int olfact_init_logging_bridge(nimcp_olfactory_t* olfact, void* logger) {
     return 0;
 }
 
+int olfact_init_snn_bridge(nimcp_olfactory_t* olfact, void* snn) {
+    if (!olfact) return -1;
+    olfact->snn_bridge.snn = snn;
+    olfact->snn_bridge.neuron_ids = NULL;
+    olfact->snn_bridge.num_mapped_neurons = 0;
+    olfact->snn_bridge.snn_activation_gain = 1.0f;
+    olfact->snn_bridge.initialized = (snn != NULL);
+    return 0;
+}
+
+int olfact_init_plasticity_bridge(nimcp_olfactory_t* olfact, void* plasticity, void* stdp) {
+    if (!olfact) return -1;
+    olfact->plasticity_bridge.plasticity_coordinator = plasticity;
+    olfact->plasticity_bridge.stdp_context = stdp;
+    olfact->plasticity_bridge.learning_rate = 0.01f;
+    olfact->plasticity_bridge.olfactory_plasticity_gate = 1.0f;
+    olfact->plasticity_bridge.hebbian_enabled = true;
+    olfact->plasticity_bridge.initialized = (plasticity != NULL || stdp != NULL);
+    return 0;
+}
+
 /* Bidirectional flow */
 int olfact_process_incoming(nimcp_olfactory_t* olfact) {
     if (!olfact) return -1;

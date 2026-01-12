@@ -144,12 +144,33 @@ bool nimcp_brain_factory_init_somatosensory_subsystem(brain_t brain) {
         }
     }
 
+    /* Connect to plasticity coordinator for sensory-driven learning */
+    if (brain->plasticity_coordinator_enabled && brain->plasticity_coordinator) {
+        void* stdp = NULL;
+        if (brain->stdp_omni_bridge_enabled && brain->stdp_omni_bridge) {
+            stdp = brain->stdp_omni_bridge;
+        } else if (brain->stdp_pr_bridge_enabled && brain->stdp_pr_bridge) {
+            stdp = brain->stdp_pr_bridge;
+        }
+        if (soma_init_plasticity_bridge(soma, brain->plasticity_coordinator, stdp) == 0) {
+            NIMCP_LOGGING_DEBUG("Somatosensory-plasticity bridge connected (sensory learning)");
+        }
+    }
+
+    /* Connect to SNN (using plasticity coordinator as proxy for spiking network) */
+    if (brain->plasticity_coordinator_enabled && brain->plasticity_coordinator) {
+        if (soma_init_snn_bridge(soma, brain->plasticity_coordinator) == 0) {
+            NIMCP_LOGGING_DEBUG("Somatosensory-SNN bridge connected");
+        }
+    }
+
     NIMCP_LOGGING_INFO("Somatosensory subsystem initialized: "
                        "areas=5 (3a/3b/1/2/S2), body_segments=%d, "
-                       "hypothalamus=%s, parietal=%s",
+                       "hypothalamus=%s, parietal=%s, plasticity=%s",
                        SOMA_MAX_BODY_SEGMENTS,
                        brain->hypothalamus_enabled ? "connected" : "disconnected",
-                       brain->parietal_cortex_enabled ? "connected" : "disconnected");
+                       brain->parietal_cortex_enabled ? "connected" : "disconnected",
+                       brain->plasticity_coordinator_enabled ? "connected" : "disconnected");
 
     return true;
 }
@@ -243,14 +264,35 @@ bool nimcp_brain_factory_init_olfactory_subsystem(brain_t brain) {
         }
     }
 
+    /* Connect to plasticity coordinator for odor-driven learning */
+    if (brain->plasticity_coordinator_enabled && brain->plasticity_coordinator) {
+        void* stdp = NULL;
+        if (brain->stdp_omni_bridge_enabled && brain->stdp_omni_bridge) {
+            stdp = brain->stdp_omni_bridge;
+        } else if (brain->stdp_pr_bridge_enabled && brain->stdp_pr_bridge) {
+            stdp = brain->stdp_pr_bridge;
+        }
+        if (olfact_init_plasticity_bridge(olfact, brain->plasticity_coordinator, stdp) == 0) {
+            NIMCP_LOGGING_DEBUG("Olfactory-plasticity bridge connected (odor learning)");
+        }
+    }
+
+    /* Connect to SNN (using plasticity coordinator as proxy for spiking network) */
+    if (brain->plasticity_coordinator_enabled && brain->plasticity_coordinator) {
+        if (olfact_init_snn_bridge(olfact, brain->plasticity_coordinator) == 0) {
+            NIMCP_LOGGING_DEBUG("Olfactory-SNN bridge connected");
+        }
+    }
+
     NIMCP_LOGGING_INFO("Olfactory subsystem initialized: "
                        "receptors=%d, glomeruli=%d, piriform=%d neurons, "
-                       "hypothalamus=%s, immune=%s",
+                       "hypothalamus=%s, immune=%s, plasticity=%s",
                        OLFACT_MAX_RECEPTORS,
                        OLFACT_MAX_GLOMERULI,
                        OLFACT_DEFAULT_PIRIFORM,
                        brain->hypothalamus_enabled ? "connected" : "disconnected",
-                       brain->immune_enabled ? "connected" : "disconnected");
+                       brain->immune_enabled ? "connected" : "disconnected",
+                       brain->plasticity_coordinator_enabled ? "connected" : "disconnected");
 
     return true;
 }
@@ -349,13 +391,34 @@ bool nimcp_brain_factory_init_gustatory_subsystem(brain_t brain) {
         }
     }
 
+    /* Connect to plasticity coordinator for taste-driven learning */
+    if (brain->plasticity_coordinator_enabled && brain->plasticity_coordinator) {
+        void* stdp = NULL;
+        if (brain->stdp_omni_bridge_enabled && brain->stdp_omni_bridge) {
+            stdp = brain->stdp_omni_bridge;
+        } else if (brain->stdp_pr_bridge_enabled && brain->stdp_pr_bridge) {
+            stdp = brain->stdp_pr_bridge;
+        }
+        if (gust_init_plasticity_bridge(gust, brain->plasticity_coordinator, stdp) == 0) {
+            NIMCP_LOGGING_DEBUG("Gustatory-plasticity bridge connected (taste learning)");
+        }
+    }
+
+    /* Connect to SNN (using plasticity coordinator as proxy for spiking network) */
+    if (brain->plasticity_coordinator_enabled && brain->plasticity_coordinator) {
+        if (gust_init_snn_bridge(gust, brain->plasticity_coordinator) == 0) {
+            NIMCP_LOGGING_DEBUG("Gustatory-SNN bridge connected");
+        }
+    }
+
     NIMCP_LOGGING_INFO("Gustatory subsystem initialized: "
                        "basic_tastes=%d, insula=%d neurons, "
-                       "olfactory=%s (flavor), hypothalamus=%s",
+                       "olfactory=%s (flavor), hypothalamus=%s, plasticity=%s",
                        GUST_NUM_BASIC_TASTES,
                        GUST_DEFAULT_INSULA_NEURONS,
                        brain->olfactory_enabled ? "connected" : "disconnected",
-                       brain->hypothalamus_enabled ? "connected" : "disconnected");
+                       brain->hypothalamus_enabled ? "connected" : "disconnected",
+                       brain->plasticity_coordinator_enabled ? "connected" : "disconnected");
 
     return true;
 }
