@@ -2197,4 +2197,430 @@ TEST_F(JepaPredictorTest, StatsTrackUpdates)
     jepa_latent_destroy(target);
 }
 
+//=============================================================================
+// Quantum Monte Carlo Integration Tests
+//=============================================================================
+
+TEST_F(JepaPredictorTest, QMCConfigInit)
+{
+    // WHAT: Test QMC config initialization
+    // WHY:  Verify defaults are reasonable
+    // HOW:  Initialize config and check values
+
+    jepa_qmc_config_t config;
+    int result = jepa_qmc_config_init(&config);
+
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_GT(config.num_samples, 0u);
+    EXPECT_GT(config.num_iterations, 0u);
+    EXPECT_GT(config.initial_temp, config.final_temp);
+    EXPECT_GT(config.exploration_constant, 1.0f);
+    EXPECT_GE(config.quantum_strength, 0.0f);
+    EXPECT_LE(config.quantum_strength, 1.0f);
+}
+
+TEST_F(JepaPredictorTest, QMCConfigInitNull)
+{
+    // WHAT: Test NULL config handling
+    // WHY:  Should return error on NULL
+    // HOW:  Pass NULL to init function
+
+    int result = jepa_qmc_config_init(nullptr);
+    EXPECT_NE(result, NIMCP_SUCCESS);
+}
+
+TEST_F(JepaPredictorTest, QMCAmplitudeEstimateBasic)
+{
+    // WHAT: Test amplitude estimation for a dimension
+    // WHY:  Core QMC uncertainty quantification
+    // HOW:  Estimate amplitude and verify valid output
+
+    jepa_latent_t* context = create_test_latent(TEST_INPUT_DIM, 0.5f);
+    ASSERT_NE(context, nullptr);
+
+    float amplitude = 0.0f;
+    float variance = 0.0f;
+
+    jepa_qmc_config_t config;
+    jepa_qmc_config_init(&config);
+    config.num_samples = 100;  // Reduce for test speed
+
+    int result = jepa_predictor_qmc_amplitude_estimate(
+        predictor_, context, 0, &config, &amplitude, &variance);
+
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_GE(amplitude, 0.0f);
+    EXPECT_GE(variance, 0.0f);
+
+    jepa_latent_destroy(context);
+}
+
+TEST_F(JepaPredictorTest, QMCAmplitudeEstimateNullInputs)
+{
+    // WHAT: Test NULL input handling
+    // WHY:  Should reject invalid inputs
+    // HOW:  Pass NULL values
+
+    jepa_latent_t* context = create_test_latent(TEST_INPUT_DIM);
+    float amplitude = 0.0f;
+    float variance = 0.0f;
+
+    EXPECT_NE(jepa_predictor_qmc_amplitude_estimate(
+        nullptr, context, 0, nullptr, &amplitude, &variance), NIMCP_SUCCESS);
+
+    EXPECT_NE(jepa_predictor_qmc_amplitude_estimate(
+        predictor_, nullptr, 0, nullptr, &amplitude, &variance), NIMCP_SUCCESS);
+
+    EXPECT_NE(jepa_predictor_qmc_amplitude_estimate(
+        predictor_, context, 0, nullptr, nullptr, &variance), NIMCP_SUCCESS);
+
+    EXPECT_NE(jepa_predictor_qmc_amplitude_estimate(
+        predictor_, context, 0, nullptr, &amplitude, nullptr), NIMCP_SUCCESS);
+
+    jepa_latent_destroy(context);
+}
+
+TEST_F(JepaPredictorTest, QMCAmplitudeEstimateInvalidDim)
+{
+    // WHAT: Test invalid dimension handling
+    // WHY:  Should reject out-of-bounds dimension
+    // HOW:  Pass dimension >= output_dim
+
+    jepa_latent_t* context = create_test_latent(TEST_INPUT_DIM);
+    float amplitude = 0.0f;
+    float variance = 0.0f;
+
+    int result = jepa_predictor_qmc_amplitude_estimate(
+        predictor_, context, TEST_OUTPUT_DIM + 10, nullptr, &amplitude, &variance);
+
+    EXPECT_NE(result, NIMCP_SUCCESS);
+
+    jepa_latent_destroy(context);
+}
+
+TEST_F(JepaPredictorTest, QMCEntropyEstimate)
+{
+    // WHAT: Test entropy estimation
+    // WHY:  Entropy measures uncertainty in latent space
+    // HOW:  Estimate entropy and verify valid output
+
+    jepa_latent_t* context = create_test_latent(TEST_INPUT_DIM, 0.3f);
+    ASSERT_NE(context, nullptr);
+
+    float entropy = 0.0f;
+    float std_error = 0.0f;
+
+    jepa_qmc_config_t config;
+    jepa_qmc_config_init(&config);
+    config.num_samples = 100;
+
+    int result = jepa_predictor_qmc_entropy(
+        predictor_, context, &config, &entropy, &std_error);
+
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_GE(entropy, 0.0f);  // Entropy should be non-negative
+    EXPECT_GE(std_error, 0.0f);
+
+    jepa_latent_destroy(context);
+}
+
+TEST_F(JepaPredictorTest, QMCEntropyNullInputs)
+{
+    // WHAT: Test NULL input handling
+    // WHY:  Should reject invalid inputs
+    // HOW:  Pass NULL values
+
+    jepa_latent_t* context = create_test_latent(TEST_INPUT_DIM);
+    float entropy = 0.0f;
+
+    EXPECT_NE(jepa_predictor_qmc_entropy(nullptr, context, nullptr, &entropy, nullptr), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_qmc_entropy(predictor_, nullptr, nullptr, &entropy, nullptr), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_qmc_entropy(predictor_, context, nullptr, nullptr, nullptr), NIMCP_SUCCESS);
+
+    jepa_latent_destroy(context);
+}
+
+TEST_F(JepaPredictorTest, QMCFidelityBasic)
+{
+    // WHAT: Test fidelity computation between latent states
+    // WHY:  Fidelity measures similarity in latent space
+    // HOW:  Compute fidelity and verify valid output
+
+    jepa_latent_t* latent1 = create_test_latent(TEST_OUTPUT_DIM, 0.5f);
+    jepa_latent_t* latent2 = create_test_latent(TEST_OUTPUT_DIM, 0.5f);
+    ASSERT_NE(latent1, nullptr);
+    ASSERT_NE(latent2, nullptr);
+
+    float fidelity = jepa_predictor_qmc_fidelity(predictor_, latent1, latent2);
+
+    // Identical vectors should have high fidelity
+    EXPECT_GE(fidelity, 0.9f);
+    EXPECT_LE(fidelity, 1.0f);
+
+    jepa_latent_destroy(latent1);
+    jepa_latent_destroy(latent2);
+}
+
+TEST_F(JepaPredictorTest, QMCFidelityDifferentVectors)
+{
+    // WHAT: Test fidelity with different vectors
+    // WHY:  Different vectors should have lower fidelity
+    // HOW:  Create orthogonal-ish vectors
+
+    jepa_latent_t* latent1 = create_test_latent(TEST_OUTPUT_DIM, 0.0f);
+    jepa_latent_t* latent2 = create_test_latent(TEST_OUTPUT_DIM, 0.0f);
+    ASSERT_NE(latent1, nullptr);
+    ASSERT_NE(latent2, nullptr);
+
+    // Set different patterns
+    for (uint32_t i = 0; i < TEST_OUTPUT_DIM; i++) {
+        latent1->embedding[i] = (i % 2 == 0) ? 1.0f : 0.0f;
+        latent2->embedding[i] = (i % 2 == 1) ? 1.0f : 0.0f;
+    }
+
+    float fidelity = jepa_predictor_qmc_fidelity(predictor_, latent1, latent2);
+
+    // Different vectors should have lower fidelity
+    EXPECT_GE(fidelity, 0.0f);
+    EXPECT_LE(fidelity, 1.0f);
+
+    jepa_latent_destroy(latent1);
+    jepa_latent_destroy(latent2);
+}
+
+TEST_F(JepaPredictorTest, QMCFidelityNullInputs)
+{
+    // WHAT: Test NULL input handling
+    // WHY:  Should return 0.0 for invalid inputs
+    // HOW:  Pass NULL values
+
+    jepa_latent_t* latent = create_test_latent(TEST_OUTPUT_DIM);
+
+    EXPECT_EQ(jepa_predictor_qmc_fidelity(nullptr, latent, latent), 0.0f);
+    EXPECT_EQ(jepa_predictor_qmc_fidelity(predictor_, nullptr, latent), 0.0f);
+    EXPECT_EQ(jepa_predictor_qmc_fidelity(predictor_, latent, nullptr), 0.0f);
+
+    jepa_latent_destroy(latent);
+}
+
+TEST_F(JepaPredictorTest, QMCPredictBasic)
+{
+    // WHAT: Test QMC-enhanced prediction
+    // WHY:  Verify prediction with uncertainty estimation
+    // HOW:  Make prediction and check outputs
+
+    jepa_latent_t* context = create_test_latent(TEST_INPUT_DIM, 0.5f);
+    jepa_latent_t* prediction = jepa_latent_create_dim(TEST_OUTPUT_DIM);
+    ASSERT_NE(context, nullptr);
+    ASSERT_NE(prediction, nullptr);
+
+    std::vector<float> uncertainty(TEST_OUTPUT_DIM);
+    jepa_qmc_stats_t stats;
+
+    jepa_qmc_config_t config;
+    jepa_qmc_config_init(&config);
+    config.num_samples = 50;  // Reduce for test speed
+
+    int result = jepa_predictor_predict_qmc(
+        predictor_, context, prediction, uncertainty.data(), &config, &stats);
+
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+
+    // Check prediction is valid
+    for (uint32_t i = 0; i < TEST_OUTPUT_DIM; i++) {
+        EXPECT_FALSE(std::isnan(prediction->embedding[i]));
+        EXPECT_FALSE(std::isinf(prediction->embedding[i]));
+    }
+
+    // Check uncertainty is valid
+    for (uint32_t i = 0; i < TEST_OUTPUT_DIM; i++) {
+        EXPECT_GE(uncertainty[i], 0.0f);
+        EXPECT_FALSE(std::isnan(uncertainty[i]));
+    }
+
+    // Check stats
+    EXPECT_GT(stats.samples_taken, 0u);
+    EXPECT_GE(stats.computation_time_ms, 0.0f);
+
+    jepa_latent_destroy(context);
+    jepa_latent_destroy(prediction);
+}
+
+TEST_F(JepaPredictorTest, QMCPredictNullInputs)
+{
+    // WHAT: Test NULL input handling
+    // WHY:  Should reject invalid inputs
+    // HOW:  Pass NULL values
+
+    jepa_latent_t* context = create_test_latent(TEST_INPUT_DIM);
+    jepa_latent_t* prediction = jepa_latent_create_dim(TEST_OUTPUT_DIM);
+    std::vector<float> uncertainty(TEST_OUTPUT_DIM);
+
+    EXPECT_NE(jepa_predictor_predict_qmc(nullptr, context, prediction,
+                                          uncertainty.data(), nullptr, nullptr), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_predict_qmc(predictor_, nullptr, prediction,
+                                          uncertainty.data(), nullptr, nullptr), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_predict_qmc(predictor_, context, nullptr,
+                                          uncertainty.data(), nullptr, nullptr), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_predict_qmc(predictor_, context, prediction,
+                                          nullptr, nullptr, nullptr), NIMCP_SUCCESS);
+
+    jepa_latent_destroy(context);
+    jepa_latent_destroy(prediction);
+}
+
+TEST_F(JepaPredictorTest, QMCFreeEnergyBasic)
+{
+    // WHAT: Test free energy estimation
+    // WHY:  Free energy connects to FEP belief optimization
+    // HOW:  Estimate free energy and verify valid output
+
+    jepa_latent_t* context = create_test_latent(TEST_INPUT_DIM, 0.5f);
+    jepa_latent_t* target = create_test_latent(TEST_OUTPUT_DIM, 0.3f);
+    ASSERT_NE(context, nullptr);
+    ASSERT_NE(target, nullptr);
+
+    float free_energy = 0.0f;
+
+    jepa_qmc_config_t config;
+    jepa_qmc_config_init(&config);
+    config.num_samples = 50;
+
+    int result = jepa_predictor_qmc_free_energy(
+        predictor_, context, target, 1.0f, &config, &free_energy);
+
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_FALSE(std::isnan(free_energy));
+    EXPECT_FALSE(std::isinf(free_energy));
+
+    jepa_latent_destroy(context);
+    jepa_latent_destroy(target);
+}
+
+TEST_F(JepaPredictorTest, QMCFreeEnergyNullInputs)
+{
+    // WHAT: Test NULL input handling
+    // WHY:  Should reject invalid inputs
+    // HOW:  Pass NULL values
+
+    jepa_latent_t* context = create_test_latent(TEST_INPUT_DIM);
+    jepa_latent_t* target = create_test_latent(TEST_OUTPUT_DIM);
+    float free_energy = 0.0f;
+
+    EXPECT_NE(jepa_predictor_qmc_free_energy(nullptr, context, target, 1.0f, nullptr, &free_energy), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_qmc_free_energy(predictor_, nullptr, target, 1.0f, nullptr, &free_energy), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_qmc_free_energy(predictor_, context, nullptr, 1.0f, nullptr, &free_energy), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_qmc_free_energy(predictor_, context, target, 1.0f, nullptr, nullptr), NIMCP_SUCCESS);
+
+    jepa_latent_destroy(context);
+    jepa_latent_destroy(target);
+}
+
+TEST_F(JepaPredictorTest, QMCMCTSExploreBasic)
+{
+    // WHAT: Test MCTS-guided latent space exploration
+    // WHY:  Verify structured exploration finds reasonable predictions
+    // HOW:  Run MCTS and check output
+
+    jepa_latent_t* context = create_test_latent(TEST_INPUT_DIM, 0.5f);
+    jepa_latent_t* best_latent = jepa_latent_create_dim(TEST_OUTPUT_DIM);
+    ASSERT_NE(context, nullptr);
+    ASSERT_NE(best_latent, nullptr);
+
+    float value = 0.0f;
+
+    jepa_qmc_config_t config;
+    jepa_qmc_config_init(&config);
+    config.num_iterations = 20;  // Reduce for test speed
+
+    int result = jepa_predictor_qmc_mcts_explore(
+        predictor_, context, 5, &config, best_latent, &value);
+
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+
+    // Check output is valid
+    for (uint32_t i = 0; i < TEST_OUTPUT_DIM; i++) {
+        EXPECT_FALSE(std::isnan(best_latent->embedding[i]));
+        EXPECT_FALSE(std::isinf(best_latent->embedding[i]));
+    }
+
+    EXPECT_GE(value, 0.0f);
+    EXPECT_LE(value, 1.0f);
+
+    jepa_latent_destroy(context);
+    jepa_latent_destroy(best_latent);
+}
+
+TEST_F(JepaPredictorTest, QMCMCTSExploreNullInputs)
+{
+    // WHAT: Test NULL input handling
+    // WHY:  Should reject invalid inputs
+    // HOW:  Pass NULL values
+
+    jepa_latent_t* context = create_test_latent(TEST_INPUT_DIM);
+    jepa_latent_t* best_latent = jepa_latent_create_dim(TEST_OUTPUT_DIM);
+    float value = 0.0f;
+
+    EXPECT_NE(jepa_predictor_qmc_mcts_explore(nullptr, context, 5, nullptr, best_latent, &value), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_qmc_mcts_explore(predictor_, nullptr, 5, nullptr, best_latent, &value), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_qmc_mcts_explore(predictor_, context, 5, nullptr, nullptr, &value), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_qmc_mcts_explore(predictor_, context, 5, nullptr, best_latent, nullptr), NIMCP_SUCCESS);
+
+    jepa_latent_destroy(context);
+    jepa_latent_destroy(best_latent);
+}
+
+TEST_F(JepaPredictorTest, QMCSampleLatentBasic)
+{
+    // WHAT: Test latent space sampling via QMC
+    // WHY:  Enable generative modeling
+    // HOW:  Generate samples and verify validity
+
+    jepa_latent_t* context = create_test_latent(TEST_INPUT_DIM, 0.5f);
+    ASSERT_NE(context, nullptr);
+
+    const uint32_t NUM_SAMPLES = 5;
+    jepa_latent_t* samples[NUM_SAMPLES];
+
+    jepa_qmc_config_t config;
+    jepa_qmc_config_init(&config);
+
+    int result = jepa_predictor_qmc_sample_latent(
+        predictor_, context, samples, NUM_SAMPLES, &config);
+
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+
+    // Check samples are valid
+    for (uint32_t s = 0; s < NUM_SAMPLES; s++) {
+        ASSERT_NE(samples[s], nullptr);
+        EXPECT_EQ(samples[s]->latent_dim, TEST_OUTPUT_DIM);
+
+        for (uint32_t i = 0; i < TEST_OUTPUT_DIM; i++) {
+            EXPECT_FALSE(std::isnan(samples[s]->embedding[i]));
+            EXPECT_FALSE(std::isinf(samples[s]->embedding[i]));
+        }
+
+        jepa_latent_destroy(samples[s]);
+    }
+
+    jepa_latent_destroy(context);
+}
+
+TEST_F(JepaPredictorTest, QMCSampleLatentNullInputs)
+{
+    // WHAT: Test NULL input handling
+    // WHY:  Should reject invalid inputs
+    // HOW:  Pass NULL values
+
+    jepa_latent_t* context = create_test_latent(TEST_INPUT_DIM);
+    jepa_latent_t* samples[5];
+
+    EXPECT_NE(jepa_predictor_qmc_sample_latent(nullptr, context, samples, 5, nullptr), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_qmc_sample_latent(predictor_, nullptr, samples, 5, nullptr), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_qmc_sample_latent(predictor_, context, nullptr, 5, nullptr), NIMCP_SUCCESS);
+    EXPECT_NE(jepa_predictor_qmc_sample_latent(predictor_, context, samples, 0, nullptr), NIMCP_SUCCESS);
+
+    jepa_latent_destroy(context);
+}
+
 }  // namespace

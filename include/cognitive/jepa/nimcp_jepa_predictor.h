@@ -657,6 +657,222 @@ float jepa_predictor_estimate_confidence_mc(
  */
 uint32_t* jepa_predictor_get_mc_seed(void);
 
+/* ============================================================================
+ * Quantum Monte Carlo Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Configuration for JEPA Quantum Monte Carlo
+ */
+typedef struct jepa_qmc_config {
+    uint32_t num_samples;           /**< Number of QMC samples */
+    uint32_t num_iterations;        /**< Annealing iterations */
+    float initial_temp;             /**< Initial temperature for annealing */
+    float final_temp;               /**< Final temperature for annealing */
+    float exploration_constant;     /**< UCB exploration parameter */
+    float quantum_strength;         /**< Tunneling probability [0,1] */
+    bool use_importance_sampling;   /**< Use importance sampling */
+    bool use_adaptive_proposal;     /**< Adapt proposal distribution */
+    uint32_t seed;                  /**< RNG seed (0 = time-based) */
+} jepa_qmc_config_t;
+
+/**
+ * @brief Statistics from JEPA QMC operations
+ */
+typedef struct jepa_qmc_stats {
+    uint32_t samples_taken;         /**< Total samples taken */
+    uint32_t tunneling_events;      /**< Quantum tunneling events */
+    float acceptance_rate;          /**< M-H acceptance rate */
+    float effective_sample_size;    /**< ESS for importance sampling */
+    float mean_energy;              /**< Mean energy in annealing */
+    float final_energy;             /**< Final energy after annealing */
+    float entropy_estimate;         /**< Estimated latent entropy */
+    float fidelity_estimate;        /**< Estimated state fidelity */
+    float computation_time_ms;      /**< Time spent in QMC */
+} jepa_qmc_stats_t;
+
+/**
+ * @brief Initialize default QMC configuration
+ *
+ * @param config Configuration to initialize
+ * @return NIMCP_SUCCESS on success
+ */
+int jepa_qmc_config_init(jepa_qmc_config_t* config);
+
+/**
+ * @brief Estimate latent space amplitude uncertainty via QMC
+ *
+ * WHAT: Quantum-inspired amplitude estimation for latent space
+ * WHY:  More accurate uncertainty estimation than standard MC
+ * HOW:  Use QMC importance sampling with amplitude weighting
+ *
+ * @param predictor JEPA predictor
+ * @param context Input context
+ * @param target_dim Target dimension for amplitude estimation
+ * @param config QMC configuration (NULL = defaults)
+ * @param amplitude Output amplitude estimate
+ * @param variance Output variance estimate
+ * @return NIMCP_SUCCESS on success
+ */
+int jepa_predictor_qmc_amplitude_estimate(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    uint32_t target_dim,
+    const jepa_qmc_config_t* config,
+    float* amplitude,
+    float* variance);
+
+/**
+ * @brief Optimize predictor weights via quantum annealing
+ *
+ * WHAT: Use adaptive quantum annealing for weight optimization
+ * WHY:  Can escape local minima better than gradient descent
+ * HOW:  Minimize prediction error with quantum tunneling transitions
+ *
+ * @param predictor JEPA predictor
+ * @param contexts Array of training contexts
+ * @param targets Array of training targets
+ * @param num_samples Number of training samples
+ * @param config QMC configuration (NULL = defaults)
+ * @param stats Output statistics (optional)
+ * @return NIMCP_SUCCESS on success
+ */
+int jepa_predictor_qmc_adaptive_anneal(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t** contexts,
+    const jepa_latent_t** targets,
+    uint32_t num_samples,
+    const jepa_qmc_config_t* config,
+    jepa_qmc_stats_t* stats);
+
+/**
+ * @brief Estimate Shannon entropy of latent space distribution
+ *
+ * WHAT: Estimate entropy of prediction distribution via QMC
+ * WHY:  Entropy measures uncertainty/diversity in latent space
+ * HOW:  Sample-based entropy estimation with stratification
+ *
+ * @param predictor JEPA predictor
+ * @param context Input context
+ * @param config QMC configuration (NULL = defaults)
+ * @param entropy Output entropy estimate
+ * @param std_error Output standard error
+ * @return NIMCP_SUCCESS on success
+ */
+int jepa_predictor_qmc_entropy(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    const jepa_qmc_config_t* config,
+    float* entropy,
+    float* std_error);
+
+/**
+ * @brief Compute fidelity between two latent states via QMC
+ *
+ * WHAT: Measure similarity between latent representations
+ * WHY:  Fidelity captures quantum-like overlap in latent space
+ * HOW:  Compute |<psi1|psi2>|^2 with normalization
+ *
+ * @param predictor JEPA predictor
+ * @param latent1 First latent state
+ * @param latent2 Second latent state
+ * @return Fidelity value [0,1]
+ */
+float jepa_predictor_qmc_fidelity(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* latent1,
+    const jepa_latent_t* latent2);
+
+/**
+ * @brief Sample from latent distribution via QMC
+ *
+ * WHAT: Generate samples from latent space distribution
+ * WHY:  Enable generative modeling and exploration
+ * HOW:  Use finite-shot QMC measurement simulation
+ *
+ * @param predictor JEPA predictor
+ * @param context Input context
+ * @param samples Output array of samples
+ * @param num_samples Number of samples to generate
+ * @param config QMC configuration (NULL = defaults)
+ * @return NIMCP_SUCCESS on success
+ */
+int jepa_predictor_qmc_sample_latent(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    jepa_latent_t** samples,
+    uint32_t num_samples,
+    const jepa_qmc_config_t* config);
+
+/**
+ * @brief Estimate prediction free energy via QMC
+ *
+ * WHAT: Estimate thermodynamic free energy of prediction
+ * WHY:  Free energy connects to FEP and belief optimization
+ * HOW:  Partition function estimation via MCMC
+ *
+ * @param predictor JEPA predictor
+ * @param context Input context
+ * @param target Target latent state
+ * @param temperature Thermodynamic temperature
+ * @param config QMC configuration (NULL = defaults)
+ * @param free_energy Output free energy estimate
+ * @return NIMCP_SUCCESS on success
+ */
+int jepa_predictor_qmc_free_energy(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    const jepa_latent_t* target,
+    float temperature,
+    const jepa_qmc_config_t* config,
+    float* free_energy);
+
+/**
+ * @brief Predict with QMC-enhanced uncertainty
+ *
+ * WHAT: Make prediction with quantum-enhanced uncertainty estimation
+ * WHY:  Better uncertainty quantification than standard MC
+ * HOW:  Combine amplitude estimation with entropy bounds
+ *
+ * @param predictor JEPA predictor
+ * @param context Input context
+ * @param prediction Output prediction (mean)
+ * @param uncertainty Output uncertainty per dimension
+ * @param config QMC configuration (NULL = defaults)
+ * @param stats Output statistics (optional)
+ * @return NIMCP_SUCCESS on success
+ */
+int jepa_predictor_predict_qmc(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    jepa_latent_t* prediction,
+    float* uncertainty,
+    const jepa_qmc_config_t* config,
+    jepa_qmc_stats_t* stats);
+
+/**
+ * @brief Run MCTS-guided latent space exploration
+ *
+ * WHAT: Use MCTS to explore latent space for optimal prediction
+ * WHY:  Structured exploration can find better predictions
+ * HOW:  MCTS with latent states as nodes, transformations as actions
+ *
+ * @param predictor JEPA predictor
+ * @param context Input context
+ * @param exploration_depth Maximum MCTS depth
+ * @param config QMC configuration (NULL = defaults)
+ * @param best_latent Output best latent state found
+ * @param value Output value of best state
+ * @return NIMCP_SUCCESS on success
+ */
+int jepa_predictor_qmc_mcts_explore(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    uint32_t exploration_depth,
+    const jepa_qmc_config_t* config,
+    jepa_latent_t* best_latent,
+    float* value);
+
 #ifdef __cplusplus
 }
 #endif

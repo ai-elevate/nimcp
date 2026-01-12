@@ -12,6 +12,8 @@
 #include "cognitive/jepa/nimcp_jepa_predictor.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/algorithms/nimcp_monte_carlo.h"
+#include "utils/quantum/nimcp_quantum_monte_carlo.h"
+#include "utils/time/nimcp_time.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -1316,4 +1318,835 @@ int jepa_predictor_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Quantum Monte Carlo Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Initialize default QMC configuration
+ */
+int jepa_qmc_config_init(jepa_qmc_config_t* config) {
+    if (!config) return NIMCP_ERROR_NULL_POINTER;
+
+    config->num_samples = QMC_DEFAULT_AMPLITUDE_SAMPLES;
+    config->num_iterations = 1000;
+    config->initial_temp = 10.0f;
+    config->final_temp = 0.01f;
+    config->exploration_constant = 1.414f;  /* sqrt(2) */
+    config->quantum_strength = 0.1f;
+    config->use_importance_sampling = true;
+    config->use_adaptive_proposal = true;
+    config->seed = 0;
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Energy function for QMC annealing (prediction error)
+ */
+typedef struct jepa_qmc_energy_ctx {
+    jepa_predictor_t* predictor;
+    const jepa_latent_t** contexts;
+    const jepa_latent_t** targets;
+    uint32_t num_samples;
+    uint32_t layer_idx;
+    uint32_t in_dim;
+    uint32_t out_dim;
+} jepa_qmc_energy_ctx_t;
+
+static float jepa_qmc_energy_fn(const float* state, uint32_t dim, void* user_data) {
+    jepa_qmc_energy_ctx_t* ctx = (jepa_qmc_energy_ctx_t*)user_data;
+    if (!ctx || !ctx->predictor) return FLT_MAX;
+
+    /* Temporarily apply weights from state */
+    jepa_mlp_t* mlp = &ctx->predictor->network.mlp;
+    if (ctx->layer_idx >= mlp->num_layers) return FLT_MAX;
+
+    jepa_mlp_layer_t* layer = &mlp->layers[ctx->layer_idx];
+    float* original_weights = nimcp_malloc(dim * sizeof(float));
+    if (!original_weights) return FLT_MAX;
+
+    /* Save and replace weights */
+    memcpy(original_weights, layer->weights, dim * sizeof(float));
+    memcpy(layer->weights, state, dim * sizeof(float));
+
+    /* Compute prediction error over all samples */
+    double total_loss = 0.0;
+    jepa_latent_t* pred = jepa_latent_create_dim(ctx->predictor->config.output_dim);
+    if (!pred) {
+        memcpy(layer->weights, original_weights, dim * sizeof(float));
+        nimcp_free(original_weights);
+        return FLT_MAX;
+    }
+
+    for (uint32_t i = 0; i < ctx->num_samples; i++) {
+        if (jepa_predictor_predict(ctx->predictor, ctx->contexts[i], pred) == NIMCP_SUCCESS) {
+            total_loss += jepa_predictor_compute_loss(ctx->predictor, pred, ctx->targets[i]);
+        }
+    }
+
+    /* Restore original weights */
+    memcpy(layer->weights, original_weights, dim * sizeof(float));
+    nimcp_free(original_weights);
+    jepa_latent_destroy(pred);
+
+    return (float)(total_loss / ctx->num_samples);
+}
+
+/**
+ * @brief Estimate latent space amplitude uncertainty via QMC
+ */
+int jepa_predictor_qmc_amplitude_estimate(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    uint32_t target_dim,
+    const jepa_qmc_config_t* config,
+    float* amplitude,
+    float* variance
+) {
+    if (!predictor || !context || !amplitude || !variance) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (target_dim >= predictor->config.output_dim) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Use default config if not provided */
+    jepa_qmc_config_t default_cfg;
+    if (!config) {
+        jepa_qmc_config_init(&default_cfg);
+        config = &default_cfg;
+    }
+
+    /* Make multiple predictions to build amplitude distribution */
+    uint32_t dim = predictor->config.output_dim;
+    float* amplitudes = nimcp_malloc(config->num_samples * sizeof(float));
+    if (!amplitudes) return NIMCP_ERROR_MEMORY;
+
+    jepa_latent_t* pred = jepa_latent_create_dim(dim);
+    if (!pred) {
+        nimcp_free(amplitudes);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    uint32_t seed = config->seed ? config->seed : mc_seed_from_time();
+
+    /* Collect amplitude samples */
+    for (uint32_t s = 0; s < config->num_samples; s++) {
+        if (jepa_predictor_predict(predictor, context, pred) == NIMCP_SUCCESS) {
+            /* Add exploration noise for sampling */
+            float noise = mc_random_normal(&seed, 0.0f, 0.01f);
+            amplitudes[s] = fabsf(pred->embedding[target_dim] + noise);
+        } else {
+            amplitudes[s] = 0.0f;
+        }
+    }
+
+    /* Use QMC amplitude estimation */
+    qmc_amplitude_config_t qmc_cfg = {
+        .num_samples = config->num_samples,
+        .use_importance = config->use_importance_sampling,
+        .proposal_dist = NULL,
+        .seed = seed
+    };
+
+    qmc_amplitude_result_t result;
+    qmc_result_t qmc_ret = qmc_estimate_amplitude(amplitudes, config->num_samples,
+                                                   0, &qmc_cfg, &result);
+
+    if (qmc_ret == QMC_OK) {
+        *amplitude = result.amplitude;
+        *variance = result.variance;
+    } else {
+        /* Fallback: compute directly */
+        double sum = 0.0, sum_sq = 0.0;
+        for (uint32_t i = 0; i < config->num_samples; i++) {
+            sum += amplitudes[i];
+            sum_sq += amplitudes[i] * amplitudes[i];
+        }
+        *amplitude = (float)(sum / config->num_samples);
+        *variance = (float)((sum_sq / config->num_samples) - (*amplitude * *amplitude));
+    }
+
+    nimcp_free(amplitudes);
+    jepa_latent_destroy(pred);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Optimize predictor weights via quantum annealing
+ */
+int jepa_predictor_qmc_adaptive_anneal(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t** contexts,
+    const jepa_latent_t** targets,
+    uint32_t num_samples,
+    const jepa_qmc_config_t* config,
+    jepa_qmc_stats_t* stats
+) {
+    if (!predictor || !contexts || !targets || num_samples == 0) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (predictor->type != JEPA_PREDICTOR_MLP && predictor->type != JEPA_PREDICTOR_LINEAR) {
+        return NIMCP_ERROR_NOT_IMPLEMENTED;
+    }
+
+    /* Use default config if not provided */
+    jepa_qmc_config_t default_cfg;
+    if (!config) {
+        jepa_qmc_config_init(&default_cfg);
+        config = &default_cfg;
+    }
+
+    uint64_t start_time = nimcp_time_monotonic_ms();
+
+    jepa_mlp_t* mlp = &predictor->network.mlp;
+    uint32_t total_tunneling = 0;
+    float total_acceptance = 0.0f;
+    float best_energy = FLT_MAX;
+
+    /* Anneal each layer */
+    for (uint32_t l = 0; l < mlp->num_layers; l++) {
+        jepa_mlp_layer_t* layer = &mlp->layers[l];
+        uint32_t dim = layer->in_dim * layer->out_dim;
+
+        /* Setup energy context */
+        jepa_qmc_energy_ctx_t energy_ctx = {
+            .predictor = predictor,
+            .contexts = contexts,
+            .targets = targets,
+            .num_samples = num_samples,
+            .layer_idx = l,
+            .in_dim = layer->in_dim,
+            .out_dim = layer->out_dim
+        };
+
+        /* Configure annealing */
+        qmc_anneal_config_t anneal_cfg = {
+            .initial_temp = config->initial_temp,
+            .final_temp = config->final_temp,
+            .num_iterations = config->num_iterations,
+            .quantum_strength = config->quantum_strength,
+            .strategy = config->use_adaptive_proposal ? QMC_PROPOSAL_ADAPTIVE : QMC_PROPOSAL_FIXED,
+            .target_acceptance = QMC_TARGET_ACCEPTANCE_RATE,
+            .adaptation_interval = 100,
+            .seed = config->seed ? config->seed : mc_seed_from_time()
+        };
+
+        qmc_anneal_result_t anneal_result;
+        qmc_result_t qmc_ret = qmc_adaptive_anneal(
+            jepa_qmc_energy_fn,
+            layer->weights,
+            dim,
+            &anneal_cfg,
+            &energy_ctx,
+            &anneal_result
+        );
+
+        if (qmc_ret == QMC_OK) {
+            /* Apply optimized weights */
+            memcpy(layer->weights, anneal_result.best_state, dim * sizeof(float));
+
+            total_tunneling += anneal_result.tunneling_events;
+            total_acceptance += anneal_result.acceptance_rate;
+            if (anneal_result.final_energy < best_energy) {
+                best_energy = anneal_result.final_energy;
+            }
+
+            qmc_anneal_result_free(&anneal_result);
+        }
+    }
+
+    /* Record statistics */
+    if (stats) {
+        stats->samples_taken = config->num_iterations * mlp->num_layers;
+        stats->tunneling_events = total_tunneling;
+        stats->acceptance_rate = total_acceptance / mlp->num_layers;
+        stats->final_energy = best_energy;
+        stats->computation_time_ms = (float)(nimcp_time_monotonic_ms() - start_time);
+    }
+
+    predictor->stats.updates_applied++;
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Estimate Shannon entropy of latent space distribution
+ */
+int jepa_predictor_qmc_entropy(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    const jepa_qmc_config_t* config,
+    float* entropy,
+    float* std_error
+) {
+    if (!predictor || !context || !entropy) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    /* Use default config if not provided */
+    jepa_qmc_config_t default_cfg;
+    if (!config) {
+        jepa_qmc_config_init(&default_cfg);
+        config = &default_cfg;
+    }
+
+    uint32_t dim = predictor->config.output_dim;
+
+    /* Make prediction and convert to probabilities */
+    jepa_latent_t* pred = jepa_latent_create_dim(dim);
+    if (!pred) return NIMCP_ERROR_MEMORY;
+
+    if (jepa_predictor_predict(predictor, context, pred) != NIMCP_SUCCESS) {
+        jepa_latent_destroy(pred);
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* Convert embeddings to positive values and normalize to probabilities */
+    float* probs = nimcp_malloc(dim * sizeof(float));
+    if (!probs) {
+        jepa_latent_destroy(pred);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    /* Apply softmax to get probability distribution */
+    float max_val = -FLT_MAX;
+    for (uint32_t i = 0; i < dim; i++) {
+        if (pred->embedding[i] > max_val) max_val = pred->embedding[i];
+    }
+
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < dim; i++) {
+        probs[i] = expf(pred->embedding[i] - max_val);
+        sum += probs[i];
+    }
+    for (uint32_t i = 0; i < dim; i++) {
+        probs[i] /= sum;
+    }
+
+    /* Use QMC entropy estimation */
+    qmc_entropy_config_t entropy_cfg = {
+        .num_samples = config->num_samples,
+        .use_stratified = true,
+        .num_strata = 10,
+        .seed = config->seed ? config->seed : mc_seed_from_time()
+    };
+
+    qmc_entropy_result_t entropy_result;
+    qmc_result_t qmc_ret = qmc_estimate_entropy(probs, dim, &entropy_cfg, &entropy_result);
+
+    if (qmc_ret == QMC_OK) {
+        *entropy = entropy_result.shannon_entropy;
+        if (std_error) *std_error = entropy_result.std_error;
+    } else {
+        /* Fallback: compute directly */
+        *entropy = 0.0f;
+        for (uint32_t i = 0; i < dim; i++) {
+            if (probs[i] > 1e-10f) {
+                *entropy -= probs[i] * logf(probs[i]);
+            }
+        }
+        if (std_error) *std_error = 0.0f;
+    }
+
+    nimcp_free(probs);
+    jepa_latent_destroy(pred);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Compute fidelity between two latent states via QMC
+ */
+float jepa_predictor_qmc_fidelity(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* latent1,
+    const jepa_latent_t* latent2
+) {
+    if (!predictor || !latent1 || !latent2) return 0.0f;
+
+    if (latent1->latent_dim != latent2->latent_dim) return 0.0f;
+
+    uint32_t dim = latent1->latent_dim;
+
+    /* Normalize embeddings as amplitudes */
+    float* amp1 = nimcp_malloc(dim * sizeof(float));
+    float* amp2 = nimcp_malloc(dim * sizeof(float));
+    if (!amp1 || !amp2) {
+        nimcp_free(amp1);
+        nimcp_free(amp2);
+        return 0.0f;
+    }
+
+    /* Compute L2 norms */
+    float norm1 = 0.0f, norm2 = 0.0f;
+    for (uint32_t i = 0; i < dim; i++) {
+        norm1 += latent1->embedding[i] * latent1->embedding[i];
+        norm2 += latent2->embedding[i] * latent2->embedding[i];
+    }
+    norm1 = sqrtf(norm1 + 1e-8f);
+    norm2 = sqrtf(norm2 + 1e-8f);
+
+    /* Normalize */
+    for (uint32_t i = 0; i < dim; i++) {
+        amp1[i] = latent1->embedding[i] / norm1;
+        amp2[i] = latent2->embedding[i] / norm2;
+    }
+
+    /* Use QMC fidelity computation */
+    float fidelity = qmc_fidelity(amp1, amp2, dim);
+
+    nimcp_free(amp1);
+    nimcp_free(amp2);
+
+    return fidelity;
+}
+
+/**
+ * @brief Sample from latent distribution via QMC
+ */
+int jepa_predictor_qmc_sample_latent(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    jepa_latent_t** samples,
+    uint32_t num_samples,
+    const jepa_qmc_config_t* config
+) {
+    if (!predictor || !context || !samples || num_samples == 0) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    /* Use default config if not provided */
+    jepa_qmc_config_t default_cfg;
+    if (!config) {
+        jepa_qmc_config_init(&default_cfg);
+        config = &default_cfg;
+    }
+
+    uint32_t dim = predictor->config.output_dim;
+    uint32_t seed = config->seed ? config->seed : mc_seed_from_time();
+
+    /* Get base prediction */
+    jepa_latent_t* base = jepa_latent_create_dim(dim);
+    if (!base) return NIMCP_ERROR_MEMORY;
+
+    if (jepa_predictor_predict(predictor, context, base) != NIMCP_SUCCESS) {
+        jepa_latent_destroy(base);
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* Create probability distribution from base prediction */
+    float* probs = nimcp_malloc(dim * sizeof(float));
+    if (!probs) {
+        jepa_latent_destroy(base);
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    /* Softmax to get probabilities */
+    float max_val = -FLT_MAX;
+    for (uint32_t i = 0; i < dim; i++) {
+        if (base->embedding[i] > max_val) max_val = base->embedding[i];
+    }
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < dim; i++) {
+        probs[i] = expf(base->embedding[i] - max_val);
+        sum += probs[i];
+    }
+    for (uint32_t i = 0; i < dim; i++) {
+        probs[i] /= sum;
+    }
+
+    /* Use QMC finite shots measurement */
+    qmc_measurement_config_t meas_cfg = {
+        .num_shots = num_samples,
+        .compute_uncertainty = true,
+        .seed = seed
+    };
+
+    qmc_measurement_result_t meas_result;
+    qmc_result_t qmc_ret = qmc_finite_shots(probs, dim, &meas_cfg, &meas_result);
+
+    if (qmc_ret != QMC_OK) {
+        nimcp_free(probs);
+        jepa_latent_destroy(base);
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* Generate samples based on measurement results */
+    for (uint32_t s = 0; s < num_samples; s++) {
+        samples[s] = jepa_latent_create_dim(dim);
+        if (!samples[s]) {
+            for (uint32_t j = 0; j < s; j++) {
+                jepa_latent_destroy(samples[j]);
+            }
+            qmc_measurement_result_free(&meas_result);
+            nimcp_free(probs);
+            jepa_latent_destroy(base);
+            return NIMCP_ERROR_MEMORY;
+        }
+
+        /* Initialize with base prediction and add noise based on uncertainty */
+        for (uint32_t i = 0; i < dim; i++) {
+            float noise_scale = meas_result.uncertainties ? meas_result.uncertainties[i] : 0.1f;
+            float noise = mc_random_normal(&seed, 0.0f, noise_scale);
+            samples[s]->embedding[i] = base->embedding[i] + noise;
+        }
+        samples[s]->modality = base->modality;
+        samples[s]->is_normalized = false;
+    }
+
+    qmc_measurement_result_free(&meas_result);
+    nimcp_free(probs);
+    jepa_latent_destroy(base);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Estimate prediction free energy via QMC
+ */
+int jepa_predictor_qmc_free_energy(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    const jepa_latent_t* target,
+    float temperature,
+    const jepa_qmc_config_t* config,
+    float* free_energy
+) {
+    if (!predictor || !context || !target || !free_energy) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (temperature <= 0.0f) temperature = 1.0f;
+
+    /* Use default config if not provided */
+    jepa_qmc_config_t default_cfg;
+    if (!config) {
+        jepa_qmc_config_init(&default_cfg);
+        config = &default_cfg;
+    }
+
+    uint32_t dim = predictor->config.output_dim;
+
+    /* Make prediction */
+    jepa_latent_t* pred = jepa_latent_create_dim(dim);
+    if (!pred) return NIMCP_ERROR_MEMORY;
+
+    if (jepa_predictor_predict(predictor, context, pred) != NIMCP_SUCCESS) {
+        jepa_latent_destroy(pred);
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* Compute energy (prediction error) */
+    float energy = jepa_predictor_compute_loss(predictor, pred, target);
+
+    /* Estimate entropy term */
+    float entropy, entropy_err;
+    int ret = jepa_predictor_qmc_entropy(predictor, context, config, &entropy, &entropy_err);
+
+    if (ret == NIMCP_SUCCESS) {
+        /* F = E - T*S */
+        *free_energy = energy - temperature * entropy;
+    } else {
+        /* Fallback: just use energy */
+        *free_energy = energy;
+    }
+
+    jepa_latent_destroy(pred);
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Predict with QMC-enhanced uncertainty
+ */
+int jepa_predictor_predict_qmc(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    jepa_latent_t* prediction,
+    float* uncertainty,
+    const jepa_qmc_config_t* config,
+    jepa_qmc_stats_t* stats
+) {
+    if (!predictor || !context || !prediction || !uncertainty) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    /* Use default config if not provided */
+    jepa_qmc_config_t default_cfg;
+    if (!config) {
+        jepa_qmc_config_init(&default_cfg);
+        config = &default_cfg;
+    }
+
+    uint64_t start_time = nimcp_time_monotonic_ms();
+    uint32_t dim = predictor->config.output_dim;
+
+    /* Base prediction */
+    int ret = jepa_predictor_predict(predictor, context, prediction);
+    if (ret != NIMCP_SUCCESS) return ret;
+
+    /* Estimate uncertainty per dimension using QMC amplitude estimation */
+    float total_variance = 0.0f;
+    for (uint32_t d = 0; d < dim; d++) {
+        float amp, var;
+        ret = jepa_predictor_qmc_amplitude_estimate(predictor, context, d, config, &amp, &var);
+        if (ret == NIMCP_SUCCESS) {
+            uncertainty[d] = sqrtf(var);
+            total_variance += var;
+        } else {
+            uncertainty[d] = 1.0f / sqrtf(predictor->prediction_precision + 1e-6f);
+        }
+    }
+
+    /* Compute entropy for stats */
+    float entropy = 0.0f, entropy_err = 0.0f;
+    jepa_predictor_qmc_entropy(predictor, context, config, &entropy, &entropy_err);
+
+    /* Record statistics */
+    if (stats) {
+        stats->samples_taken = config->num_samples * dim;
+        stats->entropy_estimate = entropy;
+        stats->computation_time_ms = (float)(nimcp_time_monotonic_ms() - start_time);
+        stats->tunneling_events = 0;
+        stats->acceptance_rate = 1.0f;
+        stats->effective_sample_size = (float)config->num_samples;
+        stats->mean_energy = total_variance / dim;
+        stats->final_energy = total_variance / dim;
+    }
+
+    predictor->stats.predictions_made++;
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Simplified MCTS-like latent space exploration node
+ */
+typedef struct jepa_mcts_node {
+    float* embedding;
+    uint32_t dim;
+    float value;
+    uint32_t visit_count;
+    struct jepa_mcts_node* parent;
+    struct jepa_mcts_node** children;
+    uint32_t num_children;
+    uint32_t depth;
+} jepa_mcts_node_t;
+
+/**
+ * @brief Create an MCTS node
+ */
+static jepa_mcts_node_t* jepa_mcts_node_create(uint32_t dim) {
+    jepa_mcts_node_t* node = nimcp_malloc(sizeof(jepa_mcts_node_t));
+    if (!node) return NULL;
+
+    node->embedding = nimcp_malloc(dim * sizeof(float));
+    if (!node->embedding) {
+        nimcp_free(node);
+        return NULL;
+    }
+
+    node->dim = dim;
+    node->value = 0.0f;
+    node->visit_count = 0;
+    node->parent = NULL;
+    node->children = NULL;
+    node->num_children = 0;
+    node->depth = 0;
+
+    return node;
+}
+
+/**
+ * @brief Destroy an MCTS node and all children
+ */
+static void jepa_mcts_node_destroy(jepa_mcts_node_t* node) {
+    if (!node) return;
+
+    for (uint32_t i = 0; i < node->num_children; i++) {
+        jepa_mcts_node_destroy(node->children[i]);
+    }
+
+    nimcp_free(node->children);
+    nimcp_free(node->embedding);
+    nimcp_free(node);
+}
+
+/**
+ * @brief UCB1 selection for MCTS
+ */
+static float jepa_mcts_ucb1(jepa_mcts_node_t* node, float exploration_c) {
+    if (node->visit_count == 0) return FLT_MAX;
+
+    float exploit = node->value / (float)node->visit_count;
+    float explore = exploration_c * sqrtf(logf((float)node->parent->visit_count + 1) /
+                                          (float)node->visit_count);
+    return exploit + explore;
+}
+
+/**
+ * @brief Run MCTS-guided latent space exploration
+ */
+int jepa_predictor_qmc_mcts_explore(
+    jepa_predictor_t* predictor,
+    const jepa_latent_t* context,
+    uint32_t exploration_depth,
+    const jepa_qmc_config_t* config,
+    jepa_latent_t* best_latent,
+    float* value
+) {
+    if (!predictor || !context || !best_latent || !value) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    /* Use default config if not provided */
+    jepa_qmc_config_t default_cfg;
+    if (!config) {
+        jepa_qmc_config_init(&default_cfg);
+        config = &default_cfg;
+    }
+
+    uint32_t dim = predictor->config.output_dim;
+    uint32_t max_depth = exploration_depth > 0 ? exploration_depth : 10;
+    uint32_t max_iterations = config->num_iterations > 0 ? config->num_iterations : 100;
+    float exploration_c = config->exploration_constant;
+    uint32_t seed = config->seed ? config->seed : mc_seed_from_time();
+
+    /* Create initial state from prediction */
+    jepa_latent_t* pred = jepa_latent_create_dim(dim);
+    if (!pred) return NIMCP_ERROR_MEMORY;
+
+    if (jepa_predictor_predict(predictor, context, pred) != NIMCP_SUCCESS) {
+        jepa_latent_destroy(pred);
+        return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* Create root node */
+    jepa_mcts_node_t* root = jepa_mcts_node_create(dim);
+    if (!root) {
+        jepa_latent_destroy(pred);
+        return NIMCP_ERROR_MEMORY;
+    }
+    memcpy(root->embedding, pred->embedding, dim * sizeof(float));
+    root->value = jepa_predictor_qmc_fidelity(predictor, context, pred);
+    root->visit_count = 1;
+
+    /* Best node tracking */
+    jepa_mcts_node_t* best_node = root;
+    float best_value = root->value;
+
+    /* MCTS main loop */
+    for (uint32_t iter = 0; iter < max_iterations; iter++) {
+        /* Selection: traverse tree using UCB1 */
+        jepa_mcts_node_t* current = root;
+        while (current->num_children > 0 && current->depth < max_depth) {
+            /* Select best child by UCB1 */
+            float best_ucb = -FLT_MAX;
+            jepa_mcts_node_t* best_child = NULL;
+            for (uint32_t c = 0; c < current->num_children; c++) {
+                float ucb = jepa_mcts_ucb1(current->children[c], exploration_c);
+                if (ucb > best_ucb) {
+                    best_ucb = ucb;
+                    best_child = current->children[c];
+                }
+            }
+            if (best_child) current = best_child;
+            else break;
+        }
+
+        /* Expansion: add a new child if not terminal */
+        if (current->depth < max_depth) {
+            /* Create new child with random perturbation */
+            jepa_mcts_node_t* child = jepa_mcts_node_create(dim);
+            if (child) {
+                memcpy(child->embedding, current->embedding, dim * sizeof(float));
+
+                /* Random perturbation */
+                uint32_t perturb_dim = seed % dim;
+                seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+                float noise = mc_random_normal(&seed, 0.0f, 0.1f);
+                child->embedding[perturb_dim] += noise;
+
+                /* Evaluate */
+                jepa_latent_t temp;
+                temp.embedding = child->embedding;
+                temp.latent_dim = dim;
+                temp.modality = JEPA_MODALITY_UNKNOWN;
+                temp.is_normalized = false;
+                child->value = jepa_predictor_qmc_fidelity(predictor, context, &temp);
+                child->visit_count = 1;
+                child->parent = current;
+                child->depth = current->depth + 1;
+
+                /* Add to parent's children */
+                jepa_mcts_node_t** new_children = nimcp_realloc(current->children,
+                    (current->num_children + 1) * sizeof(jepa_mcts_node_t*));
+                if (new_children) {
+                    current->children = new_children;
+                    current->children[current->num_children] = child;
+                    current->num_children++;
+                    current = child;
+                } else {
+                    jepa_mcts_node_destroy(child);
+                }
+            }
+        }
+
+        /* Simulation: rollout with random moves */
+        float rollout_value = current->value;
+        float* rollout_state = nimcp_malloc(dim * sizeof(float));
+        if (rollout_state) {
+            memcpy(rollout_state, current->embedding, dim * sizeof(float));
+            for (uint32_t d = current->depth; d < max_depth; d++) {
+                uint32_t perturb_dim = seed % dim;
+                seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+                float noise = mc_random_normal(&seed, 0.0f, 0.1f);
+                rollout_state[perturb_dim] += noise;
+            }
+            jepa_latent_t temp;
+            temp.embedding = rollout_state;
+            temp.latent_dim = dim;
+            temp.modality = JEPA_MODALITY_UNKNOWN;
+            temp.is_normalized = false;
+            rollout_value = jepa_predictor_qmc_fidelity(predictor, context, &temp);
+            nimcp_free(rollout_state);
+        }
+
+        /* Backpropagation */
+        jepa_mcts_node_t* backprop = current;
+        while (backprop) {
+            backprop->visit_count++;
+            backprop->value += rollout_value;
+            backprop = backprop->parent;
+        }
+
+        /* Track best */
+        float avg_value = current->visit_count > 0 ?
+            current->value / (float)current->visit_count : 0.0f;
+        if (avg_value > best_value) {
+            best_value = avg_value;
+            best_node = current;
+        }
+    }
+
+    /* Copy best result */
+    memcpy(best_latent->embedding, best_node->embedding, dim * sizeof(float));
+    *value = best_value;
+
+    best_latent->latent_dim = dim;
+    best_latent->modality = context->modality;
+    best_latent->is_normalized = false;
+
+    /* Cleanup */
+    jepa_mcts_node_destroy(root);
+    jepa_latent_destroy(pred);
+
+    return NIMCP_SUCCESS;
 }
