@@ -145,7 +145,7 @@ typedef struct {
  * @brief Mechanoreceptor response
  */
 typedef struct {
-    receptor_type_t type;
+    soma_receptor_type_t type;
     float response_amplitude;
     float adaptation_state;
     float frequency_tuning;     /* Optimal frequency */
@@ -321,7 +321,7 @@ int tactile_detect_slip(tactile_ctx_t* ctx,
 /**
  * @brief Simulate mechanoreceptor response
  */
-int tactile_simulate_receptor(receptor_type_t type,
+int tactile_simulate_receptor(soma_receptor_type_t type,
                               float stimulus_intensity,
                               float stimulus_velocity,
                               float stimulus_frequency,

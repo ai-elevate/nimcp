@@ -118,19 +118,22 @@ typedef enum {
 } soma_area_t;
 
 /**
- * @brief Receptor types in skin
+ * @brief Receptor types in skin (somatosensory)
+ *
+ * Note: Named soma_receptor_type_t to avoid conflict with neuromodulator
+ * receptor_type_t which represents neurotransmitter receptor subtypes.
  */
 typedef enum {
-    RECEPTOR_MEISSNER = 0,  /* Light touch, rapid adaptation */
-    RECEPTOR_MERKEL,        /* Pressure, slow adaptation */
-    RECEPTOR_PACINIAN,      /* Vibration, very rapid */
-    RECEPTOR_RUFFINI,       /* Stretch, slow adaptation */
-    RECEPTOR_FREE_NERVE,    /* Pain, temperature */
-    RECEPTOR_MUSCLE_SPINDLE,/* Muscle length (proprioception) */
-    RECEPTOR_GOLGI_TENDON,  /* Muscle tension */
-    RECEPTOR_JOINT,         /* Joint position */
-    RECEPTOR_TYPE_COUNT
-} receptor_type_t;
+    SOMA_RECEPTOR_MEISSNER = 0,  /* Light touch, rapid adaptation */
+    SOMA_RECEPTOR_MERKEL,        /* Pressure, slow adaptation */
+    SOMA_RECEPTOR_PACINIAN,      /* Vibration, very rapid */
+    SOMA_RECEPTOR_RUFFINI,       /* Stretch, slow adaptation */
+    SOMA_RECEPTOR_FREE_NERVE,    /* Pain, temperature */
+    SOMA_RECEPTOR_MUSCLE_SPINDLE,/* Muscle length (proprioception) */
+    SOMA_RECEPTOR_GOLGI_TENDON,  /* Muscle tension */
+    SOMA_RECEPTOR_JOINT,         /* Joint position */
+    SOMA_RECEPTOR_TYPE_COUNT
+} soma_receptor_type_t;
 
 /**
  * @brief Body segment identifiers for somatotopic map
@@ -230,7 +233,7 @@ typedef enum {
  */
 typedef struct {
     uint32_t receptor_id;
-    receptor_type_t type;
+    soma_receptor_type_t type;
     body_segment_t segment;
     float position[3];          /* Position on body surface */
     float receptive_field_size; /* In mm^2 */
@@ -1079,7 +1082,7 @@ nimcp_somatosensory_t* soma_deserialize(const uint8_t* buffer, size_t size, size
  *===========================================================================*/
 
 const char* soma_segment_name(body_segment_t segment);
-const char* soma_receptor_type_name(receptor_type_t type);
+const char* soma_receptor_type_name(soma_receptor_type_t type);
 const char* soma_area_name(soma_area_t area);
 const char* soma_pain_type_name(pain_type_t type);
 

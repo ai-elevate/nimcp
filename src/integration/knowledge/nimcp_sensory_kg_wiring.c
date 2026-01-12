@@ -285,7 +285,7 @@ int sensory_kg_register_body_region(sensory_kg_wiring_t* wiring, const char* nam
 }
 
 int sensory_kg_register_mechanoreceptor(sensory_kg_wiring_t* wiring, const char* name,
-                                        receptor_type_t type, uint32_t* node_id) {
+                                        soma_receptor_type_t type, uint32_t* node_id) {
     if (!wiring || !name || !node_id) return -1;
 
     char desc[256];

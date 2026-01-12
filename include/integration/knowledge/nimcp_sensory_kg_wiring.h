@@ -293,7 +293,7 @@ void sensory_kg_wiring_destroy(sensory_kg_wiring_t* wiring);
 
 int sensory_kg_register_somatosensory(sensory_kg_wiring_t* wiring, nimcp_somatosensory_t* soma);
 int sensory_kg_register_body_region(sensory_kg_wiring_t* wiring, const char* name, body_segment_t region, uint32_t* node_id);
-int sensory_kg_register_mechanoreceptor(sensory_kg_wiring_t* wiring, const char* name, receptor_type_t type, uint32_t* node_id);
+int sensory_kg_register_mechanoreceptor(sensory_kg_wiring_t* wiring, const char* name, soma_receptor_type_t type, uint32_t* node_id);
 int sensory_kg_register_touch_pathway(sensory_kg_wiring_t* wiring, uint32_t source_id, uint32_t target_id);
 
 /* ============================================================================

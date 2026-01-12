@@ -692,6 +692,33 @@ struct brain_struct {
     struct plasticity_coordinator* plasticity_coordinator;  // Plasticity mechanism coordination
     bool plasticity_coordinator_enabled;                    // Plasticity coordinator enabled
 
+    // === PLASTICITY BRIDGES (Phase 7: Cognitive Substrate Integration) ===
+    //
+    // These bridges connect plasticity mechanisms with higher-level cognitive systems:
+    // - STDP-Omni: Bidirectional integration between STDP and omnidirectional inference
+    // - STDP-PR: Connects STDP with Prime Resonant memory (consolidation-weighted learning)
+    // - Eligibility-PR: Bridges eligibility traces with PR memory (tag-and-capture)
+    // - STDP-Quantum: Quantum-inspired optimization of STDP learning rates
+    //
+    // BIOLOGICAL BASIS:
+    // - STDP provides Hebbian learning at synaptic level
+    // - Omnidirectional inference (JEPA/Hopfield) provides predictive coding
+    // - PR memory provides multi-tier consolidation (working→permanent)
+    // - Eligibility traces enable three-factor learning (pre×post×reward)
+    // - Quantum annealing escapes local minima in learning rate optimization
+    //
+    struct stdp_omni_bridge* stdp_omni_bridge;               // STDP-Omnidirectional bridge
+    bool stdp_omni_bridge_enabled;                           // STDP-Omni bridge enabled
+
+    struct stdp_pr_bridge* stdp_pr_bridge;                   // STDP-Prime Resonant bridge
+    bool stdp_pr_bridge_enabled;                             // STDP-PR bridge enabled
+
+    struct elig_pr_bridge_struct* eligibility_pr_bridge;     // Eligibility-PR bridge
+    bool eligibility_pr_bridge_enabled;                      // Eligibility-PR bridge enabled
+
+    struct stdp_quantum_bridge* stdp_quantum_bridge;         // STDP-Quantum optimization bridge
+    bool stdp_quantum_bridge_enabled;                        // STDP-Quantum bridge enabled
+
     struct immune_bridge_coordinator* immune_bridge_coordinator;  // Immune bridge coordination
     bool immune_bridge_coordinator_enabled;                       // Immune bridge coordinator enabled
 
@@ -1250,6 +1277,72 @@ struct brain_struct {
     struct parietal_quantum_bridge* parietal_cortex_quantum_bridge;      // Quantum-accelerated spatial
     bool parietal_cortex_enabled;                                     // Parietal cortex enabled for this brain
     uint64_t last_parietal_cortex_update_us;                          // Last parietal cortex update timestamp
+
+    // =========================================================================
+    // PHASE 6 SENSORY MODULES (Somatosensory, Olfactory, Gustatory)
+    // =========================================================================
+    // These modules implement the three remaining sensory modalities:
+    //
+    // SOMATOSENSORY CORTEX (BR-9): Touch, proprioception, temperature, pain
+    // - Area 3a: Proprioception (muscle spindles, joint receptors)
+    // - Area 3b: Fine touch (Meissner, Merkel receptors)
+    // - Area 1: Texture processing
+    // - Area 2: Size/shape integration
+    // - S2: Secondary somatosensory (bilateral integration)
+    // - Somatotopic body map (homunculus)
+    //
+    // Integrates with:
+    // - Thalamus VPL/VPM nuclei for relay
+    // - Motor cortex for sensorimotor integration
+    // - Parietal cortex for body awareness
+    // - Hypothalamus for temperature regulation
+    // - Pain pathway (spinothalamic)
+    //
+    struct nimcp_somatosensory_s* somatosensory;                      // Somatosensory cortex (S1/S2)
+    struct soma_substrate_bridge* somatosensory_substrate_bridge;     // Substrate metabolic integration
+    struct soma_thalamic_bridge* somatosensory_thalamic_bridge;       // Thalamic VPL/VPM routing
+    bool somatosensory_enabled;                                       // Somatosensory enabled for this brain
+    uint64_t last_somatosensory_update_us;                            // Last somatosensory update timestamp
+
+    // =========================================================================
+    // OLFACTORY CORTEX (BR-10): Smell processing
+    // - Olfactory bulb (glomeruli, mitral cells)
+    // - Piriform cortex (primary olfactory)
+    // - Orbitofrontal cortex (odor identity)
+    // - ~400 odorant receptor types
+    // - Combinatorial odor coding
+    // - Direct cortical access (bypasses thalamus)
+    //
+    // Integrates with:
+    // - Amygdala: Emotional associations (Proustian memory)
+    // - Hippocampus: Episodic memory encoding
+    // - Gustatory cortex: Flavor perception
+    // - Hypothalamus: Food seeking, pheromones
+    //
+    struct nimcp_olfactory_s* olfactory;                              // Olfactory/piriform cortex
+    struct olfact_substrate_bridge* olfactory_substrate_bridge;       // Substrate metabolic integration
+    bool olfactory_enabled;                                           // Olfactory enabled for this brain
+    uint64_t last_olfactory_update_us;                                // Last olfactory update timestamp
+
+    // =========================================================================
+    // GUSTATORY CORTEX (BR-11): Taste processing
+    // - Five basic tastes: sweet, salty, sour, bitter, umami
+    // - Insular cortex (primary gustatory)
+    // - Orbitofrontal cortex (flavor identity)
+    // - Taste-reward integration
+    // - Disgust response pathway
+    //
+    // Integrates with:
+    // - Olfactory cortex: Flavor perception
+    // - Hypothalamus: Appetite, satiety
+    // - Amygdala: Food preferences
+    // - Nucleus accumbens: Reward processing
+    // - Brainstem: Gag reflex, salivation
+    //
+    struct nimcp_gustatory_s* gustatory;                              // Gustatory/insular cortex
+    struct gust_substrate_bridge* gustatory_substrate_bridge;         // Substrate metabolic integration
+    bool gustatory_enabled;                                           // Gustatory enabled for this brain
+    uint64_t last_gustatory_update_us;                                // Last gustatory update timestamp
 
     // =========================================================================
     // GPU CONTEXT INTEGRATION (CUDA Kernel Acceleration)

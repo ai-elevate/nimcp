@@ -1231,16 +1231,16 @@ const char* soma_segment_name(body_segment_t segment) {
     return names[segment];
 }
 
-const char* soma_receptor_type_name(receptor_type_t type) {
+const char* soma_receptor_type_name(soma_receptor_type_t type) {
     switch (type) {
-        case RECEPTOR_MEISSNER: return "Meissner (light touch)";
-        case RECEPTOR_MERKEL: return "Merkel (pressure)";
-        case RECEPTOR_PACINIAN: return "Pacinian (vibration)";
-        case RECEPTOR_RUFFINI: return "Ruffini (stretch)";
-        case RECEPTOR_FREE_NERVE: return "Free nerve (pain/temp)";
-        case RECEPTOR_MUSCLE_SPINDLE: return "Muscle spindle";
-        case RECEPTOR_GOLGI_TENDON: return "Golgi tendon organ";
-        case RECEPTOR_JOINT: return "Joint receptor";
+        case SOMA_RECEPTOR_MEISSNER: return "Meissner (light touch)";
+        case SOMA_RECEPTOR_MERKEL: return "Merkel (pressure)";
+        case SOMA_RECEPTOR_PACINIAN: return "Pacinian (vibration)";
+        case SOMA_RECEPTOR_RUFFINI: return "Ruffini (stretch)";
+        case SOMA_RECEPTOR_FREE_NERVE: return "Free nerve (pain/temp)";
+        case SOMA_RECEPTOR_MUSCLE_SPINDLE: return "Muscle spindle";
+        case SOMA_RECEPTOR_GOLGI_TENDON: return "Golgi tendon organ";
+        case SOMA_RECEPTOR_JOINT: return "Joint receptor";
         default: return "Unknown";
     }
 }

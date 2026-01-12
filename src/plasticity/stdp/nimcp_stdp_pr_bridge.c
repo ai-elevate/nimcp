@@ -7,7 +7,7 @@
 
 #include "plasticity/stdp/nimcp_stdp_pr_bridge.h"
 #include "utils/memory/nimcp_memory.h"
-#include "utils/thread/nimcp_mutex.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -24,7 +24,8 @@ struct stdp_pr_bridge_struct {
     stdp_pr_bridge_config_t config;
     stdp_pr_bridge_state_t state;
     stdp_pr_bridge_stats_t stats;
-    nimcp_mutex_t* mutex;
+    nimcp_platform_mutex_t mutex;
+    bool mutex_initialized;
     bool initialized;
 };
 
@@ -125,11 +126,11 @@ stdp_pr_bridge_t stdp_pr_bridge_create(const stdp_pr_bridge_config_t* config) {
         bridge->config = stdp_pr_bridge_default_config();
     }
 
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (nimcp_platform_mutex_init(&bridge->mutex, false) != 0) {
         nimcp_free(bridge);
         return NULL;
     }
+    bridge->mutex_initialized = true;
 
     /* Initialize state */
     bridge->state.current_resonance = 0.5f;
@@ -149,8 +150,8 @@ stdp_pr_bridge_t stdp_pr_bridge_create(const stdp_pr_bridge_config_t* config) {
 void stdp_pr_bridge_destroy(stdp_pr_bridge_t bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex_initialized) {
+        nimcp_platform_mutex_destroy(&bridge->mutex);
     }
     nimcp_free(bridge);
 }
@@ -171,7 +172,7 @@ int stdp_pr_notify_ltp(stdp_pr_bridge_t bridge,
     if (!bridge || !bridge->initialized) return -1;
     if (weight_change <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
 
     /* Compute entanglement increase */
     float entangle_delta = weight_change * bridge->config.ltp_entangle_gain;
@@ -199,7 +200,7 @@ int stdp_pr_notify_ltp(stdp_pr_bridge_t bridge,
         effect->timestamp_ms = bridge->state.last_ltp_time_ms;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
     return 0;
 }
 
@@ -210,7 +211,7 @@ int stdp_pr_notify_ltd(stdp_pr_bridge_t bridge,
     if (!bridge || !bridge->initialized) return -1;
     if (weight_change >= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
 
     /* Compute entanglement decrease */
     float entangle_delta = weight_change * bridge->config.ltd_entangle_decay;
@@ -237,7 +238,7 @@ int stdp_pr_notify_ltd(stdp_pr_bridge_t bridge,
         effect->timestamp_ms = bridge->state.last_ltd_time_ms;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
     return 0;
 }
 
@@ -248,7 +249,7 @@ int stdp_pr_notify_burst(stdp_pr_bridge_t bridge,
     if (!bridge || !bridge->initialized) return -1;
     if (fabsf(weight_change) < STDP_PR_BURST_MIN_WEIGHT_CHANGE) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
 
     /* Compute entanglement delta */
     float entangle_delta;
@@ -297,7 +298,7 @@ int stdp_pr_notify_burst(stdp_pr_bridge_t bridge,
         effect->timestamp_ms = now;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
     return 0;
 }
 
@@ -348,7 +349,7 @@ int stdp_pr_get_modulation(stdp_pr_bridge_t bridge,
     if (!bridge || !effect) return -1;
     (void)node_id;  /* Would query actual PR memory in full implementation */
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
 
     effect->resonance_score = bridge->state.current_resonance;
     effect->consolidation_level = bridge->state.current_consolidation;
@@ -382,7 +383,7 @@ int stdp_pr_get_modulation(stdp_pr_bridge_t bridge,
 
     bridge->stats.backward_calls++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
     return 0;
 }
 
@@ -399,11 +400,11 @@ int stdp_pr_apply_resonance_modulation(stdp_pr_bridge_t bridge,
 
     *modulated_lr = base_lr * factor;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
     bridge->state.current_resonance = resonance;
     bridge->stats.avg_resonance_modulation =
         0.9f * bridge->stats.avg_resonance_modulation + 0.1f * factor;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
 
     return 0;
 }
@@ -428,14 +429,14 @@ int stdp_pr_apply_consolidation_gate(stdp_pr_bridge_t bridge,
 
     *gated_lr = base_lr * gate;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
     bridge->state.current_consolidation = consolidation;
     bridge->stats.avg_consolidation_gate =
         0.9f * bridge->stats.avg_consolidation_gate + 0.1f * gate;
     if (gate < 0.3f) {
         bridge->stats.blocked_by_consolidation++;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
 
     return 0;
 }
@@ -448,11 +449,11 @@ int stdp_pr_get_tier_rate(stdp_pr_bridge_t bridge,
 
     *rate_multiplier = bridge->config.tier_rates[tier];
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
     bridge->state.current_tier = tier;
     bridge->stats.avg_tier_modulation =
         0.9f * bridge->stats.avg_tier_modulation + 0.1f * (*rate_multiplier);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
 
     return 0;
 }
@@ -496,12 +497,12 @@ int stdp_pr_compute_modulation(stdp_pr_bridge_t bridge,
     effect->effective_a_minus = base_a_minus * effect->lr_modulation;
     effect->plasticity_allowed = (consol_mod > 0.1f);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
     bridge->state.current_resonance = resonance;
     bridge->state.current_consolidation = consolidation;
     bridge->state.current_tier = tier;
     bridge->stats.backward_calls++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
 
     return 0;
 }
@@ -514,9 +515,9 @@ int stdp_pr_bridge_get_state(stdp_pr_bridge_t bridge,
                              stdp_pr_bridge_state_t* state) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
 
     return 0;
 }
@@ -525,9 +526,9 @@ int stdp_pr_bridge_get_stats(stdp_pr_bridge_t bridge,
                              stdp_pr_bridge_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
 
     return 0;
 }
@@ -535,9 +536,9 @@ int stdp_pr_bridge_get_stats(stdp_pr_bridge_t bridge,
 int stdp_pr_bridge_reset_stats(stdp_pr_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
 
     return 0;
 }
@@ -546,7 +547,7 @@ int stdp_pr_bridge_update(stdp_pr_bridge_t bridge, float dt_ms) {
     if (!bridge) return -1;
     (void)dt_ms;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
 
     /* Compute bridge coherence based on recent activity */
     uint64_t now = get_timestamp_ms();
@@ -566,16 +567,16 @@ int stdp_pr_bridge_update(stdp_pr_bridge_t bridge, float dt_ms) {
     bridge->state.bridge_coherence = 0.5f * activity_factor + 0.5f * res_factor;
     bridge->state.bridge_coherence = clamp_float(bridge->state.bridge_coherence, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
     return 0;
 }
 
 float stdp_pr_bridge_get_coherence(stdp_pr_bridge_t bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
     float coherence = bridge->state.bridge_coherence;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
 
     return coherence;
 }
@@ -586,7 +587,7 @@ void stdp_pr_bridge_print_summary(stdp_pr_bridge_t bridge) {
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(&bridge->mutex);
 
     printf("=== STDP-PR Bridge Summary ===\n");
     printf("State:\n");
@@ -602,5 +603,5 @@ void stdp_pr_bridge_print_summary(stdp_pr_bridge_t bridge) {
     printf("  Blocked by consolidation: %lu\n",
            (unsigned long)bridge->stats.blocked_by_consolidation);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(&bridge->mutex);
 }

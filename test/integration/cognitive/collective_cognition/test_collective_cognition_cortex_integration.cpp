@@ -36,6 +36,14 @@ protected:
         for (uint32_t i = 1; i <= 4; i++) {
             ASSERT_EQ(collective_cognition_register_instance(cc_, i, nullptr), 0);
         }
+
+        /* Also register instances with shared_intentionality for joint attention */
+        shared_intentionality_t* si = collective_cognition_get_intentionality(cc_);
+        if (si) {
+            for (uint32_t i = 1; i <= 4; i++) {
+                shared_intentionality_register_instance(si, i);
+            }
+        }
     }
 
     void TearDown() override {

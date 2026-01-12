@@ -58,3 +58,6 @@ add_subdirectory(olfactory)
 
 # Gustatory Cortex tests (BR-11)
 add_subdirectory(gustatory)
+
+# Sensory Integration tests (cross-modal)
+add_subdirectory(sensory_integration)

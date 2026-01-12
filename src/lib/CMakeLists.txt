@@ -314,6 +314,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/sensory_integration/nimcp_chemosensory_bridge.c        # Olfactory-gustatory flavor binding
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/sensory_integration/nimcp_tactile_motor_bridge.c       # Somatosensory-motor coordination
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/sensory_integration/nimcp_sensory_swarm_bridge.c       # Multi-sensory swarm integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/sensory_integration/nimcp_trigeminal_oral_bridge.c     # Trigeminal-oral integration (spicy, texture, mouthfeel)
 
     # Sensory Knowledge Graph Wiring (Phase 6)
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/knowledge/nimcp_sensory_kg_wiring.c                           # Sensory module KG registration
@@ -967,6 +968,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c  # Triplet STDP-immune integration (cytokine modulation, instability detection)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_pink_noise_bridge.c  # STDP-pink noise integration (quantum-inspired noise modulation for learning rates)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_utils_bridge.c  # STDP-utils integration (ring buffer, metrics, memory pools, RK4)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_omni_bridge.c  # STDP-Omnidirectional inference integration (PE modulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_pr_bridge.c  # STDP-Prime Resonant memory integration (resonance gating)
+    # Note: nimcp_stdp_quantum_bridge.c is not needed - implementation triggered by nimcp_stdp_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_pr_bridge.c  # Eligibility-Prime Resonant integration (tag-and-capture)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_plasticity_bridges.c  # Brain factory plasticity bridge init functions
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_sensory.c  # Phase 6 sensory modules (BR-9/10/11: Somatosensory, Olfactory, Gustatory)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm_sleep_bridge.c  # BCM-sleep integration (sliding threshold modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c  # Homeostatic-sleep integration (Tononi SHY: downscaling in NREM)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/protein/nimcp_protein_sleep_bridge.c  # Protein synthesis-sleep integration (synthesis upregulation during deep NREM)

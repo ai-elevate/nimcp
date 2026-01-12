@@ -55,6 +55,24 @@ bool nimcp_brain_factory_init_homeostatic_plasticity_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_dendritic_computation_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain);
 
+// === PLASTICITY BRIDGES (Phase 7: Cognitive Substrate Integration) ===
+// These bridges connect plasticity mechanisms with higher-level cognitive systems:
+// - STDP-Omni: Bidirectional STDP ↔ Omnidirectional inference
+// - STDP-PR: Bidirectional STDP ↔ Prime Resonant memory
+// - Eligibility-PR: Bidirectional Eligibility traces ↔ PR memory
+// - STDP-Quantum: Quantum-inspired STDP learning rate optimization
+bool nimcp_brain_factory_init_stdp_omni_bridge_subsystem(brain_t brain);
+bool nimcp_brain_factory_init_stdp_pr_bridge_subsystem(brain_t brain);
+bool nimcp_brain_factory_init_eligibility_pr_bridge_subsystem(brain_t brain);
+bool nimcp_brain_factory_init_stdp_quantum_bridge_subsystem(brain_t brain);
+
+// === PHASE 6 SENSORY MODULES (BR-9/10/11) ===
+// Three remaining sensory modalities: touch, smell, taste
+// Each provides sensory-specific processing with full NIMCP integration
+bool nimcp_brain_factory_init_somatosensory_subsystem(brain_t brain);  // BR-9: Touch, proprioception, pain
+bool nimcp_brain_factory_init_olfactory_subsystem(brain_t brain);      // BR-10: Smell processing
+bool nimcp_brain_factory_init_gustatory_subsystem(brain_t brain);      // BR-11: Taste processing
+
 // Training subsystem
 bool nimcp_brain_factory_init_training_subsystem(brain_t brain);
 

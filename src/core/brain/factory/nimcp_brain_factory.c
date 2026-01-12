@@ -182,6 +182,18 @@ extern void set_error(const char* format, ...);
 // Coordinator/Orchestrator subsystem macros
 #define init_bio_async_orchestrator_subsystem       nimcp_brain_factory_init_bio_async_orchestrator_subsystem
 #define init_plasticity_coordinator_subsystem       nimcp_brain_factory_init_plasticity_coordinator_subsystem
+
+// Plasticity bridge subsystem macros (Phase 7: Cognitive Substrate Integration)
+#define init_stdp_omni_bridge_subsystem             nimcp_brain_factory_init_stdp_omni_bridge_subsystem
+#define init_stdp_pr_bridge_subsystem               nimcp_brain_factory_init_stdp_pr_bridge_subsystem
+#define init_eligibility_pr_bridge_subsystem        nimcp_brain_factory_init_eligibility_pr_bridge_subsystem
+#define init_stdp_quantum_bridge_subsystem          nimcp_brain_factory_init_stdp_quantum_bridge_subsystem
+
+// Phase 6 Sensory Modules (BR-9/10/11: Somatosensory, Olfactory, Gustatory)
+#define init_somatosensory_subsystem                nimcp_brain_factory_init_somatosensory_subsystem
+#define init_olfactory_subsystem                    nimcp_brain_factory_init_olfactory_subsystem
+#define init_gustatory_subsystem                    nimcp_brain_factory_init_gustatory_subsystem
+
 #define init_immune_bridge_coordinator_subsystem    nimcp_brain_factory_init_immune_bridge_coordinator_subsystem
 #define init_cognitive_meta_controller_subsystem    nimcp_brain_factory_init_cognitive_meta_controller_subsystem
 #define init_security_perception_bridge_subsystem   nimcp_brain_factory_init_security_perception_bridge_subsystem
@@ -738,6 +750,19 @@ brain_t brain_create_custom(const brain_config_t* config)
     if (!init_hypothalamus_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
+    // PHASE 6 SENSORY MODULES (BR-9/10/11: TOUCH, SMELL, TASTE)
+    // ========================================================================
+    // Initialize Phase 6 sensory processing modules:
+    // - BR-9 Somatosensory: Touch, proprioception, temperature, pain (S1/S2)
+    // - BR-10 Olfactory: Smell processing (piriform cortex, bypasses thalamus)
+    // - BR-11 Gustatory: Taste processing (insular cortex, 5 basic tastes)
+    // BIOLOGICAL: These modules provide multi-modal sensory input integration
+    // DEPENDS ON: Thalamus (relay), Hypothalamus (homeostasis), Brain regions (amygdala/hippocampus)
+    if (!init_somatosensory_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    if (!init_olfactory_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    if (!init_gustatory_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
     // PARIETAL LOBE (MATHEMATICAL/SCIENTIFIC REASONING)
     // ========================================================================
 
@@ -855,6 +880,17 @@ brain_t brain_create_custom(const brain_config_t* config)
 
     // 2. Plasticity Coordinator (depends on bio-async)
     if (!init_plasticity_coordinator_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // 2.5 Plasticity Bridges (depend on plasticity coordinator)
+    // These bridges connect plasticity mechanisms with higher-level cognitive systems:
+    // - STDP-Omni: Forward/backward prediction error → STDP modulation
+    // - STDP-PR: Memory resonance/consolidation → STDP gating
+    // - Eligibility-PR: Three-factor learning with tag-and-capture
+    // - STDP-Quantum: Quantum annealing for learning rate optimization
+    if (!init_stdp_omni_bridge_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    if (!init_stdp_pr_bridge_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    if (!init_eligibility_pr_bridge_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    if (!init_stdp_quantum_bridge_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // 3. Immune Bridge Coordinator (depends on bio-async, brain immune)
     if (!init_immune_bridge_coordinator_subsystem(brain)) { brain_destroy(brain); return NULL; }

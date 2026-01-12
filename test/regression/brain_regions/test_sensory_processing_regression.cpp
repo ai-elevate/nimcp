@@ -35,6 +35,11 @@ extern "C" {
 #include "core/brain/regions/gustatory/nimcp_gustatory.h"
 }
 
+/* Trigeminal-Oral integration bridge */
+extern "C" {
+#include "core/brain/regions/sensory_integration/nimcp_trigeminal_oral_bridge.h"
+}
+
 //=============================================================================
 // Somatosensory API Stability Tests
 //=============================================================================
@@ -641,4 +646,316 @@ TEST_F(GustatoryAPIStabilityTest, NullInput_ConsistentErrorHandling) {
 
     float palatability = gust_get_palatability(nullptr);
     EXPECT_EQ(palatability, 0.0f);
+}
+
+//=============================================================================
+// Trigeminal-Oral Bridge API Stability Tests
+//=============================================================================
+
+class TrigeminalOralAPIStabilityTest : public ::testing::Test {
+protected:
+    trigeminal_oral_bridge_t* bridge = nullptr;
+
+    void SetUp() override {
+        trigeminal_oral_config_t config;
+        trigeminal_oral_default_config(&config);
+        bridge = trigeminal_oral_bridge_create(&config);
+    }
+
+    void TearDown() override {
+        if (bridge) trigeminal_oral_bridge_destroy(bridge);
+    }
+};
+
+TEST_F(TrigeminalOralAPIStabilityTest, DefaultConfig_ValuesStable) {
+    trigeminal_oral_config_t config;
+    EXPECT_EQ(trigeminal_oral_default_config(&config), 0);
+
+    /* These default values should remain stable across versions */
+    EXPECT_TRUE(config.enable_chemesthesis);
+    EXPECT_TRUE(config.enable_texture);
+    EXPECT_TRUE(config.enable_temp_taste);
+    EXPECT_TRUE(config.enable_mouthfeel);
+    EXPECT_GE(config.spice_sensitivity, 0.0f);
+    EXPECT_LE(config.spice_sensitivity, 1.0f);
+    EXPECT_GE(config.cold_sensitivity, 0.0f);
+    EXPECT_LE(config.cold_sensitivity, 1.0f);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, CreateDestroy_NoMemoryLeak) {
+    for (int i = 0; i < 100; i++) {
+        trigeminal_oral_config_t config;
+        trigeminal_oral_default_config(&config);
+        trigeminal_oral_bridge_t* temp = trigeminal_oral_bridge_create(&config);
+        ASSERT_NE(temp, nullptr);
+        trigeminal_oral_bridge_destroy(temp);
+    }
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, OralRegions_StableEnumeration) {
+    /* Critical oral region enum values */
+    EXPECT_EQ((int)ORAL_REGION_TONGUE_TIP, 0);
+    EXPECT_EQ((int)ORAL_REGION_TONGUE_BODY, 1);
+    EXPECT_EQ((int)ORAL_REGION_TONGUE_BACK, 2);
+    EXPECT_EQ((int)ORAL_REGION_TONGUE_SIDES, 3);
+    EXPECT_EQ((int)ORAL_REGION_PALATE_HARD, 4);
+    EXPECT_EQ((int)ORAL_REGION_PALATE_SOFT, 5);
+    EXPECT_EQ((int)ORAL_REGION_GUMS_UPPER, 6);
+    EXPECT_EQ((int)ORAL_REGION_GUMS_LOWER, 7);
+    EXPECT_EQ((int)ORAL_REGION_INNER_CHEEK, 8);
+    EXPECT_EQ((int)ORAL_REGION_LIPS, 9);
+    EXPECT_EQ((int)ORAL_REGION_THROAT, 10);
+    EXPECT_EQ((int)ORAL_REGION_COUNT, 11);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, ChemesthesisTypes_StableEnumeration) {
+    EXPECT_EQ((int)CHEMESTHESIS_NONE, 0);
+    EXPECT_EQ((int)CHEMESTHESIS_SPICY_HEAT, 1);
+    EXPECT_EQ((int)CHEMESTHESIS_COOLING, 2);
+    EXPECT_EQ((int)CHEMESTHESIS_TINGLING, 3);
+    EXPECT_EQ((int)CHEMESTHESIS_ASTRINGENT, 4);
+    EXPECT_EQ((int)CHEMESTHESIS_CARBONATION, 5);
+    EXPECT_EQ((int)CHEMESTHESIS_IRRITANT, 6);
+    EXPECT_EQ((int)CHEMESTHESIS_COUNT, 7);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, TextureCategories_StableEnumeration) {
+    EXPECT_EQ((int)TEXTURE_SMOOTH, 0);
+    EXPECT_EQ((int)TEXTURE_ROUGH, 1);
+    EXPECT_EQ((int)TEXTURE_CRUNCHY, 2);
+    EXPECT_EQ((int)TEXTURE_CHEWY, 3);
+    EXPECT_EQ((int)TEXTURE_CRISPY, 4);
+    EXPECT_EQ((int)TEXTURE_CREAMY, 5);
+    EXPECT_EQ((int)TEXTURE_GRAINY, 6);
+    EXPECT_EQ((int)TEXTURE_FIBROUS, 7);
+    EXPECT_EQ((int)TEXTURE_GELATINOUS, 8);
+    EXPECT_EQ((int)TEXTURE_LIQUID, 9);
+    EXPECT_EQ((int)TEXTURE_COUNT, 10);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, MouthfeelQualities_StableEnumeration) {
+    EXPECT_EQ((int)MOUTHFEEL_NEUTRAL, 0);
+    EXPECT_EQ((int)MOUTHFEEL_CREAMY, 1);
+    EXPECT_EQ((int)MOUTHFEEL_OILY, 2);
+    EXPECT_EQ((int)MOUTHFEEL_DRY, 3);
+    EXPECT_EQ((int)MOUTHFEEL_ASTRINGENT, 4);
+    EXPECT_EQ((int)MOUTHFEEL_BURNING, 5);
+    EXPECT_EQ((int)MOUTHFEEL_COOLING, 6);
+    EXPECT_EQ((int)MOUTHFEEL_COUNT, 7);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, TemperaturePerceptions_StableEnumeration) {
+    EXPECT_EQ((int)TEMP_PERCEPTION_COLD, 0);
+    EXPECT_EQ((int)TEMP_PERCEPTION_COOL, 1);
+    EXPECT_EQ((int)TEMP_PERCEPTION_NEUTRAL, 2);
+    EXPECT_EQ((int)TEMP_PERCEPTION_WARM, 3);
+    EXPECT_EQ((int)TEMP_PERCEPTION_HOT, 4);
+    EXPECT_EQ((int)TEMP_PERCEPTION_COUNT, 5);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, ChemesthesisDetection_ConsistentBehavior) {
+    ASSERT_NE(bridge, nullptr);
+
+    chemesthesis_t chem;
+    memset(&chem, 0, sizeof(chem));
+    EXPECT_EQ(trigeminal_oral_detect_chemesthesis(bridge, CHEMESTHESIS_SPICY_HEAT,
+              0.6f, ORAL_REGION_TONGUE_BODY, &chem), 0);
+
+    /* With high concentration, should detect spicy heat */
+    EXPECT_EQ(chem.type, CHEMESTHESIS_SPICY_HEAT);
+    EXPECT_GT(chem.intensity, 0.0f);
+    EXPECT_LE(chem.intensity, 1.0f);
+    EXPECT_GT(chem.scoville_equiv, 0.0f);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, TextureAnalysis_ConsistentBehavior) {
+    ASSERT_NE(bridge, nullptr);
+
+    oral_soma_input_t input;
+    memset(&input, 0, sizeof(input));
+    input.region = ORAL_REGION_TONGUE_BODY;
+    input.pressure = 0.7f;
+    input.texture_roughness = 0.7f;
+    input.hardness = 0.9f;
+    input.viscosity = 0.1f;
+    input.temperature_c = 37.0f;
+
+    EXPECT_EQ(trigeminal_oral_process_input(bridge, &input), 0);
+
+    texture_perception_t texture;
+    memset(&texture, 0, sizeof(texture));
+    EXPECT_EQ(trigeminal_oral_analyze_texture(bridge, &input, &texture), 0);
+
+    /* With high roughness and hardness, should detect crunchy */
+    EXPECT_EQ(texture.primary, TEXTURE_CRUNCHY);
+    EXPECT_GT(texture.crunchiness, 0.0f);
+    trigeminal_texture_free(&texture);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, TemperatureTaste_ConsistentBehavior) {
+    ASSERT_NE(bridge, nullptr);
+
+    temp_taste_interaction_t interaction;
+    memset(&interaction, 0, sizeof(interaction));
+    EXPECT_EQ(trigeminal_oral_compute_temp_taste(bridge, 5.0f, &interaction), 0);
+
+    /* Cold should suppress sweet */
+    EXPECT_EQ(interaction.temperature, TEMP_PERCEPTION_COLD);
+    EXPECT_LT(interaction.sweet_modulation, 1.0f);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, MouthfeelComputation_ConsistentBehavior) {
+    ASSERT_NE(bridge, nullptr);
+
+    oral_soma_input_t soma_input;
+    memset(&soma_input, 0, sizeof(soma_input));
+    soma_input.region = ORAL_REGION_TONGUE_BODY;
+    soma_input.pressure = 0.4f;
+    soma_input.texture_roughness = 0.2f;
+    soma_input.viscosity = 0.6f;
+    soma_input.hardness = 0.3f;
+    soma_input.temperature_c = 37.0f;
+
+    mouthfeel_t mouthfeel;
+    memset(&mouthfeel, 0, sizeof(mouthfeel));
+    EXPECT_EQ(trigeminal_oral_compute_mouthfeel(bridge, &soma_input, nullptr, &mouthfeel), 0);
+
+    /* Should produce valid mouthfeel */
+    EXPECT_GE(mouthfeel.pleasantness, -1.0f);
+    EXPECT_LE(mouthfeel.pleasantness, 1.0f);
+    trigeminal_mouthfeel_free(&mouthfeel);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, Mastication_ConsistentBehavior) {
+    ASSERT_NE(bridge, nullptr);
+
+    EXPECT_EQ(trigeminal_oral_start_mastication(bridge, 0.8f), 0);
+
+    /* Simulate chewing cycles */
+    for (int i = 0; i < 5; i++) {
+        float bite_force = 0.5f + (i % 2) * 0.2f;
+        float jaw_position = (float)(i % 2);
+        EXPECT_EQ(trigeminal_oral_update_mastication(bridge, bite_force, jaw_position), 0);
+    }
+
+    uint32_t chew_count = 0;
+    float breakdown = 0.0f;
+    bool ready = false;
+    EXPECT_EQ(trigeminal_oral_get_mastication_state(bridge, &chew_count, &breakdown, &ready), 0);
+
+    /* Should have detected some chew cycles */
+    EXPECT_GE(chew_count, 2u);
+
+    EXPECT_EQ(trigeminal_oral_end_mastication(bridge), 0);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, SpicynessEstimation_ConsistentBehavior) {
+    ASSERT_NE(bridge, nullptr);
+
+    /* First detect some spicy heat */
+    chemesthesis_t chem;
+    memset(&chem, 0, sizeof(chem));
+    trigeminal_oral_detect_chemesthesis(bridge, CHEMESTHESIS_SPICY_HEAT,
+                                        0.7f, ORAL_REGION_TONGUE_BODY, &chem);
+
+    spiciness_perception_t spiciness;
+    memset(&spiciness, 0, sizeof(spiciness));
+    EXPECT_EQ(trigeminal_oral_get_spiciness(bridge, &spiciness), 0);
+
+    /* Should have valid Scoville estimate */
+    EXPECT_GT(spiciness.scoville_estimate, 0.0f);
+    EXPECT_GT(spiciness.heat_level, 0.0f);
+    EXPECT_LE(spiciness.heat_level, 1.0f);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, ResetStats_ClearsCounters) {
+    ASSERT_NE(bridge, nullptr);
+
+    /* Process some inputs */
+    oral_soma_input_t input;
+    memset(&input, 0, sizeof(input));
+    input.region = ORAL_REGION_TONGUE_BODY;
+    input.pressure = 0.5f;
+    input.temperature_c = 37.0f;
+    input.hardness = 0.5f;
+
+    trigeminal_oral_process_input(bridge, &input);
+
+    /* Reset stats */
+    EXPECT_EQ(trigeminal_oral_reset_stats(bridge), 0);
+
+    /* Get stats - should be zeroed */
+    trigeminal_oral_stats_t stats;
+    memset(&stats, 0, sizeof(stats));
+    EXPECT_EQ(trigeminal_oral_get_stats(bridge, &stats), 0);
+    EXPECT_EQ(stats.oral_inputs_processed, 0u);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, NullInput_ConsistentErrorHandling) {
+    /* Functions should handle NULL input consistently */
+    trigeminal_oral_bridge_destroy(nullptr);  /* Should not crash */
+
+    EXPECT_LT(trigeminal_oral_reset_stats(nullptr), 0);
+    EXPECT_LT(trigeminal_oral_process_input(nullptr, nullptr), 0);
+    EXPECT_LT(trigeminal_oral_start_mastication(nullptr, 0.5f), 0);
+    EXPECT_LT(trigeminal_oral_end_mastication(nullptr), 0);
+
+    oral_soma_input_t input;
+    memset(&input, 0, sizeof(input));
+    EXPECT_LT(trigeminal_oral_process_input(nullptr, &input), 0);
+
+    chemesthesis_t chem;
+    memset(&chem, 0, sizeof(chem));
+    EXPECT_LT(trigeminal_oral_detect_chemesthesis(nullptr, CHEMESTHESIS_SPICY_HEAT,
+              0.5f, ORAL_REGION_TONGUE_BODY, &chem), 0);
+
+    texture_perception_t texture;
+    memset(&texture, 0, sizeof(texture));
+    EXPECT_LT(trigeminal_oral_analyze_texture(nullptr, &input, &texture), 0);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, PerformanceBaseline_ChemesthesisDetection) {
+    ASSERT_NE(bridge, nullptr);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < 1000; i++) {
+        chemesthesis_t chem;
+        memset(&chem, 0, sizeof(chem));
+        trigeminal_oral_detect_chemesthesis(bridge, CHEMESTHESIS_SPICY_HEAT,
+                                            0.5f, ORAL_REGION_TONGUE_BODY, &chem);
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+    /* 1000 chemesthesis detections should complete in under 50ms */
+    EXPECT_LT(duration.count(), 50000);
+}
+
+TEST_F(TrigeminalOralAPIStabilityTest, PerformanceBaseline_TextureAnalysis) {
+    ASSERT_NE(bridge, nullptr);
+
+    oral_soma_input_t input;
+    memset(&input, 0, sizeof(input));
+    input.region = ORAL_REGION_TONGUE_BODY;
+    input.pressure = 0.6f;
+    input.texture_roughness = 0.5f;
+    input.hardness = 0.5f;
+    input.temperature_c = 37.0f;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < 1000; i++) {
+        texture_perception_t texture;
+        memset(&texture, 0, sizeof(texture));
+        trigeminal_oral_analyze_texture(bridge, &input, &texture);
+        trigeminal_texture_free(&texture);
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+    /* 1000 texture analyses should complete in under 50ms */
+    EXPECT_LT(duration.count(), 50000);
 }
