@@ -31,3 +31,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_neuromodulatory_integration.cpp
     integration
 )
+
+# Sensory Processing integration tests (Phase 6: Somatosensory, Olfactory, Gustatory)
+add_test_binary(
+    integration_brain_regions_test_sensory_processing_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_sensory_processing_integration.cpp
+    integration
+)

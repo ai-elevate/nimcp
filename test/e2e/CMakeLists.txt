@@ -2669,6 +2669,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core/brain/regions/hippocampus/test_hippoc
     message(STATUS "  Added Hippocampus Memory Circuit E2E test: e2e_core_brain_regions_hippocampus_test_hippocampus_e2e")
 endif()
 
+# Sensory Processing Pipeline E2E Test (Phase 6: Somatosensory, Olfactory, Gustatory)
+add_e2e_test(e2e_test_sensory_processing_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_sensory_processing_pipeline.cpp
+)
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)

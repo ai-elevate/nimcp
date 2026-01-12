@@ -47,3 +47,14 @@ add_subdirectory(prefrontal)
 
 # Temporal lobe tests
 add_subdirectory(temporal)
+
+# Phase 6: Sensory Processing
+
+# Somatosensory Cortex tests (BR-9)
+add_subdirectory(somatosensory)
+
+# Olfactory Cortex tests (BR-10)
+add_subdirectory(olfactory)
+
+# Gustatory Cortex tests (BR-11)
+add_subdirectory(gustatory)

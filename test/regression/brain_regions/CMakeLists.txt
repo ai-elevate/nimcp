@@ -47,3 +47,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_region_api_stability.cpp
     regression
 )
+
+# Sensory Processing Regression Tests (Phase 6: Somatosensory, Olfactory, Gustatory)
+add_test_binary(
+    regression_brain_regions_test_sensory_processing_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_sensory_processing_regression.cpp
+    regression
+)
