@@ -605,3 +605,21 @@ gtest_discover_tests(unit_plasticity_eligibility_quantum_bridge
     PROPERTIES LABELS "unit;plasticity;eligibility;quantum;bridge"
     TIMEOUT 120
 )
+
+# Eligibility Utils-Quantum Bidirectional Bridge Tests
+add_executable(unit_plasticity_eligibility_utils_quantum_bridge
+    eligibility/test_eligibility_utils_quantum_bridge.cpp
+)
+target_link_libraries(unit_plasticity_eligibility_utils_quantum_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_eligibility_utils_quantum_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_eligibility_utils_quantum_bridge
+    PROPERTIES LABELS "unit;plasticity;eligibility;utils;quantum;bridge"
+    TIMEOUT 120
+)

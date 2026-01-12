@@ -314,6 +314,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_eligibility_test_eligibility_burst.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_eligibility_test_eligibility_fep_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_eligibility_test_eligibility_quantum_bridge.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_eligibility_test_eligibility_utils_quantum_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_homeostatic_test_homeostatic.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_homeostatic_test_homeostatic_fep_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_metabolic_test_metabolic_plasticity.dir
@@ -429,6 +430,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_bcm_test_bcm_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_biological_test_biological_plasticity_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_bridges_test_phase1_bridges_integration.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_eligibility_test_eligibility_utils_quantum_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_eligibility_test_eligibility_wiring.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_metabolic_test_metabolic_integration.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/integration_plasticity_metaplasticity_test_metaplasticity_integration.dir
@@ -500,6 +502,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_biological_test_biological_plasticity_performance.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_bridges_test_phase1_bridges_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_eligibility_test_eligibility_backward_compat.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_eligibility_test_eligibility_utils_quantum_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_metabolic_test_metabolic_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_metaplasticity_test_metaplasticity_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_plasticity_neuromodulators_test_neuromodulators_bio_async_regression.dir
@@ -728,6 +731,21 @@
 /home/bbrelin/nimcp/build/test/e2e/biology/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/e2e/biology/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/e2e/biology/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/eligibility/CMakeFiles/e2e_plasticity_eligibility_utils_quantum.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/eligibility/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/eligibility/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/eligibility/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/eligibility/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/eligibility/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/eligibility/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/e2e/plasticity/eligibility/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/CMakeFiles/unit_middleware_integration.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/CMakeFiles/unit_brain_spike_features.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/CMakeFiles/unit_brain_population_coding.dir
@@ -3556,6 +3574,7 @@
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/unit_plasticity_synapse_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/unit_plasticity_axon_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/unit_plasticity_eligibility_quantum_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/unit_plasticity_eligibility_utils_quantum_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/plasticity/CMakeFiles/rebuild_cache.dir
@@ -3607,6 +3626,7 @@
 /home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/integration_plasticity_neural.dir
 /home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/integration_plasticity_pink_noise.dir
 /home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/integration_plasticity_phase1_bridges.dir
+/home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/integration_plasticity_eligibility_utils_quantum.dir
 /home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/plasticity/CMakeFiles/rebuild_cache.dir
@@ -3644,6 +3664,7 @@
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_neural.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_pink_noise.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_phase1_bridges.dir
+/home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/regression_plasticity_eligibility_utils_quantum.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/plasticity/CMakeFiles/rebuild_cache.dir

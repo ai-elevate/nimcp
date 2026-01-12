@@ -774,6 +774,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/dendritic/nimcp_dendritic_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_quantum_bridge.c  # Eligibility-quantum integration (bottleneck, credit, optimization)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_utils_bridge.c  # Utils integration (metrics, pools, RK4, Shannon)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.c  # Bidirectional Utils-Quantum bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/homeostatic/nimcp_homeostatic_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive_fep_bridge.c

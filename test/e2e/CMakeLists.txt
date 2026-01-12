@@ -2691,6 +2691,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/biology/CMakeLists.txt)
     add_subdirectory(biology)
 endif()
 
+# Include Plasticity E2E test subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/plasticity/CMakeLists.txt)
+    message(STATUS "Adding Plasticity E2E tests...")
+    add_subdirectory(plasticity)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

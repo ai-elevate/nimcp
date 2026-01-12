@@ -29897,6 +29897,54 @@ __/plasticity/eligibility/nimcp_eligibility_trace.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/eligibility/nimcp_eligibility_trace.c.s
 .PHONY : __/plasticity/eligibility/nimcp_eligibility_trace.c.s
 
+__/plasticity/eligibility/nimcp_eligibility_utils_bridge.o: __/plasticity/eligibility/nimcp_eligibility_utils_bridge.c.o
+.PHONY : __/plasticity/eligibility/nimcp_eligibility_utils_bridge.o
+
+# target to build an object file
+__/plasticity/eligibility/nimcp_eligibility_utils_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/eligibility/nimcp_eligibility_utils_bridge.c.o
+.PHONY : __/plasticity/eligibility/nimcp_eligibility_utils_bridge.c.o
+
+__/plasticity/eligibility/nimcp_eligibility_utils_bridge.i: __/plasticity/eligibility/nimcp_eligibility_utils_bridge.c.i
+.PHONY : __/plasticity/eligibility/nimcp_eligibility_utils_bridge.i
+
+# target to preprocess a source file
+__/plasticity/eligibility/nimcp_eligibility_utils_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/eligibility/nimcp_eligibility_utils_bridge.c.i
+.PHONY : __/plasticity/eligibility/nimcp_eligibility_utils_bridge.c.i
+
+__/plasticity/eligibility/nimcp_eligibility_utils_bridge.s: __/plasticity/eligibility/nimcp_eligibility_utils_bridge.c.s
+.PHONY : __/plasticity/eligibility/nimcp_eligibility_utils_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/eligibility/nimcp_eligibility_utils_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/eligibility/nimcp_eligibility_utils_bridge.c.s
+.PHONY : __/plasticity/eligibility/nimcp_eligibility_utils_bridge.c.s
+
+__/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.o: __/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.c.o
+.PHONY : __/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.o
+
+# target to build an object file
+__/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.c.o
+.PHONY : __/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.c.o
+
+__/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.i: __/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.c.i
+.PHONY : __/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.i
+
+# target to preprocess a source file
+__/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.c.i
+.PHONY : __/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.c.i
+
+__/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.s: __/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.c.s
+.PHONY : __/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.s
+
+# target to generate assembly for a file
+__/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.c.s
+.PHONY : __/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.c.s
+
 __/plasticity/heterosynaptic/nimcp_heterosynaptic.o: __/plasticity/heterosynaptic/nimcp_heterosynaptic.c.o
 .PHONY : __/plasticity/heterosynaptic/nimcp_heterosynaptic.o
 
@@ -43129,6 +43177,12 @@ help:
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_trace.o"
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_trace.i"
 	@echo "... __/plasticity/eligibility/nimcp_eligibility_trace.s"
+	@echo "... __/plasticity/eligibility/nimcp_eligibility_utils_bridge.o"
+	@echo "... __/plasticity/eligibility/nimcp_eligibility_utils_bridge.i"
+	@echo "... __/plasticity/eligibility/nimcp_eligibility_utils_bridge.s"
+	@echo "... __/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.o"
+	@echo "... __/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.i"
+	@echo "... __/plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.s"
 	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic.o"
 	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic.i"
 	@echo "... __/plasticity/heterosynaptic/nimcp_heterosynaptic.s"

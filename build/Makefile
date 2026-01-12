@@ -3552,6 +3552,19 @@ unit_plasticity_eligibility_test_eligibility_quantum_bridge/fast:
 .PHONY : unit_plasticity_eligibility_test_eligibility_quantum_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_plasticity_eligibility_test_eligibility_utils_quantum_bridge
+
+# Build rule for target.
+unit_plasticity_eligibility_test_eligibility_utils_quantum_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_eligibility_test_eligibility_utils_quantum_bridge
+.PHONY : unit_plasticity_eligibility_test_eligibility_utils_quantum_bridge
+
+# fast build rule for target.
+unit_plasticity_eligibility_test_eligibility_utils_quantum_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_plasticity_eligibility_test_eligibility_utils_quantum_bridge.dir/build.make test/CMakeFiles/unit_plasticity_eligibility_test_eligibility_utils_quantum_bridge.dir/build
+.PHONY : unit_plasticity_eligibility_test_eligibility_utils_quantum_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_homeostatic_test_homeostatic
 
 # Build rule for target.
@@ -5047,6 +5060,19 @@ integration_plasticity_bridges_test_phase1_bridges_integration/fast:
 .PHONY : integration_plasticity_bridges_test_phase1_bridges_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_plasticity_eligibility_test_eligibility_utils_quantum_integration
+
+# Build rule for target.
+integration_plasticity_eligibility_test_eligibility_utils_quantum_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_eligibility_test_eligibility_utils_quantum_integration
+.PHONY : integration_plasticity_eligibility_test_eligibility_utils_quantum_integration
+
+# fast build rule for target.
+integration_plasticity_eligibility_test_eligibility_utils_quantum_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_plasticity_eligibility_test_eligibility_utils_quantum_integration.dir/build.make test/CMakeFiles/integration_plasticity_eligibility_test_eligibility_utils_quantum_integration.dir/build
+.PHONY : integration_plasticity_eligibility_test_eligibility_utils_quantum_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_plasticity_eligibility_test_eligibility_wiring
 
 # Build rule for target.
@@ -5968,6 +5994,19 @@ regression_plasticity_eligibility_test_eligibility_backward_compat: cmake_check_
 regression_plasticity_eligibility_test_eligibility_backward_compat/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_eligibility_test_eligibility_backward_compat.dir/build.make test/CMakeFiles/regression_plasticity_eligibility_test_eligibility_backward_compat.dir/build
 .PHONY : regression_plasticity_eligibility_test_eligibility_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_eligibility_test_eligibility_utils_quantum_regression
+
+# Build rule for target.
+regression_plasticity_eligibility_test_eligibility_utils_quantum_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_eligibility_test_eligibility_utils_quantum_regression
+.PHONY : regression_plasticity_eligibility_test_eligibility_utils_quantum_regression
+
+# fast build rule for target.
+regression_plasticity_eligibility_test_eligibility_utils_quantum_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_plasticity_eligibility_test_eligibility_utils_quantum_regression.dir/build.make test/CMakeFiles/regression_plasticity_eligibility_test_eligibility_utils_quantum_regression.dir/build
+.PHONY : regression_plasticity_eligibility_test_eligibility_utils_quantum_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_plasticity_metabolic_test_metabolic_regression
@@ -8386,6 +8425,19 @@ e2e_test_neurovascular_pipeline: cmake_check_build_system
 e2e_test_neurovascular_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/biology/CMakeFiles/e2e_test_neurovascular_pipeline.dir/build.make test/e2e/biology/CMakeFiles/e2e_test_neurovascular_pipeline.dir/build
 .PHONY : e2e_test_neurovascular_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_plasticity_eligibility_utils_quantum
+
+# Build rule for target.
+e2e_plasticity_eligibility_utils_quantum: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_plasticity_eligibility_utils_quantum
+.PHONY : e2e_plasticity_eligibility_utils_quantum
+
+# fast build rule for target.
+e2e_plasticity_eligibility_utils_quantum/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/plasticity/eligibility/CMakeFiles/e2e_plasticity_eligibility_utils_quantum.dir/build.make test/e2e/plasticity/eligibility/CMakeFiles/e2e_plasticity_eligibility_utils_quantum.dir/build
+.PHONY : e2e_plasticity_eligibility_utils_quantum/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -21401,6 +21453,19 @@ unit_plasticity_eligibility_quantum_bridge/fast:
 .PHONY : unit_plasticity_eligibility_quantum_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_plasticity_eligibility_utils_quantum_bridge
+
+# Build rule for target.
+unit_plasticity_eligibility_utils_quantum_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_eligibility_utils_quantum_bridge
+.PHONY : unit_plasticity_eligibility_utils_quantum_bridge
+
+# fast build rule for target.
+unit_plasticity_eligibility_utils_quantum_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_eligibility_utils_quantum_bridge.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_eligibility_utils_quantum_bridge.dir/build
+.PHONY : unit_plasticity_eligibility_utils_quantum_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_attention_test_attention_pe
 
 # Build rule for target.
@@ -21609,6 +21674,19 @@ integration_plasticity_phase1_bridges/fast:
 .PHONY : integration_plasticity_phase1_bridges/fast
 
 #=============================================================================
+# Target rules for targets named integration_plasticity_eligibility_utils_quantum
+
+# Build rule for target.
+integration_plasticity_eligibility_utils_quantum: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_eligibility_utils_quantum
+.PHONY : integration_plasticity_eligibility_utils_quantum
+
+# fast build rule for target.
+integration_plasticity_eligibility_utils_quantum/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/CMakeFiles/integration_plasticity_eligibility_utils_quantum.dir/build.make test/integration/plasticity/CMakeFiles/integration_plasticity_eligibility_utils_quantum.dir/build
+.PHONY : integration_plasticity_eligibility_utils_quantum/fast
+
+#=============================================================================
 # Target rules for targets named integration_plasticity_heterosynaptic
 
 # Build rule for target.
@@ -21815,6 +21893,19 @@ regression_plasticity_phase1_bridges: cmake_check_build_system
 regression_plasticity_phase1_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/CMakeFiles/regression_plasticity_phase1_bridges.dir/build.make test/regression/plasticity/CMakeFiles/regression_plasticity_phase1_bridges.dir/build
 .PHONY : regression_plasticity_phase1_bridges/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_eligibility_utils_quantum
+
+# Build rule for target.
+regression_plasticity_eligibility_utils_quantum: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_eligibility_utils_quantum
+.PHONY : regression_plasticity_eligibility_utils_quantum
+
+# fast build rule for target.
+regression_plasticity_eligibility_utils_quantum/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/CMakeFiles/regression_plasticity_eligibility_utils_quantum.dir/build.make test/regression/plasticity/CMakeFiles/regression_plasticity_eligibility_utils_quantum.dir/build
+.PHONY : regression_plasticity_eligibility_utils_quantum/fast
 
 #=============================================================================
 # Target rules for targets named regression_plasticity_heterosynaptic
@@ -26724,6 +26815,7 @@ help:
 	@echo "... e2e_gpu_test_e2e_stress_test_gpu"
 	@echo "... e2e_gpu_test_e2e_swarm_simulation_gpu"
 	@echo "... e2e_gpu_test_e2e_visual_processing_gpu"
+	@echo "... e2e_plasticity_eligibility_utils_quantum"
 	@echo "... e2e_test_amygdala_pipeline"
 	@echo "... e2e_test_asymmetric_swarm"
 	@echo "... e2e_test_attention_snn_plasticity_pipeline"
@@ -27106,7 +27198,9 @@ help:
 	@echo "... integration_plasticity_bcm_test_bcm_integration"
 	@echo "... integration_plasticity_biological_test_biological_plasticity_integration"
 	@echo "... integration_plasticity_bridges_test_phase1_bridges_integration"
+	@echo "... integration_plasticity_eligibility_test_eligibility_utils_quantum_integration"
 	@echo "... integration_plasticity_eligibility_test_eligibility_wiring"
+	@echo "... integration_plasticity_eligibility_utils_quantum"
 	@echo "... integration_plasticity_heterosynaptic"
 	@echo "... integration_plasticity_metabolic"
 	@echo "... integration_plasticity_metabolic_test_metabolic_integration"
@@ -27424,6 +27518,8 @@ help:
 	@echo "... regression_plasticity_biological_test_biological_plasticity_performance"
 	@echo "... regression_plasticity_bridges_test_phase1_bridges_regression"
 	@echo "... regression_plasticity_eligibility_test_eligibility_backward_compat"
+	@echo "... regression_plasticity_eligibility_test_eligibility_utils_quantum_regression"
+	@echo "... regression_plasticity_eligibility_utils_quantum"
 	@echo "... regression_plasticity_heterosynaptic"
 	@echo "... regression_plasticity_metabolic"
 	@echo "... regression_plasticity_metabolic_test_metabolic_regression"
@@ -28490,6 +28586,8 @@ help:
 	@echo "... unit_plasticity_eligibility_test_eligibility_burst"
 	@echo "... unit_plasticity_eligibility_test_eligibility_fep_bridge"
 	@echo "... unit_plasticity_eligibility_test_eligibility_quantum_bridge"
+	@echo "... unit_plasticity_eligibility_test_eligibility_utils_quantum_bridge"
+	@echo "... unit_plasticity_eligibility_utils_quantum_bridge"
 	@echo "... unit_plasticity_extended_metaplasticity"
 	@echo "... unit_plasticity_heterosynaptic"
 	@echo "... unit_plasticity_homeostatic_sleep_bridge"

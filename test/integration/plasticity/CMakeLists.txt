@@ -265,3 +265,29 @@ gtest_discover_tests(integration_plasticity_phase1_bridges
         TIMEOUT 300
         LABELS "integration;plasticity;bridges;phase1"
 )
+
+# ============================================================================
+# Eligibility Utils-Quantum Bidirectional Bridge Integration Tests
+# ============================================================================
+# WHAT: Integration tests for bidirectional feedback between utils and quantum
+# WHY:  Ensure closed-loop optimization improves learning dynamics
+# HOW:  Test full pipeline, feedback convergence, multi-module coordination
+# ============================================================================
+
+add_executable(integration_plasticity_eligibility_utils_quantum
+    eligibility/test_eligibility_utils_quantum_integration.cpp
+)
+target_link_libraries(integration_plasticity_eligibility_utils_quantum
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(integration_plasticity_eligibility_utils_quantum PRIVATE cxx_std_17)
+gtest_discover_tests(integration_plasticity_eligibility_utils_quantum
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;plasticity;eligibility;utils;quantum"
+)

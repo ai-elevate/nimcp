@@ -333,3 +333,29 @@ gtest_discover_tests(regression_plasticity_phase1_bridges
         TIMEOUT 600
         LABELS "regression;plasticity;bridges;phase1"
 )
+
+# ============================================================================
+# Eligibility Utils-Quantum Bridge Regression Tests
+# ============================================================================
+# WHAT: Regression tests for bidirectional eligibility utils-quantum bridge
+# WHY:  Ensure stability, edge case handling, no numerical regressions
+# HOW:  Edge cases, high load, rapid cycles, memory safety, state bounds
+# ============================================================================
+
+add_executable(regression_plasticity_eligibility_utils_quantum
+    eligibility/test_eligibility_utils_quantum_regression.cpp
+)
+target_link_libraries(regression_plasticity_eligibility_utils_quantum
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(regression_plasticity_eligibility_utils_quantum PRIVATE cxx_std_17)
+gtest_discover_tests(regression_plasticity_eligibility_utils_quantum
+    PROPERTIES
+        TIMEOUT 600
+        LABELS "regression;plasticity;eligibility;utils;quantum"
+)
