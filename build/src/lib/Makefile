@@ -497,6 +497,174 @@ __/async/nimcp_wiring_diagram.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/async/nimcp_wiring_diagram.c.s
 .PHONY : __/async/nimcp_wiring_diagram.c.s
 
+__/biology/epigenetics/nimcp_epigenetics.o: __/biology/epigenetics/nimcp_epigenetics.c.o
+.PHONY : __/biology/epigenetics/nimcp_epigenetics.o
+
+# target to build an object file
+__/biology/epigenetics/nimcp_epigenetics.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/biology/epigenetics/nimcp_epigenetics.c.o
+.PHONY : __/biology/epigenetics/nimcp_epigenetics.c.o
+
+__/biology/epigenetics/nimcp_epigenetics.i: __/biology/epigenetics/nimcp_epigenetics.c.i
+.PHONY : __/biology/epigenetics/nimcp_epigenetics.i
+
+# target to preprocess a source file
+__/biology/epigenetics/nimcp_epigenetics.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/biology/epigenetics/nimcp_epigenetics.c.i
+.PHONY : __/biology/epigenetics/nimcp_epigenetics.c.i
+
+__/biology/epigenetics/nimcp_epigenetics.s: __/biology/epigenetics/nimcp_epigenetics.c.s
+.PHONY : __/biology/epigenetics/nimcp_epigenetics.s
+
+# target to generate assembly for a file
+__/biology/epigenetics/nimcp_epigenetics.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/biology/epigenetics/nimcp_epigenetics.c.s
+.PHONY : __/biology/epigenetics/nimcp_epigenetics.c.s
+
+__/biology/neurogenesis/nimcp_neurogenesis.o: __/biology/neurogenesis/nimcp_neurogenesis.c.o
+.PHONY : __/biology/neurogenesis/nimcp_neurogenesis.o
+
+# target to build an object file
+__/biology/neurogenesis/nimcp_neurogenesis.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/biology/neurogenesis/nimcp_neurogenesis.c.o
+.PHONY : __/biology/neurogenesis/nimcp_neurogenesis.c.o
+
+__/biology/neurogenesis/nimcp_neurogenesis.i: __/biology/neurogenesis/nimcp_neurogenesis.c.i
+.PHONY : __/biology/neurogenesis/nimcp_neurogenesis.i
+
+# target to preprocess a source file
+__/biology/neurogenesis/nimcp_neurogenesis.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/biology/neurogenesis/nimcp_neurogenesis.c.i
+.PHONY : __/biology/neurogenesis/nimcp_neurogenesis.c.i
+
+__/biology/neurogenesis/nimcp_neurogenesis.s: __/biology/neurogenesis/nimcp_neurogenesis.c.s
+.PHONY : __/biology/neurogenesis/nimcp_neurogenesis.s
+
+# target to generate assembly for a file
+__/biology/neurogenesis/nimcp_neurogenesis.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/biology/neurogenesis/nimcp_neurogenesis.c.s
+.PHONY : __/biology/neurogenesis/nimcp_neurogenesis.c.s
+
+__/biology/neurovascular/nimcp_neurovascular.o: __/biology/neurovascular/nimcp_neurovascular.c.o
+.PHONY : __/biology/neurovascular/nimcp_neurovascular.o
+
+# target to build an object file
+__/biology/neurovascular/nimcp_neurovascular.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/biology/neurovascular/nimcp_neurovascular.c.o
+.PHONY : __/biology/neurovascular/nimcp_neurovascular.c.o
+
+__/biology/neurovascular/nimcp_neurovascular.i: __/biology/neurovascular/nimcp_neurovascular.c.i
+.PHONY : __/biology/neurovascular/nimcp_neurovascular.i
+
+# target to preprocess a source file
+__/biology/neurovascular/nimcp_neurovascular.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/biology/neurovascular/nimcp_neurovascular.c.i
+.PHONY : __/biology/neurovascular/nimcp_neurovascular.c.i
+
+__/biology/neurovascular/nimcp_neurovascular.s: __/biology/neurovascular/nimcp_neurovascular.c.s
+.PHONY : __/biology/neurovascular/nimcp_neurovascular.s
+
+# target to generate assembly for a file
+__/biology/neurovascular/nimcp_neurovascular.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/biology/neurovascular/nimcp_neurovascular.c.s
+.PHONY : __/biology/neurovascular/nimcp_neurovascular.c.s
+
+__/chemistry/gasotransmitters/nimcp_nitric_oxide.o: __/chemistry/gasotransmitters/nimcp_nitric_oxide.c.o
+.PHONY : __/chemistry/gasotransmitters/nimcp_nitric_oxide.o
+
+# target to build an object file
+__/chemistry/gasotransmitters/nimcp_nitric_oxide.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/chemistry/gasotransmitters/nimcp_nitric_oxide.c.o
+.PHONY : __/chemistry/gasotransmitters/nimcp_nitric_oxide.c.o
+
+__/chemistry/gasotransmitters/nimcp_nitric_oxide.i: __/chemistry/gasotransmitters/nimcp_nitric_oxide.c.i
+.PHONY : __/chemistry/gasotransmitters/nimcp_nitric_oxide.i
+
+# target to preprocess a source file
+__/chemistry/gasotransmitters/nimcp_nitric_oxide.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/chemistry/gasotransmitters/nimcp_nitric_oxide.c.i
+.PHONY : __/chemistry/gasotransmitters/nimcp_nitric_oxide.c.i
+
+__/chemistry/gasotransmitters/nimcp_nitric_oxide.s: __/chemistry/gasotransmitters/nimcp_nitric_oxide.c.s
+.PHONY : __/chemistry/gasotransmitters/nimcp_nitric_oxide.s
+
+# target to generate assembly for a file
+__/chemistry/gasotransmitters/nimcp_nitric_oxide.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/chemistry/gasotransmitters/nimcp_nitric_oxide.c.s
+.PHONY : __/chemistry/gasotransmitters/nimcp_nitric_oxide.c.s
+
+__/chemistry/ph/nimcp_buffer_systems.o: __/chemistry/ph/nimcp_buffer_systems.c.o
+.PHONY : __/chemistry/ph/nimcp_buffer_systems.o
+
+# target to build an object file
+__/chemistry/ph/nimcp_buffer_systems.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/chemistry/ph/nimcp_buffer_systems.c.o
+.PHONY : __/chemistry/ph/nimcp_buffer_systems.c.o
+
+__/chemistry/ph/nimcp_buffer_systems.i: __/chemistry/ph/nimcp_buffer_systems.c.i
+.PHONY : __/chemistry/ph/nimcp_buffer_systems.i
+
+# target to preprocess a source file
+__/chemistry/ph/nimcp_buffer_systems.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/chemistry/ph/nimcp_buffer_systems.c.i
+.PHONY : __/chemistry/ph/nimcp_buffer_systems.c.i
+
+__/chemistry/ph/nimcp_buffer_systems.s: __/chemistry/ph/nimcp_buffer_systems.c.s
+.PHONY : __/chemistry/ph/nimcp_buffer_systems.s
+
+# target to generate assembly for a file
+__/chemistry/ph/nimcp_buffer_systems.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/chemistry/ph/nimcp_buffer_systems.c.s
+.PHONY : __/chemistry/ph/nimcp_buffer_systems.c.s
+
+__/chemistry/ph/nimcp_ph_dynamics.o: __/chemistry/ph/nimcp_ph_dynamics.c.o
+.PHONY : __/chemistry/ph/nimcp_ph_dynamics.o
+
+# target to build an object file
+__/chemistry/ph/nimcp_ph_dynamics.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/chemistry/ph/nimcp_ph_dynamics.c.o
+.PHONY : __/chemistry/ph/nimcp_ph_dynamics.c.o
+
+__/chemistry/ph/nimcp_ph_dynamics.i: __/chemistry/ph/nimcp_ph_dynamics.c.i
+.PHONY : __/chemistry/ph/nimcp_ph_dynamics.i
+
+# target to preprocess a source file
+__/chemistry/ph/nimcp_ph_dynamics.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/chemistry/ph/nimcp_ph_dynamics.c.i
+.PHONY : __/chemistry/ph/nimcp_ph_dynamics.c.i
+
+__/chemistry/ph/nimcp_ph_dynamics.s: __/chemistry/ph/nimcp_ph_dynamics.c.s
+.PHONY : __/chemistry/ph/nimcp_ph_dynamics.s
+
+# target to generate assembly for a file
+__/chemistry/ph/nimcp_ph_dynamics.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/chemistry/ph/nimcp_ph_dynamics.c.s
+.PHONY : __/chemistry/ph/nimcp_ph_dynamics.c.s
+
+__/chemistry/ph/nimcp_proton_pumps.o: __/chemistry/ph/nimcp_proton_pumps.c.o
+.PHONY : __/chemistry/ph/nimcp_proton_pumps.o
+
+# target to build an object file
+__/chemistry/ph/nimcp_proton_pumps.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/chemistry/ph/nimcp_proton_pumps.c.o
+.PHONY : __/chemistry/ph/nimcp_proton_pumps.c.o
+
+__/chemistry/ph/nimcp_proton_pumps.i: __/chemistry/ph/nimcp_proton_pumps.c.i
+.PHONY : __/chemistry/ph/nimcp_proton_pumps.i
+
+# target to preprocess a source file
+__/chemistry/ph/nimcp_proton_pumps.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/chemistry/ph/nimcp_proton_pumps.c.i
+.PHONY : __/chemistry/ph/nimcp_proton_pumps.c.i
+
+__/chemistry/ph/nimcp_proton_pumps.s: __/chemistry/ph/nimcp_proton_pumps.c.s
+.PHONY : __/chemistry/ph/nimcp_proton_pumps.s
+
+# target to generate assembly for a file
+__/chemistry/ph/nimcp_proton_pumps.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/chemistry/ph/nimcp_proton_pumps.c.s
+.PHONY : __/chemistry/ph/nimcp_proton_pumps.c.s
+
 __/cognitive/analysis/nimcp_analysis_fep_bridge.o: __/cognitive/analysis/nimcp_analysis_fep_bridge.c.o
 .PHONY : __/cognitive/analysis/nimcp_analysis_fep_bridge.o
 
@@ -16097,6 +16265,126 @@ __/core/brain/regions/cingulate/nimcp_cingulate_quantum_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/cingulate/nimcp_cingulate_quantum_bridge.c.s
 .PHONY : __/core/brain/regions/cingulate/nimcp_cingulate_quantum_bridge.c.s
 
+__/core/brain/regions/habenula/nimcp_habenula.o: __/core/brain/regions/habenula/nimcp_habenula.c.o
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula.o
+
+# target to build an object file
+__/core/brain/regions/habenula/nimcp_habenula.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula.c.o
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula.c.o
+
+__/core/brain/regions/habenula/nimcp_habenula.i: __/core/brain/regions/habenula/nimcp_habenula.c.i
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula.i
+
+# target to preprocess a source file
+__/core/brain/regions/habenula/nimcp_habenula.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula.c.i
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula.c.i
+
+__/core/brain/regions/habenula/nimcp_habenula.s: __/core/brain/regions/habenula/nimcp_habenula.c.s
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula.s
+
+# target to generate assembly for a file
+__/core/brain/regions/habenula/nimcp_habenula.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula.c.s
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula.c.s
+
+__/core/brain/regions/habenula/nimcp_habenula_adapter.o: __/core/brain/regions/habenula/nimcp_habenula_adapter.c.o
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_adapter.o
+
+# target to build an object file
+__/core/brain/regions/habenula/nimcp_habenula_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula_adapter.c.o
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_adapter.c.o
+
+__/core/brain/regions/habenula/nimcp_habenula_adapter.i: __/core/brain/regions/habenula/nimcp_habenula_adapter.c.i
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_adapter.i
+
+# target to preprocess a source file
+__/core/brain/regions/habenula/nimcp_habenula_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula_adapter.c.i
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_adapter.c.i
+
+__/core/brain/regions/habenula/nimcp_habenula_adapter.s: __/core/brain/regions/habenula/nimcp_habenula_adapter.c.s
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_adapter.s
+
+# target to generate assembly for a file
+__/core/brain/regions/habenula/nimcp_habenula_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula_adapter.c.s
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_adapter.c.s
+
+__/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.o: __/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.c.o
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.o
+
+# target to build an object file
+__/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.c.o
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.c.o
+
+__/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.i: __/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.c.i
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.c.i
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.c.i
+
+__/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.s: __/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.c.s
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.c.s
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.c.s
+
+__/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.o: __/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.c.o
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.o
+
+# target to build an object file
+__/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.c.o
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.c.o
+
+__/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.i: __/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.c.i
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.c.i
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.c.i
+
+__/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.s: __/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.c.s
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.c.s
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.c.s
+
+__/core/brain/regions/habenula/nimcp_habenula_snn_bridge.o: __/core/brain/regions/habenula/nimcp_habenula_snn_bridge.c.o
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_snn_bridge.o
+
+# target to build an object file
+__/core/brain/regions/habenula/nimcp_habenula_snn_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula_snn_bridge.c.o
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_snn_bridge.c.o
+
+__/core/brain/regions/habenula/nimcp_habenula_snn_bridge.i: __/core/brain/regions/habenula/nimcp_habenula_snn_bridge.c.i
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_snn_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/habenula/nimcp_habenula_snn_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula_snn_bridge.c.i
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_snn_bridge.c.i
+
+__/core/brain/regions/habenula/nimcp_habenula_snn_bridge.s: __/core/brain/regions/habenula/nimcp_habenula_snn_bridge.c.s
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_snn_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/habenula/nimcp_habenula_snn_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/habenula/nimcp_habenula_snn_bridge.c.s
+.PHONY : __/core/brain/regions/habenula/nimcp_habenula_snn_bridge.c.s
+
 __/core/brain/regions/hippocampus/nimcp_hippocampus_adapter.o: __/core/brain/regions/hippocampus/nimcp_hippocampus_adapter.c.o
 .PHONY : __/core/brain/regions/hippocampus/nimcp_hippocampus_adapter.o
 
@@ -17225,6 +17513,198 @@ __/core/brain/regions/insula/nimcp_insula_quantum_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/insula/nimcp_insula_quantum_bridge.c.s
 .PHONY : __/core/brain/regions/insula/nimcp_insula_quantum_bridge.c.s
 
+__/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.o: __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.o
+
+# target to build an object file
+__/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c.o
+
+__/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.i: __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.i
+
+# target to preprocess a source file
+__/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c.i
+
+__/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.s: __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.s
+
+# target to generate assembly for a file
+__/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c.s
+
+__/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.o: __/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.o
+
+# target to build an object file
+__/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.c.o
+
+__/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.i: __/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.i
+
+# target to preprocess a source file
+__/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.c.i
+
+__/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.s: __/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.s
+
+# target to generate assembly for a file
+__/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.c.s
+
+__/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.o: __/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.o
+
+# target to build an object file
+__/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.c.o
+
+__/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.i: __/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.c.i
+
+__/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.s: __/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.c.s
+
+__/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.o: __/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.o
+
+# target to build an object file
+__/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.c.o
+
+__/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.i: __/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.c.i
+
+__/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.s: __/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.c.s
+
+__/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.o: __/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.o
+
+# target to build an object file
+__/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.c.o
+
+__/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.i: __/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.c.i
+
+__/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.s: __/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.c.s
+
+__/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.o: __/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.o
+
+# target to build an object file
+__/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.c.o
+
+__/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.i: __/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.i
+
+# target to preprocess a source file
+__/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.c.i
+
+__/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.s: __/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.s
+
+# target to generate assembly for a file
+__/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.c.s
+
+__/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.o: __/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.o
+
+# target to build an object file
+__/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.c.o
+
+__/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.i: __/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.i
+
+# target to preprocess a source file
+__/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.c.i
+
+__/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.s: __/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.s
+
+# target to generate assembly for a file
+__/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.c.s
+
+__/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.o: __/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.o
+
+# target to build an object file
+__/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.c.o
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.c.o
+
+__/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.i: __/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.i
+
+# target to preprocess a source file
+__/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.c.i
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.c.i
+
+__/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.s: __/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.s
+
+# target to generate assembly for a file
+__/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.c.s
+.PHONY : __/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.c.s
+
 __/core/brain/regions/motor/nimcp_motor_adapter.o: __/core/brain/regions/motor/nimcp_motor_adapter.c.o
 .PHONY : __/core/brain/regions/motor/nimcp_motor_adapter.o
 
@@ -17272,6 +17752,102 @@ __/core/brain/regions/motor/nimcp_motor_quantum_bridge.s: __/core/brain/regions/
 __/core/brain/regions/motor/nimcp_motor_quantum_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/motor/nimcp_motor_quantum_bridge.c.s
 .PHONY : __/core/brain/regions/motor/nimcp_motor_quantum_bridge.c.s
+
+__/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.o: __/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.c.o
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.o
+
+# target to build an object file
+__/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.c.o
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.c.o
+
+__/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.i: __/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.c.i
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.c.i
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.c.i
+
+__/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.s: __/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.c.s
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.c.s
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.c.s
+
+__/core/brain/regions/nimcp_neuromodulatory_immune_bridge.o: __/core/brain/regions/nimcp_neuromodulatory_immune_bridge.c.o
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_immune_bridge.o
+
+# target to build an object file
+__/core/brain/regions/nimcp_neuromodulatory_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/nimcp_neuromodulatory_immune_bridge.c.o
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_immune_bridge.c.o
+
+__/core/brain/regions/nimcp_neuromodulatory_immune_bridge.i: __/core/brain/regions/nimcp_neuromodulatory_immune_bridge.c.i
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_immune_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/nimcp_neuromodulatory_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/nimcp_neuromodulatory_immune_bridge.c.i
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_immune_bridge.c.i
+
+__/core/brain/regions/nimcp_neuromodulatory_immune_bridge.s: __/core/brain/regions/nimcp_neuromodulatory_immune_bridge.c.s
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_immune_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/nimcp_neuromodulatory_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/nimcp_neuromodulatory_immune_bridge.c.s
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_immune_bridge.c.s
+
+__/core/brain/regions/nimcp_neuromodulatory_logging_bridge.o: __/core/brain/regions/nimcp_neuromodulatory_logging_bridge.c.o
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_logging_bridge.o
+
+# target to build an object file
+__/core/brain/regions/nimcp_neuromodulatory_logging_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/nimcp_neuromodulatory_logging_bridge.c.o
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_logging_bridge.c.o
+
+__/core/brain/regions/nimcp_neuromodulatory_logging_bridge.i: __/core/brain/regions/nimcp_neuromodulatory_logging_bridge.c.i
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_logging_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/nimcp_neuromodulatory_logging_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/nimcp_neuromodulatory_logging_bridge.c.i
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_logging_bridge.c.i
+
+__/core/brain/regions/nimcp_neuromodulatory_logging_bridge.s: __/core/brain/regions/nimcp_neuromodulatory_logging_bridge.c.s
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_logging_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/nimcp_neuromodulatory_logging_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/nimcp_neuromodulatory_logging_bridge.c.s
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_logging_bridge.c.s
+
+__/core/brain/regions/nimcp_neuromodulatory_security_bridge.o: __/core/brain/regions/nimcp_neuromodulatory_security_bridge.c.o
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_security_bridge.o
+
+# target to build an object file
+__/core/brain/regions/nimcp_neuromodulatory_security_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/nimcp_neuromodulatory_security_bridge.c.o
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_security_bridge.c.o
+
+__/core/brain/regions/nimcp_neuromodulatory_security_bridge.i: __/core/brain/regions/nimcp_neuromodulatory_security_bridge.c.i
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_security_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/nimcp_neuromodulatory_security_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/nimcp_neuromodulatory_security_bridge.c.i
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_security_bridge.c.i
+
+__/core/brain/regions/nimcp_neuromodulatory_security_bridge.s: __/core/brain/regions/nimcp_neuromodulatory_security_bridge.c.s
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_security_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/nimcp_neuromodulatory_security_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/nimcp_neuromodulatory_security_bridge.c.s
+.PHONY : __/core/brain/regions/nimcp_neuromodulatory_security_bridge.c.s
 
 __/core/brain/regions/occipital/nimcp_occipital_adapter.o: __/core/brain/regions/occipital/nimcp_occipital_adapter.c.o
 .PHONY : __/core/brain/regions/occipital/nimcp_occipital_adapter.o
@@ -17609,6 +18185,222 @@ __/core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.c.s
 .PHONY : __/core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.c.s
 
+__/core/brain/regions/raphe/nimcp_impulse_control.o: __/core/brain/regions/raphe/nimcp_impulse_control.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_impulse_control.o
+
+# target to build an object file
+__/core/brain/regions/raphe/nimcp_impulse_control.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_impulse_control.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_impulse_control.c.o
+
+__/core/brain/regions/raphe/nimcp_impulse_control.i: __/core/brain/regions/raphe/nimcp_impulse_control.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_impulse_control.i
+
+# target to preprocess a source file
+__/core/brain/regions/raphe/nimcp_impulse_control.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_impulse_control.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_impulse_control.c.i
+
+__/core/brain/regions/raphe/nimcp_impulse_control.s: __/core/brain/regions/raphe/nimcp_impulse_control.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_impulse_control.s
+
+# target to generate assembly for a file
+__/core/brain/regions/raphe/nimcp_impulse_control.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_impulse_control.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_impulse_control.c.s
+
+__/core/brain/regions/raphe/nimcp_mood_regulation.o: __/core/brain/regions/raphe/nimcp_mood_regulation.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_mood_regulation.o
+
+# target to build an object file
+__/core/brain/regions/raphe/nimcp_mood_regulation.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_mood_regulation.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_mood_regulation.c.o
+
+__/core/brain/regions/raphe/nimcp_mood_regulation.i: __/core/brain/regions/raphe/nimcp_mood_regulation.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_mood_regulation.i
+
+# target to preprocess a source file
+__/core/brain/regions/raphe/nimcp_mood_regulation.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_mood_regulation.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_mood_regulation.c.i
+
+__/core/brain/regions/raphe/nimcp_mood_regulation.s: __/core/brain/regions/raphe/nimcp_mood_regulation.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_mood_regulation.s
+
+# target to generate assembly for a file
+__/core/brain/regions/raphe/nimcp_mood_regulation.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_mood_regulation.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_mood_regulation.c.s
+
+__/core/brain/regions/raphe/nimcp_raphe.o: __/core/brain/regions/raphe/nimcp_raphe.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe.o
+
+# target to build an object file
+__/core/brain/regions/raphe/nimcp_raphe.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe.c.o
+
+__/core/brain/regions/raphe/nimcp_raphe.i: __/core/brain/regions/raphe/nimcp_raphe.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe.i
+
+# target to preprocess a source file
+__/core/brain/regions/raphe/nimcp_raphe.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe.c.i
+
+__/core/brain/regions/raphe/nimcp_raphe.s: __/core/brain/regions/raphe/nimcp_raphe.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe.s
+
+# target to generate assembly for a file
+__/core/brain/regions/raphe/nimcp_raphe.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe.c.s
+
+__/core/brain/regions/raphe/nimcp_raphe_adapter.o: __/core/brain/regions/raphe/nimcp_raphe_adapter.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_adapter.o
+
+# target to build an object file
+__/core/brain/regions/raphe/nimcp_raphe_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe_adapter.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_adapter.c.o
+
+__/core/brain/regions/raphe/nimcp_raphe_adapter.i: __/core/brain/regions/raphe/nimcp_raphe_adapter.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_adapter.i
+
+# target to preprocess a source file
+__/core/brain/regions/raphe/nimcp_raphe_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe_adapter.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_adapter.c.i
+
+__/core/brain/regions/raphe/nimcp_raphe_adapter.s: __/core/brain/regions/raphe/nimcp_raphe_adapter.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_adapter.s
+
+# target to generate assembly for a file
+__/core/brain/regions/raphe/nimcp_raphe_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe_adapter.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_adapter.c.s
+
+__/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.o: __/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.o
+
+# target to build an object file
+__/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.c.o
+
+__/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.i: __/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.c.i
+
+__/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.s: __/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.c.s
+
+__/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.o: __/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.o
+
+# target to build an object file
+__/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.c.o
+
+__/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.i: __/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.c.i
+
+__/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.s: __/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.c.s
+
+__/core/brain/regions/raphe/nimcp_raphe_snn_bridge.o: __/core/brain/regions/raphe/nimcp_raphe_snn_bridge.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_snn_bridge.o
+
+# target to build an object file
+__/core/brain/regions/raphe/nimcp_raphe_snn_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe_snn_bridge.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_snn_bridge.c.o
+
+__/core/brain/regions/raphe/nimcp_raphe_snn_bridge.i: __/core/brain/regions/raphe/nimcp_raphe_snn_bridge.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_snn_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/raphe/nimcp_raphe_snn_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe_snn_bridge.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_snn_bridge.c.i
+
+__/core/brain/regions/raphe/nimcp_raphe_snn_bridge.s: __/core/brain/regions/raphe/nimcp_raphe_snn_bridge.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_snn_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/raphe/nimcp_raphe_snn_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_raphe_snn_bridge.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_raphe_snn_bridge.c.s
+
+__/core/brain/regions/raphe/nimcp_serotonin_release.o: __/core/brain/regions/raphe/nimcp_serotonin_release.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_serotonin_release.o
+
+# target to build an object file
+__/core/brain/regions/raphe/nimcp_serotonin_release.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_serotonin_release.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_serotonin_release.c.o
+
+__/core/brain/regions/raphe/nimcp_serotonin_release.i: __/core/brain/regions/raphe/nimcp_serotonin_release.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_serotonin_release.i
+
+# target to preprocess a source file
+__/core/brain/regions/raphe/nimcp_serotonin_release.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_serotonin_release.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_serotonin_release.c.i
+
+__/core/brain/regions/raphe/nimcp_serotonin_release.s: __/core/brain/regions/raphe/nimcp_serotonin_release.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_serotonin_release.s
+
+# target to generate assembly for a file
+__/core/brain/regions/raphe/nimcp_serotonin_release.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_serotonin_release.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_serotonin_release.c.s
+
+__/core/brain/regions/raphe/nimcp_temporal_discounting.o: __/core/brain/regions/raphe/nimcp_temporal_discounting.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_temporal_discounting.o
+
+# target to build an object file
+__/core/brain/regions/raphe/nimcp_temporal_discounting.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_temporal_discounting.c.o
+.PHONY : __/core/brain/regions/raphe/nimcp_temporal_discounting.c.o
+
+__/core/brain/regions/raphe/nimcp_temporal_discounting.i: __/core/brain/regions/raphe/nimcp_temporal_discounting.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_temporal_discounting.i
+
+# target to preprocess a source file
+__/core/brain/regions/raphe/nimcp_temporal_discounting.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_temporal_discounting.c.i
+.PHONY : __/core/brain/regions/raphe/nimcp_temporal_discounting.c.i
+
+__/core/brain/regions/raphe/nimcp_temporal_discounting.s: __/core/brain/regions/raphe/nimcp_temporal_discounting.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_temporal_discounting.s
+
+# target to generate assembly for a file
+__/core/brain/regions/raphe/nimcp_temporal_discounting.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/raphe/nimcp_temporal_discounting.c.s
+.PHONY : __/core/brain/regions/raphe/nimcp_temporal_discounting.c.s
+
 __/core/brain/regions/temporal/nimcp_temporal_adapter.o: __/core/brain/regions/temporal/nimcp_temporal_adapter.c.o
 .PHONY : __/core/brain/regions/temporal/nimcp_temporal_adapter.o
 
@@ -17704,6 +18496,198 @@ __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.s: __/core/brain/r
 __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.c.s
 .PHONY : __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.c.s
+
+__/core/brain/regions/vta/nimcp_dopamine_release.o: __/core/brain/regions/vta/nimcp_dopamine_release.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_dopamine_release.o
+
+# target to build an object file
+__/core/brain/regions/vta/nimcp_dopamine_release.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_dopamine_release.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_dopamine_release.c.o
+
+__/core/brain/regions/vta/nimcp_dopamine_release.i: __/core/brain/regions/vta/nimcp_dopamine_release.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_dopamine_release.i
+
+# target to preprocess a source file
+__/core/brain/regions/vta/nimcp_dopamine_release.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_dopamine_release.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_dopamine_release.c.i
+
+__/core/brain/regions/vta/nimcp_dopamine_release.s: __/core/brain/regions/vta/nimcp_dopamine_release.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_dopamine_release.s
+
+# target to generate assembly for a file
+__/core/brain/regions/vta/nimcp_dopamine_release.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_dopamine_release.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_dopamine_release.c.s
+
+__/core/brain/regions/vta/nimcp_incentive_salience.o: __/core/brain/regions/vta/nimcp_incentive_salience.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_incentive_salience.o
+
+# target to build an object file
+__/core/brain/regions/vta/nimcp_incentive_salience.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_incentive_salience.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_incentive_salience.c.o
+
+__/core/brain/regions/vta/nimcp_incentive_salience.i: __/core/brain/regions/vta/nimcp_incentive_salience.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_incentive_salience.i
+
+# target to preprocess a source file
+__/core/brain/regions/vta/nimcp_incentive_salience.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_incentive_salience.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_incentive_salience.c.i
+
+__/core/brain/regions/vta/nimcp_incentive_salience.s: __/core/brain/regions/vta/nimcp_incentive_salience.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_incentive_salience.s
+
+# target to generate assembly for a file
+__/core/brain/regions/vta/nimcp_incentive_salience.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_incentive_salience.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_incentive_salience.c.s
+
+__/core/brain/regions/vta/nimcp_reward_prediction_error.o: __/core/brain/regions/vta/nimcp_reward_prediction_error.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_reward_prediction_error.o
+
+# target to build an object file
+__/core/brain/regions/vta/nimcp_reward_prediction_error.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_reward_prediction_error.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_reward_prediction_error.c.o
+
+__/core/brain/regions/vta/nimcp_reward_prediction_error.i: __/core/brain/regions/vta/nimcp_reward_prediction_error.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_reward_prediction_error.i
+
+# target to preprocess a source file
+__/core/brain/regions/vta/nimcp_reward_prediction_error.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_reward_prediction_error.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_reward_prediction_error.c.i
+
+__/core/brain/regions/vta/nimcp_reward_prediction_error.s: __/core/brain/regions/vta/nimcp_reward_prediction_error.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_reward_prediction_error.s
+
+# target to generate assembly for a file
+__/core/brain/regions/vta/nimcp_reward_prediction_error.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_reward_prediction_error.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_reward_prediction_error.c.s
+
+__/core/brain/regions/vta/nimcp_vta.o: __/core/brain/regions/vta/nimcp_vta.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_vta.o
+
+# target to build an object file
+__/core/brain/regions/vta/nimcp_vta.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_vta.c.o
+
+__/core/brain/regions/vta/nimcp_vta.i: __/core/brain/regions/vta/nimcp_vta.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_vta.i
+
+# target to preprocess a source file
+__/core/brain/regions/vta/nimcp_vta.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_vta.c.i
+
+__/core/brain/regions/vta/nimcp_vta.s: __/core/brain/regions/vta/nimcp_vta.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_vta.s
+
+# target to generate assembly for a file
+__/core/brain/regions/vta/nimcp_vta.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_vta.c.s
+
+__/core/brain/regions/vta/nimcp_vta_adapter.o: __/core/brain/regions/vta/nimcp_vta_adapter.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_vta_adapter.o
+
+# target to build an object file
+__/core/brain/regions/vta/nimcp_vta_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta_adapter.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_vta_adapter.c.o
+
+__/core/brain/regions/vta/nimcp_vta_adapter.i: __/core/brain/regions/vta/nimcp_vta_adapter.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_vta_adapter.i
+
+# target to preprocess a source file
+__/core/brain/regions/vta/nimcp_vta_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta_adapter.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_vta_adapter.c.i
+
+__/core/brain/regions/vta/nimcp_vta_adapter.s: __/core/brain/regions/vta/nimcp_vta_adapter.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_vta_adapter.s
+
+# target to generate assembly for a file
+__/core/brain/regions/vta/nimcp_vta_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta_adapter.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_vta_adapter.c.s
+
+__/core/brain/regions/vta/nimcp_vta_bio_async_bridge.o: __/core/brain/regions/vta/nimcp_vta_bio_async_bridge.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_vta_bio_async_bridge.o
+
+# target to build an object file
+__/core/brain/regions/vta/nimcp_vta_bio_async_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta_bio_async_bridge.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_vta_bio_async_bridge.c.o
+
+__/core/brain/regions/vta/nimcp_vta_bio_async_bridge.i: __/core/brain/regions/vta/nimcp_vta_bio_async_bridge.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_vta_bio_async_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/vta/nimcp_vta_bio_async_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta_bio_async_bridge.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_vta_bio_async_bridge.c.i
+
+__/core/brain/regions/vta/nimcp_vta_bio_async_bridge.s: __/core/brain/regions/vta/nimcp_vta_bio_async_bridge.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_vta_bio_async_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/vta/nimcp_vta_bio_async_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta_bio_async_bridge.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_vta_bio_async_bridge.c.s
+
+__/core/brain/regions/vta/nimcp_vta_plasticity_bridge.o: __/core/brain/regions/vta/nimcp_vta_plasticity_bridge.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_vta_plasticity_bridge.o
+
+# target to build an object file
+__/core/brain/regions/vta/nimcp_vta_plasticity_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta_plasticity_bridge.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_vta_plasticity_bridge.c.o
+
+__/core/brain/regions/vta/nimcp_vta_plasticity_bridge.i: __/core/brain/regions/vta/nimcp_vta_plasticity_bridge.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_vta_plasticity_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/vta/nimcp_vta_plasticity_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta_plasticity_bridge.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_vta_plasticity_bridge.c.i
+
+__/core/brain/regions/vta/nimcp_vta_plasticity_bridge.s: __/core/brain/regions/vta/nimcp_vta_plasticity_bridge.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_vta_plasticity_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/vta/nimcp_vta_plasticity_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta_plasticity_bridge.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_vta_plasticity_bridge.c.s
+
+__/core/brain/regions/vta/nimcp_vta_snn_bridge.o: __/core/brain/regions/vta/nimcp_vta_snn_bridge.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_vta_snn_bridge.o
+
+# target to build an object file
+__/core/brain/regions/vta/nimcp_vta_snn_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta_snn_bridge.c.o
+.PHONY : __/core/brain/regions/vta/nimcp_vta_snn_bridge.c.o
+
+__/core/brain/regions/vta/nimcp_vta_snn_bridge.i: __/core/brain/regions/vta/nimcp_vta_snn_bridge.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_vta_snn_bridge.i
+
+# target to preprocess a source file
+__/core/brain/regions/vta/nimcp_vta_snn_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta_snn_bridge.c.i
+.PHONY : __/core/brain/regions/vta/nimcp_vta_snn_bridge.c.i
+
+__/core/brain/regions/vta/nimcp_vta_snn_bridge.s: __/core/brain/regions/vta/nimcp_vta_snn_bridge.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_vta_snn_bridge.s
+
+# target to generate assembly for a file
+__/core/brain/regions/vta/nimcp_vta_snn_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/vta/nimcp_vta_snn_bridge.c.s
+.PHONY : __/core/brain/regions/vta/nimcp_vta_snn_bridge.c.s
 
 __/core/brain/regions/wernicke/nimcp_lexical_access.o: __/core/brain/regions/wernicke/nimcp_lexical_access.c.o
 .PHONY : __/core/brain/regions/wernicke/nimcp_lexical_access.o
@@ -24041,6 +25025,1110 @@ __/information/nimcp_shannon.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/information/nimcp_shannon.c.s
 .PHONY : __/information/nimcp_shannon.c.s
 
+__/integration/adapters/chemistry/nimcp_calcium_adapter.o: __/integration/adapters/chemistry/nimcp_calcium_adapter.c.o
+.PHONY : __/integration/adapters/chemistry/nimcp_calcium_adapter.o
+
+# target to build an object file
+__/integration/adapters/chemistry/nimcp_calcium_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/chemistry/nimcp_calcium_adapter.c.o
+.PHONY : __/integration/adapters/chemistry/nimcp_calcium_adapter.c.o
+
+__/integration/adapters/chemistry/nimcp_calcium_adapter.i: __/integration/adapters/chemistry/nimcp_calcium_adapter.c.i
+.PHONY : __/integration/adapters/chemistry/nimcp_calcium_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/chemistry/nimcp_calcium_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/chemistry/nimcp_calcium_adapter.c.i
+.PHONY : __/integration/adapters/chemistry/nimcp_calcium_adapter.c.i
+
+__/integration/adapters/chemistry/nimcp_calcium_adapter.s: __/integration/adapters/chemistry/nimcp_calcium_adapter.c.s
+.PHONY : __/integration/adapters/chemistry/nimcp_calcium_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/chemistry/nimcp_calcium_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/chemistry/nimcp_calcium_adapter.c.s
+.PHONY : __/integration/adapters/chemistry/nimcp_calcium_adapter.c.s
+
+__/integration/adapters/chemistry/nimcp_metabolic_adapter.o: __/integration/adapters/chemistry/nimcp_metabolic_adapter.c.o
+.PHONY : __/integration/adapters/chemistry/nimcp_metabolic_adapter.o
+
+# target to build an object file
+__/integration/adapters/chemistry/nimcp_metabolic_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/chemistry/nimcp_metabolic_adapter.c.o
+.PHONY : __/integration/adapters/chemistry/nimcp_metabolic_adapter.c.o
+
+__/integration/adapters/chemistry/nimcp_metabolic_adapter.i: __/integration/adapters/chemistry/nimcp_metabolic_adapter.c.i
+.PHONY : __/integration/adapters/chemistry/nimcp_metabolic_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/chemistry/nimcp_metabolic_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/chemistry/nimcp_metabolic_adapter.c.i
+.PHONY : __/integration/adapters/chemistry/nimcp_metabolic_adapter.c.i
+
+__/integration/adapters/chemistry/nimcp_metabolic_adapter.s: __/integration/adapters/chemistry/nimcp_metabolic_adapter.c.s
+.PHONY : __/integration/adapters/chemistry/nimcp_metabolic_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/chemistry/nimcp_metabolic_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/chemistry/nimcp_metabolic_adapter.c.s
+.PHONY : __/integration/adapters/chemistry/nimcp_metabolic_adapter.c.s
+
+__/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.o: __/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.c.o
+.PHONY : __/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.o
+
+# target to build an object file
+__/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.c.o
+.PHONY : __/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.c.o
+
+__/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.i: __/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.c.i
+.PHONY : __/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.c.i
+.PHONY : __/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.c.i
+
+__/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.s: __/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.c.s
+.PHONY : __/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.c.s
+.PHONY : __/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.c.s
+
+__/integration/adapters/executive/nimcp_basal_ganglia_adapter.o: __/integration/adapters/executive/nimcp_basal_ganglia_adapter.c.o
+.PHONY : __/integration/adapters/executive/nimcp_basal_ganglia_adapter.o
+
+# target to build an object file
+__/integration/adapters/executive/nimcp_basal_ganglia_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/executive/nimcp_basal_ganglia_adapter.c.o
+.PHONY : __/integration/adapters/executive/nimcp_basal_ganglia_adapter.c.o
+
+__/integration/adapters/executive/nimcp_basal_ganglia_adapter.i: __/integration/adapters/executive/nimcp_basal_ganglia_adapter.c.i
+.PHONY : __/integration/adapters/executive/nimcp_basal_ganglia_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/executive/nimcp_basal_ganglia_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/executive/nimcp_basal_ganglia_adapter.c.i
+.PHONY : __/integration/adapters/executive/nimcp_basal_ganglia_adapter.c.i
+
+__/integration/adapters/executive/nimcp_basal_ganglia_adapter.s: __/integration/adapters/executive/nimcp_basal_ganglia_adapter.c.s
+.PHONY : __/integration/adapters/executive/nimcp_basal_ganglia_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/executive/nimcp_basal_ganglia_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/executive/nimcp_basal_ganglia_adapter.c.s
+.PHONY : __/integration/adapters/executive/nimcp_basal_ganglia_adapter.c.s
+
+__/integration/adapters/executive/nimcp_pfc_adapter.o: __/integration/adapters/executive/nimcp_pfc_adapter.c.o
+.PHONY : __/integration/adapters/executive/nimcp_pfc_adapter.o
+
+# target to build an object file
+__/integration/adapters/executive/nimcp_pfc_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/executive/nimcp_pfc_adapter.c.o
+.PHONY : __/integration/adapters/executive/nimcp_pfc_adapter.c.o
+
+__/integration/adapters/executive/nimcp_pfc_adapter.i: __/integration/adapters/executive/nimcp_pfc_adapter.c.i
+.PHONY : __/integration/adapters/executive/nimcp_pfc_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/executive/nimcp_pfc_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/executive/nimcp_pfc_adapter.c.i
+.PHONY : __/integration/adapters/executive/nimcp_pfc_adapter.c.i
+
+__/integration/adapters/executive/nimcp_pfc_adapter.s: __/integration/adapters/executive/nimcp_pfc_adapter.c.s
+.PHONY : __/integration/adapters/executive/nimcp_pfc_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/executive/nimcp_pfc_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/executive/nimcp_pfc_adapter.c.s
+.PHONY : __/integration/adapters/executive/nimcp_pfc_adapter.c.s
+
+__/integration/adapters/memory/nimcp_hippocampus_adapter.o: __/integration/adapters/memory/nimcp_hippocampus_adapter.c.o
+.PHONY : __/integration/adapters/memory/nimcp_hippocampus_adapter.o
+
+# target to build an object file
+__/integration/adapters/memory/nimcp_hippocampus_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/memory/nimcp_hippocampus_adapter.c.o
+.PHONY : __/integration/adapters/memory/nimcp_hippocampus_adapter.c.o
+
+__/integration/adapters/memory/nimcp_hippocampus_adapter.i: __/integration/adapters/memory/nimcp_hippocampus_adapter.c.i
+.PHONY : __/integration/adapters/memory/nimcp_hippocampus_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/memory/nimcp_hippocampus_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/memory/nimcp_hippocampus_adapter.c.i
+.PHONY : __/integration/adapters/memory/nimcp_hippocampus_adapter.c.i
+
+__/integration/adapters/memory/nimcp_hippocampus_adapter.s: __/integration/adapters/memory/nimcp_hippocampus_adapter.c.s
+.PHONY : __/integration/adapters/memory/nimcp_hippocampus_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/memory/nimcp_hippocampus_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/memory/nimcp_hippocampus_adapter.c.s
+.PHONY : __/integration/adapters/memory/nimcp_hippocampus_adapter.c.s
+
+__/integration/adapters/memory/nimcp_pr_memory_adapter.o: __/integration/adapters/memory/nimcp_pr_memory_adapter.c.o
+.PHONY : __/integration/adapters/memory/nimcp_pr_memory_adapter.o
+
+# target to build an object file
+__/integration/adapters/memory/nimcp_pr_memory_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/memory/nimcp_pr_memory_adapter.c.o
+.PHONY : __/integration/adapters/memory/nimcp_pr_memory_adapter.c.o
+
+__/integration/adapters/memory/nimcp_pr_memory_adapter.i: __/integration/adapters/memory/nimcp_pr_memory_adapter.c.i
+.PHONY : __/integration/adapters/memory/nimcp_pr_memory_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/memory/nimcp_pr_memory_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/memory/nimcp_pr_memory_adapter.c.i
+.PHONY : __/integration/adapters/memory/nimcp_pr_memory_adapter.c.i
+
+__/integration/adapters/memory/nimcp_pr_memory_adapter.s: __/integration/adapters/memory/nimcp_pr_memory_adapter.c.s
+.PHONY : __/integration/adapters/memory/nimcp_pr_memory_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/memory/nimcp_pr_memory_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/memory/nimcp_pr_memory_adapter.c.s
+.PHONY : __/integration/adapters/memory/nimcp_pr_memory_adapter.c.s
+
+__/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.o: __/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.c.o
+.PHONY : __/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.o
+
+# target to build an object file
+__/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.c.o
+.PHONY : __/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.c.o
+
+__/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.i: __/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.c.i
+.PHONY : __/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.c.i
+.PHONY : __/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.c.i
+
+__/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.s: __/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.c.s
+.PHONY : __/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.c.s
+.PHONY : __/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.c.s
+
+__/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.o: __/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.c.o
+.PHONY : __/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.o
+
+# target to build an object file
+__/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.c.o
+.PHONY : __/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.c.o
+
+__/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.i: __/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.c.i
+.PHONY : __/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.c.i
+.PHONY : __/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.c.i
+
+__/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.s: __/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.c.s
+.PHONY : __/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.c.s
+.PHONY : __/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.c.s
+
+__/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.o: __/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.c.o
+.PHONY : __/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.o
+
+# target to build an object file
+__/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.c.o
+.PHONY : __/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.c.o
+
+__/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.i: __/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.c.i
+.PHONY : __/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.c.i
+.PHONY : __/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.c.i
+
+__/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.s: __/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.c.s
+.PHONY : __/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.c.s
+.PHONY : __/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.c.s
+
+__/integration/adapters/physics/nimcp_hh_dynamics_adapter.o: __/integration/adapters/physics/nimcp_hh_dynamics_adapter.c.o
+.PHONY : __/integration/adapters/physics/nimcp_hh_dynamics_adapter.o
+
+# target to build an object file
+__/integration/adapters/physics/nimcp_hh_dynamics_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/physics/nimcp_hh_dynamics_adapter.c.o
+.PHONY : __/integration/adapters/physics/nimcp_hh_dynamics_adapter.c.o
+
+__/integration/adapters/physics/nimcp_hh_dynamics_adapter.i: __/integration/adapters/physics/nimcp_hh_dynamics_adapter.c.i
+.PHONY : __/integration/adapters/physics/nimcp_hh_dynamics_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/physics/nimcp_hh_dynamics_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/physics/nimcp_hh_dynamics_adapter.c.i
+.PHONY : __/integration/adapters/physics/nimcp_hh_dynamics_adapter.c.i
+
+__/integration/adapters/physics/nimcp_hh_dynamics_adapter.s: __/integration/adapters/physics/nimcp_hh_dynamics_adapter.c.s
+.PHONY : __/integration/adapters/physics/nimcp_hh_dynamics_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/physics/nimcp_hh_dynamics_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/physics/nimcp_hh_dynamics_adapter.c.s
+.PHONY : __/integration/adapters/physics/nimcp_hh_dynamics_adapter.c.s
+
+__/integration/adapters/physics/nimcp_thermodynamics_adapter.o: __/integration/adapters/physics/nimcp_thermodynamics_adapter.c.o
+.PHONY : __/integration/adapters/physics/nimcp_thermodynamics_adapter.o
+
+# target to build an object file
+__/integration/adapters/physics/nimcp_thermodynamics_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/physics/nimcp_thermodynamics_adapter.c.o
+.PHONY : __/integration/adapters/physics/nimcp_thermodynamics_adapter.c.o
+
+__/integration/adapters/physics/nimcp_thermodynamics_adapter.i: __/integration/adapters/physics/nimcp_thermodynamics_adapter.c.i
+.PHONY : __/integration/adapters/physics/nimcp_thermodynamics_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/physics/nimcp_thermodynamics_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/physics/nimcp_thermodynamics_adapter.c.i
+.PHONY : __/integration/adapters/physics/nimcp_thermodynamics_adapter.c.i
+
+__/integration/adapters/physics/nimcp_thermodynamics_adapter.s: __/integration/adapters/physics/nimcp_thermodynamics_adapter.c.s
+.PHONY : __/integration/adapters/physics/nimcp_thermodynamics_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/physics/nimcp_thermodynamics_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/physics/nimcp_thermodynamics_adapter.c.s
+.PHONY : __/integration/adapters/physics/nimcp_thermodynamics_adapter.c.s
+
+__/integration/adapters/sensory/nimcp_auditory_adapter.o: __/integration/adapters/sensory/nimcp_auditory_adapter.c.o
+.PHONY : __/integration/adapters/sensory/nimcp_auditory_adapter.o
+
+# target to build an object file
+__/integration/adapters/sensory/nimcp_auditory_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/sensory/nimcp_auditory_adapter.c.o
+.PHONY : __/integration/adapters/sensory/nimcp_auditory_adapter.c.o
+
+__/integration/adapters/sensory/nimcp_auditory_adapter.i: __/integration/adapters/sensory/nimcp_auditory_adapter.c.i
+.PHONY : __/integration/adapters/sensory/nimcp_auditory_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/sensory/nimcp_auditory_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/sensory/nimcp_auditory_adapter.c.i
+.PHONY : __/integration/adapters/sensory/nimcp_auditory_adapter.c.i
+
+__/integration/adapters/sensory/nimcp_auditory_adapter.s: __/integration/adapters/sensory/nimcp_auditory_adapter.c.s
+.PHONY : __/integration/adapters/sensory/nimcp_auditory_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/sensory/nimcp_auditory_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/sensory/nimcp_auditory_adapter.c.s
+.PHONY : __/integration/adapters/sensory/nimcp_auditory_adapter.c.s
+
+__/integration/adapters/sensory/nimcp_visual_adapter.o: __/integration/adapters/sensory/nimcp_visual_adapter.c.o
+.PHONY : __/integration/adapters/sensory/nimcp_visual_adapter.o
+
+# target to build an object file
+__/integration/adapters/sensory/nimcp_visual_adapter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/sensory/nimcp_visual_adapter.c.o
+.PHONY : __/integration/adapters/sensory/nimcp_visual_adapter.c.o
+
+__/integration/adapters/sensory/nimcp_visual_adapter.i: __/integration/adapters/sensory/nimcp_visual_adapter.c.i
+.PHONY : __/integration/adapters/sensory/nimcp_visual_adapter.i
+
+# target to preprocess a source file
+__/integration/adapters/sensory/nimcp_visual_adapter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/sensory/nimcp_visual_adapter.c.i
+.PHONY : __/integration/adapters/sensory/nimcp_visual_adapter.c.i
+
+__/integration/adapters/sensory/nimcp_visual_adapter.s: __/integration/adapters/sensory/nimcp_visual_adapter.c.s
+.PHONY : __/integration/adapters/sensory/nimcp_visual_adapter.s
+
+# target to generate assembly for a file
+__/integration/adapters/sensory/nimcp_visual_adapter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/adapters/sensory/nimcp_visual_adapter.c.s
+.PHONY : __/integration/adapters/sensory/nimcp_visual_adapter.c.s
+
+__/integration/core/nimcp_inter_layer_router.o: __/integration/core/nimcp_inter_layer_router.c.o
+.PHONY : __/integration/core/nimcp_inter_layer_router.o
+
+# target to build an object file
+__/integration/core/nimcp_inter_layer_router.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/core/nimcp_inter_layer_router.c.o
+.PHONY : __/integration/core/nimcp_inter_layer_router.c.o
+
+__/integration/core/nimcp_inter_layer_router.i: __/integration/core/nimcp_inter_layer_router.c.i
+.PHONY : __/integration/core/nimcp_inter_layer_router.i
+
+# target to preprocess a source file
+__/integration/core/nimcp_inter_layer_router.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/core/nimcp_inter_layer_router.c.i
+.PHONY : __/integration/core/nimcp_inter_layer_router.c.i
+
+__/integration/core/nimcp_inter_layer_router.s: __/integration/core/nimcp_inter_layer_router.c.s
+.PHONY : __/integration/core/nimcp_inter_layer_router.s
+
+# target to generate assembly for a file
+__/integration/core/nimcp_inter_layer_router.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/core/nimcp_inter_layer_router.c.s
+.PHONY : __/integration/core/nimcp_inter_layer_router.c.s
+
+__/integration/core/nimcp_layer_coordinator.o: __/integration/core/nimcp_layer_coordinator.c.o
+.PHONY : __/integration/core/nimcp_layer_coordinator.o
+
+# target to build an object file
+__/integration/core/nimcp_layer_coordinator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/core/nimcp_layer_coordinator.c.o
+.PHONY : __/integration/core/nimcp_layer_coordinator.c.o
+
+__/integration/core/nimcp_layer_coordinator.i: __/integration/core/nimcp_layer_coordinator.c.i
+.PHONY : __/integration/core/nimcp_layer_coordinator.i
+
+# target to preprocess a source file
+__/integration/core/nimcp_layer_coordinator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/core/nimcp_layer_coordinator.c.i
+.PHONY : __/integration/core/nimcp_layer_coordinator.c.i
+
+__/integration/core/nimcp_layer_coordinator.s: __/integration/core/nimcp_layer_coordinator.c.s
+.PHONY : __/integration/core/nimcp_layer_coordinator.s
+
+# target to generate assembly for a file
+__/integration/core/nimcp_layer_coordinator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/core/nimcp_layer_coordinator.c.s
+.PHONY : __/integration/core/nimcp_layer_coordinator.c.s
+
+__/integration/core/nimcp_layer_registry.o: __/integration/core/nimcp_layer_registry.c.o
+.PHONY : __/integration/core/nimcp_layer_registry.o
+
+# target to build an object file
+__/integration/core/nimcp_layer_registry.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/core/nimcp_layer_registry.c.o
+.PHONY : __/integration/core/nimcp_layer_registry.c.o
+
+__/integration/core/nimcp_layer_registry.i: __/integration/core/nimcp_layer_registry.c.i
+.PHONY : __/integration/core/nimcp_layer_registry.i
+
+# target to preprocess a source file
+__/integration/core/nimcp_layer_registry.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/core/nimcp_layer_registry.c.i
+.PHONY : __/integration/core/nimcp_layer_registry.c.i
+
+__/integration/core/nimcp_layer_registry.s: __/integration/core/nimcp_layer_registry.c.s
+.PHONY : __/integration/core/nimcp_layer_registry.s
+
+# target to generate assembly for a file
+__/integration/core/nimcp_layer_registry.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/core/nimcp_layer_registry.c.s
+.PHONY : __/integration/core/nimcp_layer_registry.c.s
+
+__/integration/core/nimcp_layer_types.o: __/integration/core/nimcp_layer_types.c.o
+.PHONY : __/integration/core/nimcp_layer_types.o
+
+# target to build an object file
+__/integration/core/nimcp_layer_types.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/core/nimcp_layer_types.c.o
+.PHONY : __/integration/core/nimcp_layer_types.c.o
+
+__/integration/core/nimcp_layer_types.i: __/integration/core/nimcp_layer_types.c.i
+.PHONY : __/integration/core/nimcp_layer_types.i
+
+# target to preprocess a source file
+__/integration/core/nimcp_layer_types.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/core/nimcp_layer_types.c.i
+.PHONY : __/integration/core/nimcp_layer_types.c.i
+
+__/integration/core/nimcp_layer_types.s: __/integration/core/nimcp_layer_types.c.s
+.PHONY : __/integration/core/nimcp_layer_types.s
+
+# target to generate assembly for a file
+__/integration/core/nimcp_layer_types.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/core/nimcp_layer_types.c.s
+.PHONY : __/integration/core/nimcp_layer_types.c.s
+
+__/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.o: __/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c.o
+.PHONY : __/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.o
+
+# target to build an object file
+__/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c.o
+.PHONY : __/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c.o
+
+__/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.i: __/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c.i
+.PHONY : __/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c.i
+.PHONY : __/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c.i
+
+__/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.s: __/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c.s
+.PHONY : __/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c.s
+.PHONY : __/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c.s
+
+__/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.o: __/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c.o
+.PHONY : __/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.o
+
+# target to build an object file
+__/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c.o
+.PHONY : __/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c.o
+
+__/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.i: __/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c.i
+.PHONY : __/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c.i
+.PHONY : __/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c.i
+
+__/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.s: __/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c.s
+.PHONY : __/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c.s
+.PHONY : __/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c.s
+
+__/integration/inter/executive_integration/nimcp_executive_integration_bridge.o: __/integration/inter/executive_integration/nimcp_executive_integration_bridge.c.o
+.PHONY : __/integration/inter/executive_integration/nimcp_executive_integration_bridge.o
+
+# target to build an object file
+__/integration/inter/executive_integration/nimcp_executive_integration_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/executive_integration/nimcp_executive_integration_bridge.c.o
+.PHONY : __/integration/inter/executive_integration/nimcp_executive_integration_bridge.c.o
+
+__/integration/inter/executive_integration/nimcp_executive_integration_bridge.i: __/integration/inter/executive_integration/nimcp_executive_integration_bridge.c.i
+.PHONY : __/integration/inter/executive_integration/nimcp_executive_integration_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/executive_integration/nimcp_executive_integration_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/executive_integration/nimcp_executive_integration_bridge.c.i
+.PHONY : __/integration/inter/executive_integration/nimcp_executive_integration_bridge.c.i
+
+__/integration/inter/executive_integration/nimcp_executive_integration_bridge.s: __/integration/inter/executive_integration/nimcp_executive_integration_bridge.c.s
+.PHONY : __/integration/inter/executive_integration/nimcp_executive_integration_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/executive_integration/nimcp_executive_integration_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/executive_integration/nimcp_executive_integration_bridge.c.s
+.PHONY : __/integration/inter/executive_integration/nimcp_executive_integration_bridge.c.s
+
+__/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.o: __/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c.o
+.PHONY : __/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.o
+
+# target to build an object file
+__/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c.o
+.PHONY : __/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c.o
+
+__/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.i: __/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c.i
+.PHONY : __/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c.i
+.PHONY : __/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c.i
+
+__/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.s: __/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c.s
+.PHONY : __/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c.s
+.PHONY : __/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c.s
+
+__/integration/inter/memory_executive/nimcp_memory_executive_bridge.o: __/integration/inter/memory_executive/nimcp_memory_executive_bridge.c.o
+.PHONY : __/integration/inter/memory_executive/nimcp_memory_executive_bridge.o
+
+# target to build an object file
+__/integration/inter/memory_executive/nimcp_memory_executive_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/memory_executive/nimcp_memory_executive_bridge.c.o
+.PHONY : __/integration/inter/memory_executive/nimcp_memory_executive_bridge.c.o
+
+__/integration/inter/memory_executive/nimcp_memory_executive_bridge.i: __/integration/inter/memory_executive/nimcp_memory_executive_bridge.c.i
+.PHONY : __/integration/inter/memory_executive/nimcp_memory_executive_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/memory_executive/nimcp_memory_executive_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/memory_executive/nimcp_memory_executive_bridge.c.i
+.PHONY : __/integration/inter/memory_executive/nimcp_memory_executive_bridge.c.i
+
+__/integration/inter/memory_executive/nimcp_memory_executive_bridge.s: __/integration/inter/memory_executive/nimcp_memory_executive_bridge.c.s
+.PHONY : __/integration/inter/memory_executive/nimcp_memory_executive_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/memory_executive/nimcp_memory_executive_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/memory_executive/nimcp_memory_executive_bridge.c.s
+.PHONY : __/integration/inter/memory_executive/nimcp_memory_executive_bridge.c.s
+
+__/integration/inter/memory_integration/nimcp_memory_integration_bridge.o: __/integration/inter/memory_integration/nimcp_memory_integration_bridge.c.o
+.PHONY : __/integration/inter/memory_integration/nimcp_memory_integration_bridge.o
+
+# target to build an object file
+__/integration/inter/memory_integration/nimcp_memory_integration_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/memory_integration/nimcp_memory_integration_bridge.c.o
+.PHONY : __/integration/inter/memory_integration/nimcp_memory_integration_bridge.c.o
+
+__/integration/inter/memory_integration/nimcp_memory_integration_bridge.i: __/integration/inter/memory_integration/nimcp_memory_integration_bridge.c.i
+.PHONY : __/integration/inter/memory_integration/nimcp_memory_integration_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/memory_integration/nimcp_memory_integration_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/memory_integration/nimcp_memory_integration_bridge.c.i
+.PHONY : __/integration/inter/memory_integration/nimcp_memory_integration_bridge.c.i
+
+__/integration/inter/memory_integration/nimcp_memory_integration_bridge.s: __/integration/inter/memory_integration/nimcp_memory_integration_bridge.c.s
+.PHONY : __/integration/inter/memory_integration/nimcp_memory_integration_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/memory_integration/nimcp_memory_integration_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/memory_integration/nimcp_memory_integration_bridge.c.s
+.PHONY : __/integration/inter/memory_integration/nimcp_memory_integration_bridge.c.s
+
+__/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.o: __/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.c.o
+.PHONY : __/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.o
+
+# target to build an object file
+__/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.c.o
+.PHONY : __/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.c.o
+
+__/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.i: __/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.c.i
+.PHONY : __/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.c.i
+.PHONY : __/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.c.i
+
+__/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.s: __/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.c.s
+.PHONY : __/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.c.s
+.PHONY : __/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.c.s
+
+__/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.o: __/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.c.o
+.PHONY : __/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.o
+
+# target to build an object file
+__/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.c.o
+.PHONY : __/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.c.o
+
+__/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.i: __/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.c.i
+.PHONY : __/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.c.i
+.PHONY : __/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.c.i
+
+__/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.s: __/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.c.s
+.PHONY : __/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.c.s
+.PHONY : __/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.c.s
+
+__/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.o: __/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.c.o
+.PHONY : __/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.o
+
+# target to build an object file
+__/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.c.o
+.PHONY : __/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.c.o
+
+__/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.i: __/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.c.i
+.PHONY : __/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.c.i
+.PHONY : __/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.c.i
+
+__/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.s: __/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.c.s
+.PHONY : __/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.c.s
+.PHONY : __/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.c.s
+
+__/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.o: __/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.c.o
+.PHONY : __/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.o
+
+# target to build an object file
+__/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.c.o
+.PHONY : __/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.c.o
+
+__/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.i: __/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.c.i
+.PHONY : __/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.c.i
+.PHONY : __/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.c.i
+
+__/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.s: __/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.c.s
+.PHONY : __/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.c.s
+.PHONY : __/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.c.s
+
+__/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.o: __/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.c.o
+.PHONY : __/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.o
+
+# target to build an object file
+__/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.c.o
+.PHONY : __/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.c.o
+
+__/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.i: __/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.c.i
+.PHONY : __/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.c.i
+.PHONY : __/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.c.i
+
+__/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.s: __/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.c.s
+.PHONY : __/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.c.s
+.PHONY : __/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.c.s
+
+__/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.o: __/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.c.o
+.PHONY : __/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.o
+
+# target to build an object file
+__/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.c.o
+.PHONY : __/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.c.o
+
+__/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.i: __/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.c.i
+.PHONY : __/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.c.i
+.PHONY : __/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.c.i
+
+__/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.s: __/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.c.s
+.PHONY : __/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.c.s
+.PHONY : __/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.c.s
+
+__/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.o: __/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c.o
+.PHONY : __/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.o
+
+# target to build an object file
+__/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c.o
+.PHONY : __/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c.o
+
+__/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.i: __/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c.i
+.PHONY : __/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c.i
+.PHONY : __/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c.i
+
+__/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.s: __/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c.s
+.PHONY : __/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c.s
+.PHONY : __/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c.s
+
+__/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.o: __/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.c.o
+.PHONY : __/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.o
+
+# target to build an object file
+__/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.c.o
+.PHONY : __/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.c.o
+
+__/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.i: __/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.c.i
+.PHONY : __/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.c.i
+.PHONY : __/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.c.i
+
+__/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.s: __/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.c.s
+.PHONY : __/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.c.s
+.PHONY : __/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.c.s
+
+__/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.o: __/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.c.o
+.PHONY : __/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.o
+
+# target to build an object file
+__/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.c.o
+.PHONY : __/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.c.o
+
+__/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.i: __/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.c.i
+.PHONY : __/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.c.i
+.PHONY : __/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.c.i
+
+__/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.s: __/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.c.s
+.PHONY : __/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.c.s
+.PHONY : __/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.c.s
+
+__/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.o: __/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c.o
+.PHONY : __/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.o
+
+# target to build an object file
+__/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c.o
+.PHONY : __/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c.o
+
+__/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.i: __/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c.i
+.PHONY : __/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c.i
+.PHONY : __/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c.i
+
+__/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.s: __/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c.s
+.PHONY : __/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c.s
+.PHONY : __/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c.s
+
+__/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.o: __/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.c.o
+.PHONY : __/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.o
+
+# target to build an object file
+__/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.c.o
+.PHONY : __/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.c.o
+
+__/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.i: __/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.c.i
+.PHONY : __/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.c.i
+.PHONY : __/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.c.i
+
+__/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.s: __/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.c.s
+.PHONY : __/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.c.s
+.PHONY : __/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.c.s
+
+__/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.o: __/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.c.o
+.PHONY : __/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.o
+
+# target to build an object file
+__/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.c.o
+.PHONY : __/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.c.o
+
+__/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.i: __/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.c.i
+.PHONY : __/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.c.i
+.PHONY : __/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.c.i
+
+__/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.s: __/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.c.s
+.PHONY : __/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.c.s
+.PHONY : __/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.c.s
+
+__/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.o: __/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c.o
+.PHONY : __/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.o
+
+# target to build an object file
+__/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c.o
+.PHONY : __/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c.o
+
+__/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.i: __/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c.i
+.PHONY : __/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.i
+
+# target to preprocess a source file
+__/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c.i
+.PHONY : __/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c.i
+
+__/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.s: __/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c.s
+.PHONY : __/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.s
+
+# target to generate assembly for a file
+__/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c.s
+.PHONY : __/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c.s
+
+__/integration/intra/biology/nimcp_biology_intra_coordinator.o: __/integration/intra/biology/nimcp_biology_intra_coordinator.c.o
+.PHONY : __/integration/intra/biology/nimcp_biology_intra_coordinator.o
+
+# target to build an object file
+__/integration/intra/biology/nimcp_biology_intra_coordinator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/biology/nimcp_biology_intra_coordinator.c.o
+.PHONY : __/integration/intra/biology/nimcp_biology_intra_coordinator.c.o
+
+__/integration/intra/biology/nimcp_biology_intra_coordinator.i: __/integration/intra/biology/nimcp_biology_intra_coordinator.c.i
+.PHONY : __/integration/intra/biology/nimcp_biology_intra_coordinator.i
+
+# target to preprocess a source file
+__/integration/intra/biology/nimcp_biology_intra_coordinator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/biology/nimcp_biology_intra_coordinator.c.i
+.PHONY : __/integration/intra/biology/nimcp_biology_intra_coordinator.c.i
+
+__/integration/intra/biology/nimcp_biology_intra_coordinator.s: __/integration/intra/biology/nimcp_biology_intra_coordinator.c.s
+.PHONY : __/integration/intra/biology/nimcp_biology_intra_coordinator.s
+
+# target to generate assembly for a file
+__/integration/intra/biology/nimcp_biology_intra_coordinator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/biology/nimcp_biology_intra_coordinator.c.s
+.PHONY : __/integration/intra/biology/nimcp_biology_intra_coordinator.c.s
+
+__/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.o: __/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.c.o
+.PHONY : __/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.o
+
+# target to build an object file
+__/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.c.o
+.PHONY : __/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.c.o
+
+__/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.i: __/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.c.i
+.PHONY : __/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.i
+
+# target to preprocess a source file
+__/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.c.i
+.PHONY : __/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.c.i
+
+__/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.s: __/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.c.s
+.PHONY : __/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.s
+
+# target to generate assembly for a file
+__/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.c.s
+.PHONY : __/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.c.s
+
+__/integration/intra/executive/nimcp_executive_intra_coordinator.o: __/integration/intra/executive/nimcp_executive_intra_coordinator.c.o
+.PHONY : __/integration/intra/executive/nimcp_executive_intra_coordinator.o
+
+# target to build an object file
+__/integration/intra/executive/nimcp_executive_intra_coordinator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/executive/nimcp_executive_intra_coordinator.c.o
+.PHONY : __/integration/intra/executive/nimcp_executive_intra_coordinator.c.o
+
+__/integration/intra/executive/nimcp_executive_intra_coordinator.i: __/integration/intra/executive/nimcp_executive_intra_coordinator.c.i
+.PHONY : __/integration/intra/executive/nimcp_executive_intra_coordinator.i
+
+# target to preprocess a source file
+__/integration/intra/executive/nimcp_executive_intra_coordinator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/executive/nimcp_executive_intra_coordinator.c.i
+.PHONY : __/integration/intra/executive/nimcp_executive_intra_coordinator.c.i
+
+__/integration/intra/executive/nimcp_executive_intra_coordinator.s: __/integration/intra/executive/nimcp_executive_intra_coordinator.c.s
+.PHONY : __/integration/intra/executive/nimcp_executive_intra_coordinator.s
+
+# target to generate assembly for a file
+__/integration/intra/executive/nimcp_executive_intra_coordinator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/executive/nimcp_executive_intra_coordinator.c.s
+.PHONY : __/integration/intra/executive/nimcp_executive_intra_coordinator.c.s
+
+__/integration/intra/integration_layer/nimcp_integration_intra_coordinator.o: __/integration/intra/integration_layer/nimcp_integration_intra_coordinator.c.o
+.PHONY : __/integration/intra/integration_layer/nimcp_integration_intra_coordinator.o
+
+# target to build an object file
+__/integration/intra/integration_layer/nimcp_integration_intra_coordinator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/integration_layer/nimcp_integration_intra_coordinator.c.o
+.PHONY : __/integration/intra/integration_layer/nimcp_integration_intra_coordinator.c.o
+
+__/integration/intra/integration_layer/nimcp_integration_intra_coordinator.i: __/integration/intra/integration_layer/nimcp_integration_intra_coordinator.c.i
+.PHONY : __/integration/intra/integration_layer/nimcp_integration_intra_coordinator.i
+
+# target to preprocess a source file
+__/integration/intra/integration_layer/nimcp_integration_intra_coordinator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/integration_layer/nimcp_integration_intra_coordinator.c.i
+.PHONY : __/integration/intra/integration_layer/nimcp_integration_intra_coordinator.c.i
+
+__/integration/intra/integration_layer/nimcp_integration_intra_coordinator.s: __/integration/intra/integration_layer/nimcp_integration_intra_coordinator.c.s
+.PHONY : __/integration/intra/integration_layer/nimcp_integration_intra_coordinator.s
+
+# target to generate assembly for a file
+__/integration/intra/integration_layer/nimcp_integration_intra_coordinator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/integration_layer/nimcp_integration_intra_coordinator.c.s
+.PHONY : __/integration/intra/integration_layer/nimcp_integration_intra_coordinator.c.s
+
+__/integration/intra/memory/nimcp_memory_intra_coordinator.o: __/integration/intra/memory/nimcp_memory_intra_coordinator.c.o
+.PHONY : __/integration/intra/memory/nimcp_memory_intra_coordinator.o
+
+# target to build an object file
+__/integration/intra/memory/nimcp_memory_intra_coordinator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/memory/nimcp_memory_intra_coordinator.c.o
+.PHONY : __/integration/intra/memory/nimcp_memory_intra_coordinator.c.o
+
+__/integration/intra/memory/nimcp_memory_intra_coordinator.i: __/integration/intra/memory/nimcp_memory_intra_coordinator.c.i
+.PHONY : __/integration/intra/memory/nimcp_memory_intra_coordinator.i
+
+# target to preprocess a source file
+__/integration/intra/memory/nimcp_memory_intra_coordinator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/memory/nimcp_memory_intra_coordinator.c.i
+.PHONY : __/integration/intra/memory/nimcp_memory_intra_coordinator.c.i
+
+__/integration/intra/memory/nimcp_memory_intra_coordinator.s: __/integration/intra/memory/nimcp_memory_intra_coordinator.c.s
+.PHONY : __/integration/intra/memory/nimcp_memory_intra_coordinator.s
+
+# target to generate assembly for a file
+__/integration/intra/memory/nimcp_memory_intra_coordinator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/memory/nimcp_memory_intra_coordinator.c.s
+.PHONY : __/integration/intra/memory/nimcp_memory_intra_coordinator.c.s
+
+__/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.o: __/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.c.o
+.PHONY : __/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.o
+
+# target to build an object file
+__/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.c.o
+.PHONY : __/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.c.o
+
+__/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.i: __/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.c.i
+.PHONY : __/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.i
+
+# target to preprocess a source file
+__/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.c.i
+.PHONY : __/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.c.i
+
+__/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.s: __/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.c.s
+.PHONY : __/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.s
+
+# target to generate assembly for a file
+__/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.c.s
+.PHONY : __/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.c.s
+
+__/integration/intra/physics/nimcp_physics_intra_coordinator.o: __/integration/intra/physics/nimcp_physics_intra_coordinator.c.o
+.PHONY : __/integration/intra/physics/nimcp_physics_intra_coordinator.o
+
+# target to build an object file
+__/integration/intra/physics/nimcp_physics_intra_coordinator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/physics/nimcp_physics_intra_coordinator.c.o
+.PHONY : __/integration/intra/physics/nimcp_physics_intra_coordinator.c.o
+
+__/integration/intra/physics/nimcp_physics_intra_coordinator.i: __/integration/intra/physics/nimcp_physics_intra_coordinator.c.i
+.PHONY : __/integration/intra/physics/nimcp_physics_intra_coordinator.i
+
+# target to preprocess a source file
+__/integration/intra/physics/nimcp_physics_intra_coordinator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/physics/nimcp_physics_intra_coordinator.c.i
+.PHONY : __/integration/intra/physics/nimcp_physics_intra_coordinator.c.i
+
+__/integration/intra/physics/nimcp_physics_intra_coordinator.s: __/integration/intra/physics/nimcp_physics_intra_coordinator.c.s
+.PHONY : __/integration/intra/physics/nimcp_physics_intra_coordinator.s
+
+# target to generate assembly for a file
+__/integration/intra/physics/nimcp_physics_intra_coordinator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/physics/nimcp_physics_intra_coordinator.c.s
+.PHONY : __/integration/intra/physics/nimcp_physics_intra_coordinator.c.s
+
+__/integration/intra/sensory/nimcp_sensory_intra_coordinator.o: __/integration/intra/sensory/nimcp_sensory_intra_coordinator.c.o
+.PHONY : __/integration/intra/sensory/nimcp_sensory_intra_coordinator.o
+
+# target to build an object file
+__/integration/intra/sensory/nimcp_sensory_intra_coordinator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/sensory/nimcp_sensory_intra_coordinator.c.o
+.PHONY : __/integration/intra/sensory/nimcp_sensory_intra_coordinator.c.o
+
+__/integration/intra/sensory/nimcp_sensory_intra_coordinator.i: __/integration/intra/sensory/nimcp_sensory_intra_coordinator.c.i
+.PHONY : __/integration/intra/sensory/nimcp_sensory_intra_coordinator.i
+
+# target to preprocess a source file
+__/integration/intra/sensory/nimcp_sensory_intra_coordinator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/sensory/nimcp_sensory_intra_coordinator.c.i
+.PHONY : __/integration/intra/sensory/nimcp_sensory_intra_coordinator.c.i
+
+__/integration/intra/sensory/nimcp_sensory_intra_coordinator.s: __/integration/intra/sensory/nimcp_sensory_intra_coordinator.c.s
+.PHONY : __/integration/intra/sensory/nimcp_sensory_intra_coordinator.s
+
+# target to generate assembly for a file
+__/integration/intra/sensory/nimcp_sensory_intra_coordinator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/sensory/nimcp_sensory_intra_coordinator.c.s
+.PHONY : __/integration/intra/sensory/nimcp_sensory_intra_coordinator.c.s
+
+__/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.o: __/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c.o
+.PHONY : __/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.o
+
+# target to build an object file
+__/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c.o
+.PHONY : __/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c.o
+
+__/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.i: __/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c.i
+.PHONY : __/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.i
+
+# target to preprocess a source file
+__/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c.i
+.PHONY : __/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c.i
+
+__/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.s: __/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c.s
+.PHONY : __/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.s
+
+# target to generate assembly for a file
+__/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c.s
+.PHONY : __/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c.s
+
 __/io/dataio/nimcp_dataio.o: __/io/dataio/nimcp_dataio.c.o
 .PHONY : __/io/dataio/nimcp_dataio.o
 
@@ -27184,6 +29272,30 @@ __/perception/nimcp_visual_jepa_fep_bridge.s: __/perception/nimcp_visual_jepa_fe
 __/perception/nimcp_visual_jepa_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_visual_jepa_fep_bridge.c.s
 .PHONY : __/perception/nimcp_visual_jepa_fep_bridge.c.s
+
+__/physics/geometry/nimcp_information_geometry.o: __/physics/geometry/nimcp_information_geometry.c.o
+.PHONY : __/physics/geometry/nimcp_information_geometry.o
+
+# target to build an object file
+__/physics/geometry/nimcp_information_geometry.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/geometry/nimcp_information_geometry.c.o
+.PHONY : __/physics/geometry/nimcp_information_geometry.c.o
+
+__/physics/geometry/nimcp_information_geometry.i: __/physics/geometry/nimcp_information_geometry.c.i
+.PHONY : __/physics/geometry/nimcp_information_geometry.i
+
+# target to preprocess a source file
+__/physics/geometry/nimcp_information_geometry.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/geometry/nimcp_information_geometry.c.i
+.PHONY : __/physics/geometry/nimcp_information_geometry.c.i
+
+__/physics/geometry/nimcp_information_geometry.s: __/physics/geometry/nimcp_information_geometry.c.s
+.PHONY : __/physics/geometry/nimcp_information_geometry.s
+
+# target to generate assembly for a file
+__/physics/geometry/nimcp_information_geometry.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/geometry/nimcp_information_geometry.c.s
+.PHONY : __/physics/geometry/nimcp_information_geometry.c.s
 
 __/plasticity/adaptive/nimcp_adaptive.o: __/plasticity/adaptive/nimcp_adaptive.c.o
 .PHONY : __/plasticity/adaptive/nimcp_adaptive.o
@@ -37222,6 +39334,27 @@ help:
 	@echo "... __/async/nimcp_wiring_diagram.o"
 	@echo "... __/async/nimcp_wiring_diagram.i"
 	@echo "... __/async/nimcp_wiring_diagram.s"
+	@echo "... __/biology/epigenetics/nimcp_epigenetics.o"
+	@echo "... __/biology/epigenetics/nimcp_epigenetics.i"
+	@echo "... __/biology/epigenetics/nimcp_epigenetics.s"
+	@echo "... __/biology/neurogenesis/nimcp_neurogenesis.o"
+	@echo "... __/biology/neurogenesis/nimcp_neurogenesis.i"
+	@echo "... __/biology/neurogenesis/nimcp_neurogenesis.s"
+	@echo "... __/biology/neurovascular/nimcp_neurovascular.o"
+	@echo "... __/biology/neurovascular/nimcp_neurovascular.i"
+	@echo "... __/biology/neurovascular/nimcp_neurovascular.s"
+	@echo "... __/chemistry/gasotransmitters/nimcp_nitric_oxide.o"
+	@echo "... __/chemistry/gasotransmitters/nimcp_nitric_oxide.i"
+	@echo "... __/chemistry/gasotransmitters/nimcp_nitric_oxide.s"
+	@echo "... __/chemistry/ph/nimcp_buffer_systems.o"
+	@echo "... __/chemistry/ph/nimcp_buffer_systems.i"
+	@echo "... __/chemistry/ph/nimcp_buffer_systems.s"
+	@echo "... __/chemistry/ph/nimcp_ph_dynamics.o"
+	@echo "... __/chemistry/ph/nimcp_ph_dynamics.i"
+	@echo "... __/chemistry/ph/nimcp_ph_dynamics.s"
+	@echo "... __/chemistry/ph/nimcp_proton_pumps.o"
+	@echo "... __/chemistry/ph/nimcp_proton_pumps.i"
+	@echo "... __/chemistry/ph/nimcp_proton_pumps.s"
 	@echo "... __/cognitive/analysis/nimcp_analysis_fep_bridge.o"
 	@echo "... __/cognitive/analysis/nimcp_analysis_fep_bridge.i"
 	@echo "... __/cognitive/analysis/nimcp_analysis_fep_bridge.s"
@@ -39172,6 +41305,21 @@ help:
 	@echo "... __/core/brain/regions/cingulate/nimcp_cingulate_quantum_bridge.o"
 	@echo "... __/core/brain/regions/cingulate/nimcp_cingulate_quantum_bridge.i"
 	@echo "... __/core/brain/regions/cingulate/nimcp_cingulate_quantum_bridge.s"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula.o"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula.i"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula.s"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula_adapter.o"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula_adapter.i"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula_adapter.s"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.o"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.i"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.s"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.o"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.i"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.s"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula_snn_bridge.o"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula_snn_bridge.i"
+	@echo "... __/core/brain/regions/habenula/nimcp_habenula_snn_bridge.s"
 	@echo "... __/core/brain/regions/hippocampus/nimcp_hippocampus_adapter.o"
 	@echo "... __/core/brain/regions/hippocampus/nimcp_hippocampus_adapter.i"
 	@echo "... __/core/brain/regions/hippocampus/nimcp_hippocampus_adapter.s"
@@ -39313,12 +41461,48 @@ help:
 	@echo "... __/core/brain/regions/insula/nimcp_insula_quantum_bridge.o"
 	@echo "... __/core/brain/regions/insula/nimcp_insula_quantum_bridge.i"
 	@echo "... __/core/brain/regions/insula/nimcp_insula_quantum_bridge.s"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.o"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.i"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.s"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.o"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.i"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_lc_adapter.s"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.o"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.i"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.s"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.o"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.i"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.s"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.o"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.i"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.s"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.o"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.i"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.s"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.o"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.i"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.s"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.o"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.i"
+	@echo "... __/core/brain/regions/locus_coeruleus/nimcp_novelty_detection.s"
 	@echo "... __/core/brain/regions/motor/nimcp_motor_adapter.o"
 	@echo "... __/core/brain/regions/motor/nimcp_motor_adapter.i"
 	@echo "... __/core/brain/regions/motor/nimcp_motor_adapter.s"
 	@echo "... __/core/brain/regions/motor/nimcp_motor_quantum_bridge.o"
 	@echo "... __/core/brain/regions/motor/nimcp_motor_quantum_bridge.i"
 	@echo "... __/core/brain/regions/motor/nimcp_motor_quantum_bridge.s"
+	@echo "... __/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.o"
+	@echo "... __/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.i"
+	@echo "... __/core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.s"
+	@echo "... __/core/brain/regions/nimcp_neuromodulatory_immune_bridge.o"
+	@echo "... __/core/brain/regions/nimcp_neuromodulatory_immune_bridge.i"
+	@echo "... __/core/brain/regions/nimcp_neuromodulatory_immune_bridge.s"
+	@echo "... __/core/brain/regions/nimcp_neuromodulatory_logging_bridge.o"
+	@echo "... __/core/brain/regions/nimcp_neuromodulatory_logging_bridge.i"
+	@echo "... __/core/brain/regions/nimcp_neuromodulatory_logging_bridge.s"
+	@echo "... __/core/brain/regions/nimcp_neuromodulatory_security_bridge.o"
+	@echo "... __/core/brain/regions/nimcp_neuromodulatory_security_bridge.i"
+	@echo "... __/core/brain/regions/nimcp_neuromodulatory_security_bridge.s"
 	@echo "... __/core/brain/regions/occipital/nimcp_occipital_adapter.o"
 	@echo "... __/core/brain/regions/occipital/nimcp_occipital_adapter.i"
 	@echo "... __/core/brain/regions/occipital/nimcp_occipital_adapter.s"
@@ -39361,6 +41545,33 @@ help:
 	@echo "... __/core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.o"
 	@echo "... __/core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.i"
 	@echo "... __/core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.s"
+	@echo "... __/core/brain/regions/raphe/nimcp_impulse_control.o"
+	@echo "... __/core/brain/regions/raphe/nimcp_impulse_control.i"
+	@echo "... __/core/brain/regions/raphe/nimcp_impulse_control.s"
+	@echo "... __/core/brain/regions/raphe/nimcp_mood_regulation.o"
+	@echo "... __/core/brain/regions/raphe/nimcp_mood_regulation.i"
+	@echo "... __/core/brain/regions/raphe/nimcp_mood_regulation.s"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe.o"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe.i"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe.s"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe_adapter.o"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe_adapter.i"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe_adapter.s"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.o"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.i"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.s"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.o"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.i"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.s"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe_snn_bridge.o"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe_snn_bridge.i"
+	@echo "... __/core/brain/regions/raphe/nimcp_raphe_snn_bridge.s"
+	@echo "... __/core/brain/regions/raphe/nimcp_serotonin_release.o"
+	@echo "... __/core/brain/regions/raphe/nimcp_serotonin_release.i"
+	@echo "... __/core/brain/regions/raphe/nimcp_serotonin_release.s"
+	@echo "... __/core/brain/regions/raphe/nimcp_temporal_discounting.o"
+	@echo "... __/core/brain/regions/raphe/nimcp_temporal_discounting.i"
+	@echo "... __/core/brain/regions/raphe/nimcp_temporal_discounting.s"
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_adapter.o"
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_adapter.i"
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_adapter.s"
@@ -39373,6 +41584,30 @@ help:
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.o"
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.i"
 	@echo "... __/core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.s"
+	@echo "... __/core/brain/regions/vta/nimcp_dopamine_release.o"
+	@echo "... __/core/brain/regions/vta/nimcp_dopamine_release.i"
+	@echo "... __/core/brain/regions/vta/nimcp_dopamine_release.s"
+	@echo "... __/core/brain/regions/vta/nimcp_incentive_salience.o"
+	@echo "... __/core/brain/regions/vta/nimcp_incentive_salience.i"
+	@echo "... __/core/brain/regions/vta/nimcp_incentive_salience.s"
+	@echo "... __/core/brain/regions/vta/nimcp_reward_prediction_error.o"
+	@echo "... __/core/brain/regions/vta/nimcp_reward_prediction_error.i"
+	@echo "... __/core/brain/regions/vta/nimcp_reward_prediction_error.s"
+	@echo "... __/core/brain/regions/vta/nimcp_vta.o"
+	@echo "... __/core/brain/regions/vta/nimcp_vta.i"
+	@echo "... __/core/brain/regions/vta/nimcp_vta.s"
+	@echo "... __/core/brain/regions/vta/nimcp_vta_adapter.o"
+	@echo "... __/core/brain/regions/vta/nimcp_vta_adapter.i"
+	@echo "... __/core/brain/regions/vta/nimcp_vta_adapter.s"
+	@echo "... __/core/brain/regions/vta/nimcp_vta_bio_async_bridge.o"
+	@echo "... __/core/brain/regions/vta/nimcp_vta_bio_async_bridge.i"
+	@echo "... __/core/brain/regions/vta/nimcp_vta_bio_async_bridge.s"
+	@echo "... __/core/brain/regions/vta/nimcp_vta_plasticity_bridge.o"
+	@echo "... __/core/brain/regions/vta/nimcp_vta_plasticity_bridge.i"
+	@echo "... __/core/brain/regions/vta/nimcp_vta_plasticity_bridge.s"
+	@echo "... __/core/brain/regions/vta/nimcp_vta_snn_bridge.o"
+	@echo "... __/core/brain/regions/vta/nimcp_vta_snn_bridge.i"
+	@echo "... __/core/brain/regions/vta/nimcp_vta_snn_bridge.s"
 	@echo "... __/core/brain/regions/wernicke/nimcp_lexical_access.o"
 	@echo "... __/core/brain/regions/wernicke/nimcp_lexical_access.i"
 	@echo "... __/core/brain/regions/wernicke/nimcp_lexical_access.s"
@@ -40165,6 +42400,144 @@ help:
 	@echo "... __/information/nimcp_shannon.o"
 	@echo "... __/information/nimcp_shannon.i"
 	@echo "... __/information/nimcp_shannon.s"
+	@echo "... __/integration/adapters/chemistry/nimcp_calcium_adapter.o"
+	@echo "... __/integration/adapters/chemistry/nimcp_calcium_adapter.i"
+	@echo "... __/integration/adapters/chemistry/nimcp_calcium_adapter.s"
+	@echo "... __/integration/adapters/chemistry/nimcp_metabolic_adapter.o"
+	@echo "... __/integration/adapters/chemistry/nimcp_metabolic_adapter.i"
+	@echo "... __/integration/adapters/chemistry/nimcp_metabolic_adapter.s"
+	@echo "... __/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.o"
+	@echo "... __/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.i"
+	@echo "... __/integration/adapters/chemistry/nimcp_neurotransmitter_adapter.s"
+	@echo "... __/integration/adapters/executive/nimcp_basal_ganglia_adapter.o"
+	@echo "... __/integration/adapters/executive/nimcp_basal_ganglia_adapter.i"
+	@echo "... __/integration/adapters/executive/nimcp_basal_ganglia_adapter.s"
+	@echo "... __/integration/adapters/executive/nimcp_pfc_adapter.o"
+	@echo "... __/integration/adapters/executive/nimcp_pfc_adapter.i"
+	@echo "... __/integration/adapters/executive/nimcp_pfc_adapter.s"
+	@echo "... __/integration/adapters/memory/nimcp_hippocampus_adapter.o"
+	@echo "... __/integration/adapters/memory/nimcp_hippocampus_adapter.i"
+	@echo "... __/integration/adapters/memory/nimcp_hippocampus_adapter.s"
+	@echo "... __/integration/adapters/memory/nimcp_pr_memory_adapter.o"
+	@echo "... __/integration/adapters/memory/nimcp_pr_memory_adapter.i"
+	@echo "... __/integration/adapters/memory/nimcp_pr_memory_adapter.s"
+	@echo "... __/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.o"
+	@echo "... __/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.i"
+	@echo "... __/integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.s"
+	@echo "... __/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.o"
+	@echo "... __/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.i"
+	@echo "... __/integration/adapters/neuromod/nimcp_neuromod_pool_adapter.s"
+	@echo "... __/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.o"
+	@echo "... __/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.i"
+	@echo "... __/integration/adapters/physics/nimcp_ephaptic_coupling_adapter.s"
+	@echo "... __/integration/adapters/physics/nimcp_hh_dynamics_adapter.o"
+	@echo "... __/integration/adapters/physics/nimcp_hh_dynamics_adapter.i"
+	@echo "... __/integration/adapters/physics/nimcp_hh_dynamics_adapter.s"
+	@echo "... __/integration/adapters/physics/nimcp_thermodynamics_adapter.o"
+	@echo "... __/integration/adapters/physics/nimcp_thermodynamics_adapter.i"
+	@echo "... __/integration/adapters/physics/nimcp_thermodynamics_adapter.s"
+	@echo "... __/integration/adapters/sensory/nimcp_auditory_adapter.o"
+	@echo "... __/integration/adapters/sensory/nimcp_auditory_adapter.i"
+	@echo "... __/integration/adapters/sensory/nimcp_auditory_adapter.s"
+	@echo "... __/integration/adapters/sensory/nimcp_visual_adapter.o"
+	@echo "... __/integration/adapters/sensory/nimcp_visual_adapter.i"
+	@echo "... __/integration/adapters/sensory/nimcp_visual_adapter.s"
+	@echo "... __/integration/core/nimcp_inter_layer_router.o"
+	@echo "... __/integration/core/nimcp_inter_layer_router.i"
+	@echo "... __/integration/core/nimcp_inter_layer_router.s"
+	@echo "... __/integration/core/nimcp_layer_coordinator.o"
+	@echo "... __/integration/core/nimcp_layer_coordinator.i"
+	@echo "... __/integration/core/nimcp_layer_coordinator.s"
+	@echo "... __/integration/core/nimcp_layer_registry.o"
+	@echo "... __/integration/core/nimcp_layer_registry.i"
+	@echo "... __/integration/core/nimcp_layer_registry.s"
+	@echo "... __/integration/core/nimcp_layer_types.o"
+	@echo "... __/integration/core/nimcp_layer_types.i"
+	@echo "... __/integration/core/nimcp_layer_types.s"
+	@echo "... __/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.o"
+	@echo "... __/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.i"
+	@echo "... __/integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.s"
+	@echo "... __/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.o"
+	@echo "... __/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.i"
+	@echo "... __/integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.s"
+	@echo "... __/integration/inter/executive_integration/nimcp_executive_integration_bridge.o"
+	@echo "... __/integration/inter/executive_integration/nimcp_executive_integration_bridge.i"
+	@echo "... __/integration/inter/executive_integration/nimcp_executive_integration_bridge.s"
+	@echo "... __/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.o"
+	@echo "... __/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.i"
+	@echo "... __/integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.s"
+	@echo "... __/integration/inter/memory_executive/nimcp_memory_executive_bridge.o"
+	@echo "... __/integration/inter/memory_executive/nimcp_memory_executive_bridge.i"
+	@echo "... __/integration/inter/memory_executive/nimcp_memory_executive_bridge.s"
+	@echo "... __/integration/inter/memory_integration/nimcp_memory_integration_bridge.o"
+	@echo "... __/integration/inter/memory_integration/nimcp_memory_integration_bridge.i"
+	@echo "... __/integration/inter/memory_integration/nimcp_memory_integration_bridge.s"
+	@echo "... __/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.o"
+	@echo "... __/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.i"
+	@echo "... __/integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.s"
+	@echo "... __/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.o"
+	@echo "... __/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.i"
+	@echo "... __/integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.s"
+	@echo "... __/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.o"
+	@echo "... __/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.i"
+	@echo "... __/integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.s"
+	@echo "... __/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.o"
+	@echo "... __/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.i"
+	@echo "... __/integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.s"
+	@echo "... __/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.o"
+	@echo "... __/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.i"
+	@echo "... __/integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.s"
+	@echo "... __/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.o"
+	@echo "... __/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.i"
+	@echo "... __/integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.s"
+	@echo "... __/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.o"
+	@echo "... __/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.i"
+	@echo "... __/integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.s"
+	@echo "... __/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.o"
+	@echo "... __/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.i"
+	@echo "... __/integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.s"
+	@echo "... __/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.o"
+	@echo "... __/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.i"
+	@echo "... __/integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.s"
+	@echo "... __/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.o"
+	@echo "... __/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.i"
+	@echo "... __/integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.s"
+	@echo "... __/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.o"
+	@echo "... __/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.i"
+	@echo "... __/integration/inter/sensory_executive/nimcp_sensory_executive_bridge.s"
+	@echo "... __/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.o"
+	@echo "... __/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.i"
+	@echo "... __/integration/inter/sensory_memory/nimcp_sensory_memory_bridge.s"
+	@echo "... __/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.o"
+	@echo "... __/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.i"
+	@echo "... __/integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.s"
+	@echo "... __/integration/intra/biology/nimcp_biology_intra_coordinator.o"
+	@echo "... __/integration/intra/biology/nimcp_biology_intra_coordinator.i"
+	@echo "... __/integration/intra/biology/nimcp_biology_intra_coordinator.s"
+	@echo "... __/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.o"
+	@echo "... __/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.i"
+	@echo "... __/integration/intra/chemistry/nimcp_chemistry_intra_coordinator.s"
+	@echo "... __/integration/intra/executive/nimcp_executive_intra_coordinator.o"
+	@echo "... __/integration/intra/executive/nimcp_executive_intra_coordinator.i"
+	@echo "... __/integration/intra/executive/nimcp_executive_intra_coordinator.s"
+	@echo "... __/integration/intra/integration_layer/nimcp_integration_intra_coordinator.o"
+	@echo "... __/integration/intra/integration_layer/nimcp_integration_intra_coordinator.i"
+	@echo "... __/integration/intra/integration_layer/nimcp_integration_intra_coordinator.s"
+	@echo "... __/integration/intra/memory/nimcp_memory_intra_coordinator.o"
+	@echo "... __/integration/intra/memory/nimcp_memory_intra_coordinator.i"
+	@echo "... __/integration/intra/memory/nimcp_memory_intra_coordinator.s"
+	@echo "... __/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.o"
+	@echo "... __/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.i"
+	@echo "... __/integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.s"
+	@echo "... __/integration/intra/physics/nimcp_physics_intra_coordinator.o"
+	@echo "... __/integration/intra/physics/nimcp_physics_intra_coordinator.i"
+	@echo "... __/integration/intra/physics/nimcp_physics_intra_coordinator.s"
+	@echo "... __/integration/intra/sensory/nimcp_sensory_intra_coordinator.o"
+	@echo "... __/integration/intra/sensory/nimcp_sensory_intra_coordinator.i"
+	@echo "... __/integration/intra/sensory/nimcp_sensory_intra_coordinator.s"
+	@echo "... __/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.o"
+	@echo "... __/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.i"
+	@echo "... __/integration/intra/superhuman/nimcp_superhuman_intra_coordinator.s"
 	@echo "... __/io/dataio/nimcp_dataio.o"
 	@echo "... __/io/dataio/nimcp_dataio.i"
 	@echo "... __/io/dataio/nimcp_dataio.s"
@@ -40558,6 +42931,9 @@ help:
 	@echo "... __/perception/nimcp_visual_jepa_fep_bridge.o"
 	@echo "... __/perception/nimcp_visual_jepa_fep_bridge.i"
 	@echo "... __/perception/nimcp_visual_jepa_fep_bridge.s"
+	@echo "... __/physics/geometry/nimcp_information_geometry.o"
+	@echo "... __/physics/geometry/nimcp_information_geometry.i"
+	@echo "... __/physics/geometry/nimcp_information_geometry.s"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive.o"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive.i"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive.s"

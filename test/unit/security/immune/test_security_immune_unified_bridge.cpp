@@ -163,7 +163,7 @@ protected:
     /* Helper to create test policy result */
     nimcp_policy_result_t CreatePolicyResult(nimcp_policy_action_t action,
                                              nimcp_policy_severity_t severity) {
-        nimcp_policy_result_t result = {0};
+        nimcp_policy_result_t result = {};
         result.action = action;
         result.severity = severity;
         result.message = (char*)"Test policy violation";

@@ -227,14 +227,18 @@ class SecurityImmuneIntegrationTest : public ::testing::Test {
     // Helper to trigger inflammation
     void TriggerInflammation(brain_inflammation_level_t level)
     {
-        brain_immune_set_inflammation(immune_system_, level);
+        uint32_t site_id = 0;
+        // Use level as region_id proxy, and 0 for antigen_id (test scenario)
+        brain_immune_initiate_inflammation(immune_system_, (uint32_t)level, 0, &site_id);
         sec_immune_unified_apply_inflammation(bridge_);
     }
 
     // Helper to set cytokine levels
     void SetCytokineLevel(brain_cytokine_type_t type, float level)
     {
-        brain_immune_set_cytokine(immune_system_, type, level);
+        uint32_t cytokine_id = 0;
+        // source_cell=0, concentration=level, target_region=0 (broadcast)
+        brain_immune_release_cytokine(immune_system_, type, 0, level, 0, &cytokine_id);
         sec_immune_unified_apply_cytokine_effects(bridge_);
     }
 
@@ -340,7 +344,7 @@ TEST_F(SecurityImmuneIntegrationTest, CytokineEffectsOnAllSecurityComponents)
     float baseline_policy = sec_immune_unified_get_policy_strictness_factor(bridge_);
 
     // Set high IL-1 beta (pro-inflammatory)
-    SetCytokineLevel(BRAIN_CYTOKINE_IL1_BETA, 0.8f);
+    SetCytokineLevel(BRAIN_CYTOKINE_IL1, 0.8f);
 
     // Get modulated values
     float mod_bbb = sec_immune_unified_get_bbb_threshold_factor(bridge_);
@@ -573,7 +577,7 @@ TEST_F(SecurityImmuneIntegrationTest, IL1BetaBoostsDetectionSensitivity)
     float baseline_threshold = sec_immune_unified_get_anomaly_threshold(bridge_);
 
     // Set high IL-1 beta
-    SetCytokineLevel(BRAIN_CYTOKINE_IL1_BETA, 0.9f);
+    SetCytokineLevel(BRAIN_CYTOKINE_IL1, 0.9f);
 
     // Get new threshold
     float new_threshold = sec_immune_unified_get_anomaly_threshold(bridge_);
@@ -675,7 +679,7 @@ TEST_F(SecurityImmuneIntegrationTest, MemoryCellsSyncToPatternDB)
     uint32_t antigen_id = 0;
     ASSERT_EQ(0, sec_immune_unified_present_bbb_threat(
         bridge_,
-        BBB_THREAT_XSS,
+        BBB_THREAT_CODE_INJECTION,
         BBB_SEVERITY_HIGH,
         TEST_EPITOPE,
         TEST_EPITOPE_LEN,
@@ -771,7 +775,7 @@ TEST_F(SecurityImmuneIntegrationTest, EmergencyThrottlingFromTNFAlpha)
     float baseline_rate = sec_immune_unified_get_rate_limit_factor(bridge_);
 
     // Set high TNF-alpha (severe inflammatory response)
-    SetCytokineLevel(BRAIN_CYTOKINE_TNF_ALPHA, 0.95f);
+    SetCytokineLevel(BRAIN_CYTOKINE_TNF, 0.95f);
 
     // Get new rate factor
     float emergency_rate = sec_immune_unified_get_rate_limit_factor(bridge_);
@@ -795,13 +799,13 @@ TEST_F(SecurityImmuneIntegrationTest, EmergencyThrottlingFromTNFAlpha)
 TEST_F(SecurityImmuneIntegrationTest, RecoveryFromIL10)
 {
     // First set high TNF-alpha
-    SetCytokineLevel(BRAIN_CYTOKINE_TNF_ALPHA, 0.9f);
+    SetCytokineLevel(BRAIN_CYTOKINE_TNF, 0.9f);
     float restricted_rate = sec_immune_unified_get_rate_limit_factor(bridge_);
 
     // Now set high IL-10 (anti-inflammatory)
-    SetCytokineLevel(BRAIN_CYTOKINE_IL_10, 0.9f);
+    SetCytokineLevel(BRAIN_CYTOKINE_IL10, 0.9f);
     // Clear TNF-alpha
-    SetCytokineLevel(BRAIN_CYTOKINE_TNF_ALPHA, 0.0f);
+    SetCytokineLevel(BRAIN_CYTOKINE_TNF, 0.0f);
 
     float recovered_rate = sec_immune_unified_get_rate_limit_factor(bridge_);
 
@@ -865,7 +869,7 @@ TEST_F(SecurityImmuneIntegrationTest, PolicyStrictnessModulatedByCytokines)
     float baseline_strictness = sec_immune_unified_get_policy_strictness_factor(bridge_);
 
     // Set high IL-6 (acute phase response)
-    SetCytokineLevel(BRAIN_CYTOKINE_IL_6, 0.85f);
+    SetCytokineLevel(BRAIN_CYTOKINE_IL6, 0.85f);
 
     // Get new strictness
     float new_strictness = sec_immune_unified_get_policy_strictness_factor(bridge_);
@@ -1122,7 +1126,7 @@ TEST_F(SecurityImmuneIntegrationTest,
     EXPECT_GT(antigen_id, 0u) << "Stage 1: Antigen should be created";
 
     // Stage 2: Immune Response - Trigger inflammation
-    brain_immune_set_inflammation(immune_system_, INFLAMMATION_LOCAL);
+    brain_immune_initiate_inflammation(immune_system_, INFLAMMATION_LOCAL);
     ASSERT_EQ(0, sec_immune_unified_update(bridge_));
 
     // Stage 3: Modulation - Verify threshold changed
@@ -1196,7 +1200,7 @@ TEST_F(SecurityImmuneIntegrationTest,
         bridge_, antigen_id, 1, &memory_id));
 
     // Stage 3: Begin resolution with IL-10
-    SetCytokineLevel(BRAIN_CYTOKINE_IL_10, 0.9f);
+    SetCytokineLevel(BRAIN_CYTOKINE_IL10, 0.9f);
     TriggerInflammation(INFLAMMATION_LOCAL);  // Downgrade inflammation
 
     // Verify recovery

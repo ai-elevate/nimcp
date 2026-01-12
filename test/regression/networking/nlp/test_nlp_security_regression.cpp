@@ -40,6 +40,7 @@ protected:
     std::atomic<int> messages_received{0};
     std::atomic<int> valid_messages{0};
     std::atomic<int> invalid_messages{0};
+    uint32_t connected_peer_id{0};
 
     void SetUp() override {
         config1 = nlp_config_default();
@@ -71,6 +72,7 @@ protected:
         config2.psk[0].valid_from = 0;
         config2.psk[0].valid_until = UINT64_MAX;
         memcpy(config2.psk[0].key, test_key, NLP_KEY_SIZE);
+        config2.user_data = this;  // Set user_data BEFORE node creation
 
         node1 = nlp_node_create(&config1);
         node2 = nlp_node_create(&config2);
@@ -79,13 +81,14 @@ protected:
         ASSERT_NE(node2, nullptr);
 
         // Set up message callback
-        config2.user_data = this;
         nlp_set_message_callback(node2,
             [](nlp_node_t node, const nlp_peer_t* peer,
                const nlp_message_t* msg, void* user_data) {
                 auto* test = static_cast<NLPSecurityRegressionTest*>(user_data);
-                test->messages_received++;
-                test->valid_messages++;
+                if (test) {
+                    test->messages_received++;
+                    test->valid_messages++;
+                }
             });
 
         ASSERT_EQ(nlp_node_start(node1), 0);
@@ -108,8 +111,8 @@ protected:
     }
 
     void ConnectPeers() {
-        uint32_t peer_id = nlp_connect_peer(node1, "127.0.0.1", 40002);
-        ASSERT_NE(peer_id, 0u);
+        connected_peer_id = nlp_connect_peer(node1, "127.0.0.1", 40002);
+        ASSERT_NE(connected_peer_id, 0u);
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
@@ -134,9 +137,9 @@ TEST_F(NLPSecurityRegressionTest, ReplayProtection) {
 
     // Send valid message
     messages_received = 0;
-    int result = nlp_send(node1, 0, NLP_MSG_SPIKE_BATCH,
+    int result = nlp_send(node1, connected_peer_id, NLP_MSG_SPIKE_BATCH,
                          payload, sizeof(payload), NLP_PRIORITY_NORMAL);
-    ASSERT_EQ(result, 0);
+    ASSERT_GE(result, 0);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -172,9 +175,9 @@ TEST_F(NLPSecurityRegressionTest, TimestampWindowBoundary) {
 
     // Send message with current timestamp (should succeed)
     messages_received = 0;
-    int result = nlp_send(node1, 0, NLP_MSG_HEARTBEAT,
+    int result = nlp_send(node1, connected_peer_id, NLP_MSG_HEARTBEAT,
                          payload, sizeof(payload), NLP_PRIORITY_NORMAL);
-    EXPECT_EQ(result, 0);
+    EXPECT_GE(result, 0);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     EXPECT_EQ(messages_received, 1) << "Current timestamp should be accepted";
@@ -208,7 +211,7 @@ TEST_F(NLPSecurityRegressionTest, FutureTimestampRejection) {
 
     // Send multiple messages - protocol should handle any clock skew
     for (int i = 0; i < 10; i++) {
-        nlp_send(node1, 0, NLP_MSG_SPIKE_BATCH,
+        nlp_send(node1, connected_peer_id, NLP_MSG_SPIKE_BATCH,
                 payload, sizeof(payload), NLP_PRIORITY_NORMAL);
     }
 
@@ -236,7 +239,7 @@ TEST_F(NLPSecurityRegressionTest, InvalidSignatureDetection) {
     // Send valid messages
     messages_received = 0;
     for (int i = 0; i < 10; i++) {
-        nlp_send(node1, 0, NLP_MSG_WEIGHT_DELTA,
+        nlp_send(node1, connected_peer_id, NLP_MSG_WEIGHT_DELTA,
                 payload, sizeof(payload), NLP_PRIORITY_NORMAL);
     }
 
@@ -323,7 +326,7 @@ TEST_F(NLPSecurityRegressionTest, EncryptionErrorHandling) {
 
     // Send messages normally
     for (int i = 0; i < 50; i++) {
-        nlp_send(node1, 0, NLP_MSG_STATE_SYNC,
+        nlp_send(node1, connected_peer_id, NLP_MSG_STATE_SYNC,
                 payload, sizeof(payload), NLP_PRIORITY_NORMAL);
     }
 
@@ -358,7 +361,7 @@ TEST_F(NLPSecurityRegressionTest, KeyRotationStability) {
     // Send messages before rotation
     messages_received = 0;
     for (int i = 0; i < 10; i++) {
-        nlp_send(node1, 0, NLP_MSG_HEARTBEAT,
+        nlp_send(node1, connected_peer_id, NLP_MSG_HEARTBEAT,
                 payload, sizeof(payload), NLP_PRIORITY_NORMAL);
     }
 
@@ -379,7 +382,7 @@ TEST_F(NLPSecurityRegressionTest, KeyRotationStability) {
     // Send messages after rotation
     messages_received = 0;
     for (int i = 0; i < 10; i++) {
-        nlp_send(node1, 0, NLP_MSG_HEARTBEAT,
+        nlp_send(node1, connected_peer_id, NLP_MSG_HEARTBEAT,
                 payload, sizeof(payload), NLP_PRIORITY_NORMAL);
     }
 
@@ -416,7 +419,7 @@ TEST_F(NLPSecurityRegressionTest, MultipleKeyRotations) {
         // Send messages
         messages_received = 0;
         for (int j = 0; j < 5; j++) {
-            nlp_send(node1, 0, NLP_MSG_SPIKE_BATCH,
+            nlp_send(node1, connected_peer_id, NLP_MSG_SPIKE_BATCH,
                     payload, sizeof(payload), NLP_PRIORITY_NORMAL);
         }
 
@@ -466,7 +469,7 @@ TEST_F(NLPSecurityRegressionTest, KeyRotationInterval) {
 
     // Send messages over a period longer than rotation interval
     for (int i = 0; i < 5; i++) {
-        nlp_send(node1, 0, NLP_MSG_HEARTBEAT,
+        nlp_send(node1, connected_peer_id, NLP_MSG_HEARTBEAT,
                 payload, sizeof(payload), NLP_PRIORITY_NORMAL);
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
@@ -504,9 +507,9 @@ TEST_F(NLPSecurityRegressionTest, SequenceWrap) {
     int send_failures = 0;
 
     for (int i = 0; i < num_messages; i++) {
-        int result = nlp_send(node1, 0, NLP_MSG_SPIKE_BATCH,
+        int result = nlp_send(node1, connected_peer_id, NLP_MSG_SPIKE_BATCH,
                              payload, sizeof(payload), NLP_PRIORITY_NORMAL);
-        if (result != 0) {
+        if (result < 0) {
             send_failures++;
         }
 
@@ -540,7 +543,7 @@ TEST_F(NLPSecurityRegressionTest, OutOfOrderSequences) {
 
     // Send burst of messages (network may reorder)
     for (int i = 0; i < 50; i++) {
-        nlp_send(node1, 0, NLP_MSG_SPIKE_BATCH,
+        nlp_send(node1, connected_peer_id, NLP_MSG_SPIKE_BATCH,
                 payload, sizeof(payload), NLP_PRIORITY_NORMAL);
     }
 
@@ -568,7 +571,7 @@ TEST_F(NLPSecurityRegressionTest, DuplicateSequenceDetection) {
     // Send unique messages
     messages_received = 0;
     for (int i = 0; i < 20; i++) {
-        nlp_send(node1, 0, NLP_MSG_HEARTBEAT,
+        nlp_send(node1, connected_peer_id, NLP_MSG_HEARTBEAT,
                 payload, sizeof(payload), NLP_PRIORITY_NORMAL);
     }
 
@@ -604,7 +607,7 @@ TEST_F(NLPSecurityRegressionTest, TimestampWindowEdgeCases) {
 
     // Send messages at current time (should all succeed)
     for (int i = 0; i < 10; i++) {
-        nlp_send(node1, 0, NLP_MSG_SPIKE_BATCH,
+        nlp_send(node1, connected_peer_id, NLP_MSG_SPIKE_BATCH,
                 payload, sizeof(payload), NLP_PRIORITY_NORMAL);
     }
 
@@ -631,7 +634,7 @@ TEST_F(NLPSecurityRegressionTest, ClockSkewTolerance) {
 
     // Send messages (protocol should handle any clock skew)
     for (int i = 0; i < 20; i++) {
-        nlp_send(node1, 0, NLP_MSG_HEARTBEAT,
+        nlp_send(node1, connected_peer_id, NLP_MSG_HEARTBEAT,
                 payload, sizeof(payload), NLP_PRIORITY_NORMAL);
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }

@@ -280,7 +280,7 @@ TEST_F(Tier2HubBridgesRegressionTest, EventOrderPreserved) {
 
     // Register subscriber
     ASSERT_EQ(cognitive_hub_register_module(
-        hub, SUBSCRIBER_ID, COG_CATEGORY_MONITORING, "subscriber", nullptr
+        hub, SUBSCRIBER_ID, COG_CATEGORY_SELF, "subscriber", nullptr
     ), 0);
 
     SequenceTrackingContext ctx;
@@ -414,7 +414,7 @@ TEST_F(Tier2HubBridgesRegressionTest, PerformanceRegression) {
     const int NUM_MEASUREMENTS = 100;
 
     ASSERT_EQ(cognitive_hub_register_module(
-        hub, SUBSCRIBER_ID, COG_CATEGORY_MONITORING, "latency_monitor", nullptr
+        hub, SUBSCRIBER_ID, COG_CATEGORY_SELF, "latency_monitor", nullptr
     ), 0);
 
     LatencyContext ctx;

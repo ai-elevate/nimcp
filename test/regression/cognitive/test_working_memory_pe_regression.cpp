@@ -54,10 +54,9 @@ protected:
         // WHAT: Initialize bio-async and memory systems
         // WHY:  Working memory + PE requires these systems
         // HOW:  Standard initialization sequence
-        bio_async_init();
+        nimcp_bio_async_init(nullptr);
         bio_router_config_t cfg = {0};
         bio_router_init(&cfg);
-        nimcp_unified_memory_init();
 
         memory = nullptr;
     }

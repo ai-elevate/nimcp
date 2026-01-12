@@ -25,6 +25,9 @@ extern "C" {
 //-----------------------------------------------------------------------------
 
 // Tolerance for floating point comparisons
+#ifdef FLOAT_TOLERANCE
+#undef FLOAT_TOLERANCE
+#endif
 #define FLOAT_TOLERANCE 1e-6f
 
 // Test ports for P2P networking

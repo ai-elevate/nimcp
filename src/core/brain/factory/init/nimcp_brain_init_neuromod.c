@@ -473,3 +473,193 @@ bool nimcp_brain_factory_init_brain_regions_subsystem(brain_t brain)
 
     return true;
 }
+
+
+//=============================================================================
+// Phase 4 Neuromodulatory Nuclei Integration
+//=============================================================================
+
+/* Phase 4 adapter types - include before layer types to avoid conflicts */
+#include "core/brain/regions/locus_coeruleus/nimcp_lc_adapter.h"
+#include "core/brain/regions/vta/nimcp_vta_adapter.h"
+#include "core/brain/regions/raphe/nimcp_raphe_adapter.h"
+#include "core/brain/regions/habenula/nimcp_habenula_adapter.h"
+
+/* Forward declarations for intra-coordinator to avoid type conflicts */
+typedef struct nimcp_neuromod_intra_struct* nimcp_neuromod_intra_t;
+typedef struct nimcp_neuromod_intra_config_struct {
+    bool enable_lc;
+    bool enable_vta;
+    bool enable_raphe;
+    bool enable_habenula;
+    float lc_vta_coupling;
+    float lc_raphe_coupling;
+    float vta_raphe_coupling;
+    float vta_habenula_coupling;
+    float raphe_habenula_coupling;
+} nimcp_neuromod_intra_config_t;
+
+/* Intra-coordinator function declarations */
+nimcp_neuromod_intra_config_t nimcp_neuromod_intra_default_config(void);
+nimcp_neuromod_intra_t nimcp_neuromod_intra_create(const nimcp_neuromod_intra_config_t* config);
+int nimcp_neuromod_intra_connect_lc(nimcp_neuromod_intra_t coord, void* module, void* interface);
+int nimcp_neuromod_intra_connect_vta(nimcp_neuromod_intra_t coord, void* module, void* interface);
+int nimcp_neuromod_intra_connect_raphe(nimcp_neuromod_intra_t coord, void* module, void* interface);
+int nimcp_neuromod_intra_connect_habenula(nimcp_neuromod_intra_t coord, void* module, void* interface);
+
+/**
+ * WHAT: Initialize Phase 4 Neuromodulatory Nuclei (LC, VTA, Raphe, Habenula)
+ * WHY:  Enable specific neuromodulatory control beyond the general neuromodulator_system
+ * HOW:  Create adapters for each enabled nucleus and wire them to the intra-coordinator
+ *
+ * BIOLOGICAL MOTIVATION:
+ * - LC: ~1500 neurons/hemisphere with massive projections, modulates arousal/attention
+ * - VTA: Source of mesolimbic/mesocortical DA, reward prediction errors
+ * - Raphe: Major 5-HT source, mood/patience regulation
+ * - Habenula: "Disappointment center", inhibits VTA on negative outcomes
+ *
+ * INITIALIZATION ORDER:
+ * 1. Create individual nuclei adapters (LC, VTA, Raphe, Habenula)
+ * 2. Create intra-coordinator for cross-nuclei coupling
+ * 3. Connect adapters to intra-coordinator
+ * 4. Wire to brain integration points
+ */
+bool nimcp_brain_factory_init_neuromod_nuclei(brain_t brain)
+{
+    // WHAT: Guard clause - validate input
+    // WHY:  Prevent null pointer dereference
+    if (!brain) {
+        return false;
+    }
+
+    // WHAT: Check if any Phase 4 nuclei are enabled
+    // WHY:  Skip initialization if none are enabled (save resources)
+    bool any_enabled = brain->config.enable_lc ||
+                       brain->config.enable_vta ||
+                       brain->config.enable_raphe ||
+                       brain->config.enable_habenula;
+
+    if (!any_enabled && !brain->config.enable_neuromod_intra) {
+        // No nuclei enabled, not an error
+        return true;
+    }
+
+    // WHAT: Initialize Locus Coeruleus (LC) adapter
+    // WHY:  Norepinephrine modulation for arousal, attention, stress response
+    if (brain->config.enable_lc) {
+        nimcp_lc_adapter_config_t lc_config = nimcp_lc_adapter_default_config();
+        lc_config.enable_bio_async = brain->bio_async_enabled;
+        lc_config.enable_training_integration = brain->config.neuromod_enable_training_bridge;
+
+        brain->lc_adapter = nimcp_lc_adapter_create(&lc_config);
+        if (!brain->lc_adapter) {
+            LOG_WARN(LOG_MODULE, "Failed to create LC adapter, continuing without LC");
+        } else {
+            brain->lc_enabled = true;
+            LOG_INFO(LOG_MODULE, "LC adapter initialized (NE modulation)");
+        }
+    }
+
+    // WHAT: Initialize VTA adapter
+    // WHY:  Dopamine modulation for reward, motivation, learning
+    if (brain->config.enable_vta) {
+        nimcp_vta_adapter_config_t vta_config = nimcp_vta_adapter_default_config();
+        vta_config.enable_bio_async = brain->bio_async_enabled;
+        vta_config.enable_training_integration = brain->config.neuromod_enable_training_bridge;
+
+        brain->vta_adapter = nimcp_vta_adapter_create(&vta_config);
+        if (!brain->vta_adapter) {
+            LOG_WARN(LOG_MODULE, "Failed to create VTA adapter, continuing without VTA");
+        } else {
+            brain->vta_enabled = true;
+            LOG_INFO(LOG_MODULE, "VTA adapter initialized (DA modulation)");
+        }
+    }
+
+    // WHAT: Initialize Raphe adapter
+    // WHY:  Serotonin modulation for mood, impulse control, patience
+    if (brain->config.enable_raphe) {
+        nimcp_raphe_adapter_config_t raphe_config = nimcp_raphe_adapter_default_config();
+        raphe_config.enable_bio_async = brain->bio_async_enabled;
+        raphe_config.enable_training_integration = brain->config.neuromod_enable_training_bridge;
+
+        brain->raphe_adapter = nimcp_raphe_adapter_create(&raphe_config);
+        if (!brain->raphe_adapter) {
+            LOG_WARN(LOG_MODULE, "Failed to create Raphe adapter, continuing without Raphe");
+        } else {
+            brain->raphe_enabled = true;
+            LOG_INFO(LOG_MODULE, "Raphe adapter initialized (5-HT modulation)");
+        }
+    }
+
+    // WHAT: Initialize Habenula adapter
+    // WHY:  Aversion modulation for disappointment, negative outcomes, avoidance
+    if (brain->config.enable_habenula) {
+        nimcp_habenula_adapter_config_t hab_config;
+        nimcp_habenula_adapter_default_config(&hab_config);
+        hab_config.enable_training_integration = brain->config.neuromod_enable_training_bridge;
+        hab_config.enable_vta_coordination = brain->config.enable_vta;
+        hab_config.enable_raphe_coordination = brain->config.enable_raphe;
+
+        brain->habenula_adapter = nimcp_habenula_adapter_create(&hab_config);
+        if (!brain->habenula_adapter) {
+            LOG_WARN(LOG_MODULE, "Failed to create Habenula adapter, continuing without Habenula");
+        } else {
+            brain->habenula_enabled = true;
+            LOG_INFO(LOG_MODULE, "Habenula adapter initialized (aversion modulation)");
+        }
+    }
+
+    // WHAT: Initialize Neuromodulatory Intra-Coordinator
+    // WHY:  Coordinate cross-nuclei interactions (e.g., Habenula inhibits VTA)
+    if (brain->config.enable_neuromod_intra ||
+        (brain->lc_enabled && brain->vta_enabled)) {
+        nimcp_neuromod_intra_config_t intra_config = nimcp_neuromod_intra_default_config();
+        intra_config.enable_lc = brain->lc_enabled;
+        intra_config.enable_vta = brain->vta_enabled;
+        intra_config.enable_raphe = brain->raphe_enabled;
+        intra_config.enable_habenula = brain->habenula_enabled;
+
+        // Apply coupling strengths from brain config
+        intra_config.lc_vta_coupling = brain->config.neuromod_lc_vta_coupling;
+        intra_config.lc_raphe_coupling = brain->config.neuromod_lc_raphe_coupling;
+        intra_config.vta_raphe_coupling = brain->config.neuromod_vta_raphe_coupling;
+        intra_config.vta_habenula_coupling = brain->config.neuromod_vta_habenula_coupling;
+        intra_config.raphe_habenula_coupling = brain->config.neuromod_raphe_habenula_coupling;
+
+        brain->neuromod_intra_coordinator = nimcp_neuromod_intra_create(&intra_config);
+        if (!brain->neuromod_intra_coordinator) {
+            LOG_WARN(LOG_MODULE, "Failed to create neuromod intra-coordinator");
+        } else {
+            brain->neuromod_intra_enabled = true;
+
+            // Connect adapters to intra-coordinator
+            // Note: Pass NULL for interface - the coordinator will use default interface
+            if (brain->lc_adapter) {
+                nimcp_neuromod_intra_connect_lc(brain->neuromod_intra_coordinator,
+                                                brain->lc_adapter, NULL);
+            }
+            if (brain->vta_adapter) {
+                nimcp_neuromod_intra_connect_vta(brain->neuromod_intra_coordinator,
+                                                 brain->vta_adapter, NULL);
+            }
+            if (brain->raphe_adapter) {
+                nimcp_neuromod_intra_connect_raphe(brain->neuromod_intra_coordinator,
+                                                   brain->raphe_adapter, NULL);
+            }
+            if (brain->habenula_adapter) {
+                nimcp_neuromod_intra_connect_habenula(brain->neuromod_intra_coordinator,
+                                                      brain->habenula_adapter, NULL);
+            }
+
+            LOG_INFO(LOG_MODULE, "Neuromod intra-coordinator initialized (coupling: LC-%s VTA-%s Raphe-%s Hab-%s)",
+                     brain->lc_enabled ? "on" : "off",
+                     brain->vta_enabled ? "on" : "off",
+                     brain->raphe_enabled ? "on" : "off",
+                     brain->habenula_enabled ? "on" : "off");
+        }
+    }
+
+    LOG_INFO(LOG_MODULE, "Phase 4 neuromod nuclei initialization complete");
+    return true;
+}

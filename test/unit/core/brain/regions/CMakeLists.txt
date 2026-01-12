@@ -18,6 +18,18 @@ add_subdirectory(hippocampus)
 # Hypothalamus region tests (Phase H1)
 add_subdirectory(hypothalamus)
 
+# Locus Coeruleus tests (Phase 4 - Neuromodulatory)
+add_subdirectory(locus_coeruleus)
+
+# Ventral Tegmental Area tests (Phase 4 - Neuromodulatory)
+add_subdirectory(vta)
+
+# Raphe Nuclei tests (Phase 4 - Neuromodulatory)
+add_subdirectory(raphe)
+
+# Habenula tests (Phase 4 - Neuromodulatory)
+add_subdirectory(habenula)
+
 # Insula region tests (disabled - not implemented)
 add_subdirectory(insula)
 

@@ -30,6 +30,7 @@ bool nimcp_brain_factory_init_multimodal_subsystems(brain_t brain);
 bool nimcp_brain_factory_init_pink_noise_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_neuromodulator_system(brain_t brain);
 bool nimcp_brain_factory_init_spatial_neuromod_system(brain_t brain);
+bool nimcp_brain_factory_init_neuromod_nuclei(brain_t brain);  // Phase 4: LC, VTA, Raphe, Habenula
 bool nimcp_brain_factory_init_attention_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_brain_regions_subsystem(brain_t brain);
 

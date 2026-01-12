@@ -40,6 +40,7 @@ protected:
 
     std::atomic<int> messages_received{0};
     std::atomic<int> bytes_received{0};
+    uint32_t connected_peer_id{0};
 
     void SetUp() override {
         // Node 1 configuration
@@ -57,6 +58,7 @@ protected:
         strncpy(config2.bind_address, "127.0.0.1", sizeof(config2.bind_address));
         config2.default_mode = NLP_MODE_STANDARD;
         config2.heartbeat_interval_ms = 5000;
+        config2.user_data = this;  // Set user_data BEFORE node creation
 
         // Create nodes
         node1 = nlp_node_create(&config1);
@@ -70,10 +72,11 @@ protected:
             [](nlp_node_t node, const nlp_peer_t* peer,
                const nlp_message_t* msg, void* user_data) {
                 auto* test = static_cast<NLPPerformanceTest*>(user_data);
-                test->messages_received++;
-                test->bytes_received += msg->header.payload_len;
+                if (test) {
+                    test->messages_received++;
+                    test->bytes_received += msg->header.payload_len;
+                }
             });
-        config2.user_data = this;
 
         // Start nodes
         ASSERT_EQ(nlp_node_start(node1), 0);
@@ -99,8 +102,8 @@ protected:
 
     void ConnectPeers() {
         // Connect node1 to node2
-        uint32_t peer_id = nlp_connect_peer(node1, "127.0.0.1", 35002);
-        ASSERT_NE(peer_id, 0u);
+        connected_peer_id = nlp_connect_peer(node1, "127.0.0.1", 35002);
+        ASSERT_NE(connected_peer_id, 0u);
 
         // Wait for handshake to complete
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -135,9 +138,9 @@ TEST_F(NLPPerformanceTest, MessageThroughputStandardMode) {
 
     // Send messages as fast as possible
     for (int i = 0; i < num_messages; i++) {
-        int result = nlp_send(node1, 0, NLP_MSG_SPIKE_BATCH,
+        int result = nlp_send(node1, connected_peer_id, NLP_MSG_SPIKE_BATCH,
                              payload, payload_size, NLP_PRIORITY_NORMAL);
-        ASSERT_EQ(result, 0);
+        ASSERT_GE(result, 0) << "nlp_send failed with error: " << result;
     }
 
     // Wait for all messages to be received
@@ -180,7 +183,7 @@ TEST_F(NLPPerformanceTest, MessageThroughputTacticalMode) {
     auto start = std::chrono::steady_clock::now();
 
     for (int i = 0; i < num_messages; i++) {
-        nlp_send(node1, 0, NLP_MSG_SPIKE_BATCH,
+        nlp_send(node1, connected_peer_id, NLP_MSG_SPIKE_BATCH,
                 payload, payload_size, NLP_PRIORITY_NORMAL);
     }
 
@@ -216,7 +219,7 @@ TEST_F(NLPPerformanceTest, LargePayloadThroughput) {
     auto start = std::chrono::steady_clock::now();
 
     for (int i = 0; i < num_messages; i++) {
-        nlp_send(node1, 0, NLP_MSG_STATE_SYNC,
+        nlp_send(node1, connected_peer_id, NLP_MSG_STATE_SYNC,
                 payload.data(), payload_size, NLP_PRIORITY_NORMAL);
     }
 
@@ -266,7 +269,7 @@ TEST_F(NLPPerformanceTest, EncryptionLatencyOverhead) {
     auto start_encrypted = std::chrono::steady_clock::now();
 
     for (int i = 0; i < num_messages; i++) {
-        nlp_send(node1, 0, NLP_MSG_WEIGHT_DELTA,
+        nlp_send(node1, connected_peer_id, NLP_MSG_WEIGHT_DELTA,
                 payload, payload_size, NLP_PRIORITY_NORMAL);
     }
 
@@ -300,7 +303,7 @@ TEST_F(NLPPerformanceTest, EncryptionThroughputImpact) {
     auto start_plain = std::chrono::steady_clock::now();
 
     for (int i = 0; i < num_messages; i++) {
-        nlp_send(node1, 0, NLP_MSG_SPIKE_BATCH,
+        nlp_send(node1, connected_peer_id, NLP_MSG_SPIKE_BATCH,
                 payload, payload_size, NLP_PRIORITY_NORMAL);
     }
 
@@ -329,7 +332,7 @@ TEST_F(NLPPerformanceTest, EncryptionThroughputImpact) {
     auto start_encrypted = std::chrono::steady_clock::now();
 
     for (int i = 0; i < num_messages; i++) {
-        nlp_send(node1, 0, NLP_MSG_SPIKE_BATCH,
+        nlp_send(node1, connected_peer_id, NLP_MSG_SPIKE_BATCH,
                 payload, payload_size, NLP_PRIORITY_NORMAL);
     }
 
@@ -378,7 +381,7 @@ TEST_F(NLPPerformanceTest, BurstBufferingEfficiency) {
 
     // Send messages rapidly (should be buffered)
     for (int i = 0; i < num_messages; i++) {
-        nlp_send(node1, 0, NLP_MSG_BURST_SYNC,
+        nlp_send(node1, connected_peer_id, NLP_MSG_BURST_SYNC,
                 payload, payload_size, NLP_PRIORITY_NORMAL);
     }
 
@@ -411,7 +414,7 @@ TEST_F(NLPPerformanceTest, StealthModeLatency) {
     auto start = std::chrono::steady_clock::now();
 
     // Send a single message
-    nlp_send(node1, 0, NLP_MSG_BURST_SYNC,
+    nlp_send(node1, connected_peer_id, NLP_MSG_BURST_SYNC,
             payload, payload_size, NLP_PRIORITY_NORMAL);
 
     // Wait for receipt
@@ -577,7 +580,7 @@ TEST_F(NLPPerformanceTest, MemoryUsageGrowth) {
     for (int round = 0; round < num_rounds; round++) {
         // Send messages
         for (int i = 0; i < messages_per_round; i++) {
-            nlp_send(node1, 0, NLP_MSG_SPIKE_BATCH,
+            nlp_send(node1, connected_peer_id, NLP_MSG_SPIKE_BATCH,
                     payload, payload_size, NLP_PRIORITY_NORMAL);
         }
 

@@ -9,3 +9,7 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hypothalamus")
     add_subdirectory(hypothalamus)
 endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/locus_coeruleus")
+    add_subdirectory(locus_coeruleus)
+endif()

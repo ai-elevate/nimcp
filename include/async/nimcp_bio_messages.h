@@ -601,6 +601,54 @@ typedef enum {
     BIO_MSG_HYPO_BROCA_ALARM_ACTIVE,              /**< Alarm vocalization active */
     BIO_MSG_HYPO_BROCA_INITIATION_MODE,           /**< Speech initiation mode */
 
+    /* Locus Coeruleus messages (0x1240 - 0x124F) - Norepinephrine/Arousal */
+    BIO_MSG_LC_NE_STATE = 0x1240,                 /**< Norepinephrine state broadcast */
+    BIO_MSG_LC_AROUSAL_CHANGE,                    /**< Arousal level change */
+    BIO_MSG_LC_ALERTNESS_SIGNAL,                  /**< Alertness modulation signal */
+    BIO_MSG_LC_PHASIC_BURST,                      /**< Phasic NE burst (novelty/salience) */
+    BIO_MSG_LC_TONIC_SHIFT,                       /**< Tonic baseline shift */
+    BIO_MSG_LC_GAIN_MODULATION,                   /**< Neural gain modulation */
+    BIO_MSG_LC_STRESS_RESPONSE,                   /**< Stress-induced NE release */
+    BIO_MSG_LC_VIGILANCE_UPDATE,                  /**< Vigilance state update */
+    BIO_MSG_LC_ATTENTION_BIAS,                    /**< Attention bias from NE */
+    BIO_MSG_LC_PLASTICITY_GATE,                   /**< Plasticity gating signal */
+
+    /* Ventral Tegmental Area messages (0x1250 - 0x125F) - Dopamine/Reward */
+    BIO_MSG_VTA_DA_STATE = 0x1250,                /**< Dopamine state broadcast */
+    BIO_MSG_VTA_RPE,                              /**< Reward prediction error */
+    BIO_MSG_VTA_DOPAMINE_BURST,                   /**< Phasic dopamine burst (reward) */
+    BIO_MSG_VTA_DOPAMINE_DIP,                     /**< Phasic dopamine dip (omission) */
+    BIO_MSG_VTA_TONIC_CHANGE,                     /**< Tonic DA baseline change */
+    BIO_MSG_VTA_MOTIVATION_UPDATE,                /**< Motivational signal */
+    BIO_MSG_VTA_VALUE_UPDATE,                     /**< Value prediction update */
+    BIO_MSG_VTA_INCENTIVE_SALIENCE,               /**< Incentive salience signal */
+    BIO_MSG_VTA_LEARNING_SIGNAL,                  /**< DA-based learning signal */
+    BIO_MSG_VTA_PLASTICITY_GATE,                  /**< Dopamine plasticity gate */
+
+    /* Raphe Nuclei messages (0x1260 - 0x126F) - Serotonin/Mood */
+    BIO_MSG_RAPHE_5HT_STATE = 0x1260,             /**< Serotonin state broadcast */
+    BIO_MSG_RAPHE_MOOD_CHANGE,                    /**< Mood state change */
+    BIO_MSG_RAPHE_IMPULSE_CONTROL,                /**< Impulse control signal */
+    BIO_MSG_RAPHE_PATIENCE_SIGNAL,                /**< Patience/delay tolerance */
+    BIO_MSG_RAPHE_TONIC_SHIFT,                    /**< Tonic 5-HT baseline shift */
+    BIO_MSG_RAPHE_CIRCADIAN_MODULATION,           /**< Circadian rhythm influence */
+    BIO_MSG_RAPHE_PAIN_MODULATION,                /**< Pain perception modulation */
+    BIO_MSG_RAPHE_ANXIETY_STATE,                  /**< Anxiety state update */
+    BIO_MSG_RAPHE_SOCIAL_SIGNAL,                  /**< Social behavior modulation */
+    BIO_MSG_RAPHE_PLASTICITY_GATE,                /**< Serotonin plasticity gate */
+
+    /* Habenula messages (0x1270 - 0x127F) - Aversive Learning */
+    BIO_MSG_HABENULA_STATE = 0x1270,              /**< Habenula state broadcast */
+    BIO_MSG_HABENULA_NEGATIVE_RPE,                /**< Negative reward prediction error */
+    BIO_MSG_HABENULA_PUNISHMENT_SIGNAL,           /**< Punishment detection signal */
+    BIO_MSG_HABENULA_DISAPPOINTMENT,              /**< Disappointment/omission signal */
+    BIO_MSG_HABENULA_AVOIDANCE_TRIGGER,           /**< Avoidance behavior trigger */
+    BIO_MSG_HABENULA_VTA_INHIBIT,                 /**< VTA/SNc inhibition signal */
+    BIO_MSG_HABENULA_RAPHE_INHIBIT,               /**< Raphe inhibition signal */
+    BIO_MSG_HABENULA_AVERSIVE_LEARNING,           /**< Aversive learning signal */
+    BIO_MSG_HABENULA_RELIEF_SIGNAL,               /**< Relief from expected punishment */
+    BIO_MSG_HABENULA_PLASTICITY_GATE,             /**< Habenula plasticity gate */
+
     /* Collective Cognition: Portia bridge messages (0x2E10 - 0x2E1F) */
     BIO_MSG_PORTIA_COLLECTIVE_TIER_CHANGE = 0x2E11,   /**< Portia tier change broadcast */
     BIO_MSG_PORTIA_COLLECTIVE_STATE_UPDATE,           /**< Portia state update */
@@ -805,6 +853,12 @@ typedef enum {
     BIO_MODULE_PARIETAL_CORTEX,              /**< Parietal cortex spatial processing */
     BIO_MODULE_TEMPORAL_CORTEX,              /**< Temporal cortex auditory/semantic processing */
     BIO_MODULE_OCCIPITAL,                    /**< Occipital cortex visual processing */
+
+    /* Neuromodulatory centers (Phase 4) */
+    BIO_MODULE_LOCUS_COERULEUS,              /**< Locus coeruleus - norepinephrine/arousal */
+    BIO_MODULE_VTA,                          /**< Ventral tegmental area - dopamine/reward */
+    BIO_MODULE_RAPHE,                        /**< Raphe nuclei - serotonin/mood */
+    BIO_MODULE_HABENULA,                     /**< Habenula - aversive learning */
 
     /* Cognitive modules */
     BIO_MODULE_INTROSPECTION = 0x0200,

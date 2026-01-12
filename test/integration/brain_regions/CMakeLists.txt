@@ -24,3 +24,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_occipital_integration.cpp
     integration
 )
+
+# Neuromodulatory centers integration tests (Phase 4: LC, VTA, Raphe, Habenula)
+add_test_binary(
+    integration_brain_regions_test_neuromodulatory_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_neuromodulatory_integration.cpp
+    integration
+)

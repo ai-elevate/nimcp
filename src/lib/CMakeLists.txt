@@ -2094,7 +2094,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/intra/integration_layer/nimcp_integration_intra_coordinator.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/intra/superhuman/nimcp_superhuman_intra_coordinator.c
 
-    # Inter-layer bridges (13 bridges)
+    # Inter-layer bridges (19 bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/chemistry_biology/nimcp_chemistry_biology_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.c
@@ -2108,6 +2108,31 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/executive_integration/nimcp_executive_integration_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/integration_superhuman/nimcp_integration_superhuman_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.c
+    # Neuromodulatory-Cognitive Inter-layer Bridges (Phase 4 expansion)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c
+
+    # Physics layer modules
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/geometry/nimcp_information_geometry.c
+
+    # Biology layer modules
+    ${CMAKE_CURRENT_SOURCE_DIR}/../biology/epigenetics/nimcp_epigenetics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../biology/neurogenesis/nimcp_neurogenesis.c
+
+    # Chemistry layer modules - pH Dynamics
+    ${CMAKE_CURRENT_SOURCE_DIR}/../chemistry/ph/nimcp_ph_dynamics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../chemistry/ph/nimcp_proton_pumps.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../chemistry/ph/nimcp_buffer_systems.c
+
+    # Chemistry layer modules - Nitric Oxide Signaling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../chemistry/gasotransmitters/nimcp_nitric_oxide.c
+
+    # Biology layer modules - Neurovascular Coupling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../biology/neurovascular/nimcp_neurovascular.c
 
     # Module adapters - Physics layer
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/physics/nimcp_hh_dynamics_adapter.c
@@ -2134,6 +2159,58 @@ set(NIMCP_CORE_SOURCES
     # Module adapters - Executive layer
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/executive/nimcp_basal_ganglia_adapter.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/adapters/executive/nimcp_pfc_adapter.c
+
+    # Brain regions - Locus Coeruleus (Norepinephrine center)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/locus_coeruleus/nimcp_locus_coeruleus.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/locus_coeruleus/nimcp_norepinephrine_release.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/locus_coeruleus/nimcp_arousal_modulation.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/locus_coeruleus/nimcp_novelty_detection.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/locus_coeruleus/nimcp_lc_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/locus_coeruleus/nimcp_lc_plasticity_bridge.c
+
+    # Brain regions - Ventral Tegmental Area (Dopamine/Reward center)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/vta/nimcp_vta.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/vta/nimcp_dopamine_release.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/vta/nimcp_reward_prediction_error.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/vta/nimcp_incentive_salience.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/vta/nimcp_vta_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/vta/nimcp_vta_snn_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/vta/nimcp_vta_plasticity_bridge.c
+
+    # Brain regions - Raphe Nuclei (Serotonin/Mood center)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/raphe/nimcp_raphe.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/raphe/nimcp_serotonin_release.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/raphe/nimcp_mood_regulation.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/raphe/nimcp_impulse_control.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/raphe/nimcp_temporal_discounting.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/raphe/nimcp_raphe_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/raphe/nimcp_raphe_snn_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/raphe/nimcp_raphe_plasticity_bridge.c
+
+    # Brain regions - Habenula (Aversive learning/Disappointment center)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/habenula/nimcp_habenula.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/habenula/nimcp_habenula_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/habenula/nimcp_habenula_snn_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/habenula/nimcp_habenula_plasticity_bridge.c
+
+    # Neuromodulatory Bio-Async Integration Bridges (Phase 4)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/vta/nimcp_vta_bio_async_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/raphe/nimcp_raphe_bio_async_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/habenula/nimcp_habenula_bio_async_bridge.c
+
+    # Neuromodulatory Cognitive Hub Integration Bridge (Phase 4)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.c
+
+    # Neuromodulatory-Security Bridge (Phase 4 Security Integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_neuromodulatory_security_bridge.c
+
+    # Neuromodulatory-Immune Bridge (Phase 4 Immune Integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_neuromodulatory_immune_bridge.c
+
+    # Neuromodulatory-Logging Bridge (Phase 4 Logging Integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_neuromodulatory_logging_bridge.c
 )
 
 # Core library

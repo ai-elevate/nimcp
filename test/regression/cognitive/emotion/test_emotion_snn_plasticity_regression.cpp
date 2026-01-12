@@ -182,11 +182,11 @@ protected:
 };
 
 TEST_F(EmotionPlasticityRegressionTest, WeightsStayInBounds) {
-    emotion_plasticity_register_synapse(bridge, 1, EMOTION_SYNAPSE_STIMULUS_TO_EMOTION, EMOTION_JOY, 0.5f);
+    emotion_plasticity_register_synapse(bridge, 1, EMOTION_SYNAPSE_STIMULUS_TO_EMOTION, EMOTION_HAPPINESS, 0.5f);
 
     for (int i = 0; i < 1000; i++) {
-        emotion_plasticity_stimulus(bridge, EMOTION_JOY, 1.0f, i * 1000);
-        emotion_plasticity_response(bridge, EMOTION_JOY, 1.0f, i * 1000 + 500);
+        emotion_plasticity_stimulus(bridge, EMOTION_HAPPINESS, 1.0f, i * 1000);
+        emotion_plasticity_response(bridge, EMOTION_HAPPINESS, 1.0f, i * 1000 + 500);
     }
 
     emotion_plasticity_update(bridge, 10.0f);
@@ -264,12 +264,12 @@ TEST_F(EmotionPlasticityRegressionTest, ValenceModulation) {
     emotion_plasticity_bridge_t* val_bridge = emotion_plasticity_create(&config);
     ASSERT_NE(val_bridge, nullptr);
 
-    emotion_plasticity_register_synapse(val_bridge, 1, EMOTION_SYNAPSE_STIMULUS_TO_EMOTION, EMOTION_JOY, 0.5f);
+    emotion_plasticity_register_synapse(val_bridge, 1, EMOTION_SYNAPSE_STIMULUS_TO_EMOTION, EMOTION_HAPPINESS, 0.5f);
 
     emotion_plasticity_set_valence_modulation(val_bridge, 0.9f);
     for (int i = 0; i < 10; i++) {
-        emotion_plasticity_stimulus(val_bridge, EMOTION_JOY, 0.8f, i * 10000);
-        emotion_plasticity_response(val_bridge, EMOTION_JOY, 0.9f, i * 10000 + 100);
+        emotion_plasticity_stimulus(val_bridge, EMOTION_HAPPINESS, 0.8f, i * 10000);
+        emotion_plasticity_response(val_bridge, EMOTION_HAPPINESS, 0.9f, i * 10000 + 100);
         emotion_plasticity_update(val_bridge, 10.0f);
     }
 
@@ -307,7 +307,7 @@ TEST_F(EmotionPlasticityRegressionTest, ArousalModulation) {
 
 TEST_F(EmotionPlasticityRegressionTest, ManySynapsesDoNotExceedCapacity) {
     for (uint32_t i = 0; i < EMOTION_PLASTICITY_MAX_SYNAPSES + 10; i++) {
-        int result = emotion_plasticity_register_synapse(bridge, i, EMOTION_SYNAPSE_STIMULUS_TO_EMOTION, EMOTION_JOY, 0.5f);
+        int result = emotion_plasticity_register_synapse(bridge, i, EMOTION_SYNAPSE_STIMULUS_TO_EMOTION, EMOTION_HAPPINESS, 0.5f);
         if (i < EMOTION_PLASTICITY_MAX_SYNAPSES) {
             EXPECT_EQ(result, 0);
         } else {

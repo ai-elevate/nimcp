@@ -275,7 +275,7 @@ protected:
             static_cast<const bio_message_header_t*>(msg);
 
         /* Categorize and count the message */
-        uint32_t msg_type = header->message_type;
+        uint32_t msg_type = header->type;
 
         if (msg_type >= BIO_MSG_SECURITY_THREAT_DETECTED_EXT &&
             msg_type <= BIO_MSG_SECURITY_THREAT_QUARANTINED) {
@@ -912,7 +912,7 @@ TEST_F(SecurityAsyncIntegrationTest, AsyncToSecurityIntelUpdatesPatternDB)
     EXPECT_EQ(security_async_receive_threat_report(
         bridge_, BIO_MODULE_ETHICS, BBB_THREAT_SQL_INJECTION, hash1, 0.8f), 0);
     EXPECT_EQ(security_async_receive_threat_report(
-        bridge_, BIO_MODULE_SALIENCE, BBB_THREAT_XSS, hash2, 0.9f), 0);
+        bridge_, BIO_MODULE_SALIENCE, BBB_THREAT_CODE_INJECTION, hash2, 0.9f), 0);
 
     /* Verify both are cached */
     threat_intel_entry_t entry1, entry2;
@@ -953,7 +953,7 @@ TEST_F(SecurityAsyncIntegrationTest, FullCycleThreatDetectedBroadcastPatternLear
     /* Step 3: Receive corroborating intel from peer */
     EXPECT_EQ(security_async_receive_threat_report(
         bridge_,
-        BIO_MODULE_REASONING,
+        BIO_MODULE_TRAINING,
         BBB_THREAT_SHELLCODE,
         threat_hash,
         0.95f
@@ -1158,7 +1158,7 @@ TEST_F(SecurityAsyncIntegrationTest, ThreadSafetyUnderLoad)
                 switch ((t + i) % 5) {
                 case 0:  /* Broadcast threat */
                     result = security_async_broadcast_threat(
-                        bridge_, BBB_THREAT_XSS, BBB_SEVERITY_LOW,
+                        bridge_, BBB_THREAT_CODE_INJECTION, BBB_SEVERITY_LOW,
                         "Test threat", nullptr);
                     break;
 

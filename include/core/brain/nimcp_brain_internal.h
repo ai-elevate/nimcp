@@ -1319,6 +1319,46 @@ struct brain_struct {
     bool pr_lazy_init;                                                // Defer PR memory initialization
     uint64_t last_pr_consolidation_us;                                // Last consolidation timestamp
     uint64_t pr_consolidation_interval_us;                            // Consolidation interval (default: 100ms)
+
+    // =========================================================================
+    // PHASE 4 NEUROMODULATORY NUCLEI INTEGRATION (LC, VTA, Raphe, Habenula)
+    // =========================================================================
+    // The neuromodulatory nuclei provide modulatory control over brain activity:
+    // - Locus Coeruleus (LC): Norepinephrine (NE) - arousal, attention, stress
+    // - Ventral Tegmental Area (VTA): Dopamine (DA) - reward, motivation, learning
+    // - Raphe Nuclei: Serotonin (5-HT) - mood, impulse control, patience
+    // - Habenula: Aversion - disappointment, negative outcomes, avoidance
+    //
+    // These nuclei have widespread projections to cortical and subcortical areas
+    // and coordinate to produce coherent neuromodulatory states.
+    //
+    // BIOLOGICAL BASIS:
+    // - LC: ~1500 neurons/hemisphere with 300,000+ projections each
+    // - VTA: Dopaminergic neurons projecting to NAc, PFC, amygdala
+    // - Raphe: Largest serotonergic source, mood/circadian regulation
+    // - Habenula: "Anti-reward" center, modulates VTA and raphe
+    //
+    // Integrates with:
+    // - Security System: Neuromodulator-mediated threat response
+    // - Immune System: Psychoneuroimmunology (cytokine-neuromodulator crosstalk)
+    // - Logging System: Audit trails for neuromodulatory events
+    // - Training System: Bidirectional learning rate modulation
+    // - Bio-Async: Cross-nuclei coordination messaging
+    //
+    struct nimcp_lc_adapter_struct* lc_adapter;                       // Locus Coeruleus adapter
+    struct nimcp_vta_adapter* vta_adapter;                            // VTA adapter
+    struct nimcp_raphe_adapter* raphe_adapter;                        // Raphe nuclei adapter
+    struct nimcp_habenula_adapter_impl* habenula_adapter;             // Habenula adapter
+    struct nimcp_neuromod_intra_struct* neuromod_intra_coordinator;   // Neuromodulatory intra-layer coordinator
+    bool lc_enabled;                                                  // LC enabled for this brain
+    bool vta_enabled;                                                 // VTA enabled for this brain
+    bool raphe_enabled;                                               // Raphe enabled for this brain
+    bool habenula_enabled;                                            // Habenula enabled for this brain
+    bool neuromod_intra_enabled;                                      // Neuromod intra-coordinator enabled
+    uint64_t last_lc_update_us;                                       // Last LC update timestamp
+    uint64_t last_vta_update_us;                                      // Last VTA update timestamp
+    uint64_t last_raphe_update_us;                                    // Last Raphe update timestamp
+    uint64_t last_habenula_update_us;                                 // Last Habenula update timestamp
 };
 
 //=============================================================================

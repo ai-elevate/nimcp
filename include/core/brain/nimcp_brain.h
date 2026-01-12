@@ -1536,6 +1536,46 @@ typedef struct {
     int32_t gpu_device_id;                /**< GPU device ID (-1 = auto-select best) (default: -1) */
     bool gpu_enable_async;                /**< Enable async GPU operations (default: true) */
     uint32_t gpu_batch_size;              /**< Preferred batch size for GPU ops (default: 256) */
+
+    // === PHASE 4 NEUROMODULATORY NUCLEI CONFIGURATION ===
+    /**
+     * Phase 4 Neuromodulatory Nuclei Configuration
+     *
+     * WHAT: Enable and configure individual neuromodulatory nuclei
+     * WHY:  Fine-grained control over neuromodulation systems
+     * HOW:  Each nucleus can be enabled independently with custom parameters
+     *
+     * NUCLEI:
+     * - LC (Locus Coeruleus): Norepinephrine (NE) - arousal, attention, stress response
+     * - VTA (Ventral Tegmental Area): Dopamine (DA) - reward, motivation, learning
+     * - Raphe Nuclei: Serotonin (5-HT) - mood, impulse control, patience
+     * - Habenula: Aversion - disappointment, negative outcomes, avoidance
+     *
+     * INTEGRATION:
+     * - Security System: Threat response modulation
+     * - Immune System: Psychoneuroimmunology (cytokine-neuromodulator crosstalk)
+     * - Logging System: Audit trails for neuromodulatory events
+     * - Training System: Bidirectional learning rate modulation
+     * - Bio-Async: Cross-nuclei coordination messaging
+     */
+    bool enable_lc;                       /**< Enable Locus Coeruleus (NE) (default: false) */
+    bool enable_vta;                      /**< Enable Ventral Tegmental Area (DA) (default: false) */
+    bool enable_raphe;                    /**< Enable Raphe Nuclei (5-HT) (default: false) */
+    bool enable_habenula;                 /**< Enable Habenula (aversion) (default: false) */
+    bool enable_neuromod_intra;           /**< Enable neuromodulatory intra-coordinator (default: false) */
+
+    // Neuromodulatory coupling strengths (cross-nuclei interactions)
+    float neuromod_lc_vta_coupling;       /**< LC-VTA coupling strength (default: 0.3) */
+    float neuromod_lc_raphe_coupling;     /**< LC-Raphe coupling strength (default: 0.2) */
+    float neuromod_vta_raphe_coupling;    /**< VTA-Raphe coupling strength (default: 0.25) */
+    float neuromod_vta_habenula_coupling; /**< VTA-Habenula coupling strength (default: 0.4) */
+    float neuromod_raphe_habenula_coupling; /**< Raphe-Habenula coupling strength (default: 0.3) */
+
+    // Neuromodulatory system integration flags
+    bool neuromod_enable_security_bridge; /**< Enable security-neuromod bridge (default: true) */
+    bool neuromod_enable_immune_bridge;   /**< Enable immune-neuromod bridge (default: true) */
+    bool neuromod_enable_logging_bridge;  /**< Enable logging-neuromod bridge (default: true) */
+    bool neuromod_enable_training_bridge; /**< Enable training-neuromod bridge (default: true) */
 } brain_config_t;
 
 /**

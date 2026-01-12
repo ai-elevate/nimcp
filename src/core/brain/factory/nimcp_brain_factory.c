@@ -137,6 +137,7 @@ extern void set_error(const char* format, ...);
 #define init_pink_noise_subsystem                   nimcp_brain_factory_init_pink_noise_subsystem
 #define init_neuromodulator_system                  nimcp_brain_factory_init_neuromodulator_system
 #define init_spatial_neuromod_system                nimcp_brain_factory_init_spatial_neuromod_system
+#define init_neuromod_nuclei                        nimcp_brain_factory_init_neuromod_nuclei
 #define init_attention_subsystem                    nimcp_brain_factory_init_attention_subsystem
 #define init_brain_regions_subsystem                nimcp_brain_factory_init_brain_regions_subsystem
 #define init_symbolic_logic_subsystem               nimcp_brain_factory_init_symbolic_logic_subsystem
@@ -488,6 +489,10 @@ brain_t brain_create_custom(const brain_config_t* config)
         if (!init_neuromodulator_system(brain)) { brain_destroy(brain); return NULL; }
         if (!init_spatial_neuromod_system(brain)) { brain_destroy(brain); return NULL; }
     }
+
+    // Phase 4: Neuromodulatory Nuclei (LC, VTA, Raphe, Habenula)
+    // Depends on neuromodulator_system for baseline levels
+    if (!init_neuromod_nuclei(brain)) { brain_destroy(brain); return NULL; }
 
     // Phase GPU-1: Unified GPU Neural Substrate (depends on GPU context, brain regions, neuromod)
     // Initializes GPU tensors for axons, dendrites, myelin, neuromodulators, glial, metabolic

@@ -977,6 +977,38 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_amygdala_pipeline.cpp)
 endif()
 
 # ============================================================================
+# Neuromodulatory Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for neuromodulatory centers integration (LC, VTA, Raphe, Habenula)
+# WHY:  Verify bidirectional SNN/Plasticity integration across all neuromodulators
+# HOW:  Test reward learning, aversive learning, attention, mood, cross-center coordination
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_neuromodulatory_pipeline.cpp)
+    add_executable(e2e_test_neuromodulatory_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_neuromodulatory_pipeline.cpp
+    )
+    target_include_directories(e2e_test_neuromodulatory_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/core/brain/regions
+    )
+    target_link_libraries(e2e_test_neuromodulatory_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_neuromodulatory_pipeline PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_neuromodulatory_pipeline
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "e2e;core;brain_regions;neuromodulatory;lc;vta;raphe;habenula"
+            TIMEOUT 180
+    )
+    message(STATUS "  Added Neuromodulatory E2E test: e2e_test_neuromodulatory_pipeline")
+endif()
+
+# ============================================================================
 # Dragonfly Hunting Pipeline E2E Test
 # ============================================================================
 # WHAT: E2E tests for complete dragonfly hunting pipeline
@@ -2570,6 +2602,39 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypothalamus_internal_bus_pipelin
         TIMEOUT 300
     )
     message(STATUS "  Added Hypothalamus Internal Bus Pipeline E2E test: e2e_test_hypothalamus_internal_bus_pipeline")
+endif()
+
+# ============================================================================
+# Neuromodulatory-Cognitive Integration E2E Test (Phase 4: Neuromod Expansion)
+# ============================================================================
+# WHAT: E2E tests for neuromodulatory-cognitive inter-layer bridges
+# WHY:  Verify complete neuromod-to-behavior flow across all 6 bridges:
+#       Attention, Working Memory, Emotion, Plasticity, Game Theory, Reasoning
+# HOW:  Test LC/VTA/Raphe/Habenula effects on cognitive systems, full cycles
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/inter/neuromod/test_neuromod_cognitive_e2e.cpp)
+    add_executable(e2e_test_neuromod_cognitive_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/inter/neuromod/test_neuromod_cognitive_e2e.cpp
+    )
+    target_include_directories(e2e_test_neuromod_cognitive_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/integration/inter
+    )
+    target_link_libraries(e2e_test_neuromod_cognitive_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_neuromod_cognitive_pipeline PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_test_neuromod_cognitive_pipeline PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_test_neuromod_cognitive_pipeline COMMAND e2e_test_neuromod_cognitive_pipeline)
+    set_tests_properties(e2e_test_neuromod_cognitive_pipeline PROPERTIES
+        LABELS "e2e;neuromod;cognitive;attention;wm;emotion;plasticity;gametheory;reasoning"
+        TIMEOUT 180
+    )
+    message(STATUS "  Added Neuromod-Cognitive Pipeline E2E test: e2e_test_neuromod_cognitive_pipeline")
 endif()
 
 # Include GPU E2E test subdirectory

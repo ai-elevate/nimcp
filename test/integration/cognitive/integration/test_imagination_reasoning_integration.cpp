@@ -69,7 +69,7 @@ protected:
         cognitive_hub_config_t hub_config = cognitive_hub_default_config();
         hub_config.max_modules = 32;
         hub_config.max_subscriptions = 128;
-        hub_config.enable_priority_routing = true;
+        hub_config.enable_async = true;  // Enable async event delivery for priority handling
         hub = cognitive_hub_create(&hub_config);
         ASSERT_NE(hub, nullptr) << "Hub creation required for integration tests";
 
