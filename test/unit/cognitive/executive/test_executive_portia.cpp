@@ -26,9 +26,15 @@ protected:
     void SetUp() override {
         // Initialize bio-router for message passing
         bio_router_config_t cfg = {0}; bio_router_init(&cfg);
+
+        // Initialize Portia system for tier management
+        portia_config_t portia_cfg = portia_get_default_config();
+        portia_cfg.enable_bio_async = false;  // Disable bio-async for unit tests
+        portia_init(&portia_cfg);
     }
 
     void TearDown() override {
+        portia_destroy();
         bio_router_shutdown();
     }
 

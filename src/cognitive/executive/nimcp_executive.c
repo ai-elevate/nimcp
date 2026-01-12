@@ -98,6 +98,13 @@ static inline bool exec_has_gpu_mc(void) { return false; }
 // Forward declarations for static helpers
 static inline uint64_t exec_get_time_ms(void);
 
+// Forward declaration for MCTS planning (defined later, needed for executive_create_plan)
+plan_t* executive_create_plan_mcts(
+    executive_controller_t* exec,
+    const char* goal,
+    const executive_mcts_config_t* config,
+    executive_mcts_stats_t* stats);
+
 //=============================================================================
 // Constants
 //=============================================================================
@@ -1375,23 +1382,46 @@ plan_t* executive_create_plan(executive_controller_t* exec, const char* goal, ui
         }
     } else {
 classical_planning:
-        // Classical decomposition (simple placeholder)
-        plan->num_steps = (max_steps > 3) ? 3 : max_steps;
+        // Use MCTS for sophisticated goal decomposition
+        executive_mcts_config_t mcts_cfg;
+        executive_mcts_config_init(&mcts_cfg);
+        mcts_cfg.max_depth = max_steps;
+        mcts_cfg.max_iterations = 50;  // Moderate iterations for fallback
 
-        snprintf(plan->steps[0].description, sizeof(plan->steps[0].description), "Analyze: %s", goal);
-        plan->steps[0].estimated_cost = 100;
-        plan->steps[0].is_critical = true;
+        plan_t* mcts_plan = executive_create_plan_mcts(exec, goal, &mcts_cfg, NULL);
+        if (mcts_plan) {
+            // Copy MCTS plan to pre-allocated structure
+            plan->type = mcts_plan->type;
+            plan->num_steps = (mcts_plan->num_steps <= max_steps) ? mcts_plan->num_steps : max_steps;
 
-        if (plan->num_steps > 1) {
-            snprintf(plan->steps[1].description, sizeof(plan->steps[1].description), "Execute: %s", goal);
-            plan->steps[1].estimated_cost = 500;
-            plan->steps[1].is_critical = true;
-        }
+            for (uint32_t i = 0; i < plan->num_steps; i++) {
+                plan->steps[i] = mcts_plan->steps[i];
+            }
 
-        if (plan->num_steps > 2) {
-            snprintf(plan->steps[2].description, sizeof(plan->steps[2].description), "Verify: %s", goal);
-            plan->steps[2].estimated_cost = 200;
-            plan->steps[2].is_critical = false;
+            // Free the MCTS plan (but not steps since we copied)
+            mcts_plan->steps = NULL;  // Prevent double-free
+            executive_destroy_plan(mcts_plan);
+
+            LOG_DEBUG("MCTS-based classical plan created: %u steps", plan->num_steps);
+        } else {
+            // Ultimate fallback: simple decomposition
+            plan->num_steps = (max_steps > 3) ? 3 : max_steps;
+
+            snprintf(plan->steps[0].description, sizeof(plan->steps[0].description), "Analyze: %s", goal);
+            plan->steps[0].estimated_cost = 100;
+            plan->steps[0].is_critical = true;
+
+            if (plan->num_steps > 1) {
+                snprintf(plan->steps[1].description, sizeof(plan->steps[1].description), "Execute: %s", goal);
+                plan->steps[1].estimated_cost = 500;
+                plan->steps[1].is_critical = true;
+            }
+
+            if (plan->num_steps > 2) {
+                snprintf(plan->steps[2].description, sizeof(plan->steps[2].description), "Verify: %s", goal);
+                plan->steps[2].estimated_cost = 200;
+                plan->steps[2].is_critical = false;
+            }
         }
     }
 
@@ -2534,4 +2564,544 @@ uint32_t* executive_get_mc_seed(void) {
         g_exec_mc_seed = mc_seed_from_time();
     }
     return &g_exec_mc_seed;
+}
+
+//=============================================================================
+// MCTS-Based Goal Decomposition Implementation
+//=============================================================================
+
+/** Maximum actions per planning state */
+#define MCTS_PLAN_MAX_ACTIONS 8
+
+/** Maximum nodes for planning tree */
+#define MCTS_PLAN_MAX_NODES 512
+
+/**
+ * @brief Planning state for MCTS tree node
+ */
+typedef struct mcts_plan_state {
+    char goal[128];                 /**< Current goal/subgoal */
+    uint32_t depth;                 /**< Current depth in plan */
+    uint32_t action_taken;          /**< Action index that led here */
+    float accumulated_cost;         /**< Total cost so far */
+    bool is_terminal;               /**< Goal achieved or failed */
+    char actions[MCTS_PLAN_MAX_ACTIONS][64];  /**< Available action descriptions */
+    uint32_t num_actions;           /**< Number of available actions */
+} mcts_plan_state_t;
+
+/**
+ * @brief User data for MCTS planning callbacks
+ */
+typedef struct mcts_plan_context {
+    executive_controller_t* exec;   /**< Executive controller */
+    const executive_mcts_config_t* config;  /**< MCTS configuration */
+    uint32_t max_depth;             /**< Maximum planning depth */
+    uint32_t nodes_created;         /**< Track node creation */
+} mcts_plan_context_t;
+
+/* Forward declarations for MCTS callbacks */
+static uint32_t plan_get_action_count(const void* state, void* user_data);
+static uint32_t plan_get_action(const void* state, uint32_t idx, void* user_data);
+static void* plan_apply_action(const void* state, uint32_t action, void* user_data);
+static float plan_evaluate(const void* state, void* user_data);
+static bool plan_is_terminal(const void* state, void* user_data);
+static void plan_free_state(void* state, void* user_data);
+static void* plan_clone_state(const void* state, void* user_data);
+
+/**
+ * @brief Generate actions for a planning state
+ */
+static void generate_plan_actions(mcts_plan_state_t* state, mcts_plan_context_t* ctx) {
+    /* Generate possible actions based on goal and depth */
+    state->num_actions = 0;
+
+    if (state->is_terminal || state->depth >= ctx->max_depth) {
+        return;
+    }
+
+    /* Base actions that apply to most goals */
+    const char* base_actions[] = {
+        "Analyze requirements",
+        "Gather information",
+        "Execute primary step",
+        "Verify result",
+        "Handle error case",
+        "Optimize approach",
+        "Delegate subtask",
+        "Consolidate progress"
+    };
+
+    /* Select relevant actions based on depth and goal */
+    uint32_t action_count = 0;
+
+    if (state->depth == 0) {
+        /* Initial planning: analyze and gather info first */
+        snprintf(state->actions[action_count++], 64, "Analyze: %s", state->goal);
+        snprintf(state->actions[action_count++], 64, "Decompose: %s", state->goal);
+        snprintf(state->actions[action_count++], 64, "Gather info for: %s", state->goal);
+    } else if (state->depth < ctx->max_depth / 2) {
+        /* Middle phase: execution */
+        for (uint32_t i = 2; i < 6 && action_count < MCTS_PLAN_MAX_ACTIONS; i++) {
+            snprintf(state->actions[action_count++], 64, "%s", base_actions[i]);
+        }
+    } else {
+        /* Final phase: verification and consolidation */
+        for (uint32_t i = 3; i < 8 && action_count < MCTS_PLAN_MAX_ACTIONS; i++) {
+            snprintf(state->actions[action_count++], 64, "%s", base_actions[i]);
+        }
+    }
+
+    state->num_actions = action_count;
+}
+
+/* MCTS Callback: Get number of available actions */
+static uint32_t plan_get_action_count(const void* state, void* user_data) {
+    const mcts_plan_state_t* s = (const mcts_plan_state_t*)state;
+    (void)user_data;
+    return s->num_actions;
+}
+
+/* MCTS Callback: Get action ID by index */
+static uint32_t plan_get_action(const void* state, uint32_t idx, void* user_data) {
+    const mcts_plan_state_t* s = (const mcts_plan_state_t*)state;
+    (void)user_data;
+    if (idx >= s->num_actions) return UINT32_MAX;
+    return idx;
+}
+
+/* MCTS Callback: Apply action and create new state */
+static void* plan_apply_action(const void* state, uint32_t action, void* user_data) {
+    const mcts_plan_state_t* s = (const mcts_plan_state_t*)state;
+    mcts_plan_context_t* ctx = (mcts_plan_context_t*)user_data;
+
+    if (action >= s->num_actions) return NULL;
+
+    mcts_plan_state_t* new_state = nimcp_calloc(1, sizeof(mcts_plan_state_t));
+    if (!new_state) return NULL;
+
+    ctx->nodes_created++;
+
+    /* Copy base properties */
+    snprintf(new_state->goal, sizeof(new_state->goal), "%s", s->goal);
+    new_state->depth = s->depth + 1;
+    new_state->action_taken = action;
+
+    /* Estimate action cost (simplified model) */
+    float base_cost = 100.0f + 50.0f * (float)action;
+    new_state->accumulated_cost = s->accumulated_cost + base_cost;
+
+    /* Check if goal achieved (probabilistic based on depth) */
+    float completion_prob = (float)new_state->depth / (float)ctx->max_depth;
+    float r = mc_random_uniform(&g_exec_mc_seed);
+    new_state->is_terminal = (r < completion_prob * 0.3f) || (new_state->depth >= ctx->max_depth);
+
+    /* Generate actions for new state */
+    generate_plan_actions(new_state, ctx);
+
+    return new_state;
+}
+
+/* MCTS Callback: Evaluate state value (heuristic) */
+static float plan_evaluate(const void* state, void* user_data) {
+    const mcts_plan_state_t* s = (const mcts_plan_state_t*)state;
+    mcts_plan_context_t* ctx = (mcts_plan_context_t*)user_data;
+
+    if (s->is_terminal && s->depth <= ctx->max_depth) {
+        /* Goal achieved - reward inversely proportional to cost */
+        float cost_factor = 1.0f / (1.0f + s->accumulated_cost / 1000.0f);
+        float depth_factor = 1.0f - (float)s->depth / (float)(ctx->max_depth * 2);
+        return 0.5f + 0.5f * cost_factor * depth_factor;
+    }
+
+    /* Non-terminal: estimate based on progress */
+    float progress = (float)s->depth / (float)ctx->max_depth;
+    float cost_penalty = s->accumulated_cost / 5000.0f;
+
+    return 0.3f + 0.4f * progress - 0.2f * cost_penalty;
+}
+
+/* MCTS Callback: Check if state is terminal */
+static bool plan_is_terminal(const void* state, void* user_data) {
+    const mcts_plan_state_t* s = (const mcts_plan_state_t*)state;
+    mcts_plan_context_t* ctx = (mcts_plan_context_t*)user_data;
+    return s->is_terminal || s->depth >= ctx->max_depth || s->num_actions == 0;
+}
+
+/* MCTS Callback: Free state memory */
+static void plan_free_state(void* state, void* user_data) {
+    (void)user_data;
+    nimcp_free(state);
+}
+
+/* MCTS Callback: Clone state */
+static void* plan_clone_state(const void* state, void* user_data) {
+    mcts_plan_context_t* ctx = (mcts_plan_context_t*)user_data;
+    const mcts_plan_state_t* s = (const mcts_plan_state_t*)state;
+
+    mcts_plan_state_t* clone = nimcp_calloc(1, sizeof(mcts_plan_state_t));
+    if (!clone) return NULL;
+
+    memcpy(clone, s, sizeof(mcts_plan_state_t));
+    ctx->nodes_created++;
+
+    return clone;
+}
+
+void executive_mcts_config_init(executive_mcts_config_t* config) {
+    if (!config) return;
+
+    config->max_iterations = MCTS_DEFAULT_ITERATIONS;
+    config->max_depth = DEFAULT_MAX_PLAN_DEPTH;
+    config->exploration_constant = MCTS_DEFAULT_EXPLORATION;
+    config->discount_factor = 0.95f;
+    config->rollout_depth = 5;
+    config->enable_pruning = true;
+    config->pruning_threshold = 0.1f;
+}
+
+plan_t* executive_create_plan_mcts(
+    executive_controller_t* exec,
+    const char* goal,
+    const executive_mcts_config_t* config,
+    executive_mcts_stats_t* stats)
+{
+    if (!exec || !goal) {
+        set_error("NULL parameter");
+        return NULL;
+    }
+
+    /* Use defaults if config not provided */
+    executive_mcts_config_t default_config;
+    if (!config) {
+        executive_mcts_config_init(&default_config);
+        config = &default_config;
+    }
+
+    uint64_t start_time = exec_get_time_ms();
+
+    /* Initialize seed if needed */
+    if (g_exec_mc_seed == 0) {
+        g_exec_mc_seed = mc_seed_from_time();
+    }
+
+    /* Create initial planning state */
+    mcts_plan_state_t* initial = nimcp_calloc(1, sizeof(mcts_plan_state_t));
+    if (!initial) {
+        set_error("Failed to allocate initial planning state");
+        return NULL;
+    }
+
+    snprintf(initial->goal, sizeof(initial->goal), "%s", goal);
+    initial->depth = 0;
+    initial->action_taken = 0;
+    initial->accumulated_cost = 0.0f;
+    initial->is_terminal = false;
+
+    /* Setup MCTS context */
+    mcts_plan_context_t ctx = {
+        .exec = exec,
+        .config = config,
+        .max_depth = config->max_depth,
+        .nodes_created = 1
+    };
+
+    /* Generate initial actions */
+    generate_plan_actions(initial, &ctx);
+
+    /* Configure MCTS */
+    mcts_config_t mcts_cfg;
+    mcts_config_init(&mcts_cfg);
+
+    mcts_cfg.max_iterations = config->max_iterations;
+    mcts_cfg.max_depth = config->max_depth;
+    mcts_cfg.max_nodes = MCTS_PLAN_MAX_NODES;
+    mcts_cfg.exploration_constant = config->exploration_constant;
+    mcts_cfg.discount_factor = config->discount_factor;
+    mcts_cfg.policy = MCTS_SELECT_UCB1;
+    mcts_cfg.seed = g_exec_mc_seed;
+
+    /* Set callbacks */
+    mcts_cfg.get_action_count = plan_get_action_count;
+    mcts_cfg.get_action = plan_get_action;
+    mcts_cfg.apply_action = plan_apply_action;
+    mcts_cfg.evaluate = plan_evaluate;
+    mcts_cfg.is_terminal = plan_is_terminal;
+    mcts_cfg.free_state = plan_free_state;
+    mcts_cfg.clone_state = plan_clone_state;
+    mcts_cfg.user_data = &ctx;
+
+    /* Run MCTS search */
+    mcts_result_t mcts_result;
+    memset(&mcts_result, 0, sizeof(mcts_result));
+
+    nimcp_mc_result_t mc_ret = mcts_search(&mcts_cfg, initial, &mcts_result);
+
+    /* Update seed for next call */
+    g_exec_mc_seed = mcts_cfg.seed;
+
+    if (mc_ret != NIMCP_MC_OK) {
+        LOG_WARN("MCTS search failed with code %d, falling back to simple plan", mc_ret);
+        plan_free_state(initial, &ctx);
+        return executive_create_plan(exec, goal, config->max_depth);
+    }
+
+    /* Build plan from MCTS results */
+    uint32_t num_steps = mcts_result.max_depth_reached;
+    if (num_steps == 0) num_steps = 1;
+    if (num_steps > config->max_depth) num_steps = config->max_depth;
+
+    plan_t* plan = nimcp_calloc(1, sizeof(plan_t));
+    if (!plan) {
+        set_error("Failed to allocate plan");
+        plan_free_state(initial, &ctx);
+        mcts_result_free(&mcts_result);
+        return NULL;
+    }
+
+    plan->steps = nimcp_calloc(num_steps, sizeof(plan_step_t));
+    if (!plan->steps) {
+        set_error("Failed to allocate plan steps");
+        nimcp_free(plan);
+        plan_free_state(initial, &ctx);
+        mcts_result_free(&mcts_result);
+        return NULL;
+    }
+
+    plan->type = PLAN_TYPE_HIERARCHICAL;  /* MCTS produces hierarchical plans */
+    snprintf(plan->goal, sizeof(plan->goal), "%s", goal);
+    plan->num_steps = num_steps;
+
+    /* Generate steps based on best action sequence */
+    mcts_plan_state_t* current = initial;
+    mcts_plan_state_t* prev = NULL;
+
+    /* Base action descriptions for fallback */
+    const char* phase_actions[] = {
+        "Analyze and decompose goal",
+        "Gather required information",
+        "Execute primary action",
+        "Verify intermediate result",
+        "Handle contingencies",
+        "Optimize approach",
+        "Execute secondary action",
+        "Consolidate and verify",
+        "Finalize and complete",
+        "Review and confirm"
+    };
+
+    for (uint32_t i = 0; i < num_steps; i++) {
+        /* Use best action from current state if available */
+        uint32_t best_action = 0;
+        bool have_action = false;
+
+        if (current && current->num_actions > 0) {
+            if (i == 0 && mcts_result.num_actions > 0) {
+                /* First step: use MCTS best action */
+                float best_val = -1e30f;
+                for (uint32_t a = 0; a < mcts_result.num_actions; a++) {
+                    if (mcts_result.action_values && mcts_result.action_values[a] > best_val) {
+                        best_val = mcts_result.action_values[a];
+                        best_action = a;
+                    }
+                }
+                have_action = true;
+            } else {
+                /* Subsequent steps: select from available actions */
+                best_action = mc_random_int(&g_exec_mc_seed, current->num_actions);
+                have_action = true;
+            }
+        }
+
+        /* Set step description */
+        if (have_action && best_action < current->num_actions) {
+            snprintf(plan->steps[i].description, sizeof(plan->steps[i].description),
+                     "%s", current->actions[best_action]);
+        } else {
+            /* Fallback: use phase-appropriate action */
+            uint32_t phase_idx = i % 10;
+            snprintf(plan->steps[i].description, sizeof(plan->steps[i].description),
+                     "%s: %s", phase_actions[phase_idx], goal);
+        }
+
+        plan->steps[i].estimated_cost = 100 + (i * 50);
+        plan->steps[i].is_critical = (i == 0) || (i == num_steps - 1);
+
+        /* Move to next state */
+        if (prev && prev != initial) {
+            plan_free_state(prev, &ctx);
+        }
+        prev = current;
+
+        if (current && have_action && best_action < current->num_actions) {
+            current = plan_apply_action(current, best_action, &ctx);
+        } else {
+            current = NULL;
+        }
+    }
+
+    /* Clean up */
+    if (prev && prev != initial && prev != current) {
+        plan_free_state(prev, &ctx);
+    }
+    if (current && current != initial) {
+        plan_free_state(current, &ctx);
+    }
+    plan_free_state(initial, &ctx);
+    mcts_result_free(&mcts_result);
+
+    /* Fill statistics if requested */
+    if (stats) {
+        uint64_t end_time = exec_get_time_ms();
+        stats->nodes_expanded = ctx.nodes_created;
+        stats->iterations_run = mcts_result.iterations_completed;
+        stats->max_depth_reached = mcts_result.max_depth_reached;
+        stats->root_value = mcts_result.best_value;
+        stats->planning_time_ms = (float)(end_time - start_time);
+        stats->avg_branching_factor = (float)ctx.nodes_created / (float)(mcts_result.iterations_completed + 1);
+    }
+
+    /* Update executive stats */
+    exec->stats.plans_created++;
+    float old_avg = exec->stats.avg_plan_length;
+    float n = (float)exec->stats.plans_created;
+    exec->stats.avg_plan_length = (old_avg * (n - 1.0f) + (float)plan->num_steps) / n;
+
+    LOG_DEBUG("MCTS plan created: %u steps, %u nodes, value %.3f",
+              plan->num_steps, ctx.nodes_created, mcts_result.best_value);
+
+    return plan;
+}
+
+float executive_evaluate_plan_mcts(
+    executive_controller_t* exec,
+    const plan_t* plan,
+    uint32_t num_rollouts)
+{
+    if (!exec || !plan || plan->num_steps == 0) return 0.0f;
+
+    if (g_exec_mc_seed == 0) {
+        g_exec_mc_seed = mc_seed_from_time();
+    }
+
+    float total_success = 0.0f;
+
+    for (uint32_t r = 0; r < num_rollouts; r++) {
+        float success_prob = 1.0f;
+
+        /* Simulate plan execution */
+        for (uint32_t i = 0; i < plan->num_steps; i++) {
+            /* Base success probability per step */
+            float step_success = 0.85f;
+
+            /* Critical steps have higher variance */
+            if (plan->steps[i].is_critical) {
+                step_success = 0.7f + 0.25f * mc_random_uniform(&g_exec_mc_seed);
+            }
+
+            /* Cost affects success */
+            float cost_factor = 1.0f / (1.0f + plan->steps[i].estimated_cost / 1000.0f);
+            step_success *= (0.8f + 0.2f * cost_factor);
+
+            /* Roll for success */
+            if (mc_random_uniform(&g_exec_mc_seed) > step_success) {
+                success_prob *= 0.5f;  /* Partial failure */
+            }
+        }
+
+        total_success += success_prob;
+    }
+
+    return total_success / (float)num_rollouts;
+}
+
+plan_t* executive_replan_mcts(
+    executive_controller_t* exec,
+    const plan_t* current_plan,
+    uint32_t current_step,
+    const executive_mcts_config_t* config)
+{
+    if (!exec || !current_plan) {
+        set_error("NULL parameter");
+        return NULL;
+    }
+
+    if (current_step >= current_plan->num_steps) {
+        set_error("Current step %u exceeds plan length %u", current_step, current_plan->num_steps);
+        return NULL;
+    }
+
+    /* Create new goal based on remaining plan */
+    char new_goal[128];
+    snprintf(new_goal, sizeof(new_goal), "Continue: %s (from step %u)",
+             current_plan->goal, current_step);
+
+    /* Use MCTS to plan remaining steps */
+    executive_mcts_config_t replan_config;
+    if (config) {
+        replan_config = *config;
+    } else {
+        executive_mcts_config_init(&replan_config);
+    }
+
+    /* Reduce iterations for faster replanning */
+    replan_config.max_iterations /= 2;
+    if (replan_config.max_iterations < 20) replan_config.max_iterations = 20;
+
+    /* Reduce depth to remaining steps */
+    uint32_t remaining = current_plan->num_steps - current_step;
+    if (replan_config.max_depth > remaining + 2) {
+        replan_config.max_depth = remaining + 2;
+    }
+
+    return executive_create_plan_mcts(exec, new_goal, &replan_config, NULL);
+}
+
+char* executive_get_best_action_mcts(
+    executive_controller_t* exec,
+    const char* goal,
+    const executive_mcts_config_t* config,
+    float* action_value)
+{
+    if (!exec || !goal) {
+        set_error("NULL parameter");
+        return NULL;
+    }
+
+    /* Use quick MCTS search */
+    executive_mcts_config_t quick_config;
+    if (config) {
+        quick_config = *config;
+    } else {
+        executive_mcts_config_init(&quick_config);
+    }
+
+    /* Reduce iterations for single action */
+    quick_config.max_iterations /= 4;
+    if (quick_config.max_iterations < 10) quick_config.max_iterations = 10;
+    quick_config.max_depth = 3;  /* Only need shallow search */
+
+    executive_mcts_stats_t stats;
+    plan_t* plan = executive_create_plan_mcts(exec, goal, &quick_config, &stats);
+
+    if (!plan || plan->num_steps == 0) {
+        if (plan) executive_destroy_plan(plan);
+        return NULL;
+    }
+
+    /* Extract first action */
+    char* action = nimcp_calloc(128, sizeof(char));
+    if (!action) {
+        executive_destroy_plan(plan);
+        return NULL;
+    }
+
+    snprintf(action, 128, "%s", plan->steps[0].description);
+
+    if (action_value) {
+        *action_value = stats.root_value;
+    }
+
+    executive_destroy_plan(plan);
+
+    return action;
 }

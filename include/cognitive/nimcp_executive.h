@@ -847,6 +847,146 @@ task_descriptor_t* executive_select_task_softmax_mc(
  */
 uint32_t* executive_get_mc_seed(void);
 
+//=============================================================================
+// MCTS-Based Goal Decomposition API
+//=============================================================================
+
+/**
+ * @brief MCTS planning configuration
+ */
+typedef struct {
+    uint32_t max_iterations;          /**< MCTS iterations (default: 100) */
+    uint32_t max_depth;               /**< Maximum planning depth (default: 10) */
+    float exploration_constant;       /**< UCB1 exploration (default: 1.414) */
+    float discount_factor;            /**< Future reward discount (default: 0.95) */
+    uint32_t rollout_depth;           /**< Simulation rollout depth (default: 5) */
+    bool enable_pruning;              /**< Prune low-value branches (default: true) */
+    float pruning_threshold;          /**< Value threshold for pruning (default: 0.1) */
+} executive_mcts_config_t;
+
+/**
+ * @brief MCTS planning result statistics
+ */
+typedef struct {
+    uint32_t nodes_expanded;          /**< Total tree nodes created */
+    uint32_t iterations_run;          /**< Actual MCTS iterations completed */
+    uint32_t max_depth_reached;       /**< Deepest node in search tree */
+    float root_value;                 /**< Estimated value at root */
+    float planning_time_ms;           /**< Time spent planning */
+    float avg_branching_factor;       /**< Average branching factor */
+} executive_mcts_stats_t;
+
+/**
+ * @brief Initialize MCTS config with defaults
+ *
+ * @param config Config struct to initialize
+ */
+void executive_mcts_config_init(executive_mcts_config_t* config);
+
+/**
+ * @brief Create plan using MCTS-guided goal decomposition
+ *
+ * WHAT: Decompose goal into action sequence using MCTS
+ * WHY:  Optimal multi-step planning with uncertainty handling
+ * HOW:  Build search tree with UCB1 selection, rollout simulation
+ *
+ * BIOLOGICAL BASIS:
+ * - Prefrontal cortex mental simulation and evaluation
+ * - Tree-structured exploration of action spaces
+ * - Value-guided search with uncertainty (dopamine-like)
+ *
+ * ALGORITHM:
+ * 1. Selection: Follow UCB1 to promising nodes
+ * 2. Expansion: Add child nodes for unexplored actions
+ * 3. Simulation: Random rollout to estimate value
+ * 4. Backpropagation: Update node statistics
+ *
+ * @param exec Executive controller
+ * @param goal Goal description
+ * @param config MCTS configuration (NULL for defaults)
+ * @param stats Output statistics (can be NULL)
+ * @return Plan structure or NULL on error
+ *
+ * COMPLEXITY: O(iterations * depth * branching_factor)
+ * THREAD-SAFE: No
+ * MALLOC: Yes (plan structure + steps)
+ */
+plan_t* executive_create_plan_mcts(
+    executive_controller_t* exec,
+    const char* goal,
+    const executive_mcts_config_t* config,
+    executive_mcts_stats_t* stats);
+
+/**
+ * @brief Evaluate plan quality using MCTS value estimation
+ *
+ * WHAT: Estimate expected success probability of a plan
+ * WHY:  Compare alternative plans, validate existing plans
+ * HOW:  Monte Carlo rollouts from plan execution
+ *
+ * @param exec Executive controller
+ * @param plan Plan to evaluate
+ * @param num_rollouts Number of MC simulations
+ * @return Estimated success probability [0, 1]
+ *
+ * COMPLEXITY: O(num_rollouts * plan_length)
+ * THREAD-SAFE: No
+ */
+float executive_evaluate_plan_mcts(
+    executive_controller_t* exec,
+    const plan_t* plan,
+    uint32_t num_rollouts);
+
+/**
+ * @brief Re-plan from current step using MCTS
+ *
+ * WHAT: Adapt plan when conditions change mid-execution
+ * WHY:  Handle unexpected outcomes, dynamic environments
+ * HOW:  MCTS from current state with remaining goal
+ *
+ * BIOLOGICAL BASIS:
+ * - Prefrontal flexibility and plan adaptation
+ * - Error-driven replanning (prediction error)
+ *
+ * @param exec Executive controller
+ * @param current_plan Plan being executed
+ * @param current_step Step index where replanning starts
+ * @param config MCTS configuration (NULL for defaults)
+ * @return New plan from current_step onwards, or NULL on error
+ *
+ * COMPLEXITY: O(iterations * (max_steps - current_step))
+ * THREAD-SAFE: No
+ */
+plan_t* executive_replan_mcts(
+    executive_controller_t* exec,
+    const plan_t* current_plan,
+    uint32_t current_step,
+    const executive_mcts_config_t* config);
+
+/**
+ * @brief Get best action from MCTS without full plan
+ *
+ * WHAT: Quick single-action decision via MCTS
+ * WHY:  When full plan not needed, faster decision
+ * HOW:  Run MCTS, return highest-visit child action
+ *
+ * @param exec Executive controller
+ * @param goal Current goal context
+ * @param config MCTS configuration (NULL for defaults)
+ * @param action_value Output: estimated value of action (can be NULL)
+ * @return Best action description or NULL on error
+ *
+ * NOTE: Returned string is allocated, caller must free
+ *
+ * COMPLEXITY: O(iterations * depth)
+ * THREAD-SAFE: No
+ */
+char* executive_get_best_action_mcts(
+    executive_controller_t* exec,
+    const char* goal,
+    const executive_mcts_config_t* config,
+    float* action_value);
+
 #ifdef __cplusplus
 }
 #endif
