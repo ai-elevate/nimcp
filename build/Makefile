@@ -8180,6 +8180,19 @@ e2e_core_brain_regions_hippocampus_test_hippocampus_e2e/fast:
 .PHONY : e2e_core_brain_regions_hippocampus_test_hippocampus_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_sensory_processing_pipeline
+
+# Build rule for target.
+e2e_test_sensory_processing_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_sensory_processing_pipeline
+.PHONY : e2e_test_sensory_processing_pipeline
+
+# fast build rule for target.
+e2e_test_sensory_processing_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_sensory_processing_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_sensory_processing_pipeline.dir/build
+.PHONY : e2e_test_sensory_processing_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
 
 # Build rule for target.
@@ -12106,6 +12119,19 @@ unit_cognitive_executive_test_executive_portia/fast:
 .PHONY : unit_cognitive_executive_test_executive_portia/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_executive_test_executive_mcts
+
+# Build rule for target.
+unit_cognitive_executive_test_executive_mcts: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_executive_test_executive_mcts
+.PHONY : unit_cognitive_executive_test_executive_mcts
+
+# fast build rule for target.
+unit_cognitive_executive_test_executive_mcts/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/executive/CMakeFiles/unit_cognitive_executive_test_executive_mcts.dir/build.make test/unit/cognitive/executive/CMakeFiles/unit_cognitive_executive_test_executive_mcts.dir/build
+.PHONY : unit_cognitive_executive_test_executive_mcts/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_executive_test_executive_snn_bridge
 
 # Build rule for target.
@@ -13627,6 +13653,19 @@ regression_jepa_fep_bridge/fast:
 .PHONY : regression_jepa_fep_bridge/fast
 
 #=============================================================================
+# Target rules for targets named regression_jepa_qmc
+
+# Build rule for target.
+regression_jepa_qmc: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_jepa_qmc
+.PHONY : regression_jepa_qmc
+
+# fast build rule for target.
+regression_jepa_qmc/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/jepa/CMakeFiles/regression_jepa_qmc.dir/build.make test/regression/cognitive/jepa/CMakeFiles/regression_jepa_qmc.dir/build
+.PHONY : regression_jepa_qmc/fast
+
+#=============================================================================
 # Target rules for targets named regression_game_theory
 
 # Build rule for target.
@@ -14277,6 +14316,19 @@ integration_core_brain_regions_hippocampus_test_hippocampus_integration/fast:
 .PHONY : integration_core_brain_regions_hippocampus_test_hippocampus_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_core_brain_regions_sensory_test_sensory_integration
+
+# Build rule for target.
+integration_core_brain_regions_sensory_test_sensory_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_sensory_test_sensory_integration
+.PHONY : integration_core_brain_regions_sensory_test_sensory_integration
+
+# fast build rule for target.
+integration_core_brain_regions_sensory_test_sensory_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/sensory/CMakeFiles/integration_core_brain_regions_sensory_test_sensory_integration.dir/build.make test/integration/core/brain/regions/sensory/CMakeFiles/integration_core_brain_regions_sensory_test_sensory_integration.dir/build
+.PHONY : integration_core_brain_regions_sensory_test_sensory_integration/fast
+
+#=============================================================================
 # Target rules for targets named regression_core_brain_oscillation_backward_compat
 
 # Build rule for target.
@@ -14574,6 +14626,19 @@ regression_brain_regions_test_region_api_stability: cmake_check_build_system
 regression_brain_regions_test_region_api_stability/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_region_api_stability.dir/build.make test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_region_api_stability.dir/build
 .PHONY : regression_brain_regions_test_region_api_stability/fast
+
+#=============================================================================
+# Target rules for targets named regression_brain_regions_test_sensory_processing_regression
+
+# Build rule for target.
+regression_brain_regions_test_sensory_processing_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_brain_regions_test_sensory_processing_regression
+.PHONY : regression_brain_regions_test_sensory_processing_regression
+
+# fast build rule for target.
+regression_brain_regions_test_sensory_processing_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_sensory_processing_regression.dir/build.make test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_sensory_processing_regression.dir/build
+.PHONY : regression_brain_regions_test_sensory_processing_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_bridges_test_bridge_memory_leaks
@@ -15575,6 +15640,58 @@ unit_core_brain_regions_temporal_test_nimcp_temporal_adapter: cmake_check_build_
 unit_core_brain_regions_temporal_test_nimcp_temporal_adapter/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/temporal/CMakeFiles/unit_core_brain_regions_temporal_test_nimcp_temporal_adapter.dir/build.make test/unit/core/brain/regions/temporal/CMakeFiles/unit_core_brain_regions_temporal_test_nimcp_temporal_adapter.dir/build
 .PHONY : unit_core_brain_regions_temporal_test_nimcp_temporal_adapter/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_somatosensory_test_somatosensory
+
+# Build rule for target.
+unit_core_brain_regions_somatosensory_test_somatosensory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_somatosensory_test_somatosensory
+.PHONY : unit_core_brain_regions_somatosensory_test_somatosensory
+
+# fast build rule for target.
+unit_core_brain_regions_somatosensory_test_somatosensory/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/somatosensory/CMakeFiles/unit_core_brain_regions_somatosensory_test_somatosensory.dir/build.make test/unit/core/brain/regions/somatosensory/CMakeFiles/unit_core_brain_regions_somatosensory_test_somatosensory.dir/build
+.PHONY : unit_core_brain_regions_somatosensory_test_somatosensory/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_olfactory_test_olfactory
+
+# Build rule for target.
+unit_core_brain_regions_olfactory_test_olfactory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_olfactory_test_olfactory
+.PHONY : unit_core_brain_regions_olfactory_test_olfactory
+
+# fast build rule for target.
+unit_core_brain_regions_olfactory_test_olfactory/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/olfactory/CMakeFiles/unit_core_brain_regions_olfactory_test_olfactory.dir/build.make test/unit/core/brain/regions/olfactory/CMakeFiles/unit_core_brain_regions_olfactory_test_olfactory.dir/build
+.PHONY : unit_core_brain_regions_olfactory_test_olfactory/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_gustatory_test_gustatory
+
+# Build rule for target.
+unit_core_brain_regions_gustatory_test_gustatory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_gustatory_test_gustatory
+.PHONY : unit_core_brain_regions_gustatory_test_gustatory
+
+# fast build rule for target.
+unit_core_brain_regions_gustatory_test_gustatory/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/gustatory/CMakeFiles/unit_core_brain_regions_gustatory_test_gustatory.dir/build.make test/unit/core/brain/regions/gustatory/CMakeFiles/unit_core_brain_regions_gustatory_test_gustatory.dir/build
+.PHONY : unit_core_brain_regions_gustatory_test_gustatory/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_sensory_integration_test_trigeminal_oral_bridge
+
+# Build rule for target.
+unit_core_brain_regions_sensory_integration_test_trigeminal_oral_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_sensory_integration_test_trigeminal_oral_bridge
+.PHONY : unit_core_brain_regions_sensory_integration_test_trigeminal_oral_bridge
+
+# fast build rule for target.
+unit_core_brain_regions_sensory_integration_test_trigeminal_oral_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/sensory_integration/CMakeFiles/unit_core_brain_regions_sensory_integration_test_trigeminal_oral_bridge.dir/build.make test/unit/core/brain/regions/sensory_integration/CMakeFiles/unit_core_brain_regions_sensory_integration_test_trigeminal_oral_bridge.dir/build
+.PHONY : unit_core_brain_regions_sensory_integration_test_trigeminal_oral_bridge/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_brain_hemispheric_test
@@ -18461,6 +18578,19 @@ integration_brain_regions_test_neuromodulatory_integration: cmake_check_build_sy
 integration_brain_regions_test_neuromodulatory_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/brain_regions/CMakeFiles/integration_brain_regions_test_neuromodulatory_integration.dir/build.make test/integration/brain_regions/CMakeFiles/integration_brain_regions_test_neuromodulatory_integration.dir/build
 .PHONY : integration_brain_regions_test_neuromodulatory_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_brain_regions_test_sensory_processing_integration
+
+# Build rule for target.
+integration_brain_regions_test_sensory_processing_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_brain_regions_test_sensory_processing_integration
+.PHONY : integration_brain_regions_test_sensory_processing_integration
+
+# fast build rule for target.
+integration_brain_regions_test_sensory_processing_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/brain_regions/CMakeFiles/integration_brain_regions_test_sensory_processing_integration.dir/build.make test/integration/brain_regions/CMakeFiles/integration_brain_regions_test_sensory_processing_integration.dir/build
+.PHONY : integration_brain_regions_test_sensory_processing_integration/fast
 
 #=============================================================================
 # Target rules for targets named unit_glial_oligodendrocytes_enhanced
@@ -22114,6 +22244,19 @@ integration_jepa_fep_bridge: cmake_check_build_system
 integration_jepa_fep_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/jepa/CMakeFiles/integration_jepa_fep_bridge.dir/build.make test/integration/jepa/CMakeFiles/integration_jepa_fep_bridge.dir/build
 .PHONY : integration_jepa_fep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named integration_jepa_qmc
+
+# Build rule for target.
+integration_jepa_qmc: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_jepa_qmc
+.PHONY : integration_jepa_qmc
+
+# fast build rule for target.
+integration_jepa_qmc/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/jepa/CMakeFiles/integration_jepa_qmc.dir/build.make test/integration/jepa/CMakeFiles/integration_jepa_qmc.dir/build
+.PHONY : integration_jepa_qmc/fast
 
 #=============================================================================
 # Target rules for targets named integration_jepa_full
@@ -26928,6 +27071,7 @@ help:
 	@echo "... e2e_test_security_attack_simulation"
 	@echo "... e2e_test_security_module_pipeline"
 	@echo "... e2e_test_self_model_snn_plasticity_pipeline"
+	@echo "... e2e_test_sensory_processing_pipeline"
 	@echo "... e2e_test_server_swarm_pipeline"
 	@echo "... e2e_test_sleep_bridge_pipeline"
 	@echo "... e2e_test_snn_bridge_pipeline"
@@ -26987,6 +27131,7 @@ help:
 	@echo "... integration_brain_regions_test_neuromodulatory_integration"
 	@echo "... integration_brain_regions_test_neuromodulatory_system_integration"
 	@echo "... integration_brain_regions_test_occipital_integration"
+	@echo "... integration_brain_regions_test_sensory_processing_integration"
 	@echo "... integration_brain_regions_test_signal_propagation_integration"
 	@echo "... integration_brain_regions_test_visual_cortex_integration"
 	@echo "... integration_brain_test_brain_pr_memory_integration"
@@ -27086,6 +27231,7 @@ help:
 	@echo "... integration_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_integration"
 	@echo "... integration_core_brain_regions_hypothalamus_test_hypothalamus_perception_bridge_integration"
 	@echo "... integration_core_brain_regions_hypothalamus_test_hypothalamus_training_integration"
+	@echo "... integration_core_brain_regions_sensory_test_sensory_integration"
 	@echo "... integration_core_brain_subcortical_amygdala_test"
 	@echo "... integration_core_brain_subcortical_test"
 	@echo "... integration_core_brain_subcortical_thalamus_test"
@@ -27144,6 +27290,7 @@ help:
 	@echo "... integration_jepa_fep"
 	@echo "... integration_jepa_fep_bridge"
 	@echo "... integration_jepa_full"
+	@echo "... integration_jepa_qmc"
 	@echo "... integration_jepa_visual_speech"
 	@echo "... integration_language"
 	@echo "... integration_lc_test"
@@ -27320,6 +27467,7 @@ help:
 	@echo "... regression_brain_regions_test_hippocampus_backward_compat"
 	@echo "... regression_brain_regions_test_prefrontal_backward_compat"
 	@echo "... regression_brain_regions_test_region_api_stability"
+	@echo "... regression_brain_regions_test_sensory_processing_regression"
 	@echo "... regression_brain_regions_test_signal_propagation_regression"
 	@echo "... regression_brain_test_brain_pr_memory_regression"
 	@echo "... regression_bridges_test_bridge_memory_leaks"
@@ -27456,6 +27604,7 @@ help:
 	@echo "... regression_io_test_vesicle_packaging_backward_compat"
 	@echo "... regression_jepa"
 	@echo "... regression_jepa_fep_bridge"
+	@echo "... regression_jepa_qmc"
 	@echo "... regression_microglia_performance"
 	@echo "... regression_middleware_bio_async"
 	@echo "... regression_middleware_buffering_integration_buffer"
@@ -27894,6 +28043,7 @@ help:
 	@echo "... unit_cognitive_executive_sleep_bridge"
 	@echo "... unit_cognitive_executive_substrate_bridge"
 	@echo "... unit_cognitive_executive_test_executive"
+	@echo "... unit_cognitive_executive_test_executive_mcts"
 	@echo "... unit_cognitive_executive_test_executive_plasticity_bridge"
 	@echo "... unit_cognitive_executive_test_executive_portia"
 	@echo "... unit_cognitive_executive_test_executive_real"
@@ -28138,6 +28288,7 @@ help:
 	@echo "... unit_core_brain_regions_entorhinal_test_memory_gateway"
 	@echo "... unit_core_brain_regions_entorhinal_test_omni_bridge"
 	@echo "... unit_core_brain_regions_entorhinal_test_path_integration"
+	@echo "... unit_core_brain_regions_gustatory_test_gustatory"
 	@echo "... unit_core_brain_regions_hippocampus_test_hippocampus"
 	@echo "... unit_core_brain_regions_hippocampus_test_nimcp_hippocampus_adapter"
 	@echo "... unit_core_brain_regions_hypothalamus_fep_test_hypo_bio_async_fep_bridge"
@@ -28166,11 +28317,14 @@ help:
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_quantum_bridge"
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_substrate_bridge"
 	@echo "... unit_core_brain_regions_occipital_test_nimcp_occipital_thalamic_bridge"
+	@echo "... unit_core_brain_regions_olfactory_test_olfactory"
 	@echo "... unit_core_brain_regions_parahippocampal_test_parahippocampal"
 	@echo "... unit_core_brain_regions_parietal_test_nimcp_parietal_adapter"
 	@echo "... unit_core_brain_regions_perirhinal_test_perirhinal"
 	@echo "... unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_adapter"
 	@echo "... unit_core_brain_regions_prefrontal_test_nimcp_prefrontal_quantum_bridge"
+	@echo "... unit_core_brain_regions_sensory_integration_test_trigeminal_oral_bridge"
+	@echo "... unit_core_brain_regions_somatosensory_test_somatosensory"
 	@echo "... unit_core_brain_regions_temporal_test_nimcp_temporal_adapter"
 	@echo "... unit_core_brain_split_brain_test"
 	@echo "... unit_core_brain_subcortical_amygdala_attention_bridge_test"

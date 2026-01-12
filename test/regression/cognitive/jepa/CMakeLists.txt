@@ -75,3 +75,41 @@ gtest_discover_tests(regression_jepa_fep_bridge
         LABELS "regression;cognitive;jepa;fep;bridge"
         TIMEOUT 600
 )
+
+# ----------------------------------------------------------------------------
+# JEPA QMC Regression Test Executable
+# ----------------------------------------------------------------------------
+# WHAT: Regression tests for JEPA Quantum Monte Carlo stability
+# WHY:  Ensure QMC-enhanced predictions produce consistent, correct results
+# HOW:  Test determinism, bounds, stability, memory safety, and performance
+
+add_executable(regression_jepa_qmc
+    test_jepa_qmc_regression.cpp
+)
+
+target_link_libraries(regression_jepa_qmc
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_jepa_qmc
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(regression_jepa_qmc PRIVATE cxx_std_17)
+target_compile_definitions(regression_jepa_qmc PRIVATE NIMCP_TESTING)
+
+# Register tests with CTest
+gtest_discover_tests(regression_jepa_qmc
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;jepa;qmc"
+        TIMEOUT 600
+)

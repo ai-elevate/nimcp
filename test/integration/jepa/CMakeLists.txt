@@ -131,6 +131,35 @@ gtest_discover_tests(integration_jepa_fep_bridge
 )
 
 # -----------------------------------------------------------------------------
+# JEPA QMC Integration Tests
+# -----------------------------------------------------------------------------
+# WHAT: Tests JEPA Quantum Monte Carlo integration with FEP
+# WHY:  Verify QMC-enhanced predictions integrate correctly with system
+# HOW:  Test multi-module interactions, FEP coordination, end-to-end flows
+
+add_executable(integration_jepa_qmc
+    test_jepa_qmc_integration.cpp
+)
+target_link_libraries(integration_jepa_qmc PRIVATE
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    Threads::Threads
+    m
+)
+target_include_directories(integration_jepa_qmc PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/test
+)
+target_compile_features(integration_jepa_qmc PRIVATE cxx_std_17)
+target_compile_definitions(integration_jepa_qmc PRIVATE NIMCP_TESTING)
+gtest_discover_tests(integration_jepa_qmc
+    PROPERTIES LABELS "integration;cognitive;jepa;qmc"
+    TIMEOUT 180
+)
+
+# -----------------------------------------------------------------------------
 # Combined JEPA Integration Test (for full pipeline testing)
 # -----------------------------------------------------------------------------
 add_executable(integration_jepa_full
