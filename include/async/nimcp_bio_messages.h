@@ -120,6 +120,23 @@ typedef enum {
     BIO_MSG_SECOND_MESSENGER_PROTEIN_SYNTHESIZED, /**< Protein synthesis completed */
     BIO_MSG_SECOND_MESSENGER_CASCADE_COMPLETE,  /**< Full cascade propagation complete */
 
+    /* Eligibility Phase 4/5 messages (0x02A0 - 0x02BF) */
+    BIO_MSG_ELIG_UTILS_METRICS_UPDATE = 0x02A0,  /**< Phase 4: Utils metrics update */
+    BIO_MSG_ELIG_UTILS_POOL_STATS,               /**< Phase 4: Memory pool statistics */
+    BIO_MSG_ELIG_UTILS_BOTTLENECK_DETECTED,      /**< Phase 4: Shannon bottleneck detected */
+    BIO_MSG_ELIG_UTILS_RK4_STEP,                 /**< Phase 4: RK4 integration step */
+    BIO_MSG_ELIG_QUANTUM_CREDIT_ASSIGNED,        /**< Phase 5: QMC credit assignment result */
+    BIO_MSG_ELIG_QUANTUM_ANNEAL_STATE,           /**< Phase 5: Quantum annealing state */
+    BIO_MSG_ELIG_QUANTUM_WALK_DIFFUSION,         /**< Phase 5: Quantum walk diffusion result */
+    BIO_MSG_ELIG_QUANTUM_BOTTLENECK_RESOLVED,    /**< Phase 5: Quantum-Shannon resolution */
+    BIO_MSG_ELIG_UQ_FORWARD_TRIGGER,             /**< Phase 4→5: Forward trigger event */
+    BIO_MSG_ELIG_UQ_BACKWARD_FEEDBACK,           /**< Phase 5→4: Backward feedback event */
+    BIO_MSG_ELIG_UQ_COHERENCE_UPDATE,            /**< Bridge: Coherence tracking update */
+    BIO_MSG_ELIG_UQ_STABILITY_UPDATE,            /**< Bridge: Stability metric update */
+    BIO_MSG_ELIG_PR_CONSOLIDATION_GATE,          /**< Eligibility-PR: Consolidation gating */
+    BIO_MSG_ELIG_FEP_PREDICTION_ERROR,           /**< Eligibility-FEP: Prediction error signal */
+    BIO_MSG_ELIG_SLEEP_CONSOLIDATION,            /**< Eligibility-sleep: Consolidation trigger */
+
     /* Cognitive messages (0x0300 - 0x03FF) */
     BIO_MSG_INTROSPECTION_QUERY = 0x0300,
     BIO_MSG_INTROSPECTION_RESPONSE,
@@ -1014,6 +1031,15 @@ typedef enum {
     BIO_MODULE_ORCHESTRATOR_NEURON = 0x0432,     /**< Neuron-orchestrator bridge */
     BIO_MODULE_ORCHESTRATOR_DENDRITE = 0x0433,   /**< Dendrite-orchestrator bridge */
     BIO_MODULE_NEURAL_PLASTICITY_COORDINATOR = 0x0434, /**< Neural plasticity coordinator */
+
+    /* Eligibility Phase 4/5 modules (0x0440-0x044F) */
+    BIO_MODULE_ELIGIBILITY_UTILS = 0x0440,       /**< Phase 4: Utils integration (metrics, pools, RK4, Shannon) */
+    BIO_MODULE_ELIGIBILITY_QUANTUM = 0x0441,     /**< Phase 5: Quantum eligibility (QMC, annealing, walk) */
+    BIO_MODULE_ELIGIBILITY_UTILS_QUANTUM = 0x0442, /**< Phase 4-5 bidirectional bridge */
+    BIO_MODULE_ELIGIBILITY_PR = 0x0443,          /**< Eligibility-PR memory bridge */
+    BIO_MODULE_ELIGIBILITY_FEP = 0x0444,         /**< Eligibility-FEP bridge */
+    BIO_MODULE_ELIGIBILITY_PINK_NOISE = 0x0445,  /**< Eligibility-pink noise bridge */
+    BIO_MODULE_ELIGIBILITY_SLEEP = 0x0446,       /**< Eligibility-sleep bridge */
 
     /* Middleware modules */
     BIO_MODULE_PIPELINE = 0x0500,
