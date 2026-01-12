@@ -293,6 +293,31 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_adapter.c               # Occipital cortex core adapter
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/nimcp_occipital_quantum_bridge.c        # Occipital quantum bridge
 
+    # Somatosensory Cortex - Touch, proprioception, pain processing (Phase 6: BR-9)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/somatosensory/nimcp_somatosensory.c               # Somatosensory core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/somatosensory/bridges/nimcp_soma_bio_async_bridge.c    # Somatosensory bio-async bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/somatosensory/bridges/nimcp_soma_quantum_bridge.c      # Somatosensory quantum bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/somatosensory/bridges/nimcp_soma_cerebellum_bridge.c   # Somatosensory-cerebellum bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/somatosensory/bridges/nimcp_soma_medulla_bridge.c      # Somatosensory-medulla bridge
+
+    # Olfactory Cortex - Smell, odor identification, olfactory memory (Phase 6: BR-10)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/olfactory/nimcp_olfactory.c                       # Olfactory core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/olfactory/bridges/nimcp_olfact_bio_async_bridge.c      # Olfactory bio-async bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/olfactory/bridges/nimcp_olfact_quantum_bridge.c        # Olfactory quantum bridge
+
+    # Gustatory Cortex - Taste processing, food reward, disgust response (Phase 6: BR-11)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/gustatory/nimcp_gustatory.c                       # Gustatory core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/gustatory/bridges/nimcp_gust_bio_async_bridge.c        # Gustatory bio-async bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/gustatory/bridges/nimcp_gust_quantum_bridge.c          # Gustatory quantum bridge
+
+    # Sensory Integration - Cross-sensory processing bridges (Phase 6)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/sensory_integration/nimcp_chemosensory_bridge.c        # Olfactory-gustatory flavor binding
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/sensory_integration/nimcp_tactile_motor_bridge.c       # Somatosensory-motor coordination
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/sensory_integration/nimcp_sensory_swarm_bridge.c       # Multi-sensory swarm integration
+
+    # Sensory Knowledge Graph Wiring (Phase 6)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/knowledge/nimcp_sensory_kg_wiring.c                           # Sensory module KG registration
+
     # Prefrontal Cortex - Executive function, decision-making (Phase PF1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_adapter.c             # Prefrontal cortex core adapter
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.c      # Prefrontal quantum bridge
