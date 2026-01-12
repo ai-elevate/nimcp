@@ -2637,6 +2637,38 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/inter/neuromod/test_neuromod_cognitive_e2e
     message(STATUS "  Added Neuromod-Cognitive Pipeline E2E test: e2e_test_neuromod_cognitive_pipeline")
 endif()
 
+# ============================================================================
+# Hippocampus Memory Circuit E2E Test
+# ============================================================================
+# WHAT: End-to-end tests for hippocampus episodic memory system
+# WHY:  Verify complete memory workflows: encoding → consolidation → retrieval
+# HOW:  Test spatial navigation, pattern separation/completion, replay, bridges
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core/brain/regions/hippocampus/test_hippocampus_e2e.cpp)
+    add_executable(e2e_core_brain_regions_hippocampus_test_hippocampus_e2e
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/brain/regions/hippocampus/test_hippocampus_e2e.cpp
+    )
+    target_include_directories(e2e_core_brain_regions_hippocampus_test_hippocampus_e2e PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/core/brain/regions/hippocampus
+    )
+    target_link_libraries(e2e_core_brain_regions_hippocampus_test_hippocampus_e2e PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_core_brain_regions_hippocampus_test_hippocampus_e2e PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_core_brain_regions_hippocampus_test_hippocampus_e2e PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_core_brain_regions_hippocampus_test_hippocampus_e2e COMMAND e2e_core_brain_regions_hippocampus_test_hippocampus_e2e)
+    set_tests_properties(e2e_core_brain_regions_hippocampus_test_hippocampus_e2e PROPERTIES
+        LABELS "e2e;hippocampus;memory;episodic;spatial;consolidation"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Hippocampus Memory Circuit E2E test: e2e_core_brain_regions_hippocampus_test_hippocampus_e2e")
+endif()
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)

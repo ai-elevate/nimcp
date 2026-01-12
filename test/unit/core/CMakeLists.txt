@@ -48,3 +48,21 @@ target_link_libraries(unit_core_brain_kg_message_index
 target_compile_features(unit_core_brain_kg_message_index PRIVATE cxx_std_17)
 gtest_discover_tests(unit_core_brain_kg_message_index
     PROPERTIES LABELS "unit;core;brain_kg;phase6")
+
+# ============================================================================
+# PR Memory Quantum Bridge Tests (Phase 5: Utils/Quantum Integration)
+# ============================================================================
+# WHAT: Unit tests for PR Memory quantum integration bridge
+# WHY:  Verify quantum algorithms (walk, annealing, Shannon) work with PR Memory
+# HOW:  Test quantum-enhanced memory operations and pattern retrieval
+# ============================================================================
+
+add_executable(unit_core_pr_memory_quantum_bridge
+    brain/internal/test_pr_memory_quantum_bridge.cpp
+)
+target_link_libraries(unit_core_pr_memory_quantum_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_core_pr_memory_quantum_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_core_pr_memory_quantum_bridge
+    PROPERTIES LABELS "unit;core;brain;internal;pr_memory;quantum")

@@ -64,6 +64,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_memory.c              # Memory subsystems (418 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_pr_memory.c          # Prime Resonant memory subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/internal/nimcp_brain_pr_memory.c                   # Brain-PR memory integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/internal/nimcp_pr_memory_quantum_bridge.c          # PR memory-quantum integration (search, consolidation, entanglement)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_plasticity.c          # Plasticity subsystems (553 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_monitoring.c          # Monitoring subsystems (476 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_structural.c          # Structural subsystems (624 lines)
@@ -246,9 +247,13 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_hypothalamus.c              # Hypothalamus factory init
 
     # Hippocampus - Episodic memory, spatial navigation, pattern separation/completion (Phase H1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hippocampus/nimcp_hippocampus.c                   # Hippocampus core implementation
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hippocampus/nimcp_hippocampus_adapter.c           # Hippocampus core adapter
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.c    # Hippocampus quantum bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_hippocampus.c               # Hippocampus init
+
+    # Mammillary Bodies - Memory relay, head direction, Papez circuit (Phase M5)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/mammillary/nimcp_mammillary.c                     # Mammillary bodies implementation
 
     # Parietal Cortex - Spatial processing, somatosensory, sensorimotor integration (Phase PC1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/parietal/nimcp_parietal_adapter.c                 # Parietal cortex core adapter
@@ -768,6 +773,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/dendritic/nimcp_dendritic_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/eligibility/nimcp_eligibility_quantum_bridge.c  # Eligibility-quantum integration (bottleneck, credit, optimization)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/homeostatic/nimcp_homeostatic_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/adaptive/nimcp_adaptive_fep_bridge.c
@@ -933,6 +939,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.c  # Triplet STDP-sleep integration (trace time constants, amplitude modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_triplet_stdp_immune_bridge.c  # Triplet STDP-immune integration (cytokine modulation, instability detection)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_pink_noise_bridge.c  # STDP-pink noise integration (quantum-inspired noise modulation for learning rates)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/stdp/nimcp_stdp_utils_bridge.c  # STDP-utils integration (ring buffer, metrics, memory pools, RK4)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/bcm/nimcp_bcm_sleep_bridge.c  # BCM-sleep integration (sliding threshold modulation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/homeostatic/nimcp_homeostatic_sleep_bridge.c  # Homeostatic-sleep integration (Tononi SHY: downscaling in NREM)
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/protein/nimcp_protein_sleep_bridge.c  # Protein synthesis-sleep integration (synthesis upregulation during deep NREM)

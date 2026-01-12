@@ -826,6 +826,22 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/test_brain_kg_message_ind
 endif()
 
 # ============================================================================
+# PR Memory Quantum Bridge Tests (Phase 5: Utils/Quantum Integration)
+# ============================================================================
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/brain/internal/test_pr_memory_quantum_bridge.cpp")
+    message(STATUS "Adding PR memory quantum bridge tests...")
+    add_executable(unit_core_pr_memory_quantum_bridge
+        unit/core/brain/internal/test_pr_memory_quantum_bridge.cpp
+    )
+    target_link_libraries(unit_core_pr_memory_quantum_bridge
+        PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+    )
+    target_compile_features(unit_core_pr_memory_quantum_bridge PRIVATE cxx_std_17)
+    gtest_discover_tests(unit_core_pr_memory_quantum_bridge
+        PROPERTIES LABELS "unit;core;brain;internal;pr_memory;quantum")
+endif()
+
+# ============================================================================
 # Sleep Bridge Integration Tests (Phase 1.1: Sleep Integration)
 # ============================================================================
 # WHAT: Test all sleep bridges coordinating together

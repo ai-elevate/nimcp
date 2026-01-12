@@ -18,3 +18,4 @@ macro(add_hippocampus_test TEST_NAME)
 endmacro()
 
 add_hippocampus_test(test_nimcp_hippocampus_adapter)
+add_hippocampus_test(test_hippocampus)

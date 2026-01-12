@@ -13,3 +13,7 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/locus_coeruleus")
     add_subdirectory(locus_coeruleus)
 endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hippocampus")
+    add_subdirectory(hippocampus)
+endif()

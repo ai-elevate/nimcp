@@ -90,3 +90,30 @@ set_tests_properties(QuantumSTDPOptimizerTests PROPERTIES
     TIMEOUT 30
     LABELS "unit;plasticity;stdp;quantum"
 )
+
+# STDP Utils Bridge Unit Tests
+add_executable(unit_plasticity_stdp_utils_bridge
+    test_stdp_utils_bridge.cpp
+)
+
+target_include_directories(unit_plasticity_stdp_utils_bridge PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${GTEST_INCLUDE_DIRS}
+)
+
+target_link_libraries(unit_plasticity_stdp_utils_bridge
+    nimcp
+    ${GTEST_LIBRARIES}
+    pthread
+    m
+)
+
+target_compile_features(unit_plasticity_stdp_utils_bridge PRIVATE cxx_std_17)
+
+add_test(NAME STDPUtilsBridgeTests
+         COMMAND unit_plasticity_stdp_utils_bridge)
+
+set_tests_properties(STDPUtilsBridgeTests PROPERTIES
+    TIMEOUT 60
+    LABELS "unit;plasticity;stdp;utils;bridge"
+)

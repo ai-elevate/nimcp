@@ -213,6 +213,18 @@ target_compile_features(unit_plasticity_stdp_quantum_optimizer PRIVATE cxx_std_1
 gtest_discover_tests(unit_plasticity_stdp_quantum_optimizer
     PROPERTIES LABELS "unit;plasticity;stdp;quantum")
 
+# STDP Utils Bridge Tests
+add_executable(unit_plasticity_stdp_utils_bridge
+    stdp/test_stdp_utils_bridge.cpp
+)
+target_link_libraries(unit_plasticity_stdp_utils_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_plasticity_stdp_utils_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_stdp_utils_bridge
+    PROPERTIES LABELS "unit;plasticity;stdp;utils;bridge"
+    TIMEOUT 60)
+
 # BCM Sleep Bridge Tests
 add_executable(unit_plasticity_bcm_sleep_bridge
     bcm/sleep/test_bcm_sleep_bridge.cpp
@@ -573,5 +585,23 @@ target_link_libraries(unit_plasticity_axon_bridge
 target_compile_features(unit_plasticity_axon_bridge PRIVATE cxx_std_17)
 gtest_discover_tests(unit_plasticity_axon_bridge
     PROPERTIES LABELS "unit;plasticity;bridges;axon"
+    TIMEOUT 120
+)
+
+# Eligibility Quantum Bridge Tests
+add_executable(unit_plasticity_eligibility_quantum_bridge
+    eligibility/test_eligibility_quantum_bridge.cpp
+)
+target_link_libraries(unit_plasticity_eligibility_quantum_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_eligibility_quantum_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_eligibility_quantum_bridge
+    PROPERTIES LABELS "unit;plasticity;eligibility;quantum;bridge"
     TIMEOUT 120
 )
