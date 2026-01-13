@@ -2159,6 +2159,37 @@ set(NIMCP_CORE_SOURCES
 
     # Physics layer modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/geometry/nimcp_information_geometry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/thermodynamics/nimcp_thermodynamics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/biophysics/nimcp_hodgkin_huxley.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/ephaptic/nimcp_ephaptic.c
+
+    # Physics layer bridges - Bio-async integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_hh_bio_async_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_thermo_bio_async_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_ephaptic_bio_async_bridge.c
+
+    # Physics layer bridges - Quantum Monte Carlo integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_hh_quantum_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_thermo_quantum_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_ephaptic_quantum_bridge.c
+
+    # Physics layer bridges - FFT spectral analysis
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_ephaptic_fft_bridge.c
+
+    # Physics layer bridges - System integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_immune_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_kg_wiring.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_security.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_brain_init.c
+
+    # Physics layer bridges - LNN integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_lnn_bridge.c
+
+    # Physics layer bridges - External system integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_hypothalamus_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_cognitive_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_training_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_swarm_bridge.c
 
     # Biology layer modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../biology/epigenetics/nimcp_epigenetics.c

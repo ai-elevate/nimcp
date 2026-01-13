@@ -61,7 +61,10 @@
 #include "async/nimcp_bio_messages.h"
 
 // Forward declaration for brain integration
+#ifndef NIMCP_BRAIN_T_DEFINED
+#define NIMCP_BRAIN_T_DEFINED
 typedef struct brain_struct* brain_t;
+#endif
 
 // Conditional CUDA support
 #ifdef NIMCP_ENABLE_CUDA

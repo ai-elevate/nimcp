@@ -1723,6 +1723,67 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/biology")
 endif()
 
 # ============================================================================
+# Physics Layer Unit Tests
+# ============================================================================
+# WHAT: Unit tests for physics layer modules (thermodynamics, biophysics, etc.)
+# WHY:  Verify physical process modeling and constraints
+# HOW:  Subdirectory-based test organization
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/physics/thermodynamics")
+    message(STATUS "Adding physics thermodynamics unit tests...")
+    add_subdirectory(unit/physics/thermodynamics)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/physics/biophysics")
+    message(STATUS "Adding physics biophysics unit tests...")
+    add_subdirectory(unit/physics/biophysics)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/physics/geometry")
+    message(STATUS "Adding physics information geometry unit tests...")
+    add_subdirectory(unit/physics/geometry)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/physics/ephaptic")
+    message(STATUS "Adding physics ephaptic coupling unit tests...")
+    add_subdirectory(unit/physics/ephaptic)
+endif()
+
+# ============================================================================
+# Physics Layer Integration Tests
+# ============================================================================
+# WHAT: Integration tests for physics layer modules (HH, biophysics, etc.)
+# WHY:  Verify physics modules integrate correctly with SNN and other systems
+# HOW:  Subdirectory-based test organization
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/physics")
+    message(STATUS "Adding physics layer integration tests...")
+    add_subdirectory(integration/physics)
+endif()
+
+# ============================================================================
+# Physics Layer Regression Tests
+# ============================================================================
+# WHAT: Regression tests for physics layer modules (HH, thermodynamics, ephaptic)
+# WHY:  Verify determinism, numerical stability, physical bounds, API compat
+# HOW:  Subdirectory-based test organization
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/physics/biophysics")
+    message(STATUS "Adding physics biophysics regression tests...")
+    add_subdirectory(regression/physics/biophysics)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/physics/thermodynamics")
+    message(STATUS "Adding physics thermodynamics regression tests...")
+    add_subdirectory(regression/physics/thermodynamics)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/physics/ephaptic")
+    message(STATUS "Adding physics ephaptic regression tests...")
+    add_subdirectory(regression/physics/ephaptic)
+endif()
+
+# ============================================================================
 # Extended Timeout Configuration (Applied AFTER all tests are registered)
 # ============================================================================
 # WHAT: Extended timeouts for heavyweight brain tests

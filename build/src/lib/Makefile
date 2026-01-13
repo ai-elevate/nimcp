@@ -29777,6 +29777,438 @@ __/perception/nimcp_visual_jepa_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_visual_jepa_fep_bridge.c.s
 .PHONY : __/perception/nimcp_visual_jepa_fep_bridge.c.s
 
+__/physics/biophysics/nimcp_hodgkin_huxley.o: __/physics/biophysics/nimcp_hodgkin_huxley.c.o
+.PHONY : __/physics/biophysics/nimcp_hodgkin_huxley.o
+
+# target to build an object file
+__/physics/biophysics/nimcp_hodgkin_huxley.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/biophysics/nimcp_hodgkin_huxley.c.o
+.PHONY : __/physics/biophysics/nimcp_hodgkin_huxley.c.o
+
+__/physics/biophysics/nimcp_hodgkin_huxley.i: __/physics/biophysics/nimcp_hodgkin_huxley.c.i
+.PHONY : __/physics/biophysics/nimcp_hodgkin_huxley.i
+
+# target to preprocess a source file
+__/physics/biophysics/nimcp_hodgkin_huxley.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/biophysics/nimcp_hodgkin_huxley.c.i
+.PHONY : __/physics/biophysics/nimcp_hodgkin_huxley.c.i
+
+__/physics/biophysics/nimcp_hodgkin_huxley.s: __/physics/biophysics/nimcp_hodgkin_huxley.c.s
+.PHONY : __/physics/biophysics/nimcp_hodgkin_huxley.s
+
+# target to generate assembly for a file
+__/physics/biophysics/nimcp_hodgkin_huxley.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/biophysics/nimcp_hodgkin_huxley.c.s
+.PHONY : __/physics/biophysics/nimcp_hodgkin_huxley.c.s
+
+__/physics/bridges/nimcp_ephaptic_bio_async_bridge.o: __/physics/bridges/nimcp_ephaptic_bio_async_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_ephaptic_bio_async_bridge.o
+
+# target to build an object file
+__/physics/bridges/nimcp_ephaptic_bio_async_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_ephaptic_bio_async_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_ephaptic_bio_async_bridge.c.o
+
+__/physics/bridges/nimcp_ephaptic_bio_async_bridge.i: __/physics/bridges/nimcp_ephaptic_bio_async_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_ephaptic_bio_async_bridge.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_ephaptic_bio_async_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_ephaptic_bio_async_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_ephaptic_bio_async_bridge.c.i
+
+__/physics/bridges/nimcp_ephaptic_bio_async_bridge.s: __/physics/bridges/nimcp_ephaptic_bio_async_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_ephaptic_bio_async_bridge.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_ephaptic_bio_async_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_ephaptic_bio_async_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_ephaptic_bio_async_bridge.c.s
+
+__/physics/bridges/nimcp_ephaptic_fft_bridge.o: __/physics/bridges/nimcp_ephaptic_fft_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_ephaptic_fft_bridge.o
+
+# target to build an object file
+__/physics/bridges/nimcp_ephaptic_fft_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_ephaptic_fft_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_ephaptic_fft_bridge.c.o
+
+__/physics/bridges/nimcp_ephaptic_fft_bridge.i: __/physics/bridges/nimcp_ephaptic_fft_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_ephaptic_fft_bridge.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_ephaptic_fft_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_ephaptic_fft_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_ephaptic_fft_bridge.c.i
+
+__/physics/bridges/nimcp_ephaptic_fft_bridge.s: __/physics/bridges/nimcp_ephaptic_fft_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_ephaptic_fft_bridge.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_ephaptic_fft_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_ephaptic_fft_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_ephaptic_fft_bridge.c.s
+
+__/physics/bridges/nimcp_ephaptic_quantum_bridge.o: __/physics/bridges/nimcp_ephaptic_quantum_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_ephaptic_quantum_bridge.o
+
+# target to build an object file
+__/physics/bridges/nimcp_ephaptic_quantum_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_ephaptic_quantum_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_ephaptic_quantum_bridge.c.o
+
+__/physics/bridges/nimcp_ephaptic_quantum_bridge.i: __/physics/bridges/nimcp_ephaptic_quantum_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_ephaptic_quantum_bridge.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_ephaptic_quantum_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_ephaptic_quantum_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_ephaptic_quantum_bridge.c.i
+
+__/physics/bridges/nimcp_ephaptic_quantum_bridge.s: __/physics/bridges/nimcp_ephaptic_quantum_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_ephaptic_quantum_bridge.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_ephaptic_quantum_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_ephaptic_quantum_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_ephaptic_quantum_bridge.c.s
+
+__/physics/bridges/nimcp_hh_bio_async_bridge.o: __/physics/bridges/nimcp_hh_bio_async_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_hh_bio_async_bridge.o
+
+# target to build an object file
+__/physics/bridges/nimcp_hh_bio_async_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_hh_bio_async_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_hh_bio_async_bridge.c.o
+
+__/physics/bridges/nimcp_hh_bio_async_bridge.i: __/physics/bridges/nimcp_hh_bio_async_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_hh_bio_async_bridge.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_hh_bio_async_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_hh_bio_async_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_hh_bio_async_bridge.c.i
+
+__/physics/bridges/nimcp_hh_bio_async_bridge.s: __/physics/bridges/nimcp_hh_bio_async_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_hh_bio_async_bridge.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_hh_bio_async_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_hh_bio_async_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_hh_bio_async_bridge.c.s
+
+__/physics/bridges/nimcp_hh_quantum_bridge.o: __/physics/bridges/nimcp_hh_quantum_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_hh_quantum_bridge.o
+
+# target to build an object file
+__/physics/bridges/nimcp_hh_quantum_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_hh_quantum_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_hh_quantum_bridge.c.o
+
+__/physics/bridges/nimcp_hh_quantum_bridge.i: __/physics/bridges/nimcp_hh_quantum_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_hh_quantum_bridge.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_hh_quantum_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_hh_quantum_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_hh_quantum_bridge.c.i
+
+__/physics/bridges/nimcp_hh_quantum_bridge.s: __/physics/bridges/nimcp_hh_quantum_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_hh_quantum_bridge.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_hh_quantum_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_hh_quantum_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_hh_quantum_bridge.c.s
+
+__/physics/bridges/nimcp_physics_brain_init.o: __/physics/bridges/nimcp_physics_brain_init.c.o
+.PHONY : __/physics/bridges/nimcp_physics_brain_init.o
+
+# target to build an object file
+__/physics/bridges/nimcp_physics_brain_init.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_brain_init.c.o
+.PHONY : __/physics/bridges/nimcp_physics_brain_init.c.o
+
+__/physics/bridges/nimcp_physics_brain_init.i: __/physics/bridges/nimcp_physics_brain_init.c.i
+.PHONY : __/physics/bridges/nimcp_physics_brain_init.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_physics_brain_init.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_brain_init.c.i
+.PHONY : __/physics/bridges/nimcp_physics_brain_init.c.i
+
+__/physics/bridges/nimcp_physics_brain_init.s: __/physics/bridges/nimcp_physics_brain_init.c.s
+.PHONY : __/physics/bridges/nimcp_physics_brain_init.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_physics_brain_init.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_brain_init.c.s
+.PHONY : __/physics/bridges/nimcp_physics_brain_init.c.s
+
+__/physics/bridges/nimcp_physics_cognitive_bridge.o: __/physics/bridges/nimcp_physics_cognitive_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_physics_cognitive_bridge.o
+
+# target to build an object file
+__/physics/bridges/nimcp_physics_cognitive_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_cognitive_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_physics_cognitive_bridge.c.o
+
+__/physics/bridges/nimcp_physics_cognitive_bridge.i: __/physics/bridges/nimcp_physics_cognitive_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_physics_cognitive_bridge.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_physics_cognitive_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_cognitive_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_physics_cognitive_bridge.c.i
+
+__/physics/bridges/nimcp_physics_cognitive_bridge.s: __/physics/bridges/nimcp_physics_cognitive_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_physics_cognitive_bridge.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_physics_cognitive_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_cognitive_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_physics_cognitive_bridge.c.s
+
+__/physics/bridges/nimcp_physics_hypothalamus_bridge.o: __/physics/bridges/nimcp_physics_hypothalamus_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_physics_hypothalamus_bridge.o
+
+# target to build an object file
+__/physics/bridges/nimcp_physics_hypothalamus_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_hypothalamus_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_physics_hypothalamus_bridge.c.o
+
+__/physics/bridges/nimcp_physics_hypothalamus_bridge.i: __/physics/bridges/nimcp_physics_hypothalamus_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_physics_hypothalamus_bridge.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_physics_hypothalamus_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_hypothalamus_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_physics_hypothalamus_bridge.c.i
+
+__/physics/bridges/nimcp_physics_hypothalamus_bridge.s: __/physics/bridges/nimcp_physics_hypothalamus_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_physics_hypothalamus_bridge.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_physics_hypothalamus_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_hypothalamus_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_physics_hypothalamus_bridge.c.s
+
+__/physics/bridges/nimcp_physics_immune_bridge.o: __/physics/bridges/nimcp_physics_immune_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_physics_immune_bridge.o
+
+# target to build an object file
+__/physics/bridges/nimcp_physics_immune_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_immune_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_physics_immune_bridge.c.o
+
+__/physics/bridges/nimcp_physics_immune_bridge.i: __/physics/bridges/nimcp_physics_immune_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_physics_immune_bridge.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_physics_immune_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_immune_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_physics_immune_bridge.c.i
+
+__/physics/bridges/nimcp_physics_immune_bridge.s: __/physics/bridges/nimcp_physics_immune_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_physics_immune_bridge.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_physics_immune_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_immune_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_physics_immune_bridge.c.s
+
+__/physics/bridges/nimcp_physics_kg_wiring.o: __/physics/bridges/nimcp_physics_kg_wiring.c.o
+.PHONY : __/physics/bridges/nimcp_physics_kg_wiring.o
+
+# target to build an object file
+__/physics/bridges/nimcp_physics_kg_wiring.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_kg_wiring.c.o
+.PHONY : __/physics/bridges/nimcp_physics_kg_wiring.c.o
+
+__/physics/bridges/nimcp_physics_kg_wiring.i: __/physics/bridges/nimcp_physics_kg_wiring.c.i
+.PHONY : __/physics/bridges/nimcp_physics_kg_wiring.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_physics_kg_wiring.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_kg_wiring.c.i
+.PHONY : __/physics/bridges/nimcp_physics_kg_wiring.c.i
+
+__/physics/bridges/nimcp_physics_kg_wiring.s: __/physics/bridges/nimcp_physics_kg_wiring.c.s
+.PHONY : __/physics/bridges/nimcp_physics_kg_wiring.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_physics_kg_wiring.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_kg_wiring.c.s
+.PHONY : __/physics/bridges/nimcp_physics_kg_wiring.c.s
+
+__/physics/bridges/nimcp_physics_lnn_bridge.o: __/physics/bridges/nimcp_physics_lnn_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_physics_lnn_bridge.o
+
+# target to build an object file
+__/physics/bridges/nimcp_physics_lnn_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_lnn_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_physics_lnn_bridge.c.o
+
+__/physics/bridges/nimcp_physics_lnn_bridge.i: __/physics/bridges/nimcp_physics_lnn_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_physics_lnn_bridge.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_physics_lnn_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_lnn_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_physics_lnn_bridge.c.i
+
+__/physics/bridges/nimcp_physics_lnn_bridge.s: __/physics/bridges/nimcp_physics_lnn_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_physics_lnn_bridge.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_physics_lnn_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_lnn_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_physics_lnn_bridge.c.s
+
+__/physics/bridges/nimcp_physics_security.o: __/physics/bridges/nimcp_physics_security.c.o
+.PHONY : __/physics/bridges/nimcp_physics_security.o
+
+# target to build an object file
+__/physics/bridges/nimcp_physics_security.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_security.c.o
+.PHONY : __/physics/bridges/nimcp_physics_security.c.o
+
+__/physics/bridges/nimcp_physics_security.i: __/physics/bridges/nimcp_physics_security.c.i
+.PHONY : __/physics/bridges/nimcp_physics_security.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_physics_security.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_security.c.i
+.PHONY : __/physics/bridges/nimcp_physics_security.c.i
+
+__/physics/bridges/nimcp_physics_security.s: __/physics/bridges/nimcp_physics_security.c.s
+.PHONY : __/physics/bridges/nimcp_physics_security.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_physics_security.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_security.c.s
+.PHONY : __/physics/bridges/nimcp_physics_security.c.s
+
+__/physics/bridges/nimcp_physics_swarm_bridge.o: __/physics/bridges/nimcp_physics_swarm_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_physics_swarm_bridge.o
+
+# target to build an object file
+__/physics/bridges/nimcp_physics_swarm_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_swarm_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_physics_swarm_bridge.c.o
+
+__/physics/bridges/nimcp_physics_swarm_bridge.i: __/physics/bridges/nimcp_physics_swarm_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_physics_swarm_bridge.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_physics_swarm_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_swarm_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_physics_swarm_bridge.c.i
+
+__/physics/bridges/nimcp_physics_swarm_bridge.s: __/physics/bridges/nimcp_physics_swarm_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_physics_swarm_bridge.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_physics_swarm_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_swarm_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_physics_swarm_bridge.c.s
+
+__/physics/bridges/nimcp_physics_training_bridge.o: __/physics/bridges/nimcp_physics_training_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_physics_training_bridge.o
+
+# target to build an object file
+__/physics/bridges/nimcp_physics_training_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_training_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_physics_training_bridge.c.o
+
+__/physics/bridges/nimcp_physics_training_bridge.i: __/physics/bridges/nimcp_physics_training_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_physics_training_bridge.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_physics_training_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_training_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_physics_training_bridge.c.i
+
+__/physics/bridges/nimcp_physics_training_bridge.s: __/physics/bridges/nimcp_physics_training_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_physics_training_bridge.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_physics_training_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_physics_training_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_physics_training_bridge.c.s
+
+__/physics/bridges/nimcp_thermo_bio_async_bridge.o: __/physics/bridges/nimcp_thermo_bio_async_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_thermo_bio_async_bridge.o
+
+# target to build an object file
+__/physics/bridges/nimcp_thermo_bio_async_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_thermo_bio_async_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_thermo_bio_async_bridge.c.o
+
+__/physics/bridges/nimcp_thermo_bio_async_bridge.i: __/physics/bridges/nimcp_thermo_bio_async_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_thermo_bio_async_bridge.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_thermo_bio_async_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_thermo_bio_async_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_thermo_bio_async_bridge.c.i
+
+__/physics/bridges/nimcp_thermo_bio_async_bridge.s: __/physics/bridges/nimcp_thermo_bio_async_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_thermo_bio_async_bridge.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_thermo_bio_async_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_thermo_bio_async_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_thermo_bio_async_bridge.c.s
+
+__/physics/bridges/nimcp_thermo_quantum_bridge.o: __/physics/bridges/nimcp_thermo_quantum_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_thermo_quantum_bridge.o
+
+# target to build an object file
+__/physics/bridges/nimcp_thermo_quantum_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_thermo_quantum_bridge.c.o
+.PHONY : __/physics/bridges/nimcp_thermo_quantum_bridge.c.o
+
+__/physics/bridges/nimcp_thermo_quantum_bridge.i: __/physics/bridges/nimcp_thermo_quantum_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_thermo_quantum_bridge.i
+
+# target to preprocess a source file
+__/physics/bridges/nimcp_thermo_quantum_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_thermo_quantum_bridge.c.i
+.PHONY : __/physics/bridges/nimcp_thermo_quantum_bridge.c.i
+
+__/physics/bridges/nimcp_thermo_quantum_bridge.s: __/physics/bridges/nimcp_thermo_quantum_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_thermo_quantum_bridge.s
+
+# target to generate assembly for a file
+__/physics/bridges/nimcp_thermo_quantum_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_thermo_quantum_bridge.c.s
+.PHONY : __/physics/bridges/nimcp_thermo_quantum_bridge.c.s
+
+__/physics/ephaptic/nimcp_ephaptic.o: __/physics/ephaptic/nimcp_ephaptic.c.o
+.PHONY : __/physics/ephaptic/nimcp_ephaptic.o
+
+# target to build an object file
+__/physics/ephaptic/nimcp_ephaptic.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/ephaptic/nimcp_ephaptic.c.o
+.PHONY : __/physics/ephaptic/nimcp_ephaptic.c.o
+
+__/physics/ephaptic/nimcp_ephaptic.i: __/physics/ephaptic/nimcp_ephaptic.c.i
+.PHONY : __/physics/ephaptic/nimcp_ephaptic.i
+
+# target to preprocess a source file
+__/physics/ephaptic/nimcp_ephaptic.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/ephaptic/nimcp_ephaptic.c.i
+.PHONY : __/physics/ephaptic/nimcp_ephaptic.c.i
+
+__/physics/ephaptic/nimcp_ephaptic.s: __/physics/ephaptic/nimcp_ephaptic.c.s
+.PHONY : __/physics/ephaptic/nimcp_ephaptic.s
+
+# target to generate assembly for a file
+__/physics/ephaptic/nimcp_ephaptic.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/ephaptic/nimcp_ephaptic.c.s
+.PHONY : __/physics/ephaptic/nimcp_ephaptic.c.s
+
 __/physics/geometry/nimcp_information_geometry.o: __/physics/geometry/nimcp_information_geometry.c.o
 .PHONY : __/physics/geometry/nimcp_information_geometry.o
 
@@ -29800,6 +30232,30 @@ __/physics/geometry/nimcp_information_geometry.s: __/physics/geometry/nimcp_info
 __/physics/geometry/nimcp_information_geometry.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/geometry/nimcp_information_geometry.c.s
 .PHONY : __/physics/geometry/nimcp_information_geometry.c.s
+
+__/physics/thermodynamics/nimcp_thermodynamics.o: __/physics/thermodynamics/nimcp_thermodynamics.c.o
+.PHONY : __/physics/thermodynamics/nimcp_thermodynamics.o
+
+# target to build an object file
+__/physics/thermodynamics/nimcp_thermodynamics.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/thermodynamics/nimcp_thermodynamics.c.o
+.PHONY : __/physics/thermodynamics/nimcp_thermodynamics.c.o
+
+__/physics/thermodynamics/nimcp_thermodynamics.i: __/physics/thermodynamics/nimcp_thermodynamics.c.i
+.PHONY : __/physics/thermodynamics/nimcp_thermodynamics.i
+
+# target to preprocess a source file
+__/physics/thermodynamics/nimcp_thermodynamics.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/thermodynamics/nimcp_thermodynamics.c.i
+.PHONY : __/physics/thermodynamics/nimcp_thermodynamics.c.i
+
+__/physics/thermodynamics/nimcp_thermodynamics.s: __/physics/thermodynamics/nimcp_thermodynamics.c.s
+.PHONY : __/physics/thermodynamics/nimcp_thermodynamics.s
+
+# target to generate assembly for a file
+__/physics/thermodynamics/nimcp_thermodynamics.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/thermodynamics/nimcp_thermodynamics.c.s
+.PHONY : __/physics/thermodynamics/nimcp_thermodynamics.c.s
 
 __/plasticity/adaptive/nimcp_adaptive.o: __/plasticity/adaptive/nimcp_adaptive.c.o
 .PHONY : __/plasticity/adaptive/nimcp_adaptive.o
@@ -43666,9 +44122,66 @@ help:
 	@echo "... __/perception/nimcp_visual_jepa_fep_bridge.o"
 	@echo "... __/perception/nimcp_visual_jepa_fep_bridge.i"
 	@echo "... __/perception/nimcp_visual_jepa_fep_bridge.s"
+	@echo "... __/physics/biophysics/nimcp_hodgkin_huxley.o"
+	@echo "... __/physics/biophysics/nimcp_hodgkin_huxley.i"
+	@echo "... __/physics/biophysics/nimcp_hodgkin_huxley.s"
+	@echo "... __/physics/bridges/nimcp_ephaptic_bio_async_bridge.o"
+	@echo "... __/physics/bridges/nimcp_ephaptic_bio_async_bridge.i"
+	@echo "... __/physics/bridges/nimcp_ephaptic_bio_async_bridge.s"
+	@echo "... __/physics/bridges/nimcp_ephaptic_fft_bridge.o"
+	@echo "... __/physics/bridges/nimcp_ephaptic_fft_bridge.i"
+	@echo "... __/physics/bridges/nimcp_ephaptic_fft_bridge.s"
+	@echo "... __/physics/bridges/nimcp_ephaptic_quantum_bridge.o"
+	@echo "... __/physics/bridges/nimcp_ephaptic_quantum_bridge.i"
+	@echo "... __/physics/bridges/nimcp_ephaptic_quantum_bridge.s"
+	@echo "... __/physics/bridges/nimcp_hh_bio_async_bridge.o"
+	@echo "... __/physics/bridges/nimcp_hh_bio_async_bridge.i"
+	@echo "... __/physics/bridges/nimcp_hh_bio_async_bridge.s"
+	@echo "... __/physics/bridges/nimcp_hh_quantum_bridge.o"
+	@echo "... __/physics/bridges/nimcp_hh_quantum_bridge.i"
+	@echo "... __/physics/bridges/nimcp_hh_quantum_bridge.s"
+	@echo "... __/physics/bridges/nimcp_physics_brain_init.o"
+	@echo "... __/physics/bridges/nimcp_physics_brain_init.i"
+	@echo "... __/physics/bridges/nimcp_physics_brain_init.s"
+	@echo "... __/physics/bridges/nimcp_physics_cognitive_bridge.o"
+	@echo "... __/physics/bridges/nimcp_physics_cognitive_bridge.i"
+	@echo "... __/physics/bridges/nimcp_physics_cognitive_bridge.s"
+	@echo "... __/physics/bridges/nimcp_physics_hypothalamus_bridge.o"
+	@echo "... __/physics/bridges/nimcp_physics_hypothalamus_bridge.i"
+	@echo "... __/physics/bridges/nimcp_physics_hypothalamus_bridge.s"
+	@echo "... __/physics/bridges/nimcp_physics_immune_bridge.o"
+	@echo "... __/physics/bridges/nimcp_physics_immune_bridge.i"
+	@echo "... __/physics/bridges/nimcp_physics_immune_bridge.s"
+	@echo "... __/physics/bridges/nimcp_physics_kg_wiring.o"
+	@echo "... __/physics/bridges/nimcp_physics_kg_wiring.i"
+	@echo "... __/physics/bridges/nimcp_physics_kg_wiring.s"
+	@echo "... __/physics/bridges/nimcp_physics_lnn_bridge.o"
+	@echo "... __/physics/bridges/nimcp_physics_lnn_bridge.i"
+	@echo "... __/physics/bridges/nimcp_physics_lnn_bridge.s"
+	@echo "... __/physics/bridges/nimcp_physics_security.o"
+	@echo "... __/physics/bridges/nimcp_physics_security.i"
+	@echo "... __/physics/bridges/nimcp_physics_security.s"
+	@echo "... __/physics/bridges/nimcp_physics_swarm_bridge.o"
+	@echo "... __/physics/bridges/nimcp_physics_swarm_bridge.i"
+	@echo "... __/physics/bridges/nimcp_physics_swarm_bridge.s"
+	@echo "... __/physics/bridges/nimcp_physics_training_bridge.o"
+	@echo "... __/physics/bridges/nimcp_physics_training_bridge.i"
+	@echo "... __/physics/bridges/nimcp_physics_training_bridge.s"
+	@echo "... __/physics/bridges/nimcp_thermo_bio_async_bridge.o"
+	@echo "... __/physics/bridges/nimcp_thermo_bio_async_bridge.i"
+	@echo "... __/physics/bridges/nimcp_thermo_bio_async_bridge.s"
+	@echo "... __/physics/bridges/nimcp_thermo_quantum_bridge.o"
+	@echo "... __/physics/bridges/nimcp_thermo_quantum_bridge.i"
+	@echo "... __/physics/bridges/nimcp_thermo_quantum_bridge.s"
+	@echo "... __/physics/ephaptic/nimcp_ephaptic.o"
+	@echo "... __/physics/ephaptic/nimcp_ephaptic.i"
+	@echo "... __/physics/ephaptic/nimcp_ephaptic.s"
 	@echo "... __/physics/geometry/nimcp_information_geometry.o"
 	@echo "... __/physics/geometry/nimcp_information_geometry.i"
 	@echo "... __/physics/geometry/nimcp_information_geometry.s"
+	@echo "... __/physics/thermodynamics/nimcp_thermodynamics.o"
+	@echo "... __/physics/thermodynamics/nimcp_thermodynamics.i"
+	@echo "... __/physics/thermodynamics/nimcp_thermodynamics.s"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive.o"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive.i"
 	@echo "... __/plasticity/adaptive/nimcp_adaptive.s"

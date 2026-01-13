@@ -388,6 +388,12 @@ add_e2e_test(e2e_test_jepa_qmc_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_jepa_qmc_pipeline.cpp
 )
 
+# Physics Layer Pipeline E2E Test (HH Dynamics + Thermodynamics + Ephaptic Coupling)
+add_e2e_test(e2e_test_physics_layer
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_physics_layer.cpp
+)
+
 # Coordinator Pipeline E2E Test (6 Coordinator/Orchestrator Integration)
 add_e2e_test(e2e_test_coordinator_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp

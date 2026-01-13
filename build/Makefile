@@ -653,6 +653,19 @@ unit_cognitive_curiosity_test_curiosity_plasticity_bridge/fast:
 .PHONY : unit_cognitive_curiosity_test_curiosity_plasticity_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_curiosity_test_curiosity_qmc
+
+# Build rule for target.
+unit_cognitive_curiosity_test_curiosity_qmc: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_curiosity_test_curiosity_qmc
+.PHONY : unit_cognitive_curiosity_test_curiosity_qmc
+
+# fast build rule for target.
+unit_cognitive_curiosity_test_curiosity_qmc/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_curiosity_test_curiosity_qmc.dir/build.make test/CMakeFiles/unit_cognitive_curiosity_test_curiosity_qmc.dir/build
+.PHONY : unit_cognitive_curiosity_test_curiosity_qmc/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_curiosity_test_curiosity_snn_bridge
 
 # Build rule for target.
@@ -3331,19 +3344,6 @@ unit_perception_immune_test_visual_immune_integration/fast:
 .PHONY : unit_perception_immune_test_visual_immune_integration/fast
 
 #=============================================================================
-# Target rules for targets named unit_physics_geometry_test_information_geometry
-
-# Build rule for target.
-unit_physics_geometry_test_information_geometry: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_geometry_test_information_geometry
-.PHONY : unit_physics_geometry_test_information_geometry
-
-# fast build rule for target.
-unit_physics_geometry_test_information_geometry/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_physics_geometry_test_information_geometry.dir/build.make test/CMakeFiles/unit_physics_geometry_test_information_geometry.dir/build
-.PHONY : unit_physics_geometry_test_information_geometry/fast
-
-#=============================================================================
 # Target rules for targets named unit_plasticity_adaptive_test_adaptive
 
 # Build rule for target.
@@ -4538,6 +4538,19 @@ integration_cognitive_curiosity_test_curiosity_fep_bridge_integration: cmake_che
 integration_cognitive_curiosity_test_curiosity_fep_bridge_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_cognitive_curiosity_test_curiosity_fep_bridge_integration.dir/build.make test/CMakeFiles/integration_cognitive_curiosity_test_curiosity_fep_bridge_integration.dir/build
 .PHONY : integration_cognitive_curiosity_test_curiosity_fep_bridge_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_curiosity_test_curiosity_qmc_integration
+
+# Build rule for target.
+integration_cognitive_curiosity_test_curiosity_qmc_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_curiosity_test_curiosity_qmc_integration
+.PHONY : integration_cognitive_curiosity_test_curiosity_qmc_integration
+
+# fast build rule for target.
+integration_cognitive_curiosity_test_curiosity_qmc_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_cognitive_curiosity_test_curiosity_qmc_integration.dir/build.make test/CMakeFiles/integration_cognitive_curiosity_test_curiosity_qmc_integration.dir/build
+.PHONY : integration_cognitive_curiosity_test_curiosity_qmc_integration/fast
 
 #=============================================================================
 # Target rules for targets named integration_cognitive_curiosity_test_curiosity_snn_plasticity_integration
@@ -6995,6 +7008,19 @@ e2e_test_jepa_qmc_pipeline: cmake_check_build_system
 e2e_test_jepa_qmc_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_jepa_qmc_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_jepa_qmc_pipeline.dir/build
 .PHONY : e2e_test_jepa_qmc_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_physics_layer
+
+# Build rule for target.
+e2e_test_physics_layer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_physics_layer
+.PHONY : e2e_test_physics_layer
+
+# fast build rule for target.
+e2e_test_physics_layer/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_physics_layer.dir/build.make test/e2e/CMakeFiles/e2e_test_physics_layer.dir/build
+.PHONY : e2e_test_physics_layer/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_coordinator_pipeline
@@ -13638,6 +13664,19 @@ regression_cognitive_curiosity_snn_plasticity: cmake_check_build_system
 regression_cognitive_curiosity_snn_plasticity/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/curiosity/CMakeFiles/regression_cognitive_curiosity_snn_plasticity.dir/build.make test/regression/cognitive/curiosity/CMakeFiles/regression_cognitive_curiosity_snn_plasticity.dir/build
 .PHONY : regression_cognitive_curiosity_snn_plasticity/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_curiosity_qmc
+
+# Build rule for target.
+regression_cognitive_curiosity_qmc: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_curiosity_qmc
+.PHONY : regression_cognitive_curiosity_qmc
+
+# fast build rule for target.
+regression_cognitive_curiosity_qmc/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/curiosity/CMakeFiles/regression_cognitive_curiosity_qmc.dir/build.make test/regression/cognitive/curiosity/CMakeFiles/regression_cognitive_curiosity_qmc.dir/build
+.PHONY : regression_cognitive_curiosity_qmc/fast
 
 #=============================================================================
 # Target rules for targets named regression_jepa
@@ -26562,6 +26601,123 @@ integration_biology_neurovascular_test_neurovascular_integration/fast:
 .PHONY : integration_biology_neurovascular_test_neurovascular_integration/fast
 
 #=============================================================================
+# Target rules for targets named unit_physics_thermodynamics_test_thermodynamics
+
+# Build rule for target.
+unit_physics_thermodynamics_test_thermodynamics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_thermodynamics_test_thermodynamics
+.PHONY : unit_physics_thermodynamics_test_thermodynamics
+
+# fast build rule for target.
+unit_physics_thermodynamics_test_thermodynamics/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/physics/thermodynamics/CMakeFiles/unit_physics_thermodynamics_test_thermodynamics.dir/build.make test/unit/physics/thermodynamics/CMakeFiles/unit_physics_thermodynamics_test_thermodynamics.dir/build
+.PHONY : unit_physics_thermodynamics_test_thermodynamics/fast
+
+#=============================================================================
+# Target rules for targets named unit_physics_biophysics_test_hodgkin_huxley
+
+# Build rule for target.
+unit_physics_biophysics_test_hodgkin_huxley: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_biophysics_test_hodgkin_huxley
+.PHONY : unit_physics_biophysics_test_hodgkin_huxley
+
+# fast build rule for target.
+unit_physics_biophysics_test_hodgkin_huxley/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/physics/biophysics/CMakeFiles/unit_physics_biophysics_test_hodgkin_huxley.dir/build.make test/unit/physics/biophysics/CMakeFiles/unit_physics_biophysics_test_hodgkin_huxley.dir/build
+.PHONY : unit_physics_biophysics_test_hodgkin_huxley/fast
+
+#=============================================================================
+# Target rules for targets named unit_physics_geometry_test_information_geometry
+
+# Build rule for target.
+unit_physics_geometry_test_information_geometry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_geometry_test_information_geometry
+.PHONY : unit_physics_geometry_test_information_geometry
+
+# fast build rule for target.
+unit_physics_geometry_test_information_geometry/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/physics/geometry/CMakeFiles/unit_physics_geometry_test_information_geometry.dir/build.make test/unit/physics/geometry/CMakeFiles/unit_physics_geometry_test_information_geometry.dir/build
+.PHONY : unit_physics_geometry_test_information_geometry/fast
+
+#=============================================================================
+# Target rules for targets named unit_physics_ephaptic_test_ephaptic
+
+# Build rule for target.
+unit_physics_ephaptic_test_ephaptic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_ephaptic_test_ephaptic
+.PHONY : unit_physics_ephaptic_test_ephaptic
+
+# fast build rule for target.
+unit_physics_ephaptic_test_ephaptic/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/physics/ephaptic/CMakeFiles/unit_physics_ephaptic_test_ephaptic.dir/build.make test/unit/physics/ephaptic/CMakeFiles/unit_physics_ephaptic_test_ephaptic.dir/build
+.PHONY : unit_physics_ephaptic_test_ephaptic/fast
+
+#=============================================================================
+# Target rules for targets named integration_physics_hh_integration
+
+# Build rule for target.
+integration_physics_hh_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_physics_hh_integration
+.PHONY : integration_physics_hh_integration
+
+# fast build rule for target.
+integration_physics_hh_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/physics/biophysics/CMakeFiles/integration_physics_hh_integration.dir/build.make test/integration/physics/biophysics/CMakeFiles/integration_physics_hh_integration.dir/build
+.PHONY : integration_physics_hh_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_physics_bridges_test
+
+# Build rule for target.
+integration_physics_bridges_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_physics_bridges_test
+.PHONY : integration_physics_bridges_test
+
+# fast build rule for target.
+integration_physics_bridges_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/physics/bridges/CMakeFiles/integration_physics_bridges_test.dir/build.make test/integration/physics/bridges/CMakeFiles/integration_physics_bridges_test.dir/build
+.PHONY : integration_physics_bridges_test/fast
+
+#=============================================================================
+# Target rules for targets named regression_physics_biophysics_test_hh_regression
+
+# Build rule for target.
+regression_physics_biophysics_test_hh_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_physics_biophysics_test_hh_regression
+.PHONY : regression_physics_biophysics_test_hh_regression
+
+# fast build rule for target.
+regression_physics_biophysics_test_hh_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/physics/biophysics/CMakeFiles/regression_physics_biophysics_test_hh_regression.dir/build.make test/regression/physics/biophysics/CMakeFiles/regression_physics_biophysics_test_hh_regression.dir/build
+.PHONY : regression_physics_biophysics_test_hh_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_physics_thermodynamics_test_thermodynamics_regression
+
+# Build rule for target.
+regression_physics_thermodynamics_test_thermodynamics_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_physics_thermodynamics_test_thermodynamics_regression
+.PHONY : regression_physics_thermodynamics_test_thermodynamics_regression
+
+# fast build rule for target.
+regression_physics_thermodynamics_test_thermodynamics_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/physics/thermodynamics/CMakeFiles/regression_physics_thermodynamics_test_thermodynamics_regression.dir/build.make test/regression/physics/thermodynamics/CMakeFiles/regression_physics_thermodynamics_test_thermodynamics_regression.dir/build
+.PHONY : regression_physics_thermodynamics_test_thermodynamics_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_physics_ephaptic_test_ephaptic_regression
+
+# Build rule for target.
+regression_physics_ephaptic_test_ephaptic_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_physics_ephaptic_test_ephaptic_regression
+.PHONY : regression_physics_ephaptic_test_ephaptic_regression
+
+# fast build rule for target.
+regression_physics_ephaptic_test_ephaptic_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/physics/ephaptic/CMakeFiles/regression_physics_ephaptic_test_ephaptic_regression.dir/build.make test/regression/physics/ephaptic/CMakeFiles/regression_physics_ephaptic_test_ephaptic_regression.dir/build
+.PHONY : regression_physics_ephaptic_test_ephaptic_regression/fast
+
+#=============================================================================
 # Target rules for targets named simple_demo
 
 # Build rule for target.
@@ -27059,6 +27215,7 @@ help:
 	@echo "... e2e_test_perception_cortical"
 	@echo "... e2e_test_perception_training_pipeline"
 	@echo "... e2e_test_phase1_bridges_pipeline"
+	@echo "... e2e_test_physics_layer"
 	@echo "... e2e_test_pink_noise_pipeline"
 	@echo "... e2e_test_plasticity_pipeline"
 	@echo "... e2e_test_portia_bio_async_pipeline"
@@ -27161,6 +27318,7 @@ help:
 	@echo "... integration_cognitive_curiosity_snn_plasticity"
 	@echo "... integration_cognitive_curiosity_test_curiosity_enhanced_integration"
 	@echo "... integration_cognitive_curiosity_test_curiosity_fep_bridge_integration"
+	@echo "... integration_cognitive_curiosity_test_curiosity_qmc_integration"
 	@echo "... integration_cognitive_curiosity_test_curiosity_snn_plasticity_integration"
 	@echo "... integration_cognitive_emotion_integration"
 	@echo "... integration_cognitive_emotion_snn_plasticity"
@@ -27352,6 +27510,8 @@ help:
 	@echo "... integration_parietal_fep"
 	@echo "... integration_parietal_test_parietal_fep_integration"
 	@echo "... integration_perception_test_cochlea_integration"
+	@echo "... integration_physics_bridges_test"
+	@echo "... integration_physics_hh_integration"
 	@echo "... integration_plasticity_adaptive_test_adaptive_integration"
 	@echo "... integration_plasticity_adaptive_test_adaptive_routing_integration"
 	@echo "... integration_plasticity_astrocyte_test_astrocyte_integration"
@@ -27498,6 +27658,7 @@ help:
 	@echo "... regression_cognitive_bio_async_test"
 	@echo "... regression_cognitive_consolidation_test_systems_consolidation_backward_compat"
 	@echo "... regression_cognitive_curiosity_enhanced"
+	@echo "... regression_cognitive_curiosity_qmc"
 	@echo "... regression_cognitive_curiosity_snn_plasticity"
 	@echo "... regression_cognitive_emotion_bridge"
 	@echo "... regression_cognitive_emotion_performance"
@@ -27670,6 +27831,9 @@ help:
 	@echo "... regression_optimization_test_multi_objective_backward_compat"
 	@echo "... regression_parietal_fep"
 	@echo "... regression_parietal_fep_orchestrator_bridge"
+	@echo "... regression_physics_biophysics_test_hh_regression"
+	@echo "... regression_physics_ephaptic_test_ephaptic_regression"
+	@echo "... regression_physics_thermodynamics_test_thermodynamics_regression"
 	@echo "... regression_plasticity_adaptive_test_adaptive_backward_compat"
 	@echo "... regression_plasticity_adaptive_test_adaptive_routing_backward_compat"
 	@echo "... regression_plasticity_astrocyte_test_astrocyte_regression"
@@ -28042,6 +28206,7 @@ help:
 	@echo "... unit_cognitive_curiosity_test_curiosity_fep_bridge"
 	@echo "... unit_cognitive_curiosity_test_curiosity_immune_integration"
 	@echo "... unit_cognitive_curiosity_test_curiosity_plasticity_bridge"
+	@echo "... unit_cognitive_curiosity_test_curiosity_qmc"
 	@echo "... unit_cognitive_curiosity_test_curiosity_snn_bridge"
 	@echo "... unit_cognitive_emotion_substrate_bridge"
 	@echo "... unit_cognitive_emotion_tensor_test_emotion_fep_bridge"
@@ -28728,7 +28893,10 @@ help:
 	@echo "... unit_perception_test_speech_cortex_pe"
 	@echo "... unit_perception_test_speech_jepa_bridge"
 	@echo "... unit_perception_test_visual_jepa_bridge"
+	@echo "... unit_physics_biophysics_test_hodgkin_huxley"
+	@echo "... unit_physics_ephaptic_test_ephaptic"
 	@echo "... unit_physics_geometry_test_information_geometry"
+	@echo "... unit_physics_thermodynamics_test_thermodynamics"
 	@echo "... unit_plasticity_adaptive_test_adaptive"
 	@echo "... unit_plasticity_adaptive_test_adaptive_bioasync"
 	@echo "... unit_plasticity_adaptive_test_adaptive_comprehensive"
