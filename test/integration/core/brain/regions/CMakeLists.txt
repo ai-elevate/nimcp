@@ -21,3 +21,7 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/sensory")
     add_subdirectory(sensory)
 endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/motor")
+    add_subdirectory(motor)
+endif()

@@ -2687,6 +2687,32 @@ add_e2e_test(e2e_test_sensory_processing_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_sensory_processing_pipeline.cpp
 )
 
+# Motor Cortex E2E Test - End-to-end motor planning and execution scenarios
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core/brain/regions/test_motor_e2e.cpp)
+    add_executable(e2e_core_brain_regions_motor_test_motor_e2e
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/brain/regions/test_motor_e2e.cpp
+    )
+    target_include_directories(e2e_core_brain_regions_motor_test_motor_e2e PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_link_libraries(e2e_core_brain_regions_motor_test_motor_e2e PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_core_brain_regions_motor_test_motor_e2e PRIVATE cxx_std_17)
+    target_compile_definitions(e2e_core_brain_regions_motor_test_motor_e2e PRIVATE NIMCP_TESTING NIMCP_E2E_TESTING)
+    add_test(NAME e2e_core_brain_regions_motor_test_motor_e2e COMMAND e2e_core_brain_regions_motor_test_motor_e2e)
+    set_tests_properties(e2e_core_brain_regions_motor_test_motor_e2e PROPERTIES
+        LABELS "e2e;motor;movement;planning;execution"
+        TIMEOUT 300
+    )
+    message(STATUS "  Added Motor Cortex E2E test: e2e_core_brain_regions_motor_test_motor_e2e")
+endif()
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)

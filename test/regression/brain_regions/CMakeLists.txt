@@ -54,3 +54,17 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_sensory_processing_regression.cpp
     regression
 )
+
+# Motor Cortex Backward Compatibility Test
+add_test_binary(
+    regression_brain_regions_test_motor_backward_compat
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_motor_backward_compat.cpp
+    regression
+)
+
+# Motor Cortex Signal Regression Test
+add_test_binary(
+    regression_brain_regions_test_motor_signal_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_motor_signal_regression.cpp
+    regression
+)
