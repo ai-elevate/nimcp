@@ -25,3 +25,27 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/motor")
     add_subdirectory(motor)
 endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/claustrum")
+    add_subdirectory(claustrum)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ofc")
+    add_subdirectory(ofc)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/pag")
+    add_subdirectory(pag)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/red_nucleus")
+    add_subdirectory(red_nucleus)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/reticular")
+    add_subdirectory(reticular)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/retrosplenial")
+    add_subdirectory(retrosplenial)
+endif()
