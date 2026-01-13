@@ -419,7 +419,7 @@ typedef struct {
  * @brief Bio-async bridge state
  */
 typedef struct {
-    nimcp_bio_async_handler_t bio_handler;
+    nimcp_bio_async_handler_t* bio_handler;
     nimcp_bio_router_t* router;
     float neuromodulator_levels[ENTORHINAL_CHANNEL_COUNT];
     uint32_t pending_messages;
