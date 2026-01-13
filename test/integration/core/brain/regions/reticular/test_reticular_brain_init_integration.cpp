@@ -52,6 +52,15 @@ protected:
             router_initialized = false;
         }
     }
+
+    /* Helper: create and initialize Reticular Formation in one step */
+    nimcp_reticular_t* createAndInitReticular(const reticular_config_t* cfg) {
+        nimcp_reticular_t* instance = reticular_create(cfg);
+        if (instance) {
+            reticular_init(instance);
+        }
+        return instance;
+    }
 };
 
 /*=============================================================================
@@ -61,6 +70,10 @@ protected:
 TEST_F(ReticularBrainInitTest, CreateWithDefaultConfig) {
     reticular = reticular_create(&config);
     ASSERT_NE(nullptr, reticular);
+
+    /* Reticular Formation uses two-phase init: create allocates, init sets up state */
+    int init_result = reticular_init(reticular);
+    EXPECT_EQ(0, init_result);
     EXPECT_TRUE(reticular->initialized);
 }
 
@@ -196,7 +209,7 @@ TEST_F(ReticularBrainInitTest, ApplySympathetic) {
  *===========================================================================*/
 
 TEST_F(ReticularBrainInitTest, UpdateArousalCycle) {
-    reticular = reticular_create(&config);
+    reticular = createAndInitReticular(&config);
     ASSERT_NE(nullptr, reticular);
 
     for (int i = 0; i < 100; i++) {

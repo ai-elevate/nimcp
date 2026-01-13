@@ -52,6 +52,15 @@ protected:
             router_initialized = false;
         }
     }
+
+    /* Helper: create and initialize Red Nucleus in one step */
+    nimcp_red_nucleus_t* createAndInitRN(const rn_config_t* cfg) {
+        nimcp_red_nucleus_t* instance = rn_create(cfg);
+        if (instance) {
+            rn_init(instance);
+        }
+        return instance;
+    }
 };
 
 /*=============================================================================
@@ -61,6 +70,10 @@ protected:
 TEST_F(RedNucleusBrainInitTest, CreateWithDefaultConfig) {
     rn = rn_create(&config);
     ASSERT_NE(nullptr, rn);
+
+    /* Red Nucleus uses two-phase init: create allocates, init sets up state */
+    int init_result = rn_init(rn);
+    EXPECT_EQ(0, init_result);
     EXPECT_TRUE(rn->initialized);
 }
 
@@ -91,7 +104,7 @@ TEST_F(RedNucleusBrainInitTest, MultipleCreateDestroyCycles) {
  *===========================================================================*/
 
 TEST_F(RedNucleusBrainInitTest, IssueCommand) {
-    rn = rn_create(&config);
+    rn = createAndInitRN(&config);
     ASSERT_NE(nullptr, rn);
 
     rn_motor_command_t cmd;
@@ -153,7 +166,7 @@ TEST_F(RedNucleusBrainInitTest, GetLearningState) {
  *===========================================================================*/
 
 TEST_F(RedNucleusBrainInitTest, UpdateCycle) {
-    rn = rn_create(&config);
+    rn = createAndInitRN(&config);
     ASSERT_NE(nullptr, rn);
 
     for (int i = 0; i < 100; i++) {

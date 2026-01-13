@@ -61,6 +61,15 @@ protected:
             router_initialized = false;
         }
     }
+
+    /* Helper: create and initialize PAG in one step */
+    nimcp_pag_t* createAndInitPAG(const pag_config_t* cfg) {
+        nimcp_pag_t* instance = pag_create(cfg);
+        if (instance) {
+            pag_init(instance);
+        }
+        return instance;
+    }
 };
 
 /*=============================================================================
@@ -70,6 +79,10 @@ protected:
 TEST_F(PAGBrainInitTest, CreateWithDefaultConfig) {
     pag = pag_create(&config);
     ASSERT_NE(nullptr, pag);
+
+    /* PAG uses two-phase init: create allocates, init sets up state */
+    int init_result = pag_init(pag);
+    EXPECT_EQ(0, init_result);
     EXPECT_TRUE(pag->initialized);
 }
 
@@ -91,6 +104,10 @@ TEST_F(PAGBrainInitTest, MultipleCreateDestroyCycles) {
     for (int i = 0; i < 5; i++) {
         pag = pag_create(&config);
         ASSERT_NE(nullptr, pag) << "Cycle " << i << " create failed";
+
+        /* Must call init after create */
+        int init_result = pag_init(pag);
+        EXPECT_EQ(0, init_result);
         EXPECT_TRUE(pag->initialized);
 
         pag_destroy(pag);
@@ -135,7 +152,7 @@ TEST_F(PAGBrainInitTest, SetColumnModulation) {
  *===========================================================================*/
 
 TEST_F(PAGBrainInitTest, ProcessThreat) {
-    pag = pag_create(&config);
+    pag = createAndInitPAG(&config);
     ASSERT_NE(nullptr, pag);
 
     int result = pag_process_threat(pag, PAG_THREAT_PROXIMAL, 0.7f, 0.0f, 10.0f);
@@ -299,7 +316,7 @@ TEST_F(PAGBrainInitTest, GetDominantEmotion) {
  *===========================================================================*/
 
 TEST_F(PAGBrainInitTest, UpdateCycle) {
-    pag = pag_create(&config);
+    pag = createAndInitPAG(&config);
     ASSERT_NE(nullptr, pag);
 
     for (int i = 0; i < 100; i++) {

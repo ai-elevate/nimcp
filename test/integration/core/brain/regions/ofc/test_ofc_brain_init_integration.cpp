@@ -61,6 +61,15 @@ protected:
             router_initialized = false;
         }
     }
+
+    /* Helper: create and initialize OFC in one step */
+    nimcp_ofc_t* createAndInitOFC(const ofc_config_t* cfg) {
+        nimcp_ofc_t* instance = ofc_create(cfg);
+        if (instance) {
+            ofc_init(instance);
+        }
+        return instance;
+    }
 };
 
 /*=============================================================================
@@ -70,6 +79,10 @@ protected:
 TEST_F(OFCBrainInitTest, CreateWithDefaultConfig) {
     ofc = ofc_create(&config);
     ASSERT_NE(nullptr, ofc);
+
+    /* OFC uses two-phase init: create allocates, init sets up state */
+    int init_result = ofc_init(ofc);
+    EXPECT_EQ(0, init_result);
     EXPECT_TRUE(ofc->initialized);
 }
 
@@ -105,6 +118,7 @@ TEST_F(OFCBrainInitTest, ResetAfterCreate) {
     ofc = ofc_create(&config);
     ASSERT_NE(nullptr, ofc);
 
+    /* reset calls init internally */
     int result = ofc_reset(ofc);
     EXPECT_EQ(0, result);
     EXPECT_TRUE(ofc->initialized);
@@ -114,6 +128,10 @@ TEST_F(OFCBrainInitTest, MultipleCreateDestroyCycles) {
     for (int i = 0; i < 5; i++) {
         ofc = ofc_create(&config);
         ASSERT_NE(nullptr, ofc) << "Cycle " << i << " create failed";
+
+        /* Must call init after create */
+        int init_result = ofc_init(ofc);
+        EXPECT_EQ(0, init_result);
         EXPECT_TRUE(ofc->initialized);
 
         ofc_destroy(ofc);
@@ -178,7 +196,7 @@ TEST_F(OFCBrainInitTest, ResourceLimitsConfiguration) {
  *===========================================================================*/
 
 TEST_F(OFCBrainInitTest, InitialStatsZero) {
-    ofc = ofc_create(&config);
+    ofc = createAndInitOFC(&config);
     ASSERT_NE(nullptr, ofc);
 
     ofc_stats_t stats;
@@ -191,7 +209,7 @@ TEST_F(OFCBrainInitTest, InitialStatsZero) {
 }
 
 TEST_F(OFCBrainInitTest, InitialSubdivisionsInactive) {
-    ofc = ofc_create(&config);
+    ofc = createAndInitOFC(&config);
     ASSERT_NE(nullptr, ofc);
 
     for (int i = 0; i < OFC_SUBDIV_COUNT; i++) {
@@ -202,14 +220,14 @@ TEST_F(OFCBrainInitTest, InitialSubdivisionsInactive) {
 }
 
 TEST_F(OFCBrainInitTest, InitialNoDecisionPending) {
-    ofc = ofc_create(&config);
+    ofc = createAndInitOFC(&config);
     ASSERT_NE(nullptr, ofc);
 
     EXPECT_FALSE(ofc->decision_pending);
 }
 
 TEST_F(OFCBrainInitTest, InitialNoOptions) {
-    ofc = ofc_create(&config);
+    ofc = createAndInitOFC(&config);
     ASSERT_NE(nullptr, ofc);
 
     EXPECT_EQ(0u, ofc->num_options);
@@ -220,7 +238,7 @@ TEST_F(OFCBrainInitTest, InitialNoOptions) {
  *===========================================================================*/
 
 TEST_F(OFCBrainInitTest, UpdateWithNoOptions) {
-    ofc = ofc_create(&config);
+    ofc = createAndInitOFC(&config);
     ASSERT_NE(nullptr, ofc);
 
     /* Should not crash with no options */
@@ -229,7 +247,7 @@ TEST_F(OFCBrainInitTest, UpdateWithNoOptions) {
 }
 
 TEST_F(OFCBrainInitTest, MultipleUpdateCycles) {
-    ofc = ofc_create(&config);
+    ofc = createAndInitOFC(&config);
     ASSERT_NE(nullptr, ofc);
 
     for (int i = 0; i < 100; i++) {
@@ -246,7 +264,7 @@ TEST_F(OFCBrainInitTest, MultipleUpdateCycles) {
  *===========================================================================*/
 
 TEST_F(OFCBrainInitTest, PresentSingleOption) {
-    ofc = ofc_create(&config);
+    ofc = createAndInitOFC(&config);
     ASSERT_NE(nullptr, ofc);
 
     int result = ofc_present_option(ofc, 1, 0.8f, 0.7f, 0.0f);
@@ -255,7 +273,7 @@ TEST_F(OFCBrainInitTest, PresentSingleOption) {
 }
 
 TEST_F(OFCBrainInitTest, PresentMultipleOptions) {
-    ofc = ofc_create(&config);
+    ofc = createAndInitOFC(&config);
     ASSERT_NE(nullptr, ofc);
 
     for (uint32_t i = 1; i <= 5; i++) {
@@ -267,7 +285,7 @@ TEST_F(OFCBrainInitTest, PresentMultipleOptions) {
 }
 
 TEST_F(OFCBrainInitTest, ClearOptions) {
-    ofc = ofc_create(&config);
+    ofc = createAndInitOFC(&config);
     ASSERT_NE(nullptr, ofc);
 
     /* Add some options */
@@ -286,7 +304,7 @@ TEST_F(OFCBrainInitTest, ClearOptions) {
  *===========================================================================*/
 
 TEST_F(OFCBrainInitTest, GetSubdivisionActivityValid) {
-    ofc = ofc_create(&config);
+    ofc = createAndInitOFC(&config);
     ASSERT_NE(nullptr, ofc);
 
     float lateral = ofc_get_subdivision_activity(ofc, OFC_SUBDIV_LATERAL);
@@ -305,7 +323,7 @@ TEST_F(OFCBrainInitTest, GetSubdivisionActivityValid) {
  *===========================================================================*/
 
 TEST_F(OFCBrainInitTest, SetEmotion) {
-    ofc = ofc_create(&config);
+    ofc = createAndInitOFC(&config);
     ASSERT_NE(nullptr, ofc);
 
     int result = ofc_set_emotion(ofc, 0.7f, 0.5f);
@@ -316,7 +334,7 @@ TEST_F(OFCBrainInitTest, SetEmotion) {
 }
 
 TEST_F(OFCBrainInitTest, EmotionModulatedValue) {
-    ofc = ofc_create(&config);
+    ofc = createAndInitOFC(&config);
     ASSERT_NE(nullptr, ofc);
 
     /* Present an option */
