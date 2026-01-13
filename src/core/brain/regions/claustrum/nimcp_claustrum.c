@@ -1219,12 +1219,15 @@ nimcp_claustrum_error_t nimcp_claustrum_switch_state(
               nimcp_claustrum_brain_state_string(claustrum->brain_state),
               nimcp_claustrum_brain_state_string(target_state));
 
-    claustrum->state = CLAUSTRUM_STATE_SWITCHING;
     claustrum->target_state = target_state;
     claustrum->switch_progress = 0.0f;
 
-    /* Trigger immediate synchronization for switch */
+    /* Trigger immediate synchronization for switch - do this before setting
+     * SWITCHING state since synchronize overwrites the state */
     nimcp_claustrum_synchronize(claustrum);
+
+    /* Now set the switching state so update() will advance the switch */
+    claustrum->state = CLAUSTRUM_STATE_SWITCHING;
 
     return CLAUSTRUM_OK;
 }

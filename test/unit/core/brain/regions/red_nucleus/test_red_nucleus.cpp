@@ -38,6 +38,15 @@ protected:
         }
     }
 
+    /* Helper to create and initialize a Red Nucleus instance */
+    nimcp_red_nucleus_t* create_and_init(const rn_config_t* config = nullptr) {
+        nimcp_red_nucleus_t* instance = rn_create(config);
+        if (instance) {
+            rn_init(instance);
+        }
+        return instance;
+    }
+
     /* Helper to create a basic motor command */
     rn_motor_command_t create_velocity_command(rn_effector_t effector,
                                                 float vx, float vy, float vz,
@@ -98,6 +107,17 @@ TEST_F(RedNucleusTest, DefaultConfigWithNullReturnsError) {
 TEST_F(RedNucleusTest, CreateWithNullConfigUsesDefaults) {
     rn = rn_create(nullptr);
     ASSERT_NE(rn, nullptr);
+    /* rn_create() does NOT set initialized - must call rn_init() */
+    EXPECT_FALSE(rn->initialized);
+}
+
+TEST_F(RedNucleusTest, CreateAndInitSetsInitialized) {
+    rn = rn_create(nullptr);
+    ASSERT_NE(rn, nullptr);
+    EXPECT_FALSE(rn->initialized);
+
+    int result = rn_init(rn);
+    EXPECT_EQ(result, 0);
     EXPECT_TRUE(rn->initialized);
 }
 
@@ -109,9 +129,14 @@ TEST_F(RedNucleusTest, CreateWithCustomConfigSucceeds) {
 
     rn = rn_create(&config);
     ASSERT_NE(rn, nullptr);
-    EXPECT_TRUE(rn->initialized);
+    /* Config values should be copied */
     EXPECT_FLOAT_EQ(rn->config.velocity_gain, 2.0f);
     EXPECT_FLOAT_EQ(rn->config.base_learning_rate, 0.05f);
+
+    /* Initialize to set initialized flag */
+    int result = rn_init(rn);
+    EXPECT_EQ(result, 0);
+    EXPECT_TRUE(rn->initialized);
 }
 
 TEST_F(RedNucleusTest, DestroyWithNullDoesNotCrash) {
@@ -125,6 +150,7 @@ TEST_F(RedNucleusTest, InitSucceeds) {
 
     int result = rn_init(rn);
     EXPECT_EQ(result, 0);
+    EXPECT_TRUE(rn->initialized);
 }
 
 TEST_F(RedNucleusTest, InitWithNullReturnsError) {
@@ -133,7 +159,7 @@ TEST_F(RedNucleusTest, InitWithNullReturnsError) {
 }
 
 TEST_F(RedNucleusTest, ResetSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Modify state */
@@ -158,7 +184,7 @@ TEST_F(RedNucleusTest, ResetWithNullReturnsError) {
  * ========================================================================== */
 
 TEST_F(RedNucleusTest, IssueCommandSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_motor_command_t cmd = create_velocity_command(
@@ -166,6 +192,18 @@ TEST_F(RedNucleusTest, IssueCommandSucceeds) {
 
     int result = rn_issue_command(rn, &cmd);
     EXPECT_EQ(result, 0);
+}
+
+TEST_F(RedNucleusTest, IssueCommandWithoutInitReturnsError) {
+    rn = rn_create(nullptr);
+    ASSERT_NE(rn, nullptr);
+    /* Don't call rn_init() - rn->initialized is false */
+
+    rn_motor_command_t cmd = create_velocity_command(
+        RN_EFFECTOR_FORELIMB_DISTAL, 1.0f, 0.0f, 0.0f, 100.0f);
+
+    int result = rn_issue_command(rn, &cmd);
+    EXPECT_EQ(result, -1);  /* Should fail because not initialized */
 }
 
 TEST_F(RedNucleusTest, IssueCommandWithNullRNReturnsError) {
@@ -177,7 +215,7 @@ TEST_F(RedNucleusTest, IssueCommandWithNullRNReturnsError) {
 }
 
 TEST_F(RedNucleusTest, IssueCommandWithNullCmdReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_issue_command(rn, nullptr);
@@ -185,7 +223,7 @@ TEST_F(RedNucleusTest, IssueCommandWithNullCmdReturnsError) {
 }
 
 TEST_F(RedNucleusTest, CommandVelocitySucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_vector3_t velocity = make_vector3(1.0f, 0.5f, 0.0f);
@@ -195,7 +233,7 @@ TEST_F(RedNucleusTest, CommandVelocitySucceeds) {
 }
 
 TEST_F(RedNucleusTest, CommandVelocityWithNullVelocityReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_command_velocity(rn, RN_EFFECTOR_FORELIMB_DISTAL,
@@ -204,7 +242,7 @@ TEST_F(RedNucleusTest, CommandVelocityWithNullVelocityReturnsError) {
 }
 
 TEST_F(RedNucleusTest, CommandForceSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_vector3_t force = make_vector3(0.0f, 0.0f, 1.0f);
@@ -214,7 +252,7 @@ TEST_F(RedNucleusTest, CommandForceSucceeds) {
 }
 
 TEST_F(RedNucleusTest, CommandForceWithNullForceReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_command_force(rn, RN_EFFECTOR_FORELIMB_PROXIMAL,
@@ -223,7 +261,7 @@ TEST_F(RedNucleusTest, CommandForceWithNullForceReturnsError) {
 }
 
 TEST_F(RedNucleusTest, CommandPositionSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_vector3_t position = make_vector3(10.0f, 5.0f, 2.0f);
@@ -233,7 +271,7 @@ TEST_F(RedNucleusTest, CommandPositionSucceeds) {
 }
 
 TEST_F(RedNucleusTest, CommandPositionWithNullPositionReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_command_position(rn, RN_EFFECTOR_HINDLIMB_DISTAL,
@@ -242,7 +280,7 @@ TEST_F(RedNucleusTest, CommandPositionWithNullPositionReturnsError) {
 }
 
 TEST_F(RedNucleusTest, CommandPostureSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_vector3_t adjustment = make_vector3(0.1f, 0.0f, 0.2f);
@@ -251,7 +289,7 @@ TEST_F(RedNucleusTest, CommandPostureSucceeds) {
 }
 
 TEST_F(RedNucleusTest, CommandPostureWithNullAdjustmentReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_command_posture(rn, nullptr, 0.8f);
@@ -259,7 +297,7 @@ TEST_F(RedNucleusTest, CommandPostureWithNullAdjustmentReturnsError) {
 }
 
 TEST_F(RedNucleusTest, CommandTrajectorySucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_trajectory_point_t points[3];
@@ -281,7 +319,7 @@ TEST_F(RedNucleusTest, CommandTrajectorySucceeds) {
 }
 
 TEST_F(RedNucleusTest, CommandTrajectoryWithNullReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_command_trajectory(rn, nullptr);
@@ -293,7 +331,7 @@ TEST_F(RedNucleusTest, CommandTrajectoryWithNullReturnsError) {
  * ========================================================================== */
 
 TEST_F(RedNucleusTest, GetOutputReturnsValidValue) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Set some output */
@@ -309,7 +347,7 @@ TEST_F(RedNucleusTest, GetOutputWithNullReturnsZero) {
 }
 
 TEST_F(RedNucleusTest, GetOutputWithInvalidEffectorReturnsZero) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     float output = rn_get_output(rn, (rn_effector_t)99);
@@ -317,7 +355,7 @@ TEST_F(RedNucleusTest, GetOutputWithInvalidEffectorReturnsZero) {
 }
 
 TEST_F(RedNucleusTest, GetAllOutputsSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Set some outputs */
@@ -341,7 +379,7 @@ TEST_F(RedNucleusTest, GetAllOutputsWithNullRNReturnsError) {
 }
 
 TEST_F(RedNucleusTest, GetAllOutputsWithNullArrayReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_get_all_outputs(rn, nullptr);
@@ -353,7 +391,7 @@ TEST_F(RedNucleusTest, GetAllOutputsWithNullArrayReturnsError) {
  * ========================================================================== */
 
 TEST_F(RedNucleusTest, ProcessErrorSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_motor_error_t error;
@@ -377,7 +415,7 @@ TEST_F(RedNucleusTest, ProcessErrorWithNullRNReturnsError) {
 }
 
 TEST_F(RedNucleusTest, ProcessErrorWithNullErrorReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_process_error(rn, nullptr);
@@ -385,7 +423,7 @@ TEST_F(RedNucleusTest, ProcessErrorWithNullErrorReturnsError) {
 }
 
 TEST_F(RedNucleusTest, ReportErrorSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_report_error(rn, RN_EFFECTOR_FORELIMB_DISTAL,
@@ -400,7 +438,7 @@ TEST_F(RedNucleusTest, ReportErrorWithNullReturnsError) {
 }
 
 TEST_F(RedNucleusTest, GetLearningStateSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_learning_state_t state;
@@ -417,7 +455,7 @@ TEST_F(RedNucleusTest, GetLearningStateWithNullRNReturnsError) {
 }
 
 TEST_F(RedNucleusTest, GetLearningStateWithNullStateReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_get_learning_state(rn, RN_EFFECTOR_FORELIMB_DISTAL, nullptr);
@@ -425,7 +463,7 @@ TEST_F(RedNucleusTest, GetLearningStateWithNullStateReturnsError) {
 }
 
 TEST_F(RedNucleusTest, GetSkillLevelReturnsValidValue) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Set skill level */
@@ -441,7 +479,7 @@ TEST_F(RedNucleusTest, GetSkillLevelWithNullReturnsZero) {
 }
 
 TEST_F(RedNucleusTest, SetLearningModulationSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_set_learning_modulation(rn, 1.5f);
@@ -455,7 +493,7 @@ TEST_F(RedNucleusTest, SetLearningModulationWithNullReturnsError) {
 }
 
 TEST_F(RedNucleusTest, ResetLearningSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Set some learning state */
@@ -480,7 +518,7 @@ TEST_F(RedNucleusTest, ResetLearningWithNullReturnsError) {
  * ========================================================================== */
 
 TEST_F(RedNucleusTest, ProcessDentateInputSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_dentate_signal_t signal;
@@ -505,7 +543,7 @@ TEST_F(RedNucleusTest, ProcessDentateInputWithNullRNReturnsError) {
 }
 
 TEST_F(RedNucleusTest, ProcessDentateInputWithNullSignalReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_process_dentate_input(rn, nullptr);
@@ -513,7 +551,7 @@ TEST_F(RedNucleusTest, ProcessDentateInputWithNullSignalReturnsError) {
 }
 
 TEST_F(RedNucleusTest, GetOlivaryOutputSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_olivary_output_t output;
@@ -528,7 +566,7 @@ TEST_F(RedNucleusTest, GetOlivaryOutputWithNullRNReturnsError) {
 }
 
 TEST_F(RedNucleusTest, GetOlivaryOutputWithNullOutputReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_get_olivary_output(rn, nullptr);
@@ -536,7 +574,7 @@ TEST_F(RedNucleusTest, GetOlivaryOutputWithNullOutputReturnsError) {
 }
 
 TEST_F(RedNucleusTest, GetThalamicOutputSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_thalamic_output_t output;
@@ -551,7 +589,7 @@ TEST_F(RedNucleusTest, GetThalamicOutputWithNullRNReturnsError) {
 }
 
 TEST_F(RedNucleusTest, GetThalamicOutputWithNullOutputReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_get_thalamic_output(rn, nullptr);
@@ -559,7 +597,7 @@ TEST_F(RedNucleusTest, GetThalamicOutputWithNullOutputReturnsError) {
 }
 
 TEST_F(RedNucleusTest, CerebellumConnectSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Connect with null (disconnect) should succeed */
@@ -573,7 +611,7 @@ TEST_F(RedNucleusTest, CerebellumConnectWithNullRNReturnsError) {
 }
 
 TEST_F(RedNucleusTest, ProcessCerebellarErrorSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_process_cerebellar_error(rn, 0.3f, RN_ERROR_TRAJECTORY);
@@ -590,7 +628,7 @@ TEST_F(RedNucleusTest, ProcessCerebellarErrorWithNullReturnsError) {
  * ========================================================================== */
 
 TEST_F(RedNucleusTest, SetCorticalInputSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_set_cortical_input(rn, RN_CMD_VELOCITY, 0.8f);
@@ -604,7 +642,7 @@ TEST_F(RedNucleusTest, SetCorticalInputWithNullReturnsError) {
 }
 
 TEST_F(RedNucleusTest, GetCorticalInputReturnsCorrectValue) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn->cortical_input[RN_CMD_FORCE] = 0.6f;
@@ -622,7 +660,7 @@ TEST_F(RedNucleusTest, GetCorticalInputWithNullReturnsZero) {
  * ========================================================================== */
 
 TEST_F(RedNucleusTest, UpdateSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_update(rn, 0.01f);  /* 10ms timestep */
@@ -634,8 +672,17 @@ TEST_F(RedNucleusTest, UpdateWithNullReturnsError) {
     EXPECT_EQ(result, -1);
 }
 
-TEST_F(RedNucleusTest, UpdateIncreasesUpdateCount) {
+TEST_F(RedNucleusTest, UpdateWithoutInitReturnsError) {
     rn = rn_create(nullptr);
+    ASSERT_NE(rn, nullptr);
+    /* Don't call rn_init() */
+
+    int result = rn_update(rn, 0.01f);
+    EXPECT_EQ(result, -1);  /* Should fail - not initialized */
+}
+
+TEST_F(RedNucleusTest, UpdateIncreasesCommandsIssuedCount) {
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     uint64_t initial_count = rn->stats.commands_issued;
@@ -653,7 +700,7 @@ TEST_F(RedNucleusTest, UpdateIncreasesUpdateCount) {
 }
 
 TEST_F(RedNucleusTest, GetStatsSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_stats_t stats;
@@ -668,7 +715,7 @@ TEST_F(RedNucleusTest, GetStatsWithNullRNReturnsError) {
 }
 
 TEST_F(RedNucleusTest, GetStatsWithNullStatsReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_get_stats(rn, nullptr);
@@ -676,7 +723,7 @@ TEST_F(RedNucleusTest, GetStatsWithNullStatsReturnsError) {
 }
 
 TEST_F(RedNucleusTest, GetSubdivisionActivityReturnsValidValue) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn->subdivisions.activity[RN_SUBDIV_MAGNOCELLULAR] = 0.5f;
@@ -691,7 +738,7 @@ TEST_F(RedNucleusTest, GetSubdivisionActivityWithNullReturnsZero) {
 }
 
 TEST_F(RedNucleusTest, GetSubdivisionActivityWithInvalidSubdivReturnsZero) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     float activity = rn_get_subdivision_activity(rn, (rn_subdivision_t)99);
@@ -703,7 +750,7 @@ TEST_F(RedNucleusTest, GetSubdivisionActivityWithInvalidSubdivReturnsZero) {
  * ========================================================================== */
 
 TEST_F(RedNucleusTest, ClearCommandsSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Queue some commands */
@@ -722,7 +769,7 @@ TEST_F(RedNucleusTest, ClearCommandsWithNullReturnsError) {
 }
 
 TEST_F(RedNucleusTest, AbortCommandSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Issue a command */
@@ -742,13 +789,13 @@ TEST_F(RedNucleusTest, AbortCommandWithNullReturnsError) {
  * Bio-Async Integration Tests
  * ========================================================================== */
 
-TEST_F(RedNucleusTest, BioAsyncConnectSucceeds) {
-    rn = rn_create(nullptr);
+TEST_F(RedNucleusTest, BioAsyncConnectWithNullRouterReturnsError) {
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
-    /* Connect with null (disconnect) should succeed */
+    /* Connect with null router returns error per implementation */
     int result = rn_bio_async_connect(rn, nullptr);
-    EXPECT_EQ(result, 0);
+    EXPECT_EQ(result, -1);
 }
 
 TEST_F(RedNucleusTest, BioAsyncConnectWithNullRNReturnsError) {
@@ -757,7 +804,7 @@ TEST_F(RedNucleusTest, BioAsyncConnectWithNullRNReturnsError) {
 }
 
 TEST_F(RedNucleusTest, BioAsyncDisconnectSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_bio_async_disconnect(rn);
@@ -769,15 +816,16 @@ TEST_F(RedNucleusTest, BioAsyncDisconnectWithNullReturnsError) {
     EXPECT_EQ(result, -1);
 }
 
-TEST_F(RedNucleusTest, BioAsyncSubscribeSucceeds) {
-    rn = rn_create(nullptr);
+TEST_F(RedNucleusTest, BioAsyncSubscribeWithNullRouterReturnsError) {
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
+    /* bio_router is NULL by default, so subscribe should fail */
     int result = rn_bio_async_subscribe(rn, RN_BIO_SUB_MOTOR_CMD | RN_BIO_SUB_ERROR);
-    EXPECT_EQ(result, 0);
+    EXPECT_EQ(result, -1);
 }
 
-TEST_F(RedNucleusTest, BioAsyncSubscribeWithNullReturnsError) {
+TEST_F(RedNucleusTest, BioAsyncSubscribeWithNullRNReturnsError) {
     int result = rn_bio_async_subscribe(nullptr, RN_BIO_SUB_ALL);
     EXPECT_EQ(result, -1);
 }
@@ -792,7 +840,7 @@ TEST_F(RedNucleusTest, BioAsyncBroadcastWithNullRNReturnsError) {
  * ========================================================================== */
 
 TEST_F(RedNucleusTest, KGUnregisterSucceeds) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_kg_unregister(rn);
@@ -811,6 +859,14 @@ TEST_F(RedNucleusTest, KGUpdateStateWithNullReturnsError) {
 
 TEST_F(RedNucleusTest, KGRegisterWithNullRNReturnsError) {
     int result = rn_kg_register(nullptr, nullptr, 0);
+    EXPECT_EQ(result, -1);
+}
+
+TEST_F(RedNucleusTest, KGRegisterWithNullKGReturnsError) {
+    rn = create_and_init(nullptr);
+    ASSERT_NE(rn, nullptr);
+
+    int result = rn_kg_register(rn, nullptr, 0);
     EXPECT_EQ(result, -1);
 }
 
@@ -902,6 +958,15 @@ TEST_F(RedNucleusTest, QMCOptimizeCommandsWithNullReturnsError) {
     EXPECT_EQ(result, -1);
 }
 
+TEST_F(RedNucleusTest, QMCOptimizeCommandsWithoutQMCReturnsError) {
+    rn = create_and_init(nullptr);
+    ASSERT_NE(rn, nullptr);
+
+    /* qmc is NULL by default, so optimize should fail */
+    int result = rn_qmc_optimize_commands(rn);
+    EXPECT_EQ(result, -1);
+}
+
 TEST_F(RedNucleusTest, QMCTSTrajectorySearchWithNullRNReturnsError) {
     rn_vector3_t start = make_vector3(0.0f, 0.0f, 0.0f);
     rn_vector3_t goal = make_vector3(1.0f, 1.0f, 1.0f);
@@ -912,7 +977,7 @@ TEST_F(RedNucleusTest, QMCTSTrajectorySearchWithNullRNReturnsError) {
 }
 
 TEST_F(RedNucleusTest, QMCTSTrajectorySearchWithNullStartReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_vector3_t goal = make_vector3(1.0f, 1.0f, 1.0f);
@@ -923,7 +988,7 @@ TEST_F(RedNucleusTest, QMCTSTrajectorySearchWithNullStartReturnsError) {
 }
 
 TEST_F(RedNucleusTest, QMCTSTrajectorySearchWithNullGoalReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_vector3_t start = make_vector3(0.0f, 0.0f, 0.0f);
@@ -934,13 +999,26 @@ TEST_F(RedNucleusTest, QMCTSTrajectorySearchWithNullGoalReturnsError) {
 }
 
 TEST_F(RedNucleusTest, QMCTSTrajectorySearchWithNullTrajectoryReturnsError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_vector3_t start = make_vector3(0.0f, 0.0f, 0.0f);
     rn_vector3_t goal = make_vector3(1.0f, 1.0f, 1.0f);
 
     int result = rn_qmcts_trajectory_search(rn, &start, &goal, 100, nullptr);
+    EXPECT_EQ(result, -1);
+}
+
+TEST_F(RedNucleusTest, QMCTSTrajectorySearchWithoutQMCReturnsError) {
+    rn = create_and_init(nullptr);
+    ASSERT_NE(rn, nullptr);
+
+    rn_vector3_t start = make_vector3(0.0f, 0.0f, 0.0f);
+    rn_vector3_t goal = make_vector3(1.0f, 1.0f, 1.0f);
+    rn_trajectory_t trajectory;
+
+    /* qmc is NULL by default */
+    int result = rn_qmcts_trajectory_search(rn, &start, &goal, 100, &trajectory);
     EXPECT_EQ(result, -1);
 }
 
@@ -1038,8 +1116,8 @@ TEST_F(RedNucleusTest, BioMsgStringHandlesInvalidInput) {
  * Statistics Tracking Tests
  * ========================================================================== */
 
-TEST_F(RedNucleusTest, StatsInitializedToZero) {
-    rn = rn_create(nullptr);
+TEST_F(RedNucleusTest, StatsInitializedToZeroAfterInit) {
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_stats_t stats;
@@ -1053,7 +1131,7 @@ TEST_F(RedNucleusTest, StatsInitializedToZero) {
 }
 
 TEST_F(RedNucleusTest, StatsUpdatedAfterCommand) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_stats_t stats_before;
@@ -1069,7 +1147,7 @@ TEST_F(RedNucleusTest, StatsUpdatedAfterCommand) {
 }
 
 TEST_F(RedNucleusTest, StatsUpdatedAfterError) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_stats_t stats_before;
@@ -1088,7 +1166,7 @@ TEST_F(RedNucleusTest, StatsUpdatedAfterError) {
  * ========================================================================== */
 
 TEST_F(RedNucleusTest, MultipleEffectorCommandsQueued) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Issue commands to multiple effectors */
@@ -1102,7 +1180,7 @@ TEST_F(RedNucleusTest, MultipleEffectorCommandsQueued) {
 }
 
 TEST_F(RedNucleusTest, AllEffectorTypesHaveIndependentOutput) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Set different outputs for each effector */
@@ -1122,7 +1200,7 @@ TEST_F(RedNucleusTest, AllEffectorTypesHaveIndependentOutput) {
  * ========================================================================== */
 
 TEST_F(RedNucleusTest, LearningImprovesPrecision) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     float initial_skill = rn_get_skill_level(rn, RN_EFFECTOR_FORELIMB_DISTAL);
@@ -1152,7 +1230,7 @@ TEST_F(RedNucleusTest, LearningImprovesPrecision) {
  * ========================================================================== */
 
 TEST_F(RedNucleusTest, SubdivisionsInitializedCorrectly) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* All subdivisions should be initialized */
@@ -1164,7 +1242,7 @@ TEST_F(RedNucleusTest, SubdivisionsInitializedCorrectly) {
 }
 
 TEST_F(RedNucleusTest, MagnocellularActivityForMotorCommands) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Issue motor command */
@@ -1182,7 +1260,7 @@ TEST_F(RedNucleusTest, MagnocellularActivityForMotorCommands) {
  * ========================================================================== */
 
 TEST_F(RedNucleusTest, ZeroDurationCommandHandled) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_vector3_t vel = make_vector3(1.0f, 0.0f, 0.0f);
@@ -1192,7 +1270,7 @@ TEST_F(RedNucleusTest, ZeroDurationCommandHandled) {
 }
 
 TEST_F(RedNucleusTest, NegativeDurationCommandHandled) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_vector3_t vel = make_vector3(1.0f, 0.0f, 0.0f);
@@ -1203,7 +1281,7 @@ TEST_F(RedNucleusTest, NegativeDurationCommandHandled) {
 }
 
 TEST_F(RedNucleusTest, VeryLargeMagnitudeVector) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_vector3_t vel = make_vector3(1e10f, 1e10f, 1e10f);
@@ -1213,7 +1291,7 @@ TEST_F(RedNucleusTest, VeryLargeMagnitudeVector) {
 }
 
 TEST_F(RedNucleusTest, VerySmallMagnitudeVector) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_vector3_t vel = make_vector3(1e-10f, 1e-10f, 1e-10f);
@@ -1222,7 +1300,7 @@ TEST_F(RedNucleusTest, VerySmallMagnitudeVector) {
 }
 
 TEST_F(RedNucleusTest, ZeroVectorCommand) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     rn_vector3_t vel = make_vector3(0.0f, 0.0f, 0.0f);
@@ -1231,7 +1309,7 @@ TEST_F(RedNucleusTest, ZeroVectorCommand) {
 }
 
 TEST_F(RedNucleusTest, ErrorMagnitudeClampedToValidRange) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Test error magnitude outside valid range [-1, 1] */
@@ -1246,16 +1324,19 @@ TEST_F(RedNucleusTest, ErrorMagnitudeClampedToValidRange) {
 }
 
 TEST_F(RedNucleusTest, LearningModulationClampedToValidRange) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Test modulation outside valid range [0, 2] */
     int result1 = rn_set_learning_modulation(rn, 10.0f);
     EXPECT_EQ(result1, 0);
-    /* Should be clamped or handled gracefully */
+    /* Should be clamped to 2.0 */
+    EXPECT_FLOAT_EQ(rn->global_learning_modulation, 2.0f);
 
     int result2 = rn_set_learning_modulation(rn, -1.0f);
     EXPECT_EQ(result2, 0);
+    /* Should be clamped to 0.0 */
+    EXPECT_FLOAT_EQ(rn->global_learning_modulation, 0.0f);
 }
 
 /* ==========================================================================
@@ -1263,7 +1344,7 @@ TEST_F(RedNucleusTest, LearningModulationClampedToValidRange) {
  * ========================================================================== */
 
 TEST_F(RedNucleusTest, RapidCommandIssuance) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     /* Issue many commands rapidly */
@@ -1280,7 +1361,7 @@ TEST_F(RedNucleusTest, RapidCommandIssuance) {
 }
 
 TEST_F(RedNucleusTest, UpdateWithVerySmallTimestep) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     for (int i = 0; i < 1000; i++) {
@@ -1290,7 +1371,7 @@ TEST_F(RedNucleusTest, UpdateWithVerySmallTimestep) {
 }
 
 TEST_F(RedNucleusTest, UpdateWithVeryLargeTimestep) {
-    rn = rn_create(nullptr);
+    rn = create_and_init(nullptr);
     ASSERT_NE(rn, nullptr);
 
     int result = rn_update(rn, 100.0f);  /* 100 seconds */
@@ -1342,6 +1423,7 @@ TEST_F(RedNucleusTest, DisabledFeaturesStillWork) {
 
     rn = rn_create(&config);
     ASSERT_NE(rn, nullptr);
+    rn_init(rn);
 
     /* Basic operations should still work */
     rn_vector3_t vel = make_vector3(1.0f, 0.0f, 0.0f);
