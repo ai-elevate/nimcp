@@ -2190,6 +2190,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_cognitive_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_training_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_swarm_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_snn_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_perception_bridge.c
 
     # Biology layer modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../biology/epigenetics/nimcp_epigenetics.c

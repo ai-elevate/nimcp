@@ -1768,19 +1768,9 @@ endif()
 # WHY:  Verify determinism, numerical stability, physical bounds, API compat
 # HOW:  Subdirectory-based test organization
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/physics/biophysics")
-    message(STATUS "Adding physics biophysics regression tests...")
-    add_subdirectory(regression/physics/biophysics)
-endif()
-
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/physics/thermodynamics")
-    message(STATUS "Adding physics thermodynamics regression tests...")
-    add_subdirectory(regression/physics/thermodynamics)
-endif()
-
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/physics/ephaptic")
-    message(STATUS "Adding physics ephaptic regression tests...")
-    add_subdirectory(regression/physics/ephaptic)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/physics")
+    message(STATUS "Adding physics layer regression tests...")
+    add_subdirectory(regression/physics)
 endif()
 
 # ============================================================================

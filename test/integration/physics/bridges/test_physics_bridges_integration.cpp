@@ -34,6 +34,8 @@
 #include "physics/bridges/nimcp_physics_swarm_bridge.h"
 #include "physics/bridges/nimcp_physics_immune_bridge.h"
 #include "physics/bridges/nimcp_physics_brain_init.h"
+#include "physics/bridges/nimcp_physics_snn_bridge.h"
+#include "physics/bridges/nimcp_physics_perception_bridge.h"
 
 //=============================================================================
 // Test Fixture
@@ -666,6 +668,204 @@ TEST_F(PhysicsBridgesIntegrationTest, BridgeUpdateLoop) {
 
     physics_hypo_bridge_destroy(hypo);
     physics_cog_bridge_destroy(cog);
+}
+
+//=============================================================================
+// SNN Bridge Tests
+//=============================================================================
+
+TEST_F(PhysicsBridgesIntegrationTest, SNNBridgeCreation) {
+    physics_snn_bridge_t* bridge = physics_snn_bridge_create(nullptr);
+    ASSERT_NE(bridge, nullptr);
+    physics_snn_bridge_destroy(bridge);
+}
+
+TEST_F(PhysicsBridgesIntegrationTest, SNNBridgeSpikeRegistration) {
+    physics_snn_bridge_t* bridge = physics_snn_bridge_create(nullptr);
+    ASSERT_NE(bridge, nullptr);
+
+    // Register a spike
+    physics_snn_spike_t spike = {
+        .source_id = 0,
+        .spike_time_ms = 10.0f,
+        .membrane_voltage = 30.0f,
+        .temperature = 310.15f,
+        .atp_level = 1.0f
+    };
+
+    EXPECT_EQ(physics_snn_register_spike(bridge, &spike), 0);
+
+    // Check stats
+    physics_snn_stats_t stats;
+    EXPECT_EQ(physics_snn_get_stats(bridge, &stats), 0);
+    EXPECT_EQ(stats.spikes_encoded, 1U);
+
+    physics_snn_bridge_destroy(bridge);
+}
+
+TEST_F(PhysicsBridgesIntegrationTest, SNNBridgeSTDP) {
+    physics_snn_bridge_t* bridge = physics_snn_bridge_create(nullptr);
+    ASSERT_NE(bridge, nullptr);
+
+    // Create pre and post spikes
+    physics_snn_spike_t pre = {
+        .source_id = 0,
+        .spike_time_ms = 10.0f,
+        .membrane_voltage = 30.0f,
+        .temperature = 310.15f,
+        .atp_level = 1.0f
+    };
+
+    physics_snn_spike_t post = {
+        .source_id = 1,
+        .spike_time_ms = 15.0f,  // 5ms after pre -> LTP
+        .membrane_voltage = 30.0f,
+        .temperature = 310.15f,
+        .atp_level = 1.0f
+    };
+
+    // Compute STDP
+    physics_snn_stdp_event_t event;
+    float dw = physics_snn_compute_stdp(bridge, &pre, &post, &event);
+
+    // Should get LTP (positive weight change)
+    EXPECT_GT(dw, 0.0f);
+    EXPECT_FLOAT_EQ(event.dt_ms, 5.0f);
+
+    physics_snn_bridge_destroy(bridge);
+}
+
+TEST_F(PhysicsBridgesIntegrationTest, SNNBridgeATPGating) {
+    physics_snn_config_t config;
+    physics_snn_default_config(&config);
+    config.enable_atp_gating = true;
+    config.atp_ltp_threshold = 0.3f;
+
+    physics_snn_bridge_t* bridge = physics_snn_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    // With high ATP
+    EXPECT_FALSE(physics_snn_is_learning_gated(bridge));
+
+    // Set low ATP
+    physics_snn_set_atp(bridge, 0.1f);
+    EXPECT_TRUE(physics_snn_is_learning_gated(bridge));
+
+    physics_snn_bridge_destroy(bridge);
+}
+
+TEST_F(PhysicsBridgesIntegrationTest, SNNBridgeTemperatureScaling) {
+    physics_snn_bridge_t* bridge = physics_snn_bridge_create(nullptr);
+    ASSERT_NE(bridge, nullptr);
+
+    // Get baseline STDP windows
+    float ltp_base, ltd_base;
+    physics_snn_get_stdp_windows(bridge, &ltp_base, &ltd_base);
+
+    // Increase temperature
+    physics_snn_set_temperature(bridge, 320.15f);  // +10K
+
+    float ltp_hot, ltd_hot;
+    physics_snn_get_stdp_windows(bridge, &ltp_hot, &ltd_hot);
+
+    // Higher temperature -> narrower windows
+    EXPECT_LT(ltp_hot, ltp_base);
+    EXPECT_LT(ltd_hot, ltd_base);
+
+    physics_snn_bridge_destroy(bridge);
+}
+
+//=============================================================================
+// Perception Bridge Tests
+//=============================================================================
+
+TEST_F(PhysicsBridgesIntegrationTest, PerceptionBridgeCreation) {
+    physics_percept_bridge_t* bridge = physics_percept_bridge_create(nullptr);
+    ASSERT_NE(bridge, nullptr);
+    physics_percept_bridge_destroy(bridge);
+}
+
+TEST_F(PhysicsBridgesIntegrationTest, PerceptionBridgeVisualInput) {
+    physics_percept_bridge_t* bridge = physics_percept_bridge_create(nullptr);
+    ASSERT_NE(bridge, nullptr);
+
+    physics_percept_input_t input = {
+        .modality = PHYSICS_PERCEPT_VISUAL,
+        .channel_id = 0,
+        .spike_rate_hz = 50.0f,
+        .intensity = 0.8f,
+        .temperature = 310.15f,
+        .atp_level = 1.0f
+    };
+
+    physics_percept_output_t output;
+    float result = physics_percept_process_input(bridge, &input, &output);
+
+    EXPECT_GT(result, 0.0f);
+    EXPECT_EQ(output.modality, PHYSICS_PERCEPT_VISUAL);
+    EXPECT_GT(output.gain, 0.0f);
+
+    physics_percept_bridge_destroy(bridge);
+}
+
+TEST_F(PhysicsBridgesIntegrationTest, PerceptionBridgeBinding) {
+    physics_percept_config_t config;
+    physics_percept_default_config(&config);
+    config.enable_binding = true;
+    config.gamma_binding_threshold = 0.3f;
+
+    physics_percept_bridge_t* bridge = physics_percept_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    // Initially no binding
+    EXPECT_FALSE(physics_percept_is_binding_active(bridge));
+
+    // Set high gamma
+    physics_percept_set_oscillations(bridge, 0.5f, 0.2f);
+
+    EXPECT_TRUE(physics_percept_is_binding_active(bridge));
+
+    physics_percept_binding_t binding;
+    physics_percept_get_binding(bridge, &binding);
+    EXPECT_GT(binding.binding_strength, 0.0f);
+
+    physics_percept_bridge_destroy(bridge);
+}
+
+TEST_F(PhysicsBridgesIntegrationTest, PerceptionBridgeFatigue) {
+    physics_percept_bridge_t* bridge = physics_percept_bridge_create(nullptr);
+    ASSERT_NE(bridge, nullptr);
+
+    // Normal ATP - not fatigued
+    EXPECT_FALSE(physics_percept_is_fatigued(bridge));
+
+    // Low ATP - fatigued
+    physics_percept_set_atp(bridge, 0.1f);
+    EXPECT_TRUE(physics_percept_is_fatigued(bridge));
+
+    physics_percept_bridge_destroy(bridge);
+}
+
+TEST_F(PhysicsBridgesIntegrationTest, PerceptionBridgeAttention) {
+    physics_percept_bridge_t* bridge = physics_percept_bridge_create(nullptr);
+    ASSERT_NE(bridge, nullptr);
+
+    // Apply attention modulation
+    physics_percept_attention_t attention = {
+        .target_modality = PHYSICS_PERCEPT_VISUAL,
+        .attention_gain = 1.5f,
+        .spatial_focus_x = 0.5f,
+        .spatial_focus_y = 0.5f,
+        .focus_radius = 0.3f
+    };
+
+    EXPECT_EQ(physics_percept_apply_attention(bridge, &attention), 0);
+
+    // Check gain increased
+    float gain = physics_percept_get_gain(bridge, PHYSICS_PERCEPT_VISUAL);
+    EXPECT_GT(gain, 1.0f);
+
+    physics_percept_bridge_destroy(bridge);
 }
 
 //=============================================================================
