@@ -61,3 +61,37 @@ add_subdirectory(gustatory)
 
 # Sensory Integration tests (cross-modal)
 add_subdirectory(sensory_integration)
+
+# Claustrum tests (consciousness integration)
+add_subdirectory(claustrum)
+
+# Orbitofrontal Cortex tests (value-based decision making)
+add_subdirectory(ofc)
+
+# Phase 5: Memory Circuit
+
+# Entorhinal Cortex tests (BR-7)
+add_subdirectory(entorhinal)
+
+# Perirhinal Cortex tests (BR-8)
+add_subdirectory(perirhinal)
+
+# Parahippocampal Cortex tests
+add_subdirectory(parahippocampal)
+
+# Mammillary Bodies tests
+add_subdirectory(mammillary)
+
+# Retrosplenial Cortex tests (BR-12)
+add_subdirectory(retrosplenial)
+
+# Phase 7: Midbrain and Brainstem Regions
+
+# Periaqueductal Gray tests (BR-14: Pain, defensive behaviors)
+add_subdirectory(pag)
+
+# Red Nucleus tests (BR-15: Motor refinement)
+add_subdirectory(red_nucleus)
+
+# Reticular Formation tests (BR-16: Arousal, consciousness)
+add_subdirectory(reticular)

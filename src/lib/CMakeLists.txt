@@ -319,6 +319,48 @@ set(NIMCP_CORE_SOURCES
     # Sensory Knowledge Graph Wiring (Phase 6)
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/knowledge/nimcp_sensory_kg_wiring.c                           # Sensory module KG registration
 
+    # Claustrum - Cross-modal binding, consciousness integration, salience detection (Phase 7: BR-12)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/claustrum/nimcp_claustrum.c                            # Claustrum core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/claustrum/bridges/nimcp_claustrum_bio_async_bridge.c   # Claustrum bio-async bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/claustrum/bridges/nimcp_claustrum_brain_init.c         # Claustrum brain initialization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/claustrum/bridges/nimcp_claustrum_kg_wiring.c          # Claustrum KG wiring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/claustrum/bridges/nimcp_claustrum_security.c           # Claustrum security bridge
+
+    # Orbitofrontal Cortex (OFC) - Value representation, flexible decision making, reversal learning (Phase 7: BR-13)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/ofc/nimcp_ofc.c                                        # OFC core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/ofc/bridges/nimcp_ofc_bio_async_bridge.c               # OFC bio-async bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/ofc/bridges/nimcp_ofc_brain_init.c                     # OFC brain initialization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/ofc/bridges/nimcp_ofc_kg_wiring.c                      # OFC KG wiring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/ofc/bridges/nimcp_ofc_security.c                       # OFC security bridge
+
+    # Periaqueductal Gray (PAG) - Pain modulation, defensive behaviors, analgesia (Phase 7: BR-14)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/pag/nimcp_pag.c                                        # PAG core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/pag/bridges/nimcp_pag_bio_async_bridge.c               # PAG bio-async bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/pag/bridges/nimcp_pag_brain_init.c                     # PAG brain initialization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/pag/bridges/nimcp_pag_kg_wiring.c                      # PAG KG wiring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/pag/bridges/nimcp_pag_security.c                       # PAG security bridge
+
+    # Red Nucleus - Motor refinement, limb coordination, rubrospinal control (Phase 7: BR-15)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/red_nucleus/nimcp_red_nucleus.c                        # Red nucleus core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/red_nucleus/bridges/nimcp_rn_bio_async_bridge.c        # Red nucleus bio-async bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/red_nucleus/bridges/nimcp_rn_brain_init.c              # Red nucleus brain initialization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/red_nucleus/bridges/nimcp_red_nucleus_kg_wiring.c      # Red nucleus KG wiring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/red_nucleus/bridges/nimcp_rn_security.c                # Red nucleus security bridge
+
+    # Reticular Formation - Arousal, consciousness, sleep-wake control (Phase 7: BR-16)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/reticular/nimcp_reticular.c                            # Reticular formation core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/reticular/bridges/nimcp_reticular_bio_async_bridge.c   # Reticular bio-async bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/reticular/bridges/nimcp_reticular_brain_init.c         # Reticular brain initialization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/reticular/bridges/nimcp_reticular_kg_wiring.c          # Reticular KG wiring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/reticular/bridges/nimcp_reticular_security.c           # Reticular security bridge
+
+    # Retrosplenial Cortex - Spatial memory, navigation, viewpoint transformation (Phase 7: BR-17)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/retrosplenial/nimcp_retrosplenial.c                    # Retrosplenial core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/retrosplenial/bridges/nimcp_rsc_bio_async_bridge.c     # Retrosplenial bio-async bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/retrosplenial/bridges/nimcp_rsc_brain_init.c           # Retrosplenial brain initialization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/retrosplenial/bridges/nimcp_rsc_kg_wiring.c            # Retrosplenial KG wiring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/retrosplenial/bridges/nimcp_rsc_security.c             # Retrosplenial security bridge
+
     # Prefrontal Cortex - Executive function, decision-making (Phase PF1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_adapter.c             # Prefrontal cortex core adapter
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.c      # Prefrontal quantum bridge
