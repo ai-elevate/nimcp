@@ -447,7 +447,7 @@ TEST_F(SensoryBackwardCompatTest, ErrorStrings_NotNull) {
 TEST_F(SensoryBackwardCompatTest, UtilityStrings_NotNull) {
     /* Utility name functions should never return NULL */
     EXPECT_NE(soma_segment_name(BODY_SEG_HAND_R), nullptr);
-    EXPECT_NE(soma_receptor_type_name(RECEPTOR_MEISSNER), nullptr);
+    EXPECT_NE(soma_receptor_type_name(SOMA_RECEPTOR_MEISSNER), nullptr);
     EXPECT_NE(soma_area_name(SOMA_AREA_3A), nullptr);
     EXPECT_NE(soma_pain_type_name(PAIN_SHARP), nullptr);
 
