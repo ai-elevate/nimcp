@@ -32,8 +32,7 @@
 #include <thread>
 #include <atomic>
 
-// Security bridge headers with extern "C" guards
-extern "C" {
+// Security bridge headers (have their own extern "C" guards)
 #include "security/async/nimcp_security_async_bridge.h"
 #include "security/logging/nimcp_security_logging_bridge.h"
 #include "security/immune/nimcp_security_immune_unified_bridge.h"
@@ -42,7 +41,6 @@ extern "C" {
 #include "security/nimcp_pattern_db.h"
 #include "security/nimcp_rate_limiter.h"
 #include "security/nimcp_policy_engine.h"
-}
 
 namespace {
 

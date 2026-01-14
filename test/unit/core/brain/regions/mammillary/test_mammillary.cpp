@@ -723,7 +723,7 @@ TEST_F(MammillaryTest, InitLoggingBridge) {
 TEST_F(MammillaryTest, InitResonanceBridge) {
     EXPECT_EQ(mammillary_init_resonance_bridge(mb, nullptr), 0);
     EXPECT_TRUE(mb->resonance_bridge.initialized);
-    EXPECT_FLOAT_EQ(mb->resonance_bridge.frequency, 40.0f);
+    EXPECT_FLOAT_EQ(mb->resonance_bridge.frequency, 6.0f);  /* Theta band (4-8Hz) */
 }
 
 TEST_F(MammillaryTest, InitCognitiveBridge) {

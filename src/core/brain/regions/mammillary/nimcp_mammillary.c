@@ -69,7 +69,7 @@ mammillary_config_t mammillary_default_config(void) {
     config.enable_spatial_processing = true;
     config.enable_head_direction = true;
     config.enable_background_consolidation = true;
-    config.hippocampal_input_gain = 1.0f;
+    config.hippocampal_input_gain = 0.5f;  /* Start at moderate strength, not max */
     config.thalamic_output_gain = 1.0f;
 
     return config;

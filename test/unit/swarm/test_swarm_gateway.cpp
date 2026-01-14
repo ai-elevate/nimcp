@@ -92,8 +92,6 @@ const swarm_info_t* swarm_gateway_get_swarm_info(
 
 swarm_gateway_config_t swarm_gateway_default_config(void);
 
-} // extern "C"
-
 //=============================================================================
 // Mock Implementation
 //=============================================================================
@@ -105,6 +103,7 @@ swarm_gateway_config_t swarm_gateway_default_config(void) {
     config.telemetry_interval_ms = 1000;
     config.enable_cross_swarm_comm = true;
     return config;
+}
 
 swarm_gateway_t* swarm_gateway_create(const swarm_gateway_config_t* config) {
     if (!config) return nullptr;
@@ -415,7 +414,7 @@ TEST_F(SwarmGatewayTest, TelemetryTracksMessages) {
 
     swarm_gateway_telemetry_t telemetry = swarm_gateway_get_telemetry(gateway);
 
-    EXPECT_EQ(telemetry.messages_relayed, 4u); // 2 broadcasts × 2 swarms
+    EXPECT_EQ(telemetry.messages_relayed, 4u); // 2 broadcasts ï¿½ 2 swarms
     EXPECT_EQ(telemetry.bytes_relayed, 4u * sizeof(message));
 }
 

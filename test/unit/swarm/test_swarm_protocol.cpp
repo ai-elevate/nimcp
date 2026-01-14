@@ -78,8 +78,6 @@ swarm_message_type_t swarm_protocol_phoneme_to_message_type(
     const char* phoneme
 );
 
-} // extern "C"
-
 //=============================================================================
 // Mock Implementation (for testing purposes)
 //=============================================================================
@@ -98,6 +96,7 @@ uint16_t swarm_protocol_compute_crc16(const uint8_t* data, uint32_t length) {
         }
     }
     return crc;
+}
 
 // Phoneme mappings
 const char* swarm_protocol_message_type_to_phoneme(swarm_message_type_t type) {

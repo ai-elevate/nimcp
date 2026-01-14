@@ -65,7 +65,7 @@ TEST_F(SurfaceBrainBridgeTest, Destroy_Null) {
 
 TEST_F(SurfaceBrainBridgeTest, DefaultConfig_ValidValues) {
     EXPECT_TRUE(config.enable_bio_async || !config.enable_bio_async);  // Valid bool
-    EXPECT_GE(config.buffer_size, 0u);
+    EXPECT_GT(config.update_interval_ms, 0u);
 }
 
 TEST_F(SurfaceBrainBridgeTest, DefaultConfig_Null) {
@@ -79,20 +79,20 @@ TEST_F(SurfaceBrainBridgeTest, ConnectGeometry_ValidContext) {
     surface_geometry_ctx_t* ctx = surface_geometry_create(&geo_config);
     ASSERT_NE(ctx, nullptr);
 
-    int ret = surface_geometry_bridge_connect(bridge, ctx);
+    int ret = surface_geometry_bridge_connect_geometry(bridge, ctx);
     EXPECT_EQ(ret, 0);
 
     surface_geometry_destroy(ctx);
 }
 
 TEST_F(SurfaceBrainBridgeTest, ConnectGeometry_NullContext) {
-    int ret = surface_geometry_bridge_connect(bridge, nullptr);
+    int ret = surface_geometry_bridge_connect_geometry(bridge, nullptr);
     EXPECT_EQ(ret, -1);
 }
 
 TEST_F(SurfaceBrainBridgeTest, ConnectGeometry_NullBridge) {
     surface_geometry_ctx_t* ctx = surface_geometry_create(nullptr);
-    int ret = surface_geometry_bridge_connect(nullptr, ctx);
+    int ret = surface_geometry_bridge_connect_geometry(nullptr, ctx);
     EXPECT_EQ(ret, -1);
     if (ctx) surface_geometry_destroy(ctx);
 }
@@ -165,7 +165,7 @@ TEST_F(SurfaceBioAsyncBridgeTest, Destroy_Null) {
 }
 
 TEST_F(SurfaceBioAsyncBridgeTest, DefaultConfig_ValidValues) {
-    EXPECT_GT(config.buffer_size, 0u);
+    EXPECT_GT(config.update_interval_ms, 0u);
 }
 
 TEST_F(SurfaceBioAsyncBridgeTest, DefaultConfig_Null) {
@@ -177,14 +177,14 @@ TEST_F(SurfaceBioAsyncBridgeTest, ConnectGeometry_Valid) {
     surface_geometry_ctx_t* ctx = surface_geometry_create(nullptr);
     ASSERT_NE(ctx, nullptr);
 
-    int ret = surface_bio_async_bridge_connect_geometry(bridge, ctx);
+    int ret = surface_bio_async_bridge_set_geometry_ctx(bridge, ctx);
     EXPECT_EQ(ret, 0);
 
     surface_geometry_destroy(ctx);
 }
 
 TEST_F(SurfaceBioAsyncBridgeTest, ConnectGeometry_NullContext) {
-    int ret = surface_bio_async_bridge_connect_geometry(bridge, nullptr);
+    int ret = surface_bio_async_bridge_set_geometry_ctx(bridge, nullptr);
     EXPECT_EQ(ret, -1);
 }
 
@@ -195,24 +195,26 @@ TEST_F(SurfaceBioAsyncBridgeTest, IsConnected_Initially) {
 
 TEST_F(SurfaceBioAsyncBridgeTest, GetStats_Initial) {
     surface_bio_async_stats_t stats = {};
-    int ret = surface_bio_async_bridge_get_stats(bridge, &stats);
+    int ret = surface_bio_async_get_stats(bridge, &stats);
     EXPECT_EQ(ret, 0);
     EXPECT_EQ(stats.messages_sent, 0u);
     EXPECT_EQ(stats.messages_received, 0u);
 }
 
 TEST_F(SurfaceBioAsyncBridgeTest, GetStats_NullOutput) {
-    int ret = surface_bio_async_bridge_get_stats(bridge, nullptr);
+    int ret = surface_bio_async_get_stats(bridge, nullptr);
     EXPECT_EQ(ret, -1);
 }
 
 TEST_F(SurfaceBioAsyncBridgeTest, SendGeometryUpdate_NotConnected) {
-    surface_geometry_params_t params = {};
-    params.chi = 0.5f;
-    params.rho = 0.5f;
+    surface_bio_msg_geometry_update_t update = {};
+    update.params.chi = 0.5f;
+    update.params.rho = 0.5f;
+    update.branch_point_id = 1;
+    update.timestamp_ms = 0;
 
     // Should fail or queue since not connected
-    int ret = surface_bio_async_send_geometry_update(bridge, &params, 1);
+    int ret = surface_bio_async_send_geometry_update(bridge, &update);
     // May succeed (queued) or fail (not connected)
     EXPECT_TRUE(ret == 0 || ret == -1);
 }
@@ -534,8 +536,8 @@ protected:
 
 TEST_F(CrossBridgeTest, ConnectAllBridges) {
     // Connect all bridges to same geometry context
-    int ret1 = surface_geometry_bridge_connect(brain_bridge, geo_ctx);
-    int ret2 = surface_bio_async_bridge_connect_geometry(bio_bridge, geo_ctx);
+    int ret1 = surface_geometry_bridge_connect_geometry(brain_bridge, geo_ctx);
+    int ret2 = surface_bio_async_bridge_set_geometry_ctx(bio_bridge, geo_ctx);
     int ret3 = surface_immune_bridge_connect_geometry(immune_bridge, geo_ctx);
 
     EXPECT_EQ(ret1, 0);
@@ -545,7 +547,7 @@ TEST_F(CrossBridgeTest, ConnectAllBridges) {
 
 TEST_F(CrossBridgeTest, AllBridgesIndependent) {
     // Each bridge should work independently
-    surface_geometry_bridge_connect(brain_bridge, geo_ctx);
+    surface_geometry_bridge_connect_geometry(brain_bridge, geo_ctx);
 
     bool brain_connected = surface_geometry_bridge_is_connected(brain_bridge);
     bool bio_connected = surface_bio_async_bridge_is_connected(bio_bridge);

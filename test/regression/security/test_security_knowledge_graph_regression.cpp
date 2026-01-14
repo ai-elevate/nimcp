@@ -127,7 +127,7 @@ TEST_F(SecurityKnowledgeGraphRegressionTest, CreateDestroyStability) {
         security_kg_bridge_t* br = security_kg_bridge_create(&cfg);
         ASSERT_NE(br, nullptr) << "Create failed on iteration " << i;
 
-        sec_kg_state_t state;
+        sec_kg_bridge_state_t state;
         int ret = security_kg_get_state(br, &state);
         EXPECT_EQ(ret, 0);
         EXPECT_EQ(state.operational_state, SEC_KG_STATE_READY);
@@ -468,7 +468,7 @@ TEST_F(SecurityKnowledgeGraphRegressionTest, LockdownBlocksAllOperations) {
     EXPECT_EQ(t_result, SEC_KG_TRAVERSAL_DENIED);
 
     /* Verify state is lockdown */
-    sec_kg_state_t state;
+    sec_kg_bridge_state_t state;
     security_kg_get_state(bridge, &state);
     EXPECT_EQ(state.operational_state, SEC_KG_STATE_LOCKDOWN);
     EXPECT_TRUE(state.lockdown_active);

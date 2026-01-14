@@ -59,7 +59,7 @@ namespace {
 //=============================================================================
 
 /** Tolerance for floating point comparisons */
-static constexpr float FLOAT_TOLERANCE = 1e-5f;
+static constexpr float LOCAL_FLOAT_TOLERANCE = 1e-5f;
 
 /** Standard test timeout (100ms) */
 static constexpr int TEST_TIMEOUT_MS = 100;
@@ -1126,7 +1126,8 @@ TEST_F(SecurityImmuneIntegrationTest,
     EXPECT_GT(antigen_id, 0u) << "Stage 1: Antigen should be created";
 
     // Stage 2: Immune Response - Trigger inflammation
-    brain_immune_initiate_inflammation(immune_system_, INFLAMMATION_LOCAL);
+    uint32_t site_id = 0;
+    brain_immune_initiate_inflammation(immune_system_, 0, antigen_id, &site_id);
     ASSERT_EQ(0, sec_immune_unified_update(bridge_));
 
     // Stage 3: Modulation - Verify threshold changed

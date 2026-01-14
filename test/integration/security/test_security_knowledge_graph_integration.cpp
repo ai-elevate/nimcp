@@ -342,7 +342,7 @@ TEST_F(SecurityKnowledgeGraphIntegrationTest, LockdownAndRecovery) {
     /* Phase 2: Attack detected, enter lockdown */
     security_kg_enter_lockdown(bridge, "Massive attack detected");
 
-    sec_kg_state_t state;
+    sec_kg_bridge_state_t state;
     security_kg_get_state(bridge, &state);
     EXPECT_EQ(state.operational_state, SEC_KG_STATE_LOCKDOWN);
     EXPECT_TRUE(state.lockdown_active);
@@ -558,7 +558,7 @@ TEST_F(SecurityKnowledgeGraphIntegrationTest, ResetStatsClearsAllCounters) {
 
 TEST_F(SecurityKnowledgeGraphIntegrationTest, CompleteSecurityWorkflow) {
     /* Step 1: Initialize bridge and verify ready state */
-    sec_kg_state_t state;
+    sec_kg_bridge_state_t state;
     security_kg_get_state(bridge, &state);
     EXPECT_EQ(state.operational_state, SEC_KG_STATE_READY);
 
