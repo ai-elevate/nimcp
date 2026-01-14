@@ -146,15 +146,46 @@ static void snn_simulation_destroy_internal(snn_simulation_t* sim) {
     nimcp_free(sim);
 }
 
+/** Track spike buffer overflow events for monitoring */
+static uint64_t g_spike_buffer_overflow_count = 0;
+static uint64_t g_last_overflow_warning_count = 0;
+
 /**
- * @brief Record spike to spike train
+ * @brief Record spike to spike train with overflow protection
+ *
+ * WHAT: Record spike timestamp to circular buffer
+ * WHY:  Track spike history for STDP, analysis, and decoding
+ * HOW:  Circular buffer wraps when full, overwrites oldest spikes
+ *
+ * NOTE: When buffer is full, old spikes are overwritten (circular buffer).
+ *       This is intentional behavior for bounded memory, but we log
+ *       warnings to detect pathological high-firing scenarios.
  */
 static void record_spike(snn_spike_train_t* train, uint64_t time_us) {
     uint32_t idx = train->write_idx;
     train->spike_times[idx] = time_us;
     train->write_idx = (idx + 1) % SNN_SPIKE_BUFFER_SIZE;
+
     if (train->count < SNN_SPIKE_BUFFER_SIZE) {
         train->count++;
+    } else {
+        /* Buffer overflow - old spikes being overwritten
+         * WHAT: Track overflow events
+         * WHY:  High spike rates may indicate network instability
+         * HOW:  Log periodic warnings (not every overflow to avoid log spam)
+         */
+        g_spike_buffer_overflow_count++;
+
+        /* Log warning every 1000 overflows to avoid log spam */
+        if (g_spike_buffer_overflow_count - g_last_overflow_warning_count >= 1000) {
+            NIMCP_LOGGING_WARN("Spike buffer overflow: neuron %u buffer full "
+                                  "(capacity=%u), overwriting old spikes. "
+                                  "Total overflows: %lu. Consider increasing "
+                                  "SNN_SPIKE_BUFFER_SIZE or reducing simulation time.",
+                                  train->neuron_id, SNN_SPIKE_BUFFER_SIZE,
+                                  (unsigned long)g_spike_buffer_overflow_count);
+            g_last_overflow_warning_count = g_spike_buffer_overflow_count;
+        }
     }
     train->total_spikes++;
 }

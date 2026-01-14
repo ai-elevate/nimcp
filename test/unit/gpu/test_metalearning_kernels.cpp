@@ -46,9 +46,9 @@ protected:
     // Helper to create a tensor filled with a constant value
     nimcp_gpu_tensor_t* CreateFilledTensor(size_t* dims, size_t rank, float value) {
         if (!ctx) return nullptr;
-        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_DTYPE_FLOAT32);
+        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_GPU_PRECISION_FP32);
         if (tensor) {
-            nimcp_gpu_tensor_fill(ctx, tensor, value);
+            nimcp_gpu_fill(ctx, tensor, value);
         }
         return tensor;
     }
@@ -73,15 +73,17 @@ protected:
 
     // Helper to copy tensor to host
     std::vector<float> CopyToHost(nimcp_gpu_tensor_t* tensor) {
-        size_t n = nimcp_gpu_tensor_numel(tensor);
+        size_t n = tensor->numel;
         std::vector<float> host_data(n);
-        nimcp_gpu_tensor_to_host(ctx, tensor, host_data.data(), n * sizeof(float));
+        nimcp_gpu_tensor_to_host(tensor, host_data.data());
         return host_data;
     }
 
     // Helper to set tensor from host
-    void SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
-        nimcp_gpu_tensor_from_host(ctx, tensor, data.data(), data.size() * sizeof(float));
+    nimcp_gpu_tensor_t* SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
+        if (tensor) nimcp_gpu_tensor_destroy(tensor);
+        size_t dims[1] = {data.size()};
+        return nimcp_gpu_tensor_from_host(ctx, data.data(), dims, 1, NIMCP_GPU_PRECISION_FP32);
     }
 
     // Helper to create MAML state
@@ -457,7 +459,7 @@ TEST_F(MetalearningKernelTest, MAMLMetaUpdate_UpdatesMetaWeights) {
     ASSERT_NE(state, nullptr);
 
     // Set some outer gradients
-    nimcp_gpu_tensor_fill(ctx, state->outer_grads, 0.1f);
+    nimcp_gpu_fill(ctx, state->outer_grads, 0.1f);
 
     auto initial_meta_weights = CopyToHost(state->meta_weights);
 
@@ -715,7 +717,7 @@ TEST_F(MetalearningKernelTest, ProtoNetComputePrototypes_ComputesMeanEmbeddings)
             labels[c * k_shot + k] = static_cast<float>(c);
         }
     }
-    SetFromHost(support_labels, labels);
+    support_labels = SetFromHost(support_labels, labels);
 
     nimcp_gpu_protonet_params_t params = nimcp_gpu_protonet_params_default();
 
@@ -754,7 +756,7 @@ TEST_F(MetalearningKernelTest, ProtoNetClassify_ProducesValidPredictions) {
     ASSERT_NE(state, nullptr);
 
     // Set some prototype values
-    nimcp_gpu_tensor_fill(ctx, state->prototypes, 1.0f);
+    nimcp_gpu_fill(ctx, state->prototypes, 1.0f);
 
     nimcp_gpu_tensor_t* query_embeddings = Create2DTensor(n_query, embedding_dim, 0.5f);
     nimcp_gpu_tensor_t* predictions = Create1DTensor(n_query, -1.0f);
@@ -792,8 +794,8 @@ TEST_F(MetalearningKernelTest, ProtoNetLoss_ComputesNonNegativeLoss) {
     ASSERT_NE(state, nullptr);
 
     // Set some prototype and logit values
-    nimcp_gpu_tensor_fill(ctx, state->prototypes, 1.0f);
-    nimcp_gpu_tensor_fill(ctx, state->logits, 0.5f);
+    nimcp_gpu_fill(ctx, state->prototypes, 1.0f);
+    nimcp_gpu_fill(ctx, state->logits, 0.5f);
 
     nimcp_gpu_tensor_t* query_labels = Create1DTensor(n_query, 0.0f);
 
@@ -839,7 +841,7 @@ TEST_F(MetalearningKernelTest, ProtoNetEpisode_PerformsFullEpisode) {
             s_labels[c * k_shot + k] = static_cast<float>(c);
         }
     }
-    SetFromHost(support_labels, s_labels);
+    support_labels = SetFromHost(support_labels, s_labels);
 
     float loss_out = -1.0f;
 
@@ -915,8 +917,8 @@ TEST_F(MetalearningKernelTest, MetaMemoryRead_ProducesValidOutput) {
     ASSERT_NE(state, nullptr);
 
     // Initialize memory with some values
-    nimcp_gpu_tensor_fill(ctx, state->keys, 0.1f);
-    nimcp_gpu_tensor_fill(ctx, state->values, 1.0f);
+    nimcp_gpu_fill(ctx, state->keys, 0.1f);
+    nimcp_gpu_fill(ctx, state->values, 1.0f);
 
     nimcp_gpu_tensor_t* query_key = Create1DTensor(key_dim, 0.1f);
     nimcp_gpu_tensor_t* read_output = Create1DTensor(value_dim, 0.0f);
@@ -958,8 +960,8 @@ TEST_F(MetalearningKernelTest, MetaMemoryWrite_UpdatesMemory) {
     ASSERT_NE(state, nullptr);
 
     // Initialize memory to zeros
-    nimcp_gpu_tensor_fill(ctx, state->keys, 0.0f);
-    nimcp_gpu_tensor_fill(ctx, state->values, 0.0f);
+    nimcp_gpu_fill(ctx, state->keys, 0.0f);
+    nimcp_gpu_fill(ctx, state->values, 0.0f);
 
     nimcp_gpu_tensor_t* key = Create1DTensor(key_dim, 1.0f);
     nimcp_gpu_tensor_t* value = Create1DTensor(value_dim, 2.0f);
@@ -998,7 +1000,7 @@ TEST_F(MetalearningKernelTest, MetaMemoryUpdate_AppliesDecay) {
     ASSERT_NE(state, nullptr);
 
     // Set high usage
-    nimcp_gpu_tensor_fill(ctx, state->usage, 1.0f);
+    nimcp_gpu_fill(ctx, state->usage, 1.0f);
 
     nimcp_gpu_meta_memory_params_t params = nimcp_gpu_meta_memory_params_default();
     params.forget_rate = 0.1f;
@@ -1033,9 +1035,9 @@ TEST_F(MetalearningKernelTest, MetaMemoryReset_ClearsMemory) {
     ASSERT_NE(state, nullptr);
 
     // Fill memory with non-zero values
-    nimcp_gpu_tensor_fill(ctx, state->keys, 1.0f);
-    nimcp_gpu_tensor_fill(ctx, state->values, 1.0f);
-    nimcp_gpu_tensor_fill(ctx, state->usage, 1.0f);
+    nimcp_gpu_fill(ctx, state->keys, 1.0f);
+    nimcp_gpu_fill(ctx, state->values, 1.0f);
+    nimcp_gpu_fill(ctx, state->usage, 1.0f);
 
     bool result = nimcp_gpu_meta_memory_reset(ctx, state);
     EXPECT_TRUE(result);
@@ -1129,8 +1131,8 @@ TEST_F(MetalearningKernelTest, TaskEmbedFiLM_ModulatesActivations) {
     ASSERT_NE(state, nullptr);
 
     // Set FiLM parameters
-    nimcp_gpu_tensor_fill(ctx, state->film_gamma, 2.0f);  // Scale by 2
-    nimcp_gpu_tensor_fill(ctx, state->film_beta, 1.0f);   // Shift by 1
+    nimcp_gpu_fill(ctx, state->film_gamma, 2.0f);  // Scale by 2
+    nimcp_gpu_fill(ctx, state->film_beta, 1.0f);   // Shift by 1
 
     nimcp_gpu_tensor_t* activations = Create2DTensor(batch_size, embed_dim, 1.0f);
 
@@ -1193,8 +1195,8 @@ TEST_F(MetalearningKernelTest, TaskEmbedSimilarity_OrthogonalVectorsLowSimilarit
         v1[i] = 1.0f;
         v2[embed_dim / 2 + i] = 1.0f;
     }
-    SetFromHost(embed1, v1);
-    SetFromHost(embed2, v2);
+    embed1 = SetFromHost(embed1, v1);
+    embed2 = SetFromHost(embed2, v2);
 
     float similarity = 1.0f;
 
@@ -1229,7 +1231,7 @@ TEST_F(MetalearningKernelTest, SampleEpisode_ProducesValidSplits) {
     for (size_t i = 0; i < n_samples; i++) {
         labels[i] = static_cast<float>(i % 10);
     }
-    SetFromHost(data_y, labels);
+    data_y = SetFromHost(data_y, labels);
 
     nimcp_gpu_tensor_t* support_x = Create2DTensor(n_way * k_shot, input_dim, 0.0f);
     nimcp_gpu_tensor_t* support_y = Create1DTensor(n_way * k_shot, -1.0f);
@@ -1301,7 +1303,7 @@ TEST_F(MetalearningKernelTest, FewShotAccuracy_ComputesPartialAccuracy) {
     for (size_t i = 0; i < n_samples / 2; i++) {
         preds[i] = 1.0f;  // Wrong prediction
     }
-    SetFromHost(predictions, preds);
+    predictions = SetFromHost(predictions, preds);
 
     float accuracy = -1.0f;
 
@@ -1684,8 +1686,8 @@ TEST_F(MetalearningKernelTest, Integration_MAMLFewShotLearning) {
         for (size_t i = 0; i < n_samples; i++) {
             labels[i] = static_cast<float>(i % 5);
         }
-        SetFromHost(support_y, labels);
-        SetFromHost(query_y, labels);
+        support_y = SetFromHost(support_y, labels);
+        query_y = SetFromHost(query_y, labels);
 
         bool result = nimcp_gpu_maml_step(ctx, state, support_x, support_y, query_x, query_y, &params);
         EXPECT_TRUE(result);
@@ -1780,8 +1782,8 @@ TEST_F(MetalearningKernelTest, Integration_ProtoNetClassification) {
             }
         }
     }
-    SetFromHost(support_embeddings, s_embed);
-    SetFromHost(support_labels, s_labels);
+    support_embeddings = SetFromHost(support_embeddings, s_embed);
+    support_labels = SetFromHost(support_labels, s_labels);
 
     // Create query set from class 0
     nimcp_gpu_tensor_t* query_embeddings = Create2DTensor(n_query, embedding_dim, 0.0f);
@@ -1794,7 +1796,7 @@ TEST_F(MetalearningKernelTest, Integration_ProtoNetClassification) {
             q_embed[q * embedding_dim + d] = (d == 0) ? 1.0f : 0.1f;  // Similar to class 0
         }
     }
-    SetFromHost(query_embeddings, q_embed);
+    query_embeddings = SetFromHost(query_embeddings, q_embed);
 
     float loss = -1.0f;
     bool result = nimcp_gpu_protonet_episode(ctx, state, support_embeddings, support_labels,
@@ -1969,7 +1971,7 @@ TEST_F(MetalearningKernelTest, Integration_EndToEndFewShotPipeline) {
     for (size_t i = 0; i < n_data; i++) {
         labels[i] = static_cast<float>(i % 10);
     }
-    SetFromHost(data_y, labels);
+    data_y = SetFromHost(data_y, labels);
 
     // Create episode tensors
     nimcp_gpu_tensor_t* support_x = Create2DTensor(n_way * k_shot, input_dim, 0.0f);

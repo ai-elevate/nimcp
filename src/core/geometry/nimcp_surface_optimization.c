@@ -43,6 +43,12 @@
 // INTERNAL STRUCTURES
 //=============================================================================
 
+/** Maximum consecutive divergence steps before early exit */
+#define SURFACE_OPT_MAX_DIVERGENCE_STEPS 10
+
+/** Divergence threshold: area increase ratio that triggers divergence counter */
+#define SURFACE_OPT_DIVERGENCE_THRESHOLD 1.1f
+
 /**
  * @brief Generic optimizer structure
  */
@@ -70,6 +76,11 @@ struct surface_optimizer_struct {
     bool initialized;
     bool converged;
     uint32_t iteration;
+
+    /* Divergence detection */
+    float best_area;                /**< Best area seen so far */
+    uint32_t divergence_count;      /**< Consecutive steps with area increase */
+    bool diverged;                  /**< True if optimization is diverging */
 
     /* Solution storage */
     surface_branch_point_t* solution;
@@ -1544,6 +1555,11 @@ int surface_optimizer_init(
     optimizer->converged = false;
     optimizer->iteration = 0;
 
+    /* Initialize divergence tracking */
+    optimizer->best_area = optimizer->current_area;
+    optimizer->divergence_count = 0;
+    optimizer->diverged = false;
+
     return 0;
 }
 
@@ -1652,6 +1668,22 @@ int surface_optimizer_step(
             break;
     }
 
+    /* Divergence detection: track if optimization is consistently increasing area */
+    if (optimizer->current_area < optimizer->best_area) {
+        /* Improvement: update best and reset divergence counter */
+        optimizer->best_area = optimizer->current_area;
+        optimizer->divergence_count = 0;
+    } else if (optimizer->current_area > old_area * SURFACE_OPT_DIVERGENCE_THRESHOLD) {
+        /* Significant increase: increment divergence counter */
+        optimizer->divergence_count++;
+
+        if (optimizer->divergence_count >= SURFACE_OPT_MAX_DIVERGENCE_STEPS) {
+            /* Divergence detected: early exit */
+            optimizer->diverged = true;
+            optimizer->converged = true;  /* Mark as converged to stop iterations */
+        }
+    }
+
     optimizer->iteration++;
     return 0;
 }
@@ -1691,7 +1723,8 @@ int surface_optimizer_run(
     memset(result, 0, sizeof(*result));
     result->surface_area = optimizer->current_area;
     result->iterations = optimizer->iteration;
-    result->converged = optimizer->converged;
+    result->converged = optimizer->converged && !optimizer->diverged;
+    result->diverged = optimizer->diverged;
 
     /* Compute wire length */
     result->wire_length = 0.0f;

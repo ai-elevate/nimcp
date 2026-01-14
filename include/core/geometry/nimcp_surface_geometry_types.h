@@ -33,6 +33,19 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <math.h>  /* For M_PI, fabsf */
+
+//=============================================================================
+// MATHEMATICAL CONSTANTS
+//=============================================================================
+
+/** Pi constant - define if not available from math.h */
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+/** Pi as single-precision float for computation */
+#define SURFACE_PI_F ((float)M_PI)
 
 //=============================================================================
 // CONSTANTS - From Paper Predictions
@@ -60,17 +73,30 @@ extern "C" {
 #define SURFACE_STEINER_LENGTH_OVERHEAD 1.25f
 
 /** Steiner angle prediction (2*pi/3 radians = 120 degrees) */
-#define SURFACE_STEINER_ANGLE (2.0f * 3.14159265f / 3.0f)
+#define SURFACE_STEINER_ANGLE (2.0f * SURFACE_PI_F / 3.0f)
 
 /** Orthogonal sprout angle (pi/2 radians = 90 degrees) */
-#define SURFACE_ORTHOGONAL_SPROUT_ANGLE (3.14159265f / 2.0f)
+#define SURFACE_ORTHOGONAL_SPROUT_ANGLE (SURFACE_PI_F / 2.0f)
 
 //=============================================================================
 // NUMERICAL STABILITY CONSTANTS
 //=============================================================================
 
-/** Minimum determinant for metric tensor (avoid singularities) */
+/** Minimum determinant for metric tensor (avoid singularities) - absolute threshold */
 #define SURFACE_MIN_DETERMINANT 1e-10f
+
+/**
+ * @brief Scale-relative determinant threshold for metric tensor validation
+ *
+ * For surfaces of varying scale, using an absolute threshold can cause:
+ * - False negatives on large surfaces (det >> 1e-10 but still degenerate)
+ * - False positives on small surfaces (det ~ 1e-10 but valid)
+ *
+ * Use: det > SURFACE_MIN_DETERMINANT_SCALED(mean_radius_squared)
+ * where mean_radius_squared is the characteristic surface area scale.
+ */
+#define SURFACE_MIN_DETERMINANT_SCALED(mean_radius_sq) \
+    (SURFACE_MIN_DETERMINANT * (mean_radius_sq))
 
 /** Maximum optimization iterations */
 #define SURFACE_MAX_ITERATIONS 1000
@@ -365,6 +391,7 @@ typedef struct surface_optimization_result_struct {
     uint32_t iterations;        /**< Number of iterations to converge */
     float final_residual;       /**< Final optimization residual */
     bool converged;             /**< True if converged within tolerance */
+    bool diverged;              /**< True if optimization diverged (area increasing) */
 
     /* Statistics */
     uint32_t num_bifurcations;  /**< k=3 nodes */
@@ -569,11 +596,11 @@ typedef struct surface_layer_comm_struct {
 
 /** Check if solid angle indicates planarity (within 10%) */
 #define SURFACE_IS_PLANAR(omega) \
-    (fabsf((omega) - 2.0f * 3.14159265f) < 0.2f * 3.14159265f)
+    (fabsf((omega) - 2.0f * SURFACE_PI_F) < 0.2f * SURFACE_PI_F)
 
 /** Check if angles are Steiner-symmetric (within 10%) */
 #define SURFACE_IS_STEINER_SYMMETRIC(theta) \
-    (fabsf((theta) - SURFACE_STEINER_ANGLE) < 0.1f * 3.14159265f)
+    (fabsf((theta) - SURFACE_STEINER_ANGLE) < 0.1f * SURFACE_PI_F)
 
 /** Clamp value to range */
 #define SURFACE_CLAMP(x, lo, hi) \

@@ -81,7 +81,7 @@ TEST_F(EligibilityBurstTest, BurstDetection_Flag) {
 TEST_F(EligibilityBurstTest, BurstDetection_Threshold) {
     // Manually set high concentration without setting burst flag
     phasic_tonic.in_burst_state = false;
-    phasic_tonic.total_concentration = 0.5f;  // Above threshold (0.3)
+    phasic_tonic_set_total_concentration(&phasic_tonic, 0.5f);  // Above threshold (0.3)
 
     // Should still detect as burst via concentration
     EXPECT_TRUE(eligibility_is_in_burst(&phasic_tonic, &burst_config));

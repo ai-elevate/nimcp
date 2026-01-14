@@ -46,9 +46,9 @@ protected:
     // Helper to create a tensor filled with a constant value
     nimcp_gpu_tensor_t* CreateFilledTensor(size_t* dims, size_t rank, float value) {
         if (!ctx) return nullptr;
-        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_DTYPE_FLOAT32);
+        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_GPU_PRECISION_FP32);
         if (tensor) {
-            nimcp_gpu_tensor_fill(ctx, tensor, value);
+            nimcp_gpu_fill(ctx, tensor, value);
         }
         return tensor;
     }
@@ -67,15 +67,17 @@ protected:
 
     // Helper to copy tensor to host
     std::vector<float> CopyToHost(nimcp_gpu_tensor_t* tensor) {
-        size_t n = nimcp_gpu_tensor_numel(tensor);
+        size_t n = tensor->numel;
         std::vector<float> host_data(n);
-        nimcp_gpu_tensor_to_host(ctx, tensor, host_data.data(), n * sizeof(float));
+        nimcp_gpu_tensor_to_host(tensor, host_data.data());
         return host_data;
     }
 
     // Helper to set tensor from host
-    void SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
-        nimcp_gpu_tensor_from_host(ctx, tensor, data.data(), data.size() * sizeof(float));
+    nimcp_gpu_tensor_t* SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
+        if (tensor) nimcp_gpu_tensor_destroy(tensor);
+        size_t dims[1] = {data.size()};
+        return nimcp_gpu_tensor_from_host(ctx, data.data(), dims, 1, NIMCP_GPU_PRECISION_FP32);
     }
 
     // Helper to create amygdala state
@@ -441,8 +443,8 @@ TEST_F(EmotionKernelTest, AmygdalaFearConditioning_LearnsAssociations) {
     std::vector<float> us_data(n_stimuli, 0.0f);
     cs_data[0] = 1.0f;  // CS at index 0
     us_data[1] = 1.0f;  // US at index 1
-    SetFromHost(cs, cs_data);
-    SetFromHost(us, us_data);
+    cs = SetFromHost(cs, cs_data);
+    us = SetFromHost(us, us_data);
 
     nimcp_gpu_amygdala_params_t params = nimcp_gpu_amygdala_params_default();
 
@@ -482,7 +484,7 @@ TEST_F(EmotionKernelTest, AmygdalaExtinction_ReducesFearResponse) {
     ASSERT_NE(state, nullptr);
 
     // Pre-establish fear memory
-    nimcp_gpu_tensor_fill(ctx, state->fear_memory, 0.8f);
+    nimcp_gpu_fill(ctx, state->fear_memory, 0.8f);
 
     nimcp_gpu_tensor_t* cs = Create1DTensor(n_stimuli, 1.0f);     // CS present
     nimcp_gpu_tensor_t* no_us = Create1DTensor(n_stimuli, 0.0f);  // No US (extinction)
@@ -530,7 +532,7 @@ TEST_F(EmotionKernelTest, AmygdalaPrefrontalInhibition_ReducesOutput) {
     ASSERT_NE(state, nullptr);
 
     // Set high central output
-    nimcp_gpu_tensor_fill(ctx, state->central_output, 0.9f);
+    nimcp_gpu_fill(ctx, state->central_output, 0.9f);
 
     nimcp_gpu_tensor_t* pfc_signal = Create1DTensor(n_stimuli, 0.8f);  // Strong PFC inhibition
 
@@ -603,19 +605,19 @@ TEST_F(EmotionKernelTest, OFCValueUpdate_LearnsFromOutcome) {
     ASSERT_NE(state, nullptr);
 
     // Set initial values
-    nimcp_gpu_tensor_fill(ctx, state->option_values, 0.5f);
+    nimcp_gpu_fill(ctx, state->option_values, 0.5f);
 
     // Choose option 0
     nimcp_gpu_tensor_t* chosen_option = Create1DTensor(n_options, 0.0f);
     std::vector<float> chosen_data(n_options, 0.0f);
     chosen_data[0] = 1.0f;
-    SetFromHost(chosen_option, chosen_data);
+    chosen_option = SetFromHost(chosen_option, chosen_data);
 
     // High reward outcome
     nimcp_gpu_tensor_t* outcome = Create1DTensor(n_outcomes, 0.0f);
     std::vector<float> outcome_data(n_outcomes, 0.0f);
     outcome_data[0] = 1.0f;  // Positive outcome
-    SetFromHost(outcome, outcome_data);
+    outcome = SetFromHost(outcome, outcome_data);
 
     nimcp_gpu_ofc_params_t params = nimcp_gpu_ofc_params_default();
 
@@ -650,7 +652,7 @@ TEST_F(EmotionKernelTest, OFCChoiceProbabilities_SumsToOne) {
 
     // Set varying option values
     std::vector<float> values = {0.1f, 0.3f, 0.5f, 0.7f, 0.9f};
-    SetFromHost(state->option_values, values);
+    state->option_values = SetFromHost(state->option_values, values);
 
     nimcp_gpu_ofc_params_t params = nimcp_gpu_ofc_params_default();
 
@@ -729,7 +731,7 @@ TEST_F(EmotionKernelTest, NAccRewardPrediction_PredictsFutureReward) {
     nimcp_gpu_tensor_t* action = Create1DTensor(n_states, 0.0f);
     std::vector<float> action_data(n_states, 0.0f);
     action_data[0] = 1.0f;  // Action 0
-    SetFromHost(action, action_data);
+    action = SetFromHost(action, action_data);
 
     nimcp_gpu_nacc_params_t params = nimcp_gpu_nacc_params_default();
 
@@ -775,7 +777,7 @@ TEST_F(EmotionKernelTest, NAccComputeMotivation_BalancesRewardAndEffort) {
     }
 
     // Test with high effort
-    nimcp_gpu_tensor_fill(ctx, effort_required, 0.9f);  // High effort
+    nimcp_gpu_fill(ctx, effort_required, 0.9f);  // High effort
     nimcp_gpu_nacc_compute_motivation(ctx, state, dopamine, effort_required, &params);
 
     auto motivation_high_effort = CopyToHost(state->motivation_signal);
@@ -840,8 +842,8 @@ TEST_F(EmotionKernelTest, NAccGoNoGo_GeneratesDecisionSignals) {
     ASSERT_NE(state, nullptr);
 
     // Set D1/D2 activity
-    nimcp_gpu_tensor_fill(ctx, state->msn_d1_activity, 0.7f);
-    nimcp_gpu_tensor_fill(ctx, state->msn_d2_activity, 0.3f);
+    nimcp_gpu_fill(ctx, state->msn_d1_activity, 0.7f);
+    nimcp_gpu_fill(ctx, state->msn_d2_activity, 0.3f);
 
     nimcp_gpu_tensor_t* go_signal = Create1DTensor(n_states, 0.0f);
     nimcp_gpu_tensor_t* nogo_signal = Create1DTensor(n_states, 0.0f);
@@ -890,7 +892,7 @@ TEST_F(EmotionKernelTest, ACCConflictDetection_DetectsResponseConflict) {
     std::vector<float> conflict_pattern(n_responses, 0.1f);
     conflict_pattern[0] = 0.8f;
     conflict_pattern[1] = 0.8f;  // Two responses with similar high activation
-    SetFromHost(response_activations, conflict_pattern);
+    response_activations = SetFromHost(response_activations, conflict_pattern);
 
     nimcp_gpu_acc_params_t params = nimcp_gpu_acc_params_default();
 
@@ -909,7 +911,7 @@ TEST_F(EmotionKernelTest, ACCConflictDetection_DetectsResponseConflict) {
     // Test with no conflict (one dominant response)
     std::vector<float> no_conflict_pattern(n_responses, 0.1f);
     no_conflict_pattern[0] = 0.9f;  // Single dominant response
-    SetFromHost(response_activations, no_conflict_pattern);
+    response_activations = SetFromHost(response_activations, no_conflict_pattern);
 
     nimcp_gpu_acc_conflict_detection(ctx, state, response_activations, &params);
 
@@ -953,7 +955,7 @@ TEST_F(EmotionKernelTest, ACCErrorSignal_ComputesPredictionError) {
     EXPECT_GT(error_sum, 0.0f);
 
     // Test with matching expected/actual
-    nimcp_gpu_tensor_fill(ctx, actual, 0.8f);  // Match expected
+    nimcp_gpu_fill(ctx, actual, 0.8f);  // Match expected
     nimcp_gpu_acc_error_signal(ctx, state, expected, actual, &params);
 
     auto small_error = CopyToHost(state->error_signal);
@@ -996,7 +998,7 @@ TEST_F(EmotionKernelTest, ACCEffortAllocation_AllocatesBasedOnDemand) {
     }
 
     // Test with low reward
-    nimcp_gpu_tensor_fill(ctx, reward_expectation, 0.1f);  // Low reward
+    nimcp_gpu_fill(ctx, reward_expectation, 0.1f);  // Low reward
     nimcp_gpu_acc_effort_allocation(ctx, state, task_demand, reward_expectation, &params);
 
     auto low_reward_effort = CopyToHost(state->effort_allocation);
@@ -1040,8 +1042,8 @@ TEST_F(EmotionKernelTest, EmotionComputeState_ComputesPADValues) {
     system.dt = 1.0f;
 
     // Set some emotional state
-    nimcp_gpu_tensor_fill(ctx, system.amygdala->central_output, 0.6f);  // Moderate fear
-    nimcp_gpu_tensor_fill(ctx, system.nacc->hedonic_signal, 0.7f);      // Positive hedonic
+    nimcp_gpu_fill(ctx, system.amygdala->central_output, 0.6f);  // Moderate fear
+    nimcp_gpu_fill(ctx, system.nacc->hedonic_signal, 0.7f);      // Positive hedonic
 
     nimcp_gpu_tensor_t* valence_out = Create1DTensor(1, 0.0f);
     nimcp_gpu_tensor_t* arousal_out = Create1DTensor(1, 0.0f);
@@ -1086,8 +1088,8 @@ TEST_F(EmotionKernelTest, EmotionCategorize_MapsToDiscreteEmotions) {
     // Test fear region: negative valence, high arousal
     std::vector<float> fear_valence = {-0.7f};
     std::vector<float> fear_arousal = {0.8f};
-    SetFromHost(valence, fear_valence);
-    SetFromHost(arousal, fear_arousal);
+    valence = SetFromHost(valence, fear_valence);
+    arousal = SetFromHost(arousal, fear_arousal);
 
     bool result = nimcp_gpu_emotion_categorize(ctx, valence, arousal, emotion_probs);
     EXPECT_TRUE(result);
@@ -1109,8 +1111,8 @@ TEST_F(EmotionKernelTest, EmotionCategorize_MapsToDiscreteEmotions) {
     // Test happiness region: positive valence, moderate arousal
     std::vector<float> happy_valence = {0.8f};
     std::vector<float> happy_arousal = {0.6f};
-    SetFromHost(valence, happy_valence);
-    SetFromHost(arousal, happy_arousal);
+    valence = SetFromHost(valence, happy_valence);
+    arousal = SetFromHost(arousal, happy_arousal);
 
     nimcp_gpu_emotion_categorize(ctx, valence, arousal, emotion_probs);
     probs = CopyToHost(emotion_probs);
@@ -1146,7 +1148,7 @@ TEST_F(EmotionKernelTest, EmotionCognitiveModulation_GeneratesBiases) {
     system.dt = 1.0f;
 
     // Set fear state
-    nimcp_gpu_tensor_fill(ctx, system.amygdala->central_output, 0.9f);
+    nimcp_gpu_fill(ctx, system.amygdala->central_output, 0.9f);
 
     nimcp_gpu_tensor_t* attention_bias = Create1DTensor(n_features, 0.0f);
     nimcp_gpu_tensor_t* memory_enhancement = Create1DTensor(n_features, 0.0f);
@@ -1463,8 +1465,8 @@ TEST_F(EmotionKernelTest, Integration_FearConditioningAndExtinction) {
     std::vector<float> us_data(n_stimuli, 0.0f);
     cs_data[0] = 1.0f;
     us_data[0] = 1.0f;
-    SetFromHost(cs, cs_data);
-    SetFromHost(us, us_data);
+    cs = SetFromHost(cs, cs_data);
+    us = SetFromHost(us, us_data);
 
     nimcp_gpu_amygdala_params_t params = nimcp_gpu_amygdala_params_default();
 
@@ -1527,7 +1529,7 @@ TEST_F(EmotionKernelTest, Integration_RewardLearningAndDecision) {
 
         std::vector<float> chosen_data(n_options, 0.0f);
         chosen_data[choice] = 1.0f;
-        SetFromHost(chosen, chosen_data);
+        chosen = SetFromHost(chosen, chosen_data);
 
         std::vector<float> outcome_data(n_outcomes, 0.0f);
         if (choice == 2) {
@@ -1535,14 +1537,14 @@ TEST_F(EmotionKernelTest, Integration_RewardLearningAndDecision) {
         } else {
             outcome_data[0] = 0.2f;  // Low reward for others
         }
-        SetFromHost(outcome, outcome_data);
+        outcome = SetFromHost(outcome, outcome_data);
 
         // OFC value update
         nimcp_gpu_ofc_value_update(ctx, ofc_state, chosen, outcome, dt, &ofc_params);
 
         // NAcc dopamine signal
         float da_level = (choice == 2) ? 0.8f : 0.3f;
-        nimcp_gpu_tensor_fill(ctx, dopamine, da_level);
+        nimcp_gpu_fill(ctx, dopamine, da_level);
         nimcp_gpu_nacc_compute_motivation(ctx, nacc_state, dopamine, effort, &nacc_params);
     }
 
@@ -1603,7 +1605,7 @@ TEST_F(EmotionKernelTest, Integration_ConflictAndCognitiveControl) {
             // Easy trial: one dominant response
             responses[0] = 0.9f;
         }
-        SetFromHost(response_activations, responses);
+        response_activations = SetFromHost(response_activations, responses);
 
         // Detect conflict
         nimcp_gpu_acc_conflict_detection(ctx, state, response_activations, &params);
@@ -1611,8 +1613,8 @@ TEST_F(EmotionKernelTest, Integration_ConflictAndCognitiveControl) {
         // Compute error signal
         std::vector<float> exp_data(n_responses, 0.0f);
         exp_data[0] = 1.0f;
-        SetFromHost(expected, exp_data);
-        SetFromHost(actual, responses);
+        expected = SetFromHost(expected, exp_data);
+        actual = SetFromHost(actual, responses);
         nimcp_gpu_acc_error_signal(ctx, state, expected, actual, &params);
 
         // Allocate effort
@@ -1679,8 +1681,8 @@ TEST_F(EmotionKernelTest, Integration_FullEmotionSystemUpdate) {
         float threat_level = (step < 20) ? 0.8f : 0.2f;  // High threat early, then low
         float reward_level = (step > 30) ? 0.9f : 0.3f;  // High reward late
 
-        nimcp_gpu_tensor_fill(ctx, sensory_input, threat_level);
-        nimcp_gpu_tensor_fill(ctx, reward_signal, reward_level);
+        nimcp_gpu_fill(ctx, sensory_input, threat_level);
+        nimcp_gpu_fill(ctx, reward_signal, reward_level);
 
         // Update emotion system
         bool result = nimcp_gpu_emotion_system_update(
@@ -1759,7 +1761,7 @@ TEST_F(EmotionKernelTest, Integration_EmotionDrivenBehavior) {
     // 1. Present threatening stimulus
     std::vector<float> threat_data(n_stimuli, 0.0f);
     threat_data[0] = 0.9f;  // Strong threat
-    SetFromHost(threat_stimulus, threat_data);
+    threat_stimulus = SetFromHost(threat_stimulus, threat_data);
 
     // 2. Amygdala detects threat
     nimcp_gpu_amygdala_threat_detection(ctx, amygdala, threat_stimulus, context, threat_out, &amy_params);
@@ -1769,7 +1771,7 @@ TEST_F(EmotionKernelTest, Integration_EmotionDrivenBehavior) {
 
     // 3. Fear reduces dopamine (aversive state)
     float fear_level = threat[0];
-    nimcp_gpu_tensor_fill(ctx, dopamine, 0.3f - fear_level * 0.2f);  // Lower DA with fear
+    nimcp_gpu_fill(ctx, dopamine, 0.3f - fear_level * 0.2f);  // Lower DA with fear
 
     // 4. NAcc computes motivation (reduced due to fear)
     nimcp_gpu_nacc_compute_motivation(ctx, nacc, dopamine, effort, &nacc_params);
@@ -1789,7 +1791,7 @@ TEST_F(EmotionKernelTest, Integration_EmotionDrivenBehavior) {
     values[1] = 0.6f;  // Safe option
     values[2] = 0.6f;  // Safe option
     values[3] = 0.6f;  // Safe option
-    SetFromHost(ofc->option_values, values);
+    ofc->option_values = SetFromHost(ofc->option_values, values);
 
     nimcp_gpu_ofc_choice_probabilities(ctx, ofc, 1.0f, &ofc_params);
 

@@ -46,9 +46,9 @@ protected:
     // Helper to create a tensor filled with a constant value
     nimcp_gpu_tensor_t* CreateFilledTensor(size_t* dims, size_t rank, float value) {
         if (!ctx) return nullptr;
-        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_DTYPE_FLOAT32);
+        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_GPU_PRECISION_FP32);
         if (tensor) {
-            nimcp_gpu_tensor_fill(ctx, tensor, value);
+            nimcp_gpu_fill(ctx, tensor, value);
         }
         return tensor;
     }
@@ -67,15 +67,17 @@ protected:
 
     // Helper to copy tensor to host
     std::vector<float> CopyToHost(nimcp_gpu_tensor_t* tensor) {
-        size_t n = nimcp_gpu_tensor_numel(tensor);
+        size_t n = tensor->numel;
         std::vector<float> host_data(n);
-        nimcp_gpu_tensor_to_host(ctx, tensor, host_data.data(), n * sizeof(float));
+        nimcp_gpu_tensor_to_host(tensor, host_data.data());
         return host_data;
     }
 
     // Helper to set tensor from host
-    void SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
-        nimcp_gpu_tensor_from_host(ctx, tensor, data.data(), data.size() * sizeof(float));
+    nimcp_gpu_tensor_t* SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
+        if (tensor) nimcp_gpu_tensor_destroy(tensor);
+        size_t dims[1] = {data.size()};
+        return nimcp_gpu_tensor_from_host(ctx, data.data(), dims, 1, NIMCP_GPU_PRECISION_FP32);
     }
 
     // Helper to create sleep stage state
@@ -89,9 +91,9 @@ protected:
         state->sleep_pressure = 0.5f;
 
         size_t dims[2] = {NIMCP_SLEEP_COUNT, NIMCP_SLEEP_COUNT};
-        state->stage_probabilities = nimcp_gpu_tensor_create(ctx, dims, 2, NIMCP_DTYPE_FLOAT32);
+        state->stage_probabilities = nimcp_gpu_tensor_create(ctx, dims, 2, NIMCP_GPU_PRECISION_FP32);
         if (state->stage_probabilities) {
-            nimcp_gpu_tensor_fill(ctx, state->stage_probabilities, 0.2f);
+            nimcp_gpu_fill(ctx, state->stage_probabilities, 0.2f);
         }
 
         return state;
@@ -119,19 +121,19 @@ protected:
         size_t vec_dims[1] = {buffer_size};
         size_t osc_dims[1] = {memory_dim};
 
-        state->hippocampal_buffer = nimcp_gpu_tensor_create(ctx, buffer_dims, 2, NIMCP_DTYPE_FLOAT32);
-        state->cortical_weights = nimcp_gpu_tensor_create(ctx, weight_dims, 2, NIMCP_DTYPE_FLOAT32);
-        state->replay_buffer = nimcp_gpu_tensor_create(ctx, buffer_dims, 2, NIMCP_DTYPE_FLOAT32);
-        state->consolidation_mask = nimcp_gpu_tensor_create(ctx, vec_dims, 1, NIMCP_DTYPE_FLOAT32);
-        state->priority_scores = nimcp_gpu_tensor_create(ctx, vec_dims, 1, NIMCP_DTYPE_FLOAT32);
-        state->slow_oscillation = nimcp_gpu_tensor_create(ctx, osc_dims, 1, NIMCP_DTYPE_FLOAT32);
+        state->hippocampal_buffer = nimcp_gpu_tensor_create(ctx, buffer_dims, 2, NIMCP_GPU_PRECISION_FP32);
+        state->cortical_weights = nimcp_gpu_tensor_create(ctx, weight_dims, 2, NIMCP_GPU_PRECISION_FP32);
+        state->replay_buffer = nimcp_gpu_tensor_create(ctx, buffer_dims, 2, NIMCP_GPU_PRECISION_FP32);
+        state->consolidation_mask = nimcp_gpu_tensor_create(ctx, vec_dims, 1, NIMCP_GPU_PRECISION_FP32);
+        state->priority_scores = nimcp_gpu_tensor_create(ctx, vec_dims, 1, NIMCP_GPU_PRECISION_FP32);
+        state->slow_oscillation = nimcp_gpu_tensor_create(ctx, osc_dims, 1, NIMCP_GPU_PRECISION_FP32);
 
-        if (state->hippocampal_buffer) nimcp_gpu_tensor_fill(ctx, state->hippocampal_buffer, 0.5f);
-        if (state->cortical_weights) nimcp_gpu_tensor_fill(ctx, state->cortical_weights, 0.1f);
-        if (state->replay_buffer) nimcp_gpu_tensor_fill(ctx, state->replay_buffer, 0.0f);
-        if (state->consolidation_mask) nimcp_gpu_tensor_fill(ctx, state->consolidation_mask, 1.0f);
-        if (state->priority_scores) nimcp_gpu_tensor_fill(ctx, state->priority_scores, 0.5f);
-        if (state->slow_oscillation) nimcp_gpu_tensor_fill(ctx, state->slow_oscillation, 0.0f);
+        if (state->hippocampal_buffer) nimcp_gpu_fill(ctx, state->hippocampal_buffer, 0.5f);
+        if (state->cortical_weights) nimcp_gpu_fill(ctx, state->cortical_weights, 0.1f);
+        if (state->replay_buffer) nimcp_gpu_fill(ctx, state->replay_buffer, 0.0f);
+        if (state->consolidation_mask) nimcp_gpu_fill(ctx, state->consolidation_mask, 1.0f);
+        if (state->priority_scores) nimcp_gpu_fill(ctx, state->priority_scores, 0.5f);
+        if (state->slow_oscillation) nimcp_gpu_fill(ctx, state->slow_oscillation, 0.0f);
 
         return state;
     }
@@ -158,15 +160,15 @@ protected:
         size_t dims[1] = {n_synapses};
         size_t history_dims[2] = {n_synapses, 10};  // 10 time steps of history
 
-        state->synaptic_weights = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_DTYPE_FLOAT32);
-        state->weight_history = nimcp_gpu_tensor_create(ctx, history_dims, 2, NIMCP_DTYPE_FLOAT32);
-        state->potentiation_tags = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_DTYPE_FLOAT32);
-        state->activity_integral = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_DTYPE_FLOAT32);
+        state->synaptic_weights = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+        state->weight_history = nimcp_gpu_tensor_create(ctx, history_dims, 2, NIMCP_GPU_PRECISION_FP32);
+        state->potentiation_tags = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+        state->activity_integral = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
 
-        if (state->synaptic_weights) nimcp_gpu_tensor_fill(ctx, state->synaptic_weights, 0.5f);
-        if (state->weight_history) nimcp_gpu_tensor_fill(ctx, state->weight_history, 0.0f);
-        if (state->potentiation_tags) nimcp_gpu_tensor_fill(ctx, state->potentiation_tags, 0.0f);
-        if (state->activity_integral) nimcp_gpu_tensor_fill(ctx, state->activity_integral, 0.0f);
+        if (state->synaptic_weights) nimcp_gpu_fill(ctx, state->synaptic_weights, 0.5f);
+        if (state->weight_history) nimcp_gpu_fill(ctx, state->weight_history, 0.0f);
+        if (state->potentiation_tags) nimcp_gpu_fill(ctx, state->potentiation_tags, 0.0f);
+        if (state->activity_integral) nimcp_gpu_fill(ctx, state->activity_integral, 0.0f);
 
         return state;
     }
@@ -312,9 +314,9 @@ TEST_F(SleepKernelTest, SleepTransitions_ComputesProbabilities) {
     ASSERT_NE(state, nullptr);
 
     size_t trans_dims[2] = {NIMCP_SLEEP_COUNT, NIMCP_SLEEP_COUNT};
-    nimcp_gpu_tensor_t* transition_probs = nimcp_gpu_tensor_create(ctx, trans_dims, 2, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* transition_probs = nimcp_gpu_tensor_create(ctx, trans_dims, 2, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(transition_probs, nullptr);
-    nimcp_gpu_tensor_fill(ctx, transition_probs, 0.0f);
+    nimcp_gpu_fill(ctx, transition_probs, 0.0f);
 
     bool result = nimcp_gpu_sleep_transitions(ctx, state, transition_probs);
     EXPECT_TRUE(result);
@@ -417,8 +419,8 @@ TEST_F(SleepKernelTest, NREMReplay_ProcessesMemories) {
     ASSERT_NE(state, nullptr);
 
     // Fill hippocampal buffer with memories
-    nimcp_gpu_tensor_fill(ctx, state->hippocampal_buffer, 0.8f);
-    nimcp_gpu_tensor_fill(ctx, state->priority_scores, 0.9f);
+    nimcp_gpu_fill(ctx, state->hippocampal_buffer, 0.8f);
+    nimcp_gpu_fill(ctx, state->priority_scores, 0.9f);
 
     auto initial_replay = CopyToHost(state->replay_buffer);
 
@@ -453,8 +455,8 @@ TEST_F(SleepKernelTest, NREMSystemsConsolidation_TransfersMemories) {
     ASSERT_NE(state, nullptr);
 
     // Set up for consolidation
-    nimcp_gpu_tensor_fill(ctx, state->hippocampal_buffer, 1.0f);
-    nimcp_gpu_tensor_fill(ctx, state->consolidation_mask, 1.0f);
+    nimcp_gpu_fill(ctx, state->hippocampal_buffer, 1.0f);
+    nimcp_gpu_fill(ctx, state->consolidation_mask, 1.0f);
 
     auto initial_weights = CopyToHost(state->cortical_weights);
 
@@ -490,12 +492,12 @@ TEST_F(SleepKernelTest, NREMSharpWaveRipple_GeneratesContent) {
     nimcp_gpu_consolidation_state_t* state = CreateConsolidationState(buffer_size, memory_dim);
     ASSERT_NE(state, nullptr);
 
-    nimcp_gpu_tensor_fill(ctx, state->hippocampal_buffer, 0.7f);
+    nimcp_gpu_fill(ctx, state->hippocampal_buffer, 0.7f);
 
     size_t ripple_dims[1] = {memory_dim};
-    nimcp_gpu_tensor_t* ripple_content = nimcp_gpu_tensor_create(ctx, ripple_dims, 1, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* ripple_content = nimcp_gpu_tensor_create(ctx, ripple_dims, 1, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(ripple_content, nullptr);
-    nimcp_gpu_tensor_fill(ctx, ripple_content, 0.0f);
+    nimcp_gpu_fill(ctx, ripple_content, 0.0f);
 
     nimcp_gpu_nrem_params_t params = nimcp_gpu_nrem_params_default();
 
@@ -529,7 +531,7 @@ TEST_F(SleepKernelTest, REMProcessing_ModifiesState) {
     nimcp_gpu_consolidation_state_t* state = CreateConsolidationState(buffer_size, memory_dim);
     ASSERT_NE(state, nullptr);
 
-    nimcp_gpu_tensor_fill(ctx, state->hippocampal_buffer, 0.6f);
+    nimcp_gpu_fill(ctx, state->hippocampal_buffer, 0.6f);
 
     auto initial_buffer = CopyToHost(state->hippocampal_buffer);
 
@@ -565,11 +567,11 @@ TEST_F(SleepKernelTest, REMMemoryIntegration_IntegratesWithSemantic) {
 
     // Create semantic memory
     size_t semantic_dims[2] = {memory_dim, memory_dim};
-    nimcp_gpu_tensor_t* semantic_memory = nimcp_gpu_tensor_create(ctx, semantic_dims, 2, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* semantic_memory = nimcp_gpu_tensor_create(ctx, semantic_dims, 2, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(semantic_memory, nullptr);
-    nimcp_gpu_tensor_fill(ctx, semantic_memory, 0.3f);
+    nimcp_gpu_fill(ctx, semantic_memory, 0.3f);
 
-    nimcp_gpu_tensor_fill(ctx, state->hippocampal_buffer, 0.7f);
+    nimcp_gpu_fill(ctx, state->hippocampal_buffer, 0.7f);
 
     auto initial_weights = CopyToHost(state->cortical_weights);
 
@@ -605,12 +607,12 @@ TEST_F(SleepKernelTest, REMEmotionalProcessing_ProcessesEmotions) {
 
     // Create emotional tags (high emotional content)
     size_t tag_dims[1] = {buffer_size};
-    nimcp_gpu_tensor_t* emotional_tags = nimcp_gpu_tensor_create(ctx, tag_dims, 1, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* emotional_tags = nimcp_gpu_tensor_create(ctx, tag_dims, 1, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(emotional_tags, nullptr);
-    nimcp_gpu_tensor_fill(ctx, emotional_tags, 0.9f);  // High emotional salience
+    nimcp_gpu_fill(ctx, emotional_tags, 0.9f);  // High emotional salience
 
-    nimcp_gpu_tensor_fill(ctx, state->hippocampal_buffer, 0.5f);
-    nimcp_gpu_tensor_fill(ctx, state->priority_scores, 0.5f);
+    nimcp_gpu_fill(ctx, state->hippocampal_buffer, 0.5f);
+    nimcp_gpu_fill(ctx, state->priority_scores, 0.5f);
 
     auto initial_priorities = CopyToHost(state->priority_scores);
 
@@ -646,12 +648,12 @@ TEST_F(SleepKernelTest, REMDreamGeneration_GeneratesContent) {
     nimcp_gpu_consolidation_state_t* state = CreateConsolidationState(buffer_size, memory_dim);
     ASSERT_NE(state, nullptr);
 
-    nimcp_gpu_tensor_fill(ctx, state->hippocampal_buffer, 0.6f);
+    nimcp_gpu_fill(ctx, state->hippocampal_buffer, 0.6f);
 
     size_t dream_dims[1] = {memory_dim};
-    nimcp_gpu_tensor_t* dream_content = nimcp_gpu_tensor_create(ctx, dream_dims, 1, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* dream_content = nimcp_gpu_tensor_create(ctx, dream_dims, 1, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(dream_content, nullptr);
-    nimcp_gpu_tensor_fill(ctx, dream_content, 0.0f);
+    nimcp_gpu_fill(ctx, dream_content, 0.0f);
 
     nimcp_gpu_rem_params_t params = nimcp_gpu_rem_params_default();
     params.creativity_factor = 0.5f;
@@ -685,7 +687,7 @@ TEST_F(SleepKernelTest, SynapticDownscaling_ReducesWeights) {
     ASSERT_NE(state, nullptr);
 
     // Set high initial weights
-    nimcp_gpu_tensor_fill(ctx, state->synaptic_weights, 0.8f);
+    nimcp_gpu_fill(ctx, state->synaptic_weights, 0.8f);
 
     auto initial_weights = CopyToHost(state->synaptic_weights);
     float initial_sum = 0.0f;
@@ -715,7 +717,7 @@ TEST_F(SleepKernelTest, SynapticDownscaling_RespectsMinWeight) {
     ASSERT_NE(state, nullptr);
 
     // Set weights near minimum
-    nimcp_gpu_tensor_fill(ctx, state->synaptic_weights, 0.1f);
+    nimcp_gpu_fill(ctx, state->synaptic_weights, 0.1f);
 
     nimcp_gpu_homeostasis_params_t params = nimcp_gpu_homeostasis_params_default();
     params.min_weight = 0.05f;
@@ -743,18 +745,18 @@ TEST_F(SleepKernelTest, SynapsePreservation_PreservesImportant) {
     nimcp_gpu_synaptic_state_t* state = CreateSynapticState(n_synapses);
     ASSERT_NE(state, nullptr);
 
-    nimcp_gpu_tensor_fill(ctx, state->synaptic_weights, 0.7f);
+    nimcp_gpu_fill(ctx, state->synaptic_weights, 0.7f);
 
     // High importance scores for some synapses
     size_t imp_dims[1] = {n_synapses};
-    nimcp_gpu_tensor_t* importance_scores = nimcp_gpu_tensor_create(ctx, imp_dims, 1, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* importance_scores = nimcp_gpu_tensor_create(ctx, imp_dims, 1, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(importance_scores, nullptr);
 
     std::vector<float> importance(n_synapses);
     for (size_t i = 0; i < n_synapses; i++) {
         importance[i] = (i < n_synapses / 2) ? 0.9f : 0.1f;  // First half important
     }
-    SetFromHost(importance_scores, importance);
+    importance_scores = SetFromHost(importance_scores, importance);
 
     nimcp_gpu_homeostasis_params_t params = nimcp_gpu_homeostasis_params_default();
 
@@ -792,7 +794,7 @@ TEST_F(SleepKernelTest, SynapsePruning_RemovesWeak) {
     for (size_t i = 0; i < n_synapses; i++) {
         weights[i] = (i % 2 == 0) ? 0.8f : 0.05f;  // Alternating strong/weak
     }
-    SetFromHost(state->synaptic_weights, weights);
+    state->synaptic_weights = SetFromHost(state->synaptic_weights, weights);
 
     nimcp_gpu_homeostasis_params_t params = nimcp_gpu_homeostasis_params_default();
     params.selective_pruning = true;
@@ -826,18 +828,18 @@ TEST_F(SleepKernelTest, SynapticTagging_TagsRecentActivity) {
     nimcp_gpu_synaptic_state_t* state = CreateSynapticState(n_synapses);
     ASSERT_NE(state, nullptr);
 
-    nimcp_gpu_tensor_fill(ctx, state->potentiation_tags, 0.0f);
+    nimcp_gpu_fill(ctx, state->potentiation_tags, 0.0f);
 
     // Create recent activity pattern
     size_t act_dims[1] = {n_synapses};
-    nimcp_gpu_tensor_t* recent_activity = nimcp_gpu_tensor_create(ctx, act_dims, 1, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* recent_activity = nimcp_gpu_tensor_create(ctx, act_dims, 1, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(recent_activity, nullptr);
 
     std::vector<float> activity(n_synapses);
     for (size_t i = 0; i < n_synapses; i++) {
         activity[i] = (i < n_synapses / 2) ? 1.0f : 0.0f;  // First half active
     }
-    SetFromHost(recent_activity, activity);
+    recent_activity = SetFromHost(recent_activity, activity);
 
     bool result = nimcp_gpu_synaptic_tagging(ctx, state, recent_activity, dt);
     EXPECT_TRUE(result);
@@ -879,13 +881,13 @@ TEST_F(SleepKernelTest, ReplaySample_SamplesFromBuffer) {
     for (size_t i = 0; i < buffer_data.size(); i++) {
         buffer_data[i] = static_cast<float>(i) / buffer_data.size();
     }
-    SetFromHost(state->replay_buffer, buffer_data);
-    nimcp_gpu_tensor_fill(ctx, state->priority_scores, 0.5f);
+    state->replay_buffer = SetFromHost(state->replay_buffer, buffer_data);
+    nimcp_gpu_fill(ctx, state->priority_scores, 0.5f);
 
     size_t sample_dims[2] = {static_cast<size_t>(n_samples), memory_dim};
-    nimcp_gpu_tensor_t* sampled_memories = nimcp_gpu_tensor_create(ctx, sample_dims, 2, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* sampled_memories = nimcp_gpu_tensor_create(ctx, sample_dims, 2, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(sampled_memories, nullptr);
-    nimcp_gpu_tensor_fill(ctx, sampled_memories, 0.0f);
+    nimcp_gpu_fill(ctx, sampled_memories, 0.0f);
 
     nimcp_gpu_replay_params_t params = nimcp_gpu_replay_params_default();
 
@@ -914,13 +916,13 @@ TEST_F(SleepKernelTest, ReplayStore_AddsToBuffer) {
     nimcp_gpu_consolidation_state_t* state = CreateConsolidationState(buffer_size, memory_dim);
     ASSERT_NE(state, nullptr);
 
-    nimcp_gpu_tensor_fill(ctx, state->replay_buffer, 0.0f);
+    nimcp_gpu_fill(ctx, state->replay_buffer, 0.0f);
 
     // Create new experience
     size_t exp_dims[1] = {memory_dim};
-    nimcp_gpu_tensor_t* experience = nimcp_gpu_tensor_create(ctx, exp_dims, 1, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* experience = nimcp_gpu_tensor_create(ctx, exp_dims, 1, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(experience, nullptr);
-    nimcp_gpu_tensor_fill(ctx, experience, 0.9f);
+    nimcp_gpu_fill(ctx, experience, 0.9f);
 
     float priority = 0.8f;
     nimcp_gpu_replay_params_t params = nimcp_gpu_replay_params_default();
@@ -950,18 +952,18 @@ TEST_F(SleepKernelTest, ReplayUpdatePriorities_AdjustsPriorities) {
     nimcp_gpu_consolidation_state_t* state = CreateConsolidationState(buffer_size, memory_dim);
     ASSERT_NE(state, nullptr);
 
-    nimcp_gpu_tensor_fill(ctx, state->priority_scores, 0.5f);
+    nimcp_gpu_fill(ctx, state->priority_scores, 0.5f);
 
     // Create TD errors (high errors = high priority)
     size_t td_dims[1] = {buffer_size};
-    nimcp_gpu_tensor_t* td_errors = nimcp_gpu_tensor_create(ctx, td_dims, 1, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* td_errors = nimcp_gpu_tensor_create(ctx, td_dims, 1, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(td_errors, nullptr);
 
     std::vector<float> errors(buffer_size);
     for (size_t i = 0; i < buffer_size; i++) {
         errors[i] = (i < buffer_size / 2) ? 1.0f : 0.1f;  // First half high error
     }
-    SetFromHost(td_errors, errors);
+    td_errors = SetFromHost(td_errors, errors);
 
     auto initial_priorities = CopyToHost(state->priority_scores);
 
@@ -993,7 +995,7 @@ TEST_F(SleepKernelTest, ReplayCompress_CompressesSequence) {
     const size_t memory_dim = 32;
 
     size_t seq_dims[2] = {seq_length, memory_dim};
-    nimcp_gpu_tensor_t* sequence = nimcp_gpu_tensor_create(ctx, seq_dims, 2, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* sequence = nimcp_gpu_tensor_create(ctx, seq_dims, 2, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(sequence, nullptr);
 
     // Create sequence data
@@ -1001,16 +1003,16 @@ TEST_F(SleepKernelTest, ReplayCompress_CompressesSequence) {
     for (size_t i = 0; i < seq_data.size(); i++) {
         seq_data[i] = std::sin(static_cast<float>(i) * 0.1f);
     }
-    SetFromHost(sequence, seq_data);
+    sequence = SetFromHost(sequence, seq_data);
 
     nimcp_gpu_replay_params_t params = nimcp_gpu_replay_params_default();
     params.compression_ratio = 5.0f;  // 5x compression
 
     size_t compressed_length = seq_length / 5;
     size_t comp_dims[2] = {compressed_length, memory_dim};
-    nimcp_gpu_tensor_t* compressed = nimcp_gpu_tensor_create(ctx, comp_dims, 2, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* compressed = nimcp_gpu_tensor_create(ctx, comp_dims, 2, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(compressed, nullptr);
-    nimcp_gpu_tensor_fill(ctx, compressed, 0.0f);
+    nimcp_gpu_fill(ctx, compressed, 0.0f);
 
     bool result = nimcp_gpu_replay_compress(ctx, sequence, compressed, &params);
     EXPECT_TRUE(result);
@@ -1352,9 +1354,9 @@ TEST_F(SleepKernelTest, Integration_NREMConsolidation) {
     for (size_t i = 0; i < memories.size(); i++) {
         memories[i] = static_cast<float>(rand()) / RAND_MAX;
     }
-    SetFromHost(state->hippocampal_buffer, memories);
-    nimcp_gpu_tensor_fill(ctx, state->consolidation_mask, 1.0f);
-    nimcp_gpu_tensor_fill(ctx, state->priority_scores, 0.7f);
+    state->hippocampal_buffer = SetFromHost(state->hippocampal_buffer, memories);
+    nimcp_gpu_fill(ctx, state->consolidation_mask, 1.0f);
+    nimcp_gpu_fill(ctx, state->priority_scores, 0.7f);
 
     auto initial_cortical = CopyToHost(state->cortical_weights);
     float initial_cortical_sum = 0.0f;
@@ -1398,20 +1400,20 @@ TEST_F(SleepKernelTest, Integration_REMProcessing) {
     ASSERT_NE(state, nullptr);
 
     // Fill buffers
-    nimcp_gpu_tensor_fill(ctx, state->hippocampal_buffer, 0.5f);
-    nimcp_gpu_tensor_fill(ctx, state->priority_scores, 0.6f);
+    nimcp_gpu_fill(ctx, state->hippocampal_buffer, 0.5f);
+    nimcp_gpu_fill(ctx, state->priority_scores, 0.6f);
 
     // Create semantic memory and emotional tags
     size_t semantic_dims[2] = {memory_dim, memory_dim};
-    nimcp_gpu_tensor_t* semantic_memory = nimcp_gpu_tensor_create(ctx, semantic_dims, 2, NIMCP_DTYPE_FLOAT32);
-    nimcp_gpu_tensor_fill(ctx, semantic_memory, 0.3f);
+    nimcp_gpu_tensor_t* semantic_memory = nimcp_gpu_tensor_create(ctx, semantic_dims, 2, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_fill(ctx, semantic_memory, 0.3f);
 
     size_t tag_dims[1] = {buffer_size};
-    nimcp_gpu_tensor_t* emotional_tags = nimcp_gpu_tensor_create(ctx, tag_dims, 1, NIMCP_DTYPE_FLOAT32);
-    nimcp_gpu_tensor_fill(ctx, emotional_tags, 0.7f);
+    nimcp_gpu_tensor_t* emotional_tags = nimcp_gpu_tensor_create(ctx, tag_dims, 1, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_fill(ctx, emotional_tags, 0.7f);
 
     size_t dream_dims[1] = {memory_dim};
-    nimcp_gpu_tensor_t* dream_content = nimcp_gpu_tensor_create(ctx, dream_dims, 1, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* dream_content = nimcp_gpu_tensor_create(ctx, dream_dims, 1, NIMCP_GPU_PRECISION_FP32);
 
     nimcp_gpu_rem_params_t params = nimcp_gpu_rem_params_default();
 
@@ -1453,20 +1455,20 @@ TEST_F(SleepKernelTest, Integration_SynapticHomeostasis) {
     ASSERT_NE(state, nullptr);
 
     // Set high initial weights (potentiated during wake)
-    nimcp_gpu_tensor_fill(ctx, state->synaptic_weights, 0.9f);
+    nimcp_gpu_fill(ctx, state->synaptic_weights, 0.9f);
 
     // Create importance scores (some synapses more important)
     size_t imp_dims[1] = {n_synapses};
-    nimcp_gpu_tensor_t* importance_scores = nimcp_gpu_tensor_create(ctx, imp_dims, 1, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* importance_scores = nimcp_gpu_tensor_create(ctx, imp_dims, 1, NIMCP_GPU_PRECISION_FP32);
     std::vector<float> importance(n_synapses);
     for (size_t i = 0; i < n_synapses; i++) {
         importance[i] = (i < n_synapses / 4) ? 0.95f : 0.2f;  // 25% important
     }
-    SetFromHost(importance_scores, importance);
+    importance_scores = SetFromHost(importance_scores, importance);
 
     // Create activity pattern
-    nimcp_gpu_tensor_t* recent_activity = nimcp_gpu_tensor_create(ctx, imp_dims, 1, NIMCP_DTYPE_FLOAT32);
-    nimcp_gpu_tensor_fill(ctx, recent_activity, 0.1f);
+    nimcp_gpu_tensor_t* recent_activity = nimcp_gpu_tensor_create(ctx, imp_dims, 1, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_fill(ctx, recent_activity, 0.1f);
 
     auto initial_weights = CopyToHost(state->synaptic_weights);
     float initial_total = 0.0f;
@@ -1535,8 +1537,8 @@ TEST_F(SleepKernelTest, Integration_MemoryReplayPipeline) {
     // Store experiences with varying priorities
     for (int i = 0; i < n_experiences; i++) {
         size_t exp_dims[1] = {memory_dim};
-        nimcp_gpu_tensor_t* experience = nimcp_gpu_tensor_create(ctx, exp_dims, 1, NIMCP_DTYPE_FLOAT32);
-        nimcp_gpu_tensor_fill(ctx, experience, static_cast<float>(i + 1) / n_experiences);
+        nimcp_gpu_tensor_t* experience = nimcp_gpu_tensor_create(ctx, exp_dims, 1, NIMCP_GPU_PRECISION_FP32);
+        nimcp_gpu_fill(ctx, experience, static_cast<float>(i + 1) / n_experiences);
 
         float priority = static_cast<float>(i) / n_experiences;
         nimcp_gpu_replay_store(ctx, state, experience, priority, &params);
@@ -1546,8 +1548,8 @@ TEST_F(SleepKernelTest, Integration_MemoryReplayPipeline) {
 
     // Sample from buffer
     size_t sample_dims[2] = {static_cast<size_t>(n_replay_samples), memory_dim};
-    nimcp_gpu_tensor_t* sampled = nimcp_gpu_tensor_create(ctx, sample_dims, 2, NIMCP_DTYPE_FLOAT32);
-    nimcp_gpu_tensor_fill(ctx, sampled, 0.0f);
+    nimcp_gpu_tensor_t* sampled = nimcp_gpu_tensor_create(ctx, sample_dims, 2, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_fill(ctx, sampled, 0.0f);
 
     bool result = nimcp_gpu_replay_sample(ctx, state, sampled, n_replay_samples, &params);
     EXPECT_TRUE(result);
@@ -1559,12 +1561,12 @@ TEST_F(SleepKernelTest, Integration_MemoryReplayPipeline) {
 
     // Update priorities based on simulated TD errors
     size_t td_dims[1] = {buffer_size};
-    nimcp_gpu_tensor_t* td_errors = nimcp_gpu_tensor_create(ctx, td_dims, 1, NIMCP_DTYPE_FLOAT32);
+    nimcp_gpu_tensor_t* td_errors = nimcp_gpu_tensor_create(ctx, td_dims, 1, NIMCP_GPU_PRECISION_FP32);
     std::vector<float> errors(buffer_size);
     for (size_t i = 0; i < buffer_size; i++) {
         errors[i] = static_cast<float>(rand()) / RAND_MAX;
     }
-    SetFromHost(td_errors, errors);
+    td_errors = SetFromHost(td_errors, errors);
 
     auto initial_priorities = CopyToHost(state->priority_scores);
 
@@ -1610,8 +1612,8 @@ TEST_F(SleepKernelTest, Integration_FullNightSleep) {
     // Initialize with wake state and high weights
     stage_state->current_stage = NIMCP_SLEEP_WAKE;
     stage_state->sleep_pressure = 0.9f;
-    nimcp_gpu_tensor_fill(ctx, synaptic_state->synaptic_weights, 0.8f);
-    nimcp_gpu_tensor_fill(ctx, consolidation_state->hippocampal_buffer, 0.7f);
+    nimcp_gpu_fill(ctx, synaptic_state->synaptic_weights, 0.8f);
+    nimcp_gpu_fill(ctx, consolidation_state->hippocampal_buffer, 0.7f);
 
     auto initial_synaptic = CopyToHost(synaptic_state->synaptic_weights);
     auto initial_cortical = CopyToHost(consolidation_state->cortical_weights);

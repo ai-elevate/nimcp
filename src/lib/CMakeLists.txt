@@ -1778,6 +1778,8 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/occipital/nimcp_occipital_gpu_bridge.cu>
     # LNN kernels (liquid neural networks with ODE solvers)
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/lnn/nimcp_lnn_kernels.cu>
+    # LNN ODE kernels (batched ODE integration for continuous-time dynamics)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/lnn/nimcp_lnn_ode_kernels.cu>
     # LNN Gradient DAO (gradient accumulation for training)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/lnn/nimcp_lnn_gradient_dao.c
     # Quantum algorithm kernels

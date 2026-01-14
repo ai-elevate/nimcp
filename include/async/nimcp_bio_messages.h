@@ -137,6 +137,15 @@ typedef enum {
     BIO_MSG_ELIG_FEP_PREDICTION_ERROR,           /**< Eligibility-FEP: Prediction error signal */
     BIO_MSG_ELIG_SLEEP_CONSOLIDATION,            /**< Eligibility-sleep: Consolidation trigger */
 
+    /* Quantum bio-async specific messages (0x02AF - 0x02BF) */
+    BIO_MSG_ELIG_QUANTUM_ENTANGLEMENT,           /**< Quantum entanglement event */
+    BIO_MSG_ELIG_QUANTUM_MEASUREMENT,            /**< Quantum measurement result */
+    BIO_MSG_ELIG_QUANTUM_GATE_APPLIED,           /**< Quantum gate applied */
+    BIO_MSG_ELIG_QUANTUM_ERROR_DETECTED,         /**< Quantum error detected */
+    BIO_MSG_ELIG_QUANTUM_ERROR_CORRECTED,        /**< Quantum error corrected */
+    BIO_MSG_ELIG_QUANTUM_AMPLITUDE_ESTIMATE,     /**< Amplitude estimation result */
+    BIO_MSG_ELIG_QUANTUM_STATE_PREPARED,         /**< Quantum state preparation complete */
+
     /* Cognitive messages (0x0300 - 0x03FF) */
     BIO_MSG_INTROSPECTION_QUERY = 0x0300,
     BIO_MSG_INTROSPECTION_RESPONSE,

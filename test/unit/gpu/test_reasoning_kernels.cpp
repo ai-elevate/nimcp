@@ -46,9 +46,9 @@ protected:
     // Helper to create a tensor filled with a constant value
     nimcp_gpu_tensor_t* CreateFilledTensor(size_t* dims, size_t rank, float value) {
         if (!ctx) return nullptr;
-        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_DTYPE_FLOAT32);
+        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_GPU_PRECISION_FP32);
         if (tensor) {
-            nimcp_gpu_tensor_fill(ctx, tensor, value);
+            nimcp_gpu_fill(ctx, tensor, value);
         }
         return tensor;
     }
@@ -73,15 +73,17 @@ protected:
 
     // Helper to copy tensor to host
     std::vector<float> CopyToHost(nimcp_gpu_tensor_t* tensor) {
-        size_t n = nimcp_gpu_tensor_numel(tensor);
+        size_t n = tensor->numel;
         std::vector<float> host_data(n);
-        nimcp_gpu_tensor_to_host(ctx, tensor, host_data.data(), n * sizeof(float));
+        nimcp_gpu_tensor_to_host(tensor, host_data.data());
         return host_data;
     }
 
     // Helper to set tensor from host
-    void SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
-        nimcp_gpu_tensor_from_host(ctx, tensor, data.data(), data.size() * sizeof(float));
+    nimcp_gpu_tensor_t* SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
+        if (tensor) nimcp_gpu_tensor_destroy(tensor);
+        size_t dims[1] = {data.size()};
+        return nimcp_gpu_tensor_from_host(ctx, data.data(), dims, 1, NIMCP_GPU_PRECISION_FP32);
     }
 
     // Helper to create a logic formula
@@ -335,7 +337,7 @@ TEST_F(ReasoningKernelTest, LogicPropagate_PropagatesTruthValues) {
     std::vector<float> initial_values(n_variables, 0.5f);
     initial_values[0] = 1.0f;  // True
     initial_values[1] = 0.0f;  // False
-    SetFromHost(formula->variables, initial_values);
+    formula->variables = SetFromHost(formula->variables, initial_values);
 
     nimcp_gpu_logic_params_t params = nimcp_gpu_logic_params_default();
 
@@ -563,7 +565,7 @@ TEST_F(ReasoningKernelTest, RuleFire_UpdatesWorkingMemory) {
     std::vector<float> scores(n_rules * n_facts, 0.0f);
     scores[0] = 0.9f;  // Rule 0 matches fact 0
     scores[n_facts + 1] = 0.8f;  // Rule 1 matches fact 1
-    SetFromHost(match_scores, scores);
+    match_scores = SetFromHost(match_scores, scores);
 
     auto initial_facts = CopyToHost(wm->facts);
 
@@ -605,7 +607,7 @@ TEST_F(ReasoningKernelTest, ForwardChain_PerformsInference) {
     for (size_t i = 0; i < pattern_dim; i++) {
         facts[i] = 0.8f;  // First fact is active
     }
-    SetFromHost(wm->facts, facts);
+    wm->facts = SetFromHost(wm->facts, facts);
 
     bool result = nimcp_gpu_forward_chain(ctx, rules, wm, max_steps, &params);
     EXPECT_TRUE(result);
@@ -630,7 +632,7 @@ TEST_F(ReasoningKernelTest, BackwardChain_FindsProof) {
 
     // Initialize some facts
     std::vector<float> facts(n_facts * pattern_dim, 0.5f);
-    SetFromHost(wm->facts, facts);
+    wm->facts = SetFromHost(wm->facts, facts);
 
     bool result = nimcp_gpu_backward_chain(ctx, rules, wm, goal, proof, &params);
     EXPECT_TRUE(result);
@@ -663,7 +665,7 @@ TEST_F(ReasoningKernelTest, RuleLearning_UpdatesStrengths) {
     fb[0] = 1.0f;   // Positive feedback
     fb[1] = -1.0f;  // Negative feedback
     fb[2] = 0.5f;   // Partial feedback
-    SetFromHost(feedback, fb);
+    feedback = SetFromHost(feedback, fb);
 
     auto initial_strengths = CopyToHost(rules->strengths);
 
@@ -745,7 +747,7 @@ TEST_F(ReasoningKernelTest, CSPCheckConstraints_CountsViolations) {
     nimcp_gpu_csp_params_t params = nimcp_gpu_csp_params_default();
 
     // Assign all variables to the same value (likely to cause violations)
-    nimcp_gpu_tensor_fill(ctx, state->assignments, 0.0f);
+    nimcp_gpu_fill(ctx, state->assignments, 0.0f);
 
     bool result = nimcp_gpu_csp_check_constraints(ctx, state, n_violations, &params);
     EXPECT_TRUE(result);
@@ -855,8 +857,8 @@ TEST_F(ReasoningKernelTest, AnalogyStructuralSimilarity_ComputesSimilarity) {
     source_struct[1 * source_size + 2] = 1.0f;
     target_struct[0 * target_size + 1] = 1.0f;
     target_struct[1 * target_size + 2] = 1.0f;
-    SetFromHost(state->source_structure, source_struct);
-    SetFromHost(state->target_structure, target_struct);
+    state->source_structure = SetFromHost(state->source_structure, source_struct);
+    state->target_structure = SetFromHost(state->target_structure, target_struct);
 
     bool result = nimcp_gpu_analogy_structural_similarity(ctx, state, similarity_matrix, &params);
     EXPECT_TRUE(result);
@@ -887,8 +889,8 @@ TEST_F(ReasoningKernelTest, AnalogyFindMapping_FindsMapping) {
     for (size_t i = 0; i < source_size * feature_dim; i++) {
         features[i] = static_cast<float>(i % 10) / 10.0f;
     }
-    SetFromHost(state->source_features, features);
-    SetFromHost(state->target_features, features);  // Same features = perfect match
+    state->source_features = SetFromHost(state->source_features, features);
+    state->target_features = SetFromHost(state->target_features, features);  // Same features = perfect match
 
     bool result = nimcp_gpu_analogy_find_mapping(ctx, state, &params);
     EXPECT_TRUE(result);
@@ -921,13 +923,13 @@ TEST_F(ReasoningKernelTest, AnalogyTransfer_TransfersInferences) {
     for (size_t i = 0; i < source_size && i < target_size; i++) {
         mapping[i * target_size + i] = 1.0f;
     }
-    SetFromHost(state->mapping, mapping);
+    state->mapping = SetFromHost(state->mapping, mapping);
 
     // Set source inferences
     std::vector<float> src_inf(source_size);
     src_inf[0] = 0.8f;
     src_inf[1] = 0.6f;
-    SetFromHost(source_inferences, src_inf);
+    source_inferences = SetFromHost(source_inferences, src_inf);
 
     bool result = nimcp_gpu_analogy_transfer(ctx, state, source_inferences, target_inferences, &params);
     EXPECT_TRUE(result);
@@ -960,7 +962,7 @@ TEST_F(ReasoningKernelTest, AnalogyEvaluate_ComputesQualityScore) {
     for (size_t i = 0; i < source_size && i < target_size; i++) {
         mapping[i * target_size + i] = 1.0f;
     }
-    SetFromHost(state->mapping, mapping);
+    state->mapping = SetFromHost(state->mapping, mapping);
 
     float quality_score = 0.0f;
 
@@ -992,13 +994,13 @@ TEST_F(ReasoningKernelTest, CausalPropagate_PropagatesEffects) {
         adjacency[i * n_nodes + (i + 1)] = 1.0f;
         weights[i * n_nodes + (i + 1)] = 0.8f;
     }
-    SetFromHost(state->adjacency, adjacency);
-    SetFromHost(state->edge_weights, weights);
+    state->adjacency = SetFromHost(state->adjacency, adjacency);
+    state->edge_weights = SetFromHost(state->edge_weights, weights);
 
     // Set initial node value
     std::vector<float> values(n_nodes, 0.0f);
     values[0] = 1.0f;  // Root cause is active
-    SetFromHost(state->node_values, values);
+    state->node_values = SetFromHost(state->node_values, values);
 
     bool result = nimcp_gpu_causal_propagate(ctx, state, &params);
     EXPECT_TRUE(result);
@@ -1024,7 +1026,7 @@ TEST_F(ReasoningKernelTest, CausalIntervene_AppliesIntervention) {
     std::vector<float> adjacency(n_nodes * n_nodes, 0.0f);
     adjacency[0 * n_nodes + 2] = 1.0f;  // 0 -> 2
     adjacency[1 * n_nodes + 2] = 1.0f;  // 1 -> 2
-    SetFromHost(state->adjacency, adjacency);
+    state->adjacency = SetFromHost(state->adjacency, adjacency);
 
     bool result = nimcp_gpu_causal_intervene(ctx, state, 2, 1.0f, &params);
     EXPECT_TRUE(result);
@@ -1059,8 +1061,8 @@ TEST_F(ReasoningKernelTest, CausalCounterfactual_ComputesCounterfactual) {
         adjacency[i * n_nodes + (i + 1)] = 1.0f;
         weights[i * n_nodes + (i + 1)] = 0.9f;
     }
-    SetFromHost(state->adjacency, adjacency);
-    SetFromHost(state->edge_weights, weights);
+    state->adjacency = SetFromHost(state->adjacency, adjacency);
+    state->edge_weights = SetFromHost(state->edge_weights, weights);
 
     // Set factual values
     std::vector<float> factual(n_nodes);
@@ -1068,7 +1070,7 @@ TEST_F(ReasoningKernelTest, CausalCounterfactual_ComputesCounterfactual) {
     factual[1] = 0.1f;
     factual[2] = 0.05f;
     factual[3] = 0.02f;
-    SetFromHost(factual_values, factual);
+    factual_values = SetFromHost(factual_values, factual);
 
     // Ask: what if node 0 had been 1.0?
     bool result = nimcp_gpu_causal_counterfactual(ctx, state, factual_values, 0, 1.0f, counterfactual_outcome, &params);
@@ -1103,8 +1105,8 @@ TEST_F(ReasoningKernelTest, CausalIdentifyEffect_ComputesCausalEffect) {
     weights[0 * n_nodes + 2] = 0.5f;
     weights[1 * n_nodes + 3] = 0.6f;
     weights[2 * n_nodes + 3] = 0.4f;
-    SetFromHost(state->adjacency, adjacency);
-    SetFromHost(state->edge_weights, weights);
+    state->adjacency = SetFromHost(state->adjacency, adjacency);
+    state->edge_weights = SetFromHost(state->edge_weights, weights);
 
     float causal_effect = 0.0f;
 
@@ -1140,7 +1142,7 @@ TEST_F(ReasoningKernelTest, CausalDiscover_DiscoversStructure) {
         data[s * n_nodes + 2] = x2;
         data[s * n_nodes + 3] = x3;
     }
-    SetFromHost(observational_data, data);
+    observational_data = SetFromHost(observational_data, data);
 
     bool result = nimcp_gpu_causal_discover(ctx, observational_data, state, &params);
     EXPECT_TRUE(result);
@@ -1448,9 +1450,9 @@ TEST_F(ReasoningKernelTest, Integration_FuzzyLogicChain) {
         b_vals[i] = 1.0f - a_vals[i];
         c_vals[i] = 0.5f;
     }
-    SetFromHost(a, a_vals);
-    SetFromHost(b, b_vals);
-    SetFromHost(c, c_vals);
+    a = SetFromHost(a, a_vals);
+    b = SetFromHost(b, b_vals);
+    c = SetFromHost(c, c_vals);
 
     // Compute: (A AND B) OR C
     // Step 1: temp = A AND B
@@ -1497,7 +1499,7 @@ TEST_F(ReasoningKernelTest, Integration_RuleBasedInference) {
         initial_facts[i] = 0.8f;  // First fact is active
         initial_facts[pattern_dim + i] = 0.6f;  // Second fact is partially active
     }
-    SetFromHost(wm->facts, initial_facts);
+    wm->facts = SetFromHost(wm->facts, initial_facts);
 
     // Set up rules to chain: fact0 -> fact2, fact2 -> fact4
     std::vector<float> antecedents(n_rules * pattern_dim, 0.0f);
@@ -1507,8 +1509,8 @@ TEST_F(ReasoningKernelTest, Integration_RuleBasedInference) {
         antecedents[0 * pattern_dim + i] = 0.8f;
         consequents[0 * pattern_dim + i] = 0.7f;
     }
-    SetFromHost(rules->antecedents, antecedents);
-    SetFromHost(rules->consequents, consequents);
+    rules->antecedents = SetFromHost(rules->antecedents, antecedents);
+    rules->consequents = SetFromHost(rules->consequents, consequents);
 
     auto initial_facts_copy = CopyToHost(wm->facts);
 
@@ -1590,16 +1592,16 @@ TEST_F(ReasoningKernelTest, Integration_AnalogicalMapping) {
     structure[0 * source_size + 1] = 1.0f;
     structure[1 * source_size + 2] = 1.0f;
     structure[2 * source_size + 3] = 1.0f;
-    SetFromHost(state->source_structure, structure);
-    SetFromHost(state->target_structure, structure);
+    state->source_structure = SetFromHost(state->source_structure, structure);
+    state->target_structure = SetFromHost(state->target_structure, structure);
 
     // Set up matching features
     std::vector<float> features(source_size * feature_dim);
     for (size_t i = 0; i < source_size * feature_dim; i++) {
         features[i] = static_cast<float>(i % 5) / 5.0f;
     }
-    SetFromHost(state->source_features, features);
-    SetFromHost(state->target_features, features);
+    state->source_features = SetFromHost(state->source_features, features);
+    state->target_features = SetFromHost(state->target_features, features);
 
     // Compute similarity
     nimcp_gpu_analogy_structural_similarity(ctx, state, similarity_matrix, &params);
@@ -1618,7 +1620,7 @@ TEST_F(ReasoningKernelTest, Integration_AnalogicalMapping) {
     src_inf[1] = 0.8f;
     src_inf[2] = 0.5f;
     src_inf[3] = 0.2f;
-    SetFromHost(source_inferences, src_inf);
+    source_inferences = SetFromHost(source_inferences, src_inf);
 
     nimcp_gpu_analogy_transfer(ctx, state, source_inferences, target_inferences, &params);
 
@@ -1670,13 +1672,13 @@ TEST_F(ReasoningKernelTest, Integration_CausalInference) {
     weights[1 * n_nodes + 3] = 0.5f;
     weights[2 * n_nodes + 3] = 0.4f;
     weights[3 * n_nodes + 4] = 0.9f;
-    SetFromHost(state->adjacency, adjacency);
-    SetFromHost(state->edge_weights, weights);
+    state->adjacency = SetFromHost(state->adjacency, adjacency);
+    state->edge_weights = SetFromHost(state->edge_weights, weights);
 
     // Set initial values
     std::vector<float> values(n_nodes, 0.0f);
     values[0] = 1.0f;  // Root cause active
-    SetFromHost(state->node_values, values);
+    state->node_values = SetFromHost(state->node_values, values);
 
     // Propagate
     nimcp_gpu_causal_propagate(ctx, state, &params);
@@ -1703,7 +1705,7 @@ TEST_F(ReasoningKernelTest, Integration_CausalInference) {
     EXPECT_GE(effect, 0.0f);
 
     // Compute counterfactual
-    SetFromHost(factual_values, propagated);
+    factual_values = SetFromHost(factual_values, propagated);
     nimcp_gpu_causal_counterfactual(ctx, state, factual_values, 0, 0.5f, counterfactual_outcome, &params);
 
     auto cf = CopyToHost(counterfactual_outcome);
@@ -1739,7 +1741,7 @@ TEST_F(ReasoningKernelTest, Integration_CausalDiscoveryAndInference) {
         data[s * n_nodes + 2] = x2;
         data[s * n_nodes + 3] = x3;
     }
-    SetFromHost(observational_data, data);
+    observational_data = SetFromHost(observational_data, data);
 
     // Discover structure
     bool result = nimcp_gpu_causal_discover(ctx, observational_data, state, &params);
@@ -1761,7 +1763,7 @@ TEST_F(ReasoningKernelTest, Integration_CausalDiscoveryAndInference) {
     // Now use discovered graph for inference
     std::vector<float> values(n_nodes, 0.0f);
     values[0] = 1.0f;
-    SetFromHost(state->node_values, values);
+    state->node_values = SetFromHost(state->node_values, values);
 
     nimcp_gpu_causal_propagate(ctx, state, &params);
 

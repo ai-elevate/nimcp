@@ -10,8 +10,25 @@
 
 #include "core/geometry/nimcp_surface_manifold.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include <math.h>
+
+#define LOG_MODULE "SurfaceManifold"
+
+//=============================================================================
+// NUMERICAL STABILITY CONSTANTS
+//=============================================================================
+
+/**
+ * Epsilon for vector magnitude checks (normalization, angle computation).
+ * WHAT: Threshold below which vectors are considered degenerate/zero.
+ * WHY:  SURFACE_MIN_CIRCUMFERENCE (1e-6) is for circumferences, not magnitudes.
+ *       Vector magnitudes need tighter tolerance to avoid division instability.
+ * HOW:  Use 1e-8f which is well above float denormals (~1e-38) but small enough
+ *       to catch near-zero vectors before division causes NaN/Inf.
+ */
+#define SURFACE_VEC_MAGNITUDE_EPSILON 1e-8f
 
 //=============================================================================
 // VECTOR UTILITIES
@@ -19,7 +36,11 @@
 
 float surface_vec3_dot(const surface_vec3_t* a, const surface_vec3_t* b)
 {
-    if (!a || !b) return 0.0f;
+    if (!a || !b) {
+        LOG_WARN(LOG_MODULE, "surface_vec3_dot: NULL input (a=%p, b=%p)",
+                 (const void*)a, (const void*)b);
+        return 0.0f;
+    }
     return a->x * b->x + a->y * b->y + a->z * b->z;
 }
 
@@ -28,7 +49,11 @@ void surface_vec3_cross(
     const surface_vec3_t* b,
     surface_vec3_t* result)
 {
-    if (!a || !b || !result) return;
+    if (!a || !b || !result) {
+        LOG_WARN(LOG_MODULE, "surface_vec3_cross: NULL input (a=%p, b=%p, result=%p)",
+                 (const void*)a, (const void*)b, (void*)result);
+        return;
+    }
 
     result->x = a->y * b->z - a->z * b->y;
     result->y = a->z * b->x - a->x * b->z;
@@ -37,7 +62,10 @@ void surface_vec3_cross(
 
 float surface_vec3_magnitude(const surface_vec3_t* v)
 {
-    if (!v) return 0.0f;
+    if (!v) {
+        LOG_WARN(LOG_MODULE, "surface_vec3_magnitude: NULL input");
+        return 0.0f;
+    }
     return sqrtf(v->x * v->x + v->y * v->y + v->z * v->z);
 }
 
@@ -46,37 +74,64 @@ int surface_vec3_normalize(surface_vec3_t* v)
     if (!v) return -1;
 
     float mag = surface_vec3_magnitude(v);
-    if (mag < SURFACE_MIN_CIRCUMFERENCE) return -1;
 
-    v->x /= mag;
-    v->y /= mag;
-    v->z /= mag;
+    /* NUMERICAL STABILITY: Use dedicated magnitude epsilon, not circumference threshold.
+     * Check against epsilon before division to avoid NaN/Inf. */
+    if (mag < SURFACE_VEC_MAGNITUDE_EPSILON) return -1;
+
+    /* Use (1/mag) multiplication instead of division for stability with very small mag.
+     * This avoids division-by-zero-adjacent issues near epsilon. */
+    float inv_mag = 1.0f / mag;
+    v->x *= inv_mag;
+    v->y *= inv_mag;
+    v->z *= inv_mag;
     return 0;
 }
 
 float surface_vec3_angle(const surface_vec3_t* a, const surface_vec3_t* b)
 {
-    if (!a || !b) return 0.0f;
+    if (!a || !b) {
+        LOG_WARN(LOG_MODULE, "surface_vec3_angle: NULL input (a=%p, b=%p)",
+                 (const void*)a, (const void*)b);
+        return 0.0f;
+    }
 
     float mag_a = surface_vec3_magnitude(a);
     float mag_b = surface_vec3_magnitude(b);
-    if (mag_a < SURFACE_MIN_CIRCUMFERENCE || mag_b < SURFACE_MIN_CIRCUMFERENCE) {
+
+    /* NUMERICAL STABILITY: Use dedicated magnitude epsilon for degenerate check */
+    if (mag_a < SURFACE_VEC_MAGNITUDE_EPSILON || mag_b < SURFACE_VEC_MAGNITUDE_EPSILON) {
+        LOG_DEBUG(LOG_MODULE, "surface_vec3_angle: degenerate vector (mag_a=%.2e, mag_b=%.2e)",
+                  (double)mag_a, (double)mag_b);
         return 0.0f;
     }
 
     float dot = surface_vec3_dot(a, b);
     float cos_angle = dot / (mag_a * mag_b);
 
-    /* Clamp to [-1, 1] for numerical stability */
-    if (cos_angle > 1.0f) cos_angle = 1.0f;
-    if (cos_angle < -1.0f) cos_angle = -1.0f;
+    /* NUMERICAL STABILITY: Check for NaN before clamping.
+     * NaN can occur from 0/0, inf/inf, or corrupted inputs.
+     * Return 0 (parallel vectors) as safe fallback. */
+    if (isnan(cos_angle) || isinf(cos_angle)) {
+        LOG_WARN(LOG_MODULE, "surface_vec3_angle: numerical instability (cos_angle=%f)", (double)cos_angle);
+        return 0.0f;
+    }
+
+    /* NUMERICAL STABILITY: Use fminf/fmaxf intrinsics instead of if-statements.
+     * These are branchless and may use CPU SIMD instructions.
+     * Clamp to [-1, 1] to prevent acosf domain error. */
+    cos_angle = fmaxf(-1.0f, fminf(1.0f, cos_angle));
 
     return acosf(cos_angle);
 }
 
 float surface_vec3_distance(const surface_vec3_t* a, const surface_vec3_t* b)
 {
-    if (!a || !b) return 0.0f;
+    if (!a || !b) {
+        LOG_WARN(LOG_MODULE, "surface_vec3_distance: NULL input (a=%p, b=%p)",
+                 (const void*)a, (const void*)b);
+        return 0.0f;
+    }
 
     float dx = b->x - a->x;
     float dy = b->y - a->y;
@@ -726,5 +781,135 @@ int surface_integrate_2d(
     }
 
     *result = total * h0 * h1;
+    return 0;
+}
+
+//=============================================================================
+// ADAPTIVE QUADRATURE
+//=============================================================================
+
+int surface_adaptive_quadrature_default_config(
+    surface_adaptive_quadrature_config_t* config)
+{
+    if (!config) return -1;
+
+    config->enabled = true;
+    config->min_points = SURFACE_GAUSS_POINTS_MIN;
+    config->max_points = SURFACE_GAUSS_POINTS_MAX;
+    config->curvature_threshold = SURFACE_CURVATURE_THRESHOLD_HIGH;
+    config->target_accuracy = 1e-4f;
+
+    return 0;
+}
+
+uint32_t surface_adaptive_quadrature_points(
+    float curvature,
+    const surface_adaptive_quadrature_config_t* config)
+{
+    if (!config || !config->enabled) {
+        return SURFACE_GAUSS_POINTS;  /* Default */
+    }
+
+    /* Scale points based on curvature */
+    float abs_curv = fabsf(curvature);
+
+    if (abs_curv < config->curvature_threshold * 0.1f) {
+        /* Low curvature: use minimum points */
+        return config->min_points;
+    } else if (abs_curv > config->curvature_threshold) {
+        /* High curvature: scale up to maximum */
+        float scale = abs_curv / config->curvature_threshold;
+        uint32_t points = (uint32_t)(SURFACE_GAUSS_POINTS * scale);
+        if (points > config->max_points) {
+            points = config->max_points;
+        }
+        return points;
+    } else {
+        /* Medium curvature: use default */
+        return SURFACE_GAUSS_POINTS;
+    }
+}
+
+int surface_integrate_2d_adaptive(
+    surface_integrand_fn integrand,
+    float a0, float b0,
+    float a1, float b1,
+    void* user_data,
+    const surface_adaptive_quadrature_config_t* config,
+    float* result)
+{
+    if (!integrand || !result) return -1;
+
+    /* Use default config if none provided */
+    surface_adaptive_quadrature_config_t default_config;
+    if (!config) {
+        surface_adaptive_quadrature_default_config(&default_config);
+        config = &default_config;
+    }
+
+    /* Two-level adaptive integration:
+     * 1. Coarse pass to estimate curvature
+     * 2. Fine pass with adapted resolution */
+
+    /* Coarse pass with minimum points */
+    uint32_t n_coarse = config->min_points;
+    float h0_coarse = (b0 - a0) / n_coarse;
+    float h1_coarse = (b1 - a1) / n_coarse;
+
+    float coarse_total = 0.0f;
+    float max_variation = 0.0f;
+    float prev_value = 0.0f;
+
+    for (uint32_t i = 0; i < n_coarse; i++) {
+        float sigma0 = a0 + (i + 0.5f) * h0_coarse;
+        for (uint32_t j = 0; j < n_coarse; j++) {
+            float sigma1 = a1 + (j + 0.5f) * h1_coarse;
+            float value = integrand(sigma0, sigma1, user_data);
+            coarse_total += value;
+
+            /* Track variation as proxy for curvature */
+            if (i > 0 || j > 0) {
+                float variation = fabsf(value - prev_value);
+                if (variation > max_variation) {
+                    max_variation = variation;
+                }
+            }
+            prev_value = value;
+        }
+    }
+
+    /* Estimate curvature from variation */
+    float estimated_curvature = max_variation / (h0_coarse + h1_coarse);
+
+    /* Determine adaptive resolution */
+    uint32_t n_fine = surface_adaptive_quadrature_points(estimated_curvature, config);
+
+    /* If no refinement needed, return coarse result */
+    if (n_fine <= n_coarse) {
+        *result = coarse_total * h0_coarse * h1_coarse;
+        return 0;
+    }
+
+    /* Fine pass with adapted resolution */
+    float h0_fine = (b0 - a0) / n_fine;
+    float h1_fine = (b1 - a1) / n_fine;
+    float fine_total = 0.0f;
+
+    for (uint32_t i = 0; i < n_fine; i++) {
+        float sigma0 = a0 + (i + 0.5f) * h0_fine;
+        for (uint32_t j = 0; j < n_fine; j++) {
+            float sigma1 = a1 + (j + 0.5f) * h1_fine;
+            fine_total += integrand(sigma0, sigma1, user_data);
+        }
+    }
+
+    *result = fine_total * h0_fine * h1_fine;
+
+    /* Log if significant refinement was needed */
+    if (n_fine > SURFACE_GAUSS_POINTS * 2) {
+        LOG_DEBUG(LOG_MODULE, "Adaptive quadrature: curvature=%.3f, points=%u->%u",
+                  (double)estimated_curvature, n_coarse, n_fine);
+    }
+
     return 0;
 }

@@ -32,6 +32,8 @@
 // Forward declarations for internal functions (exposed for testing)
 //=============================================================================
 
+extern "C" {
+
 // Radix sort API
 typedef struct nimcp_radix_sort_ctx nimcp_radix_sort_ctx_t;
 nimcp_radix_sort_ctx_t* nimcp_radix_sort_create(void* gpu_ctx, size_t max_elements);
@@ -69,7 +71,8 @@ int nimcp_tensor_reduce_axes(void* gpu_ctx, const float* input, float* output,
                              const size_t* input_dims, int input_ndim,
                              const int* axes, int num_axes, nimcp_reduce_op_t op,
                              bool keepdims);
-}
+
+} // extern "C"
 
 //=============================================================================
 // Test Constants

@@ -40,7 +40,7 @@ protected:
     // Helper to create a 1D tensor with values
     nimcp_tensor_t* Create1DTensor(size_t n, float fill_value = 0.0f) {
         size_t dims[1] = {n};
-        nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_FLOAT32);
+        nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 1, NIMCP_GPU_PRECISION_FP32);
         if (tensor && fill_value != 0.0f) {
             float* data = (float*)tensor->data;
             for (size_t i = 0; i < n; i++) {
@@ -53,7 +53,7 @@ protected:
     // Helper to create 2D tensor
     nimcp_tensor_t* Create2DTensor(size_t rows, size_t cols, float fill_value = 0.0f) {
         size_t dims[2] = {rows, cols};
-        nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_FLOAT32);
+        nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 2, NIMCP_GPU_PRECISION_FP32);
         if (tensor && fill_value != 0.0f) {
             float* data = (float*)tensor->data;
             for (size_t i = 0; i < rows * cols; i++) {
@@ -437,7 +437,7 @@ TEST_F(INT8QuantizationTest, INT8GEMM_CorrectResult) {
 
     nimcp_tensor_t* A = nimcp_tensor_create(dims_a, 2, NIMCP_DTYPE_INT8);
     nimcp_tensor_t* B = nimcp_tensor_create(dims_b, 2, NIMCP_DTYPE_INT8);
-    nimcp_tensor_t* C = nimcp_tensor_create(dims_c, 2, NIMCP_DTYPE_FLOAT32);
+    nimcp_tensor_t* C = nimcp_tensor_create(dims_c, 2, NIMCP_GPU_PRECISION_FP32);
 
     // Fill with simple known values
     int8_t* a_data = (int8_t*)A->data;
@@ -951,7 +951,7 @@ TEST_F(INT8QuantizationTest, EmptyTensor_Handled) {
     ASSERT_NE(qat, nullptr);
 
     size_t dims[1] = {0};
-    nimcp_tensor_t* empty = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_FLOAT32);
+    nimcp_tensor_t* empty = nimcp_tensor_create(dims, 1, NIMCP_GPU_PRECISION_FP32);
 
     if (empty != nullptr) {
         qat_params_t params = {.scale = 1.0f, .zero_point = 0};

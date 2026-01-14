@@ -409,6 +409,14 @@ static unified_mem_handle_t handle_tracker_remove(void* ptr) {
 // Global State
 //=============================================================================
 
+/**
+ * @brief Per-channel state tracking for refractory period enforcement
+ */
+typedef struct {
+    uint64_t last_completion_ms;     /**< Time of last promise completion */
+    nimcp_mutex_t mutex;             /**< Protects last_completion_ms */
+} bio_channel_state_t;
+
 static struct {
     bool initialized;
     nimcp_bio_async_config_t config;
@@ -422,6 +430,9 @@ static struct {
     /* Statistics */
     nimcp_bio_async_stats_t stats;
     nimcp_rwlock_t stats_lock;
+
+    /* Per-channel state for refractory period tracking */
+    bio_channel_state_t channel_state[BIO_CHANNEL_COUNT];
 
     /* Simulation time */
     uint64_t simulation_time_ms;
@@ -955,6 +966,25 @@ nimcp_error_t nimcp_bio_async_init(const nimcp_bio_async_config_t* config) {
         return NIMCP_ERROR_MUTEX_INIT;
     }
 
+    /* Initialize per-channel state mutexes for refractory period tracking */
+    for (int i = 0; i < BIO_CHANNEL_COUNT; i++) {
+        if (nimcp_mutex_init(&g_bio_async.channel_state[i].mutex, NULL) != NIMCP_SUCCESS) {
+            LOG_ERROR("Failed to create channel state mutex for channel %d", i);
+            /* Cleanup previously initialized mutexes */
+            for (int j = 0; j < i; j++) {
+                nimcp_mutex_destroy(&g_bio_async.channel_state[j].mutex);
+            }
+            nimcp_mutex_destroy(&g_bio_async.time_mutex);
+            nimcp_rwlock_destroy(&g_bio_async.stats_lock);
+            nimcp_pool_destroy(g_bio_async.thread_pool);
+            if (g_bio_async.mem_mgr) {
+                unified_mem_destroy(g_bio_async.mem_mgr);
+            }
+            return NIMCP_ERROR_MUTEX_INIT;
+        }
+        g_bio_async.channel_state[i].last_completion_ms = 0;
+    }
+
     /* Clear statistics */
     memset(&g_bio_async.stats, 0, sizeof(g_bio_async.stats));
     g_bio_async.simulation_time_ms = 0;
@@ -981,6 +1011,11 @@ void nimcp_bio_async_shutdown(void) {
     /* Destroy locks */
     nimcp_rwlock_destroy(&g_bio_async.stats_lock);
     nimcp_mutex_destroy(&g_bio_async.time_mutex);
+
+    /* Destroy per-channel state mutexes */
+    for (int i = 0; i < BIO_CHANNEL_COUNT; i++) {
+        nimcp_mutex_destroy(&g_bio_async.channel_state[i].mutex);
+    }
 
     /* Shutdown handle tracker (frees any remaining tracked handles) */
     handle_tracker_shutdown();
@@ -1108,6 +1143,26 @@ nimcp_error_t nimcp_bio_promise_complete_sized(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Enforce refractory period: check if minimum time has passed since last completion */
+    nimcp_bio_channel_type_t channel = shared->channel;
+    if (channel < BIO_CHANNEL_COUNT) {
+        float refractory_ms = g_bio_async.config.channel_configs[channel].refractory_period_ms;
+        if (refractory_ms > 0.0F) {
+            uint64_t current_time = bio_time_ms();
+            nimcp_mutex_lock(&g_bio_async.channel_state[channel].mutex);
+            uint64_t last_completion = g_bio_async.channel_state[channel].last_completion_ms;
+            uint64_t elapsed = current_time - last_completion;
+            if (last_completion > 0 && elapsed < (uint64_t)refractory_ms) {
+                nimcp_mutex_unlock(&g_bio_async.channel_state[channel].mutex);
+                LOG_DEBUG("nimcp_bio_promise_complete: refractory period not elapsed "
+                          "(channel=%s, elapsed=%lu ms, required=%.1f ms)",
+                          nimcp_bio_channel_name(channel), (unsigned long)elapsed, refractory_ms);
+                return NIMCP_ERROR_INVALID_STATE;
+            }
+            nimcp_mutex_unlock(&g_bio_async.channel_state[channel].mutex);
+        }
+    }
+
     /* Determine actual copy size:
      * - If shared->result_size was set at creation, use min of that and result_size
      * - If shared->result_size is 0, use result_size (handler provides size)
@@ -1158,6 +1213,13 @@ nimcp_error_t nimcp_bio_promise_complete_sized(
             shared->result = NULL;
         }
         return NIMCP_ERROR_INVALID_STATE;
+    }
+
+    /* Update channel last completion time for refractory period tracking */
+    if (channel < BIO_CHANNEL_COUNT) {
+        nimcp_mutex_lock(&g_bio_async.channel_state[channel].mutex);
+        g_bio_async.channel_state[channel].last_completion_ms = shared->complete_time_ms;
+        nimcp_mutex_unlock(&g_bio_async.channel_state[channel].mutex);
     }
 
     /* Wake waiters */

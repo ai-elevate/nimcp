@@ -72,6 +72,10 @@ typedef struct {
     float total_ltp;            /* Cumulative LTP */
     float total_ltd;            /* Cumulative LTD */
 
+    /* Weight saturation tracking (for detecting potential learning issues) */
+    uint64_t num_saturate_max_events;   /* Times weight hit w_max limit */
+    uint64_t num_saturate_min_events;   /* Times weight hit w_min limit */
+
 } stdp_synapse_t;
 
 /**

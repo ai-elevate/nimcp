@@ -99,3 +99,53 @@ for test in test_cases:
 - Not accounting for the full context (e.g., function call parentheses)
 - Forgetting to escape special characters
 - Patterns that match partial identifiers
+
+---
+
+## Return Value Conventions
+
+### Standard NIMCP Functions
+
+Most NIMCP functions return `nimcp_error_t` enum values:
+- `NIMCP_SUCCESS` (0) for success
+- `NIMCP_ERROR_*` codes for errors (e.g., `NIMCP_ERROR_NULL_POINTER`, `NIMCP_ERROR_NO_MEMORY`)
+
+Use appropriate error codes for different failure scenarios:
+- `NIMCP_ERROR_INVALID_PARAM` - Invalid parameter (NULL or invalid value)
+- `NIMCP_ERROR_NULL_POINTER` - Specifically NULL pointer passed
+- `NIMCP_ERROR_NO_MEMORY` - Memory allocation failure
+- `NIMCP_ERROR_INVALID_STATE` - Invalid object state (e.g., wrong magic number)
+- `NIMCP_ERROR_NOT_FOUND` - Requested item not found
+- `NIMCP_ERROR_NOT_INITIALIZED` - System/module not initialized
+- `NIMCP_ERROR_ALREADY_EXISTS` - Item already exists (duplicate)
+- `NIMCP_ERROR_BUFFER_OVERFLOW` - Buffer/queue full
+- `NIMCP_ERROR_TIMEOUT` - Operation timed out
+- `NIMCP_ERROR_CANCELLED` - Operation cancelled (e.g., shutdown)
+- `NIMCP_ERROR_MUTEX_INIT` - Mutex initialization failure
+- `NIMCP_ERROR_OPERATION_FAILED` - Generic operation failure
+
+### FEP Bridge Functions
+
+**Convention**: FEP (Free Energy Principle) bridge functions return `int`:
+- `0` for success
+- `-1` for errors
+
+This convention is intentional because:
+1. FEP bridges integrate with external predictive coding frameworks
+2. Many FEP bridge functions return counts or indices where -1 indicates error
+3. Maintains consistency with legacy FEP integration code
+
+**When to use each convention:**
+- New core NIMCP functions: Use `nimcp_error_t`
+- FEP bridge functions: Use `int` (0/-1)
+- Internal functions returning counts: Use `int` where -1 = error, >= 0 = count
+
+### Internal Count-Returning Functions
+
+Some internal functions return `int` with special semantics:
+- `>= 0` indicates success with a count
+- `-1` indicates error
+
+Example: `bio_router_kg_dispatch_internal()` returns the number of handlers dispatched, or -1 on error.
+
+Document such functions clearly in the header/source to avoid confusion.

@@ -1792,6 +1792,46 @@ nimcp_tensor_t* nimcp_tensor_einsum(
 // Tensor Calculus - Numerical Derivatives
 //=============================================================================
 
+/**
+ * @brief Compute adaptive step size for numerical differentiation
+ *
+ * WHAT: Returns optimal step size based on data type to minimize total error
+ * WHY:  Fixed step size (like 1e-5) causes catastrophic cancellation for float32
+ *       when input values are near 1.0 due to limited mantissa precision.
+ *
+ * For central differences, total error = O(h^2) + O(eps/h)
+ * where eps is machine epsilon. Optimal h ~ eps^(1/3):
+ *   - float64: eps ~ 2.2e-16, optimal h ~ 6e-6
+ *   - float32: eps ~ 1.2e-7,  optimal h ~ 5e-3
+ *   - float16: eps ~ 9.8e-4,  optimal h ~ 1e-1
+ *
+ * @param dtype Tensor data type
+ * @return Optimal step size for the given precision
+ */
+static double tensor_adaptive_step_size(nimcp_dtype_t dtype)
+{
+    switch (dtype) {
+        case NIMCP_DTYPE_F64:
+        case NIMCP_DTYPE_C128:
+            /* 64-bit: eps^(1/3) ~ 6e-6, use 1e-5 for safety margin */
+            return 1e-5;
+
+        case NIMCP_DTYPE_F32:
+        case NIMCP_DTYPE_C64:
+            /* 32-bit: eps^(1/3) ~ 5e-3, use 1e-3 for safety margin */
+            return 1e-3;
+
+        case NIMCP_DTYPE_F16:
+        case NIMCP_DTYPE_BF16:
+            /* 16-bit: very limited precision, use larger step */
+            return 1e-2;
+
+        default:
+            /* Integer types or unknown: use conservative step */
+            return 1e-4;
+    }
+}
+
 nimcp_tensor_t* nimcp_tensor_numerical_gradient(
     nimcp_scalar_fn f,
     const nimcp_tensor_t* x,
@@ -1800,7 +1840,11 @@ nimcp_tensor_t* nimcp_tensor_numerical_gradient(
 )
 {
     if (!f || !tensor_is_valid(x)) return NULL;
-    if (h == 0) h = 1e-5;
+
+    /* Use adaptive step size if not specified */
+    if (h == 0) {
+        h = tensor_adaptive_step_size(x->dtype);
+    }
 
     nimcp_tensor_t* grad = nimcp_tensor_create(x->shape.dims, x->shape.rank, x->dtype);
     if (!grad) return NULL;
@@ -1847,7 +1891,11 @@ nimcp_tensor_t* nimcp_tensor_jacobian(
 )
 {
     if (!f || !tensor_is_valid(x)) return NULL;
-    if (h == 0) h = 1e-5;
+
+    /* Use adaptive step size if not specified */
+    if (h == 0) {
+        h = tensor_adaptive_step_size(x->dtype);
+    }
 
     /* Evaluate f(x) to get output dimension */
     nimcp_tensor_t* f_x = f(x, ctx);
@@ -1920,7 +1968,13 @@ nimcp_tensor_t* nimcp_tensor_hessian(
 )
 {
     if (!f || !tensor_is_valid(x)) return NULL;
-    if (h == 0) h = 1e-4;
+
+    /* Use adaptive step size if not specified.
+     * Hessian uses slightly larger step than gradient for stability
+     * since we're computing second derivatives. */
+    if (h == 0) {
+        h = tensor_adaptive_step_size(x->dtype) * 10.0;  /* 10x larger for Hessian */
+    }
 
     uint32_t n = (uint32_t)x->shape.numel;
     uint32_t hess_dims[2] = {n, n};

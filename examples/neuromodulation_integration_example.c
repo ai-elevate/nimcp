@@ -42,9 +42,12 @@ static void print_state(
     printf("\n=== %s ===\n", label);
     printf("TD Error: %.3f\n", td_error);
     printf("\nDopamine State:\n");
-    printf("  Tonic:  %.6f µM (%6.1f nM)\n", da_state->tonic_level, da_state->tonic_level * 1000000.0f);
-    printf("  Phasic: %.6f µM (%6.1f nM)\n", da_state->phasic_burst, da_state->phasic_burst * 1000000.0f);
-    printf("  Total:  %.6f µM (%6.1f nM)\n", da_state->total_concentration, da_state->total_concentration * 1000000.0f);
+    float tonic = phasic_tonic_get_tonic_level(da_state);
+    float phasic = phasic_tonic_get_phasic_burst(da_state);
+    float total = phasic_tonic_get_total_concentration(da_state);
+    printf("  Tonic:  %.6f µM (%6.1f nM)\n", tonic, tonic * 1000000.0f);
+    printf("  Phasic: %.6f µM (%6.1f nM)\n", phasic, phasic * 1000000.0f);
+    printf("  Total:  %.6f µM (%6.1f nM)\n", total, total * 1000000.0f);
     printf("  Burst State: %s\n", da_state->in_burst_state ? "ACTIVE" : "inactive");
 
     printf("\nCortical Receptors (D1-dominant):\n");
@@ -147,9 +150,9 @@ int main(void) {
 
         printf("%9d | %10.1f | %11.1f | %10.1f | %10.3f | %12.3f\n",
                t,
-               dopamine_state.tonic_level * 1000000.0f,
-               dopamine_state.phasic_burst * 1000000.0f,
-               dopamine_state.total_concentration * 1000000.0f,
+               phasic_tonic_get_tonic_level(&dopamine_state) * 1000000.0f,
+               phasic_tonic_get_phasic_burst(&dopamine_state) * 1000000.0f,
+               phasic_tonic_get_total_concentration(&dopamine_state) * 1000000.0f,
                cortical_receptors.net_modulation,
                striatal_receptors.net_modulation);
     }

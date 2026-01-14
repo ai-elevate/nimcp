@@ -481,6 +481,11 @@ int snn_decode_rate(snn_decoder_t* decoder,
     return SNN_SUCCESS;
 }
 
+/** Minimum softmax temperature to prevent division by zero / overflow */
+#define SNN_SOFTMAX_TEMPERATURE_MIN 0.001f
+/** Maximum softmax temperature for reasonable numerical behavior */
+#define SNN_SOFTMAX_TEMPERATURE_MAX 100.0f
+
 int snn_decode_first_spike(snn_decoder_t* decoder,
                            const float* spike_times,
                            uint32_t* class_out,
@@ -489,6 +494,24 @@ int snn_decode_first_spike(snn_decoder_t* decoder,
     if (decoder->method != SNN_DECODE_FIRST_SPIKE) return SNN_ERROR_INVALID_CONFIG;
 
     const snn_first_spike_decoder_config_t* cfg = &decoder->config.first_spike;
+
+    /* Validate softmax temperature parameter to prevent numerical issues
+     * WHAT: Ensure temperature is in valid range
+     * WHY:  Temperature near 0 causes exp() overflow, negative causes incorrect behavior
+     * HOW:  Check bounds and return error if invalid
+     */
+    if (cfg->use_softmax) {
+        if (cfg->temperature < SNN_SOFTMAX_TEMPERATURE_MIN) {
+            NIMCP_LOGGING_ERROR("First-spike decoder: softmax temperature %.6f below minimum %.6f",
+                                cfg->temperature, SNN_SOFTMAX_TEMPERATURE_MIN);
+            return SNN_ERROR_INVALID_CONFIG;
+        }
+        if (cfg->temperature > SNN_SOFTMAX_TEMPERATURE_MAX) {
+            NIMCP_LOGGING_WARN("First-spike decoder: softmax temperature %.2f above recommended max %.2f",
+                                  cfg->temperature, SNN_SOFTMAX_TEMPERATURE_MAX);
+            /* Continue with warning - high temperature is valid but may produce uniform outputs */
+        }
+    }
 
     /* Find neuron with earliest spike */
     float earliest = cfg->max_latency;

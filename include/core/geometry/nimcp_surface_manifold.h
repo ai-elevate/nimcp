@@ -44,8 +44,17 @@ extern "C" {
 #define M_PI 3.14159265358979323846f
 #endif
 
-/** Number of integration points for Gaussian quadrature */
+/** Default number of integration points for Gaussian quadrature */
 #define SURFACE_GAUSS_POINTS 16
+
+/** Minimum Gaussian quadrature points for low-curvature surfaces */
+#define SURFACE_GAUSS_POINTS_MIN 8
+
+/** Maximum Gaussian quadrature points for high-curvature surfaces */
+#define SURFACE_GAUSS_POINTS_MAX 64
+
+/** Curvature threshold for adaptive quadrature (increases points above this) */
+#define SURFACE_CURVATURE_THRESHOLD_HIGH 0.5f
 
 /** Default resolution for manifold discretization */
 #define SURFACE_MANIFOLD_RESOLUTION 32
@@ -571,10 +580,25 @@ float surface_vec3_distance(const surface_vec3_t* a, const surface_vec3_t* b);
  * @brief Gaussian quadrature points and weights
  */
 typedef struct surface_gauss_quadrature_struct {
-    float points[SURFACE_GAUSS_POINTS];
-    float weights[SURFACE_GAUSS_POINTS];
+    float points[SURFACE_GAUSS_POINTS_MAX];
+    float weights[SURFACE_GAUSS_POINTS_MAX];
     uint32_t num_points;
 } surface_gauss_quadrature_t;
+
+/**
+ * @brief Adaptive quadrature configuration
+ *
+ * Enables automatic adjustment of quadrature resolution based on
+ * surface curvature. Sharp features require more integration points
+ * for accurate area computation.
+ */
+typedef struct surface_adaptive_quadrature_config_struct {
+    bool enabled;                   /**< Enable adaptive quadrature */
+    uint32_t min_points;            /**< Minimum quadrature points */
+    uint32_t max_points;            /**< Maximum quadrature points */
+    float curvature_threshold;      /**< Curvature threshold for refinement */
+    float target_accuracy;          /**< Target relative accuracy */
+} surface_adaptive_quadrature_config_t;
 
 /**
  * @brief Initialize Gaussian quadrature for integration
@@ -611,6 +635,52 @@ int surface_integrate_2d(
     float a0, float b0,
     float a1, float b1,
     void* user_data,
+    float* result
+);
+
+/**
+ * @brief Initialize adaptive quadrature configuration with defaults
+ *
+ * @param config Configuration to initialize
+ * @return 0 on success, -1 on error
+ */
+int surface_adaptive_quadrature_default_config(
+    surface_adaptive_quadrature_config_t* config
+);
+
+/**
+ * @brief Compute adaptive quadrature points based on curvature
+ *
+ * @param curvature Estimated surface curvature at region
+ * @param config Adaptive quadrature configuration
+ * @return Number of quadrature points to use
+ */
+uint32_t surface_adaptive_quadrature_points(
+    float curvature,
+    const surface_adaptive_quadrature_config_t* config
+);
+
+/**
+ * @brief 2D numerical integration using adaptive Gaussian quadrature
+ *
+ * Automatically adjusts quadrature resolution based on local curvature.
+ *
+ * @param integrand Function to integrate
+ * @param a0 Lower bound for sigma^0
+ * @param b0 Upper bound for sigma^0
+ * @param a1 Lower bound for sigma^1
+ * @param b1 Upper bound for sigma^1
+ * @param user_data Context for integrand
+ * @param config Adaptive quadrature configuration
+ * @param result Output: integral value
+ * @return 0 on success, -1 on error
+ */
+int surface_integrate_2d_adaptive(
+    surface_integrand_fn integrand,
+    float a0, float b0,
+    float a1, float b1,
+    void* user_data,
+    const surface_adaptive_quadrature_config_t* config,
     float* result
 );
 

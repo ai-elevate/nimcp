@@ -46,9 +46,9 @@ protected:
     // Helper to create a tensor filled with a constant value
     nimcp_gpu_tensor_t* CreateFilledTensor(size_t* dims, size_t rank, float value) {
         if (!ctx) return nullptr;
-        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_DTYPE_FLOAT32);
+        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_GPU_PRECISION_FP32);
         if (tensor) {
-            nimcp_gpu_tensor_fill(ctx, tensor, value);
+            nimcp_gpu_fill(ctx, tensor, value);
         }
         return tensor;
     }
@@ -73,15 +73,17 @@ protected:
 
     // Helper to copy tensor to host
     std::vector<float> CopyToHost(nimcp_gpu_tensor_t* tensor) {
-        size_t n = nimcp_gpu_tensor_numel(tensor);
+        size_t n = tensor->numel;
         std::vector<float> host_data(n);
-        nimcp_gpu_tensor_to_host(ctx, tensor, host_data.data(), n * sizeof(float));
+        nimcp_gpu_tensor_to_host(tensor, host_data.data());
         return host_data;
     }
 
     // Helper to set tensor from host
-    void SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
-        nimcp_gpu_tensor_from_host(ctx, tensor, data.data(), data.size() * sizeof(float));
+    nimcp_gpu_tensor_t* SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
+        if (tensor) nimcp_gpu_tensor_destroy(tensor);
+        size_t dims[1] = {data.size()};
+        return nimcp_gpu_tensor_from_host(ctx, data.data(), dims, 1, NIMCP_GPU_PRECISION_FP32);
     }
 
     // Helper to create column state
@@ -443,7 +445,7 @@ TEST_F(RegionsKernelTest, ColumnLateralInhibition_ReducesActivity) {
     ASSERT_NE(state, nullptr);
 
     // Set initial activity
-    nimcp_gpu_tensor_fill(ctx, state->column_output, 1.0f);
+    nimcp_gpu_fill(ctx, state->column_output, 1.0f);
 
     nimcp_gpu_column_params_t params = nimcp_gpu_column_params_default();
     params.lateral_inhibition = 0.5f;
@@ -479,7 +481,7 @@ TEST_F(RegionsKernelTest, ColumnLateralInhibition_CompetitiveSelection) {
     for (size_t i = 0; i < n_columns; i++) {
         initial_activity[i] = static_cast<float>(i) / n_columns;
     }
-    SetFromHost(state->column_output, initial_activity);
+    state->column_output = SetFromHost(state->column_output, initial_activity);
 
     nimcp_gpu_column_params_t params = nimcp_gpu_column_params_default();
     params.lateral_inhibition = 0.8f;  // Strong inhibition
@@ -514,7 +516,7 @@ TEST_F(RegionsKernelTest, ColumnLayerPropagate_TransfersActivity) {
     ASSERT_NE(state, nullptr);
 
     // Set input layer (L4) activity
-    nimcp_gpu_tensor_fill(ctx, state->layer_activity[NIMCP_LAYER_4], 1.0f);
+    nimcp_gpu_fill(ctx, state->layer_activity[NIMCP_LAYER_4], 1.0f);
 
     nimcp_gpu_column_params_t params = nimcp_gpu_column_params_default();
 
@@ -554,10 +556,10 @@ TEST_F(RegionsKernelTest, PFCWMUpdate_StoresInput) {
     const float dt = 1.0f;
 
     // Open gate for slot 0
-    nimcp_gpu_tensor_fill(ctx, state->gate_state, 0.0f);
+    nimcp_gpu_fill(ctx, state->gate_state, 0.0f);
     std::vector<float> gate_data(n_slots, 0.0f);
     gate_data[0] = 1.0f;
-    SetFromHost(state->gate_state, gate_data);
+    state->gate_state = SetFromHost(state->gate_state, gate_data);
 
     bool result = nimcp_gpu_pfc_wm_update(ctx, state, input, dopamine, dt, &params);
     EXPECT_TRUE(result);
@@ -589,7 +591,7 @@ TEST_F(RegionsKernelTest, PFCWMUpdate_DecaysWithoutInput) {
     ASSERT_NE(state, nullptr);
 
     // Initialize WM with content
-    nimcp_gpu_tensor_fill(ctx, state->working_memory, 1.0f);
+    nimcp_gpu_fill(ctx, state->working_memory, 1.0f);
 
     auto initial_wm = CopyToHost(state->working_memory);
     float initial_sum = 0.0f;
@@ -603,7 +605,7 @@ TEST_F(RegionsKernelTest, PFCWMUpdate_DecaysWithoutInput) {
     params.recurrent_maintenance = false;
 
     // Close all gates
-    nimcp_gpu_tensor_fill(ctx, state->gate_state, 0.0f);
+    nimcp_gpu_fill(ctx, state->gate_state, 0.0f);
 
     // Multiple updates without input should cause decay
     for (int i = 0; i < 50; i++) {
@@ -636,7 +638,7 @@ TEST_F(RegionsKernelTest, PFCGating_ControlsAccess) {
     std::vector<float> signal_data(n_slots, 0.0f);
     signal_data[0] = 0.9f;
     signal_data[1] = 0.8f;
-    SetFromHost(gate_signal, signal_data);
+    gate_signal = SetFromHost(gate_signal, signal_data);
 
     nimcp_gpu_pfc_params_t params = nimcp_gpu_pfc_params_default();
     params.gating_threshold = 0.5f;
@@ -668,7 +670,7 @@ TEST_F(RegionsKernelTest, PFCMaintenance_SustainsActivity) {
     ASSERT_NE(state, nullptr);
 
     // Initialize WM with content
-    nimcp_gpu_tensor_fill(ctx, state->working_memory, 1.0f);
+    nimcp_gpu_fill(ctx, state->working_memory, 1.0f);
 
     nimcp_gpu_pfc_params_t params = nimcp_gpu_pfc_params_default();
     params.maintenance_gain = 1.5f;
@@ -711,7 +713,7 @@ TEST_F(RegionsKernelTest, PFCAttention_SelectsSlots) {
             wm_data[s * slot_dim + d] = static_cast<float>(s + 1) * 0.2f;
         }
     }
-    SetFromHost(state->working_memory, wm_data);
+    state->working_memory = SetFromHost(state->working_memory, wm_data);
 
     // Query that matches slot 2 content
     nimcp_gpu_tensor_t* query = Create1DTensor(slot_dim, 0.6f);  // Similar to slot 2
@@ -752,7 +754,7 @@ TEST_F(RegionsKernelTest, MotorPlan_GeneratesSequence) {
     nimcp_gpu_tensor_t* goal = Create1DTensor(n_actions, 0.0f);
     std::vector<float> goal_data(n_actions, 0.0f);
     goal_data[5] = 1.0f;  // Target action 5
-    SetFromHost(goal, goal_data);
+    goal = SetFromHost(goal, goal_data);
 
     nimcp_gpu_motor_params_t params = nimcp_gpu_motor_params_default();
 
@@ -784,7 +786,7 @@ TEST_F(RegionsKernelTest, MotorExecute_GeneratesOutput) {
     ASSERT_NE(state, nullptr);
 
     // Set up action plan
-    nimcp_gpu_tensor_fill(ctx, state->action_plan, 0.5f);
+    nimcp_gpu_fill(ctx, state->action_plan, 0.5f);
 
     nimcp_gpu_tensor_t* motor_output = Create1DTensor(n_muscles, 0.0f);
 
@@ -867,7 +869,7 @@ TEST_F(RegionsKernelTest, MotorPopulationCode_EncodesDirection) {
     // Direction vector pointing right (action 0)
     nimcp_gpu_tensor_t* direction = Create1DTensor(2, 0.0f);
     std::vector<float> dir_data = {1.0f, 0.0f};  // Right
-    SetFromHost(direction, dir_data);
+    direction = SetFromHost(direction, dir_data);
 
     nimcp_gpu_motor_params_t params = nimcp_gpu_motor_params_default();
     params.population_coding_sigma = 0.3f;
@@ -901,8 +903,8 @@ TEST_F(RegionsKernelTest, MotorNoise_AddsVariability) {
     ASSERT_NE(state2, nullptr);
 
     // Same action plan
-    nimcp_gpu_tensor_fill(ctx, state1->action_plan, 0.5f);
-    nimcp_gpu_tensor_fill(ctx, state2->action_plan, 0.5f);
+    nimcp_gpu_fill(ctx, state1->action_plan, 0.5f);
+    nimcp_gpu_fill(ctx, state2->action_plan, 0.5f);
 
     nimcp_gpu_tensor_t* output1 = Create1DTensor(n_muscles, 0.0f);
     nimcp_gpu_tensor_t* output2 = Create1DTensor(n_muscles, 0.0f);
@@ -955,7 +957,7 @@ TEST_F(RegionsKernelTest, ParietalAttention_UpdatesMap) {
             visual_data[y * map_size + x] = 1.0f;
         }
     }
-    SetFromHost(visual_input, visual_data);
+    visual_input = SetFromHost(visual_input, visual_data);
 
     nimcp_gpu_tensor_t* top_down = Create2DTensor(map_size, map_size, 0.0f);
 
@@ -1002,12 +1004,12 @@ TEST_F(RegionsKernelTest, ParietalTransform_UpdatesRepresentations) {
     // Set up spatial map with an object
     std::vector<float> spatial_data(map_size * map_size, 0.0f);
     spatial_data[16 * map_size + 16] = 1.0f;  // Object in center
-    SetFromHost(state->spatial_map, spatial_data);
+    state->spatial_map = SetFromHost(state->spatial_map, spatial_data);
 
     // Eye position (gaze direction)
     nimcp_gpu_tensor_t* eye_position = Create1DTensor(2, 0.0f);
     std::vector<float> eye_data = {0.2f, -0.1f};  // Looking right and down
-    SetFromHost(eye_position, eye_data);
+    eye_position = SetFromHost(eye_position, eye_data);
 
     nimcp_gpu_parietal_params_t params = nimcp_gpu_parietal_params_default();
 
@@ -1054,9 +1056,9 @@ TEST_F(RegionsKernelTest, ParietalMultisensory_IntegratesModalities) {
     auditory_data[10 * map_size + 10] = 0.6f;
     proprio_data[10 * map_size + 10] = 0.5f;
 
-    SetFromHost(visual, visual_data);
-    SetFromHost(auditory, auditory_data);
-    SetFromHost(proprioceptive, proprio_data);
+    visual = SetFromHost(visual, visual_data);
+    auditory = SetFromHost(auditory, auditory_data);
+    proprioceptive = SetFromHost(proprioceptive, proprio_data);
 
     nimcp_gpu_parietal_params_t params = nimcp_gpu_parietal_params_default();
 
@@ -1100,8 +1102,8 @@ TEST_F(RegionsKernelTest, ParietalMultisensory_ResolvesSpatialConflict) {
     visual_data[10 * map_size + 10] = 1.0f;
     auditory_data[20 * map_size + 20] = 1.0f;
 
-    SetFromHost(visual, visual_data);
-    SetFromHost(auditory, auditory_data);
+    visual = SetFromHost(visual, visual_data);
+    auditory = SetFromHost(auditory, auditory_data);
 
     nimcp_gpu_parietal_params_t params = nimcp_gpu_parietal_params_default();
     params.multisensory_weight = 0.7f;  // Visual dominance
@@ -1164,7 +1166,7 @@ TEST_F(RegionsKernelTest, InterregionTransmit_TransfersActivity) {
     DestroyInterregionState(state);
 }
 
-TEST_F(RegionsKernelTest, InterregionTransmit_RespectsDel delay) {
+TEST_F(RegionsKernelTest, InterregionTransmit_RespectsDelay) {
     RequireGPU();
 
     const size_t source_dim = 32;
@@ -1186,11 +1188,11 @@ TEST_F(RegionsKernelTest, InterregionTransmit_RespectsDel delay) {
     auto immediate = CopyToHost(target_input);
 
     // Clear source activity
-    nimcp_gpu_tensor_fill(ctx, source_activity, 0.0f);
+    nimcp_gpu_fill(ctx, source_activity, 0.0f);
 
     // Wait for delay period
     for (int t = 0; t < 10; t++) {
-        nimcp_gpu_tensor_fill(ctx, target_input, 0.0f);
+        nimcp_gpu_fill(ctx, target_input, 0.0f);
         nimcp_gpu_interregion_transmit(ctx, state, source_activity, target_input, dt, &params);
     }
 
@@ -1265,8 +1267,8 @@ TEST_F(RegionsKernelTest, InterregionPlasticity_HebbianLearning) {
         source_data[i] = 1.0f;
         target_data[i] = 1.0f;
     }
-    SetFromHost(source_activity, source_data);
-    SetFromHost(target_activity, target_data);
+    source_activity = SetFromHost(source_activity, source_data);
+    target_activity = SetFromHost(target_activity, target_data);
 
     nimcp_gpu_interregion_params_t params = nimcp_gpu_interregion_params_default();
     params.plasticity_rate = 0.1f;
@@ -1581,7 +1583,7 @@ TEST_F(RegionsKernelTest, Integration_CorticalColumnProcessing) {
     for (size_t i = 0; i < n_columns / 4; i++) {
         input_data[i] = 1.0f;
     }
-    SetFromHost(input, input_data);
+    input = SetFromHost(input, input_data);
 
     // Run processing loop
     for (int step = 0; step < n_steps; step++) {
@@ -1635,13 +1637,13 @@ TEST_F(RegionsKernelTest, Integration_PFCWorkingMemoryTask) {
         for (size_t d = 0; d < slot_dim; d++) {
             pattern[d] = std::sin(d * (item + 1) * 0.1f);
         }
-        SetFromHost(input, pattern);
+        input = SetFromHost(input, pattern);
 
         // Open gate for this slot
         nimcp_gpu_tensor_t* gate_signal = Create1DTensor(n_slots, 0.0f);
         std::vector<float> gate_data(n_slots, 0.0f);
         gate_data[item] = 1.0f;
-        SetFromHost(gate_signal, gate_data);
+        gate_signal = SetFromHost(gate_signal, gate_data);
 
         nimcp_gpu_pfc_gating(ctx, state, gate_signal, &params);
         nimcp_gpu_pfc_wm_update(ctx, state, input, dopamine, dt, &params);
@@ -1665,7 +1667,7 @@ TEST_F(RegionsKernelTest, Integration_PFCWorkingMemoryTask) {
     for (size_t d = 0; d < slot_dim; d++) {
         query_pattern[d] = std::sin(d * 2 * 0.1f);  // Similar to item 1
     }
-    SetFromHost(query, query_pattern);
+    query = SetFromHost(query, query_pattern);
 
     nimcp_gpu_pfc_attention(ctx, state, query, &params);
 
@@ -1703,7 +1705,7 @@ TEST_F(RegionsKernelTest, Integration_MotorSequenceExecution) {
         nimcp_gpu_tensor_t* goal = Create1DTensor(n_actions, 0.0f);
         std::vector<float> goal_data(n_actions, 0.0f);
         goal_data[step % n_actions] = 1.0f;
-        SetFromHost(goal, goal_data);
+        goal = SetFromHost(goal, goal_data);
 
         // Plan and execute
         nimcp_gpu_motor_plan(ctx, state, goal, &params);
@@ -1761,7 +1763,7 @@ TEST_F(RegionsKernelTest, Integration_ParietalVisualAttention) {
             scene[y * map_size + x] = 0.6f;
         }
     }
-    SetFromHost(visual, scene);
+    visual = SetFromHost(visual, scene);
 
     // Top-down attention to center
     nimcp_gpu_tensor_t* top_down = Create2DTensor(map_size, map_size, 0.0f);
@@ -1771,7 +1773,7 @@ TEST_F(RegionsKernelTest, Integration_ParietalVisualAttention) {
             td_data[y * map_size + x] = 0.5f;
         }
     }
-    SetFromHost(top_down, td_data);
+    top_down = SetFromHost(top_down, td_data);
 
     // Update attention
     nimcp_gpu_parietal_attention(ctx, state, visual, top_down, &params);
@@ -1825,13 +1827,13 @@ TEST_F(RegionsKernelTest, Integration_PFCMotorInteraction) {
     for (size_t d = 0; d < slot_dim; d++) {
         goal_rep[d] = (d < slot_dim / 2) ? 1.0f : 0.0f;
     }
-    SetFromHost(goal_input, goal_rep);
+    goal_input = SetFromHost(goal_input, goal_rep);
 
     nimcp_gpu_tensor_t* dopamine = Create1DTensor(1, 1.0f);
     nimcp_gpu_tensor_t* gate_open = Create1DTensor(pfc_slots, 0.0f);
     std::vector<float> gate_data(pfc_slots, 0.0f);
     gate_data[0] = 1.0f;
-    SetFromHost(gate_open, gate_data);
+    gate_open = SetFromHost(gate_open, gate_data);
 
     nimcp_gpu_pfc_gating(ctx, pfc, gate_open, &pfc_params);
     nimcp_gpu_pfc_wm_update(ctx, pfc, goal_input, dopamine, dt, &pfc_params);
@@ -1894,7 +1896,7 @@ TEST_F(RegionsKernelTest, Integration_ParietalMotorCoordination) {
             visual_data[y * map_size + x] = 1.0f;
         }
     }
-    SetFromHost(visual, visual_data);
+    visual = SetFromHost(visual, visual_data);
 
     nimcp_gpu_tensor_t* top_down = Create2DTensor(map_size, map_size, 0.0f);
 
@@ -1904,7 +1906,7 @@ TEST_F(RegionsKernelTest, Integration_ParietalMotorCoordination) {
     // Flatten attention map for transmission
     auto attn_data = CopyToHost(parietal->attention_map);
     nimcp_gpu_tensor_t* parietal_output = Create1DTensor(map_size * map_size, 0.0f);
-    SetFromHost(parietal_output, attn_data);
+    parietal_output = SetFromHost(parietal_output, attn_data);
 
     // Transmit spatial attention to motor for reaching
     nimcp_gpu_tensor_t* motor_goal = Create1DTensor(n_actions, 0.0f);
@@ -1968,9 +1970,9 @@ TEST_F(RegionsKernelTest, Integration_MultiRegionPlasticity) {
         for (size_t d = 0; d < dim; d++) {
             pattern[d] = (d < dim / 2) ? 0.8f : 0.2f;
         }
-        SetFromHost(pfc_activity, pattern);
-        SetFromHost(parietal_activity, pattern);
-        SetFromHost(motor_activity, pattern);
+        pfc_activity = SetFromHost(pfc_activity, pattern);
+        parietal_activity = SetFromHost(parietal_activity, pattern);
+        motor_activity = SetFromHost(motor_activity, pattern);
 
         // Apply plasticity
         nimcp_gpu_interregion_plasticity(ctx, pfc_parietal, pfc_activity, parietal_activity, dt, &params);

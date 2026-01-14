@@ -61,32 +61,66 @@ static inline float safe_log(float x) {
 
 /**
  * @brief Softmax over array (in-place)
+ *
+ * NUMERICAL STABILITY NOTES:
+ * - Temperature guard at 1e-6f prevents division by zero/near-zero.
+ *   This value chosen because:
+ *   1. Lower bound where softmax still differentiates inputs meaningfully
+ *   2. Prevents expf() overflow for typical input ranges (-100 to 100)
+ *   3. Results in max exponent arg ~1e8 which is well within float range
+ * - Max subtraction prevents overflow: exp(x-max) <= 1.0 always
+ * - Exponent clamping at +/-88 prevents: expf(89) -> Inf, expf(-104) -> 0
  */
+#define SOFTMAX_MIN_TEMPERATURE 1e-6f
+#define SOFTMAX_MAX_EXPONENT 88.0f  /* expf(88.72) overflows to Inf */
+
 static void softmax(float* values, uint32_t n, float temperature) {
     if (!values || n == 0) return;
 
-    /* Guard: Prevent division by zero - use small epsilon if temperature is too small */
-    if (temperature < 1e-6f) {
-        temperature = 1e-6f;
+    /* Guard: Prevent division by zero.
+     * WHY 1e-6f: At T=1e-6, softmax becomes nearly argmax (one-hot).
+     * Values below this cause numerical instability without meaningful
+     * improvement in "hardness" of the distribution. */
+    if (temperature < SOFTMAX_MIN_TEMPERATURE) {
+        temperature = SOFTMAX_MIN_TEMPERATURE;
     }
 
-    /* Find max for numerical stability */
+    /* Find max for numerical stability (log-sum-exp trick) */
     float max_val = values[0];
     for (uint32_t i = 1; i < n; i++) {
         if (values[i] > max_val) max_val = values[i];
     }
 
-    /* Compute exp and sum */
+    /* Compute exp and sum with exponent clamping */
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
-        values[i] = expf((values[i] - max_val) / temperature);
+        float exponent = (values[i] - max_val) / temperature;
+
+        /* NUMERICAL STABILITY: Clamp exponent to prevent overflow/underflow.
+         * After max subtraction, exponent should be <= 0, but floating point
+         * edge cases (NaN in input, etc.) could violate this. */
+        exponent = fmaxf(-SOFTMAX_MAX_EXPONENT, fminf(SOFTMAX_MAX_EXPONENT, exponent));
+
+        /* Check for NaN propagation from corrupted inputs */
+        if (isnan(exponent)) {
+            exponent = -SOFTMAX_MAX_EXPONENT;  /* Treat NaN as very unlikely */
+        }
+
+        values[i] = expf(exponent);
         sum += values[i];
     }
 
-    /* Normalize */
-    if (sum > 0.0f) {
+    /* Normalize with sum protection */
+    if (sum > 0.0f && !isnan(sum) && !isinf(sum)) {
+        float inv_sum = 1.0f / sum;
         for (uint32_t i = 0; i < n; i++) {
-            values[i] /= sum;
+            values[i] *= inv_sum;
+        }
+    } else {
+        /* Fallback: uniform distribution if sum is invalid */
+        float uniform = 1.0f / (float)n;
+        for (uint32_t i = 0; i < n; i++) {
+            values[i] = uniform;
         }
     }
 }
@@ -727,7 +761,7 @@ int fep_compute_free_energy(
             fe->complexity += 0.5f * level->prior_precision[i] * mean_diff * mean_diff;
 
             /* Entropy term */
-            fe->entropy += 0.5f * safe_log(2.0f * 3.14159f * level->beliefs.variance[i]);
+            fe->entropy += 0.5f * safe_log(2.0f * (float)M_PI * level->beliefs.variance[i]);
         }
     }
 

@@ -46,9 +46,9 @@ protected:
     // Helper to create a tensor filled with a constant value
     nimcp_gpu_tensor_t* CreateFilledTensor(size_t* dims, size_t rank, float value) {
         if (!ctx) return nullptr;
-        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_DTYPE_FLOAT32);
+        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_GPU_PRECISION_FP32);
         if (tensor) {
-            nimcp_gpu_tensor_fill(ctx, tensor, value);
+            nimcp_gpu_fill(ctx, tensor, value);
         }
         return tensor;
     }
@@ -67,15 +67,17 @@ protected:
 
     // Helper to copy tensor to host
     std::vector<float> CopyToHost(nimcp_gpu_tensor_t* tensor) {
-        size_t n = nimcp_gpu_tensor_numel(tensor);
+        size_t n = tensor->numel;
         std::vector<float> host_data(n);
-        nimcp_gpu_tensor_to_host(ctx, tensor, host_data.data(), n * sizeof(float));
+        nimcp_gpu_tensor_to_host(tensor, host_data.data());
         return host_data;
     }
 
     // Helper to set tensor from host
-    void SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
-        nimcp_gpu_tensor_from_host(ctx, tensor, data.data(), data.size() * sizeof(float));
+    nimcp_gpu_tensor_t* SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
+        if (tensor) nimcp_gpu_tensor_destroy(tensor);
+        size_t dims[1] = {data.size()};
+        return nimcp_gpu_tensor_from_host(ctx, data.data(), dims, 1, NIMCP_GPU_PRECISION_FP32);
     }
 
     //=========================================================================
@@ -382,7 +384,7 @@ TEST_F(NeuromodulatorKernelTest, DopamineUpdate_DecaysToBaselineWithoutSpikes) {
     ASSERT_NE(state, nullptr);
 
     // Start with elevated concentration
-    nimcp_gpu_tensor_fill(ctx, state->concentration, 1.0f);
+    nimcp_gpu_fill(ctx, state->concentration, 1.0f);
 
     nimcp_gpu_tensor_t* spikes = Create1DTensor(n_targets, 0.0f);  // No spikes
     nimcp_gpu_dopamine_params_t params = nimcp_gpu_dopamine_params_default();
@@ -484,7 +486,7 @@ TEST_F(NeuromodulatorKernelTest, DopamineReceptorUpdate_IncreasesOccupancyWithHi
     ASSERT_NE(state, nullptr);
 
     // Set high dopamine concentration
-    nimcp_gpu_tensor_fill(ctx, state->concentration, 1.0f);
+    nimcp_gpu_fill(ctx, state->concentration, 1.0f);
 
     nimcp_gpu_dopamine_params_t params = nimcp_gpu_dopamine_params_default();
 
@@ -623,7 +625,7 @@ TEST_F(NeuromodulatorKernelTest, SerotoninReceptorUpdate_UpdatesOccupancy) {
     ASSERT_NE(state, nullptr);
 
     // Set high serotonin concentration
-    nimcp_gpu_tensor_fill(ctx, state->concentration, 0.5f);
+    nimcp_gpu_fill(ctx, state->concentration, 0.5f);
 
     nimcp_gpu_serotonin_params_t params = nimcp_gpu_serotonin_params_default();
 
@@ -660,9 +662,9 @@ TEST_F(NeuromodulatorKernelTest, SerotoninModulateBehavior_ProducesValidOutputs)
     ASSERT_NE(state, nullptr);
 
     // Set moderate serotonin levels
-    nimcp_gpu_tensor_fill(ctx, state->concentration, 0.1f);
-    nimcp_gpu_tensor_fill(ctx, state->ht1a_occupancy, 0.5f);
-    nimcp_gpu_tensor_fill(ctx, state->ht2a_occupancy, 0.3f);
+    nimcp_gpu_fill(ctx, state->concentration, 0.1f);
+    nimcp_gpu_fill(ctx, state->ht1a_occupancy, 0.5f);
+    nimcp_gpu_fill(ctx, state->ht2a_occupancy, 0.3f);
 
     nimcp_gpu_tensor_t* impulse_control = Create1DTensor(n_targets, 0.0f);
     nimcp_gpu_tensor_t* mood_signal = Create1DTensor(n_targets, 0.0f);
@@ -761,7 +763,7 @@ TEST_F(NeuromodulatorKernelTest, AcetylcholineUpdate_FastDecayDueToAChE) {
     ASSERT_NE(state, nullptr);
 
     // Start with elevated concentration
-    nimcp_gpu_tensor_fill(ctx, state->concentration, 0.5f);
+    nimcp_gpu_fill(ctx, state->concentration, 0.5f);
 
     nimcp_gpu_tensor_t* spikes = Create1DTensor(n_targets, 0.0f);
     nimcp_gpu_acetylcholine_params_t params = nimcp_gpu_acetylcholine_params_default();
@@ -797,7 +799,7 @@ TEST_F(NeuromodulatorKernelTest, AcetylcholineReceptorUpdate_UpdatesAllReceptorT
     ASSERT_NE(state, nullptr);
 
     // Set high ACh concentration
-    nimcp_gpu_tensor_fill(ctx, state->concentration, 0.5f);
+    nimcp_gpu_fill(ctx, state->concentration, 0.5f);
 
     nimcp_gpu_acetylcholine_params_t params = nimcp_gpu_acetylcholine_params_default();
 
@@ -835,8 +837,8 @@ TEST_F(NeuromodulatorKernelTest, AcetylcholineComputeAttention_ProducesValidSign
     ASSERT_NE(state, nullptr);
 
     // Set active ACh state
-    nimcp_gpu_tensor_fill(ctx, state->concentration, 0.3f);
-    nimcp_gpu_tensor_fill(ctx, state->m1_occupancy, 0.6f);
+    nimcp_gpu_fill(ctx, state->concentration, 0.3f);
+    nimcp_gpu_fill(ctx, state->m1_occupancy, 0.6f);
 
     nimcp_gpu_tensor_t* salience = Create1DTensor(n_targets, 0.8f);
     nimcp_gpu_tensor_t* attention_out = Create1DTensor(n_targets, 0.0f);
@@ -965,7 +967,7 @@ TEST_F(NeuromodulatorKernelTest, NorepinephrineReceptorUpdate_UpdatesAllReceptor
     ASSERT_NE(state, nullptr);
 
     // Set high NE concentration
-    nimcp_gpu_tensor_fill(ctx, state->concentration, 0.5f);
+    nimcp_gpu_fill(ctx, state->concentration, 0.5f);
 
     nimcp_gpu_norepinephrine_params_t params = nimcp_gpu_norepinephrine_params_default();
 
@@ -1005,8 +1007,8 @@ TEST_F(NeuromodulatorKernelTest, NorepinephrineComputeArousal_RespondsToStress) 
     ASSERT_NE(state, nullptr);
 
     // Set active NE state
-    nimcp_gpu_tensor_fill(ctx, state->concentration, 0.3f);
-    nimcp_gpu_tensor_fill(ctx, state->beta_occupancy, 0.5f);
+    nimcp_gpu_fill(ctx, state->concentration, 0.3f);
+    nimcp_gpu_fill(ctx, state->beta_occupancy, 0.5f);
 
     nimcp_gpu_tensor_t* stress_input = Create1DTensor(n_targets, 0.8f);  // High stress
     nimcp_gpu_tensor_t* arousal_out = Create1DTensor(n_targets, 0.0f);
@@ -1279,11 +1281,11 @@ TEST_F(NeuromodulatorKernelTest, NeuromodInteractions_ComputesCrossModulation) {
     std::vector<float> interactions(NIMCP_NEUROMOD_COUNT * NIMCP_NEUROMOD_COUNT, 0.0f);
     interactions[NIMCP_NEUROMOD_DOPAMINE * NIMCP_NEUROMOD_COUNT + NIMCP_NEUROMOD_SEROTONIN] = -0.2f;
     interactions[NIMCP_NEUROMOD_NOREPINEPHRINE * NIMCP_NEUROMOD_COUNT + NIMCP_NEUROMOD_DOPAMINE] = 0.3f;
-    SetFromHost(system->interaction_matrix, interactions);
+    system->interaction_matrix = SetFromHost(system->interaction_matrix, interactions);
 
     // Set active concentrations
-    nimcp_gpu_tensor_fill(ctx, system->dopamine->concentration, 0.5f);
-    nimcp_gpu_tensor_fill(ctx, system->norepinephrine->concentration, 0.3f);
+    nimcp_gpu_fill(ctx, system->dopamine->concentration, 0.5f);
+    nimcp_gpu_fill(ctx, system->norepinephrine->concentration, 0.3f);
 
     bool result = nimcp_gpu_neuromod_interactions(ctx, system);
     EXPECT_TRUE(result);
@@ -1304,11 +1306,11 @@ TEST_F(NeuromodulatorKernelTest, NeuromodApplyCombined_ModulatesTargetActivity) 
     ASSERT_NE(system, nullptr);
 
     // Set active neuromodulator levels
-    nimcp_gpu_tensor_fill(ctx, system->dopamine->concentration, 0.3f);
-    nimcp_gpu_tensor_fill(ctx, system->dopamine->d1_occupancy, 0.5f);
-    nimcp_gpu_tensor_fill(ctx, system->serotonin->concentration, 0.2f);
-    nimcp_gpu_tensor_fill(ctx, system->acetylcholine->concentration, 0.4f);
-    nimcp_gpu_tensor_fill(ctx, system->norepinephrine->concentration, 0.25f);
+    nimcp_gpu_fill(ctx, system->dopamine->concentration, 0.3f);
+    nimcp_gpu_fill(ctx, system->dopamine->d1_occupancy, 0.5f);
+    nimcp_gpu_fill(ctx, system->serotonin->concentration, 0.2f);
+    nimcp_gpu_fill(ctx, system->acetylcholine->concentration, 0.4f);
+    nimcp_gpu_fill(ctx, system->norepinephrine->concentration, 0.25f);
 
     nimcp_gpu_tensor_t* target_activity = Create1DTensor(n_targets, 0.5f);
     nimcp_gpu_tensor_t* modulated_output = Create1DTensor(n_targets, 0.0f);
@@ -1648,18 +1650,18 @@ TEST_F(NeuromodulatorKernelTest, Integration_DopamineRewardLearning) {
     // Simulate reward learning trials
     for (int trial = 0; trial < n_trials; trial++) {
         // Pre-reward: cue presentation with spikes
-        nimcp_gpu_tensor_fill(ctx, spikes, 0.5f);
+        nimcp_gpu_fill(ctx, spikes, 0.5f);
         for (int t = 0; t < 20; t++) {
             nimcp_gpu_dopamine_update(ctx, state, spikes, dt, &params);
             nimcp_gpu_dopamine_receptor_update(ctx, state, dt, &params);
         }
 
         // Build eligibility traces
-        nimcp_gpu_tensor_fill(ctx, eligibility, 0.3f);
+        nimcp_gpu_fill(ctx, eligibility, 0.3f);
 
         // Reward delivery
-        nimcp_gpu_tensor_fill(ctx, reward, 1.0f);
-        nimcp_gpu_tensor_fill(ctx, predicted, 0.3f);  // Initially under-predict
+        nimcp_gpu_fill(ctx, reward, 1.0f);
+        nimcp_gpu_fill(ctx, predicted, 0.3f);  // Initially under-predict
 
         // Compute RPE
         nimcp_gpu_dopamine_compute_rpe(ctx, state, reward, predicted, rpe, &params);
@@ -1669,7 +1671,7 @@ TEST_F(NeuromodulatorKernelTest, Integration_DopamineRewardLearning) {
             ctx, weights, state->d1_occupancy, state->d2_occupancy, eligibility, 0.01f);
 
         // Post-reward: concentration decays
-        nimcp_gpu_tensor_fill(ctx, spikes, 0.0f);
+        nimcp_gpu_fill(ctx, spikes, 0.0f);
         for (int t = 0; t < 50; t++) {
             nimcp_gpu_dopamine_update(ctx, state, spikes, dt, &params);
         }
@@ -1712,10 +1714,10 @@ TEST_F(NeuromodulatorKernelTest, Integration_CholinergicAttentionModulation) {
     for (size_t i = 0; i < n_targets; i++) {
         salience_values[i] = (i < n_targets / 2) ? 0.9f : 0.1f;
     }
-    SetFromHost(salience, salience_values);
+    salience = SetFromHost(salience, salience_values);
 
     // Simulate cholinergic activation
-    nimcp_gpu_tensor_fill(ctx, spikes, 0.6f);
+    nimcp_gpu_fill(ctx, spikes, 0.6f);
     for (int t = 0; t < 50; t++) {
         nimcp_gpu_acetylcholine_update(ctx, state, spikes, dt, &params);
         nimcp_gpu_acetylcholine_receptor_update(ctx, state, dt, &params);
@@ -1779,8 +1781,8 @@ TEST_F(NeuromodulatorKernelTest, Integration_NoradrenergicArousalGain) {
     nimcp_gpu_tensor_t* gains = Create1DTensor(n_targets, 1.0f);
 
     // Low stress baseline
-    nimcp_gpu_tensor_fill(ctx, stress, 0.2f);
-    nimcp_gpu_tensor_fill(ctx, spikes, 0.3f);
+    nimcp_gpu_fill(ctx, stress, 0.2f);
+    nimcp_gpu_fill(ctx, spikes, 0.3f);
 
     for (int t = 0; t < 30; t++) {
         nimcp_gpu_norepinephrine_update(ctx, state, spikes, dt, &params);
@@ -1794,8 +1796,8 @@ TEST_F(NeuromodulatorKernelTest, Integration_NoradrenergicArousalGain) {
     auto low_gains = CopyToHost(gains);
 
     // High stress condition
-    nimcp_gpu_tensor_fill(ctx, stress, 0.9f);
-    nimcp_gpu_tensor_fill(ctx, spikes, 0.8f);
+    nimcp_gpu_fill(ctx, stress, 0.9f);
+    nimcp_gpu_fill(ctx, spikes, 0.8f);
 
     for (int t = 0; t < 50; t++) {
         nimcp_gpu_norepinephrine_update(ctx, state, spikes, dt, &params);
@@ -1805,7 +1807,7 @@ TEST_F(NeuromodulatorKernelTest, Integration_NoradrenergicArousalGain) {
     nimcp_gpu_norepinephrine_compute_arousal(ctx, state, stress, arousal, &params);
     auto high_arousal = CopyToHost(arousal);
 
-    nimcp_gpu_tensor_fill(ctx, gains, 1.0f);
+    nimcp_gpu_fill(ctx, gains, 1.0f);
     nimcp_gpu_norepinephrine_modulate_gain(ctx, gains, state->concentration, 0.5f, 2.0f);
     auto high_gains = CopyToHost(gains);
 
@@ -1850,19 +1852,19 @@ TEST_F(NeuromodulatorKernelTest, Integration_FullNeuromodulatorSystem) {
         float phase = (float)step / n_steps;
 
         if (step % 20 < 5) {
-            nimcp_gpu_tensor_fill(ctx, da_spikes, 0.7f);  // DA burst
+            nimcp_gpu_fill(ctx, da_spikes, 0.7f);  // DA burst
         } else {
-            nimcp_gpu_tensor_fill(ctx, da_spikes, 0.1f);
+            nimcp_gpu_fill(ctx, da_spikes, 0.1f);
         }
 
         if (step > 30 && step < 70) {
-            nimcp_gpu_tensor_fill(ctx, ach_spikes, 0.6f);  // Sustained attention
+            nimcp_gpu_fill(ctx, ach_spikes, 0.6f);  // Sustained attention
         } else {
-            nimcp_gpu_tensor_fill(ctx, ach_spikes, 0.2f);
+            nimcp_gpu_fill(ctx, ach_spikes, 0.2f);
         }
 
-        nimcp_gpu_tensor_fill(ctx, ht_spikes, 0.3f);  // Tonic serotonin
-        nimcp_gpu_tensor_fill(ctx, ne_spikes, 0.2f + phase * 0.3f);  // Rising arousal
+        nimcp_gpu_fill(ctx, ht_spikes, 0.3f);  // Tonic serotonin
+        nimcp_gpu_fill(ctx, ne_spikes, 0.2f + phase * 0.3f);  // Rising arousal
 
         // Update all systems
         nimcp_gpu_neuromod_system_update(ctx, system, da_spikes, ht_spikes, ach_spikes, ne_spikes, dt);
@@ -1917,7 +1919,7 @@ TEST_F(NeuromodulatorKernelTest, Integration_VesicleDepletionRecovery) {
     nimcp_gpu_tensor_t* spikes = Create1DTensor(n, 0.0f);
 
     // Phase 1: High-frequency stimulation (depletion)
-    nimcp_gpu_tensor_fill(ctx, spikes, 1.0f);
+    nimcp_gpu_fill(ctx, spikes, 1.0f);
     for (int t = 0; t < 50; t++) {
         nimcp_gpu_vesicle_dynamics(ctx, vesicle_pool, spikes, release_prob, replenish_rate, max_pool, dt);
     }
@@ -1931,7 +1933,7 @@ TEST_F(NeuromodulatorKernelTest, Integration_VesicleDepletionRecovery) {
     EXPECT_LT(avg_depleted, 0.5f);
 
     // Phase 2: Recovery (no spikes)
-    nimcp_gpu_tensor_fill(ctx, spikes, 0.0f);
+    nimcp_gpu_fill(ctx, spikes, 0.0f);
     for (int t = 0; t < 200; t++) {
         nimcp_gpu_vesicle_dynamics(ctx, vesicle_pool, spikes, release_prob, replenish_rate, max_pool, dt);
     }

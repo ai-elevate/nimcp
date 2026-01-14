@@ -154,11 +154,13 @@ void stdp_update_traces(stdp_synapse_t* synapse, float dt) {
     synapse->pre_trace *= decay_factor_plus;
     synapse->post_trace *= decay_factor_minus;
 
-    /* Clamp traces to valid range [0, 10] to prevent unbounded growth
-     * NUMERICAL STABILITY: Ensures traces remain bounded
-     */
-    if (synapse->pre_trace < 0.0F) synapse->pre_trace = 0.0F;
-    if (synapse->post_trace < 0.0F) synapse->post_trace = 0.0F;
+    /* NUMERICAL STABILITY: Flush subnormal traces to zero to prevent denormal slowdown.
+     * WHY:  Subnormal floats (< ~1e-38) cause 10-100x performance degradation on most CPUs.
+     *       This is the same fix applied in triplet_stdp.c for consistency.
+     * HOW:  Threshold at 1e-10f which is well above denormal range but small enough
+     *       that trace contribution to plasticity is negligible. */
+    if (synapse->pre_trace < 1e-10F) synapse->pre_trace = 0.0F;
+    if (synapse->post_trace < 1e-10F) synapse->post_trace = 0.0F;
 }
 
 /* ============================================================================
@@ -193,11 +195,35 @@ float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
         synapse->total_ltd += fabsf(weight_change);
     }
 
-    /* Apply weight change with atomic clamp (P0 fix: single operation to prevent torn reads)
-     * WHY:  Separate update and clamp creates window for unclamped values to be observed
+    /* Apply weight change with saturation tracking and clamping
+     * WHAT: Update weight and detect saturation
+     * WHY:  Frequent saturation indicates potential learning issues
+     * HOW:  Track when weights hit bounds, log periodic warnings
      */
-    float new_weight = fmaxf(synapse->w_min, fminf(synapse->w_max, synapse->weight + weight_change));
+    float new_weight = synapse->weight + weight_change;
+    bool saturated = false;
+    if (new_weight < synapse->w_min) {
+        new_weight = synapse->w_min;
+        synapse->num_saturate_min_events++;
+        saturated = true;
+    } else if (new_weight > synapse->w_max) {
+        new_weight = synapse->w_max;
+        synapse->num_saturate_max_events++;
+        saturated = true;
+    }
     synapse->weight = new_weight;
+
+    /* Log warning if saturation is frequent (every 100 events) */
+    if (saturated) {
+        uint64_t total_sat = synapse->num_saturate_min_events + synapse->num_saturate_max_events;
+        if (total_sat % 100 == 0) {
+            printf("STDP weight saturation warning: min=%lu max=%lu events "
+                   "(w=%.4f, w_min=%.4f, w_max=%.4f)\n",
+                   (unsigned long)synapse->num_saturate_min_events,
+                   (unsigned long)synapse->num_saturate_max_events,
+                   synapse->weight, synapse->w_min, synapse->w_max);
+        }
+    }
 
     /* Increment presynaptic trace with upper bound to prevent unbounded growth
      * WHY:  Without clamping, rapid spike bursts can cause trace overflow
@@ -238,11 +264,35 @@ float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
         synapse->total_ltp += weight_change;
     }
 
-    /* Apply weight change with atomic clamp (P0 fix: single operation to prevent torn reads)
-     * WHY:  Separate update and clamp creates window for unclamped values to be observed
+    /* Apply weight change with saturation tracking and clamping
+     * WHAT: Update weight and detect saturation
+     * WHY:  Frequent saturation indicates potential learning issues
+     * HOW:  Track when weights hit bounds, log periodic warnings
      */
-    float new_weight = fmaxf(synapse->w_min, fminf(synapse->w_max, synapse->weight + weight_change));
+    float new_weight = synapse->weight + weight_change;
+    bool saturated = false;
+    if (new_weight < synapse->w_min) {
+        new_weight = synapse->w_min;
+        synapse->num_saturate_min_events++;
+        saturated = true;
+    } else if (new_weight > synapse->w_max) {
+        new_weight = synapse->w_max;
+        synapse->num_saturate_max_events++;
+        saturated = true;
+    }
     synapse->weight = new_weight;
+
+    /* Log warning if saturation is frequent (every 100 events) */
+    if (saturated) {
+        uint64_t total_sat = synapse->num_saturate_min_events + synapse->num_saturate_max_events;
+        if (total_sat % 100 == 0) {
+            printf("STDP weight saturation warning: min=%lu max=%lu events "
+                   "(w=%.4f, w_min=%.4f, w_max=%.4f)\n",
+                   (unsigned long)synapse->num_saturate_min_events,
+                   (unsigned long)synapse->num_saturate_max_events,
+                   synapse->weight, synapse->w_min, synapse->w_max);
+        }
+    }
 
     /* Increment postsynaptic trace with upper bound to prevent unbounded growth
      * WHY:  Without clamping, rapid spike bursts can cause trace overflow
@@ -309,9 +359,35 @@ float stdp_apply_modulated_weight_change(stdp_synapse_t* synapse,
         synapse->total_ltd += fabsf(modulated_weight_change);
     }
 
-    /* Apply weight change with atomic clamp (P0 fix: single operation to prevent torn reads) */
-    float new_weight = fmaxf(synapse->w_min, fminf(synapse->w_max, synapse->weight + modulated_weight_change));
+    /* Apply weight change with saturation tracking and clamping
+     * WHAT: Update weight and detect saturation
+     * WHY:  Frequent saturation indicates potential learning issues
+     * HOW:  Track when weights hit bounds, log periodic warnings
+     */
+    float new_weight = synapse->weight + modulated_weight_change;
+    bool saturated = false;
+    if (new_weight < synapse->w_min) {
+        new_weight = synapse->w_min;
+        synapse->num_saturate_min_events++;
+        saturated = true;
+    } else if (new_weight > synapse->w_max) {
+        new_weight = synapse->w_max;
+        synapse->num_saturate_max_events++;
+        saturated = true;
+    }
     synapse->weight = new_weight;
+
+    /* Log warning if saturation is frequent (every 100 events) */
+    if (saturated) {
+        uint64_t total_sat = synapse->num_saturate_min_events + synapse->num_saturate_max_events;
+        if (total_sat % 100 == 0) {
+            printf("STDP (modulated) weight saturation warning: min=%lu max=%lu events "
+                   "(w=%.4f, w_min=%.4f, w_max=%.4f)\n",
+                   (unsigned long)synapse->num_saturate_min_events,
+                   (unsigned long)synapse->num_saturate_max_events,
+                   synapse->weight, synapse->w_min, synapse->w_max);
+        }
+    }
 
     nimcp_spinlock_unlock(&synapse->lock);
 
@@ -401,6 +477,10 @@ void stdp_synapse_reset(stdp_synapse_t* synapse) {
     synapse->num_depression_events = 0;
     synapse->total_ltp = 0.0F;
     synapse->total_ltd = 0.0F;
+
+    /* Reset saturation tracking */
+    synapse->num_saturate_max_events = 0;
+    synapse->num_saturate_min_events = 0;
 }
 
 void stdp_synapse_print_stats(const stdp_synapse_t* synapse) {
@@ -429,15 +509,18 @@ void stdp_synapse_print_stats(const stdp_synapse_t* synapse) {
     bool enable_da = synapse->enable_da_modulation;
     float da_gain = synapse->da_modulation_gain;
     float burst_amp = synapse->burst_amplification;
+    uint64_t sat_max = synapse->num_saturate_max_events;
+    uint64_t sat_min = synapse->num_saturate_min_events;
 
     nimcp_spinlock_unlock(&mutable_synapse->lock);
 
     /* Print using copied values (no locks held during I/O) */
     printf("STDP Synapse Statistics:\n");
     printf("  Weight: %.4f / %.4f\n", weight, w_max);
-    printf("  Potentiation events: %lu (total LTP: %.6f)\n", num_pot, total_ltp);
-    printf("  Depression events: %lu (total LTD: %.6f)\n", num_dep, total_ltd);
+    printf("  Potentiation events: %lu (total LTP: %.6f)\n", (unsigned long)num_pot, total_ltp);
+    printf("  Depression events: %lu (total LTD: %.6f)\n", (unsigned long)num_dep, total_ltd);
     printf("  Net change: %.6f\n", total_ltp - total_ltd);
+    printf("  Weight saturation: max=%lu min=%lu\n", (unsigned long)sat_max, (unsigned long)sat_min);
     printf("  Pre trace: %.6f, Post trace: %.6f\n", pre_trace, post_trace);
     printf("  DA modulation: %s (gain: %.1f, burst amp: %.1fx)\n",
            enable_da ? "ENABLED" : "DISABLED", da_gain, burst_amp);

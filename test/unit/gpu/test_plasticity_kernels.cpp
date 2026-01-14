@@ -46,9 +46,9 @@ protected:
     // Helper to create a tensor filled with a constant value
     nimcp_gpu_tensor_t* CreateFilledTensor(size_t* dims, size_t rank, float value) {
         if (!ctx) return nullptr;
-        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_DTYPE_FLOAT32);
+        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_GPU_PRECISION_FP32);
         if (tensor) {
-            nimcp_gpu_tensor_fill(ctx, tensor, value);
+            nimcp_gpu_fill(ctx, tensor, value);
         }
         return tensor;
     }
@@ -67,15 +67,22 @@ protected:
 
     // Helper to copy tensor to host
     std::vector<float> CopyToHost(nimcp_gpu_tensor_t* tensor) {
-        size_t n = nimcp_gpu_tensor_numel(tensor);
+        size_t n = tensor->numel;
         std::vector<float> host_data(n);
-        nimcp_gpu_tensor_to_host(ctx, tensor, host_data.data(), n * sizeof(float));
+        nimcp_gpu_tensor_to_host(tensor, host_data.data());
         return host_data;
     }
 
-    // Helper to set tensor from host
-    void SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
-        nimcp_gpu_tensor_from_host(ctx, tensor, data.data(), data.size() * sizeof(float));
+    // Helper to create tensor from host data (1D)
+    nimcp_gpu_tensor_t* CreateFromHost(const std::vector<float>& data) {
+        size_t dims[1] = {data.size()};
+        return nimcp_gpu_tensor_from_host(ctx, data.data(), dims, 1, NIMCP_GPU_PRECISION_FP32);
+    }
+
+    // Helper to set tensor from host data - destroys old tensor and returns new one
+    nimcp_gpu_tensor_t* SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
+        if (tensor) nimcp_gpu_tensor_destroy(tensor);
+        return CreateFromHost(data);
     }
 };
 
@@ -733,8 +740,8 @@ TEST_F(PlasticityKernelTest, STPUpdate_RecoveryWithoutSpikes) {
     ASSERT_NE(state, nullptr);
 
     // Deplete resources first
-    nimcp_gpu_tensor_fill(ctx, state->x, 0.2f);  // Low resources
-    nimcp_gpu_tensor_fill(ctx, state->u, 0.8f);  // High utilization
+    nimcp_gpu_fill(ctx, state->x, 0.2f);  // Low resources
+    nimcp_gpu_fill(ctx, state->u, 0.8f);  // High utilization
 
     // Update without spikes - resources should recover
     for (int i = 0; i < 100; i++) {
@@ -768,8 +775,8 @@ TEST_F(PlasticityKernelTest, STPProcessSpikes_DepletesResources) {
     ASSERT_NE(state, nullptr);
 
     // Start with full resources
-    nimcp_gpu_tensor_fill(ctx, state->x, 1.0f);
-    nimcp_gpu_tensor_fill(ctx, state->u, params.U);
+    nimcp_gpu_fill(ctx, state->x, 1.0f);
+    nimcp_gpu_fill(ctx, state->u, params.U);
 
     nimcp_gpu_tensor_t* spikes = Create1DTensor(n_synapses, 1.0f);  // All spike
 
@@ -823,8 +830,8 @@ TEST_F(PlasticityKernelTest, STPApply_ModulatesWeights) {
     ASSERT_NE(state, nullptr);
 
     // Set STP state for modulation
-    nimcp_gpu_tensor_fill(ctx, state->x, 0.5f);
-    nimcp_gpu_tensor_fill(ctx, state->u, 0.5f);
+    nimcp_gpu_fill(ctx, state->x, 0.5f);
+    nimcp_gpu_fill(ctx, state->u, 0.5f);
 
     nimcp_gpu_tensor_t* base_weights = Create1DTensor(n_synapses, 1.0f);
     nimcp_gpu_tensor_t* effective_weights = Create1DTensor(n_synapses, 0.0f);
@@ -854,8 +861,8 @@ TEST_F(PlasticityKernelTest, STPReset_RestoresToBaseline) {
     ASSERT_NE(state, nullptr);
 
     // Deplete state
-    nimcp_gpu_tensor_fill(ctx, state->x, 0.1f);
-    nimcp_gpu_tensor_fill(ctx, state->u, 0.9f);
+    nimcp_gpu_fill(ctx, state->x, 0.1f);
+    nimcp_gpu_fill(ctx, state->u, 0.9f);
 
     bool result = nimcp_gpu_stp_reset(ctx, state);
     EXPECT_TRUE(result);
@@ -918,7 +925,7 @@ TEST_F(PlasticityKernelTest, CalciumUpdate_DecaysToBaseline) {
     ASSERT_NE(state, nullptr);
 
     // Set high initial calcium
-    nimcp_gpu_tensor_fill(ctx, state->concentration, 1.0f);
+    nimcp_gpu_fill(ctx, state->concentration, 1.0f);
 
     // Update - calcium should decay
     for (int i = 0; i < 100; i++) {
@@ -945,7 +952,7 @@ TEST_F(PlasticityKernelTest, CalciumNMDAInflux_IncreasesCalcium) {
     nimcp_gpu_calcium_state_t* state = nimcp_gpu_calcium_state_create(ctx, n_synapses, &params);
     ASSERT_NE(state, nullptr);
 
-    nimcp_gpu_tensor_fill(ctx, state->concentration, params.baseline);
+    nimcp_gpu_fill(ctx, state->concentration, params.baseline);
     nimcp_gpu_tensor_t* nmda_activation = Create1DTensor(n_synapses, 1.0f);
     nimcp_gpu_tensor_t* voltage = Create1DTensor(n_synapses, 0.0f);  // Depolarized (near 0 mV)
 
@@ -975,7 +982,7 @@ TEST_F(PlasticityKernelTest, CalciumComputeLearningRate_ValidOmega) {
 
     // Set calcium to LTP range
     float ltp_level = (params.threshold_ltd + params.threshold_ltp) / 2.0f + 0.5f;
-    nimcp_gpu_tensor_fill(ctx, state->concentration, ltp_level);
+    nimcp_gpu_fill(ctx, state->concentration, ltp_level);
 
     bool result = nimcp_gpu_calcium_compute_learning_rate(ctx, state);
     EXPECT_TRUE(result);
@@ -1002,7 +1009,7 @@ TEST_F(PlasticityKernelTest, CalciumApplyPlasticity_ModifiesWeights) {
     ASSERT_NE(state, nullptr);
 
     // Set positive learning rate
-    nimcp_gpu_tensor_fill(ctx, state->learning_rate, 0.01f);
+    nimcp_gpu_fill(ctx, state->learning_rate, 0.01f);
 
     nimcp_gpu_tensor_t* weights = Create2DTensor(n_post, n_pre, 0.5f);
     nimcp_gpu_tensor_t* pre_activity = Create1DTensor(n_pre, 0.8f);
@@ -1039,7 +1046,7 @@ TEST_F(PlasticityKernelTest, CalciumReset_RestoresToBaseline) {
     ASSERT_NE(state, nullptr);
 
     // Set high calcium
-    nimcp_gpu_tensor_fill(ctx, state->concentration, 10.0f);
+    nimcp_gpu_fill(ctx, state->concentration, 10.0f);
 
     bool result = nimcp_gpu_calcium_reset(ctx, state);
     EXPECT_TRUE(result);
@@ -1101,8 +1108,7 @@ TEST_F(PlasticityKernelTest, CalciumGetRegime_ReturnsValidRegimes) {
         params.threshold_sat + 0.1f               // Saturated (regime 4)
     };
 
-    nimcp_gpu_tensor_t* concentration = Create1DTensor(n, 0.0f);
-    SetFromHost(concentration, conc_values);
+    nimcp_gpu_tensor_t* concentration = SetFromHost(nullptr, conc_values);
 
     // Create regime tensor (as float for compatibility)
     nimcp_gpu_tensor_t* regime = Create1DTensor(n, 0.0f);
@@ -1217,14 +1223,14 @@ TEST_F(PlasticityKernelTest, Integration_STDPLearningSequence) {
     for (int step = 0; step < n_steps; step++) {
         // Set spike patterns: pre spikes first
         if (step % 20 == 0) {
-            nimcp_gpu_tensor_fill(ctx, pre_spikes, 1.0f);
-            nimcp_gpu_tensor_fill(ctx, post_spikes, 0.0f);
+            nimcp_gpu_fill(ctx, pre_spikes, 1.0f);
+            nimcp_gpu_fill(ctx, post_spikes, 0.0f);
         } else if (step % 20 == 5) {
-            nimcp_gpu_tensor_fill(ctx, pre_spikes, 0.0f);
-            nimcp_gpu_tensor_fill(ctx, post_spikes, 1.0f);
+            nimcp_gpu_fill(ctx, pre_spikes, 0.0f);
+            nimcp_gpu_fill(ctx, post_spikes, 1.0f);
         } else {
-            nimcp_gpu_tensor_fill(ctx, pre_spikes, 0.0f);
-            nimcp_gpu_tensor_fill(ctx, post_spikes, 0.0f);
+            nimcp_gpu_fill(ctx, pre_spikes, 0.0f);
+            nimcp_gpu_fill(ctx, post_spikes, 0.0f);
         }
 
         // Update traces
@@ -1264,9 +1270,8 @@ TEST_F(PlasticityKernelTest, Integration_HomeostaticScaling) {
     params.target_rate = 10.0f;  // Target 10 Hz
 
     // Simulate low activity neurons
-    nimcp_gpu_tensor_t* spikes = Create1DTensor(n_neurons, 0.0f);
     std::vector<float> low_spikes(n_neurons, 0.1f);  // Low firing rate
-    SetFromHost(spikes, low_spikes);
+    nimcp_gpu_tensor_t* spikes = SetFromHost(nullptr, low_spikes);
 
     float initial_avg_weight = 0.0f;
     auto init_w = CopyToHost(weights);
@@ -1334,11 +1339,11 @@ TEST_F(PlasticityKernelTest, Integration_STPDepressedAndFacilitated) {
     for (int step = 0; step < 100; step++) {
         // Spike every 10 steps (100 Hz)
         if (step % 10 == 0) {
-            nimcp_gpu_tensor_fill(ctx, spikes, 1.0f);
+            nimcp_gpu_fill(ctx, spikes, 1.0f);
             nimcp_gpu_stp_process_spikes(ctx, dep_state, spikes);
             nimcp_gpu_stp_process_spikes(ctx, fac_state, spikes);
         } else {
-            nimcp_gpu_tensor_fill(ctx, spikes, 0.0f);
+            nimcp_gpu_fill(ctx, spikes, 0.0f);
         }
 
         nimcp_gpu_stp_update(ctx, dep_state, dt);

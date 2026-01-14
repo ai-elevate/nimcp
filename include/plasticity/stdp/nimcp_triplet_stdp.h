@@ -108,6 +108,9 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include <stdbool.h>
 
+/* Thread safety - use spinlock for consistency with classic STDP */
+#include "utils/thread/nimcp_thread.h"
+
 /* Bio-async integration */
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
@@ -217,8 +220,12 @@ typedef struct {
     float total_ltd_pairwise;           /**< Cumulative pairwise LTD */
     float total_ltd_triplet;            /**< Cumulative triplet LTD */
 
-    /* Thread safety */
-    void* mutex;                /**< Mutex for thread-safe updates */
+    /* Weight saturation tracking (for detecting potential learning issues) */
+    uint64_t num_saturate_max_events;   /**< Times weight hit w_max limit */
+    uint64_t num_saturate_min_events;   /**< Times weight hit w_min limit */
+
+    /* Thread safety - use spinlock for short critical sections (consistent with classic STDP) */
+    nimcp_spinlock_t lock;      /**< Spinlock for thread-safe updates */
 } triplet_stdp_synapse_t;
 
 /**

@@ -12,7 +12,7 @@
 #include "plasticity/stdp/nimcp_triplet_stdp_immune_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
-#include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/thread/nimcp_thread.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -142,13 +142,16 @@ triplet_stdp_synapse_t* triplet_stdp_synapse_create(
     synapse->total_ltd_pairwise = 0.0f;
     synapse->total_ltd_triplet = 0.0f;
 
-    /* Create mutex for thread safety */
-    synapse->mutex = nimcp_platform_mutex_create();
-    if (!synapse->mutex) {
-        NIMCP_LOGGING_ERROR("Failed to create mutex for triplet STDP synapse");
-        nimcp_free(synapse);
-        return NULL;
-    }
+    /* Weight saturation tracking */
+    synapse->num_saturate_max_events = 0;
+    synapse->num_saturate_min_events = 0;
+
+    /* Initialize spinlock for thread safety (consistent with classic STDP)
+     * WHAT: Use spinlock instead of mutex
+     * WHY:  Short critical sections (weight updates) benefit from spinlock
+     * HOW:  nimcp_spinlock_init initializes the spinlock in-place
+     */
+    nimcp_spinlock_init(&synapse->lock);
 
     NIMCP_LOGGING_INFO("Created triplet STDP synapse (w=%.3f, A2+/A3+/A2-/A3-=%.4f/%.4f/%.4f/%.4f)",
                        initial_weight, config->A2_plus, config->A3_plus,
@@ -160,15 +163,13 @@ triplet_stdp_synapse_t* triplet_stdp_synapse_create(
 void triplet_stdp_synapse_destroy(triplet_stdp_synapse_t* synapse) {
     /* WHAT: Free synapse resources
      * WHY:  Proper cleanup to prevent memory leaks
-     * HOW:  Destroy mutex, free structure
+     * HOW:  Free structure (spinlock is embedded, no separate destroy needed)
      */
     if (!synapse) return;
 
-    /* Destroy mutex */
-    if (synapse->mutex) {
-        nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)synapse->mutex);
-        synapse->mutex = NULL;
-    }
+    /* Spinlock is embedded in struct - no separate destroy needed
+     * (unlike mutex which was dynamically allocated)
+     */
 
     /* Free structure */
     nimcp_free(synapse);
@@ -186,7 +187,7 @@ int triplet_stdp_synapse_reset(triplet_stdp_synapse_t* synapse) {
         return -1;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)synapse->mutex);
+    nimcp_spinlock_lock(&synapse->lock);
 
     /* Reset traces */
     synapse->r1_pre = 0.0f;
@@ -208,7 +209,11 @@ int triplet_stdp_synapse_reset(triplet_stdp_synapse_t* synapse) {
     synapse->total_ltd_pairwise = 0.0f;
     synapse->total_ltd_triplet = 0.0f;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)synapse->mutex);
+    /* Reset saturation tracking */
+    synapse->num_saturate_max_events = 0;
+    synapse->num_saturate_min_events = 0;
+
+    nimcp_spinlock_unlock(&synapse->lock);
 
     NIMCP_LOGGING_DEBUG("Reset triplet STDP synapse");
     return 0;
@@ -230,7 +235,7 @@ int triplet_stdp_update_traces(triplet_stdp_synapse_t* synapse, float dt) {
 
     if (dt <= 0.0f) return 0;  /* No time passed */
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)synapse->mutex);
+    nimcp_spinlock_lock(&synapse->lock);
 
     /* Decay fast pre-trace (tau_plus) */
     synapse->r1_pre *= expf(-dt / synapse->tau_plus);
@@ -252,7 +257,7 @@ int triplet_stdp_update_traces(triplet_stdp_synapse_t* synapse, float dt) {
     if (synapse->o1_post < 1e-10f) synapse->o1_post = 0.0f;
     if (synapse->o2_post < 1e-10f) synapse->o2_post = 0.0f;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)synapse->mutex);
+    nimcp_spinlock_unlock(&synapse->lock);
 
     return 0;
 }
@@ -270,7 +275,7 @@ float triplet_stdp_pre_spike(triplet_stdp_synapse_t* synapse, float spike_time) 
         return 0.0f;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)synapse->mutex);
+    nimcp_spinlock_lock(&synapse->lock);
 
     /* Update traces if time has passed */
     if (synapse->last_pre_spike_time > 0.0f) {
@@ -295,11 +300,38 @@ float triplet_stdp_pre_spike(triplet_stdp_synapse_t* synapse, float spike_time) 
     /* Total weight change */
     float total_dw = dw_pairwise + dw_triplet;
 
-    /* Apply weight change with bounds */
+    /* Apply weight change with bounds and saturation tracking
+     * WHAT: Update weight and detect saturation
+     * WHY:  Frequent saturation indicates potential learning issues
+     * HOW:  Track when weights hit bounds, log periodic warnings
+     */
     float old_weight = synapse->weight;
     synapse->weight += total_dw;
-    if (synapse->weight < synapse->w_min) synapse->weight = synapse->w_min;
-    if (synapse->weight > synapse->w_max) synapse->weight = synapse->w_max;
+
+    bool saturated = false;
+    if (synapse->weight < synapse->w_min) {
+        synapse->weight = synapse->w_min;
+        synapse->num_saturate_min_events++;
+        saturated = true;
+    }
+    if (synapse->weight > synapse->w_max) {
+        synapse->weight = synapse->w_max;
+        synapse->num_saturate_max_events++;
+        saturated = true;
+    }
+
+    /* Log warning if saturation is frequent (every 100 events) */
+    if (saturated) {
+        uint64_t total_sat = synapse->num_saturate_min_events + synapse->num_saturate_max_events;
+        if (total_sat % 100 == 0) {
+            NIMCP_LOGGING_WARN("Triplet STDP weight saturation: min=%lu max=%lu events "
+                                  "(w=%.4f, w_min=%.4f, w_max=%.4f). Consider adjusting "
+                                  "learning rates or weight bounds.",
+                                  (unsigned long)synapse->num_saturate_min_events,
+                                  (unsigned long)synapse->num_saturate_max_events,
+                                  synapse->weight, synapse->w_min, synapse->w_max);
+        }
+    }
 
     float actual_dw = synapse->weight - old_weight;
 
@@ -320,7 +352,7 @@ float triplet_stdp_pre_spike(triplet_stdp_synapse_t* synapse, float spike_time) 
     /* Update last spike time */
     synapse->last_pre_spike_time = spike_time;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)synapse->mutex);
+    nimcp_spinlock_unlock(&synapse->lock);
 
     return actual_dw;
 }
@@ -338,7 +370,7 @@ float triplet_stdp_post_spike(triplet_stdp_synapse_t* synapse, float spike_time)
         return 0.0f;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)synapse->mutex);
+    nimcp_spinlock_lock(&synapse->lock);
 
     /* Update traces if time has passed */
     if (synapse->last_post_spike_time > 0.0f) {
@@ -363,11 +395,38 @@ float triplet_stdp_post_spike(triplet_stdp_synapse_t* synapse, float spike_time)
     /* Total weight change */
     float total_dw = dw_pairwise + dw_triplet;
 
-    /* Apply weight change with bounds */
+    /* Apply weight change with bounds and saturation tracking
+     * WHAT: Update weight and detect saturation
+     * WHY:  Frequent saturation indicates potential learning issues
+     * HOW:  Track when weights hit bounds, log periodic warnings
+     */
     float old_weight = synapse->weight;
     synapse->weight += total_dw;
-    if (synapse->weight < synapse->w_min) synapse->weight = synapse->w_min;
-    if (synapse->weight > synapse->w_max) synapse->weight = synapse->w_max;
+
+    bool saturated = false;
+    if (synapse->weight < synapse->w_min) {
+        synapse->weight = synapse->w_min;
+        synapse->num_saturate_min_events++;
+        saturated = true;
+    }
+    if (synapse->weight > synapse->w_max) {
+        synapse->weight = synapse->w_max;
+        synapse->num_saturate_max_events++;
+        saturated = true;
+    }
+
+    /* Log warning if saturation is frequent (every 100 events) */
+    if (saturated) {
+        uint64_t total_sat = synapse->num_saturate_min_events + synapse->num_saturate_max_events;
+        if (total_sat % 100 == 0) {
+            NIMCP_LOGGING_WARN("Triplet STDP weight saturation: min=%lu max=%lu events "
+                                  "(w=%.4f, w_min=%.4f, w_max=%.4f). Consider adjusting "
+                                  "learning rates or weight bounds.",
+                                  (unsigned long)synapse->num_saturate_min_events,
+                                  (unsigned long)synapse->num_saturate_max_events,
+                                  synapse->weight, synapse->w_min, synapse->w_max);
+        }
+    }
 
     float actual_dw = synapse->weight - old_weight;
 
@@ -388,7 +447,7 @@ float triplet_stdp_post_spike(triplet_stdp_synapse_t* synapse, float spike_time)
     /* Update last spike time */
     synapse->last_post_spike_time = spike_time;
 
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)synapse->mutex);
+    nimcp_spinlock_unlock(&synapse->lock);
 
     return actual_dw;
 }
@@ -407,9 +466,9 @@ int triplet_stdp_set_sleep_state(triplet_stdp_synapse_t* synapse, sleep_state_t 
         return -1;
     }
 
-    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)synapse->mutex);
+    nimcp_spinlock_lock(&synapse->lock);
     synapse->current_sleep_state = state;
-    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)synapse->mutex);
+    nimcp_spinlock_unlock(&synapse->lock);
 
     return 0;
 }

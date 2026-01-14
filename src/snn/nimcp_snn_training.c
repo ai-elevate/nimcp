@@ -348,6 +348,26 @@ float snn_surrogate_gradient(const snn_training_ctx_t* ctx, float membrane_v) {
     return grad;
 }
 
+/** Gradient clipping bounds for numerical stability */
+#define SNN_GRADIENT_CLIP_MIN -5.0f
+#define SNN_GRADIENT_CLIP_MAX 5.0f
+
+/**
+ * @brief Clip gradient to prevent numerical instability
+ *
+ * WHAT: Bound gradient magnitude to prevent explosion
+ * WHY:  Surrogate gradients can grow unbounded, causing NaN/Inf
+ * HOW:  Clamp to [-5, 5] range (configurable via defines)
+ *
+ * @param grad Input gradient value
+ * @return Clipped gradient value
+ */
+static inline float snn_clip_gradient(float grad) {
+    if (grad < SNN_GRADIENT_CLIP_MIN) return SNN_GRADIENT_CLIP_MIN;
+    if (grad > SNN_GRADIENT_CLIP_MAX) return SNN_GRADIENT_CLIP_MAX;
+    return grad;
+}
+
 int snn_surrogate_backward(snn_training_ctx_t* ctx,
                            const float* output_grad,
                            const float* membrane_v,
@@ -359,7 +379,13 @@ int snn_surrogate_backward(snn_training_ctx_t* ctx,
 
     for (uint32_t i = 0; i < n_neurons; i++) {
         float surrogate = snn_surrogate_gradient(ctx, membrane_v[i]);
-        input_grad[i] = output_grad[i] * surrogate;
+        float grad = output_grad[i] * surrogate;
+
+        /* Apply gradient clipping to prevent exploding gradients
+         * WHAT: Bound gradient magnitude
+         * WHY:  Surrogate × output_grad can explode during training
+         */
+        input_grad[i] = snn_clip_gradient(grad);
     }
 
     return SNN_SUCCESS;

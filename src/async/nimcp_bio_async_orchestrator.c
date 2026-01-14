@@ -522,13 +522,20 @@ bio_module_health_t bio_orchestrator_get_module_health(
 ) {
     if (!orchestrator) return BIO_MODULE_HEALTH_UNKNOWN;
 
+    /* Cast away const for mutex lock - safe since we're only reading */
+    bio_async_orchestrator_t* mutable_orch = (bio_async_orchestrator_t*)orchestrator;
+    nimcp_platform_mutex_lock(mutable_orch->mutex);
+
+    bio_module_health_t health = BIO_MODULE_HEALTH_UNKNOWN;
     for (uint32_t i = 0; i < orchestrator->module_count; i++) {
         if (orchestrator->modules[i].module_id == module_id) {
-            return orchestrator->modules[i].health_status;
+            health = orchestrator->modules[i].health_status;
+            break;
         }
     }
 
-    return BIO_MODULE_HEALTH_UNKNOWN;
+    nimcp_platform_mutex_unlock(mutable_orch->mutex);
+    return health;
 }
 
 /* ============================================================================
@@ -542,11 +549,16 @@ uint32_t bio_orchestrator_get_all_modules(
 ) {
     if (!orchestrator || !module_ids) return 0;
 
+    /* Cast away const for mutex lock - safe since we're only reading */
+    bio_async_orchestrator_t* mutable_orch = (bio_async_orchestrator_t*)orchestrator;
+    nimcp_platform_mutex_lock(mutable_orch->mutex);
+
     uint32_t count = 0;
     for (uint32_t i = 0; i < orchestrator->module_count && count < max_modules; i++) {
         module_ids[count++] = orchestrator->modules[i].module_id;
     }
 
+    nimcp_platform_mutex_unlock(mutable_orch->mutex);
     return count;
 }
 
@@ -558,6 +570,10 @@ uint32_t bio_orchestrator_get_modules_by_category(
 ) {
     if (!orchestrator || !module_ids) return 0;
 
+    /* Cast away const for mutex lock - safe since we're only reading */
+    bio_async_orchestrator_t* mutable_orch = (bio_async_orchestrator_t*)orchestrator;
+    nimcp_platform_mutex_lock(mutable_orch->mutex);
+
     uint32_t count = 0;
     for (uint32_t i = 0; i < orchestrator->module_count && count < max_modules; i++) {
         if (orchestrator->modules[i].category == category) {
@@ -565,6 +581,7 @@ uint32_t bio_orchestrator_get_modules_by_category(
         }
     }
 
+    nimcp_platform_mutex_unlock(mutable_orch->mutex);
     return count;
 }
 
@@ -574,13 +591,21 @@ const bio_module_entry_t* bio_orchestrator_get_module_info(
 ) {
     if (!orchestrator) return NULL;
 
+    /* Note: The returned pointer is only valid while orchestrator is not modified.
+     * Caller should ensure no concurrent module registration/unregistration. */
+    bio_async_orchestrator_t* mutable_orch = (bio_async_orchestrator_t*)orchestrator;
+    nimcp_platform_mutex_lock(mutable_orch->mutex);
+
+    const bio_module_entry_t* result = NULL;
     for (uint32_t i = 0; i < orchestrator->module_count; i++) {
         if (orchestrator->modules[i].module_id == module_id) {
-            return &orchestrator->modules[i];
+            result = &orchestrator->modules[i];
+            break;
         }
     }
 
-    return NULL;
+    nimcp_platform_mutex_unlock(mutable_orch->mutex);
+    return result;
 }
 
 bool bio_orchestrator_is_module_registered(
@@ -663,14 +688,30 @@ void bio_orchestrator_reset_stats(bio_async_orchestrator_t* orchestrator) {
 
 float bio_orchestrator_get_health_score(const bio_async_orchestrator_t* orchestrator) {
     if (!orchestrator) return 0.0f;
-    return compute_health_score(orchestrator);
+
+    /* Cast away const for mutex lock - safe since we're only reading */
+    bio_async_orchestrator_t* mutable_orch = (bio_async_orchestrator_t*)orchestrator;
+    nimcp_platform_mutex_lock(mutable_orch->mutex);
+
+    float score = compute_health_score(orchestrator);
+
+    nimcp_platform_mutex_unlock(mutable_orch->mutex);
+    return score;
 }
 
 bio_orchestrator_state_t bio_orchestrator_get_state(
     const bio_async_orchestrator_t* orchestrator
 ) {
     if (!orchestrator) return BIO_ORCHESTRATOR_ERROR;
-    return orchestrator->state;
+
+    /* Cast away const for mutex lock - safe since we're only reading */
+    bio_async_orchestrator_t* mutable_orch = (bio_async_orchestrator_t*)orchestrator;
+    nimcp_platform_mutex_lock(mutable_orch->mutex);
+
+    bio_orchestrator_state_t state = orchestrator->state;
+
+    nimcp_platform_mutex_unlock(mutable_orch->mutex);
+    return state;
 }
 
 /* ============================================================================

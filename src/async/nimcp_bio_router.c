@@ -186,10 +186,10 @@ static void init_router_mutex_once(void) {
  * HOW:  Allocate ring buffer, initialize mutex and condvars
  */
 static nimcp_error_t bio_msg_queue_init(bio_msg_queue_t* queue, uint32_t capacity) {
-    if (!queue || capacity == 0) return -1;
+    if (!queue || capacity == 0) return NIMCP_ERROR_INVALID_PARAM;
 
     queue->entries = nimcp_calloc(capacity, sizeof(bio_msg_queue_entry_t));
-    if (!queue->entries) return -1;
+    if (!queue->entries) return NIMCP_ERROR_NO_MEMORY;
 
     queue->capacity = capacity;
     queue->read_idx = 0;
@@ -198,20 +198,20 @@ static nimcp_error_t bio_msg_queue_init(bio_msg_queue_t* queue, uint32_t capacit
 
     if (nimcp_platform_mutex_init(&queue->mutex, false) != 0) {
         nimcp_free(queue->entries);
-        return -1;
+        return NIMCP_ERROR_MUTEX_INIT;
     }
 
     if (nimcp_platform_cond_init(&queue->not_empty) != 0) {
         nimcp_platform_mutex_destroy(&queue->mutex);
         nimcp_free(queue->entries);
-        return -1;
+        return NIMCP_ERROR_MUTEX_INIT;
     }
 
     if (nimcp_platform_cond_init(&queue->not_full) != 0) {
         nimcp_platform_cond_destroy(&queue->not_empty);
         nimcp_platform_mutex_destroy(&queue->mutex);
         nimcp_free(queue->entries);
-        return -1;
+        return NIMCP_ERROR_MUTEX_INIT;
     }
 
     return NIMCP_SUCCESS;
@@ -236,7 +236,7 @@ static nimcp_error_t bio_msg_queue_init(bio_msg_queue_t* queue, uint32_t capacit
  *     are visible to any thread that later acquires the mutex
  */
 static nimcp_error_t bio_msg_queue_grow(bio_msg_queue_t* queue) {
-    if (!queue || !queue->entries) return -1;
+    if (!queue || !queue->entries) return NIMCP_ERROR_NULL_POINTER;
 
     // DEBUG: Verify mutex is held by attempting trylock (should fail if held)
     // This assertion helps catch incorrect usage during development
@@ -246,7 +246,7 @@ static nimcp_error_t bio_msg_queue_grow(bio_msg_queue_t* queue) {
         // Trylock succeeded means mutex was NOT held - this is a bug!
         nimcp_platform_mutex_unlock(&queue->mutex);
         LOG_ERROR("bio_msg_queue_grow called without holding mutex!");
-        return -1;
+        return NIMCP_ERROR_INVALID_STATE;
     }
     // trylock returning non-zero (EBUSY) is expected - mutex is properly held
 #endif
@@ -254,7 +254,7 @@ static nimcp_error_t bio_msg_queue_grow(bio_msg_queue_t* queue) {
     // Check if already at max capacity
     if (queue->capacity >= MAX_INBOX_MESSAGES) {
         LOG_DEBUG("Queue at max capacity %u, cannot grow further", MAX_INBOX_MESSAGES);
-        return -1;
+        return NIMCP_ERROR_BUFFER_OVERFLOW;
     }
 
     // Calculate new capacity (double, but cap at max)
@@ -267,7 +267,7 @@ static nimcp_error_t bio_msg_queue_grow(bio_msg_queue_t* queue) {
     bio_msg_queue_entry_t* new_entries = nimcp_calloc(new_capacity, sizeof(bio_msg_queue_entry_t));
     if (!new_entries) {
         LOG_ERROR("Failed to allocate %u queue entries for resize", new_capacity);
-        return -1;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     // Copy existing entries, linearizing the ring buffer
@@ -345,11 +345,11 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
                                             size_t msg_size,
                                             nimcp_bio_promise_t response_promise,
                                             uint32_t timeout_ms) {
-    if (!queue || !msg || msg_size == 0) return -1;
+    if (!queue || !msg || msg_size == 0) return NIMCP_ERROR_INVALID_PARAM;
 
     // DEADLOCK FIX: Early check for shutdown before acquiring any locks
     if (g_router && g_router->shutdown_requested) {
-        return -1;
+        return NIMCP_ERROR_CANCELLED;
     }
 
     nimcp_platform_mutex_lock(&queue->mutex);
@@ -359,7 +359,7 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
         // DEADLOCK FIX: Check shutdown flag after waking from wait
         if (g_router && g_router->shutdown_requested) {
             nimcp_platform_mutex_unlock(&queue->mutex);
-            return -1;
+            return NIMCP_ERROR_CANCELLED;
         }
 
         if (timeout_ms == 0) {
@@ -368,9 +368,9 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
                 // Successfully grew, can now enqueue
                 break;
             }
-            // Growth failed (at max capacity), return error
+            // Growth failed (at max capacity), return backpressure error
             nimcp_platform_mutex_unlock(&queue->mutex);
-            return -1;
+            return NIMCP_ERROR_QUEUE_FULL;
         }
 
         // Blocking mode: wait for space
@@ -381,7 +381,7 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
         // DEADLOCK FIX: Check shutdown after waking from condition wait
         if (g_router && g_router->shutdown_requested) {
             nimcp_platform_mutex_unlock(&queue->mutex);
-            return -1;
+            return NIMCP_ERROR_CANCELLED;
         }
 
         if (wait_result != 0) {
@@ -390,7 +390,7 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
                 break;
             }
             nimcp_platform_mutex_unlock(&queue->mutex);
-            return -1;  // Timeout and can't grow
+            return NIMCP_ERROR_TIMEOUT;  // Timeout and can't grow
         }
 
         // Loop will re-check condition to handle spurious wakeups
@@ -400,7 +400,7 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
     void* msg_copy = nimcp_malloc(msg_size);
     if (!msg_copy) {
         nimcp_platform_mutex_unlock(&queue->mutex);
-        return -1;
+        return NIMCP_ERROR_NO_MEMORY;
     }
     memcpy(msg_copy, msg, msg_size);
 
@@ -434,11 +434,11 @@ static nimcp_error_t bio_msg_queue_dequeue(bio_msg_queue_t* queue,
                                             size_t* out_size,
                                             nimcp_bio_promise_t* out_promise,
                                             uint32_t timeout_ms) {
-    if (!queue || !out_msg || !out_size) return -1;
+    if (!queue || !out_msg || !out_size) return NIMCP_ERROR_INVALID_PARAM;
 
     // DEADLOCK FIX: Early check for shutdown before acquiring any locks
     if (g_router && g_router->shutdown_requested) {
-        return -1;
+        return NIMCP_ERROR_CANCELLED;
     }
 
     nimcp_platform_mutex_lock(&queue->mutex);
@@ -448,12 +448,12 @@ static nimcp_error_t bio_msg_queue_dequeue(bio_msg_queue_t* queue,
         // DEADLOCK FIX: Check shutdown flag in wait loop
         if (g_router && g_router->shutdown_requested) {
             nimcp_platform_mutex_unlock(&queue->mutex);
-            return -1;
+            return NIMCP_ERROR_CANCELLED;
         }
 
         if (timeout_ms == 0) {
             nimcp_platform_mutex_unlock(&queue->mutex);
-            return -1;  // Would block
+            return NIMCP_ERROR_NOT_FOUND;  // Queue empty, would block
         }
 
         int wait_result = nimcp_platform_cond_timedwait(&queue->not_empty,
@@ -463,12 +463,12 @@ static nimcp_error_t bio_msg_queue_dequeue(bio_msg_queue_t* queue,
         // DEADLOCK FIX: Check shutdown after waking from condition wait
         if (g_router && g_router->shutdown_requested) {
             nimcp_platform_mutex_unlock(&queue->mutex);
-            return -1;
+            return NIMCP_ERROR_CANCELLED;
         }
 
         if (wait_result != 0) {
             nimcp_platform_mutex_unlock(&queue->mutex);
-            return -1;  // Timeout or error
+            return NIMCP_ERROR_TIMEOUT;  // Timeout waiting for message
         }
 
         // Loop will re-check condition (count == 0) to handle spurious wakeups
@@ -569,7 +569,7 @@ nimcp_error_t bio_router_init(const bio_router_config_t* config) {
     if (!g_router) {
         nimcp_platform_mutex_unlock(&g_router_init_mutex);
         LOG_ERROR("Failed to allocate bio-router");
-        return -1;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     g_router->magic = BIO_ROUTER_MAGIC;
@@ -583,7 +583,7 @@ nimcp_error_t bio_router_init(const bio_router_config_t* config) {
         g_router = NULL;
         nimcp_platform_mutex_unlock(&g_router_init_mutex);
         LOG_ERROR("Failed to allocate module registry");
-        return -1;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     // Initialize mutexes
@@ -593,7 +593,7 @@ nimcp_error_t bio_router_init(const bio_router_config_t* config) {
         g_router = NULL;
         nimcp_platform_mutex_unlock(&g_router_init_mutex);
         LOG_ERROR("Failed to initialize modules mutex");
-        return -1;
+        return NIMCP_ERROR_MUTEX_INIT;
     }
 
     if (nimcp_platform_mutex_init(&g_router->stats_mutex, false) != 0) {
@@ -603,7 +603,7 @@ nimcp_error_t bio_router_init(const bio_router_config_t* config) {
         g_router = NULL;
         nimcp_platform_mutex_unlock(&g_router_init_mutex);
         LOG_ERROR("Failed to initialize stats mutex");
-        return -1;
+        return NIMCP_ERROR_MUTEX_INIT;
     }
 
     // Initialize unified memory if requested
@@ -742,7 +742,7 @@ bool bio_router_is_initialized(void) {
 }
 
 nimcp_error_t bio_router_get_stats(bio_router_stats_t* stats) {
-    if (!g_router || !stats) return -1;
+    if (!g_router || !stats) return NIMCP_ERROR_NULL_POINTER;
 
     nimcp_platform_mutex_lock(&g_router->stats_mutex);
     *stats = g_router->stats;
@@ -942,17 +942,17 @@ void bio_router_unregister_module(bio_module_context_t ctx) {
 nimcp_error_t bio_router_register_handler(bio_module_context_t ctx,
                                            bio_message_type_t msg_type,
                                            bio_message_handler_t handler) {
-    if (!ctx || ctx->magic != BIO_MODULE_MAGIC || !handler) return -1;
+    if (!ctx || ctx->magic != BIO_MODULE_MAGIC || !handler) return NIMCP_ERROR_INVALID_PARAM;
 
     bio_module_entry_t* entry = ctx->entry;
-    if (!entry || entry->magic != BIO_MODULE_MAGIC) return -1;
+    if (!entry || entry->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_STATE;
 
     nimcp_platform_mutex_lock(&entry->handler_mutex);
 
     if (entry->handler_count >= MAX_HANDLERS_PER_MODULE) {
         nimcp_platform_mutex_unlock(&entry->handler_mutex);
         LOG_ERROR("Handler table full for module %s", entry->module_name);
-        return -1;
+        return NIMCP_ERROR_BUFFER_OVERFLOW;
     }
 
     // Check for duplicate - if same handler already registered, succeed silently (idempotent)
@@ -970,7 +970,7 @@ nimcp_error_t bio_router_register_handler(bio_module_context_t ctx,
             nimcp_platform_mutex_unlock(&entry->handler_mutex);
             LOG_WARN("Handler for message type 0x%04X already registered in module %s (different handler)",
                      msg_type, entry->module_name);
-            return -1;
+            return NIMCP_ERROR_ALREADY_EXISTS;
         }
     }
 
@@ -994,17 +994,17 @@ nimcp_error_t bio_router_register_handler(bio_module_context_t ctx,
 nimcp_error_t bio_router_register_category_handler(bio_module_context_t ctx,
                                                      uint32_t category_base,
                                                      bio_message_handler_t handler) {
-    if (!ctx || ctx->magic != BIO_MODULE_MAGIC || !handler) return -1;
+    if (!ctx || ctx->magic != BIO_MODULE_MAGIC || !handler) return NIMCP_ERROR_INVALID_PARAM;
 
     bio_module_entry_t* entry = ctx->entry;
-    if (!entry || entry->magic != BIO_MODULE_MAGIC) return -1;
+    if (!entry || entry->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_STATE;
 
     nimcp_platform_mutex_lock(&entry->handler_mutex);
 
     if (entry->handler_count >= MAX_HANDLERS_PER_MODULE) {
         nimcp_platform_mutex_unlock(&entry->handler_mutex);
         LOG_ERROR("Handler table full for module %s", entry->module_name);
-        return -1;
+        return NIMCP_ERROR_BUFFER_OVERFLOW;
     }
 
     // Check for duplicate category handler - if same handler already registered, succeed silently
@@ -1020,7 +1020,7 @@ nimcp_error_t bio_router_register_category_handler(bio_module_context_t ctx,
             nimcp_platform_mutex_unlock(&entry->handler_mutex);
             LOG_WARN("Category handler for 0x%04X already registered in module %s (different handler)",
                      category_base, entry->module_name);
-            return -1;
+            return NIMCP_ERROR_ALREADY_EXISTS;
         }
     }
 
@@ -1043,10 +1043,10 @@ nimcp_error_t bio_router_register_category_handler(bio_module_context_t ctx,
 
 nimcp_error_t bio_router_unregister_handler(bio_module_context_t ctx,
                                              bio_message_type_t msg_type) {
-    if (!ctx || ctx->magic != BIO_MODULE_MAGIC) return -1;
+    if (!ctx || ctx->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_PARAM;
 
     bio_module_entry_t* entry = ctx->entry;
-    if (!entry || entry->magic != BIO_MODULE_MAGIC) return -1;
+    if (!entry || entry->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_STATE;
 
     nimcp_platform_mutex_lock(&entry->handler_mutex);
 
@@ -1079,10 +1079,10 @@ nimcp_error_t bio_router_unregister_handler(bio_module_context_t ctx,
 }
 
 nimcp_error_t bio_router_clear_handlers(bio_module_context_t ctx) {
-    if (!ctx || ctx->magic != BIO_MODULE_MAGIC) return -1;
+    if (!ctx || ctx->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_PARAM;
 
     bio_module_entry_t* entry = ctx->entry;
-    if (!entry || entry->magic != BIO_MODULE_MAGIC) return -1;
+    if (!entry || entry->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_STATE;
 
     nimcp_platform_mutex_lock(&entry->handler_mutex);
 
@@ -1121,7 +1121,7 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
                                size_t msg_size,
                                uint32_t timeout_ms) {
     if (!g_router || !ctx || ctx->magic != BIO_MODULE_MAGIC || !msg || msg_size == 0) {
-        return -1;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     const bio_message_header_t* header = (const bio_message_header_t*)msg;
@@ -1194,7 +1194,7 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
                 if (enq_result == NIMCP_SUCCESS) {
                     entry->messages_received++;
                 } else {
-                    result = -1;
+                    result = NIMCP_ERROR_BUFFER_OVERFLOW;
                     // Queue overflow expected during high-load scenarios (stress tests)
                     LOG_DEBUG("Failed to enqueue broadcast to module %u (queue full)", entry->module_id);
                 }
@@ -1217,7 +1217,7 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
             g_router->stats.messages_dropped++;
             nimcp_platform_mutex_unlock(&g_router->stats_mutex);
 
-            return -1;
+            return NIMCP_ERROR_NOT_FOUND;
         }
 
         result = bio_msg_queue_enqueue(&target->inbox, msg, msg_size,
@@ -1288,7 +1288,7 @@ static nimcp_error_t bio_router_send_with_promise(bio_module_context_t ctx,
                                                    nimcp_bio_promise_t response_promise,
                                                    uint32_t timeout_ms) {
     if (!g_router || !ctx || ctx->magic != BIO_MODULE_MAGIC || !msg || msg_size == 0) {
-        return -1;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     const bio_message_header_t* header = (const bio_message_header_t*)msg;
@@ -1326,14 +1326,14 @@ static nimcp_error_t bio_router_send_with_promise(bio_module_context_t ctx,
         // Broadcast - can't have response promise for broadcasts
         nimcp_platform_mutex_unlock(&g_router->modules_mutex);
         LOG_ERROR("Cannot use async send with response for broadcasts");
-        return -1;
+        return NIMCP_ERROR_INVALID_PARAM;
     } else {
         // Send to specific module with promise
         bio_module_entry_t* target = bio_router_find_module(target_id);
         if (!target) {
             nimcp_platform_mutex_unlock(&g_router->modules_mutex);
             LOG_ERROR("Target module %u not found", target_id);
-            return -1;
+            return NIMCP_ERROR_NOT_FOUND;
         }
 
         result = bio_msg_queue_enqueue(&target->inbox, msg, msg_size,
@@ -1387,16 +1387,16 @@ nimcp_error_t bio_router_request(bio_module_context_t ctx,
                                   void* response,
                                   size_t response_size,
                                   uint32_t timeout_ms) {
-    if (!ctx || !request || !response) return -1;
+    if (!ctx || !request || !response) return NIMCP_ERROR_INVALID_PARAM;
 
     bio_module_entry_t* entry = ctx->entry;
-    if (!entry || entry->magic != BIO_MODULE_MAGIC) return -1;
+    if (!entry || entry->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_STATE;
 
     // Create a promise for the response
     nimcp_bio_promise_t promise = nimcp_bio_promise_create(BIO_CHANNEL_DOPAMINE, response_size);
     if (!promise) {
         LOG_ERROR("Failed to create promise for request");
-        return -1;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     // Send request with promise
@@ -1413,7 +1413,7 @@ nimcp_error_t bio_router_request(bio_module_context_t ctx,
     if (!future) {
         nimcp_bio_promise_destroy(promise);
         LOG_ERROR("Failed to get future from promise");
-        return -1;
+        return NIMCP_ERROR_OPERATION_FAILED;
     }
 
     // Wait for response with timeout
@@ -1442,7 +1442,7 @@ nimcp_error_t bio_router_request(bio_module_context_t ctx,
 nimcp_error_t bio_router_broadcast(bio_module_context_t ctx,
                                     const void* msg,
                                     size_t msg_size) {
-    if (!ctx || !msg || msg_size == 0) return -1;
+    if (!ctx || !msg || msg_size == 0) return NIMCP_ERROR_INVALID_PARAM;
 
     // Create a copy with target set to 0 (broadcast)
     bio_message_header_t* header = (bio_message_header_t*)msg;
@@ -1609,7 +1609,7 @@ nimcp_error_t bio_router_observe_signal(bio_module_context_t ctx,
                                          float initial_prediction,
                                          float precision,
                                          bio_prediction_observer_t callback) {
-    if (!ctx || !signal_name || !callback) return -1;
+    if (!ctx || !signal_name || !callback) return NIMCP_ERROR_INVALID_PARAM;
 
     // Initialize mutex on first use (thread-safe via pthread_once)
     nimcp_platform_once(&g_signal_mutex_once, init_signal_mutex_once);
@@ -1619,7 +1619,7 @@ nimcp_error_t bio_router_observe_signal(bio_module_context_t ctx,
     if (g_signal_observer_count >= 256) {
         nimcp_platform_mutex_unlock(&g_signal_mutex);
         LOG_ERROR("Signal observer registry full");
-        return -1;
+        return NIMCP_ERROR_BUFFER_OVERFLOW;
     }
 
     // Register observer
@@ -1645,7 +1645,7 @@ nimcp_error_t bio_router_observe_signal(bio_module_context_t ctx,
 nimcp_error_t bio_router_publish_signal(bio_module_context_t ctx,
                                          const char* signal_name,
                                          float value) {
-    if (!ctx || !signal_name) return -1;
+    if (!ctx || !signal_name) return NIMCP_ERROR_INVALID_PARAM;
 
     // Initialize mutex on first use (thread-safe via pthread_once)
     nimcp_platform_once(&g_signal_mutex_once, init_signal_mutex_once);
@@ -1875,7 +1875,7 @@ nimcp_glial_wave_t bio_router_initiate_wave(bio_module_context_t ctx,
 nimcp_error_t bio_router_on_wave_arrival(bio_module_context_t ctx,
                                           nimcp_wave_callback_t callback,
                                           void* user_data) {
-    if (!ctx || !callback) return -1;
+    if (!ctx || !callback) return NIMCP_ERROR_INVALID_PARAM;
 
     // Initialize mutex on first use (thread-safe via pthread_once)
     nimcp_platform_once(&g_wave_mutex_once, init_wave_mutex_once);
@@ -1885,7 +1885,7 @@ nimcp_error_t bio_router_on_wave_arrival(bio_module_context_t ctx,
     if (g_wave_callback_count >= 128) {
         nimcp_platform_mutex_unlock(&g_wave_mutex);
         LOG_ERROR("Wave callback registry full");
-        return -1;
+        return NIMCP_ERROR_BUFFER_OVERFLOW;
     }
 
     // Register callback
@@ -2171,13 +2171,13 @@ nimcp_error_t bio_async_connect_immune(void* immune_system) {
     /* Guard clause: Validate parameters */
     if (!immune_system) {
         LOG_ERROR("bio_async_connect_immune: NULL immune system");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Guard clause: Router must be initialized */
     if (!g_router || !g_router->initialized) {
         LOG_ERROR("bio_async_connect_immune: Router not initialized");
-        return -1;
+        return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
     /* Store immune system reference (simplified implementation) */
@@ -2439,13 +2439,18 @@ bool bio_router_kg_dispatch_available(void) {
  * @param msg Message to dispatch
  * @param msg_size Message size
  * @param timeout_ms Timeout for each dispatch
- * @return Number of modules dispatched to, -1 on error
+ * @return Number of modules dispatched to (>= 0), or -1 on error
+ *
+ * NOTE: This internal function returns int (not nimcp_error_t) to allow
+ * distinguishing between "error" (-1) and "zero handlers found" (0).
+ * The caller converts -1 to NIMCP_ERROR_OPERATION_FAILED as appropriate.
  */
 static int bio_router_kg_dispatch_internal(
     const void* msg,
     size_t msg_size,
     uint32_t timeout_ms
 ) {
+    /* Internal function returns -1 on error, >= 0 for handler count */
     if (!g_router_brain_kg || !msg) return -1;
 
     const bio_message_header_t* header = (const bio_message_header_t*)msg;

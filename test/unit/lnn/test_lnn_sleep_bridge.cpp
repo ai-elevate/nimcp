@@ -58,6 +58,7 @@ sleep_system_t sleep_system_create(const sleep_config_t* config) {
     sys->callback_user_data = nullptr;
 
     return sys;
+}
 
 void sleep_system_destroy(sleep_system_t sleep) {
     free(sleep);
@@ -93,8 +94,6 @@ bool sleep_unregister_state_callback(sleep_system_t sleep,
     }
     return false;
 }
-
-} // extern "C"
 
 // Helper function to change sleep state and trigger callback
 static void mock_sleep_state_change(sleep_system_t sleep, sleep_state_t new_state) {

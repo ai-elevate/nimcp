@@ -48,9 +48,9 @@ protected:
     // Helper to create a tensor filled with a constant value
     nimcp_gpu_tensor_t* CreateFilledTensor(size_t* dims, size_t rank, float value) {
         if (!ctx) return nullptr;
-        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_DTYPE_FLOAT32);
+        nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, rank, NIMCP_GPU_PRECISION_FP32);
         if (tensor) {
-            nimcp_gpu_tensor_fill(ctx, tensor, value);
+            nimcp_gpu_fill(ctx, tensor, value);
         }
         return tensor;
     }
@@ -69,15 +69,17 @@ protected:
 
     // Helper to copy tensor to host
     std::vector<float> CopyToHost(nimcp_gpu_tensor_t* tensor) {
-        size_t n = nimcp_gpu_tensor_numel(tensor);
+        size_t n = tensor->numel;
         std::vector<float> host_data(n);
-        nimcp_gpu_tensor_to_host(ctx, tensor, host_data.data(), n * sizeof(float));
+        nimcp_gpu_tensor_to_host(tensor, host_data.data());
         return host_data;
     }
 
     // Helper to set tensor from host
-    void SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
-        nimcp_gpu_tensor_from_host(ctx, tensor, data.data(), data.size() * sizeof(float));
+    nimcp_gpu_tensor_t* SetFromHost(nimcp_gpu_tensor_t* tensor, const std::vector<float>& data) {
+        if (tensor) nimcp_gpu_tensor_destroy(tensor);
+        size_t dims[1] = {data.size()};
+        return nimcp_gpu_tensor_from_host(ctx, data.data(), dims, 1, NIMCP_GPU_PRECISION_FP32);
     }
 
     // Helper to create attention state
@@ -356,7 +358,7 @@ TEST_F(PortiaKernelTest, ComputeSalience_DetectsMotion) {
     ASSERT_NE(visual_input, nullptr);
 
     // Set previous frame to different value to create motion signal
-    nimcp_gpu_tensor_fill(ctx, state->fixation_history, 0.0f);
+    nimcp_gpu_fill(ctx, state->fixation_history, 0.0f);
 
     nimcp_gpu_portia_attention_params_t params = nimcp_gpu_portia_attention_params_default();
 
@@ -390,7 +392,7 @@ TEST_F(PortiaKernelTest, ComputeSalience_ThresholdsLowMotion) {
 
     // Create visual input with minimal motion (very small difference)
     nimcp_gpu_tensor_t* visual_input = Create2DTensor(height, width, 0.1f);
-    nimcp_gpu_tensor_fill(ctx, state->fixation_history, 0.1f);  // Same as input
+    nimcp_gpu_fill(ctx, state->fixation_history, 0.1f);  // Same as input
 
     nimcp_gpu_portia_attention_params_t params = nimcp_gpu_portia_attention_params_default();
 
@@ -425,13 +427,13 @@ TEST_F(PortiaKernelTest, UpdateAttention_ShiftsTowardSalience) {
 
     // Set initial attention to center
     std::vector<float> center_focus = {static_cast<float>(width / 2), static_cast<float>(height / 2)};
-    SetFromHost(state->attention_focus, center_focus);
+    state->attention_focus = SetFromHost(state->attention_focus, center_focus);
 
     // Create salience map with peak at corner
-    nimcp_gpu_tensor_fill(ctx, state->salience_map, 0.0f);
+    nimcp_gpu_fill(ctx, state->salience_map, 0.0f);
     std::vector<float> salience_data(width * height, 0.0f);
     salience_data[0] = 1.0f;  // High salience at (0, 0)
-    SetFromHost(state->salience_map, salience_data);
+    state->salience_map = SetFromHost(state->salience_map, salience_data);
 
     nimcp_gpu_portia_attention_params_t params = nimcp_gpu_portia_attention_params_default();
 
@@ -461,12 +463,12 @@ TEST_F(PortiaKernelTest, UpdateAttention_SmoothSaccade) {
 
     // Set initial attention to center
     std::vector<float> center_focus = {static_cast<float>(width / 2), static_cast<float>(height / 2)};
-    SetFromHost(state->attention_focus, center_focus);
+    state->attention_focus = SetFromHost(state->attention_focus, center_focus);
 
     // Create salience map with peak at edge
     std::vector<float> salience_data(width * height, 0.0f);
     salience_data[width - 1] = 1.0f;  // High salience at (width-1, 0)
-    SetFromHost(state->salience_map, salience_data);
+    state->salience_map = SetFromHost(state->salience_map, salience_data);
 
     nimcp_gpu_portia_attention_params_t params = nimcp_gpu_portia_attention_params_default();
 
@@ -585,14 +587,14 @@ TEST_F(PortiaKernelTest, PlanRoute_ComputesPathCosts) {
     // Set goal at corner
     std::vector<float> goal_pos = {static_cast<float>(map_size - 1), static_cast<float>(map_size - 1)};
     nimcp_gpu_tensor_t* goal = Create1DTensor(2, 0.0f);
-    SetFromHost(goal, goal_pos);
+    goal = SetFromHost(goal, goal_pos);
 
     // Set current position at center
     std::vector<float> current_pos = {static_cast<float>(map_size / 2), static_cast<float>(map_size / 2)};
-    SetFromHost(state->current_position, current_pos);
+    state->current_position = SetFromHost(state->current_position, current_pos);
 
     // No obstacles
-    nimcp_gpu_tensor_fill(ctx, state->obstacle_map, 0.0f);
+    nimcp_gpu_fill(ctx, state->obstacle_map, 0.0f);
 
     nimcp_gpu_portia_spatial_params_t params = nimcp_gpu_portia_spatial_params_default();
 
@@ -625,14 +627,14 @@ TEST_F(PortiaKernelTest, PlanRoute_MarksObstaclesImpassable) {
     // Set goal
     std::vector<float> goal_pos = {static_cast<float>(map_size - 1), static_cast<float>(map_size - 1)};
     nimcp_gpu_tensor_t* goal = Create1DTensor(2, 0.0f);
-    SetFromHost(goal, goal_pos);
+    goal = SetFromHost(goal, goal_pos);
 
     // Create obstacle wall
     std::vector<float> obstacle_data(map_size * map_size, 0.0f);
     for (size_t x = 0; x < map_size; x++) {
         obstacle_data[map_size / 2 * map_size + x] = 1.0f;  // Horizontal wall
     }
-    SetFromHost(state->obstacle_map, obstacle_data);
+    state->obstacle_map = SetFromHost(state->obstacle_map, obstacle_data);
 
     nimcp_gpu_portia_spatial_params_t params = nimcp_gpu_portia_spatial_params_default();
 
@@ -693,7 +695,7 @@ TEST_F(PortiaKernelTest, PathIntegration_ReturnsTrue) {
     // Create self-motion vector [dx, dy, dtheta]
     nimcp_gpu_tensor_t* self_motion = Create1DTensor(3, 0.0f);
     std::vector<float> motion_data = {1.0f, 0.0f, 0.0f};  // Forward motion
-    SetFromHost(self_motion, motion_data);
+    self_motion = SetFromHost(self_motion, motion_data);
 
     nimcp_gpu_portia_spatial_params_t params = nimcp_gpu_portia_spatial_params_default();
 
@@ -726,7 +728,7 @@ TEST_F(PortiaKernelTest, DetourPlanning_ReturnsTrue) {
             obstacle_data[idx] = 1.0f;
         }
     }
-    SetFromHost(obstacle, obstacle_data);
+    obstacle = SetFromHost(obstacle, obstacle_data);
 
     nimcp_gpu_portia_spatial_params_t params = nimcp_gpu_portia_spatial_params_default();
 
@@ -757,12 +759,12 @@ TEST_F(PortiaKernelTest, MatchPrey_ComputesConfidence) {
             templates[t * template_dim + d] = static_cast<float>(t + 1) / n_templates;
         }
     }
-    SetFromHost(state->prey_templates, templates);
+    state->prey_templates = SetFromHost(state->prey_templates, templates);
 
     // Create visual patch matching first template
     nimcp_gpu_tensor_t* visual_patch = Create1DTensor(template_dim, 0.0f);
     std::vector<float> patch_data(template_dim, 1.0f / n_templates);
-    SetFromHost(visual_patch, patch_data);
+    visual_patch = SetFromHost(visual_patch, patch_data);
 
     nimcp_gpu_portia_prey_params_t params = nimcp_gpu_portia_prey_params_default();
 
@@ -800,7 +802,7 @@ TEST_F(PortiaKernelTest, MatchPrey_HighConfidenceForMatchingTemplate) {
         templates[1 * template_dim + d] = 0.5f;
         templates[2 * template_dim + d] = 0.8f;
     }
-    SetFromHost(state->prey_templates, templates);
+    state->prey_templates = SetFromHost(state->prey_templates, templates);
 
     // Create visual patch matching template 1 exactly
     nimcp_gpu_tensor_t* visual_patch = Create1DTensor(template_dim, 0.5f);
@@ -1145,7 +1147,7 @@ TEST_F(PortiaKernelTest, Integration_VisualAttentionPipeline) {
                 }
             }
         }
-        SetFromHost(visual_input, frame_data);
+        visual_input = SetFromHost(visual_input, frame_data);
 
         // Compute salience
         bool salience_ok = nimcp_gpu_portia_compute_salience(ctx, state, visual_input, &params);
@@ -1164,7 +1166,7 @@ TEST_F(PortiaKernelTest, Integration_VisualAttentionPipeline) {
         focus_x_history.push_back(focus[0]);
 
         // Update fixation history for next frame
-        nimcp_gpu_tensor_copy(ctx, visual_input, state->fixation_history);
+        nimcp_gpu_copy(ctx, visual_input, state->fixation_history);
     }
 
     // Verify attention tracked the moving object (focus should have moved right)
@@ -1195,10 +1197,10 @@ TEST_F(PortiaKernelTest, Integration_SpatialNavigationPipeline) {
     std::vector<float> start_pos = {5.0f, 5.0f};
     std::vector<float> goal_pos = {static_cast<float>(map_size - 5), static_cast<float>(map_size - 5)};
 
-    SetFromHost(state->current_position, start_pos);
+    state->current_position = SetFromHost(state->current_position, start_pos);
 
     nimcp_gpu_tensor_t* goal = Create1DTensor(2, 0.0f);
-    SetFromHost(goal, goal_pos);
+    goal = SetFromHost(goal, goal_pos);
 
     // Create visual input (simple environment)
     nimcp_gpu_tensor_t* visual_input = Create2DTensor(map_size, map_size, 0.5f);
@@ -1210,7 +1212,7 @@ TEST_F(PortiaKernelTest, Integration_SpatialNavigationPipeline) {
     for (size_t y = 10; y < 20; y++) {
         obstacle_data[y * map_size + 15] = 1.0f;
     }
-    SetFromHost(state->obstacle_map, obstacle_data);
+    state->obstacle_map = SetFromHost(state->obstacle_map, obstacle_data);
 
     // Simulate navigation
     for (int step = 0; step < n_steps; step++) {
@@ -1224,7 +1226,7 @@ TEST_F(PortiaKernelTest, Integration_SpatialNavigationPipeline) {
 
         // Path integration (simulated movement)
         std::vector<float> motion_data = {0.5f, 0.5f, 0.0f};
-        SetFromHost(self_motion, motion_data);
+        self_motion = SetFromHost(self_motion, motion_data);
 
         bool path_ok = nimcp_gpu_portia_path_integration(ctx, state, self_motion, dt, &params);
         EXPECT_TRUE(path_ok);
@@ -1272,7 +1274,7 @@ TEST_F(PortiaKernelTest, Integration_PreyHuntingPipeline) {
             templates[t * template_dim + d] = base + 0.1f * std::sin(d * 0.5f);
         }
     }
-    SetFromHost(prey_state->prey_templates, templates);
+    prey_state->prey_templates = SetFromHost(prey_state->prey_templates, templates);
 
     // Create visual patch that matches template 1
     nimcp_gpu_tensor_t* visual_patch = Create1DTensor(template_dim, 0.0f);
@@ -1280,7 +1282,7 @@ TEST_F(PortiaKernelTest, Integration_PreyHuntingPipeline) {
     for (size_t d = 0; d < template_dim; d++) {
         patch_data[d] = 0.4f + 0.1f * std::sin(d * 0.5f);
     }
-    SetFromHost(visual_patch, patch_data);
+    visual_patch = SetFromHost(visual_patch, patch_data);
 
     // Simulate hunting sequence
     for (int step = 0; step < n_steps; step++) {
@@ -1369,11 +1371,11 @@ TEST_F(PortiaKernelTest, Integration_FullPortiaBehavior) {
             visual_data[(prey_y + dy) * width + (prey_x + dx)] = 0.8f;
         }
     }
-    SetFromHost(visual_input, visual_data);
+    visual_input = SetFromHost(visual_input, visual_data);
 
     // Set goal to prey location
     std::vector<float> goal_pos = {static_cast<float>(prey_x) / 2, static_cast<float>(prey_y) / 2};
-    SetFromHost(goal, goal_pos);
+    goal = SetFromHost(goal, goal_pos);
 
     // Phase 1: Detect prey with visual attention
     bool salience_ok = nimcp_gpu_portia_compute_salience(ctx, attention_state, visual_input, &attention_params);
@@ -1408,7 +1410,7 @@ TEST_F(PortiaKernelTest, Integration_FullPortiaBehavior) {
 
     // Phase 6: Execute path integration
     std::vector<float> motion_data = {0.5f, 0.0f, 0.1f};
-    SetFromHost(self_motion, motion_data);
+    self_motion = SetFromHost(self_motion, motion_data);
     bool path_ok = nimcp_gpu_portia_path_integration(ctx, spatial_state, self_motion, dt, &spatial_params);
     EXPECT_TRUE(path_ok);
 

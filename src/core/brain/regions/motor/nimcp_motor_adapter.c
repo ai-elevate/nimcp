@@ -14,6 +14,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_wiring_helpers.h"
@@ -87,6 +88,10 @@ struct motor_adapter {
     uint32_t queue_head;
     uint32_t queue_tail;
     uint32_t queue_count;
+    nimcp_mutex_t* queue_mutex;  /**< Mutex protecting queue operations */
+
+    /* Callback re-entrance guard */
+    bool in_callback;  /**< Flag to prevent callback re-entrance */
 
     /* Current movement state */
     motor_goal_t current_goal;
@@ -131,10 +136,14 @@ static uint32_t hash_program_id(uint32_t program_id, uint32_t capacity) {
 
 /**
  * @brief Emit event to callback
+ *
+ * THREAD SAFETY: Uses in_callback flag to prevent callback re-entrance.
  */
 static void emit_event(motor_adapter_t* adapter, uint32_t event_type, const void* data) {
-    if (adapter->config.enable_events && adapter->event_callback) {
+    if (adapter->config.enable_events && adapter->event_callback && !adapter->in_callback) {
+        adapter->in_callback = true;
         adapter->event_callback(event_type, data, adapter->event_user_data);
+        adapter->in_callback = false;
     }
 }
 
@@ -172,9 +181,12 @@ static motor_vec3_t lerp_vec3(const motor_vec3_t* a, const motor_vec3_t* b, floa
 }
 
 /**
- * @brief Enqueue a motor command
+ * @brief Enqueue a motor command (internal, caller must hold queue_mutex)
+ *
+ * THREAD SAFETY: This helper expects the caller to already hold queue_mutex.
+ *                Use enqueue_command() for the public thread-safe version.
  */
-static bool enqueue_command(motor_adapter_t* adapter, const motor_command_t* command) {
+static bool enqueue_command_unlocked(motor_adapter_t* adapter, const motor_command_t* command) {
     if (!adapter || !command) return false;
 
     if (adapter->queue_count >= adapter->queue_capacity) {
@@ -187,12 +199,46 @@ static bool enqueue_command(motor_adapter_t* adapter, const motor_command_t* com
     adapter->queue_tail = (adapter->queue_tail + 1) % adapter->queue_capacity;
     adapter->queue_count++;
 
-    /* Invoke callback if set */
-    if (adapter->command_callback) {
-        adapter->command_callback(command, adapter->command_user_data);
+    return true;
+}
+
+/**
+ * @brief Enqueue a motor command (thread-safe)
+ *
+ * THREAD SAFETY: Acquires queue_mutex to protect queue state.
+ *                Releases mutex before invoking callback to avoid deadlock.
+ *                Uses in_callback flag to prevent callback re-entrance.
+ */
+static bool enqueue_command(motor_adapter_t* adapter, const motor_command_t* command) {
+    if (!adapter || !command) return false;
+
+    /* Copy callback info while holding lock, invoke after releasing */
+    motor_command_callback_t callback = NULL;
+    void* user_data = NULL;
+    motor_command_t cmd_copy;
+    bool success = false;
+
+    nimcp_mutex_lock(adapter->queue_mutex);
+
+    success = enqueue_command_unlocked(adapter, command);
+    if (success) {
+        /* Capture callback and command for invocation outside lock */
+        callback = adapter->command_callback;
+        user_data = adapter->command_user_data;
+        cmd_copy = *command;
     }
 
-    return true;
+    nimcp_mutex_unlock(adapter->queue_mutex);
+
+    /* Invoke callback outside of lock to avoid deadlock
+     * Use in_callback flag to prevent re-entrance */
+    if (success && callback && !adapter->in_callback) {
+        adapter->in_callback = true;
+        callback(&cmd_copy, user_data);
+        adapter->in_callback = false;
+    }
+
+    return success;
 }
 
 /*=============================================================================
@@ -385,6 +431,17 @@ motor_adapter_t* motor_create(const motor_config_t* config) {
         return NULL;
     }
 
+    /* Initialize queue mutex for thread safety */
+    adapter->queue_mutex = nimcp_mutex_create(NULL);
+    if (!adapter->queue_mutex) {
+        LOG_ERROR("[%s] Failed to create command queue mutex", MOTOR_LOG_MODULE);
+        motor_destroy(adapter);
+        return NULL;
+    }
+
+    /* Initialize callback re-entrance guard */
+    adapter->in_callback = false;
+
     /* Initialize memory pool for waypoints */
     LOG_DEBUG("[%s] Creating waypoint memory pool", MOTOR_LOG_MODULE);
     memory_pool_config_t pool_config = {
@@ -510,7 +567,13 @@ void motor_destroy(motor_adapter_t* adapter) {
         nimcp_free(adapter->effectors);
     }
 
-    /* Free command queue */
+    /* Free command queue and its mutex */
+    if (adapter->queue_mutex) {
+        LOG_DEBUG("[%s] Destroying command queue mutex", MOTOR_LOG_MODULE);
+        nimcp_mutex_destroy(adapter->queue_mutex);
+        nimcp_free(adapter->queue_mutex);
+        adapter->queue_mutex = NULL;
+    }
     if (adapter->command_queue) {
         LOG_DEBUG("[%s] Freeing command queue", MOTOR_LOG_MODULE);
         nimcp_free(adapter->command_queue);
@@ -531,10 +594,12 @@ bool motor_reset(motor_adapter_t* adapter) {
 
     LOG_DEBUG("[%s] Resetting adapter state", MOTOR_LOG_MODULE);
 
-    /* Clear command queue */
+    /* Clear command queue (thread-safe) */
+    nimcp_mutex_lock(adapter->queue_mutex);
     adapter->queue_head = 0;
     adapter->queue_tail = 0;
     adapter->queue_count = 0;
+    nimcp_mutex_unlock(adapter->queue_mutex);
 
     /* Clear active trajectory */
     adapter->active_trajectory = NULL;
@@ -709,12 +774,14 @@ bool motor_plan_movement(motor_adapter_t* adapter, const motor_goal_t* goal) {
         return false;
     }
 
-    trajectory_plan_t* traj = &adapter->trajectories[adapter->num_trajectories++];
+    trajectory_plan_t* traj = &adapter->trajectories[adapter->num_trajectories];
     traj->waypoints = (trajectory_waypoint_t*)nimcp_calloc(2, sizeof(trajectory_waypoint_t));
     if (!traj->waypoints) {
         set_error(adapter, MOTOR_ERROR_INTERNAL);
         return false;
     }
+    /* Only increment after successful allocation to avoid memory leak on error path */
+    adapter->num_trajectories++;
 
     /* Start waypoint */
     traj->waypoints[0].position = effector->position;
@@ -762,13 +829,15 @@ bool motor_plan_trajectory(motor_adapter_t* adapter,
     adapter->status = MOTOR_STATUS_PLANNING;
     adapter->stats.movements_planned++;
 
-    trajectory_plan_t* traj = &adapter->trajectories[adapter->num_trajectories++];
+    trajectory_plan_t* traj = &adapter->trajectories[adapter->num_trajectories];
     traj->waypoints = (trajectory_waypoint_t*)nimcp_calloc(
         num_waypoints, sizeof(trajectory_waypoint_t));
     if (!traj->waypoints) {
         set_error(adapter, MOTOR_ERROR_INTERNAL);
         return false;
     }
+    /* Only increment after successful allocation to avoid memory leak on error path */
+    adapter->num_trajectories++;
 
     memcpy(traj->waypoints, waypoints, num_waypoints * sizeof(trajectory_waypoint_t));
     traj->num_waypoints = num_waypoints;
@@ -812,10 +881,12 @@ bool motor_plan_program_execution(motor_adapter_t* adapter,
     adapter->status = MOTOR_STATUS_PLANNING;
     adapter->stats.movements_planned++;
 
-    /* Clear command queue */
+    /* Clear command queue (thread-safe) */
+    nimcp_mutex_lock(adapter->queue_mutex);
     adapter->queue_head = 0;
     adapter->queue_tail = 0;
     adapter->queue_count = 0;
+    nimcp_mutex_unlock(adapter->queue_mutex);
 
     /* Scale commands by speed factor and enqueue */
     float scale = (speed_factor > 0.0f) ? (1.0f / speed_factor) : 1.0f;
@@ -901,9 +972,11 @@ bool motor_update_execution(motor_adapter_t* adapter, float dt_ms) {
                 adapter->effectors[eff_id].velocity.z = 0.0f;
             }
 
-            /* Invoke completion callback */
-            if (adapter->complete_callback) {
+            /* Invoke completion callback with re-entrance guard */
+            if (adapter->complete_callback && !adapter->in_callback) {
+                adapter->in_callback = true;
                 adapter->complete_callback(&adapter->last_result, adapter->complete_user_data);
+                adapter->in_callback = false;
             }
 
             emit_event(adapter, 3 /* MOTOR_EVENT_EXECUTION_COMPLETE */, &adapter->last_result);
@@ -963,10 +1036,12 @@ bool motor_stop_execution(motor_adapter_t* adapter) {
         adapter->active_trajectory = NULL;
     }
 
-    /* Clear command queue */
+    /* Clear command queue (thread-safe) */
+    nimcp_mutex_lock(adapter->queue_mutex);
     adapter->queue_head = 0;
     adapter->queue_tail = 0;
     adapter->queue_count = 0;
+    nimcp_mutex_unlock(adapter->queue_mutex);
 
     /* Generate stop commands for all active effectors */
     for (uint32_t i = 0; i < adapter->num_effectors; i++) {
@@ -996,16 +1071,21 @@ bool motor_stop_execution(motor_adapter_t* adapter) {
 bool motor_get_next_command(motor_adapter_t* adapter, motor_command_t* command) {
     if (!adapter || !command) return false;
 
-    if (adapter->queue_count == 0) {
-        return false;  /* Queue empty */
+    bool success = false;
+
+    nimcp_mutex_lock(adapter->queue_mutex);
+
+    if (adapter->queue_count > 0) {
+        *command = adapter->command_queue[adapter->queue_head].command;
+        adapter->command_queue[adapter->queue_head].is_valid = false;
+        adapter->queue_head = (adapter->queue_head + 1) % adapter->queue_capacity;
+        adapter->queue_count--;
+        success = true;
     }
 
-    *command = adapter->command_queue[adapter->queue_head].command;
-    adapter->command_queue[adapter->queue_head].is_valid = false;
-    adapter->queue_head = (adapter->queue_head + 1) % adapter->queue_capacity;
-    adapter->queue_count--;
+    nimcp_mutex_unlock(adapter->queue_mutex);
 
-    return true;
+    return success;
 }
 
 bool motor_get_result(const motor_adapter_t* adapter, motor_result_t* result) {

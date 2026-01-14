@@ -32,7 +32,6 @@
 
 // C linkage headers
 // Forward declarations for memory operations if needed
-}
 
 //=============================================================================
 // Test Constants
