@@ -1234,6 +1234,42 @@ add_e2e_test(e2e_test_hippocampus_pipeline
 )
 
 # ============================================================================
+# Perirhinal Cortex Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for perirhinal object recognition and familiarity
+# WHY:  Verify object encoding, recognition memory, visual processing
+# HOW:  Test object encoding, familiarity signals, visual input processing
+# ============================================================================
+add_e2e_test(e2e_test_perirhinal_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_perirhinal_pipeline.cpp
+)
+
+# ============================================================================
+# Parahippocampal Cortex Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for parahippocampal scene and context processing
+# WHY:  Verify scene encoding, spatial context, layout processing
+# HOW:  Test scene encoding, landmark processing, spatial navigation
+# ============================================================================
+add_e2e_test(e2e_test_parahippocampal_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_parahippocampal_pipeline.cpp
+)
+
+# ============================================================================
+# Mammillary Bodies Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for mammillary memory relay and Papez circuit
+# WHY:  Verify memory relay, head direction, consolidation
+# HOW:  Test hippocampal relay, thalamic output, Papez circuit cycles
+# ============================================================================
+add_e2e_test(e2e_test_mammillary_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_mammillary_pipeline.cpp
+)
+
+# ============================================================================
 # Limbic System Pipeline E2E Test
 # ============================================================================
 # WHAT: E2E tests for limbic emotional processing

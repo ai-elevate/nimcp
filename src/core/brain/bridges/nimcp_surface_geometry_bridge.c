@@ -167,13 +167,9 @@ int surface_geometry_bridge_connect_geometry(
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(ctx);
 
-    BRIDGE_LOCK(bridge);
-
+    /* Note: bridge_base_connect_a handles its own locking */
     bridge->geometry_ctx = ctx;
-    int result = bridge_base_connect_a(&bridge->base, ctx);
-
-    BRIDGE_UNLOCK(bridge);
-    return result;
+    return bridge_base_connect_a(&bridge->base, ctx);
 }
 
 int surface_geometry_bridge_connect_brain(
@@ -183,33 +179,23 @@ int surface_geometry_bridge_connect_brain(
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(brain_region);
 
-    BRIDGE_LOCK(bridge);
-    int result = bridge_base_connect_b(&bridge->base, brain_region);
-    BRIDGE_UNLOCK(bridge);
-
-    return result;
+    /* Note: bridge_base_connect_b handles its own locking */
+    return bridge_base_connect_b(&bridge->base, brain_region);
 }
 
 int surface_geometry_bridge_disconnect_geometry(surface_geometry_bridge_t* bridge) {
     BRIDGE_NULL_CHECK(bridge);
 
-    BRIDGE_LOCK(bridge);
-
+    /* Note: bridge_base_disconnect_a handles its own locking */
     bridge->geometry_ctx = NULL;
-    int result = bridge_base_disconnect_a(&bridge->base);
-
-    BRIDGE_UNLOCK(bridge);
-    return result;
+    return bridge_base_disconnect_a(&bridge->base);
 }
 
 int surface_geometry_bridge_disconnect_brain(surface_geometry_bridge_t* bridge) {
     BRIDGE_NULL_CHECK(bridge);
 
-    BRIDGE_LOCK(bridge);
-    int result = bridge_base_disconnect_b(&bridge->base);
-    BRIDGE_UNLOCK(bridge);
-
-    return result;
+    /* Note: bridge_base_disconnect_b handles its own locking */
+    return bridge_base_disconnect_b(&bridge->base);
 }
 
 bool surface_geometry_bridge_is_connected(const surface_geometry_bridge_t* bridge) {

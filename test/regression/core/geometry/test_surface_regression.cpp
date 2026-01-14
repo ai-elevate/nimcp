@@ -195,7 +195,7 @@ TEST_F(OptimalAngleRegressionTest, SproutingAngle_Is90Degrees) {
 TEST_F(OptimalAngleRegressionTest, SteinerAngle_AtRhoOne) {
     // At rho = 1 (equal diameters), should approach Steiner angle
     // Steiner: 120 degree angles between branches
-    // Steering angle (branch deviation from main) ~60 degrees
+    // This function returns the angle BETWEEN branches, not steering angle
     surface_geometry_params_t params = {};
     params.rho = 1.0f;
     params.rho_threshold = 0.6f;
@@ -205,8 +205,8 @@ TEST_F(OptimalAngleRegressionTest, SteinerAngle_AtRhoOne) {
     int ret = surface_compute_optimal_angle(&params, &angle);
     EXPECT_EQ(ret, 0);
 
-    // At rho=1, steering angle should be around 60 degrees (π/3)
-    float expected = M_PI / 3.0f;
+    // At rho=1, branch angle should be around 120 degrees (2π/3 = Steiner angle)
+    float expected = 2.0f * M_PI / 3.0f;  // 120 degrees
     float tolerance = DEG_TO_RAD(ANGLE_TOLERANCE_DEG * 2);  // Wider tolerance
     EXPECT_NEAR(angle, expected, tolerance);
 }

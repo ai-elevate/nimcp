@@ -49,6 +49,28 @@ extern "C" {
 #define MAMMILLARY_VERSION_PATCH            0
 
 /*=============================================================================
+ * FORWARD DECLARATIONS
+ *===========================================================================*/
+
+/* Brain region adapters */
+typedef struct hippocampus_adapter hippocampus_adapter_t;
+typedef struct thalamus_adapter thalamus_adapter_t;
+typedef struct nimcp_entorhinal nimcp_entorhinal_t;
+typedef struct hypothalamus_adapter hypothalamus_adapter_t;
+typedef struct cerebellum_adapter cerebellum_adapter_t;
+typedef struct medulla_adapter medulla_adapter_t;
+typedef struct cingulate_adapter cingulate_adapter_t;
+
+/* Specialized systems */
+typedef struct nimcp_prime_resonance nimcp_prime_resonance_t;
+typedef struct nimcp_swarm_coordinator nimcp_swarm_coordinator_t;
+typedef struct nimcp_dragonfly_system nimcp_dragonfly_system_t;
+
+/* Substrate and layers */
+typedef struct nimcp_neural_substrate nimcp_neural_substrate_t;
+typedef struct nimcp_perception_layer nimcp_perception_layer_t;
+
+/*=============================================================================
  * ENUMERATIONS
  *===========================================================================*/
 
@@ -372,14 +394,20 @@ typedef struct {
 
 /**
  * @brief Prime resonance bridge
+ * Integrates mammillary bodies with theta/gamma oscillation system for
+ * memory consolidation timing and Papez circuit synchronization.
  */
 typedef struct {
+    nimcp_prime_resonance_t* resonance;
+    float theta_phase;          /* Current theta phase (4-8 Hz) for memory timing */
+    float gamma_phase;          /* Current gamma phase for local processing */
+    float resonance_amplitude;  /* Oscillation amplitude */
+    float frequency;            /* Current resonance frequency */
+    float papez_coupling;       /* Coupling strength to Papez circuit */
+    float hd_theta_sync;        /* Head direction-theta synchronization */
     bool initialized;
-    void* resonance_ctx;
-    float resonance_phase;
-    float amplitude;
-    float frequency;
     bool synchronized;
+    uint64_t phase_updates;
 } mammillary_resonance_bridge_t;
 
 /**
@@ -881,7 +909,27 @@ int mammillary_init_security_bridge(nimcp_mammillary_t* mb, void* security_ctx, 
 int mammillary_init_immune_bridge(nimcp_mammillary_t* mb, void* immune);
 int mammillary_init_bio_async_bridge(nimcp_mammillary_t* mb, void* runtime);
 int mammillary_init_logging_bridge(nimcp_mammillary_t* mb, void* logger);
-int mammillary_init_resonance_bridge(nimcp_mammillary_t* mb, void* resonance);
+int mammillary_init_resonance_bridge(nimcp_mammillary_t* mb, nimcp_prime_resonance_t* resonance);
+
+/**
+ * @brief Update resonance phase from prime resonance system
+ */
+int mammillary_update_resonance_phase(nimcp_mammillary_t* mb, float theta_phase, float gamma_phase);
+
+/**
+ * @brief Get current theta phase for memory timing
+ */
+float mammillary_get_theta_phase(const nimcp_mammillary_t* mb);
+
+/**
+ * @brief Get head direction-theta synchronization level
+ */
+float mammillary_get_hd_theta_sync(const nimcp_mammillary_t* mb);
+
+/**
+ * @brief Synchronize Papez circuit with theta rhythm
+ */
+int mammillary_sync_papez_to_theta(nimcp_mammillary_t* mb);
 int mammillary_init_cognitive_bridge(nimcp_mammillary_t* mb, void* cognitive, void* training);
 int mammillary_init_logic_bridge(nimcp_mammillary_t* mb, void* logic);
 int mammillary_init_substrate_bridge(nimcp_mammillary_t* mb, void* substrate);

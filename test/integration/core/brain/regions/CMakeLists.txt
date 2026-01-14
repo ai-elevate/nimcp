@@ -58,6 +58,14 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/perirhinal/CMakeLists.txt")
     add_subdirectory(perirhinal)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/parahippocampal/CMakeLists.txt")
+    add_subdirectory(parahippocampal)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/mammillary/CMakeLists.txt")
+    add_subdirectory(mammillary)
+endif()
+
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vta/CMakeLists.txt")
     add_subdirectory(vta)
 endif()

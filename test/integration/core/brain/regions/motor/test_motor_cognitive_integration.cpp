@@ -99,9 +99,9 @@ TEST_F(MotorCognitiveIntegrationTest, RecallStoredProgram) {
 
     /* Recall program */
     motor_program_info_t recalled;
-    int result = motor_get_program(adapter, program_id, &recalled);
-    EXPECT_EQ(0, result);
-    if (result == 0) {
+    bool result = motor_get_program(adapter, program_id, &recalled);
+    EXPECT_TRUE(result);  /* Returns true on success */
+    if (result) {
         EXPECT_EQ(2u, recalled.num_commands);
     }
 }
@@ -121,13 +121,13 @@ TEST_F(MotorCognitiveIntegrationTest, DeleteStoredProgram) {
     }
 
     /* Delete program */
-    int result = motor_delete_program(adapter, program_id);
-    EXPECT_EQ(0, result);
+    bool result = motor_delete_program(adapter, program_id);
+    EXPECT_TRUE(result);  /* Returns true on success */
 
     /* Verify deleted */
     motor_program_info_t recalled;
     result = motor_get_program(adapter, program_id, &recalled);
-    EXPECT_NE(0, result);  /* Should fail */
+    EXPECT_FALSE(result);  /* Should fail since program was deleted */
 }
 
 /*=============================================================================

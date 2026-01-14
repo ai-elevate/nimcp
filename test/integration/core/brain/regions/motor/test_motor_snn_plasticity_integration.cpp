@@ -85,16 +85,17 @@ TEST_F(MotorSNNPlasticityTest, STDPSynapseCustomInit) {
     stdp_config_t custom_config = stdp_config_default();
     custom_config.learning_rate = 0.05f;
     custom_config.w_max = 2.0f;
-    custom_config.tau_plus = 15.0f;
-    custom_config.tau_minus = 25.0f;
+    /* Note: tau values are in seconds (0.015 = 15ms, 0.025 = 25ms) */
+    custom_config.tau_plus = 0.015f;
+    custom_config.tau_minus = 0.025f;
     custom_config.enable_da_modulation = true;
 
     stdp_synapse_init_with_config(&synapse, &custom_config);
 
     EXPECT_FLOAT_EQ(synapse.learning_rate, 0.05f);
     EXPECT_FLOAT_EQ(synapse.w_max, 2.0f);
-    EXPECT_FLOAT_EQ(synapse.tau_plus, 15.0f);
-    EXPECT_FLOAT_EQ(synapse.tau_minus, 25.0f);
+    EXPECT_FLOAT_EQ(synapse.tau_plus, 0.015f);
+    EXPECT_FLOAT_EQ(synapse.tau_minus, 0.025f);
     EXPECT_TRUE(synapse.enable_da_modulation);
 }
 
@@ -106,8 +107,9 @@ TEST_F(MotorSNNPlasticityTest, STDPDefaultConfig) {
     EXPECT_GT(config.w_max, 0.0f);
     EXPECT_GT(config.a_plus, 0.0f);
     EXPECT_GT(config.a_minus, 0.0f);
-    EXPECT_NEAR(config.tau_plus, 20.0f, 10.0f);  /* Around 20ms typical */
-    EXPECT_NEAR(config.tau_minus, 20.0f, 10.0f);
+    /* Note: tau values are in seconds (0.020 = 20ms typical for STDP) */
+    EXPECT_NEAR(config.tau_plus, 0.020f, 0.010f);  /* Around 20ms typical */
+    EXPECT_NEAR(config.tau_minus, 0.020f, 0.010f);
 }
 
 /*=============================================================================

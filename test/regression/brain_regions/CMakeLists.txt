@@ -82,3 +82,24 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_entorhinal_signal_regression.cpp
     regression
 )
+
+# Perirhinal Cortex Backward Compatibility Test
+add_test_binary(
+    regression_brain_regions_test_perirhinal_backward_compat
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_perirhinal_backward_compat.cpp
+    regression
+)
+
+# Parahippocampal Cortex Backward Compatibility Test
+add_test_binary(
+    regression_brain_regions_test_parahippocampal_backward_compat
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_parahippocampal_backward_compat.cpp
+    regression
+)
+
+# Mammillary Bodies Backward Compatibility Test
+add_test_binary(
+    regression_brain_regions_test_mammillary_backward_compat
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mammillary_backward_compat.cpp
+    regression
+)

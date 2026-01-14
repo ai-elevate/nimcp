@@ -676,17 +676,17 @@ bool motor_plan_movement(motor_adapter_t* adapter, const motor_goal_t* goal) {
 
     LOG_DEBUG("[%s] Planning movement to region %d", MOTOR_LOG_MODULE, goal->region);
 
-    adapter->status = MOTOR_STATUS_PLANNING;
-    adapter->current_goal = *goal;
-    adapter->has_active_goal = true;
-    adapter->stats.movements_planned++;
-
-    /* Get current effector state */
+    /* Validate region first before changing state */
     uint32_t effector_id = (uint32_t)goal->region;
     if (effector_id >= adapter->num_effectors) {
         set_error(adapter, MOTOR_ERROR_INVALID_INPUT);
         return false;
     }
+
+    adapter->status = MOTOR_STATUS_PLANNING;
+    adapter->current_goal = *goal;
+    adapter->has_active_goal = true;
+    adapter->stats.movements_planned++;
 
     motor_effector_state_t* effector = &adapter->effectors[effector_id];
 

@@ -649,15 +649,14 @@ void nimcp_flocking_clear_formation(nimcp_flocking_engine_t *engine) {
     nimcp_platform_mutex_unlock(engine->mutex);
 }
 
-int nimcp_flocking_get_formation_position(nimcp_flocking_engine_t *engine,
-                                          uint32_t boid_id,
-                                          nimcp_vec3_t *position) {
+/* Internal unlocked version for use within already-locked contexts */
+static int flocking_get_formation_position_unlocked(nimcp_flocking_engine_t *engine,
+                                                     uint32_t boid_id,
+                                                     nimcp_vec3_t *position) {
     if (!engine || !position || boid_id == 0) return -1;
 
     int index = flocking_find_boid_index(engine, boid_id);
     if (index < 0) return -1;
-
-    nimcp_platform_mutex_lock(engine->mutex);
 
     switch (engine->formation_type) {
         case NIMCP_FORMATION_V:
@@ -683,8 +682,19 @@ int nimcp_flocking_get_formation_position(nimcp_flocking_engine_t *engine,
             break;
     }
 
-    nimcp_platform_mutex_unlock(engine->mutex);
     return 0;
+}
+
+int nimcp_flocking_get_formation_position(nimcp_flocking_engine_t *engine,
+                                          uint32_t boid_id,
+                                          nimcp_vec3_t *position) {
+    if (!engine || !position || boid_id == 0) return -1;
+
+    nimcp_platform_mutex_lock(engine->mutex);
+    int result = flocking_get_formation_position_unlocked(engine, boid_id, position);
+    nimcp_platform_mutex_unlock(engine->mutex);
+
+    return result;
 }
 
 /* ========================================================================
@@ -1037,7 +1047,8 @@ int nimcp_flocking_calculate_force(nimcp_flocking_engine_t *engine,
     // Formation seeking
     if (engine->formation_type != NIMCP_FORMATION_NONE && !boid->is_leader) {
         nimcp_vec3_t formation_pos;
-        if (nimcp_flocking_get_formation_position(engine, boid_id, &formation_pos) == 0) {
+        /* Use unlocked version since we're called from within locked context */
+        if (flocking_get_formation_position_unlocked(engine, boid_id, &formation_pos) == 0) {
             nimcp_vec3_t formation_force = nimcp_vec3_sub(formation_pos, boid->position);
             float dist = nimcp_vec3_length(formation_force);
             if (dist > NIMCP_FLOCKING_EPSILON) {
@@ -1230,7 +1241,8 @@ int nimcp_flocking_get_stats(nimcp_flocking_engine_t *engine,
         float error_sum = 0;
         for (uint32_t i = 0; i < engine->boid_count; i++) {
             nimcp_vec3_t ideal_pos;
-            if (nimcp_flocking_get_formation_position(engine, engine->boids[i].id, &ideal_pos) == 0) {
+            /* Use unlocked version since we're already holding the mutex */
+            if (flocking_get_formation_position_unlocked(engine, engine->boids[i].id, &ideal_pos) == 0) {
                 float error = nimcp_vec3_distance(engine->boids[i].position, ideal_pos);
                 error_sum += error;
             }

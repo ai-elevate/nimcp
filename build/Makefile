@@ -7361,6 +7361,45 @@ e2e_test_hippocampus_pipeline/fast:
 .PHONY : e2e_test_hippocampus_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_perirhinal_pipeline
+
+# Build rule for target.
+e2e_test_perirhinal_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_perirhinal_pipeline
+.PHONY : e2e_test_perirhinal_pipeline
+
+# fast build rule for target.
+e2e_test_perirhinal_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_perirhinal_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_perirhinal_pipeline.dir/build
+.PHONY : e2e_test_perirhinal_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_parahippocampal_pipeline
+
+# Build rule for target.
+e2e_test_parahippocampal_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_parahippocampal_pipeline
+.PHONY : e2e_test_parahippocampal_pipeline
+
+# fast build rule for target.
+e2e_test_parahippocampal_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_parahippocampal_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_parahippocampal_pipeline.dir/build
+.PHONY : e2e_test_parahippocampal_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_mammillary_pipeline
+
+# Build rule for target.
+e2e_test_mammillary_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_mammillary_pipeline
+.PHONY : e2e_test_mammillary_pipeline
+
+# fast build rule for target.
+e2e_test_mammillary_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_mammillary_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_mammillary_pipeline.dir/build
+.PHONY : e2e_test_mammillary_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_limbic_pipeline
 
 # Build rule for target.
@@ -14602,6 +14641,279 @@ integration_core_brain_regions_entorhinal_test_entorhinal_security_integration/f
 .PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_security_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_core_brain_regions_perirhinal_test_perirhinal_brain_init_integration
+
+# Build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_brain_init_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_perirhinal_test_perirhinal_brain_init_integration
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_brain_init_integration
+
+# fast build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_brain_init_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_brain_init_integration.dir/build.make test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_brain_init_integration.dir/build
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_brain_init_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_perirhinal_test_perirhinal_bio_async_integration
+
+# Build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_bio_async_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_perirhinal_test_perirhinal_bio_async_integration
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_bio_async_integration
+
+# fast build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_bio_async_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_bio_async_integration.dir/build.make test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_bio_async_integration.dir/build
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_bio_async_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_perirhinal_test_perirhinal_snn_plasticity_integration
+
+# Build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_snn_plasticity_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_perirhinal_test_perirhinal_snn_plasticity_integration
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_snn_plasticity_integration
+
+# fast build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_snn_plasticity_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_snn_plasticity_integration.dir/build.make test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_snn_plasticity_integration.dir/build
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_snn_plasticity_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_perirhinal_test_perirhinal_cognitive_integration
+
+# Build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_cognitive_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_perirhinal_test_perirhinal_cognitive_integration
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_cognitive_integration
+
+# fast build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_cognitive_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_cognitive_integration.dir/build.make test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_cognitive_integration.dir/build
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_cognitive_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_perirhinal_test_perirhinal_immune_integration
+
+# Build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_immune_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_perirhinal_test_perirhinal_immune_integration
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_immune_integration
+
+# fast build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_immune_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_immune_integration.dir/build.make test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_immune_integration.dir/build
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_immune_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_perirhinal_test_perirhinal_security_integration
+
+# Build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_security_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_perirhinal_test_perirhinal_security_integration
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_security_integration
+
+# fast build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_security_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_security_integration.dir/build.make test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_security_integration.dir/build
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_security_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_perirhinal_test_perirhinal_kg_wiring_integration
+
+# Build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_kg_wiring_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_perirhinal_test_perirhinal_kg_wiring_integration
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_kg_wiring_integration
+
+# fast build rule for target.
+integration_core_brain_regions_perirhinal_test_perirhinal_kg_wiring_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_kg_wiring_integration.dir/build.make test/integration/core/brain/regions/perirhinal/CMakeFiles/integration_core_brain_regions_perirhinal_test_perirhinal_kg_wiring_integration.dir/build
+.PHONY : integration_core_brain_regions_perirhinal_test_perirhinal_kg_wiring_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_parahipp_test_parahipp_brain_init_integration
+
+# Build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_brain_init_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_parahipp_test_parahipp_brain_init_integration
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_brain_init_integration
+
+# fast build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_brain_init_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_brain_init_integration.dir/build.make test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_brain_init_integration.dir/build
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_brain_init_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_parahipp_test_parahipp_bio_async_integration
+
+# Build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_bio_async_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_parahipp_test_parahipp_bio_async_integration
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_bio_async_integration
+
+# fast build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_bio_async_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_bio_async_integration.dir/build.make test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_bio_async_integration.dir/build
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_bio_async_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_parahipp_test_parahipp_snn_plasticity_integration
+
+# Build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_snn_plasticity_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_parahipp_test_parahipp_snn_plasticity_integration
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_snn_plasticity_integration
+
+# fast build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_snn_plasticity_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_snn_plasticity_integration.dir/build.make test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_snn_plasticity_integration.dir/build
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_snn_plasticity_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_parahipp_test_parahipp_cognitive_integration
+
+# Build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_cognitive_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_parahipp_test_parahipp_cognitive_integration
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_cognitive_integration
+
+# fast build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_cognitive_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_cognitive_integration.dir/build.make test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_cognitive_integration.dir/build
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_cognitive_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_parahipp_test_parahipp_immune_integration
+
+# Build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_immune_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_parahipp_test_parahipp_immune_integration
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_immune_integration
+
+# fast build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_immune_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_immune_integration.dir/build.make test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_immune_integration.dir/build
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_immune_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_parahipp_test_parahipp_security_integration
+
+# Build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_security_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_parahipp_test_parahipp_security_integration
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_security_integration
+
+# fast build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_security_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_security_integration.dir/build.make test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_security_integration.dir/build
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_security_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_parahipp_test_parahipp_kg_wiring_integration
+
+# Build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_kg_wiring_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_parahipp_test_parahipp_kg_wiring_integration
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_kg_wiring_integration
+
+# fast build rule for target.
+integration_core_brain_regions_parahipp_test_parahipp_kg_wiring_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_kg_wiring_integration.dir/build.make test/integration/core/brain/regions/parahippocampal/CMakeFiles/integration_core_brain_regions_parahipp_test_parahipp_kg_wiring_integration.dir/build
+.PHONY : integration_core_brain_regions_parahipp_test_parahipp_kg_wiring_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_mammillary_test_mammillary_brain_init_integration
+
+# Build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_brain_init_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_mammillary_test_mammillary_brain_init_integration
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_brain_init_integration
+
+# fast build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_brain_init_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_brain_init_integration.dir/build.make test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_brain_init_integration.dir/build
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_brain_init_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_mammillary_test_mammillary_bio_async_integration
+
+# Build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_bio_async_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_mammillary_test_mammillary_bio_async_integration
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_bio_async_integration
+
+# fast build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_bio_async_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_bio_async_integration.dir/build.make test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_bio_async_integration.dir/build
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_bio_async_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_mammillary_test_mammillary_snn_plasticity_integration
+
+# Build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_snn_plasticity_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_mammillary_test_mammillary_snn_plasticity_integration
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_snn_plasticity_integration
+
+# fast build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_snn_plasticity_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_snn_plasticity_integration.dir/build.make test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_snn_plasticity_integration.dir/build
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_snn_plasticity_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_mammillary_test_mammillary_cognitive_integration
+
+# Build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_cognitive_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_mammillary_test_mammillary_cognitive_integration
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_cognitive_integration
+
+# fast build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_cognitive_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_cognitive_integration.dir/build.make test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_cognitive_integration.dir/build
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_cognitive_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_mammillary_test_mammillary_immune_integration
+
+# Build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_immune_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_mammillary_test_mammillary_immune_integration
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_immune_integration
+
+# fast build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_immune_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_immune_integration.dir/build.make test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_immune_integration.dir/build
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_immune_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_mammillary_test_mammillary_security_integration
+
+# Build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_security_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_mammillary_test_mammillary_security_integration
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_security_integration
+
+# fast build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_security_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_security_integration.dir/build.make test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_security_integration.dir/build
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_security_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_mammillary_test_mammillary_kg_wiring_integration
+
+# Build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_kg_wiring_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_mammillary_test_mammillary_kg_wiring_integration
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_kg_wiring_integration
+
+# fast build rule for target.
+integration_core_brain_regions_mammillary_test_mammillary_kg_wiring_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_kg_wiring_integration.dir/build.make test/integration/core/brain/regions/mammillary/CMakeFiles/integration_core_brain_regions_mammillary_test_mammillary_kg_wiring_integration.dir/build
+.PHONY : integration_core_brain_regions_mammillary_test_mammillary_kg_wiring_integration/fast
+
+#=============================================================================
 # Target rules for targets named regression_core_brain_oscillation_backward_compat
 
 # Build rule for target.
@@ -14964,6 +15276,45 @@ regression_brain_regions_test_entorhinal_signal_regression: cmake_check_build_sy
 regression_brain_regions_test_entorhinal_signal_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_entorhinal_signal_regression.dir/build.make test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_entorhinal_signal_regression.dir/build
 .PHONY : regression_brain_regions_test_entorhinal_signal_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_brain_regions_test_perirhinal_backward_compat
+
+# Build rule for target.
+regression_brain_regions_test_perirhinal_backward_compat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_brain_regions_test_perirhinal_backward_compat
+.PHONY : regression_brain_regions_test_perirhinal_backward_compat
+
+# fast build rule for target.
+regression_brain_regions_test_perirhinal_backward_compat/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_perirhinal_backward_compat.dir/build.make test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_perirhinal_backward_compat.dir/build
+.PHONY : regression_brain_regions_test_perirhinal_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_brain_regions_test_parahippocampal_backward_compat
+
+# Build rule for target.
+regression_brain_regions_test_parahippocampal_backward_compat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_brain_regions_test_parahippocampal_backward_compat
+.PHONY : regression_brain_regions_test_parahippocampal_backward_compat
+
+# fast build rule for target.
+regression_brain_regions_test_parahippocampal_backward_compat/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_parahippocampal_backward_compat.dir/build.make test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_parahippocampal_backward_compat.dir/build
+.PHONY : regression_brain_regions_test_parahippocampal_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_brain_regions_test_mammillary_backward_compat
+
+# Build rule for target.
+regression_brain_regions_test_mammillary_backward_compat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_brain_regions_test_mammillary_backward_compat
+.PHONY : regression_brain_regions_test_mammillary_backward_compat
+
+# fast build rule for target.
+regression_brain_regions_test_mammillary_backward_compat/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_mammillary_backward_compat.dir/build.make test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_mammillary_backward_compat.dir/build
+.PHONY : regression_brain_regions_test_mammillary_backward_compat/fast
 
 #=============================================================================
 # Target rules for targets named regression_bridges_test_bridge_memory_leaks
@@ -27950,6 +28301,7 @@ help:
 	@echo "... e2e_test_jepa_qmc_pipeline"
 	@echo "... e2e_test_language_layer_pipeline"
 	@echo "... e2e_test_limbic_pipeline"
+	@echo "... e2e_test_mammillary_pipeline"
 	@echo "... e2e_test_master_connectivity"
 	@echo "... e2e_test_medulla_cerebellum_pipeline"
 	@echo "... e2e_test_medulla_pipeline"
@@ -27968,9 +28320,11 @@ help:
 	@echo "... e2e_test_nlp_swarm_coordination"
 	@echo "... e2e_test_nlp_war_zone"
 	@echo "... e2e_test_omni_inference_pipeline"
+	@echo "... e2e_test_parahippocampal_pipeline"
 	@echo "... e2e_test_parietal_pipeline"
 	@echo "... e2e_test_perception_cortical"
 	@echo "... e2e_test_perception_training_pipeline"
+	@echo "... e2e_test_perirhinal_pipeline"
 	@echo "... e2e_test_phase1_bridges_pipeline"
 	@echo "... e2e_test_physics_layer"
 	@echo "... e2e_test_pink_noise_pipeline"
@@ -28171,6 +28525,13 @@ help:
 	@echo "... integration_core_brain_regions_hypothalamus_test_hypothalamus_orchestrator_integration"
 	@echo "... integration_core_brain_regions_hypothalamus_test_hypothalamus_perception_bridge_integration"
 	@echo "... integration_core_brain_regions_hypothalamus_test_hypothalamus_training_integration"
+	@echo "... integration_core_brain_regions_mammillary_test_mammillary_bio_async_integration"
+	@echo "... integration_core_brain_regions_mammillary_test_mammillary_brain_init_integration"
+	@echo "... integration_core_brain_regions_mammillary_test_mammillary_cognitive_integration"
+	@echo "... integration_core_brain_regions_mammillary_test_mammillary_immune_integration"
+	@echo "... integration_core_brain_regions_mammillary_test_mammillary_kg_wiring_integration"
+	@echo "... integration_core_brain_regions_mammillary_test_mammillary_security_integration"
+	@echo "... integration_core_brain_regions_mammillary_test_mammillary_snn_plasticity_integration"
 	@echo "... integration_core_brain_regions_motor_test_motor_bio_async_integration"
 	@echo "... integration_core_brain_regions_motor_test_motor_brain_init_integration"
 	@echo "... integration_core_brain_regions_motor_test_motor_cognitive_integration"
@@ -28185,6 +28546,20 @@ help:
 	@echo "... integration_core_brain_regions_ofc_test_ofc_brain_init_integration"
 	@echo "... integration_core_brain_regions_ofc_test_ofc_decision_integration"
 	@echo "... integration_core_brain_regions_pag_test_pag_brain_init_integration"
+	@echo "... integration_core_brain_regions_parahipp_test_parahipp_bio_async_integration"
+	@echo "... integration_core_brain_regions_parahipp_test_parahipp_brain_init_integration"
+	@echo "... integration_core_brain_regions_parahipp_test_parahipp_cognitive_integration"
+	@echo "... integration_core_brain_regions_parahipp_test_parahipp_immune_integration"
+	@echo "... integration_core_brain_regions_parahipp_test_parahipp_kg_wiring_integration"
+	@echo "... integration_core_brain_regions_parahipp_test_parahipp_security_integration"
+	@echo "... integration_core_brain_regions_parahipp_test_parahipp_snn_plasticity_integration"
+	@echo "... integration_core_brain_regions_perirhinal_test_perirhinal_bio_async_integration"
+	@echo "... integration_core_brain_regions_perirhinal_test_perirhinal_brain_init_integration"
+	@echo "... integration_core_brain_regions_perirhinal_test_perirhinal_cognitive_integration"
+	@echo "... integration_core_brain_regions_perirhinal_test_perirhinal_immune_integration"
+	@echo "... integration_core_brain_regions_perirhinal_test_perirhinal_kg_wiring_integration"
+	@echo "... integration_core_brain_regions_perirhinal_test_perirhinal_security_integration"
+	@echo "... integration_core_brain_regions_perirhinal_test_perirhinal_snn_plasticity_integration"
 	@echo "... integration_core_brain_regions_red_nucleus_test_red_nucleus_brain_init_integration"
 	@echo "... integration_core_brain_regions_reticular_test_reticular_brain_init_integration"
 	@echo "... integration_core_brain_regions_retrosplenial_test_retrosplenial_brain_init_integration"
@@ -28437,8 +28812,11 @@ help:
 	@echo "... regression_brain_regions_test_entorhinal_backward_compat"
 	@echo "... regression_brain_regions_test_entorhinal_signal_regression"
 	@echo "... regression_brain_regions_test_hippocampus_backward_compat"
+	@echo "... regression_brain_regions_test_mammillary_backward_compat"
 	@echo "... regression_brain_regions_test_motor_backward_compat"
 	@echo "... regression_brain_regions_test_motor_signal_regression"
+	@echo "... regression_brain_regions_test_parahippocampal_backward_compat"
+	@echo "... regression_brain_regions_test_perirhinal_backward_compat"
 	@echo "... regression_brain_regions_test_prefrontal_backward_compat"
 	@echo "... regression_brain_regions_test_region_api_stability"
 	@echo "... regression_brain_regions_test_sensory_processing_regression"

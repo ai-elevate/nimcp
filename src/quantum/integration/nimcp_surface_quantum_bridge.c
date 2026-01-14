@@ -140,13 +140,9 @@ int surface_quantum_bridge_connect_geometry(
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(ctx);
 
-    BRIDGE_LOCK(bridge);
-
+    /* Note: bridge_base_connect_a handles its own locking */
     bridge->geometry_ctx = ctx;
-    bridge_base_connect_a(&bridge->base, ctx);
-
-    BRIDGE_UNLOCK(bridge);
-    return 0;
+    return bridge_base_connect_a(&bridge->base, ctx);
 }
 
 int surface_quantum_bridge_connect_qmc(
@@ -155,18 +151,17 @@ int surface_quantum_bridge_connect_qmc(
 ) {
     BRIDGE_NULL_CHECK(bridge);
 
+    /* Set local state (with locking) */
     BRIDGE_LOCK(bridge);
-
     bridge->qmc_state = qmc_state;
-    bridge_base_connect_b(&bridge->base, qmc_state);
-
     /* Real quantum available if we have QMC state */
     if (qmc_state) {
         bridge->simulation_mode = false;
     }
-
     BRIDGE_UNLOCK(bridge);
-    return 0;
+
+    /* Note: bridge_base_connect_b handles its own locking */
+    return bridge_base_connect_b(&bridge->base, qmc_state);
 }
 
 bool surface_quantum_bridge_is_quantum_available(
@@ -274,7 +269,7 @@ int surface_quantum_estimate_area(
 
     BRIDGE_LOCK(bridge);
 
-    uint64_t start_time = nimcp_get_time_ms();
+    uint64_t start_time = nimcp_time_monotonic_ms();
 
     /* Initialize result */
     memset(result, 0, sizeof(*result));
@@ -310,7 +305,7 @@ int surface_quantum_estimate_area(
 
     /* Update statistics */
     bridge->stats.qmc_amplitude_calls++;
-    uint64_t elapsed = nimcp_get_time_ms() - start_time;
+    uint64_t elapsed = nimcp_time_monotonic_ms() - start_time;
     bridge->stats.avg_quantum_time_ms =
         (bridge->stats.avg_quantum_time_ms *
          (bridge->stats.qmc_amplitude_calls - 1) + (float)elapsed) /
@@ -713,7 +708,9 @@ int surface_quantum_hybrid_optimize(
 
     if (num_terminals < 2) return -1;
 
-    BRIDGE_LOCK(bridge);
+    /* Note: No outer lock - each called function handles its own locking.
+     * This avoids deadlock since mcts_optimize, anneal_positions, and
+     * estimate_area each acquire the lock. */
 
     /* Initialize result */
     memset(result, 0, sizeof(*result));
@@ -722,7 +719,6 @@ int surface_quantum_hybrid_optimize(
     surface_qmcts_result_t mcts_result;
     if (surface_quantum_mcts_optimize(bridge, terminals, num_terminals,
                                       min_circumference, &mcts_result) != 0) {
-        BRIDGE_UNLOCK(bridge);
         return -1;
     }
 
@@ -810,7 +806,6 @@ int surface_quantum_hybrid_optimize(
 
     surface_qmcts_result_free(&mcts_result);
 
-    BRIDGE_UNLOCK(bridge);
     return 0;
 }
 

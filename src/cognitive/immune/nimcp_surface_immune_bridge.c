@@ -187,13 +187,9 @@ int surface_immune_bridge_connect_geometry(
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(ctx);
 
-    BRIDGE_LOCK(bridge);
-
+    /* Note: bridge_base_connect_a handles its own locking */
     bridge->geometry_ctx = ctx;
-    bridge_base_connect_a(&bridge->base, ctx);
-
-    BRIDGE_UNLOCK(bridge);
-    return 0;
+    return bridge_base_connect_a(&bridge->base, ctx);
 }
 
 int surface_immune_bridge_connect_immune(
@@ -202,19 +198,35 @@ int surface_immune_bridge_connect_immune(
 ) {
     BRIDGE_NULL_CHECK(bridge);
 
-    BRIDGE_LOCK(bridge);
-
+    /* Note: bridge_base_connect_b handles its own locking */
     bridge->immune_system = immune;
-    bridge_base_connect_b(&bridge->base, immune);
-
-    BRIDGE_UNLOCK(bridge);
-    return 0;
+    return bridge_base_connect_b(&bridge->base, immune);
 }
 
 bool surface_immune_bridge_is_connected(const surface_immune_bridge_t* bridge) {
     BRIDGE_NULL_CHECK_BOOL(bridge);
     return bridge_base_is_connected(&bridge->base);
 }
+
+//=============================================================================
+// FORWARD DECLARATIONS
+//=============================================================================
+
+/* Forward declarations for internal unlocked functions */
+static int produce_antibody_unlocked(
+    surface_immune_bridge_t* bridge,
+    surface_antigen_type_t target_type,
+    uint32_t* antibody_id
+);
+static int activate_b_cell_unlocked(
+    surface_immune_bridge_t* bridge,
+    uint32_t antigen_id
+);
+static int release_cytokine_unlocked(
+    surface_immune_bridge_t* bridge,
+    uint32_t antigen_id,
+    const char* message
+);
 
 //=============================================================================
 // INTERNAL HELPERS
@@ -406,7 +418,7 @@ int surface_immune_validate_branch(
                 ag->expected_value = 1.0f;  /* At least degree 1 */
                 ag->actual_value = 0.0f;
                 ag->deviation = 1.0f;
-                ag->timestamp_ms = nimcp_get_time_ms();
+                ag->timestamp_ms = nimcp_time_monotonic_ms();
                 ag->active = true;
                 ag->occurrence_count = 1;
 
@@ -435,7 +447,7 @@ int surface_immune_validate_branch(
             ag->expected_value = (float)SURFACE_MAX_BRANCH_DEGREE;
             ag->actual_value = (float)branch->degree;
             ag->deviation = (float)(branch->degree - SURFACE_MAX_BRANCH_DEGREE);
-            ag->timestamp_ms = nimcp_get_time_ms();
+            ag->timestamp_ms = nimcp_time_monotonic_ms();
             ag->active = true;
             ag->occurrence_count = 1;
 
@@ -485,9 +497,9 @@ int surface_immune_present_anomaly(
         ag->actual_value = actual;
         ag->deviation = fabsf(actual - expected);
 
-        /* Check if should activate B cell */
+        /* Check if should activate B cell - use unlocked version since we hold lock */
         if (ag->occurrence_count >= bridge->config.b_cell_activation_threshold) {
-            surface_immune_activate_b_cell(bridge, ag->id);
+            activate_b_cell_unlocked(bridge, ag->id);
         }
 
         if (antigen_id) *antigen_id = ag->id;
@@ -512,7 +524,7 @@ int surface_immune_present_anomaly(
         ag->expected_value = expected;
         ag->actual_value = actual;
         ag->deviation = fabsf(actual - expected);
-        ag->timestamp_ms = nimcp_get_time_ms();
+        ag->timestamp_ms = nimcp_time_monotonic_ms();
         ag->active = true;
         ag->occurrence_count = 1;
 
@@ -525,9 +537,9 @@ int surface_immune_present_anomaly(
     bridge->stats.antigen_counts[type]++;
     bridge->stats.active_antigens = bridge->num_active_antigens;
 
-    /* Check for cytokine release on critical */
+    /* Check for cytokine release on critical - use unlocked version since we hold lock */
     if (ag->severity >= (surface_antigen_severity_t)bridge->config.cytokine_release_severity) {
-        surface_immune_release_cytokine(bridge, ag->id, "Critical geometry anomaly");
+        release_cytokine_unlocked(bridge, ag->id, "Critical geometry anomaly");
     }
 
     bridge_base_record_update(&bridge->base);
@@ -564,7 +576,7 @@ int surface_immune_resolve_antigen(
     surface_antigen_t* ag = find_antigen(bridge, antigen_id);
     if (ag) {
         ag->active = false;
-        ag->duration_ms = nimcp_get_time_ms() - ag->timestamp_ms;
+        ag->duration_ms = nimcp_time_monotonic_ms() - ag->timestamp_ms;
         bridge->num_active_antigens--;
         bridge->stats.anomalies_resolved++;
         bridge->stats.active_antigens = bridge->num_active_antigens;
@@ -601,16 +613,13 @@ int surface_immune_get_active_antigens(
 // ANTIBODY MANAGEMENT
 //=============================================================================
 
-int surface_immune_produce_antibody(
+/* Internal unlocked version - caller must hold lock */
+static int produce_antibody_unlocked(
     surface_immune_bridge_t* bridge,
     surface_antigen_type_t target_type,
     uint32_t* antibody_id
 ) {
-    BRIDGE_NULL_CHECK(bridge);
-
     if (antibody_id) *antibody_id = 0;
-
-    BRIDGE_LOCK(bridge);
 
     /* Check if antibody already exists */
     surface_antibody_t* existing = find_antibody_for_type(bridge, target_type);
@@ -618,7 +627,6 @@ int surface_immune_produce_antibody(
         /* Boost existing antibody */
         existing->affinity = fminf(existing->affinity + 0.1f, 1.0f);
         if (antibody_id) *antibody_id = existing->id;
-        BRIDGE_UNLOCK(bridge);
         return 0;
     }
 
@@ -632,7 +640,6 @@ int surface_immune_produce_antibody(
     }
 
     if (!ab) {
-        BRIDGE_UNLOCK(bridge);
         return -1;  /* No room */
     }
 
@@ -642,7 +649,7 @@ int surface_immune_produce_antibody(
     ab->correction_factor = 0.5f;  /* Start conservative */
     ab->max_correction = 0.2f;
     ab->affinity = 0.5f;
-    ab->created_ms = nimcp_get_time_ms();
+    ab->created_ms = nimcp_time_monotonic_ms();
     ab->active = true;
 
     bridge->num_antibodies++;
@@ -651,8 +658,20 @@ int surface_immune_produce_antibody(
 
     if (antibody_id) *antibody_id = ab->id;
 
-    BRIDGE_UNLOCK(bridge);
     return 0;
+}
+
+int surface_immune_produce_antibody(
+    surface_immune_bridge_t* bridge,
+    surface_antigen_type_t target_type,
+    uint32_t* antibody_id
+) {
+    BRIDGE_NULL_CHECK(bridge);
+
+    BRIDGE_LOCK(bridge);
+    int ret = produce_antibody_unlocked(bridge, target_type, antibody_id);
+    BRIDGE_UNLOCK(bridge);
+    return ret;
 }
 
 int surface_immune_apply_antibody(
@@ -723,7 +742,7 @@ int surface_immune_apply_antibody(
         ab->affinity = fmaxf(ab->affinity - 0.1f, 0.1f);
     }
 
-    ab->last_used_ms = nimcp_get_time_ms();
+    ab->last_used_ms = nimcp_time_monotonic_ms();
 
     /* Update success rate */
     if (bridge->stats.corrections_attempted > 0) {
@@ -740,17 +759,49 @@ int surface_immune_apply_antibody(
 // IMMUNE RESPONSE
 //=============================================================================
 
+/* Internal unlocked version for cytokine release - caller must hold lock or
+ * ensure thread safety */
+static int release_cytokine_unlocked(
+    surface_immune_bridge_t* bridge,
+    uint32_t antigen_id,
+    const char* message
+) {
+    (void)antigen_id;  /* Would be used in actual cytokine message */
+    (void)message;     /* Would be used in actual cytokine message */
+
+    /* In full implementation, this would send bio-async message to immune system */
+    bridge->stats.cytokines_released++;
+
+    return 0;
+}
+
 int surface_immune_release_cytokine(
     surface_immune_bridge_t* bridge,
     uint32_t antigen_id,
     const char* message
 ) {
     BRIDGE_NULL_CHECK(bridge);
-    (void)antigen_id;  /* Would be used in actual cytokine message */
-    (void)message;     /* Would be used in actual cytokine message */
 
-    /* In full implementation, this would send bio-async message to immune system */
-    bridge->stats.cytokines_released++;
+    BRIDGE_LOCK(bridge);
+    int ret = release_cytokine_unlocked(bridge, antigen_id, message);
+    BRIDGE_UNLOCK(bridge);
+    return ret;
+}
+
+/* Internal unlocked version for B cell activation - caller must hold lock */
+static int activate_b_cell_unlocked(
+    surface_immune_bridge_t* bridge,
+    uint32_t antigen_id
+) {
+    surface_antigen_t* ag = find_antigen(bridge, antigen_id);
+    if (!ag) return -1;
+
+    /* In full implementation, this would activate a B cell in the immune system */
+    bridge->stats.b_cells_activated++;
+
+    /* Automatically produce antibody - use unlocked version since we hold lock */
+    uint32_t ab_id;
+    produce_antibody_unlocked(bridge, ag->type, &ab_id);
 
     return 0;
 }
@@ -761,17 +812,10 @@ int surface_immune_activate_b_cell(
 ) {
     BRIDGE_NULL_CHECK(bridge);
 
-    surface_antigen_t* ag = find_antigen(bridge, antigen_id);
-    if (!ag) return -1;
-
-    /* In full implementation, this would activate a B cell in the immune system */
-    bridge->stats.b_cells_activated++;
-
-    /* Automatically produce antibody */
-    uint32_t ab_id;
-    surface_immune_produce_antibody(bridge, ag->type, &ab_id);
-
-    return 0;
+    BRIDGE_LOCK(bridge);
+    int ret = activate_b_cell_unlocked(bridge, antigen_id);
+    BRIDGE_UNLOCK(bridge);
+    return ret;
 }
 
 //=============================================================================

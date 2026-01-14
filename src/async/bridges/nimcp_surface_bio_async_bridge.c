@@ -148,9 +148,8 @@ void surface_bio_async_bridge_destroy(surface_bio_async_bridge_t* bridge) {
 int surface_bio_async_bridge_reset(surface_bio_async_bridge_t* bridge) {
     BRIDGE_NULL_CHECK(bridge);
 
+    /* Reset statistics (with locking) */
     BRIDGE_LOCK(bridge);
-
-    /* Reset statistics */
     bridge->messages_sent = 0;
     bridge->messages_received = 0;
     bridge->messages_dropped = 0;
@@ -164,11 +163,10 @@ int surface_bio_async_bridge_reset(surface_bio_async_bridge_t* bridge) {
         bridge->subscriptions[i].active = false;
     }
     bridge->num_subscriptions = 0;
-
-    bridge_base_reset(&bridge->base);
-
     BRIDGE_UNLOCK(bridge);
-    return 0;
+
+    /* bridge_base_reset handles its own locking */
+    return bridge_base_reset(&bridge->base);
 }
 
 //=============================================================================
@@ -213,11 +211,15 @@ int surface_bio_async_bridge_disconnect(surface_bio_async_bridge_t* bridge) {
         return 0;
     }
 
-    /* Flush pending messages */
-    surface_bio_async_flush(bridge);
+    /* Flush pending messages (inline to avoid deadlock) */
+    bridge->pending_count = 0;
 
-    /* Disconnect from bio-async */
+    BRIDGE_UNLOCK(bridge);
+
+    /* Disconnect from bio-async (handles its own locking) */
     bridge_base_disconnect_bio_async(&bridge->base);
+
+    BRIDGE_LOCK(bridge);
 
     bridge->router = NULL;
     bridge->connected = false;
@@ -238,12 +240,9 @@ int surface_bio_async_bridge_set_geometry_ctx(
 ) {
     BRIDGE_NULL_CHECK(bridge);
 
-    BRIDGE_LOCK(bridge);
+    /* Note: bridge_base_connect_a handles its own locking */
     bridge->geometry_ctx = ctx;
-    bridge_base_connect_a(&bridge->base, ctx);
-    BRIDGE_UNLOCK(bridge);
-
-    return 0;
+    return bridge_base_connect_a(&bridge->base, ctx);
 }
 
 //=============================================================================
@@ -332,7 +331,7 @@ static int send_message_internal(
     }
 
     /* Rate limiting */
-    uint64_t now = nimcp_get_time_ms();
+    uint64_t now = nimcp_time_monotonic_ms();
     if (now - bridge->last_send_time_ms < bridge->config.update_interval_ms) {
         /* Queue message instead of dropping */
         bridge->pending_count++;

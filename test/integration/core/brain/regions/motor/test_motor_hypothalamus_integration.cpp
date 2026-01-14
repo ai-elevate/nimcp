@@ -255,9 +255,11 @@ TEST_F(MotorHypothalamusIntegrationTest, FightOrFlightMotorReadiness) {
     motor_goal_t goal = CreateTestGoal(MOTOR_REGION_HAND_RIGHT, 2.0f, 100.0f);
     motor_plan_movement(motor, &goal);
 
-    /* Planning should succeed */
+    /* Planning should succeed - status transitions through PLANNING to PREPARING */
     motor_status_t status = motor_get_status(motor);
-    EXPECT_TRUE(status == MOTOR_STATUS_IDLE || status == MOTOR_STATUS_PLANNING);
+    EXPECT_TRUE(status == MOTOR_STATUS_IDLE ||
+                status == MOTOR_STATUS_PLANNING ||
+                status == MOTOR_STATUS_PREPARING);
 }
 
 TEST_F(MotorHypothalamusIntegrationTest, AutonomicUpdateProcessing) {

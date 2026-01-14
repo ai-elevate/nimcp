@@ -61,23 +61,36 @@ extern "C" {
 
 /*=============================================================================
  * FORWARD DECLARATIONS - ALL INTEGRATED MODULES
+ * Note: Only define if not already defined by actual headers
  *===========================================================================*/
 
-/* Core brain systems */
-typedef struct nimcp_brain nimcp_brain_t;
+/* Core brain systems - use actual header defines if available */
+#ifndef NIMCP_H
+typedef struct nimcp_brain_handle* nimcp_brain_t;
+#endif
 typedef struct nimcp_brain_kg nimcp_brain_kg_t;
 typedef struct brain_immune_system brain_immune_system_t;
 
 /* Bio-async communication */
+#ifndef NIMCP_BIO_ASYNC_H
+typedef struct nimcp_bio_future_struct* nimcp_bio_future_t;
+#endif
+#ifndef NIMCP_BIO_ROUTER_H
+typedef struct bio_router_struct* bio_router_t;
+typedef struct bio_module_context_struct* bio_module_context_t;
+#endif
+/* Handler - parahippocampal-specific opaque type */
 typedef struct nimcp_bio_async_handler nimcp_bio_async_handler_t;
-typedef struct nimcp_bio_router nimcp_bio_router_t;
+typedef bio_router_t nimcp_bio_router_t;  /* Alias for consistency */
 
 /* Security */
 typedef struct nimcp_security_context nimcp_security_context_t;
 typedef struct nimcp_access_control nimcp_access_control_t;
 
-/* Logging and metrics */
-typedef struct nimcp_logger nimcp_logger_t;
+/* Logging and metrics - use actual header defines if available */
+#ifndef NIMCP_LOGGING_H
+typedef struct nimcp_logger_struct* nimcp_logger_t;
+#endif
 typedef struct nimcp_metrics nimcp_metrics_t;
 
 /* Neural systems */

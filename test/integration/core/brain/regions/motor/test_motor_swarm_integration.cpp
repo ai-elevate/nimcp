@@ -79,7 +79,11 @@ protected:
         state.healthy_drones = healthy;
         state.collective_coherence = coherence;
         state.timestamp = 0;
-        swarm_emergence_update(emergence, &state);
+        /* Call update multiple times to satisfy stability requirement */
+        /* Default stability count is 5 per NIMCP_SWARM_DEFAULT_STABILITY_COUNT */
+        for (int i = 0; i < 6; i++) {
+            swarm_emergence_update(emergence, &state);
+        }
     }
 };
 

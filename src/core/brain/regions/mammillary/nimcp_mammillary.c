@@ -1161,12 +1161,74 @@ int mammillary_init_logging_bridge(nimcp_mammillary_t* mb, void* logger) {
     return 0;
 }
 
-int mammillary_init_resonance_bridge(nimcp_mammillary_t* mb, void* resonance) {
+int mammillary_init_resonance_bridge(nimcp_mammillary_t* mb, nimcp_prime_resonance_t* resonance) {
     if (!mb) return -1;
     mb->resonance_bridge.initialized = true;
-    mb->resonance_bridge.resonance_ctx = resonance;
-    mb->resonance_bridge.frequency = 40.0f;  /* Gamma band */
-    mb->resonance_bridge.amplitude = 0.5f;
+    mb->resonance_bridge.resonance = resonance;
+    mb->resonance_bridge.theta_phase = 0.0f;
+    mb->resonance_bridge.gamma_phase = 0.0f;
+    mb->resonance_bridge.frequency = 6.0f;      /* Theta band for memory timing */
+    mb->resonance_bridge.resonance_amplitude = 0.5f;
+    mb->resonance_bridge.papez_coupling = 0.7f;
+    mb->resonance_bridge.hd_theta_sync = 0.0f;
+    mb->resonance_bridge.synchronized = false;
+    mb->resonance_bridge.phase_updates = 0;
+    return 0;
+}
+
+int mammillary_update_resonance_phase(nimcp_mammillary_t* mb, float theta_phase, float gamma_phase) {
+    if (!mb) return -1;
+    if (!mb->resonance_bridge.initialized) return -1;
+
+    mb->resonance_bridge.theta_phase = theta_phase;
+    mb->resonance_bridge.gamma_phase = gamma_phase;
+    mb->resonance_bridge.phase_updates++;
+
+    /* Compute head direction-theta synchronization */
+    /* HD cells fire in phase with theta rhythm */
+    float hd_phase = fmodf(mb->current_heading, 2.0f * 3.14159265f);
+    float phase_diff = fabsf(hd_phase - theta_phase);
+    if (phase_diff > 3.14159265f) phase_diff = 2.0f * 3.14159265f - phase_diff;
+    mb->resonance_bridge.hd_theta_sync = 1.0f - (phase_diff / 3.14159265f);
+
+    mb->resonance_bridge.synchronized = (mb->resonance_bridge.hd_theta_sync > 0.5f);
+
+    return 0;
+}
+
+float mammillary_get_theta_phase(const nimcp_mammillary_t* mb) {
+    if (!mb || !mb->resonance_bridge.initialized) return 0.0f;
+    return mb->resonance_bridge.theta_phase;
+}
+
+float mammillary_get_hd_theta_sync(const nimcp_mammillary_t* mb) {
+    if (!mb || !mb->resonance_bridge.initialized) return 0.0f;
+    return mb->resonance_bridge.hd_theta_sync;
+}
+
+int mammillary_sync_papez_to_theta(nimcp_mammillary_t* mb) {
+    if (!mb) return -1;
+    if (!mb->resonance_bridge.initialized) return -1;
+
+    /* Papez circuit timing is synchronized to theta rhythm */
+    /* Memory consolidation is most effective at specific theta phases */
+    float optimal_phase = 0.0f; /* Peak theta for encoding */
+    float phase_diff = fabsf(mb->resonance_bridge.theta_phase - optimal_phase);
+    if (phase_diff > 3.14159265f) phase_diff = 2.0f * 3.14159265f - phase_diff;
+
+    /* Modulate Papez circuit activity based on theta phase */
+    float coupling = mb->resonance_bridge.papez_coupling;
+    float phase_modulation = 1.0f - (phase_diff / 3.14159265f);
+
+    /* Apply modulation to consolidation rate */
+    if (mb->consolidation_state == CONSOLIDATION_ENCODING ||
+        mb->consolidation_state == CONSOLIDATION_STRENGTHENING) {
+        mb->consolidation_rate += phase_modulation * coupling * 0.01f;
+        if (mb->consolidation_rate > 1.0f) {
+            mb->consolidation_rate = 1.0f;
+        }
+    }
+
     return 0;
 }
 
