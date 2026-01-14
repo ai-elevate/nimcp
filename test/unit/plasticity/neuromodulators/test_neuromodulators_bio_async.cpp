@@ -113,9 +113,9 @@ TEST_F(NeuromodulatorsBioAsyncTest, HandleDopamineReleaseMessage) {
     msg.diffusion_radius_um = 100.0f;
 
     // Get initial dopamine level
-    neuromodulator_pool_t pool_before;
+    neuromodulator_pool_t pool_before = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_before));
-    float dopamine_before = pool_before.dopamine;
+    float dopamine_before = neuromodulator_pool_get_dopamine(&pool_before);
 
     // Note: In unit tests, we can't easily send messages through the router
     // without having a full module context. This tests the system is set up
@@ -126,57 +126,57 @@ TEST_F(NeuromodulatorsBioAsyncTest, HandleDopamineReleaseMessage) {
     EXPECT_GT(rpe, 0.0f);
 
     // Verify concentration changed
-    neuromodulator_pool_t pool_after;
+    neuromodulator_pool_t pool_after = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_after));
-    EXPECT_GT(pool_after.dopamine, dopamine_before);
+    EXPECT_GT(neuromodulator_pool_get_dopamine(&pool_after), dopamine_before);
 }
 
 TEST_F(NeuromodulatorsBioAsyncTest, HandleSerotoninReleaseMessage) {
     // Get initial serotonin level
-    neuromodulator_pool_t pool_before;
+    neuromodulator_pool_t pool_before = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_before));
-    float serotonin_before = pool_before.serotonin;
+    float serotonin_before = neuromodulator_pool_get_serotonin(&pool_before);
 
     // Release serotonin via direct API
     float release = neuromodulator_release_serotonin(system_, 0.3f);
     EXPECT_GT(release, 0.0f);
 
     // Verify concentration changed
-    neuromodulator_pool_t pool_after;
+    neuromodulator_pool_t pool_after = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_after));
-    EXPECT_GT(pool_after.serotonin, serotonin_before);
+    EXPECT_GT(neuromodulator_pool_get_serotonin(&pool_after), serotonin_before);
 }
 
 TEST_F(NeuromodulatorsBioAsyncTest, HandleNorepinephrineReleaseMessage) {
     // Get initial norepinephrine level
-    neuromodulator_pool_t pool_before;
+    neuromodulator_pool_t pool_before = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_before));
-    float ne_before = pool_before.norepinephrine;
+    float ne_before = neuromodulator_pool_get_norepinephrine(&pool_before);
 
     // Release norepinephrine via direct API
     float release = neuromodulator_release_norepinephrine(system_, 0.6f, 0.2f);
     EXPECT_GT(release, 0.0f);
 
     // Verify concentration changed
-    neuromodulator_pool_t pool_after;
+    neuromodulator_pool_t pool_after = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_after));
-    EXPECT_GT(pool_after.norepinephrine, ne_before);
+    EXPECT_GT(neuromodulator_pool_get_norepinephrine(&pool_after), ne_before);
 }
 
 TEST_F(NeuromodulatorsBioAsyncTest, HandleAcetylcholineReleaseMessage) {
     // Get initial acetylcholine level
-    neuromodulator_pool_t pool_before;
+    neuromodulator_pool_t pool_before = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_before));
-    float ach_before = pool_before.acetylcholine;
+    float ach_before = neuromodulator_pool_get_acetylcholine(&pool_before);
 
     // Release acetylcholine via direct API
     float release = neuromodulator_release_acetylcholine(system_, 0.4f);
     EXPECT_GT(release, 0.0f);
 
     // Verify concentration changed
-    neuromodulator_pool_t pool_after;
+    neuromodulator_pool_t pool_after = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool_after));
-    EXPECT_GT(pool_after.acetylcholine, ach_before);
+    EXPECT_GT(neuromodulator_pool_get_acetylcholine(&pool_after), ach_before);
 }
 
 //=============================================================================
@@ -192,12 +192,12 @@ TEST_F(NeuromodulatorsBioAsyncTest, LearningRateModulationBasedOnState) {
     receptor_profile_t receptors = neuromodulator_profile_cortical_excitatory();
 
     // Compute modulation effects
-    modulation_effects_t effects;
+    modulation_effects_t effects = {};
     ASSERT_TRUE(neuromodulator_compute_effects(system_, &receptors, &effects));
 
     // With high dopamine and low serotonin, learning rate multiplier should be > 1
-    EXPECT_GT(effects.learning_rate_multiplier, 1.0f);
-    EXPECT_LE(effects.learning_rate_multiplier, 2.0f);  // Clamped to [0, 2]
+    EXPECT_GT(modulation_effects_get_learning_rate_multiplier(&effects), 1.0f);
+    EXPECT_LE(modulation_effects_get_learning_rate_multiplier(&effects), 2.0f);  // Clamped to [0, 2]
 }
 
 TEST_F(NeuromodulatorsBioAsyncTest, LearningRateSuppressionWithHighSerotonin) {
@@ -208,7 +208,7 @@ TEST_F(NeuromodulatorsBioAsyncTest, LearningRateSuppressionWithHighSerotonin) {
     neuromodulator_set_level(system_, NEUROMOD_DOPAMINE, 0.1f);
 
     receptor_profile_t receptors = neuromodulator_profile_cortical_excitatory();
-    modulation_effects_t effects;
+    modulation_effects_t effects = {};
     ASSERT_TRUE(neuromodulator_compute_effects(system_, &receptors, &effects));
 
     // High serotonin should suppress learning
@@ -216,8 +216,8 @@ TEST_F(NeuromodulatorsBioAsyncTest, LearningRateSuppressionWithHighSerotonin) {
     // With high serotonin and baseline dopamine, we expect the multiplier to be close to 1.0
     // but may not be exactly < 1.0 depending on the balance of receptor affinities.
     // The test should verify that serotonin has an effect, not assume a specific direction.
-    EXPECT_GE(effects.learning_rate_multiplier, 0.0f);
-    EXPECT_LE(effects.learning_rate_multiplier, 2.0f);
+    EXPECT_GE(modulation_effects_get_learning_rate_multiplier(&effects), 0.0f);
+    EXPECT_LE(modulation_effects_get_learning_rate_multiplier(&effects), 2.0f);
 }
 
 //=============================================================================
@@ -233,15 +233,15 @@ TEST_F(NeuromodulatorsBioAsyncTest, HandleInvalidChannelType) {
 
 TEST_F(NeuromodulatorsBioAsyncTest, HandleMultipleSequentialReleases) {
     // Multiple releases should accumulate
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
 
     neuromodulator_release_dopamine(system_, 0.2f, 0.0f);
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool));
-    float da1 = pool.dopamine;
+    float da1 = neuromodulator_pool_get_dopamine(&pool);
 
     neuromodulator_release_dopamine(system_, 0.2f, 0.0f);
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool));
-    float da2 = pool.dopamine;
+    float da2 = neuromodulator_pool_get_dopamine(&pool);
 
     EXPECT_GT(da2, da1);
 }
@@ -252,10 +252,10 @@ TEST_F(NeuromodulatorsBioAsyncTest, ConcentrationClamping) {
         neuromodulator_release_dopamine(system_, 1.0f, 0.0f);
     }
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool));
-    EXPECT_LE(pool.dopamine, 1.0f);
-    EXPECT_GE(pool.dopamine, 0.0f);
+    EXPECT_LE(neuromodulator_pool_get_dopamine(&pool), 1.0f);
+    EXPECT_GE(neuromodulator_pool_get_dopamine(&pool), 0.0f);
 }
 
 //=============================================================================
@@ -286,16 +286,16 @@ TEST_F(NeuromodulatorsBioAsyncTest, ConcentrationDecayOverTime) {
     // Release dopamine
     neuromodulator_release_dopamine(system_, 0.8f, 0.0f);
 
-    neuromodulator_pool_t pool1;
+    neuromodulator_pool_t pool1 = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool1));
-    float da_initial = pool1.dopamine;
+    float da_initial = neuromodulator_pool_get_dopamine(&pool1);
 
     // Update dynamics (decay)
     ASSERT_TRUE(neuromodulator_update(system_, 1.0f));  // 1 second
 
-    neuromodulator_pool_t pool2;
+    neuromodulator_pool_t pool2 = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool2));
-    float da_after_decay = pool2.dopamine;
+    float da_after_decay = neuromodulator_pool_get_dopamine(&pool2);
 
     // Dopamine should have decayed
     EXPECT_LT(da_after_decay, da_initial);
@@ -314,7 +314,7 @@ TEST_F(NeuromodulatorsBioAsyncTest, ConcurrentReleases) {
     }
 
     // System should still be functional
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool));
 }
 

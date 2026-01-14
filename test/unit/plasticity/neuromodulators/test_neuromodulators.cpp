@@ -91,13 +91,13 @@ TEST_F(NeuromodulatorTest, InitialLevels) {
     /* WHAT: Test initial neuromodulator concentrations
      * WHY:  Should start at baseline values from config
      */
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     ASSERT_TRUE(neuromodulator_get_levels(system, &pool));
 
-    EXPECT_FLOAT_EQ(pool.dopamine, 0.3f);
-    EXPECT_FLOAT_EQ(pool.serotonin, 0.4f);
-    EXPECT_FLOAT_EQ(pool.acetylcholine, 0.2f);
-    EXPECT_FLOAT_EQ(pool.norepinephrine, 0.3f);
+    EXPECT_FLOAT_EQ(neuromodulator_pool_get_dopamine(&pool), 0.3f);
+    EXPECT_FLOAT_EQ(neuromodulator_pool_get_serotonin(&pool), 0.4f);
+    EXPECT_FLOAT_EQ(neuromodulator_pool_get_acetylcholine(&pool), 0.2f);
+    EXPECT_FLOAT_EQ(neuromodulator_pool_get_norepinephrine(&pool), 0.3f);
 }
 
 TEST_F(NeuromodulatorTest, SetLevelDopamine) {
@@ -106,9 +106,9 @@ TEST_F(NeuromodulatorTest, SetLevelDopamine) {
      */
     ASSERT_TRUE(neuromodulator_set_level(system, NEUROMOD_DOPAMINE, 0.8f));
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
-    EXPECT_FLOAT_EQ(pool.dopamine, 0.8f);
+    EXPECT_FLOAT_EQ(neuromodulator_pool_get_dopamine(&pool), 0.8f);
 }
 
 TEST_F(NeuromodulatorTest, SetLevelBoundaryCheck) {
@@ -117,13 +117,13 @@ TEST_F(NeuromodulatorTest, SetLevelBoundaryCheck) {
      */
     ASSERT_TRUE(neuromodulator_set_level(system, NEUROMOD_DOPAMINE, 1.5f));
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
-    EXPECT_FLOAT_EQ(pool.dopamine, 1.0f);  // Should clamp to 1.0
+    EXPECT_FLOAT_EQ(neuromodulator_pool_get_dopamine(&pool), 1.0f);  // Should clamp to 1.0
 
     ASSERT_TRUE(neuromodulator_set_level(system, NEUROMOD_DOPAMINE, -0.5f));
     neuromodulator_get_levels(system, &pool);
-    EXPECT_FLOAT_EQ(pool.dopamine, 0.0f);  // Should clamp to 0.0
+    EXPECT_FLOAT_EQ(neuromodulator_pool_get_dopamine(&pool), 0.0f);  // Should clamp to 0.0
 }
 
 //=============================================================================
@@ -140,7 +140,7 @@ TEST_F(NeuromodulatorTest, DopamineDecay) {
     // Update for 2 seconds (one time constant, τ=2.0s)
     neuromodulator_update(system, 2.0f);
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
 
     /* WHAT: Verify decay toward baseline (0.3)
@@ -148,7 +148,7 @@ TEST_F(NeuromodulatorTest, DopamineDecay) {
      *                    = 0.368 + 0.190 = 0.558
      */
     float expected = 1.0f * expf(-1.0f) + 0.3f * (1.0f - expf(-1.0f));
-    EXPECT_NEAR(pool.dopamine, expected, 0.05f);
+    EXPECT_NEAR(neuromodulator_pool_get_dopamine(&pool), expected, 0.05f);
 }
 
 TEST_F(NeuromodulatorTest, SerotoninSlowDecay) {
@@ -160,11 +160,11 @@ TEST_F(NeuromodulatorTest, SerotoninSlowDecay) {
 
     neuromodulator_update(system, 2.0f);
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
 
     // Serotonin τ=10s, so after 2s should be higher than dopamine τ=2s
-    EXPECT_GT(pool.serotonin, pool.dopamine);
+    EXPECT_GT(neuromodulator_pool_get_serotonin(&pool), neuromodulator_pool_get_dopamine(&pool));
 }
 
 TEST_F(NeuromodulatorTest, AcetylcholineFastDecay) {
@@ -176,11 +176,11 @@ TEST_F(NeuromodulatorTest, AcetylcholineFastDecay) {
 
     neuromodulator_update(system, 0.5f);
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
 
     // ACh should decay faster than DA
-    EXPECT_LT(pool.acetylcholine, pool.dopamine);
+    EXPECT_LT(neuromodulator_pool_get_acetylcholine(&pool), neuromodulator_pool_get_dopamine(&pool));
 }
 
 //=============================================================================
@@ -196,10 +196,10 @@ TEST_F(NeuromodulatorTest, RewardPredictionErrorPositive) {
 
     EXPECT_GT(rpe, 0.0f);  // Positive RPE
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
 
-    EXPECT_GT(pool.dopamine, config.baseline_dopamine);
+    EXPECT_GT(neuromodulator_pool_get_dopamine(&pool), config.baseline_dopamine);
 }
 
 TEST_F(NeuromodulatorTest, RewardPredictionErrorNegative) {
@@ -210,10 +210,10 @@ TEST_F(NeuromodulatorTest, RewardPredictionErrorNegative) {
 
     EXPECT_LT(rpe, 0.0f);  // Negative RPE
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
 
-    EXPECT_LT(pool.dopamine, config.baseline_dopamine);
+    EXPECT_LT(neuromodulator_pool_get_dopamine(&pool), config.baseline_dopamine);
 }
 
 TEST_F(NeuromodulatorTest, RewardPredictionErrorZero) {
@@ -225,10 +225,10 @@ TEST_F(NeuromodulatorTest, RewardPredictionErrorZero) {
 
     EXPECT_NEAR(rpe, 0.0f, 0.01f);
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
 
-    EXPECT_NEAR(pool.dopamine, baseline, 0.05f);
+    EXPECT_NEAR(neuromodulator_pool_get_dopamine(&pool), baseline, 0.05f);
 }
 
 //=============================================================================
@@ -243,10 +243,10 @@ TEST_F(NeuromodulatorTest, ThreatReleaseNorepinephrine) {
 
     EXPECT_GT(ne_released, 0.0f);
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
 
-    EXPECT_GT(pool.norepinephrine, config.baseline_norepinephrine);
+    EXPECT_GT(neuromodulator_pool_get_norepinephrine(&pool), config.baseline_norepinephrine);
 }
 
 TEST_F(NeuromodulatorTest, UncertaintyIncreasesNorepinephrine) {
@@ -272,10 +272,10 @@ TEST_F(NeuromodulatorTest, SalienceReleaseAcetylcholine) {
 
     EXPECT_GT(ach_released, 0.0f);
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
 
-    EXPECT_GT(pool.acetylcholine, config.baseline_acetylcholine);
+    EXPECT_GT(neuromodulator_pool_get_acetylcholine(&pool), config.baseline_acetylcholine);
 }
 
 //=============================================================================
@@ -290,10 +290,10 @@ TEST_F(NeuromodulatorTest, PunishmentReleaseSerotonin) {
 
     EXPECT_GT(serotonin_released, 0.0f);
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
 
-    EXPECT_GT(pool.serotonin, config.baseline_serotonin);
+    EXPECT_GT(neuromodulator_pool_get_serotonin(&pool), config.baseline_serotonin);
 }
 
 //=============================================================================
@@ -306,8 +306,8 @@ TEST_F(NeuromodulatorTest, CorticalExcitatoryProfile) {
      */
     receptor_profile_t profile = neuromodulator_profile_cortical_excitatory();
 
-    EXPECT_GT(profile.d1_density, 0.5f);  // High D1
-    EXPECT_GT(profile.nicotinic_density, 0.3f);  // Moderate ACh
+    EXPECT_GT(receptor_profile_get_d1_density(&profile), 0.5f);  // High D1
+    EXPECT_GT(receptor_profile_get_nicotinic_density(&profile), 0.3f);  // Moderate ACh
 }
 
 TEST_F(NeuromodulatorTest, StriatalProfileHighDopamine) {
@@ -316,8 +316,8 @@ TEST_F(NeuromodulatorTest, StriatalProfileHighDopamine) {
      */
     receptor_profile_t profile = neuromodulator_profile_striatal();
 
-    EXPECT_GT(profile.d1_density, 0.8f);
-    EXPECT_GT(profile.d2_density, 0.8f);
+    EXPECT_GT(receptor_profile_get_d1_density(&profile), 0.8f);
+    EXPECT_GT(receptor_profile_get_d2_density(&profile), 0.8f);
 }
 
 //=============================================================================
@@ -331,12 +331,12 @@ TEST_F(NeuromodulatorTest, ComputeModulationEffects) {
     neuromodulator_set_level(system, NEUROMOD_DOPAMINE, 0.8f);
 
     receptor_profile_t receptors = neuromodulator_profile_cortical_excitatory();
-    modulation_effects_t effects;
+    modulation_effects_t effects = {};
 
     ASSERT_TRUE(neuromodulator_compute_effects(system, &receptors, &effects));
 
     // High dopamine should increase learning rate
-    EXPECT_GT(effects.learning_rate_multiplier, 1.0f);
+    EXPECT_GT(modulation_effects_get_learning_rate_multiplier(&effects), 1.0f);
 }
 
 TEST_F(NeuromodulatorTest, LearningRateModulation) {
@@ -347,7 +347,7 @@ TEST_F(NeuromodulatorTest, LearningRateModulation) {
     neuromodulator_set_level(system, NEUROMOD_ACETYLCHOLINE, 0.9f);
 
     receptor_profile_t receptors = neuromodulator_profile_hippocampal();
-    modulation_effects_t effects;
+    modulation_effects_t effects = {};
     neuromodulator_compute_effects(system, &receptors, &effects);
 
     float base_lr = 0.01f;
@@ -364,7 +364,7 @@ TEST_F(NeuromodulatorTest, TransmissionModulation) {
     neuromodulator_set_level(system, NEUROMOD_NOREPINEPHRINE, 0.7f);
 
     receptor_profile_t receptors = neuromodulator_profile_cortical_excitatory();
-    modulation_effects_t effects;
+    modulation_effects_t effects = {};
     neuromodulator_compute_effects(system, &receptors, &effects);
 
     float base_weight = 0.5f;
@@ -380,7 +380,7 @@ TEST_F(NeuromodulatorTest, ThresholdModulation) {
     neuromodulator_set_level(system, NEUROMOD_NOREPINEPHRINE, 0.9f);
 
     receptor_profile_t receptors = neuromodulator_profile_cortical_excitatory();
-    modulation_effects_t effects;
+    modulation_effects_t effects = {};
     neuromodulator_compute_effects(system, &receptors, &effects);
 
     float base_threshold = 0.5f;
@@ -404,11 +404,11 @@ TEST_F(NeuromodulatorTest, EthicsToNeuromodulatorsPositive) {
 
     ASSERT_TRUE(neuromodulator_release_from_ethics(system, golden_rule, trust, harm, salience));
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
 
-    EXPECT_GT(pool.dopamine, config.baseline_dopamine);  // Reward
-    EXPECT_GT(pool.acetylcholine, config.baseline_acetylcholine);  // Attention
+    EXPECT_GT(neuromodulator_pool_get_dopamine(&pool), config.baseline_dopamine);  // Reward
+    EXPECT_GT(neuromodulator_pool_get_acetylcholine(&pool), config.baseline_acetylcholine);  // Attention
 }
 
 TEST_F(NeuromodulatorTest, EthicsToNeuromodulatorsNegative) {
@@ -422,11 +422,11 @@ TEST_F(NeuromodulatorTest, EthicsToNeuromodulatorsNegative) {
 
     ASSERT_TRUE(neuromodulator_release_from_ethics(system, golden_rule, trust, harm, salience));
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
 
-    EXPECT_GT(pool.serotonin, config.baseline_serotonin);  // Inhibition
-    EXPECT_GT(pool.norepinephrine, config.baseline_norepinephrine);  // Threat
+    EXPECT_GT(neuromodulator_pool_get_serotonin(&pool), config.baseline_serotonin);  // Inhibition
+    EXPECT_GT(neuromodulator_pool_get_norepinephrine(&pool), config.baseline_norepinephrine);  // Threat
 }
 
 TEST_F(NeuromodulatorTest, GetLearningWeightFromEthics) {
@@ -475,7 +475,7 @@ TEST_F(NeuromodulatorTest, ModulationEffectsPerformance) {
      * WHY:  Called per synapse, must be very fast
      */
     receptor_profile_t receptors = neuromodulator_profile_cortical_excitatory();
-    modulation_effects_t effects;
+    modulation_effects_t effects = {};
 
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -543,11 +543,11 @@ TEST_F(NeuromodulatorTest, ResetToBaseline) {
 
     ASSERT_TRUE(neuromodulator_reset(system));
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
 
-    EXPECT_FLOAT_EQ(pool.dopamine, config.baseline_dopamine);
-    EXPECT_FLOAT_EQ(pool.serotonin, config.baseline_serotonin);
+    EXPECT_FLOAT_EQ(neuromodulator_pool_get_dopamine(&pool), config.baseline_dopamine);
+    EXPECT_FLOAT_EQ(neuromodulator_pool_get_serotonin(&pool), config.baseline_serotonin);
 }
 
 //=============================================================================
@@ -663,14 +663,14 @@ TEST_F(NeuromodulatorTest, AllNeuromodulatorsSimultaneous) {
     neuromodulator_release_acetylcholine(system, 0.7f);
     neuromodulator_release_norepinephrine(system, 0.5f, 0.4f);
 
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
 
     // All should be elevated above baseline
-    EXPECT_GT(pool.dopamine, config.baseline_dopamine);
-    EXPECT_GT(pool.serotonin, config.baseline_serotonin);
-    EXPECT_GT(pool.acetylcholine, config.baseline_acetylcholine);
-    EXPECT_GT(pool.norepinephrine, config.baseline_norepinephrine);
+    EXPECT_GT(neuromodulator_pool_get_dopamine(&pool), config.baseline_dopamine);
+    EXPECT_GT(neuromodulator_pool_get_serotonin(&pool), config.baseline_serotonin);
+    EXPECT_GT(neuromodulator_pool_get_acetylcholine(&pool), config.baseline_acetylcholine);
+    EXPECT_GT(neuromodulator_pool_get_norepinephrine(&pool), config.baseline_norepinephrine);
 }
 
 //=============================================================================
@@ -723,7 +723,8 @@ TEST_F(NeuromodulatorTest, DifferentReceptorProfiles) {
     neuromodulator_compute_effects(system, &inhibitory, &effects_inh);
 
     // Effects should differ due to different receptor densities
-    EXPECT_NE(effects_exc.learning_rate_multiplier, effects_inh.learning_rate_multiplier);
+    EXPECT_NE(modulation_effects_get_learning_rate_multiplier(&effects_exc),
+              modulation_effects_get_learning_rate_multiplier(&effects_inh));
 }
 
 TEST_F(NeuromodulatorTest, AllReceptorProfilePresets) {
@@ -737,14 +738,15 @@ TEST_F(NeuromodulatorTest, AllReceptorProfilePresets) {
     receptor_profile_t amygdala = neuromodulator_profile_amygdala();
 
     // All should have valid receptor densities
-    EXPECT_GE(cortical_exc.d1_density, 0.0f);
-    EXPECT_GE(cortical_inh.d2_density, 0.0f);
-    EXPECT_GE(hippocampal.nicotinic_density, 0.0f);
-    EXPECT_GE(striatal.d1_density, 0.0f);
-    EXPECT_GE(amygdala.alpha_density, 0.0f);
+    EXPECT_GE(receptor_profile_get_d1_density(&cortical_exc), 0.0f);
+    EXPECT_GE(receptor_profile_get_d2_density(&cortical_inh), 0.0f);
+    EXPECT_GE(receptor_profile_get_nicotinic_density(&hippocampal), 0.0f);
+    EXPECT_GE(receptor_profile_get_d1_density(&striatal), 0.0f);
+    EXPECT_GE(receptor_profile_get_alpha_density(&amygdala), 0.0f);
 
     // Profiles should differ
-    EXPECT_NE(cortical_exc.d1_density, striatal.d1_density);
+    EXPECT_NE(receptor_profile_get_d1_density(&cortical_exc),
+              receptor_profile_get_d1_density(&striatal));
 }
 
 //=============================================================================

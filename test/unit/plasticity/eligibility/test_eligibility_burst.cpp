@@ -26,7 +26,7 @@ protected:
     eligibility_config_t config;
     eligibility_config_t burst_config;
     eligibility_trace_t trace;
-    phasic_tonic_state_t phasic_tonic;
+    phasic_tonic_state_t phasic_tonic = {};
     synapse_t synapse;
 
     void SetUp() override {

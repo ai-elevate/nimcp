@@ -164,16 +164,16 @@ TEST_F(NeuromodulatorThreadSafetyTest, ConcurrentUpdate) {
     /* WHAT: Verify system is still in valid state
      * WHY:  Race conditions would corrupt state
      */
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     ASSERT_TRUE(neuromodulator_get_levels(system, &pool));
 
     /* WHAT: Verify concentrations are in valid range
      * WHY:  Corruption would cause out-of-bounds values
      */
-    EXPECT_GE(pool.dopamine, 0.0f);
-    EXPECT_LE(pool.dopamine, 1.0f);
-    EXPECT_GE(pool.serotonin, 0.0f);
-    EXPECT_LE(pool.serotonin, 1.0f);
+    EXPECT_GE(neuromodulator_pool_get_dopamine(&pool), 0.0f);
+    EXPECT_LE(neuromodulator_pool_get_dopamine(&pool), 1.0f);
+    EXPECT_GE(neuromodulator_pool_get_serotonin(&pool), 0.0f);
+    EXPECT_LE(neuromodulator_pool_get_serotonin(&pool), 1.0f);
 
     /* WHAT: Verify update count matches expected
      * WHY:  Lost updates would cause lower count
@@ -292,7 +292,7 @@ TEST_F(NeuromodulatorThreadSafetyTest, ConcurrentReadWrite) {
              * WHY:  Test read-side locking (should not block readers)
              */
             for (uint32_t i = 0; i < args->ops; i++) {
-                neuromodulator_pool_t pool;
+                neuromodulator_pool_t pool = {};
                 neuromodulator_get_levels(args->sys, &pool);
 
                 neuromodulator_stats_t stats;
@@ -331,7 +331,7 @@ TEST_F(NeuromodulatorThreadSafetyTest, ConcurrentReadWrite) {
      * WHY:  Readers should not interfere with writers
      */
     uint32_t expected_updates = (NUM_THREADS / 2) * OPS_PER_THREAD;
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     neuromodulator_get_levels(system, &pool);
     EXPECT_EQ(pool.last_update, expected_updates);
 }
@@ -746,7 +746,7 @@ TEST_F(NeuromodulatorThreadSafetyTest, Integration_ConcurrentDopamineAndBCM) {
              */
             for (int i = 0; i < 1000; i++) {
                 // Get current dopamine level
-                neuromodulator_pool_t pool;
+                neuromodulator_pool_t pool = {};
                 neuromodulator_get_levels(args->neuro_sys, &pool);
 
                 // Update random synapse with dopamine modulation
@@ -757,7 +757,7 @@ TEST_F(NeuromodulatorThreadSafetyTest, Integration_ConcurrentDopamineAndBCM) {
                 float post = 0.7f;
 
                 // Apply dopamine-modulated BCM learning
-                bcm_apply_rule_modulated(syn, pre, post, 1.0f, args->params, pool.dopamine);
+                bcm_apply_rule_modulated(syn, pre, post, 1.0f, args->params, neuromodulator_pool_get_dopamine(&pool));
             }
         }
 
@@ -793,10 +793,10 @@ TEST_F(NeuromodulatorThreadSafetyTest, Integration_ConcurrentDopamineAndBCM) {
     /* WHAT: Verify system is in valid state
      * WHY:  Integration should not corrupt either system
      */
-    neuromodulator_pool_t final_pool;
+    neuromodulator_pool_t final_pool = {};
     ASSERT_TRUE(neuromodulator_get_levels(system, &final_pool));
-    EXPECT_GE(final_pool.dopamine, 0.0f);
-    EXPECT_LE(final_pool.dopamine, 1.0f);
+    EXPECT_GE(neuromodulator_pool_get_dopamine(&final_pool), 0.0f);
+    EXPECT_LE(neuromodulator_pool_get_dopamine(&final_pool), 1.0f);
 
     // Verify BCM synapses are valid
     for (uint32_t i = 0; i < NUM_SYNAPSES; i++) {
@@ -850,7 +850,7 @@ TEST_F(NeuromodulatorThreadSafetyTest, Integration_StatsMonitoringDuringLearning
              */
             while (!args->stop_flag->load(std::memory_order_acquire)) {
                 neuromodulator_stats_t stats;
-                neuromodulator_pool_t pool;
+                neuromodulator_pool_t pool = {};
 
                 if (neuromodulator_get_stats(args->sys, &stats) &&
                     neuromodulator_get_levels(args->sys, &pool)) {

@@ -41,7 +41,7 @@ protected:
         phasic_tonic_init(&dopamine_state, &config, current_time);
     }
 
-    phasic_tonic_state_t dopamine_state;
+    phasic_tonic_state_t dopamine_state = {};
     uint64_t current_time;
 };
 
@@ -50,15 +50,15 @@ protected:
 // ============================================================================
 
 TEST_F(PhasicTonicTest, InitializesWithTonicBaseline) {
-    EXPECT_NEAR(dopamine_state.tonic_level, DOPAMINE_TONIC_BASELINE, 1e-6f);
-    EXPECT_NEAR(dopamine_state.phasic_burst, 0.0f, 1e-6f);
+    EXPECT_NEAR(phasic_tonic_get_tonic_level(&dopamine_state), DOPAMINE_TONIC_BASELINE, 1e-6f);
+    EXPECT_NEAR(phasic_tonic_get_phasic_burst(&dopamine_state), 0.0f, 1e-6f);
     EXPECT_FALSE(dopamine_state.in_burst_state);
     EXPECT_EQ(dopamine_state.burst_count, 0u);
 }
 
 TEST_F(PhasicTonicTest, TonicWithinPhysiologicalRange) {
-    EXPECT_GE(dopamine_state.tonic_level, DOPAMINE_TONIC_RANGE_MIN);
-    EXPECT_LE(dopamine_state.tonic_level, DOPAMINE_TONIC_RANGE_MAX);
+    EXPECT_GE(phasic_tonic_get_tonic_level(&dopamine_state), DOPAMINE_TONIC_RANGE_MIN);
+    EXPECT_LE(phasic_tonic_get_tonic_level(&dopamine_state), DOPAMINE_TONIC_RANGE_MAX);
 }
 
 // ============================================================================
@@ -66,7 +66,7 @@ TEST_F(PhasicTonicTest, TonicWithinPhysiologicalRange) {
 // ============================================================================
 
 TEST_F(PhasicTonicTest, TonicRemainsStableWithoutStimulation) {
-    float initial_tonic = dopamine_state.tonic_level;
+    float initial_tonic = phasic_tonic_get_tonic_level(&dopamine_state);
 
     // Simulate 10 seconds without stimulation
     for (int i = 0; i < 10000; i++) {
@@ -75,13 +75,13 @@ TEST_F(PhasicTonicTest, TonicRemainsStableWithoutStimulation) {
     }
 
     // Tonic should remain near baseline (within 5%)
-    EXPECT_NEAR(dopamine_state.tonic_level, initial_tonic, initial_tonic * 0.05f);
-    EXPECT_EQ(dopamine_state.phasic_burst, 0.0f);
+    EXPECT_NEAR(phasic_tonic_get_tonic_level(&dopamine_state), initial_tonic, initial_tonic * 0.05f);
+    EXPECT_EQ(phasic_tonic_get_phasic_burst(&dopamine_state), 0.0f);
 }
 
 TEST_F(PhasicTonicTest, HomeostaticRegulationRestoresTonic) {
     // Manually reduce tonic level
-    dopamine_state.tonic_level = DOPAMINE_TONIC_RANGE_MIN;
+    phasic_tonic_set_tonic_level(&dopamine_state, DOPAMINE_TONIC_RANGE_MIN);
 
     // Simulate recovery (should restore toward target)
     for (int i = 0; i < 1000; i++) {
@@ -90,7 +90,7 @@ TEST_F(PhasicTonicTest, HomeostaticRegulationRestoresTonic) {
     }
 
     // Should have recovered significantly toward target
-    EXPECT_GT(dopamine_state.tonic_level, DOPAMINE_TONIC_RANGE_MIN * 1.5f);
+    EXPECT_GT(phasic_tonic_get_tonic_level(&dopamine_state), DOPAMINE_TONIC_RANGE_MIN * 1.5f);
 }
 
 // ============================================================================
@@ -109,7 +109,7 @@ TEST_F(PhasicTonicTest, BurstTriggering) {
 
     EXPECT_TRUE(triggered);
     EXPECT_TRUE(dopamine_state.in_burst_state);
-    EXPECT_NEAR(dopamine_state.phasic_burst, burst_amplitude, 1e-6f);
+    EXPECT_NEAR(phasic_tonic_get_phasic_burst(&dopamine_state), burst_amplitude, 1e-6f);
     EXPECT_EQ(dopamine_state.burst_count, 1u);
 }
 
@@ -117,7 +117,7 @@ TEST_F(PhasicTonicTest, BurstExponentialDecay) {
     float burst_amplitude = 0.001f;  // 1 µM
     phasic_tonic_trigger_burst(&dopamine_state, burst_amplitude, 300, current_time);
 
-    float initial_burst = dopamine_state.phasic_burst;
+    float initial_burst = phasic_tonic_get_phasic_burst(&dopamine_state);
 
     // Simulate decay over 1 second
     for (int i = 0; i < 1000; i++) {
@@ -126,7 +126,7 @@ TEST_F(PhasicTonicTest, BurstExponentialDecay) {
     }
 
     // Burst should have decayed significantly
-    EXPECT_LT(dopamine_state.phasic_burst, initial_burst * 0.1f);
+    EXPECT_LT(phasic_tonic_get_phasic_burst(&dopamine_state), initial_burst * 0.1f);
 }
 
 TEST_F(PhasicTonicTest, BurstTerminatesAfterDuration) {
@@ -142,20 +142,20 @@ TEST_F(PhasicTonicTest, BurstTerminatesAfterDuration) {
 
     // Burst should have terminated
     EXPECT_FALSE(dopamine_state.in_burst_state);
-    EXPECT_NEAR(dopamine_state.phasic_burst, 0.0f, 1e-6f);
+    EXPECT_NEAR(phasic_tonic_get_phasic_burst(&dopamine_state), 0.0f, 1e-6f);
 }
 
 TEST_F(PhasicTonicTest, MultipleBurstsSuperpose) {
     // Trigger first burst
     phasic_tonic_trigger_burst(&dopamine_state, 0.0003f, 200, current_time);
-    float first_amplitude = dopamine_state.phasic_burst;
+    float first_amplitude = phasic_tonic_get_phasic_burst(&dopamine_state);
 
     // Trigger second burst while first is active
     current_time += 50000;  // 50ms later
     phasic_tonic_trigger_burst(&dopamine_state, 0.0003f, 200, current_time);
 
     // Total burst should be greater than first alone
-    EXPECT_GT(dopamine_state.phasic_burst, first_amplitude);
+    EXPECT_GT(phasic_tonic_get_phasic_burst(&dopamine_state), first_amplitude);
 }
 
 TEST_F(PhasicTonicTest, WeakBurstsRejected) {
@@ -188,12 +188,12 @@ TEST_F(PhasicTonicTest, PositiveTDErrorTriggersBurst) {
 
     EXPECT_TRUE(triggered);
     EXPECT_TRUE(dopamine_state.in_burst_state);
-    EXPECT_GT(dopamine_state.phasic_burst, 0.0f);
+    EXPECT_GT(phasic_tonic_get_phasic_burst(&dopamine_state), 0.0f);
     EXPECT_EQ(dopamine_state.burst_count, 1u);
 }
 
 TEST_F(PhasicTonicTest, NegativeTDErrorInducesTonicDip) {
-    float initial_tonic = dopamine_state.tonic_level;
+    float initial_tonic = phasic_tonic_get_tonic_level(&dopamine_state);
     float td_error = -0.5f;  // Negative error (worse than expected)
 
     bool triggered = phasic_tonic_encode_td_error(
@@ -204,11 +204,11 @@ TEST_F(PhasicTonicTest, NegativeTDErrorInducesTonicDip) {
 
     EXPECT_FALSE(triggered);  // No burst
     EXPECT_FALSE(dopamine_state.in_burst_state);
-    EXPECT_LT(dopamine_state.tonic_level, initial_tonic);  // Tonic decreased
+    EXPECT_LT(phasic_tonic_get_tonic_level(&dopamine_state), initial_tonic);  // Tonic decreased
 }
 
 TEST_F(PhasicTonicTest, ZeroTDErrorNoChange) {
-    float initial_tonic = dopamine_state.tonic_level;
+    float initial_tonic = phasic_tonic_get_tonic_level(&dopamine_state);
     float td_error = 0.0f;  // Expected outcome
 
     bool triggered = phasic_tonic_encode_td_error(
@@ -219,20 +219,20 @@ TEST_F(PhasicTonicTest, ZeroTDErrorNoChange) {
 
     EXPECT_FALSE(triggered);
     EXPECT_FALSE(dopamine_state.in_burst_state);
-    EXPECT_NEAR(dopamine_state.tonic_level, initial_tonic, 1e-6f);
+    EXPECT_NEAR(phasic_tonic_get_tonic_level(&dopamine_state), initial_tonic, 1e-6f);
 }
 
 TEST_F(PhasicTonicTest, LargerTDErrorProducesLargerBurst) {
     // Small TD error
     phasic_tonic_encode_td_error(&dopamine_state, 0.2f, current_time);
-    float small_burst = dopamine_state.phasic_burst;
+    float small_burst = phasic_tonic_get_phasic_burst(&dopamine_state);
 
     // Reset
     phasic_tonic_reset(&dopamine_state, current_time);
 
     // Large TD error
     phasic_tonic_encode_td_error(&dopamine_state, 0.8f, current_time);
-    float large_burst = dopamine_state.phasic_burst;
+    float large_burst = phasic_tonic_get_phasic_burst(&dopamine_state);
 
     EXPECT_GT(large_burst, small_burst);
 }
@@ -242,7 +242,7 @@ TEST_F(PhasicTonicTest, LargerTDErrorProducesLargerBurst) {
 // ============================================================================
 
 TEST_F(PhasicTonicTest, ConcentrationIsTonicPlusPhasic) {
-    float tonic = dopamine_state.tonic_level;
+    float tonic = phasic_tonic_get_tonic_level(&dopamine_state);
 
     // Trigger burst
     float burst_amp = 0.0005f;
@@ -250,7 +250,7 @@ TEST_F(PhasicTonicTest, ConcentrationIsTonicPlusPhasic) {
     phasic_tonic_update(&dopamine_state, 0.001f, current_time);
 
     float total = phasic_tonic_get_concentration(&dopamine_state);
-    float expected = tonic + dopamine_state.phasic_burst;
+    float expected = tonic + phasic_tonic_get_phasic_burst(&dopamine_state);
 
     EXPECT_NEAR(total, expected, 1e-6f);
 }
@@ -272,23 +272,23 @@ TEST_F(PhasicTonicTest, ConcentrationIncreasesDuringBurst) {
 // ============================================================================
 
 TEST_F(PhasicTonicTest, AutoreceptorReducesTonicLevel) {
-    float initial_tonic = dopamine_state.tonic_level;
+    float initial_tonic = phasic_tonic_get_tonic_level(&dopamine_state);
 
     // Apply inhibitory modulation (D2 autoreceptor activation)
     phasic_tonic_apply_autoreceptor_modulation(&dopamine_state, 0.5f);  // 50% reduction
 
-    EXPECT_LT(dopamine_state.tonic_level, initial_tonic);
-    EXPECT_NEAR(dopamine_state.tonic_level, initial_tonic * 0.5f, 1e-6f);
+    EXPECT_LT(phasic_tonic_get_tonic_level(&dopamine_state), initial_tonic);
+    EXPECT_NEAR(phasic_tonic_get_tonic_level(&dopamine_state), initial_tonic * 0.5f, 1e-6f);
 }
 
 TEST_F(PhasicTonicTest, AutoreceptorEnhancesTonicLevel) {
-    float initial_tonic = dopamine_state.tonic_level;
+    float initial_tonic = phasic_tonic_get_tonic_level(&dopamine_state);
 
     // Apply excitatory modulation
     phasic_tonic_apply_autoreceptor_modulation(&dopamine_state, 1.5f);  // 50% increase
 
-    EXPECT_GT(dopamine_state.tonic_level, initial_tonic);
-    EXPECT_NEAR(dopamine_state.tonic_level, initial_tonic * 1.5f, 1e-6f);
+    EXPECT_GT(phasic_tonic_get_tonic_level(&dopamine_state), initial_tonic);
+    EXPECT_NEAR(phasic_tonic_get_tonic_level(&dopamine_state), initial_tonic * 1.5f, 1e-6f);
 }
 
 // ============================================================================
@@ -296,7 +296,7 @@ TEST_F(PhasicTonicTest, AutoreceptorEnhancesTonicLevel) {
 // ============================================================================
 
 TEST_F(PhasicTonicTest, ChangingTonicTargetAffectsBaseline) {
-    float original_target = dopamine_state.tonic_target;
+    float original_target = phasic_tonic_get_tonic_target(&dopamine_state);
     float new_target = original_target * 1.5f;
 
     phasic_tonic_set_tonic_target(&dopamine_state, new_target);
@@ -308,7 +308,7 @@ TEST_F(PhasicTonicTest, ChangingTonicTargetAffectsBaseline) {
     }
 
     // Tonic level should have moved toward new target
-    EXPECT_GT(dopamine_state.tonic_level, original_target);
+    EXPECT_GT(phasic_tonic_get_tonic_level(&dopamine_state), original_target);
 }
 
 // ============================================================================
@@ -368,8 +368,8 @@ TEST_F(PhasicTonicTest, ResetRestoresBaseline) {
     // Reset
     phasic_tonic_reset(&dopamine_state, current_time);
 
-    EXPECT_NEAR(dopamine_state.tonic_level, dopamine_state.tonic_target, 1e-6f);
-    EXPECT_EQ(dopamine_state.phasic_burst, 0.0f);
+    EXPECT_NEAR(phasic_tonic_get_tonic_level(&dopamine_state), phasic_tonic_get_tonic_target(&dopamine_state), 1e-6f);
+    EXPECT_EQ(phasic_tonic_get_phasic_burst(&dopamine_state), 0.0f);
     EXPECT_FALSE(dopamine_state.in_burst_state);
     EXPECT_EQ(dopamine_state.burst_count, 0u);
 }
@@ -379,15 +379,15 @@ TEST_F(PhasicTonicTest, ResetRestoresBaseline) {
 // ============================================================================
 
 TEST_F(PhasicTonicTest, SerotoninHasDifferentTimescales) {
-    phasic_tonic_state_t serotonin_state;
+    phasic_tonic_state_t serotonin_state = {};
     phasic_tonic_config_t config = phasic_tonic_config_serotonin_default();
     phasic_tonic_init(&serotonin_state, &config, current_time);
 
     // Serotonin should have slower homeostatic regulation
-    EXPECT_GT(serotonin_state.homeostatic_tau, dopamine_state.homeostatic_tau);
+    EXPECT_GT(phasic_tonic_get_homeostatic_tau(&serotonin_state), phasic_tonic_get_homeostatic_tau(&dopamine_state));
 
     // And longer burst decay
-    EXPECT_GT(serotonin_state.burst_decay_tau, dopamine_state.burst_decay_tau);
+    EXPECT_GT(phasic_tonic_get_burst_decay_tau(&serotonin_state), phasic_tonic_get_burst_decay_tau(&dopamine_state));
 }
 
 // ============================================================================

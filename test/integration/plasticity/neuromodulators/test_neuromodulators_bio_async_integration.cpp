@@ -124,7 +124,7 @@ TEST_F(NeuromodulatorsBioAsyncIntegrationTest, SendLearningRateUpdateRequest) {
     neuromodulator_bio_async_process(10);
 
     // Verify system still functioning
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     ASSERT_TRUE(neuromodulator_get_levels(neuromod_system_, &pool));
 }
 
@@ -231,7 +231,7 @@ TEST_F(NeuromodulatorsBioAsyncIntegrationTest, HighVolumeMessages) {
     EXPECT_GT(processed, 0u);
 
     // System should still be functional
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     ASSERT_TRUE(neuromodulator_get_levels(neuromod_system_, &pool));
 
     // Get statistics
@@ -297,7 +297,7 @@ TEST_F(NeuromodulatorsBioAsyncIntegrationTest, HandleMalformedMessage) {
     neuromodulator_bio_async_process(10);
 
     // System should still be functional
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     ASSERT_TRUE(neuromodulator_get_levels(neuromod_system_, &pool));
 }
 

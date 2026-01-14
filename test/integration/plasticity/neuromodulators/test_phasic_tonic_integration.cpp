@@ -118,18 +118,17 @@ TEST_F(PhasicTonicIntegrationTest, NeuromodulatorDecayOverTime) {
 TEST_F(PhasicTonicIntegrationTest, LearningRateModulation) {
     float base_lr = 0.01f;
 
-    // Create receptor profile
-    receptor_profile_t receptors = {
-        .d1_density = 0.8f,
-        .d2_density = 0.2f,
-        .serotonin_density = 0.5f,
-        .nicotinic_density = 0.5f,
-        .alpha_density = 0.5f,
-        .beta_density = 0.5f
-    };
+    // Create receptor profile using factory + setters
+    receptor_profile_t receptors = receptor_profile_create();
+    receptor_profile_set_d1_density(&receptors, 0.8f);
+    receptor_profile_set_d2_density(&receptors, 0.2f);
+    receptor_profile_set_serotonin_density(&receptors, 0.5f);
+    receptor_profile_set_nicotinic_density(&receptors, 0.5f);
+    receptor_profile_set_alpha_density(&receptors, 0.5f);
+    receptor_profile_set_beta_density(&receptors, 0.5f);
 
     // Compute modulation effects
-    modulation_effects_t effects;
+    modulation_effects_t effects = {};
     bool computed = neuromodulator_compute_effects(neuromod_system, &receptors, &effects);
     ASSERT_TRUE(computed);
 
@@ -241,14 +240,13 @@ TEST_F(PhasicTonicIntegrationTest, LearningWeightComputation) {
     neuromodulator_release_dopamine(neuromod_system, 0.8f, false);
 
     // Create receptor profile for D1-dominant neuron (like striatal Go pathway)
-    receptor_profile_t d1_profile = {
-        .d1_density = 1.0f,         // High D1 density
-        .d2_density = 0.1f,         // Low D2 density
-        .serotonin_density = 0.5f,
-        .nicotinic_density = 0.5f,
-        .alpha_density = 0.5f,
-        .beta_density = 0.5f
-    };
+    receptor_profile_t d1_profile = receptor_profile_create();
+    receptor_profile_set_d1_density(&d1_profile, 1.0f);         // High D1 density
+    receptor_profile_set_d2_density(&d1_profile, 0.1f);         // Low D2 density
+    receptor_profile_set_serotonin_density(&d1_profile, 0.5f);
+    receptor_profile_set_nicotinic_density(&d1_profile, 0.5f);
+    receptor_profile_set_alpha_density(&d1_profile, 0.5f);
+    receptor_profile_set_beta_density(&d1_profile, 0.5f);
 
     // Get learning weight for D1-dominant neuron
     float d1_weight = neuromodulator_get_learning_weight(neuromod_system, &d1_profile);

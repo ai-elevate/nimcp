@@ -94,12 +94,12 @@ TEST_F(NeuromodulatorsBioAsyncRegressionTest, ConcurrentReleasesThreadSafe) {
     }
 
     // System should still be valid
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool));
 
     // Dopamine should have increased
-    EXPECT_GT(pool.dopamine, 0.0f);
-    EXPECT_LE(pool.dopamine, 1.0f);
+    EXPECT_GT(neuromodulator_pool_get_dopamine(&pool), 0.0f);
+    EXPECT_LE(neuromodulator_pool_get_dopamine(&pool), 1.0f);
 }
 
 /**
@@ -182,10 +182,10 @@ TEST_F(NeuromodulatorsBioAsyncRegressionTest, TinyTimeStepsHandled) {
     }
 
     // Should still be valid
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool));
-    EXPECT_GE(pool.dopamine, 0.0f);
-    EXPECT_LE(pool.dopamine, 1.0f);
+    EXPECT_GE(neuromodulator_pool_get_dopamine(&pool), 0.0f);
+    EXPECT_LE(neuromodulator_pool_get_dopamine(&pool), 1.0f);
 }
 
 /**
@@ -269,7 +269,7 @@ TEST_F(NeuromodulatorsBioAsyncRegressionTest, NoMemoryLeaksOnRecreate) {
 
         // Use the system
         neuromodulator_release_dopamine(temp_system, 0.5f, 0.0f);
-        neuromodulator_pool_t pool;
+        neuromodulator_pool_t pool = {};
         neuromodulator_get_levels(temp_system, &pool);
 
         neuromodulator_system_destroy(temp_system);
@@ -322,7 +322,7 @@ TEST_F(NeuromodulatorsBioAsyncRegressionTest, LongRunningStability) {
     }
 
     // System should still be functional
-    neuromodulator_pool_t pool;
+    neuromodulator_pool_t pool = {};
     ASSERT_TRUE(neuromodulator_get_levels(system_, &pool));
 
     // Should have performed expected operations

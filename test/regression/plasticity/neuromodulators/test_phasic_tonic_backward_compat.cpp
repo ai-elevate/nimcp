@@ -333,14 +333,13 @@ TEST_F(PhasicTonicRegressionTest, ReceptorTypes_NoBreakage) {
 
     if (neuromod) {
         // Create D1-dominant receptor profile
-        receptor_profile_t d1_profile = {
-            .d1_density = 1.0f,
-            .d2_density = 0.1f,
-            .serotonin_density = 0.5f,
-            .nicotinic_density = 0.5f,
-            .alpha_density = 0.5f,
-            .beta_density = 0.5f
-        };
+        receptor_profile_t d1_profile = receptor_profile_create();
+        receptor_profile_set_d1_density(&d1_profile, 1.0f);
+        receptor_profile_set_d2_density(&d1_profile, 0.1f);
+        receptor_profile_set_serotonin_density(&d1_profile, 0.5f);
+        receptor_profile_set_nicotinic_density(&d1_profile, 0.5f);
+        receptor_profile_set_alpha_density(&d1_profile, 0.5f);
+        receptor_profile_set_beta_density(&d1_profile, 0.5f);
 
         // Get learning weight for D1-dominant neuron
         float d1_weight = neuromodulator_get_learning_weight(neuromod, &d1_profile);
@@ -350,14 +349,13 @@ TEST_F(PhasicTonicRegressionTest, ReceptorTypes_NoBreakage) {
         EXPECT_LT(d1_weight, 10.0f);
 
         // Create D2-dominant receptor profile
-        receptor_profile_t d2_profile = {
-            .d1_density = 0.1f,
-            .d2_density = 1.0f,
-            .serotonin_density = 0.5f,
-            .nicotinic_density = 0.5f,
-            .alpha_density = 0.5f,
-            .beta_density = 0.5f
-        };
+        receptor_profile_t d2_profile = receptor_profile_create();
+        receptor_profile_set_d1_density(&d2_profile, 0.1f);
+        receptor_profile_set_d2_density(&d2_profile, 1.0f);
+        receptor_profile_set_serotonin_density(&d2_profile, 0.5f);
+        receptor_profile_set_nicotinic_density(&d2_profile, 0.5f);
+        receptor_profile_set_alpha_density(&d2_profile, 0.5f);
+        receptor_profile_set_beta_density(&d2_profile, 0.5f);
 
         // Get learning weight for D2-dominant neuron
         float d2_weight = neuromodulator_get_learning_weight(neuromod, &d2_profile);
