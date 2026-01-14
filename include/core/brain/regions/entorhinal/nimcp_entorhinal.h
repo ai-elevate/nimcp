@@ -62,25 +62,25 @@ extern "C" {
  *===========================================================================*/
 
 /* Core brain systems */
-typedef struct nimcp_brain nimcp_brain_t;
-typedef struct nimcp_brain_kg nimcp_brain_kg_t;
+typedef struct nimcp_brain_handle* nimcp_brain_t;
+typedef struct brain_kg brain_kg_t;
 typedef struct brain_immune_system brain_immune_system_t;
 
-/* Bio-async communication */
-typedef struct nimcp_bio_async_handler nimcp_bio_async_handler_t;
-typedef struct nimcp_bio_router nimcp_bio_router_t;
-typedef struct nimcp_bio_future nimcp_bio_future_t;
+/* Bio-async communication - forward declarations matching async/nimcp_bio_async.h */
+typedef struct nimcp_bio_async_handler_struct* nimcp_bio_async_handler_t;
+typedef struct nimcp_bio_router_struct* nimcp_bio_router_t;
+typedef struct nimcp_bio_future_struct* nimcp_bio_future_t;
 
 /* Security */
 typedef struct nimcp_security_context nimcp_security_context_t;
 typedef struct nimcp_access_control nimcp_access_control_t;
 
 /* Logging and metrics */
-typedef struct nimcp_logger nimcp_logger_t;
+typedef struct nimcp_logger_struct* nimcp_logger_t;
 typedef struct nimcp_metrics nimcp_metrics_t;
 
 /* Neural systems */
-typedef struct nimcp_snn_network nimcp_snn_network_t;
+typedef struct snn_network_s snn_network_t;
 typedef struct nimcp_plasticity_manager nimcp_plasticity_manager_t;
 typedef struct nimcp_stdp_rule nimcp_stdp_rule_t;
 
@@ -430,7 +430,7 @@ typedef struct {
  * @brief SNN bridge state
  */
 typedef struct {
-    nimcp_snn_network_t* snn;
+    snn_network_t* snn;
     uint32_t input_layer_id;
     uint32_t grid_layer_id;
     uint32_t border_layer_id;
@@ -616,7 +616,7 @@ typedef struct {
  * @brief Brain KG bridge state
  */
 typedef struct {
-    nimcp_brain_kg_t* kg;
+    brain_kg_t* kg;
     uint32_t node_id;
     float health_status;
     uint32_t edge_count;
@@ -909,7 +909,7 @@ int entorhinal_init_bio_async_bridge(nimcp_entorhinal_t* ec,
  * @brief Initialize SNN bridge
  */
 int entorhinal_init_snn_bridge(nimcp_entorhinal_t* ec,
-    nimcp_snn_network_t* snn);
+    snn_network_t* snn);
 
 /**
  * @brief Initialize plasticity bridge
@@ -1014,7 +1014,7 @@ int entorhinal_init_logic_bridge(nimcp_entorhinal_t* ec,
  * @brief Initialize brain KG bridge
  */
 int entorhinal_init_kg_bridge(nimcp_entorhinal_t* ec,
-    nimcp_brain_kg_t* kg);
+    brain_kg_t* kg);
 
 /**
  * @brief Initialize all bridges at once

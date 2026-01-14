@@ -38,16 +38,17 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 /*=============================================================================
  * FORWARD DECLARATIONS
  *===========================================================================*/
 
 typedef struct nimcp_entorhinal nimcp_entorhinal_t;
-typedef struct nimcp_brain nimcp_brain_t;
-typedef struct nimcp_brain_kg nimcp_brain_kg_t;
+typedef struct nimcp_brain_handle* nimcp_brain_t;
+typedef struct brain_kg brain_kg_t;
 typedef struct nimcp_brain_factory nimcp_brain_factory_t;
-typedef struct nimcp_logger nimcp_logger_t;
+typedef struct nimcp_logger_struct* nimcp_logger_t;
 
 /*=============================================================================
  * INITIALIZATION PHASE ENUMERATION
@@ -268,7 +269,7 @@ typedef struct {
     nimcp_entorhinal_t* entorhinal;
     nimcp_brain_t* brain;
     nimcp_brain_factory_t* factory;
-    nimcp_brain_kg_t* kg;
+    brain_kg_t* kg;
 
     /* Initialization status */
     entorhinal_init_status_t status;
@@ -408,7 +409,7 @@ int entorhinal_brain_init_register_factory(
  */
 int entorhinal_brain_init_register_kg(
     entorhinal_brain_init_bridge_t* bridge,
-    nimcp_brain_kg_t* kg);
+    brain_kg_t* kg);
 
 /**
  * @brief Deregister from all systems

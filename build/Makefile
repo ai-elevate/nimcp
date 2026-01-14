@@ -4462,19 +4462,6 @@ integration_cognitive_sleep_test_cognitive_sleep_integration/fast:
 .PHONY : integration_cognitive_sleep_test_cognitive_sleep_integration/fast
 
 #=============================================================================
-# Target rules for targets named integration_core_brain_regions_entorhinal_test_entorhinal_integration
-
-# Build rule for target.
-integration_core_brain_regions_entorhinal_test_entorhinal_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_entorhinal_test_entorhinal_integration
-.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_integration
-
-# fast build rule for target.
-integration_core_brain_regions_entorhinal_test_entorhinal_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_integration.dir/build.make test/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_integration.dir/build
-.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_integration/fast
-
-#=============================================================================
 # Target rules for targets named integration_core_integration_test_integration_cognitive
 
 # Build rule for target.
@@ -7320,6 +7307,19 @@ e2e_test_cerebellum_pipeline: cmake_check_build_system
 e2e_test_cerebellum_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_cerebellum_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_cerebellum_pipeline.dir/build
 .PHONY : e2e_test_cerebellum_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_entorhinal_pipeline
+
+# Build rule for target.
+e2e_test_entorhinal_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_entorhinal_pipeline
+.PHONY : e2e_test_entorhinal_pipeline
+
+# fast build rule for target.
+e2e_test_entorhinal_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_entorhinal_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_entorhinal_pipeline.dir/build
+.PHONY : e2e_test_entorhinal_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_dragonfly_multimodal
@@ -14498,6 +14498,110 @@ integration_core_brain_regions_retrosplenial_test_retrosplenial_brain_init_integ
 .PHONY : integration_core_brain_regions_retrosplenial_test_retrosplenial_brain_init_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_core_brain_regions_entorhinal_test_entorhinal_integration
+
+# Build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_entorhinal_test_entorhinal_integration
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_integration
+
+# fast build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_integration.dir/build.make test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_integration.dir/build
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_entorhinal_test_entorhinal_brain_init_integration
+
+# Build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_brain_init_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_entorhinal_test_entorhinal_brain_init_integration
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_brain_init_integration
+
+# fast build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_brain_init_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_brain_init_integration.dir/build.make test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_brain_init_integration.dir/build
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_brain_init_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_entorhinal_test_entorhinal_kg_wiring_integration
+
+# Build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_kg_wiring_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_entorhinal_test_entorhinal_kg_wiring_integration
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_kg_wiring_integration
+
+# fast build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_kg_wiring_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_kg_wiring_integration.dir/build.make test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_kg_wiring_integration.dir/build
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_kg_wiring_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_entorhinal_test_entorhinal_bio_async_integration
+
+# Build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_bio_async_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_entorhinal_test_entorhinal_bio_async_integration
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_bio_async_integration
+
+# fast build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_bio_async_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_bio_async_integration.dir/build.make test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_bio_async_integration.dir/build
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_bio_async_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_entorhinal_test_entorhinal_snn_plasticity_integration
+
+# Build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_snn_plasticity_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_entorhinal_test_entorhinal_snn_plasticity_integration
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_snn_plasticity_integration
+
+# fast build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_snn_plasticity_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_snn_plasticity_integration.dir/build.make test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_snn_plasticity_integration.dir/build
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_snn_plasticity_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_entorhinal_test_entorhinal_cognitive_integration
+
+# Build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_cognitive_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_entorhinal_test_entorhinal_cognitive_integration
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_cognitive_integration
+
+# fast build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_cognitive_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_cognitive_integration.dir/build.make test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_cognitive_integration.dir/build
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_cognitive_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_entorhinal_test_entorhinal_immune_integration
+
+# Build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_immune_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_entorhinal_test_entorhinal_immune_integration
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_immune_integration
+
+# fast build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_immune_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_immune_integration.dir/build.make test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_immune_integration.dir/build
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_immune_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_brain_regions_entorhinal_test_entorhinal_security_integration
+
+# Build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_security_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_entorhinal_test_entorhinal_security_integration
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_security_integration
+
+# fast build rule for target.
+integration_core_brain_regions_entorhinal_test_entorhinal_security_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_security_integration.dir/build.make test/integration/core/brain/regions/entorhinal/CMakeFiles/integration_core_brain_regions_entorhinal_test_entorhinal_security_integration.dir/build
+.PHONY : integration_core_brain_regions_entorhinal_test_entorhinal_security_integration/fast
+
+#=============================================================================
 # Target rules for targets named regression_core_brain_oscillation_backward_compat
 
 # Build rule for target.
@@ -14834,6 +14938,32 @@ regression_brain_regions_test_motor_signal_regression: cmake_check_build_system
 regression_brain_regions_test_motor_signal_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_motor_signal_regression.dir/build.make test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_motor_signal_regression.dir/build
 .PHONY : regression_brain_regions_test_motor_signal_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_brain_regions_test_entorhinal_backward_compat
+
+# Build rule for target.
+regression_brain_regions_test_entorhinal_backward_compat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_brain_regions_test_entorhinal_backward_compat
+.PHONY : regression_brain_regions_test_entorhinal_backward_compat
+
+# fast build rule for target.
+regression_brain_regions_test_entorhinal_backward_compat/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_entorhinal_backward_compat.dir/build.make test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_entorhinal_backward_compat.dir/build
+.PHONY : regression_brain_regions_test_entorhinal_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_brain_regions_test_entorhinal_signal_regression
+
+# Build rule for target.
+regression_brain_regions_test_entorhinal_signal_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_brain_regions_test_entorhinal_signal_regression
+.PHONY : regression_brain_regions_test_entorhinal_signal_regression
+
+# fast build rule for target.
+regression_brain_regions_test_entorhinal_signal_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_entorhinal_signal_regression.dir/build.make test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_entorhinal_signal_regression.dir/build
+.PHONY : regression_brain_regions_test_entorhinal_signal_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_bridges_test_bridge_memory_leaks
@@ -19371,6 +19501,136 @@ regression_core_axon_performance: cmake_check_build_system
 regression_core_axon_performance/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/core/axon/CMakeFiles/regression_core_axon_performance.dir/build.make test/regression/core/axon/CMakeFiles/regression_core_axon_performance.dir/build
 .PHONY : regression_core_axon_performance/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_geometry_surface_core
+
+# Build rule for target.
+unit_core_geometry_surface_core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_geometry_surface_core
+.PHONY : unit_core_geometry_surface_core
+
+# fast build rule for target.
+unit_core_geometry_surface_core/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/geometry/CMakeFiles/unit_core_geometry_surface_core.dir/build.make test/unit/core/geometry/CMakeFiles/unit_core_geometry_surface_core.dir/build
+.PHONY : unit_core_geometry_surface_core/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_geometry_surface_manifold
+
+# Build rule for target.
+unit_core_geometry_surface_manifold: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_geometry_surface_manifold
+.PHONY : unit_core_geometry_surface_manifold
+
+# fast build rule for target.
+unit_core_geometry_surface_manifold/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/geometry/CMakeFiles/unit_core_geometry_surface_manifold.dir/build.make test/unit/core/geometry/CMakeFiles/unit_core_geometry_surface_manifold.dir/build
+.PHONY : unit_core_geometry_surface_manifold/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_geometry_surface_optimization
+
+# Build rule for target.
+unit_core_geometry_surface_optimization: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_geometry_surface_optimization
+.PHONY : unit_core_geometry_surface_optimization
+
+# fast build rule for target.
+unit_core_geometry_surface_optimization/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/geometry/CMakeFiles/unit_core_geometry_surface_optimization.dir/build.make test/unit/core/geometry/CMakeFiles/unit_core_geometry_surface_optimization.dir/build
+.PHONY : unit_core_geometry_surface_optimization/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_geometry_surface_bridges
+
+# Build rule for target.
+unit_core_geometry_surface_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_geometry_surface_bridges
+.PHONY : unit_core_geometry_surface_bridges
+
+# fast build rule for target.
+unit_core_geometry_surface_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/geometry/CMakeFiles/unit_core_geometry_surface_bridges.dir/build.make test/unit/core/geometry/CMakeFiles/unit_core_geometry_surface_bridges.dir/build
+.PHONY : unit_core_geometry_surface_bridges/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_geometry_surface_bio_async
+
+# Build rule for target.
+integration_core_geometry_surface_bio_async: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_geometry_surface_bio_async
+.PHONY : integration_core_geometry_surface_bio_async
+
+# fast build rule for target.
+integration_core_geometry_surface_bio_async/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/geometry/CMakeFiles/integration_core_geometry_surface_bio_async.dir/build.make test/integration/core/geometry/CMakeFiles/integration_core_geometry_surface_bio_async.dir/build
+.PHONY : integration_core_geometry_surface_bio_async/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_geometry_surface_quantum
+
+# Build rule for target.
+integration_core_geometry_surface_quantum: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_geometry_surface_quantum
+.PHONY : integration_core_geometry_surface_quantum
+
+# fast build rule for target.
+integration_core_geometry_surface_quantum/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/geometry/CMakeFiles/integration_core_geometry_surface_quantum.dir/build.make test/integration/core/geometry/CMakeFiles/integration_core_geometry_surface_quantum.dir/build
+.PHONY : integration_core_geometry_surface_quantum/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_geometry_surface_immune
+
+# Build rule for target.
+integration_core_geometry_surface_immune: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_geometry_surface_immune
+.PHONY : integration_core_geometry_surface_immune
+
+# fast build rule for target.
+integration_core_geometry_surface_immune/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/geometry/CMakeFiles/integration_core_geometry_surface_immune.dir/build.make test/integration/core/geometry/CMakeFiles/integration_core_geometry_surface_immune.dir/build
+.PHONY : integration_core_geometry_surface_immune/fast
+
+#=============================================================================
+# Target rules for targets named integration_core_geometry_surface_brain
+
+# Build rule for target.
+integration_core_geometry_surface_brain: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_geometry_surface_brain
+.PHONY : integration_core_geometry_surface_brain
+
+# fast build rule for target.
+integration_core_geometry_surface_brain/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/geometry/CMakeFiles/integration_core_geometry_surface_brain.dir/build.make test/integration/core/geometry/CMakeFiles/integration_core_geometry_surface_brain.dir/build
+.PHONY : integration_core_geometry_surface_brain/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_geometry_surface
+
+# Build rule for target.
+regression_core_geometry_surface: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_geometry_surface
+.PHONY : regression_core_geometry_surface
+
+# fast build rule for target.
+regression_core_geometry_surface/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/geometry/CMakeFiles/regression_core_geometry_surface.dir/build.make test/regression/core/geometry/CMakeFiles/regression_core_geometry_surface.dir/build
+.PHONY : regression_core_geometry_surface/fast
+
+#=============================================================================
+# Target rules for targets named e2e_core_geometry_surface
+
+# Build rule for target.
+e2e_core_geometry_surface: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_core_geometry_surface
+.PHONY : e2e_core_geometry_surface
+
+# fast build rule for target.
+e2e_core_geometry_surface/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/core/geometry/CMakeFiles/e2e_core_geometry_surface.dir/build.make test/e2e/core/geometry/CMakeFiles/e2e_core_geometry_surface.dir/build
+.PHONY : e2e_core_geometry_surface/fast
 
 #=============================================================================
 # Target rules for targets named test_cortical_column
@@ -27612,6 +27872,7 @@ help:
 	@echo "... distributed_cow_demo"
 	@echo "... e2e_core_brain_regions_hippocampus_test_hippocampus_e2e"
 	@echo "... e2e_core_brain_regions_motor_test_motor_e2e"
+	@echo "... e2e_core_geometry_surface"
 	@echo "... e2e_gpu_test_e2e_brain_simulation_gpu"
 	@echo "... e2e_gpu_test_e2e_cognitive_processing_gpu"
 	@echo "... e2e_gpu_test_e2e_dragonfly_hunting_gpu"
@@ -27665,6 +27926,7 @@ help:
 	@echo "... e2e_test_dragonfly_pipeline"
 	@echo "... e2e_test_emotion_snn_plasticity_pipeline"
 	@echo "... e2e_test_emotion_tensor_pipeline"
+	@echo "... e2e_test_entorhinal_pipeline"
 	@echo "... e2e_test_epistemic_snn_plasticity_pipeline"
 	@echo "... e2e_test_ethics_snn_plasticity_pipeline"
 	@echo "... e2e_test_executive_snn_plasticity_pipeline"
@@ -27892,7 +28154,14 @@ help:
 	@echo "... integration_core_brain_regions_claustrum_test_claustrum_bio_async_integration"
 	@echo "... integration_core_brain_regions_claustrum_test_claustrum_brain_init_integration"
 	@echo "... integration_core_brain_regions_claustrum_test_claustrum_workspace_integration"
+	@echo "... integration_core_brain_regions_entorhinal_test_entorhinal_bio_async_integration"
+	@echo "... integration_core_brain_regions_entorhinal_test_entorhinal_brain_init_integration"
+	@echo "... integration_core_brain_regions_entorhinal_test_entorhinal_cognitive_integration"
+	@echo "... integration_core_brain_regions_entorhinal_test_entorhinal_immune_integration"
 	@echo "... integration_core_brain_regions_entorhinal_test_entorhinal_integration"
+	@echo "... integration_core_brain_regions_entorhinal_test_entorhinal_kg_wiring_integration"
+	@echo "... integration_core_brain_regions_entorhinal_test_entorhinal_security_integration"
+	@echo "... integration_core_brain_regions_entorhinal_test_entorhinal_snn_plasticity_integration"
 	@echo "... integration_core_brain_regions_hippocampus_test_hippocampus_integration"
 	@echo "... integration_core_brain_regions_hypothalamus_test_hypo_bio_async_integration"
 	@echo "... integration_core_brain_regions_hypothalamus_test_hypo_fep_integration"
@@ -27926,6 +28195,10 @@ help:
 	@echo "... integration_core_cortical_columns_substrate_bridge"
 	@echo "... integration_core_dendrite_test_integration"
 	@echo "... integration_core_directives"
+	@echo "... integration_core_geometry_surface_bio_async"
+	@echo "... integration_core_geometry_surface_brain"
+	@echo "... integration_core_geometry_surface_immune"
+	@echo "... integration_core_geometry_surface_quantum"
 	@echo "... integration_core_integration_test_integration_cognitive"
 	@echo "... integration_core_integration_test_integration_e2e"
 	@echo "... integration_core_integration_test_integration_networking"
@@ -28161,6 +28434,8 @@ help:
 	@echo "... regression_async_test_wiring_diagram_validation"
 	@echo "... regression_biology_neurovascular_test_neurovascular_regression"
 	@echo "... regression_brain_regions_test_cerebellum_backward_compat"
+	@echo "... regression_brain_regions_test_entorhinal_backward_compat"
+	@echo "... regression_brain_regions_test_entorhinal_signal_regression"
 	@echo "... regression_brain_regions_test_hippocampus_backward_compat"
 	@echo "... regression_brain_regions_test_motor_backward_compat"
 	@echo "... regression_brain_regions_test_motor_signal_regression"
@@ -28261,6 +28536,7 @@ help:
 	@echo "... regression_core_cortical_columns_substrate_bridge"
 	@echo "... regression_core_dendrite_performance"
 	@echo "... regression_core_directives"
+	@echo "... regression_core_geometry_surface"
 	@echo "... regression_core_integration_test_integration_regression"
 	@echo "... regression_core_medulla"
 	@echo "... regression_core_neuron_types_regression"
@@ -29099,6 +29375,10 @@ help:
 	@echo "... unit_core_cortical_columns_substrate_bridge"
 	@echo "... unit_core_dendrite_test_dendrite"
 	@echo "... unit_core_directives_action_history"
+	@echo "... unit_core_geometry_surface_bridges"
+	@echo "... unit_core_geometry_surface_core"
+	@echo "... unit_core_geometry_surface_manifold"
+	@echo "... unit_core_geometry_surface_optimization"
 	@echo "... unit_core_integration_test_numerical_integration"
 	@echo "... unit_core_medulla_arousal_state"
 	@echo "... unit_core_medulla_brain_integration"

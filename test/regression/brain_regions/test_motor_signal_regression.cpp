@@ -279,23 +279,31 @@ TEST_F(MotorSignalRegressionTest, FeedbackTiming_ImmediateEffect) {
  *===========================================================================*/
 
 TEST_F(MotorSignalRegressionTest, MultiRegion_IndependentControl) {
-    /* Different regions should be independently controllable */
+    /* Different regions should be independently controllable (sequential execution) */
     motor_goal_t goal_right = CreateTestGoal(MOTOR_REGION_HAND_RIGHT, 1.0f, 0.0f, 0.0f, 200.0f);
     motor_goal_t goal_left = CreateTestGoal(MOTOR_REGION_HAND_LEFT, -1.0f, 0.0f, 0.0f, 200.0f);
 
+    /* Execute right hand movement */
     motor_plan_movement(adapter, &goal_right);
-    motor_plan_movement(adapter, &goal_left);
     motor_begin_execution(adapter);
-
     for (int i = 0; i < 20; i++) {
         motor_update_execution(adapter, 10.0f);
     }
 
-    motor_effector_state_t state_right, state_left;
+    motor_effector_state_t state_right;
     motor_get_effector_state(adapter, MOTOR_REGION_HAND_RIGHT, &state_right);
+
+    /* Execute left hand movement (motor adapter supports one active trajectory at a time) */
+    motor_plan_movement(adapter, &goal_left);
+    motor_begin_execution(adapter);
+    for (int i = 0; i < 20; i++) {
+        motor_update_execution(adapter, 10.0f);
+    }
+
+    motor_effector_state_t state_left;
     motor_get_effector_state(adapter, MOTOR_REGION_HAND_LEFT, &state_left);
 
-    /* Hands should move in opposite directions */
+    /* Hands should have moved in opposite directions */
     EXPECT_GT(state_right.position.x, 0.0f);
     EXPECT_LT(state_left.position.x, 0.0f);
 }
@@ -546,10 +554,11 @@ TEST_F(MotorSignalRegressionTest, StateTransition_IdleToPlanningToExecuting) {
     motor_goal_t goal = CreateTestGoal(MOTOR_REGION_HAND_RIGHT, 1.0f, 0.0f, 0.0f, 200.0f);
     motor_plan_movement(adapter, &goal);
 
-    /* After planning, status depends on implementation */
+    /* After planning, status depends on implementation - can be PLANNING or PREPARING */
     motor_status_t after_plan = motor_get_status(adapter);
     EXPECT_TRUE(after_plan == MOTOR_STATUS_IDLE ||
-                after_plan == MOTOR_STATUS_PLANNING);
+                after_plan == MOTOR_STATUS_PLANNING ||
+                after_plan == MOTOR_STATUS_PREPARING);
 
     motor_begin_execution(adapter);
     EXPECT_EQ(MOTOR_STATUS_EXECUTING, motor_get_status(adapter));

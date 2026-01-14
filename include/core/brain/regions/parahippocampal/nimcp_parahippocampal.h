@@ -389,6 +389,7 @@ typedef struct {
     uint32_t feature_dim;
     float salience;
     float reliability;
+    float visibility_range;     /**< Max distance visible */
     uint64_t first_seen_ms;
     uint64_t last_seen_ms;
     uint32_t encounter_count;
@@ -523,7 +524,7 @@ typedef struct {
  * @brief Bio-async bridge state
  */
 typedef struct {
-    nimcp_bio_async_handler_t bio_handler;
+    nimcp_bio_async_handler_t* bio_handler;
     nimcp_bio_router_t* router;
     float neuromodulator_levels[PARAHIPP_CHANNEL_COUNT];
     uint32_t pending_messages;

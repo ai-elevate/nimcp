@@ -39,7 +39,7 @@ extern "C" {
 
 typedef struct nimcp_entorhinal nimcp_entorhinal_t;
 typedef struct nimcp_omnidirectional_system nimcp_omnidirectional_system_t;
-typedef struct nimcp_brain nimcp_brain_t;
+typedef struct nimcp_brain_handle* nimcp_brain_t;
 
 /*=============================================================================
  * CONSTANTS

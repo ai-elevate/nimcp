@@ -68,3 +68,17 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_motor_signal_regression.cpp
     regression
 )
+
+# Entorhinal Cortex Backward Compatibility Test
+add_test_binary(
+    regression_brain_regions_test_entorhinal_backward_compat
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_entorhinal_backward_compat.cpp
+    regression
+)
+
+# Entorhinal Cortex Signal Regression Test
+add_test_binary(
+    regression_brain_regions_test_entorhinal_signal_regression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_entorhinal_signal_regression.cpp
+    regression
+)

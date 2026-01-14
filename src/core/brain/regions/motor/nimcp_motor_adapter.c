@@ -548,6 +548,12 @@ bool motor_reset(motor_adapter_t* adapter) {
     memset(&adapter->current_goal, 0, sizeof(motor_goal_t));
     memset(&adapter->last_result, 0, sizeof(motor_result_t));
 
+    /* Reset effector states to origin */
+    for (uint32_t i = 0; i < adapter->num_effectors; i++) {
+        memset(&adapter->effectors[i].position, 0, sizeof(motor_vec3_t));
+        memset(&adapter->effectors[i].velocity, 0, sizeof(motor_vec3_t));
+    }
+
     /* Reset state */
     adapter->status = MOTOR_STATUS_IDLE;
     adapter->last_error = MOTOR_ERROR_NONE;
@@ -886,6 +892,15 @@ bool motor_update_execution(motor_adapter_t* adapter, float dt_ms) {
             adapter->last_result.actual_duration_ms = traj->elapsed_ms;
             adapter->last_result.accuracy = 1.0f;
 
+            /* Update effector state to final position */
+            uint32_t eff_id = (uint32_t)traj->region;
+            if (eff_id < adapter->num_effectors) {
+                adapter->effectors[eff_id].position = adapter->last_result.final_position;
+                adapter->effectors[eff_id].velocity.x = 0.0f;
+                adapter->effectors[eff_id].velocity.y = 0.0f;
+                adapter->effectors[eff_id].velocity.z = 0.0f;
+            }
+
             /* Invoke completion callback */
             if (adapter->complete_callback) {
                 adapter->complete_callback(&adapter->last_result, adapter->complete_user_data);
@@ -909,6 +924,9 @@ bool motor_update_execution(motor_adapter_t* adapter, float dt_ms) {
         /* Generate motor command */
         uint32_t effector_id = (uint32_t)traj->region;
         if (effector_id < adapter->num_effectors) {
+            /* Update effector state during execution */
+            adapter->effectors[effector_id].position = pos;
+
             motor_command_t cmd;
             memset(&cmd, 0, sizeof(cmd));
             cmd.effector_id = effector_id;

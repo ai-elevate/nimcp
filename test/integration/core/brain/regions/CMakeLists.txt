@@ -49,3 +49,15 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/retrosplenial")
     add_subdirectory(retrosplenial)
 endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/entorhinal/CMakeLists.txt")
+    add_subdirectory(entorhinal)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/perirhinal/CMakeLists.txt")
+    add_subdirectory(perirhinal)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vta/CMakeLists.txt")
+    add_subdirectory(vta)
+endif()

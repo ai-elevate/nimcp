@@ -1186,6 +1186,18 @@ add_e2e_test(e2e_test_cerebellum_pipeline
 )
 
 # ============================================================================
+# Entorhinal Cortex E2E Test
+# ============================================================================
+# WHAT: E2E tests for entorhinal cortex spatial navigation pipeline
+# WHY:  Verify grid cells, path integration, memory gateway
+# HOW:  Test spatial navigation, memory encoding, hippocampus integration
+# ============================================================================
+add_e2e_test(e2e_test_entorhinal_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_entorhinal_pipeline.cpp
+)
+
+# ============================================================================
 # Dragonfly Multimodal E2E Test
 # ============================================================================
 # WHAT: E2E tests for dragonfly multi-sensory integration

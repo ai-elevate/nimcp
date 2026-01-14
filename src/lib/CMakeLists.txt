@@ -252,6 +252,18 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.c    # Hippocampus quantum bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_hippocampus.c               # Hippocampus init
 
+    # Entorhinal Cortex - Grid cells, path integration, memory gateway (Phase E1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/entorhinal/nimcp_entorhinal.c                     # Entorhinal core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/entorhinal/nimcp_entorhinal_hypothalamus_bridge.c # Entorhinal-hypothalamus bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/entorhinal/nimcp_entorhinal_omni_bridge.c         # Entorhinal omnidirectional bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/entorhinal/nimcp_entorhinal_brain_init_bridge.c   # Entorhinal brain init bridge
+
+    # Perirhinal Cortex - Object recognition memory, familiarity (Phase PR1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/perirhinal/nimcp_perirhinal.c                     # Perirhinal core implementation
+
+    # Parahippocampal Cortex - Scene/context processing, spatial layouts (Phase PH1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/parahippocampal/nimcp_parahippocampal.c           # Parahippocampal core implementation
+
     # Mammillary Bodies - Memory relay, head direction, Papez circuit (Phase M5)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/mammillary/nimcp_mammillary.c                     # Mammillary bodies implementation
 
@@ -1588,6 +1600,24 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Geometry (Phase B1.1: Hyperbolic Knowledge Graph Embeddings)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/geometry/nimcp_hyperbolic.c
+
+    # Core - Surface Geometry (Meng et al. Nature 2026: Surface optimization for physical networks)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/geometry/nimcp_surface_manifold.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/geometry/nimcp_surface_geometry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/geometry/nimcp_surface_optimization.c
+
+    # Core - Surface Geometry Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/bridges/nimcp_surface_geometry_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_surface_geometry.c
+
+    # Async - Surface Geometry Bio-Async Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../async/bridges/nimcp_surface_bio_async_bridge.c
+
+    # Quantum - Surface Geometry Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../quantum/integration/nimcp_surface_quantum_bridge.c
+
+    # Cognitive - Surface Geometry Immune Bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_surface_immune_bridge.c
 
     # Utils - Tensor Networks (Phase C3.1: MPS Compression)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/tensor_networks/nimcp_mps.c

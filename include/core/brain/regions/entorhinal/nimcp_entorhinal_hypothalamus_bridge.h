@@ -40,7 +40,7 @@ extern "C" {
 
 typedef struct nimcp_entorhinal nimcp_entorhinal_t;
 typedef struct hypothalamus_adapter hypothalamus_adapter_t;
-typedef struct nimcp_brain nimcp_brain_t;
+typedef struct nimcp_brain_handle* nimcp_brain_t;
 
 /*=============================================================================
  * HYPOTHALAMIC NUCLEI ENUMERATION

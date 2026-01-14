@@ -1174,6 +1174,33 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/axon")
 endif()
 
 # ============================================================================
+# Surface Geometry Tests (Meng et al. Nature 2026)
+# ============================================================================
+# WHAT: Tests for surface optimization in physical networks
+# WHY:  Verify paper predictions: trifurcations at chi>=0.83, sprouting at rho<0.6
+# HOW:  Unit tests for core, manifold, optimization, and bridges
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/geometry")
+    message(STATUS "Adding surface geometry unit tests...")
+    add_subdirectory(unit/core/geometry)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/geometry")
+    message(STATUS "Adding surface geometry integration tests...")
+    add_subdirectory(integration/core/geometry)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/geometry")
+    message(STATUS "Adding surface geometry regression tests...")
+    add_subdirectory(regression/core/geometry)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e/core/geometry")
+    message(STATUS "Adding surface geometry E2E tests...")
+    add_subdirectory(e2e/core/geometry)
+endif()
+
+# ============================================================================
 # Cortical Columns Tests
 # ============================================================================
 

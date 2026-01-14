@@ -624,7 +624,7 @@ int entorhinal_brain_init_register_factory(
 
 int entorhinal_brain_init_register_kg(
     entorhinal_brain_init_bridge_t* bridge,
-    nimcp_brain_kg_t* kg)
+    brain_kg_t* kg)
 {
     if (!bridge) return -1;
 

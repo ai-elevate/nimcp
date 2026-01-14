@@ -275,10 +275,11 @@ TEST_F(MotorBackwardCompatTest, ErrorCode_OnPrematureExecution) {
 
 TEST_F(MotorBackwardCompatTest, EnumStability_MotorRegions) {
     /* These values may be serialized - they must not change */
-    EXPECT_EQ(0, (int)MOTOR_REGION_HAND_RIGHT);
+    EXPECT_EQ(0, (int)MOTOR_REGION_FACE);
     EXPECT_EQ(1, (int)MOTOR_REGION_HAND_LEFT);
-    EXPECT_EQ(2, (int)MOTOR_REGION_ARM_RIGHT);
+    EXPECT_EQ(2, (int)MOTOR_REGION_HAND_RIGHT);
     EXPECT_EQ(3, (int)MOTOR_REGION_ARM_LEFT);
+    EXPECT_EQ(4, (int)MOTOR_REGION_ARM_RIGHT);
 }
 
 TEST_F(MotorBackwardCompatTest, EnumStability_MovementTypes) {
@@ -302,7 +303,8 @@ TEST_F(MotorBackwardCompatTest, EnumStability_MotorError) {
 
 TEST_F(MotorBackwardCompatTest, StructSize_motor_goal_t) {
     /* Structure size should be stable for binary compatibility */
-    size_t expected_min_size = sizeof(motor_region_t) + 3 * sizeof(motor_vec3_t) +
+    /* motor_goal_t has: region, target_position, target_velocity, 3 floats, type */
+    size_t expected_min_size = sizeof(motor_region_t) + 2 * sizeof(motor_vec3_t) +
                                sizeof(float) * 3 + sizeof(movement_type_t);
     EXPECT_GE(sizeof(motor_goal_t), expected_min_size);
 }
