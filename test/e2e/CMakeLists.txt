@@ -2785,6 +2785,16 @@ add_e2e_test(e2e_test_lip_reading_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_lip_reading_pipeline.cpp
 )
 
+# ============================================================================
+# WHAT: E2E tests for Wernicke's area language comprehension
+# WHY:  Verify complete language comprehension pipeline from phonemes to meaning
+# HOW:  Test phonological -> lexical -> semantic -> syntactic flow
+# ============================================================================
+add_e2e_test(e2e_test_wernicke_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_wernicke_pipeline.cpp
+)
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)
