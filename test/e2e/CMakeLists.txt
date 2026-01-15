@@ -525,30 +525,30 @@ set_tests_properties(e2e_test_plasticity_pipeline PROPERTIES
 # WHY:  Verify complete spike-to-plasticity pipeline
 # HOW:  Test neuron dynamics, spike cascade, bidirectional sync
 # ============================================================================
-# DISABLED: Test file uses non-existent e2e_test_framework.h and E2ETestBase
-# add_executable(e2e_test_neural_plasticity_pipeline
-#     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_neural_plasticity_pipeline.cpp
-#     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
-# )
-# target_link_libraries(e2e_test_neural_plasticity_pipeline
-#     PRIVATE
-#         nimcp
-#         GTest::gtest
-#         GTest::gtest_main
-#         Threads::Threads
-#         m
-# )
-# target_include_directories(e2e_test_neural_plasticity_pipeline
-#     PRIVATE
-#         ${CMAKE_SOURCE_DIR}/include
-#         ${CMAKE_SOURCE_DIR}/src
-# )
-# target_compile_features(e2e_test_neural_plasticity_pipeline PRIVATE cxx_std_17)
-# add_test(NAME e2e_test_neural_plasticity_pipeline COMMAND e2e_test_neural_plasticity_pipeline)
-# set_tests_properties(e2e_test_neural_plasticity_pipeline PROPERTIES
-#     LABELS "e2e;plasticity;neural"
-#     TIMEOUT 180
-# )
+add_executable(e2e_test_neural_plasticity_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_neural_plasticity_pipeline.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+)
+target_link_libraries(e2e_test_neural_plasticity_pipeline
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_include_directories(e2e_test_neural_plasticity_pipeline
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test/e2e
+)
+target_compile_features(e2e_test_neural_plasticity_pipeline PRIVATE cxx_std_17)
+add_test(NAME e2e_test_neural_plasticity_pipeline COMMAND e2e_test_neural_plasticity_pipeline)
+set_tests_properties(e2e_test_neural_plasticity_pipeline PROPERTIES
+    LABELS "e2e;plasticity;neural"
+    TIMEOUT 180
+)
 
 # ============================================================================
 # Master Connectivity E2E Test
@@ -630,30 +630,30 @@ set_tests_properties(e2e_test_cortical_substrate_pipeline PROPERTIES
 # - Full Brain Integration (3): Sensory-to-motor pathway, learning/adaptation cycle,
 #   multi-modal processing
 # ============================================================================
-# DISABLED: Uses non-existent substrate API functions (substrate_set_atp_level, etc.)
-# add_executable(e2e_test_substrate_bridges_pipeline
-#     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_substrate_bridges_pipeline.cpp
-#     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
-# )
-# target_link_libraries(e2e_test_substrate_bridges_pipeline
-#     PRIVATE
-#         nimcp
-#         GTest::gtest
-#         GTest::gtest_main
-#         Threads::Threads
-#         m
-# )
-# target_include_directories(e2e_test_substrate_bridges_pipeline
-#     PRIVATE
-#         ${CMAKE_SOURCE_DIR}/include
-#         ${CMAKE_SOURCE_DIR}/src
-# )
-# target_compile_features(e2e_test_substrate_bridges_pipeline PRIVATE cxx_std_17)
-# add_test(NAME e2e_test_substrate_bridges_pipeline COMMAND e2e_test_substrate_bridges_pipeline)
-# set_tests_properties(e2e_test_substrate_bridges_pipeline PROPERTIES
-#     LABELS "e2e;substrate;bridges"
-#     TIMEOUT 300
-# )
+add_executable(e2e_test_substrate_bridges_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_substrate_bridges_pipeline.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+)
+target_link_libraries(e2e_test_substrate_bridges_pipeline
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_include_directories(e2e_test_substrate_bridges_pipeline
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test/e2e
+)
+target_compile_features(e2e_test_substrate_bridges_pipeline PRIVATE cxx_std_17)
+add_test(NAME e2e_test_substrate_bridges_pipeline COMMAND e2e_test_substrate_bridges_pipeline)
+set_tests_properties(e2e_test_substrate_bridges_pipeline PROPERTIES
+    LABELS "e2e;substrate;bridges"
+    TIMEOUT 300
+)
 
 # ============================================================================
 # Test Execution Instructions
@@ -2760,6 +2760,18 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core/brain/regions/test_motor_e2e.cpp)
     )
     message(STATUS "  Added Motor Cortex E2E test: e2e_core_brain_regions_motor_test_motor_e2e")
 endif()
+
+# ============================================================================
+# Speech Enhancement Pipeline E2E Test (Phase B4)
+# ============================================================================
+# WHAT: E2E tests for speech production and comprehension enhancements
+# WHY:  Verify complete speech workflows with pragmatics, discourse, prosody
+# HOW:  Test conversational scenarios with all enhancement modules
+# ============================================================================
+add_e2e_test(e2e_test_speech_enhancement_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_speech_enhancement_pipeline.cpp
+)
 
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)

@@ -33,3 +33,11 @@ add_broca_test(test_nimcp_syntax_processor)
 
 # Broca integration bridges tests (Phase B3)
 add_broca_test(test_broca_bridges)
+
+# Speech Enhancement tests (Phase B4)
+add_broca_test(test_nimcp_pragmatics_processor)
+add_broca_test(test_nimcp_discourse_manager)
+add_broca_test(test_nimcp_emotional_prosody)
+add_broca_test(test_nimcp_incremental_processor)
+add_broca_test(test_nimcp_speech_repair)
+add_broca_test(test_nimcp_multimodal_language)

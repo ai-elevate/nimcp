@@ -103,3 +103,10 @@ add_test_binary(
     ${CMAKE_CURRENT_SOURCE_DIR}/test_mammillary_backward_compat.cpp
     regression
 )
+
+# Speech Enhancement Backward Compatibility Test (Phase B4)
+add_test_binary(
+    regression_brain_regions_test_speech_enhancement_backward_compat
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_speech_enhancement_backward_compat.cpp
+    regression
+)

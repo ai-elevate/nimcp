@@ -20,3 +20,6 @@ endmacro()
 # Broca bridge integration tests
 add_broca_integration_test(test_nimcp_broca_bridge_integration)
 add_broca_integration_test(test_nimcp_broca_full_pipeline)
+
+# Speech Enhancement integration tests (Phase B4)
+add_broca_integration_test(test_nimcp_speech_enhancement_integration)

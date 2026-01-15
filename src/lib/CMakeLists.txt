@@ -179,6 +179,13 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_substrate_bridge.c  # Broca-neural substrate integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_thalamic_bridge.c   # Broca-thalamic routing integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_broca_quantum_bridge.c    # Broca-quantum reasoning integration
+    # Phase B4: Speech Enhancement modules
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_pragmatics_processor.c     # Speech act classification, Gricean maxims
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_discourse_manager.c        # Anaphora resolution, topic tracking
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_emotional_prosody.c        # Emotion-to-prosody mapping
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_incremental_processor.c    # Real-time streaming processing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_speech_repair.c            # Disfluency detection and repair
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/nimcp_multimodal_language.c      # Gesture/expression/gaze coordination
 
     # Cerebellum - Motor coordination, timing, error-based learning (Marr-Albus-Ito model)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/cerebellum/nimcp_cerebellum_adapter.c       # Cerebellum core adapter
