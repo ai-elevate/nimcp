@@ -836,6 +836,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_audio_cortex_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_speech_cortex_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_visual_cortex_fep_bridge.c
+    # Lip Reading (Phase B5: Audiovisual Speech Integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_lip_reading.c
     # Omnidirectional Inference Bridges (Phase 2)
     ${CMAKE_CURRENT_SOURCE_DIR}/../perception/nimcp_omni_sensory_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_omni_cortical_columns_bridge.c

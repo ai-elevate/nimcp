@@ -29,3 +29,28 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_cochlea_integration.cpp")
         LABELS "integration;perception;cochlea"
     )
 endif()
+
+# Lip Reading integration tests (Phase B5: Audiovisual Speech Integration)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_lip_reading_integration.cpp")
+    add_executable(integration_perception_test_lip_reading
+        test_lip_reading_integration.cpp
+    )
+    target_link_libraries(integration_perception_test_lip_reading
+        PRIVATE
+            GTest::GTest
+            GTest::Main
+            nimcp
+            m
+            pthread
+    )
+    target_include_directories(integration_perception_test_lip_reading
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/src
+    )
+    add_test(NAME integration_perception_test_lip_reading
+             COMMAND integration_perception_test_lip_reading)
+    set_tests_properties(integration_perception_test_lip_reading PROPERTIES
+        LABELS "integration;perception;lip_reading"
+    )
+endif()

@@ -2773,6 +2773,18 @@ add_e2e_test(e2e_test_speech_enhancement_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_speech_enhancement_pipeline.cpp
 )
 
+# ============================================================================
+# Lip Reading Pipeline E2E Test (Phase B5)
+# ============================================================================
+# WHAT: E2E tests for audiovisual lip reading speech processing
+# WHY:  Verify complete lip reading workflows with visual speech perception
+# HOW:  Test visual-only, audiovisual fusion, McGurk effect, speaker adaptation
+# ============================================================================
+add_e2e_test(e2e_test_lip_reading_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_lip_reading_pipeline.cpp
+)
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)

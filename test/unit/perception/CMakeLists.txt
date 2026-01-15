@@ -61,3 +61,32 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bridges/CMakeLists.txt")
     add_subdirectory(bridges)
 endif()
+
+# Lip Reading tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_lip_reading.cpp")
+    add_executable(unit_perception_test_lip_reading
+        test_lip_reading.cpp
+    )
+    target_link_libraries(unit_perception_test_lip_reading
+        PRIVATE
+            GTest::GTest
+            GTest::Main
+            nimcp
+            m
+            pthread
+    )
+    target_include_directories(unit_perception_test_lip_reading
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_perception_test_lip_reading
+        PRIVATE cxx_std_17
+    )
+    add_test(NAME unit_perception_test_lip_reading
+             COMMAND unit_perception_test_lip_reading)
+    set_tests_properties(unit_perception_test_lip_reading PROPERTIES
+        LABELS "unit;perception;lip_reading"
+        TIMEOUT 180
+    )
+endif()
