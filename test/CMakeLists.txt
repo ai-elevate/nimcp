@@ -1801,6 +1801,54 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/physics")
 endif()
 
 # ============================================================================
+# Python Unit Tests
+# ============================================================================
+# WHAT: Unit tests for Python binding memory safety patterns
+# WHY:  Verify correct memory handling in Python C extension code
+# HOW:  Test allocation/deallocation patterns, error handling
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/python")
+    message(STATUS "Adding Python unit tests...")
+    add_subdirectory(unit/python)
+endif()
+
+# ============================================================================
+# Python-C Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Python bindings with C library
+# WHY:  Verify memory management and error propagation across Python/C boundary
+# HOW:  Test Python interpreter embedding and binding functionality
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/python")
+    message(STATUS "Adding Python-C integration tests...")
+    add_subdirectory(integration/python)
+endif()
+
+# ============================================================================
+# Tensor Operations Integration Tests (Standalone)
+# ============================================================================
+# WHAT: Integration tests for tensor operations, autodiff, and SIMD
+# WHY:  Verify tensor operation chains and gradient computation
+# HOW:  Test operation chaining, broadcasting, numerical stability
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/tensor")
+    message(STATUS "Adding tensor operations integration tests...")
+    add_subdirectory(integration/tensor)
+endif()
+
+# ============================================================================
+# Cross-Module Error Propagation Tests
+# ============================================================================
+# WHAT: Integration tests for error propagation across module boundaries
+# WHY:  Verify cleanup happens properly on errors and error context preserved
+# HOW:  Test multi-module error scenarios and recovery
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/error")
+    message(STATUS "Adding cross-module error propagation tests...")
+    add_subdirectory(integration/error)
+endif()
+
+# ============================================================================
 # Extended Timeout Configuration (Applied AFTER all tests are registered)
 # ============================================================================
 # WHAT: Extended timeouts for heavyweight brain tests

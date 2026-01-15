@@ -956,73 +956,128 @@ void tensor_simd_mul_scalar_f32(float* dst, float scalar, size_t n)
     }
 }
 
+/**
+ * @brief SIMD-accelerated sum reduction with overflow detection
+ *
+ * NUMERICAL STABILITY: Uses double accumulator for precision. Detects overflow
+ * to Inf and logs warning. For extremely large arrays (>1e308 total), the
+ * result will be Inf which is mathematically correct but may indicate issues.
+ */
 double tensor_simd_sum_f32(const float* src, size_t n)
 {
     if (!s_initialized) tensor_simd_init();
     if (!src || n == 0) return 0.0;
 
+    double result;
     switch (s_backend) {
 #ifdef TENSOR_SIMD_X86
         case TENSOR_SIMD_AVX512:
         case TENSOR_SIMD_AVX2:
         case TENSOR_SIMD_AVX:
-            return avx2_sum_f32(src, n);
+            result = avx2_sum_f32(src, n);
+            break;
 #endif
 #ifdef TENSOR_SIMD_ARM64
         case TENSOR_SIMD_NEON:
         case TENSOR_SIMD_SVE:
-            return neon_sum_f32(src, n);
+            result = neon_sum_f32(src, n);
+            break;
 #endif
         default:
-            return scalar_sum_f32(src, n);
+            result = scalar_sum_f32(src, n);
+            break;
     }
+
+    /* OVERFLOW DETECTION: Check for Inf/NaN and log warning.
+     * WHAT: Detect when sum overflows double precision (~1.8e308)
+     * WHY:  Overflow indicates extreme values that may corrupt downstream computations
+     * HOW:  Check isinf/isnan and log warning with array size for diagnosis */
+    if (isinf(result) || isnan(result)) {
+        LOG_WARN("tensor_simd_sum_f32: overflow/NaN detected (n=%zu, result=%g)", n, result);
+    }
+
+    return result;
 }
 
+/**
+ * @brief SIMD-accelerated dot product with overflow detection
+ *
+ * NUMERICAL STABILITY: Uses double accumulator. Detects overflow to Inf/NaN.
+ */
 double tensor_simd_dot_f32(const float* a, const float* b, size_t n)
 {
     if (!s_initialized) tensor_simd_init();
     if (!a || !b || n == 0) return 0.0;
 
+    double result;
     switch (s_backend) {
 #ifdef TENSOR_SIMD_X86
         case TENSOR_SIMD_AVX512:
         case TENSOR_SIMD_AVX2:
-            return avx2_dot_f32(a, b, n);
+            result = avx2_dot_f32(a, b, n);
+            break;
         case TENSOR_SIMD_AVX:
             // AVX without FMA - use scalar for correctness
-            return scalar_dot_f32(a, b, n);
+            result = scalar_dot_f32(a, b, n);
+            break;
 #endif
 #ifdef TENSOR_SIMD_ARM64
         case TENSOR_SIMD_NEON:
         case TENSOR_SIMD_SVE:
-            return neon_dot_f32(a, b, n);
+            result = neon_dot_f32(a, b, n);
+            break;
 #endif
         default:
-            return scalar_dot_f32(a, b, n);
+            result = scalar_dot_f32(a, b, n);
+            break;
     }
+
+    /* OVERFLOW DETECTION */
+    if (isinf(result) || isnan(result)) {
+        LOG_WARN("tensor_simd_dot_f32: overflow/NaN detected (n=%zu, result=%g)", n, result);
+    }
+
+    return result;
 }
 
+/**
+ * @brief SIMD-accelerated sum of squares with overflow detection
+ *
+ * NUMERICAL STABILITY: Uses double accumulator. Detects overflow to Inf/NaN.
+ */
 double tensor_simd_sum_sq_f32(const float* src, size_t n)
 {
     if (!s_initialized) tensor_simd_init();
     if (!src || n == 0) return 0.0;
 
+    double result;
     switch (s_backend) {
 #ifdef TENSOR_SIMD_X86
         case TENSOR_SIMD_AVX512:
         case TENSOR_SIMD_AVX2:
-            return avx2_sum_sq_f32(src, n);
+            result = avx2_sum_sq_f32(src, n);
+            break;
         case TENSOR_SIMD_AVX:
-            return scalar_sum_sq_f32(src, n);
+            result = scalar_sum_sq_f32(src, n);
+            break;
 #endif
 #ifdef TENSOR_SIMD_ARM64
         case TENSOR_SIMD_NEON:
         case TENSOR_SIMD_SVE:
-            return neon_sum_sq_f32(src, n);
+            result = neon_sum_sq_f32(src, n);
+            break;
 #endif
         default:
-            return scalar_sum_sq_f32(src, n);
+            result = scalar_sum_sq_f32(src, n);
+            break;
     }
+
+    /* OVERFLOW DETECTION */
+    if (isinf(result) || isnan(result)) {
+        LOG_WARN("tensor_simd_sum_sq_f32: overflow/NaN detected (n=%zu, result=%g)", n, result);
+    }
+
+    return result;
 }
 
 float tensor_simd_max_f32(const float* src, size_t n)

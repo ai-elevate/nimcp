@@ -7,6 +7,8 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <string.h>  // For strdup
+
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -196,7 +198,11 @@ static PyObject* MetricsCollector_timer_stop(MetricsCollectorObject* self, PyObj
 }
 
 static PyObject* MetricsCollector_flush(MetricsCollectorObject* self, PyObject* Py_UNUSED(ignored)) {
-    int32_t count = nimcp_metrics_flush(self->collector);
+    // Release GIL during potentially long disk I/O
+    int32_t count;
+    Py_BEGIN_ALLOW_THREADS
+    count = nimcp_metrics_flush(self->collector);
+    Py_END_ALLOW_THREADS
 
     if (count < 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to flush metrics");
@@ -213,7 +219,19 @@ static PyObject* MetricsCollector_export_tableau_csv(MetricsCollectorObject* sel
         return NULL;
     }
 
-    bool success = nimcp_metrics_export_tableau_csv(self->collector, filename);
+    // Copy filename since we release GIL
+    char* filename_copy = strdup(filename);
+    if (!filename_copy) {
+        return PyErr_NoMemory();
+    }
+
+    // Release GIL during file I/O
+    bool success;
+    Py_BEGIN_ALLOW_THREADS
+    success = nimcp_metrics_export_tableau_csv(self->collector, filename_copy);
+    Py_END_ALLOW_THREADS
+
+    free(filename_copy);
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to export Tableau CSV");
@@ -230,7 +248,19 @@ static PyObject* MetricsCollector_export_powerbi_json(MetricsCollectorObject* se
         return NULL;
     }
 
-    bool success = nimcp_metrics_export_powerbi_json(self->collector, filename);
+    // Copy filename since we release GIL
+    char* filename_copy = strdup(filename);
+    if (!filename_copy) {
+        return PyErr_NoMemory();
+    }
+
+    // Release GIL during file I/O
+    bool success;
+    Py_BEGIN_ALLOW_THREADS
+    success = nimcp_metrics_export_powerbi_json(self->collector, filename_copy);
+    Py_END_ALLOW_THREADS
+
+    free(filename_copy);
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to export PowerBI JSON");

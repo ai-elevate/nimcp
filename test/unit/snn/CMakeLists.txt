@@ -204,6 +204,34 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bridges/CMakeLists.txt)
 endif()
 
 # ============================================================================
+# Test 7: SNN Numerical Stability
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_numerical_stability.cpp)
+    add_executable(unit_snn_test_snn_numerical_stability
+        test_snn_numerical_stability.cpp
+    )
+
+    target_link_libraries(unit_snn_test_snn_numerical_stability
+        PRIVATE ${SNN_TEST_LIBS}
+    )
+
+    target_include_directories(unit_snn_test_snn_numerical_stability
+        PRIVATE ${SNN_TEST_INCLUDES}
+    )
+
+    target_compile_features(unit_snn_test_snn_numerical_stability PRIVATE cxx_std_17)
+
+    gtest_discover_tests(unit_snn_test_snn_numerical_stability
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;snn;numerical_stability"
+            TIMEOUT 60
+    )
+
+    message(STATUS "  Added SNN unit test: test_snn_numerical_stability")
+endif()
+
+# ============================================================================
 # Future tests (uncomment as source files are added):
 # ============================================================================
 # - test_snn_population.cpp

@@ -534,6 +534,10 @@ bool lip_reading_detect_face(
             /* Simple skin color detection (for RGB images) */
             bool is_skin = false;
             if (channels >= 3) {
+                /* Bounds check: ensure we don't read beyond image buffer */
+                size_t max_idx = (size_t)width * height * channels;
+                if (idx + 2 >= max_idx) continue;  /* Skip if would overflow */
+
                 uint8_t r = image[idx];
                 uint8_t g = image[idx + 1];
                 uint8_t b = image[idx + 2];
@@ -547,7 +551,9 @@ bool lip_reading_detect_face(
                 }
             } else {
                 /* Grayscale: use intensity heuristic */
-                if (image[idx] > 100 && image[idx] < 220) {
+                /* Bounds check for grayscale */
+                size_t max_idx = (size_t)width * height * channels;
+                if (idx < max_idx && image[idx] > 100 && image[idx] < 220) {
                     is_skin = true;
                 }
             }
@@ -658,6 +664,10 @@ bool lip_reading_extract_mouth_roi(
     float scale_x = (float)src_w / roi_width;
     float scale_y = (float)src_h / roi_height;
 
+    /* Calculate buffer sizes for bounds checking */
+    size_t src_buffer_size = (size_t)width * height * channels;
+    size_t dst_buffer_size = (size_t)roi_width * roi_height * channels;
+
     for (uint32_t y = 0; y < roi_height; y++) {
         for (uint32_t x = 0; x < roi_width; x++) {
             float src_fx = src_x + x * scale_x;
@@ -674,8 +684,13 @@ bool lip_reading_extract_mouth_roi(
 
             /* Simple nearest neighbor for now */
             for (uint32_t c = 0; c < channels && c < 3; c++) {
-                uint32_t src_idx = (sy * width + sx) * channels + c;
-                uint32_t dst_idx = (y * roi_width + x) * channels + c;
+                size_t src_idx = (size_t)(sy * width + sx) * channels + c;
+                size_t dst_idx = (size_t)(y * roi_width + x) * channels + c;
+
+                /* Bounds check before access */
+                if (src_idx >= src_buffer_size || dst_idx >= dst_buffer_size) {
+                    continue;  /* Skip if out of bounds */
+                }
                 mouth_roi[dst_idx] = image[src_idx];
             }
         }
@@ -796,17 +811,28 @@ bool lip_reading_extract_features(
     uint32_t upper_count = 0;
     uint32_t lower_count = 0;
 
+    /* Calculate buffer size for bounds checking */
+    size_t roi_buffer_size = (size_t)roi_width * roi_height;
+
     uint32_t cy = roi_height / 2;
-    for (uint32_t y = cy - roi_height/6; y < cy; y++) {
-        for (uint32_t x = roi_width/4; x < 3*roi_width/4; x++) {
-            upper_brightness += mouth_roi[y * roi_width + x];
-            upper_count++;
+    /* Calculate safe Y bounds to avoid underflow */
+    uint32_t upper_y_start = (cy > roi_height/6) ? (cy - roi_height/6) : 0;
+    for (uint32_t y = upper_y_start; y < cy && y < roi_height; y++) {
+        for (uint32_t x = roi_width/4; x < 3*roi_width/4 && x < roi_width; x++) {
+            size_t idx = (size_t)y * roi_width + x;
+            if (idx < roi_buffer_size) {
+                upper_brightness += mouth_roi[idx];
+                upper_count++;
+            }
         }
     }
-    for (uint32_t y = cy; y < cy + roi_height/6; y++) {
-        for (uint32_t x = roi_width/4; x < 3*roi_width/4; x++) {
-            lower_brightness += mouth_roi[y * roi_width + x];
-            lower_count++;
+    for (uint32_t y = cy; y < cy + roi_height/6 && y < roi_height; y++) {
+        for (uint32_t x = roi_width/4; x < 3*roi_width/4 && x < roi_width; x++) {
+            size_t idx = (size_t)y * roi_width + x;
+            if (idx < roi_buffer_size) {
+                lower_brightness += mouth_roi[idx];
+                lower_count++;
+            }
         }
     }
 
@@ -825,10 +851,13 @@ bool lip_reading_extract_features(
     /* Tongue visibility estimation */
     float tongue_region_brightness = 0;
     uint32_t tongue_count = 0;
-    for (uint32_t y = cy; y < cy + roi_height/4; y++) {
-        for (uint32_t x = roi_width/3; x < 2*roi_width/3; x++) {
-            tongue_region_brightness += mouth_roi[y * roi_width + x];
-            tongue_count++;
+    for (uint32_t y = cy; y < cy + roi_height/4 && y < roi_height; y++) {
+        for (uint32_t x = roi_width/3; x < 2*roi_width/3 && x < roi_width; x++) {
+            size_t idx = (size_t)y * roi_width + x;
+            if (idx < roi_buffer_size) {
+                tongue_region_brightness += mouth_roi[idx];
+                tongue_count++;
+            }
         }
     }
     if (tongue_count > 0) {
@@ -844,10 +873,11 @@ bool lip_reading_extract_features(
 
     /* Calculate normalized luminance */
     float total_luminance = 0;
-    for (uint32_t i = 0; i < roi_width * roi_height; i++) {
+    for (size_t i = 0; i < roi_buffer_size; i++) {
         total_luminance += mouth_roi[i];
     }
-    features->normalized_luminance = total_luminance / (roi_width * roi_height * 255.0f);
+    features->normalized_luminance = (roi_buffer_size > 0) ?
+        total_luminance / (roi_buffer_size * 255.0f) : 0.0f;
 
     features->feature_confidence = 0.7f;
     features->timestamp_ms = get_timestamp_ms();
@@ -1023,18 +1053,24 @@ bool lip_reading_classify_viseme(
     result->viseme = (viseme_t)best_idx;
     result->confidence = result->probabilities[best_idx];
 
-    /* Update history */
-    memmove(&classifier->viseme_history[1], &classifier->viseme_history[0],
-            (LIP_READING_MAX_VISEME_HISTORY - 1) * sizeof(viseme_t));
+    /* Update history - use safe bounds */
+    if (LIP_READING_MAX_VISEME_HISTORY > 1) {
+        memmove(&classifier->viseme_history[1], &classifier->viseme_history[0],
+                (LIP_READING_MAX_VISEME_HISTORY - 1) * sizeof(viseme_t));
+    }
     classifier->viseme_history[0] = result->viseme;
     if (classifier->history_count < LIP_READING_MAX_VISEME_HISTORY) {
         classifier->history_count++;
     }
 
-    /* Copy history to result */
-    memcpy(result->viseme_history, classifier->viseme_history,
-           sizeof(classifier->viseme_history));
-    result->history_count = classifier->history_count;
+    /* Copy history to result - ensure we don't overflow result buffer */
+    size_t copy_size = sizeof(classifier->viseme_history);
+    if (copy_size > sizeof(result->viseme_history)) {
+        copy_size = sizeof(result->viseme_history);
+    }
+    memcpy(result->viseme_history, classifier->viseme_history, copy_size);
+    result->history_count = (classifier->history_count <= LIP_READING_MAX_VISEME_HISTORY) ?
+        classifier->history_count : LIP_READING_MAX_VISEME_HISTORY;
 
     /* Detect transitions */
     if (classifier->history_count > 1 &&
@@ -1237,14 +1273,18 @@ uint32_t lip_reading_viseme_to_phonemes(
 }
 
 const char* lip_reading_viseme_name(viseme_t viseme) {
-    if (viseme >= 0 && viseme < VISEME_COUNT) {
+    /* Bounds check with compile-time array size validation */
+    if (viseme >= 0 && (size_t)viseme < sizeof(VISEME_NAMES)/sizeof(VISEME_NAMES[0]) &&
+        viseme < VISEME_COUNT) {
         return VISEME_NAMES[viseme];
     }
     return "INVALID";
 }
 
 const char* lip_reading_phoneme_name(phoneme_t phoneme) {
-    if (phoneme >= 0 && phoneme < PHONEME_COUNT) {
+    /* Bounds check with compile-time array size validation */
+    if (phoneme >= 0 && (size_t)phoneme < sizeof(PHONEME_NAMES)/sizeof(PHONEME_NAMES[0]) &&
+        phoneme < PHONEME_COUNT) {
         return PHONEME_NAMES[phoneme];
     }
     return "INVALID";
@@ -1397,14 +1437,18 @@ phoneme_t lip_reading_disambiguate_viseme(viseme_t viseme, phoneme_t auditory_hi
 }
 
 bool lip_reading_is_phoneme_voiced(phoneme_t phoneme) {
-    if (phoneme >= 0 && phoneme < PHONEME_COUNT) {
+    /* Bounds check with compile-time array size validation */
+    if (phoneme >= 0 && (size_t)phoneme < sizeof(PHONEME_VOICED)/sizeof(PHONEME_VOICED[0]) &&
+        phoneme < PHONEME_COUNT) {
         return PHONEME_VOICED[phoneme];
     }
     return false;
 }
 
 bool lip_reading_is_phoneme_nasal(phoneme_t phoneme) {
-    if (phoneme >= 0 && phoneme < PHONEME_COUNT) {
+    /* Bounds check with compile-time array size validation */
+    if (phoneme >= 0 && (size_t)phoneme < sizeof(PHONEME_NASAL)/sizeof(PHONEME_NASAL[0]) &&
+        phoneme < PHONEME_COUNT) {
         return PHONEME_NASAL[phoneme];
     }
     return false;
@@ -1546,6 +1590,8 @@ uint32_t lip_reading_register_speaker(
     s->profile.speaker_id = system->next_speaker_id++;
     if (speaker_name) {
         strncpy(s->profile.speaker_name, speaker_name, sizeof(s->profile.speaker_name) - 1);
+        /* Ensure null termination even if source string is longer than buffer */
+        s->profile.speaker_name[sizeof(s->profile.speaker_name) - 1] = '\0';
     }
     s->profile.accent = ACCENT_UNKNOWN;
     s->profile.adaptation_quality = 0.0f;

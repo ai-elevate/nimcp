@@ -18,6 +18,7 @@
 #include "async/nimcp_bio_router.h"
 
 #include "core/brain/nimcp_brain.h"
+#include "core/brain/nimcp_brain_internal.h"  // Internal header for brain_struct access
 #include "common/nimcp_module.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -48,17 +49,8 @@ static PyObject* Brain_enable_quantum_walks(BrainObject* self, PyObject* args, P
         return NULL;
     }
 
-    // Get brain internals (cast from opaque handle)
-    brain_t brain = self->brain;
-
-    // WARNING: This accesses internal brain_struct fields
-    // Ideally would use accessor functions, but for prototype this is acceptable
-    struct brain_struct {
-        // Skipping other fields...
-        brain_config_t config;
-    };
-
-    struct brain_struct* brain_impl = (struct brain_struct*)brain;
+    // Cast from opaque handle to internal struct (using proper internal header)
+    struct brain_struct* brain_impl = (struct brain_struct*)self->brain;
 
     // Configure quantum walks
     brain_impl->config.enable_quantum_walk_diffusion = true;
@@ -81,13 +73,8 @@ static PyObject* Brain_disable_quantum_walks(BrainObject* self, PyObject* Py_UNU
         return NULL;
     }
 
-    brain_t brain = self->brain;
-
-    struct brain_struct {
-        brain_config_t config;
-    };
-
-    struct brain_struct* brain_impl = (struct brain_struct*)brain;
+    // Cast from opaque handle to internal struct (using proper internal header)
+    struct brain_struct* brain_impl = (struct brain_struct*)self->brain;
     brain_impl->config.enable_quantum_walk_diffusion = false;
 
     Py_RETURN_NONE;
@@ -105,13 +92,8 @@ static PyObject* Brain_get_quantum_walk_config(BrainObject* self, PyObject* Py_U
         return NULL;
     }
 
-    brain_t brain = self->brain;
-
-    struct brain_struct {
-        brain_config_t config;
-    };
-
-    struct brain_struct* brain_impl = (struct brain_struct*)brain;
+    // Cast from opaque handle to internal struct (using proper internal header)
+    struct brain_struct* brain_impl = (struct brain_struct*)self->brain;
 
     // Create dictionary
     PyObject* dict = PyDict_New();
@@ -119,16 +101,33 @@ static PyObject* Brain_get_quantum_walk_config(BrainObject* self, PyObject* Py_U
         return NULL;
     }
 
-    PyDict_SetItemString(dict, "enabled",
-                        PyBool_FromLong(brain_impl->config.enable_quantum_walk_diffusion));
-    PyDict_SetItemString(dict, "steps",
-                        PyLong_FromUnsignedLong(brain_impl->config.quantum_walk_steps));
-    PyDict_SetItemString(dict, "mixing",
-                        PyFloat_FromDouble(brain_impl->config.quantum_classical_mixing));
-    PyDict_SetItemString(dict, "coin_type",
-                        PyLong_FromUnsignedLong(brain_impl->config.quantum_coin_type));
-    PyDict_SetItemString(dict, "decoherence",
-                        PyFloat_FromDouble(brain_impl->config.quantum_decoherence_rate));
+    // Helper macro to add item to dict with error checking
+    #define ADD_DICT_ITEM(key, value_expr) do { \
+        PyObject* _val = (value_expr); \
+        if (!_val) { \
+            Py_DECREF(dict); \
+            return NULL; \
+        } \
+        if (PyDict_SetItemString(dict, (key), _val) < 0) { \
+            Py_DECREF(_val); \
+            Py_DECREF(dict); \
+            return NULL; \
+        } \
+        Py_DECREF(_val); \
+    } while (0)
+
+    ADD_DICT_ITEM("enabled",
+                  PyBool_FromLong(brain_impl->config.enable_quantum_walk_diffusion));
+    ADD_DICT_ITEM("steps",
+                  PyLong_FromUnsignedLong(brain_impl->config.quantum_walk_steps));
+    ADD_DICT_ITEM("mixing",
+                  PyFloat_FromDouble(brain_impl->config.quantum_classical_mixing));
+    ADD_DICT_ITEM("coin_type",
+                  PyLong_FromUnsignedLong(brain_impl->config.quantum_coin_type));
+    ADD_DICT_ITEM("decoherence",
+                  PyFloat_FromDouble(brain_impl->config.quantum_decoherence_rate));
+
+    #undef ADD_DICT_ITEM
 
     return dict;
 }

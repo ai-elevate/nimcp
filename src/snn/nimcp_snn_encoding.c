@@ -22,6 +22,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include <float.h>  /* For FLT_MAX in softmax numerical stability */
 
 //=============================================================================
 // Default Configurations
@@ -367,11 +368,27 @@ int snn_encode_population(snn_encoder_t* encoder,
 
         /* Compute Gaussian activation for each neuron in population */
         float sum = 0.0f;
+
+        /* NUMERICAL STABILITY: Pre-compute sigma squared with epsilon guard
+         * WHY:  Division by sigma^2 can overflow if sigma is very small
+         * HOW:  Add epsilon to prevent division by zero
+         */
+        float sigma_sq = cfg->sigma * cfg->sigma;
+        if (sigma_sq < 1e-8f) sigma_sq = 1e-8f;  /* Minimum sigma^2 */
+        float inv_two_sigma_sq = 1.0f / (2.0f * sigma_sq);
+
         for (uint32_t j = 0; j < cfg->n_neurons; j++) {
             /* Preferred value for this neuron */
             float preferred = (float)j / (float)(cfg->n_neurons - 1);
             float diff = norm - preferred;
-            float activation = expf(-diff * diff / (2.0f * cfg->sigma * cfg->sigma));
+
+            /* NUMERICAL STABILITY: Clamp exponential argument to prevent underflow
+             * WHY:  exp(-x) underflows for x > ~88, and becomes negligible for x > 20
+             * HOW:  Clamp diff^2 / (2*sigma^2) to reasonable range
+             */
+            float exp_arg = -diff * diff * inv_two_sigma_sq;
+            if (exp_arg < -20.0f) exp_arg = -20.0f;  /* exp(-20) ≈ 2e-9 */
+            float activation = expf(exp_arg);
 
             rates_out[out_idx + j] = activation;
             sum += activation;
@@ -529,18 +546,37 @@ int snn_decode_first_spike(snn_decoder_t* decoder,
     /* Compute confidence */
     if (confidence_out) {
         if (cfg->use_softmax) {
-            /* Softmax over latencies (inverted: shorter = higher) */
+            /* Softmax over latencies (inverted: shorter = higher)
+             * NUMERICAL STABILITY: Use log-sum-exp trick to prevent overflow
+             * WHY:  exp(x) overflows for x > ~88, causing NaN/Inf
+             * HOW:  Compute max first, then exp(x - max) to keep values bounded
+             */
             float sum_exp = 0.0f;
             float winner_exp = 0.0f;
 
+            /* First pass: find maximum inv_latency for numerical stability */
+            float max_inv_latency = -FLT_MAX;
             for (uint32_t i = 0; i < decoder->n_inputs; i++) {
                 float inv_latency = (cfg->max_latency - spike_times[i]) / cfg->temperature;
-                float exp_val = expf(inv_latency);
+                if (inv_latency > max_inv_latency) {
+                    max_inv_latency = inv_latency;
+                }
+            }
+
+            /* Second pass: compute softmax with shifted values */
+            for (uint32_t i = 0; i < decoder->n_inputs; i++) {
+                float inv_latency = (cfg->max_latency - spike_times[i]) / cfg->temperature;
+                /* Shift by max to prevent overflow: exp(x - max) is always <= 1 */
+                float shifted = inv_latency - max_inv_latency;
+                /* Clamp to prevent underflow for very negative values */
+                if (shifted < -20.0f) shifted = -20.0f;
+                float exp_val = expf(shifted);
                 sum_exp += exp_val;
                 if (i == winner) winner_exp = exp_val;
             }
 
-            *confidence_out = winner_exp / sum_exp;
+            /* Safe division with epsilon guard */
+            *confidence_out = winner_exp / (sum_exp + 1e-8f);
         } else {
             /* Simple confidence: how much earlier than second-best */
             float second_earliest = cfg->max_latency;

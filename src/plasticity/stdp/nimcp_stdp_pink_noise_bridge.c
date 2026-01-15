@@ -311,7 +311,27 @@ int stdp_pink_noise_apply_modulation(stdp_pink_noise_bridge_t* bridge) {
             break;
     }
 
-    /* Clamp to safety bounds */
+    /* P0 fix: Validate NaN/Inf BEFORE clamping to safety bounds
+     * WHY:  NaN/Inf propagates through fmaxf/fminf and corrupts the result
+     * HOW:  Reset to safe default values if invalid, then clamp
+     */
+    if (isnan(bridge->noisy_lr) || isinf(bridge->noisy_lr)) {
+        bridge->noisy_lr = base_lr;  /* Reset to base value */
+    }
+    if (isnan(bridge->noisy_a_plus) || isinf(bridge->noisy_a_plus)) {
+        bridge->noisy_a_plus = base_a_plus;
+    }
+    if (isnan(bridge->noisy_a_minus) || isinf(bridge->noisy_a_minus)) {
+        bridge->noisy_a_minus = base_a_minus;
+    }
+    if (isnan(bridge->noisy_tau_plus) || isinf(bridge->noisy_tau_plus)) {
+        bridge->noisy_tau_plus = base_tau_plus;
+    }
+    if (isnan(bridge->noisy_tau_minus) || isinf(bridge->noisy_tau_minus)) {
+        bridge->noisy_tau_minus = base_tau_minus;
+    }
+
+    /* Clamp to safety bounds (now safe since NaN/Inf removed above) */
     bridge->noisy_lr = fmaxf(bridge->config.lr_min,
                             fminf(bridge->config.lr_max, bridge->noisy_lr));
     bridge->noisy_a_plus = fmaxf(bridge->config.a_min,

@@ -69,20 +69,35 @@ extern "C" {
 #define NIMCP_TENSOR_ALIGNMENT 64
 
 //=============================================================================
-// Error Codes (3100-3199 range within Brain/Network Errors)
+// Error Codes (Negative codes for module-local consistency)
 //=============================================================================
 
+/**
+ * @brief Tensor operations error codes
+ *
+ * DESIGN RATIONALE:
+ * - Uses negative codes for module-local error handling, consistent with
+ *   nimcp_tensor.h (nimcp_tensor_error_t) which uses -1 to -11
+ * - Does NOT use core NIMCP_ERROR_* codes (1000-9999 range)
+ * - Enables fast, type-safe error checking within tensor operations
+ *
+ * ERROR CODE CONVENTION:
+ * - 0 = success
+ * - Negative values = error conditions
+ * - Match nimcp_tensor_error_t semantics where applicable
+ */
 #define NIMCP_TENSOR_SUCCESS              0
-#define NIMCP_TENSOR_ERROR_NULL_PARAM     3100
-#define NIMCP_TENSOR_ERROR_INVALID_SHAPE  3101
-#define NIMCP_TENSOR_ERROR_INVALID_DIM    3102
-#define NIMCP_TENSOR_ERROR_ALLOC_FAILED   3103
-#define NIMCP_TENSOR_ERROR_SHAPE_MISMATCH 3104
-#define NIMCP_TENSOR_ERROR_BROADCAST_FAIL 3105
-#define NIMCP_TENSOR_ERROR_INVALID_DTYPE  3106
-#define NIMCP_TENSOR_ERROR_NOT_CONTIGUOUS 3107
-#define NIMCP_TENSOR_ERROR_EINSUM_INVALID 3108
-#define NIMCP_TENSOR_ERROR_GRAD_DISABLED  3109
+#define NIMCP_TENSOR_ERROR_NULL_PARAM     (-1)   /**< NULL pointer argument (matches NIMCP_TENSOR_ERR_NULL) */
+#define NIMCP_TENSOR_ERROR_INVALID_SHAPE  (-2)   /**< Shape mismatch/invalid (matches NIMCP_TENSOR_ERR_SHAPE) */
+#define NIMCP_TENSOR_ERROR_INVALID_DIM    (-3)   /**< Invalid dimension (matches NIMCP_TENSOR_ERR_RANK) */
+#define NIMCP_TENSOR_ERROR_ALLOC_FAILED   (-4)   /**< Memory allocation failed (matches NIMCP_TENSOR_ERR_ALLOC) */
+#define NIMCP_TENSOR_ERROR_SHAPE_MISMATCH (-5)   /**< Incompatible shapes (matches NIMCP_TENSOR_ERR_BROADCAST) */
+#define NIMCP_TENSOR_ERROR_BROADCAST_FAIL (-5)   /**< Alias for SHAPE_MISMATCH */
+#define NIMCP_TENSOR_ERROR_INVALID_DTYPE  (-7)   /**< Invalid data type (matches NIMCP_TENSOR_ERR_DTYPE) */
+#define NIMCP_TENSOR_ERROR_NOT_CONTIGUOUS (-8)   /**< Requires contiguous (matches NIMCP_TENSOR_ERR_CONTIGUOUS) */
+#define NIMCP_TENSOR_ERROR_EINSUM_INVALID (-6)   /**< Invalid einsum (matches NIMCP_TENSOR_ERR_EINSUM) */
+#define NIMCP_TENSOR_ERROR_GRAD_DISABLED  (-10)  /**< Gradient error (matches NIMCP_TENSOR_ERR_GRAD) */
+#define NIMCP_TENSOR_ERROR_OVERFLOW       (-12)  /**< Element count overflow */
 
 //=============================================================================
 // Data Types

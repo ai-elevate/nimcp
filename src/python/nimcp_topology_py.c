@@ -207,13 +207,16 @@ static PyObject* py_topology_generate(PyObject* self, PyObject* args) {
         return PyErr_NoMemory();
     }
 
-    // Call C function
-    bool success = topology_generate(network_py->network, &config_py->config, &stats_obj->stats);
+    // Release GIL during potentially long topology generation
+    bool success;
+    Py_BEGIN_ALLOW_THREADS
+    success = topology_generate(network_py->network, &config_py->config, &stats_obj->stats);
+    Py_END_ALLOW_THREADS
 
     if (!success) {
+        Py_DECREF(stats_obj);
         const char* error = topology_get_last_error();
         PyErr_SetString(NetworkError, error ? error : "Topology generation failed");
-        Py_DECREF(stats_obj);
         return NULL;
     }
 

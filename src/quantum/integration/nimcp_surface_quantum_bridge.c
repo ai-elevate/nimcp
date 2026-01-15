@@ -2,8 +2,53 @@
  * @file nimcp_surface_quantum_bridge.c
  * @brief Surface Geometry Quantum Integration Bridge Implementation
  *
- * @version 1.0.0
- * @date 2026-01-13
+ * @version 1.0.1
+ * @date 2026-01-15
+ *
+ * DEADLOCK PREVENTION STRATEGY
+ * ============================
+ *
+ * This module uses the bridge_base_t mutex (via BRIDGE_LOCK/BRIDGE_UNLOCK macros)
+ * for thread safety. The locking strategy follows these rules:
+ *
+ * 1. SINGLE LOCK PER FUNCTION: Each public function acquires and releases
+ *    the lock exactly once. Functions do NOT call other locking functions
+ *    while holding the lock.
+ *
+ * 2. HYBRID OPTIMIZATION: The surface_quantum_hybrid_optimize() function
+ *    deliberately does NOT acquire an outer lock. It calls sub-functions
+ *    (mcts_optimize, anneal_positions, estimate_area) that each manage
+ *    their own lock lifecycle independently. This prevents deadlock with
+ *    non-recursive mutexes.
+ *
+ * 3. EARLY UNLOCK ON ERROR: All error paths explicitly unlock before
+ *    returning, using the pattern:
+ *      BRIDGE_LOCK(bridge);
+ *      if (error_condition) {
+ *          BRIDGE_UNLOCK(bridge);
+ *          return -1;
+ *      }
+ *      // ... work ...
+ *      BRIDGE_UNLOCK(bridge);
+ *      return 0;
+ *
+ * 4. THREAD-LOCAL RNG STATE: Box-Muller Gaussian RNG uses function-local
+ *    cache state (bm_state), not global state. This eliminates the need
+ *    for additional locking around random number generation.
+ *
+ * 5. MEMORY OWNERSHIP: The hybrid_optimize function uses atomic pointer
+ *    assignment to transfer ownership of allocated memory, avoiding races.
+ *
+ * BOX-MULLER CACHING
+ * ==================
+ *
+ * The Box-Muller transform generates two independent Gaussians per pair
+ * of uniform randoms. The simulated_quantum_step() function uses a cache
+ * structure (box_muller_state_t) that is passed by pointer through the
+ * call chain. This cache is:
+ * - Function-local (stack allocated in the calling function)
+ * - Valid only during a single optimization run
+ * - Thread-safe because each thread has its own stack
  */
 
 #include "quantum/integration/nimcp_surface_quantum_bridge.h"
@@ -176,6 +221,64 @@ bool surface_quantum_bridge_is_quantum_available(
 //=============================================================================
 
 /**
+ * @brief Box-Muller cached state for Gaussian RNG
+ *
+ * The Box-Muller transform generates two independent Gaussians per pair of
+ * uniform random numbers. This structure caches the second value to avoid
+ * wasting computation.
+ */
+typedef struct {
+    bool has_cached;      /**< True if cached_value is valid */
+    float cached_value;   /**< Second Gaussian from previous Box-Muller call */
+} box_muller_state_t;
+
+/**
+ * @brief Generate a Gaussian random number using Box-Muller transform
+ *
+ * Uses the Box-Muller transform to convert two uniform random numbers in [0,1)
+ * into two independent standard Gaussian random numbers. Caches the second
+ * output to use on the next call, doubling efficiency.
+ *
+ * Formula:
+ *   r = sqrt(-2 * ln(u1))
+ *   theta = 2 * PI * u2
+ *   z0 = r * cos(theta)  <- returned on odd calls
+ *   z1 = r * sin(theta)  <- cached and returned on even calls
+ *
+ * @param rng_state Pointer to LCG random state (modified)
+ * @param bm_state Pointer to Box-Muller cache state (modified)
+ * @return Standard Gaussian random number (mean=0, stddev=1)
+ */
+static float box_muller_gaussian(uint64_t* rng_state, box_muller_state_t* bm_state) {
+    /* Return cached value if available */
+    if (bm_state->has_cached) {
+        bm_state->has_cached = false;
+        return bm_state->cached_value;
+    }
+
+    /* Generate two uniform random numbers in [0,1) using LCG */
+    *rng_state = (*rng_state * 6364136223846793005ULL + 1442695040888963407ULL);
+    float u1 = (float)(*rng_state >> 32) / (float)(1ULL << 32);
+
+    *rng_state = (*rng_state * 6364136223846793005ULL + 1442695040888963407ULL);
+    float u2 = (float)(*rng_state >> 32) / (float)(1ULL << 32);
+
+    /* Clamp u1 away from zero to avoid log(0) */
+    if (u1 < 1e-10f) u1 = 1e-10f;
+
+    /* Box-Muller transform */
+    float r = sqrtf(-2.0f * logf(u1));
+    float theta = 2.0f * (float)M_PI * u2;
+
+    /* Cache the second Gaussian for next call */
+    bm_state->cached_value = r * sinf(theta);
+    bm_state->has_cached = true;
+
+    /* Return the first Gaussian */
+    return r * cosf(theta);
+}
+
+/**
  * @brief Simulated QMC amplitude estimation
  *
  * Classical Monte Carlo that mimics quantum behavior.
@@ -224,27 +327,30 @@ static float simulated_qmc_amplitude(
 
 /**
  * @brief Simulated quantum annealing step
+ *
+ * Applies a combined thermal and quantum fluctuation to a position value
+ * using Gaussian random perturbation. Uses the efficient Box-Muller transform
+ * with caching for Gaussian generation.
+ *
+ * @param position Pointer to position value to perturb (modified)
+ * @param temperature Current temperature for thermal fluctuations
+ * @param transverse_field Current transverse field strength for quantum tunneling
+ * @param rng_state Pointer to LCG random state (modified)
+ * @param bm_state Pointer to Box-Muller cache state (modified)
  */
 static void simulated_quantum_step(
     float* position,
     float temperature,
     float transverse_field,
-    uint64_t* rng_state
+    uint64_t* rng_state,
+    box_muller_state_t* bm_state
 ) {
     /* Classical thermal + simulated tunneling */
     float thermal_scale = sqrtf(temperature);
     float quantum_scale = transverse_field * 0.1f;
 
-    /* LCG random */
-    *rng_state = (*rng_state * 6364136223846793005ULL + 1442695040888963407ULL);
-    float u = (float)(*rng_state >> 33) / (float)(1ULL << 31);
-
-    /* Normal approximation via Box-Muller */
-    *rng_state = (*rng_state * 6364136223846793005ULL + 1442695040888963407ULL);
-    float v = (float)(*rng_state >> 33) / (float)(1ULL << 31);
-    if (v < 1e-10f) v = 1e-10f;
-
-    float gaussian = sqrtf(-2.0f * logf(v)) * cosf(2.0f * (float)M_PI * u);
+    /* Get Gaussian using efficient Box-Muller with caching */
+    float gaussian = box_muller_gaussian(rng_state, bm_state);
 
     /* Combined thermal and quantum fluctuation */
     *position += gaussian * (thermal_scale + quantum_scale);
@@ -347,13 +453,14 @@ int surface_quantum_anneal_params(
 
     float decay = powf(final_transverse / transverse, 1.0f / sweeps);
     uint64_t rng_state = 0x12345678ULL;
+    box_muller_state_t bm_state = {false, 0.0f};
 
     for (uint32_t s = 0; s < sweeps; s++) {
         float temperature = 1.0f / beta;
 
         /* Anneal chi */
         simulated_quantum_step(&optimized_params->chi, temperature,
-                               transverse, &rng_state);
+                               transverse, &rng_state, &bm_state);
 
         /* Clamp chi to valid range */
         if (optimized_params->chi < 0.0f) optimized_params->chi = 0.0f;
@@ -361,7 +468,7 @@ int surface_quantum_anneal_params(
 
         /* Anneal rho */
         simulated_quantum_step(&optimized_params->rho, temperature,
-                               transverse, &rng_state);
+                               transverse, &rng_state, &bm_state);
 
         /* Clamp rho to valid range */
         if (optimized_params->rho < 0.0f) optimized_params->rho = 0.0f;
@@ -409,6 +516,7 @@ int surface_quantum_anneal_positions(
 
     float decay = powf(final_transverse / transverse, 1.0f / sweeps);
     uint64_t rng_state = 0xABCDEF01ULL;
+    box_muller_state_t bm_state = {false, 0.0f};
 
     /* Track best solution */
     float best_area = 1e10f;
@@ -433,19 +541,16 @@ int surface_quantum_anneal_positions(
             if (branch_points[i].is_terminal) continue;
 
             simulated_quantum_step(&branch_points[i].position.x,
-                                   temperature, transverse, &rng_state);
+                                   temperature, transverse, &rng_state, &bm_state);
             simulated_quantum_step(&branch_points[i].position.y,
-                                   temperature, transverse, &rng_state);
+                                   temperature, transverse, &rng_state, &bm_state);
             simulated_quantum_step(&branch_points[i].position.z,
-                                   temperature, transverse, &rng_state);
+                                   temperature, transverse, &rng_state, &bm_state);
         }
 
-        /* Compute current area */
-        float area = 0.0f;
-        simulated_qmc_amplitude(branch_points, num_points, min_circumference,
-                                100, NULL);
-        area = simulated_qmc_amplitude(branch_points, num_points,
-                                       min_circumference, 100, NULL);
+        /* Compute current area (single call - previous duplicate was a bug) */
+        float area = simulated_qmc_amplitude(branch_points, num_points,
+                                             min_circumference, 100, NULL);
 
         /* Accept if better */
         if (area < best_area) {
@@ -695,6 +800,36 @@ void surface_qmcts_result_free(surface_qmcts_result_t* result) {
 // HYBRID OPTIMIZATION
 //=============================================================================
 
+/**
+ * @brief Hybrid quantum optimization combining QMCTS, annealing, and QMC amplitude
+ *
+ * DEADLOCK PREVENTION STRATEGY:
+ * This function deliberately does NOT acquire an outer lock. The bridge uses
+ * non-recursive (default) mutexes, so if we held a lock here while calling
+ * the inner functions (which each acquire their own locks), we would deadlock.
+ *
+ * The implementation is safe because:
+ * 1. Each inner function (mcts_optimize, anneal_positions, estimate_area)
+ *    acquires and releases the bridge mutex independently
+ * 2. Local result variables are used for intermediate data
+ * 3. The final result struct is populated only from local/completed data
+ * 4. Memory ownership is transferred atomically (pointer assignment)
+ *
+ * Alternative approaches considered:
+ * - Recursive mutex: Would work but adds overhead and can mask bugs
+ * - Unlocked helper variants: Would require duplicating all inner logic
+ * - Single lock with all work: Would require major refactoring
+ *
+ * The current approach provides correct thread-safe behavior with minimal
+ * code duplication and clear ownership semantics.
+ *
+ * @param bridge Bridge instance (thread-safe via per-call locking)
+ * @param terminals Array of terminal positions [num_terminals][3]
+ * @param num_terminals Number of terminal points (must be >= 2)
+ * @param min_circumference Minimum circumference constraint
+ * @param result Output optimization result (caller owns branch_points memory)
+ * @return 0 on success, -1 on error
+ */
 int surface_quantum_hybrid_optimize(
     surface_quantum_bridge_t* bridge,
     const float (*terminals)[3],
@@ -708,28 +843,26 @@ int surface_quantum_hybrid_optimize(
 
     if (num_terminals < 2) return -1;
 
-    /* Note: No outer lock - each called function handles its own locking.
-     * This avoids deadlock since mcts_optimize, anneal_positions, and
-     * estimate_area each acquire the lock. */
-
-    /* Initialize result */
+    /* Initialize result to safe state before any operations */
     memset(result, 0, sizeof(*result));
 
     /* Step 1: QMCTS for topology search */
     surface_qmcts_result_t mcts_result;
+    memset(&mcts_result, 0, sizeof(mcts_result));
+
     if (surface_quantum_mcts_optimize(bridge, terminals, num_terminals,
                                       min_circumference, &mcts_result) != 0) {
         return -1;
     }
 
-    /* Copy topology to result */
+    /* Transfer topology ownership to result (atomic pointer assignment) */
     result->branch_points = mcts_result.optimal_topology;
     result->num_branch_points = mcts_result.num_branch_points;
-    mcts_result.optimal_topology = NULL;  /* Transfer ownership */
+    mcts_result.optimal_topology = NULL;  /* Prevent double-free */
 
     /* Step 2: Quantum annealing for position refinement */
-    float refined_area;
-    surface_quantum_anneal_positions(
+    float refined_area = 0.0f;
+    int anneal_status = surface_quantum_anneal_positions(
         bridge,
         result->branch_points,
         result->num_branch_points,
@@ -737,15 +870,33 @@ int surface_quantum_hybrid_optimize(
         &refined_area
     );
 
+    if (anneal_status != 0) {
+        /* Annealing failed - clean up and return error */
+        nimcp_free(result->branch_points);
+        result->branch_points = NULL;
+        result->num_branch_points = 0;
+        return -1;
+    }
+
     /* Step 3: QMC amplitude estimation for accurate final area */
     surface_qmc_amplitude_result_t amplitude_result;
-    surface_quantum_estimate_area(
+    memset(&amplitude_result, 0, sizeof(amplitude_result));
+
+    int estimate_status = surface_quantum_estimate_area(
         bridge,
         result->branch_points,
         result->num_branch_points,
         min_circumference,
         &amplitude_result
     );
+
+    if (estimate_status != 0) {
+        /* Estimation failed - clean up and return error */
+        nimcp_free(result->branch_points);
+        result->branch_points = NULL;
+        result->num_branch_points = 0;
+        return -1;
+    }
 
     result->surface_area = amplitude_result.estimated_area;
 

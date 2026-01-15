@@ -180,8 +180,23 @@ void bcm_update_threshold(bcm_synapse_t* synapse, float post_activity, float dt,
     /* WHAT: Compute time constant for exponential decay
      * WHY:  Convert dt from ms to decay fraction
      * FORMULA: decay = 1 - exp(-dt/τ)
+     * P1 fix: Guard against denormal floats from large dt/tau ratios
+     *         exp(-x) becomes denormal for x > ~88, negligible for x > ~20
      */
-    float decay = 1.0F - expf(-dt / (params->threshold_time_constant + BCM_EPSILON));
+    float tau = params->threshold_time_constant;
+    /* Validate tau to prevent division issues */
+    if (isnan(tau) || tau <= BCM_EPSILON) {
+        tau = 1000.0F;  /* Default 1 second time constant */
+    }
+    float exp_arg = -dt / tau;
+    /* Clamp to prevent denormal floats (exp(-20) ≈ 2e-9, sufficient precision) */
+    if (exp_arg < -20.0F) exp_arg = -20.0F;
+    float exp_result = expf(exp_arg);
+    /* Validate exponential result and flush denormals */
+    if (isnan(exp_result) || exp_result < 1e-9F) {
+        exp_result = 0.0F;
+    }
+    float decay = 1.0F - exp_result;
 
     /* WHAT: Exponential moving average toward target
      * WHY:  Smooth threshold adaptation, prevents oscillations
@@ -197,8 +212,19 @@ void bcm_update_threshold(bcm_synapse_t* synapse, float post_activity, float dt,
 
     /* WHAT: Update running average of post-synaptic activity
      * WHY:  Used for statistics and monitoring
+     * P1 fix: Same denormal protection as threshold decay
      */
-    float activity_decay = 1.0F - expf(-dt / (params->activity_time_constant + BCM_EPSILON));
+    float activity_tau = params->activity_time_constant;
+    if (isnan(activity_tau) || activity_tau <= BCM_EPSILON) {
+        activity_tau = 100.0F;  /* Default 100ms time constant */
+    }
+    float activity_exp_arg = -dt / activity_tau;
+    if (activity_exp_arg < -20.0F) activity_exp_arg = -20.0F;
+    float activity_exp_result = expf(activity_exp_arg);
+    if (isnan(activity_exp_result) || activity_exp_result < 1e-9F) {
+        activity_exp_result = 0.0F;
+    }
+    float activity_decay = 1.0F - activity_exp_result;
     synapse->avg_post_activity += activity_decay * (post_activity - synapse->avg_post_activity);
 
     /* WHAT: Release spinlock

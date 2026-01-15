@@ -203,6 +203,193 @@ typedef int32_t nimcp_error_t;
 #define NIMCP_ERROR_PREDICTIVE          8008 /**< Predictive processing error */
 
 //=============================================================================
+// Brain Region Errors (10000-19999)
+// Each brain region gets a 100-code range for module-specific errors.
+// This allows unified error handling while preserving module-specific semantics.
+//
+// MAPPING:
+// Module-local enum value 0 -> _BASE + 0 (success/none)
+// Module-local enum value 1 -> _BASE + 1 (invalid input)
+// Module-local enum value N -> _BASE + N
+//=============================================================================
+
+/* Motor Cortex Errors (10000-10099) */
+#define NIMCP_ERROR_MOTOR_BASE          10000
+#define NIMCP_ERROR_MOTOR_NONE          (NIMCP_ERROR_MOTOR_BASE + 0)  /**< No error */
+#define NIMCP_ERROR_MOTOR_INVALID_INPUT (NIMCP_ERROR_MOTOR_BASE + 1)  /**< Invalid input */
+#define NIMCP_ERROR_MOTOR_PLANNING      (NIMCP_ERROR_MOTOR_BASE + 2)  /**< Planning failure */
+#define NIMCP_ERROR_MOTOR_EXECUTION     (NIMCP_ERROR_MOTOR_BASE + 3)  /**< Execution failure */
+#define NIMCP_ERROR_MOTOR_TRAJECTORY    (NIMCP_ERROR_MOTOR_BASE + 4)  /**< Trajectory infeasible */
+#define NIMCP_ERROR_MOTOR_EFFECTOR      (NIMCP_ERROR_MOTOR_BASE + 5)  /**< Effector conflict */
+#define NIMCP_ERROR_MOTOR_TIMING        (NIMCP_ERROR_MOTOR_BASE + 6)  /**< Timing violation */
+#define NIMCP_ERROR_MOTOR_BUFFER        (NIMCP_ERROR_MOTOR_BASE + 7)  /**< Buffer overflow */
+#define NIMCP_ERROR_MOTOR_INTERNAL      (NIMCP_ERROR_MOTOR_BASE + 8)  /**< Internal error */
+
+/* Hippocampus Errors (10100-10199) */
+#define NIMCP_ERROR_HIPPOCAMPUS_BASE              10100
+#define NIMCP_ERROR_HIPPOCAMPUS_NONE              (NIMCP_ERROR_HIPPOCAMPUS_BASE + 0)
+#define NIMCP_ERROR_HIPPOCAMPUS_INVALID_INPUT     (NIMCP_ERROR_HIPPOCAMPUS_BASE + 1)
+#define NIMCP_ERROR_HIPPOCAMPUS_ENCODING          (NIMCP_ERROR_HIPPOCAMPUS_BASE + 2)
+#define NIMCP_ERROR_HIPPOCAMPUS_RETRIEVAL         (NIMCP_ERROR_HIPPOCAMPUS_BASE + 3)
+#define NIMCP_ERROR_HIPPOCAMPUS_NAVIGATION        (NIMCP_ERROR_HIPPOCAMPUS_BASE + 4)
+#define NIMCP_ERROR_HIPPOCAMPUS_MEMORY_FULL       (NIMCP_ERROR_HIPPOCAMPUS_BASE + 5)
+#define NIMCP_ERROR_HIPPOCAMPUS_PATTERN_SEP       (NIMCP_ERROR_HIPPOCAMPUS_BASE + 6)
+#define NIMCP_ERROR_HIPPOCAMPUS_PATTERN_COMP      (NIMCP_ERROR_HIPPOCAMPUS_BASE + 7)
+#define NIMCP_ERROR_HIPPOCAMPUS_BUFFER            (NIMCP_ERROR_HIPPOCAMPUS_BASE + 8)
+#define NIMCP_ERROR_HIPPOCAMPUS_INTERNAL          (NIMCP_ERROR_HIPPOCAMPUS_BASE + 9)
+
+/* Entorhinal Cortex Errors (10200-10299) */
+#define NIMCP_ERROR_ENTORHINAL_BASE               10200
+#define NIMCP_ERROR_ENTORHINAL_NONE               (NIMCP_ERROR_ENTORHINAL_BASE + 0)
+#define NIMCP_ERROR_ENTORHINAL_INVALID_INPUT      (NIMCP_ERROR_ENTORHINAL_BASE + 1)
+#define NIMCP_ERROR_ENTORHINAL_GRID_DRIFT         (NIMCP_ERROR_ENTORHINAL_BASE + 2)
+#define NIMCP_ERROR_ENTORHINAL_PATH_INTEGRATION   (NIMCP_ERROR_ENTORHINAL_BASE + 3)
+#define NIMCP_ERROR_ENTORHINAL_GATEWAY_BLOCKED    (NIMCP_ERROR_ENTORHINAL_BASE + 4)
+#define NIMCP_ERROR_ENTORHINAL_SECURITY           (NIMCP_ERROR_ENTORHINAL_BASE + 5)
+#define NIMCP_ERROR_ENTORHINAL_IMMUNE             (NIMCP_ERROR_ENTORHINAL_BASE + 6)
+#define NIMCP_ERROR_ENTORHINAL_SUBSTRATE          (NIMCP_ERROR_ENTORHINAL_BASE + 7)
+#define NIMCP_ERROR_ENTORHINAL_SYNC               (NIMCP_ERROR_ENTORHINAL_BASE + 8)
+#define NIMCP_ERROR_ENTORHINAL_BUFFER             (NIMCP_ERROR_ENTORHINAL_BASE + 9)
+#define NIMCP_ERROR_ENTORHINAL_INTERNAL           (NIMCP_ERROR_ENTORHINAL_BASE + 10)
+
+/* Prefrontal Cortex Errors (10300-10399) */
+#define NIMCP_ERROR_PREFRONTAL_BASE               10300
+#define NIMCP_ERROR_PREFRONTAL_NONE               (NIMCP_ERROR_PREFRONTAL_BASE + 0)
+#define NIMCP_ERROR_PREFRONTAL_INVALID_INPUT      (NIMCP_ERROR_PREFRONTAL_BASE + 1)
+#define NIMCP_ERROR_PREFRONTAL_PLANNING           (NIMCP_ERROR_PREFRONTAL_BASE + 2)
+#define NIMCP_ERROR_PREFRONTAL_WORKING_MEMORY     (NIMCP_ERROR_PREFRONTAL_BASE + 3)
+#define NIMCP_ERROR_PREFRONTAL_INHIBITION         (NIMCP_ERROR_PREFRONTAL_BASE + 4)
+#define NIMCP_ERROR_PREFRONTAL_INTERNAL           (NIMCP_ERROR_PREFRONTAL_BASE + 5)
+
+/* Cerebellum Errors (10400-10499) */
+#define NIMCP_ERROR_CEREBELLUM_BASE               10400
+#define NIMCP_ERROR_CEREBELLUM_NONE               (NIMCP_ERROR_CEREBELLUM_BASE + 0)
+#define NIMCP_ERROR_CEREBELLUM_INVALID_INPUT      (NIMCP_ERROR_CEREBELLUM_BASE + 1)
+#define NIMCP_ERROR_CEREBELLUM_TIMING             (NIMCP_ERROR_CEREBELLUM_BASE + 2)
+#define NIMCP_ERROR_CEREBELLUM_PREDICTION         (NIMCP_ERROR_CEREBELLUM_BASE + 3)
+#define NIMCP_ERROR_CEREBELLUM_INTERNAL           (NIMCP_ERROR_CEREBELLUM_BASE + 4)
+
+/* Thalamus Errors (10500-10599) */
+#define NIMCP_ERROR_THALAMUS_BASE                 10500
+#define NIMCP_ERROR_THALAMUS_NONE                 (NIMCP_ERROR_THALAMUS_BASE + 0)
+#define NIMCP_ERROR_THALAMUS_INVALID_INPUT        (NIMCP_ERROR_THALAMUS_BASE + 1)
+#define NIMCP_ERROR_THALAMUS_RELAY                (NIMCP_ERROR_THALAMUS_BASE + 2)
+#define NIMCP_ERROR_THALAMUS_GATING               (NIMCP_ERROR_THALAMUS_BASE + 3)
+#define NIMCP_ERROR_THALAMUS_INTERNAL             (NIMCP_ERROR_THALAMUS_BASE + 4)
+
+/* Hypothalamus Errors (10600-10699) */
+#define NIMCP_ERROR_HYPOTHALAMUS_BASE             10600
+#define NIMCP_ERROR_HYPOTHALAMUS_NONE             (NIMCP_ERROR_HYPOTHALAMUS_BASE + 0)
+#define NIMCP_ERROR_HYPOTHALAMUS_INVALID_INPUT    (NIMCP_ERROR_HYPOTHALAMUS_BASE + 1)
+#define NIMCP_ERROR_HYPOTHALAMUS_HOMEOSTASIS      (NIMCP_ERROR_HYPOTHALAMUS_BASE + 2)
+#define NIMCP_ERROR_HYPOTHALAMUS_MOTIVATION       (NIMCP_ERROR_HYPOTHALAMUS_BASE + 3)
+#define NIMCP_ERROR_HYPOTHALAMUS_INTERNAL         (NIMCP_ERROR_HYPOTHALAMUS_BASE + 4)
+
+/* Amygdala Errors (10700-10799) */
+#define NIMCP_ERROR_AMYGDALA_BASE                 10700
+#define NIMCP_ERROR_AMYGDALA_NONE                 (NIMCP_ERROR_AMYGDALA_BASE + 0)
+#define NIMCP_ERROR_AMYGDALA_INVALID_INPUT        (NIMCP_ERROR_AMYGDALA_BASE + 1)
+#define NIMCP_ERROR_AMYGDALA_FEAR_PROCESSING      (NIMCP_ERROR_AMYGDALA_BASE + 2)
+#define NIMCP_ERROR_AMYGDALA_EMOTIONAL_TAG        (NIMCP_ERROR_AMYGDALA_BASE + 3)
+#define NIMCP_ERROR_AMYGDALA_INTERNAL             (NIMCP_ERROR_AMYGDALA_BASE + 4)
+
+/* Basal Ganglia Errors (10800-10899) */
+#define NIMCP_ERROR_BASAL_GANGLIA_BASE            10800
+#define NIMCP_ERROR_BASAL_GANGLIA_NONE            (NIMCP_ERROR_BASAL_GANGLIA_BASE + 0)
+#define NIMCP_ERROR_BASAL_GANGLIA_INVALID_INPUT   (NIMCP_ERROR_BASAL_GANGLIA_BASE + 1)
+#define NIMCP_ERROR_BASAL_GANGLIA_ACTION_SELECT   (NIMCP_ERROR_BASAL_GANGLIA_BASE + 2)
+#define NIMCP_ERROR_BASAL_GANGLIA_DOPAMINE        (NIMCP_ERROR_BASAL_GANGLIA_BASE + 3)
+#define NIMCP_ERROR_BASAL_GANGLIA_INTERNAL        (NIMCP_ERROR_BASAL_GANGLIA_BASE + 4)
+
+/* Cingulate Cortex Errors (10900-10999) */
+#define NIMCP_ERROR_CINGULATE_BASE                10900
+#define NIMCP_ERROR_CINGULATE_NONE                (NIMCP_ERROR_CINGULATE_BASE + 0)
+#define NIMCP_ERROR_CINGULATE_INVALID_INPUT       (NIMCP_ERROR_CINGULATE_BASE + 1)
+#define NIMCP_ERROR_CINGULATE_CONFLICT            (NIMCP_ERROR_CINGULATE_BASE + 2)
+#define NIMCP_ERROR_CINGULATE_ERROR_MONITORING    (NIMCP_ERROR_CINGULATE_BASE + 3)
+#define NIMCP_ERROR_CINGULATE_INTERNAL            (NIMCP_ERROR_CINGULATE_BASE + 4)
+
+/* Insula Errors (11000-11099) */
+#define NIMCP_ERROR_INSULA_BASE                   11000
+#define NIMCP_ERROR_INSULA_NONE                   (NIMCP_ERROR_INSULA_BASE + 0)
+#define NIMCP_ERROR_INSULA_INVALID_INPUT          (NIMCP_ERROR_INSULA_BASE + 1)
+#define NIMCP_ERROR_INSULA_INTEROCEPTION          (NIMCP_ERROR_INSULA_BASE + 2)
+#define NIMCP_ERROR_INSULA_AWARENESS              (NIMCP_ERROR_INSULA_BASE + 3)
+#define NIMCP_ERROR_INSULA_INTERNAL               (NIMCP_ERROR_INSULA_BASE + 4)
+
+/* Occipital Lobe Errors (11100-11199) */
+#define NIMCP_ERROR_OCCIPITAL_BASE                11100
+#define NIMCP_ERROR_OCCIPITAL_NONE                (NIMCP_ERROR_OCCIPITAL_BASE + 0)
+#define NIMCP_ERROR_OCCIPITAL_INVALID_INPUT       (NIMCP_ERROR_OCCIPITAL_BASE + 1)
+#define NIMCP_ERROR_OCCIPITAL_VISUAL_PROCESSING   (NIMCP_ERROR_OCCIPITAL_BASE + 2)
+#define NIMCP_ERROR_OCCIPITAL_FEATURE_EXTRACTION  (NIMCP_ERROR_OCCIPITAL_BASE + 3)
+#define NIMCP_ERROR_OCCIPITAL_INTERNAL            (NIMCP_ERROR_OCCIPITAL_BASE + 4)
+
+/* Parietal Lobe Errors (11200-11299) */
+#define NIMCP_ERROR_PARIETAL_BASE                 11200
+#define NIMCP_ERROR_PARIETAL_NONE                 (NIMCP_ERROR_PARIETAL_BASE + 0)
+#define NIMCP_ERROR_PARIETAL_INVALID_INPUT        (NIMCP_ERROR_PARIETAL_BASE + 1)
+#define NIMCP_ERROR_PARIETAL_SPATIAL              (NIMCP_ERROR_PARIETAL_BASE + 2)
+#define NIMCP_ERROR_PARIETAL_ATTENTION            (NIMCP_ERROR_PARIETAL_BASE + 3)
+#define NIMCP_ERROR_PARIETAL_INTERNAL             (NIMCP_ERROR_PARIETAL_BASE + 4)
+
+/* Temporal Lobe Errors (11300-11399) */
+#define NIMCP_ERROR_TEMPORAL_BASE                 11300
+#define NIMCP_ERROR_TEMPORAL_NONE                 (NIMCP_ERROR_TEMPORAL_BASE + 0)
+#define NIMCP_ERROR_TEMPORAL_INVALID_INPUT        (NIMCP_ERROR_TEMPORAL_BASE + 1)
+#define NIMCP_ERROR_TEMPORAL_AUDITORY             (NIMCP_ERROR_TEMPORAL_BASE + 2)
+#define NIMCP_ERROR_TEMPORAL_SEMANTIC             (NIMCP_ERROR_TEMPORAL_BASE + 3)
+#define NIMCP_ERROR_TEMPORAL_INTERNAL             (NIMCP_ERROR_TEMPORAL_BASE + 4)
+
+/* Broca's Area Errors (11400-11499) */
+#define NIMCP_ERROR_BROCA_BASE                    11400
+#define NIMCP_ERROR_BROCA_NONE                    (NIMCP_ERROR_BROCA_BASE + 0)
+#define NIMCP_ERROR_BROCA_INVALID_INPUT           (NIMCP_ERROR_BROCA_BASE + 1)
+#define NIMCP_ERROR_BROCA_PRODUCTION              (NIMCP_ERROR_BROCA_BASE + 2)
+#define NIMCP_ERROR_BROCA_SYNTAX                  (NIMCP_ERROR_BROCA_BASE + 3)
+#define NIMCP_ERROR_BROCA_INTERNAL                (NIMCP_ERROR_BROCA_BASE + 4)
+
+/* Wernicke's Area Errors (11500-11599) */
+#define NIMCP_ERROR_WERNICKE_BASE                 11500
+#define NIMCP_ERROR_WERNICKE_NONE                 (NIMCP_ERROR_WERNICKE_BASE + 0)
+#define NIMCP_ERROR_WERNICKE_INVALID_INPUT        (NIMCP_ERROR_WERNICKE_BASE + 1)
+#define NIMCP_ERROR_WERNICKE_COMPREHENSION        (NIMCP_ERROR_WERNICKE_BASE + 2)
+#define NIMCP_ERROR_WERNICKE_SEMANTIC             (NIMCP_ERROR_WERNICKE_BASE + 3)
+#define NIMCP_ERROR_WERNICKE_INTERNAL             (NIMCP_ERROR_WERNICKE_BASE + 4)
+
+/* Brainstem Errors (11600-11699) */
+#define NIMCP_ERROR_BRAINSTEM_BASE                11600
+#define NIMCP_ERROR_BRAINSTEM_NONE                (NIMCP_ERROR_BRAINSTEM_BASE + 0)
+#define NIMCP_ERROR_BRAINSTEM_INVALID_INPUT       (NIMCP_ERROR_BRAINSTEM_BASE + 1)
+#define NIMCP_ERROR_BRAINSTEM_VITAL_FUNCTION      (NIMCP_ERROR_BRAINSTEM_BASE + 2)
+#define NIMCP_ERROR_BRAINSTEM_AROUSAL             (NIMCP_ERROR_BRAINSTEM_BASE + 3)
+#define NIMCP_ERROR_BRAINSTEM_INTERNAL            (NIMCP_ERROR_BRAINSTEM_BASE + 4)
+
+/* Parahippocampal Region Errors (11700-11799) */
+#define NIMCP_ERROR_PARAHIPPOCAMPAL_BASE          11700
+#define NIMCP_ERROR_PARAHIPPOCAMPAL_NONE          (NIMCP_ERROR_PARAHIPPOCAMPAL_BASE + 0)
+#define NIMCP_ERROR_PARAHIPPOCAMPAL_INVALID_INPUT (NIMCP_ERROR_PARAHIPPOCAMPAL_BASE + 1)
+#define NIMCP_ERROR_PARAHIPPOCAMPAL_SCENE         (NIMCP_ERROR_PARAHIPPOCAMPAL_BASE + 2)
+#define NIMCP_ERROR_PARAHIPPOCAMPAL_CONTEXT       (NIMCP_ERROR_PARAHIPPOCAMPAL_BASE + 3)
+#define NIMCP_ERROR_PARAHIPPOCAMPAL_INTERNAL      (NIMCP_ERROR_PARAHIPPOCAMPAL_BASE + 4)
+
+/* Perirhinal Cortex Errors (11800-11899) */
+#define NIMCP_ERROR_PERIRHINAL_BASE               11800
+#define NIMCP_ERROR_PERIRHINAL_NONE               (NIMCP_ERROR_PERIRHINAL_BASE + 0)
+#define NIMCP_ERROR_PERIRHINAL_INVALID_INPUT      (NIMCP_ERROR_PERIRHINAL_BASE + 1)
+#define NIMCP_ERROR_PERIRHINAL_OBJECT_RECOGNITION (NIMCP_ERROR_PERIRHINAL_BASE + 2)
+#define NIMCP_ERROR_PERIRHINAL_FAMILIARITY        (NIMCP_ERROR_PERIRHINAL_BASE + 3)
+#define NIMCP_ERROR_PERIRHINAL_INTERNAL           (NIMCP_ERROR_PERIRHINAL_BASE + 4)
+
+/* VTA Errors (11900-11999) */
+#define NIMCP_ERROR_VTA_BASE                      11900
+#define NIMCP_ERROR_VTA_NONE                      (NIMCP_ERROR_VTA_BASE + 0)
+#define NIMCP_ERROR_VTA_INVALID_INPUT             (NIMCP_ERROR_VTA_BASE + 1)
+#define NIMCP_ERROR_VTA_REWARD                    (NIMCP_ERROR_VTA_BASE + 2)
+#define NIMCP_ERROR_VTA_DOPAMINE                  (NIMCP_ERROR_VTA_BASE + 3)
+#define NIMCP_ERROR_VTA_INTERNAL                  (NIMCP_ERROR_VTA_BASE + 4)
+
+//=============================================================================
 // Error Information Structure
 // Note: nimcp_common.h defines a simpler version; guard prevents conflict
 //=============================================================================
@@ -612,6 +799,146 @@ const nimcp_error_context_t* nimcp_get_error_context(void);
     } while (0)
 
 //=============================================================================
+// NULL Pointer Validation Macros (Standard Pattern)
+//=============================================================================
+
+/**
+ * @brief Check for NULL pointer and return NIMCP_ERROR_NULL_POINTER
+ *
+ * Standard pattern for NULL pointer validation across the codebase.
+ * Uses early return with LOG_ERROR for consistent error reporting.
+ *
+ * @param ptr Pointer to check
+ * @param msg Message describing the parameter
+ *
+ * Example:
+ * @code
+ * nimcp_error_t my_function(const config_t* config, adapter_t* adapter) {
+ *     NIMCP_CHECK_NULL(config, "config");
+ *     NIMCP_CHECK_NULL(adapter, "adapter");
+ *     // ... function body ...
+ *     return NIMCP_SUCCESS;
+ * }
+ * @endcode
+ */
+#define NIMCP_CHECK_NULL(ptr, msg) \
+    do { \
+        if (!(ptr)) { \
+            NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: %s", msg); \
+            return NIMCP_ERROR_NULL_POINTER; \
+        } \
+    } while (0)
+
+/**
+ * @brief Check for NULL pointer and return false (for bool-returning functions)
+ *
+ * @param ptr Pointer to check
+ * @param msg Message describing the parameter
+ *
+ * Example:
+ * @code
+ * bool motor_reset(motor_adapter_t* adapter) {
+ *     NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+ *     // ... function body ...
+ *     return true;
+ * }
+ * @endcode
+ */
+#define NIMCP_CHECK_NULL_BOOL(ptr, msg) \
+    do { \
+        if (!(ptr)) { \
+            NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: %s", msg); \
+            return false; \
+        } \
+    } while (0)
+
+/**
+ * @brief Check for NULL pointer and return NULL (for pointer-returning functions)
+ *
+ * @param ptr Pointer to check
+ * @param msg Message describing the parameter
+ *
+ * Example:
+ * @code
+ * adapter_t* adapter_create(const config_t* config) {
+ *     NIMCP_CHECK_NULL_PTR(config, "config");
+ *     // ... function body ...
+ *     return adapter;
+ * }
+ * @endcode
+ */
+#define NIMCP_CHECK_NULL_PTR(ptr, msg) \
+    do { \
+        if (!(ptr)) { \
+            NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: %s", msg); \
+            return NULL; \
+        } \
+    } while (0)
+
+/**
+ * @brief Check for NULL pointer and return void (for void-returning functions)
+ *
+ * @param ptr Pointer to check
+ * @param msg Message describing the parameter
+ *
+ * Example:
+ * @code
+ * void adapter_destroy(adapter_t* adapter) {
+ *     NIMCP_CHECK_NULL_VOID(adapter, "adapter");
+ *     // ... cleanup code ...
+ * }
+ * @endcode
+ */
+#define NIMCP_CHECK_NULL_VOID(ptr, msg) \
+    do { \
+        if (!(ptr)) { \
+            NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: %s", msg); \
+            return; \
+        } \
+    } while (0)
+
+/**
+ * @brief Check array bounds and return error if out of range
+ *
+ * @param index Index to check
+ * @param max Maximum valid index (exclusive)
+ * @param msg Message describing the parameter
+ *
+ * Example:
+ * @code
+ * nimcp_error_t get_item(adapter_t* adapter, uint32_t index) {
+ *     NIMCP_CHECK_BOUNDS(index, adapter->count, "index");
+ *     // ... function body ...
+ *     return NIMCP_SUCCESS;
+ * }
+ * @endcode
+ */
+#define NIMCP_CHECK_BOUNDS(index, max, msg) \
+    do { \
+        if ((index) >= (max)) { \
+            NIMCP_ERROR_SET(NIMCP_ERROR_OUT_OF_RANGE, "Out of bounds: %s (%u >= %u)", \
+                           msg, (unsigned)(index), (unsigned)(max)); \
+            return NIMCP_ERROR_OUT_OF_RANGE; \
+        } \
+    } while (0)
+
+/**
+ * @brief Check array bounds and return NULL if out of range
+ *
+ * @param index Index to check
+ * @param max Maximum valid index (exclusive)
+ * @param msg Message describing the parameter
+ */
+#define NIMCP_CHECK_BOUNDS_PTR(index, max, msg) \
+    do { \
+        if ((index) >= (max)) { \
+            NIMCP_ERROR_SET(NIMCP_ERROR_OUT_OF_RANGE, "Out of bounds: %s (%u >= %u)", \
+                           msg, (unsigned)(index), (unsigned)(max)); \
+            return NULL; \
+        } \
+    } while (0)
+
+//=============================================================================
 // Legacy FEP Bridge Compatibility
 //=============================================================================
 
@@ -703,6 +1030,148 @@ static inline int nimcp_to_fep_result(nimcp_error_t error) {
  */
 #define NIMCP_RESULT_ERR(name, err) \
     ((nimcp_##name##_t){.is_ok = false, .error = (err)})
+
+//=============================================================================
+// Brain Region Error Conversion API
+//
+// These functions convert module-local error codes to unified NIMCP error codes.
+// Use these at module boundaries to provide consistent error reporting.
+//
+// Each brain region has its own error_t type (e.g., motor_error_t) that maps
+// directly to the unified range: module_error_value -> NIMCP_ERROR_MODULE_BASE + value
+//=============================================================================
+
+/**
+ * @brief Convert motor_error_t to nimcp_error_t
+ *
+ * @param err Motor module error code (motor_error_t enum value)
+ * @return Corresponding NIMCP error code
+ *
+ * Example:
+ * @code
+ * motor_error_t local_err = motor_get_last_error(adapter);
+ * nimcp_error_t unified = motor_error_to_nimcp(local_err);
+ * @endcode
+ */
+static inline nimcp_error_t motor_error_to_nimcp(int err) {
+    if (err == 0) return NIMCP_SUCCESS;
+    return NIMCP_ERROR_MOTOR_BASE + err;
+}
+
+/**
+ * @brief Convert nimcp_error_t to motor_error_t
+ *
+ * @param err NIMCP error code (must be in motor range or NIMCP_SUCCESS)
+ * @return Corresponding motor module error code
+ */
+static inline int nimcp_to_motor_error(nimcp_error_t err) {
+    if (err == NIMCP_SUCCESS) return 0;
+    if (err >= NIMCP_ERROR_MOTOR_BASE && err < NIMCP_ERROR_MOTOR_BASE + 100) {
+        return err - NIMCP_ERROR_MOTOR_BASE;
+    }
+    return 8; /* MOTOR_ERROR_INTERNAL as default */
+}
+
+/**
+ * @brief Convert hippocampus_error_t to nimcp_error_t
+ */
+static inline nimcp_error_t hippocampus_error_to_nimcp(int err) {
+    if (err == 0) return NIMCP_SUCCESS;
+    return NIMCP_ERROR_HIPPOCAMPUS_BASE + err;
+}
+
+/**
+ * @brief Convert nimcp_error_t to hippocampus_error_t
+ */
+static inline int nimcp_to_hippocampus_error(nimcp_error_t err) {
+    if (err == NIMCP_SUCCESS) return 0;
+    if (err >= NIMCP_ERROR_HIPPOCAMPUS_BASE && err < NIMCP_ERROR_HIPPOCAMPUS_BASE + 100) {
+        return err - NIMCP_ERROR_HIPPOCAMPUS_BASE;
+    }
+    return 9; /* HIPPOCAMPUS_ERROR_INTERNAL as default */
+}
+
+/**
+ * @brief Convert entorhinal_error_t to nimcp_error_t
+ */
+static inline nimcp_error_t entorhinal_error_to_nimcp(int err) {
+    if (err == 0) return NIMCP_SUCCESS;
+    return NIMCP_ERROR_ENTORHINAL_BASE + err;
+}
+
+/**
+ * @brief Convert nimcp_error_t to entorhinal_error_t
+ */
+static inline int nimcp_to_entorhinal_error(nimcp_error_t err) {
+    if (err == NIMCP_SUCCESS) return 0;
+    if (err >= NIMCP_ERROR_ENTORHINAL_BASE && err < NIMCP_ERROR_ENTORHINAL_BASE + 100) {
+        return err - NIMCP_ERROR_ENTORHINAL_BASE;
+    }
+    return 10; /* ENTORHINAL_ERROR_INTERNAL as default */
+}
+
+/**
+ * @brief Check if error code is in a brain region range
+ *
+ * @param err NIMCP error code
+ * @return true if error is from a brain region module (10000-19999)
+ */
+static inline bool nimcp_error_is_brain_region(nimcp_error_t err) {
+    return (err >= 10000 && err < 20000);
+}
+
+/**
+ * @brief Get brain region name from error code
+ *
+ * @param err NIMCP error code
+ * @return Brain region name string, or "Unknown" if not a brain region error
+ */
+const char* nimcp_error_get_brain_region_name(nimcp_error_t err);
+
+/**
+ * @brief Generic macro for defining module error converters
+ *
+ * Usage:
+ * @code
+ * // Define converters for a new module
+ * NIMCP_DEFINE_ERROR_CONVERTER(prefrontal, PREFRONTAL, 5)
+ *
+ * // Generates:
+ * // - prefrontal_error_to_nimcp(int err) -> nimcp_error_t
+ * // - nimcp_to_prefrontal_error(nimcp_error_t err) -> int
+ * @endcode
+ */
+#define NIMCP_DEFINE_ERROR_CONVERTER(name, NAME, internal_max) \
+    static inline nimcp_error_t name##_error_to_nimcp(int err) { \
+        if (err == 0) return NIMCP_SUCCESS; \
+        return NIMCP_ERROR_##NAME##_BASE + err; \
+    } \
+    static inline int nimcp_to_##name##_error(nimcp_error_t err) { \
+        if (err == NIMCP_SUCCESS) return 0; \
+        if (err >= NIMCP_ERROR_##NAME##_BASE && err < NIMCP_ERROR_##NAME##_BASE + 100) { \
+            return err - NIMCP_ERROR_##NAME##_BASE; \
+        } \
+        return internal_max; \
+    }
+
+/* Generate converters for remaining brain regions */
+NIMCP_DEFINE_ERROR_CONVERTER(prefrontal, PREFRONTAL, 5)
+NIMCP_DEFINE_ERROR_CONVERTER(cerebellum, CEREBELLUM, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(thalamus, THALAMUS, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(hypothalamus, HYPOTHALAMUS, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(amygdala, AMYGDALA, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(basal_ganglia, BASAL_GANGLIA, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(cingulate, CINGULATE, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(insula, INSULA, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(occipital, OCCIPITAL, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(parietal, PARIETAL, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(temporal, TEMPORAL, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(broca, BROCA, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(wernicke, WERNICKE, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(brainstem, BRAINSTEM, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(parahippocampal, PARAHIPPOCAMPAL, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(perirhinal, PERIRHINAL, 4)
+NIMCP_DEFINE_ERROR_CONVERTER(vta, VTA, 4)
 
 #ifdef __cplusplus
 }

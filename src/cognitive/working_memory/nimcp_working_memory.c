@@ -43,6 +43,7 @@
 #include "cognitive/memory/nimcp_working_memory_plasticity_bridge.h"  // Plasticity bridge
 
 #include "nimcp.h"  // For error codes
+#include "utils/error/nimcp_error_codes.h"  // For NIMCP_CHECK_NULL macros
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -1110,6 +1111,7 @@ const float* working_memory_get(
 {
     // Guard: NULL working memory
     if (!wm) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: wm");
         set_error("NULL working_memory_t");
         return NULL;
     }
@@ -1119,8 +1121,10 @@ const float* working_memory_get(
     // The mutex itself is mutable via nimcp_platform_mutex_lock
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
 
-    // Guard: Invalid index
+    // Guard: Invalid index (bounds check)
     if (index >= wm->current_size) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_OUT_OF_RANGE, "Out of bounds: index (%u >= %u)",
+                       index, wm->current_size);
         set_error("Index out of bounds");
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
         return NULL;
@@ -1152,6 +1156,7 @@ const float* working_memory_get(
 bool working_memory_remove(working_memory_t* wm, uint32_t index) {
     // Guard: NULL working memory
     if (!wm) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: wm");
         set_error("NULL working_memory_t");
         return false;
     }
@@ -1159,8 +1164,10 @@ bool working_memory_remove(working_memory_t* wm, uint32_t index) {
     // Lock mutex for thread-safe access
     nimcp_platform_mutex_lock(&wm->mutex);
 
-    // Guard: Invalid index
+    // Guard: Invalid index (bounds check)
     if (index >= wm->current_size) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_OUT_OF_RANGE, "Out of bounds: index (%u >= %u)",
+                       index, wm->current_size);
         set_error("Index out of bounds");
         nimcp_platform_mutex_unlock(&wm->mutex);
         return false;

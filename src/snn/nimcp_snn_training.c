@@ -221,12 +221,37 @@ float snn_stdp_compute_delta_w(const snn_training_ctx_t* ctx,
 
     float delta_w = 0.0f;
 
+    /* P0 fix: Bound exponential arguments to prevent Inf/NaN
+     * WHY:  expf(x) overflows for x > ~88, underflows for x < ~-88
+     * HOW:  Clamp exponent argument to [-20, 0] range (covers biological timescales)
+     */
     if (dt_pre_post > 0.0f) {
         /* Post after pre: LTP */
-        delta_w = a_plus * expf(-dt_pre_post / tau_plus);
+        float exp_arg = -dt_pre_post / tau_plus;
+        /* Clamp to prevent underflow (exp(-20) ≈ 2e-9, negligible contribution) */
+        if (exp_arg < -20.0f) exp_arg = -20.0f;
+        float exp_result = expf(exp_arg);
+        /* Validate exponential result */
+        if (isnan(exp_result) || isinf(exp_result)) {
+            exp_result = 0.0f;
+        }
+        delta_w = a_plus * exp_result;
     } else {
         /* Pre after post: LTD */
-        delta_w = -a_minus * expf(dt_pre_post / tau_minus);
+        float exp_arg = dt_pre_post / tau_minus;
+        /* Clamp to prevent underflow (exp(-20) ≈ 2e-9, negligible contribution) */
+        if (exp_arg < -20.0f) exp_arg = -20.0f;
+        float exp_result = expf(exp_arg);
+        /* Validate exponential result */
+        if (isnan(exp_result) || isinf(exp_result)) {
+            exp_result = 0.0f;
+        }
+        delta_w = -a_minus * exp_result;
+    }
+
+    /* P0 fix: Validate delta_w before applying soft bounds */
+    if (isnan(delta_w) || isinf(delta_w)) {
+        return 0.0f;
     }
 
     /* Apply soft bounds */

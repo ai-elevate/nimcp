@@ -16193,6 +16193,78 @@ __/core/brain/regions/broca/nimcp_broca_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_broca_thalamic_bridge.c.s
 .PHONY : __/core/brain/regions/broca/nimcp_broca_thalamic_bridge.c.s
 
+__/core/brain/regions/broca/nimcp_discourse_manager.o: __/core/brain/regions/broca/nimcp_discourse_manager.c.o
+.PHONY : __/core/brain/regions/broca/nimcp_discourse_manager.o
+
+# target to build an object file
+__/core/brain/regions/broca/nimcp_discourse_manager.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_discourse_manager.c.o
+.PHONY : __/core/brain/regions/broca/nimcp_discourse_manager.c.o
+
+__/core/brain/regions/broca/nimcp_discourse_manager.i: __/core/brain/regions/broca/nimcp_discourse_manager.c.i
+.PHONY : __/core/brain/regions/broca/nimcp_discourse_manager.i
+
+# target to preprocess a source file
+__/core/brain/regions/broca/nimcp_discourse_manager.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_discourse_manager.c.i
+.PHONY : __/core/brain/regions/broca/nimcp_discourse_manager.c.i
+
+__/core/brain/regions/broca/nimcp_discourse_manager.s: __/core/brain/regions/broca/nimcp_discourse_manager.c.s
+.PHONY : __/core/brain/regions/broca/nimcp_discourse_manager.s
+
+# target to generate assembly for a file
+__/core/brain/regions/broca/nimcp_discourse_manager.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_discourse_manager.c.s
+.PHONY : __/core/brain/regions/broca/nimcp_discourse_manager.c.s
+
+__/core/brain/regions/broca/nimcp_emotional_prosody.o: __/core/brain/regions/broca/nimcp_emotional_prosody.c.o
+.PHONY : __/core/brain/regions/broca/nimcp_emotional_prosody.o
+
+# target to build an object file
+__/core/brain/regions/broca/nimcp_emotional_prosody.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_emotional_prosody.c.o
+.PHONY : __/core/brain/regions/broca/nimcp_emotional_prosody.c.o
+
+__/core/brain/regions/broca/nimcp_emotional_prosody.i: __/core/brain/regions/broca/nimcp_emotional_prosody.c.i
+.PHONY : __/core/brain/regions/broca/nimcp_emotional_prosody.i
+
+# target to preprocess a source file
+__/core/brain/regions/broca/nimcp_emotional_prosody.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_emotional_prosody.c.i
+.PHONY : __/core/brain/regions/broca/nimcp_emotional_prosody.c.i
+
+__/core/brain/regions/broca/nimcp_emotional_prosody.s: __/core/brain/regions/broca/nimcp_emotional_prosody.c.s
+.PHONY : __/core/brain/regions/broca/nimcp_emotional_prosody.s
+
+# target to generate assembly for a file
+__/core/brain/regions/broca/nimcp_emotional_prosody.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_emotional_prosody.c.s
+.PHONY : __/core/brain/regions/broca/nimcp_emotional_prosody.c.s
+
+__/core/brain/regions/broca/nimcp_incremental_processor.o: __/core/brain/regions/broca/nimcp_incremental_processor.c.o
+.PHONY : __/core/brain/regions/broca/nimcp_incremental_processor.o
+
+# target to build an object file
+__/core/brain/regions/broca/nimcp_incremental_processor.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_incremental_processor.c.o
+.PHONY : __/core/brain/regions/broca/nimcp_incremental_processor.c.o
+
+__/core/brain/regions/broca/nimcp_incremental_processor.i: __/core/brain/regions/broca/nimcp_incremental_processor.c.i
+.PHONY : __/core/brain/regions/broca/nimcp_incremental_processor.i
+
+# target to preprocess a source file
+__/core/brain/regions/broca/nimcp_incremental_processor.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_incremental_processor.c.i
+.PHONY : __/core/brain/regions/broca/nimcp_incremental_processor.c.i
+
+__/core/brain/regions/broca/nimcp_incremental_processor.s: __/core/brain/regions/broca/nimcp_incremental_processor.c.s
+.PHONY : __/core/brain/regions/broca/nimcp_incremental_processor.s
+
+# target to generate assembly for a file
+__/core/brain/regions/broca/nimcp_incremental_processor.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_incremental_processor.c.s
+.PHONY : __/core/brain/regions/broca/nimcp_incremental_processor.c.s
+
 __/core/brain/regions/broca/nimcp_language_production_bridge.o: __/core/brain/regions/broca/nimcp_language_production_bridge.c.o
 .PHONY : __/core/brain/regions/broca/nimcp_language_production_bridge.o
 
@@ -16216,6 +16288,30 @@ __/core/brain/regions/broca/nimcp_language_production_bridge.s: __/core/brain/re
 __/core/brain/regions/broca/nimcp_language_production_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_language_production_bridge.c.s
 .PHONY : __/core/brain/regions/broca/nimcp_language_production_bridge.c.s
+
+__/core/brain/regions/broca/nimcp_multimodal_language.o: __/core/brain/regions/broca/nimcp_multimodal_language.c.o
+.PHONY : __/core/brain/regions/broca/nimcp_multimodal_language.o
+
+# target to build an object file
+__/core/brain/regions/broca/nimcp_multimodal_language.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_multimodal_language.c.o
+.PHONY : __/core/brain/regions/broca/nimcp_multimodal_language.c.o
+
+__/core/brain/regions/broca/nimcp_multimodal_language.i: __/core/brain/regions/broca/nimcp_multimodal_language.c.i
+.PHONY : __/core/brain/regions/broca/nimcp_multimodal_language.i
+
+# target to preprocess a source file
+__/core/brain/regions/broca/nimcp_multimodal_language.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_multimodal_language.c.i
+.PHONY : __/core/brain/regions/broca/nimcp_multimodal_language.c.i
+
+__/core/brain/regions/broca/nimcp_multimodal_language.s: __/core/brain/regions/broca/nimcp_multimodal_language.c.s
+.PHONY : __/core/brain/regions/broca/nimcp_multimodal_language.s
+
+# target to generate assembly for a file
+__/core/brain/regions/broca/nimcp_multimodal_language.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_multimodal_language.c.s
+.PHONY : __/core/brain/regions/broca/nimcp_multimodal_language.c.s
 
 __/core/brain/regions/broca/nimcp_omni_broca_bridge.o: __/core/brain/regions/broca/nimcp_omni_broca_bridge.c.o
 .PHONY : __/core/brain/regions/broca/nimcp_omni_broca_bridge.o
@@ -16265,6 +16361,30 @@ __/core/brain/regions/broca/nimcp_phonological.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_phonological.c.s
 .PHONY : __/core/brain/regions/broca/nimcp_phonological.c.s
 
+__/core/brain/regions/broca/nimcp_pragmatics_processor.o: __/core/brain/regions/broca/nimcp_pragmatics_processor.c.o
+.PHONY : __/core/brain/regions/broca/nimcp_pragmatics_processor.o
+
+# target to build an object file
+__/core/brain/regions/broca/nimcp_pragmatics_processor.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_pragmatics_processor.c.o
+.PHONY : __/core/brain/regions/broca/nimcp_pragmatics_processor.c.o
+
+__/core/brain/regions/broca/nimcp_pragmatics_processor.i: __/core/brain/regions/broca/nimcp_pragmatics_processor.c.i
+.PHONY : __/core/brain/regions/broca/nimcp_pragmatics_processor.i
+
+# target to preprocess a source file
+__/core/brain/regions/broca/nimcp_pragmatics_processor.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_pragmatics_processor.c.i
+.PHONY : __/core/brain/regions/broca/nimcp_pragmatics_processor.c.i
+
+__/core/brain/regions/broca/nimcp_pragmatics_processor.s: __/core/brain/regions/broca/nimcp_pragmatics_processor.c.s
+.PHONY : __/core/brain/regions/broca/nimcp_pragmatics_processor.s
+
+# target to generate assembly for a file
+__/core/brain/regions/broca/nimcp_pragmatics_processor.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_pragmatics_processor.c.s
+.PHONY : __/core/brain/regions/broca/nimcp_pragmatics_processor.c.s
+
 __/core/brain/regions/broca/nimcp_speech_motor.o: __/core/brain/regions/broca/nimcp_speech_motor.c.o
 .PHONY : __/core/brain/regions/broca/nimcp_speech_motor.o
 
@@ -16288,6 +16408,30 @@ __/core/brain/regions/broca/nimcp_speech_motor.s: __/core/brain/regions/broca/ni
 __/core/brain/regions/broca/nimcp_speech_motor.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_speech_motor.c.s
 .PHONY : __/core/brain/regions/broca/nimcp_speech_motor.c.s
+
+__/core/brain/regions/broca/nimcp_speech_repair.o: __/core/brain/regions/broca/nimcp_speech_repair.c.o
+.PHONY : __/core/brain/regions/broca/nimcp_speech_repair.o
+
+# target to build an object file
+__/core/brain/regions/broca/nimcp_speech_repair.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_speech_repair.c.o
+.PHONY : __/core/brain/regions/broca/nimcp_speech_repair.c.o
+
+__/core/brain/regions/broca/nimcp_speech_repair.i: __/core/brain/regions/broca/nimcp_speech_repair.c.i
+.PHONY : __/core/brain/regions/broca/nimcp_speech_repair.i
+
+# target to preprocess a source file
+__/core/brain/regions/broca/nimcp_speech_repair.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_speech_repair.c.i
+.PHONY : __/core/brain/regions/broca/nimcp_speech_repair.c.i
+
+__/core/brain/regions/broca/nimcp_speech_repair.s: __/core/brain/regions/broca/nimcp_speech_repair.c.s
+.PHONY : __/core/brain/regions/broca/nimcp_speech_repair.s
+
+# target to generate assembly for a file
+__/core/brain/regions/broca/nimcp_speech_repair.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/regions/broca/nimcp_speech_repair.c.s
+.PHONY : __/core/brain/regions/broca/nimcp_speech_repair.c.s
 
 __/core/brain/regions/broca/nimcp_syntax_processor.o: __/core/brain/regions/broca/nimcp_syntax_processor.c.o
 .PHONY : __/core/brain/regions/broca/nimcp_syntax_processor.o
@@ -25673,6 +25817,30 @@ __/gpu/lnn/nimcp_lnn_kernels.cu.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/lnn/nimcp_lnn_kernels.cu.s
 .PHONY : __/gpu/lnn/nimcp_lnn_kernels.cu.s
 
+__/gpu/lnn/nimcp_lnn_ode_kernels.o: __/gpu/lnn/nimcp_lnn_ode_kernels.cu.o
+.PHONY : __/gpu/lnn/nimcp_lnn_ode_kernels.o
+
+# target to build an object file
+__/gpu/lnn/nimcp_lnn_ode_kernels.cu.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/lnn/nimcp_lnn_ode_kernels.cu.o
+.PHONY : __/gpu/lnn/nimcp_lnn_ode_kernels.cu.o
+
+__/gpu/lnn/nimcp_lnn_ode_kernels.i: __/gpu/lnn/nimcp_lnn_ode_kernels.cu.i
+.PHONY : __/gpu/lnn/nimcp_lnn_ode_kernels.i
+
+# target to preprocess a source file
+__/gpu/lnn/nimcp_lnn_ode_kernels.cu.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/lnn/nimcp_lnn_ode_kernels.cu.i
+.PHONY : __/gpu/lnn/nimcp_lnn_ode_kernels.cu.i
+
+__/gpu/lnn/nimcp_lnn_ode_kernels.s: __/gpu/lnn/nimcp_lnn_ode_kernels.cu.s
+.PHONY : __/gpu/lnn/nimcp_lnn_ode_kernels.s
+
+# target to generate assembly for a file
+__/gpu/lnn/nimcp_lnn_ode_kernels.cu.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/gpu/lnn/nimcp_lnn_ode_kernels.cu.s
+.PHONY : __/gpu/lnn/nimcp_lnn_ode_kernels.cu.s
+
 __/gpu/memory/nimcp_memory_consolidation_kernels.o: __/gpu/memory/nimcp_memory_consolidation_kernels.cu.o
 .PHONY : __/gpu/memory/nimcp_memory_consolidation_kernels.o
 
@@ -30664,6 +30832,30 @@ __/perception/nimcp_audio_cortex_fep_bridge.s: __/perception/nimcp_audio_cortex_
 __/perception/nimcp_audio_cortex_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_audio_cortex_fep_bridge.c.s
 .PHONY : __/perception/nimcp_audio_cortex_fep_bridge.c.s
+
+__/perception/nimcp_lip_reading.o: __/perception/nimcp_lip_reading.c.o
+.PHONY : __/perception/nimcp_lip_reading.o
+
+# target to build an object file
+__/perception/nimcp_lip_reading.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_lip_reading.c.o
+.PHONY : __/perception/nimcp_lip_reading.c.o
+
+__/perception/nimcp_lip_reading.i: __/perception/nimcp_lip_reading.c.i
+.PHONY : __/perception/nimcp_lip_reading.i
+
+# target to preprocess a source file
+__/perception/nimcp_lip_reading.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_lip_reading.c.i
+.PHONY : __/perception/nimcp_lip_reading.c.i
+
+__/perception/nimcp_lip_reading.s: __/perception/nimcp_lip_reading.c.s
+.PHONY : __/perception/nimcp_lip_reading.s
+
+# target to generate assembly for a file
+__/perception/nimcp_lip_reading.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/perception/nimcp_lip_reading.c.s
+.PHONY : __/perception/nimcp_lip_reading.c.s
 
 __/perception/nimcp_omni_sensory_bridge.o: __/perception/nimcp_omni_sensory_bridge.c.o
 .PHONY : __/perception/nimcp_omni_sensory_bridge.o
@@ -43528,18 +43720,36 @@ help:
 	@echo "... __/core/brain/regions/broca/nimcp_broca_thalamic_bridge.o"
 	@echo "... __/core/brain/regions/broca/nimcp_broca_thalamic_bridge.i"
 	@echo "... __/core/brain/regions/broca/nimcp_broca_thalamic_bridge.s"
+	@echo "... __/core/brain/regions/broca/nimcp_discourse_manager.o"
+	@echo "... __/core/brain/regions/broca/nimcp_discourse_manager.i"
+	@echo "... __/core/brain/regions/broca/nimcp_discourse_manager.s"
+	@echo "... __/core/brain/regions/broca/nimcp_emotional_prosody.o"
+	@echo "... __/core/brain/regions/broca/nimcp_emotional_prosody.i"
+	@echo "... __/core/brain/regions/broca/nimcp_emotional_prosody.s"
+	@echo "... __/core/brain/regions/broca/nimcp_incremental_processor.o"
+	@echo "... __/core/brain/regions/broca/nimcp_incremental_processor.i"
+	@echo "... __/core/brain/regions/broca/nimcp_incremental_processor.s"
 	@echo "... __/core/brain/regions/broca/nimcp_language_production_bridge.o"
 	@echo "... __/core/brain/regions/broca/nimcp_language_production_bridge.i"
 	@echo "... __/core/brain/regions/broca/nimcp_language_production_bridge.s"
+	@echo "... __/core/brain/regions/broca/nimcp_multimodal_language.o"
+	@echo "... __/core/brain/regions/broca/nimcp_multimodal_language.i"
+	@echo "... __/core/brain/regions/broca/nimcp_multimodal_language.s"
 	@echo "... __/core/brain/regions/broca/nimcp_omni_broca_bridge.o"
 	@echo "... __/core/brain/regions/broca/nimcp_omni_broca_bridge.i"
 	@echo "... __/core/brain/regions/broca/nimcp_omni_broca_bridge.s"
 	@echo "... __/core/brain/regions/broca/nimcp_phonological.o"
 	@echo "... __/core/brain/regions/broca/nimcp_phonological.i"
 	@echo "... __/core/brain/regions/broca/nimcp_phonological.s"
+	@echo "... __/core/brain/regions/broca/nimcp_pragmatics_processor.o"
+	@echo "... __/core/brain/regions/broca/nimcp_pragmatics_processor.i"
+	@echo "... __/core/brain/regions/broca/nimcp_pragmatics_processor.s"
 	@echo "... __/core/brain/regions/broca/nimcp_speech_motor.o"
 	@echo "... __/core/brain/regions/broca/nimcp_speech_motor.i"
 	@echo "... __/core/brain/regions/broca/nimcp_speech_motor.s"
+	@echo "... __/core/brain/regions/broca/nimcp_speech_repair.o"
+	@echo "... __/core/brain/regions/broca/nimcp_speech_repair.i"
+	@echo "... __/core/brain/regions/broca/nimcp_speech_repair.s"
 	@echo "... __/core/brain/regions/broca/nimcp_syntax_processor.o"
 	@echo "... __/core/brain/regions/broca/nimcp_syntax_processor.i"
 	@echo "... __/core/brain/regions/broca/nimcp_syntax_processor.s"
@@ -44713,6 +44923,9 @@ help:
 	@echo "... __/gpu/lnn/nimcp_lnn_kernels.o"
 	@echo "... __/gpu/lnn/nimcp_lnn_kernels.i"
 	@echo "... __/gpu/lnn/nimcp_lnn_kernels.s"
+	@echo "... __/gpu/lnn/nimcp_lnn_ode_kernels.o"
+	@echo "... __/gpu/lnn/nimcp_lnn_ode_kernels.i"
+	@echo "... __/gpu/lnn/nimcp_lnn_ode_kernels.s"
 	@echo "... __/gpu/memory/nimcp_memory_consolidation_kernels.o"
 	@echo "... __/gpu/memory/nimcp_memory_consolidation_kernels.i"
 	@echo "... __/gpu/memory/nimcp_memory_consolidation_kernels.s"
@@ -45337,6 +45550,9 @@ help:
 	@echo "... __/perception/nimcp_audio_cortex_fep_bridge.o"
 	@echo "... __/perception/nimcp_audio_cortex_fep_bridge.i"
 	@echo "... __/perception/nimcp_audio_cortex_fep_bridge.s"
+	@echo "... __/perception/nimcp_lip_reading.o"
+	@echo "... __/perception/nimcp_lip_reading.i"
+	@echo "... __/perception/nimcp_lip_reading.s"
 	@echo "... __/perception/nimcp_omni_sensory_bridge.o"
 	@echo "... __/perception/nimcp_omni_sensory_bridge.i"
 	@echo "... __/perception/nimcp_omni_sensory_bridge.s"

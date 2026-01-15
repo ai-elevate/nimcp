@@ -118,25 +118,46 @@ static PyObject* PinkNoiseGenerator_generate(PinkNoiseGeneratorObject* self, PyO
     }
 
     // Allocate buffer
-    float* samples = (float*)malloc(sizeof(float) * num_samples);
+    float* samples = (float*)malloc(sizeof(float) * (size_t)num_samples);
     if (!samples) {
         return PyErr_NoMemory();
     }
 
-    // Generate samples
-    bool success = pink_noise_generate(self->generator, samples, (uint32_t)num_samples);
+    // Release GIL during potentially long generation
+    bool success;
+    Py_BEGIN_ALLOW_THREADS
+    success = pink_noise_generate(self->generator, samples, (uint32_t)num_samples);
+    Py_END_ALLOW_THREADS
 
     if (!success) {
+        free(samples);
         const char* error = pink_noise_get_last_error();
         PyErr_SetString(PyExc_RuntimeError, error ? error : "Generation failed");
-        free(samples);
         return NULL;
     }
 
     // Convert to Python list
     PyObject* result = PyList_New(num_samples);
+    if (!result) {
+        free(samples);
+        return NULL;
+    }
+
     for (int i = 0; i < num_samples; i++) {
-        PyList_SetItem(result, i, PyFloat_FromDouble(samples[i]));
+        PyObject* item = PyFloat_FromDouble(samples[i]);
+        if (!item) {
+            Py_DECREF(result);
+            free(samples);
+            return NULL;
+        }
+        // PyList_SetItem steals reference on success
+        if (PyList_SetItem(result, i, item) < 0) {
+            // On failure, item is NOT stolen
+            Py_DECREF(item);
+            Py_DECREF(result);
+            free(samples);
+            return NULL;
+        }
     }
 
     free(samples);
@@ -294,7 +315,7 @@ static PyObject* py_compute_pink_noise_stats(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    float* samples = (float*)malloc(sizeof(float) * num_samples);
+    float* samples = (float*)malloc(sizeof(float) * (size_t)num_samples);
     if (!samples) {
         return PyErr_NoMemory();
     }
@@ -308,9 +329,12 @@ static PyObject* py_compute_pink_noise_stats(PyObject* self, PyObject* args) {
         }
     }
 
-    // Compute statistics
+    // Release GIL during potentially long stats computation
     pink_noise_stats_t stats;
-    bool success = pink_noise_compute_stats(samples, (uint32_t)num_samples, sample_rate, &stats);
+    bool success;
+    Py_BEGIN_ALLOW_THREADS
+    success = pink_noise_compute_stats(samples, (uint32_t)num_samples, sample_rate, &stats);
+    Py_END_ALLOW_THREADS
 
     free(samples);
 
@@ -322,13 +346,34 @@ static PyObject* py_compute_pink_noise_stats(PyObject* self, PyObject* args) {
 
     // Build result dictionary
     PyObject* result = PyDict_New();
-    PyDict_SetItemString(result, "measured_alpha", PyFloat_FromDouble(stats.measured_alpha));
-    PyDict_SetItemString(result, "measured_amplitude", PyFloat_FromDouble(stats.measured_amplitude));
-    PyDict_SetItemString(result, "spectral_fit_r2", PyFloat_FromDouble(stats.spectral_fit_r2));
-    PyDict_SetItemString(result, "mean", PyFloat_FromDouble(stats.mean));
-    PyDict_SetItemString(result, "std_dev", PyFloat_FromDouble(stats.std_dev));
-    PyDict_SetItemString(result, "min_value", PyFloat_FromDouble(stats.min_value));
-    PyDict_SetItemString(result, "max_value", PyFloat_FromDouble(stats.max_value));
+    if (!result) {
+        return NULL;
+    }
+
+    // Helper macro to add item to dict with error checking
+    #define ADD_DICT_ITEM(key, value_expr) do { \
+        PyObject* _val = (value_expr); \
+        if (!_val) { \
+            Py_DECREF(result); \
+            return NULL; \
+        } \
+        if (PyDict_SetItemString(result, (key), _val) < 0) { \
+            Py_DECREF(_val); \
+            Py_DECREF(result); \
+            return NULL; \
+        } \
+        Py_DECREF(_val); \
+    } while (0)
+
+    ADD_DICT_ITEM("measured_alpha", PyFloat_FromDouble(stats.measured_alpha));
+    ADD_DICT_ITEM("measured_amplitude", PyFloat_FromDouble(stats.measured_amplitude));
+    ADD_DICT_ITEM("spectral_fit_r2", PyFloat_FromDouble(stats.spectral_fit_r2));
+    ADD_DICT_ITEM("mean", PyFloat_FromDouble(stats.mean));
+    ADD_DICT_ITEM("std_dev", PyFloat_FromDouble(stats.std_dev));
+    ADD_DICT_ITEM("min_value", PyFloat_FromDouble(stats.min_value));
+    ADD_DICT_ITEM("max_value", PyFloat_FromDouble(stats.max_value));
+
+    #undef ADD_DICT_ITEM
 
     return result;
 }

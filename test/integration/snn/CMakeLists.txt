@@ -83,3 +83,35 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_bridge_integration.cpp)
 
     message(STATUS "  Added SNN bridge integration test: test_snn_bridge_integration")
 endif()
+
+# ============================================================================
+# SNN-Plasticity Integration Test
+# ============================================================================
+# WHAT: Test STDP and BCM plasticity with full SNN network training
+# WHY:  Verify eligibility traces and threshold dynamics
+# HOW:  Test plasticity bridges with reward signals
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_plasticity_integration.cpp)
+    add_executable(integration_snn_plasticity
+        test_snn_plasticity_integration.cpp
+    )
+
+    target_link_libraries(integration_snn_plasticity
+        PRIVATE ${SNN_INTEGRATION_TEST_LIBS}
+    )
+
+    target_include_directories(integration_snn_plasticity
+        PRIVATE ${SNN_INTEGRATION_TEST_INCLUDES}
+    )
+
+    target_compile_features(integration_snn_plasticity PRIVATE cxx_std_17)
+
+    gtest_discover_tests(integration_snn_plasticity
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "integration;snn;plasticity;stdp;bcm"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added SNN plasticity integration test: test_snn_plasticity_integration")
+endif()

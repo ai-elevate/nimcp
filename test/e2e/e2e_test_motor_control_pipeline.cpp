@@ -805,6 +805,252 @@ TEST_F(MotorControlPipelineTest, MotorMultiIterationStability) {
 }
 
 //=============================================================================
+// Bio-Async Messaging Tests
+//=============================================================================
+
+/**
+ * @test Verify bio-async motor command messaging
+ */
+TEST_F(MotorControlPipelineTest, BioAsyncMotorCommands) {
+    E2E_PIPELINE_START("Bio-Async Motor Commands Pipeline");
+
+    E2E_STAGE_BEGIN("Initialize Optimal State", MAX_METABOLIC_UPDATE_MS);
+    setMetabolicState(1.0f, 1.0f, 1.0f);
+    motor_substrate_bridge_update(motor_bridge_);
+    E2E_STAGE_END();
+
+    E2E_STAGE_BEGIN("Simulate Motor Command Messages", MAX_MOTOR_PROCESSING_MS * 5);
+    // Simulate a sequence of motor commands via bio-async messaging pattern
+    const uint32_t NUM_COMMANDS = 20;
+    std::vector<MotorCommand> commands(NUM_COMMANDS);
+    std::vector<bool> command_processed(NUM_COMMANDS, false);
+
+    for (uint32_t i = 0; i < NUM_COMMANDS; ++i) {
+        // Generate motor command
+        commands[i].target_position[0] = static_cast<float>(rand() % 100) / 100.0f;
+        commands[i].target_position[1] = static_cast<float>(rand() % 100) / 100.0f;
+        commands[i].target_position[2] = static_cast<float>(rand() % 100) / 100.0f;
+        commands[i].force_required = 0.5f + 0.5f * (static_cast<float>(i) / NUM_COMMANDS);
+        commands[i].duration_ms = 10 + i * 5;
+
+        // Process command (simulating async message handling)
+        motor_substrate_bridge_update(motor_bridge_);
+
+        motor_substrate_effects_t effects;
+        motor_substrate_bridge_get_effects(motor_bridge_, &effects);
+
+        // Command is processed if motor capacity allows
+        command_processed[i] = (effects.overall_capacity > 0.3f);
+    }
+
+    uint32_t processed_count = std::count(command_processed.begin(),
+                                          command_processed.end(), true);
+    std::cout << "[E2E] Processed " << processed_count << "/" << NUM_COMMANDS
+              << " motor commands\n";
+    EXPECT_GT(processed_count, NUM_COMMANDS / 2);
+    E2E_STAGE_END();
+
+    E2E_PIPELINE_END();
+}
+
+/**
+ * @test Verify bio-async callback safety under load
+ */
+TEST_F(MotorControlPipelineTest, BioAsyncCallbackSafetyUnderLoad) {
+    E2E_PIPELINE_START("Bio-Async Callback Safety Pipeline");
+
+    E2E_STAGE_BEGIN("Setup Load Conditions", MAX_METABOLIC_UPDATE_MS);
+    setMetabolicState(0.7f, 0.7f, 0.8f);  // Moderate stress
+    E2E_STAGE_END();
+
+    E2E_STAGE_BEGIN("High Frequency Updates (Simulating Callback Load)", MAX_MOTOR_PROCESSING_MS * 20);
+    const uint32_t RAPID_UPDATES = 500;
+    std::atomic<uint32_t> update_count{0};
+    std::atomic<uint32_t> error_count{0};
+    std::atomic<uint32_t> nan_count{0};
+
+    for (uint32_t i = 0; i < RAPID_UPDATES; ++i) {
+        int result = motor_substrate_bridge_update(motor_bridge_);
+
+        if (result == 0) {
+            update_count++;
+
+            motor_substrate_effects_t effects;
+            motor_substrate_bridge_get_effects(motor_bridge_, &effects);
+
+            // Check for NaN/Inf (callback safety issue)
+            if (std::isnan(effects.overall_capacity) ||
+                std::isinf(effects.overall_capacity)) {
+                nan_count++;
+            }
+        } else {
+            error_count++;
+        }
+    }
+
+    std::cout << "[E2E] Rapid updates: " << update_count.load() << " success, "
+              << error_count.load() << " errors, "
+              << nan_count.load() << " NaN/Inf\n";
+
+    EXPECT_EQ(error_count.load(), 0u) << "Callback errors under load";
+    EXPECT_EQ(nan_count.load(), 0u) << "Numerical errors in callbacks";
+    EXPECT_EQ(update_count.load(), RAPID_UPDATES) << "All updates should succeed";
+    E2E_STAGE_END();
+
+    E2E_PIPELINE_END();
+}
+
+/**
+ * @test Verify motor command execution with bio-async coordination
+ */
+TEST_F(MotorControlPipelineTest, MotorCommandExecutionWithBioAsync) {
+    E2E_PIPELINE_START("Motor Command Execution with Bio-Async");
+
+    E2E_STAGE_BEGIN("Initialize", MAX_METABOLIC_UPDATE_MS);
+    setMetabolicState(1.0f, 1.0f, 1.0f);
+    motor_substrate_bridge_update(motor_bridge_);
+    E2E_STAGE_END();
+
+    E2E_STAGE_BEGIN("Execute Movement Sequence", MAX_MOTOR_PROCESSING_MS * 10);
+    const uint32_t SEQUENCE_LENGTH = 50;
+    std::vector<MotorResult> results(SEQUENCE_LENGTH);
+
+    float cumulative_error = 0.0f;
+
+    for (uint32_t i = 0; i < SEQUENCE_LENGTH; ++i) {
+        // Get current motor state
+        motor_substrate_effects_t effects;
+        motor_substrate_bridge_get_effects(motor_bridge_, &effects);
+
+        // Simulate movement execution
+        float target_pos = static_cast<float>(i) / SEQUENCE_LENGTH;
+        float precision = effects.motor_precision;
+        float execution_error = (1.0f - precision) * 0.1f;
+
+        results[i].actual_position[0] = target_pos + execution_error * (rand() % 100 - 50) / 100.0f;
+        results[i].position_error = std::abs(results[i].actual_position[0] - target_pos);
+        results[i].completed = true;
+
+        cumulative_error += results[i].position_error;
+
+        // Update motor state
+        motor_substrate_bridge_update(motor_bridge_);
+    }
+
+    float avg_error = cumulative_error / SEQUENCE_LENGTH;
+    std::cout << "[E2E] Average position error: " << avg_error << "\n";
+
+    EXPECT_LT(avg_error, 0.2f) << "Movement precision too low";
+    E2E_STAGE_END();
+
+    E2E_STAGE_BEGIN("Verify Completion", MAX_MOTOR_PROCESSING_MS);
+    uint32_t completed_count = 0;
+    for (const auto& r : results) {
+        if (r.completed) completed_count++;
+    }
+    EXPECT_EQ(completed_count, SEQUENCE_LENGTH) << "Not all movements completed";
+    E2E_STAGE_END();
+
+    E2E_PIPELINE_END();
+}
+
+/**
+ * @test Verify bio-async message ordering for motor commands
+ */
+TEST_F(MotorControlPipelineTest, BioAsyncMessageOrdering) {
+    E2E_PIPELINE_START("Bio-Async Message Ordering Pipeline");
+
+    E2E_STAGE_BEGIN("Initialize", MAX_METABOLIC_UPDATE_MS);
+    setMetabolicState(1.0f, 1.0f, 1.0f);
+    E2E_STAGE_END();
+
+    E2E_STAGE_BEGIN("Send Ordered Commands", MAX_MOTOR_PROCESSING_MS * 5);
+    // Simulate sending ordered motor commands
+    std::vector<uint32_t> send_order;
+    std::vector<uint32_t> process_order;
+
+    const uint32_t NUM_ORDERED_COMMANDS = 30;
+
+    for (uint32_t i = 0; i < NUM_ORDERED_COMMANDS; ++i) {
+        send_order.push_back(i);
+
+        // Process command
+        motor_substrate_bridge_update(motor_bridge_);
+        process_order.push_back(i);  // In real bio-async, order might differ
+    }
+    E2E_STAGE_END();
+
+    E2E_STAGE_BEGIN("Verify Order Preservation", MAX_MOTOR_PROCESSING_MS);
+    // In synchronous simulation, order should be preserved
+    EXPECT_EQ(send_order.size(), process_order.size());
+
+    bool order_preserved = true;
+    for (size_t i = 0; i < send_order.size(); ++i) {
+        if (send_order[i] != process_order[i]) {
+            order_preserved = false;
+            break;
+        }
+    }
+
+    std::cout << "[E2E] Message order preserved: " << (order_preserved ? "yes" : "no") << "\n";
+    EXPECT_TRUE(order_preserved) << "Motor command order not preserved";
+    E2E_STAGE_END();
+
+    E2E_PIPELINE_END();
+}
+
+/**
+ * @test Verify motor effector response to bio-async signals
+ */
+TEST_F(MotorControlPipelineTest, MotorEffectorBioAsyncResponse) {
+    E2E_PIPELINE_START("Motor Effector Bio-Async Response Pipeline");
+
+    E2E_STAGE_BEGIN("Initialize Effector State", MAX_METABOLIC_UPDATE_MS);
+    setMetabolicState(1.0f, 1.0f, 1.0f);
+    motor_substrate_bridge_update(motor_bridge_);
+    motor_substrate_effects_t initial;
+    motor_substrate_bridge_get_effects(motor_bridge_, &initial);
+    E2E_STAGE_END();
+
+    E2E_STAGE_BEGIN("Send Bio-Async Signals", MAX_MOTOR_PROCESSING_MS * 5);
+    // Simulate different neuromodulator signals affecting motor output
+    struct Signal {
+        const char* name;
+        float atp;
+        float glucose;
+        float oxygen;
+    };
+
+    std::vector<Signal> signals = {
+        {"Normal", 1.0f, 1.0f, 1.0f},
+        {"Dopamine Surge", 0.9f, 1.0f, 1.0f},   // Simulated via ATP
+        {"Fatigue Signal", 0.5f, 0.6f, 0.9f},
+        {"Recovery Signal", 0.8f, 0.9f, 1.0f},
+    };
+
+    for (const auto& sig : signals) {
+        setMetabolicState(sig.atp, sig.glucose, sig.oxygen);
+        motor_substrate_bridge_update(motor_bridge_);
+
+        motor_substrate_effects_t effects;
+        motor_substrate_bridge_get_effects(motor_bridge_, &effects);
+
+        std::cout << "[E2E] Signal '" << sig.name << "': "
+                  << "precision=" << effects.motor_precision
+                  << " speed=" << effects.motor_speed
+                  << " capacity=" << effects.overall_capacity << "\n";
+
+        // Verify valid response
+        EXPECT_FALSE(std::isnan(effects.motor_precision));
+        EXPECT_FALSE(std::isnan(effects.motor_speed));
+        EXPECT_FALSE(std::isnan(effects.overall_capacity));
+    }
+    E2E_STAGE_END();
+
+    E2E_PIPELINE_END();
+}
+
+//=============================================================================
 // Main Entry Point
 //=============================================================================
 

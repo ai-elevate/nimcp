@@ -34,13 +34,21 @@
  * WHAT: Compute Frobenius norm of matrix
  * WHY:  Needed for normalization and error computation
  * HOW:  √(Σᵢⱼ aᵢⱼ²)
+ *
+ * NUMERICAL STABILITY:
+ * Uses double accumulator to prevent overflow for large matrices.
+ * For float32 data, accumulating in float32 can overflow when:
+ *   - Matrix has many elements (n*m > ~10^7 with typical values)
+ *   - Elements have magnitude ~1000, squares ~10^6, sum overflows float32 max (~3.4e38)
+ * Using double accumulator (max ~1.8e308) safely handles matrices up to ~10^300 elements.
  */
 static float frobenius_norm(const float* A, uint32_t m, uint32_t n) {
-    float sum = 0.0f;
-    for (uint32_t i = 0; i < m * n; i++) {
-        sum += A[i] * A[i];
+    double sum = 0.0;  /* Use double accumulator to prevent overflow */
+    for (uint32_t i = 0; i < (uint32_t)(m * n); i++) {
+        double val = (double)A[i];
+        sum += val * val;
     }
-    return sqrtf(sum);
+    return (float)sqrt(sum);
 }
 
 /**

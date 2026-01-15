@@ -237,17 +237,32 @@ int triplet_stdp_update_traces(triplet_stdp_synapse_t* synapse, float dt) {
 
     nimcp_spinlock_lock(&synapse->lock);
 
+    /* NUMERICAL STABILITY: Clamp exponential arguments to prevent underflow
+     * WHY:  exp(-x) becomes denormal for x > ~88, negligible for x > 20
+     * HOW:  Pre-compute clamped exp arguments to avoid repeated computation
+     */
+    float exp_arg_plus = -dt / synapse->tau_plus;
+    float exp_arg_x = -dt / synapse->tau_x;
+    float exp_arg_minus = -dt / synapse->tau_minus;
+    float exp_arg_y = -dt / synapse->tau_y;
+
+    /* Clamp to prevent underflow - exp(-20) ≈ 2e-9 which is negligible */
+    if (exp_arg_plus < -20.0f) exp_arg_plus = -20.0f;
+    if (exp_arg_x < -20.0f) exp_arg_x = -20.0f;
+    if (exp_arg_minus < -20.0f) exp_arg_minus = -20.0f;
+    if (exp_arg_y < -20.0f) exp_arg_y = -20.0f;
+
     /* Decay fast pre-trace (tau_plus) */
-    synapse->r1_pre *= expf(-dt / synapse->tau_plus);
+    synapse->r1_pre *= expf(exp_arg_plus);
 
     /* Decay slow pre-trace (tau_x) */
-    synapse->r2_pre *= expf(-dt / synapse->tau_x);
+    synapse->r2_pre *= expf(exp_arg_x);
 
     /* Decay fast post-trace (tau_minus) */
-    synapse->o1_post *= expf(-dt / synapse->tau_minus);
+    synapse->o1_post *= expf(exp_arg_minus);
 
     /* Decay slow post-trace (tau_y) */
-    synapse->o2_post *= expf(-dt / synapse->tau_y);
+    synapse->o2_post *= expf(exp_arg_y);
 
     /* P1 fix: Flush subnormal traces to zero to prevent denormal slowdown
      * WHY:  Subnormal floats (< ~1e-38) cause 10-100x performance degradation
@@ -281,8 +296,13 @@ float triplet_stdp_pre_spike(triplet_stdp_synapse_t* synapse, float spike_time) 
     if (synapse->last_pre_spike_time > 0.0f) {
         float dt = spike_time - synapse->last_pre_spike_time;
         if (dt > 0.0f) {
-            synapse->r1_pre *= expf(-dt / synapse->tau_plus);
-            synapse->r2_pre *= expf(-dt / synapse->tau_x);
+            /* NUMERICAL STABILITY: Clamp exponential arguments to prevent underflow */
+            float exp_arg_plus = -dt / synapse->tau_plus;
+            float exp_arg_x = -dt / synapse->tau_x;
+            if (exp_arg_plus < -20.0f) exp_arg_plus = -20.0f;
+            if (exp_arg_x < -20.0f) exp_arg_x = -20.0f;
+            synapse->r1_pre *= expf(exp_arg_plus);
+            synapse->r2_pre *= expf(exp_arg_x);
             /* P1 fix: Flush subnormal traces to zero to prevent denormal slowdown
              * WHY:  Subnormal floats (< ~1e-38) cause 10-100x performance degradation
              */
@@ -376,8 +396,13 @@ float triplet_stdp_post_spike(triplet_stdp_synapse_t* synapse, float spike_time)
     if (synapse->last_post_spike_time > 0.0f) {
         float dt = spike_time - synapse->last_post_spike_time;
         if (dt > 0.0f) {
-            synapse->o1_post *= expf(-dt / synapse->tau_minus);
-            synapse->o2_post *= expf(-dt / synapse->tau_y);
+            /* NUMERICAL STABILITY: Clamp exponential arguments to prevent underflow */
+            float exp_arg_minus = -dt / synapse->tau_minus;
+            float exp_arg_y = -dt / synapse->tau_y;
+            if (exp_arg_minus < -20.0f) exp_arg_minus = -20.0f;
+            if (exp_arg_y < -20.0f) exp_arg_y = -20.0f;
+            synapse->o1_post *= expf(exp_arg_minus);
+            synapse->o2_post *= expf(exp_arg_y);
             /* P1 fix: Flush subnormal traces to zero to prevent denormal slowdown
              * WHY:  Subnormal floats (< ~1e-38) cause 10-100x performance degradation
              */

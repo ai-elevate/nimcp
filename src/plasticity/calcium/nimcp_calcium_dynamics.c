@@ -327,10 +327,19 @@ int calcium_update(calcium_dynamics_t calcium, float delta_ms) {
 
     /* Apply exponential decay toward baseline using time constant
      * Formula: ca_new = baseline + (ca - baseline) * exp(-dt/tau)
-     * This is more numerically stable than incremental updates */
+     * This is more numerically stable than incremental updates
+     * P1 fix: Clamp exponent to prevent underflow (exp(-x) denormal for x > ~88)
+     */
     float tau = calcium->config.decay_tau_ms;
     if (tau > 0.0f) {
-        float decay_factor = expf(-delta_ms / tau);
+        /* Clamp ratio to prevent underflow: exp(-20) ≈ 2e-9, sufficient precision */
+        float exp_arg = -delta_ms / tau;
+        if (exp_arg < -20.0f) exp_arg = -20.0f;
+        float decay_factor = expf(exp_arg);
+        /* Validate result and flush denormals */
+        if (isnan(decay_factor) || decay_factor < 1e-9f) {
+            decay_factor = 0.0f;  /* Complete decay */
+        }
         ca = baseline + (ca - baseline) * decay_factor;
     }
 
@@ -686,12 +695,39 @@ float calcium_compute_mg_block(float voltage_mv) {
      *
      * Reference: Jahr & Stevens (1990) J Neurosci 10:3178-3182
      * [Mg²⁺]_out = 1.0 mM (typical extracellular)
+     *
+     * NUMERICAL STABILITY:
+     * - Clamp exponential argument to prevent overflow/underflow
+     * - exp(x) overflows for x > ~88, underflows for x < ~-88
+     * - At -100mV: exp(6.2) ≈ 493, at +50mV: exp(-3.1) ≈ 0.045
      */
     const float mg_concentration_mm = 1.0f;
     const float voltage_coeff = 0.062f;  /* 1/mV at room temp */
     const float mg_k_half = 3.57f;        /* mM */
 
-    float exp_term = expf(-voltage_coeff * voltage_mv);
+    /* Clamp voltage to physiological range to prevent extreme exponentials
+     * WHY:  Voltages outside [-150, +100] mV are non-physiological
+     *       At -150mV: exp(9.3) ≈ 10938 (still computable)
+     *       At +100mV: exp(-6.2) ≈ 0.002 (small but computable)
+     */
+    float clamped_voltage = voltage_mv;
+    if (clamped_voltage < -150.0f) clamped_voltage = -150.0f;
+    if (clamped_voltage > 100.0f) clamped_voltage = 100.0f;
+
+    float exp_arg = -voltage_coeff * clamped_voltage;
+
+    /* Additional safety clamp for exponential argument */
+    if (exp_arg > 20.0f) exp_arg = 20.0f;    /* Prevents overflow */
+    if (exp_arg < -20.0f) exp_arg = -20.0f;  /* Prevents underflow to denormal */
+
+    float exp_term = expf(exp_arg);
+
+    /* Validate exponential result */
+    if (isnan(exp_term) || isinf(exp_term)) {
+        /* Return 0 (fully blocked) for invalid input */
+        return 0.0f;
+    }
+
     float denominator = 1.0f + (mg_concentration_mm * exp_term / mg_k_half);
 
     return 1.0f / denominator;

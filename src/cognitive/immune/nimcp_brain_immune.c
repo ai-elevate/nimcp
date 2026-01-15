@@ -1462,13 +1462,21 @@ int brain_immune_t_cell_kill(
                            system->config.antibody_half_life_ms);
     }
 
+    /* Capture callback and data under mutex to prevent race condition */
+    brain_immune_kill_cb_t kill_callback = NULL;
+    void* callback_user_data = NULL;
+    brain_t_cell_t t_cell_copy;
+
     nimcp_mutex_lock(system->mutex);
     t_cell->kills++;
+    kill_callback = system->on_kill;
+    callback_user_data = system->callback_user_data;
+    t_cell_copy = *t_cell;  /* Copy for safe callback invocation */
     nimcp_mutex_unlock(system->mutex);
 
-    /* Trigger callback */
-    if (system->on_kill) {
-        system->on_kill(system, t_cell, target_node, system->callback_user_data);
+    /* Trigger callback with copied data (safe after unlock) */
+    if (kill_callback) {
+        kill_callback(system, &t_cell_copy, target_node, callback_user_data);
     }
 
     if (system->config.enable_logging) {
@@ -1891,14 +1899,20 @@ int brain_immune_initiate_inflammation(
     system->inflammation_count++;
     system->stats.inflammation_sites++;
 
+    /* Capture callback and data under mutex to prevent race condition */
+    brain_immune_inflammation_cb_t inflammation_callback = system->on_inflammation;
+    void* callback_user_data = system->callback_user_data;
+    brain_inflammation_site_t site_copy = *site;  /* Copy for safe callback invocation */
+    bool enable_logging = system->config.enable_logging;
+
     nimcp_mutex_unlock(system->mutex);
 
-    /* Trigger callback */
-    if (system->on_inflammation) {
-        system->on_inflammation(system, site, system->callback_user_data);
+    /* Trigger callback with copied data (safe after unlock) */
+    if (inflammation_callback) {
+        inflammation_callback(system, &site_copy, callback_user_data);
     }
 
-    if (system->config.enable_logging) {
+    if (enable_logging) {
         LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
             "Inflammation initiated at region %u", region_id);
     }
@@ -2084,8 +2098,13 @@ int brain_immune_set_antigen_callback(
     void* user_data
 ) {
     if (!system) return -1;
+
+    /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
+    nimcp_mutex_lock(system->mutex);
     system->on_antigen = callback;
     system->callback_user_data = user_data;
+    nimcp_mutex_unlock(system->mutex);
+
     return 0;
 }
 
@@ -2095,8 +2114,13 @@ int brain_immune_set_neutralize_callback(
     void* user_data
 ) {
     if (!system) return -1;
+
+    /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
+    nimcp_mutex_lock(system->mutex);
     system->on_neutralize = callback;
     system->callback_user_data = user_data;
+    nimcp_mutex_unlock(system->mutex);
+
     return 0;
 }
 
@@ -2106,8 +2130,13 @@ int brain_immune_set_cytokine_callback(
     void* user_data
 ) {
     if (!system) return -1;
+
+    /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
+    nimcp_mutex_lock(system->mutex);
     system->on_cytokine = callback;
     system->callback_user_data = user_data;
+    nimcp_mutex_unlock(system->mutex);
+
     return 0;
 }
 
@@ -2117,8 +2146,13 @@ int brain_immune_set_inflammation_callback(
     void* user_data
 ) {
     if (!system) return -1;
+
+    /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
+    nimcp_mutex_lock(system->mutex);
     system->on_inflammation = callback;
     system->callback_user_data = user_data;
+    nimcp_mutex_unlock(system->mutex);
+
     return 0;
 }
 
@@ -2128,8 +2162,13 @@ int brain_immune_set_kill_callback(
     void* user_data
 ) {
     if (!system) return -1;
+
+    /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
+    nimcp_mutex_lock(system->mutex);
     system->on_kill = callback;
     system->callback_user_data = user_data;
+    nimcp_mutex_unlock(system->mutex);
+
     return 0;
 }
 

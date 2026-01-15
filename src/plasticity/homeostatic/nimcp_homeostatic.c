@@ -115,10 +115,35 @@ static inline float safe_divide(float numerator, float denominator) {
  * WHAT: Compute 1 - exp(-dt/tau) for exponential averaging
  * WHY:  Common operation in all homeostatic mechanisms
  *
+ * NUMERICAL STABILITY:
+ * - Validates inputs for NaN/Inf
+ * - Clamps exponential argument to prevent underflow
+ * - exp(-20) ≈ 2e-9 which is negligible, so decay_factor ≈ 1.0
+ *
  * COMPLEXITY: O(1)
  */
 static inline float decay_factor(float dt, float tau) {
-    return 1.0F - expf(-dt / (tau + EPSILON));
+    /* Validate inputs */
+    if (isnan(dt) || isnan(tau) || dt < 0.0F || tau <= 0.0F) {
+        return 0.0F;  /* No decay for invalid inputs */
+    }
+
+    /* Compute exponent argument with epsilon guard for division */
+    float exp_arg = -dt / (tau + EPSILON);
+
+    /* Clamp to prevent underflow - exp(-20) ≈ 2e-9 is negligible */
+    if (exp_arg < -20.0F) {
+        return 1.0F;  /* Complete decay when exp_arg is very negative */
+    }
+
+    float result = 1.0F - expf(exp_arg);
+
+    /* Validate result */
+    if (isnan(result)) {
+        return 0.0F;
+    }
+
+    return result;
 }
 
 /**

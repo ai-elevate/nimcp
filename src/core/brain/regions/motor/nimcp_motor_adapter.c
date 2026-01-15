@@ -15,6 +15,8 @@
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/thread/nimcp_atomic.h"
+#include "utils/error/nimcp_error_codes.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_wiring_helpers.h"
@@ -90,8 +92,10 @@ struct motor_adapter {
     uint32_t queue_count;
     nimcp_mutex_t* queue_mutex;  /**< Mutex protecting queue operations */
 
-    /* Callback re-entrance guard */
-    bool in_callback;  /**< Flag to prevent callback re-entrance */
+    /* Callback re-entrance guard (atomic for thread safety)
+     * Uses atomic CAS to prevent race conditions where two threads
+     * could both see in_callback=false and both invoke the callback */
+    nimcp_atomic_bool_t in_callback;
 
     /* Current movement state */
     motor_goal_t current_goal;
@@ -137,13 +141,34 @@ static uint32_t hash_program_id(uint32_t program_id, uint32_t capacity) {
 /**
  * @brief Emit event to callback
  *
- * THREAD SAFETY: Uses in_callback flag to prevent callback re-entrance.
+ * THREAD SAFETY: Acquires queue_mutex to safely read callback pointer, then releases
+ * mutex before invoking callback (to avoid deadlock). Uses atomic CAS on in_callback
+ * flag to prevent callback re-entrance.
  */
 static void emit_event(motor_adapter_t* adapter, uint32_t event_type, const void* data) {
-    if (adapter->config.enable_events && adapter->event_callback && !adapter->in_callback) {
-        adapter->in_callback = true;
-        adapter->event_callback(event_type, data, adapter->event_user_data);
-        adapter->in_callback = false;
+    if (!adapter->config.enable_events) {
+        return;
+    }
+
+    /* Capture callback pointer and user data under mutex protection */
+    motor_event_callback_t callback = NULL;
+    void* user_data = NULL;
+
+    nimcp_mutex_lock(adapter->queue_mutex);
+    callback = adapter->event_callback;
+    user_data = adapter->event_user_data;
+    nimcp_mutex_unlock(adapter->queue_mutex);
+
+    if (!callback) {
+        return;
+    }
+
+    /* Atomic CAS: only proceed if we successfully change in_callback from false to true */
+    bool expected = false;
+    if (nimcp_atomic_compare_exchange_bool(&adapter->in_callback, &expected, true,
+                                            NIMCP_MEMORY_ORDER_ACQ_REL)) {
+        callback(event_type, data, user_data);
+        nimcp_atomic_store_bool(&adapter->in_callback, false, NIMCP_MEMORY_ORDER_RELEASE);
     }
 }
 
@@ -231,11 +256,14 @@ static bool enqueue_command(motor_adapter_t* adapter, const motor_command_t* com
     nimcp_mutex_unlock(adapter->queue_mutex);
 
     /* Invoke callback outside of lock to avoid deadlock
-     * Use in_callback flag to prevent re-entrance */
-    if (success && callback && !adapter->in_callback) {
-        adapter->in_callback = true;
-        callback(&cmd_copy, user_data);
-        adapter->in_callback = false;
+     * Use atomic CAS on in_callback flag to prevent re-entrance race condition */
+    if (success && callback) {
+        bool expected = false;
+        if (nimcp_atomic_compare_exchange_bool(&adapter->in_callback, &expected, true,
+                                                NIMCP_MEMORY_ORDER_ACQ_REL)) {
+            callback(&cmd_copy, user_data);
+            nimcp_atomic_store_bool(&adapter->in_callback, false, NIMCP_MEMORY_ORDER_RELEASE);
+        }
     }
 
     return success;
@@ -439,8 +467,8 @@ motor_adapter_t* motor_create(const motor_config_t* config) {
         return NULL;
     }
 
-    /* Initialize callback re-entrance guard */
-    adapter->in_callback = false;
+    /* Initialize callback re-entrance guard (atomic) */
+    nimcp_atomic_init_bool(&adapter->in_callback, false);
 
     /* Initialize memory pool for waypoints */
     LOG_DEBUG("[%s] Creating waypoint memory pool", MOTOR_LOG_MODULE);
@@ -590,7 +618,7 @@ void motor_destroy(motor_adapter_t* adapter) {
 }
 
 bool motor_reset(motor_adapter_t* adapter) {
-    if (!adapter) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
 
     LOG_DEBUG("[%s] Resetting adapter state", MOTOR_LOG_MODULE);
 
@@ -636,7 +664,22 @@ uint32_t motor_store_program(motor_adapter_t* adapter,
                               const motor_command_t* commands,
                               uint32_t num_commands,
                               movement_type_t type) {
-    if (!adapter || !name || !commands || num_commands == 0) return 0;
+    if (!adapter) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        return 0;
+    }
+    if (!name) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: name");
+        return 0;
+    }
+    if (!commands) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: commands");
+        return 0;
+    }
+    if (num_commands == 0) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: num_commands must be > 0");
+        return 0;
+    }
 
     if (adapter->program_count >= adapter->program_capacity) {
         LOG_WARN("[%s] Program storage full", MOTOR_LOG_MODULE);
@@ -691,7 +734,12 @@ uint32_t motor_store_program(motor_adapter_t* adapter,
 bool motor_get_program(const motor_adapter_t* adapter,
                         uint32_t program_id,
                         motor_program_info_t* info) {
-    if (!adapter || !info || program_id == 0) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    NIMCP_CHECK_NULL_BOOL(info, "info");
+    if (program_id == 0) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: program_id cannot be 0");
+        return false;
+    }
 
     uint32_t idx = hash_program_id(program_id, adapter->program_capacity);
     motor_program_node_t* node = adapter->programs[idx];
@@ -708,7 +756,11 @@ bool motor_get_program(const motor_adapter_t* adapter,
 }
 
 bool motor_delete_program(motor_adapter_t* adapter, uint32_t program_id) {
-    if (!adapter || program_id == 0) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    if (program_id == 0) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: program_id cannot be 0");
+        return false;
+    }
 
     uint32_t idx = hash_program_id(program_id, adapter->program_capacity);
     motor_program_node_t** pp = &adapter->programs[idx];
@@ -734,7 +786,12 @@ bool motor_delete_program(motor_adapter_t* adapter, uint32_t program_id) {
  *===========================================================================*/
 
 bool motor_plan_movement(motor_adapter_t* adapter, const motor_goal_t* goal) {
-    if (!adapter || !goal) {
+    if (!adapter) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        return false;
+    }
+    if (!goal) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: goal");
         set_error(adapter, MOTOR_ERROR_INVALID_INPUT);
         return false;
     }
@@ -814,7 +871,17 @@ bool motor_plan_trajectory(motor_adapter_t* adapter,
                             motor_region_t region,
                             const trajectory_waypoint_t* waypoints,
                             uint32_t num_waypoints) {
-    if (!adapter || !waypoints || num_waypoints < 2) {
+    if (!adapter) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        return false;
+    }
+    if (!waypoints) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: waypoints");
+        set_error(adapter, MOTOR_ERROR_INVALID_INPUT);
+        return false;
+    }
+    if (num_waypoints < 2) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: num_waypoints must be >= 2");
         set_error(adapter, MOTOR_ERROR_INVALID_INPUT);
         return false;
     }
@@ -856,7 +923,12 @@ bool motor_plan_trajectory(motor_adapter_t* adapter,
 bool motor_plan_program_execution(motor_adapter_t* adapter,
                                    uint32_t program_id,
                                    float speed_factor) {
-    if (!adapter || program_id == 0) {
+    if (!adapter) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        return false;
+    }
+    if (program_id == 0) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: program_id cannot be 0");
         set_error(adapter, MOTOR_ERROR_INVALID_INPUT);
         return false;
     }
@@ -913,7 +985,7 @@ bool motor_plan_program_execution(motor_adapter_t* adapter,
  *===========================================================================*/
 
 bool motor_begin_execution(motor_adapter_t* adapter) {
-    if (!adapter) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
 
     if (adapter->status != MOTOR_STATUS_PREPARING) {
         LOG_WARN("[%s] Cannot begin execution from status %d", MOTOR_LOG_MODULE, adapter->status);
@@ -932,8 +1004,9 @@ bool motor_begin_execution(motor_adapter_t* adapter) {
 }
 
 bool motor_update_execution(motor_adapter_t* adapter, float dt_ms) {
-    if (!adapter || (adapter->status != MOTOR_STATUS_EXECUTING &&
-                     adapter->status != MOTOR_STATUS_CORRECTING)) {
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    if (adapter->status != MOTOR_STATUS_EXECUTING &&
+        adapter->status != MOTOR_STATUS_CORRECTING) {
         return false;
     }
 
@@ -972,11 +1045,24 @@ bool motor_update_execution(motor_adapter_t* adapter, float dt_ms) {
                 adapter->effectors[eff_id].velocity.z = 0.0f;
             }
 
-            /* Invoke completion callback with re-entrance guard */
-            if (adapter->complete_callback && !adapter->in_callback) {
-                adapter->in_callback = true;
-                adapter->complete_callback(&adapter->last_result, adapter->complete_user_data);
-                adapter->in_callback = false;
+            /* Capture completion callback under mutex to prevent race */
+            motor_complete_callback_t complete_cb = NULL;
+            void* complete_data = NULL;
+            motor_result_t result_copy = adapter->last_result;
+
+            nimcp_mutex_lock(adapter->queue_mutex);
+            complete_cb = adapter->complete_callback;
+            complete_data = adapter->complete_user_data;
+            nimcp_mutex_unlock(adapter->queue_mutex);
+
+            /* Invoke completion callback with atomic CAS re-entrance guard */
+            if (complete_cb) {
+                bool expected = false;
+                if (nimcp_atomic_compare_exchange_bool(&adapter->in_callback, &expected, true,
+                                                        NIMCP_MEMORY_ORDER_ACQ_REL)) {
+                    complete_cb(&result_copy, complete_data);
+                    nimcp_atomic_store_bool(&adapter->in_callback, false, NIMCP_MEMORY_ORDER_RELEASE);
+                }
             }
 
             emit_event(adapter, 3 /* MOTOR_EVENT_EXECUTION_COMPLETE */, &adapter->last_result);
@@ -1026,7 +1112,7 @@ bool motor_update_execution(motor_adapter_t* adapter, float dt_ms) {
 }
 
 bool motor_stop_execution(motor_adapter_t* adapter) {
-    if (!adapter) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
 
     LOG_DEBUG("[%s] Stopping movement execution", MOTOR_LOG_MODULE);
 
@@ -1069,7 +1155,8 @@ bool motor_stop_execution(motor_adapter_t* adapter) {
 }
 
 bool motor_get_next_command(motor_adapter_t* adapter, motor_command_t* command) {
-    if (!adapter || !command) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    NIMCP_CHECK_NULL_BOOL(command, "command");
 
     bool success = false;
 
@@ -1089,7 +1176,8 @@ bool motor_get_next_command(motor_adapter_t* adapter, motor_command_t* command) 
 }
 
 bool motor_get_result(const motor_adapter_t* adapter, motor_result_t* result) {
-    if (!adapter || !result) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    NIMCP_CHECK_NULL_BOOL(result, "result");
 
     if (adapter->status != MOTOR_STATUS_COMPLETE &&
         adapter->status != MOTOR_STATUS_ERROR) {
@@ -1107,7 +1195,11 @@ bool motor_get_result(const motor_adapter_t* adapter, motor_result_t* result) {
 bool motor_update_feedback(motor_adapter_t* adapter,
                             uint32_t effector_id,
                             const motor_effector_state_t* state) {
-    if (!adapter || !state || effector_id >= adapter->num_effectors) {
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    NIMCP_CHECK_NULL_BOOL(state, "state");
+    if (effector_id >= adapter->num_effectors) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_OUT_OF_RANGE, "Out of bounds: effector_id (%u >= %u)",
+                       effector_id, adapter->num_effectors);
         return false;
     }
 
@@ -1146,7 +1238,11 @@ bool motor_update_visual_feedback(motor_adapter_t* adapter,
                                    uint32_t effector_id,
                                    const motor_vec3_t* visual_position,
                                    float confidence) {
-    if (!adapter || !visual_position || effector_id >= adapter->num_effectors) {
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    NIMCP_CHECK_NULL_BOOL(visual_position, "visual_position");
+    if (effector_id >= adapter->num_effectors) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_OUT_OF_RANGE, "Out of bounds: effector_id (%u >= %u)",
+                       effector_id, adapter->num_effectors);
         return false;
     }
 
@@ -1168,7 +1264,7 @@ bool motor_update_visual_feedback(motor_adapter_t* adapter,
 bool motor_receive_bg_selection(motor_adapter_t* adapter,
                                  uint32_t action_id,
                                  float vigor) {
-    if (!adapter) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
 
     LOG_DEBUG("[%s] Received BG action selection: action=%u, vigor=%.2f",
               MOTOR_LOG_MODULE, action_id, vigor);
@@ -1190,7 +1286,12 @@ bool motor_receive_cerebellar_correction(motor_adapter_t* adapter,
                                           uint32_t effector_id,
                                           float timing_correction,
                                           float amplitude_correction) {
-    if (!adapter || effector_id >= adapter->num_effectors) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    if (effector_id >= adapter->num_effectors) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_OUT_OF_RANGE, "Out of bounds: effector_id (%u >= %u)",
+                       effector_id, adapter->num_effectors);
+        return false;
+    }
 
     LOG_DEBUG("[%s] Received cerebellar correction: effector=%u, timing=%.2fms, amp=%.2f",
               MOTOR_LOG_MODULE, effector_id, timing_correction, amplitude_correction);
@@ -1216,7 +1317,8 @@ bool motor_receive_cerebellar_correction(motor_adapter_t* adapter,
 bool motor_train_movement(motor_adapter_t* adapter,
                            const motor_vec3_t* target_position,
                            float learning_rate) {
-    if (!adapter || !target_position) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    NIMCP_CHECK_NULL_BOOL(target_position, "target_position");
     if (!adapter->config.enable_training) return false;
 
     if (learning_rate <= 0.0f) {
@@ -1248,7 +1350,20 @@ uint32_t motor_train_from_demonstration(motor_adapter_t* adapter,
                                          const trajectory_waypoint_t* waypoints,
                                          uint32_t num_waypoints,
                                          const char* program_name) {
-    if (!adapter || !waypoints || num_waypoints < 2 || !program_name) {
+    if (!adapter) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        return 0;
+    }
+    if (!waypoints) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: waypoints");
+        return 0;
+    }
+    if (num_waypoints < 2) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: num_waypoints must be >= 2");
+        return 0;
+    }
+    if (!program_name) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: program_name");
         return 0;
     }
 
@@ -1326,13 +1441,15 @@ const char* motor_status_string(motor_status_t status) {
 }
 
 bool motor_get_stats(const motor_adapter_t* adapter, motor_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    NIMCP_CHECK_NULL_BOOL(stats, "stats");
     *stats = adapter->stats;
     return true;
 }
 
 bool motor_get_config(const motor_adapter_t* adapter, motor_config_t* config) {
-    if (!adapter || !config) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    NIMCP_CHECK_NULL_BOOL(config, "config");
     *config = adapter->config;
     return true;
 }
@@ -1340,7 +1457,11 @@ bool motor_get_config(const motor_adapter_t* adapter, motor_config_t* config) {
 bool motor_get_effector_state(const motor_adapter_t* adapter,
                                uint32_t effector_id,
                                motor_effector_state_t* state) {
-    if (!adapter || !state || effector_id >= adapter->num_effectors) {
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    NIMCP_CHECK_NULL_BOOL(state, "state");
+    if (effector_id >= adapter->num_effectors) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_OUT_OF_RANGE, "Out of bounds: effector_id (%u >= %u)",
+                       effector_id, adapter->num_effectors);
         return false;
     }
     *state = adapter->effectors[effector_id];
@@ -1354,27 +1475,42 @@ bool motor_get_effector_state(const motor_adapter_t* adapter,
 bool motor_set_command_callback(motor_adapter_t* adapter,
                                  motor_command_callback_t callback,
                                  void* user_data) {
-    if (!adapter) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+
+    /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
+    nimcp_mutex_lock(adapter->queue_mutex);
     adapter->command_callback = callback;
     adapter->command_user_data = user_data;
+    nimcp_mutex_unlock(adapter->queue_mutex);
+
     return true;
 }
 
 bool motor_set_complete_callback(motor_adapter_t* adapter,
                                   motor_complete_callback_t callback,
                                   void* user_data) {
-    if (!adapter) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+
+    /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
+    nimcp_mutex_lock(adapter->queue_mutex);
     adapter->complete_callback = callback;
     adapter->complete_user_data = user_data;
+    nimcp_mutex_unlock(adapter->queue_mutex);
+
     return true;
 }
 
 bool motor_set_event_callback(motor_adapter_t* adapter,
                                motor_event_callback_t callback,
                                void* user_data) {
-    if (!adapter) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+
+    /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
+    nimcp_mutex_lock(adapter->queue_mutex);
     adapter->event_callback = callback;
     adapter->event_user_data = user_data;
+    nimcp_mutex_unlock(adapter->queue_mutex);
+
     return true;
 }
 
@@ -1383,12 +1519,16 @@ bool motor_set_event_callback(motor_adapter_t* adapter,
  *===========================================================================*/
 
 bio_module_context_t motor_get_bio_context(motor_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    NIMCP_CHECK_NULL_PTR(adapter, "adapter");
     return adapter->bio_ctx;
 }
 
 uint32_t motor_process_bio_messages(motor_adapter_t* adapter, uint32_t max_messages) {
-    if (!adapter || !adapter->bio_ctx) return 0;
+    if (!adapter) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        return 0;
+    }
+    if (!adapter->bio_ctx) return 0;
 
     uint32_t processed = bio_router_process_inbox(adapter->bio_ctx, max_messages);
     if (processed > 0) {
@@ -1401,8 +1541,10 @@ nimcp_bio_future_t motor_request_movement_async(
     motor_adapter_t* adapter,
     const motor_goal_t* goal) {
 
-    if (!adapter || !adapter->bio_ctx || !goal) {
-        LOG_WARNING("[%s] Cannot request movement: invalid arguments", MOTOR_LOG_MODULE);
+    NIMCP_CHECK_NULL_PTR(adapter, "adapter");
+    NIMCP_CHECK_NULL_PTR(goal, "goal");
+    if (!adapter->bio_ctx) {
+        LOG_WARNING("[%s] Cannot request movement: bio_ctx not initialized", MOTOR_LOG_MODULE);
         return NULL;
     }
 
@@ -1438,9 +1580,8 @@ nimcp_error_t motor_broadcast_completion(
     motor_adapter_t* adapter,
     const motor_result_t* result) {
 
-    if (!adapter || !result) {
-        return NIMCP_BIO_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_NULL(adapter, "adapter");
+    NIMCP_CHECK_NULL(result, "result");
 
     if (!adapter->bio_ctx) {
         LOG_DEBUG("[%s] Cannot broadcast: bio-async not available", MOTOR_LOG_MODULE);

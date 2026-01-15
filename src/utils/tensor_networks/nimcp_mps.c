@@ -1,6 +1,17 @@
 //=============================================================================
 // nimcp_mps.c - Matrix Product States Implementation
 //=============================================================================
+/**
+ * @file nimcp_mps.c
+ * @brief Matrix Product States (MPS) tensor network compression
+ *
+ * THREAD SAFETY:
+ * - Thread-local RNG state for safe random initialization
+ * - No global mutable state shared between threads
+ *
+ * @version 1.1.0
+ * @date 2026-01-15
+ */
 
 #include "utils/tensor_networks/nimcp_mps.h"
 #include "security/nimcp_security.h"
@@ -14,6 +25,64 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <stdint.h>
+
+//=============================================================================
+// THREAD-SAFE RNG
+//=============================================================================
+
+/**
+ * @brief Thread-local RNG state for thread-safe random number generation
+ *
+ * WHAT: Per-thread LCG-based RNG state
+ * WHY:  rand() is not thread-safe (uses global state, causes race conditions)
+ * HOW:  Each thread gets its own isolated state, seeded uniquely on first use
+ */
+static _Thread_local uint64_t g_mps_rng_state = 0;
+static _Thread_local bool g_mps_rng_initialized = false;
+
+/**
+ * @brief Initialize thread-local RNG if needed
+ */
+static void mps_rng_ensure_initialized(void) {
+    if (!g_mps_rng_initialized) {
+        /* Create unique seed combining multiple entropy sources */
+        uint64_t seed = (uint64_t)time(NULL);
+        seed ^= (uint64_t)(uintptr_t)&g_mps_rng_state;  /* Address randomness */
+        seed ^= ((uint64_t)clock()) << 32;  /* CPU time for additional entropy */
+
+        /* Mix the seed for better distribution */
+        seed = seed * 6364136223846793005ULL + 1442695040888963407ULL;
+
+        g_mps_rng_state = seed;
+        g_mps_rng_initialized = true;
+    }
+}
+
+/**
+ * @brief Thread-safe LCG random number generator
+ *
+ * WHAT: Generate next random value using Linear Congruential Generator
+ * WHY:  Simple, fast, and thread-safe when using thread-local state
+ * HOW:  Uses same constants as glibc's MINSTD
+ */
+static inline uint64_t mps_rng_next(void) {
+    mps_rng_ensure_initialized();
+    g_mps_rng_state = g_mps_rng_state * 6364136223846793005ULL + 1442695040888963407ULL;
+    return g_mps_rng_state;
+}
+
+/**
+ * @brief Generate uniform random float in [0, 1)
+ *
+ * WHAT: Convert RNG output to floating point
+ * WHY:  MPS initialization needs uniform random values
+ * HOW:  Use high bits for better randomness quality
+ */
+static inline float mps_rng_uniform(void) {
+    return (float)(mps_rng_next() >> 33) / (float)(1ULL << 31);
+}
 
 // For SVD computation - LAPACK-based or fallback simple implementation
 #include "utils/tensor_networks/nimcp_svd_simple.h"  // Header is the same, implementation switches via LAPACK flag
@@ -379,8 +448,13 @@ static bool tt_svd_decompose(
  * @brief Initialize MPS with random small values
  *
  * WHAT: Fill MPS tensors with random data
- * WHY: Starting point for optimization-based compression
- * HOW: Uniform random in [-0.1, 0.1]
+ * WHY:  Starting point for optimization-based compression
+ * HOW:  Uniform random in [-0.1, 0.1]
+ *
+ * THREAD SAFETY:
+ * - Uses thread-local RNG (mps_rng_uniform) instead of rand()
+ * - WHY: rand() uses global state, causing race conditions in multi-threaded code
+ * - Each thread gets independent, properly seeded random sequence
  */
 static void mps_randomize(mps_matrix_t* mps) {
     if (!mps) return;
@@ -388,8 +462,9 @@ static void mps_randomize(mps_matrix_t* mps) {
     for (uint32_t site = 0; site < mps->num_sites; site++) {
         mps_tensor_t* tensor = &mps->sites[site];
         for (uint32_t i = 0; i < tensor->total_size; i++) {
-            // Random in [-0.1, 0.1]
-            tensor->data[i] = ((float)rand() / (float)RAND_MAX) * 0.2F - 0.1F;
+            /* THREAD SAFE: Use thread-local RNG instead of rand()
+             * Random in [-0.1, 0.1] = uniform[0,1) * 0.2 - 0.1 */
+            tensor->data[i] = mps_rng_uniform() * 0.2F - 0.1F;
         }
     }
 }

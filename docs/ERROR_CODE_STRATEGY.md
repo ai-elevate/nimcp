@@ -20,6 +20,32 @@ Defined in `include/utils/error/nimcp_error_codes.h`
 | **7000-7999** | **Signal/Fault** | SIGSEGV (7001), SIGABRT (7002), CRASH_RECOVERY (7006) |
 | **8000-8999** | **Cognitive** | WORKING_MEMORY (8000), THEORY_OF_MIND (8005) |
 
+### Brain Region Errors (10000-19999)
+Each brain region gets a 100-code range. The module-local enum value N maps to `NIMCP_ERROR_<REGION>_BASE + N`.
+
+| Range | Brain Region | Base Constant |
+|-------|--------------|---------------|
+| **10000-10099** | Motor Cortex | `NIMCP_ERROR_MOTOR_BASE` |
+| **10100-10199** | Hippocampus | `NIMCP_ERROR_HIPPOCAMPUS_BASE` |
+| **10200-10299** | Entorhinal Cortex | `NIMCP_ERROR_ENTORHINAL_BASE` |
+| **10300-10399** | Prefrontal Cortex | `NIMCP_ERROR_PREFRONTAL_BASE` |
+| **10400-10499** | Cerebellum | `NIMCP_ERROR_CEREBELLUM_BASE` |
+| **10500-10599** | Thalamus | `NIMCP_ERROR_THALAMUS_BASE` |
+| **10600-10699** | Hypothalamus | `NIMCP_ERROR_HYPOTHALAMUS_BASE` |
+| **10700-10799** | Amygdala | `NIMCP_ERROR_AMYGDALA_BASE` |
+| **10800-10899** | Basal Ganglia | `NIMCP_ERROR_BASAL_GANGLIA_BASE` |
+| **10900-10999** | Cingulate Cortex | `NIMCP_ERROR_CINGULATE_BASE` |
+| **11000-11099** | Insula | `NIMCP_ERROR_INSULA_BASE` |
+| **11100-11199** | Occipital Lobe | `NIMCP_ERROR_OCCIPITAL_BASE` |
+| **11200-11299** | Parietal Lobe | `NIMCP_ERROR_PARIETAL_BASE` |
+| **11300-11399** | Temporal Lobe | `NIMCP_ERROR_TEMPORAL_BASE` |
+| **11400-11499** | Broca's Area | `NIMCP_ERROR_BROCA_BASE` |
+| **11500-11599** | Wernicke's Area | `NIMCP_ERROR_WERNICKE_BASE` |
+| **11600-11699** | Brainstem | `NIMCP_ERROR_BRAINSTEM_BASE` |
+| **11700-11799** | Parahippocampal | `NIMCP_ERROR_PARAHIPPOCAMPAL_BASE` |
+| **11800-11899** | Perirhinal Cortex | `NIMCP_ERROR_PERIRHINAL_BASE` |
+| **11900-11999** | VTA | `NIMCP_ERROR_VTA_BASE` |
+
 ### Module-Specific Positive Codes (20000+)
 Reserved for module-specific high-level error codes:
 
@@ -115,6 +141,56 @@ int some_func() {
     return NIMCP_TENSOR_ERR_NULL;  // Clear error cause
 }
 ```
+
+## Brain Region Error Conversion
+
+Use the provided conversion functions to translate between module-local error codes and unified NIMCP error codes:
+
+```c
+#include "utils/error/nimcp_error_codes.h"
+
+// Convert motor_error_t to nimcp_error_t
+motor_error_t local_err = MOTOR_ERROR_INVALID_INPUT;
+nimcp_error_t unified = motor_error_to_nimcp(local_err);
+// unified == NIMCP_ERROR_MOTOR_INVALID_INPUT (10001)
+
+// Convert back
+int motor_err = nimcp_to_motor_error(unified);
+// motor_err == 1 (MOTOR_ERROR_INVALID_INPUT)
+
+// FEP bridge compatibility (0/-1 convention)
+nimcp_error_t from_fep = nimcp_from_fep_result(fep_bridge_call());
+int fep_result = nimcp_to_fep_result(NIMCP_SUCCESS);  // Returns 0
+
+// Check if error is from a brain region
+if (nimcp_error_is_brain_region(err)) {
+    const char* region = nimcp_error_get_brain_region_name(err);
+    // region == "Motor Cortex", "Hippocampus", etc.
+}
+```
+
+### Adding a New Brain Region Module
+
+1. Reserve a 100-code range in `nimcp_error_codes.h`:
+```c
+/* New Region Errors (12000-12099) */
+#define NIMCP_ERROR_NEWREGION_BASE        12000
+#define NIMCP_ERROR_NEWREGION_NONE        (NIMCP_ERROR_NEWREGION_BASE + 0)
+#define NIMCP_ERROR_NEWREGION_INVALID     (NIMCP_ERROR_NEWREGION_BASE + 1)
+// ... add specific errors
+```
+
+2. Generate conversion functions using the macro:
+```c
+NIMCP_DEFINE_ERROR_CONVERTER(newregion, NEWREGION, 4)  // 4 = internal error offset
+```
+
+3. Add error strings in `nimcp_error_codes.c`:
+```c
+case NIMCP_ERROR_NEWREGION_INVALID: return "NewRegion: Invalid input";
+```
+
+4. Update `nimcp_error_get_brain_region_name()` with the new region.
 
 ## Error Handling Best Practices
 

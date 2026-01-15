@@ -90,6 +90,22 @@ static inline uint32_t lcg_next(uint32_t* seed) {
  * Random Number Generation Implementation
  * ============================================================================ */
 
+/**
+ * @brief Thread-local Box-Muller cache for Gaussian RNG
+ *
+ * THREAD SAFETY: Uses __thread storage class for per-thread state.
+ * The Box-Muller transform generates two independent Gaussians per pair
+ * of uniform random numbers. Caching the second value doubles efficiency.
+ *
+ * DEADLOCK PREVENTION: No locks needed - each thread has its own cache.
+ */
+typedef struct {
+    bool has_cached;      /**< True if cached_value is valid */
+    float cached_value;   /**< Second Gaussian from previous Box-Muller call */
+} mc_box_muller_cache_t;
+
+static __thread mc_box_muller_cache_t g_mc_box_muller_cache = {false, 0.0f};
+
 uint32_t mc_seed_from_time(void) {
     return (uint32_t)time(NULL) ^ (uint32_t)clock();
 }
@@ -105,17 +121,50 @@ uint32_t mc_random_int(uint32_t* seed, uint32_t max) {
     return lcg_next(seed) % max;
 }
 
+/**
+ * @brief Generate Gaussian random number using Box-Muller with caching
+ *
+ * THREAD SAFETY: Uses thread-local storage for the Box-Muller cache.
+ * Each thread maintains its own cached value, eliminating the need for
+ * locks and avoiding any deadlock vulnerabilities.
+ *
+ * The Box-Muller transform converts two uniform random numbers in [0,1)
+ * into two independent standard Gaussian random numbers:
+ *   r = sqrt(-2 * ln(u1))
+ *   theta = 2 * PI * u2
+ *   z0 = r * cos(theta)  <- returned on odd calls
+ *   z1 = r * sin(theta)  <- cached and returned on even calls
+ *
+ * @param seed Pointer to RNG seed state (modified)
+ * @param mean Mean of the Gaussian distribution
+ * @param stddev Standard deviation of the Gaussian distribution
+ * @return Gaussian random number with specified mean and stddev
+ */
 float mc_random_normal(uint32_t* seed, float mean, float stddev) {
     if (!seed) return mean;
 
-    /* Box-Muller transform */
+    /* Return cached value if available (thread-local, no locking needed) */
+    if (g_mc_box_muller_cache.has_cached) {
+        g_mc_box_muller_cache.has_cached = false;
+        return mean + stddev * g_mc_box_muller_cache.cached_value;
+    }
+
+    /* Box-Muller transform: generate two Gaussians from two uniforms */
     float u1 = mc_random_uniform(seed);
     float u2 = mc_random_uniform(seed);
 
-    /* Avoid log(0) */
+    /* Avoid log(0) - clamp u1 away from zero */
     if (u1 < 1e-10f) u1 = 1e-10f;
 
-    float z0 = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * (float)M_PI * u2);
+    float r = sqrtf(-2.0f * logf(u1));
+    float theta = 2.0f * (float)M_PI * u2;
+
+    /* Cache the second Gaussian for next call (thread-local storage) */
+    g_mc_box_muller_cache.cached_value = r * sinf(theta);
+    g_mc_box_muller_cache.has_cached = true;
+
+    /* Return the first Gaussian */
+    float z0 = r * cosf(theta);
     return mean + stddev * z0;
 }
 

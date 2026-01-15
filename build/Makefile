@@ -3812,6 +3812,19 @@ unit_utils_algorithms_test_monte_carlo/fast:
 .PHONY : unit_utils_algorithms_test_monte_carlo/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_algorithms_test_monte_carlo_rng
+
+# Build rule for target.
+unit_utils_algorithms_test_monte_carlo_rng: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_algorithms_test_monte_carlo_rng
+.PHONY : unit_utils_algorithms_test_monte_carlo_rng
+
+# fast build rule for target.
+unit_utils_algorithms_test_monte_carlo_rng/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_utils_algorithms_test_monte_carlo_rng.dir/build.make test/CMakeFiles/unit_utils_algorithms_test_monte_carlo_rng.dir/build
+.PHONY : unit_utils_algorithms_test_monte_carlo_rng/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_algorithms_test_sort
 
 # Build rule for target.
@@ -5424,6 +5437,19 @@ regression_core_test_core_immune_regression/fast:
 .PHONY : regression_core_test_core_immune_regression/fast
 
 #=============================================================================
+# Target rules for targets named regression_core_test_error_codes_regression
+
+# Build rule for target.
+regression_core_test_error_codes_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_test_error_codes_regression
+.PHONY : regression_core_test_error_codes_regression
+
+# fast build rule for target.
+regression_core_test_error_codes_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_core_test_error_codes_regression.dir/build.make test/CMakeFiles/regression_core_test_error_codes_regression.dir/build
+.PHONY : regression_core_test_error_codes_regression/fast
+
+#=============================================================================
 # Target rules for targets named regression_core_test_love_loyalty_friendship_backward_compat
 
 # Build rule for target.
@@ -5435,6 +5461,19 @@ regression_core_test_love_loyalty_friendship_backward_compat: cmake_check_build_
 regression_core_test_love_loyalty_friendship_backward_compat/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_core_test_love_loyalty_friendship_backward_compat.dir/build.make test/CMakeFiles/regression_core_test_love_loyalty_friendship_backward_compat.dir/build
 .PHONY : regression_core_test_love_loyalty_friendship_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_test_null_safety_regression
+
+# Build rule for target.
+regression_core_test_null_safety_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_test_null_safety_regression
+.PHONY : regression_core_test_null_safety_regression
+
+# fast build rule for target.
+regression_core_test_null_safety_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_core_test_null_safety_regression.dir/build.make test/CMakeFiles/regression_core_test_null_safety_regression.dir/build
+.PHONY : regression_core_test_null_safety_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_core_test_oscillation_backward_compat
@@ -6971,6 +7010,19 @@ e2e_test_plasticity_pipeline/fast:
 .PHONY : e2e_test_plasticity_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_neural_plasticity_pipeline
+
+# Build rule for target.
+e2e_test_neural_plasticity_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_neural_plasticity_pipeline
+.PHONY : e2e_test_neural_plasticity_pipeline
+
+# fast build rule for target.
+e2e_test_neural_plasticity_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_neural_plasticity_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_neural_plasticity_pipeline.dir/build
+.PHONY : e2e_test_neural_plasticity_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_master_connectivity
 
 # Build rule for target.
@@ -6995,6 +7047,19 @@ e2e_test_cortical_substrate_pipeline: cmake_check_build_system
 e2e_test_cortical_substrate_pipeline/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_cortical_substrate_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_cortical_substrate_pipeline.dir/build
 .PHONY : e2e_test_cortical_substrate_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_substrate_bridges_pipeline
+
+# Build rule for target.
+e2e_test_substrate_bridges_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_substrate_bridges_pipeline
+.PHONY : e2e_test_substrate_bridges_pipeline
+
+# fast build rule for target.
+e2e_test_substrate_bridges_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_substrate_bridges_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_substrate_bridges_pipeline.dir/build
+.PHONY : e2e_test_substrate_bridges_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_training_logic_pipeline
@@ -8113,6 +8178,45 @@ e2e_core_brain_regions_motor_test_motor_e2e: cmake_check_build_system
 e2e_core_brain_regions_motor_test_motor_e2e/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_core_brain_regions_motor_test_motor_e2e.dir/build.make test/e2e/CMakeFiles/e2e_core_brain_regions_motor_test_motor_e2e.dir/build
 .PHONY : e2e_core_brain_regions_motor_test_motor_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_speech_enhancement_pipeline
+
+# Build rule for target.
+e2e_test_speech_enhancement_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_speech_enhancement_pipeline
+.PHONY : e2e_test_speech_enhancement_pipeline
+
+# fast build rule for target.
+e2e_test_speech_enhancement_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_speech_enhancement_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_speech_enhancement_pipeline.dir/build
+.PHONY : e2e_test_speech_enhancement_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_lip_reading_pipeline
+
+# Build rule for target.
+e2e_test_lip_reading_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_lip_reading_pipeline
+.PHONY : e2e_test_lip_reading_pipeline
+
+# fast build rule for target.
+e2e_test_lip_reading_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_lip_reading_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_lip_reading_pipeline.dir/build
+.PHONY : e2e_test_lip_reading_pipeline/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_wernicke_pipeline
+
+# Build rule for target.
+e2e_test_wernicke_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_wernicke_pipeline
+.PHONY : e2e_test_wernicke_pipeline
+
+# fast build rule for target.
+e2e_test_wernicke_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_wernicke_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_wernicke_pipeline.dir/build
+.PHONY : e2e_test_wernicke_pipeline/fast
 
 #=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
@@ -14121,6 +14225,19 @@ integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline/fast:
 .PHONY : integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named integration_core_brain_regions_broca_test_nimcp_speech_enhancement_integration
+
+# Build rule for target.
+integration_core_brain_regions_broca_test_nimcp_speech_enhancement_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_brain_regions_broca_test_nimcp_speech_enhancement_integration
+.PHONY : integration_core_brain_regions_broca_test_nimcp_speech_enhancement_integration
+
+# fast build rule for target.
+integration_core_brain_regions_broca_test_nimcp_speech_enhancement_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/regions/broca/CMakeFiles/integration_core_brain_regions_broca_test_nimcp_speech_enhancement_integration.dir/build.make test/integration/core/brain/regions/broca/CMakeFiles/integration_core_brain_regions_broca_test_nimcp_speech_enhancement_integration.dir/build
+.PHONY : integration_core_brain_regions_broca_test_nimcp_speech_enhancement_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_core_brain_regions_hypothalamus_test_hypothalamus_alignment_integration
 
 # Build rule for target.
@@ -15148,6 +15265,32 @@ regression_core_brain_regions_hippocampus_test_hippocampus_regression/fast:
 .PHONY : regression_core_brain_regions_hippocampus_test_hippocampus_regression/fast
 
 #=============================================================================
+# Target rules for targets named regression_wernicke_backward_compat
+
+# Build rule for target.
+regression_wernicke_backward_compat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_wernicke_backward_compat
+.PHONY : regression_wernicke_backward_compat
+
+# fast build rule for target.
+regression_wernicke_backward_compat/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/regions/wernicke/CMakeFiles/regression_wernicke_backward_compat.dir/build.make test/regression/core/brain/regions/wernicke/CMakeFiles/regression_wernicke_backward_compat.dir/build
+.PHONY : regression_wernicke_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_wernicke_signal
+
+# Build rule for target.
+regression_wernicke_signal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_wernicke_signal
+.PHONY : regression_wernicke_signal
+
+# fast build rule for target.
+regression_wernicke_signal/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/regions/wernicke/CMakeFiles/regression_wernicke_signal.dir/build.make test/regression/core/brain/regions/wernicke/CMakeFiles/regression_wernicke_signal.dir/build
+.PHONY : regression_wernicke_signal/fast
+
+#=============================================================================
 # Target rules for targets named regression_brain_regions_test_signal_propagation_regression
 
 # Build rule for target.
@@ -15315,6 +15458,19 @@ regression_brain_regions_test_mammillary_backward_compat: cmake_check_build_syst
 regression_brain_regions_test_mammillary_backward_compat/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_mammillary_backward_compat.dir/build.make test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_mammillary_backward_compat.dir/build
 .PHONY : regression_brain_regions_test_mammillary_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_brain_regions_test_speech_enhancement_backward_compat
+
+# Build rule for target.
+regression_brain_regions_test_speech_enhancement_backward_compat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_brain_regions_test_speech_enhancement_backward_compat
+.PHONY : regression_brain_regions_test_speech_enhancement_backward_compat
+
+# fast build rule for target.
+regression_brain_regions_test_speech_enhancement_backward_compat/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_speech_enhancement_backward_compat.dir/build.make test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_speech_enhancement_backward_compat.dir/build
+.PHONY : regression_brain_regions_test_speech_enhancement_backward_compat/fast
 
 #=============================================================================
 # Target rules for targets named regression_bridges_test_bridge_memory_leaks
@@ -15536,6 +15692,84 @@ unit_core_brain_regions_broca_test_broca_bridges: cmake_check_build_system
 unit_core_brain_regions_broca_test_broca_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_broca_bridges.dir/build.make test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_broca_bridges.dir/build
 .PHONY : unit_core_brain_regions_broca_test_broca_bridges/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_broca_test_nimcp_pragmatics_processor
+
+# Build rule for target.
+unit_core_brain_regions_broca_test_nimcp_pragmatics_processor: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_broca_test_nimcp_pragmatics_processor
+.PHONY : unit_core_brain_regions_broca_test_nimcp_pragmatics_processor
+
+# fast build rule for target.
+unit_core_brain_regions_broca_test_nimcp_pragmatics_processor/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_nimcp_pragmatics_processor.dir/build.make test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_nimcp_pragmatics_processor.dir/build
+.PHONY : unit_core_brain_regions_broca_test_nimcp_pragmatics_processor/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_broca_test_nimcp_discourse_manager
+
+# Build rule for target.
+unit_core_brain_regions_broca_test_nimcp_discourse_manager: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_broca_test_nimcp_discourse_manager
+.PHONY : unit_core_brain_regions_broca_test_nimcp_discourse_manager
+
+# fast build rule for target.
+unit_core_brain_regions_broca_test_nimcp_discourse_manager/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_nimcp_discourse_manager.dir/build.make test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_nimcp_discourse_manager.dir/build
+.PHONY : unit_core_brain_regions_broca_test_nimcp_discourse_manager/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_broca_test_nimcp_emotional_prosody
+
+# Build rule for target.
+unit_core_brain_regions_broca_test_nimcp_emotional_prosody: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_broca_test_nimcp_emotional_prosody
+.PHONY : unit_core_brain_regions_broca_test_nimcp_emotional_prosody
+
+# fast build rule for target.
+unit_core_brain_regions_broca_test_nimcp_emotional_prosody/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_nimcp_emotional_prosody.dir/build.make test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_nimcp_emotional_prosody.dir/build
+.PHONY : unit_core_brain_regions_broca_test_nimcp_emotional_prosody/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_broca_test_nimcp_incremental_processor
+
+# Build rule for target.
+unit_core_brain_regions_broca_test_nimcp_incremental_processor: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_broca_test_nimcp_incremental_processor
+.PHONY : unit_core_brain_regions_broca_test_nimcp_incremental_processor
+
+# fast build rule for target.
+unit_core_brain_regions_broca_test_nimcp_incremental_processor/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_nimcp_incremental_processor.dir/build.make test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_nimcp_incremental_processor.dir/build
+.PHONY : unit_core_brain_regions_broca_test_nimcp_incremental_processor/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_broca_test_nimcp_speech_repair
+
+# Build rule for target.
+unit_core_brain_regions_broca_test_nimcp_speech_repair: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_broca_test_nimcp_speech_repair
+.PHONY : unit_core_brain_regions_broca_test_nimcp_speech_repair
+
+# fast build rule for target.
+unit_core_brain_regions_broca_test_nimcp_speech_repair/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_nimcp_speech_repair.dir/build.make test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_nimcp_speech_repair.dir/build
+.PHONY : unit_core_brain_regions_broca_test_nimcp_speech_repair/fast
+
+#=============================================================================
+# Target rules for targets named unit_core_brain_regions_broca_test_nimcp_multimodal_language
+
+# Build rule for target.
+unit_core_brain_regions_broca_test_nimcp_multimodal_language: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_regions_broca_test_nimcp_multimodal_language
+.PHONY : unit_core_brain_regions_broca_test_nimcp_multimodal_language
+
+# fast build rule for target.
+unit_core_brain_regions_broca_test_nimcp_multimodal_language/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_nimcp_multimodal_language.dir/build.make test/unit/core/brain/regions/broca/CMakeFiles/unit_core_brain_regions_broca_test_nimcp_multimodal_language.dir/build
+.PHONY : unit_core_brain_regions_broca_test_nimcp_multimodal_language/fast
 
 #=============================================================================
 # Target rules for targets named unit_core_brain_regions_brainstem_test_nimcp_brainstem_adapter
@@ -17774,6 +18008,19 @@ unit_utils_tensor_test_tensor/fast:
 .PHONY : unit_utils_tensor_test_tensor/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_tensor_test_tensor_errors
+
+# Build rule for target.
+unit_utils_tensor_test_tensor_errors: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_tensor_test_tensor_errors
+.PHONY : unit_utils_tensor_test_tensor_errors
+
+# fast build rule for target.
+unit_utils_tensor_test_tensor_errors/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/tensor/CMakeFiles/unit_utils_tensor_test_tensor_errors.dir/build.make test/unit/utils/tensor/CMakeFiles/unit_utils_tensor_test_tensor_errors.dir/build
+.PHONY : unit_utils_tensor_test_tensor_errors/fast
+
+#=============================================================================
 # Target rules for targets named integration_utils_tensor_test_tensor_memory_integration
 
 # Build rule for target.
@@ -18513,6 +18760,19 @@ integration_cognitive_executive_snn_plasticity: cmake_check_build_system
 integration_cognitive_executive_snn_plasticity/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/executive/CMakeFiles/integration_cognitive_executive_snn_plasticity.dir/build.make test/integration/cognitive/executive/CMakeFiles/integration_cognitive_executive_snn_plasticity.dir/build
 .PHONY : integration_cognitive_executive_snn_plasticity/fast
+
+#=============================================================================
+# Target rules for targets named integration_executive_cognitive
+
+# Build rule for target.
+integration_executive_cognitive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_executive_cognitive
+.PHONY : integration_executive_cognitive
+
+# fast build rule for target.
+integration_executive_cognitive/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/executive/CMakeFiles/integration_executive_cognitive.dir/build.make test/integration/cognitive/executive/CMakeFiles/integration_executive_cognitive.dir/build
+.PHONY : integration_executive_cognitive/fast
 
 #=============================================================================
 # Target rules for targets named integration_cognitive_gw_snn_plasticity
@@ -23169,6 +23429,19 @@ unit_perception_test_cochlea_core/fast:
 .PHONY : unit_perception_test_cochlea_core/fast
 
 #=============================================================================
+# Target rules for targets named unit_perception_test_lip_reading
+
+# Build rule for target.
+unit_perception_test_lip_reading: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_perception_test_lip_reading
+.PHONY : unit_perception_test_lip_reading
+
+# fast build rule for target.
+unit_perception_test_lip_reading/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/perception/CMakeFiles/unit_perception_test_lip_reading.dir/build.make test/unit/perception/CMakeFiles/unit_perception_test_lip_reading.dir/build
+.PHONY : unit_perception_test_lip_reading/fast
+
+#=============================================================================
 # Target rules for targets named unit_perception_cortical_test_visual_cortical_bridge
 
 # Build rule for target.
@@ -23232,6 +23505,45 @@ integration_perception_test_cochlea_integration: cmake_check_build_system
 integration_perception_test_cochlea_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/perception/CMakeFiles/integration_perception_test_cochlea_integration.dir/build.make test/integration/perception/CMakeFiles/integration_perception_test_cochlea_integration.dir/build
 .PHONY : integration_perception_test_cochlea_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_perception_test_lip_reading
+
+# Build rule for target.
+integration_perception_test_lip_reading: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_perception_test_lip_reading
+.PHONY : integration_perception_test_lip_reading
+
+# fast build rule for target.
+integration_perception_test_lip_reading/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/perception/CMakeFiles/integration_perception_test_lip_reading.dir/build.make test/integration/perception/CMakeFiles/integration_perception_test_lip_reading.dir/build
+.PHONY : integration_perception_test_lip_reading/fast
+
+#=============================================================================
+# Target rules for targets named regression_perception_test_lip_reading_backward_compat
+
+# Build rule for target.
+regression_perception_test_lip_reading_backward_compat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_perception_test_lip_reading_backward_compat
+.PHONY : regression_perception_test_lip_reading_backward_compat
+
+# fast build rule for target.
+regression_perception_test_lip_reading_backward_compat/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/perception/CMakeFiles/regression_perception_test_lip_reading_backward_compat.dir/build.make test/regression/perception/CMakeFiles/regression_perception_test_lip_reading_backward_compat.dir/build
+.PHONY : regression_perception_test_lip_reading_backward_compat/fast
+
+#=============================================================================
+# Target rules for targets named regression_perception_test_lip_reading_signal_regression
+
+# Build rule for target.
+regression_perception_test_lip_reading_signal_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_perception_test_lip_reading_signal_regression
+.PHONY : regression_perception_test_lip_reading_signal_regression
+
+# fast build rule for target.
+regression_perception_test_lip_reading_signal_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/perception/CMakeFiles/regression_perception_test_lip_reading_signal_regression.dir/build.make test/regression/perception/CMakeFiles/regression_perception_test_lip_reading_signal_regression.dir/build
+.PHONY : regression_perception_test_lip_reading_signal_regression/fast
 
 #=============================================================================
 # Target rules for targets named integration_jepa_fep
@@ -25613,6 +25925,19 @@ unit_snn_test_snn_immune/fast:
 .PHONY : unit_snn_test_snn_immune/fast
 
 #=============================================================================
+# Target rules for targets named unit_snn_test_snn_numerical_stability
+
+# Build rule for target.
+unit_snn_test_snn_numerical_stability: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_numerical_stability
+.PHONY : unit_snn_test_snn_numerical_stability
+
+# fast build rule for target.
+unit_snn_test_snn_numerical_stability/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_numerical_stability.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_numerical_stability.dir/build
+.PHONY : unit_snn_test_snn_numerical_stability/fast
+
+#=============================================================================
 # Target rules for targets named test_snn_visual_bridge
 
 # Build rule for target.
@@ -26146,6 +26471,19 @@ integration_snn_test_bridge_integration/fast:
 .PHONY : integration_snn_test_bridge_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_snn_plasticity
+
+# Build rule for target.
+integration_snn_plasticity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_plasticity
+.PHONY : integration_snn_plasticity
+
+# fast build rule for target.
+integration_snn_plasticity/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/snn/CMakeFiles/integration_snn_plasticity.dir/build.make test/integration/snn/CMakeFiles/integration_snn_plasticity.dir/build
+.PHONY : integration_snn_plasticity/fast
+
+#=============================================================================
 # Target rules for targets named regression_snn_test_regression
 
 # Build rule for target.
@@ -26170,6 +26508,19 @@ regression_snn_test_bridge_regression: cmake_check_build_system
 regression_snn_test_bridge_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_bridge_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_bridge_regression.dir/build
 .PHONY : regression_snn_test_bridge_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_numerical_regression
+
+# Build rule for target.
+regression_snn_test_numerical_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_numerical_regression
+.PHONY : regression_snn_test_numerical_regression
+
+# fast build rule for target.
+regression_snn_test_numerical_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_numerical_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_numerical_regression.dir/build
+.PHONY : regression_snn_test_numerical_regression/fast
 
 #=============================================================================
 # Target rules for targets named bench_benchmark_complex_vs_real_oscillations
@@ -26508,6 +26859,19 @@ regression_quantum_bridges: cmake_check_build_system
 regression_quantum_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/quantum/CMakeFiles/regression_quantum_bridges.dir/build.make test/regression/quantum/CMakeFiles/regression_quantum_bridges.dir/build
 .PHONY : regression_quantum_bridges/fast
+
+#=============================================================================
+# Target rules for targets named regression_quantum_rng
+
+# Build rule for target.
+regression_quantum_rng: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_quantum_rng
+.PHONY : regression_quantum_rng
+
+# fast build rule for target.
+regression_quantum_rng/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/quantum/CMakeFiles/regression_quantum_rng.dir/build.make test/regression/quantum/CMakeFiles/regression_quantum_rng.dir/build
+.PHONY : regression_quantum_rng/fast
 
 #=============================================================================
 # Target rules for targets named regression_training_test_cnn_backprop_regression
@@ -27823,6 +28187,58 @@ regression_physics_ephaptic_test_ephaptic_regression/fast:
 .PHONY : regression_physics_ephaptic_test_ephaptic_regression/fast
 
 #=============================================================================
+# Target rules for targets named unit_python_test_python_memory_safety
+
+# Build rule for target.
+unit_python_test_python_memory_safety: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_python_test_python_memory_safety
+.PHONY : unit_python_test_python_memory_safety
+
+# fast build rule for target.
+unit_python_test_python_memory_safety/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/python/CMakeFiles/unit_python_test_python_memory_safety.dir/build.make test/unit/python/CMakeFiles/unit_python_test_python_memory_safety.dir/build
+.PHONY : unit_python_test_python_memory_safety/fast
+
+#=============================================================================
+# Target rules for targets named integration_python_c
+
+# Build rule for target.
+integration_python_c: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_python_c
+.PHONY : integration_python_c
+
+# fast build rule for target.
+integration_python_c/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/python/CMakeFiles/integration_python_c.dir/build.make test/integration/python/CMakeFiles/integration_python_c.dir/build
+.PHONY : integration_python_c/fast
+
+#=============================================================================
+# Target rules for targets named integration_tensor_operations
+
+# Build rule for target.
+integration_tensor_operations: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_tensor_operations
+.PHONY : integration_tensor_operations
+
+# fast build rule for target.
+integration_tensor_operations/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/tensor/CMakeFiles/integration_tensor_operations.dir/build.make test/integration/tensor/CMakeFiles/integration_tensor_operations.dir/build
+.PHONY : integration_tensor_operations/fast
+
+#=============================================================================
+# Target rules for targets named integration_error_propagation
+
+# Build rule for target.
+integration_error_propagation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_error_propagation
+.PHONY : integration_error_propagation
+
+# fast build rule for target.
+integration_error_propagation/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/error/CMakeFiles/integration_error_propagation.dir/build.make test/integration/error/CMakeFiles/integration_error_propagation.dir/build
+.PHONY : integration_error_propagation/fast
+
+#=============================================================================
 # Target rules for targets named simple_demo
 
 # Build rule for target.
@@ -28301,6 +28717,7 @@ help:
 	@echo "... e2e_test_jepa_qmc_pipeline"
 	@echo "... e2e_test_language_layer_pipeline"
 	@echo "... e2e_test_limbic_pipeline"
+	@echo "... e2e_test_lip_reading_pipeline"
 	@echo "... e2e_test_mammillary_pipeline"
 	@echo "... e2e_test_master_connectivity"
 	@echo "... e2e_test_medulla_cerebellum_pipeline"
@@ -28312,6 +28729,7 @@ help:
 	@echo "... e2e_test_mirror_empathy_pipeline"
 	@echo "... e2e_test_mirror_snn_plasticity_pipeline"
 	@echo "... e2e_test_motor_control_pipeline"
+	@echo "... e2e_test_neural_plasticity_pipeline"
 	@echo "... e2e_test_neuromod_cognitive_pipeline"
 	@echo "... e2e_test_neuromodulatory_pipeline"
 	@echo "... e2e_test_neurovascular_pipeline"
@@ -28359,7 +28777,9 @@ help:
 	@echo "... e2e_test_snn_bridge_pipeline"
 	@echo "... e2e_test_snn_pipeline"
 	@echo "... e2e_test_somatosensory_pipeline"
+	@echo "... e2e_test_speech_enhancement_pipeline"
 	@echo "... e2e_test_subcortical_pipeline"
+	@echo "... e2e_test_substrate_bridges_pipeline"
 	@echo "... e2e_test_substrate_gpu_pipeline"
 	@echo "... e2e_test_swarm_consciousness_enhanced_pipeline"
 	@echo "... e2e_test_swarm_consciousness_pipeline"
@@ -28383,6 +28803,7 @@ help:
 	@echo "... e2e_test_visual_pipeline"
 	@echo "... e2e_test_wellbeing_enhanced_pipeline"
 	@echo "... e2e_test_wellbeing_snn_plasticity_pipeline"
+	@echo "... e2e_test_wernicke_pipeline"
 	@echo "... e2e_test_wiring_diagram_pipeline"
 	@echo "... ethics_demo"
 	@echo "... event_demo"
@@ -28504,6 +28925,7 @@ help:
 	@echo "... integration_core_brain_factory_test_factory_integration"
 	@echo "... integration_core_brain_regions_broca_test_nimcp_broca_bridge_integration"
 	@echo "... integration_core_brain_regions_broca_test_nimcp_broca_full_pipeline"
+	@echo "... integration_core_brain_regions_broca_test_nimcp_speech_enhancement_integration"
 	@echo "... integration_core_brain_regions_claustrum_test_claustrum_binding_integration"
 	@echo "... integration_core_brain_regions_claustrum_test_claustrum_bio_async_integration"
 	@echo "... integration_core_brain_regions_claustrum_test_claustrum_brain_init_integration"
@@ -28594,6 +29016,8 @@ help:
 	@echo "... integration_dragonfly_medulla"
 	@echo "... integration_dragonfly_sensory"
 	@echo "... integration_emotion_immune_pipeline"
+	@echo "... integration_error_propagation"
+	@echo "... integration_executive_cognitive"
 	@echo "... integration_fault_tolerance_test_fault_tolerance_integration"
 	@echo "... integration_fep_enhanced"
 	@echo "... integration_glial_test_glial_integration"
@@ -28674,6 +29098,7 @@ help:
 	@echo "... integration_parietal_fep"
 	@echo "... integration_parietal_test_parietal_fep_integration"
 	@echo "... integration_perception_test_cochlea_integration"
+	@echo "... integration_perception_test_lip_reading"
 	@echo "... integration_physics_bio_async_test"
 	@echo "... integration_physics_bridges_test"
 	@echo "... integration_physics_fft_test"
@@ -28719,6 +29144,7 @@ help:
 	@echo "... integration_plasticity_stp_test_stp_integration"
 	@echo "... integration_plasticity_structural_test_structural_integration"
 	@echo "... integration_plasticity_triplet_stdp"
+	@echo "... integration_python_c"
 	@echo "... integration_quantum_bridges"
 	@echo "... integration_security_sleep_bridges"
 	@echo "... integration_security_test_anomaly_detector"
@@ -28744,11 +29170,13 @@ help:
 	@echo "... integration_security_test_security_immune"
 	@echo "... integration_security_test_security_logging"
 	@echo "... integration_security_test_swarm_security"
+	@echo "... integration_snn_plasticity"
 	@echo "... integration_snn_test_bridge_integration"
 	@echo "... integration_snn_test_integration"
 	@echo "... integration_social_fep"
 	@echo "... integration_swarm_immune_bridges"
 	@echo "... integration_swarm_sleep_bridges"
+	@echo "... integration_tensor_operations"
 	@echo "... integration_ternary_test_attention_ternary_integration"
 	@echo "... integration_ternary_test_lnn_ternary_integration"
 	@echo "... integration_ternary_test_neuralnet_ternary_integration"
@@ -28821,6 +29249,7 @@ help:
 	@echo "... regression_brain_regions_test_region_api_stability"
 	@echo "... regression_brain_regions_test_sensory_processing_regression"
 	@echo "... regression_brain_regions_test_signal_propagation_regression"
+	@echo "... regression_brain_regions_test_speech_enhancement_backward_compat"
 	@echo "... regression_brain_test_brain_pr_memory_regression"
 	@echo "... regression_bridges_test_bridge_memory_leaks"
 	@echo "... regression_bridges_test_quantum_bridge_stability"
@@ -28923,7 +29352,9 @@ help:
 	@echo "... regression_core_substrate_build_CMakeFiles_3.28.3_CompilerIdC_CMakeCCompilerId"
 	@echo "... regression_core_synapse_compute_test_three_factor_backward_compat"
 	@echo "... regression_core_test_core_immune_regression"
+	@echo "... regression_core_test_error_codes_regression"
 	@echo "... regression_core_test_love_loyalty_friendship_backward_compat"
+	@echo "... regression_core_test_null_safety_regression"
 	@echo "... regression_core_test_oscillation_backward_compat"
 	@echo "... regression_core_test_regression"
 	@echo "... regression_core_test_wm_transfer_backward_compat"
@@ -29010,6 +29441,8 @@ help:
 	@echo "... regression_optimization_test_multi_objective_backward_compat"
 	@echo "... regression_parietal_fep"
 	@echo "... regression_parietal_fep_orchestrator_bridge"
+	@echo "... regression_perception_test_lip_reading_backward_compat"
+	@echo "... regression_perception_test_lip_reading_signal_regression"
 	@echo "... regression_physics_biophysics_test_hh_regression"
 	@echo "... regression_physics_bridges_test"
 	@echo "... regression_physics_ephaptic_test_ephaptic_regression"
@@ -29069,6 +29502,7 @@ help:
 	@echo "... regression_portia_test_power_stability"
 	@echo "... regression_portia_test_tier_switch_stability"
 	@echo "... regression_quantum_bridges"
+	@echo "... regression_quantum_rng"
 	@echo "... regression_rcog_bridge"
 	@echo "... regression_security_bridges"
 	@echo "... regression_security_collective"
@@ -29098,6 +29532,7 @@ help:
 	@echo "... regression_security_test_supply_chain"
 	@echo "... regression_security_test_validation_performance"
 	@echo "... regression_snn_test_bridge_regression"
+	@echo "... regression_snn_test_numerical_regression"
 	@echo "... regression_snn_test_regression"
 	@echo "... regression_social_fep"
 	@echo "... regression_swarm_bridges"
@@ -29131,6 +29566,8 @@ help:
 	@echo "... regression_utils_tensor_networks_test_mps_regression"
 	@echo "... regression_utils_tensor_test_tensor_performance"
 	@echo "... regression_utils_test_utils_regression"
+	@echo "... regression_wernicke_backward_compat"
+	@echo "... regression_wernicke_signal"
 	@echo "... rl_eligibility_demo"
 	@echo "... simple_demo"
 	@echo "... speech_cortex_demo"
@@ -29628,9 +30065,15 @@ help:
 	@echo "... unit_core_brain_regions_broca_test_broca_immune_integration"
 	@echo "... unit_core_brain_regions_broca_test_language_production_pe"
 	@echo "... unit_core_brain_regions_broca_test_nimcp_broca_adapter"
+	@echo "... unit_core_brain_regions_broca_test_nimcp_discourse_manager"
+	@echo "... unit_core_brain_regions_broca_test_nimcp_emotional_prosody"
+	@echo "... unit_core_brain_regions_broca_test_nimcp_incremental_processor"
 	@echo "... unit_core_brain_regions_broca_test_nimcp_language_production_bridge"
+	@echo "... unit_core_brain_regions_broca_test_nimcp_multimodal_language"
 	@echo "... unit_core_brain_regions_broca_test_nimcp_phonological"
+	@echo "... unit_core_brain_regions_broca_test_nimcp_pragmatics_processor"
 	@echo "... unit_core_brain_regions_broca_test_nimcp_speech_motor"
+	@echo "... unit_core_brain_regions_broca_test_nimcp_speech_repair"
 	@echo "... unit_core_brain_regions_broca_test_nimcp_syntax_processor"
 	@echo "... unit_core_brain_regions_cerebellum_test_cerebellum_bridges"
 	@echo "... unit_core_brain_regions_cerebellum_test_cerebellum_interneurons"
@@ -30080,6 +30523,7 @@ help:
 	@echo "... unit_perception_immune_test_speech_immune_integration"
 	@echo "... unit_perception_immune_test_visual_immune_integration"
 	@echo "... unit_perception_test_cochlea_core"
+	@echo "... unit_perception_test_lip_reading"
 	@echo "... unit_perception_test_speech_cortex_pe"
 	@echo "... unit_perception_test_speech_jepa_bridge"
 	@echo "... unit_perception_test_visual_jepa_bridge"
@@ -30161,6 +30605,7 @@ help:
 	@echo "... unit_plasticity_test_fep_bridges"
 	@echo "... unit_plasticity_triplet_stdp"
 	@echo "... unit_portia_immune_bridges"
+	@echo "... unit_python_test_python_memory_safety"
 	@echo "... unit_quantum_bridges"
 	@echo "... unit_quantum_test_broca_quantum_bridge"
 	@echo "... unit_quantum_test_grover_search"
@@ -30222,6 +30667,7 @@ help:
 	@echo "... unit_snn_test_snn_encoding"
 	@echo "... unit_snn_test_snn_immune"
 	@echo "... unit_snn_test_snn_network"
+	@echo "... unit_snn_test_snn_numerical_stability"
 	@echo "... unit_snn_test_snn_training"
 	@echo "... unit_swarm_immune_bridges"
 	@echo "... unit_swarm_sleep_bridges"
@@ -30243,6 +30689,7 @@ help:
 	@echo "... unit_utils_algorithms_test_louvain"
 	@echo "... unit_utils_algorithms_test_modularity"
 	@echo "... unit_utils_algorithms_test_monte_carlo"
+	@echo "... unit_utils_algorithms_test_monte_carlo_rng"
 	@echo "... unit_utils_algorithms_test_sort"
 	@echo "... unit_utils_config_test_config"
 	@echo "... unit_utils_config_test_config_callbacks"
@@ -30305,6 +30752,7 @@ help:
 	@echo "... unit_utils_tensor_networks_test_mps"
 	@echo "... unit_utils_tensor_networks_test_mps_compression"
 	@echo "... unit_utils_tensor_test_tensor"
+	@echo "... unit_utils_tensor_test_tensor_errors"
 	@echo "... unit_utils_ternary_test_ternary_core"
 	@echo "... unit_utils_test_kdtree"
 	@echo "... unit_utils_test_queue_utils"

@@ -9,8 +9,13 @@
  * - Quantum annealing for escaping local minima
  * - MCTS for topology search
  *
- * @version 1.0.0
- * @date 2026-01-13
+ * THREAD SAFETY:
+ * - RNG state uses _Thread_local for per-thread isolation
+ * - Each thread has its own RNG state to avoid race conditions
+ * - Overflow protection added for geometric calculations
+ *
+ * @version 1.1.0
+ * @date 2026-01-15
  */
 
 #include "core/geometry/nimcp_surface_optimization.h"
@@ -20,6 +25,128 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
+#include <stdint.h>
+#include <float.h>  /* For FLT_MAX, overflow protection */
+
+//=============================================================================
+// THREAD-SAFE RNG STATE
+//=============================================================================
+
+/**
+ * @brief Thread-local RNG state for thread-safe random number generation
+ *
+ * WHAT: Per-thread RNG state using C11 _Thread_local
+ * WHY:  Prevents race conditions when multiple threads use the optimization
+ * HOW:  Each thread gets its own isolated RNG state, seeded uniquely
+ */
+static _Thread_local uint64_t g_thread_rng_state = 0;
+static _Thread_local bool g_thread_rng_initialized = false;
+
+/**
+ * @brief Initialize thread-local RNG state with unique seed
+ *
+ * WHAT: Ensure RNG state is initialized for current thread
+ * WHY:  First call in each thread needs proper seeding
+ * HOW:  Combine time, thread ID approximation, and address randomness
+ */
+static void ensure_thread_rng_initialized(void) {
+    if (!g_thread_rng_initialized) {
+        /* Create unique seed combining multiple entropy sources */
+        uint64_t seed = (uint64_t)time(NULL);
+        seed ^= (uint64_t)(uintptr_t)&g_thread_rng_state;  /* Address randomness */
+        seed ^= ((uint64_t)clock()) << 32;  /* CPU time for additional entropy */
+
+        /* Mix the seed with a hash function for better distribution */
+        seed = seed * 6364136223846793005ULL + 1442695040888963407ULL;
+
+        g_thread_rng_state = seed;
+        g_thread_rng_initialized = true;
+    }
+}
+
+/**
+ * @brief Get pointer to thread-local RNG state
+ *
+ * WHAT: Access the current thread's RNG state
+ * WHY:  Allows existing code to use RNG state pointer pattern
+ * HOW:  Returns pointer to thread-local variable after initialization
+ */
+static uint64_t* get_thread_rng_state(void) {
+    ensure_thread_rng_initialized();
+    return &g_thread_rng_state;
+}
+
+//=============================================================================
+// SAFE MATH UTILITIES (Overflow Protection)
+//=============================================================================
+
+/**
+ * @brief Safe multiplication with overflow detection
+ *
+ * WHAT: Multiply two floats with overflow protection
+ * WHY:  Large geometric coordinates can cause overflow in squared distances
+ * HOW:  Check for infinity/NaN after multiplication
+ */
+static inline float safe_mul(float a, float b) {
+    float result = a * b;
+    if (!isfinite(result)) {
+        /* Overflow detected: clamp to max float */
+        return (a >= 0.0f) == (b >= 0.0f) ? FLT_MAX : -FLT_MAX;
+    }
+    return result;
+}
+
+/**
+ * @brief Safe addition with overflow detection
+ *
+ * WHAT: Add two floats with overflow protection
+ * WHY:  Sum of squared distances can overflow for large values
+ * HOW:  Check bounds before adding, return clamped value if overflow
+ */
+static inline float safe_add(float a, float b) {
+    /* Check for potential overflow */
+    if (b > 0 && a > FLT_MAX - b) return FLT_MAX;
+    if (b < 0 && a < -FLT_MAX - b) return -FLT_MAX;
+    return a + b;
+}
+
+/**
+ * @brief Safe squared distance computation
+ *
+ * WHAT: Compute squared distance without overflow
+ * WHY:  Squaring large differences can overflow float32
+ * HOW:  Use double intermediate for sum of squares, clamp result
+ *
+ * NUMERICAL STABILITY:
+ * - Float32 max ~3.4e38, so sqrt(FLT_MAX) ~1.84e19
+ * - If any difference > ~1.84e19, squaring overflows
+ * - Using double accumulator (max ~1.8e308) handles this safely
+ */
+static inline float safe_squared_distance(float dx, float dy, float dz) {
+    /* Use double precision for intermediate calculations to prevent overflow */
+    double ddx = (double)dx;
+    double ddy = (double)dy;
+    double ddz = (double)dz;
+    double sum = ddx * ddx + ddy * ddy + ddz * ddz;
+
+    /* Clamp to float range */
+    if (sum > (double)FLT_MAX) return FLT_MAX;
+    return (float)sum;
+}
+
+/**
+ * @brief Safe square root for potentially overflowed values
+ *
+ * WHAT: Compute square root with overflow/underflow handling
+ * WHY:  sqrtf(FLT_MAX) is valid but sqrtf(inf) is inf, need bounds
+ * HOW:  Check for special cases before calling sqrtf
+ */
+static inline float safe_sqrt(float x) {
+    if (x <= 0.0f) return 0.0f;
+    if (!isfinite(x)) return FLT_MAX;
+    return sqrtf(x);
+}
 
 //=============================================================================
 // CONSTANTS
@@ -122,25 +249,44 @@ static float surface_rng_gaussian(uint64_t* state, float mean, float stddev) {
 }
 
 //=============================================================================
-// VECTOR MATH UTILITIES
+// VECTOR MATH UTILITIES (With Overflow Protection)
 //=============================================================================
 
+/**
+ * @brief Compute distance between two 3D points (float array version)
+ *
+ * OVERFLOW PROTECTION: Uses safe_squared_distance with double intermediate
+ * to prevent overflow when coordinates are very large.
+ */
 static inline float vec3_distance(const float a[3], const float b[3]) {
     float dx = a[0] - b[0];
     float dy = a[1] - b[1];
     float dz = a[2] - b[2];
-    return sqrtf(dx*dx + dy*dy + dz*dz);
+    /* Use safe squared distance to prevent overflow */
+    return safe_sqrt(safe_squared_distance(dx, dy, dz));
 }
 
+/**
+ * @brief Compute distance between two surface_vec3_t points
+ *
+ * OVERFLOW PROTECTION: Uses safe_squared_distance with double intermediate
+ * to prevent overflow when coordinates are very large.
+ */
 static inline float svec3_distance(const surface_vec3_t* a, const surface_vec3_t* b) {
     float dx = a->x - b->x;
     float dy = a->y - b->y;
     float dz = a->z - b->z;
-    return sqrtf(dx*dx + dy*dy + dz*dz);
+    /* Use safe squared distance to prevent overflow */
+    return safe_sqrt(safe_squared_distance(dx, dy, dz));
 }
 
+/**
+ * @brief Compute length of 3D vector
+ *
+ * OVERFLOW PROTECTION: Uses safe_squared_distance to prevent overflow
+ */
 static inline float vec3_length(const float v[3]) {
-    return sqrtf(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+    return safe_sqrt(safe_squared_distance(v[0], v[1], v[2]));
 }
 
 static inline void vec3_sub(float result[3], const float a[3], const float b[3]) {
@@ -601,13 +747,18 @@ int surface_annealing_step(
     if (!state->current || state->num_points == 0) return -1;
 
     *accepted = false;
-    static uint64_t rng_state = SURFACE_OPT_DEFAULT_SEED;
+
+    /* THREAD SAFETY: Use thread-local RNG state instead of static local
+     * WHY: Static local variables are shared across threads, causing race conditions
+     *      and non-reproducible results in multi-threaded optimization
+     * HOW: get_thread_rng_state() returns pointer to thread-local storage */
+    uint64_t* rng_state = get_thread_rng_state();
 
     /* Select random non-terminal point to modify */
     uint32_t attempts = 0;
     uint32_t point_idx;
     do {
-        point_idx = (uint32_t)(surface_rng_uniform(&rng_state) * state->num_points);
+        point_idx = (uint32_t)(surface_rng_uniform(rng_state) * state->num_points);
         attempts++;
         if (attempts > state->num_points * 2) return 0;  /* No movable points */
     } while (state->current[point_idx].is_terminal);
@@ -620,7 +771,7 @@ int surface_annealing_step(
     float step_size = config->quantum_strength * sqrtf(state->temperature);
 
     /* Quantum tunneling: occasionally make larger jumps */
-    if (surface_rng_uniform(&rng_state) < 0.1f) {
+    if (surface_rng_uniform(rng_state) < 0.1f) {
         step_size *= 3.0f;  /* Tunneling event */
         state->tunneling_events++;
     }
@@ -628,7 +779,7 @@ int surface_annealing_step(
     for (uint32_t i = 0; i < 3; i++) {
         float curr_val = svec3_get(&state->current[point_idx].position, i);
         svec3_set(&state->current[point_idx].position, i,
-                  curr_val + surface_rng_gaussian(&rng_state, 0.0f, step_size));
+                  curr_val + surface_rng_gaussian(rng_state, 0.0f, step_size));
     }
 
     /* Compute new energy (surface area) */
@@ -642,7 +793,7 @@ int surface_annealing_step(
         accept = true;
     } else {
         float prob = expf(-delta_e / state->temperature);
-        if (surface_rng_uniform(&rng_state) < prob) {
+        if (surface_rng_uniform(rng_state) < prob) {
             accept = true;
         }
     }

@@ -297,8 +297,12 @@ static PyObject* py_brain_detect_communities(PyObject* self, PyObject* args) {
 
     NeuralNetworkObject* network_py = (NeuralNetworkObject*)network_obj;
 
-    // Detect communities
-    community_structure_t* structure = community_detect(network_py->network, NULL);
+    // Release GIL during potentially long community detection
+    community_structure_t* structure;
+    Py_BEGIN_ALLOW_THREADS
+    structure = community_detect(network_py->network, NULL);
+    Py_END_ALLOW_THREADS
+
     Py_DECREF(network_obj);
 
     if (!structure) {
@@ -415,8 +419,12 @@ static PyObject* py_brain_detect_hubs(PyObject* self, PyObject* args, PyObject* 
 
     NeuralNetworkObject* network_py = (NeuralNetworkObject*)network_obj;
 
-    // Detect hubs
-    hub_structure_t* hubs = community_detect_hubs(network_py->network, threshold);
+    // Release GIL during potentially long hub detection
+    hub_structure_t* hubs;
+    Py_BEGIN_ALLOW_THREADS
+    hubs = community_detect_hubs(network_py->network, threshold);
+    Py_END_ALLOW_THREADS
+
     Py_DECREF(network_obj);
 
     if (!hubs) {
@@ -461,8 +469,12 @@ static PyObject* py_brain_validate_topology(PyObject* self, PyObject* args, PyOb
 
     NeuralNetworkObject* network_py = (NeuralNetworkObject*)network_obj;
 
-    // Validate topology
-    topology_validation_t validation = community_validate_topology(network_py->network, min_modularity);
+    // Release GIL during potentially long topology validation
+    topology_validation_t validation;
+    Py_BEGIN_ALLOW_THREADS
+    validation = community_validate_topology(network_py->network, min_modularity);
+    Py_END_ALLOW_THREADS
+
     Py_DECREF(network_obj);
 
     // Wrap in Python object

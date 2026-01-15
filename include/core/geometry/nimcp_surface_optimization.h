@@ -11,6 +11,17 @@
  *       - QMCTS for topology search (discrete)
  *       - Quantum annealing for escaping local minima
  *
+ * RETURN VALUE CONVENTIONS:
+ * - All int-returning functions: return 0 on success, -1 on error
+ * - Float-returning functions (e.g., surface_optimizer_get_area):
+ *   return -1.0f on error (invalid optimizer), otherwise valid float value
+ * - Pointer-returning functions: return NULL on error
+ * - Bool-returning functions: return false on error or invalid input
+ *
+ * This follows the FEP bridges convention (0 success, -1 error) rather than
+ * the global NIMCP_OK/NIMCP_ERROR_* codes, for consistency with other
+ * geometry and optimization modules.
+ *
  * @version 1.0.0
  * @date 2026-01-13
  */

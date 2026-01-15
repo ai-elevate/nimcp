@@ -20,3 +20,6 @@ endmacro()
 
 # Core tensor tests
 add_tensor_test(test_tensor)
+
+# Tensor error handling tests
+add_tensor_test(test_tensor_errors)

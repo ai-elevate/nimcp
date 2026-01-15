@@ -138,12 +138,22 @@ void eligibility_trace_update(
     // WHAT: Δt = current_time - last_update
     // WHY: Determine how much decay to apply
     // HOW: Unsigned subtraction with wraparound guard
-    // GUARD: Handle time counter overflow or uninitialized data
+    // P1 fix: Improved wraparound handling that allows decay to continue
+    // WHY:  Original code set delta_t = 0 after wraparound, skipping decay entirely
+    // HOW:  On wraparound, compute delta from 0 to current_time (partial wrap)
+    uint64_t delta_t;
     if (current_time < trace->last_update) {
-        trace->last_update = current_time;  // Reset on wraparound
-        // Continue with delta_t = 0 (no decay, just add spike)
+        /* Time counter wrapped around - use current_time as delta if small,
+         * otherwise treat as reset scenario */
+        if (current_time < 1000) {
+            delta_t = current_time;  /* Small time since wrap point */
+        } else {
+            trace->last_update = current_time;
+            delta_t = 0;  /* Large value after wrap - treat as reset */
+        }
+    } else {
+        delta_t = current_time - trace->last_update;
     }
-    uint64_t delta_t = current_time - trace->last_update;
 
     // STEP 2: Apply exponential decay
     // WHAT: Decay trace by λ^Δt
@@ -238,12 +248,28 @@ void eligibility_trace_decay(
     // WHAT: Compute and apply exponential decay
     // WHY: Update trace to current time
     // HOW: Same as eligibility_trace_update but without spike contribution
-    // GUARD: Handle time counter overflow or uninitialized data
+    // P1 fix: Improved wraparound handling that allows decay to continue
+    // WHY:  Original code skipped decay entirely on wraparound, causing trace
+    //       accumulation without decay for potentially long periods
+    // HOW:  On wraparound, compute delta from 0 to current_time (partial wrap)
+    //       This maintains decay behavior while handling the discontinuity
+    uint64_t delta_t;
     if (current_time < trace->last_update) {
-        trace->last_update = current_time;  // Reset on wraparound
-        return;  // No decay on wraparound
+        /* Time counter wrapped around - two options:
+         * 1. If current_time is small, treat as fresh start (delta = current_time)
+         * 2. If current_time is large, likely a reset occurred
+         * Use 1 second threshold (1000ms) to distinguish */
+        if (current_time < 1000) {
+            /* Fresh start after wraparound - small delta since wrap point */
+            delta_t = current_time;
+        } else {
+            /* Large current_time after wraparound - reset to current state */
+            trace->last_update = current_time;
+            delta_t = 0;
+        }
+    } else {
+        delta_t = current_time - trace->last_update;
     }
-    uint64_t delta_t = current_time - trace->last_update;
 
     if (delta_t > 0) {
         float decay_factor = powf(decay_lambda, (float)delta_t);

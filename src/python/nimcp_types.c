@@ -3,6 +3,8 @@
  * @brief Python type definitions for NIMCP module
  */
 
+#include <string.h>  // For strdup
+
 #include "common/nimcp_module.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -100,7 +102,12 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args, PyObject* kwds)
     }
 
     Py_ssize_t num_features = PyList_Size(features_list);
-    float* features = (float*)malloc(sizeof(float) * num_features);
+    if (num_features <= 0) {
+        PyErr_SetString(PyExc_ValueError, "features list must not be empty");
+        return NULL;
+    }
+
+    float* features = (float*)malloc(sizeof(float) * (size_t)num_features);
     if (!features) {
         return PyErr_NoMemory();
     }
@@ -114,11 +121,22 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args, PyObject* kwds)
         }
     }
 
-    // Call unified API
-    nimcp_status_t status = nimcp_brain_learn_example(
-        self->brain, features, (uint32_t)num_features, label, confidence);
+    // Copy label since we release GIL
+    char* label_copy = strdup(label);
+    if (!label_copy) {
+        free(features);
+        return PyErr_NoMemory();
+    }
+
+    // Release GIL during potentially long-running C operation
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_learn_example(
+        self->brain, features, (uint32_t)num_features, label_copy, confidence);
+    Py_END_ALLOW_THREADS
 
     free(features);
+    free(label_copy);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to learn from example");
@@ -144,7 +162,12 @@ static PyObject* Brain_decide(BrainObject* self, PyObject* args)
     }
 
     Py_ssize_t num_features = PyList_Size(features_list);
-    float* features = (float*)malloc(sizeof(float) * num_features);
+    if (num_features <= 0) {
+        PyErr_SetString(PyExc_ValueError, "features list must not be empty");
+        return NULL;
+    }
+
+    float* features = (float*)malloc(sizeof(float) * (size_t)num_features);
     if (!features) {
         return PyErr_NoMemory();
     }
@@ -162,9 +185,12 @@ static PyObject* Brain_decide(BrainObject* self, PyObject* args)
     char label[64];
     float confidence;
 
-    // Call unified API
-    nimcp_status_t status = nimcp_brain_predict(
+    // Release GIL during potentially long-running C operation
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_predict(
         self->brain, features, (uint32_t)num_features, label, &confidence);
+    Py_END_ALLOW_THREADS
 
     free(features);
 
@@ -215,7 +241,19 @@ static PyObject* Brain_save(BrainObject* self, PyObject* args)
         return NULL;
     }
 
-    nimcp_status_t status = nimcp_brain_save(self->brain, filepath);
+    // Copy filepath since we release GIL
+    char* filepath_copy = strdup(filepath);
+    if (!filepath_copy) {
+        return PyErr_NoMemory();
+    }
+
+    // Release GIL during file I/O operation
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_save(self->brain, filepath_copy);
+    Py_END_ALLOW_THREADS
+
+    free(filepath_copy);
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to save brain");
@@ -234,7 +272,19 @@ static PyObject* Brain_load(PyObject* cls, PyObject* args)
         return NULL;
     }
 
-    nimcp_brain_t brain = nimcp_brain_load(filepath);
+    // Copy filepath since we release GIL
+    char* filepath_copy = strdup(filepath);
+    if (!filepath_copy) {
+        return PyErr_NoMemory();
+    }
+
+    // Release GIL during file I/O operation
+    nimcp_brain_t brain;
+    Py_BEGIN_ALLOW_THREADS
+    brain = nimcp_brain_load(filepath_copy);
+    Py_END_ALLOW_THREADS
+
+    free(filepath_copy);
 
     if (!brain) {
         PyErr_SetString(NIMCPError, "Failed to load brain from file");
@@ -267,8 +317,29 @@ static PyObject* Brain_from_pretrained(PyObject* cls, PyObject* args, PyObject* 
         return NULL;
     }
 
-    // Load pre-trained model
-    nimcp_brain_t brain = (nimcp_brain_t)brain_load_pretrained(model_name, models_dir);
+    // Copy strings since we release GIL
+    char* model_name_copy = strdup(model_name);
+    if (!model_name_copy) {
+        return PyErr_NoMemory();
+    }
+
+    char* models_dir_copy = NULL;
+    if (models_dir) {
+        models_dir_copy = strdup(models_dir);
+        if (!models_dir_copy) {
+            free(model_name_copy);
+            return PyErr_NoMemory();
+        }
+    }
+
+    // Release GIL during file I/O operation
+    nimcp_brain_t brain;
+    Py_BEGIN_ALLOW_THREADS
+    brain = (nimcp_brain_t)brain_load_pretrained(model_name_copy, models_dir_copy);
+    Py_END_ALLOW_THREADS
+
+    free(model_name_copy);
+    free(models_dir_copy);
 
     if (!brain) {
         PyErr_Format(NIMCPError, "Failed to load pre-trained model: %s", model_name);
@@ -350,25 +421,44 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored))
     PyObject* dict = PyDict_New();
     if (!dict) return NULL;
 
-    PyDict_SetItemString(dict, "task_name", PyUnicode_FromString(probe.task_name));
-    PyDict_SetItemString(dict, "size", PyLong_FromLong(probe.size));
-    PyDict_SetItemString(dict, "task", PyLong_FromLong(probe.task));
-    PyDict_SetItemString(dict, "num_neurons", PyLong_FromUnsignedLong(probe.num_neurons));
-    PyDict_SetItemString(dict, "num_synapses", PyLong_FromUnsignedLong(probe.num_synapses));
-    PyDict_SetItemString(dict, "num_active_synapses", PyLong_FromUnsignedLong(probe.num_active_synapses));
-    PyDict_SetItemString(dict, "total_inferences", PyLong_FromUnsignedLongLong(probe.total_inferences));
-    PyDict_SetItemString(dict, "total_learning_steps", PyLong_FromUnsignedLongLong(probe.total_learning_steps));
-    PyDict_SetItemString(dict, "avg_sparsity", PyFloat_FromDouble(probe.avg_sparsity));
-    PyDict_SetItemString(dict, "avg_inference_time_us", PyFloat_FromDouble(probe.avg_inference_time_us));
-    PyDict_SetItemString(dict, "current_learning_rate", PyFloat_FromDouble(probe.current_learning_rate));
-    PyDict_SetItemString(dict, "accuracy", PyFloat_FromDouble(probe.accuracy));
-    PyDict_SetItemString(dict, "memory_bytes", PyLong_FromSize_t(probe.memory_bytes));
-    PyDict_SetItemString(dict, "num_inputs", PyLong_FromUnsignedLong(probe.num_inputs));
-    PyDict_SetItemString(dict, "num_outputs", PyLong_FromUnsignedLong(probe.num_outputs));
-    PyDict_SetItemString(dict, "is_cow_clone", PyBool_FromLong(probe.is_cow_clone));
-    PyDict_SetItemString(dict, "cow_ref_count", PyLong_FromUnsignedLong(probe.cow_ref_count));
-    PyDict_SetItemString(dict, "cow_shared_bytes", PyLong_FromSize_t(probe.cow_shared_bytes));
-    PyDict_SetItemString(dict, "cow_private_bytes", PyLong_FromSize_t(probe.cow_private_bytes));
+    // Helper macro to add item to dict with error checking
+    // PyDict_SetItemString steals no reference, but we create temporary objects
+    // that need to be decref'd after use
+    #define ADD_DICT_ITEM(key, value_expr) do { \
+        PyObject* _val = (value_expr); \
+        if (!_val) { \
+            Py_DECREF(dict); \
+            return NULL; \
+        } \
+        if (PyDict_SetItemString(dict, (key), _val) < 0) { \
+            Py_DECREF(_val); \
+            Py_DECREF(dict); \
+            return NULL; \
+        } \
+        Py_DECREF(_val); \
+    } while (0)
+
+    ADD_DICT_ITEM("task_name", PyUnicode_FromString(probe.task_name));
+    ADD_DICT_ITEM("size", PyLong_FromLong(probe.size));
+    ADD_DICT_ITEM("task", PyLong_FromLong(probe.task));
+    ADD_DICT_ITEM("num_neurons", PyLong_FromUnsignedLong(probe.num_neurons));
+    ADD_DICT_ITEM("num_synapses", PyLong_FromUnsignedLong(probe.num_synapses));
+    ADD_DICT_ITEM("num_active_synapses", PyLong_FromUnsignedLong(probe.num_active_synapses));
+    ADD_DICT_ITEM("total_inferences", PyLong_FromUnsignedLongLong(probe.total_inferences));
+    ADD_DICT_ITEM("total_learning_steps", PyLong_FromUnsignedLongLong(probe.total_learning_steps));
+    ADD_DICT_ITEM("avg_sparsity", PyFloat_FromDouble(probe.avg_sparsity));
+    ADD_DICT_ITEM("avg_inference_time_us", PyFloat_FromDouble(probe.avg_inference_time_us));
+    ADD_DICT_ITEM("current_learning_rate", PyFloat_FromDouble(probe.current_learning_rate));
+    ADD_DICT_ITEM("accuracy", PyFloat_FromDouble(probe.accuracy));
+    ADD_DICT_ITEM("memory_bytes", PyLong_FromSize_t(probe.memory_bytes));
+    ADD_DICT_ITEM("num_inputs", PyLong_FromUnsignedLong(probe.num_inputs));
+    ADD_DICT_ITEM("num_outputs", PyLong_FromUnsignedLong(probe.num_outputs));
+    ADD_DICT_ITEM("is_cow_clone", PyBool_FromLong(probe.is_cow_clone));
+    ADD_DICT_ITEM("cow_ref_count", PyLong_FromUnsignedLong(probe.cow_ref_count));
+    ADD_DICT_ITEM("cow_shared_bytes", PyLong_FromSize_t(probe.cow_shared_bytes));
+    ADD_DICT_ITEM("cow_private_bytes", PyLong_FromSize_t(probe.cow_private_bytes));
+
+    #undef ADD_DICT_ITEM
 
     return dict;
 }
@@ -607,8 +697,18 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
         return NULL;
     }
 
+    if (num_outputs <= 0) {
+        PyErr_SetString(PyExc_ValueError, "num_outputs must be positive");
+        return NULL;
+    }
+
     Py_ssize_t input_size = PyList_Size(input_list);
-    float* inputs = (float*)malloc(sizeof(float) * input_size);
+    if (input_size <= 0) {
+        PyErr_SetString(PyExc_ValueError, "Input list must not be empty");
+        return NULL;
+    }
+
+    float* inputs = (float*)malloc(sizeof(float) * (size_t)input_size);
     if (!inputs) {
         return PyErr_NoMemory();
     }
@@ -623,14 +723,17 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
     }
 
     // Allocate output array
-    float* outputs = (float*)malloc(sizeof(float) * num_outputs);
+    float* outputs = (float*)malloc(sizeof(float) * (size_t)num_outputs);
     if (!outputs) {
         free(inputs);
         return PyErr_NoMemory();
     }
 
-    // Call C function
-    bool success = neural_network_forward(self->network, inputs, input_size, outputs, num_outputs);
+    // Release GIL during potentially long-running forward pass
+    bool success;
+    Py_BEGIN_ALLOW_THREADS
+    success = neural_network_forward(self->network, inputs, input_size, outputs, num_outputs);
+    Py_END_ALLOW_THREADS
 
     if (!success) {
         free(inputs);
@@ -641,8 +744,29 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
 
     // Convert output array to Python list
     PyObject* result = PyList_New(num_outputs);
+    if (!result) {
+        free(inputs);
+        free(outputs);
+        return NULL;
+    }
+
     for (int i = 0; i < num_outputs; i++) {
-        PyList_SetItem(result, i, PyFloat_FromDouble(outputs[i]));
+        PyObject* item = PyFloat_FromDouble(outputs[i]);
+        if (!item) {
+            Py_DECREF(result);
+            free(inputs);
+            free(outputs);
+            return NULL;
+        }
+        // PyList_SetItem steals reference on success, so don't decref item
+        if (PyList_SetItem(result, i, item) < 0) {
+            // On failure, item is NOT stolen, so we must decref it
+            Py_DECREF(item);
+            Py_DECREF(result);
+            free(inputs);
+            free(outputs);
+            return NULL;
+        }
     }
 
     free(inputs);
@@ -992,16 +1116,33 @@ static PyObject* NeuralNetwork_serialize(NeuralNetworkObject* self, PyObject* ar
         return NULL;
     }
 
-    // Serialize network
+    // Copy password if provided since we release GIL
+    char* password_copy = NULL;
+    if (password && password_len > 0) {
+        password_copy = (char*)malloc((size_t)password_len + 1);
+        if (!password_copy) {
+            nimcp_serializer_destroy(serializer);
+            return PyErr_NoMemory();
+        }
+        memcpy(password_copy, password, (size_t)password_len);
+        password_copy[password_len] = '\0';
+    }
+
+    // Release GIL during potentially long serialization
     nimcp_serial_stats_t stats;
-    nimcp_network_serial_result_t result = nimcp_network_serialize(
+    nimcp_network_serial_result_t result;
+    Py_BEGIN_ALLOW_THREADS
+    result = nimcp_network_serialize(
         self->network,
         serializer,
         compress,
-        password,
-        password ? (size_t)password_len : 0,
+        password_copy,
+        password_copy ? (size_t)password_len : 0,
         &stats
     );
+    Py_END_ALLOW_THREADS
+
+    free(password_copy);
 
     if (result != NIMCP_NETWORK_SERIAL_SUCCESS) {
         nimcp_serializer_destroy(serializer);
@@ -1015,7 +1156,7 @@ static PyObject* NeuralNetwork_serialize(NeuralNetworkObject* self, PyObject* ar
     const uint8_t* data = nimcp_serializer_get_buffer(serializer);
 
     // Create Python bytes object
-    PyObject* bytes_obj = PyBytes_FromStringAndSize((const char*)data, data_length);
+    PyObject* bytes_obj = PyBytes_FromStringAndSize((const char*)data, (Py_ssize_t)data_length);
 
     nimcp_serializer_destroy(serializer);
 
@@ -1036,30 +1177,46 @@ static PyObject* NeuralNetwork_deserialize(PyObject* cls, PyObject* args, PyObje
     }
 
     // Create serializer and load data
-    NimcpSerializer* serializer = nimcp_serializer_create(data_length);
+    NimcpSerializer* serializer = nimcp_serializer_create((size_t)data_length);
     if (!serializer) {
         PyErr_SetString(PyExc_MemoryError, "Failed to create serializer");
         return NULL;
     }
 
-    if (!nimcp_serializer_set_buffer(serializer, (uint8_t*)data, data_length)) {
+    if (!nimcp_serializer_set_buffer(serializer, (uint8_t*)data, (size_t)data_length)) {
         nimcp_serializer_destroy(serializer);
         PyErr_SetString(PyExc_ValueError, "Failed to set serializer buffer");
         return NULL;
     }
 
-    // Deserialize network
+    // Copy password if provided since we release GIL
+    char* password_copy = NULL;
+    if (password && password_len > 0) {
+        password_copy = (char*)malloc((size_t)password_len + 1);
+        if (!password_copy) {
+            nimcp_serializer_destroy(serializer);
+            return PyErr_NoMemory();
+        }
+        memcpy(password_copy, password, (size_t)password_len);
+        password_copy[password_len] = '\0';
+    }
+
+    // Release GIL during potentially long deserialization
     neural_network_t network = NULL;
     nimcp_serial_stats_t stats;
-    nimcp_network_serial_result_t result = nimcp_network_deserialize(
+    nimcp_network_serial_result_t result;
+    Py_BEGIN_ALLOW_THREADS
+    result = nimcp_network_deserialize(
         serializer,
         &network,
-        password,
-        password ? (size_t)password_len : 0,
+        password_copy,
+        password_copy ? (size_t)password_len : 0,
         &stats
     );
+    Py_END_ALLOW_THREADS
 
     nimcp_serializer_destroy(serializer);
+    free(password_copy);
 
     if (result != NIMCP_NETWORK_SERIAL_SUCCESS) {
         PyErr_Format(NetworkError, "Deserialization failed: %s",
@@ -1820,21 +1977,38 @@ static PyObject* GlialIntegration_get_stats(GlialIntegrationObject* self, PyObje
     PyObject* dict = PyDict_New();
     if (!dict) return NULL;
 
-    PyDict_SetItemString(dict, "num_astrocytes", PyLong_FromUnsignedLong(stats.num_astrocytes));
-    PyDict_SetItemString(dict, "num_oligodendrocytes", PyLong_FromUnsignedLong(stats.num_oligodendrocytes));
-    PyDict_SetItemString(dict, "num_microglia", PyLong_FromUnsignedLong(stats.num_microglia));
+    // Helper macro to add item to dict with error checking
+    #define ADD_DICT_ITEM(key, value_expr) do { \
+        PyObject* _val = (value_expr); \
+        if (!_val) { \
+            Py_DECREF(dict); \
+            return NULL; \
+        } \
+        if (PyDict_SetItemString(dict, (key), _val) < 0) { \
+            Py_DECREF(_val); \
+            Py_DECREF(dict); \
+            return NULL; \
+        } \
+        Py_DECREF(_val); \
+    } while (0)
 
-    PyDict_SetItemString(dict, "num_tripartite_synapses", PyLong_FromUnsignedLong(stats.num_tripartite_synapses));
-    PyDict_SetItemString(dict, "num_myelinated_neurons", PyLong_FromUnsignedLong(stats.num_myelinated_neurons));
-    PyDict_SetItemString(dict, "num_monitored_synapses", PyLong_FromUnsignedLong(stats.num_monitored_synapses));
+    ADD_DICT_ITEM("num_astrocytes", PyLong_FromUnsignedLong(stats.num_astrocytes));
+    ADD_DICT_ITEM("num_oligodendrocytes", PyLong_FromUnsignedLong(stats.num_oligodendrocytes));
+    ADD_DICT_ITEM("num_microglia", PyLong_FromUnsignedLong(stats.num_microglia));
 
-    PyDict_SetItemString(dict, "total_modulations", PyLong_FromUnsignedLongLong(stats.total_modulations));
-    PyDict_SetItemString(dict, "total_myelinations", PyLong_FromUnsignedLongLong(stats.total_myelinations));
-    PyDict_SetItemString(dict, "total_prunings", PyLong_FromUnsignedLongLong(stats.total_prunings));
+    ADD_DICT_ITEM("num_tripartite_synapses", PyLong_FromUnsignedLong(stats.num_tripartite_synapses));
+    ADD_DICT_ITEM("num_myelinated_neurons", PyLong_FromUnsignedLong(stats.num_myelinated_neurons));
+    ADD_DICT_ITEM("num_monitored_synapses", PyLong_FromUnsignedLong(stats.num_monitored_synapses));
 
-    PyDict_SetItemString(dict, "avg_synaptic_modulation", PyFloat_FromDouble(stats.avg_synaptic_modulation));
-    PyDict_SetItemString(dict, "avg_myelination_factor", PyFloat_FromDouble(stats.avg_myelination_factor));
-    PyDict_SetItemString(dict, "avg_pruning_rate", PyFloat_FromDouble(stats.avg_pruning_rate));
+    ADD_DICT_ITEM("total_modulations", PyLong_FromUnsignedLongLong(stats.total_modulations));
+    ADD_DICT_ITEM("total_myelinations", PyLong_FromUnsignedLongLong(stats.total_myelinations));
+    ADD_DICT_ITEM("total_prunings", PyLong_FromUnsignedLongLong(stats.total_prunings));
+
+    ADD_DICT_ITEM("avg_synaptic_modulation", PyFloat_FromDouble(stats.avg_synaptic_modulation));
+    ADD_DICT_ITEM("avg_myelination_factor", PyFloat_FromDouble(stats.avg_myelination_factor));
+    ADD_DICT_ITEM("avg_pruning_rate", PyFloat_FromDouble(stats.avg_pruning_rate));
+
+    #undef ADD_DICT_ITEM
 
     return dict;
 }

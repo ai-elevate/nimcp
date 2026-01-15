@@ -51,6 +51,9 @@ extern "C" {
 /** Maximum tensor dimensions (rank) */
 #define NIMCP_TENSOR_MAX_RANK 8
 
+/** Maximum number of tensor elements to prevent overflow (1 billion) */
+#define NIMCP_TENSOR_MAX_ELEMENTS ((size_t)1000000000)
+
 /** Maximum einsum equation length */
 #define NIMCP_TENSOR_MAX_EINSUM 256
 
@@ -116,7 +119,8 @@ typedef enum {
     NIMCP_TENSOR_ERR_CONTIGUOUS = -8, /**< Operation requires contiguous memory */
     NIMCP_TENSOR_ERR_INDEX = -9,      /**< Index out of bounds */
     NIMCP_TENSOR_ERR_GRAD = -10,      /**< Gradient computation error */
-    NIMCP_TENSOR_ERR_INVALID = -11    /**< Invalid tensor (corrupted magic) */
+    NIMCP_TENSOR_ERR_INVALID = -11,   /**< Invalid tensor (corrupted magic) */
+    NIMCP_TENSOR_ERR_OVERFLOW = -12   /**< Element count overflow (exceeds NIMCP_TENSOR_MAX_ELEMENTS) */
 } nimcp_tensor_error_t;
 
 //=============================================================================

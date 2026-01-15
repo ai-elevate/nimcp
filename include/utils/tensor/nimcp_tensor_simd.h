@@ -38,6 +38,36 @@
  *
  * THREAD SAFETY: All functions are thread-safe (no global state modified)
  *
+ * POINTER ALIASING WARNING:
+ * =========================
+ * Functions marked with __restrict pointers MUST NOT receive overlapping
+ * memory regions. The same array CANNOT be passed as both src and dst
+ * for in-place operations that have separate src/dst parameters.
+ *
+ * UNDEFINED BEHAVIOR if aliased:
+ *   float data[100];
+ *   tensor_simd_add_f32(data, data, 100);  // WRONG: dst==src aliasing!
+ *
+ * CORRECT usage patterns:
+ *   // Pattern 1: Separate arrays
+ *   float dst[100], src[100];
+ *   tensor_simd_add_f32(dst, src, 100);    // OK: no aliasing
+ *
+ *   // Pattern 2: Use true in-place functions (scalar variants)
+ *   float data[100];
+ *   tensor_simd_add_scalar_f32(data, 5.0f, 100);  // OK: single array
+ *
+ *   // Pattern 3: Copy first for safe "in-place" semantics
+ *   float data[100], temp[100];
+ *   memcpy(temp, data, sizeof(data));
+ *   tensor_simd_add_f32(data, temp, 100);  // OK: no aliasing
+ *
+ * WHY this matters:
+ * - SIMD instructions may read multiple elements ahead
+ * - Writes to dst may corrupt not-yet-read src elements
+ * - __restrict tells compiler no aliasing, enabling optimizations
+ * - Violating __restrict is undefined behavior per C99/C11 standard
+ *
  * @author NIMCP Development Team
  * @date 2025
  * @version 1.0

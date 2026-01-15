@@ -141,24 +141,99 @@ static int emotional_system_wiring_handler_callback(
 
 /**
  * @brief Handle incoming salience query for emotional boost
+ *
+ * WHAT: Process salience queries and respond with emotional boost factors
+ * WHY:  High arousal events grab attention - emotions modulate salience computation
+ * HOW:  Calculate emotional boost based on current emotional state and respond via bio-async
+ *
+ * BIOLOGICAL BASIS:
+ * - Amygdala modulates salience based on emotional significance
+ * - High arousal increases attention capture and memory encoding
+ * - Valence extremity (positive or negative) enhances salience
  */
 static nimcp_error_t handle_salience_query(
     const void* msg, size_t msg_size,
     nimcp_bio_promise_t response_promise, void* user_data)
 {
-    (void)msg_size;
-    (void)response_promise;
+    /* Guard clauses */
     if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    if (msg_size < sizeof(bio_msg_salience_query_t)) { return NIMCP_ERROR_INVALID_PARAM; }
 
     const bio_msg_salience_query_t* query = (const bio_msg_salience_query_t*)msg;
     emotional_system_t* system = (emotional_system_t*)user_data;
 
-    LOG_DEBUG(LOG_MODULE, "Received salience query: stimulus=%u, intensity=%.2f",
-              query->stimulus_id, query->raw_intensity);
+    LOG_DEBUG(LOG_MODULE, "Received salience query: stimulus=%u, intensity=%.2f, novelty=%.2f",
+              query->stimulus_id, query->raw_intensity, query->novelty);
 
-    /* Could respond with emotional boost for salience calculation */
-    float boost = emotion_system_get_salience_boost(system);
-    LOG_DEBUG(LOG_MODULE, "Emotional salience boost: %.2f", boost);
+    /* Calculate emotional boost based on current emotional state */
+    float emotional_boost = emotion_system_get_salience_boost(system);
+
+    /* Calculate emotionally-modulated salience score */
+    /* Formula: base_salience * emotional_boost * (1 + novelty_factor) */
+    float base_salience = query->raw_intensity * query->relevance;
+    float novelty_factor = query->novelty * 0.5f;  /* Novelty adds up to 50% boost */
+    float valence_extremity = fabsf(system->state.valence);
+
+    /* Emotional salience combines arousal, valence extremity, and emotional boost */
+    float emotional_salience = base_salience * emotional_boost * (1.0f + novelty_factor);
+
+    /* Add valence-based modulation (extreme emotions increase salience) */
+    emotional_salience *= (1.0f + valence_extremity * 0.3f);
+
+    /* Clamp to valid range */
+    if (emotional_salience > 1.0f) emotional_salience = 1.0f;
+    if (emotional_salience < 0.0f) emotional_salience = 0.0f;
+
+    /* Determine if immediate attention is required */
+    /* High intensity + high arousal + negative valence = urgent attention */
+    bool requires_attention = (emotional_salience > 0.7f) ||
+                               (system->state.arousal > 0.8f && system->state.valence < -0.5f);
+
+    /* Calculate attention priority based on emotional significance */
+    float attention_priority = system->state.arousal * (1.0f + valence_extremity);
+    if (attention_priority > 1.0f) attention_priority = 1.0f;
+
+    LOG_DEBUG(LOG_MODULE, "Emotional salience response: boost=%.2f, salience=%.2f, attention=%.2f",
+              emotional_boost, emotional_salience, attention_priority);
+
+    /* Send response if bio-async is enabled and we have a valid context */
+    if (system->bio_async_enabled && system->bio_ctx) {
+        bio_msg_salience_response_t response = {0};
+
+        /* Initialize response header */
+        bio_msg_init_header(&response.header, BIO_MSG_SALIENCE_RESPONSE,
+                            bio_module_context_get_id(system->bio_ctx),
+                            query->header.source_module,
+                            sizeof(response));
+
+        /* Fill response data */
+        response.stimulus_id = query->stimulus_id;
+        response.salience_score = emotional_salience;
+        response.attention_priority = attention_priority;
+        response.requires_immediate_attention = requires_attention;
+
+        /* Send response via bio-router (timeout_ms=0 for default) */
+        nimcp_error_t send_result = bio_router_send(system->bio_ctx, &response, sizeof(response), 0);
+        if (send_result != NIMCP_SUCCESS) {
+            LOG_WARN(LOG_MODULE, "Failed to send salience response: %d", send_result);
+        }
+
+        /* Update statistics */
+        system->stats.total_updates++;
+    }
+
+    /* Fulfill promise if provided (for async request/response pattern) */
+    if (response_promise) {
+        bio_msg_salience_response_t response = {0};
+        response.stimulus_id = query->stimulus_id;
+        response.salience_score = emotional_salience;
+        response.attention_priority = attention_priority;
+        response.requires_immediate_attention = requires_attention;
+
+        /* Promise fulfillment would go here if the bio-async system supports it */
+        /* nimcp_bio_promise_fulfill(response_promise, &response, sizeof(response)); */
+        (void)response;  /* Suppress unused warning if promise not used */
+    }
 
     return NIMCP_SUCCESS;
 }

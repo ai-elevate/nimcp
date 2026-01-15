@@ -1,8 +1,44 @@
 /**
  * @file nimcp_quantum_bio_async_bridge.c
  * @brief Implementation of Quantum Module Bio-Async Integration Bridge
- * @version 1.0.1
- * @date 2026-01-14
+ * @version 1.0.2
+ * @date 2026-01-15
+ *
+ * DEADLOCK PREVENTION STRATEGY
+ * ============================
+ *
+ * This module uses a single mutex (bridge->mutex) to protect internal state.
+ * The locking strategy follows these rules to prevent deadlocks:
+ *
+ * 1. LOCK ORDERING: The bridge mutex is always acquired AFTER any external
+ *    router operations. This prevents circular wait conditions with the
+ *    bio_router's internal locks.
+ *
+ * 2. MINIMAL LOCK SCOPE: Locks are held only for the minimum time necessary
+ *    to update state/statistics. I/O operations (broadcasting) are done
+ *    BEFORE acquiring the lock.
+ *
+ * 3. NO NESTED LOCKS: Public functions do NOT call other public functions
+ *    while holding the mutex. Each function manages its own lock lifecycle.
+ *
+ * 4. GOTO CLEANUP PATTERN: All error paths use explicit unlock before return,
+ *    ensuring the mutex is never left locked on failure.
+ *
+ * 5. EXTERNAL CALLS UNLOCKED: Calls to bio_router_broadcast() are made
+ *    without holding bridge->mutex to prevent lock inversion deadlocks.
+ *
+ * Lock acquisition pattern in broadcast functions:
+ *   1. Validate parameters (no lock)
+ *   2. Build message (no lock)
+ *   3. Call bio_router_broadcast() (no lock - router has its own locks)
+ *   4. Acquire bridge->mutex
+ *   5. Update internal state/statistics
+ *   6. Release bridge->mutex
+ *   7. Return result
+ *
+ * This pattern ensures that even if bio_router internally tries to call
+ * back into this module, no deadlock can occur because we don't hold
+ * the bridge mutex during the router call.
  */
 
 #include "quantum/integration/nimcp_quantum_bio_async_bridge.h"

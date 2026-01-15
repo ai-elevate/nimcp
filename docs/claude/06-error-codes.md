@@ -101,6 +101,7 @@ if (result.is_ok) {
 |-------|---------|----------|
 | **-1 to -99** | **Module-local** | Tensor (-1 to -11), LNN (-1 to -15), Packet validation (-40 to -54) |
 | **1000-9999** | **Core NIMCP** | INVALID_PARAMETER (1002), NO_MEMORY (2000), BRAIN_CREATION (3000) |
+| **10000-19999** | **Brain Regions** | Motor (10000+), Hippocampus (10100+), Entorhinal (10200+) |
 | **20000+** | **Module-specific** | Portia (20000+), Swarm (21000+), Security (22000+) |
 
 ## When to Use Each Range
@@ -127,6 +128,12 @@ NIMCP_TENSOR_ERR_NULL          -1    // NULL pointer
 NIMCP_TENSOR_ERR_SHAPE         -2    // Shape mismatch
 NIMCP_TENSOR_ERR_ALLOC         -4    // Allocation failed
 
+// Brain region modules (10000-19999)
+NIMCP_ERROR_MOTOR_BASE         10000 // Motor cortex base
+NIMCP_ERROR_MOTOR_INVALID_INPUT 10001 // Motor: Invalid input
+NIMCP_ERROR_HIPPOCAMPUS_BASE   10100 // Hippocampus base
+NIMCP_ERROR_ENTORHINAL_BASE    10200 // Entorhinal cortex base
+
 // Portia module
 NIMCP_PORTIA_ERROR_NOT_INITIALIZED      20001  // Not initialized
 NIMCP_PORTIA_ERROR_TIER_LOCKED          20003  // Tier change blocked
@@ -137,6 +144,30 @@ LNN_ERROR_NULL_POINTER = -1
 LNN_ERROR_INVALID_PARAM = -13
 LNN_ERROR_OPERATION_FAILED = -12
 LNN_ERROR_OUT_OF_MEMORY = -3
+```
+
+## Brain Region Error Conversion
+
+Convert between module-local and unified error codes at module boundaries:
+
+```c
+#include "utils/error/nimcp_error_codes.h"
+
+// Convert module error to unified NIMCP error
+motor_error_t local_err = motor_get_last_error(adapter);
+nimcp_error_t unified = motor_error_to_nimcp(local_err);
+
+// Convert back to module error
+int motor_err = nimcp_to_motor_error(unified);
+
+// FEP bridge compatibility (0/-1 convention)
+nimcp_error_t err = nimcp_from_fep_result(fep_call());  // -1 -> NIMCP_ERROR_OPERATION_FAILED
+int fep_result = nimcp_to_fep_result(NIMCP_SUCCESS);   // Returns 0
+
+// Get brain region name from error code
+if (nimcp_error_is_brain_region(err)) {
+    printf("Error in %s\n", nimcp_error_get_brain_region_name(err));
+}
 ```
 
 ## Tensor Memory Safety

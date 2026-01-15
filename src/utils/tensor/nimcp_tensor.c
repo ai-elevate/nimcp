@@ -117,7 +117,15 @@ static void stats_update_op(uint64_t* counter)
 //=============================================================================
 
 /**
- * @brief Compute total number of elements
+ * @brief Compute total number of elements with overflow check
+ *
+ * WHAT: Calculate total element count from dimensions
+ * WHY:  Prevent integer overflow for very large tensors
+ * HOW:  Check multiplication overflow at each step using SIZE_MAX check
+ *
+ * @param dims Array of dimension sizes
+ * @param rank Number of dimensions
+ * @return Total number of elements, or 0 if overflow would occur
  */
 static size_t compute_numel(const uint32_t* dims, uint32_t rank)
 {
@@ -125,7 +133,19 @@ static size_t compute_numel(const uint32_t* dims, uint32_t rank)
 
     size_t numel = 1;
     for (uint32_t i = 0; i < rank; i++) {
+        /* Check for multiplication overflow */
+        if (dims[i] > 0 && numel > SIZE_MAX / dims[i]) {
+            LOG_ERROR(LOG_MODULE, "Overflow computing numel: dims[%u]=%u would overflow", i, dims[i]);
+            return 0;  /* Signal overflow */
+        }
         numel *= dims[i];
+
+        /* Check against maximum allowed elements to prevent memory exhaustion */
+        if (numel > NIMCP_TENSOR_MAX_ELEMENTS) {
+            LOG_ERROR(LOG_MODULE, "Tensor too large: %zu elements exceeds max %zu",
+                     numel, (size_t)NIMCP_TENSOR_MAX_ELEMENTS);
+            return 0;  /* Signal overflow */
+        }
     }
     return numel;
 }
@@ -299,9 +319,27 @@ nimcp_tensor_t* nimcp_tensor_create(
         memcpy(t->shape.dims, dims, rank * sizeof(uint32_t));
     }
 
-    /* Compute shape info */
+    /* Compute shape info with overflow check */
     size_t elem_size = nimcp_dtype_size(dtype);
     t->shape.numel = compute_numel(t->shape.dims, rank);
+
+    /* Check if compute_numel returned 0 due to overflow */
+    if (t->shape.numel == 0 && rank > 0) {
+        /* compute_numel already logged the error */
+        nimcp_mutex_destroy(&t->lock);
+        nimcp_free(t);
+        return NULL;
+    }
+
+    /* Check for nbytes overflow (numel * elem_size) */
+    if (elem_size > 0 && t->shape.numel > SIZE_MAX / elem_size) {
+        LOG_ERROR(LOG_MODULE, "Overflow computing nbytes: %zu * %zu would overflow",
+                 t->shape.numel, elem_size);
+        nimcp_mutex_destroy(&t->lock);
+        nimcp_free(t);
+        return NULL;
+    }
+
     t->shape.nbytes = t->shape.numel * elem_size;
     compute_strides(t->shape.dims, rank, elem_size, t->shape.strides);
 
@@ -2590,4 +2628,57 @@ const char* nimcp_tensor_error_string(nimcp_tensor_error_t err)
         case NIMCP_TENSOR_ERR_INVALID:   return "Invalid tensor";
         default:                         return "Unknown error";
     }
+}
+
+//=============================================================================
+// Stub Implementations for Declared but Unimplemented Functions
+//=============================================================================
+// NOTE: These are placeholder implementations to allow linking.
+//       Full implementations will be added in future phases.
+
+nimcp_tensor_t* nimcp_tensor_square(const nimcp_tensor_t* t)
+{
+    if (!t) return NULL;
+    // Square: element-wise t * t
+    return nimcp_tensor_mul(t, t);
+}
+
+nimcp_tensor_t* nimcp_tensor_layer_norm(const nimcp_tensor_t* t,
+                                         const nimcp_tensor_t* gamma,
+                                         const nimcp_tensor_t* beta,
+                                         double eps)
+{
+    (void)gamma;
+    (void)beta;
+    (void)eps;
+    if (!t) return NULL;
+    // Stub: return a copy for now
+    // Full layer norm implementation TBD
+    LOG_WARN("nimcp_tensor_layer_norm is a stub implementation");
+    return nimcp_tensor_clone(t);
+}
+
+nimcp_tensor_t* nimcp_tensor_log_softmax(const nimcp_tensor_t* input, int dim)
+{
+    (void)dim;
+    if (!input) return NULL;
+    // Stub: return log of softmax approximation
+    LOG_WARN("nimcp_tensor_log_softmax is a stub implementation");
+    return nimcp_tensor_clone(input);
+}
+
+int nimcp_autodiff_backward(nimcp_autodiff_ctx_t* ctx,
+                            nimcp_tensor_t* output,
+                            nimcp_tensor_t* const* inputs,
+                            uint32_t num_inputs,
+                            nimcp_tensor_t** gradients)
+{
+    (void)ctx;
+    (void)output;
+    (void)inputs;
+    (void)num_inputs;
+    (void)gradients;
+    // Stub: autodiff backward not yet implemented
+    LOG_WARN("nimcp_autodiff_backward is a stub implementation");
+    return NIMCP_TENSOR_ERR_GRAD;
 }

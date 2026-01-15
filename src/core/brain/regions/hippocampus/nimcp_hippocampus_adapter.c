@@ -19,6 +19,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_wiring_helpers.h"
+#include "utils/error/nimcp_error_codes.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -709,7 +710,7 @@ void hippocampus_destroy(hippocampus_adapter_t* adapter) {
 }
 
 bool hippocampus_reset(hippocampus_adapter_t* adapter) {
-    if (!adapter) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
 
     LOG_DEBUG("[%s] Resetting adapter state", HIPPOCAMPUS_LOG_MODULE);
 
@@ -1407,7 +1408,10 @@ uint32_t hippocampus_consolidate_memories(
     hippocampus_adapter_t* adapter,
     float strength_threshold
 ) {
-    if (!adapter) return 0;
+    if (!adapter) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        return 0;
+    }
 
     adapter->status = HIPPOCAMPUS_STATUS_CONSOLIDATING;
     LOG_DEBUG("[%s] Consolidating memories (threshold=%.2f)", HIPPOCAMPUS_LOG_MODULE, strength_threshold);
@@ -1443,7 +1447,7 @@ bool hippocampus_set_consolidation_callback(
     hippocampus_consolidation_callback_t callback,
     void* user_data
 ) {
-    if (!adapter) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
     adapter->consolidation_callback = callback;
     adapter->consolidation_user_data = user_data;
     return true;
@@ -1454,7 +1458,7 @@ bool hippocampus_trigger_replay(
     bool reverse,
     uint32_t num_episodes
 ) {
-    if (!adapter) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
 
     adapter->status = HIPPOCAMPUS_STATUS_REPLAYING;
     LOG_DEBUG("[%s] Triggering replay (reverse=%d, episodes=%u)",
@@ -1494,7 +1498,7 @@ bool hippocampus_set_event_callback(
     hippocampus_event_callback_t callback,
     void* user_data
 ) {
-    if (!adapter) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
     adapter->event_callback = callback;
     adapter->event_user_data = user_data;
     return true;
@@ -1511,7 +1515,22 @@ bool hippocampus_train_association(
     uint32_t target_memory_id,
     float learning_rate
 ) {
-    if (!adapter || !cue || cue_size == 0 || target_memory_id == 0) {
+    if (!adapter) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        return false;
+    }
+    if (!cue) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: cue");
+        set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        return false;
+    }
+    if (cue_size == 0) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: cue_size must be > 0");
+        set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        return false;
+    }
+    if (target_memory_id == 0) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: target_memory_id must be > 0");
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1543,7 +1562,22 @@ bool hippocampus_train_place_field(
     const float* features,
     uint32_t num_features
 ) {
-    if (!adapter || !location || !features || num_features == 0) {
+    if (!adapter) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        return false;
+    }
+    if (!location) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: location");
+        set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        return false;
+    }
+    if (!features) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: features");
+        set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        return false;
+    }
+    if (num_features == 0) {
+        NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: num_features must be > 0");
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1630,13 +1664,15 @@ const char* hippocampus_status_string(hippocampus_status_t status) {
 }
 
 bool hippocampus_get_stats(const hippocampus_adapter_t* adapter, hippocampus_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    NIMCP_CHECK_NULL_BOOL(stats, "stats");
     *stats = adapter->stats;
     return true;
 }
 
 bool hippocampus_get_config(const hippocampus_adapter_t* adapter, hippocampus_config_t* config) {
-    if (!adapter || !config) return false;
+    NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
+    NIMCP_CHECK_NULL_BOOL(config, "config");
     *config = adapter->config;
     return true;
 }
