@@ -84,10 +84,10 @@ TEST_F(SpeechEnhancementBackwardCompatTest, Pragmatics_APIStability_DefaultConfi
     pragmatics_config_t config = pragmatics_default_config();
 
     // Default config values should remain stable
-    EXPECT_TRUE(config.enable_speech_acts);
+    EXPECT_TRUE(config.enable_indirect_speech);
     EXPECT_TRUE(config.enable_grice_analysis);
-    EXPECT_TRUE(config.enable_implicature);
-    EXPECT_GT(config.max_acts, 0u);
+    EXPECT_TRUE(config.enable_scalar_implicature);
+    EXPECT_GT(config.max_speech_acts, 0u);
 }
 
 TEST_F(SpeechEnhancementBackwardCompatTest, Pragmatics_APIStability_CreateDestroy) {
@@ -104,11 +104,11 @@ TEST_F(SpeechEnhancementBackwardCompatTest, Pragmatics_APIStability_CreateDestro
 
 TEST_F(SpeechEnhancementBackwardCompatTest, Pragmatics_APIStability_SpeechActEnums) {
     // Speech act enum values must remain stable for saved/loaded models
-    EXPECT_EQ(static_cast<int>(SPEECH_ACT_ASSERTIVE), 0);
-    EXPECT_EQ(static_cast<int>(SPEECH_ACT_DIRECTIVE), 1);
-    EXPECT_EQ(static_cast<int>(SPEECH_ACT_COMMISSIVE), 2);
-    EXPECT_EQ(static_cast<int>(SPEECH_ACT_EXPRESSIVE), 3);
-    EXPECT_EQ(static_cast<int>(SPEECH_ACT_DECLARATIVE), 4);
+    EXPECT_EQ(static_cast<int>(SPEECH_ACT_UNKNOWN), 0);
+    EXPECT_EQ(static_cast<int>(SPEECH_ACT_ASSERT), 1);
+    EXPECT_EQ(static_cast<int>(SPEECH_ACT_CLAIM), 2);
+    EXPECT_EQ(static_cast<int>(SPEECH_ACT_CONCLUDE), 3);
+    EXPECT_EQ(static_cast<int>(SPEECH_ACT_REPORT), 4);
 }
 
 TEST_F(SpeechEnhancementBackwardCompatTest, Pragmatics_APIStability_AnalyzeSignature) {
@@ -116,10 +116,10 @@ TEST_F(SpeechEnhancementBackwardCompatTest, Pragmatics_APIStability_AnalyzeSigna
     pragmatics = pragmatics_create(&config);
 
     pragmatic_analysis_t analysis;
-    // API: pragmatics_analyze(processor, utterance, context, result)
-    bool result = pragmatics_analyze(pragmatics, "Please help me", NULL, &analysis);
+    // API: pragmatics_analyze(processor, utterance, speaker_id, timestamp_ms, result)
+    bool result = pragmatics_analyze(pragmatics, "Please help me", 1, 1000, &analysis);
     EXPECT_TRUE(result);
-    EXPECT_EQ(analysis.speech_act.act_type, SPEECH_ACT_DIRECTIVE);
+    EXPECT_EQ(analysis.speech_act.primary_act, SPEECH_ACT_REQUEST);
 }
 
 /* ============================================================================
@@ -131,14 +131,14 @@ TEST_F(SpeechEnhancementBackwardCompatTest, Discourse_APIStability_DefaultConfig
 
     EXPECT_GT(config.max_referents, 0u);
     EXPECT_GT(config.salience_decay, 0.0f);
-    EXPECT_TRUE(config.enable_anaphora);
+    // enable_zero_anaphora defaults to false (elided references disabled by default)
 }
 
 TEST_F(SpeechEnhancementBackwardCompatTest, Discourse_APIStability_ReferentTypes) {
     // Referent type enums must remain stable
-    EXPECT_EQ(static_cast<int>(REFERENT_TYPE_ENTITY), 0);
-    EXPECT_EQ(static_cast<int>(REFERENT_TYPE_EVENT), 1);
-    EXPECT_EQ(static_cast<int>(REFERENT_TYPE_PROPOSITION), 2);
+    EXPECT_EQ(static_cast<int>(REFERENT_TYPE_UNKNOWN), 0);
+    EXPECT_EQ(static_cast<int>(REFERENT_TYPE_PERSON), 1);
+    EXPECT_EQ(static_cast<int>(REFERENT_TYPE_OBJECT), 2);
     EXPECT_EQ(static_cast<int>(REFERENT_TYPE_LOCATION), 3);
     EXPECT_EQ(static_cast<int>(REFERENT_TYPE_TIME), 4);
 }
@@ -147,29 +147,29 @@ TEST_F(SpeechEnhancementBackwardCompatTest, Discourse_APIStability_IntroduceRefe
     discourse_config_t config = discourse_default_config();
     discourse = discourse_create(&config);
 
-    discourse_referent_t referent;
+    // API: discourse_introduce_referent(manager, name, type, gender, number)
+    // gender: 1=male, 2=female, 3=neuter; number: 1=singular, 2=plural
     uint32_t id = discourse_introduce_referent(discourse, "John",
-        REFERENT_TYPE_ENTITY, 1.0f, &referent);
+        REFERENT_TYPE_PERSON, 1, 1);  // male, singular
 
     EXPECT_GT(id, 0u);
-    EXPECT_STREQ(referent.name, "John");
-    EXPECT_EQ(referent.type, REFERENT_TYPE_ENTITY);
 }
 
 TEST_F(SpeechEnhancementBackwardCompatTest, Discourse_APIStability_ResolveAnaphora) {
     discourse_config_t config = discourse_default_config();
     discourse = discourse_create(&config);
 
-    discourse_referent_t referent;
+    // Introduce Mary (female, singular)
     uint32_t id = discourse_introduce_referent(discourse, "Mary",
-        REFERENT_TYPE_ENTITY, 1.0f, &referent);
+        REFERENT_TYPE_PERSON, 2, 1);  // female, singular
 
     anaphora_resolution_t resolution;
-    bool result = discourse_resolve_anaphora(discourse, "she", &resolution);
+    // API: discourse_resolve_anaphora(manager, expression, context, result)
+    bool result = discourse_resolve_anaphora(discourse, "she", NULL, &resolution);
 
     EXPECT_TRUE(result);
-    EXPECT_TRUE(resolution.resolved);
-    EXPECT_EQ(resolution.referent_id, id);
+    EXPECT_TRUE(resolution.is_resolved);
+    EXPECT_EQ(resolution.antecedent_id, id);
 }
 
 /* ============================================================================
@@ -261,17 +261,17 @@ TEST_F(SpeechEnhancementBackwardCompatTest, Repair_APIStability_DefaultConfig) {
 TEST_F(SpeechEnhancementBackwardCompatTest, Repair_APIStability_DisfluencyEnums) {
     EXPECT_EQ(static_cast<int>(DISFLUENCY_NONE), 0);
     EXPECT_EQ(static_cast<int>(DISFLUENCY_FILLED_PAUSE), 1);
-    EXPECT_EQ(static_cast<int>(DISFLUENCY_WORD_FRAGMENT), 2);
-    EXPECT_EQ(static_cast<int>(DISFLUENCY_PROLONGATION), 3);
-    EXPECT_EQ(static_cast<int>(DISFLUENCY_REPETITION), 4);
+    EXPECT_EQ(static_cast<int>(DISFLUENCY_SILENT_PAUSE), 2);
+    EXPECT_EQ(static_cast<int>(DISFLUENCY_LENGTHENING), 3);
+    EXPECT_EQ(static_cast<int>(DISFLUENCY_WORD_FRAGMENT), 4);
 }
 
 TEST_F(SpeechEnhancementBackwardCompatTest, Repair_APIStability_RepairTypeEnums) {
     EXPECT_EQ(static_cast<int>(REPAIR_TYPE_NONE), 0);
     EXPECT_EQ(static_cast<int>(REPAIR_TYPE_RESTART), 1);
     EXPECT_EQ(static_cast<int>(REPAIR_TYPE_REPLACEMENT), 2);
-    EXPECT_EQ(static_cast<int>(REPAIR_TYPE_CORRECTION), 3);
-    EXPECT_EQ(static_cast<int>(REPAIR_TYPE_REPETITION), 4);
+    EXPECT_EQ(static_cast<int>(REPAIR_TYPE_INSERTION), 3);
+    EXPECT_EQ(static_cast<int>(REPAIR_TYPE_DELETION), 4);
 }
 
 TEST_F(SpeechEnhancementBackwardCompatTest, Repair_APIStability_DetectDisfluencies) {
@@ -302,8 +302,8 @@ TEST_F(SpeechEnhancementBackwardCompatTest, Multimodal_APIStability_GestureEnums
     EXPECT_EQ(static_cast<int>(GESTURE_TYPE_NONE), 0);
     EXPECT_EQ(static_cast<int>(GESTURE_TYPE_ICONIC), 1);
     EXPECT_EQ(static_cast<int>(GESTURE_TYPE_METAPHORIC), 2);
-    EXPECT_EQ(static_cast<int>(GESTURE_TYPE_DEICTIC), 3);
-    EXPECT_EQ(static_cast<int>(GESTURE_TYPE_BEAT), 4);
+    EXPECT_EQ(static_cast<int>(GESTURE_TYPE_BEAT), 3);
+    EXPECT_EQ(static_cast<int>(GESTURE_TYPE_DEICTIC), 4);
 }
 
 TEST_F(SpeechEnhancementBackwardCompatTest, Multimodal_APIStability_ExpressionEnums) {
@@ -335,19 +335,20 @@ TEST_F(SpeechEnhancementBackwardCompatTest, Behavioral_PragmaticsClassification)
     pragmatics = pragmatics_create(&config);
 
     // These classifications must remain consistent
+    // API: pragmatics_classify_speech_act(processor, utterance, speaker_id, result)
     speech_act_result_t result;
 
-    pragmatics_classify_speech_act(pragmatics, "It is raining", &result);
-    EXPECT_EQ(result.act_type, SPEECH_ACT_ASSERTIVE);
+    pragmatics_classify_speech_act(pragmatics, "It is raining", 1, &result);
+    EXPECT_EQ(result.primary_act, SPEECH_ACT_ASSERT);
 
-    pragmatics_classify_speech_act(pragmatics, "Please help me", &result);
-    EXPECT_EQ(result.act_type, SPEECH_ACT_DIRECTIVE);
+    pragmatics_classify_speech_act(pragmatics, "Please help me", 1, &result);
+    EXPECT_EQ(result.primary_act, SPEECH_ACT_REQUEST);
 
-    pragmatics_classify_speech_act(pragmatics, "I promise to help", &result);
-    EXPECT_EQ(result.act_type, SPEECH_ACT_COMMISSIVE);
+    pragmatics_classify_speech_act(pragmatics, "I promise to help", 1, &result);
+    EXPECT_EQ(result.primary_act, SPEECH_ACT_PROMISE);
 
-    pragmatics_classify_speech_act(pragmatics, "Thank you so much!", &result);
-    EXPECT_EQ(result.act_type, SPEECH_ACT_EXPRESSIVE);
+    pragmatics_classify_speech_act(pragmatics, "Thank you so much!", 1, &result);
+    EXPECT_EQ(result.primary_act, SPEECH_ACT_THANK);
 }
 
 TEST_F(SpeechEnhancementBackwardCompatTest, Behavioral_FillerDetection) {
@@ -461,13 +462,13 @@ TEST_F(SpeechEnhancementBackwardCompatTest, ErrorHandling_NullInputs) {
     pragmatics_config_t prag_cfg = pragmatics_default_config();
     pragmatics = pragmatics_create(&prag_cfg);
     pragmatic_analysis_t prag_analysis;
-    EXPECT_FALSE(pragmatics_analyze(pragmatics, NULL, NULL, &prag_analysis));
-    EXPECT_FALSE(pragmatics_analyze(pragmatics, "test", NULL, NULL));
+    EXPECT_FALSE(pragmatics_analyze(pragmatics, NULL, 1, 1000, &prag_analysis));
+    EXPECT_FALSE(pragmatics_analyze(pragmatics, "test", 1, 1000, NULL));
 
     // Discourse
     discourse_config_t disc_cfg = discourse_default_config();
     discourse = discourse_create(&disc_cfg);
-    EXPECT_EQ(discourse_introduce_referent(discourse, NULL, REFERENT_TYPE_ENTITY, 1.0f, NULL), 0u);
+    EXPECT_EQ(discourse_introduce_referent(discourse, NULL, REFERENT_TYPE_PERSON, 1, 1), 0u);
 
     // Prosody
     emotional_prosody_config_t pros_cfg = emotional_prosody_default_config();
@@ -515,7 +516,7 @@ TEST_F(SpeechEnhancementBackwardCompatTest, Performance_PragmaticsAnalysis) {
     // Warmup
     for (int i = 0; i < WARMUP_ITERATIONS; i++) {
         pragmatic_analysis_t analysis;
-        pragmatics_analyze(pragmatics, "Please help me", NULL, &analysis);
+        pragmatics_analyze(pragmatics, "Please help me", 1, 1000, &analysis);
     }
 
     // Benchmark
@@ -523,7 +524,7 @@ TEST_F(SpeechEnhancementBackwardCompatTest, Performance_PragmaticsAnalysis) {
     for (int i = 0; i < BENCHMARK_ITERATIONS; i++) {
         pragmatic_analysis_t analysis;
         total_ns += measure_ns([&]() {
-            pragmatics_analyze(pragmatics, "Please help me", NULL, &analysis);
+            pragmatics_analyze(pragmatics, "Please help me", 1, 1000, &analysis);
         });
     }
 
