@@ -13,6 +13,7 @@
 #include "dragonfly/nimcp_dragonfly_learning.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/rng/nimcp_rand.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -581,8 +582,8 @@ int dragonfly_learning_get_recommendation(
     }
 
     /* Exploration: sometimes recommend random strategy */
-    if (((float)rand() / RAND_MAX) < learning->current_exploration_rate) {
-        recommendation->recommended_strategy = (intercept_strategy_t)(rand() % NUM_STRATEGIES);
+    if (nimcp_rand_uniform() < learning->current_exploration_rate) {
+        recommendation->recommended_strategy = (intercept_strategy_t)(nimcp_rand_uint(NUM_STRATEGIES));
         recommendation->strategy_confidence *= 0.5f;
         recommendation->advice = "exploring";
     }

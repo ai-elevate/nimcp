@@ -13,6 +13,7 @@
 #include "superhuman/nimcp_precognition.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/rng/nimcp_rand.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -256,7 +257,7 @@ static bool init_prediction_model(prediction_model_t* model, uint32_t feature_di
 
     /* Initialize with small random weights */
     for (uint32_t i = 0; i < feature_dim * feature_dim; i++) {
-        model->weights[i] = ((float)(rand() % 1000) / 1000.0f - 0.5f) * 0.1f;
+        model->weights[i] = (nimcp_rand_uniform() - 0.5f) * 0.1f;
     }
     /* Identity component on diagonal */
     for (uint32_t i = 0; i < feature_dim; i++) {
@@ -732,7 +733,7 @@ bool precognition_predict(
             /* Add noise for sample diversity */
             if (s > 0) {
                 for (uint32_t i = 0; i < current->feature_count; i++) {
-                    float noise = ((float)(rand() % 1000) / 1000.0f - 0.5f) * 0.1f;
+                    float noise = (nimcp_rand_uniform() - 0.5f) * 0.1f;
                     pred->mean[i] += noise * (1.0f - confidence);
                 }
             }

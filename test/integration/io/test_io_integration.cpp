@@ -75,13 +75,15 @@ protected:
     }
 
     void TearDown() override {
-        if (brain) {
-            brain_destroy(brain);
-            brain = nullptr;
-        }
+        // IMPORTANT: Destroy stream BEFORE brain to prevent use-after-free.
+        // Stream's processing thread may still be accessing the brain.
         if (stream) {
             brain_destroy_stream(stream);
             stream = nullptr;
+        }
+        if (brain) {
+            brain_destroy(brain);
+            brain = nullptr;
         }
         if (dataset) {
             dataset_close(dataset);

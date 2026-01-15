@@ -12,6 +12,7 @@
  */
 
 #include "biology/neurogenesis/nimcp_neurogenesis.h"
+#include "utils/rng/nimcp_rand.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -106,7 +107,7 @@ static void update_stem_cell(stem_cell_t* cell, float dt, float prolif_rate, flo
     switch (cell->state) {
         case STEM_STATE_QUIESCENT:
             /* Random activation based on rate */
-            if ((float)rand() / RAND_MAX < prolif_rate * env_mod * dt * 0.01f) {
+            if (nimcp_rand_uniform() < prolif_rate * env_mod * dt * 0.01f) {
                 cell->state = STEM_STATE_ACTIVATED;
                 cell->time_in_state = 0.0f;
             }
@@ -125,7 +126,7 @@ static void update_stem_cell(stem_cell_t* cell, float dt, float prolif_rate, flo
             if (cell->time_in_state > 20.0f) {
                 /* Decide: divide again or differentiate */
                 if (cell->proliferation_capacity > 0.3f &&
-                    (float)rand() / RAND_MAX < 0.5f) {
+                    nimcp_rand_uniform() < 0.5f) {
                     /* Self-renew */
                     cell->proliferation_capacity *= 0.95f;
                     cell->divisions_completed++;
@@ -184,7 +185,7 @@ static void update_pending_neuron(pending_neuron_t* neuron, float dt,
             /* Form connections based on activity */
             if (neuron->recent_activity > 0.1f) {
                 float conn_prob = neuron->recent_activity * dt * 0.1f;
-                if ((float)rand() / RAND_MAX < conn_prob) {
+                if (nimcp_rand_uniform() < conn_prob) {
                     neuron->connections_formed++;
                 }
             }
@@ -199,7 +200,7 @@ static void update_pending_neuron(pending_neuron_t* neuron, float dt,
             /* Check for pruning due to low activity */
             if (neuron->recent_activity < survival_threshold) {
                 float prune_prob = pruning_rate * dt * 0.1f;
-                if ((float)rand() / RAND_MAX < prune_prob) {
+                if (nimcp_rand_uniform() < prune_prob) {
                     neuron->stage = NEURON_STAGE_APOPTOTIC;
                 }
             }

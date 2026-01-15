@@ -14,6 +14,7 @@
 #include "training/nimcp_hyperparam_opt.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/rng/nimcp_rand.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -242,9 +243,8 @@ hpo_ctx_t* hpo_create(
         return NULL;
     }
 
-    /* Initialize random seed */
+    /* Initialize random seed (nimcp_rand auto-seeds on first use) */
     ctx->random_seed = (uint32_t)time(NULL);
-    srand(ctx->random_seed);
 
     /* Initialize TPE samplers for Bayesian methods */
     if (config->algorithm == HPO_ALG_BAYESIAN_TPE ||

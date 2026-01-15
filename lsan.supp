@@ -14,3 +14,11 @@ leak:brain_create
 leak:network_analyzer_run
 leak:network_analyzer_detect_communities
 leak:community_detect
+
+# NVIDIA GPU driver leaks (closed-source, unfixable)
+# OpenCL driver allocates global state on first use
+leak:libOpenCL.so
+leak:libcuda.so
+leak:libnvidia
+leak:libcufft
+leak:libcublas

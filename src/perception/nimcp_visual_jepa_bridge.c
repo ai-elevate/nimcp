@@ -10,6 +10,7 @@
  */
 
 #include "perception/nimcp_visual_jepa_bridge.h"
+#include "utils/rng/nimcp_rand.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -67,10 +68,10 @@ static visual_jepa_encoder_t* encoder_create(uint32_t input_dim,
     float scale2 = sqrtf(2.0f / (float)(hidden_dim + output_dim));
 
     for (uint32_t i = 0; i < hidden_dim * input_dim; i++) {
-        enc->weights_1[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale1;
+        enc->weights_1[i] = (nimcp_rand_uniform() * 2.0f - 1.0f) * scale1;
     }
     for (uint32_t i = 0; i < output_dim * hidden_dim; i++) {
-        enc->weights_2[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale2;
+        enc->weights_2[i] = (nimcp_rand_uniform() * 2.0f - 1.0f) * scale2;
     }
     memset(enc->bias_1, 0, hidden_dim * sizeof(float));
     memset(enc->bias_2, 0, output_dim * sizeof(float));

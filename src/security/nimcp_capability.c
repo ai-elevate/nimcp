@@ -19,6 +19,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 
 #define LOG_MODULE "security_capability"
 
@@ -51,6 +52,9 @@ struct nimcp_capability_system {
     // State
     bool initialized;
     bool root_created;
+
+    // Thread safety
+    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -133,6 +137,13 @@ nimcp_capability_system_t* nimcp_capability_system_create(void)
     if (!caps)
         return NULL;
 
+    // Create mutex for thread safety
+    caps->mutex = nimcp_mutex_create(NULL);
+    if (!caps->mutex) {
+        nimcp_free(caps);
+        return NULL;
+    }
+
     caps->initialized = false;
     caps->root_created = false;
     caps->next_holder_id = 1;
@@ -164,6 +175,11 @@ void nimcp_capability_system_destroy(nimcp_capability_system_t* caps)
     if (!caps)
         return;
 
+    // Destroy mutex
+    if (caps->mutex) {
+        nimcp_mutex_destroy(caps->mutex);
+    }
+
     // Free holder capability arrays
     for (uint32_t i = 0; i < caps->num_holders; i++) {
         if (caps->holders[i].capabilities) {
@@ -179,16 +195,17 @@ void nimcp_capability_system_destroy(nimcp_capability_system_t* caps)
 // Capability Creation
 //=============================================================================
 
-nimcp_result_t nimcp_capability_create(
+/**
+ * @brief Internal unlocked version of capability create
+ * @note Caller must hold caps->mutex
+ */
+static nimcp_result_t capability_create_unlocked(
     nimcp_capability_system_t* caps,
     nimcp_resource_type_t resource_type,
     void* resource_ptr,
     uint32_t permissions,
     nimcp_capability_t* capability)
 {
-    if (!caps || !capability)
-        return NIMCP_INVALID_PARAM;
-
     if (!caps->initialized)
         return NIMCP_INVALID_STATE;
 
@@ -221,6 +238,24 @@ nimcp_result_t nimcp_capability_create(
     return NIMCP_SUCCESS;
 }
 
+nimcp_result_t nimcp_capability_create(
+    nimcp_capability_system_t* caps,
+    nimcp_resource_type_t resource_type,
+    void* resource_ptr,
+    uint32_t permissions,
+    nimcp_capability_t* capability)
+{
+    if (!caps || !capability)
+        return NIMCP_INVALID_PARAM;
+
+    nimcp_mutex_lock(caps->mutex);
+    nimcp_result_t result = capability_create_unlocked(
+        caps, resource_type, resource_ptr, permissions, capability);
+    nimcp_mutex_unlock(caps->mutex);
+
+    return result;
+}
+
 nimcp_result_t nimcp_capability_create_root(
     nimcp_capability_system_t* caps,
     nimcp_capability_t* capability)
@@ -228,10 +263,14 @@ nimcp_result_t nimcp_capability_create_root(
     if (!caps || !capability)
         return NIMCP_INVALID_PARAM;
 
-    if (caps->root_created)
-        return NIMCP_INVALID_STATE;
+    nimcp_mutex_lock(caps->mutex);
 
-    nimcp_result_t result = nimcp_capability_create(
+    if (caps->root_created) {
+        nimcp_mutex_unlock(caps->mutex);
+        return NIMCP_INVALID_STATE;
+    }
+
+    nimcp_result_t result = capability_create_unlocked(
         caps,
         NIMCP_RES_GENERIC,
         NULL,
@@ -248,6 +287,8 @@ nimcp_result_t nimcp_capability_create_root(
         );
     }
 
+    nimcp_mutex_unlock(caps->mutex);
+
     return result;
 }
 
@@ -260,13 +301,18 @@ nimcp_result_t nimcp_capability_delegate(
     if (!caps || !child)
         return NIMCP_INVALID_PARAM;
 
+    nimcp_mutex_lock(caps->mutex);
+
     nimcp_cap_entry_t* parent_entry = validate_capability(caps, parent);
-    if (!parent_entry)
+    if (!parent_entry) {
+        nimcp_mutex_unlock(caps->mutex);
         return NIMCP_INVALID_STATE;
+    }
 
     // Check delegation permission
     if (!(parent_entry->permissions & NIMCP_PERM_DELEGATE)) {
         caps->stats.checks_failed++;
+        nimcp_mutex_unlock(caps->mutex);
         return NIMCP_INVALID_STATE;
     }
 
@@ -274,12 +320,15 @@ nimcp_result_t nimcp_capability_delegate(
     uint32_t allowed = parent_entry->permissions & ~NIMCP_PERM_DELEGATE;
     if ((permissions & ~allowed) != 0) {
         caps->stats.checks_failed++;
+        nimcp_mutex_unlock(caps->mutex);
         return NIMCP_INVALID_PARAM;
     }
 
     int32_t slot = find_free_slot(caps);
-    if (slot < 0)
+    if (slot < 0) {
+        nimcp_mutex_unlock(caps->mutex);
         return NIMCP_BUFFER_TOO_SMALL;
+    }
 
     nimcp_cap_entry_t* entry = &caps->entries[slot];
 
@@ -304,6 +353,8 @@ nimcp_result_t nimcp_capability_delegate(
     caps->stats.active_capabilities++;
     caps->stats.delegations++;
 
+    nimcp_mutex_unlock(caps->mutex);
+
     return NIMCP_SUCCESS;
 }
 
@@ -315,17 +366,25 @@ bool nimcp_capability_is_valid(
     nimcp_capability_system_t* caps,
     nimcp_capability_t capability)
 {
-    return validate_capability(caps, capability) != NULL;
+    if (!caps)
+        return false;
+
+    nimcp_mutex_lock(caps->mutex);
+    bool valid = validate_capability(caps, capability) != NULL;
+    nimcp_mutex_unlock(caps->mutex);
+
+    return valid;
 }
 
-bool nimcp_capability_check(
+/**
+ * @brief Internal unlocked version of capability check
+ * @note Caller must hold caps->mutex
+ */
+static bool capability_check_unlocked(
     nimcp_capability_system_t* caps,
     nimcp_capability_t capability,
     uint32_t permission)
 {
-    if (!caps)
-        return false;
-
     caps->stats.checks_performed++;
 
     nimcp_cap_entry_t* entry = validate_capability(caps, capability);
@@ -353,6 +412,21 @@ bool nimcp_capability_check(
     return has_permission;
 }
 
+bool nimcp_capability_check(
+    nimcp_capability_system_t* caps,
+    nimcp_capability_t capability,
+    uint32_t permission)
+{
+    if (!caps)
+        return false;
+
+    nimcp_mutex_lock(caps->mutex);
+    bool result = capability_check_unlocked(caps, capability, permission);
+    nimcp_mutex_unlock(caps->mutex);
+
+    return result;
+}
+
 bool nimcp_capability_check_access(
     nimcp_capability_system_t* caps,
     nimcp_capability_t capability,
@@ -362,30 +436,47 @@ bool nimcp_capability_check_access(
     if (!caps)
         return false;
 
+    nimcp_mutex_lock(caps->mutex);
+
     nimcp_cap_entry_t* entry = validate_capability(caps, capability);
     if (!entry) {
         caps->stats.checks_failed++;
+        nimcp_mutex_unlock(caps->mutex);
         return false;
     }
 
     // Check resource matches (NULL means any resource)
     if (entry->resource_ptr != NULL && entry->resource_ptr != resource_ptr) {
         caps->stats.checks_failed++;
+        nimcp_mutex_unlock(caps->mutex);
         return false;
     }
 
-    return nimcp_capability_check(caps, capability, permission);
+    bool result = capability_check_unlocked(caps, capability, permission);
+    nimcp_mutex_unlock(caps->mutex);
+
+    return result;
 }
 
 uint32_t nimcp_capability_get_permissions(
     nimcp_capability_system_t* caps,
     nimcp_capability_t capability)
 {
-    nimcp_cap_entry_t* entry = validate_capability(caps, capability);
-    if (!entry)
+    if (!caps)
         return 0;
 
-    return entry->permissions;
+    nimcp_mutex_lock(caps->mutex);
+
+    nimcp_cap_entry_t* entry = validate_capability(caps, capability);
+    if (!entry) {
+        nimcp_mutex_unlock(caps->mutex);
+        return 0;
+    }
+
+    uint32_t permissions = entry->permissions;
+    nimcp_mutex_unlock(caps->mutex);
+
+    return permissions;
 }
 
 //=============================================================================
@@ -399,9 +490,13 @@ nimcp_result_t nimcp_capability_revoke(
     if (!caps)
         return NIMCP_INVALID_PARAM;
 
+    nimcp_mutex_lock(caps->mutex);
+
     nimcp_cap_entry_t* entry = validate_capability(caps, capability);
-    if (!entry)
+    if (!entry) {
+        nimcp_mutex_unlock(caps->mutex);
         return NIMCP_INVALID_STATE;
+    }
 
     entry->revoked = true;
     entry->valid = false;
@@ -411,6 +506,8 @@ nimcp_result_t nimcp_capability_revoke(
 
     // Revoke all children
     revoke_children(caps, capability.index);
+
+    nimcp_mutex_unlock(caps->mutex);
 
     nimcp_security_log_event(
         NIMCP_SECURITY_EVENT_DIRECTIVE_VERIFIED,
@@ -428,11 +525,40 @@ uint32_t nimcp_capability_revoke_for_resource(
     if (!caps)
         return 0;
 
+    nimcp_mutex_lock(caps->mutex);
+
     uint32_t count = 0;
 
     for (uint32_t i = 0; i < NIMCP_CAP_MAX_CAPABILITIES; i++) {
         if (caps->entries[i].valid &&
             caps->entries[i].resource_ptr == resource_ptr) {
+            caps->entries[i].revoked = true;
+            caps->entries[i].valid = false;
+            caps->stats.revoked_capabilities++;
+            caps->stats.active_capabilities--;
+            caps->stats.revocations++;
+            count++;
+        }
+    }
+
+    nimcp_mutex_unlock(caps->mutex);
+
+    return count;
+}
+
+/**
+ * @brief Internal unlocked version of revoke holder
+ * @note Caller must hold caps->mutex
+ */
+static uint32_t capability_revoke_holder_unlocked(
+    nimcp_capability_system_t* caps,
+    uint32_t holder_id)
+{
+    uint32_t count = 0;
+
+    for (uint32_t i = 0; i < NIMCP_CAP_MAX_CAPABILITIES; i++) {
+        if (caps->entries[i].valid &&
+            caps->entries[i].holder_id == holder_id) {
             caps->entries[i].revoked = true;
             caps->entries[i].valid = false;
             caps->stats.revoked_capabilities++;
@@ -452,19 +578,9 @@ uint32_t nimcp_capability_revoke_holder(
     if (!caps)
         return 0;
 
-    uint32_t count = 0;
-
-    for (uint32_t i = 0; i < NIMCP_CAP_MAX_CAPABILITIES; i++) {
-        if (caps->entries[i].valid &&
-            caps->entries[i].holder_id == holder_id) {
-            caps->entries[i].revoked = true;
-            caps->entries[i].valid = false;
-            caps->stats.revoked_capabilities++;
-            caps->stats.active_capabilities--;
-            caps->stats.revocations++;
-            count++;
-        }
-    }
+    nimcp_mutex_lock(caps->mutex);
+    uint32_t count = capability_revoke_holder_unlocked(caps, holder_id);
+    nimcp_mutex_unlock(caps->mutex);
 
     return count;
 }
@@ -481,8 +597,12 @@ nimcp_result_t nimcp_capability_register_holder(
     if (!caps || !holder_id)
         return NIMCP_INVALID_PARAM;
 
-    if (caps->num_holders >= NIMCP_CAP_MAX_HOLDERS)
+    nimcp_mutex_lock(caps->mutex);
+
+    if (caps->num_holders >= NIMCP_CAP_MAX_HOLDERS) {
+        nimcp_mutex_unlock(caps->mutex);
         return NIMCP_BUFFER_TOO_SMALL;
+    }
 
     nimcp_cap_holder_t* holder = &caps->holders[caps->num_holders];
 
@@ -496,6 +616,8 @@ nimcp_result_t nimcp_capability_register_holder(
     *holder_id = holder->holder_id;
     caps->num_holders++;
 
+    nimcp_mutex_unlock(caps->mutex);
+
     return NIMCP_SUCCESS;
 }
 
@@ -507,6 +629,8 @@ nimcp_result_t nimcp_capability_assign(
     if (!caps)
         return NIMCP_INVALID_PARAM;
 
+    nimcp_mutex_lock(caps->mutex);
+
     // Find holder
     nimcp_cap_holder_t* holder = NULL;
     for (uint32_t i = 0; i < caps->num_holders; i++) {
@@ -516,20 +640,28 @@ nimcp_result_t nimcp_capability_assign(
         }
     }
 
-    if (!holder)
+    if (!holder) {
+        nimcp_mutex_unlock(caps->mutex);
         return NIMCP_INVALID_STATE;
+    }
 
     // Validate capability
     nimcp_cap_entry_t* entry = validate_capability(caps, capability);
-    if (!entry)
+    if (!entry) {
+        nimcp_mutex_unlock(caps->mutex);
         return NIMCP_INVALID_STATE;
+    }
 
     // Add to holder's list
-    if (holder->num_capabilities >= holder->max_capabilities)
+    if (holder->num_capabilities >= holder->max_capabilities) {
+        nimcp_mutex_unlock(caps->mutex);
         return NIMCP_BUFFER_TOO_SMALL;
+    }
 
     holder->capabilities[holder->num_capabilities++] = capability.index;
     entry->holder_id = holder_id;
+
+    nimcp_mutex_unlock(caps->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -541,8 +673,10 @@ nimcp_result_t nimcp_capability_remove_holder(
     if (!caps)
         return NIMCP_INVALID_PARAM;
 
-    // Revoke all capabilities
-    nimcp_capability_revoke_holder(caps, holder_id);
+    nimcp_mutex_lock(caps->mutex);
+
+    // Revoke all capabilities (using unlocked version to avoid deadlock)
+    capability_revoke_holder_unlocked(caps, holder_id);
 
     // Mark holder inactive
     for (uint32_t i = 0; i < caps->num_holders; i++) {
@@ -551,6 +685,8 @@ nimcp_result_t nimcp_capability_remove_holder(
             break;
         }
     }
+
+    nimcp_mutex_unlock(caps->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -566,7 +702,9 @@ nimcp_result_t nimcp_capability_get_stats(
     if (!caps || !stats)
         return NIMCP_INVALID_PARAM;
 
+    nimcp_mutex_lock(caps->mutex);
     memcpy(stats, &caps->stats, sizeof(nimcp_cap_stats_t));
+    nimcp_mutex_unlock(caps->mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -576,11 +714,15 @@ nimcp_result_t nimcp_capability_reset_stats(nimcp_capability_system_t* caps)
     if (!caps)
         return NIMCP_INVALID_PARAM;
 
+    nimcp_mutex_lock(caps->mutex);
+
     caps->stats.checks_performed = 0;
     caps->stats.checks_passed = 0;
     caps->stats.checks_failed = 0;
     caps->stats.delegations = 0;
     caps->stats.revocations = 0;
+
+    nimcp_mutex_unlock(caps->mutex);
 
     return NIMCP_SUCCESS;
 }

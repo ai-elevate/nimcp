@@ -270,9 +270,15 @@ int init_topology_module(PyObject* module) {
 
     // Add types to module
     Py_INCREF(&TopologyConfigType);
-    PyModule_AddObject(module, "TopologyConfig", (PyObject*)&TopologyConfigType);
+    if (PyModule_AddObject(module, "TopologyConfig", (PyObject*)&TopologyConfigType) < 0) {
+        Py_DECREF(&TopologyConfigType);
+        return -1;
+    }
     Py_INCREF(&TopologyStatsType);
-    PyModule_AddObject(module, "TopologyStats", (PyObject*)&TopologyStatsType);
+    if (PyModule_AddObject(module, "TopologyStats", (PyObject*)&TopologyStatsType) < 0) {
+        Py_DECREF(&TopologyStatsType);
+        return -1;
+    }
 
     // Add methods to module
     for (int i = 0; topology_methods[i].ml_name != NULL; i++) {

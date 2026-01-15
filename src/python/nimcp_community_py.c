@@ -555,11 +555,20 @@ int init_community_module(PyObject* module) {
 
     // Add types to module
     Py_INCREF(&CommunityStructureType);
-    PyModule_AddObject(module, "CommunityStructure", (PyObject*)&CommunityStructureType);
+    if (PyModule_AddObject(module, "CommunityStructure", (PyObject*)&CommunityStructureType) < 0) {
+        Py_DECREF(&CommunityStructureType);
+        return -1;
+    }
     Py_INCREF(&HubStructureType);
-    PyModule_AddObject(module, "HubStructure", (PyObject*)&HubStructureType);
+    if (PyModule_AddObject(module, "HubStructure", (PyObject*)&HubStructureType) < 0) {
+        Py_DECREF(&HubStructureType);
+        return -1;
+    }
     Py_INCREF(&TopologyValidationType);
-    PyModule_AddObject(module, "TopologyValidation", (PyObject*)&TopologyValidationType);
+    if (PyModule_AddObject(module, "TopologyValidation", (PyObject*)&TopologyValidationType) < 0) {
+        Py_DECREF(&TopologyValidationType);
+        return -1;
+    }
 
     // Add methods to module
     for (int i = 0; community_methods[i].ml_name != NULL; i++) {

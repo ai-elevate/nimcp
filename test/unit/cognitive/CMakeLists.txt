@@ -427,6 +427,9 @@ add_subdirectory(attention)
 # Emotion tests (includes substrate bridge)
 add_subdirectory(emotion)
 
+# Emotions tests (emotional system thread safety)
+add_subdirectory(emotions)
+
 # Ethics tests (SNN/plasticity bridges)
 add_subdirectory(ethics)
 

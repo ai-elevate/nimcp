@@ -23,6 +23,7 @@
 #include "nimcp.h"  // For nimcp_brain_learn_example, nimcp_status_t
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "utils/rng/nimcp_rand.h"
 
 #include <errno.h>
 #include <math.h>
@@ -1544,7 +1545,7 @@ static void* consumer_thread_func(void* arg)
                 break;
 
             // Skip samples in validation set
-            float sample_rand = (float) rand() / RAND_MAX;
+            float sample_rand = nimcp_rand_uniform();
             if (sample_rand < ctx->validation_split) {
                 nimcp_mutex_lock(&ctx->stats_lock);
                 ctx->samples_validated++;

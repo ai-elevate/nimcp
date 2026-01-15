@@ -346,6 +346,12 @@ void nimcp_ct_destroy(nimcp_ct_context_t ctx)
     ctx->magic = 0;
     nimcp_secure_zero(ctx, sizeof(struct nimcp_ct_context));
 
+    // Clear global reference if this is the default context
+    // (prevents destructor from accessing freed memory)
+    if (ctx == g_default_ctx) {
+        g_default_ctx = NULL;
+    }
+
     nimcp_free(ctx);
 
     LOG_INFO("Constant-time context destroyed");

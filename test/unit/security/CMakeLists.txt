@@ -560,3 +560,39 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/orchestrator/CMakeLists.txt")
     add_subdirectory(orchestrator)
 endif()
+
+# ============================================================================
+# Capability System Thread Safety Unit Tests
+# ============================================================================
+# WHAT: Unit tests for Capability-Based Access Control thread safety
+# WHY:  Verify mutex protection for concurrent capability operations
+# HOW:  Test concurrent grant/revoke, check, create/destroy, stress tests
+# ============================================================================
+
+add_executable(unit_security_test_capability_thread_safety
+    test_capability_thread_safety.cpp
+)
+target_link_libraries(unit_security_test_capability_thread_safety
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+)
+target_include_directories(unit_security_test_capability_thread_safety
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/security
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+target_compile_features(unit_security_test_capability_thread_safety PRIVATE cxx_std_17)
+add_test(NAME unit_security_test_capability_thread_safety
+         COMMAND unit_security_test_capability_thread_safety)
+set_tests_properties(unit_security_test_capability_thread_safety PROPERTIES
+    LABELS "unit;security;thread-safety;capability"
+    TIMEOUT 120
+)

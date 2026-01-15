@@ -107,6 +107,26 @@ set_tests_properties(regression_core_brain_coordinator_regression PROPERTIES LAB
 # set_tests_properties(regression_core_brain_persistence_regression
 #     PROPERTIES TIMEOUT 300)
 
+# KG Hierarchy Graph Algorithms Regression Test
+add_executable(regression_core_brain_kg_hierarchy_graph_algorithms
+    test_kg_hierarchy_graph_algorithms_regression.cpp
+)
+target_link_libraries(regression_core_brain_kg_hierarchy_graph_algorithms
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+    )
+target_include_directories(regression_core_brain_kg_hierarchy_graph_algorithms
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME regression_core_brain_kg_hierarchy_graph_algorithms
+         COMMAND regression_core_brain_kg_hierarchy_graph_algorithms)
+set_tests_properties(regression_core_brain_kg_hierarchy_graph_algorithms PROPERTIES LABELS "regression")
+
 # Add subcortical subdirectory
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/subcortical")
     add_subdirectory(subcortical)

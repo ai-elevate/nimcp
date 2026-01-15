@@ -22,6 +22,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/rng/nimcp_rand.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -1774,7 +1775,7 @@ uint32_t nlp_generate_brain_id(void) {
 
     id = (uint32_t)ts.tv_sec ^ (uint32_t)ts.tv_nsec;
     id ^= (uint32_t)getpid() << 16;
-    id ^= (uint32_t)rand();
+    id ^= nimcp_rand_uint(UINT32_MAX);
 
     // Ensure non-zero
     if (id == 0) id = 1;

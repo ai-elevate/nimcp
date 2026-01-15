@@ -542,12 +542,15 @@ static bool rate_limiter_try_acquire(log_rate_limiter_t* rl) {
     if (elapsed_ns > 0 && rl->refill_rate > 0) {
         uint64_t tokens_to_add = (elapsed_ns * rl->refill_rate) / 1000000000ULL;
         if (tokens_to_add > 0) {
-            uint64_t current_tokens = nimcp_atomic_load_u64(&rl->tokens, NIMCP_MEMORY_ORDER_ACQUIRE);
-            uint64_t new_tokens = current_tokens + tokens_to_add;
-            if (new_tokens > rl->max_tokens) {
-                new_tokens = rl->max_tokens;
-            }
-            nimcp_atomic_store_u64(&rl->tokens, new_tokens, NIMCP_MEMORY_ORDER_RELEASE);
+            uint64_t expected = nimcp_atomic_load_u64(&rl->tokens, NIMCP_MEMORY_ORDER_ACQUIRE);
+            uint64_t desired;
+            do {
+                desired = expected + tokens_to_add;
+                if (desired > rl->max_tokens) {
+                    desired = rl->max_tokens;
+                }
+            } while (!nimcp_atomic_compare_exchange_u64(&rl->tokens, &expected, desired, NIMCP_MEMORY_ORDER_ACQ_REL));
+
             nimcp_atomic_store_u64(&rl->last_refill_time_ns, now, NIMCP_MEMORY_ORDER_RELEASE);
         }
     }

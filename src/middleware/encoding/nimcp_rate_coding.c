@@ -12,6 +12,7 @@
 #include "security/nimcp_blood_brain_barrier.h"
 
 #include "utils/memory/nimcp_memory.h"
+#include "utils/rng/nimcp_rand.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -322,7 +323,7 @@ bool rate_coding_decode(
 
         // Generate spikes
         for (float t = 0.0F; t < duration_ms; t += dt_ms) {
-            float r = (float)rand() / (float)RAND_MAX;
+            float r = nimcp_rand_uniform();
             if (r < prob_spike) {
                 uint64_t spike_time = (uint64_t)t;
                 if (!spike_train_add_spike(spike_train_out, spike_time)) {

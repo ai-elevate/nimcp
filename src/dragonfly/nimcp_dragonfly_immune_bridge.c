@@ -13,6 +13,7 @@
 #include "dragonfly/nimcp_dragonfly_immune_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/rng/nimcp_rand.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -412,9 +413,9 @@ int dragonfly_immune_report_hunt(
     /* Check for injury (probability increases with fatigue) */
     float injury_prob = bridge->config.injury_probability_base *
                         (1.0f + stress->fatigue_level * bridge->config.injury_fatigue_factor);
-    if (!bridge->state.is_injured && ((float)rand() / RAND_MAX) < injury_prob) {
+    if (!bridge->state.is_injured && nimcp_rand_uniform() < injury_prob) {
         bridge->state.is_injured = true;
-        bridge->state.injury_severity = 0.3f + ((float)rand() / RAND_MAX) * 0.4f;
+        bridge->state.injury_severity = 0.3f + nimcp_rand_uniform() * 0.4f;
         bridge->state.time_to_recovery_s = bridge->config.injury_recovery_time_s *
                                            bridge->state.injury_severity;
         bridge->stats.injuries_sustained++;

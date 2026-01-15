@@ -405,7 +405,10 @@ int init_pink_noise_module(PyObject* module) {
 
     // Add type to module
     Py_INCREF(&PinkNoiseGeneratorType);
-    PyModule_AddObject(module, "PinkNoiseGenerator", (PyObject*)&PinkNoiseGeneratorType);
+    if (PyModule_AddObject(module, "PinkNoiseGenerator", (PyObject*)&PinkNoiseGeneratorType) < 0) {
+        Py_DECREF(&PinkNoiseGeneratorType);
+        return -1;
+    }
 
     // Add methods to module
     for (int i = 0; pink_noise_methods[i].ml_name != NULL; i++) {

@@ -34,6 +34,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/rng/nimcp_rand.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
@@ -433,30 +434,15 @@ static inline uint32_t get_current_timestamp(void) {
  *
  * WHAT: Generates cryptographically random nonce for AES-GCM
  * WHY:  Each message must have unique nonce
- * HOW:  Uses /dev/urandom or rand() fallback
+ * HOW:  Uses nimcp_rand_bytes (secure RNG with /dev/urandom or auto-seeded fallback)
  *
  * @param nonce Output buffer (must be NLP_NONCE_SIZE bytes)
  */
 static void generate_nonce(uint8_t* nonce) {
     if (!nonce) return;
 
-    // Try to use /dev/urandom for better randomness
-    FILE* urandom = fopen("/dev/urandom", "rb");
-    if (urandom) {
-        fread(nonce, 1, NLP_NONCE_SIZE, urandom);
-        fclose(urandom);
-    } else {
-        // Fallback to rand() with timestamp seed
-        static bool seeded = false;
-        if (!seeded) {
-            srand((unsigned)time(NULL));
-            seeded = true;
-        }
-
-        for (int i = 0; i < NLP_NONCE_SIZE; i++) {
-            nonce[i] = (uint8_t)(rand() & 0xFF);
-        }
-    }
+    // Use secure random bytes from nimcp_rand API
+    nimcp_rand_bytes(nonce, NLP_NONCE_SIZE);
 }
 
 //=============================================================================
@@ -1706,16 +1692,8 @@ int nlp_message_pad_to_fixed_size(
     // Fill remaining space with random data
     size_t padding_size = NLP_STEALTH_PACKET_SIZE - msg_size;
     if (padding_size > 0) {
-        FILE* urandom = fopen("/dev/urandom", "rb");
-        if (urandom) {
-            fread(padded_buffer + msg_size, 1, padding_size, urandom);
-            fclose(urandom);
-        } else {
-            // Fallback to pseudo-random
-            for (size_t i = 0; i < padding_size; i++) {
-                padded_buffer[msg_size + i] = (uint8_t)(rand() & 0xFF);
-            }
-        }
+        // Use secure random bytes from nimcp_rand API
+        nimcp_rand_bytes(padded_buffer + msg_size, padding_size);
     }
 
     LOG_MODULE_DEBUG(MODULE_NAME, "Padded message: %zu -> %u bytes (%zu padding)",
@@ -1738,8 +1716,8 @@ int nlp_message_pad_to_fixed_size(
 nlp_message_t* nlp_message_create_chaff(uint32_t sender_id, uint32_t dest_id) {
     ensure_context_initialized();
 
-    // Generate random payload size (0-64 bytes)
-    uint16_t payload_len = (uint16_t)(rand() % 65);
+    // Generate random payload size (0-64 bytes) using secure RNG
+    uint16_t payload_len = (uint16_t)(nimcp_rand_uint(65));
 
     // Create message with random payload
     nlp_message_t* msg = nlp_message_create(NLP_MSG_CHAFF, NULL, payload_len);
@@ -1752,17 +1730,9 @@ nlp_message_t* nlp_message_create_chaff(uint32_t sender_id, uint32_t dest_id) {
     msg->header.sender_id = sender_id;
     msg->header.dest_id = dest_id;
 
-    // Fill payload with random data
+    // Fill payload with random data using secure RNG
     if (payload_len > 0 && msg->payload) {
-        FILE* urandom = fopen("/dev/urandom", "rb");
-        if (urandom) {
-            fread(msg->payload, 1, payload_len, urandom);
-            fclose(urandom);
-        } else {
-            for (uint16_t i = 0; i < payload_len; i++) {
-                msg->payload[i] = (uint8_t)(rand() & 0xFF);
-            }
-        }
+        nimcp_rand_bytes(msg->payload, payload_len);
     }
 
     // Set CHAFF flag

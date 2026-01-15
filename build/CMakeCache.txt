@@ -31,7 +31,7 @@ CMAKE_AR:FILEPATH=/usr/bin/ar
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_BUILD_TYPE:STRING=
 
 //Enable/Disable color output during build.
 CMAKE_COLOR_MAKEFILE:BOOL=ON
@@ -264,9 +264,6 @@ CUDAToolkit_BIN_DIR:PATH=/usr/bin
 
 //Path to a file.
 CUDAToolkit_CUPTI_INCLUDE_DIR:PATH=/usr/include
-
-//No help, variable specified on the command line.
-CUDAToolkit_FOUND:UNINITIALIZED=FALSE
 
 //Path to a program.
 CUDAToolkit_NVCC_EXECUTABLE:FILEPATH=/usr/bin/nvcc
@@ -678,7 +675,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=397
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=401
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

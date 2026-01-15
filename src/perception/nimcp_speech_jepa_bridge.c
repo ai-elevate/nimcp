@@ -18,6 +18,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/rng/nimcp_rand.h"
 #include "async/nimcp_bio_async.h"
 #include <string.h>
 #include <math.h>
@@ -585,7 +586,7 @@ int speech_jepa_bridge_train_step(
     switch (bridge->config.mask_strategy) {
         case SPEECH_JEPA_MASK_TEMPORAL: {
             /* Mask contiguous segment */
-            uint32_t mask_start = rand() % (sequence->num_frames - num_masked);
+            uint32_t mask_start = nimcp_rand_uint(sequence->num_frames - num_masked);
             for (uint32_t i = 0; i < num_masked; i++) {
                 mask[mask_start + i] = true;
             }
@@ -595,7 +596,7 @@ int speech_jepa_bridge_train_step(
             /* Random frame dropout */
             uint32_t masked = 0;
             while (masked < num_masked) {
-                uint32_t idx = rand() % sequence->num_frames;
+                uint32_t idx = nimcp_rand_uint(sequence->num_frames);
                 if (!mask[idx]) {
                     mask[idx] = true;
                     masked++;
@@ -613,7 +614,7 @@ int speech_jepa_bridge_train_step(
         }
         default:
             /* Default to temporal masking */
-            uint32_t mask_start = rand() % (sequence->num_frames - num_masked);
+            uint32_t mask_start = nimcp_rand_uint(sequence->num_frames - num_masked);
             for (uint32_t i = 0; i < num_masked; i++) {
                 mask[mask_start + i] = true;
             }
@@ -1150,10 +1151,10 @@ static int speech_encoder_create(
     float scale2 = sqrtf(2.0f / (float)(config->hidden_dim + config->output_dim));
 
     for (uint32_t i = 0; i < config->input_dim * config->hidden_dim; i++) {
-        enc->weights_1[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale1;
+        enc->weights_1[i] = (nimcp_rand_uniform() * 2.0f - 1.0f) * scale1;
     }
     for (uint32_t i = 0; i < config->hidden_dim * config->output_dim; i++) {
-        enc->weights_2[i] = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * scale2;
+        enc->weights_2[i] = (nimcp_rand_uniform() * 2.0f - 1.0f) * scale2;
     }
 
     *encoder = enc;

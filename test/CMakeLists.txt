@@ -1067,6 +1067,23 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/encoding")
 endif()
 
 # ============================================================================
+# Utils RNG Integration Tests
+# ============================================================================
+# WHAT: Integration tests for nimcp_rand module across system modules
+# WHY:  Verify unified RNG works correctly with UMM, thread pool, tensor, training
+# HOW:  Test cross-module RNG usage, thread-local storage, and reproducibility
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/rng")
+    message(STATUS "Adding utils RNG integration tests...")
+    add_subdirectory(integration/rng)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/rng")
+    message(STATUS "Adding utils RNG regression tests (thread safety)...")
+    add_subdirectory(regression/utils/rng)
+endif()
+
+# ============================================================================
 # Utils Gabor Filter Tests
 # ============================================================================
 
@@ -1569,6 +1586,15 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/quantum")
     message(STATUS "Adding utils quantum unit tests...")
     add_subdirectory(unit/utils/quantum)
+endif()
+
+# ============================================================================
+# Utils RNG Tests (Unified Random Number Generation)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/rng")
+    message(STATUS "Adding utils RNG unit tests...")
+    add_subdirectory(unit/utils/rng)
 endif()
 
 # ============================================================================

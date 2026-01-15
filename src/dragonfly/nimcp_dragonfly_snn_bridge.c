@@ -4,6 +4,7 @@
  */
 
 #include "dragonfly/nimcp_dragonfly_snn_bridge.h"
+#include "utils/rng/nimcp_rand.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -208,7 +209,7 @@ dragonfly_snn_bridge_t* dragonfly_snn_bridge_create(
 
     /* Initialize weights with small random values */
     for (uint32_t i = 0; i < bridge->num_weights; i++) {
-        bridge->weights[i] = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
+        bridge->weights[i] = (nimcp_rand_uniform() - 0.5f) * 0.1f;
     }
 
     bridge->is_training = false;

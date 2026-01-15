@@ -9,6 +9,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/rng/nimcp_rand.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include <math.h>
@@ -553,7 +554,7 @@ int cortical_neuromod_apply_ne_effects(
 
     /* Check for network reset (probabilistic, high NE increases probability) */
     float reset_prob = levels->ne_level * system->config.ne_reset_probability;
-    float random_val = (float)rand() / (float)RAND_MAX;
+    float random_val = nimcp_rand_uniform();
     *should_reset = (random_val < reset_prob);
 
     if (*should_reset) {

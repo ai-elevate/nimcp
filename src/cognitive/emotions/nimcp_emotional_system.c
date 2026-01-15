@@ -27,6 +27,7 @@
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"  // Thread safety
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -48,6 +49,12 @@
 #undef LOG_MODULE  // Undefine from quantum bridge header
 #define LOG_MODULE "EMOTIONS"
 #define BIO_MODULE_EMOTIONS 0x0320
+
+//=============================================================================
+// Forward Declarations
+//=============================================================================
+
+static float clamp(float value, float min, float max);
 
 //=============================================================================
 // Constants
@@ -89,6 +96,9 @@ struct emotional_system {
     emotion_snn_bridge_t* snn_bridge;
     emotion_plasticity_bridge_t* plasticity_bridge;
     bool bridges_enabled;
+
+    // === Thread Safety ===
+    nimcp_platform_mutex_t mutex;   /**< Protects all emotional system operations */
 };
 
 /*=============================================================================
@@ -165,14 +175,27 @@ static nimcp_error_t handle_salience_query(
     LOG_DEBUG(LOG_MODULE, "Received salience query: stimulus=%u, intensity=%.2f, novelty=%.2f",
               query->stimulus_id, query->raw_intensity, query->novelty);
 
+    /* Lock mutex to read state atomically */
+    nimcp_platform_mutex_lock(&system->mutex);
+
+    /* Read state values under lock */
+    float current_valence = system->state.valence;
+    float current_arousal = system->state.arousal;
+    float arousal_sensitivity = system->config.arousal_sensitivity;
+    bool bio_enabled = system->bio_async_enabled;
+    bio_module_context_t bio_ctx = system->bio_ctx;
+
+    nimcp_platform_mutex_unlock(&system->mutex);
+
     /* Calculate emotional boost based on current emotional state */
-    float emotional_boost = emotion_system_get_salience_boost(system);
+    float emotional_boost = 1.0F + current_arousal * arousal_sensitivity;
+    emotional_boost = clamp(emotional_boost, 1.0F, 3.0F);
 
     /* Calculate emotionally-modulated salience score */
     /* Formula: base_salience * emotional_boost * (1 + novelty_factor) */
     float base_salience = query->raw_intensity * query->relevance;
     float novelty_factor = query->novelty * 0.5f;  /* Novelty adds up to 50% boost */
-    float valence_extremity = fabsf(system->state.valence);
+    float valence_extremity = fabsf(current_valence);
 
     /* Emotional salience combines arousal, valence extremity, and emotional boost */
     float emotional_salience = base_salience * emotional_boost * (1.0f + novelty_factor);
@@ -187,22 +210,22 @@ static nimcp_error_t handle_salience_query(
     /* Determine if immediate attention is required */
     /* High intensity + high arousal + negative valence = urgent attention */
     bool requires_attention = (emotional_salience > 0.7f) ||
-                               (system->state.arousal > 0.8f && system->state.valence < -0.5f);
+                               (current_arousal > 0.8f && current_valence < -0.5f);
 
     /* Calculate attention priority based on emotional significance */
-    float attention_priority = system->state.arousal * (1.0f + valence_extremity);
+    float attention_priority = current_arousal * (1.0f + valence_extremity);
     if (attention_priority > 1.0f) attention_priority = 1.0f;
 
     LOG_DEBUG(LOG_MODULE, "Emotional salience response: boost=%.2f, salience=%.2f, attention=%.2f",
               emotional_boost, emotional_salience, attention_priority);
 
     /* Send response if bio-async is enabled and we have a valid context */
-    if (system->bio_async_enabled && system->bio_ctx) {
+    if (bio_enabled && bio_ctx) {
         bio_msg_salience_response_t response = {0};
 
         /* Initialize response header */
         bio_msg_init_header(&response.header, BIO_MSG_SALIENCE_RESPONSE,
-                            bio_module_context_get_id(system->bio_ctx),
+                            bio_module_context_get_id(bio_ctx),
                             query->header.source_module,
                             sizeof(response));
 
@@ -213,13 +236,15 @@ static nimcp_error_t handle_salience_query(
         response.requires_immediate_attention = requires_attention;
 
         /* Send response via bio-router (timeout_ms=0 for default) */
-        nimcp_error_t send_result = bio_router_send(system->bio_ctx, &response, sizeof(response), 0);
+        nimcp_error_t send_result = bio_router_send(bio_ctx, &response, sizeof(response), 0);
         if (send_result != NIMCP_SUCCESS) {
             LOG_WARN(LOG_MODULE, "Failed to send salience response: %d", send_result);
         }
 
-        /* Update statistics */
+        /* Update statistics (needs lock) */
+        nimcp_platform_mutex_lock(&system->mutex);
         system->stats.total_updates++;
+        nimcp_platform_mutex_unlock(&system->mutex);
     }
 
     /* Fulfill promise if provided (for async request/response pattern) */
@@ -242,20 +267,35 @@ static nimcp_error_t handle_salience_query(
  * @brief Broadcast emotional state change to other modules
  */
 static void bio_broadcast_emotion_state(emotional_system_t* system) {
-    if (!system || !system->bio_async_enabled || !system->bio_ctx) { return; }
+    if (!system) { return; }
+
+    /* Lock mutex to read state and check bio-async status */
+    nimcp_platform_mutex_lock(&system->mutex);
+
+    if (!system->bio_async_enabled || !system->bio_ctx) {
+        nimcp_platform_mutex_unlock(&system->mutex);
+        return;
+    }
+
+    /* Read state values under lock */
+    float intensity = system->state.intensity;
+    float arousal = system->state.arousal;
+    bio_module_context_t bio_ctx = system->bio_ctx;
+
+    nimcp_platform_mutex_unlock(&system->mutex);
 
     bio_msg_salience_response_t msg = {0};
     bio_msg_init_header(&msg.header, BIO_MSG_SALIENCE_RESPONSE,
-                        bio_module_context_get_id(system->bio_ctx), 0, sizeof(msg));
+                        bio_module_context_get_id(bio_ctx), 0, sizeof(msg));
     msg.header.flags |= BIO_MSG_FLAG_BROADCAST;
     msg.stimulus_id = 0;
-    msg.salience_score = system->state.intensity;
-    msg.attention_priority = system->state.arousal;
-    msg.requires_immediate_attention = (system->state.intensity > 0.7F);
+    msg.salience_score = intensity;
+    msg.attention_priority = arousal;
+    msg.requires_immediate_attention = (intensity > 0.7F);
 
-    bio_router_broadcast(system->bio_ctx, &msg, sizeof(msg));
+    bio_router_broadcast(bio_ctx, &msg, sizeof(msg));
     LOG_DEBUG(LOG_MODULE, "Broadcast emotion state: intensity=%.2f, arousal=%.2f",
-              system->state.intensity, system->state.arousal);
+              intensity, arousal);
 }
 
 //=============================================================================
@@ -362,6 +402,14 @@ emotional_system_t* emotion_system_create(const emotion_config_t* config) {
         return NULL;
     }
     LOG_DEBUG(LOG_MODULE, "Allocated %zu bytes for emotional system", sizeof(emotional_system_t));
+
+    // Initialize mutex for thread safety
+    if (nimcp_platform_mutex_init(&system->mutex, false) != 0) {
+        LOG_ERROR(LOG_MODULE, "Failed to initialize mutex");
+        nimcp_free(system);
+        return NULL;
+    }
+    LOG_DEBUG(LOG_MODULE, "Initialized mutex for thread safety");
 
     // Use provided config or defaults
     if (config) {
@@ -498,6 +546,10 @@ void emotion_system_destroy(emotional_system_t* system) {
     LOG_INFO(LOG_MODULE, "Emotional system destroyed (total_updates=%lu, total_regulations=%lu)",
              system->stats.total_updates, system->stats.total_regulations);
 
+    // Destroy mutex
+    nimcp_platform_mutex_destroy(&system->mutex);
+    LOG_DEBUG(LOG_MODULE, "Destroyed mutex");
+
     nimcp_free(system);
 }
 
@@ -510,7 +562,12 @@ bool emotion_system_get_state(const emotional_system_t* system, emotion_state_t*
         return false;
     }
 
+    // Lock mutex for thread-safe access (cast away const for mutex operations)
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
+
     *state = system->state;
+
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&system->mutex);
     return true;
 }
 
@@ -519,10 +576,14 @@ bool emotion_system_get_tag(const emotional_system_t* system, emotional_tag_t* t
         return false;
     }
 
+    // Lock mutex for thread-safe access (cast away const for mutex operations)
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
+
     // Convert emotional state to tag
     tag->valence = system->state.valence;
     tag->arousal = system->state.arousal;
 
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&system->mutex);
     return true;
 }
 
@@ -532,13 +593,15 @@ bool emotion_system_is_active(const emotional_system_t* system, uint32_t emotion
         return false;
     }
 
-    // Check if the specified emotion is dominant with sufficient confidence
-    if (system->state.dominant_emotion == emotion_id &&
-        system->state.emotion_confidence >= threshold) {
-        return true;
-    }
+    // Lock mutex for thread-safe access (cast away const for mutex operations)
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
 
-    return false;
+    // Check if the specified emotion is dominant with sufficient confidence
+    bool is_active = (system->state.dominant_emotion == emotion_id &&
+                      system->state.emotion_confidence >= threshold);
+
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&system->mutex);
+    return is_active;
 }
 
 //=============================================================================
@@ -557,6 +620,9 @@ bool emotion_system_set_state(emotional_system_t* system, float valence, float a
     // Clamp inputs to valid ranges
     valence = clamp(valence, -1.0F, 1.0F);
     arousal = clamp(arousal, 0.0F, 1.0F);
+
+    // Lock mutex for thread-safe state modification
+    nimcp_platform_mutex_lock(&system->mutex);
 
     // Update state
     system->state.valence = valence * system->config.valence_sensitivity;
@@ -597,7 +663,11 @@ bool emotion_system_set_state(emotional_system_t* system, float valence, float a
               system->stats.total_updates, system->state.emotional_stability);
 
     /* Broadcast emotional state change if significant */
-    if (system->state.intensity > 0.4F) {
+    float intensity = system->state.intensity;
+
+    nimcp_platform_mutex_unlock(&system->mutex);
+
+    if (intensity > 0.4F) {
         bio_broadcast_emotion_state(system);
     }
 
@@ -609,6 +679,9 @@ bool emotion_system_decay(emotional_system_t* system, float delta_time,
     if (!system) {
         return false;
     }
+
+    // Lock mutex for thread-safe state modification
+    nimcp_platform_mutex_lock(&system->mutex);
 
     // Apply exponential decay to arousal
     float decay_factor = expf(-system->config.emotion_decay_rate * delta_time);
@@ -624,6 +697,7 @@ bool emotion_system_decay(emotional_system_t* system, float delta_time,
     // Update timestamp
     system->state.last_update_ms = current_time_ms;
 
+    nimcp_platform_mutex_unlock(&system->mutex);
     return true;
 }
 
@@ -649,9 +723,14 @@ bool emotion_system_update_multimodal(emotional_system_t* system,
 
     // Placeholder: if any input provided, generate small arousal bump
     if (visual_data || audio_data || text) {
+        // Lock mutex for thread-safe state read
+        nimcp_platform_mutex_lock(&system->mutex);
         float current_arousal = system->state.arousal;
+        float current_valence = system->state.valence;
+        nimcp_platform_mutex_unlock(&system->mutex);
+
         float new_arousal = current_arousal + 0.05F;
-        emotion_system_set_state(system, system->state.valence, new_arousal, timestamp_ms);
+        emotion_system_set_state(system, current_valence, new_arousal, timestamp_ms);
     }
 
     return true;
@@ -661,15 +740,14 @@ bool emotion_system_update_multimodal(emotional_system_t* system,
 // Regulation API Implementation
 //=============================================================================
 
-bool emotion_system_regulate(emotional_system_t* system, uint32_t strategy) {
-    if (!system) {
-        return false;
-    }
-
-    if (!system->config.enable_emotion_regulation) {
-        return false;
-    }
-
+/**
+ * @brief Internal unlocked regulation helper
+ *
+ * WHAT: Apply regulation strategy without locking
+ * WHY:  Avoid deadlock when called from already-locked context
+ * HOW:  Caller must hold mutex before calling this function
+ */
+static bool emotion_system_regulate_unlocked(emotional_system_t* system, uint32_t strategy) {
     // Apply regulation strategy
     // Strategy 0 = Reappraisal (reduce negative valence)
     // Strategy 1 = Suppression (reduce arousal)
@@ -710,6 +788,24 @@ bool emotion_system_regulate(emotional_system_t* system, uint32_t strategy) {
     return true;
 }
 
+bool emotion_system_regulate(emotional_system_t* system, uint32_t strategy) {
+    if (!system) {
+        return false;
+    }
+
+    if (!system->config.enable_emotion_regulation) {
+        return false;
+    }
+
+    // Lock mutex for thread-safe state modification
+    nimcp_platform_mutex_lock(&system->mutex);
+
+    bool result = emotion_system_regulate_unlocked(system, strategy);
+
+    nimcp_platform_mutex_unlock(&system->mutex);
+    return result;
+}
+
 bool emotion_system_auto_regulate(emotional_system_t* system) {
     if (!system) {
         return false;
@@ -718,6 +814,9 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
     if (!system->config.enable_emotion_regulation) {
         return false;
     }
+
+    // Lock mutex for thread-safe state access and modification
+    nimcp_platform_mutex_lock(&system->mutex);
 
     // Check if regulation is needed
     bool needs_regulation = false;
@@ -734,6 +833,7 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
 
     if (!needs_regulation) {
         system->state.in_self_regulation = false;
+        nimcp_platform_mutex_unlock(&system->mutex);
         return false;
     }
 
@@ -743,11 +843,18 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
         float target_valence = 0.0F;
         float target_arousal = 0.3F;
 
+        // Read current state while holding lock
+        float current_valence = system->state.valence;
+        float current_arousal = system->state.arousal;
+
+        // Unlock before quantum operations (they don't need the emotional system lock)
+        nimcp_platform_mutex_unlock(&system->mutex);
+
         uint32_t steps_required = 0;
         bool pathway_found = emotion_quantum_evaluate_state(
             system->quantum_bridge,
-            system->state.valence,
-            system->state.arousal,
+            current_valence,
+            current_arousal,
             target_valence,
             target_arousal,
             &steps_required
@@ -761,8 +868,8 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
             uint32_t steps_found = 0;
             emotion_quantum_transition(
                 system->quantum_bridge,
-                system->state.valence,
-                system->state.arousal,
+                current_valence,
+                current_arousal,
                 target_valence,
                 target_arousal,
                 pathway,
@@ -773,8 +880,11 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
             // Take first step toward target
             if (steps_found > 0) {
                 float step_size = 0.3F;  // Partial step
-                float delta_v = pathway[0].valence - system->state.valence;
-                float delta_a = pathway[0].arousal - system->state.arousal;
+                float delta_v = pathway[0].valence - current_valence;
+                float delta_a = pathway[0].arousal - current_arousal;
+
+                // Re-lock to modify state
+                nimcp_platform_mutex_lock(&system->mutex);
 
                 system->state.valence += delta_v * step_size;
                 system->state.arousal += delta_a * step_size;
@@ -797,9 +907,13 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
                          system->state.arousal - delta_a * step_size,
                          system->state.arousal);
 
+                nimcp_platform_mutex_unlock(&system->mutex);
                 return true;
             }
         }
+
+        // Quantum path didn't find a solution, re-lock for fallback
+        nimcp_platform_mutex_lock(&system->mutex);
     }
 
     // Fallback to classical regulation
@@ -813,7 +927,11 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
         strategy = 1;  // Suppression for high arousal
     }
 
-    return emotion_system_regulate(system, strategy);
+    // Use unlocked version since we already hold the mutex
+    bool result = emotion_system_regulate_unlocked(system, strategy);
+
+    nimcp_platform_mutex_unlock(&system->mutex);
+    return result;
 }
 
 //=============================================================================
@@ -825,11 +943,16 @@ float emotion_system_get_salience_boost(const emotional_system_t* system) {
         return 1.0F;  // No boost if NULL
     }
 
+    // Lock mutex for thread-safe access (cast away const for mutex operations)
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
+
     // High arousal increases salience
     // Boost range: [1.0, 2.0]
     float boost = 1.0F + system->state.arousal * system->config.arousal_sensitivity;
+    float result = clamp(boost, 1.0F, 3.0F);
 
-    return clamp(boost, 1.0F, 3.0F);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&system->mutex);
+    return result;
 }
 
 float emotion_system_get_memory_priority(const emotional_system_t* system) {
@@ -837,20 +960,28 @@ float emotion_system_get_memory_priority(const emotional_system_t* system) {
         return 0.0F;
     }
 
+    // Lock mutex for thread-safe access (cast away const for mutex operations)
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
+
     // Memory priority based on emotional intensity
     // More intense emotions → better memory encoding
     // Priority = (arousal + |valence|) / 2
 
     float valence_extremity = fabsf(system->state.valence);
     float priority = (system->state.arousal + valence_extremity) / 2.0F;
+    float result = clamp(priority, 0.0F, 1.0F);
 
-    return clamp(priority, 0.0F, 1.0F);
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&system->mutex);
+    return result;
 }
 
 float emotion_system_get_mental_health_impact(const emotional_system_t* system) {
     if (!system) {
         return 0.0F;
     }
+
+    // Lock mutex for thread-safe access (cast away const for mutex operations)
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
 
     // Mental health impact based on:
     // 1. Extreme negative valence
@@ -873,7 +1004,10 @@ float emotion_system_get_mental_health_impact(const emotional_system_t* system) 
                    stability_impact * 0.2F +
                    shadow_impact * 0.3F);
 
-    return clamp(impact, 0.0F, 1.0F);
+    float result = clamp(impact, 0.0F, 1.0F);
+
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&system->mutex);
+    return result;
 }
 
 //=============================================================================
@@ -885,7 +1019,12 @@ bool emotion_system_get_stats(const emotional_system_t* system, emotion_stats_t*
         return false;
     }
 
+    // Lock mutex for thread-safe access (cast away const for mutex operations)
+    nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
+
     *stats = system->stats;
+
+    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&system->mutex);
     return true;
 }
 

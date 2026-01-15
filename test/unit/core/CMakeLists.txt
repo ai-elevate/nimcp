@@ -66,3 +66,21 @@ target_link_libraries(unit_core_pr_memory_quantum_bridge
 target_compile_features(unit_core_pr_memory_quantum_bridge PRIVATE cxx_std_17)
 gtest_discover_tests(unit_core_pr_memory_quantum_bridge
     PROPERTIES LABELS "unit;core;brain;internal;pr_memory;quantum")
+
+# ============================================================================
+# KG Hierarchy Tests (4-Level Hierarchical View)
+# ============================================================================
+# WHAT: Unit tests for hierarchical view of brain knowledge graph
+# WHY:  Verify 4-level hierarchy (Brain -> Hemisphere -> Layer -> Module)
+# HOW:  Test lifecycle, queries at each level, real-time updates, thread safety
+# ============================================================================
+
+add_executable(unit_core_brain_kg_hierarchy
+    brain/test_kg_hierarchy.cpp
+)
+target_link_libraries(unit_core_brain_kg_hierarchy
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_core_brain_kg_hierarchy PRIVATE cxx_std_17)
+gtest_discover_tests(unit_core_brain_kg_hierarchy
+    PROPERTIES LABELS "unit;core;brain_kg;hierarchy")

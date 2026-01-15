@@ -734,6 +734,13 @@ void bio_router_shutdown(void) {
     nimcp_free(g_router);
     g_router = NULL;
 
+    // Clear orchestrator reference to prevent use-after-free
+    // (orchestrator may have been destroyed separately)
+    g_router_orchestrator = NULL;
+
+    // Clear brain KG reference
+    g_router_brain_kg = NULL;
+
     LOG_INFO("Bio-router shutdown complete");
 }
 

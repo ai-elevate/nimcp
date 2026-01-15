@@ -13,6 +13,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/rng/nimcp_rand.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -119,7 +120,7 @@ static float add_gaussian_noise(float value, float noise_std) {
     /* Simple noise approximation */
     float noise = 0.0f;
     for (int i = 0; i < 12; i++) {
-        noise += ((float)rand() / (float)RAND_MAX) - 0.5f;
+        noise += nimcp_rand_uniform() - 0.5f;
     }
     noise *= noise_std;
 
@@ -750,7 +751,7 @@ int population_immune_modulate_sparse_code(
         noisy_code_out[i] = baseline_code[i];
 
         /* Random bit flips based on reliability */
-        float rand_val = (float)rand() / (float)RAND_MAX;
+        float rand_val = nimcp_rand_uniform();
         if (rand_val < flip_probability) {
             noisy_code_out[i] = !noisy_code_out[i];
         }

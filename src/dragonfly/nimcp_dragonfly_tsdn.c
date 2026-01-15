@@ -18,6 +18,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/rng/nimcp_rand.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -713,7 +714,7 @@ static void update_firing_rates(tsdn_population_t* pop, float target_direction) 
         /* Add baseline noise */
         if (pop->config.baseline_noise > 0.0f) {
             /* Simple pseudo-random noise */
-            float noise = ((float)(rand() % 1000) / 1000.0f - 0.5f) * 2.0f * pop->config.baseline_noise;
+            float noise = (nimcp_rand_uniform() - 0.5f) * 2.0f * pop->config.baseline_noise;
             response += noise;
         }
 

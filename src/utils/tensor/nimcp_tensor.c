@@ -21,6 +21,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_once.h"
 #include "utils/thread/nimcp_atomic.h"
+#include "utils/rng/nimcp_rand.h"
 
 #include <math.h>
 #include <string.h>
@@ -511,8 +512,9 @@ nimcp_tensor_t* nimcp_tensor_randn(
     /* Box-Muller transform for normal distribution */
     float* data = (float*)t->data;
     for (size_t i = 0; i < t->shape.numel; i += 2) {
-        double u1 = ((double)rand() + 1.0) / ((double)RAND_MAX + 2.0);
-        double u2 = ((double)rand() + 1.0) / ((double)RAND_MAX + 2.0);
+        /* Use nimcp_rand_uniform() with offset to avoid log(0) */
+        double u1 = (double)nimcp_rand_uniform() * 0.99999 + 0.00001;
+        double u2 = (double)nimcp_rand_uniform();
         double z0 = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
         double z1 = sqrt(-2.0 * log(u1)) * sin(2.0 * M_PI * u2);
 
@@ -539,7 +541,7 @@ nimcp_tensor_t* nimcp_tensor_rand(
     float* data = (float*)t->data;
     double range = high - low;
     for (size_t i = 0; i < t->shape.numel; i++) {
-        double u = (double)rand() / (double)RAND_MAX;
+        double u = (double)nimcp_rand_uniform();
         data[i] = (float)(u * range + low);
     }
 

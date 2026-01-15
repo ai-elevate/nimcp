@@ -12,6 +12,7 @@
 #include "security/nimcp_blood_brain_barrier.h"
 
 #include "utils/memory/nimcp_memory.h"
+#include "utils/rng/nimcp_rand.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -245,7 +246,7 @@ bool temporal_coding_decode(
         float next_isi = features->mean_isi;
         if (features->isi_std > 0.0F) {
             // Add Gaussian noise scaled by std dev
-            float z = ((float)rand() / (float)RAND_MAX) * 2.0F - 1.0F;  // Approximate
+            float z = nimcp_rand_uniform() * 2.0F - 1.0F;  // Approximate
             next_isi += z * features->isi_std;
             if (next_isi < 0.1F) next_isi = 0.1F;  // Prevent negative ISI
         }

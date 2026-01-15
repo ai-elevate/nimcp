@@ -11,6 +11,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/rng/nimcp_rand.h"
 #include "async/nimcp_bio_router.h"
 #include <stdlib.h>
 #include <string.h>
@@ -135,7 +136,7 @@ static nimcp_result_t initialize_random_primitives(semantic_compressor_t* comp) 
 
         // Random initialization
         for (uint32_t i = 0; i < vec_size; i++) {
-            prim->vector[i] = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
+            prim->vector[i] = nimcp_rand_uniform() * 2.0f - 1.0f;
         }
 
         // Orthogonalize against previous primitives

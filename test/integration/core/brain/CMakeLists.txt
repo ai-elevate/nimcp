@@ -57,6 +57,21 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/subcortical")
     add_subdirectory(subcortical)
 endif()
 
+# Test 4: KG Hierarchy Graph Algorithms Integration
+add_executable(integration_kg_hierarchy_graph_algorithms_test
+    test_kg_hierarchy_graph_algorithms_integration.cpp
+)
+
+target_link_libraries(integration_kg_hierarchy_graph_algorithms_test
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+
+target_include_directories(integration_kg_hierarchy_graph_algorithms_test
+    PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src
+)
+
+gtest_discover_tests(integration_kg_hierarchy_graph_algorithms_test)
+
 # Add regions subdirectory (hypothalamus, broca, etc.)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regions")
     add_subdirectory(regions)

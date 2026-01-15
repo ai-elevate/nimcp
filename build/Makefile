@@ -1992,6 +1992,19 @@ unit_core_brain_test_distributed_cow/fast:
 .PHONY : unit_core_brain_test_distributed_cow/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_brain_test_kg_hierarchy
+
+# Build rule for target.
+unit_core_brain_test_kg_hierarchy: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_test_kg_hierarchy
+.PHONY : unit_core_brain_test_kg_hierarchy
+
+# fast build rule for target.
+unit_core_brain_test_kg_hierarchy/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_test_kg_hierarchy.dir/build.make test/CMakeFiles/unit_core_brain_test_kg_hierarchy.dir/build
+.PHONY : unit_core_brain_test_kg_hierarchy/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_brain_test_memory_tracking
 
 # Build rule for target.
@@ -8219,6 +8232,32 @@ e2e_test_wernicke_pipeline/fast:
 .PHONY : e2e_test_wernicke_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_thread_safety_fixes
+
+# Build rule for target.
+e2e_test_thread_safety_fixes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_thread_safety_fixes
+.PHONY : e2e_test_thread_safety_fixes
+
+# fast build rule for target.
+e2e_test_thread_safety_fixes/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_thread_safety_fixes.dir/build.make test/e2e/CMakeFiles/e2e_test_thread_safety_fixes.dir/build
+.PHONY : e2e_test_thread_safety_fixes/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_kg_hierarchy_graph_algorithms_pipeline
+
+# Build rule for target.
+e2e_test_kg_hierarchy_graph_algorithms_pipeline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_kg_hierarchy_graph_algorithms_pipeline
+.PHONY : e2e_test_kg_hierarchy_graph_algorithms_pipeline
+
+# fast build rule for target.
+e2e_test_kg_hierarchy_graph_algorithms_pipeline/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_kg_hierarchy_graph_algorithms_pipeline.dir/build.make test/e2e/CMakeFiles/e2e_test_kg_hierarchy_graph_algorithms_pipeline.dir/build
+.PHONY : e2e_test_kg_hierarchy_graph_algorithms_pipeline/fast
+
+#=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
 
 # Build rule for target.
@@ -12080,6 +12119,19 @@ unit_cognitive_emotion_substrate_bridge/fast:
 .PHONY : unit_cognitive_emotion_substrate_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_emotions_test_thread_safety
+
+# Build rule for target.
+unit_cognitive_emotions_test_thread_safety: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_emotions_test_thread_safety
+.PHONY : unit_cognitive_emotions_test_thread_safety
+
+# fast build rule for target.
+unit_cognitive_emotions_test_thread_safety/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/emotions/CMakeFiles/unit_cognitive_emotions_test_thread_safety.dir/build.make test/unit/cognitive/emotions/CMakeFiles/unit_cognitive_emotions_test_thread_safety.dir/build
+.PHONY : unit_cognitive_emotions_test_thread_safety/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_ethics_test_ethics_snn_bridge
 
 # Build rule for target.
@@ -14160,6 +14212,19 @@ integration_brain_coordinator_test/fast:
 .PHONY : integration_brain_coordinator_test/fast
 
 #=============================================================================
+# Target rules for targets named integration_kg_hierarchy_graph_algorithms_test
+
+# Build rule for target.
+integration_kg_hierarchy_graph_algorithms_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_kg_hierarchy_graph_algorithms_test
+.PHONY : integration_kg_hierarchy_graph_algorithms_test
+
+# fast build rule for target.
+integration_kg_hierarchy_graph_algorithms_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/CMakeFiles/integration_kg_hierarchy_graph_algorithms_test.dir/build.make test/integration/core/brain/CMakeFiles/integration_kg_hierarchy_graph_algorithms_test.dir/build
+.PHONY : integration_kg_hierarchy_graph_algorithms_test/fast
+
+#=============================================================================
 # Target rules for targets named integration_core_brain_subcortical_test
 
 # Build rule for target.
@@ -15094,6 +15159,19 @@ regression_core_brain_coordinator_regression: cmake_check_build_system
 regression_core_brain_coordinator_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/CMakeFiles/regression_core_brain_coordinator_regression.dir/build.make test/regression/core/brain/CMakeFiles/regression_core_brain_coordinator_regression.dir/build
 .PHONY : regression_core_brain_coordinator_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_brain_kg_hierarchy_graph_algorithms
+
+# Build rule for target.
+regression_core_brain_kg_hierarchy_graph_algorithms: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_brain_kg_hierarchy_graph_algorithms
+.PHONY : regression_core_brain_kg_hierarchy_graph_algorithms
+
+# fast build rule for target.
+regression_core_brain_kg_hierarchy_graph_algorithms/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/CMakeFiles/regression_core_brain_kg_hierarchy_graph_algorithms.dir/build.make test/regression/core/brain/CMakeFiles/regression_core_brain_kg_hierarchy_graph_algorithms.dir/build
+.PHONY : regression_core_brain_kg_hierarchy_graph_algorithms/fast
 
 #=============================================================================
 # Target rules for targets named regression_core_brain_subcortical_test
@@ -18086,6 +18164,32 @@ regression_utils_encoding_pe_stability/fast:
 .PHONY : regression_utils_encoding_pe_stability/fast
 
 #=============================================================================
+# Target rules for targets named integration_rng_module
+
+# Build rule for target.
+integration_rng_module: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_rng_module
+.PHONY : integration_rng_module
+
+# fast build rule for target.
+integration_rng_module/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/rng/CMakeFiles/integration_rng_module.dir/build.make test/integration/rng/CMakeFiles/integration_rng_module.dir/build
+.PHONY : integration_rng_module/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_rng_test_rand_thread_safety
+
+# Build rule for target.
+regression_utils_rng_test_rand_thread_safety: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_rng_test_rand_thread_safety
+.PHONY : regression_utils_rng_test_rand_thread_safety
+
+# fast build rule for target.
+regression_utils_rng_test_rand_thread_safety/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/rng/CMakeFiles/regression_utils_rng_test_rand_thread_safety.dir/build.make test/regression/utils/rng/CMakeFiles/regression_utils_rng_test_rand_thread_safety.dir/build
+.PHONY : regression_utils_rng_test_rand_thread_safety/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_gabor_test_gabor_filters
 
 # Build rule for target.
@@ -20905,6 +21009,19 @@ unit_security_test_security_logging_bridge: cmake_check_build_system
 unit_security_test_security_logging_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_security_logging_bridge.dir/build.make test/unit/security/CMakeFiles/unit_security_test_security_logging_bridge.dir/build
 .PHONY : unit_security_test_security_logging_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_security_test_capability_thread_safety
+
+# Build rule for target.
+unit_security_test_capability_thread_safety: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_security_test_capability_thread_safety
+.PHONY : unit_security_test_capability_thread_safety
+
+# fast build rule for target.
+unit_security_test_capability_thread_safety/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/CMakeFiles/unit_security_test_capability_thread_safety.dir/build.make test/unit/security/CMakeFiles/unit_security_test_capability_thread_safety.dir/build
+.PHONY : unit_security_test_capability_thread_safety/fast
 
 #=============================================================================
 # Target rules for targets named unit_security_immune_pattern_db
@@ -26744,6 +26861,19 @@ unit_utils_quantum_test_quantum_walk_ternary/fast:
 .PHONY : unit_utils_quantum_test_quantum_walk_ternary/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_rng_test_rand
+
+# Build rule for target.
+unit_utils_rng_test_rand: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_rng_test_rand
+.PHONY : unit_utils_rng_test_rand
+
+# fast build rule for target.
+unit_utils_rng_test_rand/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/rng/CMakeFiles/unit_utils_rng_test_rand.dir/build.make test/unit/utils/rng/CMakeFiles/unit_utils_rng_test_rand.dir/build
+.PHONY : unit_utils_rng_test_rand/fast
+
+#=============================================================================
 # Target rules for targets named unit_quantum_bridges
 
 # Build rule for target.
@@ -28715,6 +28845,7 @@ help:
 	@echo "... e2e_test_introspection_pipeline"
 	@echo "... e2e_test_introspection_snn_plasticity_pipeline"
 	@echo "... e2e_test_jepa_qmc_pipeline"
+	@echo "... e2e_test_kg_hierarchy_graph_algorithms_pipeline"
 	@echo "... e2e_test_language_layer_pipeline"
 	@echo "... e2e_test_limbic_pipeline"
 	@echo "... e2e_test_lip_reading_pipeline"
@@ -28793,6 +28924,7 @@ help:
 	@echo "... e2e_test_ternary_neural_network"
 	@echo "... e2e_test_ternary_swarm_consensus"
 	@echo "... e2e_test_thalamus_pipeline"
+	@echo "... e2e_test_thread_safety_fixes"
 	@echo "... e2e_test_tier1_fep_bridges"
 	@echo "... e2e_test_tier2_hub_bridges"
 	@echo "... e2e_test_tier3_fep_bridges"
@@ -29052,6 +29184,7 @@ help:
 	@echo "... integration_jepa_full"
 	@echo "... integration_jepa_qmc"
 	@echo "... integration_jepa_visual_speech"
+	@echo "... integration_kg_hierarchy_graph_algorithms_test"
 	@echo "... integration_language"
 	@echo "... integration_lc_test"
 	@echo "... integration_lib_cognitive_test_hierarchical_integration"
@@ -29146,6 +29279,7 @@ help:
 	@echo "... integration_plasticity_triplet_stdp"
 	@echo "... integration_python_c"
 	@echo "... integration_quantum_bridges"
+	@echo "... integration_rng_module"
 	@echo "... integration_security_sleep_bridges"
 	@echo "... integration_security_test_anomaly_detector"
 	@echo "... integration_security_test_bbb_bio_router"
@@ -29319,6 +29453,7 @@ help:
 	@echo "... regression_core_brain_factory_test_brain_init_hypothalamus"
 	@echo "... regression_core_brain_factory_test_factory_regression"
 	@echo "... regression_core_brain_json_regression"
+	@echo "... regression_core_brain_kg_hierarchy_graph_algorithms"
 	@echo "... regression_core_brain_learning_test_learning_stability"
 	@echo "... regression_core_brain_memory_tracking_regression"
 	@echo "... regression_core_brain_oscillation_backward_compat"
@@ -29563,6 +29698,7 @@ help:
 	@echo "... regression_utils_memory_test_unified_memory_regression"
 	@echo "... regression_utils_platform_test_platform_tier_regression"
 	@echo "... regression_utils_quantum_test_quantum_walk_regression"
+	@echo "... regression_utils_rng_test_rand_thread_safety"
 	@echo "... regression_utils_tensor_networks_test_mps_regression"
 	@echo "... regression_utils_tensor_test_tensor_performance"
 	@echo "... regression_utils_test_utils_regression"
@@ -29833,6 +29969,7 @@ help:
 	@echo "... unit_cognitive_emotion_test_emotion_snn_bridge"
 	@echo "... unit_cognitive_emotional_tagging_test_emotional_tagging"
 	@echo "... unit_cognitive_emotional_tagging_test_emotional_tagging_real"
+	@echo "... unit_cognitive_emotions_test_thread_safety"
 	@echo "... unit_cognitive_epistemic_plasticity_bridge"
 	@echo "... unit_cognitive_epistemic_snn_bridge"
 	@echo "... unit_cognitive_ethics_test_ethics_plasticity_bridge"
@@ -30187,6 +30324,7 @@ help:
 	@echo "... unit_core_brain_test_brain_utility_functions"
 	@echo "... unit_core_brain_test_cow_snapshot_enhanced"
 	@echo "... unit_core_brain_test_distributed_cow"
+	@echo "... unit_core_brain_test_kg_hierarchy"
 	@echo "... unit_core_brain_test_memory_tracking"
 	@echo "... unit_core_brain_test_oscillations_immune_full_integration"
 	@echo "... unit_core_brain_test_pretrained_bio_async"
@@ -30627,6 +30765,7 @@ help:
 	@echo "... unit_security_test_bayesian_network"
 	@echo "... unit_security_test_bbb_immune_integration"
 	@echo "... unit_security_test_blood_brain_barrier"
+	@echo "... unit_security_test_capability_thread_safety"
 	@echo "... unit_security_test_constant_time"
 	@echo "... unit_security_test_encrypted_audit"
 	@echo "... unit_security_test_fep_bridges"
@@ -30745,6 +30884,7 @@ help:
 	@echo "... unit_utils_numerical_test_utils_vector_math"
 	@echo "... unit_utils_quantum_test_quantum_walk_ternary"
 	@echo "... unit_utils_queue_manager_test_queue_manager"
+	@echo "... unit_utils_rng_test_rand"
 	@echo "... unit_utils_signal_test_hilbert"
 	@echo "... unit_utils_signal_test_signal_filter"
 	@echo "... unit_utils_signal_test_signal_filter_bands"

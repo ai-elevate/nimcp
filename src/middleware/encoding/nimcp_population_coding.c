@@ -15,6 +15,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/encoding/nimcp_positional_encoding.h"
+#include "utils/rng/nimcp_rand.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -203,7 +204,7 @@ static bool compute_principal_component(
 
     // Initialize component with random values
     for (uint32_t i = 0; i < num_features; i++) {
-        component_out[i] = ((float)rand() / (float)RAND_MAX) * 2.0F - 1.0F;
+        component_out[i] = nimcp_rand_uniform() * 2.0F - 1.0F;
     }
 
     // Normalize using tensor library
@@ -747,8 +748,8 @@ bool population_coding_compute_synchrony(
     if (sample_pairs) {
         // Random sampling of pairs
         for (uint32_t p = 0; p < pairs_to_compute; p++) {
-            uint32_t i = rand() % num_neurons;
-            uint32_t j = rand() % num_neurons;
+            uint32_t i = nimcp_rand_uint(num_neurons);
+            uint32_t j = nimcp_rand_uint(num_neurons);
             if (i == j) {
                 j = (j + 1) % num_neurons;
             }

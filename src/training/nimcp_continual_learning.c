@@ -14,6 +14,7 @@
 #include "training/nimcp_continual_learning.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/rng/nimcp_rand.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -570,7 +571,7 @@ int cl_sample_replay(cl_ctx_t* ctx, float** inputs, float** targets,
             /* Sample using inverse transform sampling with normalized probabilities */
             for (uint32_t s = 0; s < num_samples && s < ctx->buffer_count; s++) {
                 /* Generate random number in [0, priority_sum) */
-                float r = ((float)rand() / (float)RAND_MAX) * priority_sum;
+                float r = nimcp_rand_uniform() * priority_sum;
 
                 /* Find entry via cumulative distribution */
                 float cumsum = 0.0f;
@@ -592,7 +593,7 @@ int cl_sample_replay(cl_ctx_t* ctx, float** inputs, float** targets,
         } else {
             /* All priorities are zero, fall back to uniform sampling */
             for (uint32_t i = 0; i < num_samples && i < ctx->buffer_count; i++) {
-                uint32_t idx = (uint32_t)(rand() % ctx->buffer_count);
+                uint32_t idx = nimcp_rand_uint(ctx->buffer_count);
                 replay_entry_t* entry = &ctx->replay_buffer[idx];
 
                 inputs[i] = entry->input;
@@ -604,7 +605,7 @@ int cl_sample_replay(cl_ctx_t* ctx, float** inputs, float** targets,
     } else {
         /* Uniform random sampling for non-prioritized strategies */
         for (uint32_t i = 0; i < num_samples && i < ctx->buffer_count; i++) {
-            uint32_t idx = (uint32_t)(rand() % ctx->buffer_count);
+            uint32_t idx = nimcp_rand_uint(ctx->buffer_count);
             replay_entry_t* entry = &ctx->replay_buffer[idx];
 
             inputs[i] = entry->input;
@@ -709,7 +710,7 @@ static float sample_from_replay_buffer(cl_ctx_t* ctx, float** input, float** tar
 
         if (priority_sum > 1e-8f) {
             /* Sample using inverse transform sampling */
-            float r = ((float)rand() / (float)RAND_MAX) * priority_sum;
+            float r = nimcp_rand_uniform() * priority_sum;
             float cumsum = 0.0f;
 
             for (uint32_t i = 0; i < ctx->buffer_count; i++) {
@@ -721,11 +722,11 @@ static float sample_from_replay_buffer(cl_ctx_t* ctx, float** input, float** tar
             }
         } else {
             /* Fall back to uniform sampling */
-            idx = (uint32_t)(rand() % ctx->buffer_count);
+            idx = nimcp_rand_uint(ctx->buffer_count);
         }
     } else {
         /* Uniform random sampling */
-        idx = (uint32_t)(rand() % ctx->buffer_count);
+        idx = nimcp_rand_uint(ctx->buffer_count);
     }
 
     *input = ctx->replay_buffer[idx].input;

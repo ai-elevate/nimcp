@@ -2795,6 +2795,57 @@ add_e2e_test(e2e_test_wernicke_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_wernicke_pipeline.cpp
 )
 
+# ============================================================================
+# Thread Safety Fixes E2E Test (2026-01-15)
+# ============================================================================
+# WHAT: E2E tests validating critical thread safety fixes
+# WHY:  Thread safety issues cause race conditions, crashes; must verify fixes
+# HOW:  Test nimcp_rand, emotional system, capability checks, rate limiting
+#       under realistic concurrent load scenarios
+#
+# TEST SCENARIOS:
+# - Brain init with nimcp_rand for neural weight initialization
+# - Emotional system updates during concurrent brain processing
+# - Capability checks under multi-threaded access
+# - Rate-limited logging under high concurrent load
+# - Python binding lifecycle memory safety (mock)
+# - Combined stress test with all subsystems active
+# ============================================================================
+add_e2e_test(e2e_test_thread_safety_fixes
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_thread_safety_fixes.cpp
+)
+set_tests_properties(e2e_test_thread_safety_fixes PROPERTIES
+    LABELS "e2e;thread;safety;concurrent"
+    TIMEOUT 300
+)
+
+# ============================================================================
+# KG Hierarchy Graph Algorithms Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for KG hierarchy graph algorithms
+# WHY:  Verify complete graph algorithm workflows in realistic brain topology
+# HOW:  Test topological sort, binary search, BFS/DFS, connected components,
+#       shortest path with full brain integration
+#
+# TEST SCENARIOS:
+# - Topological sort for module startup ordering
+# - Binary search for optimized module lookups
+# - BFS/DFS traversal across brain hierarchy
+# - Connected components detection
+# - Shortest path finding between modules
+# - Concurrent access safety
+# - Performance benchmarks
+# ============================================================================
+add_e2e_test(e2e_test_kg_hierarchy_graph_algorithms_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_kg_hierarchy_graph_algorithms_pipeline.cpp
+)
+set_tests_properties(e2e_test_kg_hierarchy_graph_algorithms_pipeline PROPERTIES
+    LABELS "e2e;core;brain;kg;graph;algorithms"
+    TIMEOUT 180
+)
+
 # Include GPU E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
     add_subdirectory(gpu)

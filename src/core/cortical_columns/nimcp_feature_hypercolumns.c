@@ -27,6 +27,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/rng/nimcp_rand.h"
 #include <math.h>
 #include <string.h>
 #include <float.h>
@@ -282,7 +283,7 @@ static bool init_feature_column(
 
         // Initialize with small random values
         for (uint32_t i = 0; i < num_weights; i++) {
-            col->weights[i] = ((float)rand() / RAND_MAX - 0.5F) * 0.1F;
+            col->weights[i] = (nimcp_rand_uniform() - 0.5F) * 0.1F;
         }
     }
 
@@ -640,7 +641,7 @@ void feature_hypercolumn_process_with_input(
             // Random initialization
             for (uint32_t j = 0; j < input_size; j++) {
                 hcol->columns[i].weights[j] =
-                    ((float)rand() / RAND_MAX - 0.5F) * 0.1F;
+                    (nimcp_rand_uniform() - 0.5F) * 0.1F;
             }
         }
     }

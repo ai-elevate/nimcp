@@ -110,6 +110,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/analysis/nimcp_brain_topology.c     # Topology and community detection (462 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_kg.c                    # Internal runtime knowledge graph (self-awareness)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_kg_helpers.c           # KG helper utilities for module integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_hierarchy.c               # Hierarchical view of KG (3-level brain topology)
 
     # Hemispheric Brain Architecture (Phase Dec 2024: Two-hemisphere bilateral processing)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_lateralization.c     # Hemisphere specialization profiles
@@ -1509,6 +1510,9 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Logging
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/logging/nimcp_logging.c
+
+    # Utils - Random Number Generation (Unified RNG with quantum integration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/rng/nimcp_rand.c
 
     # Utils - Signal Handling (Runtime Safety)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/signal/nimcp_signal_handler.c
