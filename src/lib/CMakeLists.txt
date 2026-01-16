@@ -1495,8 +1495,31 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/nimcp_lgss_action_interceptor.c                           # Action interceptor
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/nimcp_lgss_override_controller.c                          # Override controller
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/nimcp_lgss_telemetry.c                                    # Hash-chained telemetry
-    # LGSS Bridges
+    # LGSS Bridges (A3-A6)
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/bridges/nimcp_lgss_ethics_bridge.c                        # Ethics-LGSS integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/bridges/nimcp_lgss_bio_async_bridge.c                     # Bio-async messaging bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/bridges/nimcp_lgss_executive_bridge.c                     # Executive function bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/bridges/nimcp_lgss_planning_bridge.c                      # Planning module bridge
+    # LGSS Output Gates (A7)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/gates/nimcp_lgss_motor_gate.c                             # Motor output gate
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/gates/nimcp_lgss_speech_gate.c                            # Speech output gate
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/gates/nimcp_lgss_autonomic_gate.c                         # Autonomic output gate
+    # LGSS Learning Guards (A8)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/learning/nimcp_lgss_plasticity_constraints.c              # Plasticity constraints
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/learning/nimcp_lgss_stdp_guard.c                          # STDP safety guard
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/learning/nimcp_lgss_training_guard.c                      # Training safety guard
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/learning/nimcp_lgss_meta_learning_guard.c                 # Meta-learning guard
+    # LGSS Reward Guards (A9)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/reward/nimcp_lgss_reward_alignment.c                      # Reward alignment
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/reward/nimcp_lgss_vta_guard.c                             # VTA guard
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/reward/nimcp_lgss_incentive_validator.c                   # Incentive validator
+    # LGSS Perception Guards (A10)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/perception/nimcp_lgss_input_validator.c                   # Input validator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/perception/nimcp_lgss_adversarial_detector.c              # Adversarial detector
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/perception/nimcp_lgss_content_filter.c                    # Content filter
+    # LGSS Cognitive Guards (A11)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/cognitive/nimcp_lgss_attention_guard.c                    # Attention guard
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/cognitive/nimcp_lgss_working_memory_guard.c               # Working memory guard
 
     # Utils - Memory & Thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory.c
