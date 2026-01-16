@@ -17,6 +17,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>
@@ -412,12 +413,14 @@ swarm_task_scheduler_t* swarm_scheduler_create(
 {
     if (!task_manager) {
         NIMCP_LOGGING_ERROR("Task manager required for scheduler");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Task manager required for scheduler");
         return NULL;
     }
 
     swarm_task_scheduler_t* scheduler = nimcp_malloc(sizeof(swarm_task_scheduler_t));
     if (!scheduler) {
         NIMCP_LOGGING_ERROR("Failed to allocate task scheduler");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate task scheduler");
         return NULL;
     }
 
@@ -436,6 +439,7 @@ swarm_task_scheduler_t* swarm_scheduler_create(
     scheduler->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!scheduler->mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate scheduler mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate scheduler mutex");
         nimcp_free(scheduler);
         return NULL;
     }

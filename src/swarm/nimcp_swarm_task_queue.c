@@ -17,6 +17,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 
@@ -162,6 +163,7 @@ swarm_task_queue_t* swarm_task_queue_create(
     swarm_task_queue_t* queue = nimcp_malloc(sizeof(swarm_task_queue_t));
     if (!queue) {
         NIMCP_LOGGING_ERROR("Failed to allocate task queue for agent %u", agent_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate task queue for agent %u", agent_id);
         return NULL;
     }
 
@@ -191,6 +193,7 @@ swarm_task_queue_t* swarm_task_queue_create(
     queue->entries = nimcp_calloc(queue->capacity, sizeof(swarm_task_queue_entry_t));
     if (!queue->entries) {
         NIMCP_LOGGING_ERROR("Failed to allocate queue entries for agent %u", agent_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate queue entries for agent %u", agent_id);
         nimcp_free(queue);
         return NULL;
     }
@@ -199,6 +202,7 @@ swarm_task_queue_t* swarm_task_queue_create(
     queue->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!queue->mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate queue mutex for agent %u", agent_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate queue mutex for agent %u", agent_id);
         nimcp_free(queue->entries);
         nimcp_free(queue);
         return NULL;

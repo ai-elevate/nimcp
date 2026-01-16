@@ -12,6 +12,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 
@@ -55,6 +56,7 @@ bool multimodal_nlp_init_phoneme_lexicon(void) {
     g_lexicon_size = sizeof(lexicon) / sizeof(phoneme_word_entry_t);
     g_phoneme_lexicon = (phoneme_word_entry_t*)nimcp_malloc(sizeof(lexicon));
     if (!g_phoneme_lexicon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multimodal_nlp_init_phoneme_lexicon: Failed to allocate phoneme lexicon");
         LOG_ERROR(LOG_MODULE, "Failed to allocate phoneme lexicon");
         return false;
     }
@@ -98,6 +100,7 @@ bool multimodal_nlp_phonemes_to_tokens(
     uint32_t* num_tokens
 ) {
     if (!phonemes || !tokens || !num_tokens || max_tokens == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_phonemes_to_tokens: Invalid parameters");
         LOG_ERROR(LOG_MODULE, "phonemes_to_tokens: Invalid parameters");
         return false;
     }
@@ -107,6 +110,7 @@ bool multimodal_nlp_phonemes_to_tokens(
     // Initialize lexicon if not already done
     if (!g_phoneme_lexicon) {
         if (!multimodal_nlp_init_phoneme_lexicon()) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "multimodal_nlp_phonemes_to_tokens: Failed to initialize phoneme lexicon");
             LOG_ERROR(LOG_MODULE, "Failed to initialize phoneme lexicon");
             return false;
         }
@@ -165,6 +169,7 @@ bool multimodal_nlp_process_speech(
     uint32_t output_dim
 ) {
     if (!speech_cortex || !nlp_network || !audio_data || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_process_speech: Invalid parameters");
         LOG_ERROR(LOG_MODULE, "process_speech: Invalid parameters");
         return false;
     }
@@ -183,6 +188,7 @@ bool multimodal_nlp_process_speech(
         50,
         &num_detected
     )) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "multimodal_nlp_process_speech: Failed to detect phonemes");
         LOG_ERROR(LOG_MODULE, "Failed to detect phonemes");
         return false;
     }
@@ -318,6 +324,7 @@ bool multimodal_nlp_visual_to_tokens(
     uint32_t* num_tokens
 ) {
     if (!visual_features || !nlp_network || !tokens || !num_tokens) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_visual_to_tokens: NULL parameter");
         return false;
     }
 
@@ -374,6 +381,7 @@ bool multimodal_nlp_contains_text(
     float threshold
 ) {
     if (!visual_cortex || !image) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_contains_text: NULL parameter");
         return false;
     }
 
@@ -410,6 +418,7 @@ bool multimodal_nlp_process_visual(
     uint32_t output_dim
 ) {
     if (!visual_cortex || !nlp_network || !image || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_process_visual: NULL parameter");
         return false;
     }
 
@@ -463,6 +472,7 @@ bool multimodal_nlp_fuse_inputs(
     uint32_t output_dim
 ) {
     if (!nlp_network || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_fuse_inputs: Invalid parameters");
         LOG_ERROR(LOG_MODULE, "fuse_inputs: Invalid parameters");
         return false;
     }

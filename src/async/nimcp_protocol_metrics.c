@@ -17,6 +17,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

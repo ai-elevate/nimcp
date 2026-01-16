@@ -464,6 +464,19 @@ int lnn_training_connect_plasticity(
     training_plasticity_bridge_t* plasticity_bridge
 );
 
+/**
+ * @brief Connect optimizer to network
+ *
+ * WHAT: Register optimizer for gradient updates
+ * WHY:  Enable gradient-based learning with various optimizers
+ * HOW:  Store optimizer reference and register for gradient updates
+ *
+ * @param network LNN network
+ * @param optimizer Optimizer instance (may be NULL to disconnect)
+ * @return 0 on success, negative on error
+ */
+int lnn_training_connect_optimizer(lnn_network_t* network, void* optimizer);
+
 /*=============================================================================
  * Learning Rate Scheduling Functions
  *===========================================================================*/

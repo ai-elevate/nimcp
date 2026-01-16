@@ -11,6 +11,7 @@
  */
 
 #include "language/nimcp_language_config.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 //=============================================================================

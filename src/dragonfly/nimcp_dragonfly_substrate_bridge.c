@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Internal Structure
@@ -176,7 +177,10 @@ static void recover_energy(dragonfly_substrate_bridge_t* bridge, float dt_ms) {
 //=============================================================================
 
 int dragonfly_substrate_bridge_default_config(dragonfly_substrate_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -211,13 +215,31 @@ int dragonfly_substrate_bridge_default_config(dragonfly_substrate_config_t* conf
 }
 
 int dragonfly_substrate_bridge_validate_config(const dragonfly_substrate_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_bridge_validate_config: config is NULL");
+        return -1;
+    }
 
-    if (config->mild_fatigue_threshold <= config->moderate_fatigue_threshold) return -1;
-    if (config->moderate_fatigue_threshold <= config->severe_fatigue_threshold) return -1;
-    if (config->severe_fatigue_threshold < 0) return -1;
-    if (config->fatigue_accuracy_impact < 0 || config->fatigue_accuracy_impact > 1.0f) return -1;
-    if (config->fatigue_speed_impact < 0 || config->fatigue_speed_impact > 1.0f) return -1;
+    if (config->mild_fatigue_threshold <= config->moderate_fatigue_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_substrate_bridge_validate_config: mild_fatigue_threshold <= moderate_fatigue_threshold");
+        return -1;
+    }
+    if (config->moderate_fatigue_threshold <= config->severe_fatigue_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_substrate_bridge_validate_config: moderate_fatigue_threshold <= severe_fatigue_threshold");
+        return -1;
+    }
+    if (config->severe_fatigue_threshold < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_substrate_bridge_validate_config: severe_fatigue_threshold < 0");
+        return -1;
+    }
+    if (config->fatigue_accuracy_impact < 0 || config->fatigue_accuracy_impact > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_substrate_bridge_validate_config: fatigue_accuracy_impact out of range [0, 1]");
+        return -1;
+    }
+    if (config->fatigue_speed_impact < 0 || config->fatigue_speed_impact > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_substrate_bridge_validate_config: fatigue_speed_impact out of range [0, 1]");
+        return -1;
+    }
 
     return 0;
 }
@@ -232,12 +254,16 @@ dragonfly_substrate_bridge_t* dragonfly_substrate_bridge_create(
     const dragonfly_substrate_config_t* config
 ) {
     dragonfly_substrate_bridge_t* bridge = calloc(1, sizeof(dragonfly_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_substrate_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Apply configuration */
     if (config) {
         if (dragonfly_substrate_bridge_validate_config(config) != 0) {
             free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_substrate_bridge_create: invalid config");
             return NULL;
         }
         bridge->config = *config;
@@ -278,7 +304,10 @@ void dragonfly_substrate_bridge_destroy(dragonfly_substrate_bridge_t* bridge) {
 }
 
 int dragonfly_substrate_bridge_reset(dragonfly_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_bridge_reset: bridge is NULL or not initialized");
+        return -1;
+    }
 
     bridge->activity_level = SUBSTRATE_ACTIVITY_IDLE;
     bridge->current_energy = 1.0f;
@@ -309,7 +338,10 @@ int dragonfly_substrate_record_tsdn_update(
     dragonfly_substrate_bridge_t* bridge,
     uint32_t population_size
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_record_tsdn_update: bridge is NULL or not initialized");
+        return -1;
+    }
     if (!bridge->config.enable_fatigue_modeling) return 0;
 
     float cost = bridge->config.costs.tsdn_update * (float)population_size;
@@ -323,7 +355,10 @@ int dragonfly_substrate_record_tracking(
     dragonfly_substrate_bridge_t* bridge,
     uint32_t num_targets
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_record_tracking: bridge is NULL or not initialized");
+        return -1;
+    }
     if (!bridge->config.enable_fatigue_modeling) return 0;
 
     float cost = bridge->config.costs.tracking_step * (float)num_targets;
@@ -337,7 +372,10 @@ int dragonfly_substrate_record_prediction(
     dragonfly_substrate_bridge_t* bridge,
     float complexity
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_record_prediction: bridge is NULL or not initialized");
+        return -1;
+    }
     if (!bridge->config.enable_fatigue_modeling) return 0;
 
     complexity = clamp_f(complexity, 0.0f, 1.0f);
@@ -352,7 +390,10 @@ int dragonfly_substrate_record_intercept_calc(
     dragonfly_substrate_bridge_t* bridge,
     float nav_complexity
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_record_intercept_calc: bridge is NULL or not initialized");
+        return -1;
+    }
     if (!bridge->config.enable_fatigue_modeling) return 0;
 
     nav_complexity = clamp_f(nav_complexity, 0.0f, 1.0f);
@@ -364,7 +405,10 @@ int dragonfly_substrate_record_intercept_calc(
 }
 
 int dragonfly_substrate_record_mode_switch(dragonfly_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_record_mode_switch: bridge is NULL or not initialized");
+        return -1;
+    }
     if (!bridge->config.enable_fatigue_modeling) return 0;
 
     consume_energy(bridge, bridge->config.costs.mode_switch);
@@ -377,7 +421,10 @@ int dragonfly_substrate_record_pursuit(
     dragonfly_substrate_bridge_t* bridge,
     float intensity
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_record_pursuit: bridge is NULL or not initialized");
+        return -1;
+    }
     if (!bridge->config.enable_fatigue_modeling) return 0;
 
     intensity = clamp_f(intensity, 0.0f, 1.0f);
@@ -396,7 +443,10 @@ int dragonfly_substrate_get_modulation(
     const dragonfly_substrate_bridge_t* bridge,
     dragonfly_substrate_modulation_t* mod
 ) {
-    if (!bridge || !bridge->initialized || !mod) return -1;
+    if (!bridge || !bridge->initialized || !mod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_get_modulation: bridge, mod is NULL or bridge not initialized");
+        return -1;
+    }
     *mod = bridge->modulation;
     return 0;
 }
@@ -442,7 +492,10 @@ int dragonfly_substrate_set_activity(
     dragonfly_substrate_bridge_t* bridge,
     substrate_activity_level_t level
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_set_activity: bridge is NULL or not initialized");
+        return -1;
+    }
     bridge->activity_level = level;
     return 0;
 }
@@ -467,7 +520,10 @@ int dragonfly_substrate_connect_dragonfly(
     dragonfly_substrate_bridge_t* bridge,
     dragonfly_system_t* dragonfly
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_connect_dragonfly: bridge is NULL or not initialized");
+        return -1;
+    }
     bridge->dragonfly = dragonfly;
     return 0;
 }
@@ -476,7 +532,10 @@ int dragonfly_substrate_connect_substrate(
     dragonfly_substrate_bridge_t* bridge,
     void* substrate
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_connect_substrate: bridge is NULL or not initialized");
+        return -1;
+    }
     bridge->substrate = substrate;
     return 0;
 }
@@ -494,7 +553,10 @@ bool dragonfly_substrate_has_substrate(const dragonfly_substrate_bridge_t* bridg
 //=============================================================================
 
 int dragonfly_substrate_update(dragonfly_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_update: bridge is NULL or not initialized");
+        return -1;
+    }
 
     /* Sync with substrate if connected */
     if (bridge->substrate) {
@@ -536,7 +598,10 @@ int dragonfly_substrate_step(
     dragonfly_substrate_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_step: bridge is NULL or not initialized");
+        return -1;
+    }
 
     bridge->last_update_dt_ms = dt_ms;
 
@@ -582,13 +647,19 @@ int dragonfly_substrate_bridge_get_stats(
     const dragonfly_substrate_bridge_t* bridge,
     substrate_bridge_stats_t* stats
 ) {
-    if (!bridge || !bridge->initialized || !stats) return -1;
+    if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_bridge_get_stats: bridge, stats is NULL or bridge not initialized");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int dragonfly_substrate_bridge_reset_stats(dragonfly_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_bridge_reset_stats: bridge is NULL or not initialized");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->stats.min_performance_level = 1.0f;
     bridge->stats.avg_performance_level = 1.0f;

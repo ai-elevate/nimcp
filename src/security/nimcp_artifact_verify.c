@@ -15,13 +15,14 @@
 #include "async/nimcp_bio_router.h"
 
 #include "utils/validation/nimcp_common.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* Error code aliases for this file */
 #ifndef NIMCP_OK
 #define NIMCP_OK NIMCP_SUCCESS
 #endif
-#ifndef NIMCP_ERROR_INVALID_ARGUMENT
-#define NIMCP_ERROR_INVALID_ARGUMENT NIMCP_ERROR_INVALID_PARAM
+#ifndef NIMCP_ERROR_INVALID_PARAM
+#define NIMCP_ERROR_INVALID_PARAM NIMCP_ERROR_INVALID_PARAM
 #endif
 #ifndef NIMCP_ERROR_IO
 #define NIMCP_ERROR_IO (-121)
@@ -72,6 +73,7 @@ static nimcp_error_t verify_ed25519_signature(
     FILE* key_file = fopen(public_key_path, "rb");
     if (!key_file) {
         LOG_ERROR("Cannot open public key file %s", public_key_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Cannot open public key file for Ed25519 verification");
         return NIMCP_ERROR_IO;
     }
 
@@ -80,6 +82,7 @@ static nimcp_error_t verify_ed25519_signature(
 
     if (!pkey) {
         LOG_ERROR("Failed to parse Ed25519 public key");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to parse Ed25519 public key");
         return NIMCP_ERROR_CRYPTO;
     }
 
@@ -88,6 +91,7 @@ static nimcp_error_t verify_ed25519_signature(
     if (!sig_file) {
         EVP_PKEY_free(pkey);
         LOG_ERROR("Cannot open signature file %s", signature_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Cannot open signature file");
         return NIMCP_ERROR_IO;
     }
 
@@ -100,6 +104,7 @@ static nimcp_error_t verify_ed25519_signature(
     if (!msg_file) {
         EVP_PKEY_free(pkey);
         LOG_ERROR("Cannot open file %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Cannot open file for signature verification");
         return NIMCP_ERROR_IO;
     }
 
@@ -112,6 +117,7 @@ static nimcp_error_t verify_ed25519_signature(
     if (!message) {
         fclose(msg_file);
         EVP_PKEY_free(pkey);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Memory allocation failed for signature verification");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -123,6 +129,7 @@ static nimcp_error_t verify_ed25519_signature(
     if (!ctx) {
         free(message);
         EVP_PKEY_free(pkey);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create verification context");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -137,6 +144,7 @@ static nimcp_error_t verify_ed25519_signature(
 
     if (result != 1) {
         LOG_ERROR("Ed25519 signature verification failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_PERMISSION_DENIED, "Ed25519 signature verification failed - invalid signature");
         return NIMCP_ERROR_INVALID_SIGNATURE;
     }
 
@@ -260,7 +268,7 @@ static nimcp_error_t verify_dilithium_signature(
     if (bytes_read != pk_len) {
         free(public_key);
         LOG_ERROR("Invalid Dilithium public key size");
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Read signature */
@@ -337,7 +345,7 @@ nimcp_error_t nimcp_artifact_verify_signature(
 {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC ||
         !filepath || !signature_path || !public_key_path) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_error_t err;
@@ -372,7 +380,7 @@ nimcp_error_t nimcp_artifact_verify_signature(
 
     default:
         LOG_ERROR("Unsupported signature algorithm %d", algo);
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (err != NIMCP_OK) {
@@ -400,7 +408,7 @@ nimcp_error_t nimcp_artifact_verify_full(
     nimcp_artifact_verification_t* result)
 {
     if (!sc || !filepath || !result) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Initialize result */
@@ -450,7 +458,7 @@ nimcp_error_t nimcp_supply_chain_add_trusted_source(
 {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC ||
         !source_url || !public_key_path) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&sc->lock);
@@ -488,7 +496,7 @@ nimcp_error_t nimcp_supply_chain_add_trusted_source(
 nimcp_error_t nimcp_supply_chain_revoke_source(nimcp_supply_chain_t sc,
                                                  const char* source_url) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !source_url) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&sc->lock);
@@ -513,7 +521,7 @@ nimcp_error_t nimcp_supply_chain_list_sources(nimcp_supply_chain_t sc,
                                                 nimcp_trusted_source_t** sources,
                                                 size_t* count) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !sources || !count) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&sc->lock);
@@ -567,7 +575,7 @@ nimcp_error_t nimcp_cert_verify_chain(nimcp_supply_chain_t sc,
                                        const char* cert_path,
                                        const char* ca_path) {
     if (!sc || !cert_path || !ca_path) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LOG_INFO("Certificate chain verification for %s", cert_path);
@@ -578,7 +586,7 @@ nimcp_error_t nimcp_timestamp_verify(nimcp_supply_chain_t sc,
                                       const char* timestamp_path,
                                       const char* artifact_path) {
     if (!sc || !timestamp_path || !artifact_path) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LOG_INFO("Timestamp verification for %s", artifact_path);
@@ -590,7 +598,7 @@ nimcp_error_t nimcp_cert_check_revocation(nimcp_supply_chain_t sc,
                                             const char* crl_path,
                                             const char* ocsp_url) {
     if (!sc || !cert_path) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LOG_INFO("Certificate revocation check for %s", cert_path);
@@ -604,7 +612,7 @@ nimcp_error_t nimcp_cert_check_revocation(nimcp_supply_chain_t sc,
 nimcp_error_t nimcp_supply_chain_scan_directory(nimcp_supply_chain_t sc,
                                                   const char* directory) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !directory) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LOG_INFO("Scanning directory: %s", directory);
@@ -618,7 +626,7 @@ nimcp_error_t nimcp_supply_chain_export_report(nimcp_supply_chain_t sc,
                                                  const char* format,
                                                  char** output) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !format || !output) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LOG_INFO("Exporting verification report (format=%s)", format);

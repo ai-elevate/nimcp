@@ -26,6 +26,7 @@
 
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "security_shell_detector"
 
@@ -362,6 +363,7 @@ nimcp_shell_detector_t nimcp_shell_detector_create(
 
     if (!detector) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate shell detector");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate shell detector");
         return NULL;
     }
 

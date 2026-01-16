@@ -13,6 +13,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "async/nimcp_wiring_helpers.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 
@@ -237,6 +238,7 @@ nimcp_flocking_engine_t *nimcp_flocking_create(const nimcp_flocking_config_t *co
     nimcp_flocking_engine_t *engine = (nimcp_flocking_engine_t *)nimcp_calloc(1, sizeof(nimcp_flocking_engine_t));
     if (!engine) {
         LOG_ERROR("Failed to allocate flocking engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate flocking engine");
         return NULL;
     }
 
@@ -252,6 +254,7 @@ nimcp_flocking_engine_t *nimcp_flocking_create(const nimcp_flocking_config_t *co
     engine->boids = (nimcp_boid_t *)nimcp_calloc(engine->boid_capacity, sizeof(nimcp_boid_t));
     if (!engine->boids) {
         LOG_ERROR("Failed to allocate boid array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate boid array");
         nimcp_free(engine);
         return NULL;
     }
@@ -261,6 +264,7 @@ nimcp_flocking_engine_t *nimcp_flocking_create(const nimcp_flocking_config_t *co
     engine->obstacles = (nimcp_obstacle_t *)nimcp_calloc(engine->obstacle_capacity, sizeof(nimcp_obstacle_t));
     if (!engine->obstacles) {
         LOG_ERROR("Failed to allocate obstacle array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate obstacle array");
         nimcp_free(engine->boids);
         nimcp_free(engine);
         return NULL;
@@ -270,6 +274,7 @@ nimcp_flocking_engine_t *nimcp_flocking_create(const nimcp_flocking_config_t *co
     engine->mutex = nimcp_platform_mutex_create();
     if (!engine->mutex) {
         LOG_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create flocking mutex");
         nimcp_free(engine->obstacles);
         nimcp_free(engine->boids);
         nimcp_free(engine);

@@ -73,15 +73,15 @@ examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o: examples/C
 examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o: /home/bbrelin/nimcp/examples/integrated_learning_demo.c
 examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o: examples/CMakeFiles/integrated_demo.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o"
-	cd /home/bbrelin/nimcp/build/examples && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o -MF CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o.d -o CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o -c /home/bbrelin/nimcp/examples/integrated_learning_demo.c
+	cd /home/bbrelin/nimcp/build/examples && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o -MF CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o.d -o CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.o -c /home/bbrelin/nimcp/examples/integrated_learning_demo.c
 
 examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.i"
-	cd /home/bbrelin/nimcp/build/examples && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/nimcp/examples/integrated_learning_demo.c > CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.i
+	cd /home/bbrelin/nimcp/build/examples && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/nimcp/examples/integrated_learning_demo.c > CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.i
 
 examples/CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.s"
-	cd /home/bbrelin/nimcp/build/examples && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/nimcp/examples/integrated_learning_demo.c -o CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.s
+	cd /home/bbrelin/nimcp/build/examples && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/nimcp/examples/integrated_learning_demo.c -o CMakeFiles/integrated_demo.dir/integrated_learning_demo.c.s
 
 # Object files for target integrated_demo
 integrated_demo_OBJECTS = \

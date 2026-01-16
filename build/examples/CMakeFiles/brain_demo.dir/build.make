@@ -73,15 +73,15 @@ examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: examples/CMakeFiles/brain_dem
 examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: /home/bbrelin/nimcp/examples/brain_demo.c
 examples/CMakeFiles/brain_demo.dir/brain_demo.c.o: examples/CMakeFiles/brain_demo.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object examples/CMakeFiles/brain_demo.dir/brain_demo.c.o"
-	cd /home/bbrelin/nimcp/build/examples && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT examples/CMakeFiles/brain_demo.dir/brain_demo.c.o -MF CMakeFiles/brain_demo.dir/brain_demo.c.o.d -o CMakeFiles/brain_demo.dir/brain_demo.c.o -c /home/bbrelin/nimcp/examples/brain_demo.c
+	cd /home/bbrelin/nimcp/build/examples && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT examples/CMakeFiles/brain_demo.dir/brain_demo.c.o -MF CMakeFiles/brain_demo.dir/brain_demo.c.o.d -o CMakeFiles/brain_demo.dir/brain_demo.c.o -c /home/bbrelin/nimcp/examples/brain_demo.c
 
 examples/CMakeFiles/brain_demo.dir/brain_demo.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/brain_demo.dir/brain_demo.c.i"
-	cd /home/bbrelin/nimcp/build/examples && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/nimcp/examples/brain_demo.c > CMakeFiles/brain_demo.dir/brain_demo.c.i
+	cd /home/bbrelin/nimcp/build/examples && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/nimcp/examples/brain_demo.c > CMakeFiles/brain_demo.dir/brain_demo.c.i
 
 examples/CMakeFiles/brain_demo.dir/brain_demo.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/brain_demo.dir/brain_demo.c.s"
-	cd /home/bbrelin/nimcp/build/examples && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/nimcp/examples/brain_demo.c -o CMakeFiles/brain_demo.dir/brain_demo.c.s
+	cd /home/bbrelin/nimcp/build/examples && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/nimcp/examples/brain_demo.c -o CMakeFiles/brain_demo.dir/brain_demo.c.s
 
 # Object files for target brain_demo
 brain_demo_OBJECTS = \

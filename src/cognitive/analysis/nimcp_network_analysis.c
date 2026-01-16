@@ -24,6 +24,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "core/topology/nimcp_community_detection.h"
 #include "utils/algorithms/nimcp_graph_metrics.h"
 #include "utils/containers/nimcp_graph.h"
@@ -103,12 +104,14 @@ static NimcpGraph* build_graph_from_network(neural_network_t network) {
 network_analyzer_t* network_analyzer_create(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_create: NULL brain");
         NIMCP_LOGGING_ERROR("network_analyzer_create: NULL brain");
         return NULL;
     }
 
     network_analyzer_t* analyzer = nimcp_calloc(1, sizeof(network_analyzer_t));
     if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "network_analyzer_create: allocation failed");
         NIMCP_LOGGING_ERROR("network_analyzer_create: allocation failed");
         return NULL;
     }
@@ -126,6 +129,7 @@ network_analyzer_t* network_analyzer_create(brain_t brain)
     analyzer->community_count_history = nimcp_calloc(1000, sizeof(uint32_t));
 
     if (!analyzer->modularity_history || !analyzer->community_count_history) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "network_analyzer_create: history allocation failed");
         NIMCP_LOGGING_ERROR("network_analyzer_create: history allocation failed");
         network_analyzer_destroy(analyzer);
         return NULL;

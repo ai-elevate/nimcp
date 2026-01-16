@@ -2312,11 +2312,10 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_snn_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_perception_bridge.c
 
-    # Physics layer - Information Geometry Bridge (Fisher info, natural gradient, manifold)
-
-    # Physics layer - Dynamical Systems (Lyapunov, bifurcation, attractors)
-
-    # Physics layer - Graph Theory Bridge (centrality, community, spectral, quantum walks)
+    # Physics layer modules - Graph Theory, Dynamical Systems, Information Geometry
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/graphs/nimcp_graph_theory_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/dynamics/nimcp_dynamical_systems.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/geometry/nimcp_information_geometry_bridge.c
 
     # Biology layer modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../biology/epigenetics/nimcp_epigenetics.c

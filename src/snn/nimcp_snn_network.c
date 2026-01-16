@@ -19,6 +19,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -38,7 +39,8 @@ static snn_population_t* snn_population_create_internal(
 ) {
     snn_population_t* pop = (snn_population_t*)nimcp_malloc(sizeof(snn_population_t));
     if (!pop) {
-        NIMCP_LOGGING_ERROR("snn_population_create: allocation failed");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_population_t),
+            "snn_population_create: allocation failed");
         return NULL;
     }
 
@@ -54,6 +56,8 @@ static snn_population_t* snn_population_create_internal(
     /* Allocate neuron ID array */
     pop->neuron_ids = (uint32_t*)nimcp_malloc(n_neurons * sizeof(uint32_t));
     if (!pop->neuron_ids) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, n_neurons * sizeof(uint32_t),
+            "snn_population_create: neuron_ids allocation failed");
         nimcp_free(pop);
         return NULL;
     }
@@ -62,6 +66,8 @@ static snn_population_t* snn_population_create_internal(
     pop->spike_trains = (snn_spike_train_t*)nimcp_malloc(
         n_neurons * sizeof(snn_spike_train_t));
     if (!pop->spike_trains) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, n_neurons * sizeof(snn_spike_train_t),
+            "snn_population_create: spike_trains allocation failed");
         nimcp_free(pop->neuron_ids);
         nimcp_free(pop);
         return NULL;
@@ -80,7 +86,8 @@ static snn_population_t* snn_population_create_internal(
     pop->refractory = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
 
     if (!pop->membrane_v || !pop->spike_output || !pop->refractory) {
-        NIMCP_LOGGING_ERROR("snn_population_create: tensor allocation failed");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, n_neurons * sizeof(float),
+            "snn_population_create: tensor allocation failed");
         if (pop->membrane_v) nimcp_tensor_destroy(pop->membrane_v);
         if (pop->spike_output) nimcp_tensor_destroy(pop->spike_output);
         if (pop->refractory) nimcp_tensor_destroy(pop->refractory);
@@ -116,7 +123,11 @@ static void snn_population_destroy_internal(snn_population_t* pop) {
  */
 static snn_simulation_t* snn_simulation_create_internal(float dt_ms) {
     snn_simulation_t* sim = (snn_simulation_t*)nimcp_malloc(sizeof(snn_simulation_t));
-    if (!sim) return NULL;
+    if (!sim) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_simulation_t),
+            "snn_simulation_create: allocation failed");
+        return NULL;
+    }
 
     memset(sim, 0, sizeof(snn_simulation_t));
     sim->dt_ms = dt_ms;
@@ -127,6 +138,8 @@ static snn_simulation_t* snn_simulation_create_internal(float dt_ms) {
     sim->spike_queue = (snn_spike_t*)nimcp_malloc(
         sim->queue_capacity * sizeof(snn_spike_t));
     if (!sim->spike_queue) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sim->queue_capacity * sizeof(snn_spike_t),
+            "snn_simulation_create: spike_queue allocation failed");
         nimcp_free(sim);
         return NULL;
     }
@@ -218,20 +231,22 @@ static float compute_firing_rate(const snn_spike_train_t* train,
 snn_network_t* snn_network_create(const snn_config_t* config) {
     /* Guard clause: validate config */
     if (!config) {
-        NIMCP_LOGGING_ERROR("snn_network_create: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_network_create: NULL config");
         return NULL;
     }
 
     int validate_result = snn_config_validate(config);
     if (validate_result != SNN_SUCCESS) {
-        NIMCP_LOGGING_ERROR("snn_network_create: invalid config (error %d)", validate_result);
+        /* Exception already thrown by snn_config_validate */
         return NULL;
     }
 
     /* Allocate network structure */
     snn_network_t* network = (snn_network_t*)nimcp_malloc(sizeof(snn_network_t));
     if (!network) {
-        NIMCP_LOGGING_ERROR("snn_network_create: allocation failed");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_network_t),
+            "snn_network_create: allocation failed");
         return NULL;
     }
     memset(network, 0, sizeof(snn_network_t));
@@ -253,7 +268,8 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
 
     network->neural_net = neural_network_create(&nn_config);
     if (!network->neural_net) {
-        NIMCP_LOGGING_ERROR("snn_network_create: neural_network_create failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NETWORK_CREATION,
+            "snn_network_create: neural_network_create failed");
         nimcp_free(network);
         return NULL;
     }
@@ -263,6 +279,8 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
     network->populations = (snn_population_t**)nimcp_malloc(
         max_populations * sizeof(snn_population_t*));
     if (!network->populations) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, max_populations * sizeof(snn_population_t*),
+            "snn_network_create: populations array allocation failed");
         neural_network_destroy(network->neural_net);
         nimcp_free(network);
         return NULL;
@@ -272,6 +290,7 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
     /* Create simulation context */
     network->sim = snn_simulation_create_internal(config->dt);
     if (!network->sim) {
+        /* Exception already thrown by snn_simulation_create_internal */
         nimcp_free(network->populations);
         neural_network_destroy(network->neural_net);
         nimcp_free(network);
@@ -282,6 +301,7 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
     network->input_pop = snn_population_create_internal(
         0, config->n_inputs, NEURON_GENERIC_LIF, "input");
     if (!network->input_pop) {
+        /* Exception already thrown by snn_population_create_internal */
         snn_network_destroy(network);
         return NULL;
     }
@@ -292,6 +312,7 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
     network->output_pop = snn_population_create_internal(
         1, config->n_outputs, NEURON_GENERIC_LIF, "output");
     if (!network->output_pop) {
+        /* Exception already thrown by snn_population_create_internal */
         snn_network_destroy(network);
         return NULL;
     }

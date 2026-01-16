@@ -44,6 +44,7 @@
 
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types
 #include "core/neuralnet/nimcp_neuralnet.h"  // Phase 11: Access to neural network for biological security
+#include "utils/exception/nimcp_exception_macros.h"  // Exception handling with immune integration
 
 // Platform-specific includes for cryptographically secure RNG
 #ifdef _WIN32
@@ -750,8 +751,10 @@ static bool contains_pattern(const char* text, const char* pattern)
 nimcp_directive_system_t* nimcp_directive_system_create(void)
 {
     nimcp_directive_system_t* system = (nimcp_directive_system_t*) nimcp_calloc(1, sizeof(nimcp_directive_system_t));
-    if (!system)
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate directive system");
         return NULL;
+    }
 
     /* WHAT: Initialize to unlocked state with zero directives
      * WHY:  System starts in configuration mode where directives can be added.
@@ -781,14 +784,20 @@ nimcp_directive_system_t* nimcp_directive_system_create(void)
  */
 nimcp_result_t nimcp_directive_add(nimcp_directive_system_t* system, const char* directive_text)
 {
-    if (!system || !directive_text)
+    if (!system || !directive_text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL system or directive_text in nimcp_directive_add");
         return NIMCP_INVALID_PARAM;
+    }
 
-    if (system->locked)
+    if (system->locked) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "Cannot add directive: system is locked");
         return NIMCP_INVALID_STATE;
+    }
 
-    if (system->num_directives >= NIMCP_SECURITY_MAX_DIRECTIVES)
+    if (system->num_directives >= NIMCP_SECURITY_MAX_DIRECTIVES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "Maximum directive count exceeded");
         return NIMCP_BUFFER_TOO_SMALL;
+    }
 
     nimcp_core_directive_t* directive = &system->directives[system->num_directives];
 
@@ -818,6 +827,7 @@ nimcp_result_t nimcp_directive_add(nimcp_directive_system_t* system, const char*
                                     -1, 0);
 
     if (directive->text == MAP_FAILED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mmap failed for directive text allocation");
         return NIMCP_INVALID_STATE;
     }
 
@@ -862,11 +872,15 @@ nimcp_result_t nimcp_directive_add(nimcp_directive_system_t* system, const char*
  */
 nimcp_result_t nimcp_directive_lock(nimcp_directive_system_t* system)
 {
-    if (!system)
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL system in nimcp_directive_lock");
         return NIMCP_INVALID_PARAM;
+    }
 
-    if (system->locked)
+    if (system->locked) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "Directive system already locked");
         return NIMCP_INVALID_STATE;
+    }
 
     /* WHAT: Mark all directives as immutable and apply OS-level memory protection
      * WHY:  Multi-layer defense:
@@ -1238,8 +1252,10 @@ nimcp_input_validation_t nimcp_security_validate_input(const char* input, size_t
  */
 nimcp_result_t nimcp_security_sanitize_input(const char* input, char* output, size_t output_size)
 {
-    if (!input || !output || output_size == 0)
+    if (!input || !output || output_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid parameters in nimcp_security_sanitize_input");
         return NIMCP_INVALID_PARAM;
+    }
 
     size_t in_len = strlen(input);
     size_t out_idx = 0;
@@ -1348,8 +1364,10 @@ nimcp_result_t nimcp_security_evaluate_skepticism(const char* information,
         memset(result, 0, sizeof(nimcp_skepticism_result_t));
     }
 
-    if (!information || !result)
+    if (!information || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL information or result in nimcp_security_evaluate_skepticism");
         return NIMCP_INVALID_PARAM;
+    }
 
     /* WHAT: Start with moderate skepticism (0.5 on 0-1 scale)
      * WHY:  Neutral prior - neither trusting nor distrusting by default.
@@ -1462,8 +1480,10 @@ nimcp_result_t nimcp_security_evaluate_skepticism(const char* information,
  */
 nimcp_encryption_context_t* nimcp_encryption_create(const uint8_t* key)
 {
-    if (!key)
+    if (!key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL key in nimcp_encryption_create");
         return NULL;
+    }
 
 #ifdef NIMCP_ENABLE_ENCRYPTION
     // WHAT: Initialize libsodium cryptographic library
@@ -1472,6 +1492,7 @@ nimcp_encryption_context_t* nimcp_encryption_create(const uint8_t* key)
     if (sodium_init() < 0) {
         // WHAT: Initialization failed - libsodium unavailable
         // WHY:  Could indicate missing CPU features (AES-NI) or library corruption
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "libsodium initialization failed");
         return NULL;
     }
 
@@ -1481,14 +1502,17 @@ nimcp_encryption_context_t* nimcp_encryption_create(const uint8_t* key)
     if (crypto_aead_aes256gcm_is_available() == 0) {
         // WHAT: AES-GCM not supported - CPU lacks AES-NI instructions
         // WHY:  Fallback could use ChaCha20-Poly1305, but we require AES-256-GCM
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "AES-256-GCM not available on this CPU");
         return NULL;
     }
 #endif
 
     nimcp_encryption_context_t* ctx =
         (nimcp_encryption_context_t*) nimcp_calloc(1, sizeof(nimcp_encryption_context_t));
-    if (!ctx)
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate encryption context");
         return NULL;
+    }
 
     memcpy(ctx->key, key, NIMCP_SECURITY_KEY_SIZE);
     ctx->initialized = true;
@@ -1511,8 +1535,10 @@ nimcp_encryption_context_t* nimcp_encryption_create(const uint8_t* key)
  */
 nimcp_result_t nimcp_encryption_generate_key(uint8_t* key)
 {
-    if (!key)
+    if (!key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL key buffer in nimcp_encryption_generate_key");
         return NIMCP_INVALID_PARAM;
+    }
 
 #ifdef NIMCP_ENABLE_ENCRYPTION
     // WHAT: Use libsodium's cryptographically secure RNG
@@ -1539,6 +1565,7 @@ nimcp_result_t nimcp_encryption_generate_key(uint8_t* key)
             // WHAT: Log detailed error for debugging
             // WHY:  Helps diagnose RNG failures in production
             fprintf(stderr, "SECURITY: BCryptGenRandom failed with status 0x%lx\n", (unsigned long) status);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "BCryptGenRandom failed for key generation");
             return NIMCP_IO_ERROR;
         }
     #else
@@ -1556,6 +1583,7 @@ nimcp_result_t nimcp_encryption_generate_key(uint8_t* key)
             // WHAT: Report detailed error for debugging
             // WHY:  Missing /dev/urandom is a serious system configuration issue
             fprintf(stderr, "SECURITY: Failed to open /dev/urandom: %s\n", strerror(errno));
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to open /dev/urandom for key generation");
             return NIMCP_IO_ERROR;
             #endif
         }
@@ -1577,6 +1605,7 @@ nimcp_result_t nimcp_encryption_generate_key(uint8_t* key)
                 // WHY:  Cannot continue if RNG device fails
                 fprintf(stderr, "SECURITY: Failed to read from /dev/urandom: %s\n", strerror(errno));
                 close(fd);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to read from /dev/urandom");
                 return NIMCP_IO_ERROR;
             }
 
@@ -1585,6 +1614,7 @@ nimcp_result_t nimcp_encryption_generate_key(uint8_t* key)
                 // WHY:  /dev/urandom should never return EOF, indicates system problem
                 fprintf(stderr, "SECURITY: Unexpected EOF from /dev/urandom\n");
                 close(fd);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Unexpected EOF from /dev/urandom");
                 return NIMCP_IO_ERROR;
             }
 
@@ -1631,17 +1661,23 @@ nimcp_result_t nimcp_encryption_encrypt(nimcp_encryption_context_t* ctx, const u
                                         size_t plaintext_size, uint8_t* ciphertext,
                                         size_t ciphertext_size, size_t* actual_size)
 {
-    if (!ctx || !plaintext || !ciphertext || !actual_size)
+    if (!ctx || !plaintext || !ciphertext || !actual_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in nimcp_encryption_encrypt");
         return NIMCP_INVALID_PARAM;
+    }
 
-    if (!ctx->initialized)
+    if (!ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "Encryption context not initialized");
         return NIMCP_INVALID_STATE;
+    }
 
     /* WHAT: Enforce maximum encrypted message size
      * WHY:  Prevents resource exhaustion from excessively large messages
      */
-    if (plaintext_size > NIMCP_SECURITY_MAX_ENCRYPTED_SIZE)
+    if (plaintext_size > NIMCP_SECURITY_MAX_ENCRYPTED_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "Plaintext exceeds maximum encrypted size");
         return NIMCP_BUFFER_TOO_SMALL;
+    }
 
     /* WHAT: Calculate required output buffer size (NONCE + ciphertext + TAG)
      * WHY:  - NONCE (12 bytes): Must be transmitted for decryption
@@ -1649,8 +1685,10 @@ nimcp_result_t nimcp_encryption_encrypt(nimcp_encryption_context_t* ctx, const u
      *       - TAG (16 bytes): Authentication tag for tamper detection
      */
     size_t required_size = NIMCP_SECURITY_NONCE_SIZE + plaintext_size + NIMCP_SECURITY_TAG_SIZE;
-    if (ciphertext_size < required_size)
+    if (ciphertext_size < required_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "Ciphertext buffer too small for encryption");
         return NIMCP_BUFFER_TOO_SMALL;
+    }
 
 #ifdef NIMCP_ENABLE_ENCRYPTION
     /* WHAT: Generate random nonce (number used once)
@@ -1702,6 +1740,7 @@ nimcp_result_t nimcp_encryption_encrypt(nimcp_encryption_context_t* ctx, const u
     if (result != 0) {
         // WHAT: Encryption failed
         // WHY:  Could indicate hardware issue or corrupted libsodium
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "AES-256-GCM encryption failed");
         return NIMCP_ERROR;
     }
 
@@ -1712,6 +1751,7 @@ nimcp_result_t nimcp_encryption_encrypt(nimcp_encryption_context_t* ctx, const u
     // WHY:  Without proper encryption, system is vulnerable
     // NOTE: Could implement ChaCha20-Poly1305 fallback, but libsodium should always be available
     (void)plaintext_size;  // Suppress unused warning
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Encryption unavailable: libsodium not enabled");
     return NIMCP_ERROR;
 #endif
 
@@ -1750,19 +1790,25 @@ nimcp_result_t nimcp_encryption_decrypt(nimcp_encryption_context_t* ctx, const u
                                         size_t ciphertext_size, uint8_t* plaintext,
                                         size_t plaintext_size, size_t* actual_size)
 {
-    if (!ctx || !ciphertext || !plaintext || !actual_size)
+    if (!ctx || !ciphertext || !plaintext || !actual_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in nimcp_encryption_decrypt");
         return NIMCP_INVALID_PARAM;
+    }
 
-    if (!ctx->initialized)
+    if (!ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "Decryption context not initialized");
         return NIMCP_INVALID_STATE;
+    }
 
     /* WHAT: Validate minimum ciphertext size (NONCE + TAG)
      * WHY:  Must contain at least nonce + tag. Shorter messages are malformed.
      * HOW:  Minimum valid ciphertext is NONCE (12) + TAG (16) = 28 bytes
      */
     size_t min_size = NIMCP_SECURITY_NONCE_SIZE + NIMCP_SECURITY_TAG_SIZE;
-    if (ciphertext_size < min_size)
+    if (ciphertext_size < min_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Ciphertext too small (missing nonce/tag)");
         return NIMCP_INVALID_PARAM;
+    }
 
     /* WHAT: Calculate plaintext size (excluding NONCE and TAG)
      * WHY:  Plaintext = Ciphertext - NONCE - TAG
@@ -1770,8 +1816,10 @@ nimcp_result_t nimcp_encryption_decrypt(nimcp_encryption_context_t* ctx, const u
      */
     size_t expected_plaintext_size = ciphertext_size - NIMCP_SECURITY_NONCE_SIZE - NIMCP_SECURITY_TAG_SIZE;
 
-    if (plaintext_size < expected_plaintext_size)
+    if (plaintext_size < expected_plaintext_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "Plaintext buffer too small for decryption");
         return NIMCP_BUFFER_TOO_SMALL;
+    }
 
 #ifdef NIMCP_ENABLE_ENCRYPTION
     /* WHAT: Extract nonce from ciphertext
@@ -1828,6 +1876,7 @@ nimcp_result_t nimcp_encryption_decrypt(nimcp_encryption_context_t* ctx, const u
          *       - Incorrect nonce
          * SECURITY: DO NOT return partial plaintext - it may be forged
          */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_PERMISSION_DENIED, "Decryption authentication failed: data may be tampered");
         return NIMCP_ERROR;
     }
 
@@ -1837,6 +1886,7 @@ nimcp_result_t nimcp_encryption_decrypt(nimcp_encryption_context_t* ctx, const u
     // WHAT: Fallback when libsodium unavailable - return error
     // WHY:  Cannot decrypt without proper cryptographic library
     (void)expected_plaintext_size;  // Suppress unused warning
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Decryption unavailable: libsodium not enabled");
     return NIMCP_ERROR;
 #endif
 
@@ -2237,6 +2287,7 @@ nimcp_result_t nimcp_security_emergency_inhibit(void* network_ptr)
 {
     // Guard: NULL network
     if (!network_ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL network pointer in emergency_inhibit");
         return NIMCP_ERROR;
     }
 
@@ -2272,11 +2323,13 @@ nimcp_result_t nimcp_security_increase_inhibition(void* network_ptr, float scale
 {
     // Guard: NULL network or invalid scale
     if (!network_ptr || scale_factor <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid network or scale_factor in increase_inhibition");
         return NIMCP_ERROR;
     }
 
     // Guard: Scale factor too high (>2.0 = dangerous)
     if (scale_factor > 2.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "Scale factor too high (>2.0) in increase_inhibition");
         return NIMCP_ERROR;
     }
 

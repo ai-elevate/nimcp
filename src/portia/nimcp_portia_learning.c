@@ -20,6 +20,7 @@
 #include "utils/platform/nimcp_platform.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "portia_learning"
 #include <string.h>

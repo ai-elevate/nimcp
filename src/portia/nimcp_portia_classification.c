@@ -19,6 +19,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_wiring_helpers.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "nimcp.h"
 
 #include <string.h>
@@ -225,12 +226,14 @@ portia_classifier_t portia_classification_init(
     if (!(config != NULL)) {
         LOG_ERROR("Invalid config pointer");
         classification_set_error("Invalid configuration pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid config pointer in portia_classification_init");
         return NULL;
     }
 
     if (config->max_targets == 0 || config->max_targets > 10000) {
         LOG_ERROR("Invalid max_targets: %u", config->max_targets);
         classification_set_error("Invalid max_targets (must be 1-10000)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid max_targets in portia_classification_init");
         return NULL;
     }
 
@@ -242,6 +245,7 @@ portia_classifier_t portia_classification_init(
     if (!classifier) {
         LOG_ERROR("Failed to allocate classifier");
         classification_set_error("Memory allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate classifier in portia_classification_init");
         return NULL;
     }
 
@@ -257,6 +261,7 @@ portia_classifier_t portia_classification_init(
     if (!classifier->registry.targets) {
         LOG_ERROR("Failed to allocate target registry");
         classification_set_error("Target registry allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate target registry in portia_classification_init");
         nimcp_free(classifier);
         return NULL;
     }
@@ -268,6 +273,7 @@ portia_classifier_t portia_classification_init(
     if (nimcp_mutex_init(&classifier->lock, false) != 0) {
         LOG_ERROR("Failed to initialize mutex");
         classification_set_error("Mutex initialization failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize mutex in portia_classification_init");
         nimcp_free(classifier->registry.targets);
         nimcp_free(classifier);
         return NULL;

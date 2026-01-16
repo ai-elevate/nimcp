@@ -12,6 +12,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 
@@ -21,6 +22,7 @@
 
 int bio_router_fep_default_config(bio_router_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_fep_default_config: NULL config");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -45,6 +47,7 @@ bio_router_fep_bridge_t* bio_router_fep_create(
     bio_router_t router
 ) {
     if (!config || !fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_fep_create: NULL config or fep_system");
         NIMCP_LOGGING_ERROR("bio_router_fep_create: NULL config or fep_system");
         return NULL;
     }
@@ -52,6 +55,7 @@ bio_router_fep_bridge_t* bio_router_fep_create(
     bio_router_fep_bridge_t* bridge = (bio_router_fep_bridge_t*)nimcp_malloc(
         sizeof(bio_router_fep_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bio_router_fep_create: Failed to allocate bridge");
         NIMCP_LOGGING_ERROR("bio_router_fep_create: Failed to allocate bridge");
         return NULL;
     }
@@ -76,6 +80,7 @@ bio_router_fep_bridge_t* bio_router_fep_create(
     /* Create mutex */
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "bio_router_fep_create: Failed to create mutex");
         NIMCP_LOGGING_ERROR("bio_router_fep_create: Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -110,6 +115,7 @@ void bio_router_fep_destroy(bio_router_fep_bridge_t* bridge) {
 
 int bio_router_fep_update_effects(bio_router_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_fep_update_effects: NULL bridge or fep_system");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -159,6 +165,7 @@ int bio_router_fep_observe_routing(
     bool success
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_fep_observe_routing: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -224,6 +231,7 @@ int bio_router_fep_predict_route(
     float* confidence
 ) {
     if (!bridge || !predicted_route || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_fep_predict_route: NULL bridge or output parameters");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -251,6 +259,7 @@ int bio_router_fep_predict_latency(
     float* uncertainty
 ) {
     if (!bridge || !predicted_latency_ms || !uncertainty) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_fep_predict_latency: NULL bridge or output parameters");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -280,6 +289,7 @@ int bio_router_fep_predict_latency(
 
 int bio_router_fep_connect_bio_async(bio_router_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_fep_connect_bio_async: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -297,6 +307,7 @@ int bio_router_fep_connect_bio_async(bio_router_fep_bridge_t* bridge) {
 
 int bio_router_fep_disconnect_bio_async(bio_router_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_fep_disconnect_bio_async: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -324,6 +335,7 @@ int bio_router_fep_get_effects(
     bio_router_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_fep_get_effects: NULL bridge or effects");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -339,6 +351,7 @@ int bio_router_fep_get_router_effects(
     fep_bio_router_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_fep_get_router_effects: NULL bridge or effects");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -354,6 +367,7 @@ int bio_router_fep_get_stats(
     bio_router_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_fep_get_stats: NULL bridge or stats");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -366,6 +380,7 @@ int bio_router_fep_get_stats(
 
 int bio_router_fep_reset_stats(bio_router_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_fep_reset_stats: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 

@@ -11,6 +11,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct analysis_thalamic_bridge {
@@ -37,11 +38,15 @@ analysis_thalamic_bridge_t* analysis_thalamic_bridge_create(
     const analysis_thalamic_config_t* config
 ) {
     analysis_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(analysis_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analysis_thalamic_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Initialize mutex for thread safety */
     bridge->base.mutex = nimcp_mutex_create(NULL);
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "analysis_thalamic_bridge_create: failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -65,7 +70,10 @@ void analysis_thalamic_bridge_destroy(analysis_thalamic_bridge_t* bridge) {
 }
 
 int analysis_thalamic_bridge_reset(analysis_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
@@ -78,7 +86,10 @@ int analysis_thalamic_route_signal(
     analysis_thalamic_bridge_t* bridge,
     const analysis_thalamic_signal_t* signal
 ) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_thalamic_route_signal: bridge or signal is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -145,7 +156,10 @@ int analysis_thalamic_route_decomposition(
     uint32_t problem_size,
     float complexity
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_thalamic_route_decomposition: bridge is NULL");
+        return -1;
+    }
 
     analysis_thalamic_signal_t signal = {
         .signal_type = ANALYSIS_SIGNAL_DECOMPOSITION,
@@ -165,7 +179,10 @@ int analysis_thalamic_request_depth(
     float depth_required,
     float urgency
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_thalamic_request_depth: bridge is NULL");
+        return -1;
+    }
 
     analysis_thalamic_signal_t signal = {
         .signal_type = ANALYSIS_SIGNAL_DEPTH_REQUEST,
@@ -181,7 +198,10 @@ int analysis_thalamic_request_depth(
 }
 
 int analysis_thalamic_set_attention(analysis_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f :
@@ -191,7 +211,10 @@ int analysis_thalamic_set_attention(analysis_thalamic_bridge_t* bridge, float at
 }
 
 int analysis_thalamic_get_attention(const analysis_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_thalamic_get_attention: bridge or attention is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
@@ -203,7 +226,10 @@ int analysis_thalamic_bridge_get_stats(
     const analysis_thalamic_bridge_t* bridge,
     analysis_thalamic_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_thalamic_bridge_get_stats: bridge or stats is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);

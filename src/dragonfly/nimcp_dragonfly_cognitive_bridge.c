@@ -13,6 +13,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Internal Structure
@@ -142,7 +143,10 @@ static bool is_tracking_mode(dragonfly_mode_t mode) {
 //=============================================================================
 
 int dragonfly_cognitive_bridge_default_config(dragonfly_cognitive_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -180,16 +184,43 @@ int dragonfly_cognitive_bridge_default_config(dragonfly_cognitive_config_t* conf
 }
 
 int dragonfly_cognitive_bridge_validate_config(const dragonfly_cognitive_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_bridge_validate_config: config is NULL");
+        return -1;
+    }
 
-    if (config->salience_threshold < 0 || config->salience_threshold > 1.0f) return -1;
-    if (config->salience_decay_rate < 0 || config->salience_decay_rate > 1.0f) return -1;
-    if (config->attention_base_width <= 0) return -1;
-    if (config->max_attention_foci == 0 || config->max_attention_foci > COGNITIVE_MAX_ATTENTION_FOCI) return -1;
-    if (config->wm_max_targets == 0 || config->wm_max_targets > COGNITIVE_MAX_WM_TARGETS) return -1;
-    if (config->pursuit_threshold < 0 || config->pursuit_threshold > 1.0f) return -1;
-    if (config->intercept_threshold < 0 || config->intercept_threshold > 1.0f) return -1;
-    if (config->abort_threshold < 0 || config->abort_threshold > 1.0f) return -1;
+    if (config->salience_threshold < 0 || config->salience_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cognitive_bridge_validate_config: salience_threshold out of range [0, 1]");
+        return -1;
+    }
+    if (config->salience_decay_rate < 0 || config->salience_decay_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cognitive_bridge_validate_config: salience_decay_rate out of range [0, 1]");
+        return -1;
+    }
+    if (config->attention_base_width <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cognitive_bridge_validate_config: attention_base_width <= 0");
+        return -1;
+    }
+    if (config->max_attention_foci == 0 || config->max_attention_foci > COGNITIVE_MAX_ATTENTION_FOCI) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cognitive_bridge_validate_config: max_attention_foci invalid");
+        return -1;
+    }
+    if (config->wm_max_targets == 0 || config->wm_max_targets > COGNITIVE_MAX_WM_TARGETS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cognitive_bridge_validate_config: wm_max_targets invalid");
+        return -1;
+    }
+    if (config->pursuit_threshold < 0 || config->pursuit_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cognitive_bridge_validate_config: pursuit_threshold out of range [0, 1]");
+        return -1;
+    }
+    if (config->intercept_threshold < 0 || config->intercept_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cognitive_bridge_validate_config: intercept_threshold out of range [0, 1]");
+        return -1;
+    }
+    if (config->abort_threshold < 0 || config->abort_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cognitive_bridge_validate_config: abort_threshold out of range [0, 1]");
+        return -1;
+    }
 
     return 0;
 }
@@ -203,11 +234,15 @@ dragonfly_cognitive_bridge_t* dragonfly_cognitive_bridge_create(
     const dragonfly_cognitive_config_t* config
 ) {
     dragonfly_cognitive_bridge_t* bridge = calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_cognitive_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     if (config) {
         if (dragonfly_cognitive_bridge_validate_config(config) != 0) {
             free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cognitive_bridge_create: invalid config");
             return NULL;
         }
         bridge->config = *config;
@@ -232,7 +267,10 @@ void dragonfly_cognitive_bridge_destroy(dragonfly_cognitive_bridge_t* bridge) {
 }
 
 int dragonfly_cognitive_bridge_reset(dragonfly_cognitive_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_bridge_reset: bridge is NULL or not initialized");
+        return -1;
+    }
 
     bridge->num_tracked_targets = 0;
     bridge->most_salient_target = 0;
@@ -260,7 +298,10 @@ int dragonfly_cognitive_register_salience(
     dragonfly_cognitive_bridge_t* bridge,
     salience_evaluator_t salience
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_register_salience: bridge is NULL or not initialized");
+        return -1;
+    }
     bridge->salience = salience;
     return 0;
 }
@@ -269,7 +310,10 @@ int dragonfly_cognitive_register_attention(
     dragonfly_cognitive_bridge_t* bridge,
     attention_system_t attention
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_register_attention: bridge is NULL or not initialized");
+        return -1;
+    }
     bridge->attention = attention;
     return 0;
 }
@@ -278,7 +322,10 @@ int dragonfly_cognitive_register_working_memory(
     dragonfly_cognitive_bridge_t* bridge,
     working_memory_t wm
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_register_working_memory: bridge is NULL or not initialized");
+        return -1;
+    }
     bridge->wm = wm;
     return 0;
 }
@@ -287,7 +334,10 @@ int dragonfly_cognitive_register_executive(
     dragonfly_cognitive_bridge_t* bridge,
     executive_control_t executive
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_register_executive: bridge is NULL or not initialized");
+        return -1;
+    }
     bridge->executive = executive;
     return 0;
 }
@@ -301,7 +351,10 @@ int dragonfly_cognitive_compute_salience(
     uint32_t target_id,
     target_salience_t* salience
 ) {
-    if (!bridge || !bridge->initialized || !salience) return -1;
+    if (!bridge || !bridge->initialized || !salience) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_compute_salience: bridge, salience is NULL or bridge not initialized");
+        return -1;
+    }
 
     memset(salience, 0, sizeof(*salience));
 
@@ -344,7 +397,10 @@ int dragonfly_cognitive_compute_salience(
 }
 
 int dragonfly_cognitive_update_salience(dragonfly_cognitive_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_update_salience: bridge is NULL or not initialized");
+        return -1;
+    }
 
     uint64_t start_time = get_time_us();
 
@@ -409,7 +465,10 @@ int dragonfly_cognitive_get_most_salient(
     uint32_t* target_id,
     float* salience
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_get_most_salient: bridge is NULL or not initialized");
+        return -1;
+    }
 
     if (target_id) *target_id = bridge->most_salient_target;
     if (salience) *salience = bridge->most_salient_value;
@@ -421,7 +480,10 @@ int dragonfly_cognitive_get_most_salient(
 //=============================================================================
 
 int dragonfly_cognitive_update_attention(dragonfly_cognitive_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_update_attention: bridge is NULL or not initialized");
+        return -1;
+    }
 
     uint64_t start_time = get_time_us();
 
@@ -479,7 +541,10 @@ int dragonfly_cognitive_get_attention_focus(
     const dragonfly_cognitive_bridge_t* bridge,
     dragonfly_attention_focus_t* focus
 ) {
-    if (!bridge || !bridge->initialized || !focus) return -1;
+    if (!bridge || !bridge->initialized || !focus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_get_attention_focus: bridge, focus is NULL or bridge not initialized");
+        return -1;
+    }
     *focus = bridge->primary_focus;
     return 0;
 }
@@ -490,7 +555,10 @@ int dragonfly_cognitive_get_attention_foci(
     uint32_t max_foci,
     uint32_t* num_foci
 ) {
-    if (!bridge || !bridge->initialized || !foci || !num_foci) return -1;
+    if (!bridge || !bridge->initialized || !foci || !num_foci) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_get_attention_foci: bridge, foci, num_foci is NULL or bridge not initialized");
+        return -1;
+    }
 
     uint32_t count = bridge->num_attention_foci;
     if (count > max_foci) count = max_foci;
@@ -505,7 +573,10 @@ int dragonfly_cognitive_set_attention_priority(
     uint32_t target_id,
     dragonfly_attention_priority_t priority
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_set_attention_priority: bridge is NULL or not initialized");
+        return -1;
+    }
 
     /* Update focus if it matches target */
     if (bridge->primary_focus.target_id == target_id) {
@@ -523,7 +594,10 @@ int dragonfly_cognitive_set_attention_priority(
 //=============================================================================
 
 int dragonfly_cognitive_update_working_memory(dragonfly_cognitive_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_update_working_memory: bridge is NULL or not initialized");
+        return -1;
+    }
 
     uint64_t now = get_time_us();
     uint64_t start_time = now;
@@ -604,7 +678,10 @@ int dragonfly_cognitive_wm_get_target(
     uint32_t target_id,
     wm_target_entry_t* entry
 ) {
-    if (!bridge || !bridge->initialized || !entry) return -1;
+    if (!bridge || !bridge->initialized || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_wm_get_target: bridge, entry is NULL or bridge not initialized");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->wm_num_entries; i++) {
         if (bridge->wm_entries[i].target_id == target_id) {
@@ -612,6 +689,7 @@ int dragonfly_cognitive_wm_get_target(
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_cognitive_wm_get_target: target not found");
     return -1;  /* Not found */
 }
 
@@ -621,7 +699,10 @@ int dragonfly_cognitive_wm_get_all_targets(
     uint32_t max_entries,
     uint32_t* num_entries
 ) {
-    if (!bridge || !bridge->initialized || !entries || !num_entries) return -1;
+    if (!bridge || !bridge->initialized || !entries || !num_entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_wm_get_all_targets: bridge, entries, num_entries is NULL or bridge not initialized");
+        return -1;
+    }
 
     uint32_t count = bridge->wm_num_entries;
     if (count > max_entries) count = max_entries;
@@ -637,7 +718,10 @@ float dragonfly_cognitive_wm_get_occupancy(const dragonfly_cognitive_bridge_t* b
 }
 
 int dragonfly_cognitive_wm_clear(dragonfly_cognitive_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_wm_clear: bridge is NULL or not initialized");
+        return -1;
+    }
     bridge->wm_num_entries = 0;
     return 0;
 }
@@ -647,7 +731,10 @@ int dragonfly_cognitive_wm_clear(dragonfly_cognitive_bridge_t* bridge) {
 //=============================================================================
 
 int dragonfly_cognitive_update_executive(dragonfly_cognitive_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_update_executive: bridge is NULL or not initialized");
+        return -1;
+    }
 
     uint64_t start_time = get_time_us();
 
@@ -712,7 +799,10 @@ int dragonfly_cognitive_get_executive_state(
     const dragonfly_cognitive_bridge_t* bridge,
     executive_state_t* state
 ) {
-    if (!bridge || !bridge->initialized || !state) return -1;
+    if (!bridge || !bridge->initialized || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_get_executive_state: bridge, state is NULL or bridge not initialized");
+        return -1;
+    }
     *state = bridge->exec_state;
     return 0;
 }
@@ -725,7 +815,10 @@ executive_action_t dragonfly_cognitive_get_recommended_action(
 }
 
 int dragonfly_cognitive_execute_action(dragonfly_cognitive_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_execute_action: bridge is NULL or not initialized");
+        return -1;
+    }
 
     /* Execute the recommended action */
     bridge->exec_state.current_action = bridge->exec_state.recommended_action;
@@ -739,7 +832,10 @@ int dragonfly_cognitive_request_abort(
     dragonfly_cognitive_bridge_t* bridge,
     const char* reason
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_request_abort: bridge is NULL or not initialized");
+        return -1;
+    }
 
     bridge->exec_state.current_action = EXEC_ACTION_ABORT;
     bridge->exec_state.abort_recommended = true;
@@ -754,7 +850,10 @@ int dragonfly_cognitive_request_abort(
 //=============================================================================
 
 int dragonfly_cognitive_update_all(dragonfly_cognitive_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_update_all: bridge is NULL or not initialized");
+        return -1;
+    }
 
     int result = 0;
 
@@ -770,7 +869,10 @@ int dragonfly_cognitive_step(
     dragonfly_cognitive_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_step: bridge is NULL or not initialized");
+        return -1;
+    }
     (void)dt_ms;  /* Not currently used, but available for time-based updates */
 
     return dragonfly_cognitive_update_all(bridge);
@@ -784,7 +886,10 @@ int dragonfly_cognitive_bridge_get_stats(
     const dragonfly_cognitive_bridge_t* bridge,
     cognitive_bridge_stats_t* stats
 ) {
-    if (!bridge || !bridge->initialized || !stats) return -1;
+    if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_bridge_get_stats: bridge, stats is NULL or bridge not initialized");
+        return -1;
+    }
 
     *stats = bridge->stats;
 
@@ -799,7 +904,10 @@ int dragonfly_cognitive_bridge_get_stats(
 }
 
 int dragonfly_cognitive_bridge_reset_stats(dragonfly_cognitive_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_bridge_reset_stats: bridge is NULL or not initialized");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
 }
@@ -808,7 +916,10 @@ int dragonfly_cognitive_bridge_get_config(
     const dragonfly_cognitive_bridge_t* bridge,
     dragonfly_cognitive_config_t* config
 ) {
-    if (!bridge || !bridge->initialized || !config) return -1;
+    if (!bridge || !bridge->initialized || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_bridge_get_config: bridge, config is NULL or bridge not initialized");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }
@@ -817,8 +928,14 @@ int dragonfly_cognitive_bridge_set_config(
     dragonfly_cognitive_bridge_t* bridge,
     const dragonfly_cognitive_config_t* config
 ) {
-    if (!bridge || !bridge->initialized || !config) return -1;
-    if (dragonfly_cognitive_bridge_validate_config(config) != 0) return -1;
+    if (!bridge || !bridge->initialized || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cognitive_bridge_set_config: bridge, config is NULL or bridge not initialized");
+        return -1;
+    }
+    if (dragonfly_cognitive_bridge_validate_config(config) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cognitive_bridge_set_config: invalid config");
+        return -1;
+    }
     bridge->config = *config;
     return 0;
 }

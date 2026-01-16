@@ -31,6 +31,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security_integration.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -89,12 +90,14 @@ uint32_t spike_nlp_embed_to_spikes(
 ) {
     // Guard: NULL embedding
     if (!embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_nlp_embed_to_spikes: NULL embedding");
         LOG_ERROR(LOG_MODULE, "embed_to_spikes: NULL embedding");
         return 0;
     }
 
     // Guard: NULL network
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_nlp_embed_to_spikes: NULL network");
         LOG_ERROR(LOG_MODULE, "embed_to_spikes: NULL network");
         return 0;
     }
@@ -201,12 +204,14 @@ uint32_t spike_nlp_process_word(
 
     // Guard: NULL network
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_nlp_process_word: NULL network");
         LOG_ERROR(LOG_MODULE, "process_word: NULL network");
         return 0;
     }
 
     // Guard: NULL embedding
     if (!embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_nlp_process_word: NULL embedding");
         LOG_ERROR(LOG_MODULE, "process_word: NULL embedding");
         return 0;
     }
@@ -303,18 +308,21 @@ bool spike_nlp_process_sentence(
 ) {
     // Guard: NULL network
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_nlp_process_sentence: NULL network");
         LOG_ERROR(LOG_MODULE, "process_sentence: NULL network");
         return false;
     }
 
     // Guard: NULL sentence
     if (!sentence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_nlp_process_sentence: NULL sentence");
         LOG_ERROR(LOG_MODULE, "process_sentence: NULL sentence");
         return false;
     }
 
     // Guard: NULL result
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_nlp_process_sentence: NULL result");
         LOG_ERROR(LOG_MODULE, "process_sentence: NULL result");
         return false;
     }

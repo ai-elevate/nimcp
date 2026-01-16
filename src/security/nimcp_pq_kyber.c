@@ -20,6 +20,7 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -69,6 +70,7 @@ typedef struct {
  */
 static nimcp_error_t secure_random_bytes(uint8_t* buffer, size_t len) {
     if (!buffer || len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid buffer or length for secure random");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -83,6 +85,7 @@ static nimcp_error_t secure_random_bytes(uint8_t* buffer, size_t len) {
     /* Fallback to /dev/urandom */
     FILE* urandom = fopen("/dev/urandom", "rb");
     if (!urandom) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to open /dev/urandom for Kyber random");
         return NIMCP_ERROR_IO;
     }
 
@@ -90,6 +93,7 @@ static nimcp_error_t secure_random_bytes(uint8_t* buffer, size_t len) {
     fclose(urandom);
 
     if (bytes_read != len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to read sufficient random bytes for Kyber");
         return NIMCP_ERROR_IO;
     }
 

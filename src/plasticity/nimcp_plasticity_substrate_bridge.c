@@ -13,6 +13,7 @@
 #include "utils/validation/nimcp_common.h"
 #include <math.h>
 #include <string.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
  * Helper Functions - Temperature Scaling
@@ -66,6 +67,7 @@ static float clamp_f(float value, float min, float max)
 int plasticity_substrate_default_config(plasticity_substrate_config_t* config)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Config is NULL in default_config");
         return -1;
     }
 
@@ -96,6 +98,7 @@ plasticity_substrate_bridge_t* plasticity_substrate_bridge_create(
 {
     /* Guard: Validate substrate */
     if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Cannot create plasticity substrate bridge: NULL substrate");
         NIMCP_LOGGING_ERROR("Cannot create plasticity substrate bridge: NULL substrate");
         return NULL;
     }
@@ -104,6 +107,7 @@ plasticity_substrate_bridge_t* plasticity_substrate_bridge_create(
     plasticity_substrate_bridge_t* bridge =
         (plasticity_substrate_bridge_t*)nimcp_malloc(sizeof(plasticity_substrate_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate plasticity substrate bridge");
         NIMCP_LOGGING_ERROR("Failed to allocate plasticity substrate bridge");
         return NULL;
     }
@@ -124,12 +128,14 @@ plasticity_substrate_bridge_t* plasticity_substrate_bridge_create(
     /* Initialize mutex */
     bridge->base.mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate mutex");
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to initialize mutex");
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
@@ -204,6 +210,7 @@ int plasticity_substrate_connect_contexts(
     dendritic_tree_t dendritic_tree)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Bridge is NULL in connect_contexts");
         return -1;
     }
 
@@ -229,6 +236,7 @@ int plasticity_substrate_connect_contexts(
 int plasticity_substrate_connect_bio_async(plasticity_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Bridge is NULL in connect_bio_async");
         return -1;
     }
 
@@ -257,6 +265,7 @@ int plasticity_substrate_connect_bio_async(plasticity_substrate_bridge_t* bridge
 int plasticity_substrate_disconnect_bio_async(plasticity_substrate_bridge_t* bridge)
 {
     if (!bridge || !bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid bridge state in disconnect_bio_async");
         return -1;
     }
 
@@ -281,6 +290,7 @@ bool plasticity_substrate_is_bio_async_connected(const plasticity_substrate_brid
 int plasticity_substrate_update_stdp(plasticity_substrate_bridge_t* bridge)
 {
     if (!bridge || !bridge->config.enable_stdp_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid bridge in update_stdp");
         return -1;
     }
 
@@ -377,6 +387,7 @@ int plasticity_substrate_update_stdp(plasticity_substrate_bridge_t* bridge)
 int plasticity_substrate_update_bcm(plasticity_substrate_bridge_t* bridge)
 {
     if (!bridge || !bridge->config.enable_bcm_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid bridge in update_bcm");
         return -1;
     }
 
@@ -440,6 +451,7 @@ int plasticity_substrate_update_bcm(plasticity_substrate_bridge_t* bridge)
 int plasticity_substrate_update_homeostatic(plasticity_substrate_bridge_t* bridge)
 {
     if (!bridge || !bridge->config.enable_homeostatic_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid bridge in update_homeostatic");
         return -1;
     }
 
@@ -505,6 +517,7 @@ int plasticity_substrate_update_homeostatic(plasticity_substrate_bridge_t* bridg
 int plasticity_substrate_update_eligibility(plasticity_substrate_bridge_t* bridge)
 {
     if (!bridge || !bridge->config.enable_eligibility_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid bridge in update_eligibility");
         return -1;
     }
 
@@ -585,6 +598,7 @@ int plasticity_substrate_update_eligibility(plasticity_substrate_bridge_t* bridg
 int plasticity_substrate_update_dendritic(plasticity_substrate_bridge_t* bridge)
 {
     if (!bridge || !bridge->config.enable_dendritic_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid bridge in update_dendritic");
         return -1;
     }
 
@@ -662,6 +676,7 @@ int plasticity_substrate_update_dendritic(plasticity_substrate_bridge_t* bridge)
 int plasticity_substrate_update_all(plasticity_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Bridge is NULL in update_all");
         return -1;
     }
 
@@ -802,6 +817,7 @@ int plasticity_substrate_get_effects(
     plasticity_substrate_effects_t* effects)
 {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in get_effects");
         return -1;
     }
 
@@ -845,6 +861,7 @@ int plasticity_substrate_get_stats(
     plasticity_substrate_stats_t* stats)
 {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in get_stats");
         return -1;
     }
 

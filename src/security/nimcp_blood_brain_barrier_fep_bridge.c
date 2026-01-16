@@ -7,6 +7,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -17,6 +18,7 @@
 
 int bbb_fep_default_config(bbb_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config in bbb_fep_default_config");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -49,12 +51,14 @@ bbb_fep_bridge_t* bbb_fep_create(
 ) {
     if (!bbb_system || !fep_system) {
         NIMCP_LOGGING_ERROR("BBB FEP bridge: NULL system pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL system pointers in bbb_fep_create");
         return NULL;
     }
 
     bbb_fep_bridge_t* bridge = (bbb_fep_bridge_t*)nimcp_malloc(sizeof(bbb_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("BBB FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate BBB FEP bridge");
         return NULL;
     }
 
@@ -72,6 +76,7 @@ bbb_fep_bridge_t* bbb_fep_create(
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("BBB FEP bridge: mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Failed to create BBB FEP bridge mutex");
         nimcp_free(bridge);
         return NULL;
     }

@@ -9,6 +9,7 @@
 
 #include "lnn/nimcp_lnn_ode.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /*=============================================================================
  * ODE Solver Implementations
@@ -20,10 +21,14 @@ float lnn_ode_step_euler(float t, float x, float dt,
     /* Guard: validate inputs */
     if (!derivative) {
         NIMCP_LOGGING_ERROR("Derivative function is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null derivative function in lnn_ode_step_euler");
         return x;
     }
     if (dt <= 0.0f) {
         NIMCP_LOGGING_ERROR("Time step must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid time step %f in lnn_ode_step_euler", dt);
         return x;
     }
 
@@ -43,10 +48,14 @@ float lnn_ode_step_heun(float t, float x, float dt,
     /* Guard: validate inputs */
     if (!derivative) {
         NIMCP_LOGGING_ERROR("Derivative function is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null derivative function in lnn_ode_step_heun");
         return x;
     }
     if (dt <= 0.0f) {
         NIMCP_LOGGING_ERROR("Time step must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid time step %f in lnn_ode_step_heun", dt);
         return x;
     }
 
@@ -79,10 +88,14 @@ float lnn_ode_step_rk4(float t, float x, float dt,
     /* Guard: validate inputs */
     if (!derivative) {
         NIMCP_LOGGING_ERROR("Derivative function is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null derivative function in lnn_ode_step_rk4");
         return x;
     }
     if (dt <= 0.0f) {
         NIMCP_LOGGING_ERROR("Time step must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid time step %f in lnn_ode_step_rk4", dt);
         return x;
     }
 
@@ -130,6 +143,8 @@ float lnn_ode_step(lnn_ode_method_t method,
     /* Guard: validate inputs */
     if (!derivative) {
         NIMCP_LOGGING_ERROR("Derivative function is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null derivative function in lnn_ode_step");
         return x;
     }
 
@@ -168,11 +183,16 @@ nimcp_tensor_t* lnn_ode_step_tensor(nimcp_tensor_t* x, nimcp_tensor_t* dx_dt,
     /* Guard: validate inputs */
     if (!x || !dx_dt) {
         NIMCP_LOGGING_ERROR("NULL tensor input");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null tensor in lnn_ode_step_tensor: x=%p, dx_dt=%p",
+                             (void*)x, (void*)dx_dt);
         return NULL;
     }
 
     if (dt <= 0.0f) {
         NIMCP_LOGGING_ERROR("Time step must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid time step %f in lnn_ode_step_tensor", dt);
         return NULL;
     }
 
@@ -180,6 +200,8 @@ nimcp_tensor_t* lnn_ode_step_tensor(nimcp_tensor_t* x, nimcp_tensor_t* dx_dt,
     nimcp_tensor_t* x_new = nimcp_tensor_clone(x);
     if (!x_new) {
         NIMCP_LOGGING_ERROR("Failed to clone state tensor");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 0,
+                          "Failed to clone state tensor in lnn_ode_step_tensor");
         return NULL;
     }
 

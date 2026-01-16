@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>
@@ -197,7 +198,10 @@ attention_plasticity_bridge_t* attention_plasticity_create(
     const attention_plasticity_config_t* config)
 {
     attention_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(attention_plasticity_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_plasticity_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Apply configuration */
     if (config) {
@@ -210,6 +214,7 @@ attention_plasticity_bridge_t* attention_plasticity_create(
     mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
     bridge->mutex = nimcp_mutex_create(&mutex_attr);
     if (!bridge->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_plasticity_create: failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -218,6 +223,7 @@ attention_plasticity_bridge_t* attention_plasticity_create(
     bridge->synapse_capacity = ATTENTION_PLASTICITY_MAX_SYNAPSES;
     bridge->synapses = nimcp_calloc(bridge->synapse_capacity, sizeof(attention_plasticity_synapse_t));
     if (!bridge->synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_plasticity_create: failed to allocate synapses");
         nimcp_mutex_destroy(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
@@ -228,6 +234,7 @@ attention_plasticity_bridge_t* attention_plasticity_create(
     bridge->num_heads = ATTENTION_PLASTICITY_MAX_HEADS;
     bridge->head_states = nimcp_calloc(bridge->num_heads, sizeof(attention_head_plasticity_t));
     if (!bridge->head_states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_plasticity_create: failed to allocate head_states");
         nimcp_free(bridge->synapses);
         nimcp_mutex_destroy(bridge->mutex);
         nimcp_free(bridge);
@@ -274,7 +281,10 @@ void attention_plasticity_destroy(attention_plasticity_bridge_t* bridge) {
 }
 
 int attention_plasticity_reset(attention_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -322,7 +332,10 @@ int attention_plasticity_register_synapse(
     uint32_t head_idx,
     float initial_weight)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -366,7 +379,10 @@ int attention_plasticity_unregister_synapse(
     attention_plasticity_bridge_t* bridge,
     uint32_t synapse_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -392,7 +408,10 @@ int attention_plasticity_get_synapse(
     uint32_t synapse_id,
     attention_plasticity_synapse_t* synapse)
 {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_get_synapse: bridge or synapse is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -419,8 +438,14 @@ int attention_plasticity_focus(
     float attention_weight,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
-    if (head_idx >= bridge->num_heads) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_focus: bridge is NULL");
+        return -1;
+    }
+    if (head_idx >= bridge->num_heads) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_focus: head_idx out of range");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -467,8 +492,14 @@ int attention_plasticity_shift(
     float shift_strength,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
-    if (from_head >= bridge->num_heads || to_head >= bridge->num_heads) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_shift: bridge is NULL");
+        return -1;
+    }
+    if (from_head >= bridge->num_heads || to_head >= bridge->num_heads) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_shift: head index out of range");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -548,7 +579,10 @@ int attention_plasticity_salience(
     uint32_t sequence_length,
     uint64_t timestamp_us)
 {
-    if (!bridge || !salience_map) return -1;
+    if (!bridge || !salience_map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_salience: bridge or salience_map is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -578,7 +612,10 @@ int attention_plasticity_reward(
     float reward,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_reward: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -625,8 +662,14 @@ int attention_plasticity_habituation_trial(
     uint32_t head_idx,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
-    if (head_idx >= bridge->num_heads) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_habituation_trial: bridge is NULL");
+        return -1;
+    }
+    if (head_idx >= bridge->num_heads) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_habituation_trial: head_idx out of range");
+        return -1;
+    }
     if (!bridge->config.enable_habituation) return 0;
 
     nimcp_mutex_lock(bridge->mutex);
@@ -669,8 +712,14 @@ int attention_plasticity_novelty(
     float novelty_score,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
-    if (head_idx >= bridge->num_heads) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_novelty: bridge is NULL");
+        return -1;
+    }
+    if (head_idx >= bridge->num_heads) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_novelty: head_idx out of range");
+        return -1;
+    }
     if (!bridge->config.enable_novelty_detection) return 0;
 
     nimcp_mutex_lock(bridge->mutex);
@@ -729,7 +778,10 @@ int attention_plasticity_update(
     attention_plasticity_bridge_t* bridge,
     float dt_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -803,7 +855,10 @@ int attention_plasticity_update(
 }
 
 int attention_plasticity_consolidate(attention_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_sleep_consolidation) return 0;
 
     nimcp_mutex_lock(bridge->mutex);
@@ -855,8 +910,14 @@ int attention_plasticity_get_bias(
     uint32_t head_idx,
     float* bias)
 {
-    if (!bridge || !bias) return -1;
-    if (head_idx >= bridge->num_heads) return -1;
+    if (!bridge || !bias) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_get_bias: bridge or bias is NULL");
+        return -1;
+    }
+    if (head_idx >= bridge->num_heads) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_get_bias: head_idx out of range");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -872,7 +933,10 @@ int attention_plasticity_get_modulation(
     float* modulation,
     uint32_t num_heads)
 {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_get_modulation: bridge or modulation is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -960,7 +1024,10 @@ int attention_plasticity_get_state(
     const attention_plasticity_bridge_t* bridge,
     attention_plasticity_bridge_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_get_state: bridge or state is NULL");
+        return -1;
+    }
 
     attention_plasticity_bridge_t* mutable_bridge = (attention_plasticity_bridge_t*)bridge;
 
@@ -983,7 +1050,10 @@ int attention_plasticity_get_stats(
     const attention_plasticity_bridge_t* bridge,
     attention_plasticity_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_get_stats: bridge or stats is NULL");
+        return -1;
+    }
 
     attention_plasticity_bridge_t* mutable_bridge = (attention_plasticity_bridge_t*)bridge;
 
@@ -1025,7 +1095,10 @@ int attention_plasticity_set_weight_callback(
     attention_weight_change_cb callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_set_weight_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1042,7 +1115,10 @@ int attention_plasticity_set_shift_callback(
     attention_shift_cb callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_set_shift_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1062,7 +1138,10 @@ int attention_plasticity_set_attention_modulation(
     attention_plasticity_bridge_t* bridge,
     float attention_level)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_set_attention_modulation: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1077,7 +1156,10 @@ int attention_plasticity_set_salience_modulation(
     attention_plasticity_bridge_t* bridge,
     float salience_level)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_set_salience_modulation: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1093,7 +1175,10 @@ int attention_plasticity_set_salience_modulation(
 //=============================================================================
 
 int attention_plasticity_connect_bio_async(attention_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_bio_async) return 0;
 
     nimcp_mutex_lock(bridge->mutex);
@@ -1107,7 +1192,10 @@ int attention_plasticity_connect_bio_async(attention_plasticity_bridge_t* bridge
 }
 
 int attention_plasticity_disconnect_bio_async(attention_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 

@@ -10,6 +10,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
  * Internal Helper Functions
@@ -95,6 +96,7 @@ static int apply_state_configuration(
 int plasticity_coordinator_default_config(plasticity_coordinator_config_t* config) {
     /* Guard clause */
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Config is NULL");
         NIMCP_LOGGING_ERROR("Config is NULL");
         return -1;
     }
@@ -212,6 +214,7 @@ plasticity_coordinator_t* plasticity_coordinator_create(
     plasticity_coordinator_t* coordinator = (plasticity_coordinator_t*)
         nimcp_malloc(sizeof(plasticity_coordinator_t));
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate coordinator");
         NIMCP_LOGGING_ERROR("Failed to allocate coordinator");
         return NULL;
     }
@@ -233,6 +236,7 @@ plasticity_coordinator_t* plasticity_coordinator_create(
     coordinator->mechanisms = (plasticity_mechanism_entry_t*)
         nimcp_malloc(sizeof(plasticity_mechanism_entry_t) * coordinator->mechanism_capacity);
     if (!coordinator->mechanisms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate mechanism registry");
         NIMCP_LOGGING_ERROR("Failed to allocate mechanism registry");
         nimcp_free(coordinator);
         return NULL;
@@ -244,6 +248,7 @@ plasticity_coordinator_t* plasticity_coordinator_create(
     /* Create mutex */
     coordinator->mutex = nimcp_platform_mutex_create();
     if (!coordinator->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create mutex");
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(coordinator->mechanisms);
         nimcp_free(coordinator);
@@ -317,6 +322,7 @@ int plasticity_coordinator_register_mechanism(
 ) {
     /* Guard clauses */
     if (!coordinator || !name || !handle || !update_fn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid parameters for mechanism registration");
         NIMCP_LOGGING_ERROR("Invalid parameters");
         return -1;
     }
@@ -326,6 +332,7 @@ int plasticity_coordinator_register_mechanism(
     /* Check capacity */
     if (coordinator->mechanism_count >= coordinator->mechanism_capacity) {
         nimcp_platform_mutex_unlock(coordinator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Mechanism registry full");
         NIMCP_LOGGING_ERROR("Mechanism registry full");
         return -1;
     }
@@ -370,7 +377,10 @@ int plasticity_coordinator_unregister_mechanism(
     uint32_t mechanism_id
 ) {
     /* Guard clause */
-    if (!coordinator) return -1;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Coordinator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -385,6 +395,7 @@ int plasticity_coordinator_unregister_mechanism(
 
     if (found_idx < 0) {
         nimcp_platform_mutex_unlock(coordinator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LEARNING_FAILED, "Mechanism %u not found", mechanism_id);
         NIMCP_LOGGING_WARN("Mechanism %u not found", mechanism_id);
         return -1;
     }
@@ -412,7 +423,10 @@ int plasticity_coordinator_set_mechanism_enabled(
     bool enabled
 ) {
     /* Guard clause */
-    if (!coordinator) return -1;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Coordinator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -439,7 +453,10 @@ int plasticity_coordinator_update(
     float dt
 ) {
     /* Guard clauses */
-    if (!coordinator) return -1;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Coordinator is NULL in update");
+        return -1;
+    }
     if (dt <= 0.0f) return 0;
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -542,7 +559,10 @@ int plasticity_coordinator_update_mechanism(
     float dt
 ) {
     /* Guard clauses */
-    if (!coordinator) return -1;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Coordinator is NULL in update_mechanism");
+        return -1;
+    }
     if (dt <= 0.0f) return -1;
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -583,8 +603,14 @@ int plasticity_coordinator_set_state(
     plasticity_coordinator_state_t new_state
 ) {
     /* Guard clauses */
-    if (!coordinator) return -1;
-    if (new_state >= PLASTICITY_STATE_COUNT) return -1;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Coordinator is NULL in set_state");
+        return -1;
+    }
+    if (new_state >= PLASTICITY_STATE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LEARNING_FAILED, "Invalid plasticity state: %d", new_state);
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -618,7 +644,10 @@ int plasticity_coordinator_trigger_consolidation(
     plasticity_coordinator_t* coordinator
 ) {
     /* Guard clause */
-    if (!coordinator) return -1;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Coordinator is NULL in trigger_consolidation");
+        return -1;
+    }
 
     /* Transition to consolidation state */
     int result = plasticity_coordinator_set_state(
@@ -651,7 +680,10 @@ int plasticity_coordinator_resolve_conflict(
     float* resolved_change_out
 ) {
     /* Guard clauses */
-    if (!coordinator || !resolved_change_out) return -1;
+    if (!coordinator || !resolved_change_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in resolve_conflict");
+        return -1;
+    }
 
     /* Check if actually a conflict */
     float diff = fabsf(weight_change_a - weight_change_b);
@@ -765,8 +797,14 @@ int plasticity_coordinator_set_conflict_strategy(
     conflict_resolution_strategy_t strategy
 ) {
     /* Guard clauses */
-    if (!coordinator) return -1;
-    if (strategy >= CONFLICT_RESOLUTION_COUNT) return -1;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Coordinator is NULL in set_conflict_strategy");
+        return -1;
+    }
+    if (strategy >= CONFLICT_RESOLUTION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LEARNING_FAILED, "Invalid conflict strategy: %d", strategy);
+        return -1;
+    }
 
     coordinator->config.conflict_strategy = strategy;
 
@@ -787,7 +825,10 @@ int plasticity_coordinator_connect_brain_immune(
     brain_immune_system_t* immune
 ) {
     /* Guard clauses */
-    if (!coordinator || !immune) return -1;
+    if (!coordinator || !immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in connect_brain_immune");
+        return -1;
+    }
 
     coordinator->brain_immune = immune;
     coordinator->immune_connected = true;
@@ -799,7 +840,10 @@ int plasticity_coordinator_connect_brain_immune(
 int plasticity_coordinator_disconnect_brain_immune(
     plasticity_coordinator_t* coordinator
 ) {
-    if (!coordinator) return -1;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Coordinator is NULL in disconnect_brain_immune");
+        return -1;
+    }
 
     coordinator->brain_immune = NULL;
     coordinator->immune_connected = false;
@@ -812,7 +856,10 @@ int plasticity_coordinator_connect_bio_async(
     plasticity_coordinator_t* coordinator
 ) {
     /* Guard clause */
-    if (!coordinator) return -1;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Coordinator is NULL in connect_bio_async");
+        return -1;
+    }
     if (coordinator->bio_async_connected) return 0;
 
     /* Register with bio-async router */
@@ -837,7 +884,10 @@ int plasticity_coordinator_connect_bio_async(
 int plasticity_coordinator_disconnect_bio_async(
     plasticity_coordinator_t* coordinator
 ) {
-    if (!coordinator) return -1;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Coordinator is NULL in disconnect_bio_async");
+        return -1;
+    }
     if (!coordinator->bio_async_connected) return 0;
 
     if (coordinator->bio_context) {
@@ -859,7 +909,10 @@ int plasticity_coordinator_get_stats(
     plasticity_coordinator_stats_t* stats
 ) {
     /* Guard clauses */
-    if (!coordinator || !stats) return -1;
+    if (!coordinator || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in get_stats");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(coordinator->mutex);
     *stats = coordinator->stats;

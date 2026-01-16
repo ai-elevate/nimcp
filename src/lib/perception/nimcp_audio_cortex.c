@@ -34,6 +34,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -522,17 +523,24 @@ static void dct(const float* input, float* output, uint32_t n, uint32_t num_coef
 audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
 {
     if (!nimcp_validate_pointer(config, "config")) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_NULL_POINTER, 0, "audio_cortex",
+            "NULL config provided to audio_cortex_create");
         return NULL;
     }
 
     // Validate configuration
     if (config->sample_rate < AUDIO_MIN_SAMPLE_RATE ||
         config->sample_rate > AUDIO_MAX_SAMPLE_RATE) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_INVALID_PARAM, 0, "audio_cortex",
+            "Invalid sample rate: %u (valid range: %u-%u)",
+            config->sample_rate, AUDIO_MIN_SAMPLE_RATE, AUDIO_MAX_SAMPLE_RATE);
         LOG_ERROR(AUDIO_LOG_MODULE, "Invalid sample rate: %u", config->sample_rate);
         return NULL;
     }
 
     if (config->num_channels == 0 || config->num_channels > AUDIO_MAX_CHANNELS) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_INVALID_PARAM, 0, "audio_cortex",
+            "Invalid number of channels: %u (max: %u)", config->num_channels, AUDIO_MAX_CHANNELS);
         LOG_ERROR(AUDIO_LOG_MODULE, "Invalid number of channels: %u", config->num_channels);
         return NULL;
     }
@@ -540,6 +548,8 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
     // Allocate cortex structure
     audio_cortex_t* cortex = (audio_cortex_t*)nimcp_calloc(1, sizeof(audio_cortex_t));
     if (!cortex) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(audio_cortex_t),
+            "Failed to allocate audio cortex structure");
         LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate audio cortex");
         return NULL;
     }
@@ -578,6 +588,8 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
     if (!nimcp_validate_pointer(cortex->fft_real, "fft_real") ||
         !nimcp_validate_pointer(cortex->fft_imag, "fft_imag") ||
         !nimcp_validate_pointer(cortex->fft_window, "fft_window")) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, config->frame_size * sizeof(float) * 3,
+            "Failed to allocate FFT buffers for frame size %u", config->frame_size);
         LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate FFT buffers");
         audio_cortex_destroy(cortex);
         return NULL;
@@ -595,6 +607,8 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
     // Allocate temporal processing buffers
     cortex->prev_frame = (float*)nimcp_calloc(config->frame_size, sizeof(float));
     if (!nimcp_validate_pointer(cortex->prev_frame, "prev_frame")) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, config->frame_size * sizeof(float),
+            "Failed to allocate temporal processing buffer for frame size %u", config->frame_size);
         LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate temporal processing buffer");
         audio_cortex_destroy(cortex);
         return NULL;
@@ -607,6 +621,8 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
             cortex->memory_capacity, sizeof(auditory_memory_t*)
         );
         if (!nimcp_validate_pointer(cortex->memories, "memories")) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, cortex->memory_capacity * sizeof(auditory_memory_t*),
+                "Failed to allocate auditory memory array (capacity=%zu)", cortex->memory_capacity);
             LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate auditory memory array");
             audio_cortex_destroy(cortex);
             return NULL;
@@ -634,6 +650,8 @@ audio_cortex_t* audio_cortex_create(const audio_cortex_config_t* config)
     if (cortex->memory_pool_mutex) {
         nimcp_mutex_init(cortex->memory_pool_mutex, NULL);
     } else {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(nimcp_mutex_t),
+            "Failed to allocate memory pool mutex for audio cortex");
         LOG_ERROR(AUDIO_LOG_MODULE, "Failed to allocate memory pool mutex");
         audio_cortex_destroy(cortex);
         return NULL;

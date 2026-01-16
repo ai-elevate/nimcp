@@ -21,6 +21,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "API_COGNITIVE"
 
@@ -56,22 +57,26 @@ nimcp_status_t nimcp_brain_working_memory_add(
     // Guard: Validate brain
     if (!brain) {
         set_error("NULL brain provided to working_memory_add");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to working_memory_add");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in working_memory_add");
         return NIMCP_ERROR_INVALID;
     }
 
     // Guard: Validate parameters FIRST (before checking subsystem availability)
     if (!data) {
         set_error("NULL data provided to working_memory_add");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL data provided to working_memory_add");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (size == 0) {
         set_error("Invalid size (0) provided to working_memory_add");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid size (0) provided to working_memory_add");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -79,6 +84,7 @@ nimcp_status_t nimcp_brain_working_memory_add(
     working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
     if (!wm) {
         set_error("Working memory not enabled in brain config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Working memory not enabled in brain config");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -86,6 +92,7 @@ nimcp_status_t nimcp_brain_working_memory_add(
     bool success = working_memory_add(wm, data, size, salience);
     if (!success) {
         set_error("Failed to add item to working memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to add item to working memory");
         return NIMCP_ERROR;
     }
 
@@ -101,6 +108,7 @@ const float* nimcp_brain_working_memory_get(
     // Guard: Validate brain
     if (!brain || !brain->internal_brain) {
         set_error("Invalid brain handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid brain handle in working_memory_get");
         return NULL;
     }
 
@@ -108,6 +116,7 @@ const float* nimcp_brain_working_memory_get(
     working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
     if (!wm) {
         set_error("Working memory not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Working memory not enabled in working_memory_get");
         return NULL;
     }
 
@@ -115,6 +124,7 @@ const float* nimcp_brain_working_memory_get(
     const float* item = working_memory_get(wm, index, size_out);
     if (!item) {
         set_error("Invalid index or empty working memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid index %u or empty working memory", index);
         return NULL;
     }
 
@@ -130,17 +140,20 @@ nimcp_status_t nimcp_brain_working_memory_stats(
     // Guard: Validate brain
     if (!brain) {
         set_error("NULL brain provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to working_memory_stats");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in working_memory_stats");
         return NIMCP_ERROR_INVALID;
     }
 
     // Guard: Validate output parameters
     if (!current_size_out || !capacity_out) {
         set_error("NULL output parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL output parameters in working_memory_stats");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -148,6 +161,7 @@ nimcp_status_t nimcp_brain_working_memory_stats(
     working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
     if (!wm) {
         set_error("Working memory not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Working memory not enabled in working_memory_stats");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -169,11 +183,13 @@ nimcp_status_t nimcp_brain_working_memory_refresh(
     // Guard: Validate brain
     if (!brain) {
         set_error("NULL brain provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to working_memory_refresh");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in working_memory_refresh");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -181,6 +197,7 @@ nimcp_status_t nimcp_brain_working_memory_refresh(
     working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
     if (!wm) {
         set_error("Working memory not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Working memory not enabled in working_memory_refresh");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -188,6 +205,7 @@ nimcp_status_t nimcp_brain_working_memory_refresh(
     bool success = working_memory_refresh(wm, index);
     if (!success) {
         set_error("Invalid index for refresh");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid index %u for working memory refresh", index);
         return NIMCP_ERROR_INVALID;
     }
 
@@ -218,27 +236,32 @@ nimcp_status_t nimcp_brain_workspace_compete(
     // Guard: Validate brain
     if (!brain) {
         set_error("NULL brain provided to workspace_compete");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to workspace_compete");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in workspace_compete");
         return NIMCP_ERROR_INVALID;
     }
 
     // Guard: Validate parameters FIRST (before checking subsystem availability)
     if (!content) {
         set_error("NULL content provided to workspace_compete");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL content provided to workspace_compete");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (content_dim == 0) {
         set_error("Invalid content_dim (0)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid content_dim (0) in workspace_compete");
         return NIMCP_ERROR_INVALID;
     }
 
     if (strength < 0.0f || strength > 1.0f) {
         set_error("Strength must be in range [0.0, 1.0]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid strength %.2f in workspace_compete", strength);
         return NIMCP_ERROR_INVALID;
     }
 
@@ -246,6 +269,7 @@ nimcp_status_t nimcp_brain_workspace_compete(
     global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
     if (!workspace) {
         set_error("Global workspace not enabled in brain config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Global workspace not enabled in brain config");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -272,22 +296,26 @@ nimcp_status_t nimcp_brain_workspace_read(
     // Guard: Validate brain
     if (!brain) {
         set_error("NULL brain provided to workspace_read");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to workspace_read");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in workspace_read");
         return NIMCP_ERROR_INVALID;
     }
 
     // Guard: Validate parameters FIRST (before checking subsystem availability)
     if (!content || !actual_dim || !source_module) {
         set_error("NULL output parameter provided to workspace_read");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL output parameter provided to workspace_read");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (max_dim == 0) {
         set_error("Invalid max_dim (0)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid max_dim (0) in workspace_read");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -295,6 +323,7 @@ nimcp_status_t nimcp_brain_workspace_read(
     global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
     if (!workspace) {
         set_error("Global workspace not enabled in brain config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Global workspace not enabled in brain config");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -310,6 +339,7 @@ nimcp_status_t nimcp_brain_workspace_read(
         return NIMCP_OK;
     } else {
         set_error("No broadcast available or buffer too small");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "No broadcast available or buffer too small in workspace_read");
         return NIMCP_ERROR;
     }
 }
@@ -321,11 +351,13 @@ nimcp_status_t nimcp_brain_workspace_subscribe(
     // Guard: Validate brain
     if (!brain) {
         set_error("NULL brain provided to workspace_subscribe");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to workspace_subscribe");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in workspace_subscribe");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -333,6 +365,7 @@ nimcp_status_t nimcp_brain_workspace_subscribe(
     global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
     if (!workspace) {
         set_error("Global workspace not enabled in brain config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Global workspace not enabled in workspace_subscribe");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -345,6 +378,7 @@ nimcp_status_t nimcp_brain_workspace_subscribe(
         return NIMCP_OK;
     } else {
         set_error("Failed to subscribe module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to subscribe module to workspace");
         return NIMCP_ERROR;
     }
 }
@@ -356,11 +390,13 @@ nimcp_status_t nimcp_brain_workspace_unsubscribe(
     // Guard: Validate brain
     if (!brain) {
         set_error("NULL brain provided to workspace_unsubscribe");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to workspace_unsubscribe");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in workspace_unsubscribe");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -368,6 +404,7 @@ nimcp_status_t nimcp_brain_workspace_unsubscribe(
     global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
     if (!workspace) {
         set_error("Global workspace not enabled in brain config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Global workspace not enabled in workspace_unsubscribe");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -380,6 +417,7 @@ nimcp_status_t nimcp_brain_workspace_unsubscribe(
         return NIMCP_OK;
     } else {
         set_error("Failed to unsubscribe module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to unsubscribe module from workspace");
         return NIMCP_ERROR;
     }
 }
@@ -391,11 +429,13 @@ nimcp_status_t nimcp_brain_workspace_has_broadcast(
     // Guard: Validate brain
     if (!brain) {
         set_error("NULL brain provided to workspace_has_broadcast");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to workspace_has_broadcast");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in workspace_has_broadcast");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -403,12 +443,14 @@ nimcp_status_t nimcp_brain_workspace_has_broadcast(
     global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
     if (!workspace) {
         set_error("Global workspace not enabled in brain config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Global workspace not enabled in workspace_has_broadcast");
         return NIMCP_ERROR_INVALID;
     }
 
     // Guard: Validate output parameter
     if (!has_broadcast) {
         set_error("NULL has_broadcast parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL has_broadcast parameter");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -427,11 +469,13 @@ nimcp_status_t nimcp_brain_workspace_stats(
     // Guard: Validate brain
     if (!brain) {
         set_error("NULL brain provided to workspace_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to workspace_stats");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in workspace_stats");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -439,12 +483,14 @@ nimcp_status_t nimcp_brain_workspace_stats(
     global_workspace_t* workspace = brain_get_global_workspace(brain->internal_brain);
     if (!workspace) {
         set_error("Global workspace not enabled in brain config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Global workspace not enabled in workspace_stats");
         return NIMCP_ERROR_INVALID;
     }
 
     // Guard: Validate output parameters
     if (!total_broadcasts || !total_competitions || !avg_strength) {
         set_error("NULL output parameter in workspace_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL output parameter in workspace_stats");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -461,6 +507,7 @@ nimcp_status_t nimcp_brain_workspace_stats(
         return NIMCP_OK;
     } else {
         set_error("Failed to get workspace statistics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to get workspace statistics");
         return NIMCP_ERROR;
     }
 }
@@ -473,6 +520,8 @@ nimcp_ethics_t nimcp_ethics_create(void) {
     nimcp_ethics_t handle = (nimcp_ethics_t)nimcp_malloc(sizeof(struct nimcp_ethics_handle));
     if (!handle) {
         set_error("Failed to allocate ethics handle");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct nimcp_ethics_handle),
+            "Failed to allocate ethics handle");
         return NULL;
     }
 
@@ -494,6 +543,7 @@ nimcp_ethics_t nimcp_ethics_create(void) {
 
     if (!handle->internal_ethics) {
         set_error("Failed to create internal ethics engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create internal ethics engine");
         nimcp_free(handle);
         return NULL;
     }
@@ -522,16 +572,19 @@ nimcp_status_t nimcp_ethics_check(
 {
     if (!ethics) {
         set_error("Ethics handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Ethics handle is NULL in ethics_check");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!situation) {
         set_error("Situation array is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Situation array is NULL in ethics_check");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!out_score) {
         set_error("Output score pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Output score pointer is NULL in ethics_check");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -562,6 +615,8 @@ nimcp_knowledge_t nimcp_knowledge_create(void) {
     nimcp_knowledge_t handle = (nimcp_knowledge_t)nimcp_malloc(sizeof(struct nimcp_knowledge_handle));
     if (!handle) {
         set_error("Failed to allocate knowledge handle");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct nimcp_knowledge_handle),
+            "Failed to allocate knowledge handle");
         return NULL;
     }
 
@@ -570,6 +625,7 @@ nimcp_knowledge_t nimcp_knowledge_create(void) {
 
     if (!handle->internal_knowledge) {
         set_error("Failed to create internal knowledge system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create internal knowledge system");
         nimcp_free(handle);
         return NULL;
     }
@@ -598,11 +654,13 @@ nimcp_status_t nimcp_knowledge_add_fact(
 {
     if (!knowledge) {
         set_error("Knowledge handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Knowledge handle is NULL in knowledge_add_fact");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!subject || !predicate || !object) {
         set_error("Subject, predicate, or object is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Subject, predicate, or object is NULL in knowledge_add_fact");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -630,6 +688,7 @@ nimcp_status_t nimcp_knowledge_add_fact(
 
     if (!success) {
         set_error("Failed to add knowledge item");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to add knowledge item '%s'", subject);
         return NIMCP_ERROR;
     }
 
@@ -645,16 +704,19 @@ nimcp_status_t nimcp_knowledge_query(
 {
     if (!knowledge) {
         set_error("Knowledge handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Knowledge handle is NULL in knowledge_query");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!query) {
         set_error("Query is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Query is NULL in knowledge_query");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!out_result) {
         set_error("Output result buffer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Output result buffer is NULL in knowledge_query");
         return NIMCP_ERROR_NULL_ARG;
     }
 

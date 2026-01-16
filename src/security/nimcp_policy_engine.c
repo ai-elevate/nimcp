@@ -29,8 +29,8 @@
 #ifndef NIMCP_OK
 #define NIMCP_OK NIMCP_SUCCESS
 #endif
-#ifndef NIMCP_ERROR_INVALID_ARGUMENT
-#define NIMCP_ERROR_INVALID_ARGUMENT NIMCP_ERROR_INVALID_PARAM
+#ifndef NIMCP_ERROR_INVALID_PARAM
+#define NIMCP_ERROR_INVALID_PARAM NIMCP_ERROR_INVALID_PARAM
 #endif
 #ifndef NIMCP_ERROR_NOT_FOUND
 #define NIMCP_ERROR_NOT_FOUND (-120)
@@ -328,11 +328,11 @@ nimcp_error_t nimcp_policy_engine_load(
     nimcp_policy_t* policy)
 {
     if (!engine || engine->magic != ENGINE_MAGIC) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!policy_text || !policy) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LOG_INFO("Loading policy from text");
@@ -347,7 +347,7 @@ nimcp_error_t nimcp_policy_engine_load(
         free(error_msg);
         engine->stats.parse_errors++;
         pthread_mutex_unlock(&engine->lock);
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Compile
@@ -357,7 +357,7 @@ nimcp_error_t nimcp_policy_engine_load(
         
         ast_destroy(ast);
         pthread_mutex_unlock(&engine->lock);
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Create policy object
@@ -402,11 +402,11 @@ nimcp_error_t nimcp_policy_engine_load_file(
     nimcp_policy_t* policy)
 {
     if (!engine || engine->magic != ENGINE_MAGIC) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!filepath || !policy) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LOG_INFO("Loading policy from file: %s", filepath);
@@ -448,7 +448,7 @@ nimcp_error_t nimcp_policy_engine_unload(
     nimcp_policy_t policy)
 {
     if (!engine || engine->magic != ENGINE_MAGIC || !policy) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&engine->lock);
@@ -486,7 +486,7 @@ nimcp_error_t nimcp_policy_engine_unload(
 
 nimcp_error_t nimcp_policy_engine_reload(nimcp_policy_engine_t engine) {
     if (!engine || engine->magic != ENGINE_MAGIC) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LOG_INFO("Reloading all policies");
@@ -585,7 +585,7 @@ nimcp_error_t nimcp_policy_evaluate(
     nimcp_policy_result_t* result)
 {
     if (!engine || engine->magic != ENGINE_MAGIC || !ctx || !result) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LOG_DEBUG("Evaluating policies");
@@ -656,7 +656,7 @@ nimcp_error_t nimcp_policy_register_function(
     void* user_data)
 {
     if (!engine || engine->magic != ENGINE_MAGIC || !name || !func) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LOG_INFO("Registering policy function: %s", name);
@@ -678,7 +678,7 @@ nimcp_error_t nimcp_policy_register_callback(
     void* user_data)
 {
     if (!engine || engine->magic != ENGINE_MAGIC || !callback) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&engine->lock);
@@ -710,7 +710,7 @@ nimcp_error_t nimcp_policy_engine_get_stats(
     nimcp_policy_stats_t* stats)
 {
     if (!engine || engine->magic != ENGINE_MAGIC || !stats) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&engine->lock);
@@ -725,7 +725,7 @@ nimcp_error_t nimcp_policy_engine_reset_stats(
     nimcp_policy_engine_t engine)
 {
     if (!engine || engine->magic != ENGINE_MAGIC) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&engine->lock);
@@ -762,7 +762,7 @@ nimcp_error_t registry_add(
     void* user_data)
 {
     if (!registry || !name || !func) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (registry->count >= registry->capacity) {

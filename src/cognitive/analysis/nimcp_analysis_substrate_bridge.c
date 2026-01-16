@@ -8,6 +8,7 @@
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct analysis_substrate_bridge {
@@ -29,9 +30,15 @@ analysis_substrate_config_t analysis_substrate_default_config(void) {
 }
 
 analysis_substrate_bridge_t* analysis_substrate_bridge_create(void* analysis, neural_substrate_t* substrate, const analysis_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_substrate_bridge_create: substrate is NULL");
+        return NULL;
+    }
     analysis_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(analysis_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analysis_substrate_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
     bridge->analysis = analysis;
     bridge->substrate = substrate;
     bridge->config = config ? *config : analysis_substrate_default_config();
@@ -52,9 +59,15 @@ void analysis_substrate_bridge_destroy(analysis_substrate_bridge_t* bridge) {
 }
 
 int analysis_substrate_bridge_update(analysis_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_substrate_bridge_update: bridge or substrate is NULL");
+        return -1;
+    }
     substrate_metabolic_state_t metabolic;
-    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
+    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "analysis_substrate_bridge_update: failed to get metabolic state");
+        return -1;
+    }
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables deep analysis and precision */
     if (bridge->config.enable_atp_modulation) {
@@ -73,13 +86,19 @@ int analysis_substrate_bridge_update(analysis_substrate_bridge_t* bridge) {
 }
 
 int analysis_substrate_bridge_get_effects(const analysis_substrate_bridge_t* bridge, analysis_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_substrate_bridge_get_effects: bridge or effects is NULL");
+        return -1;
+    }
     *effects = bridge->effects;
     return 0;
 }
 
 int analysis_substrate_bridge_apply_effects(analysis_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_substrate_bridge_apply_effects: bridge is NULL");
+        return -1;
+    }
     if (!bridge->bio_async_connected || !bridge->ctx) return 0;
 
     substrate_metabolic_state_t metabolic;
@@ -123,7 +142,10 @@ int analysis_substrate_bridge_apply_effects(analysis_substrate_bridge_t* bridge)
 }
 
 int analysis_substrate_bridge_register_bio_async(analysis_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_substrate_bridge_register_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
         bridge->ctx = NULL;

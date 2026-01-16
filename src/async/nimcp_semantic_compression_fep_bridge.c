@@ -12,6 +12,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 
@@ -21,6 +22,7 @@
 
 int semantic_compression_fep_default_config(semantic_compression_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compression_fep_default_config: NULL config");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -45,6 +47,7 @@ semantic_compression_fep_bridge_t* semantic_compression_fep_create(
     nimcp_semantic_compressor_t* compressor
 ) {
     if (!config || !fep_system || !compressor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compression_fep_create: NULL parameter");
         NIMCP_LOGGING_ERROR("semantic_compression_fep_create: NULL parameter");
         return NULL;
     }
@@ -53,6 +56,7 @@ semantic_compression_fep_bridge_t* semantic_compression_fep_create(
         (semantic_compression_fep_bridge_t*)nimcp_malloc(
             sizeof(semantic_compression_fep_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "semantic_compression_fep_create: Failed to allocate");
         NIMCP_LOGGING_ERROR("semantic_compression_fep_create: Failed to allocate");
         return NULL;
     }
@@ -77,6 +81,7 @@ semantic_compression_fep_bridge_t* semantic_compression_fep_create(
     /* Create mutex */
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "semantic_compression_fep_create: Failed to create mutex");
         NIMCP_LOGGING_ERROR("semantic_compression_fep_create: Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -111,6 +116,7 @@ void semantic_compression_fep_destroy(semantic_compression_fep_bridge_t* bridge)
 
 int semantic_compression_fep_update_effects(semantic_compression_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compression_fep_update_effects: NULL bridge or fep_system");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -153,6 +159,7 @@ int semantic_compression_fep_observe_compression(
     float semantic_loss
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compression_fep_observe_compression: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -207,6 +214,7 @@ int semantic_compression_fep_predict_compressibility(
     float* confidence
 ) {
     if (!bridge || !signal || !predicted_ratio || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compression_fep_predict_compressibility: NULL parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -231,6 +239,7 @@ int semantic_compression_fep_learn_primitive(
     uint32_t* primitive_id
 ) {
     if (!bridge || !primitive_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compression_fep_learn_primitive: NULL bridge or primitive_id");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -259,6 +268,7 @@ int semantic_compression_fep_learn_primitive(
 
 int semantic_compression_fep_connect_bio_async(semantic_compression_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compression_fep_connect_bio_async: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -275,6 +285,7 @@ int semantic_compression_fep_connect_bio_async(semantic_compression_fep_bridge_t
 
 int semantic_compression_fep_disconnect_bio_async(semantic_compression_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compression_fep_disconnect_bio_async: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -304,6 +315,7 @@ int semantic_compression_fep_get_effects(
     semantic_compression_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compression_fep_get_effects: NULL bridge or effects");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -319,6 +331,7 @@ int semantic_compression_fep_get_compression_effects(
     fep_semantic_compression_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compression_fep_get_compression_effects: NULL bridge or effects");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -334,6 +347,7 @@ int semantic_compression_fep_get_stats(
     semantic_compression_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compression_fep_get_stats: NULL bridge or stats");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -346,6 +360,7 @@ int semantic_compression_fep_get_stats(
 
 int semantic_compression_fep_reset_stats(semantic_compression_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compression_fep_reset_stats: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 

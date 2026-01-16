@@ -11,6 +11,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "portia_degradation"
 #include <string.h>
@@ -199,6 +200,7 @@ degradation_state_t* portia_degradation_init(
     if (!config) {
         LOG_ERROR("Invalid config pointer");
         bbb_audit_log(BBB_AUDIT_INFO, LOG_MODULE, "DEGRADATION_INIT_FAILED", "Invalid config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid config pointer in portia_degradation_init");
         return NULL;
     }
 
@@ -213,12 +215,14 @@ degradation_state_t* portia_degradation_init(
     );
     if (!state) {
         LOG_ERROR("Failed to allocate degradation state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate degradation state");
         return NULL;
     }
 
     // Initialize mutex
     if (pthread_mutex_init(&state->lock, NULL) != 0) {
         LOG_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize mutex in portia_degradation_init");
         nimcp_free(state);
         return NULL;
     }
@@ -230,6 +234,7 @@ degradation_state_t* portia_degradation_init(
     );
     if (!state->features) {
         LOG_ERROR("Failed to allocate feature array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate feature array in portia_degradation_init");
         pthread_mutex_destroy(&state->lock);
         nimcp_free(state);
         return NULL;

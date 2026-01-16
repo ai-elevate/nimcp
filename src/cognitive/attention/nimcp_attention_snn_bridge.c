@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>
@@ -199,7 +200,10 @@ attention_snn_config_t attention_snn_config_default(void) {
 
 attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* config) {
     attention_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(attention_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_snn_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Apply configuration */
     if (config) {
@@ -210,6 +214,7 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
 
     /* Validate configuration */
     if (bridge->config.num_heads == 0 || bridge->config.num_heads > ATTENTION_SNN_MAX_HEADS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_snn_create: num_heads out of range");
         nimcp_free(bridge);
         return NULL;
     }
@@ -218,6 +223,7 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
     bridge->mutex = nimcp_mutex_create(&mutex_attr);
     if (!bridge->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_snn_create: failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -239,6 +245,7 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_snn_create: failed to create SNN network");
         nimcp_mutex_destroy(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
@@ -248,6 +255,7 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     /* Allocate per-head population IDs */
     bridge->head_pops = nimcp_calloc(bridge->config.num_heads, sizeof(uint32_t));
     if (!bridge->head_pops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_snn_create: failed to allocate head_pops");
         attention_snn_destroy(bridge);
         return NULL;
     }
@@ -304,6 +312,7 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
 
     if (!bridge->head_buffer || !bridge->salience_buffer ||
         !bridge->output_buffer || !bridge->competition_buffer || !bridge->top_k_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_snn_create: failed to allocate buffers");
         attention_snn_destroy(bridge);
         return NULL;
     }
@@ -316,6 +325,7 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     if (!bridge->attention.attention_weights ||
         !bridge->attention.salience_map ||
         !bridge->attention.top_k_indices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_snn_create: failed to allocate attention state arrays");
         attention_snn_destroy(bridge);
         return NULL;
     }
@@ -369,7 +379,10 @@ void attention_snn_destroy(attention_snn_bridge_t* bridge) {
 }
 
 int attention_snn_reset(attention_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -418,7 +431,10 @@ int attention_snn_encode_weights(
     const float* attention_weights,
     uint32_t num_heads)
 {
-    if (!bridge || !attention_weights) return -1;
+    if (!bridge || !attention_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_encode_weights: bridge or attention_weights is NULL");
+        return -1;
+    }
     if (num_heads > bridge->config.num_heads) {
         num_heads = bridge->config.num_heads;
     }
@@ -479,7 +495,10 @@ int attention_snn_encode_salience(
     const float* salience,
     uint32_t sequence_length)
 {
-    if (!bridge || !salience) return -1;
+    if (!bridge || !salience) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_encode_salience: bridge or salience is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -526,7 +545,10 @@ int attention_snn_encode_multihead(
     const float* input,
     uint32_t sequence_length)
 {
-    if (!bridge || !mha || !input) return -1;
+    if (!bridge || !mha || !input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_encode_multihead: bridge, mha, or input is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -643,7 +665,10 @@ int attention_snn_encode_gate(
     attention_snn_bridge_t* bridge,
     float gate_signal)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_encode_gate: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_gate_integration) return 0;
 
     nimcp_mutex_lock(bridge->mutex);
@@ -663,7 +688,10 @@ int attention_snn_encode_gate(
 //=============================================================================
 
 int attention_snn_simulate(attention_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge || !bridge->snn) return -1;
+    if (!bridge || !bridge->snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_simulate: bridge or snn is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -685,7 +713,10 @@ int attention_snn_simulate(attention_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int attention_snn_step(attention_snn_bridge_t* bridge) {
-    if (!bridge || !bridge->snn) return -1;
+    if (!bridge || !bridge->snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_step: bridge or snn is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -697,7 +728,10 @@ int attention_snn_step(attention_snn_bridge_t* bridge) {
 }
 
 int attention_snn_compete(attention_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge || !bridge->snn) return -1;
+    if (!bridge || !bridge->snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_compete: bridge or snn is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_competition) return 0;
 
     nimcp_mutex_lock(bridge->mutex);
@@ -756,7 +790,10 @@ int attention_snn_get_weights(
     float* weights,
     uint32_t num_heads)
 {
-    if (!bridge || !weights) return -1;
+    if (!bridge || !weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_get_weights: bridge or weights is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -838,7 +875,10 @@ int attention_snn_get_salience(
     float* salience,
     uint32_t sequence_length)
 {
-    if (!bridge || !salience) return -1;
+    if (!bridge || !salience) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_get_salience: bridge or salience is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -857,7 +897,10 @@ int attention_snn_get_top_k(
     int32_t* indices,
     uint32_t k)
 {
-    if (!bridge || !indices) return -1;
+    if (!bridge || !indices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_get_top_k: bridge or indices is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -956,7 +999,10 @@ int attention_snn_get_attention_state(
     attention_snn_bridge_t* bridge,
     attention_snn_attention_state_t* attention_state)
 {
-    if (!bridge || !attention_state) return -1;
+    if (!bridge || !attention_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_get_attention_state: bridge or attention_state is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -982,7 +1028,10 @@ int attention_snn_get_state(
     const attention_snn_bridge_t* bridge,
     attention_snn_bridge_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_get_state: bridge or state is NULL");
+        return -1;
+    }
 
     /* Cast away const for mutex - safe as we're only reading */
     attention_snn_bridge_t* mutable_bridge = (attention_snn_bridge_t*)bridge;
@@ -1020,7 +1069,10 @@ int attention_snn_get_stats(
     const attention_snn_bridge_t* bridge,
     attention_snn_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_get_stats: bridge or stats is NULL");
+        return -1;
+    }
 
     attention_snn_bridge_t* mutable_bridge = (attention_snn_bridge_t*)bridge;
 
@@ -1054,7 +1106,10 @@ void attention_snn_reset_stats(attention_snn_bridge_t* bridge) {
 //=============================================================================
 
 int attention_snn_connect_bio_async(attention_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_bio_async) return 0;
 
     nimcp_mutex_lock(bridge->mutex);
@@ -1071,7 +1126,10 @@ int attention_snn_connect_bio_async(attention_snn_bridge_t* bridge) {
 }
 
 int attention_snn_disconnect_bio_async(attention_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1098,7 +1156,10 @@ int attention_snn_modulate_by_arousal(
     attention_snn_bridge_t* bridge,
     float arousal_level)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_modulate_by_arousal: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1113,7 +1174,10 @@ int attention_snn_set_competition_strength(
     attention_snn_bridge_t* bridge,
     float strength)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_set_competition_strength: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1128,7 +1192,10 @@ int attention_snn_set_gate_modulation(
     attention_snn_bridge_t* bridge,
     float gate_level)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_set_gate_modulation: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 

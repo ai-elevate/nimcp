@@ -12,6 +12,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 
@@ -21,6 +22,7 @@
 
 int predictive_protocol_fep_default_config(predictive_protocol_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_default_config: NULL config");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -45,6 +47,7 @@ predictive_protocol_fep_bridge_t* predictive_protocol_fep_create(
     predictive_protocol_t protocol
 ) {
     if (!config || !fep_system || !protocol) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_create: NULL parameter");
         NIMCP_LOGGING_ERROR("predictive_protocol_fep_create: NULL parameter");
         return NULL;
     }
@@ -53,6 +56,7 @@ predictive_protocol_fep_bridge_t* predictive_protocol_fep_create(
         (predictive_protocol_fep_bridge_t*)nimcp_malloc(
             sizeof(predictive_protocol_fep_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_fep_create: Failed to allocate");
         NIMCP_LOGGING_ERROR("predictive_protocol_fep_create: Failed to allocate");
         return NULL;
     }
@@ -77,6 +81,7 @@ predictive_protocol_fep_bridge_t* predictive_protocol_fep_create(
     /* Create mutex */
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "predictive_protocol_fep_create: Failed to create mutex");
         NIMCP_LOGGING_ERROR("predictive_protocol_fep_create: Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -111,6 +116,7 @@ void predictive_protocol_fep_destroy(predictive_protocol_fep_bridge_t* bridge) {
 
 int predictive_protocol_fep_update_effects(predictive_protocol_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_update_effects: NULL bridge or fep_system");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -158,6 +164,7 @@ int predictive_protocol_fep_observe_prefetch(
     float latency_saved_ms
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_observe_prefetch: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -220,6 +227,7 @@ int predictive_protocol_fep_predict_pattern(
     float* confidence
 ) {
     if (!bridge || !current_msg || !predicted_msg || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_predict_pattern: NULL parameter");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -246,6 +254,7 @@ int predictive_protocol_fep_learn_pattern(
     uint32_t* pattern_id
 ) {
     if (!bridge || !pattern_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_learn_pattern: NULL bridge or pattern_id");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -272,6 +281,7 @@ int predictive_protocol_fep_learn_pattern(
 
 int predictive_protocol_fep_connect_bio_async(predictive_protocol_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_connect_bio_async: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -288,6 +298,7 @@ int predictive_protocol_fep_connect_bio_async(predictive_protocol_fep_bridge_t* 
 
 int predictive_protocol_fep_disconnect_bio_async(predictive_protocol_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_disconnect_bio_async: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -317,6 +328,7 @@ int predictive_protocol_fep_get_effects(
     predictive_protocol_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_get_effects: NULL bridge or effects");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -332,6 +344,7 @@ int predictive_protocol_fep_get_protocol_effects(
     fep_predictive_protocol_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_get_protocol_effects: NULL bridge or effects");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -347,6 +360,7 @@ int predictive_protocol_fep_get_stats(
     predictive_protocol_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_get_stats: NULL bridge or stats");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -359,6 +373,7 @@ int predictive_protocol_fep_get_stats(
 
 int predictive_protocol_fep_reset_stats(predictive_protocol_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_reset_stats: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 

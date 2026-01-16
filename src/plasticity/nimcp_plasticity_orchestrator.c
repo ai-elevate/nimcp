@@ -41,6 +41,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "plasticity_orchestrator"
 #define MAX_SYNAPSES 100
@@ -426,6 +427,7 @@ static void update_weight_statistics(plasticity_orchestrator_t* orch) {
 
 int plasticity_orchestrator_default_config(plasticity_orchestrator_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config in default_config");
         NIMCP_LOGGING_ERROR("NULL config in default_config");
         return -1;
     }
@@ -483,6 +485,7 @@ plasticity_orchestrator_t* plasticity_orchestrator_create(
     );
 
     if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate plasticity orchestrator");
         NIMCP_LOGGING_ERROR("Failed to allocate plasticity orchestrator");
         return NULL;
     }
@@ -494,6 +497,7 @@ plasticity_orchestrator_t* plasticity_orchestrator_create(
     /* Create mutex */
     orchestrator->mutex = nimcp_platform_mutex_create();
     if (!orchestrator->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create mutex");
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(orchestrator);
         return NULL;
@@ -511,6 +515,7 @@ plasticity_orchestrator_t* plasticity_orchestrator_create(
     );
 
     if (!orchestrator->synapses || !orchestrator->neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate synapse/neuron arrays");
         NIMCP_LOGGING_ERROR("Failed to allocate synapse/neuron arrays");
         if (orchestrator->synapses) nimcp_free(orchestrator->synapses);
         if (orchestrator->neurons) nimcp_free(orchestrator->neurons);
@@ -665,6 +670,7 @@ int plasticity_orchestrator_connect_immune(
     struct brain_immune_system* immune
 ) {
     if (!orchestrator || !immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in connect_immune");
         NIMCP_LOGGING_ERROR("NULL pointer in connect_immune");
         return -1;
     }
@@ -682,6 +688,7 @@ int plasticity_orchestrator_connect_sleep(
     struct sleep_system_struct* sleep
 ) {
     if (!orchestrator || !sleep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in connect_sleep");
         NIMCP_LOGGING_ERROR("NULL pointer in connect_sleep");
         return -1;
     }
@@ -699,6 +706,7 @@ int plasticity_orchestrator_connect_neuromodulators(
     struct neuromodulator_system_struct* neuromod
 ) {
     if (!orchestrator || !neuromod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in connect_neuromodulators");
         NIMCP_LOGGING_ERROR("NULL pointer in connect_neuromodulators");
         return -1;
     }
@@ -712,7 +720,10 @@ int plasticity_orchestrator_connect_neuromodulators(
 }
 
 int plasticity_orchestrator_connect_bio_async(plasticity_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Orchestrator is NULL in connect_bio_async");
+        return -1;
+    }
 
     orchestrator->bio_async_connected = true;
     NIMCP_LOGGING_INFO("Connected orchestrator to bio-async router");
@@ -729,7 +740,10 @@ int plasticity_orchestrator_register_event_callback(
     plasticity_event_callback_t callback,
     void* user_data
 ) {
-    if (!orchestrator || !callback) return -1;
+    if (!orchestrator || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in register_event_callback");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -755,7 +769,10 @@ int plasticity_orchestrator_unregister_event_callback(
     plasticity_orchestrator_t* orchestrator,
     int callback_id
 ) {
-    if (!orchestrator || callback_id <= 0) return -1;
+    if (!orchestrator || callback_id <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid parameters in unregister_event_callback");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -777,7 +794,10 @@ int plasticity_orchestrator_register_pre_update(
     plasticity_update_callback_t callback,
     void* user_data
 ) {
-    if (!orchestrator || !callback) return -1;
+    if (!orchestrator || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in register_pre_update");
+        return -1;
+    }
 
     for (int i = 0; i < MAX_CALLBACKS; i++) {
         if (!orchestrator->pre_update_callbacks[i].active) {
@@ -795,7 +815,10 @@ int plasticity_orchestrator_register_post_update(
     plasticity_update_callback_t callback,
     void* user_data
 ) {
-    if (!orchestrator || !callback) return -1;
+    if (!orchestrator || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in register_post_update");
+        return -1;
+    }
 
     for (int i = 0; i < MAX_CALLBACKS; i++) {
         if (!orchestrator->post_update_callbacks[i].active) {
@@ -816,7 +839,10 @@ int plasticity_orchestrator_update(
     plasticity_orchestrator_t* orchestrator,
     uint64_t delta_ms
 ) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Orchestrator is NULL in update");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -1063,7 +1089,10 @@ int plasticity_orchestrator_pre_spike(
     uint32_t synapse_id,
     uint64_t timestamp_ms
 ) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Orchestrator is NULL in pre_spike");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -1137,7 +1166,10 @@ int plasticity_orchestrator_post_spike(
     uint32_t neuron_id,
     uint64_t timestamp_ms
 ) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Orchestrator is NULL in post_spike");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -1222,7 +1254,10 @@ int plasticity_orchestrator_reward(
     float reward_magnitude,
     uint64_t timestamp_ms
 ) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Orchestrator is NULL in reward");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -1289,7 +1324,10 @@ int plasticity_orchestrator_set_weight(
     uint32_t synapse_id,
     float weight
 ) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Orchestrator is NULL in set_weight");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -1355,14 +1393,20 @@ int plasticity_orchestrator_get_stats(
     const plasticity_orchestrator_t* orchestrator,
     plasticity_stats_t* stats
 ) {
-    if (!orchestrator || !stats) return -1;
+    if (!orchestrator || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in get_stats");
+        return -1;
+    }
 
     *stats = orchestrator->stats;
     return 0;
 }
 
 int plasticity_orchestrator_reset_stats(plasticity_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Orchestrator is NULL in reset_stats");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -1385,7 +1429,10 @@ int plasticity_orchestrator_serialize(
     size_t buffer_size,
     size_t* bytes_written
 ) {
-    if (!orchestrator || !buffer || !bytes_written) return -1;
+    if (!orchestrator || !buffer || !bytes_written) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in serialize");
+        return -1;
+    }
 
     /* Header: version, num_synapses, num_neurons */
     size_t required = sizeof(uint32_t) * 3 +
@@ -1431,7 +1478,10 @@ int plasticity_orchestrator_deserialize(
     const uint8_t* buffer,
     size_t buffer_size
 ) {
-    if (!orchestrator || !buffer || buffer_size < sizeof(uint32_t) * 3) return -1;
+    if (!orchestrator || !buffer || buffer_size < sizeof(uint32_t) * 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid parameters in deserialize");
+        return -1;
+    }
 
     const uint8_t* ptr = buffer;
 

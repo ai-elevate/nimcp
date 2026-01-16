@@ -13,6 +13,7 @@
 #include "lnn/nimcp_lnn_ode.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -71,13 +72,21 @@ static int apply_activation(
     lnn_activation_t activation
 )
 {
-    if (!input || !output) return LNN_ERROR_NULL_POINTER;
+    if (!input || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null input or output tensor in apply_activation");
+        return LNN_ERROR_NULL_POINTER;
+    }
 
     switch (activation) {
         case LNN_ACTIVATION_TANH:
             {
                 nimcp_tensor_t* result = nimcp_tensor_tanh(input);
-                if (!result) return LNN_ERROR_OPERATION_FAILED;
+                if (!result) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FORWARD_PASS,
+                                         "Tanh activation failed in apply_activation");
+                    return LNN_ERROR_OPERATION_FAILED;
+                }
                 memcpy(nimcp_tensor_data(output), nimcp_tensor_data_const(result),
                        nimcp_tensor_numel(result) * sizeof(float));
                 nimcp_tensor_destroy(result);
@@ -87,7 +96,11 @@ static int apply_activation(
         case LNN_ACTIVATION_SIGMOID:
             {
                 nimcp_tensor_t* result = nimcp_tensor_sigmoid(input);
-                if (!result) return LNN_ERROR_OPERATION_FAILED;
+                if (!result) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FORWARD_PASS,
+                                         "Sigmoid activation failed in apply_activation");
+                    return LNN_ERROR_OPERATION_FAILED;
+                }
                 memcpy(nimcp_tensor_data(output), nimcp_tensor_data_const(result),
                        nimcp_tensor_numel(result) * sizeof(float));
                 nimcp_tensor_destroy(result);
@@ -97,7 +110,11 @@ static int apply_activation(
         case LNN_ACTIVATION_RELU:
             {
                 nimcp_tensor_t* result = nimcp_tensor_relu(input);
-                if (!result) return LNN_ERROR_OPERATION_FAILED;
+                if (!result) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FORWARD_PASS,
+                                         "ReLU activation failed in apply_activation");
+                    return LNN_ERROR_OPERATION_FAILED;
+                }
                 memcpy(nimcp_tensor_data(output), nimcp_tensor_data_const(result),
                        nimcp_tensor_numel(result) * sizeof(float));
                 nimcp_tensor_destroy(result);
@@ -106,6 +123,9 @@ static int apply_activation(
 
         default:
             NIMCP_LOGGING_ERROR("Unsupported activation type: %d", activation);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER,
+                                 "Unsupported activation type %d in apply_activation",
+                                 activation);
             return LNN_ERROR_INVALID_PARAM;
     }
 
@@ -191,11 +211,16 @@ lnn_layer_t* lnn_layer_create(const lnn_layer_config_t* config, uint32_t n_input
     /* Validate inputs */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null configuration in lnn_layer_create");
         return NULL;
     }
     if (config->n_neurons == 0 || n_inputs == 0) {
         NIMCP_LOGGING_ERROR("Invalid dimensions: n_neurons=%u, n_inputs=%u",
                            config->n_neurons, n_inputs);
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_DIMENSION_MISMATCH, 0, "lnn_layer",
+                         "Invalid dimensions: n_neurons=%u, n_inputs=%u",
+                         config->n_neurons, n_inputs);
         return NULL;
     }
 

@@ -18,6 +18,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -28,7 +29,8 @@
 int snn_config_default(snn_config_t* config) {
     /* Guard clause: null check */
     if (!config) {
-        NIMCP_LOGGING_ERROR("snn_config_default: NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_default: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
 
@@ -92,10 +94,13 @@ int snn_config_feedforward(snn_config_t* config,
                            uint32_t n_outputs) {
     /* Guard clauses */
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_feedforward: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     if (n_inputs == 0 || n_outputs == 0) {
-        NIMCP_LOGGING_ERROR("snn_config_feedforward: zero inputs or outputs");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_feedforward: zero inputs (%u) or outputs (%u)", n_inputs, n_outputs);
         return SNN_ERROR_INVALID_DIMENSION;
     }
 
@@ -120,10 +125,13 @@ int snn_config_multilayer(snn_config_t* config,
                           uint32_t n_layers) {
     /* Guard clauses */
     if (!config || !layer_sizes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_multilayer: NULL %s", !config ? "config" : "layer_sizes");
         return SNN_ERROR_NULL_POINTER;
     }
     if (n_layers < 2) {
-        NIMCP_LOGGING_ERROR("snn_config_multilayer: need at least 2 layers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_multilayer: need at least 2 layers (got %u)", n_layers);
         return SNN_ERROR_INVALID_DIMENSION;
     }
 
@@ -150,13 +158,19 @@ int snn_config_reservoir(snn_config_t* config,
                          float connectivity) {
     /* Guard clauses */
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_reservoir: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     if (n_inputs == 0 || n_reservoir == 0 || n_outputs == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_reservoir: zero dimension (inputs=%u, reservoir=%u, outputs=%u)",
+            n_inputs, n_reservoir, n_outputs);
         return SNN_ERROR_INVALID_DIMENSION;
     }
     if (connectivity < 0.0f || connectivity > 1.0f) {
-        NIMCP_LOGGING_ERROR("snn_config_reservoir: connectivity must be [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_reservoir: connectivity %.2f must be in [0, 1]", connectivity);
         return SNN_ERROR_INVALID_CONFIG;
     }
 
@@ -185,9 +199,14 @@ int snn_config_cortical_column(snn_config_t* config,
                                uint32_t neurons_per_minicolumn) {
     /* Guard clauses */
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_cortical_column: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     if (n_minicolumns == 0 || neurons_per_minicolumn == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_cortical_column: zero minicolumns (%u) or neurons_per_minicolumn (%u)",
+            n_minicolumns, neurons_per_minicolumn);
         return SNN_ERROR_INVALID_DIMENSION;
     }
 
@@ -219,73 +238,87 @@ int snn_config_cortical_column(snn_config_t* config,
 int snn_config_validate(const snn_config_t* config) {
     /* Guard clause */
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_validate: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
 
     /* Validate dimensions */
     if (config->n_inputs == 0) {
-        NIMCP_LOGGING_ERROR("snn_config_validate: n_inputs is 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_validate: n_inputs is 0");
         return SNN_ERROR_INVALID_DIMENSION;
     }
     if (config->n_outputs == 0) {
-        NIMCP_LOGGING_ERROR("snn_config_validate: n_outputs is 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_validate: n_outputs is 0");
         return SNN_ERROR_INVALID_DIMENSION;
     }
 
     /* Validate timestep */
     if (config->dt < SNN_DT_MIN || config->dt > SNN_DT_MAX) {
-        NIMCP_LOGGING_ERROR("snn_config_validate: dt %.4f outside [%.4f, %.4f]",
-                           config->dt, SNN_DT_MIN, SNN_DT_MAX);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_validate: dt %.4f outside [%.4f, %.4f]",
+            config->dt, SNN_DT_MIN, SNN_DT_MAX);
         return SNN_ERROR_INVALID_CONFIG;
     }
 
     /* Validate time constants */
     if (config->tau_mem <= 0.0f) {
-        NIMCP_LOGGING_ERROR("snn_config_validate: tau_mem must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_validate: tau_mem must be > 0");
         return SNN_ERROR_INVALID_CONFIG;
     }
     if (config->tau_syn <= 0.0f) {
-        NIMCP_LOGGING_ERROR("snn_config_validate: tau_syn must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_validate: tau_syn must be > 0");
         return SNN_ERROR_INVALID_CONFIG;
     }
 
     /* Validate voltage thresholds */
     if (config->v_thresh <= config->v_reset) {
-        NIMCP_LOGGING_ERROR("snn_config_validate: v_thresh must be > v_reset");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_validate: v_thresh must be > v_reset");
         return SNN_ERROR_INVALID_CONFIG;
     }
 
     /* Validate refractory period */
     if (config->t_ref < 0.0f) {
-        NIMCP_LOGGING_ERROR("snn_config_validate: t_ref must be >= 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_validate: t_ref must be >= 0");
         return SNN_ERROR_INVALID_CONFIG;
     }
 
     /* Validate learning rate */
     if (config->learning_rate < 0.0f) {
-        NIMCP_LOGGING_ERROR("snn_config_validate: learning_rate must be >= 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_validate: learning_rate must be >= 0");
         return SNN_ERROR_INVALID_CONFIG;
     }
 
     /* Validate surrogate beta */
     if (config->train_mode == SNN_TRAIN_SURROGATE && config->surrogate_beta <= 0.0f) {
-        NIMCP_LOGGING_ERROR("snn_config_validate: surrogate_beta must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_validate: surrogate_beta must be > 0 for surrogate training");
         return SNN_ERROR_INVALID_CONFIG;
     }
 
     /* Validate encoder */
     if (config->encoder.max_rate < config->encoder.min_rate) {
-        NIMCP_LOGGING_ERROR("snn_config_validate: encoder max_rate < min_rate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_validate: encoder max_rate < min_rate");
         return SNN_ERROR_INVALID_CONFIG;
     }
     if (config->encoder.time_window <= 0.0f) {
-        NIMCP_LOGGING_ERROR("snn_config_validate: encoder time_window must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_validate: encoder time_window must be > 0");
         return SNN_ERROR_INVALID_CONFIG;
     }
 
     /* Validate decoder */
     if (config->decoder.time_window <= 0.0f) {
-        NIMCP_LOGGING_ERROR("snn_config_validate: decoder time_window must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_validate: decoder time_window must be > 0");
         return SNN_ERROR_INVALID_CONFIG;
     }
 
@@ -313,9 +346,14 @@ int snn_config_encoder_rate(snn_config_t* config,
                             float max_rate,
                             float time_window) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_encoder_rate: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     if (max_rate <= 0.0f || time_window <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_encoder_rate: invalid max_rate (%.2f) or time_window (%.2f)",
+            max_rate, time_window);
         return SNN_ERROR_INVALID_CONFIG;
     }
 
@@ -331,9 +369,14 @@ int snn_config_encoder_population(snn_config_t* config,
                                   uint32_t population_size,
                                   float sigma) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_encoder_population: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     if (population_size == 0 || sigma <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_encoder_population: invalid population_size (%u) or sigma (%.2f)",
+            population_size, sigma);
         return SNN_ERROR_INVALID_CONFIG;
     }
 
@@ -347,9 +390,13 @@ int snn_config_encoder_population(snn_config_t* config,
 int snn_config_encoder_latency(snn_config_t* config,
                                float max_latency) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_encoder_latency: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     if (max_latency <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_encoder_latency: invalid max_latency (%.2f)", max_latency);
         return SNN_ERROR_INVALID_CONFIG;
     }
 
@@ -369,9 +416,14 @@ int snn_config_train_stdp(snn_config_t* config,
                           float a_plus,
                           float a_minus) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_train_stdp: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     if (learning_rate < 0.0f || time_window <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LEARNING_FAILED,
+            "snn_config_train_stdp: invalid learning_rate (%.4f) or time_window (%.2f)",
+            learning_rate, time_window);
         return SNN_ERROR_INVALID_CONFIG;
     }
 
@@ -388,9 +440,14 @@ int snn_config_train_rstdp(snn_config_t* config,
                            float learning_rate,
                            float eligibility_decay) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_train_rstdp: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     if (learning_rate < 0.0f || eligibility_decay <= 0.0f || eligibility_decay > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LEARNING_FAILED,
+            "snn_config_train_rstdp: invalid learning_rate (%.4f) or eligibility_decay (%.4f)",
+            learning_rate, eligibility_decay);
         return SNN_ERROR_INVALID_CONFIG;
     }
 
@@ -409,12 +466,19 @@ int snn_config_train_surrogate(snn_config_t* config,
                                float beta,
                                float learning_rate) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_train_surrogate: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     if (beta <= 0.0f || learning_rate < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LEARNING_FAILED,
+            "snn_config_train_surrogate: invalid beta (%.2f) or learning_rate (%.4f)",
+            beta, learning_rate);
         return SNN_ERROR_INVALID_CONFIG;
     }
     if (surrogate >= SNN_SURROGATE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_config_train_surrogate: invalid surrogate type %d", surrogate);
         return SNN_ERROR_INVALID_CONFIG;
     }
 
@@ -432,9 +496,14 @@ int snn_config_train_eprop(snn_config_t* config,
                            float learning_rate,
                            float eligibility_decay) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_train_eprop: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     if (learning_rate < 0.0f || eligibility_decay <= 0.0f || eligibility_decay > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LEARNING_FAILED,
+            "snn_config_train_eprop: invalid learning_rate (%.4f) or eligibility_decay (%.4f)",
+            learning_rate, eligibility_decay);
         return SNN_ERROR_INVALID_CONFIG;
     }
 
@@ -452,6 +521,8 @@ int snn_config_train_eprop(snn_config_t* config,
 
 int snn_config_enable_bio_async(snn_config_t* config, bool enable) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_enable_bio_async: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     config->enable_bio_async = enable;
@@ -460,6 +531,8 @@ int snn_config_enable_bio_async(snn_config_t* config, bool enable) {
 
 int snn_config_enable_immune(snn_config_t* config, bool enable) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_enable_immune: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     config->enable_immune = enable;
@@ -468,6 +541,8 @@ int snn_config_enable_immune(snn_config_t* config, bool enable) {
 
 int snn_config_enable_axon_delays(snn_config_t* config, bool enable) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_enable_axon_delays: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     config->use_axon_delays = enable;
@@ -476,6 +551,8 @@ int snn_config_enable_axon_delays(snn_config_t* config, bool enable) {
 
 int snn_config_enable_dendrites(snn_config_t* config, bool enable) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_enable_dendrites: NULL config pointer");
         return SNN_ERROR_NULL_POINTER;
     }
     config->use_dendritic_integration = enable;
@@ -532,6 +609,8 @@ int snn_config_print(const snn_config_t* config,
 
 int snn_config_clone(const snn_config_t* src, snn_config_t* dst) {
     if (!src || !dst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_config_clone: NULL %s", !src ? "source" : "destination");
         return SNN_ERROR_NULL_POINTER;
     }
 

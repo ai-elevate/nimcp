@@ -7,10 +7,14 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 int pattern_fep_default_config(pattern_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config in pattern_fep_default_config");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     config->match_fe_threshold = 5.0f;
     config->surprise_add_threshold = 10.0f;
     config->precision_learning_rate = 0.05f;
@@ -24,11 +28,15 @@ pattern_fep_bridge_t* pattern_fep_create(const pattern_fep_config_t* config,
     nimcp_pattern_db_t pattern_db, fep_system_t* fep_system) {
     if (!pattern_db || !fep_system) {
         NIMCP_LOGGING_ERROR("Pattern FEP bridge: NULL pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointers in pattern_fep_create");
         return NULL;
     }
 
     pattern_fep_bridge_t* bridge = (pattern_fep_bridge_t*)nimcp_malloc(sizeof(pattern_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate pattern FEP bridge");
+        return NULL;
+    }
 
     memset(bridge, 0, sizeof(pattern_fep_bridge_t));
     if (config) bridge->config = *config;
@@ -38,6 +46,7 @@ pattern_fep_bridge_t* pattern_fep_create(const pattern_fep_config_t* config,
     bridge->pattern_db = pattern_db;
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Failed to create pattern FEP bridge mutex");
         nimcp_free(bridge);
         return NULL;
     }

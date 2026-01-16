@@ -14,6 +14,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>
@@ -29,7 +30,10 @@ static nimcp_error_t handle_omni_predict_request(
     void* user_data)
 {
     omni_sensory_bridge_t* bridge = (omni_sensory_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in handle_omni_predict_request");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     /* Process prediction request through the bridge */
     omni_sensory_update(bridge);
@@ -48,7 +52,10 @@ static nimcp_error_t handle_omni_precision_update(
     void* user_data)
 {
     omni_sensory_bridge_t* bridge = (omni_sensory_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in handle_omni_precision_update");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     /* Update precision weights */
     omni_sensory_update_precision(bridge);
@@ -116,7 +123,10 @@ static void update_modality_state(omni_modality_state_t* state,
  * ============================================================================ */
 
 int omni_sensory_default_config(omni_sensory_config_t* config) {
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config in omni_sensory_default_config");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     memset(config, 0, sizeof(omni_sensory_config_t));
 
@@ -148,7 +158,10 @@ omni_sensory_bridge_t* omni_sensory_bridge_create(
     const omni_sensory_config_t* config) {
 
     omni_sensory_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_sensory_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate omni_sensory_bridge_t");
+        return NULL;
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(omni_sensory_config_t));
@@ -158,6 +171,7 @@ omni_sensory_bridge_t* omni_sensory_bridge_create(
 
     bridge->mutex = nimcp_mutex_create(NULL);
     if (!bridge->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create mutex for omni_sensory_bridge");
         nimcp_free(bridge);
         return NULL;
     }
@@ -224,7 +238,10 @@ void omni_sensory_bridge_destroy(omni_sensory_bridge_t* bridge) {
 
 int omni_sensory_connect_jepa(omni_sensory_bridge_t* bridge,
                                jepa_bidirectional_t* jepa) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_connect_jepa");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     nimcp_mutex_lock(bridge->mutex);
     bridge->jepa = jepa;
     nimcp_mutex_unlock(bridge->mutex);
@@ -233,7 +250,10 @@ int omni_sensory_connect_jepa(omni_sensory_bridge_t* bridge,
 
 int omni_sensory_connect_pred_hier(omni_sensory_bridge_t* bridge,
                                     predictive_hierarchy_t* pred_hier) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_connect_pred_hier");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     nimcp_mutex_lock(bridge->mutex);
     bridge->pred_hier = pred_hier;
     nimcp_mutex_unlock(bridge->mutex);
@@ -242,7 +262,10 @@ int omni_sensory_connect_pred_hier(omni_sensory_bridge_t* bridge,
 
 int omni_sensory_connect_hopfield(omni_sensory_bridge_t* bridge,
                                    hopfield_memory_t* hopfield) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_connect_hopfield");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     nimcp_mutex_lock(bridge->mutex);
     bridge->hopfield = hopfield;
     nimcp_mutex_unlock(bridge->mutex);
@@ -251,7 +274,10 @@ int omni_sensory_connect_hopfield(omni_sensory_bridge_t* bridge,
 
 int omni_sensory_connect_audio(omni_sensory_bridge_t* bridge,
                                 audio_cortex_t* audio) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_connect_audio");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     nimcp_mutex_lock(bridge->mutex);
     bridge->audio_cortex = audio;
     bridge->modality_states[OMNI_MODALITY_AUDIO].active = (audio != NULL);
@@ -261,7 +287,10 @@ int omni_sensory_connect_audio(omni_sensory_bridge_t* bridge,
 
 int omni_sensory_connect_visual(omni_sensory_bridge_t* bridge,
                                  visual_cortex_t* visual) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_connect_visual");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     nimcp_mutex_lock(bridge->mutex);
     bridge->visual_cortex = visual;
     bridge->modality_states[OMNI_MODALITY_VISUAL].active = (visual != NULL);
@@ -271,7 +300,10 @@ int omni_sensory_connect_visual(omni_sensory_bridge_t* bridge,
 
 int omni_sensory_connect_speech(omni_sensory_bridge_t* bridge,
                                  speech_cortex_t* speech) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_connect_speech");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     nimcp_mutex_lock(bridge->mutex);
     bridge->speech_cortex = speech;
     bridge->modality_states[OMNI_MODALITY_SPEECH].active = (speech != NULL);
@@ -281,7 +313,10 @@ int omni_sensory_connect_speech(omni_sensory_bridge_t* bridge,
 
 int omni_sensory_connect_precision(omni_sensory_bridge_t* bridge,
                                     omni_precision_ctx_t* precision_ctx) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_connect_precision");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     nimcp_mutex_lock(bridge->mutex);
     bridge->precision_ctx = precision_ctx;
 
@@ -316,7 +351,10 @@ int omni_sensory_connect_precision(omni_sensory_bridge_t* bridge,
  * ============================================================================ */
 
 int omni_sensory_update(omni_sensory_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_update");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -391,13 +429,19 @@ int omni_sensory_update(omni_sensory_bridge_t* bridge) {
 }
 
 int omni_sensory_apply_to_sensory(omni_sensory_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_apply_to_sensory");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     /* Apply top-down predictions to sensory cortices */
     return NIMCP_SUCCESS;
 }
 
 int omni_sensory_apply_to_omni(omni_sensory_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_apply_to_omni");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     /* Apply bottom-up features to omnidirectional inference */
     return NIMCP_SUCCESS;
 }
@@ -410,8 +454,14 @@ int omni_sensory_predict_modality(omni_sensory_bridge_t* bridge,
                                    omni_modality_t modality,
                                    float* prediction,
                                    uint32_t dim) {
-    if (!bridge || !prediction || dim == 0) return NIMCP_ERROR_INVALID_PARAM;
-    if (modality >= OMNI_MODALITY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !prediction || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL or invalid parameter in omni_sensory_predict_modality");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (modality >= OMNI_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid modality in omni_sensory_predict_modality");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -445,8 +495,14 @@ int omni_sensory_compute_pe(omni_sensory_bridge_t* bridge,
                              const float* observation,
                              uint32_t dim,
                              float* pe) {
-    if (!bridge || !observation || !pe || dim == 0) return NIMCP_ERROR_INVALID_PARAM;
-    if (modality >= OMNI_MODALITY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !observation || !pe || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL or invalid parameter in omni_sensory_compute_pe");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (modality >= OMNI_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid modality in omni_sensory_compute_pe");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -470,10 +526,22 @@ int omni_sensory_crossmodal_predict(omni_sensory_bridge_t* bridge,
                                      omni_modality_t target_modality,
                                      float* prediction,
                                      uint32_t dim) {
-    if (!bridge || !prediction || dim == 0) return NIMCP_ERROR_INVALID_PARAM;
-    if (source_modality >= OMNI_MODALITY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
-    if (target_modality >= OMNI_MODALITY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
-    if (source_modality == target_modality) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !prediction || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL or invalid parameter in omni_sensory_crossmodal_predict");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (source_modality >= OMNI_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid source_modality in omni_sensory_crossmodal_predict");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (target_modality >= OMNI_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid target_modality in omni_sensory_crossmodal_predict");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (source_modality == target_modality) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "source_modality == target_modality in omni_sensory_crossmodal_predict");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -492,7 +560,10 @@ int omni_sensory_crossmodal_predict(omni_sensory_bridge_t* bridge,
 
 int omni_sensory_compute_binding(omni_sensory_bridge_t* bridge,
                                   omni_crossmodal_binding_t* binding) {
-    if (!bridge || !binding) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !binding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in omni_sensory_compute_binding");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -590,8 +661,14 @@ float omni_sensory_get_binding_strength(const omni_sensory_bridge_t* bridge,
 int omni_sensory_set_precision(omni_sensory_bridge_t* bridge,
                                 omni_modality_t modality,
                                 float precision) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
-    if (modality >= OMNI_MODALITY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_set_precision");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (modality >= OMNI_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid modality in omni_sensory_set_precision");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->modality_states[modality].precision = fmaxf(0.0f, precision);
@@ -606,7 +683,10 @@ float omni_sensory_get_precision(const omni_sensory_bridge_t* bridge,
 }
 
 int omni_sensory_update_precision(omni_sensory_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_update_precision");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     /* Precision weighting: reduce precision for high-PE modalities */
     for (int i = 0; i < OMNI_MODALITY_COUNT; i++) {
@@ -635,7 +715,10 @@ int omni_sensory_update_precision(omni_sensory_bridge_t* bridge) {
 
 int omni_sensory_set_attention(omni_sensory_bridge_t* bridge,
                                 omni_sensory_attention_t mode) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_set_attention");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     nimcp_mutex_lock(bridge->mutex);
     bridge->omni_effects.attention_mode = mode;
     nimcp_mutex_unlock(bridge->mutex);
@@ -647,9 +730,13 @@ int omni_sensory_apply_attention(omni_sensory_bridge_t* bridge,
                                   const float* attention_weights,
                                   uint32_t num_weights) {
     if (!bridge || !attention_weights || num_weights == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL or invalid parameter in omni_sensory_apply_attention");
         return NIMCP_ERROR_INVALID_PARAM;
     }
-    if (modality >= OMNI_MODALITY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    if (modality >= OMNI_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid modality in omni_sensory_apply_attention");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -677,7 +764,10 @@ int omni_sensory_apply_attention(omni_sensory_bridge_t* bridge,
 
 int omni_sensory_get_omni_effects(const omni_sensory_bridge_t* bridge,
                                    omni_to_sensory_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in omni_sensory_get_omni_effects");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     nimcp_mutex_lock(((omni_sensory_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_sensory_effects_t));
     nimcp_mutex_unlock(((omni_sensory_bridge_t*)bridge)->mutex);
@@ -686,7 +776,10 @@ int omni_sensory_get_omni_effects(const omni_sensory_bridge_t* bridge,
 
 int omni_sensory_get_sensory_effects(const omni_sensory_bridge_t* bridge,
                                       sensory_to_omni_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in omni_sensory_get_sensory_effects");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     nimcp_mutex_lock(((omni_sensory_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->sensory_effects, sizeof(sensory_to_omni_effects_t));
     nimcp_mutex_unlock(((omni_sensory_bridge_t*)bridge)->mutex);
@@ -696,8 +789,14 @@ int omni_sensory_get_sensory_effects(const omni_sensory_bridge_t* bridge,
 int omni_sensory_get_modality_state(const omni_sensory_bridge_t* bridge,
                                      omni_modality_t modality,
                                      omni_modality_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_INVALID_PARAM;
-    if (modality >= OMNI_MODALITY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in omni_sensory_get_modality_state");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (modality >= OMNI_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid modality in omni_sensory_get_modality_state");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(((omni_sensory_bridge_t*)bridge)->mutex);
     memcpy(state, &bridge->modality_states[modality], sizeof(omni_modality_state_t));
@@ -707,7 +806,10 @@ int omni_sensory_get_modality_state(const omni_sensory_bridge_t* bridge,
 
 int omni_sensory_get_stats(const omni_sensory_bridge_t* bridge,
                             omni_sensory_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in omni_sensory_get_stats");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     nimcp_mutex_lock(((omni_sensory_bridge_t*)bridge)->mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_sensory_stats_t));
     nimcp_mutex_unlock(((omni_sensory_bridge_t*)bridge)->mutex);
@@ -715,7 +817,10 @@ int omni_sensory_get_stats(const omni_sensory_bridge_t* bridge,
 }
 
 int omni_sensory_reset_stats(omni_sensory_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_reset_stats");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(omni_sensory_stats_t));
     nimcp_mutex_unlock(bridge->mutex);
@@ -727,7 +832,10 @@ int omni_sensory_reset_stats(omni_sensory_bridge_t* bridge) {
  * ============================================================================ */
 
 int omni_sensory_connect_bio_async(omni_sensory_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_connect_bio_async");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     /* Register module with bio-router */
@@ -740,6 +848,7 @@ int omni_sensory_connect_bio_async(omni_sensory_bridge_t* bridge) {
 
     bio_module_context_t ctx = bio_router_register_module(&info);
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to register module with bio-router in omni_sensory_connect_bio_async");
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -756,7 +865,10 @@ int omni_sensory_connect_bio_async(omni_sensory_bridge_t* bridge) {
 }
 
 int omni_sensory_disconnect_bio_async(omni_sensory_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in omni_sensory_disconnect_bio_async");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     if (bridge->bio_context) {

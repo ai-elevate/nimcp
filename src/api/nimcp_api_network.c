@@ -17,6 +17,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "API_NETWORK"
 
@@ -48,6 +49,8 @@ nimcp_network_t nimcp_network_create(
     nimcp_network_t handle = (nimcp_network_t)nimcp_malloc(sizeof(struct nimcp_network_handle));
     if (!handle) {
         set_error("Failed to allocate network handle");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct nimcp_network_handle),
+            "Failed to allocate network handle");
         return NULL;
     }
 
@@ -64,6 +67,7 @@ nimcp_network_t nimcp_network_create(
 
     if (!handle->internal_network) {
         set_error("Failed to create internal neural network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create internal neural network");
         nimcp_free(handle);
         return NULL;
     }
@@ -93,16 +97,19 @@ nimcp_status_t nimcp_network_forward(
 {
     if (!network) {
         set_error("Network handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Network handle is NULL in network_forward");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!inputs) {
         set_error("Inputs array is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Inputs array is NULL in network_forward");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!outputs) {
         set_error("Outputs array is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Outputs array is NULL in network_forward");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -113,6 +120,7 @@ nimcp_status_t nimcp_network_forward(
 
     if (!success) {
         set_error("Network forward pass failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Network forward pass failed");
         return NIMCP_ERROR;
     }
 
@@ -129,10 +137,12 @@ nimcp_status_t nimcp_network_train(
 {
     if (!network) {
         set_error("Network handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Network handle is NULL in network_train");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     // Training not yet implemented in internal API
     set_error("Training not yet implemented");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Network training not yet implemented");
     return NIMCP_ERROR;
 }

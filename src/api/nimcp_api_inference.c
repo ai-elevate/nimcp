@@ -17,6 +17,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "API_INFERENCE"
 
@@ -53,18 +54,21 @@ nimcp_status_t nimcp_brain_learn_example(
     if (!brain) {
         LOG_ERROR("Brain handle is NULL");
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in learn_example");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!features) {
         LOG_ERROR("Features array is NULL");
         set_error("Features array is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Features array is NULL in learn_example");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!label) {
         LOG_ERROR("Label is NULL");
         set_error("Label is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Label is NULL in learn_example");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -100,6 +104,8 @@ nimcp_status_t nimcp_brain_learn_example(
     if (loss < 0.0f) {
         LOG_ERROR("Brain learning failed for label '%s'", label);
         set_error("Brain learning failed");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "learning",
+            "Brain learning failed for label '%s'", label);
         return NIMCP_ERROR;
     }
 
@@ -117,21 +123,25 @@ nimcp_status_t nimcp_brain_predict(
 {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in brain_predict");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!features) {
         set_error("Features array is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Features array is NULL in brain_predict");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!out_label) {
         set_error("Output label buffer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Output label buffer is NULL in brain_predict");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!out_confidence) {
         set_error("Output confidence pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Output confidence pointer is NULL in brain_predict");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -145,6 +155,7 @@ nimcp_status_t nimcp_brain_predict(
         if (!bbb_validate_input(brain->internal_brain->bbb_system,
                                features, num_features * sizeof(float), &result)) {
             set_error("BBB rejected features: %s", result.reason);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "BBB rejected features: %s", result.reason);
             return NIMCP_ERROR_INVALID;
         }
     }
@@ -154,6 +165,8 @@ nimcp_status_t nimcp_brain_predict(
 
     if (!decision) {
         set_error("Brain prediction failed");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "prediction",
+            "Brain prediction failed");
         return NIMCP_ERROR;
     }
 
@@ -178,16 +191,19 @@ nimcp_status_t nimcp_brain_infer(
 {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in brain_infer");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!features) {
         set_error("Features array is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Features array is NULL in brain_infer");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!outputs) {
         set_error("Outputs array is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Outputs array is NULL in brain_infer");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -196,6 +212,8 @@ nimcp_status_t nimcp_brain_infer(
 
     if (!decision) {
         set_error("Brain inference failed");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "inference",
+            "Brain inference failed");
         return NIMCP_ERROR;
     }
 

@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_wiring_helpers.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -105,11 +106,17 @@ static inline const snn_bio_async_ctx_t* get_bio_ctx_const(const snn_network_t* 
  */
 static snn_bio_async_ctx_t* create_bio_ctx(void) {
     snn_bio_async_ctx_t* ctx = nimcp_malloc(sizeof(snn_bio_async_ctx_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_bio_async_ctx_t),
+            "Failed to allocate bio-async context");
+        return NULL;
+    }
 
     memset(ctx, 0, sizeof(snn_bio_async_ctx_t));
 
     if (nimcp_mutex_init(&ctx->mutex, NULL) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "Failed to initialize bio-async mutex");
         nimcp_free(ctx);
         return NULL;
     }
@@ -202,7 +209,8 @@ static nimcp_error_t snn_bio_router_handler(
 
 int snn_bio_async_connect(snn_network_t* network, uint16_t module_id) {
     if (!network) {
-        NIMCP_LOGGING_ERROR("SNN bio-async connect: NULL network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "SNN bio-async connect: NULL network");
         return SNN_ERROR_NULL_POINTER;
     }
 
@@ -224,7 +232,7 @@ int snn_bio_async_connect(snn_network_t* network, uint16_t module_id) {
     /* Create bio-async context */
     snn_bio_async_ctx_t* ctx = create_bio_ctx();
     if (!ctx) {
-        NIMCP_LOGGING_ERROR("SNN bio-async: failed to create context");
+        /* Exception already thrown by create_bio_ctx */
         return SNN_ERROR_OUT_OF_MEMORY;
     }
 
@@ -241,7 +249,8 @@ int snn_bio_async_connect(snn_network_t* network, uint16_t module_id) {
 
     ctx->bio_module = bio_router_register_module(&info);
     if (!ctx->bio_module) {
-        NIMCP_LOGGING_ERROR("SNN bio-async: failed to register module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "SNN bio-async: failed to register module with bio-router");
         destroy_bio_ctx(ctx);
         return SNN_ERROR_OPERATION_FAILED;
     }
@@ -263,7 +272,8 @@ int snn_bio_async_connect(snn_network_t* network, uint16_t module_id) {
         ));
 
         if (err != NIMCP_SUCCESS) {
-            NIMCP_LOGGING_ERROR("SNN bio-async: failed to register handler");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+                "SNN bio-async: failed to register handler");
             bio_router_unregister_module(ctx->bio_module);
             destroy_bio_ctx(ctx);
             return err;
@@ -281,7 +291,11 @@ int snn_bio_async_connect(snn_network_t* network, uint16_t module_id) {
 }
 
 int snn_bio_async_disconnect(snn_network_t* network) {
-    if (!network) return SNN_ERROR_NULL_POINTER;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "SNN bio-async disconnect: NULL network");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     snn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) return 0;
@@ -311,7 +325,11 @@ bool snn_bio_async_is_connected(const snn_network_t* network) {
  *===========================================================================*/
 
 int snn_bio_async_broadcast_spike(snn_network_t* network, const snn_bio_spike_msg_t* event) {
-    if (!network || !event) return SNN_ERROR_NULL_POINTER;
+    if (!network || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "SNN bio-async broadcast spike: NULL %s", !network ? "network" : "event");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     snn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) return SNN_ERROR_INVALID_STATE;
@@ -330,7 +348,11 @@ int snn_bio_async_broadcast_spike(snn_network_t* network, const snn_bio_spike_ms
 }
 
 int snn_bio_async_broadcast_state(snn_network_t* network, uint16_t target_module) {
-    if (!network) return SNN_ERROR_NULL_POINTER;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "SNN bio-async broadcast state: NULL network");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     snn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) return SNN_ERROR_INVALID_STATE;
@@ -362,7 +384,11 @@ int snn_bio_async_broadcast_state(snn_network_t* network, uint16_t target_module
 }
 
 int snn_bio_async_broadcast_stdp(snn_network_t* network, const snn_bio_stdp_msg_t* event) {
-    if (!network || !event) return SNN_ERROR_NULL_POINTER;
+    if (!network || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "SNN bio-async broadcast STDP: NULL %s", !network ? "network" : "event");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     snn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) return SNN_ERROR_INVALID_STATE;
@@ -381,7 +407,11 @@ int snn_bio_async_broadcast_stdp(snn_network_t* network, const snn_bio_stdp_msg_
 }
 
 int snn_bio_async_broadcast_training(snn_network_t* network, const snn_bio_training_msg_t* event) {
-    if (!network || !event) return SNN_ERROR_NULL_POINTER;
+    if (!network || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "SNN bio-async broadcast training: NULL %s", !network ? "network" : "event");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     snn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) return SNN_ERROR_INVALID_STATE;
@@ -400,7 +430,11 @@ int snn_bio_async_broadcast_training(snn_network_t* network, const snn_bio_train
 }
 
 int snn_bio_async_broadcast_population(snn_network_t* network, const snn_bio_population_msg_t* event) {
-    if (!network || !event) return SNN_ERROR_NULL_POINTER;
+    if (!network || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "SNN bio-async broadcast population: NULL %s", !network ? "network" : "event");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     snn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) return SNN_ERROR_INVALID_STATE;
@@ -423,7 +457,11 @@ int snn_bio_async_broadcast_population(snn_network_t* network, const snn_bio_pop
  *===========================================================================*/
 
 int snn_bio_async_request_sync(snn_network_t* network, nimcp_oscillation_band_t band, float coherence_target) {
-    if (!network) return SNN_ERROR_NULL_POINTER;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "SNN bio-async request sync: NULL network");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     snn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) return SNN_ERROR_INVALID_STATE;
@@ -431,7 +469,8 @@ int snn_bio_async_request_sync(snn_network_t* network, nimcp_oscillation_band_t 
     if (!ctx->phase_sync) {
         ctx->phase_sync = nimcp_phase_sync_create(band);
         if (!ctx->phase_sync) {
-            NIMCP_LOGGING_ERROR("SNN bio-async: failed to create phase sync");
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(nimcp_phase_sync_t),
+                "SNN bio-async: failed to create phase sync");
             return SNN_ERROR_OUT_OF_MEMORY;
         }
     }
@@ -459,7 +498,11 @@ int snn_bio_async_request_sync(snn_network_t* network, nimcp_oscillation_band_t 
 }
 
 int snn_bio_async_wait_sync(snn_network_t* network, int timeout_ms) {
-    if (!network) return SNN_ERROR_NULL_POINTER;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "SNN bio-async wait sync: NULL network");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     snn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) return SNN_ERROR_INVALID_STATE;
@@ -490,8 +533,16 @@ int snn_bio_async_register_handler(
     snn_bio_msg_handler_t handler,
     void* user_data
 ) {
-    if (!network || !handler) return SNN_ERROR_NULL_POINTER;
-    if (type >= SNN_BIO_MSG_COUNT) return SNN_ERROR_INVALID_CONFIG;
+    if (!network || !handler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "SNN bio-async register handler: NULL %s", !network ? "network" : "handler");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (type >= SNN_BIO_MSG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "SNN bio-async register handler: invalid message type %d", type);
+        return SNN_ERROR_INVALID_CONFIG;
+    }
 
     snn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) return SNN_ERROR_INVALID_STATE;
@@ -505,6 +556,8 @@ int snn_bio_async_register_handler(
     );
 
     if (!new_handlers) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, (count + 1) * sizeof(snn_bio_handler_entry_t),
+            "SNN bio-async register handler: failed to allocate handler array");
         nimcp_mutex_unlock(&ctx->mutex);
         return SNN_ERROR_OUT_OF_MEMORY;
     }
@@ -521,7 +574,11 @@ int snn_bio_async_register_handler(
 }
 
 int snn_bio_async_process(snn_network_t* network, int timeout_ms) {
-    if (!network) return SNN_ERROR_NULL_POINTER;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "SNN bio-async process: NULL network");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     snn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) return SNN_ERROR_INVALID_STATE;
@@ -569,7 +626,11 @@ int snn_bio_async_get_stats(
     uint64_t* messages_received,
     uint64_t* messages_dropped
 ) {
-    if (!network) return SNN_ERROR_NULL_POINTER;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "SNN bio-async get stats: NULL network");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     const snn_bio_async_ctx_t* ctx = get_bio_ctx_const(network);
     if (!ctx) return SNN_ERROR_INVALID_STATE;

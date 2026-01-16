@@ -20,10 +20,11 @@
 #include "language/nimcp_language_bio_async.h"
 
 /* Define error codes if not available (NIMCP_SUCCESS is in bio_async.h) */
-#ifndef NIMCP_ERROR_INVALID_ARGUMENT
-#define NIMCP_ERROR_INVALID_ARGUMENT -1
+#ifndef NIMCP_ERROR_INVALID_PARAM
+#define NIMCP_ERROR_INVALID_PARAM -1
 #endif
 #include "language/nimcp_language_orchestrator.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -88,6 +89,7 @@ int language_bio_async_register(
     bio_router_t router)
 {
     if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_register: NULL orchestrator");
         return -1;
     }
 
@@ -95,6 +97,7 @@ int language_bio_async_register(
     if (!g_bio_async_ctx) {
         g_bio_async_ctx = calloc(1, sizeof(language_bio_async_ctx_t));
         if (!g_bio_async_ctx) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_bio_async_register: Failed to allocate bio_async context");
             return -1;
         }
     }
@@ -135,10 +138,12 @@ int language_bio_async_register(
 int language_bio_async_unregister(language_orchestrator_t* orchestrator)
 {
     if (!orchestrator || !g_bio_async_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_unregister: NULL orchestrator or context");
         return -1;
     }
 
     if (g_bio_async_ctx->orchestrator != orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "language_bio_async_unregister: Orchestrator mismatch");
         return -1;
     }
 
@@ -185,10 +190,12 @@ int language_bio_async_send_phoneme(
     const language_msg_phoneme_t* phoneme)
 {
     if (!orchestrator || !phoneme) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_send_phoneme: NULL parameter");
         return -1;
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_phoneme: Bio-async not registered");
         return -1;
     }
 
@@ -215,6 +222,7 @@ int language_bio_async_send_phoneme(
             0  /* Default timeout */
         );
         if (err != NIMCP_SUCCESS) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "language_bio_async_send_phoneme: bio_router_send failed");
             return -1;
         }
     }
@@ -228,10 +236,12 @@ int language_bio_async_send_word(
     const language_msg_word_t* word)
 {
     if (!orchestrator || !word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_send_word: NULL parameter");
         return -1;
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_word: Bio-async not registered");
         return -1;
     }
 
@@ -250,6 +260,7 @@ int language_bio_async_send_word(
         msg.payload = *word;
 
         if (bio_router_send(g_bio_async_ctx->module_ctx, &msg, sizeof(msg), 0) != NIMCP_SUCCESS) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "language_bio_async_send_word: bio_router_send failed");
             return -1;
         }
     }
@@ -263,10 +274,12 @@ int language_bio_async_send_concept(
     const language_msg_concept_t* concept_msg)
 {
     if (!orchestrator || !concept_msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_send_concept: NULL parameter");
         return -1;
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_concept: Bio-async not registered");
         return -1;
     }
 
@@ -285,6 +298,7 @@ int language_bio_async_send_concept(
         msg.payload = *concept_msg;
 
         if (bio_router_send(g_bio_async_ctx->module_ctx, &msg, sizeof(msg), 0) != NIMCP_SUCCESS) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "language_bio_async_send_concept: bio_router_send failed");
             return -1;
         }
     }
@@ -298,10 +312,12 @@ int language_bio_async_send_comprehension(
     const language_msg_comprehension_t* result)
 {
     if (!orchestrator || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_send_comprehension: NULL parameter");
         return -1;
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_comprehension: Bio-async not registered");
         return -1;
     }
 
@@ -320,6 +336,7 @@ int language_bio_async_send_comprehension(
         msg.payload = *result;
 
         if (bio_router_send(g_bio_async_ctx->module_ctx, &msg, sizeof(msg), 0) != NIMCP_SUCCESS) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "language_bio_async_send_comprehension: bio_router_send failed");
             return -1;
         }
     }
@@ -333,10 +350,12 @@ int language_bio_async_send_production(
     const language_msg_production_t* result)
 {
     if (!orchestrator || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_send_production: NULL parameter");
         return -1;
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_production: Bio-async not registered");
         return -1;
     }
 
@@ -355,6 +374,7 @@ int language_bio_async_send_production(
         msg.payload = *result;
 
         if (bio_router_send(g_bio_async_ctx->module_ctx, &msg, sizeof(msg), 0) != NIMCP_SUCCESS) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "language_bio_async_send_production: bio_router_send failed");
             return -1;
         }
     }
@@ -368,10 +388,12 @@ int language_bio_async_send_anomaly(
     const language_msg_anomaly_t* anomaly)
 {
     if (!orchestrator || !anomaly) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_send_anomaly: NULL parameter");
         return -1;
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_anomaly: Bio-async not registered");
         return -1;
     }
 
@@ -390,6 +412,7 @@ int language_bio_async_send_anomaly(
         msg.payload = *anomaly;
 
         if (bio_router_send(g_bio_async_ctx->module_ctx, &msg, sizeof(msg), 0) != NIMCP_SUCCESS) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "language_bio_async_send_anomaly: bio_router_send failed");
             return -1;
         }
     }
@@ -403,10 +426,12 @@ int language_bio_async_send_state_change(
     const language_msg_state_change_t* state_change)
 {
     if (!orchestrator || !state_change) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_send_state_change: NULL parameter");
         return -1;
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_state_change: Bio-async not registered");
         return -1;
     }
 
@@ -425,6 +450,7 @@ int language_bio_async_send_state_change(
         msg.payload = *state_change;
 
         if (bio_router_send(g_bio_async_ctx->module_ctx, &msg, sizeof(msg), 0) != NIMCP_SUCCESS) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "language_bio_async_send_state_change: bio_router_send failed");
             return -1;
         }
     }
@@ -438,10 +464,12 @@ int language_bio_async_send_error(
     const language_msg_error_t* error)
 {
     if (!orchestrator || !error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_send_error: NULL parameter");
         return -1;
     }
 
     if (!g_bio_async_ctx || !g_bio_async_ctx->registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_send_error: Bio-async not registered");
         return -1;
     }
 
@@ -460,6 +488,7 @@ int language_bio_async_send_error(
         msg.payload = *error;
 
         if (bio_router_send(g_bio_async_ctx->module_ctx, &msg, sizeof(msg), 0) != NIMCP_SUCCESS) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "language_bio_async_send_error: bio_router_send failed");
             return -1;
         }
     }
@@ -478,10 +507,12 @@ int language_bio_async_register_handler(
     language_message_handler_t handler)
 {
     if (!orchestrator || !handler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_register_handler: NULL parameter");
         return -1;
     }
 
     if (!g_bio_async_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bio_async_register_handler: Bio-async not initialized");
         return -1;
     }
 
@@ -496,6 +527,7 @@ int language_bio_async_register_handler(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_bio_async_register_handler: No handler slots available");
     return -1;  /* No space */
 }
 
@@ -506,6 +538,7 @@ int language_bio_async_register_handler(
 int language_bio_async_process_messages(language_orchestrator_t* orchestrator)
 {
     if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_process_messages: NULL orchestrator");
         return -1;
     }
 
@@ -558,7 +591,7 @@ static nimcp_error_t language_bio_async_message_callback(
     language_orchestrator_t* orchestrator = (language_orchestrator_t*)user_data;
 
     if (!orchestrator || !g_bio_async_ctx || !msg) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Extract message type from header */

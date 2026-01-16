@@ -11,6 +11,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct attention_thalamic_bridge {
@@ -39,11 +40,15 @@ attention_thalamic_bridge_t* attention_thalamic_bridge_create(
     const attention_thalamic_config_t* config
 ) {
     attention_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(attention_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_thalamic_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Initialize mutex for thread safety */
     bridge->base.mutex = nimcp_mutex_create(NULL);
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_thalamic_bridge_create: failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -68,7 +73,10 @@ void attention_thalamic_bridge_destroy(attention_thalamic_bridge_t* bridge) {
 }
 
 int attention_thalamic_bridge_reset(attention_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
@@ -82,7 +90,10 @@ int attention_thalamic_route_signal(
     attention_thalamic_bridge_t* bridge,
     const attention_thalamic_signal_t* signal
 ) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_thalamic_route_signal: bridge or signal is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -158,7 +169,10 @@ int attention_thalamic_request_focus(
     float priority,
     float target_salience
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_thalamic_request_focus: bridge is NULL");
+        return -1;
+    }
 
     attention_thalamic_signal_t signal = {
         .signal_type = ATTENTION_SIGNAL_FOCUS,
@@ -178,7 +192,10 @@ int attention_thalamic_request_shift(
     float new_priority,
     float shift_cost
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_thalamic_request_shift: bridge is NULL");
+        return -1;
+    }
 
     attention_thalamic_signal_t signal = {
         .signal_type = ATTENTION_SIGNAL_SHIFT,
@@ -197,7 +214,10 @@ int attention_thalamic_activate_filter(
     attention_thalamic_bridge_t* bridge,
     float filter_strength
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_thalamic_activate_filter: bridge is NULL");
+        return -1;
+    }
 
     attention_thalamic_signal_t signal = {
         .signal_type = ATTENTION_SIGNAL_FILTER,
@@ -213,7 +233,10 @@ int attention_thalamic_activate_filter(
 }
 
 int attention_thalamic_set_attention(attention_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f :
@@ -223,7 +246,10 @@ int attention_thalamic_set_attention(attention_thalamic_bridge_t* bridge, float 
 }
 
 int attention_thalamic_get_attention(const attention_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_thalamic_get_attention: bridge or attention is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
@@ -235,7 +261,10 @@ int attention_thalamic_bridge_get_stats(
     const attention_thalamic_bridge_t* bridge,
     attention_thalamic_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_thalamic_bridge_get_stats: bridge or stats is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);

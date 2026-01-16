@@ -16,6 +16,7 @@
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Constants
@@ -177,11 +178,15 @@ dragonfly_territory_t dragonfly_territory_create(const territory_config_t* confi
     territory_config_t cfg = config ? *config : territory_default_config();
 
     if (!territory_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_territory_create: invalid config");
         return NULL;
     }
 
     dragonfly_territory_t territory = nimcp_calloc(1, sizeof(struct dragonfly_territory_s));
-    if (!territory) return NULL;
+    if (!territory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_territory_create: failed to allocate territory");
+        return NULL;
+    }
 
     territory->config = cfg;
     territory->state.activity = TERRITORY_PATROLLING;
@@ -190,6 +195,7 @@ dragonfly_territory_t dragonfly_territory_create(const territory_config_t* confi
     territory->mutex = nimcp_mutex_create(NULL);
     if (!territory->mutex) {
         nimcp_free(territory);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_territory_create: failed to create mutex");
         return NULL;
     }
 
@@ -207,7 +213,10 @@ void dragonfly_territory_destroy(dragonfly_territory_t territory) {
 }
 
 int dragonfly_territory_reset(dragonfly_territory_t territory) {
-    if (!territory) return -1;
+    if (!territory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_territory_reset: territory is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(territory->mutex);
 
@@ -232,7 +241,10 @@ int dragonfly_territory_set_center(
     const float center[3],
     float radius_m
 ) {
-    if (!territory || !center || radius_m <= 0.0f) return -1;
+    if (!territory || !center || radius_m <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_territory_set_center: territory or center is NULL, or radius_m <= 0");
+        return -1;
+    }
 
     nimcp_mutex_lock(territory->mutex);
 
@@ -250,7 +262,10 @@ int dragonfly_territory_add_landmark(
     dragonfly_territory_t territory,
     const territory_landmark_t* landmark
 ) {
-    if (!territory || !landmark) return -1;
+    if (!territory || !landmark) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_territory_add_landmark: territory or landmark is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(territory->mutex);
 
@@ -266,6 +281,7 @@ int dragonfly_territory_add_landmark(
         }
         if (replace_idx < 0) {
             nimcp_mutex_unlock(territory->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_territory_add_landmark: landmark not important enough to replace existing");
             return -1;  /* New landmark not important enough */
         }
         territory->landmarks[replace_idx] = *landmark;
@@ -282,12 +298,16 @@ int dragonfly_territory_add_waypoint(
     dragonfly_territory_t territory,
     const patrol_waypoint_t* waypoint
 ) {
-    if (!territory || !waypoint) return -1;
+    if (!territory || !waypoint) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_territory_add_waypoint: territory or waypoint is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(territory->mutex);
 
     if (territory->num_waypoints >= TERRITORY_MAX_WAYPOINTS) {
         nimcp_mutex_unlock(territory->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_territory_add_waypoint: max waypoints reached");
         return -1;
     }
 
@@ -299,7 +319,10 @@ int dragonfly_territory_add_waypoint(
 }
 
 int dragonfly_territory_generate_route(dragonfly_territory_t territory) {
-    if (!territory || !territory->boundary_set) return -1;
+    if (!territory || !territory->boundary_set) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_territory_generate_route: territory is NULL or boundary not set");
+        return -1;
+    }
 
     nimcp_mutex_lock(territory->mutex);
 
@@ -352,7 +375,10 @@ int dragonfly_territory_update(
     const float current_pos[3],
     float dt_s
 ) {
-    if (!territory || !current_pos || dt_s <= 0.0f) return -1;
+    if (!territory || !current_pos || dt_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_territory_update: territory or current_pos is NULL, or dt_s <= 0");
+        return -1;
+    }
 
     nimcp_mutex_lock(territory->mutex);
 
@@ -486,7 +512,10 @@ int dragonfly_territory_report_intruder(
     float size,
     float threat_level
 ) {
-    if (!territory || !position || !velocity) return -1;
+    if (!territory || !position || !velocity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_territory_report_intruder: territory, position, or velocity is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(territory->mutex);
 
@@ -507,6 +536,7 @@ int dragonfly_territory_report_intruder(
     /* Add new intruder */
     if (territory->num_intruders >= TERRITORY_MAX_INTRUDERS) {
         nimcp_mutex_unlock(territory->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_territory_report_intruder: max intruders reached");
         return -1;  /* No room */
     }
 
@@ -545,7 +575,10 @@ int dragonfly_territory_get_next_waypoint(
     const dragonfly_territory_t territory,
     float waypoint[3]
 ) {
-    if (!territory || !waypoint) return -1;
+    if (!territory || !waypoint) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_territory_get_next_waypoint: territory or waypoint is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)territory->mutex);
 
@@ -584,7 +617,10 @@ int dragonfly_territory_get_response(
     intruder_response_t* response,
     float chase_vector[3]
 ) {
-    if (!territory || !response) return -1;
+    if (!territory || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_territory_get_response: territory or response is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)territory->mutex);
 
@@ -604,6 +640,7 @@ int dragonfly_territory_get_response(
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)territory->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_territory_get_response: intruder not found");
     return -1;  /* Intruder not found */
 }
 
@@ -625,7 +662,10 @@ int dragonfly_territory_get_state(
     const dragonfly_territory_t territory,
     territory_state_t* state
 ) {
-    if (!territory || !state) return -1;
+    if (!territory || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_territory_get_state: territory or state is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)territory->mutex);
     *state = territory->state;
@@ -638,7 +678,10 @@ int dragonfly_territory_get_boundary(
     const dragonfly_territory_t territory,
     territory_boundary_t* boundary
 ) {
-    if (!territory || !boundary) return -1;
+    if (!territory || !boundary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_territory_get_boundary: territory or boundary is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)territory->mutex);
     *boundary = territory->boundary;
@@ -653,7 +696,10 @@ int dragonfly_territory_get_intruders(
     uint32_t max_intruders,
     uint32_t* num_intruders
 ) {
-    if (!territory || !intruders || !num_intruders) return -1;
+    if (!territory || !intruders || !num_intruders) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_territory_get_intruders: territory, intruders, or num_intruders is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)territory->mutex);
 
@@ -676,7 +722,10 @@ int dragonfly_territory_get_stats(
     const dragonfly_territory_t territory,
     territory_stats_t* stats
 ) {
-    if (!territory || !stats) return -1;
+    if (!territory || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_territory_get_stats: territory or stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)territory->mutex);
     *stats = territory->stats;

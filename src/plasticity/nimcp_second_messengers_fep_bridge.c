@@ -12,6 +12,7 @@
 #include "utils/validation/nimcp_common.h"
 #include <string.h>
 #include <math.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 static inline float clamp(float value, float min, float max) {
     if (value < min) return min;
@@ -20,7 +21,10 @@ static inline float clamp(float value, float min, float max) {
 }
 
 int sm_fep_bridge_default_config(sm_fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Config is NULL in default_config");
+        return -1;
+    }
     config->ca_pe_sensitivity = SM_FEP_CA_PE_GAIN;
     config->camp_precision_sensitivity = SM_FEP_CAMP_PRECISION_GAIN;
     config->ip3_complexity_sensitivity = SM_FEP_IP3_COMPLEXITY_GAIN;
@@ -34,7 +38,10 @@ int sm_fep_bridge_default_config(sm_fep_config_t* config) {
 
 sm_fep_bridge_t* sm_fep_bridge_create(const sm_fep_config_t* config, uint32_t neuron_id) {
     sm_fep_bridge_t* bridge = (sm_fep_bridge_t*)nimcp_malloc(sizeof(sm_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate sm_fep_bridge");
+        return NULL;
+    }
 
     if (config) memcpy(&bridge->config, config, sizeof(sm_fep_config_t));
     else sm_fep_bridge_default_config(&bridge->config);
@@ -45,6 +52,7 @@ sm_fep_bridge_t* sm_fep_bridge_create(const sm_fep_config_t* config, uint32_t ne
 
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -64,7 +72,10 @@ void sm_fep_bridge_destroy(sm_fep_bridge_t* bridge) {
 }
 
 int sm_fep_bridge_connect_fep(sm_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in connect_fep");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -72,7 +83,10 @@ int sm_fep_bridge_connect_fep(sm_fep_bridge_t* bridge, fep_system_t* fep) {
 }
 
 int sm_fep_bridge_connect_sm(sm_fep_bridge_t* bridge, second_messenger_system_t* sm) {
-    if (!bridge || !sm) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !sm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in connect_sm");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->sm_system = sm;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -80,7 +94,10 @@ int sm_fep_bridge_connect_sm(sm_fep_bridge_t* bridge, second_messenger_system_t*
 }
 
 int sm_fep_bridge_disconnect(sm_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Bridge is NULL in disconnect");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->sm_system = NULL;
@@ -108,7 +125,10 @@ float sm_fep_compute_ip3_from_complexity(sm_fep_bridge_t* bridge, float complexi
 
 int sm_fep_trigger_creb_from_efe(sm_fep_bridge_t* bridge, float efe) {
     if (!bridge || !bridge->config.enable_creb_plasticity_coupling) return 0;
-    if (!bridge->sm_system) return NIMCP_ERROR_INVALID_STATE;
+    if (!bridge->sm_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LEARNING_FAILED, "SM system not connected in trigger_creb");
+        return NIMCP_ERROR_INVALID_STATE;
+    }
 
     /* CREB phosphorylation if expected free energy exceeds threshold */
     if (efe > bridge->config.creb_efe_sensitivity) {
@@ -125,7 +145,10 @@ float sm_fep_get_plasticity_modulation(const sm_fep_bridge_t* bridge) {
 }
 
 int sm_fep_bridge_update(sm_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Bridge is NULL in update");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->fep_system && bridge->sm_system) {
@@ -181,7 +204,10 @@ int sm_fep_bridge_update(sm_fep_bridge_t* bridge, uint64_t delta_ms) {
 }
 
 int sm_fep_bridge_get_stats(const sm_fep_bridge_t* bridge, sm_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL pointer in get_stats");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(sm_fep_stats_t));
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -189,13 +215,19 @@ int sm_fep_bridge_get_stats(const sm_fep_bridge_t* bridge, sm_fep_stats_t* stats
 }
 
 int sm_fep_bridge_connect_bio_async(sm_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Bridge is NULL in connect_bio_async");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 int sm_fep_bridge_disconnect_bio_async(sm_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Bridge is NULL in disconnect_bio_async");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     bridge->base.bio_async_enabled = false;
     return 0;
 }

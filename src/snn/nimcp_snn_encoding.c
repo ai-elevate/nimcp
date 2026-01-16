@@ -18,6 +18,7 @@
 #include "snn/nimcp_snn_encoding.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -77,7 +78,11 @@ void snn_rate_decoder_config_default(snn_rate_decoder_config_t* config) {
 static snn_encoder_t* encoder_alloc(uint32_t n_inputs, uint32_t n_outputs,
                                      snn_encoding_t method) {
     snn_encoder_t* encoder = nimcp_malloc(sizeof(snn_encoder_t));
-    if (!encoder) return NULL;
+    if (!encoder) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_encoder_t),
+            "Failed to allocate encoder structure");
+        return NULL;
+    }
 
     memset(encoder, 0, sizeof(snn_encoder_t));
     encoder->method = method;
@@ -89,6 +94,8 @@ static snn_encoder_t* encoder_alloc(uint32_t n_inputs, uint32_t n_outputs,
     encoder->spike_mask = nimcp_malloc(n_outputs * sizeof(uint8_t));
 
     if (!encoder->spike_times || !encoder->spike_mask) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, n_outputs * sizeof(float),
+            "Failed to allocate encoder buffers for %u outputs", n_outputs);
         snn_encoder_destroy(encoder);
         return NULL;
     }
@@ -99,7 +106,9 @@ static snn_encoder_t* encoder_alloc(uint32_t n_inputs, uint32_t n_outputs,
 snn_encoder_t* snn_encoder_create_rate(uint32_t n_inputs,
                                         const snn_rate_encoder_config_t* config) {
     if (n_inputs == 0 || !config) {
-        NIMCP_LOGGING_ERROR("snn_encoder_create_rate: invalid args");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_encoder_create_rate: invalid args (n_inputs=%u, config=%p)",
+            n_inputs, (void*)config);
         return NULL;
     }
 
@@ -115,7 +124,9 @@ snn_encoder_t* snn_encoder_create_rate(uint32_t n_inputs,
 snn_encoder_t* snn_encoder_create_temporal(uint32_t n_inputs,
                                             const snn_temporal_encoder_config_t* config) {
     if (n_inputs == 0 || !config) {
-        NIMCP_LOGGING_ERROR("snn_encoder_create_temporal: invalid args");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_encoder_create_temporal: invalid args (n_inputs=%u, config=%p)",
+            n_inputs, (void*)config);
         return NULL;
     }
 
@@ -131,7 +142,9 @@ snn_encoder_t* snn_encoder_create_temporal(uint32_t n_inputs,
 snn_encoder_t* snn_encoder_create_population(uint32_t n_inputs,
                                               const snn_population_encoder_config_t* config) {
     if (n_inputs == 0 || !config || config->n_neurons == 0) {
-        NIMCP_LOGGING_ERROR("snn_encoder_create_population: invalid args");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_encoder_create_population: invalid args (n_inputs=%u, config=%p)",
+            n_inputs, (void*)config);
         return NULL;
     }
 
@@ -151,7 +164,9 @@ snn_encoder_t* snn_encoder_create_population(uint32_t n_inputs,
 snn_encoder_t* snn_encoder_create_latency(uint32_t n_inputs,
                                            const snn_latency_encoder_config_t* config) {
     if (n_inputs == 0 || !config) {
-        NIMCP_LOGGING_ERROR("snn_encoder_create_latency: invalid args");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_encoder_create_latency: invalid args (n_inputs=%u, config=%p)",
+            n_inputs, (void*)config);
         return NULL;
     }
 
@@ -183,7 +198,11 @@ void snn_encoder_destroy(snn_encoder_t* encoder) {
 static snn_decoder_t* decoder_alloc(uint32_t n_inputs, uint32_t n_outputs,
                                      snn_decoding_t method) {
     snn_decoder_t* decoder = nimcp_malloc(sizeof(snn_decoder_t));
-    if (!decoder) return NULL;
+    if (!decoder) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_decoder_t),
+            "Failed to allocate decoder structure");
+        return NULL;
+    }
 
     memset(decoder, 0, sizeof(snn_decoder_t));
     decoder->method = method;
@@ -195,6 +214,8 @@ static snn_decoder_t* decoder_alloc(uint32_t n_inputs, uint32_t n_outputs,
     decoder->first_times = nimcp_malloc(n_inputs * sizeof(float));
 
     if (!decoder->spike_counts || !decoder->first_times) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, n_inputs * sizeof(float),
+            "Failed to allocate decoder buffers for %u inputs", n_inputs);
         snn_decoder_destroy(decoder);
         return NULL;
     }
@@ -206,7 +227,9 @@ snn_decoder_t* snn_decoder_create_rate(uint32_t n_inputs,
                                         uint32_t n_outputs,
                                         const snn_rate_decoder_config_t* config) {
     if (n_inputs == 0 || n_outputs == 0 || !config) {
-        NIMCP_LOGGING_ERROR("snn_decoder_create_rate: invalid args");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_decoder_create_rate: invalid args (n_inputs=%u, n_outputs=%u, config=%p)",
+            n_inputs, n_outputs, (void*)config);
         return NULL;
     }
 
@@ -223,7 +246,9 @@ snn_decoder_t* snn_decoder_create_rate(uint32_t n_inputs,
 snn_decoder_t* snn_decoder_create_first_spike(uint32_t n_inputs,
                                                const snn_first_spike_decoder_config_t* config) {
     if (n_inputs == 0 || !config) {
-        NIMCP_LOGGING_ERROR("snn_decoder_create_first_spike: invalid args");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_decoder_create_first_spike: invalid args (n_inputs=%u, config=%p)",
+            n_inputs, (void*)config);
         return NULL;
     }
 
@@ -241,7 +266,9 @@ snn_decoder_t* snn_decoder_create_population(uint32_t n_inputs,
                                               uint32_t n_outputs,
                                               const snn_population_decoder_config_t* config) {
     if (n_inputs == 0 || n_outputs == 0 || !config) {
-        NIMCP_LOGGING_ERROR("snn_decoder_create_population: invalid args");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_decoder_create_population: invalid args (n_inputs=%u, n_outputs=%u, config=%p)",
+            n_inputs, n_outputs, (void*)config);
         return NULL;
     }
 
@@ -279,8 +306,18 @@ int snn_encode_rate(snn_encoder_t* encoder,
                     const float* values,
                     float dt,
                     uint8_t* spikes_out) {
-    if (!encoder || !values || !spikes_out) return SNN_ERROR_NULL_POINTER;
-    if (encoder->method != SNN_ENCODE_RATE) return SNN_ERROR_INVALID_CONFIG;
+    if (!encoder || !values || !spikes_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_encode_rate: NULL pointer (encoder=%p, values=%p, spikes_out=%p)",
+            (void*)encoder, (void*)values, (void*)spikes_out);
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (encoder->method != SNN_ENCODE_RATE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_encode_rate: encoder method mismatch (expected RATE, got %d)",
+            encoder->method);
+        return SNN_ERROR_INVALID_CONFIG;
+    }
 
     const snn_rate_encoder_config_t* cfg = &encoder->config.rate;
     float value_range = cfg->value_max - cfg->value_min;
@@ -317,8 +354,17 @@ int snn_encode_rate(snn_encoder_t* encoder,
 int snn_encode_temporal(snn_encoder_t* encoder,
                         const float* values,
                         float* spike_times_out) {
-    if (!encoder || !values || !spike_times_out) return SNN_ERROR_NULL_POINTER;
-    if (encoder->method != SNN_ENCODE_TEMPORAL) return SNN_ERROR_INVALID_CONFIG;
+    if (!encoder || !values || !spike_times_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_encode_temporal: NULL pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (encoder->method != SNN_ENCODE_TEMPORAL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_encode_temporal: encoder method mismatch (expected TEMPORAL, got %d)",
+            encoder->method);
+        return SNN_ERROR_INVALID_CONFIG;
+    }
 
     const snn_temporal_encoder_config_t* cfg = &encoder->config.temporal;
     float value_range = cfg->value_max - cfg->value_min;
@@ -351,8 +397,17 @@ int snn_encode_temporal(snn_encoder_t* encoder,
 int snn_encode_population(snn_encoder_t* encoder,
                           const float* values,
                           float* rates_out) {
-    if (!encoder || !values || !rates_out) return SNN_ERROR_NULL_POINTER;
-    if (encoder->method != SNN_ENCODE_POPULATION) return SNN_ERROR_INVALID_CONFIG;
+    if (!encoder || !values || !rates_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_encode_population: NULL pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (encoder->method != SNN_ENCODE_POPULATION) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_encode_population: encoder method mismatch (expected POPULATION, got %d)",
+            encoder->method);
+        return SNN_ERROR_INVALID_CONFIG;
+    }
 
     const snn_population_encoder_config_t* cfg = &encoder->config.population;
     float value_range = cfg->value_max - cfg->value_min;
@@ -411,8 +466,17 @@ int snn_encode_population(snn_encoder_t* encoder,
 int snn_encode_latency(snn_encoder_t* encoder,
                        const float* values,
                        float* latencies_out) {
-    if (!encoder || !values || !latencies_out) return SNN_ERROR_NULL_POINTER;
-    if (encoder->method != SNN_ENCODE_LATENCY) return SNN_ERROR_INVALID_CONFIG;
+    if (!encoder || !values || !latencies_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_encode_latency: NULL pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (encoder->method != SNN_ENCODE_LATENCY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_encode_latency: encoder method mismatch (expected LATENCY, got %d)",
+            encoder->method);
+        return SNN_ERROR_INVALID_CONFIG;
+    }
 
     const snn_latency_encoder_config_t* cfg = &encoder->config.latency;
 
@@ -453,7 +517,11 @@ int snn_encode(snn_encoder_t* encoder,
                const float* values,
                float dt,
                void* output) {
-    if (!encoder || !values || !output) return SNN_ERROR_NULL_POINTER;
+    if (!encoder || !values || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_encode: NULL pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     switch (encoder->method) {
         case SNN_ENCODE_RATE:
@@ -465,7 +533,8 @@ int snn_encode(snn_encoder_t* encoder,
         case SNN_ENCODE_LATENCY:
             return snn_encode_latency(encoder, values, (float*)output);
         default:
-            NIMCP_LOGGING_ERROR("snn_encode: unsupported method %d", encoder->method);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "snn_encode: unsupported method %d", encoder->method);
             return SNN_ERROR_INVALID_CONFIG;
     }
 }
@@ -477,8 +546,17 @@ int snn_encode(snn_encoder_t* encoder,
 int snn_decode_rate(snn_decoder_t* decoder,
                     const float* spike_counts,
                     float* values_out) {
-    if (!decoder || !spike_counts || !values_out) return SNN_ERROR_NULL_POINTER;
-    if (decoder->method != SNN_DECODE_RATE) return SNN_ERROR_INVALID_CONFIG;
+    if (!decoder || !spike_counts || !values_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_decode_rate: NULL pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (decoder->method != SNN_DECODE_RATE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_decode_rate: decoder method mismatch (expected RATE, got %d)",
+            decoder->method);
+        return SNN_ERROR_INVALID_CONFIG;
+    }
 
     const snn_rate_decoder_config_t* cfg = &decoder->config.rate;
     float time_s = cfg->time_window / 1000.0f;  /* Convert ms to s */
@@ -507,8 +585,17 @@ int snn_decode_first_spike(snn_decoder_t* decoder,
                            const float* spike_times,
                            uint32_t* class_out,
                            float* confidence_out) {
-    if (!decoder || !spike_times || !class_out) return SNN_ERROR_NULL_POINTER;
-    if (decoder->method != SNN_DECODE_FIRST_SPIKE) return SNN_ERROR_INVALID_CONFIG;
+    if (!decoder || !spike_times || !class_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_decode_first_spike: NULL pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (decoder->method != SNN_DECODE_FIRST_SPIKE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_decode_first_spike: decoder method mismatch (expected FIRST_SPIKE, got %d)",
+            decoder->method);
+        return SNN_ERROR_INVALID_CONFIG;
+    }
 
     const snn_first_spike_decoder_config_t* cfg = &decoder->config.first_spike;
 
@@ -599,8 +686,17 @@ int snn_decode_first_spike(snn_decoder_t* decoder,
 int snn_decode_population(snn_decoder_t* decoder,
                           const float* activities,
                           float* values_out) {
-    if (!decoder || !activities || !values_out) return SNN_ERROR_NULL_POINTER;
-    if (decoder->method != SNN_DECODE_POPULATION) return SNN_ERROR_INVALID_CONFIG;
+    if (!decoder || !activities || !values_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_decode_population: NULL pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (decoder->method != SNN_DECODE_POPULATION) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_decode_population: decoder method mismatch (expected POPULATION, got %d)",
+            decoder->method);
+        return SNN_ERROR_INVALID_CONFIG;
+    }
 
     const snn_population_decoder_config_t* cfg = &decoder->config.population;
 
@@ -631,7 +727,11 @@ int snn_decode_population(snn_decoder_t* decoder,
 int snn_decode(snn_decoder_t* decoder,
                const void* input,
                void* output) {
-    if (!decoder || !input || !output) return SNN_ERROR_NULL_POINTER;
+    if (!decoder || !input || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_decode: NULL pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     switch (decoder->method) {
         case SNN_DECODE_RATE:
@@ -642,7 +742,8 @@ int snn_decode(snn_decoder_t* decoder,
         case SNN_DECODE_POPULATION:
             return snn_decode_population(decoder, (const float*)input, (float*)output);
         default:
-            NIMCP_LOGGING_ERROR("snn_decode: unsupported method %d", decoder->method);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "snn_decode: unsupported method %d", decoder->method);
             return SNN_ERROR_INVALID_CONFIG;
     }
 }

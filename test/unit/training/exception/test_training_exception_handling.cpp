@@ -106,7 +106,7 @@ TEST_F(GradientExplosionExceptionTest, CreateBrainException_GradientExplosion) {
     // WHY:  Gradient explosion is a common training failure mode
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_GRADIENT_EXPLOSION,
+        NIMCP_ERROR_BACKWARD_PASS,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0,  // brain_id
@@ -115,7 +115,7 @@ TEST_F(GradientExplosionExceptionTest, CreateBrainException_GradientExplosion) {
     );
 
     ASSERT_NE(ex, nullptr);
-    EXPECT_EQ(ex->base.code, NIMCP_ERROR_GRADIENT_EXPLOSION);
+    EXPECT_EQ(ex->base.code, NIMCP_ERROR_BACKWARD_PASS);
     EXPECT_EQ(ex->base.category, EXCEPTION_CATEGORY_BRAIN);
     EXPECT_EQ(ex->base.severity, EXCEPTION_SEVERITY_SEVERE);
     EXPECT_EQ(ex->base.type, EXCEPTION_TYPE_BRAIN);
@@ -136,7 +136,7 @@ TEST_F(GradientExplosionExceptionTest, GradientExplosion_DispatchToHandler) {
     // WHY:  Verify handler chain receives training exceptions
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_GRADIENT_EXPLOSION,
+        NIMCP_ERROR_BACKWARD_PASS,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         1, "layer_fc1",
@@ -148,7 +148,7 @@ TEST_F(GradientExplosionExceptionTest, GradientExplosion_DispatchToHandler) {
     nimcp_exception_dispatch((nimcp_exception_t*)ex);
 
     EXPECT_GE(handler_call_count.load(), 1);
-    EXPECT_EQ(last_exception_code.load(), NIMCP_ERROR_GRADIENT_EXPLOSION);
+    EXPECT_EQ(last_exception_code.load(), NIMCP_ERROR_BACKWARD_PASS);
     EXPECT_EQ(last_exception_category.load(), EXCEPTION_CATEGORY_BRAIN);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
@@ -159,7 +159,7 @@ TEST_F(GradientExplosionExceptionTest, GradientExplosion_RecoveryStrategy) {
     // WHY:  Verify correct recovery action is suggested
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_GRADIENT_EXPLOSION,
+        NIMCP_ERROR_BACKWARD_PASS,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "conv_layer",
@@ -185,7 +185,7 @@ TEST_F(GradientExplosionExceptionTest, GradientExplosion_EpitopeGeneration) {
     // WHY:  Epitopes enable immune system pattern matching
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_GRADIENT_EXPLOSION,
+        NIMCP_ERROR_BACKWARD_PASS,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "layer_test",
@@ -265,7 +265,7 @@ TEST_F(NumericalStabilityExceptionTest, CreateException_NaNDetection) {
     // WHY:  NaN values corrupt training and must be handled
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_TRAINING_NAN_DETECTED,
+        NIMCP_ERROR_FORWARD_PASS,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "fc_layer_weights",
@@ -273,7 +273,7 @@ TEST_F(NumericalStabilityExceptionTest, CreateException_NaNDetection) {
     );
 
     ASSERT_NE(ex, nullptr);
-    EXPECT_EQ(ex->base.code, NIMCP_ERROR_TRAINING_NAN_DETECTED);
+    EXPECT_EQ(ex->base.code, NIMCP_ERROR_FORWARD_PASS);
     ex->has_nan_weights = true;
     EXPECT_TRUE(ex->has_nan_weights);
 
@@ -285,7 +285,7 @@ TEST_F(NumericalStabilityExceptionTest, CreateException_InfDetection) {
     // WHY:  Inf values indicate overflow and training instability
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_TRAINING_INF_DETECTED,
+        NIMCP_ERROR_BACKWARD_PASS,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "attention_scores",
@@ -293,7 +293,7 @@ TEST_F(NumericalStabilityExceptionTest, CreateException_InfDetection) {
     );
 
     ASSERT_NE(ex, nullptr);
-    EXPECT_EQ(ex->base.code, NIMCP_ERROR_TRAINING_INF_DETECTED);
+    EXPECT_EQ(ex->base.code, NIMCP_ERROR_BACKWARD_PASS);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
 }
@@ -303,7 +303,7 @@ TEST_F(NumericalStabilityExceptionTest, NaN_ImmunePresentation) {
     // WHY:  Immune system should learn NaN patterns for prevention
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_TRAINING_NAN_DETECTED,
+        NIMCP_ERROR_FORWARD_PASS,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "layer_nan",
@@ -337,7 +337,7 @@ TEST_F(NumericalStabilityExceptionTest, DetectNaNInGradients) {
 
     if (has_nan) {
         nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-            NIMCP_ERROR_TRAINING_NAN_DETECTED,
+            NIMCP_ERROR_FORWARD_PASS,
             EXCEPTION_SEVERITY_SEVERE,
             __FILE__, __LINE__, __func__,
             0, "gradient_check",
@@ -368,7 +368,7 @@ TEST_F(NumericalStabilityExceptionTest, DetectInfInGradients) {
 
     if (has_inf) {
         nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-            NIMCP_ERROR_TRAINING_INF_DETECTED,
+            NIMCP_ERROR_BACKWARD_PASS,
             EXCEPTION_SEVERITY_SEVERE,
             __FILE__, __LINE__, __func__,
             0, "gradient_check",
@@ -392,7 +392,7 @@ TEST_F(TrainingDivergenceExceptionTest, CreateException_LossDivergence) {
     // WHY:  Diverging loss indicates failed training
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_LEARNING_DIVERGED,
+        NIMCP_ERROR_INFERENCE_FAILED,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "training_loop",
@@ -401,7 +401,7 @@ TEST_F(TrainingDivergenceExceptionTest, CreateException_LossDivergence) {
     );
 
     ASSERT_NE(ex, nullptr);
-    EXPECT_EQ(ex->base.code, NIMCP_ERROR_LEARNING_DIVERGED);
+    EXPECT_EQ(ex->base.code, NIMCP_ERROR_INFERENCE_FAILED);
     ex->learning_diverged = true;
     EXPECT_TRUE(ex->learning_diverged);
 
@@ -413,7 +413,7 @@ TEST_F(TrainingDivergenceExceptionTest, Divergence_RecoveryRollback) {
     // WHY:  Rollback to checkpoint is standard recovery
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_LEARNING_DIVERGED,
+        NIMCP_ERROR_INFERENCE_FAILED,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "training",
@@ -438,7 +438,7 @@ TEST_F(TrainingDivergenceExceptionTest, Divergence_SetContext_Metrics) {
     // WHY:  Metrics help diagnose divergence cause
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_LEARNING_DIVERGED,
+        NIMCP_ERROR_INFERENCE_FAILED,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "training",
@@ -490,7 +490,7 @@ TEST_F(CheckpointExceptionTest, CreateException_CheckpointCorruption) {
     // WHY:  Corrupted checkpoints must be detected before loading
 
     nimcp_io_exception_t* ex = nimcp_io_exception_create(
-        NIMCP_ERROR_CHECKSUM_MISMATCH,
+        NIMCP_ERROR_CHECKPOINT_LOAD,
         EXCEPTION_SEVERITY_ERROR,
         __FILE__, __LINE__, __func__,
         "/checkpoints/best_model.ckpt",
@@ -498,7 +498,7 @@ TEST_F(CheckpointExceptionTest, CreateException_CheckpointCorruption) {
     );
 
     ASSERT_NE(ex, nullptr);
-    EXPECT_EQ(ex->base.code, NIMCP_ERROR_CHECKSUM_MISMATCH);
+    EXPECT_EQ(ex->base.code, NIMCP_ERROR_CHECKPOINT_LOAD);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
 }
@@ -508,7 +508,7 @@ TEST_F(CheckpointExceptionTest, CreateException_RollbackFailure) {
     // WHY:  Failed rollback is critical and needs escalation
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_CHECKPOINT_NOT_FOUND,
+        NIMCP_ERROR_CHECKPOINT_LOAD,
         EXCEPTION_SEVERITY_CRITICAL,
         __FILE__, __LINE__, __func__,
         0, "rollback",
@@ -516,7 +516,7 @@ TEST_F(CheckpointExceptionTest, CreateException_RollbackFailure) {
     );
 
     ASSERT_NE(ex, nullptr);
-    EXPECT_EQ(ex->base.code, NIMCP_ERROR_CHECKPOINT_NOT_FOUND);
+    EXPECT_EQ(ex->base.code, NIMCP_ERROR_CHECKPOINT_LOAD);
     EXPECT_EQ(ex->base.severity, EXCEPTION_SEVERITY_CRITICAL);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
@@ -557,7 +557,7 @@ TEST_F(MixedPrecisionExceptionTest, CreateException_OverflowDetection) {
     // WHY:  FP16 has limited range and overflows easily
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_TRAINING_INF_DETECTED,
+        NIMCP_ERROR_BACKWARD_PASS,
         EXCEPTION_SEVERITY_WARNING,
         __FILE__, __LINE__, __func__,
         0, "amp_scaler",
@@ -613,7 +613,7 @@ TEST_F(GradientScalingExceptionTest, GradientClipping_ExceptionOnExtreme) {
     float clip_ratio = original_norm / max_norm;
     if (clip_ratio > 1000.0f) {
         nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-            NIMCP_ERROR_GRADIENT_EXPLOSION,
+            NIMCP_ERROR_BACKWARD_PASS,
             EXCEPTION_SEVERITY_WARNING,
             __FILE__, __LINE__, __func__,
             0, "gradient_scaling",
@@ -654,7 +654,7 @@ TEST_F(TrainingTryCatchTest, TryCatch_GradientException) {
     NIMCP_TRY {
         // Simulate gradient explosion detection
         nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-            NIMCP_ERROR_GRADIENT_EXPLOSION,
+            NIMCP_ERROR_BACKWARD_PASS,
             EXCEPTION_SEVERITY_SEVERE,
             __FILE__, __LINE__, __func__,
             0, "test_layer",
@@ -672,7 +672,7 @@ TEST_F(TrainingTryCatchTest, TryCatch_GradientException) {
     NIMCP_END_TRY;
 
     EXPECT_TRUE(exception_caught);
-    EXPECT_EQ(caught_code, NIMCP_ERROR_GRADIENT_EXPLOSION);
+    EXPECT_EQ(caught_code, NIMCP_ERROR_BACKWARD_PASS);
 }
 
 TEST_F(TrainingTryCatchTest, TryCatch_NoException) {
@@ -707,7 +707,7 @@ TEST_F(TrainingAggregateExceptionTest, AggregateMultipleTrainingErrors) {
     // WHY:  Batch errors should be reported together
 
     nimcp_aggregate_exception_t* agg = nimcp_aggregate_exception_create(
-        NIMCP_ERROR_TRAINING_FAILED,
+        NIMCP_ERROR_LEARNING_FAILED,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         "Multiple training errors occurred in epoch 50"
@@ -716,7 +716,7 @@ TEST_F(TrainingAggregateExceptionTest, AggregateMultipleTrainingErrors) {
 
     // Add gradient explosion
     nimcp_brain_exception_t* grad_ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_GRADIENT_EXPLOSION,
+        NIMCP_ERROR_BACKWARD_PASS,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "layer_1",
@@ -727,7 +727,7 @@ TEST_F(TrainingAggregateExceptionTest, AggregateMultipleTrainingErrors) {
 
     // Add NaN detection
     nimcp_brain_exception_t* nan_ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_TRAINING_NAN_DETECTED,
+        NIMCP_ERROR_FORWARD_PASS,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "layer_3",
@@ -740,11 +740,11 @@ TEST_F(TrainingAggregateExceptionTest, AggregateMultipleTrainingErrors) {
 
     nimcp_exception_t* child0 = nimcp_aggregate_exception_get(agg, 0);
     ASSERT_NE(child0, nullptr);
-    EXPECT_EQ(child0->code, NIMCP_ERROR_GRADIENT_EXPLOSION);
+    EXPECT_EQ(child0->code, NIMCP_ERROR_BACKWARD_PASS);
 
     nimcp_exception_t* child1 = nimcp_aggregate_exception_get(agg, 1);
     ASSERT_NE(child1, nullptr);
-    EXPECT_EQ(child1->code, NIMCP_ERROR_TRAINING_NAN_DETECTED);
+    EXPECT_EQ(child1->code, NIMCP_ERROR_FORWARD_PASS);
 
     nimcp_exception_unref((nimcp_exception_t*)agg);
 }
@@ -761,7 +761,7 @@ TEST_F(TrainingExceptionChainingTest, ChainCauseExceptions) {
 
     // Root cause: NaN in weights
     nimcp_brain_exception_t* cause = nimcp_brain_exception_create(
-        NIMCP_ERROR_TRAINING_NAN_DETECTED,
+        NIMCP_ERROR_FORWARD_PASS,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "weights",
@@ -771,7 +771,7 @@ TEST_F(TrainingExceptionChainingTest, ChainCauseExceptions) {
 
     // Effect: Gradient explosion due to NaN propagation
     nimcp_brain_exception_t* effect = nimcp_brain_exception_create(
-        NIMCP_ERROR_GRADIENT_EXPLOSION,
+        NIMCP_ERROR_BACKWARD_PASS,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "gradients",
@@ -783,7 +783,7 @@ TEST_F(TrainingExceptionChainingTest, ChainCauseExceptions) {
 
     nimcp_exception_t* retrieved_cause = nimcp_exception_get_cause((nimcp_exception_t*)effect);
     ASSERT_NE(retrieved_cause, nullptr);
-    EXPECT_EQ(retrieved_cause->code, NIMCP_ERROR_TRAINING_NAN_DETECTED);
+    EXPECT_EQ(retrieved_cause->code, NIMCP_ERROR_FORWARD_PASS);
 
     nimcp_exception_unref((nimcp_exception_t*)effect);
     // cause is freed automatically when effect is freed (due to chaining)
@@ -812,7 +812,7 @@ TEST_F(TrainingSeverityTest, SeverityLevels_Appropriate) {
 
     // Severe: training issues requiring intervention
     nimcp_brain_exception_t* severe = nimcp_brain_exception_create(
-        NIMCP_ERROR_GRADIENT_EXPLOSION,
+        NIMCP_ERROR_BACKWARD_PASS,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "layer", "Gradient explosion"
@@ -823,7 +823,7 @@ TEST_F(TrainingSeverityTest, SeverityLevels_Appropriate) {
 
     // Critical: training failed, needs rollback
     nimcp_brain_exception_t* critical = nimcp_brain_exception_create(
-        NIMCP_ERROR_LEARNING_DIVERGED,
+        NIMCP_ERROR_INFERENCE_FAILED,
         EXCEPTION_SEVERITY_CRITICAL,
         __FILE__, __LINE__, __func__,
         0, "training", "Training completely diverged"
@@ -843,13 +843,13 @@ TEST_F(TrainingRecoveryActionTest, VerifyRecoveryActionStrings) {
     // WHAT: Verify recovery action string conversion
     // WHY:  Human-readable action names for logging
 
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_NONE), "None");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_RETRY), "Retry");
+    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_NONE), "NONE");
+    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_RETRY), "RETRY");
     EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_GC), "GC");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_ROLLBACK), "Rollback");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_REDUCE_LOAD), "Reduce Load");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_EMERGENCY_SAVE), "Emergency Save");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_GRACEFUL_SHUTDOWN), "Graceful Shutdown");
+    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_ROLLBACK), "ROLLBACK");
+    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_REDUCE_LOAD), "REDUCE_LOAD");
+    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_EMERGENCY_SAVE), "EMERGENCY_SAVE");
+    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_GRACEFUL_SHUTDOWN), "GRACEFUL_SHUTDOWN");
 }
 
 TEST_F(TrainingRecoveryActionTest, MultipleRecoveryCallbacks) {
@@ -873,7 +873,7 @@ TEST_F(TrainingRecoveryActionTest, MultipleRecoveryCallbacks) {
     nimcp_register_recovery_callback(RECOVERY_ACTION_ROLLBACK, rollback_callback, nullptr);
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
-        NIMCP_ERROR_GRADIENT_EXPLOSION,
+        NIMCP_ERROR_BACKWARD_PASS,
         EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__,
         0, "test", "Test recovery"

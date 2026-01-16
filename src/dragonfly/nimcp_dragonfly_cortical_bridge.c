@@ -11,6 +11,7 @@
 #include <math.h>
 #include <float.h>
 #include <time.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -107,7 +108,10 @@ static void initialize_inhibition_weights(dragonfly_cortical_bridge_t* bridge) {
 //=============================================================================
 
 int dragonfly_cortical_bridge_default_config(dragonfly_cortical_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -139,15 +143,39 @@ int dragonfly_cortical_bridge_default_config(dragonfly_cortical_config_t* config
 }
 
 int dragonfly_cortical_bridge_validate_config(const dragonfly_cortical_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_bridge_validate_config: config is NULL");
+        return -1;
+    }
 
-    if (config->temperature <= 0) return -1;
-    if (config->k_winners == 0 || config->k_winners > DRAGONFLY_CORTICAL_MINICOLUMN_COUNT) return -1;
-    if (config->inhibition_strength < 0 || config->inhibition_strength > 1.0f) return -1;
-    if (config->inhibition_sigma <= 0) return -1;
-    if (config->gain_modulation < 0.1f || config->gain_modulation > 10.0f) return -1;
-    if (config->adaptation_tau <= 0) return -1;
-    if (config->interpolation_window <= 0) return -1;
+    if (config->temperature <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cortical_bridge_validate_config: invalid temperature");
+        return -1;
+    }
+    if (config->k_winners == 0 || config->k_winners > DRAGONFLY_CORTICAL_MINICOLUMN_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cortical_bridge_validate_config: invalid k_winners");
+        return -1;
+    }
+    if (config->inhibition_strength < 0 || config->inhibition_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cortical_bridge_validate_config: invalid inhibition_strength");
+        return -1;
+    }
+    if (config->inhibition_sigma <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cortical_bridge_validate_config: invalid inhibition_sigma");
+        return -1;
+    }
+    if (config->gain_modulation < 0.1f || config->gain_modulation > 10.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cortical_bridge_validate_config: invalid gain_modulation");
+        return -1;
+    }
+    if (config->adaptation_tau <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cortical_bridge_validate_config: invalid adaptation_tau");
+        return -1;
+    }
+    if (config->interpolation_window <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cortical_bridge_validate_config: invalid interpolation_window");
+        return -1;
+    }
 
     return 0;
 }
@@ -162,7 +190,10 @@ dragonfly_cortical_bridge_t* dragonfly_cortical_bridge_create(
     const dragonfly_cortical_config_t* config
 ) {
     dragonfly_cortical_bridge_t* bridge = calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_cortical_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Apply configuration */
     if (config) {
@@ -205,7 +236,10 @@ void dragonfly_cortical_bridge_destroy(dragonfly_cortical_bridge_t* bridge) {
 }
 
 int dragonfly_cortical_bridge_reset(dragonfly_cortical_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_bridge_reset: bridge is NULL or not initialized");
+        return -1;
+    }
 
     memset(&bridge->current_direction, 0, sizeof(bridge->current_direction));
     memset(bridge->minicolumn_activations, 0, sizeof(bridge->minicolumn_activations));
@@ -226,7 +260,10 @@ int dragonfly_cortical_tsdn_to_column(
     const float* tsdn_firing_rates,
     cortical_direction_t* direction
 ) {
-    if (!bridge || !bridge->initialized || !tsdn_firing_rates || !direction) return -1;
+    if (!bridge || !bridge->initialized || !tsdn_firing_rates || !direction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_tsdn_to_column: NULL argument");
+        return -1;
+    }
 
     uint64_t start_time = get_time_us();
 
@@ -370,7 +407,10 @@ int dragonfly_cortical_sync_from_tsdn(
     dragonfly_cortical_bridge_t* bridge,
     cortical_direction_t* direction
 ) {
-    if (!bridge || !bridge->initialized || !direction) return -1;
+    if (!bridge || !bridge->initialized || !direction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_sync_from_tsdn: NULL argument");
+        return -1;
+    }
 
     /* Get TSDN firing rates from population */
     float firing_rates[DRAGONFLY_CORTICAL_MINICOLUMN_COUNT];
@@ -391,10 +431,12 @@ int dragonfly_cortical_sync_from_tsdn(
                 firing_rates[i] = 0;  /* Placeholder - needs TSDN integration */
             }
         } else {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_cortical_sync_from_tsdn: failed to get stats from dragonfly");
             return -1;
         }
     } else {
         bridge->stats.invalid_inputs++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_cortical_sync_from_tsdn: no source available");
         return -1;
     }
 
@@ -410,7 +452,10 @@ int dragonfly_cortical_column_to_tsdn(
     const cortical_direction_t* direction,
     float* tsdn_firing_rates
 ) {
-    if (!bridge || !bridge->initialized || !direction || !tsdn_firing_rates) return -1;
+    if (!bridge || !bridge->initialized || !direction || !tsdn_firing_rates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_column_to_tsdn: NULL argument");
+        return -1;
+    }
 
     /* Direct mapping from minicolumn activations to TSDN rates */
     for (int i = 0; i < DRAGONFLY_CORTICAL_MINICOLUMN_COUNT; i++) {
@@ -429,7 +474,10 @@ int dragonfly_cortical_angle_to_tsdn(
     float elevation,
     float* tsdn_firing_rates
 ) {
-    if (!bridge || !bridge->initialized || !tsdn_firing_rates) return -1;
+    if (!bridge || !bridge->initialized || !tsdn_firing_rates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_angle_to_tsdn: NULL argument");
+        return -1;
+    }
     (void)elevation;  /* Not used in 2D mode */
 
     azimuth = normalize_angle(azimuth);
@@ -453,7 +501,10 @@ int dragonfly_cortical_angle_to_tsdn(
 //=============================================================================
 
 int dragonfly_cortical_update_hypercolumn(dragonfly_cortical_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_update_hypercolumn: bridge is NULL or not initialized");
+        return -1;
+    }
 
     cortical_direction_t direction;
     int ret = dragonfly_cortical_sync_from_tsdn(bridge, &direction);
@@ -467,7 +518,10 @@ int dragonfly_cortical_get_direction(
     const dragonfly_cortical_bridge_t* bridge,
     cortical_direction_t* direction
 ) {
-    if (!bridge || !bridge->initialized || !direction) return -1;
+    if (!bridge || !bridge->initialized || !direction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_get_direction: NULL argument");
+        return -1;
+    }
     *direction = bridge->current_direction;
     return 0;
 }
@@ -477,8 +531,14 @@ int dragonfly_cortical_set_competition(
     cortical_competition_mode_t mode,
     float temperature
 ) {
-    if (!bridge || !bridge->initialized) return -1;
-    if (temperature <= 0) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_set_competition: bridge is NULL or not initialized");
+        return -1;
+    }
+    if (temperature <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cortical_set_competition: invalid temperature");
+        return -1;
+    }
 
     bridge->config.competition_mode = mode;
     bridge->config.temperature = temperature;
@@ -489,7 +549,10 @@ int dragonfly_cortical_apply_lateral_inhibition(
     dragonfly_cortical_bridge_t* bridge,
     float* activations
 ) {
-    if (!bridge || !bridge->initialized || !activations) return -1;
+    if (!bridge || !bridge->initialized || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_apply_lateral_inhibition: NULL argument");
+        return -1;
+    }
 
     float inhibited[DRAGONFLY_CORTICAL_MINICOLUMN_COUNT];
 
@@ -526,7 +589,10 @@ int dragonfly_cortical_interpolate_direction(
     float* azimuth,
     float* confidence
 ) {
-    if (!bridge || !activations || !azimuth || !confidence) return -1;
+    if (!bridge || !activations || !azimuth || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_interpolate_direction: NULL argument");
+        return -1;
+    }
 
     /* Find winner */
     float max_act = 0;
@@ -623,8 +689,14 @@ float dragonfly_cortical_compute_sparseness(const float* activations, uint32_t c
 //=============================================================================
 
 int dragonfly_cortical_set_gain(dragonfly_cortical_bridge_t* bridge, float gain) {
-    if (!bridge || !bridge->initialized) return -1;
-    if (gain < 0.1f || gain > 10.0f) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_set_gain: bridge is NULL or not initialized");
+        return -1;
+    }
+    if (gain < 0.1f || gain > 10.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cortical_set_gain: gain out of range");
+        return -1;
+    }
 
     bridge->current_gain = gain;
     bridge->stats.current_gain = gain;
@@ -637,7 +709,10 @@ float dragonfly_cortical_get_gain(const dragonfly_cortical_bridge_t* bridge) {
 }
 
 int dragonfly_cortical_update_adaptation(dragonfly_cortical_bridge_t* bridge, float dt_ms) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_update_adaptation: bridge is NULL or not initialized");
+        return -1;
+    }
     if (!bridge->config.enable_adaptation) return 0;
 
     float tau = bridge->config.adaptation_tau;
@@ -673,13 +748,19 @@ int dragonfly_cortical_bridge_get_stats(
     const dragonfly_cortical_bridge_t* bridge,
     cortical_bridge_stats_t* stats
 ) {
-    if (!bridge || !bridge->initialized || !stats) return -1;
+    if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_bridge_get_stats: NULL argument");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int dragonfly_cortical_bridge_reset_stats(dragonfly_cortical_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_bridge_reset_stats: bridge is NULL or not initialized");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->stats.current_gain = bridge->current_gain;
     return 0;
@@ -689,7 +770,10 @@ int dragonfly_cortical_bridge_get_config(
     const dragonfly_cortical_bridge_t* bridge,
     dragonfly_cortical_config_t* config
 ) {
-    if (!bridge || !bridge->initialized || !config) return -1;
+    if (!bridge || !bridge->initialized || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_bridge_get_config: NULL argument");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }
@@ -698,8 +782,13 @@ int dragonfly_cortical_bridge_set_config(
     dragonfly_cortical_bridge_t* bridge,
     const dragonfly_cortical_config_t* config
 ) {
-    if (!bridge || !bridge->initialized || !config) return -1;
-    if (dragonfly_cortical_bridge_validate_config(config) != 0) return -1;
+    if (!bridge || !bridge->initialized || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_bridge_set_config: NULL argument");
+        return -1;
+    }
+    if (dragonfly_cortical_bridge_validate_config(config) != 0) {
+        return -1;
+    }
 
     bridge->config = *config;
 

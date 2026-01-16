@@ -18,6 +18,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -64,11 +65,15 @@ lnn_gradient_ctx_t* lnn_gradient_ctx_create(
     // Guard: validate inputs
     if (!network) {
         NIMCP_LOGGING_ERROR("Cannot create gradient context: network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_gradient_ctx_create");
         return NULL;
     }
 
     if (max_steps == 0) {
         NIMCP_LOGGING_ERROR("Cannot create gradient context: max_steps must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "max_steps must be > 0 in lnn_gradient_ctx_create");
         return NULL;
     }
 
@@ -76,6 +81,8 @@ lnn_gradient_ctx_t* lnn_gradient_ctx_create(
     lnn_gradient_ctx_t* ctx = (lnn_gradient_ctx_t*)nimcp_malloc(sizeof(lnn_gradient_ctx_t));
     if (!ctx) {
         NIMCP_LOGGING_ERROR("Failed to allocate gradient context");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(lnn_gradient_ctx_t),
+                          "Failed to allocate gradient context");
         return NULL;
     }
 
@@ -90,6 +97,8 @@ lnn_gradient_ctx_t* lnn_gradient_ctx_create(
     // Allocate gradient storage
     if (allocate_gradient_storage(ctx, network) != 0) {
         NIMCP_LOGGING_ERROR("Failed to allocate gradient storage");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 0,
+                          "Failed to allocate gradient storage in lnn_gradient_ctx_create");
         lnn_gradient_ctx_destroy(ctx);
         return NULL;
     }
@@ -98,6 +107,8 @@ lnn_gradient_ctx_t* lnn_gradient_ctx_create(
     if (use_checkpointing) {
         if (allocate_checkpoints(ctx, max_steps) != 0) {
             NIMCP_LOGGING_ERROR("Failed to allocate checkpoints");
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 0,
+                              "Failed to allocate checkpoints for %u steps", max_steps);
             lnn_gradient_ctx_destroy(ctx);
             return NULL;
         }
@@ -167,22 +178,30 @@ int lnn_gradient_compute_adjoint(
     // Guard: validate inputs
     if (!ctx) {
         NIMCP_LOGGING_ERROR("Gradient context is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null context in lnn_gradient_compute_adjoint");
         return LNN_ERROR_NULL_POINTER;
     }
 
     if (!network) {
         NIMCP_LOGGING_ERROR("Network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network in lnn_gradient_compute_adjoint");
         return LNN_ERROR_NULL_POINTER;
     }
 
     if (!dL_dx_final) {
         NIMCP_LOGGING_ERROR("Loss gradient is NULL");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_NULL_POINTER, network->id, "LNN",
+                         "Null loss gradient in lnn_gradient_compute_adjoint");
         return LNN_ERROR_NULL_POINTER;
     }
 
     // Guard: check network has state history
     if (!network->state_history || network->history_len == 0) {
         NIMCP_LOGGING_ERROR("Network has no state history for adjoint computation");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_BACKWARD_PASS, network->id, "LNN",
+                         "No state history for adjoint computation");
         return LNN_ERROR_INVALID_STATE;
     }
 
@@ -206,6 +225,8 @@ int lnn_gradient_compute_adjoint(
     nimcp_tensor_t* adjoint_current = nimcp_tensor_clone(dL_dx_final);
     if (!adjoint_current) {
         NIMCP_LOGGING_ERROR("Failed to initialize adjoint state");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 0,
+                          "Failed to initialize adjoint state for gradient computation");
         if (ctx->mutex) nimcp_mutex_unlock((nimcp_mutex_t*)ctx->mutex);
         return LNN_ERROR_OUT_OF_MEMORY;
     }
@@ -226,6 +247,8 @@ int lnn_gradient_compute_adjoint(
         nimcp_tensor_t* x_current = network->state_history[step];
         if (!x_current) {
             NIMCP_LOGGING_ERROR("Missing state at step %d", step);
+            NIMCP_THROW_BRAIN(NIMCP_ERROR_BACKWARD_PASS, network->id, "LNN",
+                             "Missing state at step %d for adjoint computation", step);
             nimcp_tensor_destroy(adjoint_current);
             if (ctx->mutex) nimcp_mutex_unlock((nimcp_mutex_t*)ctx->mutex);
             return LNN_ERROR_INVALID_STATE;
@@ -240,6 +263,8 @@ int lnn_gradient_compute_adjoint(
 
         if (!adjoint_next) {
             NIMCP_LOGGING_ERROR("Failed to allocate adjoint_next at step %d", step);
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 0,
+                              "Failed to allocate adjoint_next at step %d", step);
             nimcp_tensor_destroy(adjoint_current);
             if (ctx->mutex) nimcp_mutex_unlock((nimcp_mutex_t*)ctx->mutex);
             return LNN_ERROR_OUT_OF_MEMORY;
@@ -248,6 +273,8 @@ int lnn_gradient_compute_adjoint(
         int ret = lnn_gradient_adjoint_step(ctx, x_current, adjoint_current, t, ctx->dt, adjoint_next);
         if (ret != 0) {
             NIMCP_LOGGING_ERROR("Adjoint step failed at step %d: error %d", step, ret);
+            NIMCP_THROW_BRAIN(NIMCP_ERROR_BACKWARD_PASS, network->id, "LNN",
+                             "Adjoint step failed at step %d: error %d", step, ret);
             nimcp_tensor_destroy(adjoint_current);
             nimcp_tensor_destroy(adjoint_next);
             if (ctx->mutex) nimcp_mutex_unlock((nimcp_mutex_t*)ctx->mutex);
@@ -270,6 +297,8 @@ int lnn_gradient_compute_adjoint(
         if (step % 100 == 0) {
             if (!check_tensor_health(adjoint_current)) {
                 NIMCP_LOGGING_ERROR("Adjoint health check failed at step %d", step);
+                NIMCP_THROW_BRAIN(NIMCP_ERROR_BACKWARD_PASS, network->id, "LNN",
+                                 "Adjoint health check failed at step %d (NaN/Inf detected)", step);
                 ctx->has_nan = true;
                 nimcp_tensor_destroy(adjoint_current);
                 if (ctx->mutex) nimcp_mutex_unlock((nimcp_mutex_t*)ctx->mutex);
@@ -312,12 +341,17 @@ int lnn_gradient_compute_bptt(
     // Guard: validate inputs
     if (!ctx || !network || !dL_dx_sequence) {
         NIMCP_LOGGING_ERROR("NULL input to BPTT gradient computation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null input to lnn_gradient_compute_bptt: ctx=%p, network=%p, dL_dx_sequence=%p",
+                             (void*)ctx, (void*)network, (void*)dL_dx_sequence);
         return LNN_ERROR_NULL_POINTER;
     }
 
     // BPTT requires full state history
     if (!network->state_history || network->history_len == 0) {
         NIMCP_LOGGING_ERROR("No state history for BPTT");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_BACKWARD_PASS, network->id, "LNN",
+                         "No state history for BPTT gradient computation");
         return LNN_ERROR_INVALID_STATE;
     }
 
@@ -345,11 +379,15 @@ int lnn_gradient_compute_batch_parallel(
     // Guard: validate inputs
     if (!ctx || !network || !dL_dx_batch) {
         NIMCP_LOGGING_ERROR("NULL input to batch parallel gradient");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null input to lnn_gradient_compute_batch_parallel");
         return LNN_ERROR_NULL_POINTER;
     }
 
     if (batch_size == 0) {
         NIMCP_LOGGING_ERROR("Batch size is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_DIMENSION_MISMATCH,
+                             "Batch size is zero in lnn_gradient_compute_batch_parallel");
         return LNN_ERROR_INVALID_PARAM;
     }
 
@@ -385,6 +423,9 @@ int lnn_gradient_adjoint_step(
     // Guard: validate inputs
     if (!ctx || !x || !adjoint || !adjoint_next) {
         NIMCP_LOGGING_ERROR("NULL input to adjoint step");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null input to lnn_gradient_adjoint_step: ctx=%p, x=%p, adjoint=%p, adjoint_next=%p",
+                             (void*)ctx, (void*)x, (void*)adjoint, (void*)adjoint_next);
         return LNN_ERROR_NULL_POINTER;
     }
 
@@ -392,6 +433,8 @@ int lnn_gradient_adjoint_step(
     lnn_network_t* network = ctx->network;
     if (!network || !network->layers || network->n_layers == 0) {
         NIMCP_LOGGING_ERROR("Invalid network structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "Invalid network structure in lnn_gradient_adjoint_step");
         return LNN_ERROR_INVALID_STATE;
     }
 
@@ -403,12 +446,17 @@ int lnn_gradient_adjoint_step(
     );
     if (!jacobian) {
         NIMCP_LOGGING_ERROR("Failed to allocate Jacobian");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                          layer->n_neurons * layer->n_neurons * sizeof(float),
+                          "Failed to allocate Jacobian matrix");
         return LNN_ERROR_OUT_OF_MEMORY;
     }
 
     int ret = lnn_gradient_compute_jacobian(layer, x, jacobian);
     if (ret != 0) {
         NIMCP_LOGGING_ERROR("Jacobian computation failed");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_BACKWARD_PASS, network->id, "LNN",
+                         "Jacobian computation failed in adjoint step");
         nimcp_tensor_destroy(jacobian);
         return ret;
     }
@@ -459,6 +507,8 @@ int lnn_gradient_compute_jacobian(
     // Guard: validate inputs
     if (!layer || !x || !jacobian) {
         NIMCP_LOGGING_ERROR("NULL input to Jacobian computation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null input to lnn_gradient_compute_jacobian");
         return LNN_ERROR_NULL_POINTER;
     }
 
@@ -484,11 +534,16 @@ int lnn_gradient_get_params(
     // Guard: validate inputs
     if (!ctx || !grad_params) {
         NIMCP_LOGGING_ERROR("NULL input to get_params");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null input to lnn_gradient_get_params: ctx=%p, grad_params=%p",
+                             (void*)ctx, (void*)grad_params);
         return LNN_ERROR_NULL_POINTER;
     }
 
     if (!ctx->grad_params) {
         NIMCP_LOGGING_ERROR("No gradients available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "No gradients available in lnn_gradient_get_params");
         return LNN_ERROR_INVALID_STATE;
     }
 
@@ -498,6 +553,8 @@ int lnn_gradient_get_params(
 
     if (numel != numel_out) {
         NIMCP_LOGGING_ERROR("Gradient size mismatch: %zu vs %zu", numel, numel_out);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_DIMENSION_MISMATCH,
+                             "Gradient size mismatch: %zu vs %zu", numel, numel_out);
         return LNN_ERROR_INVALID_PARAM;
     }
 
@@ -523,6 +580,9 @@ int lnn_gradient_apply(
     // Guard: validate inputs
     if (!ctx || !network || !optimizer) {
         NIMCP_LOGGING_ERROR("NULL input to gradient apply");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null input to lnn_gradient_apply: ctx=%p, network=%p, optimizer=%p",
+                             (void*)ctx, (void*)network, optimizer);
         return LNN_ERROR_NULL_POINTER;
     }
 
@@ -587,6 +647,8 @@ int lnn_gradient_save_checkpoint(
     // Check capacity
     if (step >= ctx->checkpoint_capacity) {
         NIMCP_LOGGING_WARN("Checkpoint step %u exceeds capacity %u", step, ctx->checkpoint_capacity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Checkpoint step %u exceeds capacity %u", step, ctx->checkpoint_capacity);
         return LNN_ERROR_INVALID_PARAM;
     }
 
@@ -628,6 +690,8 @@ int lnn_gradient_load_checkpoint(
 
     if (step >= ctx->checkpoint_capacity || !ctx->checkpoints[step]) {
         NIMCP_LOGGING_ERROR("No checkpoint at step %u", step);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "No checkpoint at step %u (capacity=%u)", step, ctx->checkpoint_capacity);
         return LNN_ERROR_INVALID_PARAM;
     }
 
@@ -1166,6 +1230,9 @@ static double lnn_gradient_get_time_ms(void) {
 int lnn_network_backward(lnn_network_t* network, const nimcp_tensor_t* loss_grad) {
     if (!network || !loss_grad) {
         NIMCP_LOGGING_ERROR("Null pointer in lnn_network_backward");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_BACKWARD_PASS, 0, "LNN",
+                         "Null pointer in lnn_network_backward: network=%p, loss_grad=%p",
+                         (void*)network, (void*)loss_grad);
         return -1;
     }
 

@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "API_BRAIN"
 
@@ -59,6 +60,7 @@ nimcp_brain_t nimcp_brain_create(
     if (!name) {
         LOG_ERROR("Brain name cannot be NULL");
         set_error("Brain name cannot be NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain name cannot be NULL");
         return NULL;
     }
 
@@ -68,6 +70,8 @@ nimcp_brain_t nimcp_brain_create(
     if (!handle) {
         LOG_ERROR("Failed to allocate brain handle");
         set_error("Failed to allocate brain handle");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct nimcp_brain_handle),
+            "Failed to allocate brain handle for '%s'", name);
         return NULL;
     }
 
@@ -84,6 +88,8 @@ nimcp_brain_t nimcp_brain_create(
     if (!handle->internal_brain) {
         LOG_ERROR("Failed to create internal brain for '%s'", name);
         set_error("Failed to create internal brain");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_BRAIN_CREATION, 0, name,
+            "Failed to create internal brain structure");
         nimcp_free(handle);
         return NULL;
     }
@@ -116,11 +122,13 @@ void nimcp_brain_destroy(nimcp_brain_t brain) {
 nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in save");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!filepath) {
         set_error("Filepath is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Filepath is NULL in brain save");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -129,6 +137,7 @@ nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
 
     if (!success) {
         set_error("Failed to save brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FILE_WRITE, "Failed to save brain to '%s'", filepath);
         return NIMCP_ERROR_IO;
     }
 
@@ -139,6 +148,7 @@ nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
 nimcp_brain_t nimcp_brain_load(const char* filepath) {
     if (!filepath) {
         set_error("Filepath is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Filepath is NULL in brain load");
         return NULL;
     }
 
@@ -146,6 +156,8 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
     nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
     if (!handle) {
         set_error("Failed to allocate brain handle");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct nimcp_brain_handle),
+            "Failed to allocate brain handle for loading '%s'", filepath);
         return NULL;
     }
 
@@ -154,6 +166,7 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
 
     if (!handle->internal_brain) {
         set_error("Failed to load brain from file");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FILE_READ, "Failed to load brain from '%s'", filepath);
         nimcp_free(handle);
         return NULL;
     }
@@ -165,6 +178,7 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
 nimcp_brain_t nimcp_brain_create_from_config(const char* config_filepath) {
     if (!config_filepath) {
         set_error("Config filepath is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Config filepath is NULL");
         return NULL;
     }
 
@@ -172,6 +186,7 @@ nimcp_brain_t nimcp_brain_create_from_config(const char* config_filepath) {
     nimcp_brain_config_t config;
     if (!nimcp_config_load(config_filepath, &config)) {
         set_error("Failed to load config from %s", config_filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CONFIG_LOAD, "Failed to load brain config from '%s'", config_filepath);
         return NULL;
     }
 
@@ -186,6 +201,8 @@ nimcp_brain_t nimcp_brain_create_from_config(const char* config_filepath) {
 
     if (!brain) {
         set_error("Failed to create brain from config");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_BRAIN_CREATION, 0, config.name,
+            "Failed to create brain from config '%s'", config_filepath);
         return NULL;
     }
 
@@ -208,11 +225,13 @@ nimcp_status_t nimcp_brain_snapshot_save(
 {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in snapshot_save");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!name) {
         set_error("Snapshot name is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Snapshot name is NULL");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -225,6 +244,7 @@ nimcp_status_t nimcp_brain_snapshot_save(
 
     if (!success) {
         set_error("Failed to save snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FILE_WRITE, "Failed to save brain snapshot '%s'", name);
         return NIMCP_ERROR;
     }
 
@@ -238,6 +258,7 @@ nimcp_brain_t nimcp_brain_snapshot_restore(
 {
     if (!name) {
         set_error("Snapshot name is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Snapshot name is NULL in restore");
         return NULL;
     }
 
@@ -249,6 +270,7 @@ nimcp_brain_t nimcp_brain_snapshot_restore(
 
     if (!restored_brain) {
         set_error("Failed to restore from snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FILE_READ, "Failed to restore brain from snapshot '%s'", name);
         return NULL;
     }
 
@@ -256,6 +278,8 @@ nimcp_brain_t nimcp_brain_snapshot_restore(
     nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
     if (!handle) {
         set_error("Failed to allocate brain handle");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct nimcp_brain_handle),
+            "Failed to allocate brain handle for snapshot restore");
         brain_destroy(restored_brain);
         return NULL;
     }
@@ -273,11 +297,13 @@ nimcp_status_t nimcp_brain_snapshot_list(
 {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in snapshot_list");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!infos) {
         set_error("Infos array is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Infos array is NULL in snapshot_list");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -292,6 +318,7 @@ nimcp_status_t nimcp_brain_snapshot_list(
 
     if (!success) {
         set_error("Failed to list snapshots");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to list brain snapshots");
         return NIMCP_ERROR;
     }
 
@@ -305,11 +332,13 @@ nimcp_status_t nimcp_brain_snapshot_delete(
 {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in snapshot_delete");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!name) {
         set_error("Snapshot name is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Snapshot name is NULL in snapshot_delete");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -318,6 +347,7 @@ nimcp_status_t nimcp_brain_snapshot_delete(
 
     if (!success) {
         set_error("Failed to delete snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to delete brain snapshot '%s'", name);
         return NIMCP_ERROR;
     }
 
@@ -343,11 +373,13 @@ nimcp_brain_t nimcp_brain_clone_cow(nimcp_brain_t original) {
     // Guard: Validate parameters
     if (!original) {
         set_error("NULL brain provided to nimcp_brain_clone_cow");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to clone_cow");
         return NULL;
     }
 
     if (!original->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in clone_cow");
         return NULL;
     }
 
@@ -355,6 +387,8 @@ nimcp_brain_t nimcp_brain_clone_cow(nimcp_brain_t original) {
     nimcp_brain_t clone_handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
     if (!clone_handle) {
         set_error("Failed to allocate brain handle for COW clone");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct nimcp_brain_handle),
+            "Failed to allocate brain handle for COW clone");
         return NULL;
     }
 
@@ -363,6 +397,8 @@ nimcp_brain_t nimcp_brain_clone_cow(nimcp_brain_t original) {
 
     if (!clone_handle->internal_brain) {
         set_error("Failed to clone internal brain");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_BRAIN_CREATION, 0, "COW_clone",
+            "Failed to create COW clone of brain");
         nimcp_free(clone_handle);
         return NULL;
     }
@@ -395,11 +431,13 @@ nimcp_brain_snapshot_t nimcp_brain_snapshot_cow(nimcp_brain_t brain) {
     // Guard: Validate parameters
     if (!brain) {
         set_error("NULL brain provided to nimcp_brain_snapshot_cow");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to snapshot_cow");
         return NULL;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in snapshot_cow");
         return NULL;
     }
 
@@ -408,6 +446,8 @@ nimcp_brain_snapshot_t nimcp_brain_snapshot_cow(nimcp_brain_t brain) {
         sizeof(struct nimcp_brain_snapshot_handle));
     if (!snapshot_handle) {
         set_error("Failed to allocate brain snapshot handle");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct nimcp_brain_snapshot_handle),
+            "Failed to allocate brain snapshot handle");
         return NULL;
     }
 
@@ -416,6 +456,8 @@ nimcp_brain_snapshot_t nimcp_brain_snapshot_cow(nimcp_brain_t brain) {
 
     if (!snapshot_handle->internal_brain_snapshot) {
         set_error("Failed to clone brain for COW snapshot");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_BRAIN_CREATION, 0, "COW_snapshot",
+            "Failed to create COW snapshot of brain");
         nimcp_free(snapshot_handle);
         return NULL;
     }
@@ -462,21 +504,25 @@ nimcp_status_t nimcp_brain_restore_cow(nimcp_brain_t brain, nimcp_brain_snapshot
     // Guard: Validate parameters
     if (!brain) {
         set_error("NULL brain provided to nimcp_brain_restore_cow");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to restore_cow");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!snapshot) {
         set_error("NULL snapshot provided to nimcp_brain_restore_cow");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL snapshot provided to restore_cow");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in restore_cow");
         return NIMCP_ERROR_INVALID;
     }
 
     if (!snapshot->internal_brain_snapshot) {
         set_error("Snapshot has NULL internal_brain_snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Snapshot has NULL internal_brain_snapshot");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -495,6 +541,8 @@ nimcp_status_t nimcp_brain_restore_cow(nimcp_brain_t brain, nimcp_brain_snapshot
 
     if (!brain->internal_brain) {
         set_error("Failed to clone snapshot during restore");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_BRAIN_CREATION, 0, "COW_restore",
+            "Failed to clone snapshot during COW restore");
         return NIMCP_ERROR;
     }
 
@@ -541,11 +589,13 @@ void nimcp_brain_snapshot_destroy_cow(nimcp_brain_snapshot_t snapshot) {
 nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe) {
     if (!brain) {
         set_error("Brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain is NULL in brain_probe");
         return NIMCP_ERROR_NULL_ARG;
     }
 
     if (!probe) {
         set_error("Probe output structure is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Probe output structure is NULL");
         return NIMCP_ERROR_NULL_ARG;
     }
 
@@ -553,6 +603,7 @@ nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe
     brain_stats_t internal_stats;
     if (!brain_get_stats(brain->internal_brain, &internal_stats)) {
         set_error("Failed to get brain statistics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to get brain statistics");
         return NIMCP_ERROR;
     }
 
@@ -620,24 +671,37 @@ nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe
 bool nimcp_brain_resize(nimcp_brain_t brain, uint32_t new_neuron_count) {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in brain_resize");
         return false;
     }
 
-    return brain_resize(brain->internal_brain, new_neuron_count);
+    bool result = brain_resize(brain->internal_brain, new_neuron_count);
+    if (!result) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "resize",
+            "Failed to resize brain to %u neurons", new_neuron_count);
+    }
+    return result;
 }
 
 bool nimcp_brain_auto_resize(nimcp_brain_t brain) {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in brain_auto_resize");
         return false;
     }
 
-    return brain_auto_resize(brain->internal_brain);
+    bool result = brain_auto_resize(brain->internal_brain);
+    if (!result) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "auto_resize",
+            "Brain auto-resize failed");
+    }
+    return result;
 }
 
 uint32_t nimcp_brain_get_neuron_count(nimcp_brain_t brain) {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in get_neuron_count");
         return 0;
     }
 
@@ -647,13 +711,19 @@ uint32_t nimcp_brain_get_neuron_count(nimcp_brain_t brain) {
 bool nimcp_brain_get_utilization_metrics(nimcp_brain_t brain, float* utilization, float* saturation) {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in get_utilization_metrics");
         return false;
     }
 
     if (!utilization || !saturation) {
         set_error("Output parameters are NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Output parameters are NULL in get_utilization_metrics");
         return false;
     }
 
-    return brain_get_utilization_metrics(brain->internal_brain, utilization, saturation);
+    bool result = brain_get_utilization_metrics(brain->internal_brain, utilization, saturation);
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to get brain utilization metrics");
+    }
+    return result;
 }

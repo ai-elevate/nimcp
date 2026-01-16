@@ -10,6 +10,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 
@@ -21,7 +22,10 @@
  * HOW:  Set biologically-plausible parameters for topology-FEP integration
  */
 int analysis_fep_bridge_default_config(analysis_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_bridge_default_config: config is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     config->pe_exploration_threshold = ANALYSIS_FEP_HIGH_PE_THRESHOLD;
     config->precision_hub_weight = ANALYSIS_FEP_HUB_PRECISION_BOOST;
     config->modularity_prior_strength = ANALYSIS_FEP_MODULARITY_PRIOR;
@@ -44,7 +48,10 @@ int analysis_fep_bridge_default_config(analysis_fep_config_t* config) {
  */
 analysis_fep_bridge_t* analysis_fep_bridge_create(const analysis_fep_config_t* config) {
     analysis_fep_bridge_t* bridge = nimcp_malloc(sizeof(analysis_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analysis_fep_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     memset(bridge, 0, sizeof(analysis_fep_bridge_t));
     if (config) {
@@ -55,6 +62,7 @@ analysis_fep_bridge_t* analysis_fep_bridge_create(const analysis_fep_config_t* c
 
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "analysis_fep_bridge_create: failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -88,7 +96,10 @@ void analysis_fep_bridge_destroy(analysis_fep_bridge_t* bridge) {
  * HOW:  Store FEP pointer with mutex protection
  */
 int analysis_fep_bridge_connect_fep(analysis_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_bridge_connect_fep: bridge or fep is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -103,7 +114,10 @@ int analysis_fep_bridge_connect_fep(analysis_fep_bridge_t* bridge, fep_system_t*
  * HOW:  Store analyzer pointer with mutex protection
  */
 int analysis_fep_bridge_connect_analysis(analysis_fep_bridge_t* bridge, network_analyzer_t* analyzer) {
-    if (!bridge || !analyzer) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_bridge_connect_analysis: bridge or analyzer is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->analyzer = analyzer;
@@ -118,7 +132,10 @@ int analysis_fep_bridge_connect_analysis(analysis_fep_bridge_t* bridge, network_
  * HOW:  NULL both pointers with mutex protection
  */
 int analysis_fep_bridge_disconnect(analysis_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_bridge_disconnect: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -134,7 +151,10 @@ int analysis_fep_bridge_disconnect(analysis_fep_bridge_t* bridge) {
  * HOW:  If PE exceeds threshold, activate exploration mode
  */
 int analysis_fep_trigger_exploration(analysis_fep_bridge_t* bridge, float pe_magnitude) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_trigger_exploration: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_pe_exploration) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -158,7 +178,10 @@ int analysis_fep_trigger_exploration(analysis_fep_bridge_t* bridge, float pe_mag
  * HOW:  Apply precision boost to detected hubs
  */
 int analysis_fep_weight_hubs_by_precision(analysis_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_weight_hubs_by_precision: bridge or fep_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_precision_weighting) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -181,7 +204,10 @@ int analysis_fep_weight_hubs_by_precision(analysis_fep_bridge_t* bridge) {
  * HOW:  Signal analyzer to re-detect communities
  */
 int analysis_fep_trigger_reorganization(analysis_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->analyzer) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !bridge->analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_trigger_reorganization: bridge or analyzer is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -198,7 +224,10 @@ int analysis_fep_trigger_reorganization(analysis_fep_bridge_t* bridge) {
  * HOW:  Use modularity as complexity prior
  */
 int analysis_fep_apply_topology_priors(analysis_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_apply_topology_priors: bridge or fep_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_topology_priors) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -217,7 +246,10 @@ int analysis_fep_apply_topology_priors(analysis_fep_bridge_t* bridge) {
  * HOW:  Map communities to FEP hierarchy levels
  */
 int analysis_fep_apply_community_beliefs(analysis_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_apply_community_beliefs: bridge or fep_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_community_beliefs) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -236,7 +268,10 @@ int analysis_fep_apply_community_beliefs(analysis_fep_bridge_t* bridge) {
  * HOW:  Hierarchical community structure → FEP levels
  */
 int analysis_fep_update_model_structure(analysis_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_update_model_structure: bridge or fep_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_topology_updates) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -254,7 +289,10 @@ int analysis_fep_update_model_structure(analysis_fep_bridge_t* bridge) {
  * HOW:  Apply all bidirectional effects
  */
 int analysis_fep_bridge_update(analysis_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_bridge_update: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     analysis_fep_weight_hubs_by_precision(bridge);
     analysis_fep_apply_topology_priors(bridge);
@@ -270,7 +308,10 @@ int analysis_fep_bridge_update(analysis_fep_bridge_t* bridge, uint64_t delta_ms)
  * HOW:  Copy state with mutex protection
  */
 int analysis_fep_bridge_get_state(const analysis_fep_bridge_t* bridge, analysis_fep_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_bridge_get_state: bridge or state is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -285,7 +326,10 @@ int analysis_fep_bridge_get_state(const analysis_fep_bridge_t* bridge, analysis_
  * HOW:  Copy stats with mutex protection
  */
 int analysis_fep_bridge_get_stats(const analysis_fep_bridge_t* bridge, analysis_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_bridge_get_stats: bridge or stats is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -300,7 +344,10 @@ int analysis_fep_bridge_get_stats(const analysis_fep_bridge_t* bridge, analysis_
  * HOW:  Register as BIO_MODULE_FEP_ANALYSIS_BRIDGE
  */
 int analysis_fep_bridge_connect_bio_async(analysis_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_bridge_connect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {

@@ -9,6 +9,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -187,6 +188,8 @@ int lnn_immune_config_default(lnn_immune_config_t* config)
     /* Guard clause */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null config pointer in lnn_immune_config_default");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -243,6 +246,8 @@ lnn_immune_bridge_t* lnn_immune_bridge_create(
     /* Guard clause */
     if (!network) {
         NIMCP_LOGGING_ERROR("NULL network pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_immune_bridge_create");
         return NULL;
     }
 
@@ -250,6 +255,8 @@ lnn_immune_bridge_t* lnn_immune_bridge_create(
     lnn_immune_bridge_t* bridge = (lnn_immune_bridge_t*)nimcp_malloc(sizeof(lnn_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate LNN immune bridge");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(lnn_immune_bridge_t),
+                          "Failed to allocate LNN immune bridge");
         return NULL;
     }
 
@@ -322,10 +329,14 @@ int lnn_immune_connect_brain_immune(
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null bridge pointer in lnn_immune_connect_brain_immune");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!brain_immune) {
         NIMCP_LOGGING_ERROR("NULL brain_immune pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null brain_immune pointer in lnn_immune_connect_brain_immune");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -351,10 +362,14 @@ int lnn_immune_connect_training_immune(
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null bridge pointer in lnn_immune_connect_training_immune");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!training_immune) {
         NIMCP_LOGGING_ERROR("NULL training_immune pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null training_immune pointer in lnn_immune_connect_training_immune");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -437,10 +452,14 @@ int lnn_immune_report_instability(
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null bridge pointer in lnn_immune_report_instability");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (type <= LNN_INSTABILITY_NONE || type >= LNN_INSTABILITY_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid instability type: %d", type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid instability type: %d", type);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -520,6 +539,8 @@ int lnn_immune_update_effects(lnn_immune_bridge_t* bridge)
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null bridge pointer in lnn_immune_update_effects");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!bridge->brain_immune) {
@@ -569,14 +590,20 @@ int lnn_immune_apply_effects(lnn_immune_bridge_t* bridge)
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null bridge pointer in lnn_immune_apply_effects");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!bridge->network) {
         NIMCP_LOGGING_ERROR("NULL network pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "Null network in lnn_immune_apply_effects");
         return NIMCP_ERROR_INVALID_STATE;
     }
     if (!bridge->cytokine_effects.valid) {
         NIMCP_LOGGING_WARN("Cytokine effects not valid, skipping apply");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "Cytokine effects not valid in lnn_immune_apply_effects");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -656,10 +683,14 @@ int lnn_immune_get_effects(
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null bridge pointer in lnn_immune_get_effects");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!effects) {
         NIMCP_LOGGING_ERROR("NULL effects pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null effects pointer in lnn_immune_get_effects");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -688,10 +719,14 @@ int lnn_immune_get_stats(
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null bridge pointer in lnn_immune_get_stats");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!stats) {
         NIMCP_LOGGING_ERROR("NULL stats pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null stats pointer in lnn_immune_get_stats");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -740,6 +775,8 @@ const char* lnn_instability_type_to_string(lnn_instability_type_t type)
 int lnn_immune_connect(lnn_network_t* network, void* immune_bridge)
 {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_immune_connect");
         return -1;
     }
 

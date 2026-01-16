@@ -16,6 +16,7 @@
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Local Helpers
@@ -197,11 +198,15 @@ dragonfly_environment_t dragonfly_environment_create(
     environment_config_t cfg = config ? *config : environment_default_config();
 
     if (!environment_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_environment_create: invalid config");
         return NULL;
     }
 
     dragonfly_environment_t env = nimcp_calloc(1, sizeof(struct dragonfly_environment_s));
-    if (!env) return NULL;
+    if (!env) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_environment_create: failed to allocate environment");
+        return NULL;
+    }
 
     env->config = cfg;
     env->creation_time_us = get_time_us();
@@ -221,6 +226,7 @@ dragonfly_environment_t dragonfly_environment_create(
     env->mutex = nimcp_mutex_create(NULL);
     if (!env->mutex) {
         nimcp_free(env);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_environment_create: failed to create mutex");
         return NULL;
     }
 
@@ -238,7 +244,10 @@ void dragonfly_environment_destroy(dragonfly_environment_t env) {
 }
 
 int dragonfly_environment_reset(dragonfly_environment_t env) {
-    if (!env) return -1;
+    if (!env) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_environment_reset: env is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(env->mutex);
 
@@ -268,7 +277,10 @@ int dragonfly_environment_set_wind(
     const float wind_velocity[3],
     float variability
 ) {
-    if (!env || !wind_velocity) return -1;
+    if (!env || !wind_velocity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_environment_set_wind: env or wind_velocity is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(env->mutex);
 
@@ -292,7 +304,10 @@ int dragonfly_environment_set_light(
     float sun_elevation_rad,
     float sun_azimuth_rad
 ) {
-    if (!env) return -1;
+    if (!env) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_environment_set_light: env is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(env->mutex);
 
@@ -318,7 +333,10 @@ int dragonfly_environment_set_terrain(
     float complexity,
     float water_level
 ) {
-    if (!env) return -1;
+    if (!env) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_environment_set_terrain: env is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(env->mutex);
 
@@ -335,7 +353,10 @@ int dragonfly_environment_set_temperature(
     dragonfly_environment_t env,
     float temperature_c
 ) {
-    if (!env) return -1;
+    if (!env) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_environment_set_temperature: env is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(env->mutex);
 
@@ -352,7 +373,10 @@ int dragonfly_environment_update(
     dragonfly_environment_t env,
     const environment_state_t* state
 ) {
-    if (!env || !state) return -1;
+    if (!env || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_environment_update: env or state is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(env->mutex);
 
@@ -387,7 +411,10 @@ int dragonfly_environment_get_state(
     const dragonfly_environment_t env,
     environment_state_t* state
 ) {
-    if (!env || !state) return -1;
+    if (!env || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_environment_get_state: env or state is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)env->mutex);
     *state = env->state;
@@ -401,7 +428,10 @@ int dragonfly_environment_get_compensation(
     const float target_direction[3],
     environment_compensation_t* compensation
 ) {
-    if (!env || !compensation) return -1;
+    if (!env || !compensation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_environment_get_compensation: env or compensation is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)env->mutex);
 
@@ -518,7 +548,10 @@ int dragonfly_environment_correct_velocity(
     const float desired_velocity[3],
     float corrected_velocity[3]
 ) {
-    if (!env || !desired_velocity || !corrected_velocity) return -1;
+    if (!env || !desired_velocity || !corrected_velocity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_environment_correct_velocity: env, desired_velocity, or corrected_velocity is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)env->mutex);
 
@@ -536,7 +569,10 @@ int dragonfly_environment_get_stats(
     const dragonfly_environment_t env,
     environment_stats_t* stats
 ) {
-    if (!env || !stats) return -1;
+    if (!env || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_environment_get_stats: env or stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)env->mutex);
     *stats = env->stats;

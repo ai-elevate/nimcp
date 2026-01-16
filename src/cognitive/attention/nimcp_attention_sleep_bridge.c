@@ -11,6 +11,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct attention_sleep_bridge_struct {
@@ -80,7 +81,10 @@ static void attention_on_sleep_state_change(sleep_state_t new_state, void* user_
 }
 
 int attention_sleep_default_config(attention_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_capacity_modulation = true;
     config->enable_vigilance_modulation = true;
     config->modulation_strength = 1.0f;
@@ -91,11 +95,17 @@ attention_sleep_bridge_t attention_sleep_bridge_create(
     const attention_sleep_config_t* config,
     sleep_system_t sleep)
 {
-    if (!sleep) return NULL;
+    if (!sleep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_sleep_bridge_create: sleep is NULL");
+        return NULL;
+    }
 
     struct attention_sleep_bridge_struct* bridge =
         (struct attention_sleep_bridge_struct*)nimcp_malloc(sizeof(struct attention_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_sleep_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     memset(bridge, 0, sizeof(struct attention_sleep_bridge_struct));
 
@@ -109,7 +119,11 @@ attention_sleep_bridge_t attention_sleep_bridge_create(
     bridge->effects.attention_offline = false;
 
     bridge->base.mutex = nimcp_platform_mutex_create();
-    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_sleep_bridge_create: failed to create mutex");
+        nimcp_free(bridge);
+        return NULL;
+    }
 
     /* Register callback for automatic state updates */
     bridge->callback_registered = sleep_register_state_callback(
@@ -151,7 +165,10 @@ void attention_sleep_bridge_destroy(attention_sleep_bridge_t bridge) {
 }
 
 int attention_sleep_update(attention_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -187,7 +204,10 @@ int attention_sleep_update(attention_sleep_bridge_t bridge) {
 }
 
 int attention_sleep_get_effects(const attention_sleep_bridge_t bridge, attention_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_sleep_get_effects: bridge or effects is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);

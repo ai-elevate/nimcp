@@ -1835,6 +1835,16 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/physics/ephaptic")
     add_subdirectory(unit/physics/ephaptic)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/physics/graphs")
+    message(STATUS "Adding physics graph theory unit tests...")
+    add_subdirectory(unit/physics/graphs)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/physics/dynamics")
+    message(STATUS "Adding physics dynamical systems unit tests...")
+    add_subdirectory(unit/physics/dynamics)
+endif()
+
 # ============================================================================
 # Physics Layer Integration Tests
 # ============================================================================

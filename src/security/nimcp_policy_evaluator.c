@@ -26,8 +26,8 @@
 #ifndef NIMCP_OK
 #define NIMCP_OK NIMCP_SUCCESS
 #endif
-#ifndef NIMCP_ERROR_INVALID_ARGUMENT
-#define NIMCP_ERROR_INVALID_ARGUMENT NIMCP_ERROR_INVALID_PARAM
+#ifndef NIMCP_ERROR_INVALID_PARAM
+#define NIMCP_ERROR_INVALID_PARAM NIMCP_ERROR_INVALID_PARAM
 #endif
 #ifndef NIMCP_ERROR_NOT_FOUND
 #define NIMCP_ERROR_NOT_FOUND (-120)
@@ -217,7 +217,7 @@ static nimcp_error_t context_set(
     nimcp_policy_value_t value)
 {
     if (!ctx || ctx->magic != CONTEXT_MAGIC) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     uint32_t hash = hash_string(key);
@@ -307,7 +307,7 @@ nimcp_error_t nimcp_policy_context_get(
     nimcp_policy_value_t* value)
 {
     if (!ctx || ctx->magic != CONTEXT_MAGIC || !key || !value) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     uint32_t hash = hash_string(key);
@@ -339,13 +339,13 @@ static nimcp_error_t builtin_contains(
 
     if (num_args != 2) {
         LOG_ERROR("contains() expects 2 arguments, got %zu", num_args);
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (args[0].type != NIMCP_POLICY_VALUE_STRING ||
         args[1].type != NIMCP_POLICY_VALUE_STRING) {
         LOG_ERROR("contains() expects string arguments");
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     result->type = NIMCP_POLICY_VALUE_BOOL;
@@ -363,11 +363,11 @@ static nimcp_error_t builtin_length(
     (void)user_data;
 
     if (num_args != 1) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (args[0].type != NIMCP_POLICY_VALUE_STRING) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     result->type = NIMCP_POLICY_VALUE_INT;
@@ -385,7 +385,7 @@ static nimcp_error_t builtin_entropy(
     (void)user_data;
 
     if (num_args != 1 || args[0].type != NIMCP_POLICY_VALUE_STRING) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     const char* str = args[0].string_val;
@@ -427,7 +427,7 @@ static nimcp_error_t builtin_matches(
     if (num_args != 2 ||
         args[0].type != NIMCP_POLICY_VALUE_STRING ||
         args[1].type != NIMCP_POLICY_VALUE_STRING) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     // Simple wildcard matching (not full regex)
@@ -545,7 +545,7 @@ nimcp_error_t nimcp_policy_evaluate_bytecode(
     nimcp_policy_result_t* result)
 {
     if (!bc || !ctx || !result) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     struct timespec start_time, end_time;
@@ -628,7 +628,7 @@ nimcp_error_t nimcp_policy_evaluate_bytecode(
 
                 if (!func) {
                     LOG_ERROR("Unknown function: %s", func_name);
-                    error = NIMCP_ERROR_INVALID_ARGUMENT;
+                    error = NIMCP_ERROR_INVALID_PARAM;
                     goto cleanup;
                 }
 
@@ -800,7 +800,7 @@ nimcp_error_t nimcp_policy_evaluate_bytecode(
 
             default:
                 LOG_ERROR("Unknown opcode: %d", instr.opcode);
-                error = NIMCP_ERROR_INVALID_ARGUMENT;
+                error = NIMCP_ERROR_INVALID_PARAM;
                 goto cleanup;
         }
     }

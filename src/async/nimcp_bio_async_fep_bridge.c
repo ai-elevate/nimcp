@@ -12,6 +12,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 
@@ -21,6 +22,7 @@
 
 int bio_async_fep_default_config(bio_async_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_default_config: NULL config");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -42,6 +44,7 @@ bio_async_fep_bridge_t* bio_async_fep_create(
     fep_system_t* fep_system
 ) {
     if (!config || !fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_create: NULL config or fep_system");
         NIMCP_LOGGING_ERROR("bio_async_fep_create: NULL config or fep_system");
         return NULL;
     }
@@ -49,6 +52,7 @@ bio_async_fep_bridge_t* bio_async_fep_create(
     bio_async_fep_bridge_t* bridge = (bio_async_fep_bridge_t*)nimcp_malloc(
         sizeof(bio_async_fep_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bio_async_fep_create: Failed to allocate bridge");
         NIMCP_LOGGING_ERROR("bio_async_fep_create: Failed to allocate bridge");
         return NULL;
     }
@@ -74,6 +78,7 @@ bio_async_fep_bridge_t* bio_async_fep_create(
     /* Create mutex */
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "bio_async_fep_create: Failed to create mutex");
         NIMCP_LOGGING_ERROR("bio_async_fep_create: Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -108,6 +113,7 @@ void bio_async_fep_destroy(bio_async_fep_bridge_t* bridge) {
 
 int bio_async_fep_update_effects(bio_async_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_update_effects: NULL bridge or fep_system");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -162,6 +168,7 @@ int bio_async_fep_observe_future(
     nimcp_bio_future_t future
 ) {
     if (!bridge || !future) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_observe_future: NULL bridge or future");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -198,6 +205,7 @@ int bio_async_fep_predict_timing(
     float* confidence
 ) {
     if (!bridge || !predicted_ms || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_predict_timing: NULL bridge or output parameters");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -263,6 +271,7 @@ nimcp_bio_channel_type_t bio_async_fep_select_channel(
 
 int bio_async_fep_connect_bio_async(bio_async_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_connect_bio_async: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -272,6 +281,7 @@ int bio_async_fep_connect_bio_async(bio_async_fep_bridge_t* bridge) {
 
     /* Check if bio-async is initialized */
     if (!nimcp_bio_async_is_initialized()) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "bio_async_fep_connect_bio_async: Bio-async not initialized");
         NIMCP_LOGGING_WARN("Bio-async not initialized, cannot connect");
         return -1;
     }
@@ -287,6 +297,7 @@ int bio_async_fep_connect_bio_async(bio_async_fep_bridge_t* bridge) {
 
 int bio_async_fep_disconnect_bio_async(bio_async_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_disconnect_bio_async: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -314,6 +325,7 @@ int bio_async_fep_get_effects(
     bio_async_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_get_effects: NULL bridge or effects");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -329,6 +341,7 @@ int bio_async_fep_get_bio_async_effects(
     fep_bio_async_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_get_bio_async_effects: NULL bridge or effects");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -344,6 +357,7 @@ int bio_async_fep_get_stats(
     bio_async_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_get_stats: NULL bridge or stats");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -356,6 +370,7 @@ int bio_async_fep_get_stats(
 
 int bio_async_fep_reset_stats(bio_async_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_fep_reset_stats: NULL bridge");
         return NIMCP_ERROR_NULL_POINTER;
     }
 

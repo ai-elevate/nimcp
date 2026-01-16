@@ -34,6 +34,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 
 #define LOG_MODULE "security_bbb"
@@ -315,11 +316,13 @@ NIMCP_EXPORT bbb_system_t bbb_system_create(const bbb_config_t* config)
     /* Allocate system structure */
     bbb_system_t system = (bbb_system_t)nimcp_calloc(1, sizeof(struct bbb_system_struct));
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate BBB system structure");
         return NULL;
     }
 
     /* Initialize mutex */
     if (nimcp_mutex_init(&system->mutex, NULL) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Failed to initialize BBB mutex");
         nimcp_free(system);
         return NULL;
     }
@@ -391,6 +394,7 @@ NIMCP_EXPORT bool bbb_system_set_enabled(bbb_system_t system, bool enabled)
 {
     /* Guard: Null system */
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL system in bbb_system_set_enabled");
         return false;
     }
 
@@ -412,6 +416,7 @@ NIMCP_EXPORT bool bbb_system_is_enabled(bbb_system_t system)
 {
     /* Guard: Null system */
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL system in bbb_system_is_enabled");
         return false;
     }
 
@@ -437,6 +442,7 @@ NIMCP_EXPORT bool bbb_system_get_statistics(bbb_system_t system, bbb_statistics_
 {
     /* Guard: Null parameters */
     if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL system or stats in bbb_system_get_statistics");
         return false;
     }
 
@@ -491,6 +497,7 @@ NIMCP_EXPORT bool bbb_connect_immune(bbb_system_t system, brain_immune_system_t*
 {
     /* Guard: Null parameters */
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL system in bbb_connect_immune");
         return false;
     }
 
@@ -823,6 +830,7 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
 {
     /* Guard: Null parameters */
     if (!system || !address || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid parameters in bbb_quarantine_region");
         return false;
     }
 
@@ -831,6 +839,7 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
     /* Check if we have room */
     if (system->quarantine_count >= BBB_MAX_QUARANTINE_REGIONS) {
         nimcp_mutex_unlock(&system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "Quarantine region limit exceeded");
         return false;
     }
 
@@ -913,6 +922,7 @@ NIMCP_EXPORT bool bbb_release_quarantine(bbb_system_t system, void* address)
 {
     /* Guard: Null parameters */
     if (!system || !address) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL system or address in bbb_release_quarantine");
         return false;
     }
 

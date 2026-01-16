@@ -34,6 +34,7 @@
 #include "async/nimcp_bio_async.h"  // Bio-async communication
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -181,12 +182,18 @@ conv_layer_t* conv_layer_create(const conv_layer_config_t* config)
 {
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(config, "config")) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_NULL_POINTER, 0, "visual_cortex",
+            "NULL config provided to conv_layer_create");
         return NULL;
     }
 
     if (config->input_width == 0 || config->input_height == 0 ||
         config->input_channels == 0 || config->num_filters == 0 ||
         config->kernel_size == 0 || config->stride == 0) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_INVALID_PARAM, 0, "visual_cortex",
+            "Invalid convolution layer config: width=%u height=%u channels=%u filters=%u kernel=%u stride=%u",
+            config->input_width, config->input_height, config->input_channels,
+            config->num_filters, config->kernel_size, config->stride);
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid convolution layer configuration parameters");
         return NULL;
     }
@@ -194,6 +201,8 @@ conv_layer_t* conv_layer_create(const conv_layer_config_t* config)
     // Allocate layer
     conv_layer_t* layer = (conv_layer_t*)nimcp_calloc(1, sizeof(conv_layer_t));
     if (!layer) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(conv_layer_t),
+            "Failed to allocate convolution layer");
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate convolution layer");
         return NULL;
     }
@@ -215,6 +224,8 @@ conv_layer_t* conv_layer_create(const conv_layer_config_t* config)
     uint32_t kernel_total_size = config->num_filters * config->kernel_size * config->kernel_size * config->input_channels;
     layer->kernels = (float*)nimcp_calloc(kernel_total_size, sizeof(float));
     if (!nimcp_validate_pointer(layer->kernels, "kernels")) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, kernel_total_size * sizeof(float),
+            "Failed to allocate convolution kernels (%u total)", kernel_total_size);
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate convolution kernels");
         conv_layer_destroy(layer);
         return NULL;
@@ -228,6 +239,8 @@ conv_layer_t* conv_layer_create(const conv_layer_config_t* config)
     // Allocate bias
     layer->bias = (float*)nimcp_calloc(config->num_filters, sizeof(float));
     if (!nimcp_validate_pointer(layer->bias, "bias")) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, config->num_filters * sizeof(float),
+            "Failed to allocate convolution bias (%u filters)", config->num_filters);
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate convolution bias");
         conv_layer_destroy(layer);
         return NULL;
@@ -371,17 +384,25 @@ pool_layer_t* pool_layer_create(const pool_layer_config_t* config)
 {
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(config, "config")) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_NULL_POINTER, 0, "visual_cortex",
+            "NULL config provided to pool_layer_create");
         return NULL;
     }
 
     if (config->input_width == 0 || config->input_height == 0 ||
         config->input_channels == 0 || config->pool_size == 0 || config->stride == 0) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_INVALID_PARAM, 0, "visual_cortex",
+            "Invalid pooling layer config: width=%u height=%u channels=%u pool=%u stride=%u",
+            config->input_width, config->input_height, config->input_channels,
+            config->pool_size, config->stride);
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid pooling layer configuration parameters");
         return NULL;
     }
 
     pool_layer_t* layer = (pool_layer_t*)nimcp_calloc(1, sizeof(pool_layer_t));
     if (!nimcp_validate_pointer(layer, "layer")) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(pool_layer_t),
+            "Failed to allocate pooling layer");
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate pooling layer");
         return NULL;
     }

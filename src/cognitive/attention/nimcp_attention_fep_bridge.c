@@ -12,6 +12,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>
@@ -24,7 +25,10 @@
  * ============================================================================ */
 
 int attention_fep_bridge_default_config(attention_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_default_config: config is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     /* FEP → Attention */
     config->precision_gain_scaling = 1.0f;
@@ -56,7 +60,7 @@ int attention_fep_bridge_default_config(attention_fep_config_t* config) {
 attention_fep_bridge_t* attention_fep_bridge_create(const attention_fep_config_t* config) {
     attention_fep_bridge_t* bridge = nimcp_malloc(sizeof(attention_fep_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate attention FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_fep_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -72,7 +76,7 @@ attention_fep_bridge_t* attention_fep_bridge_create(const attention_fep_config_t
     /* Create mutex */
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_fep_bridge_create: failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -107,7 +111,10 @@ int attention_fep_bridge_connect_fep(
     attention_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_connect_fep: bridge or fep is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -121,7 +128,10 @@ int attention_fep_bridge_connect_attention(
     attention_fep_bridge_t* bridge,
     multihead_attention_t attention
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_connect_attention: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention = attention;
@@ -132,7 +142,10 @@ int attention_fep_bridge_connect_attention(
 }
 
 int attention_fep_bridge_disconnect(attention_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_disconnect: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -148,7 +161,10 @@ int attention_fep_bridge_disconnect(attention_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int attention_fep_apply_precision_gain_modulation(attention_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_apply_precision_gain_modulation: bridge or fep_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     if (!bridge->config.enable_precision_gain_modulation) {
         return 0;
@@ -190,7 +206,10 @@ int attention_fep_surprise_attention_shift(
     attention_fep_bridge_t* bridge,
     float pe_magnitude
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_surprise_attention_shift: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     if (!bridge->config.enable_surprise_attention_shift) {
         return 0;
@@ -217,7 +236,10 @@ int attention_fep_surprise_attention_shift(
 }
 
 int attention_fep_efe_info_seeking(attention_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_efe_info_seeking: bridge or fep_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     if (!bridge->config.enable_efe_info_seeking) {
         return 0;
@@ -251,7 +273,10 @@ int attention_fep_efe_info_seeking(attention_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int attention_fep_apply_attentional_gating(attention_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_apply_attentional_gating: bridge or fep_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     if (!bridge->config.enable_attentional_gating) {
         return 0;
@@ -290,7 +315,10 @@ int attention_fep_apply_attentional_gating(attention_fep_bridge_t* bridge) {
 }
 
 int attention_fep_modulate_learning_rate(attention_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_modulate_learning_rate: bridge or fep_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     if (!bridge->config.enable_attention_lr_modulation) {
         return 0;
@@ -326,7 +354,10 @@ int attention_fep_modulate_learning_rate(attention_fep_bridge_t* bridge) {
 }
 
 int attention_fep_apply_focus_model_narrowing(attention_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_apply_focus_model_narrowing: bridge or fep_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     if (!bridge->config.enable_focus_model_narrowing) {
         return 0;
@@ -360,7 +391,10 @@ int attention_fep_bridge_update(
     attention_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_update: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     /* FEP → Attention */
     attention_fep_apply_precision_gain_modulation(bridge);
@@ -396,7 +430,10 @@ int attention_fep_bridge_get_state(
     const attention_fep_bridge_t* bridge,
     attention_fep_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_get_state: bridge or state is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -409,7 +446,10 @@ int attention_fep_bridge_get_stats(
     const attention_fep_bridge_t* bridge,
     attention_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_get_stats: bridge or stats is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -423,7 +463,10 @@ int attention_fep_bridge_get_stats(
  * ============================================================================ */
 
 int attention_fep_bridge_connect_bio_async(attention_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_connect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -445,7 +488,10 @@ int attention_fep_bridge_connect_bio_async(attention_fep_bridge_t* bridge) {
 }
 
 int attention_fep_bridge_disconnect_bio_async(attention_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_disconnect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

@@ -19,6 +19,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -227,6 +228,7 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
 ) {
     if (!config) {
         LOG_ERROR("Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config for swarm immune create");
         return NULL;
     }
 
@@ -235,6 +237,7 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
     );
     if (!system) {
         LOG_ERROR("Failed to allocate immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failed to allocate swarm immune system");
         return NULL;
     }
 
@@ -270,6 +273,7 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
     );
     if (!system->memory_cells) {
         LOG_ERROR("Failed to allocate memory cells");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failed to allocate immune memory cells");
         nimcp_free(system);
         return NULL;
     }
@@ -281,6 +285,7 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
     );
     if (!system->active_threats) {
         LOG_ERROR("Failed to allocate threat storage");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failed to allocate immune threat storage");
         nimcp_free(system->memory_cells);
         nimcp_free(system);
         return NULL;
@@ -293,6 +298,7 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
     );
     if (!system->active_responses) {
         LOG_ERROR("Failed to allocate response storage");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failed to allocate immune response storage");
         nimcp_free(system->active_threats);
         nimcp_free(system->memory_cells);
         nimcp_free(system);
@@ -306,6 +312,7 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
     );
     if (!system->behavior_profiles) {
         LOG_ERROR("Failed to allocate behavior profiles");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failed to allocate immune behavior profiles");
         nimcp_free(system->active_responses);
         nimcp_free(system->active_threats);
         nimcp_free(system->memory_cells);
@@ -320,6 +327,7 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
     );
     if (!system->threat_rules) {
         LOG_ERROR("Failed to allocate threat rules");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failed to allocate immune threat rules");
         nimcp_free(system->behavior_profiles);
         nimcp_free(system->active_responses);
         nimcp_free(system->active_threats);
@@ -332,6 +340,7 @@ NimcpSwarmImmuneSystem* nimcp_swarm_immune_create(
     system->mutex = nimcp_platform_mutex_create();
     if (!system->mutex) {
         LOG_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "failed to create immune mutex");
         nimcp_free(system->threat_rules);
         nimcp_free(system->behavior_profiles);
         nimcp_free(system->active_responses);

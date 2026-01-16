@@ -17,6 +17,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 
@@ -96,12 +97,18 @@ static int lnn_neuron_config_validate(const lnn_neuron_config_t* nc) {
     /* Guard: Check tau bounds */
     if (nc->tau_min <= 0.0f || nc->tau_max <= 0.0f) {
         NIMCP_LOGGING_ERROR("tau_min and tau_max must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Neuron config tau_min (%f) and tau_max (%f) must be positive",
+                             nc->tau_min, nc->tau_max);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (nc->tau_min >= nc->tau_max) {
         NIMCP_LOGGING_ERROR("tau_min (%f) must be less than tau_max (%f)",
                            nc->tau_min, nc->tau_max);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Neuron config tau_min (%f) >= tau_max (%f)",
+                             nc->tau_min, nc->tau_max);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -113,12 +120,17 @@ static int lnn_neuron_config_validate(const lnn_neuron_config_t* nc) {
     /* Guard: Check weight initialization */
     if (nc->weight_init_std <= 0.0f) {
         NIMCP_LOGGING_ERROR("weight_init_std must be positive");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_WEIGHT_INIT, 0, "LNN",
+                         "Neuron config weight_init_std (%f) must be positive",
+                         nc->weight_init_std);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Guard: Check activation function */
     if (nc->activation < 0 || nc->activation >= LNN_ACTIVATION_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid activation function: %d", nc->activation);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid activation function: %d", nc->activation);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -136,54 +148,75 @@ static int lnn_layer_config_validate(const lnn_layer_config_t* lc) {
     /* Guard: Check neuron count */
     if (lc->n_neurons == 0) {
         NIMCP_LOGGING_ERROR("Layer must have at least one neuron");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_DIMENSION_MISMATCH, 0, "LNN",
+                         "Layer config requires at least one neuron");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Guard: Check tau bounds (flat structure) */
     if (lc->tau_min <= 0.0f || lc->tau_max <= 0.0f) {
         NIMCP_LOGGING_ERROR("tau_min and tau_max must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Layer config tau_min (%f) and tau_max (%f) must be positive",
+                             lc->tau_min, lc->tau_max);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (lc->tau_min >= lc->tau_max) {
         NIMCP_LOGGING_ERROR("tau_min (%f) must be less than tau_max (%f)",
                            lc->tau_min, lc->tau_max);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Layer config tau_min (%f) >= tau_max (%f)",
+                             lc->tau_min, lc->tau_max);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Guard: Check weight initialization */
     if (lc->weight_init_std <= 0.0f) {
         NIMCP_LOGGING_ERROR("weight_init_std must be positive");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_WEIGHT_INIT, 0, "LNN",
+                         "Layer config weight_init_std (%f) must be positive",
+                         lc->weight_init_std);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Guard: Check activation function */
     if (lc->activation < 0 || lc->activation >= LNN_ACTIVATION_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid activation function: %d", lc->activation);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid layer config activation function: %d", lc->activation);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Guard: Check sparsity */
     if (lc->sparsity < 0.0f || lc->sparsity >= 1.0f) {
         NIMCP_LOGGING_ERROR("Sparsity must be in [0, 1), got %f", lc->sparsity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid sparsity %f, must be in [0, 1)", lc->sparsity);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Guard: Check wiring type */
     if (lc->wiring_type < 0 || lc->wiring_type >= LNN_WIRING_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid wiring type: %d", lc->wiring_type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid wiring type: %d", lc->wiring_type);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Guard: Check ODE method */
     if (lc->ode_method < 0 || lc->ode_method >= LNN_ODE_METHOD_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid ODE method: %d", lc->ode_method);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid ODE method: %d", lc->ode_method);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Guard: Check time step */
     if (lc->dt <= 0.0f) {
         NIMCP_LOGGING_ERROR("Integration time step must be positive, got %f", lc->dt);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Integration time step must be positive, got %f", lc->dt);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -198,6 +231,8 @@ int lnn_config_default(lnn_config_t* config) {
     /* Guard: NULL check */
     if (!config) {
         NIMCP_LOGGING_ERROR("Config pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null config pointer in lnn_config_default");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -265,17 +300,25 @@ int lnn_config_ncp(lnn_config_t* config,
     /* Guard: NULL check */
     if (!config) {
         NIMCP_LOGGING_ERROR("Config pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null config pointer in lnn_config_ncp");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Guard: Validate dimensions */
     if (n_inputs == 0 || n_outputs == 0) {
         NIMCP_LOGGING_ERROR("n_inputs and n_outputs must be non-zero");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_DIMENSION_MISMATCH, 0, "LNN",
+                         "NCP config requires n_inputs (%u) and n_outputs (%u) > 0",
+                         n_inputs, n_outputs);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (n_inter == 0 || n_command == 0) {
         NIMCP_LOGGING_ERROR("n_inter and n_command must be non-zero for NCP");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_DIMENSION_MISMATCH, 0, "LNN",
+                         "NCP config requires n_inter (%u) and n_command (%u) > 0",
+                         n_inter, n_command);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -302,6 +345,10 @@ int lnn_config_ncp(lnn_config_t* config,
 
     if (!config->layer_configs) {
         NIMCP_LOGGING_ERROR("Failed to allocate layer configs");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                          config->n_layers * sizeof(lnn_layer_config_t),
+                          "Failed to allocate %u layer configs for NCP",
+                          config->n_layers);
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -334,56 +381,80 @@ int lnn_config_validate(const lnn_config_t* config) {
     /* Guard: NULL check */
     if (!config) {
         NIMCP_LOGGING_ERROR("Config pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null config pointer in lnn_config_validate");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Guard: Check layer count */
     if (config->n_layers == 0) {
         NIMCP_LOGGING_ERROR("Network must have at least one layer");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_NETWORK_CREATION, 0, "LNN",
+                         "Network config must have at least one layer");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Guard: Check layer configs allocated */
     if (!config->layer_configs) {
         NIMCP_LOGGING_ERROR("layer_configs is NULL but n_layers = %u", config->n_layers);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "layer_configs is NULL but n_layers = %u", config->n_layers);
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Guard: Check input/output dimensions */
     if (config->n_inputs == 0 || config->n_outputs == 0) {
         NIMCP_LOGGING_ERROR("n_inputs and n_outputs must be non-zero");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_DIMENSION_MISMATCH, 0, "LNN",
+                         "n_inputs (%u) and n_outputs (%u) must be non-zero",
+                         config->n_inputs, config->n_outputs);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Validate ODE settings */
     if (config->default_ode_method < 0 || config->default_ode_method >= LNN_ODE_METHOD_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid default ODE method: %d", config->default_ode_method);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid default ODE method: %d", config->default_ode_method);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (config->default_dt <= 0.0f) {
         NIMCP_LOGGING_ERROR("default_dt must be positive, got %f", config->default_dt);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "default_dt must be positive, got %f", config->default_dt);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (config->adaptive_dt_min <= 0.0f || config->adaptive_dt_max <= 0.0f) {
         NIMCP_LOGGING_ERROR("Adaptive dt bounds must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Adaptive dt bounds must be positive (min=%f, max=%f)",
+                             config->adaptive_dt_min, config->adaptive_dt_max);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (config->adaptive_dt_min >= config->adaptive_dt_max) {
         NIMCP_LOGGING_ERROR("adaptive_dt_min must be less than adaptive_dt_max");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "adaptive_dt_min (%f) must be < adaptive_dt_max (%f)",
+                             config->adaptive_dt_min, config->adaptive_dt_max);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (config->adaptive_error_tol <= 0.0f) {
         NIMCP_LOGGING_ERROR("adaptive_error_tol must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "adaptive_error_tol must be positive, got %f",
+                             config->adaptive_error_tol);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Validate training settings */
     if (config->train_mode < 0 || config->train_mode >= LNN_TRAIN_MODE_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid training mode: %d", config->train_mode);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid training mode: %d", config->train_mode);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -393,11 +464,16 @@ int lnn_config_validate(const lnn_config_t* config) {
 
     if (config->gradient_clip_norm <= 0.0f) {
         NIMCP_LOGGING_ERROR("gradient_clip_norm must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "gradient_clip_norm must be positive, got %f",
+                             config->gradient_clip_norm);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (config->use_gradient_checkpointing && config->checkpoint_interval == 0) {
         NIMCP_LOGGING_ERROR("checkpoint_interval must be non-zero when checkpointing enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "checkpoint_interval must be non-zero when checkpointing enabled");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -409,12 +485,16 @@ int lnn_config_validate(const lnn_config_t* config) {
         if (config->ncp_sensory == 0 || config->ncp_inter == 0 ||
             config->ncp_command == 0 || config->ncp_motor == 0) {
             NIMCP_LOGGING_ERROR("All NCP neuron counts must be non-zero in NCP mode");
+            NIMCP_THROW_BRAIN(NIMCP_ERROR_NETWORK_CREATION, 0, "LNN",
+                             "NCP mode requires all neuron counts > 0");
             return NIMCP_ERROR_INVALID_PARAM;
         }
 
         /* Verify layer count matches NCP architecture */
         if (config->n_layers != 4) {
             NIMCP_LOGGING_ERROR("NCP mode requires exactly 4 layers, got %u", config->n_layers);
+            NIMCP_THROW_BRAIN(NIMCP_ERROR_NETWORK_CREATION, 0, "LNN",
+                             "NCP mode requires exactly 4 layers, got %u", config->n_layers);
             return NIMCP_ERROR_INVALID_PARAM;
         }
 
@@ -424,6 +504,8 @@ int lnn_config_validate(const lnn_config_t* config) {
             config->layer_configs[2].n_neurons != config->ncp_command ||
             config->layer_configs[3].n_neurons != config->ncp_motor) {
             NIMCP_LOGGING_ERROR("Layer neuron counts don't match NCP specification");
+            NIMCP_THROW_BRAIN(NIMCP_ERROR_DIMENSION_MISMATCH, 0, "LNN",
+                             "Layer neuron counts don't match NCP specification");
             return NIMCP_ERROR_INVALID_PARAM;
         }
     }
@@ -436,6 +518,9 @@ int lnn_config_validate(const lnn_config_t* config) {
     /* Validate immune settings */
     if (config->enable_immune_integration && config->instability_threshold <= 0.0f) {
         NIMCP_LOGGING_ERROR("instability_threshold must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "instability_threshold must be positive, got %f",
+                             config->instability_threshold);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

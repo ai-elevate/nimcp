@@ -2885,6 +2885,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/brain/CMakeLists.txt)
     add_subdirectory(brain)
 endif()
 
+# Include Physics E2E test subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/physics/CMakeLists.txt)
+    message(STATUS "Adding Physics Modules E2E tests...")
+    add_subdirectory(physics)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

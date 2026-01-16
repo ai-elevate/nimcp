@@ -21,8 +21,8 @@
 #ifndef NIMCP_OK
 #define NIMCP_OK NIMCP_SUCCESS
 #endif
-#ifndef NIMCP_ERROR_INVALID_ARGUMENT
-#define NIMCP_ERROR_INVALID_ARGUMENT NIMCP_ERROR_INVALID_PARAM
+#ifndef NIMCP_ERROR_INVALID_PARAM
+#define NIMCP_ERROR_INVALID_PARAM NIMCP_ERROR_INVALID_PARAM
 #endif
 #ifndef NIMCP_ERROR_IO
 #define NIMCP_ERROR_IO (-121)
@@ -63,7 +63,7 @@ nimcp_error_t nimcp_sbom_load(nimcp_supply_chain_t sc,
                                const char* filepath,
                                nimcp_sbom_format_t format) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !filepath) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     FILE* file = fopen(filepath, "r");
@@ -353,7 +353,7 @@ nimcp_error_t nimcp_sbom_generate(nimcp_supply_chain_t sc,
                                    nimcp_sbom_format_t format,
                                    char** output) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !output) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&sc->lock);
@@ -365,7 +365,7 @@ nimcp_error_t nimcp_sbom_generate(nimcp_supply_chain_t sc,
         err = generate_cyclonedx_sbom(sc, output);
     } else {
         pthread_mutex_unlock(&sc->lock);
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (err == NIMCP_OK) {
@@ -385,7 +385,7 @@ nimcp_error_t nimcp_sbom_save(nimcp_supply_chain_t sc,
                                const char* filepath,
                                nimcp_sbom_format_t format) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !filepath) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     char* sbom_content = NULL;
@@ -423,7 +423,7 @@ nimcp_error_t nimcp_sbom_get_dependencies(nimcp_supply_chain_t sc,
                                            nimcp_dependency_t** deps,
                                            size_t* count) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !deps || !count) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&sc->lock);
@@ -455,7 +455,7 @@ nimcp_error_t nimcp_sbom_get_dependencies(nimcp_supply_chain_t sc,
 nimcp_error_t nimcp_sbom_add_dependency(nimcp_supply_chain_t sc,
                                          const nimcp_dependency_t* dep) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !dep) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&sc->lock);
@@ -491,7 +491,7 @@ nimcp_error_t nimcp_sbom_add_dependency(nimcp_supply_chain_t sc,
 nimcp_error_t nimcp_sbom_remove_dependency(nimcp_supply_chain_t sc,
                                             const char* name) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !name) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&sc->lock);
@@ -519,7 +519,7 @@ nimcp_error_t nimcp_sbom_query_dependency(nimcp_supply_chain_t sc,
                                            const char* name,
                                            nimcp_dependency_t* dep) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !name || !dep) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&sc->lock);

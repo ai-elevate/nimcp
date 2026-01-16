@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 
@@ -115,6 +116,7 @@ portia_collective_bridge_t* portia_collective_create(
     portia_collective_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR("Failed to allocate portia-collective bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate portia-collective bridge");
         return NULL;
     }
 
@@ -122,6 +124,7 @@ portia_collective_bridge_t* portia_collective_create(
     bridge->mutex = nimcp_mutex_create(NULL);
     if (!bridge->mutex) {
         LOG_ERROR("Failed to create mutex for portia-collective bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create mutex for portia-collective bridge");
         nimcp_free(bridge);
         return NULL;
     }
@@ -212,6 +215,7 @@ int portia_collective_connect_portia(
 ) {
     if (!bridge) {
         LOG_ERROR("Null bridge in connect_portia");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Null bridge in portia_collective_connect_portia");
         return -1;
     }
 
@@ -234,6 +238,7 @@ int portia_collective_connect_collective(
 ) {
     if (!bridge) {
         LOG_ERROR("Null bridge in connect_collective");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Null bridge in portia_collective_connect_collective");
         return -1;
     }
 

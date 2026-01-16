@@ -13,6 +13,7 @@
 #include <math.h>
 #include <time.h>
 #include <stdio.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Internal Structures
@@ -187,17 +188,22 @@ dragonfly_system_t* dragonfly_system_create(const dragonfly_config_t* config) {
     }
 
     if (!dragonfly_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_system_create: invalid config");
         return NULL;
     }
 
     dragonfly_system_t* system = (dragonfly_system_t*)calloc(1, sizeof(dragonfly_system_t));
-    if (!system) return NULL;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_system_create: failed to allocate system");
+        return NULL;
+    }
 
     system->config = *config;
 
     /* Create mutex */
     system->mutex = nimcp_mutex_create(NULL);
     if (!system->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_system_create: failed to create mutex");
         free(system);
         return NULL;
     }
@@ -242,7 +248,10 @@ void dragonfly_system_destroy(dragonfly_system_t* system) {
 }
 
 int dragonfly_system_reset(dragonfly_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_system_reset: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -284,7 +293,10 @@ int dragonfly_process_detection(
     dragonfly_system_t* system,
     const dragonfly_detection_t* detection
 ) {
-    if (!system || !detection) return -1;
+    if (!system || !detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_process_detection: NULL argument");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -363,7 +375,10 @@ int dragonfly_update_self_state(
     dragonfly_system_t* system,
     const dragonfly_self_state_t* self_state
 ) {
-    if (!system || !self_state) return -1;
+    if (!system || !self_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_update_self_state: NULL argument");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
     system->self_state = *self_state;
@@ -374,8 +389,14 @@ int dragonfly_update_self_state(
 }
 
 int dragonfly_update(dragonfly_system_t* system, float dt_s) {
-    if (!system) return -1;
-    if (dt_s <= 0.0f) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_update: system is NULL");
+        return -1;
+    }
+    if (dt_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_update: invalid dt_s");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -531,7 +552,10 @@ int dragonfly_get_motor_command(
     const dragonfly_system_t* system,
     dragonfly_motor_cmd_t* cmd
 ) {
-    if (!system || !cmd) return -1;
+    if (!system || !cmd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_get_motor_command: NULL argument");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_system_t*)system)->mutex);
     *cmd = system->current_cmd;
@@ -568,12 +592,16 @@ int dragonfly_get_primary_target(
     const dragonfly_system_t* system,
     dragonfly_target_info_t* target
 ) {
-    if (!system || !target) return -1;
+    if (!system || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_get_primary_target: NULL argument");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_system_t*)system)->mutex);
 
     target_entry_t* entry = find_target((dragonfly_system_t*)system, system->primary_target_id);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_get_primary_target: no primary target");
         nimcp_mutex_unlock(((dragonfly_system_t*)system)->mutex);
         return -1;
     }
@@ -588,7 +616,10 @@ int dragonfly_get_state(
     const dragonfly_system_t* system,
     dragonfly_state_t* state
 ) {
-    if (!system || !state) return -1;
+    if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_get_state: NULL argument");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_system_t*)system)->mutex);
 
@@ -620,7 +651,10 @@ int dragonfly_get_all_targets(
     uint32_t max_targets,
     uint32_t* num_targets
 ) {
-    if (!system || !targets || !num_targets) return -1;
+    if (!system || !targets || !num_targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_get_all_targets: NULL argument");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_system_t*)system)->mutex);
 
@@ -641,7 +675,10 @@ int dragonfly_get_tsdn_vector(
     const dragonfly_system_t* system,
     tsdn_vector_t* vector
 ) {
-    if (!system || !vector) return -1;
+    if (!system || !vector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_get_tsdn_vector: NULL argument");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_system_t*)system)->mutex);
     *vector = system->current_tsdn;
@@ -654,7 +691,10 @@ int dragonfly_get_prediction(
     const dragonfly_system_t* system,
     trajectory_prediction_t* prediction
 ) {
-    if (!system || !prediction) return -1;
+    if (!system || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_get_prediction: NULL argument");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_system_t*)system)->mutex);
     *prediction = system->current_prediction;
@@ -667,7 +707,10 @@ int dragonfly_get_intercept_solution(
     const dragonfly_system_t* system,
     intercept_solution_t* solution
 ) {
-    if (!system || !solution) return -1;
+    if (!system || !solution) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_get_intercept_solution: NULL argument");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_system_t*)system)->mutex);
     *solution = system->current_solution;
@@ -681,11 +724,15 @@ int dragonfly_get_intercept_solution(
 //=============================================================================
 
 int dragonfly_start_scan(dragonfly_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_start_scan: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
     if (system->mode != DRAGONFLY_MODE_IDLE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_start_scan: system not idle");
         nimcp_mutex_unlock(system->mutex);
         return -1;
     }
@@ -699,12 +746,16 @@ int dragonfly_start_scan(dragonfly_system_t* system) {
 }
 
 int dragonfly_lock_target(dragonfly_system_t* system, uint32_t target_id) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_lock_target: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
     target_entry_t* target = find_target(system, target_id);
     if (!target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_lock_target: target not found");
         nimcp_mutex_unlock(system->mutex);
         return -1;
     }
@@ -718,16 +769,21 @@ int dragonfly_lock_target(dragonfly_system_t* system, uint32_t target_id) {
 }
 
 int dragonfly_start_pursuit(dragonfly_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_start_pursuit: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
     if (system->mode != DRAGONFLY_MODE_TRACKING) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_start_pursuit: not tracking");
         nimcp_mutex_unlock(system->mutex);
         return -1;
     }
 
     if (!get_primary_target_entry(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_start_pursuit: no primary target");
         nimcp_mutex_unlock(system->mutex);
         return -1;
     }
@@ -741,7 +797,10 @@ int dragonfly_start_pursuit(dragonfly_system_t* system) {
 }
 
 int dragonfly_abort_pursuit(dragonfly_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_abort_pursuit: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -758,7 +817,10 @@ int dragonfly_abort_pursuit(dragonfly_system_t* system) {
 }
 
 int dragonfly_go_idle(dragonfly_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_go_idle: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
     system->mode = DRAGONFLY_MODE_IDLE;
@@ -775,7 +837,10 @@ int dragonfly_get_stats(
     const dragonfly_system_t* system,
     dragonfly_stats_t* stats
 ) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_get_stats: NULL argument");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_system_t*)system)->mutex);
 
@@ -801,7 +866,10 @@ int dragonfly_get_stats(
 }
 
 int dragonfly_reset_stats(dragonfly_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_reset_stats: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -819,8 +887,14 @@ int dragonfly_set_config(
     dragonfly_system_t* system,
     const dragonfly_config_t* config
 ) {
-    if (!system || !config) return -1;
-    if (!dragonfly_validate_config(config)) return -1;
+    if (!system || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_set_config: NULL argument");
+        return -1;
+    }
+    if (!dragonfly_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_set_config: invalid config");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -840,7 +914,10 @@ int dragonfly_get_config(
     const dragonfly_system_t* system,
     dragonfly_config_t* config
 ) {
-    if (!system || !config) return -1;
+    if (!system || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_get_config: NULL argument");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_system_t*)system)->mutex);
     *config = system->config;

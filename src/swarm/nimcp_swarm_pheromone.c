@@ -20,6 +20,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>
@@ -377,11 +378,13 @@ nimcp_pheromone_system_t* nimcp_pheromone_create(
 ) {
     if (!config) {
         LOG_ERROR("NULL configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config for pheromone create");
         return NULL;
     }
 
     /* Validate configuration */
     if (nimcp_pheromone_validate_config(config) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pheromone config validation failed");
         return NULL;
     }
 
@@ -395,6 +398,7 @@ nimcp_pheromone_system_t* nimcp_pheromone_create(
         (nimcp_pheromone_system_t*)nimcp_calloc(1, sizeof(nimcp_pheromone_system_t));
     if (!system) {
         LOG_ERROR("Failed to allocate pheromone system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failed to allocate pheromone system");
         return NULL;
     }
 
@@ -419,6 +423,7 @@ nimcp_pheromone_system_t* nimcp_pheromone_create(
         system->hash_size, sizeof(voxel_entry_t*));
     if (!system->grid_hash) {
         LOG_ERROR("Failed to allocate grid hash table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failed to allocate pheromone grid hash table");
         nimcp_free(system);
         return NULL;
     }
@@ -426,6 +431,7 @@ nimcp_pheromone_system_t* nimcp_pheromone_create(
     /* Initialize mutex */
     if (nimcp_platform_mutex_init(&system->mutex, false) != 0) {
         LOG_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "failed to init pheromone mutex");
         nimcp_free(system->grid_hash);
         nimcp_free(system);
         return NULL;

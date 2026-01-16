@@ -22,6 +22,7 @@
 #include "language/bridges/nimcp_language_immune_bridge.h"
 #include "language/bridges/nimcp_language_gpu_bridge.h"
 
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -190,7 +191,10 @@ language_orchestrator_t* language_orchestrator_create(
     const language_orchestrator_config_t* config)
 {
     language_orchestrator_t* orch = calloc(1, sizeof(language_orchestrator_t));
-    if (!orch) return NULL;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_orchestrator_create: Failed to allocate orchestrator");
+        return NULL;
+    }
 
     /* Apply configuration */
     if (config) {
@@ -208,6 +212,7 @@ language_orchestrator_t* language_orchestrator_create(
 
     /* Initialize buffers */
     if (orchestrator_init_buffers(orch) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_orchestrator_create: Failed to initialize buffers");
         free(orch);
         return NULL;
     }
@@ -257,6 +262,7 @@ void language_orchestrator_destroy(language_orchestrator_t* orchestrator)
 int language_orchestrator_start(language_orchestrator_t* orchestrator)
 {
     if (!orchestrator || !orchestrator->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_start: NULL or uninitialized orchestrator");
         return -1;
     }
 
@@ -296,6 +302,7 @@ int language_orchestrator_start(language_orchestrator_t* orchestrator)
 int language_orchestrator_stop(language_orchestrator_t* orchestrator)
 {
     if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_stop: NULL orchestrator");
         return -1;
     }
 
@@ -342,7 +349,10 @@ int language_orchestrator_connect_wernicke(
     language_orchestrator_t* orchestrator,
     wernicke_adapter_t* wernicke)
 {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_connect_wernicke: NULL orchestrator");
+        return -1;
+    }
 
     orchestrator->wernicke = wernicke;
     orchestrator->stats.wernicke_connected = (wernicke != NULL);
@@ -354,7 +364,10 @@ int language_orchestrator_connect_broca(
     language_orchestrator_t* orchestrator,
     broca_adapter_t* broca)
 {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_connect_broca: NULL orchestrator");
+        return -1;
+    }
 
     orchestrator->broca = broca;
     orchestrator->stats.broca_connected = (broca != NULL);
@@ -366,7 +379,10 @@ int language_orchestrator_connect_nlp(
     language_orchestrator_t* orchestrator,
     nlp_network_t nlp)
 {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_connect_nlp: NULL orchestrator");
+        return -1;
+    }
 
     orchestrator->nlp_network = nlp;
     orchestrator->stats.nlp_connected = (nlp != NULL);
@@ -378,7 +394,10 @@ int language_orchestrator_connect_speech_cortex(
     language_orchestrator_t* orchestrator,
     speech_cortex_t* speech)
 {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_connect_speech_cortex: NULL orchestrator");
+        return -1;
+    }
 
     orchestrator->speech_cortex = speech;
 
@@ -389,7 +408,10 @@ int language_orchestrator_connect_multimodal(
     language_orchestrator_t* orchestrator,
     multimodal_nlp_bridge_t* multimodal)
 {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_connect_multimodal: NULL orchestrator");
+        return -1;
+    }
 
     orchestrator->multimodal = multimodal;
 
@@ -404,7 +426,10 @@ int language_orchestrator_connect_perception_bridge(
     language_orchestrator_t* orchestrator,
     language_perception_bridge_t* bridge)
 {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_connect_perception_bridge: NULL orchestrator");
+        return -1;
+    }
 
     orchestrator->perception_bridge = bridge;
     orchestrator->stats.perception_bridge_connected = (bridge != NULL);
@@ -421,7 +446,10 @@ int language_orchestrator_connect_cognitive_bridge(
     language_orchestrator_t* orchestrator,
     language_cognitive_bridge_t* bridge)
 {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_connect_cognitive_bridge: NULL orchestrator");
+        return -1;
+    }
 
     orchestrator->cognitive_bridge = bridge;
     orchestrator->stats.cognitive_bridge_connected = (bridge != NULL);
@@ -437,7 +465,10 @@ int language_orchestrator_connect_training_bridge(
     language_orchestrator_t* orchestrator,
     language_training_bridge_t* bridge)
 {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_connect_training_bridge: NULL orchestrator");
+        return -1;
+    }
 
     orchestrator->training_bridge = bridge;
     orchestrator->stats.training_bridge_connected = (bridge != NULL);
@@ -453,7 +484,10 @@ int language_orchestrator_connect_omni_bridge(
     language_orchestrator_t* orchestrator,
     language_omni_bridge_t* bridge)
 {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_connect_omni_bridge: NULL orchestrator");
+        return -1;
+    }
 
     orchestrator->omni_bridge = bridge;
     orchestrator->stats.omni_bridge_connected = (bridge != NULL);
@@ -469,7 +503,10 @@ int language_orchestrator_connect_immune_bridge(
     language_orchestrator_t* orchestrator,
     language_immune_bridge_t* bridge)
 {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_connect_immune_bridge: NULL orchestrator");
+        return -1;
+    }
 
     orchestrator->immune_bridge = bridge;
     orchestrator->stats.immune_bridge_connected = (bridge != NULL);
@@ -485,7 +522,10 @@ int language_orchestrator_connect_gpu_bridge(
     language_orchestrator_t* orchestrator,
     language_gpu_bridge_t* bridge)
 {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_connect_gpu_bridge: NULL orchestrator");
+        return -1;
+    }
 
     orchestrator->gpu_bridge = bridge;
     orchestrator->stats.gpu_bridge_connected = (bridge != NULL);
@@ -508,6 +548,7 @@ int language_orchestrator_process_input(
     language_input_type_t input_type)
 {
     if (!orchestrator || !orchestrator->running || !input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_process_input: NULL or not running");
         return -1;
     }
 
@@ -559,6 +600,7 @@ int language_orchestrator_process_phonemes(
     uint32_t count)
 {
     if (!orchestrator || !orchestrator->running || !phonemes || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_process_phonemes: Invalid parameters");
         return -1;
     }
 
@@ -591,6 +633,7 @@ int language_orchestrator_process_text(
     const char* text)
 {
     if (!orchestrator || !orchestrator->running || !text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_process_text: Invalid parameters");
         return -1;
     }
 
@@ -627,6 +670,7 @@ int language_orchestrator_generate_output(
     language_output_type_t output_type)
 {
     if (!orchestrator || !orchestrator->running || !semantic_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_generate_output: Invalid parameters");
         return -1;
     }
 
@@ -654,10 +698,12 @@ int language_orchestrator_get_comprehension(
     language_comprehension_result_t* result)
 {
     if (!orchestrator || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_get_comprehension: NULL parameter");
         return -1;
     }
 
     if (!orchestrator->comprehension_valid) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "language_orchestrator_get_comprehension: No valid comprehension");
         return -1;
     }
 
@@ -670,10 +716,12 @@ int language_orchestrator_get_production_plan(
     language_production_plan_t* plan)
 {
     if (!orchestrator || !plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_get_production_plan: NULL parameter");
         return -1;
     }
 
     if (!orchestrator->production_valid) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "language_orchestrator_get_production_plan: No valid production plan");
         return -1;
     }
 
@@ -690,6 +738,7 @@ int language_orchestrator_update(
     uint64_t current_time_ms)
 {
     if (!orchestrator || !orchestrator->running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_update: NULL or not running");
         return -1;
     }
 
@@ -720,6 +769,7 @@ int language_orchestrator_update(
 int language_orchestrator_process_messages(language_orchestrator_t* orchestrator)
 {
     if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_process_messages: NULL orchestrator");
         return -1;
     }
 
@@ -759,6 +809,7 @@ int language_orchestrator_set_mode(
     language_mode_t mode)
 {
     if (!orchestrator || mode >= LANGUAGE_MODE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "language_orchestrator_set_mode: Invalid parameters");
         return -1;
     }
 
@@ -771,6 +822,7 @@ int language_orchestrator_set_mode(
 int language_orchestrator_reset(language_orchestrator_t* orchestrator)
 {
     if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_reset: NULL orchestrator");
         return -1;
     }
 
@@ -799,6 +851,7 @@ int language_orchestrator_get_stats(
     language_orchestrator_stats_t* stats)
 {
     if (!orchestrator || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_get_stats: NULL parameter");
         return -1;
     }
 
@@ -850,6 +903,7 @@ int language_orchestrator_register_callback(
     void* user_data)
 {
     if (!orchestrator || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_register_callback: NULL parameter");
         return -1;
     }
 
@@ -864,6 +918,7 @@ int language_orchestrator_register_callback(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_orchestrator_register_callback: No callback slots available");
     return -1;  /* No space */
 }
 
@@ -872,6 +927,7 @@ int language_orchestrator_unregister_callback(
     language_event_callback_t callback)
 {
     if (!orchestrator || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_orchestrator_unregister_callback: NULL parameter");
         return -1;
     }
 
@@ -886,6 +942,7 @@ int language_orchestrator_unregister_callback(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "language_orchestrator_unregister_callback: Callback not found");
     return -1;  /* Not found */
 }
 
@@ -962,6 +1019,7 @@ static int orchestrator_init_buffers(language_orchestrator_t* orch)
     orch->input.phonemes = calloc(orch->input.phoneme_capacity,
                                    sizeof(language_phoneme_t));
     if (!orch->input.phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orchestrator_init_buffers: Failed to allocate phoneme buffer");
         return -1;
     }
     orch->input.phoneme_count = 0;
@@ -971,6 +1029,7 @@ static int orchestrator_init_buffers(language_orchestrator_t* orch)
     orch->input.words = calloc(orch->input.word_capacity,
                                 sizeof(language_word_t));
     if (!orch->input.words) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orchestrator_init_buffers: Failed to allocate word buffer");
         free(orch->input.phonemes);
         return -1;
     }
@@ -980,6 +1039,7 @@ static int orchestrator_init_buffers(language_orchestrator_t* orch)
     orch->input.text_capacity = 4096;
     orch->input.text_buffer = calloc(orch->input.text_capacity, 1);
     if (!orch->input.text_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orchestrator_init_buffers: Failed to allocate text buffer");
         free(orch->input.phonemes);
         free(orch->input.words);
         return -1;

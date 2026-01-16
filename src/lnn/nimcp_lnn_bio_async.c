@@ -13,6 +13,7 @@
 #include "lnn/nimcp_lnn_bio_async.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "async/nimcp_wiring_helpers.h"
 #include <string.h>
 #include <stdio.h>
@@ -111,12 +112,16 @@ static inline const lnn_bio_async_ctx_t* get_bio_ctx_const(const lnn_network_t* 
 static lnn_bio_async_ctx_t* create_bio_ctx(void) {
     lnn_bio_async_ctx_t* ctx = (lnn_bio_async_ctx_t*)nimcp_malloc(sizeof(lnn_bio_async_ctx_t));
     if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(lnn_bio_async_ctx_t),
+                          "Failed to allocate bio-async context");
         return NULL;
     }
 
     memset(ctx, 0, sizeof(lnn_bio_async_ctx_t));
     ctx->mutex = nimcp_mutex_create(NULL);
     if (!ctx->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                             "Failed to create mutex for bio-async context");
         nimcp_free(ctx);
         return NULL;
     }
@@ -178,6 +183,8 @@ static nimcp_error_t lnn_bio_router_handler(
     /* Extract message type from first uint32_t */
     if (msg_size < sizeof(uint32_t)) {
         NIMCP_LOGGING_ERROR("LNN bio-async: message too small");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "LNN bio-async message too small: %zu bytes", msg_size);
         return LNN_ERROR_INVALID_PARAM;
     }
 
@@ -186,6 +193,8 @@ static nimcp_error_t lnn_bio_router_handler(
     /* Map to lnn_bio_msg_type_t (assuming direct mapping) */
     if (msg_type_raw >= LNN_BIO_MSG_COUNT) {
         NIMCP_LOGGING_WARN("LNN bio-async: unknown message type %u", msg_type_raw);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "LNN bio-async: unknown message type %u", msg_type_raw);
         return LNN_ERROR_INVALID_PARAM;
     }
 
@@ -225,12 +234,16 @@ int lnn_bio_async_connect(lnn_network_t* network, uint16_t module_id) {
     /* Validate inputs */
     if (!network) {
         NIMCP_LOGGING_ERROR("LNN bio-async connect: NULL network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_bio_async_connect");
         return LNN_ERROR_NULL_POINTER;
     }
 
     /* Check if bio-async is initialized */
     if (!bio_router_is_initialized()) {
         NIMCP_LOGGING_INFO("Bio-async router not available, skipping LNN registration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "Bio-async router not initialized for LNN connection");
         return LNN_ERROR_NOT_INITIALIZED;
     }
 
@@ -247,6 +260,7 @@ int lnn_bio_async_connect(lnn_network_t* network, uint16_t module_id) {
     lnn_bio_async_ctx_t* ctx = create_bio_ctx();
     if (!ctx) {
         NIMCP_LOGGING_ERROR("LNN bio-async: failed to create context");
+        /* Exception already thrown in create_bio_ctx */
         return LNN_ERROR_OUT_OF_MEMORY;
     }
 
@@ -264,6 +278,8 @@ int lnn_bio_async_connect(lnn_network_t* network, uint16_t module_id) {
     ctx->bio_module = bio_router_register_module(&info);
     if (!ctx->bio_module) {
         NIMCP_LOGGING_ERROR("LNN bio-async: failed to register module");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_NETWORK_CREATION, network->id, "LNN",
+                         "Failed to register LNN module 0x%04X with bio-router", module_id);
         destroy_bio_ctx(ctx);
         return LNN_ERROR_OPERATION_FAILED;
     }
@@ -286,6 +302,8 @@ int lnn_bio_async_connect(lnn_network_t* network, uint16_t module_id) {
 
         if (err != NIMCP_SUCCESS) {
             NIMCP_LOGGING_ERROR("LNN bio-async: failed to register handler");
+            NIMCP_THROW_BRAIN(NIMCP_ERROR_NETWORK_CREATION, network->id, "LNN",
+                             "Failed to register bio-async handler for module 0x%04X", module_id);
             bio_router_unregister_module(ctx->bio_module);
             destroy_bio_ctx(ctx);
             return err;
@@ -305,6 +323,8 @@ int lnn_bio_async_connect(lnn_network_t* network, uint16_t module_id) {
 
 int lnn_bio_async_disconnect(lnn_network_t* network) {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_bio_async_disconnect");
         return LNN_ERROR_NULL_POINTER;
     }
 
@@ -344,12 +364,16 @@ bool lnn_bio_async_is_connected(const lnn_network_t* network) {
 
 int lnn_bio_async_broadcast_state(lnn_network_t* network, uint16_t target_module) {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_bio_async_broadcast_state");
         return LNN_ERROR_NULL_POINTER;
     }
 
     lnn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) {
         NIMCP_LOGGING_WARN("LNN bio-async: not connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "LNN bio-async not connected for state broadcast");
         return LNN_ERROR_INVALID_STATE;
     }
 
@@ -387,11 +411,15 @@ int lnn_bio_async_broadcast_state(lnn_network_t* network, uint16_t target_module
 
 int lnn_bio_async_broadcast_tau(lnn_network_t* network, uint16_t target_module) {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_bio_async_broadcast_tau");
         return LNN_ERROR_NULL_POINTER;
     }
 
     lnn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "LNN bio-async not connected for tau broadcast");
         return LNN_ERROR_INVALID_STATE;
     }
 
@@ -429,11 +457,16 @@ int lnn_bio_async_broadcast_training_event(
     const lnn_bio_training_msg_t* event
 ) {
     if (!network || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null pointer in lnn_bio_async_broadcast_training_event: network=%p, event=%p",
+                             (void*)network, (void*)event);
         return LNN_ERROR_NULL_POINTER;
     }
 
     lnn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "LNN bio-async not connected for training event broadcast");
         return LNN_ERROR_INVALID_STATE;
     }
 
@@ -464,11 +497,15 @@ int lnn_bio_async_request_sync(
     float coherence_target
 ) {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_bio_async_request_sync");
         return LNN_ERROR_NULL_POINTER;
     }
 
     lnn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "LNN bio-async not connected for sync request");
         return LNN_ERROR_INVALID_STATE;
     }
 
@@ -477,6 +514,8 @@ int lnn_bio_async_request_sync(
         ctx->phase_sync = nimcp_phase_sync_create(band);
         if (!ctx->phase_sync) {
             NIMCP_LOGGING_ERROR("LNN bio-async: failed to create phase sync");
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 0,
+                              "Failed to create phase sync context for LNN");
             return LNN_ERROR_OUT_OF_MEMORY;
         }
     }
@@ -510,16 +549,22 @@ int lnn_bio_async_request_sync(
 
 int lnn_bio_async_wait_sync(lnn_network_t* network, int timeout_ms) {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_bio_async_wait_sync");
         return LNN_ERROR_NULL_POINTER;
     }
 
     lnn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "LNN bio-async not connected for wait_sync");
         return LNN_ERROR_INVALID_STATE;
     }
 
     if (!ctx->phase_sync || !ctx->sync_pending) {
         NIMCP_LOGGING_WARN("LNN bio-async: no sync pending");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "No sync pending for LNN bio-async wait_sync");
         return LNN_ERROR_INVALID_STATE;
     }
 
@@ -549,15 +594,22 @@ int lnn_bio_async_register_handler(
     void* user_data
 ) {
     if (!network || !handler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null pointer in lnn_bio_async_register_handler: network=%p, handler=%p",
+                             (void*)network, (void*)handler);
         return LNN_ERROR_NULL_POINTER;
     }
 
     if (type >= LNN_BIO_MSG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid bio-async message type: %d", type);
         return LNN_ERROR_INVALID_PARAM;
     }
 
     lnn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "LNN bio-async not connected for handler registration");
         return LNN_ERROR_INVALID_STATE;
     }
 
@@ -571,6 +623,9 @@ int lnn_bio_async_register_handler(
     );
 
     if (!new_handlers) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                          (count + 1) * sizeof(lnn_bio_handler_entry_t),
+                          "Failed to expand handler array for type %d", type);
         nimcp_mutex_unlock(ctx->mutex);
         return LNN_ERROR_OUT_OF_MEMORY;
     }
@@ -589,11 +644,15 @@ int lnn_bio_async_register_handler(
 
 int lnn_bio_async_process(lnn_network_t* network, int timeout_ms) {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_bio_async_process");
         return LNN_ERROR_NULL_POINTER;
     }
 
     lnn_bio_async_ctx_t* ctx = get_bio_ctx(network);
     if (!ctx || !ctx->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "LNN bio-async not connected for message processing");
         return LNN_ERROR_INVALID_STATE;
     }
 
@@ -636,11 +695,15 @@ int lnn_bio_async_get_stats(
     uint64_t* messages_dropped
 ) {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_bio_async_get_stats");
         return LNN_ERROR_NULL_POINTER;
     }
 
     const lnn_bio_async_ctx_t* ctx = get_bio_ctx_const(network);
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "No bio-async context for stats retrieval");
         return LNN_ERROR_INVALID_STATE;
     }
 

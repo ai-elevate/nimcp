@@ -16,6 +16,7 @@
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Constants

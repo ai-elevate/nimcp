@@ -70,7 +70,7 @@ typedef struct audiovisual_integrator audiovisual_integrator_t;
 /* Forward declarations for integration */
 typedef struct visual_cortex_struct visual_cortex_t;
 typedef struct speech_cortex_struct speech_cortex_t;
-typedef struct brain_struct brain_t;
+typedef struct brain_struct* brain_t;
 typedef struct kalman_filter kalman_filter_t;
 typedef struct stdp_config stdp_config_t;
 typedef struct meta_learning_engine meta_learning_engine_t;

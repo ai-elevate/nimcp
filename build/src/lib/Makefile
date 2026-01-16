@@ -16289,6 +16289,30 @@ __/core/brain/nimcp_kg_temporal.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_kg_temporal.c.s
 .PHONY : __/core/brain/nimcp_kg_temporal.c.s
 
+__/core/brain/nimcp_kg_wiring_exception.o: __/core/brain/nimcp_kg_wiring_exception.c.o
+.PHONY : __/core/brain/nimcp_kg_wiring_exception.o
+
+# target to build an object file
+__/core/brain/nimcp_kg_wiring_exception.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_kg_wiring_exception.c.o
+.PHONY : __/core/brain/nimcp_kg_wiring_exception.c.o
+
+__/core/brain/nimcp_kg_wiring_exception.i: __/core/brain/nimcp_kg_wiring_exception.c.i
+.PHONY : __/core/brain/nimcp_kg_wiring_exception.i
+
+# target to preprocess a source file
+__/core/brain/nimcp_kg_wiring_exception.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_kg_wiring_exception.c.i
+.PHONY : __/core/brain/nimcp_kg_wiring_exception.c.i
+
+__/core/brain/nimcp_kg_wiring_exception.s: __/core/brain/nimcp_kg_wiring_exception.c.s
+.PHONY : __/core/brain/nimcp_kg_wiring_exception.s
+
+# target to generate assembly for a file
+__/core/brain/nimcp_kg_wiring_exception.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_kg_wiring_exception.c.s
+.PHONY : __/core/brain/nimcp_kg_wiring_exception.c.s
+
 __/core/brain/oscillations/nimcp_brain_complex_oscillations.o: __/core/brain/oscillations/nimcp_brain_complex_oscillations.c.o
 .PHONY : __/core/brain/oscillations/nimcp_brain_complex_oscillations.o
 
@@ -31913,6 +31937,30 @@ __/physics/bridges/nimcp_thermo_quantum_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/bridges/nimcp_thermo_quantum_bridge.c.s
 .PHONY : __/physics/bridges/nimcp_thermo_quantum_bridge.c.s
 
+__/physics/dynamics/nimcp_dynamical_systems.o: __/physics/dynamics/nimcp_dynamical_systems.c.o
+.PHONY : __/physics/dynamics/nimcp_dynamical_systems.o
+
+# target to build an object file
+__/physics/dynamics/nimcp_dynamical_systems.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/dynamics/nimcp_dynamical_systems.c.o
+.PHONY : __/physics/dynamics/nimcp_dynamical_systems.c.o
+
+__/physics/dynamics/nimcp_dynamical_systems.i: __/physics/dynamics/nimcp_dynamical_systems.c.i
+.PHONY : __/physics/dynamics/nimcp_dynamical_systems.i
+
+# target to preprocess a source file
+__/physics/dynamics/nimcp_dynamical_systems.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/dynamics/nimcp_dynamical_systems.c.i
+.PHONY : __/physics/dynamics/nimcp_dynamical_systems.c.i
+
+__/physics/dynamics/nimcp_dynamical_systems.s: __/physics/dynamics/nimcp_dynamical_systems.c.s
+.PHONY : __/physics/dynamics/nimcp_dynamical_systems.s
+
+# target to generate assembly for a file
+__/physics/dynamics/nimcp_dynamical_systems.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/dynamics/nimcp_dynamical_systems.c.s
+.PHONY : __/physics/dynamics/nimcp_dynamical_systems.c.s
+
 __/physics/ephaptic/nimcp_ephaptic.o: __/physics/ephaptic/nimcp_ephaptic.c.o
 .PHONY : __/physics/ephaptic/nimcp_ephaptic.o
 
@@ -31937,29 +31985,53 @@ __/physics/ephaptic/nimcp_ephaptic.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/ephaptic/nimcp_ephaptic.c.s
 .PHONY : __/physics/ephaptic/nimcp_ephaptic.c.s
 
-__/physics/geometry/nimcp_information_geometry.o: __/physics/geometry/nimcp_information_geometry.c.o
-.PHONY : __/physics/geometry/nimcp_information_geometry.o
+__/physics/geometry/nimcp_information_geometry_bridge.o: __/physics/geometry/nimcp_information_geometry_bridge.c.o
+.PHONY : __/physics/geometry/nimcp_information_geometry_bridge.o
 
 # target to build an object file
-__/physics/geometry/nimcp_information_geometry.c.o:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/geometry/nimcp_information_geometry.c.o
-.PHONY : __/physics/geometry/nimcp_information_geometry.c.o
+__/physics/geometry/nimcp_information_geometry_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/geometry/nimcp_information_geometry_bridge.c.o
+.PHONY : __/physics/geometry/nimcp_information_geometry_bridge.c.o
 
-__/physics/geometry/nimcp_information_geometry.i: __/physics/geometry/nimcp_information_geometry.c.i
-.PHONY : __/physics/geometry/nimcp_information_geometry.i
+__/physics/geometry/nimcp_information_geometry_bridge.i: __/physics/geometry/nimcp_information_geometry_bridge.c.i
+.PHONY : __/physics/geometry/nimcp_information_geometry_bridge.i
 
 # target to preprocess a source file
-__/physics/geometry/nimcp_information_geometry.c.i:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/geometry/nimcp_information_geometry.c.i
-.PHONY : __/physics/geometry/nimcp_information_geometry.c.i
+__/physics/geometry/nimcp_information_geometry_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/geometry/nimcp_information_geometry_bridge.c.i
+.PHONY : __/physics/geometry/nimcp_information_geometry_bridge.c.i
 
-__/physics/geometry/nimcp_information_geometry.s: __/physics/geometry/nimcp_information_geometry.c.s
-.PHONY : __/physics/geometry/nimcp_information_geometry.s
+__/physics/geometry/nimcp_information_geometry_bridge.s: __/physics/geometry/nimcp_information_geometry_bridge.c.s
+.PHONY : __/physics/geometry/nimcp_information_geometry_bridge.s
 
 # target to generate assembly for a file
-__/physics/geometry/nimcp_information_geometry.c.s:
-	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/geometry/nimcp_information_geometry.c.s
-.PHONY : __/physics/geometry/nimcp_information_geometry.c.s
+__/physics/geometry/nimcp_information_geometry_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/geometry/nimcp_information_geometry_bridge.c.s
+.PHONY : __/physics/geometry/nimcp_information_geometry_bridge.c.s
+
+__/physics/graphs/nimcp_graph_theory_bridge.o: __/physics/graphs/nimcp_graph_theory_bridge.c.o
+.PHONY : __/physics/graphs/nimcp_graph_theory_bridge.o
+
+# target to build an object file
+__/physics/graphs/nimcp_graph_theory_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/graphs/nimcp_graph_theory_bridge.c.o
+.PHONY : __/physics/graphs/nimcp_graph_theory_bridge.c.o
+
+__/physics/graphs/nimcp_graph_theory_bridge.i: __/physics/graphs/nimcp_graph_theory_bridge.c.i
+.PHONY : __/physics/graphs/nimcp_graph_theory_bridge.i
+
+# target to preprocess a source file
+__/physics/graphs/nimcp_graph_theory_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/graphs/nimcp_graph_theory_bridge.c.i
+.PHONY : __/physics/graphs/nimcp_graph_theory_bridge.c.i
+
+__/physics/graphs/nimcp_graph_theory_bridge.s: __/physics/graphs/nimcp_graph_theory_bridge.c.s
+.PHONY : __/physics/graphs/nimcp_graph_theory_bridge.s
+
+# target to generate assembly for a file
+__/physics/graphs/nimcp_graph_theory_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/graphs/nimcp_graph_theory_bridge.c.s
+.PHONY : __/physics/graphs/nimcp_graph_theory_bridge.c.s
 
 __/physics/thermodynamics/nimcp_thermodynamics.o: __/physics/thermodynamics/nimcp_thermodynamics.c.o
 .PHONY : __/physics/thermodynamics/nimcp_thermodynamics.o
@@ -41297,6 +41369,30 @@ __/utils/signal/nimcp_hilbert.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/signal/nimcp_hilbert.c.s
 .PHONY : __/utils/signal/nimcp_hilbert.c.s
 
+__/utils/signal/nimcp_signal_exception_queue.o: __/utils/signal/nimcp_signal_exception_queue.c.o
+.PHONY : __/utils/signal/nimcp_signal_exception_queue.o
+
+# target to build an object file
+__/utils/signal/nimcp_signal_exception_queue.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/signal/nimcp_signal_exception_queue.c.o
+.PHONY : __/utils/signal/nimcp_signal_exception_queue.c.o
+
+__/utils/signal/nimcp_signal_exception_queue.i: __/utils/signal/nimcp_signal_exception_queue.c.i
+.PHONY : __/utils/signal/nimcp_signal_exception_queue.i
+
+# target to preprocess a source file
+__/utils/signal/nimcp_signal_exception_queue.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/signal/nimcp_signal_exception_queue.c.i
+.PHONY : __/utils/signal/nimcp_signal_exception_queue.c.i
+
+__/utils/signal/nimcp_signal_exception_queue.s: __/utils/signal/nimcp_signal_exception_queue.c.s
+.PHONY : __/utils/signal/nimcp_signal_exception_queue.s
+
+# target to generate assembly for a file
+__/utils/signal/nimcp_signal_exception_queue.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/signal/nimcp_signal_exception_queue.c.s
+.PHONY : __/utils/signal/nimcp_signal_exception_queue.c.s
+
 __/utils/signal/nimcp_signal_filter.o: __/utils/signal/nimcp_signal_filter.c.o
 .PHONY : __/utils/signal/nimcp_signal_filter.o
 
@@ -44356,6 +44452,9 @@ help:
 	@echo "... __/core/brain/nimcp_kg_temporal.o"
 	@echo "... __/core/brain/nimcp_kg_temporal.i"
 	@echo "... __/core/brain/nimcp_kg_temporal.s"
+	@echo "... __/core/brain/nimcp_kg_wiring_exception.o"
+	@echo "... __/core/brain/nimcp_kg_wiring_exception.i"
+	@echo "... __/core/brain/nimcp_kg_wiring_exception.s"
 	@echo "... __/core/brain/oscillations/nimcp_brain_complex_oscillations.o"
 	@echo "... __/core/brain/oscillations/nimcp_brain_complex_oscillations.i"
 	@echo "... __/core/brain/oscillations/nimcp_brain_complex_oscillations.s"
@@ -46309,12 +46408,18 @@ help:
 	@echo "... __/physics/bridges/nimcp_thermo_quantum_bridge.o"
 	@echo "... __/physics/bridges/nimcp_thermo_quantum_bridge.i"
 	@echo "... __/physics/bridges/nimcp_thermo_quantum_bridge.s"
+	@echo "... __/physics/dynamics/nimcp_dynamical_systems.o"
+	@echo "... __/physics/dynamics/nimcp_dynamical_systems.i"
+	@echo "... __/physics/dynamics/nimcp_dynamical_systems.s"
 	@echo "... __/physics/ephaptic/nimcp_ephaptic.o"
 	@echo "... __/physics/ephaptic/nimcp_ephaptic.i"
 	@echo "... __/physics/ephaptic/nimcp_ephaptic.s"
-	@echo "... __/physics/geometry/nimcp_information_geometry.o"
-	@echo "... __/physics/geometry/nimcp_information_geometry.i"
-	@echo "... __/physics/geometry/nimcp_information_geometry.s"
+	@echo "... __/physics/geometry/nimcp_information_geometry_bridge.o"
+	@echo "... __/physics/geometry/nimcp_information_geometry_bridge.i"
+	@echo "... __/physics/geometry/nimcp_information_geometry_bridge.s"
+	@echo "... __/physics/graphs/nimcp_graph_theory_bridge.o"
+	@echo "... __/physics/graphs/nimcp_graph_theory_bridge.i"
+	@echo "... __/physics/graphs/nimcp_graph_theory_bridge.s"
 	@echo "... __/physics/thermodynamics/nimcp_thermodynamics.o"
 	@echo "... __/physics/thermodynamics/nimcp_thermodynamics.i"
 	@echo "... __/physics/thermodynamics/nimcp_thermodynamics.s"
@@ -47482,6 +47587,9 @@ help:
 	@echo "... __/utils/signal/nimcp_hilbert.o"
 	@echo "... __/utils/signal/nimcp_hilbert.i"
 	@echo "... __/utils/signal/nimcp_hilbert.s"
+	@echo "... __/utils/signal/nimcp_signal_exception_queue.o"
+	@echo "... __/utils/signal/nimcp_signal_exception_queue.i"
+	@echo "... __/utils/signal/nimcp_signal_exception_queue.s"
 	@echo "... __/utils/signal/nimcp_signal_filter.o"
 	@echo "... __/utils/signal/nimcp_signal_filter.i"
 	@echo "... __/utils/signal/nimcp_signal_filter.s"

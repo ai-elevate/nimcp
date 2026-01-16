@@ -28,6 +28,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "utils/exception/nimcp_exception_macros.h"
+
 /* ============================================================================
  * Constants and Macros
  * ============================================================================ */
@@ -199,6 +201,7 @@ static nimcp_result_t update_consensus_weights(swarm_brain_manager_t* mgr) {
         );
         if (!new_weights) {
             LOG_ERROR("Failed to allocate consensus weights");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate consensus weights");
             return NIMCP_ERROR_MEMORY;
         }
         mgr->consensus_weights = new_weights;
@@ -285,6 +288,7 @@ swarm_brain_manager_t* swarm_brain_manager_create(
     );
     if (!mgr) {
         LOG_ERROR("Failed to allocate swarm brain manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate swarm brain manager");
         return NULL;
     }
 
@@ -301,6 +305,7 @@ swarm_brain_manager_t* swarm_brain_manager_create(
     );
     if (!mgr->agent_table) {
         LOG_ERROR("Failed to allocate agent hash table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate agent hash table");
         nimcp_free(mgr);
         return NULL;
     }
@@ -308,6 +313,7 @@ swarm_brain_manager_t* swarm_brain_manager_create(
     /* Initialize mutex */
     if (nimcp_platform_mutex_init(&mgr->mutex, false) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize mutex in swarm brain manager");
         nimcp_free(mgr->agent_table);
         nimcp_free(mgr);
         return NULL;
@@ -453,6 +459,7 @@ int swarm_brain_create_for_agent(
     }
     if (!brain) {
         LOG_ERROR("Failed to create brain for agent %u", agent_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create brain for agent %u", agent_id);
         nimcp_platform_mutex_unlock(&mgr->mutex);
         return NIMCP_ERROR_MEMORY;
     }
@@ -463,6 +470,7 @@ int swarm_brain_create_for_agent(
     );
     if (!entry) {
         LOG_ERROR("Failed to allocate agent entry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate agent entry for agent %u", agent_id);
         nimcp_brain_destroy(brain);
         nimcp_platform_mutex_unlock(&mgr->mutex);
         return NIMCP_ERROR_MEMORY;
@@ -795,6 +803,7 @@ int swarm_brain_create_for_agent_with_template(
     if (!brain) {
         LOG_ERROR("Failed to create brain for agent %u (role=%s)",
                   agent_id, swarm_brain_role_name(templ->role));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create brain for agent %u (role=%s)", agent_id, swarm_brain_role_name(templ->role));
         nimcp_platform_mutex_unlock(&mgr->mutex);
         return NIMCP_ERROR_MEMORY;
     }
@@ -805,6 +814,7 @@ int swarm_brain_create_for_agent_with_template(
     );
     if (!entry) {
         LOG_ERROR("Failed to allocate agent entry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate agent entry for agent %u", agent_id);
         nimcp_brain_destroy(brain);
         nimcp_platform_mutex_unlock(&mgr->mutex);
         return NIMCP_ERROR_MEMORY;
@@ -1058,6 +1068,7 @@ int swarm_brain_local_sync_weights(
             mgr->consensus_weight_count, sizeof(float)
         );
         if (!entry->brain_data.local_weights) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate local weights for agent %u", agent_id);
             nimcp_platform_mutex_unlock(&mgr->mutex);
             return NIMCP_ERROR_MEMORY;
         }
@@ -1159,6 +1170,7 @@ int swarm_brain_get_consensus_weights(
     *num_weights = mgr->consensus_weight_count;
     *weights = (float*)nimcp_malloc(mgr->consensus_weight_count * sizeof(float));
     if (!*weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate consensus weights buffer");
         nimcp_platform_mutex_unlock(&mgr->mutex);
         return NIMCP_ERROR_MEMORY;
     }
@@ -1227,6 +1239,7 @@ int swarm_brain_get_divergent_agents(
     /* Allocate array */
     *agents = (uint32_t*)nimcp_malloc(divergent_count * sizeof(uint32_t));
     if (!*agents) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate divergent agents array");
         nimcp_platform_mutex_unlock(&mgr->mutex);
         return NIMCP_ERROR_MEMORY;
     }
@@ -1378,6 +1391,7 @@ int swarm_brain_get_all_agents(
     /* Allocate array */
     *agents = (uint32_t*)nimcp_malloc(mgr->active_agents * sizeof(uint32_t));
     if (!*agents) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate all agents array");
         nimcp_platform_mutex_unlock(&mgr->mutex);
         return NIMCP_ERROR_MEMORY;
     }
@@ -1634,6 +1648,7 @@ int swarm_brain_get_agents_by_role(
     /* Allocate array */
     *agents = (uint32_t*)nimcp_malloc(role_count * sizeof(uint32_t));
     if (!*agents) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate agents by role array");
         nimcp_platform_mutex_unlock(&mgr->mutex);
         return NIMCP_ERROR_MEMORY;
     }

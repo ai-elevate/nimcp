@@ -346,6 +346,19 @@ int lnn_immune_connect_training_immune(
     training_immune_system_t* training_immune
 );
 
+/**
+ * @brief Connect immune bridge to LNN network
+ *
+ * WHAT: Register immune bridge with LNN network for bidirectional integration
+ * WHY:  Enable network to receive immune modulation and report instabilities
+ * HOW:  Store bridge reference in network, enable callbacks
+ *
+ * @param network LNN network to connect
+ * @param immune_bridge Immune bridge instance (may be NULL to disconnect)
+ * @return 0 on success, negative on error
+ */
+int lnn_immune_connect(lnn_network_t* network, void* immune_bridge);
+
 /* ============================================================================
  * Stability Monitoring API (LNN → Immune)
  * ============================================================================ */

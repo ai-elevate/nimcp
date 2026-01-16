@@ -46,6 +46,7 @@
 #include "utils/config/nimcp_dynamic_config.h"
 #include "security/nimcp_security_integration.h"
 #include "core/synapse_compute/nimcp_synapse_compute.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -119,6 +120,7 @@ struct nlp_network_struct {
  */
 static bool init_embeddings(nlp_network_t network) {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_embeddings: NULL network");
         LOG_ERROR(LOG_MODULE, "init_embeddings: NULL network");
         return false;
     }
@@ -134,6 +136,7 @@ static bool init_embeddings(nlp_network_t network) {
     size_t size = vocab_size * embedding_dim * sizeof(float);
     network->embeddings = (float*)nimcp_malloc(size);
     if (!network->embeddings) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate %zu bytes for embeddings", size);
         LOG_ERROR(LOG_MODULE, "Failed to allocate %zu bytes for embeddings", size);
         return false;
     }
@@ -206,10 +209,12 @@ nlp_network_t nlp_network_create(const nlp_network_config_t* config) {
 
     // Guard: Validate input
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_create: NULL configuration provided");
         LOG_ERROR(LOG_MODULE, "NULL configuration provided");
         return NULL;
     }
     if (config->vocab_size == 0 || config->embedding_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "Invalid config: vocab_size=%u, embedding_dim=%u", config->vocab_size, config->embedding_dim);
         LOG_ERROR(LOG_MODULE, "Invalid config: vocab_size=%u, embedding_dim=%u",
                          config->vocab_size, config->embedding_dim);
         return NULL;
@@ -218,6 +223,7 @@ nlp_network_t nlp_network_create(const nlp_network_config_t* config) {
     // Allocate network structure using unified memory
     nlp_network_t network = (nlp_network_t)nimcp_calloc(1, sizeof(struct nlp_network_struct));
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nlp_network_create: Failed to allocate network structure");
         LOG_ERROR(LOG_MODULE, "Failed to allocate network structure");
         return NULL;
     }
@@ -246,6 +252,7 @@ nlp_network_t nlp_network_create(const nlp_network_config_t* config) {
 
         network->network = neural_network_create(&default_config);
         if (!network->network) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nlp_network_create: Failed to create neural network with defaults");
             LOG_ERROR(LOG_MODULE, "Failed to create neural network with defaults");
             nimcp_free(network);
             return NULL;
@@ -279,6 +286,7 @@ nlp_network_t nlp_network_create(const nlp_network_config_t* config) {
 
     // Initialize embeddings
     if (!init_embeddings(network)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nlp_network_create: Failed to initialize embeddings");
         LOG_ERROR(LOG_MODULE, "Failed to initialize embeddings");
         if (network->neuromodulators) neuromodulator_system_destroy(network->neuromodulators);
         if (network->attention) multihead_attention_destroy(network->attention);
@@ -293,6 +301,7 @@ nlp_network_t nlp_network_create(const nlp_network_config_t* config) {
     network->attention_output_size = max_seq_len * config->attention_config.output_dim;
     network->attention_output = (float*)nimcp_calloc(network->attention_output_size, sizeof(float));
     if (!network->attention_output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nlp_network_create: Failed to allocate attention output buffer");
         LOG_ERROR(LOG_MODULE, "Failed to allocate attention output buffer");
         nimcp_free(network->embeddings);
         if (network->neuromodulators) neuromodulator_system_destroy(network->neuromodulators);
@@ -386,11 +395,13 @@ void nlp_network_destroy(nlp_network_t network) {
 
 bool nlp_network_register_security(nlp_network_t network, void* security_ctx) {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_register_security: NULL network");
         LOG_ERROR(LOG_MODULE, "register_security: NULL network");
         return false;
     }
 
     if (!security_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_register_security: NULL security context");
         LOG_WARN(LOG_MODULE, "register_security: NULL security context");
         return false;
     }
@@ -404,6 +415,7 @@ bool nlp_network_register_security(nlp_network_t network, void* security_ctx) {
     nimcp_result_t result = nimcp_sec_register_module(sec, NLP_MODULE_NAME, NIMCP_SEC_CAT_COGNITIVE, &network->security_module_id);
 
     if (result != NIMCP_SUCCESS || network->security_module_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nlp_network_register_security: Failed to register with security system");
         LOG_ERROR(LOG_MODULE, "Failed to register with security system");
         return false;
     }
@@ -432,6 +444,7 @@ bool nlp_network_forward(
 
     // Guard: Validate inputs
     if (!network || !token_ids || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_forward: NULL parameter (network=%p, tokens=%p, output=%p)", (void*)network, (const void*)token_ids, (void*)output);
         LOG_ERROR(LOG_MODULE, "forward: NULL parameter (network=%p, tokens=%p, output=%p)",
                          (void*)network, (const void*)token_ids, (void*)output);
         return false;
@@ -440,12 +453,14 @@ bool nlp_network_forward(
     uint32_t max_seq_len = (uint32_t)config_get_int("nlp.max_sequence_length",
                                                      network->config.max_sequence_length);
     if (sequence_length == 0 || sequence_length > max_seq_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "nlp_network_forward: Invalid sequence_length=%u (max=%u)", sequence_length, max_seq_len);
         LOG_ERROR(LOG_MODULE, "forward: Invalid sequence_length=%u (max=%u)",
                          sequence_length, max_seq_len);
         return false;
     }
 
     if (output_dim != network->config.attention_config.output_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "nlp_network_forward: output_dim mismatch (got=%u, expected=%u)", output_dim, network->config.attention_config.output_dim);
         LOG_ERROR(LOG_MODULE, "forward: output_dim mismatch (got=%u, expected=%u)",
                          output_dim, network->config.attention_config.output_dim);
         return false;
@@ -458,6 +473,7 @@ bool nlp_network_forward(
     uint32_t embedding_dim = network->config.embedding_dim;
     float* sequence_embeddings = (float*)nimcp_malloc(sequence_length * embedding_dim * sizeof(float));
     if (!sequence_embeddings) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nlp_network_forward: Failed to allocate sequence embeddings");
         LOG_ERROR(LOG_MODULE, "forward: Failed to allocate sequence embeddings");
         return false;
     }
@@ -465,6 +481,7 @@ bool nlp_network_forward(
     for (uint32_t i = 0; i < sequence_length; i++) {
         uint32_t token = token_ids[i];
         if (token >= network->config.vocab_size) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "nlp_network_forward: Invalid token_id=%u at position %u (vocab_size=%u)", token, i, network->config.vocab_size);
             LOG_ERROR(LOG_MODULE, "forward: Invalid token_id=%u at position %u (vocab_size=%u)",
                              token, i, network->config.vocab_size);
             nimcp_free(sequence_embeddings);
@@ -492,6 +509,7 @@ bool nlp_network_forward(
         );
 
         if (!attention_success) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nlp_network_forward: Attention forward pass failed");
             LOG_ERROR(LOG_MODULE, "forward: Attention forward pass failed");
         } else {
             LOG_DEBUG(LOG_MODULE, "Attention forward pass completed");
@@ -543,10 +561,12 @@ bool nlp_network_get_embedding(
 ) {
     // Guard: Validate inputs
     if (!network || !embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_get_embedding: NULL parameter");
         LOG_ERROR(LOG_MODULE, "get_embedding: NULL parameter");
         return false;
     }
     if (token_id >= network->config.vocab_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "nlp_network_get_embedding: token_id=%u >= vocab_size=%u", token_id, network->config.vocab_size);
         LOG_ERROR(LOG_MODULE, "get_embedding: token_id=%u >= vocab_size=%u",
                          token_id, network->config.vocab_size);
         return false;
@@ -571,10 +591,12 @@ bool nlp_network_set_embedding(
 ) {
     // Guard: Validate inputs
     if (!network || !embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_set_embedding: NULL parameter");
         LOG_ERROR(LOG_MODULE, "set_embedding: NULL parameter");
         return false;
     }
     if (token_id >= network->config.vocab_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "nlp_network_set_embedding: token_id=%u >= vocab_size=%u", token_id, network->config.vocab_size);
         LOG_ERROR(LOG_MODULE, "set_embedding: token_id=%u >= vocab_size=%u",
                          token_id, network->config.vocab_size);
         return false;
@@ -599,6 +621,7 @@ bool nlp_network_set_embedding(
 bool nlp_network_set_attention_gate(nlp_network_t network, float gate_signal) {
     // Guard: Validate inputs
     if (!network || !network->attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_set_attention_gate: Invalid network or no attention");
         LOG_ERROR(LOG_MODULE, "set_attention_gate: Invalid network or no attention");
         return false;
     }
@@ -617,10 +640,12 @@ bool nlp_network_get_attention_weights(
 ) {
     // Guard: Validate inputs
     if (!network || !network->attention || !weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_get_attention_weights: Invalid parameters");
         LOG_ERROR(LOG_MODULE, "get_attention_weights: Invalid parameters");
         return false;
     }
     if (head_idx >= network->config.attention_config.num_heads) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "nlp_network_get_attention_weights: head_idx=%u >= num_heads=%u", head_idx, network->config.attention_config.num_heads);
         LOG_ERROR(LOG_MODULE, "get_attention_weights: head_idx=%u >= num_heads=%u",
                          head_idx, network->config.attention_config.num_heads);
         return false;
@@ -646,6 +671,7 @@ float nlp_network_release_dopamine(
 ) {
     // Guard: Validate inputs
     if (!network || !network->neuromodulators) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_release_dopamine: Invalid network or no neuromodulators");
         LOG_ERROR(LOG_MODULE, "release_dopamine: Invalid network or no neuromodulators");
         return 0.0F;
     }
@@ -668,6 +694,7 @@ float nlp_network_release_acetylcholine(
 ) {
     // Guard: Validate inputs
     if (!network || !network->neuromodulators) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_release_acetylcholine: Invalid network or no neuromodulators");
         LOG_ERROR(LOG_MODULE, "release_acetylcholine: Invalid network or no neuromodulators");
         return 0.0F;
     }
@@ -687,6 +714,7 @@ bool nlp_network_get_neuromodulator_levels(
 ) {
     // Guard: Validate inputs
     if (!network || !network->neuromodulators) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_get_neuromodulator_levels: Invalid network or no neuromodulators");
         LOG_ERROR(LOG_MODULE, "get_neuromodulator_levels: Invalid network or no neuromodulators");
         return false;
     }
@@ -695,6 +723,7 @@ bool nlp_network_get_neuromodulator_levels(
     neuromodulator_pool_t pool = neuromodulator_pool_create();
     bool success = neuromodulator_get_levels(network->neuromodulators, &pool);
     if (!success) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nlp_network_get_neuromodulator_levels: Failed to get neuromodulator levels");
         LOG_ERROR(LOG_MODULE, "Failed to get neuromodulator levels");
         neuromodulator_pool_destroy(&pool);
         return false;
@@ -730,6 +759,7 @@ float nlp_network_train(
 ) {
     // Guard: Validate inputs
     if (!network || !token_ids || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_train: NULL parameter");
         LOG_ERROR(LOG_MODULE, "train: NULL parameter");
         return -1.0F;
     }
@@ -739,6 +769,7 @@ float nlp_network_train(
     // Step 1: Forward pass
     float* output = (float*)nimcp_malloc(sequence_length * output_dim * sizeof(float));
     if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nlp_network_train: Failed to allocate output buffer");
         LOG_ERROR(LOG_MODULE, "train: Failed to allocate output buffer");
         return -1.0F;
     }
@@ -752,6 +783,7 @@ float nlp_network_train(
     );
 
     if (!forward_success) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nlp_network_train: Forward pass failed");
         LOG_ERROR(LOG_MODULE, "train: Forward pass failed");
         nimcp_free(output);
         return -1.0F;
@@ -822,6 +854,7 @@ float nlp_network_train(
 bool nlp_network_get_stats(nlp_network_t network, network_stats_t* stats) {
     // Guard: Validate inputs
     if (!network || !stats || !network->network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_get_stats: Invalid parameters");
         LOG_ERROR(LOG_MODULE, "get_stats: Invalid parameters");
         return false;
     }

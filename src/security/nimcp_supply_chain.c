@@ -20,8 +20,8 @@
 #ifndef NIMCP_OK
 #define NIMCP_OK NIMCP_SUCCESS
 #endif
-#ifndef NIMCP_ERROR_INVALID_ARGUMENT
-#define NIMCP_ERROR_INVALID_ARGUMENT NIMCP_ERROR_INVALID_PARAM
+#ifndef NIMCP_ERROR_INVALID_PARAM
+#define NIMCP_ERROR_INVALID_PARAM NIMCP_ERROR_INVALID_PARAM
 #endif
 #ifndef NIMCP_ERROR_IO
 #define NIMCP_ERROR_IO (-121)
@@ -78,7 +78,7 @@ static nimcp_error_t compute_file_hash(const char* filepath,
                                         nimcp_hash_algorithm_t algo,
                                         char* hash_output) {
     if (!filepath || !hash_output) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     FILE* file = fopen(filepath, "rb");
@@ -116,7 +116,7 @@ static nimcp_error_t compute_file_hash(const char* filepath,
     default:
         EVP_MD_CTX_free(ctx);
         fclose(file);
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (EVP_DigestInit_ex(ctx, md, NULL) != 1) {
@@ -171,11 +171,11 @@ static nimcp_error_t sc_inbox_handler(
     nimcp_supply_chain_t sc = (nimcp_supply_chain_t)user_data;
 
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!msg || msg_size < sizeof(bio_message_header_t)) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     const bio_message_header_t* header = (const bio_message_header_t*)msg;
@@ -327,7 +327,7 @@ void nimcp_supply_chain_destroy(nimcp_supply_chain_t sc) {
 nimcp_error_t nimcp_supply_chain_get_stats(nimcp_supply_chain_t sc,
                                              nimcp_supply_chain_stats_t* stats) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !stats) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&sc->lock);
@@ -349,7 +349,7 @@ nimcp_error_t nimcp_artifact_verify_hash(
 {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC ||
         !filepath || !expected_hash) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     char computed_hash[129];
@@ -395,7 +395,7 @@ nimcp_error_t nimcp_artifact_compute_hash(
 {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC ||
         !filepath || !hash_output) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     return compute_file_hash(filepath, algo, hash_output);
@@ -408,7 +408,7 @@ nimcp_error_t nimcp_artifact_compute_hash(
 nimcp_error_t nimcp_runtime_verify_library(nimcp_supply_chain_t sc,
                                              const char* library_path) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !library_path) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&sc->lock);
@@ -422,7 +422,7 @@ nimcp_error_t nimcp_runtime_verify_library(nimcp_supply_chain_t sc,
 
 nimcp_error_t nimcp_runtime_verify_all(nimcp_supply_chain_t sc) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     LOG_INFO("Verifying all loaded libraries...");
@@ -437,7 +437,7 @@ nimcp_error_t nimcp_runtime_verify_all(nimcp_supply_chain_t sc) {
 
 nimcp_error_t nimcp_runtime_enable_monitoring(nimcp_supply_chain_t sc) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (sc->monitoring_active) {
@@ -453,7 +453,7 @@ nimcp_error_t nimcp_runtime_enable_monitoring(nimcp_supply_chain_t sc) {
 
 nimcp_error_t nimcp_runtime_disable_monitoring(nimcp_supply_chain_t sc) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!sc->monitoring_active) {
@@ -469,7 +469,7 @@ nimcp_error_t nimcp_runtime_disable_monitoring(nimcp_supply_chain_t sc) {
 nimcp_error_t nimcp_runtime_verify_binary(nimcp_supply_chain_t sc,
                                             const char* binary_path) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !binary_path) {
-        return NIMCP_ERROR_INVALID_ARGUMENT;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     pthread_mutex_lock(&sc->lock);

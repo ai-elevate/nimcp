@@ -26,6 +26,8 @@
 #include <math.h>
 #include <time.h>
 
+#include "utils/exception/nimcp_exception_macros.h"
+
 /* LoRa protocol constants */
 #define LORA_PREAMBLE_LENGTH 8
 #define LORA_SYNC_WORD 0x34
@@ -435,6 +437,7 @@ nimcp_swarm_signal_adapter_t* swarm_signal_adapter_create(
     if (!adapter) {
         bbb_audit_log(BBB_AUDIT_ERROR, "swarm_signal", "alloc_failed", "size=%zu",
                       sizeof(nimcp_swarm_signal_adapter_t));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate signal adapter");
         return NULL;
     }
 

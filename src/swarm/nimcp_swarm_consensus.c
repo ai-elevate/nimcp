@@ -37,6 +37,8 @@
 #include <time.h>
 #include <math.h>
 
+#include "utils/exception/nimcp_exception_macros.h"
+
 /* Quantum bridge integration */
 #define NIMCP_SWARM_QUANTUM_BRIDGE_IMPLEMENTATION
 #include "swarm/nimcp_swarm_consensus_quantum_bridge.h"
@@ -247,6 +249,7 @@ swarm_consensus_t swarm_consensus_create(const swarm_consensus_config_t* config)
     if (!ctx) {
         bbb_audit_log(BBB_AUDIT_ERROR, "swarm_consensus", "create_error", "Failed to allocate context");
         LOG_ERROR("Failed to allocate consensus context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate consensus context");
         return NULL;
     }
 
@@ -260,6 +263,7 @@ swarm_consensus_t swarm_consensus_create(const swarm_consensus_config_t* config)
     /* Initialize mutex */
     if (nimcp_mutex_init(&ctx->mutex, NULL) != 0) {
         LOG_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize consensus mutex");
         nimcp_free(ctx);
         return NULL;
     }

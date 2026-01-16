@@ -25,6 +25,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -424,6 +425,7 @@ static bool detect_edge_tpu(accelerator_info_t* info) {
  */
 static bool registry_add(accelerator_registry_t* registry, const accelerator_info_t* info) {
     if (!registry || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL argument in registry_add");
         return false;
     }
 
@@ -437,6 +439,7 @@ static bool registry_add(accelerator_registry_t* registry, const accelerator_inf
         accelerator_info_t* new_array = nimcp_calloc(new_capacity, sizeof(accelerator_info_t));
         if (!new_array) {
             LOG_ERROR("Failed to expand accelerator registry");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to expand accelerator registry");
             return false;
         }
 
@@ -534,6 +537,7 @@ portia_accelerator_system_t portia_accelerator_init(
     portia_accelerator_system_t system = nimcp_calloc(1, sizeof(*system));
     if (!system) {
         LOG_ERROR("Failed to allocate accelerator system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate accelerator system");
         bbb_audit_log(BBB_AUDIT_ERROR, MODULE_NAME, "init_failed",
                       "reason=malloc_failed");
         return NULL;
@@ -556,6 +560,7 @@ portia_accelerator_system_t portia_accelerator_init(
     // Initialize mutex
     if (pthread_mutex_init(&system->lock, NULL) != 0) {
         LOG_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize accelerator system mutex");
         nimcp_free(system);
         return NULL;
     }

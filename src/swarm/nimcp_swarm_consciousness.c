@@ -41,6 +41,8 @@
 #include <unistd.h>
 #include <time.h>
 
+#include "utils/exception/nimcp_exception_macros.h"
+
 //=============================================================================
 // KG-Driven Wiring Infrastructure
 //=============================================================================
@@ -223,6 +225,7 @@ swarm_consciousness_ctx_t* swarm_consciousness_create(
     // Guard: Validate configuration pointer
     if (!bbb_check_pointer(config, "swarm_consciousness_create")) {
         LOG_ERROR("Null configuration pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Null configuration pointer in swarm_consciousness_create");
         return NULL;
     }
 
@@ -231,6 +234,7 @@ swarm_consciousness_ctx_t* swarm_consciousness_create(
         nimcp_calloc(1, sizeof(swarm_consciousness_ctx_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate consciousness context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate consciousness context");
         return NULL;
     }
 
@@ -241,6 +245,7 @@ swarm_consciousness_ctx_t* swarm_consciousness_create(
     // Initialize mutex
     if (pthread_mutex_init(&ctx->lock, NULL) != 0) {
         LOG_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize mutex in swarm_consciousness_create");
         nimcp_free(ctx);
         return NULL;
     }
@@ -250,6 +255,7 @@ swarm_consciousness_ctx_t* swarm_consciousness_create(
         nimcp_calloc(1, sizeof(swarm_consciousness_metrics_t));
     if (!ctx->current_metrics) {
         LOG_ERROR("Failed to allocate metrics structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate consciousness metrics structure");
         pthread_mutex_destroy(&ctx->lock);
         nimcp_free(ctx);
         return NULL;
@@ -453,6 +459,7 @@ swarm_consciousness_metrics_t* swarm_compute_collective_phi(
     uint32_t drone_count = swarm_brain_get_drone_count_internal(swarm);
     if (drone_count == 0 || drone_count > SWARM_CONSCIOUSNESS_MAX_DRONES) {
         LOG_ERROR("Invalid drone count: %u", drone_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid drone count: %u", drone_count);
         return NULL;
     }
 
@@ -541,6 +548,7 @@ swarm_consciousness_metrics_t* swarm_compute_collective_phi(
         nimcp_calloc(1, sizeof(swarm_consciousness_metrics_t));
     if (!result) {
         LOG_ERROR("Failed to allocate consciousness metrics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate consciousness metrics result");
         return NULL;
     }
 
@@ -627,6 +635,7 @@ swarm_consciousness_metrics_t* swarm_consciousness_get_metrics(
     // Guard: Validate magic
     if (ctx->magic != SWARM_CONSCIOUSNESS_MAGIC) {
         LOG_ERROR("Invalid context magic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid context magic in swarm_consciousness_get_metrics");
         return NULL;
     }
 
@@ -717,6 +726,7 @@ static bool swarm_consciousness_start_monitoring_internal(
     // Guard: Validate magic
     if (ctx->magic != SWARM_CONSCIOUSNESS_MAGIC) {
         LOG_ERROR("Invalid context magic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid context magic in swarm_consciousness_start_monitoring");
         return false;
     }
 
@@ -737,6 +747,7 @@ static bool swarm_consciousness_start_monitoring_internal(
     // Spawn monitoring thread
     if (pthread_create(&ctx->monitor_thread, NULL, consciousness_monitor_thread, ctx) != 0) {
         LOG_ERROR("Failed to create monitoring thread");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create consciousness monitoring thread");
         ctx->monitoring_active = false;
         ctx->callback = NULL;
         ctx->user_data = NULL;
@@ -1011,6 +1022,7 @@ bool swarm_brain_enable_consciousness_monitoring(
     swarm_consciousness_ctx_t* ctx = swarm_consciousness_create(&effective_config);
     if (!ctx) {
         LOG_ERROR("Failed to create consciousness context for swarm brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create consciousness context for swarm brain");
         return false;
     }
 
@@ -1117,6 +1129,7 @@ consciousness_scaling_model_t swarm_fit_scaling_model(
     // Guard: Null or insufficient data
     if (!history || history_size < 3) {
         LOG_ERROR("Need at least 3 samples for model fitting");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Need at least 3 samples for model fitting");
         return model;
     }
 
@@ -1145,6 +1158,7 @@ consciousness_scaling_model_t swarm_fit_scaling_model(
 
     if (valid_samples < 3) {
         LOG_ERROR("Insufficient valid samples for model fitting");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Insufficient valid samples for model fitting");
         return model;
     }
 
@@ -1153,6 +1167,7 @@ consciousness_scaling_model_t swarm_fit_scaling_model(
     float denominator = (n * sum_log_n_squared - sum_log_n * sum_log_n);
     if (fabsf(denominator) < 1e-6f) {
         LOG_ERROR("Singular matrix in scaling model fit");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Singular matrix in scaling model fit");
         return model;
     }
 
@@ -1243,6 +1258,7 @@ bool swarm_consciousness_bbb_validate(const swarm_consciousness_metrics_t* metri
     // Guard: Null check
     if (!metrics) {
         LOG_ERROR("Null metrics pointer in BBB validation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Null metrics pointer in BBB validation");
         return false;
     }
 
@@ -1473,23 +1489,27 @@ int swarm_consciousness_share_imagination(
     // Guard: Validate context
     if (!ctx) {
         LOG_ERROR("Null context in share_imagination");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Null context in share_imagination");
         return -1;
     }
 
     if (ctx->magic != SWARM_CONSCIOUSNESS_MAGIC) {
         LOG_ERROR("Invalid context magic in share_imagination");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid context magic in share_imagination");
         return -1;
     }
 
     // Guard: Validate scenario
     if (!scenario) {
         LOG_ERROR("Null scenario in share_imagination");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Null scenario in share_imagination");
         return -1;
     }
 
     // Guard: Check bio-async availability
     if (!ctx->bio_async_registered || !ctx->bio_module_ctx) {
         LOG_WARN("Bio-async not available for imagination sharing");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Bio-async not available for imagination sharing");
         return -1;
     }
 
@@ -1517,6 +1537,7 @@ int swarm_consciousness_share_imagination(
     nimcp_error_t err = bio_router_send(ctx->bio_module_ctx, &msg, sizeof(msg), 0);
     if (err != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to broadcast imagination: error=%d", err);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NETWORK_IO, "Failed to broadcast imagination: error=%d", err);
         return -1;
     }
 
@@ -1551,17 +1572,20 @@ int swarm_consciousness_receive_imagination(
     // Guard: Validate context
     if (!ctx) {
         LOG_ERROR("Null context in receive_imagination");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Null context in receive_imagination");
         return -1;
     }
 
     if (ctx->magic != SWARM_CONSCIOUSNESS_MAGIC) {
         LOG_ERROR("Invalid context magic in receive_imagination");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid context magic in receive_imagination");
         return -1;
     }
 
     // Guard: Validate scenario
     if (!scenario) {
         LOG_WARN("Null scenario in receive_imagination");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Null scenario in receive_imagination");
         return -1;
     }
 
@@ -1638,11 +1662,13 @@ int swarm_consciousness_register_imagination_handler(
     // Guard: Validate context
     if (!ctx) {
         LOG_ERROR("Null context in register_imagination_handler");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Null context in register_imagination_handler");
         return -1;
     }
 
     if (ctx->magic != SWARM_CONSCIOUSNESS_MAGIC) {
         LOG_ERROR("Invalid context magic in register_imagination_handler");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid context magic in register_imagination_handler");
         return -1;
     }
 
@@ -1665,6 +1691,7 @@ int swarm_consciousness_register_imagination_handler(
             ctx->bio_module_ctx = bio_router_register_module(&mod_info);
             if (!ctx->bio_module_ctx) {
                 LOG_WARN("Failed to register swarm_consciousness with bio-router");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to register swarm_consciousness with bio-router");
                 pthread_mutex_unlock(&ctx->lock);
                 return -1;
             }

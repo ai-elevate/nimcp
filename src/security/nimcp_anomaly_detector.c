@@ -28,6 +28,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -326,6 +327,7 @@ nimcp_anomaly_detector_t nimcp_anomaly_detector_create(const nimcp_anomaly_confi
     nimcp_anomaly_detector_t detector = (nimcp_anomaly_detector_t)calloc(1, sizeof(struct nimcp_anomaly_detector_internal));
     if (!detector) {
         LOG_MODULE_ERROR("anomaly_detector", "Failed to allocate anomaly detector");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate anomaly detector");
         return NULL;
     }
 
@@ -340,12 +342,14 @@ nimcp_anomaly_detector_t nimcp_anomaly_detector_create(const nimcp_anomaly_confi
     /* Create Bayesian network */
     detector->bn = nimcp_bn_create(NIMCP_BN_NODE_COUNT);
     if (!detector->bn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create Bayesian network for anomaly detector");
         free(detector);
         return NULL;
     }
 
     /* Build network structure */
     if (build_bn_structure(detector->bn) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to build Bayesian network structure");
         nimcp_bn_destroy(detector->bn);
         free(detector);
         return NULL;
@@ -354,6 +358,7 @@ nimcp_anomaly_detector_t nimcp_anomaly_detector_create(const nimcp_anomaly_confi
     /* Create timing context */
     detector->timing_ctx = (timing_context_t*)calloc(1, sizeof(timing_context_t));
     if (!detector->timing_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate timing context");
         nimcp_bn_destroy(detector->bn);
         free(detector);
         return NULL;

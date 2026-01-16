@@ -156,4 +156,23 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_physics_fft_integration.cpp)
     )
 endif()
 
+# ============================================================================
+# Physics Module Integration Tests (Graph Theory, Dynamics, Info Geometry)
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_physics_module_integration.cpp)
+    add_executable(integration_physics_module_test
+        test_physics_module_integration.cpp
+    )
+    target_include_directories(integration_physics_module_test PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_link_libraries(integration_physics_module_test PRIVATE
+        nimcp GTest::gtest GTest::gtest_main m
+    )
+    gtest_discover_tests(integration_physics_module_test
+        PROPERTIES LABELS "integration;physics;module" TIMEOUT 300
+    )
+endif()
+
 message(STATUS "Added physics integration tests")

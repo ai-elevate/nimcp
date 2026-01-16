@@ -14,6 +14,7 @@
 
 #include "lnn/nimcp_lnn.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
@@ -55,6 +56,8 @@ int lnn_init(uint32_t n_threads) {
     int ret = lnn_parallel_init(n_threads);
     if (ret != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize parallel subsystem");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_NETWORK_CREATION, 0, "LNN",
+                         "Failed to initialize LNN parallel subsystem with %u threads", n_threads);
         return ret;
     }
 
@@ -163,12 +166,17 @@ int lnn_forward_step(lnn_network_t* network,
     // Guard: null pointers
     if (!network || !input || !output) {
         NIMCP_LOGGING_ERROR("Null pointer in lnn_forward_step");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null pointer in lnn_forward_step: network=%p, input=%p, output=%p",
+                             (void*)network, (void*)input, (void*)output);
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     // Guard: not initialized (atomic read)
     if (!atomic_load(&g_lnn_initialized)) {
         NIMCP_LOGGING_ERROR("LNN library not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "LNN library not initialized for forward_step");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -193,18 +201,25 @@ int lnn_forward_sequence(lnn_network_t* network,
     // Guard: null pointers
     if (!network || !inputs || !outputs) {
         NIMCP_LOGGING_ERROR("Null pointer in lnn_forward_sequence");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null pointer in lnn_forward_sequence: network=%p, inputs=%p, outputs=%p",
+                             (void*)network, (void*)inputs, (void*)outputs);
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     // Guard: not initialized (atomic read)
     if (!atomic_load(&g_lnn_initialized)) {
         NIMCP_LOGGING_ERROR("LNN library not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "LNN library not initialized for forward_sequence");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     // Guard: invalid sequence length
     if (seq_len == 0) {
         NIMCP_LOGGING_ERROR("Invalid sequence length: 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid sequence length (0) in lnn_forward_sequence");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -230,12 +245,17 @@ int lnn_forward_batch(lnn_network_t* network,
     // Guard: null pointers
     if (!network || !inputs || !outputs) {
         NIMCP_LOGGING_ERROR("Null pointer in lnn_forward_batch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null pointer in lnn_forward_batch: network=%p, inputs=%p, outputs=%p",
+                             (void*)network, (void*)inputs, (void*)outputs);
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     // Guard: not initialized (atomic read)
     if (!atomic_load(&g_lnn_initialized)) {
         NIMCP_LOGGING_ERROR("LNN library not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "LNN library not initialized for forward_batch");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -243,6 +263,9 @@ int lnn_forward_batch(lnn_network_t* network,
     if (batch_size == 0 || seq_len == 0) {
         NIMCP_LOGGING_ERROR("Invalid batch_size (%u) or seq_len (%u)",
                            batch_size, seq_len);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_DIMENSION_MISMATCH,
+                             "Invalid batch_size (%u) or seq_len (%u) in lnn_forward_batch",
+                             batch_size, seq_len);
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -268,6 +291,8 @@ void lnn_set_training(lnn_network_t* network, bool training) {
     // Guard: null pointer
     if (!network) {
         NIMCP_LOGGING_ERROR("Null network in lnn_set_training");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_set_training");
         return;
     }
 
@@ -288,12 +313,17 @@ int lnn_backward(lnn_network_t* network, const nimcp_tensor_t* loss_grad) {
     // Guard: null pointers
     if (!network || !loss_grad) {
         NIMCP_LOGGING_ERROR("Null pointer in lnn_backward");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_NULL_POINTER, 0, "LNN",
+                         "Null pointer in lnn_backward: network=%p, loss_grad=%p",
+                         (void*)network, (void*)loss_grad);
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     // Guard: not initialized (atomic read)
     if (!atomic_load(&g_lnn_initialized)) {
         NIMCP_LOGGING_ERROR("LNN library not initialized");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_INVALID_STATE, 0, "LNN",
+                         "LNN library not initialized for backward pass");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -314,6 +344,8 @@ void lnn_reset_state(lnn_network_t* network) {
     // Guard: null pointer
     if (!network) {
         NIMCP_LOGGING_ERROR("Null network in lnn_reset_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_reset_state");
         return;
     }
 
@@ -334,6 +366,8 @@ void lnn_reset_gradients(lnn_network_t* network) {
     // Guard: null pointer
     if (!network) {
         NIMCP_LOGGING_ERROR("Null network in lnn_reset_gradients");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_reset_gradients");
         return;
     }
 
@@ -354,10 +388,13 @@ void lnn_reset_gradients(lnn_network_t* network) {
  *
  * HOW: Delegates to lnn_network_get_state().
  */
-int lnn_get_state(const lnn_network_t* network, nimcp_tensor_t* state) {
+int lnn_get_state(const lnn_network_t* network, nimcp_tensor_t** state) {
     // Guard: null pointers
     if (!network || !state) {
         NIMCP_LOGGING_ERROR("Null pointer in lnn_get_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null pointer in lnn_get_state: network=%p, state=%p",
+                             (void*)network, (void*)state);
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -378,6 +415,9 @@ int lnn_set_state(lnn_network_t* network, const nimcp_tensor_t* state) {
     // Guard: null pointers
     if (!network || !state) {
         NIMCP_LOGGING_ERROR("Null pointer in lnn_set_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null pointer in lnn_set_state: network=%p, state=%p",
+                             (void*)network, (void*)state);
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -394,10 +434,13 @@ int lnn_set_state(lnn_network_t* network, const nimcp_tensor_t* state) {
  *
  * HOW: Delegates to lnn_network_get_tau().
  */
-int lnn_get_tau(const lnn_network_t* network, nimcp_tensor_t* tau) {
+int lnn_get_tau(const lnn_network_t* network, nimcp_tensor_t** tau) {
     // Guard: null pointers
     if (!network || !tau) {
         NIMCP_LOGGING_ERROR("Null pointer in lnn_get_tau");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null pointer in lnn_get_tau: network=%p, tau=%p",
+                             (void*)network, (void*)tau);
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -418,6 +461,9 @@ int lnn_get_stats(const lnn_network_t* network, lnn_network_stats_t* stats) {
     // Guard: null pointers
     if (!network || !stats) {
         NIMCP_LOGGING_ERROR("Null pointer in lnn_get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null pointer in lnn_get_stats: network=%p, stats=%p",
+                             (void*)network, (void*)stats);
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -442,6 +488,9 @@ int lnn_connect_optimizer(lnn_network_t* network, void* optimizer) {
     // Guard: null pointers
     if (!network || !optimizer) {
         NIMCP_LOGGING_ERROR("Null pointer in lnn_connect_optimizer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null pointer in lnn_connect_optimizer: network=%p, optimizer=%p",
+                             (void*)network, optimizer);
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -462,6 +511,8 @@ int lnn_connect_bio_async(lnn_network_t* network) {
     // Guard: null pointer
     if (!network) {
         NIMCP_LOGGING_ERROR("Null network in lnn_connect_bio_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null network pointer in lnn_connect_bio_async");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -482,6 +533,9 @@ int lnn_connect_immune(lnn_network_t* network, void* immune_bridge) {
     // Guard: null pointers
     if (!network || !immune_bridge) {
         NIMCP_LOGGING_ERROR("Null pointer in lnn_connect_immune");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null pointer in lnn_connect_immune: network=%p, immune_bridge=%p",
+                             (void*)network, immune_bridge);
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -506,6 +560,9 @@ int lnn_save(const lnn_network_t* network, const char* path) {
     // Guard: null pointers
     if (!network || !path) {
         NIMCP_LOGGING_ERROR("Null pointer in lnn_save");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null pointer in lnn_save: network=%p, path=%p",
+                             (void*)network, (void*)path);
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -526,6 +583,8 @@ lnn_network_t* lnn_load(const char* path) {
     // Guard: null pointer
     if (!path) {
         NIMCP_LOGGING_ERROR("Null path in lnn_load");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null path pointer in lnn_load");
         return NULL;
     }
 

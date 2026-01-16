@@ -24,6 +24,7 @@
 #include "security/nimcp_shell_detector.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "security_bbb_enhanced"
 

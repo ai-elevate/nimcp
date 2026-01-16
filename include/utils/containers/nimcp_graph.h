@@ -290,6 +290,42 @@ bool nimcp_graph_get_edge_weight(const NimcpGraph* graph, uint32_t from, uint32_
  */
 NimcpPath* nimcp_graph_quantum_path(NimcpGraph* graph, uint32_t from, uint32_t to);
 
+/**
+ * @brief Get the number of vertices in the graph
+ *
+ * WHAT: Returns the current vertex count
+ * WHY:  Accessor for graph size information
+ * HOW:  Returns graph->vertex_count directly
+ *
+ * @param graph Source graph
+ * @return Number of vertices, or 0 if graph is NULL
+ */
+uint32_t nimcp_graph_vertex_count(const NimcpGraph* graph);
+
+/**
+ * @brief Get the number of edges in the graph
+ *
+ * WHAT: Returns the total edge count
+ * WHY:  Accessor for graph connectivity information
+ * HOW:  Returns graph->edge_count directly
+ *
+ * @param graph Source graph
+ * @return Number of edges, or 0 if graph is NULL
+ */
+uint32_t nimcp_graph_edge_count(const NimcpGraph* graph);
+
+/**
+ * @brief Get the degree (number of edges) of a vertex
+ *
+ * WHAT: Returns the number of edges connected to a vertex
+ * WHY:  Used for centrality calculations and topology analysis
+ * HOW:  Returns vertices[vertex_idx].edge_count
+ *
+ * @param graph Source graph
+ * @param vertex_idx Index of the vertex
+ * @return Degree of the vertex, or 0 if invalid
+ */
+uint32_t nimcp_graph_degree(const NimcpGraph* graph, uint32_t vertex_idx);
 
 #ifdef __cplusplus
 }

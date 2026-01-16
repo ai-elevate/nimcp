@@ -73,29 +73,29 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o: src/
 src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o: /home/bbrelin/nimcp/src/bindings/python/nimcp_python.c
 src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o: src/python/CMakeFiles/nimcp_python.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o"
-	cd /home/bbrelin/nimcp/build/src/python && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o -MF CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o.d -o CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o -c /home/bbrelin/nimcp/src/bindings/python/nimcp_python.c
+	cd /home/bbrelin/nimcp/build/src/python && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o -MF CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o.d -o CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o -c /home/bbrelin/nimcp/src/bindings/python/nimcp_python.c
 
 src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.i"
-	cd /home/bbrelin/nimcp/build/src/python && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/nimcp/src/bindings/python/nimcp_python.c > CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.i
+	cd /home/bbrelin/nimcp/build/src/python && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/nimcp/src/bindings/python/nimcp_python.c > CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.i
 
 src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.s"
-	cd /home/bbrelin/nimcp/build/src/python && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/nimcp/src/bindings/python/nimcp_python.c -o CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.s
+	cd /home/bbrelin/nimcp/build/src/python && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/nimcp/src/bindings/python/nimcp_python.c -o CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.s
 
 src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.o: src/python/CMakeFiles/nimcp_python.dir/flags.make
 src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.o: /home/bbrelin/nimcp/src/bindings/python/nimcp_signal_filter_py.c
 src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.o: src/python/CMakeFiles/nimcp_python.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.o"
-	cd /home/bbrelin/nimcp/build/src/python && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.o -MF CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.o.d -o CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.o -c /home/bbrelin/nimcp/src/bindings/python/nimcp_signal_filter_py.c
+	cd /home/bbrelin/nimcp/build/src/python && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.o -MF CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.o.d -o CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.o -c /home/bbrelin/nimcp/src/bindings/python/nimcp_signal_filter_py.c
 
 src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.i"
-	cd /home/bbrelin/nimcp/build/src/python && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/nimcp/src/bindings/python/nimcp_signal_filter_py.c > CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.i
+	cd /home/bbrelin/nimcp/build/src/python && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/nimcp/src/bindings/python/nimcp_signal_filter_py.c > CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.i
 
 src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.s"
-	cd /home/bbrelin/nimcp/build/src/python && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/nimcp/src/bindings/python/nimcp_signal_filter_py.c -o CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.s
+	cd /home/bbrelin/nimcp/build/src/python && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/nimcp/src/bindings/python/nimcp_signal_filter_py.c -o CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py.c.s
 
 # Object files for target nimcp_python
 nimcp_python_OBJECTS = \

@@ -15,6 +15,7 @@
 
 #include "perception/nimcp_lip_reading.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -277,7 +278,10 @@ static void softmax(float* arr, int len) {
 
 static face_detector_t* face_detector_create(void) {
     face_detector_t* detector = (face_detector_t*)nimcp_calloc(1, sizeof(face_detector_t));
-    if (!detector) return NULL;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate face_detector_t");
+        return NULL;
+    }
 
     detector->tracking_active = false;
     detector->frames_since_detection = 0;
@@ -292,7 +296,10 @@ static void face_detector_destroy(face_detector_t* detector) {
 
 static viseme_classifier_t* viseme_classifier_create(void) {
     viseme_classifier_t* classifier = (viseme_classifier_t*)nimcp_calloc(1, sizeof(viseme_classifier_t));
-    if (!classifier) return NULL;
+    if (!classifier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate viseme_classifier_t");
+        return NULL;
+    }
 
     /* Initialize transition matrix */
     memcpy(classifier->transition_matrix, DEFAULT_TRANSITION_MATRIX,
@@ -318,7 +325,10 @@ static void viseme_classifier_destroy(viseme_classifier_t* classifier) {
 
 static temporal_integrator_t* temporal_integrator_create(void) {
     temporal_integrator_t* integrator = (temporal_integrator_t*)nimcp_calloc(1, sizeof(temporal_integrator_t));
-    if (!integrator) return NULL;
+    if (!integrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate temporal_integrator_t");
+        return NULL;
+    }
 
     integrator->has_previous = false;
     return integrator;
@@ -331,7 +341,10 @@ static void temporal_integrator_destroy(temporal_integrator_t* integrator) {
 
 static audiovisual_integrator_t* audiovisual_integrator_create(void) {
     audiovisual_integrator_t* integrator = (audiovisual_integrator_t*)nimcp_calloc(1, sizeof(audiovisual_integrator_t));
-    if (!integrator) return NULL;
+    if (!integrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate audiovisual_integrator_t");
+        return NULL;
+    }
 
     integrator->temporal_offset_calibrated_ms = 200.0f;  /* Default visual lead */
     return integrator;
@@ -392,7 +405,10 @@ lip_reading_config_t lip_reading_default_config(void) {
 
 lip_reading_system_t* lip_reading_create(const lip_reading_config_t* config) {
     lip_reading_system_t* system = (lip_reading_system_t*)nimcp_calloc(1, sizeof(lip_reading_system_t));
-    if (!system) return NULL;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate lip_reading_system_t");
+        return NULL;
+    }
 
     /* Copy or use default config */
     if (config) {
@@ -507,6 +523,7 @@ bool lip_reading_detect_face(
     face_detection_result_t* result)
 {
     if (!system || !image || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in lip_reading_detect_face");
         if (system) system->last_error = LIP_READING_ERROR_INVALID_INPUT;
         return false;
     }
@@ -634,6 +651,7 @@ bool lip_reading_extract_mouth_roi(
     uint32_t roi_height)
 {
     if (!system || !image || !face_result || !mouth_roi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in lip_reading_extract_mouth_roi");
         if (system) system->last_error = LIP_READING_ERROR_INVALID_INPUT;
         return false;
     }
@@ -708,6 +726,7 @@ bool lip_reading_detect_lip_landmarks(
     face_detection_result_t* result)
 {
     if (!system || !mouth_roi || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in lip_reading_detect_lip_landmarks");
         if (system) system->last_error = LIP_READING_ERROR_INVALID_INPUT;
         return false;
     }
@@ -763,6 +782,7 @@ bool lip_reading_extract_features(
     visual_speech_features_t* features)
 {
     if (!system || !mouth_roi || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in lip_reading_extract_features");
         if (system) system->last_error = LIP_READING_ERROR_INVALID_INPUT;
         return false;
     }
@@ -892,6 +912,7 @@ bool lip_reading_update_dynamics(
     float delta_time_ms)
 {
     if (!system || !current_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in lip_reading_update_dynamics");
         if (system) system->last_error = LIP_READING_ERROR_INVALID_INPUT;
         return false;
     }
@@ -958,6 +979,7 @@ bool lip_reading_classify_viseme(
     viseme_classification_t* result)
 {
     if (!system || !features || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in lip_reading_classify_viseme");
         if (system) system->last_error = LIP_READING_ERROR_INVALID_INPUT;
         return false;
     }
@@ -1103,6 +1125,7 @@ bool lip_reading_classify_viseme_from_roi(
     viseme_classification_t* result)
 {
     if (!system || !mouth_roi || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in lip_reading_classify_viseme_from_roi");
         if (system) system->last_error = LIP_READING_ERROR_INVALID_INPUT;
         return false;
     }
@@ -1304,6 +1327,7 @@ bool lip_reading_integrate_audiovisual(
     audiovisual_integration_t* result)
 {
     if (!system || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in lip_reading_integrate_audiovisual");
         if (system) system->last_error = LIP_READING_ERROR_INVALID_INPUT;
         return false;
     }
@@ -1719,6 +1743,7 @@ lip_reading_status_t lip_reading_process_frame(
     viseme_classification_t* classification)
 {
     if (!system || !image || !classification) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in lip_reading_process_frame");
         if (system) {
             system->last_error = LIP_READING_ERROR_INVALID_INPUT;
             system->status = LIP_READING_STATUS_ERROR;
@@ -1809,6 +1834,7 @@ lip_reading_status_t lip_reading_process_frame_with_audio(
     audiovisual_integration_t* integration)
 {
     if (!system || !image || !integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in lip_reading_process_frame_with_audio");
         if (system) {
             system->last_error = LIP_READING_ERROR_INVALID_INPUT;
             system->status = LIP_READING_STATUS_ERROR;

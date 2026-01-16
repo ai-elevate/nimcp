@@ -40,6 +40,7 @@
 #include <math.h>
 #include <time.h>
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+#include "utils/exception/nimcp_exception_macros.h"
 
 // CUDA support detection
 #ifdef __CUDACC__
@@ -206,12 +207,14 @@ bool multigpu_enumerate_devices(multigpu_device_info_t* devices,
     // Guard: NULL checks
     if (!devices || !count) {
         LOG_ERROR("NULL parameters in multigpu_enumerate_devices");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "NULL parameters in multigpu_enumerate_devices: devices=%p, count=%p", (void*)devices, (void*)count);
         return false;
     }
 
     // Guard: Invalid max_devices
     if (max_devices == 0) {
         LOG_WARN("Zero max_devices in multigpu_enumerate_devices");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "Zero max_devices in multigpu_enumerate_devices");
         *count = 0;
         return false;
     }
@@ -225,6 +228,7 @@ bool multigpu_enumerate_devices(multigpu_device_info_t* devices,
 
     // Guard: CUDA error
     if (err != cudaSuccess) {
+        NIMCP_THROW_GPU(NIMCP_ERROR_CUDA, -1, (int)err, "cudaGetDeviceCount failed with error %d", (int)err);
         *count = 0;
         return false;
     }
@@ -303,6 +307,7 @@ bool multigpu_check_peer_access(int device_id1, int device_id2)
 
     // Guard: CUDA error
     if (err != cudaSuccess) {
+        NIMCP_THROW_GPU(NIMCP_ERROR_CUDA, device_id1, (int)err, "cudaDeviceCanAccessPeer failed for devices %d->%d with error %d", device_id1, device_id2, (int)err);
         return false;
     }
 
@@ -361,6 +366,7 @@ multigpu_context_t multigpu_context_create(const multigpu_config_t* config)
 {
     // Guard: NULL config
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "NULL config in multigpu_context_create");
         return NULL;
     }
 
@@ -369,6 +375,7 @@ multigpu_context_t multigpu_context_create(const multigpu_config_t* config)
 
     // Guard: Allocation failed
     if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_GPU_MEMORY, sizeof(struct multigpu_context_struct), "Failed to allocate multigpu_context_struct");
         return NULL;
     }
 
@@ -380,12 +387,14 @@ multigpu_context_t multigpu_context_create(const multigpu_config_t* config)
     uint32_t available_count = 0;
 
     if (!multigpu_enumerate_devices(available_devices, 16, &available_count)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU_NOT_AVAILABLE, "Failed to enumerate GPU devices");
         nimcp_free(ctx);
         return NULL;
     }
 
     // Guard: No devices available
     if (available_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU_NOT_AVAILABLE, "No GPU devices available");
         nimcp_free(ctx);
         return NULL;
     }
@@ -404,6 +413,7 @@ multigpu_context_t multigpu_context_create(const multigpu_config_t* config)
 
     // Guard: Allocation failed
     if (!ctx->devices) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_GPU_MEMORY, num_devices * sizeof(device_context_t), "Failed to allocate device contexts for %u devices", num_devices);
         nimcp_free(ctx);
         return NULL;
     }
@@ -525,11 +535,13 @@ bool multigpu_get_device_info(multigpu_context_t ctx,
 {
     // Guard: NULL checks
     if (!ctx || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "NULL parameters in multigpu_get_device_info: ctx=%p, info=%p", (void*)ctx, (void*)info);
         return false;
     }
 
     // Guard: Invalid device index
     if (device_index >= ctx->num_devices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "Invalid device index %u (max=%u) in multigpu_get_device_info", device_index, ctx->num_devices);
         return false;
     }
 
@@ -570,6 +582,7 @@ static bool partition_by_layer(multigpu_context_t ctx)
 
         // Guard: Allocation failed - clean up previously allocated arrays
         if (!dev->assigned_layers) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_GPU_MEMORY, layers_for_this_gpu * sizeof(uint32_t), "Failed to allocate assigned_layers for GPU %u", dev_idx);
             for (uint32_t j = 0; j < dev_idx; j++) {
                 nimcp_free(ctx->devices[j].assigned_layers);
                 ctx->devices[j].assigned_layers = NULL;
@@ -607,6 +620,7 @@ static bool partition_by_neuron(multigpu_context_t ctx)
 
         // Guard: Allocation failed - clean up previously allocated arrays
         if (!dev->assigned_layers) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_GPU_MEMORY, ctx->num_layers * sizeof(uint32_t), "Failed to allocate assigned_layers for GPU %u (neuron partition)", dev_idx);
             for (uint32_t j = 0; j < dev_idx; j++) {
                 nimcp_free(ctx->devices[j].assigned_layers);
                 ctx->devices[j].assigned_layers = NULL;
@@ -635,11 +649,13 @@ bool multigpu_partition_network(multigpu_context_t ctx,
 {
     // Guard: NULL checks
     if (!ctx || !neurons_per_layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "NULL parameters in multigpu_partition_network: ctx=%p, neurons_per_layer=%p", (void*)ctx, (void*)neurons_per_layer);
         return false;
     }
 
     // Guard: Zero layers
     if (num_layers == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "Zero layers in multigpu_partition_network");
         return false;
     }
 
@@ -649,6 +665,7 @@ bool multigpu_partition_network(multigpu_context_t ctx,
 
     // Guard: Allocation failed
     if (!ctx->neurons_per_layer) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_GPU_MEMORY, num_layers * sizeof(uint32_t), "Failed to allocate neurons_per_layer array for %u layers", num_layers);
         return false;
     }
 
@@ -659,6 +676,7 @@ bool multigpu_partition_network(multigpu_context_t ctx,
 
     // Guard: Allocation failed
     if (!ctx->layer_to_device) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_GPU_MEMORY, num_layers * sizeof(int), "Failed to allocate layer_to_device array for %u layers", num_layers);
         nimcp_free(ctx->neurons_per_layer);
         ctx->neurons_per_layer = NULL;
         return false;
@@ -711,16 +729,19 @@ bool multigpu_rebalance_work(multigpu_context_t ctx)
 {
     // Guard: NULL context
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "NULL context in multigpu_rebalance_work");
         return false;
     }
 
     // Guard: Not enough devices to rebalance
     if (ctx->num_devices < 2) {
+        // Not an error - just nothing to rebalance
         return false;
     }
 
     // Guard: Not partitioned
     if (!ctx->layer_to_device) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "Network not partitioned in multigpu_rebalance_work");
         return false;
     }
 
@@ -762,11 +783,13 @@ void** multigpu_alloc(multigpu_context_t ctx, size_t total_size)
 {
     // Guard: NULL context
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "NULL context in multigpu_alloc");
         return NULL;
     }
 
     // Guard: Zero size
     if (total_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "Zero size in multigpu_alloc");
         return NULL;
     }
 
@@ -775,6 +798,7 @@ void** multigpu_alloc(multigpu_context_t ctx, size_t total_size)
 
     // Guard: Allocation failed
     if (!device_ptrs) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_GPU_MEMORY, ctx->num_devices * sizeof(void*), "Failed to allocate device pointer array for %u devices", ctx->num_devices);
         return NULL;
     }
 
@@ -790,6 +814,7 @@ void** multigpu_alloc(multigpu_context_t ctx, size_t total_size)
 
             // Guard: CUDA allocation failed
             if (err != cudaSuccess) {
+                NIMCP_THROW_GPU(NIMCP_ERROR_GPU_MEMORY, ctx->devices[i].device_id, (int)err, "cudaMalloc failed for %zu bytes on device %d", size_per_gpu, ctx->devices[i].device_id);
                 // Free previously allocated
                 for (uint32_t j = 0; j < i; j++) {
                     cudaSetDevice(ctx->devices[j].device_id);
@@ -801,6 +826,7 @@ void** multigpu_alloc(multigpu_context_t ctx, size_t total_size)
         } else {
             device_ptrs[i] = nimcp_malloc(size_per_gpu);
             if (!device_ptrs[i]) {
+                NIMCP_THROW_MEMORY(NIMCP_ERROR_GPU_MEMORY, size_per_gpu, "Failed to allocate mock GPU memory for device %u", i);
                 // Free previously allocated
                 for (uint32_t j = 0; j < i; j++) {
                     nimcp_free(device_ptrs[j]);
@@ -812,6 +838,7 @@ void** multigpu_alloc(multigpu_context_t ctx, size_t total_size)
 #else
         device_ptrs[i] = nimcp_malloc(size_per_gpu);
         if (!device_ptrs[i]) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_GPU_MEMORY, size_per_gpu, "Failed to allocate mock GPU memory for device %u", i);
             // Free previously allocated
             for (uint32_t j = 0; j < i; j++) {
                 nimcp_free(device_ptrs[j]);
@@ -863,6 +890,7 @@ bool multigpu_broadcast(multigpu_context_t ctx,
 {
     // Guard: NULL checks
     if (!ctx || !host_data || !device_ptrs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "NULL parameters in multigpu_broadcast: ctx=%p, host_data=%p, device_ptrs=%p", (void*)ctx, host_data, (void*)device_ptrs);
         return false;
     }
 
@@ -885,6 +913,7 @@ bool multigpu_broadcast(multigpu_context_t ctx,
                 cudaError_t err = cudaMemcpy(device_ptrs[i], host_data, size,
                                             cudaMemcpyHostToDevice);
                 if (err != cudaSuccess) {
+                    NIMCP_THROW_GPU(NIMCP_ERROR_GPU, ctx->devices[i].device_id, (int)err, "cudaMemcpy HostToDevice failed for device %d", ctx->devices[i].device_id);
                     return false;
                 }
             }
@@ -907,6 +936,7 @@ bool multigpu_gather(multigpu_context_t ctx,
 {
     // Guard: NULL checks
     if (!ctx || !device_ptrs || !host_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "NULL parameters in multigpu_gather: ctx=%p, device_ptrs=%p, host_data=%p", (void*)ctx, (void*)device_ptrs, host_data);
         return false;
     }
 
@@ -930,6 +960,7 @@ bool multigpu_gather(multigpu_context_t ctx,
                 cudaError_t err = cudaMemcpy(host_offset, device_ptrs[i], size_per_gpu,
                                             cudaMemcpyDeviceToHost);
                 if (err != cudaSuccess) {
+                    NIMCP_THROW_GPU(NIMCP_ERROR_GPU, ctx->devices[i].device_id, (int)err, "cudaMemcpy DeviceToHost failed for device %d", ctx->devices[i].device_id);
                     return false;
                 }
             }
@@ -953,11 +984,13 @@ bool multigpu_sync_devices(multigpu_context_t ctx,
 {
     // Guard: NULL checks
     if (!ctx || !src_data || !dst_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "NULL parameters in multigpu_sync_devices: ctx=%p, src_data=%p, dst_data=%p", (void*)ctx, src_data, dst_data);
         return false;
     }
 
     // Guard: Invalid device indices
     if (src_device >= ctx->num_devices || dst_device >= ctx->num_devices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "Invalid device indices in multigpu_sync_devices: src=%u, dst=%u (max=%u)", src_device, dst_device, ctx->num_devices);
         return false;
     }
 
@@ -979,11 +1012,16 @@ bool multigpu_sync_devices(multigpu_context_t ctx,
                                             src_data,
                                             ctx->devices[src_device].device_id,
                                             size);
-            return (err == cudaSuccess);
+            if (err != cudaSuccess) {
+                NIMCP_THROW_GPU(NIMCP_ERROR_GPU, ctx->devices[src_device].device_id, (int)err, "cudaMemcpyPeer failed from device %d to device %d", ctx->devices[src_device].device_id, ctx->devices[dst_device].device_id);
+                return false;
+            }
+            return true;
         } else {
             // Fallback: Copy via host
             void* host_buffer = nimcp_malloc(size);
             if (!host_buffer) {
+                NIMCP_THROW_MEMORY(NIMCP_ERROR_GPU_MEMORY, size, "Failed to allocate host buffer for device sync");
                 return false;
             }
 
@@ -1017,6 +1055,7 @@ bool multigpu_synchronize(multigpu_context_t ctx)
 {
     // Guard: NULL context
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "NULL context in multigpu_synchronize");
         return false;
     }
 
@@ -1027,6 +1066,7 @@ bool multigpu_synchronize(multigpu_context_t ctx)
             cudaError_t err = cudaDeviceSynchronize();
 
             if (err != cudaSuccess) {
+                NIMCP_THROW_GPU(NIMCP_ERROR_GPU_SYNC, ctx->devices[i].device_id, (int)err, "cudaDeviceSynchronize failed for device %d", ctx->devices[i].device_id);
                 return false;
             }
         }
@@ -1074,6 +1114,7 @@ bool multigpu_get_performance_stats(multigpu_context_t ctx,
 {
     // Guard: NULL context
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "NULL context in multigpu_get_performance_stats");
         return false;
     }
 
@@ -1127,11 +1168,13 @@ bool multigpu_get_device_stats(multigpu_context_t ctx,
 {
     // Guard: NULL context
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "NULL context in multigpu_get_device_stats");
         return false;
     }
 
     // Guard: Invalid device index
     if (device_index >= ctx->num_devices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "Invalid device index %u (max=%u) in multigpu_get_device_stats", device_index, ctx->num_devices);
         return false;
     }
 

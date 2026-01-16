@@ -20,3 +20,6 @@ endmacro()
 
 # Core information geometry tests
 add_geometry_test(test_information_geometry)
+
+# Information geometry bridge tests
+add_geometry_test(test_information_geometry_bridge)

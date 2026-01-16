@@ -32,6 +32,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -198,17 +199,20 @@ portia_attention_state_t portia_attention_init(
     // Validate parameters
     if (resource_count == 0) {
         LOG_ERROR("Resource count cannot be zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Resource count cannot be zero in portia_attention_init");
         return NULL;
     }
 
     if (total_budget <= 0.0F || total_budget > 1.0F) {
         LOG_ERROR("Invalid total budget: %.3f (must be in (0,1])", total_budget);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid total budget in portia_attention_init");
         return NULL;
     }
 
     bbb_validation_result_t result;
     if (config && !bbb_validate_pointer(NULL, config, sizeof(*config), &result)) {
         LOG_ERROR("Invalid config pointer: %s", result.reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid config pointer in portia_attention_init");
         return NULL;
     }
 
@@ -216,6 +220,7 @@ portia_attention_state_t portia_attention_init(
     portia_attention_state_t state = nimcp_calloc(1, sizeof(*state));
     if (!state) {
         LOG_ERROR("Failed to allocate attention state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate attention state");
         return NULL;
     }
 
@@ -249,6 +254,7 @@ portia_attention_state_t portia_attention_init(
     state->resources = nimcp_calloc(resource_count, sizeof(attention_resource_t));
     if (!state->resources) {
         LOG_ERROR("Failed to allocate resources array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate resources array in portia_attention_init");
         nimcp_free(state);
         return NULL;
     }
@@ -277,6 +283,7 @@ portia_attention_state_t portia_attention_init(
     // Initialize mutex
     if (nimcp_platform_mutex_init(&state->mutex, false) != 0) {
         LOG_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize mutex in portia_attention_init");
         nimcp_free(state->resources);
         nimcp_free(state);
         return NULL;
@@ -477,6 +484,7 @@ int portia_attention_reallocate(
         state->resource_count, sizeof(resource_sort_entry_t));
     if (!sort_entries) {
         LOG_ERROR("Failed to allocate sort entries");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate sort entries in portia_attention_reallocate");
         nimcp_platform_mutex_unlock(&state->mutex);
         return -1;
     }

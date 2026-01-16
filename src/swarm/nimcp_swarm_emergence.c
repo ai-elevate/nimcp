@@ -20,6 +20,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 static bool g_bbb_registered = false;
 
@@ -279,6 +280,7 @@ swarm_emergence_ctx_t* swarm_emergence_create(void)
     if (!ctx) {
         bbb_audit_log(BBB_AUDIT_ERROR, "swarm_emergence", "create_error", "Failed to allocate context");
         LOG_ERROR("Failed to allocate swarm emergence context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate swarm emergence context");
         return NULL;
     }
 
@@ -301,6 +303,7 @@ swarm_emergence_ctx_t* swarm_emergence_create(void)
     // Initialize mutex
     if (nimcp_mutex_init(&ctx->mutex, NULL) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize swarm emergence mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize swarm emergence mutex");
         free(ctx);
         return NULL;
     }
@@ -316,6 +319,7 @@ void swarm_emergence_destroy(swarm_emergence_ctx_t* ctx)
 
     if (ctx->magic != NIMCP_SWARM_EMERGENCE_MAGIC) {
         LOG_ERROR("Invalid swarm emergence context magic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid swarm emergence context magic in destroy");
         return;
     }
 
@@ -342,11 +346,13 @@ int swarm_emergence_set_coherence_threshold(
 {
     if (!ctx || ctx->magic != NIMCP_SWARM_EMERGENCE_MAGIC) {
         LOG_ERROR("Invalid swarm emergence context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid swarm emergence context in set_coherence_threshold");
         return -1;
     }
 
     if (threshold < 0.0F || threshold > 1.0F) {
         LOG_ERROR("Invalid coherence threshold: %f (must be 0.0-1.0)", threshold);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid coherence threshold: %f", threshold);
         return -1;
     }
 
@@ -366,11 +372,13 @@ int swarm_emergence_set_stability_count(
 {
     if (!ctx || ctx->magic != NIMCP_SWARM_EMERGENCE_MAGIC) {
         LOG_ERROR("Invalid swarm emergence context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid swarm emergence context in set_stability_count");
         return -1;
     }
 
     if (count == 0) {
         LOG_ERROR("Stability count must be at least 1");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Stability count must be at least 1");
         return -1;
     }
 
@@ -390,6 +398,7 @@ int swarm_emergence_set_hysteresis(
 {
     if (!ctx || ctx->magic != NIMCP_SWARM_EMERGENCE_MAGIC) {
         LOG_ERROR("Invalid swarm emergence context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid swarm emergence context in set_hysteresis");
         return -1;
     }
 
@@ -415,12 +424,14 @@ int swarm_emergence_update(
         ctx->magic != NIMCP_SWARM_EMERGENCE_MAGIC) {
         bbb_audit_log(BBB_AUDIT_WARNING, "swarm_emergence", "update_error", "Invalid context");
         LOG_ERROR("Invalid swarm emergence context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid swarm emergence context in update");
         return -1;
     }
 
     if (!bbb_check_pointer(state, "swarm_emergence_update")) {
         bbb_audit_log(BBB_AUDIT_WARNING, "swarm_emergence", "update_error", "NULL swarm state");
         LOG_ERROR("NULL swarm state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL swarm state in update");
         return -1;
     }
 
@@ -429,6 +440,7 @@ int swarm_emergence_update(
                      "Invalid swarm state: drones=%u, coherence=%.2f",
                      state->connected_drones, state->collective_coherence);
         LOG_ERROR("Invalid swarm state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Invalid swarm state: drones=%u, coherence=%.2f", state->connected_drones, state->collective_coherence);
         return -1;
     }
 
@@ -535,11 +547,13 @@ int swarm_emergence_get_capabilities(
 {
     if (!ctx || ctx->magic != NIMCP_SWARM_EMERGENCE_MAGIC) {
         LOG_ERROR("Invalid swarm emergence context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid swarm emergence context in get_capabilities");
         return -1;
     }
 
     if (!capabilities) {
         LOG_ERROR("NULL capabilities pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL capabilities pointer in get_capabilities");
         return -1;
     }
 
@@ -697,11 +711,13 @@ int swarm_emergence_get_stats(
 {
     if (!ctx || ctx->magic != NIMCP_SWARM_EMERGENCE_MAGIC) {
         LOG_ERROR("Invalid swarm emergence context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid swarm emergence context in get_stats");
         return -1;
     }
 
     if (!stats) {
         LOG_ERROR("NULL stats pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL stats pointer in get_stats");
         return -1;
     }
 
@@ -716,6 +732,7 @@ void swarm_emergence_reset_stats(swarm_emergence_ctx_t* ctx)
 {
     if (!ctx || ctx->magic != NIMCP_SWARM_EMERGENCE_MAGIC) {
         LOG_ERROR("Invalid swarm emergence context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid swarm emergence context in reset_stats");
         return;
     }
 

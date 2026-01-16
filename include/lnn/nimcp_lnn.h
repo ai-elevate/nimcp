@@ -266,7 +266,7 @@ void lnn_reset_gradients(lnn_network_t* network);
  * @param state Output state tensor (pre-allocated to network->total_state_size)
  * @return 0 on success, negative error code on failure
  */
-int lnn_get_state(const lnn_network_t* network, nimcp_tensor_t* state);
+int lnn_get_state(const lnn_network_t* network, nimcp_tensor_t** state);
 
 /**
  * @brief Set network state vector
@@ -299,7 +299,7 @@ int lnn_set_state(lnn_network_t* network, const nimcp_tensor_t* state);
  * @param tau Output tau tensor (pre-allocated to total_neurons)
  * @return 0 on success, negative error code on failure
  */
-int lnn_get_tau(const lnn_network_t* network, nimcp_tensor_t* tau);
+int lnn_get_tau(const lnn_network_t* network, nimcp_tensor_t** tau);
 
 /**
  * @brief Get network statistics

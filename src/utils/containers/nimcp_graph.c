@@ -836,3 +836,43 @@ NimcpPath* nimcp_graph_quantum_path(NimcpGraph* graph, uint32_t from, uint32_t t
     NIMCP_LOGGING_DEBUG("Quantum search found no path");
     return NULL;
 }
+
+/**
+ * @brief Get the number of vertices in the graph
+ *
+ * WHAT: Returns current vertex count
+ * WHY:  Accessor for graph size information
+ * HOW:  Returns graph->vertex_count directly
+ */
+uint32_t nimcp_graph_vertex_count(const NimcpGraph* graph)
+{
+    if (!graph) return 0;
+    return graph->vertex_count;
+}
+
+/**
+ * @brief Get the number of edges in the graph
+ *
+ * WHAT: Returns total edge count
+ * WHY:  Accessor for graph connectivity information
+ * HOW:  Returns graph->edge_count directly
+ */
+uint32_t nimcp_graph_edge_count(const NimcpGraph* graph)
+{
+    if (!graph) return 0;
+    return graph->edge_count;
+}
+
+/**
+ * @brief Get the degree (number of edges) of a vertex
+ *
+ * WHAT: Returns number of edges connected to a vertex
+ * WHY:  Used for centrality calculations and topology analysis
+ * HOW:  Returns vertices[vertex_idx].edge_count
+ */
+uint32_t nimcp_graph_degree(const NimcpGraph* graph, uint32_t vertex_idx)
+{
+    if (!graph) return 0;
+    if (vertex_idx >= graph->vertex_count) return 0;
+    return graph->vertices[vertex_idx].edge_count;
+}

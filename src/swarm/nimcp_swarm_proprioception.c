@@ -22,6 +22,8 @@
 #include <math.h>
 #include <float.h>
 
+#include "utils/exception/nimcp_exception_macros.h"
+
 /* Helper: convert microseconds to nanoseconds */
 #define nimcp_get_timestamp_ns() (nimcp_time_get_us() * 1000ULL)
 
@@ -484,6 +486,7 @@ nimcp_swarm_proprioception_t* nimcp_swarm_proprioception_create(
 ) {
     if (!config) {
         LOG_ERROR("NULL configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL configuration provided in proprioception_create");
         return NULL;
     }
 
@@ -492,6 +495,7 @@ nimcp_swarm_proprioception_t* nimcp_swarm_proprioception_create(
 
     if (!proprio) {
         LOG_ERROR("Failed to allocate proprioception instance");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate proprioception instance for drone %u", drone_id);
         return NULL;
     }
 

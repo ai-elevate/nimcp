@@ -30,6 +30,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 
@@ -87,11 +88,11 @@ attention_substrate_bridge_t* attention_substrate_bridge_create(
 {
     /* Guard: Validate inputs */
     if (!substrate) {
-        NIMCP_LOGGING_ERROR("Cannot create attention substrate bridge: NULL substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_substrate_bridge_create: substrate is NULL");
         return NULL;
     }
     if (!attention) {
-        NIMCP_LOGGING_ERROR("Cannot create attention substrate bridge: NULL attention system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_substrate_bridge_create: attention system is NULL");
         return NULL;
     }
 
@@ -99,7 +100,7 @@ attention_substrate_bridge_t* attention_substrate_bridge_create(
     attention_substrate_bridge_t* bridge =
         (attention_substrate_bridge_t*)nimcp_malloc(sizeof(attention_substrate_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate attention substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_substrate_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -120,13 +121,13 @@ attention_substrate_bridge_t* attention_substrate_bridge_create(
     /* Initialize mutex */
     bridge->base.mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mutex for attention substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_substrate_bridge_create: failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize mutex for attention substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_substrate_bridge_create: failed to initialize mutex");
         nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
@@ -179,6 +180,7 @@ void attention_substrate_bridge_destroy(attention_substrate_bridge_t* bridge)
 int attention_substrate_connect_bio_async(attention_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_substrate_connect_bio_async: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -207,6 +209,7 @@ int attention_substrate_connect_bio_async(attention_substrate_bridge_t* bridge)
 int attention_substrate_disconnect_bio_async(attention_substrate_bridge_t* bridge)
 {
     if (!bridge || !bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_substrate_disconnect_bio_async: bridge is NULL or not connected");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -236,6 +239,7 @@ bool attention_substrate_is_bio_async_connected(const attention_substrate_bridge
 int attention_substrate_update(attention_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_substrate_update: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -246,13 +250,13 @@ int attention_substrate_update(attention_substrate_bridge_t* bridge)
     substrate_physical_state_t physical;
 
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to get metabolic state from substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "attention_substrate_update: failed to get metabolic state");
         nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_STATE;
     }
 
     if (substrate_get_physical_state(bridge->substrate, &physical) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to get physical state from substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "attention_substrate_update: failed to get physical state");
         nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_INVALID_STATE;
     }
@@ -456,6 +460,7 @@ int attention_substrate_get_effects(
     attention_substrate_effects_t* effects)
 {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_substrate_get_effects: bridge or effects is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -476,6 +481,7 @@ int attention_substrate_get_stats(
     attention_substrate_stats_t* stats)
 {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_substrate_get_stats: bridge or stats is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
