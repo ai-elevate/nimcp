@@ -6,6 +6,8 @@ Train on existing local datasets before switching to streaming
 Datasets:
 - MathQA (29K math problems)
 - Project Gutenberg (9 classic texts)
+
+Refactored: 2025-01-16 to use current Python bindings API v2.7.0
 """
 
 import os
@@ -14,15 +16,25 @@ import json
 import time
 import random
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 import numpy as np
 
-# Add NIMCP to path
-sys.path.insert(0, str(Path(__file__).parent / "build/lib/python"))
+# Add NIMCP to path - check multiple possible locations
+script_dir = Path(__file__).parent
+possible_paths = [
+    script_dir.parent / "build/lib/python",  # From scripts/
+    script_dir / "build/lib/python",          # From repo root
+    Path("/home/bbrelin/nimcp/build/lib/python"),  # Absolute path
+]
+
+for path in possible_paths:
+    if path.exists():
+        sys.path.insert(0, str(path))
+        break
 
 try:
     import nimcp
-    print("✓ NIMCP Python bindings loaded")
+    print(f"✓ NIMCP Python bindings loaded (version: {nimcp.version()})")
 except ImportError as e:
     print(f"✗ Failed to load NIMCP: {e}")
     print("Make sure Python bindings are built: cd build && make nimcp_python")
@@ -263,16 +275,16 @@ def main():
     print("  - Memory Consolidation: ACTIVE")
 
     try:
-        # Create brain using Python bindings
-        # Brain(name, size, task, inputs, outputs)
-        # size: 0=TINY, 1=SMALL, 2=MEDIUM, 3=LARGE
-        # task: 0=CLASSIFICATION, 1=REGRESSION, ...
+        # Create brain using Python bindings v2.7.0
+        # Brain(name, size, task, num_inputs, num_outputs)
+        # size: nimcp.BRAIN_TINY/SMALL/MEDIUM/LARGE (0/1/2/3)
+        # task: nimcp.TASK_CLASSIFICATION/REGRESSION/etc (0/1/...)
         brain = nimcp.Brain(
-            'nimcp_phase1',  # name
-            2,               # size = MEDIUM
-            0,               # task = CLASSIFICATION
-            512,             # inputs
-            256              # outputs
+            'nimcp_phase1',        # name
+            nimcp.BRAIN_MEDIUM,    # size = MEDIUM (2)
+            nimcp.TASK_CLASSIFICATION,  # task = CLASSIFICATION (0)
+            512,                   # num_inputs
+            256                    # num_outputs
         )
         print("\n  ✓ Brain created successfully")
         print("  ✓ All cognitive systems initialized in C code")

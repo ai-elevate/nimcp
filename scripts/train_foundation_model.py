@@ -19,6 +19,8 @@ Training Strategy:
 4. Adaptive learning based on performance
 5. Save checkpoints regularly
 6. Log all metrics for analysis
+
+Refactored: 2025-01-16 to use current Python bindings API v2.7.0
 """
 
 import argparse
@@ -33,13 +35,57 @@ from typing import Dict, List, Tuple, Optional, Any
 import random
 
 
+# Add NIMCP to path - check multiple possible locations
+script_dir = Path(__file__).parent
+possible_paths = [
+    script_dir.parent / "build/lib/python",  # From scripts/
+    script_dir / "build/lib/python",          # From repo root
+    Path("/home/bbrelin/nimcp/build/lib/python"),  # Absolute path
+]
+
+for path in possible_paths:
+    if path.exists():
+        sys.path.insert(0, str(path))
+        break
+
 # Try to import nimcp
 try:
     import nimcp
+    print(f"NIMCP Python bindings loaded (version: {nimcp.version()})")
 except ImportError:
     print("Error: nimcp module not found. Please build and install the NIMCP Python module.")
-    print("Run: cd build && make nimcp_python && export PYTHONPATH=$PWD/src/python:$PYTHONPATH")
+    print("Run: cd build && make nimcp_python && export PYTHONPATH=$PWD/lib/python:$PYTHONPATH")
     sys.exit(1)
+
+
+def get_brain_stats(brain) -> Dict[str, Any]:
+    """
+    Get brain statistics using available Python bindings API.
+
+    Replaces brain.probe() which doesn't exist in v2.7.0 bindings.
+    Uses: get_neuron_count(), get_utilization_metrics()
+    """
+    try:
+        neuron_count = brain.get_neuron_count()
+        utilization, saturation = brain.get_utilization_metrics()
+        return {
+            'num_neurons': neuron_count,
+            'num_synapses': 0,  # Not available in current bindings
+            'utilization': utilization,
+            'saturation': saturation,
+            'total_learning_steps': 0,  # Not tracked in bindings
+            'memory_bytes': 0,  # Not available in current bindings
+        }
+    except Exception as e:
+        return {
+            'num_neurons': 0,
+            'num_synapses': 0,
+            'utilization': 0.0,
+            'saturation': 0.0,
+            'total_learning_steps': 0,
+            'memory_bytes': 0,
+            'error': str(e)
+        }
 
 
 class TrainingMetrics:
@@ -120,22 +166,17 @@ class ProgressiveTrainer:
         brain_config = self.config.get('brain', {})
 
         name = brain_config.get('name', 'foundation_model')
-        size = brain_config.get('size', 2)  # MEDIUM by default
-        task = brain_config.get('task', 0)  # CLASSIFICATION
+        size = brain_config.get('size', nimcp.BRAIN_MEDIUM)
+        task = brain_config.get('task', nimcp.TASK_CLASSIFICATION)
         num_inputs = brain_config.get('num_inputs', 512)
         num_outputs = brain_config.get('num_outputs', 100)
 
-        brain = nimcp.Brain(
-            name=name,
-            size=size,
-            task=task,
-            inputs=num_inputs,
-            outputs=num_outputs
-        )
+        # Python bindings v2.7.0 API: Brain(name, size, task, num_inputs, num_outputs)
+        brain = nimcp.Brain(name, size, task, num_inputs, num_outputs)
 
         print(f"  Name: {name}")
-        print(f"  Size: {size} (0=TINY, 1=SMALL, 2=MEDIUM, 3=LARGE)")
-        print(f"  Task: {task} (0=CLASSIFICATION)")
+        print(f"  Size: {size} (BRAIN_TINY=0, BRAIN_SMALL=1, BRAIN_MEDIUM=2, BRAIN_LARGE=3)")
+        print(f"  Task: {task} (TASK_CLASSIFICATION=0)")
         print(f"  Inputs: {num_inputs}")
         print(f"  Outputs: {num_outputs}")
 
@@ -185,7 +226,7 @@ class ProgressiveTrainer:
                 self.brain.learn(features, label, confidence=confidence)
 
                 # Validate prediction
-                pred_label, pred_conf = self.brain.decide(features)
+                pred_label, pred_conf = self.brain.predict(features)
 
                 total += 1
                 if pred_label == label:
@@ -217,7 +258,7 @@ class ProgressiveTrainer:
             features = sample['features']
             label = sample['label']
 
-            pred_label, pred_conf = self.brain.decide(features)
+            pred_label, pred_conf = self.brain.predict(features)
 
             total += 1
             total_confidence += pred_conf
@@ -360,7 +401,7 @@ class ProgressiveTrainer:
         self.brain.save(str(model_path))
 
         # Save brain statistics
-        stats = self.brain.probe()
+        stats = get_brain_stats(self.brain)
         stats_path = self.output_dir / "foundation_model_stats.json"
         with open(stats_path, 'w') as f:
             json.dump(stats, f, indent=2)
@@ -423,12 +464,13 @@ class ProgressiveTrainer:
             print(f"  {result['domain']}: {result['best_val_accuracy']:.4f} accuracy")
 
         # Overall statistics
-        final_stats = self.brain.probe()
+        final_stats = get_brain_stats(self.brain)
         print(f"\nFinal Brain Statistics:")
         print(f"  Neurons: {final_stats['num_neurons']:,}")
-        print(f"  Synapses: {final_stats['num_synapses']:,}")
-        print(f"  Learning steps: {final_stats['total_learning_steps']:,}")
-        print(f"  Memory: {final_stats['memory_bytes'] / (1024*1024):.2f} MB")
+        print(f"  Utilization: {final_stats['utilization']:.2%}")
+        print(f"  Saturation: {final_stats['saturation']:.2%}")
+        if 'error' in final_stats:
+            print(f"  Warning: {final_stats['error']}")
 
         return True
 

@@ -1,27 +1,31 @@
 #!/usr/bin/env python3
 """
-NIMCP Streaming Training Pipeline
-==================================
+NIMCP AGI Streaming Training Pipeline
+======================================
 
-WHAT: Streaming multi-domain, multimodal training system for NIMCP
-WHY:  Train on diverse knowledge with epistemic filtering and curiosity
-HOW:  Stream data in batches, rotate domains, monitor cognitive systems
+WHAT: Streaming multi-domain training system for NIMCP AGI development
+WHY:  Train a biologically-inspired AGI through developmental curriculum
+HOW:  Stream datasets via Hugging Face, follow developmental stages
 
 Features:
-- Multimodal support (text, images, audio, video)
+- Developmental curriculum (infant → child → adolescent → adult)
+- 60+ streaming datasets across all domains of knowledge
+- HuggingFace + Kaggle + Wikipedia domain-filtered streaming
 - Domain rotation to prevent specialization
-- Epistemic quality monitoring per domain
-- Curiosity-driven learning rate adaptation
-- Real-time cognitive system monitoring
+- Curriculum learning (easy → hard within stages)
+- Consolidation to prevent catastrophic forgetting
 - Checkpoint saving and recovery
-- Training metrics and reports
+- Comprehensive training metrics
 
-Cognitive Systems Active:
-✓ Epistemic filtering (skepticism 0.6)
-✓ Curiosity engine (novelty detection)
-✓ Attention-working memory coordination
-✓ Meta-learning (adaptive learning rate)
-✓ Memory consolidation (sleep cycles)
+Knowledge Domains:
+- Sciences: Physics, Chemistry, Biology, Mathematics
+- Humanities: Philosophy, Literature, History, Psychology
+- Technical: Software Engineering, Computer Science
+- Reasoning: Logic, Common Sense, Causal, Spatial
+- Social: Ethics, Emotional Intelligence, Social Intelligence
+- World Knowledge: Encyclopedia, Language
+
+Refactored: 2025-01-16 for AGI curriculum training
 """
 
 import os
@@ -30,21 +34,84 @@ import time
 import json
 import random
 import logging
+import hashlib
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any
-from dataclasses import dataclass, asdict
+from typing import Dict, List, Tuple, Optional, Any, Iterator
+from dataclasses import dataclass, asdict, field
 from collections import defaultdict
+from datetime import datetime
 import numpy as np
 
-# Add NIMCP Python bindings to path
-sys.path.insert(0, str(Path(__file__).parent / "build/lib/python"))
+# Add NIMCP Python bindings to path - check multiple locations
+script_dir = Path(__file__).parent
+possible_paths = [
+    script_dir.parent / "build/lib/python",
+    script_dir / "build/lib/python",
+    Path("/home/bbrelin/nimcp/build/lib/python"),
+]
+for path in possible_paths:
+    if path.exists():
+        sys.path.insert(0, str(path))
+        break
 
 try:
     import nimcp
     NIMCP_AVAILABLE = True
+    print(f"NIMCP loaded (version: {nimcp.version()})")
 except ImportError:
     NIMCP_AVAILABLE = False
     print("WARNING: NIMCP Python bindings not found. Run in simulation mode.")
+
+# Import Hugging Face datasets for streaming
+try:
+    from datasets import load_dataset
+    HF_AVAILABLE = True
+    print("Hugging Face datasets available for streaming")
+except ImportError:
+    HF_AVAILABLE = False
+    print("WARNING: Hugging Face datasets not available. Install with: pip install datasets")
+
+# Import AGI curriculum configuration
+try:
+    from agi_curriculum_datasets import (
+        AGI_CURRICULUM_DATASETS,
+        DevelopmentStage,
+        DomainCategory,
+        StreamingDataset,
+        DatasetSource,
+        get_datasets_by_stage,
+        get_datasets_by_priority,
+        get_datasets_by_source,
+        get_curriculum_schedule,
+        stream_dataset,
+        stream_kaggle_dataset,
+        load_kaggle_dataset,
+    )
+    CURRICULUM_AVAILABLE = True
+    print(f"AGI Curriculum loaded ({len(AGI_CURRICULUM_DATASETS)} datasets)")
+
+    # Print source breakdown
+    hf_count = len(get_datasets_by_source(DatasetSource.HUGGINGFACE))
+    kaggle_count = len(get_datasets_by_source(DatasetSource.KAGGLE))
+    print(f"  - HuggingFace: {hf_count} datasets")
+    print(f"  - Kaggle: {kaggle_count} datasets")
+except ImportError:
+    CURRICULUM_AVAILABLE = False
+    print("WARNING: AGI curriculum not found. Using legacy configuration.")
+
+# Import training state manager
+try:
+    from training_state import (
+        TrainingStateManager,
+        TrainingStatus,
+        DownloadStatus,
+        can_resume_training,
+    )
+    STATE_MANAGER_AVAILABLE = True
+    print("Training state persistence available")
+except ImportError:
+    STATE_MANAGER_AVAILABLE = False
+    print("WARNING: Training state manager not found. State won't be persisted.")
 
 # Configure logging
 logging.basicConfig(
@@ -300,14 +367,22 @@ class TextDatasetLoader(DatasetLoader):
 #=============================================================================
 
 class StreamingTrainer:
-    """Main streaming training orchestrator"""
+    """Main streaming training orchestrator with state persistence"""
 
-    def __init__(self, config: TrainingConfig):
+    def __init__(self, config: TrainingConfig, state_dir: str = "./training_state"):
         self.config = config
         self.stats = TrainingStats()
         self.brain = None
         self.loaders: Dict[str, List[DatasetLoader]] = defaultdict(list)
         self.start_time = None
+
+        # State manager for persistence and recovery
+        self.state_manager = None
+        if STATE_MANAGER_AVAILABLE:
+            self.state_manager = TrainingStateManager(state_dir)
+        self.is_resuming = False
+        self.resume_epoch = 0
+        self.resume_batch = 0
 
         # Create checkpoint directory
         Path(config.checkpoint_dir).mkdir(parents=True, exist_ok=True)
@@ -316,6 +391,11 @@ class StreamingTrainer:
         logger.info("NIMCP Streaming Trainer Initialized")
         logger.info("="*80)
         logger.info(f"Configuration: {asdict(config)}")
+
+        # Check for resumable session
+        if self.state_manager and self.state_manager.can_resume():
+            logger.info("Found resumable training session!")
+            self.state_manager.print_status()
 
     def initialize_brain(self):
         """Initialize NIMCP brain with all cognitive systems enabled"""
@@ -486,29 +566,83 @@ class StreamingTrainer:
         # brain_path = checkpoint_path.replace('.json', '.brain')
         # self.brain.save(brain_path)
 
-    def train(self):
-        """Main training loop"""
+    def train(self, resume: bool = False):
+        """
+        Main training loop with state persistence.
+
+        Args:
+            resume: If True, attempt to resume from last checkpoint
+        """
         logger.info("="*80)
         logger.info("STARTING STREAMING TRAINING")
         logger.info("="*80)
 
+        start_epoch = 0
+
+        # Handle resume
+        if resume and self.state_manager and self.state_manager.can_resume():
+            logger.info("Resuming from previous session...")
+            if self.state_manager.resume_session():
+                stage, dataset_idx, batch_idx, checkpoint_id = self.state_manager.get_resume_point()
+                logger.info(f"  Resume point: stage={stage}, batch={batch_idx}")
+
+                # Load checkpoint if available
+                if checkpoint_id:
+                    checkpoint_path = self.state_manager.load_checkpoint(checkpoint_id)
+                    if checkpoint_path and NIMCP_AVAILABLE:
+                        logger.info(f"  Loading brain from checkpoint: {checkpoint_path}")
+                        self.brain = nimcp.Brain.load(checkpoint_path)
+
+                self.is_resuming = True
+                self.resume_batch = batch_idx
+
+                # Restore stats from state
+                summary = self.state_manager.get_summary()
+                self.stats.total_examples = summary.get('total_examples', 0)
+        else:
+            # Start new session
+            if self.state_manager:
+                self.state_manager.start_session(asdict(self.config))
+
         self.start_time = time.time()
 
         try:
-            for epoch in range(self.config.epochs):
+            for epoch in range(start_epoch, self.config.epochs):
+                # Update state
+                if self.state_manager:
+                    self.state_manager.update_position(
+                        stage="training",
+                        dataset_index=0,
+                        batch_index=epoch * self.config.examples_per_epoch
+                    )
+
                 self.train_epoch(epoch)
+
+                # Save state after each epoch
+                if self.state_manager:
+                    self.state_manager.add_training_time(time.time() - self.start_time)
 
             logger.info("="*80)
             logger.info("TRAINING COMPLETE")
             logger.info("="*80)
             self._print_final_report()
 
+            # Mark session complete
+            if self.state_manager:
+                self.state_manager.complete_session()
+
         except KeyboardInterrupt:
             logger.warning("\n⚠️  Training interrupted by user")
             self._save_checkpoint()
+            if self.state_manager:
+                self.state_manager.pause_session()
+                logger.info("Session paused. Run with --resume to continue.")
+
         except Exception as e:
             logger.error(f"❌ Training failed: {e}", exc_info=True)
             self._save_checkpoint()
+            if self.state_manager:
+                self.state_manager.fail_session(str(e))
 
     def _print_final_report(self):
         """Print final training report"""
@@ -541,30 +675,109 @@ class StreamingTrainer:
 
 def main():
     """Main entry point for streaming trainer"""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="NIMCP AGI Streaming Trainer with State Persistence",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Start new training session
+  python streaming_trainer.py
+
+  # Resume interrupted training
+  python streaming_trainer.py --resume
+
+  # Check training status
+  python streaming_trainer.py --status
+
+  # Custom configuration
+  python streaming_trainer.py --epochs 10 --batch-size 64 --lr 0.005
+
+  # Specify state directory
+  python streaming_trainer.py --state-dir ./my_training_state
+        """
+    )
+
+    # Training control
+    parser.add_argument("--resume", action="store_true",
+                       help="Resume from previous session")
+    parser.add_argument("--status", action="store_true",
+                       help="Show training status and exit")
+
+    # Configuration
+    parser.add_argument("--epochs", type=int, default=5,
+                       help="Number of training epochs (default: 5)")
+    parser.add_argument("--batch-size", type=int, default=32,
+                       help="Batch size (default: 32)")
+    parser.add_argument("--lr", type=float, default=0.01,
+                       help="Learning rate (default: 0.01)")
+    parser.add_argument("--examples-per-epoch", type=int, default=10000,
+                       help="Examples per epoch (default: 10000)")
+    parser.add_argument("--checkpoint-interval", type=int, default=5000,
+                       help="Checkpoint interval in examples (default: 5000)")
+
+    # Paths
+    parser.add_argument("--state-dir", type=str, default="./training_state",
+                       help="Directory for state persistence (default: ./training_state)")
+    parser.add_argument("--checkpoint-dir", type=str, default="./checkpoints",
+                       help="Directory for checkpoints (default: ./checkpoints)")
+
+    # Brain configuration
+    parser.add_argument("--brain-size", type=str, default="MEDIUM",
+                       choices=["SMALL", "MEDIUM", "LARGE"],
+                       help="Brain size (default: MEDIUM)")
+
+    args = parser.parse_args()
+
+    # Status check only
+    if args.status:
+        if STATE_MANAGER_AVAILABLE:
+            mgr = TrainingStateManager(args.state_dir)
+            mgr.print_status()
+
+            # Show checkpoints
+            checkpoints = mgr.list_checkpoints()
+            if checkpoints:
+                print(f"\nCheckpoints ({len(checkpoints)}):")
+                for ckpt in checkpoints[-5:]:  # Show last 5
+                    print(f"  - {ckpt['checkpoint_id']}: {ckpt['examples_processed']:,} examples")
+        else:
+            print("State manager not available")
+        return
 
     # Create training configuration
     config = TrainingConfig(
-        brain_size="MEDIUM",
+        brain_size=args.brain_size,
         num_inputs=512,
         num_outputs=256,
-        learning_rate=0.01,
-        batch_size=32,
-        epochs=5,
-        examples_per_epoch=10000,
+        learning_rate=args.lr,
+        batch_size=args.batch_size,
+        epochs=args.epochs,
+        examples_per_epoch=args.examples_per_epoch,
         domain_rotation=True,
         enable_curiosity=True,
         enable_skepticism=True,
-        checkpoint_interval=5000
+        checkpoint_dir=args.checkpoint_dir,
+        checkpoint_interval=args.checkpoint_interval
     )
 
-    # Create trainer
-    trainer = StreamingTrainer(config)
+    # Create trainer with state directory
+    trainer = StreamingTrainer(config, state_dir=args.state_dir)
 
-    # Initialize brain
-    trainer.initialize_brain()
+    # Check if resuming
+    if args.resume:
+        if trainer.state_manager and trainer.state_manager.can_resume():
+            logger.info("Resuming training session...")
+        else:
+            logger.warning("No resumable session found. Starting new session.")
+            args.resume = False
+
+    # Initialize brain (or load from checkpoint if resuming)
+    if not args.resume:
+        trainer.initialize_brain()
 
     # Register example loaders (TODO: Add actual dataset paths)
-    # For now, register dummy loaders for demonstration
     logger.info("Registering dataset loaders...")
 
     # Example: Register text loaders for each domain
@@ -575,8 +788,13 @@ def main():
             loader = TextDatasetLoader(domain, dummy_path)
             trainer.register_loader(loader)
 
-    # Start training
-    trainer.train()
+    # Start training (with resume if requested)
+    trainer.train(resume=args.resume)
+
+    # Final status
+    if trainer.state_manager:
+        trainer.state_manager.print_status()
+
 
 if __name__ == "__main__":
     main()
