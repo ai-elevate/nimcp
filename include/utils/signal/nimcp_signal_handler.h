@@ -645,6 +645,32 @@ bool signal_handler_can_recover(void);
 int signal_handler_get_crash_signal(void);
 
 //=============================================================================
+// Exception Queue Integration
+//=============================================================================
+
+/**
+ * @brief Process pending signal exceptions
+ *
+ * WHAT: Dequeue crashes from exception queue and process as exceptions
+ * WHY:  Bridge between signal handler and exception hierarchy
+ * HOW:  Dequeue entries, create exceptions, present to immune
+ *
+ * Call this periodically from main thread to process any crashes
+ * that were queued by signal handlers.
+ *
+ * @param max_count Maximum entries to process (0 = all pending)
+ * @return Number of entries processed
+ */
+size_t signal_handler_process_pending_exceptions(size_t max_count);
+
+/**
+ * @brief Get count of pending signal exceptions
+ *
+ * @return Number of pending exceptions in queue
+ */
+size_t signal_handler_get_pending_exception_count(void);
+
+//=============================================================================
 // Recovery Macros
 //=============================================================================
 
@@ -700,6 +726,111 @@ int signal_handler_get_crash_signal(void);
             _sig_val = (fallback); \
         } \
         _sig_val; \
+    })
+
+//=============================================================================
+// Enhanced Recovery Macros with Exception Integration
+//=============================================================================
+
+/**
+ * @brief Enhanced try-recover macro with exception integration
+ *
+ * WHAT: Wraps crash-prone code with recovery AND exception processing
+ * WHY:  Integrate signal recovery with exception hierarchy
+ * HOW:  Combines SIGNAL_TRY_RECOVER with NIMCP_THROW_SIGNAL_RECOVERED
+ *
+ * USAGE:
+ * ```c
+ * SIGNAL_TRY_RECOVER_EX(3, "risky_op") {
+ *     dangerous_operation();
+ * } SIGNAL_ON_CRASH_EX {
+ *     // Crash occurred - exception has been processed
+ *     LOG_ERROR("Recovered from crash in risky_op");
+ *     return NIMCP_ERROR_CRASH_RECOVERY;
+ * } SIGNAL_TRY_END_EX;
+ * ```
+ *
+ * The _EX variant:
+ * 1. Sets up recovery point (like SIGNAL_TRY_RECOVER)
+ * 2. On crash, creates signal exception from pending context
+ * 3. Presents exception to immune system
+ * 4. Dispatches through handler chain
+ * 5. Clears pending crash state
+ *
+ * NOTE: Requires including nimcp_exception_macros.h for full functionality.
+ */
+#define SIGNAL_TRY_RECOVER_EX(max_retries, label) \
+    do { \
+        signal_recovery_ctx_t* _sig_ctx_ex = signal_handler_get_recovery_ctx(); \
+        int _sig_result_ex = signal_handler_set_recovery_point_ex(_sig_ctx_ex, max_retries, label); \
+        if (_sig_result_ex == RECOVERY_INITIAL) {
+
+#define SIGNAL_ON_CRASH_EX \
+            signal_handler_clear_recovery_point_ex(_sig_ctx_ex); \
+        } else { \
+            /* Process crash as exception - requires nimcp_exception_macros.h */ \
+            signal_crash_context_t _ex_crash_ctx; \
+            if (signal_handler_get_pending_crash(&_ex_crash_ctx)) { \
+                /* Forward declare to avoid header dependency */ \
+                extern nimcp_signal_exception_t* nimcp_signal_exception_create_from_context( \
+                    const struct signal_crash_context* ctx); \
+                extern int nimcp_exception_present_to_immune(nimcp_exception_t* ex, void* resp); \
+                extern void nimcp_exception_dispatch(nimcp_exception_t* ex); \
+                extern void nimcp_exception_unref(nimcp_exception_t* ex); \
+                nimcp_signal_exception_t* _ex_sex = \
+                    nimcp_signal_exception_create_from_context(&_ex_crash_ctx); \
+                if (_ex_sex) { \
+                    _ex_sex->siglongjmp_executed = true; \
+                    nimcp_exception_present_to_immune((nimcp_exception_t*)_ex_sex, NULL); \
+                    nimcp_exception_dispatch((nimcp_exception_t*)_ex_sex); \
+                    nimcp_exception_unref((nimcp_exception_t*)_ex_sex); \
+                } \
+                signal_handler_clear_pending_crash(); \
+            }
+
+#define SIGNAL_TRY_END_EX \
+            signal_handler_clear_recovery_point_ex(_sig_ctx_ex); \
+        } \
+    } while (0)
+
+/**
+ * @brief Expression-level recovery with exception integration
+ *
+ * Like SIGNAL_TRY_EXPR but also processes crash as exception.
+ *
+ * @param expr Expression to evaluate
+ * @param fallback Value to return on crash
+ */
+#define SIGNAL_TRY_EXPR_EX(expr, fallback) \
+    ({ \
+        signal_recovery_ctx_t* _sig_ctx_ex = signal_handler_get_recovery_ctx(); \
+        typeof(expr) _sig_val_ex; \
+        int _sig_result_ex = signal_handler_set_recovery_point_ex(_sig_ctx_ex, 0, #expr); \
+        if (_sig_result_ex == RECOVERY_INITIAL) { \
+            _sig_val_ex = (expr); \
+            signal_handler_clear_recovery_point_ex(_sig_ctx_ex); \
+        } else { \
+            /* Process crash as exception */ \
+            signal_crash_context_t _ex_crash_ctx; \
+            if (signal_handler_get_pending_crash(&_ex_crash_ctx)) { \
+                extern nimcp_signal_exception_t* nimcp_signal_exception_create_from_context( \
+                    const struct signal_crash_context* ctx); \
+                extern int nimcp_exception_present_to_immune(nimcp_exception_t* ex, void* resp); \
+                extern void nimcp_exception_dispatch(nimcp_exception_t* ex); \
+                extern void nimcp_exception_unref(nimcp_exception_t* ex); \
+                nimcp_signal_exception_t* _ex_sex = \
+                    nimcp_signal_exception_create_from_context(&_ex_crash_ctx); \
+                if (_ex_sex) { \
+                    _ex_sex->siglongjmp_executed = true; \
+                    nimcp_exception_present_to_immune((nimcp_exception_t*)_ex_sex, NULL); \
+                    nimcp_exception_dispatch((nimcp_exception_t*)_ex_sex); \
+                    nimcp_exception_unref((nimcp_exception_t*)_ex_sex); \
+                } \
+                signal_handler_clear_pending_crash(); \
+            } \
+            _sig_val_ex = (fallback); \
+        } \
+        _sig_val_ex; \
     })
 
 #ifdef __cplusplus

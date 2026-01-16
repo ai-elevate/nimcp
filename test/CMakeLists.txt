@@ -1843,6 +1843,18 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/physics")
 endif()
 
 # ============================================================================
+# Exception Regression Tests
+# ============================================================================
+# WHAT: Regression tests for exception handling subsystem
+# WHY:  Verify signal exception handling, immune integration, API contracts
+# HOW:  Subdirectory-based test organization
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/exception")
+    message(STATUS "Adding exception regression tests...")
+    add_subdirectory(regression/exception)
+endif()
+
+# ============================================================================
 # Python Unit Tests
 # ============================================================================
 # WHAT: Unit tests for Python binding memory safety patterns

@@ -65,3 +65,44 @@ set_tests_properties(unit_utils_signal_test_signal_filter_bands
     LABELS "unit;utils;signal;bands"
     TIMEOUT 60
 )
+
+#=============================================================================
+# Signal Exception Integration Tests (uses Check framework)
+#=============================================================================
+
+# Find Check library using pkg-config
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(CHECK check)
+endif()
+
+if(CHECK_FOUND)
+    add_executable(unit_utils_signal_test_signal_exception
+        test_signal_exception.c
+    )
+
+    target_include_directories(unit_utils_signal_test_signal_exception PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CHECK_INCLUDE_DIRS}
+    )
+
+    target_link_libraries(unit_utils_signal_test_signal_exception
+        nimcp
+        ${CHECK_LIBRARIES}
+        pthread
+        m
+    )
+
+    add_test(
+        NAME unit_utils_signal_test_signal_exception
+        COMMAND unit_utils_signal_test_signal_exception
+    )
+
+    set_tests_properties(unit_utils_signal_test_signal_exception
+        PROPERTIES
+        LABELS "unit;utils;signal;exception"
+        TIMEOUT 120
+    )
+else()
+    message(STATUS "Check library not found - skipping signal exception tests")
+endif()

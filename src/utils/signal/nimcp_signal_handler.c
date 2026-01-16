@@ -654,6 +654,16 @@ static void handle_fatal_signal_extended(int sig, siginfo_t* info, void* context
         /* Log crash context */
         log_crash_context(&ctx);
 
+        /* Enqueue to exception queue for deferred processing
+         * This is signal-safe (uses lock-free SPSC queue) */
+        if (signal_exception_queue_is_initialized()) {
+            if (signal_exception_queue_enqueue(sig, &ctx)) {
+                safe_write("!!! Crash queued for exception processing\n");
+            } else {
+                safe_write("!!! Warning: Exception queue full, crash not queued\n");
+            }
+        }
+
 #ifdef NIMCP_ENABLE_CODE_IMMUNE
         /* Try code immune system first */
         if (g_code_immune && present_crash_to_code_immune(&ctx)) {
@@ -727,6 +737,11 @@ static void handle_sigfpe_extended(int sig, siginfo_t* info, void* context)
         g_pending_crash = 1;
 
         log_crash_context(&ctx);
+
+        /* Enqueue to exception queue for deferred processing */
+        if (signal_exception_queue_is_initialized()) {
+            signal_exception_queue_enqueue(sig, &ctx);
+        }
 
 #ifdef NIMCP_ENABLE_CODE_IMMUNE
         /* Try code immune system */
@@ -940,6 +955,13 @@ bool signal_handler_install(const signal_handler_config_t* config)
         g_config = signal_handler_default_config();
     }
 
+    /* Initialize exception queue before installing handlers
+     * This ensures the queue is ready before any signals can occur */
+    if (signal_exception_queue_init() != 0) {
+        /* Non-fatal - continue without exception queue integration */
+        LOG_WARNING("Failed to initialize signal exception queue");
+    }
+
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sigemptyset(&sa.sa_mask);
@@ -1047,6 +1069,12 @@ bool signal_handler_uninstall(void)
     if (!g_installed) {
         return false;
     }
+
+    /* Process any remaining exceptions before shutdown */
+    signal_handler_process_pending_exceptions(0);
+
+    /* Shutdown exception queue */
+    signal_exception_queue_shutdown();
 
     // Restore previous handlers
     sigaction(SIGSEGV, &g_old_sigsegv, NULL);
@@ -1757,4 +1785,34 @@ int signal_handler_get_crash_signal(void)
 
     /* Fall back to global last signal */
     return (int)g_last_signal;
+}
+
+//=============================================================================
+// Exception Queue Integration
+//=============================================================================
+
+/**
+ * WHAT: Process pending signal exceptions
+ * WHY:  Bridge between signal handler queue and exception system
+ * HOW:  Delegate to signal_exception_queue_process
+ */
+size_t signal_handler_process_pending_exceptions(size_t max_count)
+{
+    if (!signal_exception_queue_is_initialized()) {
+        return 0;
+    }
+    return signal_exception_queue_process(max_count);
+}
+
+/**
+ * WHAT: Get count of pending signal exceptions
+ * WHY:  Monitor exception queue depth
+ * HOW:  Delegate to signal_exception_queue_pending_count
+ */
+size_t signal_handler_get_pending_exception_count(void)
+{
+    if (!signal_exception_queue_is_initialized()) {
+        return 0;
+    }
+    return signal_exception_queue_pending_count();
 }

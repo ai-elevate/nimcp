@@ -51,6 +51,7 @@
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_handlers.h"
 #include "utils/exception/nimcp_exception_immune.h"
+#include "utils/signal/nimcp_signal_handler.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -414,6 +415,98 @@ extern "C" {
  */
 kg_module_wiring_t* nimcp_exception_create_kg_wiring(void);
 #endif /* NIMCP_KG_MODULE_WIRING_H */
+
+/* ============================================================================
+ * Signal Exception Macros
+ * ============================================================================ */
+
+/**
+ * @brief Process and throw signal exception after recovery
+ *
+ * Call this after siglongjmp recovery to convert the pending crash
+ * context into an exception and process it through the exception hierarchy.
+ *
+ * USAGE (inside SIGNAL_ON_CRASH block):
+ * ```c
+ * SIGNAL_TRY_RECOVER(3, "risky_op") {
+ *     dangerous_operation();
+ * } SIGNAL_ON_CRASH {
+ *     NIMCP_THROW_SIGNAL_RECOVERED();
+ *     return NIMCP_ERROR_CRASH_RECOVERY;
+ * } SIGNAL_TRY_END;
+ * ```
+ *
+ * This macro:
+ * 1. Gets the pending crash context from the signal handler
+ * 2. Creates a nimcp_signal_exception_t from the context
+ * 3. Marks siglongjmp_executed = true
+ * 4. Presents to immune system
+ * 5. Dispatches through handler chain
+ * 6. Clears the pending crash
+ */
+#define NIMCP_THROW_SIGNAL_RECOVERED() \
+    do { \
+        signal_crash_context_t _sig_ctx; \
+        if (signal_handler_get_pending_crash(&_sig_ctx)) { \
+            nimcp_signal_exception_t* _sex = \
+                nimcp_signal_exception_create_from_context(&_sig_ctx); \
+            if (_sex) { \
+                _sex->siglongjmp_executed = true; \
+                nimcp_exception_present_to_immune((nimcp_exception_t*)_sex, NULL); \
+                nimcp_exception_dispatch((nimcp_exception_t*)_sex); \
+                nimcp_exception_unref((nimcp_exception_t*)_sex); \
+            } \
+            signal_handler_clear_pending_crash(); \
+        } \
+    } while (0)
+
+/**
+ * @brief Process all pending signal exceptions from queue
+ *
+ * Call this periodically in the main thread to process any crashes
+ * that were queued by signal handlers.
+ *
+ * USAGE:
+ * ```c
+ * // In main loop or periodic callback:
+ * NIMCP_PROCESS_SIGNAL_EXCEPTIONS();
+ * ```
+ *
+ * @param max_count Maximum to process (0 = all pending)
+ */
+#define NIMCP_PROCESS_SIGNAL_EXCEPTIONS() \
+    signal_handler_process_pending_exceptions(0)
+
+#define NIMCP_PROCESS_SIGNAL_EXCEPTIONS_N(max_count) \
+    signal_handler_process_pending_exceptions(max_count)
+
+/**
+ * @brief Throw signal exception for a specific signal
+ *
+ * Use when you want to manually create a signal exception
+ * (e.g., in a test or when converting from another error type).
+ *
+ * @param sig Signal number (SIGSEGV, SIGFPE, etc.)
+ * @param fault_addr Fault address (may be NULL)
+ * @param fmt Message format string
+ */
+#define NIMCP_THROW_SIGNAL(sig, fault_addr, fmt, ...) \
+    do { \
+        nimcp_signal_exception_t* _sex = nimcp_signal_exception_create( \
+            (sig), \
+            (fault_addr), \
+            __FILE__, \
+            __LINE__, \
+            __func__, \
+            fmt, \
+            ##__VA_ARGS__ \
+        ); \
+        if (_sex) { \
+            nimcp_exception_present_to_immune((nimcp_exception_t*)_sex, NULL); \
+            nimcp_exception_dispatch((nimcp_exception_t*)_sex); \
+            nimcp_exception_unref((nimcp_exception_t*)_sex); \
+        } \
+    } while (0)
 
 /* ============================================================================
  * Legacy Compatibility Macros

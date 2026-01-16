@@ -55,3 +55,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/brain/CMakeLists.txt)
     add_subdirectory(brain)
 endif()
 
+# =============================================================================
+# Exception Integration Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt)
+    message(STATUS "Adding Exception Integration tests...")
+    add_subdirectory(exception)
+endif()
+

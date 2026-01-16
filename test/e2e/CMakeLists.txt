@@ -328,6 +328,11 @@ add_e2e_test(e2e_test_fault_tolerance_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_fault_tolerance_pipeline.cpp
 )
 
+# Signal Exception Pipeline E2E Test (Signal -> Queue -> Exception -> Immune)
+add_e2e_test(e2e_test_signal_exception_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_signal_exception_pipeline.cpp
+)
+
 # Brain Immune System Pipeline E2E Test (B cells, T cells, Antibodies, Cytokines)
 add_e2e_test(e2e_test_brain_immune_pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
