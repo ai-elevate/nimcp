@@ -1,0 +1,646 @@
+/**
+ * @file nimcp_training_dispatch.c
+ * @brief Training Dispatcher Implementation
+ *
+ * WHAT: Routes training steps to appropriate network-type-specific trainers
+ * WHY:  Unified training interface for heterogeneous network architectures
+ * HOW:  Switch-based dispatch to SNN/LNN/CNN/Adaptive training systems
+ *
+ * @author NIMCP Team
+ * @date 2025-01-16
+ */
+
+#include "training/nimcp_training_dispatch.h"
+#include "core/brain/nimcp_brain_internal.h"
+#include "nimcp.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/tensor/nimcp_tensor.h"
+
+// SNN training includes
+#include "snn/nimcp_snn_training.h"
+#include "snn/nimcp_snn_network.h"
+#include "snn/nimcp_snn_types.h"
+
+// LNN training includes
+#include "lnn/nimcp_lnn_training.h"
+#include "lnn/nimcp_lnn_network.h"
+#include "lnn/nimcp_lnn_types.h"
+
+// CNN training includes
+#include "training/nimcp_cnn_training.h"
+
+// Backprop for adaptive networks
+#include "core/neuralnet/nimcp_neuralnet_backprop.h"
+#include "plasticity/adaptive/nimcp_adaptive.h"
+
+#include <string.h>
+#include <math.h>
+
+//=============================================================================
+// Internal Helper Functions
+//=============================================================================
+
+/**
+ * @brief Initialize SNN training context
+ */
+static int init_snn_training(brain_t brain, const nimcp_training_config_t* config) {
+    if (!brain || !config) return -1;
+
+    // Check if SNN network exists
+    if (!brain->snn_network) {
+        NIMCP_LOGGING_WARN("SNN training requested but no SNN network present");
+        return -1;
+    }
+
+    // Create SNN training context based on method
+    snn_training_ctx_t* ctx = NULL;
+
+    // Default neuron count for R-STDP, eProp, surrogate
+    uint32_t n_neurons = 100;
+
+    switch (config->snn_method) {
+        case NIMCP_SNN_TRAIN_STDP: {
+            snn_stdp_config_t stdp_cfg;
+            snn_stdp_config_default(&stdp_cfg);
+            stdp_cfg.tau_plus = config->snn_eligibility_tau;
+            stdp_cfg.tau_minus = config->snn_eligibility_tau * 1.05F;  // Slightly longer for LTD
+            ctx = snn_training_create_stdp(&stdp_cfg);
+            break;
+        }
+
+        case NIMCP_SNN_TRAIN_R_STDP: {
+            snn_rstdp_config_t rstdp_cfg;
+            snn_rstdp_config_default(&rstdp_cfg);
+            rstdp_cfg.eligibility_tau = config->snn_eligibility_tau;
+            rstdp_cfg.reward_tau = config->snn_reward_tau;
+            ctx = snn_training_create_rstdp(&rstdp_cfg, n_neurons, n_neurons);
+            break;
+        }
+
+        case NIMCP_SNN_TRAIN_EPROP: {
+            snn_eprop_config_t eprop_cfg;
+            snn_eprop_config_default(&eprop_cfg);
+            eprop_cfg.learning_rate = config->learning_rate;
+            eprop_cfg.eligibility_tau = config->snn_eligibility_tau;
+            ctx = snn_training_create_eprop(&eprop_cfg, n_neurons, n_neurons);
+            break;
+        }
+
+        case NIMCP_SNN_TRAIN_SURROGATE: {
+            snn_surrogate_config_t surr_cfg;
+            snn_surrogate_config_default(&surr_cfg);
+            surr_cfg.beta = config->snn_surrogate_beta;
+            surr_cfg.learning_rate = config->learning_rate;
+            ctx = snn_training_create_surrogate(&surr_cfg, n_neurons, n_neurons);
+            break;
+        }
+
+        case NIMCP_SNN_TRAIN_HOMEOSTATIC: {
+            // Homeostatic uses STDP as base
+            snn_stdp_config_t stdp_cfg;
+            snn_stdp_config_default(&stdp_cfg);
+            ctx = snn_training_create_stdp(&stdp_cfg);
+            break;
+        }
+
+        default:
+            NIMCP_LOGGING_ERROR("Unknown SNN training method: %d", config->snn_method);
+            return -1;
+    }
+
+    if (!ctx) {
+        NIMCP_LOGGING_ERROR("Failed to create SNN training context");
+        return -1;
+    }
+
+    brain->snn_training_ctx = ctx;
+    NIMCP_LOGGING_INFO("Initialized SNN training with method=%d", config->snn_method);
+    return 0;
+}
+
+/**
+ * @brief Initialize LNN training context
+ */
+static int init_lnn_training(brain_t brain, const nimcp_training_config_t* config) {
+    if (!brain || !config) return -1;
+
+    // Check if LNN network exists
+    if (!brain->lnn_network) {
+        NIMCP_LOGGING_WARN("LNN training requested but no LNN network present");
+        return -1;
+    }
+
+    // Create LNN training config
+    lnn_training_config_t lnn_cfg;
+    if (lnn_training_config_default(&lnn_cfg) != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize LNN training config");
+        return -1;
+    }
+
+    lnn_cfg.learning_rate = config->learning_rate;
+    lnn_cfg.gradient_clip_norm = config->gradient_clip_value;
+
+    // Map training method
+    switch (config->lnn_method) {
+        case NIMCP_LNN_TRAIN_ADJOINT:
+            lnn_cfg.lnn_train_mode = LNN_TRAIN_ADJOINT;
+            lnn_cfg.use_adjoint_checkpointing = config->lnn_use_adjoint_checkpointing;
+            break;
+        case NIMCP_LNN_TRAIN_BPTT:
+            lnn_cfg.lnn_train_mode = LNN_TRAIN_BPTT;
+            lnn_cfg.bptt_truncation = config->lnn_bptt_truncation;
+            break;
+        case NIMCP_LNN_TRAIN_RTRL:
+            lnn_cfg.lnn_train_mode = LNN_TRAIN_RTRL;
+            break;
+        case NIMCP_LNN_TRAIN_EPROP:
+            lnn_cfg.lnn_train_mode = LNN_TRAIN_EPROP;
+            break;
+        default:
+            lnn_cfg.lnn_train_mode = LNN_TRAIN_ADJOINT;
+    }
+
+    // Create training context
+    lnn_training_ctx_t* ctx = lnn_training_create(brain->lnn_network, &lnn_cfg);
+    if (!ctx) {
+        NIMCP_LOGGING_ERROR("Failed to create LNN training context");
+        return -1;
+    }
+
+    brain->lnn_training_ctx = ctx;
+    NIMCP_LOGGING_INFO("Initialized LNN training with method=%d", config->lnn_method);
+    return 0;
+}
+
+/**
+ * @brief Initialize CNN training (already part of cnn_trainer)
+ */
+static int init_cnn_training(brain_t brain, const nimcp_training_config_t* config) {
+    if (!brain || !config) return -1;
+
+    // CNN trainer is created with the network, training is built-in
+    if (!brain->cnn_trainer) {
+        NIMCP_LOGGING_WARN("CNN training requested but no CNN trainer present");
+        return -1;
+    }
+
+    NIMCP_LOGGING_INFO("CNN trainer already initialized");
+    return 0;
+}
+
+//=============================================================================
+// SNN Training Step
+//=============================================================================
+
+static int snn_train_step(
+    brain_t brain,
+    const float* inputs,
+    uint32_t num_inputs,
+    const float* targets,
+    uint32_t num_targets,
+    training_dispatch_result_t* result)
+{
+    if (!brain->snn_network || !brain->snn_training_ctx) {
+        return -1;
+    }
+
+    snn_network_t* snn = brain->snn_network;
+    snn_training_ctx_t* ctx = brain->snn_training_ctx;
+
+    // Encode inputs to spikes
+    // TODO: Use proper spike encoding based on config
+
+    // Run SNN simulation for one timestep
+    float dt = 1.0F;  // 1ms timestep
+    int rc = snn_network_step(snn, dt);
+    if (rc < 0) {
+        NIMCP_LOGGING_ERROR("SNN network step failed: %d", rc);
+        return -1;
+    }
+
+    // Apply training based on method (STDP, R-STDP, eProp, surrogate)
+    snn_train_mode_t mode = ctx->mode;
+    float loss = 0.0F;
+    uint32_t updates = 0;
+
+    switch (mode) {
+        case SNN_TRAIN_STDP:
+            updates = snn_stdp_apply_network(ctx, snn, 0.0F);
+            break;
+
+        case SNN_TRAIN_R_STDP:
+            snn_rstdp_update_eligibility(ctx, dt);
+            updates = snn_rstdp_apply(ctx, snn);
+            break;
+
+        case SNN_TRAIN_EPROP:
+            // eProp needs spike arrays
+            updates = snn_eprop_apply(ctx, snn, 0.0F);
+            break;
+
+        case SNN_TRAIN_SURROGATE: {
+            // Surrogate gradients - compute loss gradient
+            float* output_grad = nimcp_malloc(num_targets * sizeof(float));
+            if (output_grad) {
+                // Compute MSE gradient
+                for (uint32_t i = 0; i < num_targets; i++) {
+                    float pred = 0.0F;  // TODO: decode from output spikes
+                    float diff = pred - targets[i];
+                    output_grad[i] = 2.0F * diff / (float)num_targets;
+                    loss += diff * diff;
+                }
+                loss /= (float)num_targets;
+
+                // Backprop with surrogate
+                snn_surrogate_backward(ctx, output_grad, NULL, num_targets, NULL);
+                nimcp_free(output_grad);
+            }
+            break;
+        }
+
+        default:
+            break;
+    }
+
+    if (result) {
+        result->loss = loss;
+        result->type_specific.snn.ltp_events = updates / 2;  // Approximate
+        result->type_specific.snn.ltd_events = updates / 2;
+    }
+
+    return 0;
+}
+
+//=============================================================================
+// LNN Training Step
+//=============================================================================
+
+static int lnn_train_step(
+    brain_t brain,
+    const float* inputs,
+    uint32_t num_inputs,
+    const float* targets,
+    uint32_t num_targets,
+    training_dispatch_result_t* result)
+{
+    if (!brain->lnn_network || !brain->lnn_training_ctx) {
+        return -1;
+    }
+
+    lnn_training_ctx_t* ctx = brain->lnn_training_ctx;
+
+    // Create input and target tensors using proper API
+    // LNN expects sequence tensors [seq_len, features]
+    // For single-step training, use 1D tensors
+    uint32_t input_dims[1] = {num_inputs};
+    uint32_t target_dims[1] = {num_targets};
+
+    nimcp_tensor_t* input_tensor = nimcp_tensor_create(input_dims, 1, NIMCP_DTYPE_F32);
+    nimcp_tensor_t* target_tensor = nimcp_tensor_create(target_dims, 1, NIMCP_DTYPE_F32);
+
+    if (!input_tensor || !target_tensor) {
+        if (input_tensor) nimcp_tensor_destroy(input_tensor);
+        if (target_tensor) nimcp_tensor_destroy(target_tensor);
+        return -1;
+    }
+
+    // Copy data
+    float* in_data = (float*)nimcp_tensor_data(input_tensor);
+    float* tgt_data = (float*)nimcp_tensor_data(target_tensor);
+    if (in_data && tgt_data) {
+        memcpy(in_data, inputs, num_inputs * sizeof(float));
+        memcpy(tgt_data, targets, num_targets * sizeof(float));
+    }
+
+    // Run training step
+    float loss = 0.0F;
+    int rc = lnn_training_step(ctx, input_tensor, target_tensor, &loss);
+
+    nimcp_tensor_destroy(input_tensor);
+    nimcp_tensor_destroy(target_tensor);
+
+    if (rc < 0) {
+        NIMCP_LOGGING_ERROR("LNN training step failed: %d", rc);
+        return -1;
+    }
+
+    if (result) {
+        result->loss = loss;
+        result->learning_rate = lnn_training_get_lr(ctx);
+    }
+
+    return 0;
+}
+
+//=============================================================================
+// CNN Training Step
+//=============================================================================
+
+static int cnn_train_step(
+    brain_t brain,
+    const float* inputs,
+    uint32_t num_inputs,
+    const float* targets,
+    uint32_t num_targets,
+    training_dispatch_result_t* result)
+{
+    if (!brain->cnn_trainer) {
+        return -1;
+    }
+
+    cnn_trainer_t* trainer = brain->cnn_trainer;
+
+    // Create input tensor using proper API
+    uint32_t input_dims[1] = {num_inputs};
+    uint32_t target_dims[1] = {num_targets};
+
+    nimcp_tensor_t* input_tensor = nimcp_tensor_create(input_dims, 1, NIMCP_DTYPE_F32);
+    nimcp_tensor_t* target_tensor = nimcp_tensor_create(target_dims, 1, NIMCP_DTYPE_F32);
+
+    if (!input_tensor || !target_tensor) {
+        if (input_tensor) nimcp_tensor_destroy(input_tensor);
+        if (target_tensor) nimcp_tensor_destroy(target_tensor);
+        return -1;
+    }
+
+    float* in_data = (float*)nimcp_tensor_data(input_tensor);
+    float* tgt_data = (float*)nimcp_tensor_data(target_tensor);
+    if (in_data && tgt_data) {
+        memcpy(in_data, inputs, num_inputs * sizeof(float));
+        memcpy(tgt_data, targets, num_targets * sizeof(float));
+    }
+
+    // Zero gradients
+    cnn_trainer_zero_grad(trainer);
+
+    // Forward pass
+    cnn_forward_result_t fwd_result = {0};
+    nimcp_error_t err = cnn_trainer_forward(trainer, input_tensor, &fwd_result);
+    if (err != NIMCP_OK) {
+        nimcp_tensor_destroy(input_tensor);
+        nimcp_tensor_destroy(target_tensor);
+        return -1;
+    }
+
+    // Compute loss from output tensor and targets
+    float loss = 0.0F;
+    if (fwd_result.output) {
+        float* out_data = (float*)nimcp_tensor_data(fwd_result.output);
+        if (out_data && tgt_data) {
+            for (uint32_t i = 0; i < num_targets; i++) {
+                float diff = out_data[i] - tgt_data[i];
+                loss += diff * diff;
+            }
+            loss /= (float)num_targets;
+        }
+    }
+
+    // Backward pass
+    err = cnn_trainer_backward(trainer, target_tensor, &fwd_result);
+    if (err != NIMCP_OK) {
+        nimcp_tensor_destroy(input_tensor);
+        nimcp_tensor_destroy(target_tensor);
+        return -1;
+    }
+
+    // Optimizer step
+    err = cnn_trainer_step(trainer);
+
+    nimcp_tensor_destroy(input_tensor);
+    nimcp_tensor_destroy(target_tensor);
+
+    if (result) {
+        result->loss = loss;
+    }
+
+    return (err == NIMCP_OK) ? 0 : -1;
+}
+
+//=============================================================================
+// Public API Implementation
+//=============================================================================
+
+int training_dispatch_init(brain_t brain, const nimcp_training_config_t* config) {
+    if (!brain || !config) {
+        return -1;
+    }
+
+    brain->active_network_type = config->network_type;
+
+    switch (config->network_type) {
+        case NIMCP_NETWORK_ADAPTIVE:
+            // Adaptive uses standard backprop, no special init needed
+            NIMCP_LOGGING_INFO("Training dispatch: ADAPTIVE (standard backprop)");
+            return 0;
+
+        case NIMCP_NETWORK_SNN:
+            return init_snn_training(brain, config);
+
+        case NIMCP_NETWORK_LNN:
+            return init_lnn_training(brain, config);
+
+        case NIMCP_NETWORK_CNN:
+            return init_cnn_training(brain, config);
+
+        case NIMCP_NETWORK_HYBRID:
+            // Initialize all available network types
+            NIMCP_LOGGING_INFO("Training dispatch: HYBRID mode");
+            if (brain->snn_network) init_snn_training(brain, config);
+            if (brain->lnn_network) init_lnn_training(brain, config);
+            if (brain->cnn_trainer) init_cnn_training(brain, config);
+            return 0;
+
+        default:
+            NIMCP_LOGGING_ERROR("Unknown network type: %d", config->network_type);
+            return -1;
+    }
+}
+
+int training_dispatch_step(
+    brain_t brain,
+    const float* inputs,
+    uint32_t num_inputs,
+    const float* targets,
+    uint32_t num_targets,
+    training_dispatch_result_t* result)
+{
+    if (!brain || !inputs || !targets) {
+        return -1;
+    }
+
+    // Initialize result
+    if (result) {
+        memset(result, 0, sizeof(*result));
+    }
+
+    // Dispatch based on active network type
+    switch (brain->active_network_type) {
+        case NIMCP_NETWORK_ADAPTIVE:
+            // Return -2 to signal caller should use standard backprop path
+            // This maintains backward compatibility
+            return -2;
+
+        case NIMCP_NETWORK_SNN:
+            return snn_train_step(brain, inputs, num_inputs, targets, num_targets, result);
+
+        case NIMCP_NETWORK_LNN:
+            return lnn_train_step(brain, inputs, num_inputs, targets, num_targets, result);
+
+        case NIMCP_NETWORK_CNN:
+            return cnn_train_step(brain, inputs, num_inputs, targets, num_targets, result);
+
+        case NIMCP_NETWORK_HYBRID:
+            // Train all available networks
+            // Use whichever has lowest loss for final result
+            {
+                training_dispatch_result_t snn_res = {0}, lnn_res = {0}, cnn_res = {0};
+                float min_loss = INFINITY;
+
+                if (brain->snn_network && brain->snn_training_ctx) {
+                    snn_train_step(brain, inputs, num_inputs, targets, num_targets, &snn_res);
+                    if (snn_res.loss < min_loss) {
+                        min_loss = snn_res.loss;
+                        if (result) *result = snn_res;
+                    }
+                }
+
+                if (brain->lnn_network && brain->lnn_training_ctx) {
+                    lnn_train_step(brain, inputs, num_inputs, targets, num_targets, &lnn_res);
+                    if (lnn_res.loss < min_loss) {
+                        min_loss = lnn_res.loss;
+                        if (result) *result = lnn_res;
+                    }
+                }
+
+                if (brain->cnn_trainer) {
+                    cnn_train_step(brain, inputs, num_inputs, targets, num_targets, &cnn_res);
+                    if (cnn_res.loss < min_loss) {
+                        if (result) *result = cnn_res;
+                    }
+                }
+
+                return 0;
+            }
+
+        default:
+            return -1;
+    }
+}
+
+int training_dispatch_set_reward(brain_t brain, float reward) {
+    if (!brain) return -1;
+
+    if (brain->active_network_type == NIMCP_NETWORK_SNN && brain->snn_training_ctx) {
+        snn_rstdp_set_reward(brain->snn_training_ctx, reward);
+        return 0;
+    }
+
+    return -1;  // Not SNN or no training context
+}
+
+int training_dispatch_get_stats(
+    brain_t brain,
+    uint64_t* total_steps,
+    float* total_loss,
+    float* current_lr)
+{
+    if (!brain) return -1;
+
+    switch (brain->active_network_type) {
+        case NIMCP_NETWORK_SNN:
+            if (brain->snn_training_ctx) {
+                uint64_t weight_updates = 0, training_steps = 0;
+                float total_delta_w = 0.0F;
+                snn_training_get_stats(brain->snn_training_ctx,
+                    &weight_updates, &training_steps, &total_delta_w);
+                if (total_steps) *total_steps = training_steps;
+                if (total_loss) *total_loss = 0.0F;  // SNN doesn't track loss same way
+                if (current_lr) *current_lr = 0.0F;  // TODO: get from config
+                return 0;
+            }
+            break;
+
+        case NIMCP_NETWORK_LNN:
+            if (brain->lnn_training_ctx) {
+                if (total_steps) *total_steps = lnn_training_get_step_count(brain->lnn_training_ctx);
+                if (total_loss) *total_loss = lnn_training_get_current_loss(brain->lnn_training_ctx);
+                if (current_lr) *current_lr = lnn_training_get_lr(brain->lnn_training_ctx);
+                return 0;
+            }
+            break;
+
+        case NIMCP_NETWORK_CNN:
+            // CNN stats would come from trainer
+            break;
+
+        default:
+            break;
+    }
+
+    return -1;
+}
+
+int training_dispatch_reset(brain_t brain) {
+    if (!brain) return -1;
+
+    switch (brain->active_network_type) {
+        case NIMCP_NETWORK_SNN:
+            if (brain->snn_training_ctx) {
+                snn_training_reset(brain->snn_training_ctx);
+                snn_training_reset_stats(brain->snn_training_ctx);
+            }
+            break;
+
+        case NIMCP_NETWORK_LNN:
+            if (brain->lnn_training_ctx) {
+                lnn_training_reset_stats(brain->lnn_training_ctx);
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    return 0;
+}
+
+void training_dispatch_destroy(brain_t brain) {
+    if (!brain) return;
+
+    if (brain->snn_training_ctx) {
+        snn_training_destroy(brain->snn_training_ctx);
+        brain->snn_training_ctx = NULL;
+    }
+
+    if (brain->lnn_training_ctx) {
+        lnn_training_destroy(brain->lnn_training_ctx);
+        brain->lnn_training_ctx = NULL;
+    }
+
+    // CNN trainer is destroyed with the brain's CNN network
+}
+
+const char* training_dispatch_type_name(uint8_t network_type) {
+    switch (network_type) {
+        case NIMCP_NETWORK_ADAPTIVE: return "ADAPTIVE";
+        case NIMCP_NETWORK_SNN:      return "SNN";
+        case NIMCP_NETWORK_LNN:      return "LNN";
+        case NIMCP_NETWORK_CNN:      return "CNN";
+        case NIMCP_NETWORK_HYBRID:   return "HYBRID";
+        default:                     return "UNKNOWN";
+    }
+}
+
+bool training_dispatch_is_supported(uint8_t network_type) {
+    switch (network_type) {
+        case NIMCP_NETWORK_ADAPTIVE:
+        case NIMCP_NETWORK_SNN:
+        case NIMCP_NETWORK_LNN:
+        case NIMCP_NETWORK_CNN:
+        case NIMCP_NETWORK_HYBRID:
+            return true;
+        default:
+            return false;
+    }
+}

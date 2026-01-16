@@ -833,6 +833,20 @@ nimcp_result_t nimcp_brain_training_get_stats(
 void nimcp_brain_training_reset_stats(nimcp_brain_training_ctx_t* ctx);
 
 /**
+ * @brief Update training session statistics
+ *
+ * Called by training loop to update stats after each step.
+ *
+ * @param ctx Brain-training context
+ * @param samples_processed Number of samples processed in this step
+ * @param loss_value Loss value for this step
+ */
+void nimcp_brain_training_update_stats(
+    nimcp_brain_training_ctx_t* ctx,
+    uint32_t samples_processed,
+    float loss_value);
+
+/**
  * @brief Check if training has converged
  * @param ctx Brain-training context
  * @return true if converged

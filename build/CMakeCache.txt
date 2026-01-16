@@ -728,7 +728,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=427
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=428
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP
@@ -1094,7 +1094,7 @@ _Python3_Interpreter_REASON_FAILURE:INTERNAL=
 _Python3_LIBRARY_RELEASE:INTERNAL=/usr/lib/x86_64-linux-gnu/libpython3.12.so
 //NumPy reason failure
 _Python3_NumPy_REASON_FAILURE:INTERNAL=
-__pkg_config_arguments_CHECK:INTERNAL=REQUIRED;check
+__pkg_config_arguments_CHECK:INTERNAL=check
 __pkg_config_arguments_SODIUM:INTERNAL=libsodium
 __pkg_config_arguments__OPENSSL:INTERNAL=QUIET;openssl
 __pkg_config_checked_CHECK:INTERNAL=1

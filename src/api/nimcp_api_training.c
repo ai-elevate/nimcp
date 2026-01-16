@@ -35,9 +35,23 @@
 #include "middleware/training/nimcp_lr_scheduler.h"
 #include "middleware/training/nimcp_training_callbacks.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
+#include "core/neuralnet/nimcp_neuralnet_backprop.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdio.h>
 #include <string.h>
+
+//=============================================================================
+// Internal Type Definitions
+//=============================================================================
+
+/**
+ * @brief Internal brain handle structure (mirrors definition in nimcp.c)
+ *
+ * WHY: Training API needs access to internal_brain field
+ */
+struct nimcp_brain_handle {
+    brain_t internal_brain;
+};
 
 //=============================================================================
 // External References (from nimcp.c)
@@ -65,6 +79,7 @@ typedef struct {
     uint32_t step_count;
     tcb_context_t* callbacks;         /**< Training callback manager */
     bool callbacks_enabled;           /**< Whether to fire callbacks */
+    backprop_ctx_t* backprop;         /**< Backpropagation context for weight gradients */
 } training_pipeline_state_t;
 
 // Global map from brain handle to training state (simple approach for now)
@@ -101,11 +116,29 @@ static void clear_training_state(nimcp_brain_t brain) {
                 tcb_destroy(g_training_states[i].state.callbacks);
                 g_training_states[i].state.callbacks = NULL;
             }
+            // Destroy backprop context if present
+            if (g_training_states[i].state.backprop) {
+                backprop_destroy(g_training_states[i].state.backprop);
+                g_training_states[i].state.backprop = NULL;
+            }
             g_training_states[i].brain = NULL;
             memset(&g_training_states[i].state, 0, sizeof(training_pipeline_state_t));
             return;
         }
     }
+}
+
+/**
+ * @brief Cleanup training state for a brain being destroyed
+ *
+ * This function MUST be called during nimcp_brain_destroy to free
+ * training pipeline resources and prevent memory leaks.
+ *
+ * @param brain Brain handle being destroyed
+ */
+void nimcp_api_training_cleanup_brain(nimcp_brain_t brain) {
+    if (!brain) return;
+    clear_training_state(brain);
 }
 
 //=============================================================================
@@ -401,7 +434,36 @@ nimcp_status_t nimcp_brain_train_step(
         return NIMCP_ERROR_INVALID;
     }
 
-    // Step 1: Forward pass to get predictions
+    // Get the adaptive network
+    adaptive_network_t network = internal->network;
+    if (!network) {
+        set_error("Brain has no neural network");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "training",
+            "Brain has no neural network");
+        return NIMCP_ERROR_INVALID;
+    }
+
+    // Get base network for backpropagation
+    neural_network_t base_net = adaptive_network_get_base_network(network);
+    if (!base_net) {
+        set_error("Failed to get base network");
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "training",
+            "Failed to get base network");
+        return NIMCP_ERROR;
+    }
+
+    // Create backprop context if not exists
+    if (!state->backprop) {
+        state->backprop = backprop_create(base_net);
+        if (!state->backprop) {
+            set_error("Failed to create backprop context");
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(backprop_ctx_t),
+                "Failed to create backprop context");
+            return NIMCP_ERROR_MEMORY;
+        }
+    }
+
+    // Step 1: Forward pass with activation recording
     float* predictions = nimcp_malloc(num_targets * sizeof(float));
     if (!predictions) {
         set_error("Failed to allocate predictions buffer");
@@ -410,55 +472,72 @@ nimcp_status_t nimcp_brain_train_step(
         return NIMCP_ERROR_MEMORY;
     }
 
-    // Get the adaptive network and run forward pass
-    adaptive_network_t network = internal->network;
-    if (!network) {
-        nimcp_free(predictions);
-        set_error("Brain has no neural network");
-        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "training",
-            "Brain has no neural network");
-        return NIMCP_ERROR_INVALID;
+    if (!backprop_forward(state->backprop, features, num_features, predictions, num_targets)) {
+        // Fallback to adaptive network forward if backprop forward fails
+        (void)adaptive_network_forward(network, features, num_features,
+                                       predictions, num_targets, 0);
     }
 
-    // Forward pass (timestamp 0 for training)
-    (void)adaptive_network_forward(network, features, num_features,
-                                   predictions, num_targets, 0);
-
-    // Step 2: Get network weights for optimization
-    neural_network_t base_net = adaptive_network_get_base_network(network);
-    if (!base_net) {
+    // Step 2: Compute loss and output gradients
+    float loss_value = 0.0f;
+    float* output_gradients = nimcp_malloc(num_targets * sizeof(float));
+    if (!output_gradients) {
         nimcp_free(predictions);
-        set_error("Failed to get base network");
-        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "training",
-            "Failed to get base network");
+        set_error("Failed to allocate output gradients");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_targets * sizeof(float),
+            "Failed to allocate output gradients");
+        return NIMCP_ERROR_MEMORY;
+    }
+
+    // Compute loss and gradients using training context
+    nimcp_result_t res = nimcp_brain_training_compute_loss(
+        training_ctx, state->loss_id,
+        predictions, targets,
+        1, num_targets,  // batch_size=1
+        &loss_value, output_gradients
+    );
+
+    if (res != NIMCP_SUCCESS) {
+        nimcp_free(predictions);
+        nimcp_free(output_gradients);
+        set_error("Failed to compute loss");
         return NIMCP_ERROR;
     }
 
-    // Get weight count and allocate params buffer
-    uint32_t num_neurons = neural_network_get_num_neurons(base_net);
-    size_t total_weights = 0;
-    for (uint32_t n = 0; n < num_neurons; n++) {
-        neuron_t* neuron = neural_network_get_neuron(base_net, n);
-        if (neuron && neuron->synapses) {
-            total_weights += neuron->num_synapses;
+    // Step 3: Backpropagate to get weight gradients
+    size_t total_weights = backprop_get_weight_count(state->backprop);
+
+    float* weight_gradients = NULL;
+    if (total_weights > 0) {
+        weight_gradients = nimcp_malloc(total_weights * sizeof(float));
+        if (!weight_gradients) {
+            nimcp_free(predictions);
+            nimcp_free(output_gradients);
+            set_error("Failed to allocate weight gradients");
+            return NIMCP_ERROR_MEMORY;
+        }
+
+        // Perform backpropagation
+        if (backprop_backward(state->backprop, output_gradients, num_targets)) {
+            backprop_get_weight_gradients(state->backprop, weight_gradients, total_weights);
+        } else {
+            // Fallback: use output gradients directly (old behavior, but limited)
+            memset(weight_gradients, 0, total_weights * sizeof(float));
+            for (size_t i = 0; i < num_targets && i < total_weights; i++) {
+                weight_gradients[i] = output_gradients[i];
+            }
         }
     }
 
-    if (total_weights == 0) {
-        nimcp_free(predictions);
-        set_error("Network has no weights");
-        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "training",
-            "Network has no weights");
-        return NIMCP_ERROR;
-    }
+    nimcp_free(output_gradients);
 
-    // Extract weights into flat array
+    // Step 4: Extract current weights into flat array
+    uint32_t num_neurons = neural_network_get_num_neurons(base_net);
     float* params = nimcp_malloc(total_weights * sizeof(float));
     if (!params) {
         nimcp_free(predictions);
+        if (weight_gradients) nimcp_free(weight_gradients);
         set_error("Failed to allocate params buffer");
-        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, total_weights * sizeof(float),
-            "Failed to allocate params buffer");
         return NIMCP_ERROR_MEMORY;
     }
 
@@ -472,24 +551,14 @@ nimcp_status_t nimcp_brain_train_step(
         }
     }
 
-    // Step 3: Use training coordinator for full training step
-    float loss_value = 0.0f;
-    nimcp_result_t res = nimcp_brain_training_step_full(
-        training_ctx,
-        state->loss_id,
-        state->optimizer_id,
-        state->scheduler_id,
-        state->gradmgr_id,
-        params,
-        predictions,
-        targets,
-        1,  // batch_size = 1
-        num_targets,
-        total_weights,
-        &loss_value
-    );
+    // Step 5: Apply optimizer with weight gradients
+    nimcp_optimizer_context_t* opt = nimcp_brain_training_get_optimizer(
+        training_ctx, state->optimizer_id);
+    if (opt && weight_gradients && total_weights > 0) {
+        res = nimcp_optimizer_step(opt, params, weight_gradients, total_weights);
+    }
 
-    // Step 4: Get current learning rate
+    // Step 6: Get current learning rate
     float current_lr = 0.0f;
     nimcp_lr_scheduler_ctx_t* sched = nimcp_brain_training_get_scheduler(
         training_ctx, state->scheduler_id);
@@ -497,7 +566,7 @@ nimcp_status_t nimcp_brain_train_step(
         current_lr = nimcp_lr_scheduler_get_lr(sched);
     }
 
-    // Step 5: Write weights back to network
+    // Step 7: Write updated weights back to network
     if (res == NIMCP_SUCCESS || res == NIMCP_TRAINING_ERROR_EARLY_STOP) {
         weight_idx = 0;
         for (uint32_t n = 0; n < num_neurons; n++) {
@@ -510,7 +579,12 @@ nimcp_status_t nimcp_brain_train_step(
         }
     }
 
-    // Step 6: Increment step count and fill result
+    // Cleanup
+    nimcp_free(params);
+    if (weight_gradients) nimcp_free(weight_gradients);
+    nimcp_free(predictions);
+
+    // Step 8: Increment step count and fill result
     state->step_count++;
 
     if (result) {
@@ -520,9 +594,6 @@ nimcp_status_t nimcp_brain_train_step(
         result->learning_rate = current_lr;
         result->gradient_norm = 0.0f;
     }
-
-    nimcp_free(params);
-    nimcp_free(predictions);
 
     if (res != NIMCP_SUCCESS && res != NIMCP_TRAINING_ERROR_EARLY_STOP) {
         set_error("Training step failed");

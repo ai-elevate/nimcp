@@ -154,7 +154,9 @@ static network_config_t build_base_network_config(uint32_t num_inputs, uint32_t 
     network_config_t config = {0};
     config.input_size = num_inputs;
     config.output_size = num_outputs;
-    config.num_neurons = num_neurons;
+    // BUGFIX: num_neurons should be TOTAL neurons, not just hidden layer
+    // For a 3-layer network: inputs + hidden + outputs
+    config.num_neurons = num_inputs + num_neurons + num_outputs;
     config.num_layers = 3;
     config.integration_method = integration_method;
 
@@ -175,6 +177,11 @@ static network_config_t build_base_network_config(uint32_t num_inputs, uint32_t 
     config.enable_homeostasis = true;
     config.enable_bcm = false;
     config.enable_eligibility = false;
+
+    // BUGFIX: Set weight bounds to allow random initialization to work
+    // Without these, fmaxf(0, fminf(0, weight)) clamps all weights to 0!
+    config.min_weight = -1.0F;
+    config.max_weight = 1.0F;
 
     return config;
 }

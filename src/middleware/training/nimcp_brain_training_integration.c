@@ -1224,6 +1224,28 @@ void nimcp_brain_training_reset_stats(nimcp_brain_training_ctx_t* ctx)
     ctx->current_batch = 0;
 }
 
+void nimcp_brain_training_update_stats(
+    nimcp_brain_training_ctx_t* ctx,
+    uint32_t samples_processed,
+    float loss_value)
+{
+    if (!ctx) {
+        return;
+    }
+
+    ctx->stats.total_samples += samples_processed;
+    ctx->stats.total_batches += 1;
+    ctx->stats.total_loss += (double)loss_value;
+
+    /* Update min/max loss */
+    if (loss_value < ctx->stats.min_loss) {
+        ctx->stats.min_loss = loss_value;
+    }
+    if (loss_value > ctx->stats.max_loss) {
+        ctx->stats.max_loss = loss_value;
+    }
+}
+
 bool nimcp_brain_training_is_converged(const nimcp_brain_training_ctx_t* ctx)
 {
     return ctx && ctx->converged;

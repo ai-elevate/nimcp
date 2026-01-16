@@ -667,6 +667,33 @@ neural_network_t neural_network_create(const network_config_t* config)
 
             offset = next_layer_offset;
         }
+
+        // TRAINING FIX: Set activation types for gradient-based training
+        // ACTIVATION_ADAPTIVE creates dead neurons (output=0 if below threshold)
+        // For gradient-based training, we need differentiable activations
+        //
+        // Hidden layers: ReLU (fast, helps with vanishing gradients)
+        // Output layer: Sigmoid (bounded [0,1] for classification probabilities)
+
+        uint32_t input_layer_size = config->layer_sizes[0];
+
+        // Set hidden layer neurons to Leaky ReLU
+        // (Regular ReLU causes "dying neurons" when activations are negative)
+        uint32_t hidden_start = input_layer_size;
+        uint32_t hidden_end = 0;
+        for (uint32_t l = 0; l < config->num_layers - 1; l++) {
+            hidden_end += config->layer_sizes[l];
+        }
+        for (uint32_t i = hidden_start; i < hidden_end && i < network->num_neurons; i++) {
+            network->neurons[i].activation_type = ACTIVATION_LEAKY_RELU;
+        }
+
+        // Set output layer neurons to sigmoid
+        uint32_t output_layer_start = hidden_end;
+        uint32_t output_layer_size = config->layer_sizes[config->num_layers - 1];
+        for (uint32_t i = 0; i < output_layer_size && output_layer_start + i < network->num_neurons; i++) {
+            network->neurons[output_layer_start + i].activation_type = ACTIVATION_SIGMOID;
+        }
     }
 
     // Bio-async registration
@@ -2691,12 +2718,15 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
                 uint32_t neuron_id = neuron_offset + i;
                 neuron_t* neuron = &network->neurons[neuron_id];
 
-                // Compute weighted sum from previous layer
+                // Compute weighted sum from previous layer (using INCOMING synapses)
+                // BUGFIX: Use incoming_synapses and source_neuron_id, not outgoing synapses
+                // The outgoing synapses point TO next layer neurons, not FROM previous layer
                 float activation = neuron->bias;
-                for (uint32_t j = 0; j < neuron->num_synapses; j++) {
-                    synapse_t* syn = &neuron->synapses[j];
-                    if (syn->target_id < network->num_neurons) {
-                        float pre_activity = network->neurons[syn->target_id].state;
+
+                for (uint32_t j = 0; j < neuron->num_incoming; j++) {
+                    synapse_t* syn = &neuron->incoming_synapses[j];
+                    if (syn->source_neuron_id < network->num_neurons) {
+                        float pre_activity = network->neurons[syn->source_neuron_id].state;
                         activation += pre_activity * syn->weight * syn->strength;
                     }
                 }

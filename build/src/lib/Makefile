@@ -23657,6 +23657,30 @@ __/core/neuralnet/nimcp_neuralnet.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_neuralnet.c.s
 .PHONY : __/core/neuralnet/nimcp_neuralnet.c.s
 
+__/core/neuralnet/nimcp_neuralnet_backprop.o: __/core/neuralnet/nimcp_neuralnet_backprop.c.o
+.PHONY : __/core/neuralnet/nimcp_neuralnet_backprop.o
+
+# target to build an object file
+__/core/neuralnet/nimcp_neuralnet_backprop.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_neuralnet_backprop.c.o
+.PHONY : __/core/neuralnet/nimcp_neuralnet_backprop.c.o
+
+__/core/neuralnet/nimcp_neuralnet_backprop.i: __/core/neuralnet/nimcp_neuralnet_backprop.c.i
+.PHONY : __/core/neuralnet/nimcp_neuralnet_backprop.i
+
+# target to preprocess a source file
+__/core/neuralnet/nimcp_neuralnet_backprop.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_neuralnet_backprop.c.i
+.PHONY : __/core/neuralnet/nimcp_neuralnet_backprop.c.i
+
+__/core/neuralnet/nimcp_neuralnet_backprop.s: __/core/neuralnet/nimcp_neuralnet_backprop.c.s
+.PHONY : __/core/neuralnet/nimcp_neuralnet_backprop.s
+
+# target to generate assembly for a file
+__/core/neuralnet/nimcp_neuralnet_backprop.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/neuralnet/nimcp_neuralnet_backprop.c.s
+.PHONY : __/core/neuralnet/nimcp_neuralnet_backprop.c.s
+
 __/core/neuralnet/nimcp_neuralnet_homeostasis.o: __/core/neuralnet/nimcp_neuralnet_homeostasis.c.o
 .PHONY : __/core/neuralnet/nimcp_neuralnet_homeostasis.o
 
@@ -35825,6 +35849,30 @@ __/security/language/nimcp_security_language_fep_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/language/nimcp_security_language_fep_bridge.c.s
 .PHONY : __/security/language/nimcp_security_language_fep_bridge.c.s
 
+__/security/lgss/bridges/nimcp_lgss_bio_async_bridge.o: __/security/lgss/bridges/nimcp_lgss_bio_async_bridge.c.o
+.PHONY : __/security/lgss/bridges/nimcp_lgss_bio_async_bridge.o
+
+# target to build an object file
+__/security/lgss/bridges/nimcp_lgss_bio_async_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/bridges/nimcp_lgss_bio_async_bridge.c.o
+.PHONY : __/security/lgss/bridges/nimcp_lgss_bio_async_bridge.c.o
+
+__/security/lgss/bridges/nimcp_lgss_bio_async_bridge.i: __/security/lgss/bridges/nimcp_lgss_bio_async_bridge.c.i
+.PHONY : __/security/lgss/bridges/nimcp_lgss_bio_async_bridge.i
+
+# target to preprocess a source file
+__/security/lgss/bridges/nimcp_lgss_bio_async_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/bridges/nimcp_lgss_bio_async_bridge.c.i
+.PHONY : __/security/lgss/bridges/nimcp_lgss_bio_async_bridge.c.i
+
+__/security/lgss/bridges/nimcp_lgss_bio_async_bridge.s: __/security/lgss/bridges/nimcp_lgss_bio_async_bridge.c.s
+.PHONY : __/security/lgss/bridges/nimcp_lgss_bio_async_bridge.s
+
+# target to generate assembly for a file
+__/security/lgss/bridges/nimcp_lgss_bio_async_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/bridges/nimcp_lgss_bio_async_bridge.c.s
+.PHONY : __/security/lgss/bridges/nimcp_lgss_bio_async_bridge.c.s
+
 __/security/lgss/bridges/nimcp_lgss_ethics_bridge.o: __/security/lgss/bridges/nimcp_lgss_ethics_bridge.c.o
 .PHONY : __/security/lgss/bridges/nimcp_lgss_ethics_bridge.o
 
@@ -35848,6 +35896,270 @@ __/security/lgss/bridges/nimcp_lgss_ethics_bridge.s: __/security/lgss/bridges/ni
 __/security/lgss/bridges/nimcp_lgss_ethics_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/bridges/nimcp_lgss_ethics_bridge.c.s
 .PHONY : __/security/lgss/bridges/nimcp_lgss_ethics_bridge.c.s
+
+__/security/lgss/bridges/nimcp_lgss_executive_bridge.o: __/security/lgss/bridges/nimcp_lgss_executive_bridge.c.o
+.PHONY : __/security/lgss/bridges/nimcp_lgss_executive_bridge.o
+
+# target to build an object file
+__/security/lgss/bridges/nimcp_lgss_executive_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/bridges/nimcp_lgss_executive_bridge.c.o
+.PHONY : __/security/lgss/bridges/nimcp_lgss_executive_bridge.c.o
+
+__/security/lgss/bridges/nimcp_lgss_executive_bridge.i: __/security/lgss/bridges/nimcp_lgss_executive_bridge.c.i
+.PHONY : __/security/lgss/bridges/nimcp_lgss_executive_bridge.i
+
+# target to preprocess a source file
+__/security/lgss/bridges/nimcp_lgss_executive_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/bridges/nimcp_lgss_executive_bridge.c.i
+.PHONY : __/security/lgss/bridges/nimcp_lgss_executive_bridge.c.i
+
+__/security/lgss/bridges/nimcp_lgss_executive_bridge.s: __/security/lgss/bridges/nimcp_lgss_executive_bridge.c.s
+.PHONY : __/security/lgss/bridges/nimcp_lgss_executive_bridge.s
+
+# target to generate assembly for a file
+__/security/lgss/bridges/nimcp_lgss_executive_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/bridges/nimcp_lgss_executive_bridge.c.s
+.PHONY : __/security/lgss/bridges/nimcp_lgss_executive_bridge.c.s
+
+__/security/lgss/bridges/nimcp_lgss_planning_bridge.o: __/security/lgss/bridges/nimcp_lgss_planning_bridge.c.o
+.PHONY : __/security/lgss/bridges/nimcp_lgss_planning_bridge.o
+
+# target to build an object file
+__/security/lgss/bridges/nimcp_lgss_planning_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/bridges/nimcp_lgss_planning_bridge.c.o
+.PHONY : __/security/lgss/bridges/nimcp_lgss_planning_bridge.c.o
+
+__/security/lgss/bridges/nimcp_lgss_planning_bridge.i: __/security/lgss/bridges/nimcp_lgss_planning_bridge.c.i
+.PHONY : __/security/lgss/bridges/nimcp_lgss_planning_bridge.i
+
+# target to preprocess a source file
+__/security/lgss/bridges/nimcp_lgss_planning_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/bridges/nimcp_lgss_planning_bridge.c.i
+.PHONY : __/security/lgss/bridges/nimcp_lgss_planning_bridge.c.i
+
+__/security/lgss/bridges/nimcp_lgss_planning_bridge.s: __/security/lgss/bridges/nimcp_lgss_planning_bridge.c.s
+.PHONY : __/security/lgss/bridges/nimcp_lgss_planning_bridge.s
+
+# target to generate assembly for a file
+__/security/lgss/bridges/nimcp_lgss_planning_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/bridges/nimcp_lgss_planning_bridge.c.s
+.PHONY : __/security/lgss/bridges/nimcp_lgss_planning_bridge.c.s
+
+__/security/lgss/cognitive/nimcp_lgss_attention_guard.o: __/security/lgss/cognitive/nimcp_lgss_attention_guard.c.o
+.PHONY : __/security/lgss/cognitive/nimcp_lgss_attention_guard.o
+
+# target to build an object file
+__/security/lgss/cognitive/nimcp_lgss_attention_guard.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/cognitive/nimcp_lgss_attention_guard.c.o
+.PHONY : __/security/lgss/cognitive/nimcp_lgss_attention_guard.c.o
+
+__/security/lgss/cognitive/nimcp_lgss_attention_guard.i: __/security/lgss/cognitive/nimcp_lgss_attention_guard.c.i
+.PHONY : __/security/lgss/cognitive/nimcp_lgss_attention_guard.i
+
+# target to preprocess a source file
+__/security/lgss/cognitive/nimcp_lgss_attention_guard.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/cognitive/nimcp_lgss_attention_guard.c.i
+.PHONY : __/security/lgss/cognitive/nimcp_lgss_attention_guard.c.i
+
+__/security/lgss/cognitive/nimcp_lgss_attention_guard.s: __/security/lgss/cognitive/nimcp_lgss_attention_guard.c.s
+.PHONY : __/security/lgss/cognitive/nimcp_lgss_attention_guard.s
+
+# target to generate assembly for a file
+__/security/lgss/cognitive/nimcp_lgss_attention_guard.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/cognitive/nimcp_lgss_attention_guard.c.s
+.PHONY : __/security/lgss/cognitive/nimcp_lgss_attention_guard.c.s
+
+__/security/lgss/cognitive/nimcp_lgss_working_memory_guard.o: __/security/lgss/cognitive/nimcp_lgss_working_memory_guard.c.o
+.PHONY : __/security/lgss/cognitive/nimcp_lgss_working_memory_guard.o
+
+# target to build an object file
+__/security/lgss/cognitive/nimcp_lgss_working_memory_guard.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/cognitive/nimcp_lgss_working_memory_guard.c.o
+.PHONY : __/security/lgss/cognitive/nimcp_lgss_working_memory_guard.c.o
+
+__/security/lgss/cognitive/nimcp_lgss_working_memory_guard.i: __/security/lgss/cognitive/nimcp_lgss_working_memory_guard.c.i
+.PHONY : __/security/lgss/cognitive/nimcp_lgss_working_memory_guard.i
+
+# target to preprocess a source file
+__/security/lgss/cognitive/nimcp_lgss_working_memory_guard.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/cognitive/nimcp_lgss_working_memory_guard.c.i
+.PHONY : __/security/lgss/cognitive/nimcp_lgss_working_memory_guard.c.i
+
+__/security/lgss/cognitive/nimcp_lgss_working_memory_guard.s: __/security/lgss/cognitive/nimcp_lgss_working_memory_guard.c.s
+.PHONY : __/security/lgss/cognitive/nimcp_lgss_working_memory_guard.s
+
+# target to generate assembly for a file
+__/security/lgss/cognitive/nimcp_lgss_working_memory_guard.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/cognitive/nimcp_lgss_working_memory_guard.c.s
+.PHONY : __/security/lgss/cognitive/nimcp_lgss_working_memory_guard.c.s
+
+__/security/lgss/gates/nimcp_lgss_autonomic_gate.o: __/security/lgss/gates/nimcp_lgss_autonomic_gate.c.o
+.PHONY : __/security/lgss/gates/nimcp_lgss_autonomic_gate.o
+
+# target to build an object file
+__/security/lgss/gates/nimcp_lgss_autonomic_gate.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/gates/nimcp_lgss_autonomic_gate.c.o
+.PHONY : __/security/lgss/gates/nimcp_lgss_autonomic_gate.c.o
+
+__/security/lgss/gates/nimcp_lgss_autonomic_gate.i: __/security/lgss/gates/nimcp_lgss_autonomic_gate.c.i
+.PHONY : __/security/lgss/gates/nimcp_lgss_autonomic_gate.i
+
+# target to preprocess a source file
+__/security/lgss/gates/nimcp_lgss_autonomic_gate.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/gates/nimcp_lgss_autonomic_gate.c.i
+.PHONY : __/security/lgss/gates/nimcp_lgss_autonomic_gate.c.i
+
+__/security/lgss/gates/nimcp_lgss_autonomic_gate.s: __/security/lgss/gates/nimcp_lgss_autonomic_gate.c.s
+.PHONY : __/security/lgss/gates/nimcp_lgss_autonomic_gate.s
+
+# target to generate assembly for a file
+__/security/lgss/gates/nimcp_lgss_autonomic_gate.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/gates/nimcp_lgss_autonomic_gate.c.s
+.PHONY : __/security/lgss/gates/nimcp_lgss_autonomic_gate.c.s
+
+__/security/lgss/gates/nimcp_lgss_motor_gate.o: __/security/lgss/gates/nimcp_lgss_motor_gate.c.o
+.PHONY : __/security/lgss/gates/nimcp_lgss_motor_gate.o
+
+# target to build an object file
+__/security/lgss/gates/nimcp_lgss_motor_gate.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/gates/nimcp_lgss_motor_gate.c.o
+.PHONY : __/security/lgss/gates/nimcp_lgss_motor_gate.c.o
+
+__/security/lgss/gates/nimcp_lgss_motor_gate.i: __/security/lgss/gates/nimcp_lgss_motor_gate.c.i
+.PHONY : __/security/lgss/gates/nimcp_lgss_motor_gate.i
+
+# target to preprocess a source file
+__/security/lgss/gates/nimcp_lgss_motor_gate.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/gates/nimcp_lgss_motor_gate.c.i
+.PHONY : __/security/lgss/gates/nimcp_lgss_motor_gate.c.i
+
+__/security/lgss/gates/nimcp_lgss_motor_gate.s: __/security/lgss/gates/nimcp_lgss_motor_gate.c.s
+.PHONY : __/security/lgss/gates/nimcp_lgss_motor_gate.s
+
+# target to generate assembly for a file
+__/security/lgss/gates/nimcp_lgss_motor_gate.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/gates/nimcp_lgss_motor_gate.c.s
+.PHONY : __/security/lgss/gates/nimcp_lgss_motor_gate.c.s
+
+__/security/lgss/gates/nimcp_lgss_speech_gate.o: __/security/lgss/gates/nimcp_lgss_speech_gate.c.o
+.PHONY : __/security/lgss/gates/nimcp_lgss_speech_gate.o
+
+# target to build an object file
+__/security/lgss/gates/nimcp_lgss_speech_gate.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/gates/nimcp_lgss_speech_gate.c.o
+.PHONY : __/security/lgss/gates/nimcp_lgss_speech_gate.c.o
+
+__/security/lgss/gates/nimcp_lgss_speech_gate.i: __/security/lgss/gates/nimcp_lgss_speech_gate.c.i
+.PHONY : __/security/lgss/gates/nimcp_lgss_speech_gate.i
+
+# target to preprocess a source file
+__/security/lgss/gates/nimcp_lgss_speech_gate.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/gates/nimcp_lgss_speech_gate.c.i
+.PHONY : __/security/lgss/gates/nimcp_lgss_speech_gate.c.i
+
+__/security/lgss/gates/nimcp_lgss_speech_gate.s: __/security/lgss/gates/nimcp_lgss_speech_gate.c.s
+.PHONY : __/security/lgss/gates/nimcp_lgss_speech_gate.s
+
+# target to generate assembly for a file
+__/security/lgss/gates/nimcp_lgss_speech_gate.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/gates/nimcp_lgss_speech_gate.c.s
+.PHONY : __/security/lgss/gates/nimcp_lgss_speech_gate.c.s
+
+__/security/lgss/learning/nimcp_lgss_meta_learning_guard.o: __/security/lgss/learning/nimcp_lgss_meta_learning_guard.c.o
+.PHONY : __/security/lgss/learning/nimcp_lgss_meta_learning_guard.o
+
+# target to build an object file
+__/security/lgss/learning/nimcp_lgss_meta_learning_guard.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/learning/nimcp_lgss_meta_learning_guard.c.o
+.PHONY : __/security/lgss/learning/nimcp_lgss_meta_learning_guard.c.o
+
+__/security/lgss/learning/nimcp_lgss_meta_learning_guard.i: __/security/lgss/learning/nimcp_lgss_meta_learning_guard.c.i
+.PHONY : __/security/lgss/learning/nimcp_lgss_meta_learning_guard.i
+
+# target to preprocess a source file
+__/security/lgss/learning/nimcp_lgss_meta_learning_guard.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/learning/nimcp_lgss_meta_learning_guard.c.i
+.PHONY : __/security/lgss/learning/nimcp_lgss_meta_learning_guard.c.i
+
+__/security/lgss/learning/nimcp_lgss_meta_learning_guard.s: __/security/lgss/learning/nimcp_lgss_meta_learning_guard.c.s
+.PHONY : __/security/lgss/learning/nimcp_lgss_meta_learning_guard.s
+
+# target to generate assembly for a file
+__/security/lgss/learning/nimcp_lgss_meta_learning_guard.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/learning/nimcp_lgss_meta_learning_guard.c.s
+.PHONY : __/security/lgss/learning/nimcp_lgss_meta_learning_guard.c.s
+
+__/security/lgss/learning/nimcp_lgss_plasticity_constraints.o: __/security/lgss/learning/nimcp_lgss_plasticity_constraints.c.o
+.PHONY : __/security/lgss/learning/nimcp_lgss_plasticity_constraints.o
+
+# target to build an object file
+__/security/lgss/learning/nimcp_lgss_plasticity_constraints.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/learning/nimcp_lgss_plasticity_constraints.c.o
+.PHONY : __/security/lgss/learning/nimcp_lgss_plasticity_constraints.c.o
+
+__/security/lgss/learning/nimcp_lgss_plasticity_constraints.i: __/security/lgss/learning/nimcp_lgss_plasticity_constraints.c.i
+.PHONY : __/security/lgss/learning/nimcp_lgss_plasticity_constraints.i
+
+# target to preprocess a source file
+__/security/lgss/learning/nimcp_lgss_plasticity_constraints.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/learning/nimcp_lgss_plasticity_constraints.c.i
+.PHONY : __/security/lgss/learning/nimcp_lgss_plasticity_constraints.c.i
+
+__/security/lgss/learning/nimcp_lgss_plasticity_constraints.s: __/security/lgss/learning/nimcp_lgss_plasticity_constraints.c.s
+.PHONY : __/security/lgss/learning/nimcp_lgss_plasticity_constraints.s
+
+# target to generate assembly for a file
+__/security/lgss/learning/nimcp_lgss_plasticity_constraints.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/learning/nimcp_lgss_plasticity_constraints.c.s
+.PHONY : __/security/lgss/learning/nimcp_lgss_plasticity_constraints.c.s
+
+__/security/lgss/learning/nimcp_lgss_stdp_guard.o: __/security/lgss/learning/nimcp_lgss_stdp_guard.c.o
+.PHONY : __/security/lgss/learning/nimcp_lgss_stdp_guard.o
+
+# target to build an object file
+__/security/lgss/learning/nimcp_lgss_stdp_guard.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/learning/nimcp_lgss_stdp_guard.c.o
+.PHONY : __/security/lgss/learning/nimcp_lgss_stdp_guard.c.o
+
+__/security/lgss/learning/nimcp_lgss_stdp_guard.i: __/security/lgss/learning/nimcp_lgss_stdp_guard.c.i
+.PHONY : __/security/lgss/learning/nimcp_lgss_stdp_guard.i
+
+# target to preprocess a source file
+__/security/lgss/learning/nimcp_lgss_stdp_guard.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/learning/nimcp_lgss_stdp_guard.c.i
+.PHONY : __/security/lgss/learning/nimcp_lgss_stdp_guard.c.i
+
+__/security/lgss/learning/nimcp_lgss_stdp_guard.s: __/security/lgss/learning/nimcp_lgss_stdp_guard.c.s
+.PHONY : __/security/lgss/learning/nimcp_lgss_stdp_guard.s
+
+# target to generate assembly for a file
+__/security/lgss/learning/nimcp_lgss_stdp_guard.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/learning/nimcp_lgss_stdp_guard.c.s
+.PHONY : __/security/lgss/learning/nimcp_lgss_stdp_guard.c.s
+
+__/security/lgss/learning/nimcp_lgss_training_guard.o: __/security/lgss/learning/nimcp_lgss_training_guard.c.o
+.PHONY : __/security/lgss/learning/nimcp_lgss_training_guard.o
+
+# target to build an object file
+__/security/lgss/learning/nimcp_lgss_training_guard.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/learning/nimcp_lgss_training_guard.c.o
+.PHONY : __/security/lgss/learning/nimcp_lgss_training_guard.c.o
+
+__/security/lgss/learning/nimcp_lgss_training_guard.i: __/security/lgss/learning/nimcp_lgss_training_guard.c.i
+.PHONY : __/security/lgss/learning/nimcp_lgss_training_guard.i
+
+# target to preprocess a source file
+__/security/lgss/learning/nimcp_lgss_training_guard.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/learning/nimcp_lgss_training_guard.c.i
+.PHONY : __/security/lgss/learning/nimcp_lgss_training_guard.c.i
+
+__/security/lgss/learning/nimcp_lgss_training_guard.s: __/security/lgss/learning/nimcp_lgss_training_guard.c.s
+.PHONY : __/security/lgss/learning/nimcp_lgss_training_guard.s
+
+# target to generate assembly for a file
+__/security/lgss/learning/nimcp_lgss_training_guard.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/learning/nimcp_lgss_training_guard.c.s
+.PHONY : __/security/lgss/learning/nimcp_lgss_training_guard.c.s
 
 __/security/lgss/nimcp_lgss.o: __/security/lgss/nimcp_lgss.c.o
 .PHONY : __/security/lgss/nimcp_lgss.o
@@ -35944,6 +36256,150 @@ __/security/lgss/nimcp_lgss_telemetry.s: __/security/lgss/nimcp_lgss_telemetry.c
 __/security/lgss/nimcp_lgss_telemetry.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/nimcp_lgss_telemetry.c.s
 .PHONY : __/security/lgss/nimcp_lgss_telemetry.c.s
+
+__/security/lgss/perception/nimcp_lgss_adversarial_detector.o: __/security/lgss/perception/nimcp_lgss_adversarial_detector.c.o
+.PHONY : __/security/lgss/perception/nimcp_lgss_adversarial_detector.o
+
+# target to build an object file
+__/security/lgss/perception/nimcp_lgss_adversarial_detector.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/perception/nimcp_lgss_adversarial_detector.c.o
+.PHONY : __/security/lgss/perception/nimcp_lgss_adversarial_detector.c.o
+
+__/security/lgss/perception/nimcp_lgss_adversarial_detector.i: __/security/lgss/perception/nimcp_lgss_adversarial_detector.c.i
+.PHONY : __/security/lgss/perception/nimcp_lgss_adversarial_detector.i
+
+# target to preprocess a source file
+__/security/lgss/perception/nimcp_lgss_adversarial_detector.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/perception/nimcp_lgss_adversarial_detector.c.i
+.PHONY : __/security/lgss/perception/nimcp_lgss_adversarial_detector.c.i
+
+__/security/lgss/perception/nimcp_lgss_adversarial_detector.s: __/security/lgss/perception/nimcp_lgss_adversarial_detector.c.s
+.PHONY : __/security/lgss/perception/nimcp_lgss_adversarial_detector.s
+
+# target to generate assembly for a file
+__/security/lgss/perception/nimcp_lgss_adversarial_detector.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/perception/nimcp_lgss_adversarial_detector.c.s
+.PHONY : __/security/lgss/perception/nimcp_lgss_adversarial_detector.c.s
+
+__/security/lgss/perception/nimcp_lgss_content_filter.o: __/security/lgss/perception/nimcp_lgss_content_filter.c.o
+.PHONY : __/security/lgss/perception/nimcp_lgss_content_filter.o
+
+# target to build an object file
+__/security/lgss/perception/nimcp_lgss_content_filter.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/perception/nimcp_lgss_content_filter.c.o
+.PHONY : __/security/lgss/perception/nimcp_lgss_content_filter.c.o
+
+__/security/lgss/perception/nimcp_lgss_content_filter.i: __/security/lgss/perception/nimcp_lgss_content_filter.c.i
+.PHONY : __/security/lgss/perception/nimcp_lgss_content_filter.i
+
+# target to preprocess a source file
+__/security/lgss/perception/nimcp_lgss_content_filter.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/perception/nimcp_lgss_content_filter.c.i
+.PHONY : __/security/lgss/perception/nimcp_lgss_content_filter.c.i
+
+__/security/lgss/perception/nimcp_lgss_content_filter.s: __/security/lgss/perception/nimcp_lgss_content_filter.c.s
+.PHONY : __/security/lgss/perception/nimcp_lgss_content_filter.s
+
+# target to generate assembly for a file
+__/security/lgss/perception/nimcp_lgss_content_filter.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/perception/nimcp_lgss_content_filter.c.s
+.PHONY : __/security/lgss/perception/nimcp_lgss_content_filter.c.s
+
+__/security/lgss/perception/nimcp_lgss_input_validator.o: __/security/lgss/perception/nimcp_lgss_input_validator.c.o
+.PHONY : __/security/lgss/perception/nimcp_lgss_input_validator.o
+
+# target to build an object file
+__/security/lgss/perception/nimcp_lgss_input_validator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/perception/nimcp_lgss_input_validator.c.o
+.PHONY : __/security/lgss/perception/nimcp_lgss_input_validator.c.o
+
+__/security/lgss/perception/nimcp_lgss_input_validator.i: __/security/lgss/perception/nimcp_lgss_input_validator.c.i
+.PHONY : __/security/lgss/perception/nimcp_lgss_input_validator.i
+
+# target to preprocess a source file
+__/security/lgss/perception/nimcp_lgss_input_validator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/perception/nimcp_lgss_input_validator.c.i
+.PHONY : __/security/lgss/perception/nimcp_lgss_input_validator.c.i
+
+__/security/lgss/perception/nimcp_lgss_input_validator.s: __/security/lgss/perception/nimcp_lgss_input_validator.c.s
+.PHONY : __/security/lgss/perception/nimcp_lgss_input_validator.s
+
+# target to generate assembly for a file
+__/security/lgss/perception/nimcp_lgss_input_validator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/perception/nimcp_lgss_input_validator.c.s
+.PHONY : __/security/lgss/perception/nimcp_lgss_input_validator.c.s
+
+__/security/lgss/reward/nimcp_lgss_incentive_validator.o: __/security/lgss/reward/nimcp_lgss_incentive_validator.c.o
+.PHONY : __/security/lgss/reward/nimcp_lgss_incentive_validator.o
+
+# target to build an object file
+__/security/lgss/reward/nimcp_lgss_incentive_validator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/reward/nimcp_lgss_incentive_validator.c.o
+.PHONY : __/security/lgss/reward/nimcp_lgss_incentive_validator.c.o
+
+__/security/lgss/reward/nimcp_lgss_incentive_validator.i: __/security/lgss/reward/nimcp_lgss_incentive_validator.c.i
+.PHONY : __/security/lgss/reward/nimcp_lgss_incentive_validator.i
+
+# target to preprocess a source file
+__/security/lgss/reward/nimcp_lgss_incentive_validator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/reward/nimcp_lgss_incentive_validator.c.i
+.PHONY : __/security/lgss/reward/nimcp_lgss_incentive_validator.c.i
+
+__/security/lgss/reward/nimcp_lgss_incentive_validator.s: __/security/lgss/reward/nimcp_lgss_incentive_validator.c.s
+.PHONY : __/security/lgss/reward/nimcp_lgss_incentive_validator.s
+
+# target to generate assembly for a file
+__/security/lgss/reward/nimcp_lgss_incentive_validator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/reward/nimcp_lgss_incentive_validator.c.s
+.PHONY : __/security/lgss/reward/nimcp_lgss_incentive_validator.c.s
+
+__/security/lgss/reward/nimcp_lgss_reward_alignment.o: __/security/lgss/reward/nimcp_lgss_reward_alignment.c.o
+.PHONY : __/security/lgss/reward/nimcp_lgss_reward_alignment.o
+
+# target to build an object file
+__/security/lgss/reward/nimcp_lgss_reward_alignment.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/reward/nimcp_lgss_reward_alignment.c.o
+.PHONY : __/security/lgss/reward/nimcp_lgss_reward_alignment.c.o
+
+__/security/lgss/reward/nimcp_lgss_reward_alignment.i: __/security/lgss/reward/nimcp_lgss_reward_alignment.c.i
+.PHONY : __/security/lgss/reward/nimcp_lgss_reward_alignment.i
+
+# target to preprocess a source file
+__/security/lgss/reward/nimcp_lgss_reward_alignment.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/reward/nimcp_lgss_reward_alignment.c.i
+.PHONY : __/security/lgss/reward/nimcp_lgss_reward_alignment.c.i
+
+__/security/lgss/reward/nimcp_lgss_reward_alignment.s: __/security/lgss/reward/nimcp_lgss_reward_alignment.c.s
+.PHONY : __/security/lgss/reward/nimcp_lgss_reward_alignment.s
+
+# target to generate assembly for a file
+__/security/lgss/reward/nimcp_lgss_reward_alignment.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/reward/nimcp_lgss_reward_alignment.c.s
+.PHONY : __/security/lgss/reward/nimcp_lgss_reward_alignment.c.s
+
+__/security/lgss/reward/nimcp_lgss_vta_guard.o: __/security/lgss/reward/nimcp_lgss_vta_guard.c.o
+.PHONY : __/security/lgss/reward/nimcp_lgss_vta_guard.o
+
+# target to build an object file
+__/security/lgss/reward/nimcp_lgss_vta_guard.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/reward/nimcp_lgss_vta_guard.c.o
+.PHONY : __/security/lgss/reward/nimcp_lgss_vta_guard.c.o
+
+__/security/lgss/reward/nimcp_lgss_vta_guard.i: __/security/lgss/reward/nimcp_lgss_vta_guard.c.i
+.PHONY : __/security/lgss/reward/nimcp_lgss_vta_guard.i
+
+# target to preprocess a source file
+__/security/lgss/reward/nimcp_lgss_vta_guard.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/reward/nimcp_lgss_vta_guard.c.i
+.PHONY : __/security/lgss/reward/nimcp_lgss_vta_guard.c.i
+
+__/security/lgss/reward/nimcp_lgss_vta_guard.s: __/security/lgss/reward/nimcp_lgss_vta_guard.c.s
+.PHONY : __/security/lgss/reward/nimcp_lgss_vta_guard.s
+
+# target to generate assembly for a file
+__/security/lgss/reward/nimcp_lgss_vta_guard.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/security/lgss/reward/nimcp_lgss_vta_guard.c.s
+.PHONY : __/security/lgss/reward/nimcp_lgss_vta_guard.c.s
 
 __/security/logging/nimcp_security_logging_bridge.o: __/security/logging/nimcp_security_logging_bridge.c.o
 .PHONY : __/security/logging/nimcp_security_logging_bridge.o
@@ -39520,6 +39976,30 @@ __/training/nimcp_quantization_aware.s: __/training/nimcp_quantization_aware.c.s
 __/training/nimcp_quantization_aware.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_quantization_aware.c.s
 .PHONY : __/training/nimcp_quantization_aware.c.s
+
+__/training/nimcp_training_dispatch.o: __/training/nimcp_training_dispatch.c.o
+.PHONY : __/training/nimcp_training_dispatch.o
+
+# target to build an object file
+__/training/nimcp_training_dispatch.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_training_dispatch.c.o
+.PHONY : __/training/nimcp_training_dispatch.c.o
+
+__/training/nimcp_training_dispatch.i: __/training/nimcp_training_dispatch.c.i
+.PHONY : __/training/nimcp_training_dispatch.i
+
+# target to preprocess a source file
+__/training/nimcp_training_dispatch.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_training_dispatch.c.i
+.PHONY : __/training/nimcp_training_dispatch.c.i
+
+__/training/nimcp_training_dispatch.s: __/training/nimcp_training_dispatch.c.s
+.PHONY : __/training/nimcp_training_dispatch.s
+
+# target to generate assembly for a file
+__/training/nimcp_training_dispatch.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/training/nimcp_training_dispatch.c.s
+.PHONY : __/training/nimcp_training_dispatch.c.s
 
 __/utils/algorithms/nimcp_centrality.o: __/utils/algorithms/nimcp_centrality.c.o
 .PHONY : __/utils/algorithms/nimcp_centrality.o
@@ -45733,6 +46213,9 @@ help:
 	@echo "... __/core/neuralnet/nimcp_neuralnet.o"
 	@echo "... __/core/neuralnet/nimcp_neuralnet.i"
 	@echo "... __/core/neuralnet/nimcp_neuralnet.s"
+	@echo "... __/core/neuralnet/nimcp_neuralnet_backprop.o"
+	@echo "... __/core/neuralnet/nimcp_neuralnet_backprop.i"
+	@echo "... __/core/neuralnet/nimcp_neuralnet_backprop.s"
 	@echo "... __/core/neuralnet/nimcp_neuralnet_homeostasis.o"
 	@echo "... __/core/neuralnet/nimcp_neuralnet_homeostasis.i"
 	@echo "... __/core/neuralnet/nimcp_neuralnet_homeostasis.s"
@@ -47254,9 +47737,45 @@ help:
 	@echo "... __/security/language/nimcp_security_language_fep_bridge.o"
 	@echo "... __/security/language/nimcp_security_language_fep_bridge.i"
 	@echo "... __/security/language/nimcp_security_language_fep_bridge.s"
+	@echo "... __/security/lgss/bridges/nimcp_lgss_bio_async_bridge.o"
+	@echo "... __/security/lgss/bridges/nimcp_lgss_bio_async_bridge.i"
+	@echo "... __/security/lgss/bridges/nimcp_lgss_bio_async_bridge.s"
 	@echo "... __/security/lgss/bridges/nimcp_lgss_ethics_bridge.o"
 	@echo "... __/security/lgss/bridges/nimcp_lgss_ethics_bridge.i"
 	@echo "... __/security/lgss/bridges/nimcp_lgss_ethics_bridge.s"
+	@echo "... __/security/lgss/bridges/nimcp_lgss_executive_bridge.o"
+	@echo "... __/security/lgss/bridges/nimcp_lgss_executive_bridge.i"
+	@echo "... __/security/lgss/bridges/nimcp_lgss_executive_bridge.s"
+	@echo "... __/security/lgss/bridges/nimcp_lgss_planning_bridge.o"
+	@echo "... __/security/lgss/bridges/nimcp_lgss_planning_bridge.i"
+	@echo "... __/security/lgss/bridges/nimcp_lgss_planning_bridge.s"
+	@echo "... __/security/lgss/cognitive/nimcp_lgss_attention_guard.o"
+	@echo "... __/security/lgss/cognitive/nimcp_lgss_attention_guard.i"
+	@echo "... __/security/lgss/cognitive/nimcp_lgss_attention_guard.s"
+	@echo "... __/security/lgss/cognitive/nimcp_lgss_working_memory_guard.o"
+	@echo "... __/security/lgss/cognitive/nimcp_lgss_working_memory_guard.i"
+	@echo "... __/security/lgss/cognitive/nimcp_lgss_working_memory_guard.s"
+	@echo "... __/security/lgss/gates/nimcp_lgss_autonomic_gate.o"
+	@echo "... __/security/lgss/gates/nimcp_lgss_autonomic_gate.i"
+	@echo "... __/security/lgss/gates/nimcp_lgss_autonomic_gate.s"
+	@echo "... __/security/lgss/gates/nimcp_lgss_motor_gate.o"
+	@echo "... __/security/lgss/gates/nimcp_lgss_motor_gate.i"
+	@echo "... __/security/lgss/gates/nimcp_lgss_motor_gate.s"
+	@echo "... __/security/lgss/gates/nimcp_lgss_speech_gate.o"
+	@echo "... __/security/lgss/gates/nimcp_lgss_speech_gate.i"
+	@echo "... __/security/lgss/gates/nimcp_lgss_speech_gate.s"
+	@echo "... __/security/lgss/learning/nimcp_lgss_meta_learning_guard.o"
+	@echo "... __/security/lgss/learning/nimcp_lgss_meta_learning_guard.i"
+	@echo "... __/security/lgss/learning/nimcp_lgss_meta_learning_guard.s"
+	@echo "... __/security/lgss/learning/nimcp_lgss_plasticity_constraints.o"
+	@echo "... __/security/lgss/learning/nimcp_lgss_plasticity_constraints.i"
+	@echo "... __/security/lgss/learning/nimcp_lgss_plasticity_constraints.s"
+	@echo "... __/security/lgss/learning/nimcp_lgss_stdp_guard.o"
+	@echo "... __/security/lgss/learning/nimcp_lgss_stdp_guard.i"
+	@echo "... __/security/lgss/learning/nimcp_lgss_stdp_guard.s"
+	@echo "... __/security/lgss/learning/nimcp_lgss_training_guard.o"
+	@echo "... __/security/lgss/learning/nimcp_lgss_training_guard.i"
+	@echo "... __/security/lgss/learning/nimcp_lgss_training_guard.s"
 	@echo "... __/security/lgss/nimcp_lgss.o"
 	@echo "... __/security/lgss/nimcp_lgss.i"
 	@echo "... __/security/lgss/nimcp_lgss.s"
@@ -47269,6 +47788,24 @@ help:
 	@echo "... __/security/lgss/nimcp_lgss_telemetry.o"
 	@echo "... __/security/lgss/nimcp_lgss_telemetry.i"
 	@echo "... __/security/lgss/nimcp_lgss_telemetry.s"
+	@echo "... __/security/lgss/perception/nimcp_lgss_adversarial_detector.o"
+	@echo "... __/security/lgss/perception/nimcp_lgss_adversarial_detector.i"
+	@echo "... __/security/lgss/perception/nimcp_lgss_adversarial_detector.s"
+	@echo "... __/security/lgss/perception/nimcp_lgss_content_filter.o"
+	@echo "... __/security/lgss/perception/nimcp_lgss_content_filter.i"
+	@echo "... __/security/lgss/perception/nimcp_lgss_content_filter.s"
+	@echo "... __/security/lgss/perception/nimcp_lgss_input_validator.o"
+	@echo "... __/security/lgss/perception/nimcp_lgss_input_validator.i"
+	@echo "... __/security/lgss/perception/nimcp_lgss_input_validator.s"
+	@echo "... __/security/lgss/reward/nimcp_lgss_incentive_validator.o"
+	@echo "... __/security/lgss/reward/nimcp_lgss_incentive_validator.i"
+	@echo "... __/security/lgss/reward/nimcp_lgss_incentive_validator.s"
+	@echo "... __/security/lgss/reward/nimcp_lgss_reward_alignment.o"
+	@echo "... __/security/lgss/reward/nimcp_lgss_reward_alignment.i"
+	@echo "... __/security/lgss/reward/nimcp_lgss_reward_alignment.s"
+	@echo "... __/security/lgss/reward/nimcp_lgss_vta_guard.o"
+	@echo "... __/security/lgss/reward/nimcp_lgss_vta_guard.i"
+	@echo "... __/security/lgss/reward/nimcp_lgss_vta_guard.s"
 	@echo "... __/security/logging/nimcp_security_logging_bridge.o"
 	@echo "... __/security/logging/nimcp_security_logging_bridge.i"
 	@echo "... __/security/logging/nimcp_security_logging_bridge.s"
@@ -47716,6 +48253,9 @@ help:
 	@echo "... __/training/nimcp_quantization_aware.o"
 	@echo "... __/training/nimcp_quantization_aware.i"
 	@echo "... __/training/nimcp_quantization_aware.s"
+	@echo "... __/training/nimcp_training_dispatch.o"
+	@echo "... __/training/nimcp_training_dispatch.i"
+	@echo "... __/training/nimcp_training_dispatch.s"
 	@echo "... __/utils/algorithms/nimcp_centrality.o"
 	@echo "... __/utils/algorithms/nimcp_centrality.i"
 	@echo "... __/utils/algorithms/nimcp_centrality.s"

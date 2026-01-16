@@ -8375,6 +8375,32 @@ e2e_test_physics_modules/fast:
 .PHONY : e2e_test_physics_modules/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_training_validation
+
+# Build rule for target.
+e2e_test_training_validation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_training_validation
+.PHONY : e2e_test_training_validation
+
+# fast build rule for target.
+e2e_test_training_validation/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/training/CMakeFiles/e2e_test_training_validation.dir/build.make test/e2e/training/CMakeFiles/e2e_test_training_validation.dir/build
+.PHONY : e2e_test_training_validation/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_training_dispatch
+
+# Build rule for target.
+e2e_test_training_dispatch: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_training_dispatch
+.PHONY : e2e_test_training_dispatch
+
+# fast build rule for target.
+e2e_test_training_dispatch/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/training/CMakeFiles/e2e_test_training_dispatch.dir/build.make test/e2e/training/CMakeFiles/e2e_test_training_dispatch.dir/build
+.PHONY : e2e_test_training_dispatch/fast
+
+#=============================================================================
 # Target rules for targets named test_lgss_e2e
 
 # Build rule for target.
@@ -27147,6 +27173,19 @@ regression_training_symbolic_logic_hub/fast:
 .PHONY : regression_training_symbolic_logic_hub/fast
 
 #=============================================================================
+# Target rules for targets named regression_training_dispatch
+
+# Build rule for target.
+regression_training_dispatch: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_training_dispatch
+.PHONY : regression_training_dispatch
+
+# fast build rule for target.
+regression_training_dispatch/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/training/CMakeFiles/regression_training_dispatch.dir/build.make test/regression/training/CMakeFiles/regression_training_dispatch.dir/build
+.PHONY : regression_training_dispatch/fast
+
+#=============================================================================
 # Target rules for targets named unit_training_test_cnn_backprop
 
 # Build rule for target.
@@ -27327,6 +27366,19 @@ integration_training_test_cnn_cortex_integration: cmake_check_build_system
 integration_training_test_cnn_cortex_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/training/CMakeFiles/integration_training_test_cnn_cortex_integration.dir/build.make test/integration/training/CMakeFiles/integration_training_test_cnn_cortex_integration.dir/build
 .PHONY : integration_training_test_cnn_cortex_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_training_dispatch
+
+# Build rule for target.
+integration_training_dispatch: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_training_dispatch
+.PHONY : integration_training_dispatch
+
+# fast build rule for target.
+integration_training_dispatch/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/training/CMakeFiles/integration_training_dispatch.dir/build.make test/integration/training/CMakeFiles/integration_training_dispatch.dir/build
+.PHONY : integration_training_dispatch/fast
 
 #=============================================================================
 # Target rules for targets named integration_training_exception
@@ -29192,8 +29244,10 @@ help:
 	@echo "... e2e_test_tier2_hub_bridges"
 	@echo "... e2e_test_tier3_fep_bridges"
 	@echo "... e2e_test_tom_snn_plasticity_pipeline"
+	@echo "... e2e_test_training_dispatch"
 	@echo "... e2e_test_training_logic_pipeline"
 	@echo "... e2e_test_training_symbolic_logic_pipeline"
+	@echo "... e2e_test_training_validation"
 	@echo "... e2e_test_unified_training_integration"
 	@echo "... e2e_test_visual_pipeline"
 	@echo "... e2e_test_wellbeing_enhanced_pipeline"
@@ -29587,6 +29641,7 @@ help:
 	@echo "... integration_ternary_test_training_ternary_integration"
 	@echo "... integration_test_kg_module_wiring"
 	@echo "... integration_thalamic_substrate_bridges"
+	@echo "... integration_training_dispatch"
 	@echo "... integration_training_exception"
 	@echo "... integration_training_symbolic_logic_hub"
 	@echo "... integration_training_test_cnn_backprop_integration"
@@ -29945,6 +30000,7 @@ help:
 	@echo "... regression_social_fep"
 	@echo "... regression_swarm_bridges"
 	@echo "... regression_test_kg_module_wiring"
+	@echo "... regression_training_dispatch"
 	@echo "... regression_training_symbolic_logic_hub"
 	@echo "... regression_training_test_cnn_backprop_regression"
 	@echo "... regression_training_test_cnn_cortex_bridge_regression"

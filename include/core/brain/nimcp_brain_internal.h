@@ -181,6 +181,21 @@ struct brain_struct {
     brain_config_t config;       // User configuration
     task_strategy_t* strategy;   // Task-specific behavior strategy
 
+    // === NETWORK TYPE SPECIFIC IMPLEMENTATIONS ===
+    // These are optional, created based on config.network_type
+    // Only one is typically active at a time (unless HYBRID mode)
+    struct snn_network_s* snn_network;       // SNN implementation (if network_type=SNN)
+    struct lnn_network_s* lnn_network;       // LNN implementation (if network_type=LNN)
+    struct cnn_trainer_s* cnn_trainer;       // CNN implementation (if network_type=CNN)
+    uint8_t active_network_type;             // Currently active network type (nimcp_network_type_t)
+    bool owns_specialized_network;           // Whether brain owns the specialized network
+
+    // === SPECIALIZED TRAINING CONTEXTS ===
+    // Training contexts for each network type (created on demand)
+    struct snn_training_ctx_s* snn_training_ctx;   // SNN training (STDP/eProp/surrogate)
+    struct lnn_training_ctx_s* lnn_training_ctx;   // LNN training (adjoint ODE)
+    // CNN training is integrated into cnn_trainer
+
     // Label to output mapping
     char** output_labels;        // Label strings
     uint32_t num_output_labels;  // Current label count

@@ -98,6 +98,47 @@ typedef enum {
 } nimcp_brain_task_t;
 
 /**
+ * @brief Network architecture types for training dispatch
+ *
+ * WHAT: Specifies which neural network architecture to use for training
+ * WHY:  Different architectures require different training algorithms:
+ *       - ADAPTIVE: Standard backpropagation (default)
+ *       - SNN: Spike-timing dependent plasticity, surrogate gradients, eProp
+ *       - LNN: Adjoint method for ODE-based liquid neural networks
+ *       - CNN: Convolutional backpropagation with layer-wise gradients
+ *       - HYBRID: Multiple network types with unified training
+ * HOW:  Set in training config, brain dispatches to appropriate trainer
+ */
+typedef enum {
+    NIMCP_NETWORK_ADAPTIVE = 0,  /**< Standard adaptive network (backprop) - default */
+    NIMCP_NETWORK_SNN = 1,       /**< Spiking Neural Network (STDP/eProp/surrogate) */
+    NIMCP_NETWORK_LNN = 2,       /**< Liquid Neural Network (adjoint ODE) */
+    NIMCP_NETWORK_CNN = 3,       /**< Convolutional Neural Network */
+    NIMCP_NETWORK_HYBRID = 4     /**< Mixed architecture (multiple network types) */
+} nimcp_network_type_t;
+
+/**
+ * @brief SNN training method selection
+ */
+typedef enum {
+    NIMCP_SNN_TRAIN_STDP = 0,        /**< Spike-Timing Dependent Plasticity */
+    NIMCP_SNN_TRAIN_R_STDP = 1,      /**< Reward-modulated STDP */
+    NIMCP_SNN_TRAIN_EPROP = 2,       /**< Eligibility Propagation (online) */
+    NIMCP_SNN_TRAIN_SURROGATE = 3,   /**< Surrogate gradient backprop */
+    NIMCP_SNN_TRAIN_HOMEOSTATIC = 4  /**< Homeostatic plasticity */
+} nimcp_snn_train_method_t;
+
+/**
+ * @brief LNN training method selection
+ */
+typedef enum {
+    NIMCP_LNN_TRAIN_ADJOINT = 0,     /**< Adjoint method (memory efficient) - default */
+    NIMCP_LNN_TRAIN_BPTT = 1,        /**< Backprop through time */
+    NIMCP_LNN_TRAIN_RTRL = 2,        /**< Real-time recurrent learning */
+    NIMCP_LNN_TRAIN_EPROP = 3        /**< Eligibility propagation */
+} nimcp_lnn_train_method_t;
+
+/**
  * @brief Return codes for all NIMCP functions
  *
  * NIMCP uses a unified positive integer error code system:
@@ -305,6 +346,20 @@ typedef struct {
 
     bool enable_biological_modulation; /**< Enable plasticity bridge modulation */
     float biological_blend;            /**< Biological modulation strength (0-1) */
+
+    // === NETWORK TYPE DISPATCH (NEW) ===
+    nimcp_network_type_t network_type;     /**< Network architecture type (default: ADAPTIVE) */
+
+    // SNN-specific training options (used when network_type == NIMCP_NETWORK_SNN)
+    nimcp_snn_train_method_t snn_method;   /**< SNN training method (default: STDP) */
+    float snn_eligibility_tau;             /**< Eligibility trace decay (ms, default: 20.0) */
+    float snn_reward_tau;                  /**< Reward signal decay (ms, default: 100.0) */
+    float snn_surrogate_beta;              /**< Surrogate gradient steepness (default: 5.0) */
+
+    // LNN-specific training options (used when network_type == NIMCP_NETWORK_LNN)
+    nimcp_lnn_train_method_t lnn_method;   /**< LNN training method (default: ADJOINT) */
+    uint32_t lnn_bptt_truncation;          /**< BPTT truncation length (default: 100) */
+    bool lnn_use_adjoint_checkpointing;    /**< Memory-efficient checkpointing (default: true) */
 } nimcp_training_config_t;
 
 /**

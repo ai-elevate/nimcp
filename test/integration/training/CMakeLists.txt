@@ -90,5 +90,36 @@ set_tests_properties(integration_training_test_cnn_cortex_integration
         LABELS "integration;training;cnn;cortex;bridge"
         TIMEOUT 300)
 
+# Training Dispatch Integration Tests (C)
+add_executable(integration_training_dispatch
+    test_training_dispatch_integration.c
+)
+
+target_include_directories(integration_training_dispatch PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_options(integration_training_dispatch PRIVATE
+    -std=c11
+    -Wall
+    -Wextra
+)
+
+target_link_libraries(integration_training_dispatch
+    PRIVATE
+        nimcp
+        pthread
+        m
+)
+
+add_test(NAME integration_training_dispatch
+         COMMAND integration_training_dispatch)
+
+set_tests_properties(integration_training_dispatch
+    PROPERTIES
+        LABELS "integration;training;dispatch;snn;lnn;cnn;adaptive"
+        TIMEOUT 300)
+
 # Training Exception Handling Integration Tests
 add_subdirectory(exception)

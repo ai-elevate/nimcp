@@ -163,6 +163,7 @@ set(NIMCP_CORE_SOURCES
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet_activation.c  # Activation functions (Strategy pattern)
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet_learning.c   # STDP, Oja's rule, weight updates
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet_homeostasis.c # Homeostatic plasticity
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_neuralnet_backprop.c   # Backpropagation for weight gradients
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neuron_types.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neural_logic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/logic/nimcp_neural_logic_brain_integration.c  # Phase 2.6.2: Neural Logic Brain Integration
@@ -2057,6 +2058,10 @@ set(NIMCP_CORE_SOURCES
 
     # Training - CNN Training Module (Conv2D, Dense, Pool, BatchNorm, Dropout, full backprop)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_cnn_training.c
+
+    # Training Dispatcher (Phase TD-1: Unified Training Dispatch)
+    # Routes training to SNN/LNN/CNN/Adaptive based on network_type configuration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_training_dispatch.c
 
     # Training Layer Enhancements (Phase TL-1: Advanced Training Infrastructure)
     # Implements industry-standard training techniques with bio-inspired integration

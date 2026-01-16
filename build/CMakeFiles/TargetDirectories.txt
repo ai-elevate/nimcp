@@ -755,6 +755,15 @@
 /home/bbrelin/nimcp/build/test/e2e/physics/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/e2e/physics/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/e2e/physics/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/e2e_test_training_validation.dir
+/home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/e2e_test_training_dispatch.dir
+/home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/e2e/training/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/e2e/lgss/CMakeFiles/test_lgss_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/lgss/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/lgss/CMakeFiles/edit_cache.dir
@@ -4726,6 +4735,7 @@
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_test_cnn_backprop_regression.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_test_cnn_cortex_bridge_regression.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_symbolic_logic_hub.dir
+/home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/regression_training_dispatch.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/training/CMakeFiles/rebuild_cache.dir
@@ -4768,6 +4778,7 @@
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/integration_training_test_cnn_backprop_integration.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/integration_training_symbolic_logic_hub.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/integration_training_test_cnn_cortex_integration.dir
+/home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/integration_training_dispatch.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/training/CMakeFiles/rebuild_cache.dir

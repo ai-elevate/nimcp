@@ -466,6 +466,23 @@ typedef struct {
     bool enable_explanations; /**< Enable interpretability */
     char task_name[64];       /**< Name for this brain */
 
+    // === NETWORK TYPE CONFIGURATION ===
+    /**
+     * Network architecture type for this brain
+     *
+     * WHAT: Specifies the primary neural network architecture
+     * WHY:  Different architectures have different training and inference characteristics:
+     *       - ADAPTIVE (default): General-purpose, backpropagation training
+     *       - SNN: Spike-based processing, temporal coding, STDP/eProp training
+     *       - LNN: Continuous-time dynamics, ODE-based, adjoint training
+     *       - CNN: Spatial feature extraction, convolutional backprop
+     *       - HYBRID: Multiple architectures with unified interface
+     * HOW:  Set during brain creation, affects training dispatch
+     *
+     * NOTE: Changing this requires reinitializing the training context
+     */
+    uint8_t network_type;     /**< Network type (cast to nimcp_network_type_t) */
+
     // === MINIMAL MODE (Performance Optimization) ===
     /**
      * Minimal mode flag - disables all optional cognitive subsystems

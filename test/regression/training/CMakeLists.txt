@@ -89,3 +89,37 @@ set_tests_properties(regression_training_symbolic_logic_hub
     PROPERTIES
         LABELS "regression;training;symbolic-logic;hub;stability"
         TIMEOUT 300)
+
+# Training Dispatch Regression Tests (C with Check framework)
+# Find Check library using pkg-config
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CHECK check)
+
+if(CHECK_FOUND)
+    add_executable(regression_training_dispatch
+        test_training_dispatch_regression.c
+    )
+
+    target_include_directories(regression_training_dispatch PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CHECK_INCLUDE_DIRS}
+    )
+
+    target_link_libraries(regression_training_dispatch
+        nimcp
+        ${CHECK_LIBRARIES}
+        pthread
+        m
+    )
+
+    add_test(NAME regression_training_dispatch
+             COMMAND regression_training_dispatch)
+
+    set_tests_properties(regression_training_dispatch
+        PROPERTIES
+            LABELS "regression;training;dispatch;backward-compat"
+            TIMEOUT 300)
+else()
+    message(STATUS "Check library not found - skipping training dispatch regression tests")
+endif()
