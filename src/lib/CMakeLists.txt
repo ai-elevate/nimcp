@@ -117,6 +117,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_search.c                # Full-text and pattern search
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_algorithms.c            # Graph algorithms (centrality, paths, communities)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_module_wiring.c         # Module connection/wiring primitives
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_wiring_exception.c     # KG wiring exception integration
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_assembly.c              # Brain assembly from KG - TEMPORARILY DISABLED (API mismatch)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_io_dispatcher.c         # Async I/O dispatching
     # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_persistence.c           # KG persistence - TEMPORARILY DISABLED (API mismatch)

@@ -131,6 +131,22 @@ typedef int32_t nimcp_error_t;
 #define NIMCP_ERROR_COW_FAILED          3010 /**< Copy-on-write operation failed */
 #define NIMCP_ERROR_CLONE_FAILED        3011 /**< Brain clone failed */
 
+/* KG Module Wiring Errors (3050-3099) */
+#define NIMCP_ERROR_KG_WIRING_BASE            3050 /**< KG wiring base error */
+#define NIMCP_ERROR_KG_WIRING_CREATE          3050 /**< KG wiring creation failed */
+#define NIMCP_ERROR_KG_WIRING_NULL            3051 /**< NULL wiring descriptor */
+#define NIMCP_ERROR_KG_WIRING_INPUTS_FULL     3052 /**< Max 32 inputs reached */
+#define NIMCP_ERROR_KG_WIRING_OUTPUTS_FULL    3053 /**< Max 32 outputs reached */
+#define NIMCP_ERROR_KG_WIRING_HANDLERS_FULL   3054 /**< Max 64 handlers reached */
+#define NIMCP_ERROR_KG_WIRING_METADATA_FULL   3055 /**< Max 16 metadata entries */
+#define NIMCP_ERROR_KG_WIRING_STRING_TOO_LONG 3056 /**< String exceeds max length */
+#define NIMCP_ERROR_KG_WIRING_INVALID_NAME    3057 /**< Invalid module name */
+#define NIMCP_ERROR_KG_WIRING_INVALID_TYPE    3058 /**< Invalid module type */
+#define NIMCP_ERROR_KG_WIRING_WEIGHT_ALLOC    3059 /**< Weight allocation failed */
+#define NIMCP_ERROR_KG_WIRING_WEIGHT_INVALID  3060 /**< NULL weights with size > 0 */
+#define NIMCP_ERROR_KG_WIRING_VALIDATION      3061 /**< Validation failed */
+#define NIMCP_ERROR_KG_WIRING_DUPLICATE       3062 /**< Duplicate entry */
+
 //=============================================================================
 // I/O Errors (4000-4999)
 //=============================================================================

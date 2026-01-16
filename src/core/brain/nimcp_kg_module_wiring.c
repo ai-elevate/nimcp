@@ -9,6 +9,7 @@
  */
 
 #include "core/brain/nimcp_kg_module_wiring.h"
+#include "core/brain/nimcp_kg_wiring_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -99,6 +100,7 @@ kg_module_wiring_t* kg_module_wiring_create(const char* name, const char* type) 
     if (!name || !type) {
         WIRING_LOG_ERROR("create: NULL parameters (name=%p, type=%p)",
                          (const void*)name, (const void*)type);
+        NIMCP_THROW_KG_WIRING_NULL(NULL, "create", name ? "type" : "name");
         return NULL;
     }
 
@@ -106,6 +108,8 @@ kg_module_wiring_t* kg_module_wiring_create(const char* name, const char* type) 
     if (strlen(name) == 0 || strlen(name) >= KG_WIRING_MAX_NAME_LEN) {
         WIRING_LOG_ERROR("create: invalid name length (len=%zu, max=%d)",
                          strlen(name), KG_WIRING_MAX_NAME_LEN);
+        NIMCP_THROW_KG_WIRING(NIMCP_ERROR_KG_WIRING_INVALID_NAME, name, "create",
+                              "Invalid name length: %zu (max %d)", strlen(name), KG_WIRING_MAX_NAME_LEN);
         return NULL;
     }
 
@@ -113,12 +117,16 @@ kg_module_wiring_t* kg_module_wiring_create(const char* name, const char* type) 
     if (strlen(type) == 0 || strlen(type) >= KG_WIRING_MAX_TYPE_LEN) {
         WIRING_LOG_ERROR("create: invalid type length (len=%zu, max=%d)",
                          strlen(type), KG_WIRING_MAX_TYPE_LEN);
+        NIMCP_THROW_KG_WIRING(NIMCP_ERROR_KG_WIRING_INVALID_TYPE, name, "create",
+                              "Invalid type length: %zu (max %d)", strlen(type), KG_WIRING_MAX_TYPE_LEN);
         return NULL;
     }
 
     kg_module_wiring_t* wiring = nimcp_calloc(1, sizeof(kg_module_wiring_t));
     if (!wiring) {
         WIRING_LOG_ERROR("create: allocation failed for module '%s'", name);
+        NIMCP_THROW_KG_WIRING(NIMCP_ERROR_KG_WIRING_CREATE, name, "create",
+                              "Memory allocation failed for wiring descriptor");
         return NULL;
     }
 
@@ -179,6 +187,8 @@ int kg_module_wiring_add_input(
 ) {
     if (!w || !source || !msg_type) {
         WIRING_LOG_ERROR("add_input: NULL parameters");
+        NIMCP_THROW_KG_WIRING_NULL(w ? w->module_name : NULL, "add_input",
+                                   !w ? "wiring" : (!source ? "source" : "msg_type"));
         return -1;
     }
 
@@ -186,6 +196,8 @@ int kg_module_wiring_add_input(
     if (w->input_count >= KG_WIRING_MAX_INPUTS) {
         WIRING_LOG_WARN("add_input: module '%s' reached max inputs (%d)",
                         w->module_name, KG_WIRING_MAX_INPUTS);
+        NIMCP_THROW_KG_WIRING_CAPACITY(NIMCP_ERROR_KG_WIRING_INPUTS_FULL,
+                                       w->module_name, "add_input", KG_WIRING_MAX_INPUTS);
         return -1;
     }
 
@@ -194,6 +206,10 @@ int kg_module_wiring_add_input(
         strlen(msg_type) >= KG_WIRING_MAX_MSG_TYPE_LEN) {
         WIRING_LOG_ERROR("add_input: string too long (source='%s', msg_type='%s')",
                          source, msg_type);
+        NIMCP_THROW_KG_WIRING_STRING(NIMCP_ERROR_KG_WIRING_STRING_TOO_LONG,
+                                     w->module_name, "add_input",
+                                     strlen(source) >= KG_WIRING_MAX_NAME_LEN ? strlen(source) : strlen(msg_type),
+                                     strlen(source) >= KG_WIRING_MAX_NAME_LEN ? KG_WIRING_MAX_NAME_LEN : KG_WIRING_MAX_MSG_TYPE_LEN);
         return -1;
     }
 
@@ -226,6 +242,8 @@ int kg_module_wiring_add_output(
 ) {
     if (!w || !msg_type) {
         WIRING_LOG_ERROR("add_output: NULL parameters");
+        NIMCP_THROW_KG_WIRING_NULL(w ? w->module_name : NULL, "add_output",
+                                   !w ? "wiring" : "msg_type");
         return -1;
     }
 
@@ -233,12 +251,17 @@ int kg_module_wiring_add_output(
     if (w->output_count >= KG_WIRING_MAX_OUTPUTS) {
         WIRING_LOG_WARN("add_output: module '%s' reached max outputs (%d)",
                         w->module_name, KG_WIRING_MAX_OUTPUTS);
+        NIMCP_THROW_KG_WIRING_CAPACITY(NIMCP_ERROR_KG_WIRING_OUTPUTS_FULL,
+                                       w->module_name, "add_output", KG_WIRING_MAX_OUTPUTS);
         return -1;
     }
 
     /* Validate string lengths */
     if (strlen(msg_type) >= KG_WIRING_MAX_MSG_TYPE_LEN) {
         WIRING_LOG_ERROR("add_output: msg_type too long ('%s')", msg_type);
+        NIMCP_THROW_KG_WIRING_STRING(NIMCP_ERROR_KG_WIRING_STRING_TOO_LONG,
+                                     w->module_name, "add_output",
+                                     strlen(msg_type), KG_WIRING_MAX_MSG_TYPE_LEN);
         return -1;
     }
 
@@ -274,6 +297,8 @@ int kg_module_wiring_add_handler(
 ) {
     if (!w || !msg_type) {
         WIRING_LOG_ERROR("add_handler: NULL parameters");
+        NIMCP_THROW_KG_WIRING_NULL(w ? w->module_name : NULL, "add_handler",
+                                   !w ? "wiring" : "msg_type");
         return -1;
     }
 
@@ -281,12 +306,17 @@ int kg_module_wiring_add_handler(
     if (w->handler_count >= KG_WIRING_MAX_HANDLERS) {
         WIRING_LOG_WARN("add_handler: module '%s' reached max handlers (%d)",
                         w->module_name, KG_WIRING_MAX_HANDLERS);
+        NIMCP_THROW_KG_WIRING_CAPACITY(NIMCP_ERROR_KG_WIRING_HANDLERS_FULL,
+                                       w->module_name, "add_handler", KG_WIRING_MAX_HANDLERS);
         return -1;
     }
 
     /* Validate string length */
     if (strlen(msg_type) >= KG_WIRING_MAX_MSG_TYPE_LEN) {
         WIRING_LOG_ERROR("add_handler: msg_type too long ('%s')", msg_type);
+        NIMCP_THROW_KG_WIRING_STRING(NIMCP_ERROR_KG_WIRING_STRING_TOO_LONG,
+                                     w->module_name, "add_handler",
+                                     strlen(msg_type), KG_WIRING_MAX_MSG_TYPE_LEN);
         return -1;
     }
 
@@ -320,6 +350,7 @@ int kg_module_wiring_set_weights(
     size_t size
 ) {
     if (!w) {
+        NIMCP_THROW_KG_WIRING_NULL(NULL, "set_weights", "wiring");
         return -1;
     }
 
@@ -334,6 +365,8 @@ int kg_module_wiring_set_weights(
 
     /* Validate: if weights is NULL, size must be 0 */
     if (!weights && size > 0) {
+        NIMCP_THROW_KG_WIRING(NIMCP_ERROR_KG_WIRING_WEIGHT_INVALID, w->module_name, "set_weights",
+                              "NULL weights pointer with non-zero size (%zu)", size);
         return -1;  /* Invalid: NULL data with non-zero size */
     }
 
@@ -345,6 +378,8 @@ int kg_module_wiring_set_weights(
     /* Copy weight data */
     w->initial_weights = nimcp_malloc(size);
     if (!w->initial_weights) {
+        NIMCP_THROW_KG_WIRING(NIMCP_ERROR_KG_WIRING_WEIGHT_ALLOC, w->module_name, "set_weights",
+                              "Failed to allocate %zu bytes for weights", size);
         return -1;
     }
 
@@ -365,6 +400,7 @@ int kg_module_wiring_set_metadata(
     const char* description
 ) {
     if (!w) {
+        NIMCP_THROW_KG_WIRING_NULL(NULL, "set_metadata", "wiring");
         return -1;
     }
 
@@ -389,17 +425,25 @@ int kg_module_wiring_add_metadata_entry(
     const char* value
 ) {
     if (!w || !key || !value) {
+        NIMCP_THROW_KG_WIRING_NULL(w ? w->module_name : NULL, "add_metadata_entry",
+                                   !w ? "wiring" : (!key ? "key" : "value"));
         return -1;
     }
 
     /* Check if array is full */
     if (w->metadata.entry_count >= KG_WIRING_MAX_METADATA) {
+        NIMCP_THROW_KG_WIRING_CAPACITY(NIMCP_ERROR_KG_WIRING_METADATA_FULL,
+                                       w->module_name, "add_metadata_entry", KG_WIRING_MAX_METADATA);
         return -1;
     }
 
     /* Validate string lengths */
     if (strlen(key) >= KG_WIRING_MAX_META_KEY_LEN ||
         strlen(value) >= KG_WIRING_MAX_META_VALUE_LEN) {
+        NIMCP_THROW_KG_WIRING_STRING(NIMCP_ERROR_KG_WIRING_STRING_TOO_LONG,
+                                     w->module_name, "add_metadata_entry",
+                                     strlen(key) >= KG_WIRING_MAX_META_KEY_LEN ? strlen(key) : strlen(value),
+                                     strlen(key) >= KG_WIRING_MAX_META_KEY_LEN ? KG_WIRING_MAX_META_KEY_LEN : KG_WIRING_MAX_META_VALUE_LEN);
         return -1;
     }
 
@@ -427,6 +471,7 @@ int kg_module_wiring_set_version(
     uint32_t patch
 ) {
     if (!w) {
+        NIMCP_THROW_KG_WIRING_NULL(NULL, "set_version", "wiring");
         return -1;
     }
 
@@ -530,6 +575,7 @@ int kg_module_wiring_validate(
         if (error_buf && error_buf_size > 0) {
             safe_strcpy(error_buf, "Wiring descriptor is NULL", error_buf_size);
         }
+        NIMCP_THROW_KG_WIRING_NULL(NULL, "validate", "wiring");
         return -1;
     }
 
@@ -539,6 +585,7 @@ int kg_module_wiring_validate(
         if (error_buf && error_buf_size > 0) {
             safe_strcpy(error_buf, "Module name is empty", error_buf_size);
         }
+        NIMCP_THROW_KG_WIRING_VALIDATION("unknown", "Module name is empty");
         return -1;
     }
 
@@ -548,6 +595,7 @@ int kg_module_wiring_validate(
         if (error_buf && error_buf_size > 0) {
             safe_strcpy(error_buf, "Module type is empty", error_buf_size);
         }
+        NIMCP_THROW_KG_WIRING_VALIDATION(w->module_name, "Module type is empty");
         return -1;
     }
 
@@ -562,6 +610,8 @@ int kg_module_wiring_validate(
                              "Duplicate handler for message type: %s",
                              w->handlers[i].message_type);
                 }
+                NIMCP_THROW_KG_WIRING(NIMCP_ERROR_KG_WIRING_DUPLICATE, w->module_name, "validate",
+                                      "Duplicate handler for: %s", w->handlers[i].message_type);
                 return -1;
             }
         }
@@ -578,6 +628,8 @@ int kg_module_wiring_validate(
                              "Duplicate output message type: %s",
                              w->outputs[i].message_type);
                 }
+                NIMCP_THROW_KG_WIRING(NIMCP_ERROR_KG_WIRING_DUPLICATE, w->module_name, "validate",
+                                      "Duplicate output: %s", w->outputs[i].message_type);
                 return -1;
             }
         }
@@ -597,6 +649,9 @@ int kg_module_wiring_validate(
                              w->inputs[i].source_module,
                              w->inputs[i].message_type);
                 }
+                NIMCP_THROW_KG_WIRING(NIMCP_ERROR_KG_WIRING_DUPLICATE, w->module_name, "validate",
+                                      "Duplicate input from %s with type %s",
+                                      w->inputs[i].source_module, w->inputs[i].message_type);
                 return -1;
             }
         }
