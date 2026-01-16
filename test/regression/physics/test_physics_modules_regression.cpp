@@ -283,7 +283,8 @@ TEST(DynamicalSystemsAPIRegression, AttractorTypeNames) {
 TEST(GraphTheoryBehaviorRegression, NullParameterHandling) {
     // These behaviors must remain consistent
     EXPECT_EQ(graph_theory_bridge_default_config(nullptr), GRAPH_THEORY_ERROR_INVALID_PARAM);
-    EXPECT_EQ(graph_theory_bridge_create(nullptr), nullptr);  // Actually succeeds with defaults
+    // NULL config succeeds - uses default configuration
+    EXPECT_NE(graph_theory_bridge_create(nullptr), nullptr);
 
     graph_theory_bridge_t bridge = graph_theory_bridge_create(nullptr);
     ASSERT_NE(bridge, nullptr);
@@ -403,8 +404,13 @@ TEST(GraphTheoryBehaviorRegression, CentralityResultConsistency) {
     graph_theory_bridge_t bridge = graph_theory_bridge_create(nullptr);
     ASSERT_NE(bridge, nullptr);
 
-    NimcpGraph* graph = nimcp_graph_create(10, false);
+    NimcpGraph* graph = nimcp_graph_create();
     ASSERT_NE(graph, nullptr);
+
+    // Add 10 vertices
+    for (int i = 0; i < 10; i++) {
+        nimcp_graph_add_vertex(graph, (uint64_t)i, 0.0f, 0.0f, 0.0f, 0);
+    }
 
     // Create a ring
     for (uint32_t i = 0; i < 10; i++) {
