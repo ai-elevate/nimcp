@@ -81,6 +81,15 @@ class DomainCategory(Enum):
     LANGUAGE = "language"
     MULTIMODAL = "multimodal"
 
+    # Finance & Economics (NEW)
+    FINANCE = "finance"
+    ECONOMICS = "economics"
+
+    # Earth & Climate Sciences (NEW)
+    CLIMATE = "climate"
+    WEATHER = "weather"
+    EARTH_SCIENCE = "earth_science"
+
 
 @dataclass
 class StreamingDataset:
@@ -1028,6 +1037,349 @@ AGI_CURRICULUM_DATASETS: List[StreamingDataset] = [
         priority=3,
         description="6K questions answerable using Freebase",
         license="CC-BY-4.0"
+    ),
+
+    #=========================================================================
+    # FINANCE & ECONOMICS - Time Series, Markets, Trading
+    #=========================================================================
+
+    # Investopedia (Financial Education)
+    StreamingDataset(
+        name="Investopedia Embeddings",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="FinLang/investopedia-embedding-dataset",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=1,
+        text_field="Question",
+        description="Financial education data from Investopedia with Q&A pairs",
+        license="CC-BY-4.0",
+        url="https://huggingface.co/datasets/FinLang/investopedia-embedding-dataset"
+    ),
+
+    StreamingDataset(
+        name="Investopedia Articles",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="ksrepo/investopedia-dataset",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        description="4.7K Investopedia articles on finance and investing",
+        license="Various",
+        url="https://huggingface.co/datasets/ksrepo/investopedia-dataset"
+    ),
+
+    # Financial News Time Series
+    StreamingDataset(
+        name="FNSPID (Financial News Time Series)",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="Zihan1004/FNSPID",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.7,
+        priority=1,
+        description="10M+ financial news entries with S&P500 time series data",
+        license="MIT",
+        url="https://huggingface.co/datasets/Zihan1004/FNSPID"
+    ),
+
+    StreamingDataset(
+        name="Financial News Multi-Source",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="Brianferrell787/financial-news-multisource",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.6,
+        priority=1,
+        description="57M+ rows of financial news from 1990-2025 across 24 subsets",
+        license="CC-BY-4.0",
+        url="https://huggingface.co/datasets/Brianferrell787/financial-news-multisource"
+    ),
+
+    StreamingDataset(
+        name="NIFTY (News-Informed Financial Trends)",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="raeidsaqur/NIFTY",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.7,
+        priority=2,
+        description="News-informed financial trend yield dataset for forecasting",
+        license="Apache-2.0",
+        url="https://huggingface.co/datasets/raeidsaqur/NIFTY"
+    ),
+
+    StreamingDataset(
+        name="S&P500 News Time Series",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="KrossKinetic/SP500-Financial-News-Articles-Time-Series",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.6,
+        priority=2,
+        description="S&P500 financial news articles with time series alignment",
+        license="CC-BY-4.0",
+        url="https://huggingface.co/datasets/KrossKinetic/SP500-Financial-News-Articles-Time-Series"
+    ),
+
+    StreamingDataset(
+        name="Financial Sentiment",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="chiapudding/kaggle-financial-sentiment",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        text_field="text",
+        label_field="sentiment",
+        description="Financial news sentiment analysis dataset",
+        license="CC-BY-4.0"
+    ),
+
+    StreamingDataset(
+        name="Finance-Alpaca",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="gbharti/finance-alpaca",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        description="68K finance Q&A pairs for instruction tuning",
+        license="Apache-2.0",
+        url="https://huggingface.co/datasets/gbharti/finance-alpaca"
+    ),
+
+    StreamingDataset(
+        name="Multimodal Financial Forecasting",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="Wenyan0110/Multimodal-Dataset-Image_Text_Table_TimeSeries-for-Financial-Time-Series-Forecasting",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.8,
+        priority=3,
+        description="S&P500 and HS300 multimodal data (text, images, tables, time series)",
+        license="MIT",
+        url="https://huggingface.co/datasets/Wenyan0110/Multimodal-Dataset-Image_Text_Table_TimeSeries-for-Financial-Time-Series-Forecasting"
+    ),
+
+    # Kaggle Financial Datasets
+    StreamingDataset(
+        name="S&P 500 Stock Data (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="camnugent/sandp500",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.6,
+        priority=2,
+        description="Historical S&P 500 stock prices and fundamentals",
+        license="CC0-1.0",
+        url="https://www.kaggle.com/datasets/camnugent/sandp500"
+    ),
+
+    StreamingDataset(
+        name="S&P 500 Historical Data (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="henryhan117/sp-500-historical-data",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.6,
+        priority=2,
+        description="Long-term S&P 500 historical price data",
+        license="CC0-1.0",
+        url="https://www.kaggle.com/datasets/henryhan117/sp-500-historical-data"
+    ),
+
+    StreamingDataset(
+        name="Bitcoin Historical Data (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="mczielinski/bitcoin-historical-data",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        description="Bitcoin minute-by-minute historical price data",
+        license="CC0-1.0",
+        url="https://www.kaggle.com/datasets/mczielinski/bitcoin-historical-data"
+    ),
+
+    StreamingDataset(
+        name="Bitcoin and S&P 500 Prices (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="linhanphm/bitcoin-and-s-and-p-500-historical-prices",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        description="Combined Bitcoin and S&P 500 historical prices for correlation analysis",
+        license="CC0-1.0",
+        url="https://www.kaggle.com/datasets/linhanphm/bitcoin-and-s-and-p-500-historical-prices"
+    ),
+
+    StreamingDataset(
+        name="Bitcoin, Gold, Oil, S&P 500 (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="prasertk/bitcon-gold-oil-sp-500",
+        domain=DomainCategory.FINANCE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        description="Daily prices of Bitcoin, Gold, Oil, and S&P 500 (2010-2022)",
+        license="CC0-1.0",
+        url="https://www.kaggle.com/datasets/prasertk/bitcon-gold-oil-sp-500"
+    ),
+
+    #=========================================================================
+    # CLIMATE & WEATHER - Earth Science, Temperature, Environment
+    #=========================================================================
+
+    # HuggingFace Climate Datasets
+    StreamingDataset(
+        name="Climate Policy Radar",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="ClimatePolicyRadar/all-document-text-data",
+        domain=DomainCategory.CLIMATE,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.7,
+        priority=1,
+        description="Full text of climate laws, policies, and NDCs from all countries",
+        license="CC-BY-4.0",
+        url="https://huggingface.co/datasets/ClimatePolicyRadar/all-document-text-data"
+    ),
+
+    StreamingDataset(
+        name="ClimateBERT Detection",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="climatebert/climate_detection",
+        domain=DomainCategory.CLIMATE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        description="Climate-related text detection dataset",
+        license="Apache-2.0",
+        url="https://huggingface.co/datasets/climatebert/climate_detection"
+    ),
+
+    StreamingDataset(
+        name="ClimateBERT Sentiment",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="climatebert/climate_sentiment",
+        domain=DomainCategory.CLIMATE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        text_field="text",
+        label_field="label",
+        description="Climate sentiment analysis dataset",
+        license="Apache-2.0",
+        url="https://huggingface.co/datasets/climatebert/climate_sentiment"
+    ),
+
+    StreamingDataset(
+        name="Climate FEVER",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="tdiggelm/climate_fever",
+        domain=DomainCategory.CLIMATE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.6,
+        priority=2,
+        description="Climate fact verification dataset (SUPPORTS/REFUTES/NOT_ENOUGH_INFO)",
+        license="CC-BY-4.0",
+        url="https://huggingface.co/datasets/tdiggelm/climate_fever"
+    ),
+
+    # Kaggle Climate Datasets
+    StreamingDataset(
+        name="Berkeley Earth Surface Temperature (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="berkeleyearth/climate-change-earth-surface-temperature-data",
+        domain=DomainCategory.CLIMATE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=1,
+        description="Global surface temperatures since 1750 from Berkeley Earth",
+        license="CC-BY-NC-SA-4.0",
+        url="https://www.kaggle.com/datasets/berkeleyearth/climate-change-earth-surface-temperature-data"
+    ),
+
+    StreamingDataset(
+        name="Global Warming 195 Countries (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="ankushpanday1/global-warming-dataset-195-countries-1900-2023",
+        domain=DomainCategory.CLIMATE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=1,
+        description="Environmental and socioeconomic indicators for 195 countries (1900-2023)",
+        license="CC0-1.0",
+        url="https://www.kaggle.com/datasets/ankushpanday1/global-warming-dataset-195-countries-1900-2023"
+    ),
+
+    StreamingDataset(
+        name="World Bank Climate Data (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="theworldbank/world-bank-climate-change-data",
+        domain=DomainCategory.CLIMATE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        description="World Bank climate change indicators and statistics",
+        license="CC-BY-4.0",
+        url="https://www.kaggle.com/datasets/theworldbank/world-bank-climate-change-data"
+    ),
+
+    StreamingDataset(
+        name="Global Earth Temperatures (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="joebeachcapital/global-earth-temperatures",
+        domain=DomainCategory.CLIMATE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        description="High-resolution global monthly temperature averages (1850-2022)",
+        license="CC0-1.0",
+        url="https://www.kaggle.com/datasets/joebeachcapital/global-earth-temperatures"
+    ),
+
+    StreamingDataset(
+        name="Climate Change Dataset 2020-2024 (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="atifmasih/climate-change-dataset2020-2024",
+        domain=DomainCategory.CLIMATE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.4,
+        priority=2,
+        description="Recent climate change data from 2020-2024",
+        license="CC0-1.0",
+        url="https://www.kaggle.com/datasets/atifmasih/climate-change-dataset2020-2024"
+    ),
+
+    # Weather Datasets
+    StreamingDataset(
+        name="Weather Data 2024 (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="sheemazain/weather-data-2024",
+        domain=DomainCategory.WEATHER,
+        stages=[DevelopmentStage.CHILD, DevelopmentStage.ADOLESCENT],
+        difficulty=0.4,
+        priority=2,
+        description="Weather observations and forecasts for 2024",
+        license="CC0-1.0",
+        url="https://www.kaggle.com/datasets/sheemazain/weather-data-2024"
+    ),
+
+    StreamingDataset(
+        name="AWS NOAA Weather Data (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="goswamimurari/aws-open-source-weather-transaction-and-metadata",
+        domain=DomainCategory.WEATHER,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        description="NOAA public weather data from AWS S3 with daily granularity",
+        license="Public Domain",
+        url="https://www.kaggle.com/datasets/goswamimurari/aws-open-source-weather-transaction-and-metadata"
     ),
 ]
 
