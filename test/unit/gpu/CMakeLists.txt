@@ -126,6 +126,7 @@ endif()
 
 # Include subdirectory tests
 add_subdirectory(immune)
+add_subdirectory(exception)
 
 # Include cognitive subdirectory tests (Broca GPU, etc.)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/CMakeLists.txt)

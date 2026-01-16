@@ -596,3 +596,16 @@ set_tests_properties(unit_security_test_capability_thread_safety PROPERTIES
     LABELS "unit;security;thread-safety;capability"
     TIMEOUT 120
 )
+
+# ============================================================================
+# Security Exception Handling Unit Tests
+# ============================================================================
+# WHAT: Unit tests for security module exception handling
+# WHY:  Verify security exceptions are properly created, dispatched, and handled
+# HOW:  Test exception creation, handler registration, dispatch chain,
+#       immune presentation, and recovery actions for security threats
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt")
+    add_subdirectory(exception)
+endif()

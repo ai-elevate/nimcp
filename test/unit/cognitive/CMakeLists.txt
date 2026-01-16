@@ -1882,3 +1882,13 @@ gtest_discover_tests(unit_cognitive_test_symbolic_logic_integration
         LABELS "unit;cognitive;symbolic_logic;integration"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Exception Handling Tests
+# ============================================================================
+# WHAT: Unit tests for Cognitive Exception Handling
+# WHY:  Verify exception creation, dispatch, and immune integration for cognitive errors
+# HOW:  Test error code mapping, handler chains, recovery strategies
+# ============================================================================
+
+add_subdirectory(exception)

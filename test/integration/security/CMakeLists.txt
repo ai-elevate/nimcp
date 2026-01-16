@@ -864,3 +864,16 @@ set_tests_properties(integration_security_test_orchestrator PROPERTIES
     LABELS "integration;security;orchestrator;bridge"
     TIMEOUT 300
 )
+
+# ============================================================================
+# Security Exception Integration Tests
+# ============================================================================
+# WHAT: Integration tests for security-exception-immune system pipelines
+# WHY:  Verify security modules, exception system, and immune system work together
+# HOW:  Test complete flow from security threat detection through exception handling
+#       to immune response and recovery actions
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt")
+    add_subdirectory(exception)
+endif()

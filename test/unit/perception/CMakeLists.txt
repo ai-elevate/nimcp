@@ -62,6 +62,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bridges/CMakeLists.txt")
     add_subdirectory(bridges)
 endif()
 
+# Exception handling tests subdirectory
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt")
+    add_subdirectory(exception)
+endif()
+
 # Lip Reading tests
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_lip_reading.cpp")
     add_executable(unit_perception_test_lip_reading

@@ -702,6 +702,23 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/networking/immune")
 endif()
 
 # ============================================================================
+# Networking Exception Handling Tests
+# ============================================================================
+# WHAT: Tests for exception handling in networking modules
+# WHY:  Verify network errors properly map to exceptions and trigger immune responses
+# HOW:  Unit and integration tests for P2P, protocol, distributed, NLP exceptions
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/networking/exception")
+    message(STATUS "Adding networking exception handling unit tests...")
+    add_subdirectory(unit/networking/exception)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/networking/exception")
+    message(STATUS "Adding networking exception handling integration tests...")
+    add_subdirectory(integration/networking/exception)
+endif()
+
+# ============================================================================
 # NLP Immune Bridge Tests
 # ============================================================================
 

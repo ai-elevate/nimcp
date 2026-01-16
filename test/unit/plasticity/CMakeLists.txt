@@ -623,3 +623,13 @@ gtest_discover_tests(unit_plasticity_eligibility_utils_quantum_bridge
     PROPERTIES LABELS "unit;plasticity;eligibility;utils;quantum;bridge"
     TIMEOUT 120
 )
+
+# ============================================================================
+# Exception Handling Tests
+# ============================================================================
+# WHAT: Unit tests for plasticity exception handling
+# WHY:  Verify error-to-exception mapping and handler chain for all plasticity modules
+# HOW:  Include exception subdirectory
+# ============================================================================
+
+add_subdirectory(exception)

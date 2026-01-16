@@ -30,6 +30,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_cochlea_integration.cpp")
     )
 endif()
 
+# Exception handling tests subdirectory
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt")
+    add_subdirectory(exception)
+endif()
+
 # Lip Reading integration tests (Phase B5: Audiovisual Speech Integration)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_lip_reading_integration.cpp")
     add_executable(integration_perception_test_lip_reading

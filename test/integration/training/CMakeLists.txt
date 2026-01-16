@@ -89,3 +89,6 @@ set_tests_properties(integration_training_test_cnn_cortex_integration
     PROPERTIES
         LABELS "integration;training;cnn;cortex;bridge"
         TIMEOUT 300)
+
+# Training Exception Handling Integration Tests
+add_subdirectory(exception)

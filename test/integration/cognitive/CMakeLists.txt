@@ -230,3 +230,6 @@ add_subdirectory(imagination)
 
 # Social Cognition FEP Bridge Integration Tests
 add_subdirectory(social)
+
+# Exception Handling Integration Tests
+add_subdirectory(exception)

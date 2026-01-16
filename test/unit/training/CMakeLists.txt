@@ -282,3 +282,6 @@ set_tests_properties(unit_training_test_adv_gs
 
 # Training Integration Hub Unit Tests
 add_subdirectory(integration)
+
+# Training Exception Handling Unit Tests
+add_subdirectory(exception)

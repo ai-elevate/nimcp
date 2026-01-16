@@ -2278,7 +2278,6 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.c
 
     # Physics layer modules
-    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/geometry/nimcp_information_geometry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/thermodynamics/nimcp_thermodynamics.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/biophysics/nimcp_hodgkin_huxley.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/ephaptic/nimcp_ephaptic.c
@@ -2312,6 +2311,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_swarm_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_snn_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/bridges/nimcp_physics_perception_bridge.c
+
+    # Physics layer - Information Geometry Bridge (Fisher info, natural gradient, manifold)
+
+    # Physics layer - Dynamical Systems (Lyapunov, bifurcation, attractors)
+
+    # Physics layer - Graph Theory Bridge (centrality, community, spectral, quantum walks)
 
     # Biology layer modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../biology/epigenetics/nimcp_epigenetics.c

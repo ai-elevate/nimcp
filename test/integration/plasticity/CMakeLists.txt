@@ -291,3 +291,13 @@ gtest_discover_tests(integration_plasticity_eligibility_utils_quantum
         TIMEOUT 300
         LABELS "integration;plasticity;eligibility;utils;quantum"
 )
+
+# ============================================================================
+# Exception Handling Integration Tests
+# ============================================================================
+# WHAT: Integration tests for plasticity exception handling with immune system
+# WHY:  Verify end-to-end exception flow from plasticity modules to immune system
+# HOW:  Include exception subdirectory
+# ============================================================================
+
+add_subdirectory(exception)
