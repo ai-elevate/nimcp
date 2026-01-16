@@ -1882,6 +1882,19 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/exception")
 endif()
 
 # ============================================================================
+# Adversarial Tests (Security Robustness)
+# ============================================================================
+# WHAT: Adversarial tests for security subsystems
+# WHY:  Verify robustness against tampering, bypass attempts, and edge cases
+# HOW:  Test safety KB tampering, rule injection, bypass techniques, DoS
+#       resilience, and integrity verification under adversarial conditions
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/adversarial/lgss/CMakeLists.txt")
+    message(STATUS "Adding LGSS adversarial tests...")
+    add_subdirectory(adversarial/lgss)
+endif()
+
+# ============================================================================
 # Python Unit Tests
 # ============================================================================
 # WHAT: Unit tests for Python binding memory safety patterns

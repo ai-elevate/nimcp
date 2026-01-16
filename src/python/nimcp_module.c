@@ -7,8 +7,15 @@
 
 #include "utils/logging/nimcp_logging.h"
 
-// Forward declaration for metrics module
+// Forward declarations for sub-modules
 extern int init_metrics_module(PyObject* module);
+extern int init_training_module(PyObject* module);
+extern int init_callbacks_module(PyObject* module);
+extern int init_ethics_module(PyObject* module);
+extern int init_knowledge_module(PyObject* module);
+extern int init_bio_async_module(PyObject* module);
+extern int init_brain_immune_module(PyObject* module);
+extern int init_swarm_module(PyObject* module);
 
 // Define exception types
 // These are initialized in PyInit_nimcp()
@@ -171,6 +178,48 @@ PyMODINIT_FUNC PyInit_nimcp(void)
 
     // Initialize community detection module
     if (init_community_module(m) < 0) {
+        Py_DECREF(m);
+        return NULL;
+    }
+
+    // Initialize training module (TrainingConfig, TrainingResult, constants)
+    if (init_training_module(m) < 0) {
+        Py_DECREF(m);
+        return NULL;
+    }
+
+    // Initialize callbacks module (CallbackConfig, CallbackMetrics, constants)
+    if (init_callbacks_module(m) < 0) {
+        Py_DECREF(m);
+        return NULL;
+    }
+
+    // Initialize ethics module (Ethics class)
+    if (init_ethics_module(m) < 0) {
+        Py_DECREF(m);
+        return NULL;
+    }
+
+    // Initialize knowledge module (KnowledgeSystem, KnowledgeItem, DomainKnowledge)
+    if (init_knowledge_module(m) < 0) {
+        Py_DECREF(m);
+        return NULL;
+    }
+
+    // Initialize bio-async module (BioPromise, BioFuture, PhaseSync, PredictiveModel, GlialWave)
+    if (init_bio_async_module(m) < 0) {
+        Py_DECREF(m);
+        return NULL;
+    }
+
+    // Initialize brain immune module (BrainImmuneSystem, BrainAntigen, BrainImmuneStats)
+    if (init_brain_immune_module(m) < 0) {
+        Py_DECREF(m);
+        return NULL;
+    }
+
+    // Initialize swarm module (SwarmBrain, SwarmBrainConfig)
+    if (init_swarm_module(m) < 0) {
         Py_DECREF(m);
         return NULL;
     }

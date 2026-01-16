@@ -21,6 +21,7 @@
 //=============================================================================
 
 #include "core/brain/factory/init/nimcp_brain_init_security.h"
+#include "core/brain/factory/init/nimcp_brain_init_safety_verify.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/factory/init/nimcp_brain_init_validation.h"
 #include "core/brain/nimcp_brain.h"
@@ -31,6 +32,8 @@
 #include "security/nimcp_blood_brain_barrier.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/error/nimcp_error_codes.h"
+
+/* LGSS types are forward-declared in brain_internal.h */
 
 #define LOG_MODULE "BRAIN_INIT_SECURITY"
 

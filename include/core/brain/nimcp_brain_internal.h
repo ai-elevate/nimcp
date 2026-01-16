@@ -594,6 +594,21 @@ struct brain_struct {
     uint32_t bbb_subject_id;            // BBB access control subject ID
     bool bbb_enabled;                   // BBB protection enabled for this brain
 
+    // === KG PERSISTENCE INTEGRATION (Phase SNAPSHOT-KG) ===
+    //
+    // KG persistence provides unified snapshot storage via QuestDB:
+    // - Encrypted snapshots: Kyber/AES hybrid encryption (quantum-resistant)
+    // - HSM support: Hardware security module for key management
+    // - Audit logging: Tamper-evident hash-chain for compliance
+    // - Transactional: Atomic with KG state via linked checkpoints
+    //
+    // Enables migration from file-based snapshots to database-backed storage
+    // with enterprise-grade security and consistency guarantees.
+    //
+    struct kg_persistence* kg_persistence;      // KG persistence context (opaque)
+    bool owns_kg_persistence;                   // Ownership flag (true = brain destroys on cleanup)
+    int snapshot_backend;                       // snapshot_backend_t: AUTO, FILE, or KG
+
     // === BIO-ASYNC MESSAGING INTEGRATION ===
     //
     // Bio-async provides biologically-inspired asynchronous communication:
@@ -621,6 +636,32 @@ struct brain_struct {
     //
     brain_immune_system_t* immune_system;        // Brain immune coordination layer
     bool immune_enabled;                         // Immune system enabled for this brain
+
+    // === LGSS (LAYERED GOVERNANCE SAFETY SYSTEM) INTEGRATION ===
+    //
+    // LGSS provides multi-layered safety constraints for AGI systems:
+    // - L0: Immutable safety knowledge base (mprotect-locked rules)
+    // - L1-L5: Ethics directive layers (First/Second/Third Laws, Golden Rule, etc.)
+    // - Action Interceptor: Central gate for all cognitive actions
+    // - Override Controller: Human-in-the-loop override mechanism
+    // - Telemetry: Tamper-evident audit log with hash chaining
+    //
+    // Integration points:
+    // - Core Directives: Ethics L1-L5 layers integrate via lgss_ethics_bridge
+    // - Bio-Async: Safety signals via BIO_MSG_LGSS_* message types
+    // - Plasticity: Learning constraints via plasticity bridge
+    // - Executive: Action proposals routed through action interceptor
+    // - Output Gates: Motor, speech, autonomic outputs pass through safety gates
+    //
+    // CRITICAL: If enable_lgss is true, the brain WILL NOT activate unless:
+    // - Safety KB is loaded and locked
+    // - Integrity verification passes
+    // - Safety probe tests pass
+    //
+    struct lgss_context* lgss;                   // LGSS context (A1-A2: KB + interceptor)
+    bool lgss_enabled;                           // LGSS subsystem enabled for this brain
+    bool safety_verified;                        // Safety verification phase completed
+    struct lgss_ethics_bridge* lgss_ethics_bridge; // LGSS-Ethics integration bridge
 
     // === COLLECTIVE COGNITION INTEGRATION ===
     //

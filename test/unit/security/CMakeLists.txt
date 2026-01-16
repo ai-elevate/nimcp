@@ -609,3 +609,16 @@ set_tests_properties(unit_security_test_capability_thread_safety PROPERTIES
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt")
     add_subdirectory(exception)
 endif()
+
+# ============================================================================
+# LGSS (Layered Governance Safety System) Unit Tests
+# ============================================================================
+# WHAT: Unit tests for LGSS safety subsystem
+# WHY:  Verify safety knowledge base, action interceptor, and all safety guards
+# HOW:  Test safety KB CRUD, immutability after lock, evaluation logic,
+#       integrity verification, and fail-safe behavior
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lgss/CMakeLists.txt")
+    add_subdirectory(lgss)
+endif()

@@ -15,6 +15,11 @@
 #include "core/brain/nimcp_pretrained.h"
 #include "io/serialization/nimcp_network_serialization.h"
 #include "utils/logging/nimcp_logging.h"
+#include "nimcp.h"  /* For training API */
+
+/* Forward declaration from nimcp_training_py.c */
+extern PyObject* TrainingResult_FromC(const nimcp_training_result_t* result);
+extern PyTypeObject TrainingConfigType;
 
 //=============================================================================
 // Brain Type
@@ -463,6 +468,1062 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored))
     return dict;
 }
 
+/* ============================================================================
+ * Training Pipeline Methods
+ * ============================================================================ */
+
+/**
+ * @brief Brain.configure_training(config) -> None
+ *
+ * Configure the brain's training pipeline with the specified configuration.
+ * Must be called before using train_step() or train_batch().
+ */
+static PyObject* Brain_configure_training(BrainObject* self, PyObject* args)
+{
+    PyObject* config_obj;
+
+    if (!PyArg_ParseTuple(args, "O", &config_obj)) {
+        return NULL;
+    }
+
+    /* Verify it's a TrainingConfig object */
+    if (!PyObject_TypeCheck(config_obj, &TrainingConfigType)) {
+        PyErr_SetString(PyExc_TypeError, "config must be a TrainingConfig object");
+        return NULL;
+    }
+
+    /* Access the underlying config struct */
+    /* TrainingConfigObject is defined in nimcp_training_py.c */
+    typedef struct {
+        PyObject_HEAD
+        nimcp_training_config_t config;
+    } TrainingConfigObject;
+
+    TrainingConfigObject* config = (TrainingConfigObject*)config_obj;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_configure_training(self->brain, &config->config);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to configure training pipeline");
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/**
+ * @brief Brain.train_step(features, targets) -> TrainingResult
+ *
+ * Perform a single training step using the configured training pipeline.
+ */
+static PyObject* Brain_train_step(BrainObject* self, PyObject* args)
+{
+    PyObject* features_list;
+    PyObject* targets_list;
+
+    if (!PyArg_ParseTuple(args, "OO", &features_list, &targets_list)) {
+        return NULL;
+    }
+
+    /* Validate inputs */
+    if (!PyList_Check(features_list)) {
+        PyErr_SetString(PyExc_TypeError, "features must be a list");
+        return NULL;
+    }
+    if (!PyList_Check(targets_list)) {
+        PyErr_SetString(PyExc_TypeError, "targets must be a list");
+        return NULL;
+    }
+
+    Py_ssize_t num_features = PyList_Size(features_list);
+    Py_ssize_t num_targets = PyList_Size(targets_list);
+
+    if (num_features <= 0 || num_targets <= 0) {
+        PyErr_SetString(PyExc_ValueError, "features and targets must be non-empty lists");
+        return NULL;
+    }
+
+    /* Convert features to C array */
+    float* features = (float*)malloc(sizeof(float) * (size_t)num_features);
+    if (features == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    for (Py_ssize_t i = 0; i < num_features; i++) {
+        PyObject* item = PyList_GetItem(features_list, i);
+        if (!PyFloat_Check(item) && !PyLong_Check(item)) {
+            free(features);
+            PyErr_SetString(PyExc_TypeError, "All feature values must be numbers");
+            return NULL;
+        }
+        features[i] = (float)PyFloat_AsDouble(item);
+    }
+
+    /* Convert targets to C array */
+    float* targets = (float*)malloc(sizeof(float) * (size_t)num_targets);
+    if (targets == NULL) {
+        free(features);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    for (Py_ssize_t i = 0; i < num_targets; i++) {
+        PyObject* item = PyList_GetItem(targets_list, i);
+        if (!PyFloat_Check(item) && !PyLong_Check(item)) {
+            free(features);
+            free(targets);
+            PyErr_SetString(PyExc_TypeError, "All target values must be numbers");
+            return NULL;
+        }
+        targets[i] = (float)PyFloat_AsDouble(item);
+    }
+
+    /* Perform training step */
+    nimcp_training_result_t result;
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_train_step(self->brain, features, (uint32_t)num_features,
+                                    targets, (uint32_t)num_targets, &result);
+    Py_END_ALLOW_THREADS
+
+    free(features);
+    free(targets);
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Training step failed");
+        return NULL;
+    }
+
+    return TrainingResult_FromC(&result);
+}
+
+/**
+ * @brief Brain.train_batch(features, targets) -> TrainingResult
+ *
+ * Train on a batch of examples. Features and targets should be 2D lists.
+ */
+static PyObject* Brain_train_batch(BrainObject* self, PyObject* args)
+{
+    PyObject* features_list;
+    PyObject* targets_list;
+
+    if (!PyArg_ParseTuple(args, "OO", &features_list, &targets_list)) {
+        return NULL;
+    }
+
+    /* Validate inputs are lists of lists */
+    if (!PyList_Check(features_list) || !PyList_Check(targets_list)) {
+        PyErr_SetString(PyExc_TypeError, "features and targets must be lists of lists");
+        return NULL;
+    }
+
+    Py_ssize_t batch_size = PyList_Size(features_list);
+    if (batch_size <= 0 || PyList_Size(targets_list) != batch_size) {
+        PyErr_SetString(PyExc_ValueError, "features and targets must have same batch size");
+        return NULL;
+    }
+
+    /* Get dimensions from first example */
+    PyObject* first_features = PyList_GetItem(features_list, 0);
+    PyObject* first_targets = PyList_GetItem(targets_list, 0);
+
+    if (!PyList_Check(first_features) || !PyList_Check(first_targets)) {
+        PyErr_SetString(PyExc_TypeError, "features and targets must be 2D lists");
+        return NULL;
+    }
+
+    Py_ssize_t num_features = PyList_Size(first_features);
+    Py_ssize_t num_targets = PyList_Size(first_targets);
+
+    if (num_features <= 0 || num_targets <= 0) {
+        PyErr_SetString(PyExc_ValueError, "feature and target dimensions must be positive");
+        return NULL;
+    }
+
+    /* Allocate flattened arrays */
+    float* features = (float*)malloc(sizeof(float) * (size_t)(batch_size * num_features));
+    float* targets = (float*)malloc(sizeof(float) * (size_t)(batch_size * num_targets));
+
+    if (features == NULL || targets == NULL) {
+        free(features);
+        free(targets);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    /* Flatten the 2D lists into 1D arrays */
+    for (Py_ssize_t b = 0; b < batch_size; b++) {
+        PyObject* feat_row = PyList_GetItem(features_list, b);
+        PyObject* targ_row = PyList_GetItem(targets_list, b);
+
+        if (!PyList_Check(feat_row) || PyList_Size(feat_row) != num_features) {
+            free(features);
+            free(targets);
+            PyErr_SetString(PyExc_ValueError, "All feature rows must have same length");
+            return NULL;
+        }
+        if (!PyList_Check(targ_row) || PyList_Size(targ_row) != num_targets) {
+            free(features);
+            free(targets);
+            PyErr_SetString(PyExc_ValueError, "All target rows must have same length");
+            return NULL;
+        }
+
+        for (Py_ssize_t i = 0; i < num_features; i++) {
+            PyObject* item = PyList_GetItem(feat_row, i);
+            features[b * num_features + i] = (float)PyFloat_AsDouble(item);
+        }
+        for (Py_ssize_t i = 0; i < num_targets; i++) {
+            PyObject* item = PyList_GetItem(targ_row, i);
+            targets[b * num_targets + i] = (float)PyFloat_AsDouble(item);
+        }
+    }
+
+    /* Perform batch training */
+    nimcp_training_result_t result;
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_train_batch(self->brain, features, targets,
+                                     (uint32_t)batch_size, (uint32_t)num_features,
+                                     (uint32_t)num_targets, &result);
+    Py_END_ALLOW_THREADS
+
+    free(features);
+    free(targets);
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Batch training failed");
+        return NULL;
+    }
+
+    return TrainingResult_FromC(&result);
+}
+
+/**
+ * @brief Brain.get_training_stats() -> (total_steps, total_loss, current_lr)
+ *
+ * Get current training statistics.
+ */
+static PyObject* Brain_get_training_stats(BrainObject* self, PyObject* Py_UNUSED(args))
+{
+    uint64_t total_steps;
+    float total_loss;
+    float current_lr;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_get_training_stats(self->brain, &total_steps, &total_loss, &current_lr);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to get training stats");
+        return NULL;
+    }
+
+    return Py_BuildValue("(Kff)", (unsigned long long)total_steps, total_loss, current_lr);
+}
+
+/**
+ * @brief Brain.step_scheduler(validation_metric) -> float
+ *
+ * Step the learning rate scheduler. Returns the new learning rate.
+ */
+static PyObject* Brain_step_scheduler(BrainObject* self, PyObject* args)
+{
+    float validation_metric = 0.0f;
+
+    if (!PyArg_ParseTuple(args, "|f", &validation_metric)) {
+        return NULL;
+    }
+
+    float new_lr;
+
+    Py_BEGIN_ALLOW_THREADS
+    new_lr = nimcp_brain_step_scheduler(self->brain, validation_metric);
+    Py_END_ALLOW_THREADS
+
+    return PyFloat_FromDouble((double)new_lr);
+}
+
+/* ============================================================================
+ * Callback Methods
+ * ============================================================================ */
+
+/* Forward declarations from nimcp_callbacks_py.c */
+extern PyTypeObject CallbackConfigType;
+extern PyTypeObject CallbackMetricsType;
+
+/* Callback context management from nimcp_callbacks_py.c */
+typedef struct {
+    PyObject* callback;
+    PyObject* user_data;
+    uint32_t callback_id;
+} PyCallbackContext;
+
+extern PyCallbackContext* allocate_callback_context(void);
+extern void release_callback_context(uint32_t callback_id);
+
+/* C callback wrapper - defined in nimcp_callbacks_py.c */
+extern nimcp_callback_action_t python_callback_wrapper(
+    nimcp_callback_event_t event,
+    const nimcp_callback_metrics_t* metrics,
+    void* user_data);
+
+/**
+ * @brief Brain.enable_callbacks(config) -> None
+ */
+static PyObject* Brain_enable_callbacks(BrainObject* self, PyObject* args)
+{
+    PyObject* config_obj = NULL;
+
+    if (!PyArg_ParseTuple(args, "|O", &config_obj)) {
+        return NULL;
+    }
+
+    nimcp_callback_config_t* config_ptr = NULL;
+    nimcp_callback_config_t config;
+
+    if (config_obj != NULL && config_obj != Py_None) {
+        if (!PyObject_TypeCheck(config_obj, &CallbackConfigType)) {
+            PyErr_SetString(PyExc_TypeError, "config must be a CallbackConfig object");
+            return NULL;
+        }
+
+        /* Access the underlying config struct */
+        typedef struct {
+            PyObject_HEAD
+            nimcp_callback_config_t config;
+        } CallbackConfigObject;
+
+        CallbackConfigObject* cfg = (CallbackConfigObject*)config_obj;
+        config = cfg->config;
+        config_ptr = &config;
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_enable_callbacks(self->brain, config_ptr);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to enable callbacks");
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/**
+ * @brief Brain.disable_callbacks() -> None
+ */
+static PyObject* Brain_disable_callbacks(BrainObject* self, PyObject* Py_UNUSED(args))
+{
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_disable_callbacks(self->brain);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to disable callbacks");
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/**
+ * @brief Brain.register_callback(event, callback, name=None, user_data=None) -> int
+ */
+static PyObject* Brain_register_callback(BrainObject* self, PyObject* args, PyObject* kwds)
+{
+    static char* kwlist[] = {"event", "callback", "name", "user_data", NULL};
+
+    int event;
+    PyObject* callback;
+    const char* name = NULL;
+    PyObject* user_data = NULL;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "iO|zO", kwlist,
+                                     &event, &callback, &name, &user_data)) {
+        return NULL;
+    }
+
+    /* Validate callback is callable */
+    if (!PyCallable_Check(callback)) {
+        PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        return NULL;
+    }
+
+    /* Allocate context to store Python callback */
+    PyCallbackContext* ctx = allocate_callback_context();
+    if (ctx == NULL) {
+        PyErr_SetString(NIMCPError, "Maximum number of callbacks exceeded");
+        return NULL;
+    }
+
+    /* Store Python objects with increased reference count */
+    Py_INCREF(callback);
+    ctx->callback = callback;
+    if (user_data != NULL) {
+        Py_INCREF(user_data);
+        ctx->user_data = user_data;
+    } else {
+        ctx->user_data = NULL;
+    }
+
+    /* Register with C API using wrapper function */
+    uint32_t callback_id;
+    Py_BEGIN_ALLOW_THREADS
+    callback_id = nimcp_brain_register_callback(
+        self->brain,
+        (nimcp_callback_event_t)event,
+        python_callback_wrapper,
+        ctx,
+        name
+    );
+    Py_END_ALLOW_THREADS
+
+    if (callback_id == 0) {
+        Py_DECREF(callback);
+        Py_XDECREF(user_data);
+        ctx->callback = NULL;
+        ctx->user_data = NULL;
+        PyErr_SetString(NIMCPError, "Failed to register callback");
+        return NULL;
+    }
+
+    ctx->callback_id = callback_id;
+    return PyLong_FromUnsignedLong((unsigned long)callback_id);
+}
+
+/**
+ * @brief Brain.unregister_callback(callback_id) -> None
+ */
+static PyObject* Brain_unregister_callback(BrainObject* self, PyObject* args)
+{
+    unsigned int callback_id;
+
+    if (!PyArg_ParseTuple(args, "I", &callback_id)) {
+        return NULL;
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_unregister_callback(self->brain, callback_id);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to unregister callback");
+        return NULL;
+    }
+
+    /* Release Python references */
+    release_callback_context(callback_id);
+
+    Py_RETURN_NONE;
+}
+
+/**
+ * @brief Brain.get_callback_stats() -> (total_fired, avg_time_us, early_stops)
+ */
+static PyObject* Brain_get_callback_stats(BrainObject* self, PyObject* Py_UNUSED(args))
+{
+    uint64_t total_fired;
+    float avg_time_us;
+    uint32_t early_stops;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_get_callback_stats(self->brain, &total_fired, &avg_time_us, &early_stops);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to get callback stats");
+        return NULL;
+    }
+
+    return Py_BuildValue("(KfI)",
+                         (unsigned long long)total_fired,
+                         avg_time_us,
+                         (unsigned int)early_stops);
+}
+
+/* ============================================================================
+ * Snapshot Methods
+ * ============================================================================ */
+
+/**
+ * @brief Brain.snapshot_save(name, description=None) -> None
+ */
+static PyObject* Brain_snapshot_save(BrainObject* self, PyObject* args, PyObject* kwds)
+{
+    static char* kwlist[] = {"name", "description", NULL};
+
+    const char* name;
+    const char* description = NULL;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|z", kwlist, &name, &description)) {
+        return NULL;
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_snapshot_save(self->brain, name, description);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to save snapshot");
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/**
+ * @brief Brain.snapshot_restore(name) -> Brain
+ */
+static PyObject* Brain_snapshot_restore(BrainObject* self, PyObject* args)
+{
+    const char* name;
+
+    if (!PyArg_ParseTuple(args, "s", &name)) {
+        return NULL;
+    }
+
+    nimcp_brain_t restored;
+    Py_BEGIN_ALLOW_THREADS
+    restored = nimcp_brain_snapshot_restore(self->brain, name);
+    Py_END_ALLOW_THREADS
+
+    if (restored == NULL) {
+        PyErr_SetString(NIMCPError, "Failed to restore snapshot");
+        return NULL;
+    }
+
+    /* Create new Python Brain object with restored brain */
+    BrainObject* new_brain = (BrainObject*)BrainType.tp_alloc(&BrainType, 0);
+    if (new_brain == NULL) {
+        nimcp_brain_destroy(restored);
+        return NULL;
+    }
+    new_brain->brain = restored;
+
+    return (PyObject*)new_brain;
+}
+
+/**
+ * @brief Brain.snapshot_list(max_count=100) -> list[dict]
+ */
+static PyObject* Brain_snapshot_list(BrainObject* self, PyObject* args)
+{
+    unsigned int max_count = 100;
+
+    if (!PyArg_ParseTuple(args, "|I", &max_count)) {
+        return NULL;
+    }
+
+    if (max_count == 0 || max_count > 1000) {
+        max_count = 100;
+    }
+
+    /* Allocate array for snapshot infos */
+    nimcp_brain_snapshot_info_t* infos = (nimcp_brain_snapshot_info_t*)malloc(
+        sizeof(nimcp_brain_snapshot_info_t) * max_count);
+    if (infos == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    uint32_t out_count = 0;
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_snapshot_list(self->brain, infos, max_count, &out_count);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        free(infos);
+        PyErr_SetString(NIMCPError, "Failed to list snapshots");
+        return NULL;
+    }
+
+    /* Build Python list of dicts */
+    PyObject* result_list = PyList_New((Py_ssize_t)out_count);
+    if (result_list == NULL) {
+        free(infos);
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < out_count; i++) {
+        PyObject* dict = PyDict_New();
+        if (dict == NULL) {
+            Py_DECREF(result_list);
+            free(infos);
+            return NULL;
+        }
+
+        PyDict_SetItemString(dict, "name", PyUnicode_FromString(infos[i].name));
+        PyDict_SetItemString(dict, "description", PyUnicode_FromString(infos[i].description));
+        PyDict_SetItemString(dict, "timestamp", PyLong_FromUnsignedLongLong(infos[i].timestamp));
+        PyDict_SetItemString(dict, "file_size", PyLong_FromUnsignedLong(infos[i].file_size));
+        PyDict_SetItemString(dict, "is_compressed", PyBool_FromLong(infos[i].is_compressed));
+        PyDict_SetItemString(dict, "is_encrypted", PyBool_FromLong(infos[i].is_encrypted));
+
+        PyList_SET_ITEM(result_list, i, dict);  /* Steals reference */
+    }
+
+    free(infos);
+    return result_list;
+}
+
+/**
+ * @brief Brain.snapshot_delete(name) -> None
+ */
+static PyObject* Brain_snapshot_delete(BrainObject* self, PyObject* args)
+{
+    const char* name;
+
+    if (!PyArg_ParseTuple(args, "s", &name)) {
+        return NULL;
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_snapshot_delete(self->brain, name);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to delete snapshot");
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/* ============================================================================
+ * Working Memory Methods
+ * ============================================================================ */
+
+/**
+ * @brief Brain.working_memory_add(data, salience) -> None
+ */
+static PyObject* Brain_working_memory_add(BrainObject* self, PyObject* args)
+{
+    PyObject* data_list;
+    float salience;
+
+    if (!PyArg_ParseTuple(args, "Of", &data_list, &salience)) {
+        return NULL;
+    }
+
+    if (!PyList_Check(data_list)) {
+        PyErr_SetString(PyExc_TypeError, "data must be a list");
+        return NULL;
+    }
+
+    Py_ssize_t size = PyList_Size(data_list);
+    if (size <= 0) {
+        PyErr_SetString(PyExc_ValueError, "data must be non-empty");
+        return NULL;
+    }
+
+    float* data = (float*)malloc(sizeof(float) * (size_t)size);
+    if (data == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    for (Py_ssize_t i = 0; i < size; i++) {
+        PyObject* item = PyList_GetItem(data_list, i);
+        data[i] = (float)PyFloat_AsDouble(item);
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_working_memory_add(self->brain, data, (uint32_t)size, salience);
+    Py_END_ALLOW_THREADS
+
+    free(data);
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to add to working memory");
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/**
+ * @brief Brain.working_memory_get(index) -> (data, size) or None
+ */
+static PyObject* Brain_working_memory_get(BrainObject* self, PyObject* args)
+{
+    unsigned int index;
+
+    if (!PyArg_ParseTuple(args, "I", &index)) {
+        return NULL;
+    }
+
+    uint32_t size_out;
+    const float* data;
+
+    Py_BEGIN_ALLOW_THREADS
+    data = nimcp_brain_working_memory_get(self->brain, index, &size_out);
+    Py_END_ALLOW_THREADS
+
+    if (data == NULL) {
+        Py_RETURN_NONE;
+    }
+
+    /* Build Python list from data */
+    PyObject* result_list = PyList_New((Py_ssize_t)size_out);
+    if (result_list == NULL) {
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < size_out; i++) {
+        PyList_SET_ITEM(result_list, i, PyFloat_FromDouble((double)data[i]));
+    }
+
+    return Py_BuildValue("(ON)", result_list, PyLong_FromUnsignedLong(size_out));
+}
+
+/**
+ * @brief Brain.working_memory_stats() -> (current_size, capacity)
+ */
+static PyObject* Brain_working_memory_stats(BrainObject* self, PyObject* Py_UNUSED(args))
+{
+    uint32_t current_size, capacity;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_working_memory_stats(self->brain, &current_size, &capacity);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to get working memory stats");
+        return NULL;
+    }
+
+    return Py_BuildValue("(II)", (unsigned int)current_size, (unsigned int)capacity);
+}
+
+/**
+ * @brief Brain.working_memory_refresh(index) -> None
+ */
+static PyObject* Brain_working_memory_refresh(BrainObject* self, PyObject* args)
+{
+    unsigned int index;
+
+    if (!PyArg_ParseTuple(args, "I", &index)) {
+        return NULL;
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_working_memory_refresh(self->brain, index);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to refresh working memory item");
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/* ============================================================================
+ * Global Workspace Methods
+ * ============================================================================ */
+
+/**
+ * @brief Brain.workspace_compete(module, content, strength) -> bool
+ */
+static PyObject* Brain_workspace_compete(BrainObject* self, PyObject* args)
+{
+    int module;
+    PyObject* content_list;
+    float strength;
+
+    if (!PyArg_ParseTuple(args, "iOf", &module, &content_list, &strength)) {
+        return NULL;
+    }
+
+    if (!PyList_Check(content_list)) {
+        PyErr_SetString(PyExc_TypeError, "content must be a list");
+        return NULL;
+    }
+
+    Py_ssize_t content_dim = PyList_Size(content_list);
+    if (content_dim <= 0) {
+        PyErr_SetString(PyExc_ValueError, "content must be non-empty");
+        return NULL;
+    }
+
+    float* content = (float*)malloc(sizeof(float) * (size_t)content_dim);
+    if (content == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    for (Py_ssize_t i = 0; i < content_dim; i++) {
+        PyObject* item = PyList_GetItem(content_list, i);
+        content[i] = (float)PyFloat_AsDouble(item);
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_workspace_compete(self->brain, (nimcp_cognitive_module_t)module,
+                                           content, (uint32_t)content_dim, strength);
+    Py_END_ALLOW_THREADS
+
+    free(content);
+
+    /* Return True if won competition, False otherwise */
+    return PyBool_FromLong(status == NIMCP_OK);
+}
+
+/**
+ * @brief Brain.workspace_read(max_dim=256) -> (content, dim, source_module) or None
+ */
+static PyObject* Brain_workspace_read(BrainObject* self, PyObject* args)
+{
+    unsigned int max_dim = 256;
+
+    if (!PyArg_ParseTuple(args, "|I", &max_dim)) {
+        return NULL;
+    }
+
+    float* content = (float*)malloc(sizeof(float) * max_dim);
+    if (content == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    uint32_t actual_dim;
+    nimcp_cognitive_module_t source_module;
+    nimcp_status_t status;
+
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_workspace_read(self->brain, content, max_dim, &actual_dim, &source_module);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        free(content);
+        Py_RETURN_NONE;
+    }
+
+    /* Build result list */
+    PyObject* result_list = PyList_New((Py_ssize_t)actual_dim);
+    if (result_list == NULL) {
+        free(content);
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < actual_dim; i++) {
+        PyList_SET_ITEM(result_list, i, PyFloat_FromDouble((double)content[i]));
+    }
+
+    free(content);
+
+    return Py_BuildValue("(OIi)", result_list, (unsigned int)actual_dim, (int)source_module);
+}
+
+/**
+ * @brief Brain.workspace_subscribe(module) -> None
+ */
+static PyObject* Brain_workspace_subscribe(BrainObject* self, PyObject* args)
+{
+    int module;
+
+    if (!PyArg_ParseTuple(args, "i", &module)) {
+        return NULL;
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_workspace_subscribe(self->brain, (nimcp_cognitive_module_t)module);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to subscribe to workspace");
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/**
+ * @brief Brain.workspace_unsubscribe(module) -> None
+ */
+static PyObject* Brain_workspace_unsubscribe(BrainObject* self, PyObject* args)
+{
+    int module;
+
+    if (!PyArg_ParseTuple(args, "i", &module)) {
+        return NULL;
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_workspace_unsubscribe(self->brain, (nimcp_cognitive_module_t)module);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to unsubscribe from workspace");
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/**
+ * @brief Brain.workspace_has_broadcast() -> bool
+ */
+static PyObject* Brain_workspace_has_broadcast(BrainObject* self, PyObject* Py_UNUSED(args))
+{
+    bool has_broadcast;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_workspace_has_broadcast(self->brain, &has_broadcast);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        return PyBool_FromLong(0);
+    }
+
+    return PyBool_FromLong(has_broadcast);
+}
+
+/**
+ * @brief Brain.workspace_stats() -> (total_broadcasts, total_competitions, avg_strength)
+ */
+static PyObject* Brain_workspace_stats(BrainObject* self, PyObject* Py_UNUSED(args))
+{
+    uint32_t total_broadcasts, total_competitions;
+    float avg_strength;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_workspace_stats(self->brain, &total_broadcasts, &total_competitions, &avg_strength);
+    Py_END_ALLOW_THREADS
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to get workspace stats");
+        return NULL;
+    }
+
+    return Py_BuildValue("(IIf)",
+                         (unsigned int)total_broadcasts,
+                         (unsigned int)total_competitions,
+                         avg_strength);
+}
+
+/* ============================================================================
+ * Complex Oscillation Methods
+ * ============================================================================ */
+
+/**
+ * @brief Brain.enable_complex_oscillations(enable) -> bool
+ */
+static PyObject* Brain_enable_complex_oscillations(BrainObject* self, PyObject* args)
+{
+    int enable;
+
+    if (!PyArg_ParseTuple(args, "p", &enable)) {
+        return NULL;
+    }
+
+    bool result;
+    Py_BEGIN_ALLOW_THREADS
+    result = nimcp_enable_complex_oscillations(self->brain, (bool)enable);
+    Py_END_ALLOW_THREADS
+
+    return PyBool_FromLong(result);
+}
+
+/**
+ * @brief Brain.is_complex_oscillations_enabled() -> bool
+ */
+static PyObject* Brain_is_complex_oscillations_enabled(BrainObject* self, PyObject* Py_UNUSED(args))
+{
+    bool result;
+    Py_BEGIN_ALLOW_THREADS
+    result = nimcp_is_complex_oscillations_enabled(self->brain);
+    Py_END_ALLOW_THREADS
+
+    return PyBool_FromLong(result);
+}
+
+/**
+ * @brief Brain.get_oscillation_phasor(neuron_id) -> (amplitude, phase)
+ */
+static PyObject* Brain_get_oscillation_phasor(BrainObject* self, PyObject* args)
+{
+    unsigned int neuron_id;
+
+    if (!PyArg_ParseTuple(args, "I", &neuron_id)) {
+        return NULL;
+    }
+
+    nimcp_oscillation_phasor_t phasor;
+    Py_BEGIN_ALLOW_THREADS
+    phasor = nimcp_get_oscillation_phasor(self->brain, neuron_id);
+    Py_END_ALLOW_THREADS
+
+    return Py_BuildValue("(ff)", phasor.amplitude, phasor.phase);
+}
+
+/**
+ * @brief Brain.get_phase_coherence(neuron_ids) -> float
+ */
+static PyObject* Brain_get_phase_coherence(BrainObject* self, PyObject* args)
+{
+    PyObject* neuron_ids_list;
+
+    if (!PyArg_ParseTuple(args, "O", &neuron_ids_list)) {
+        return NULL;
+    }
+
+    if (!PyList_Check(neuron_ids_list)) {
+        PyErr_SetString(PyExc_TypeError, "neuron_ids must be a list");
+        return NULL;
+    }
+
+    Py_ssize_t count = PyList_Size(neuron_ids_list);
+    if (count <= 0) {
+        PyErr_SetString(PyExc_ValueError, "neuron_ids must be non-empty");
+        return NULL;
+    }
+
+    uint32_t* neuron_ids = (uint32_t*)malloc(sizeof(uint32_t) * (size_t)count);
+    if (neuron_ids == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    for (Py_ssize_t i = 0; i < count; i++) {
+        PyObject* item = PyList_GetItem(neuron_ids_list, i);
+        neuron_ids[i] = (uint32_t)PyLong_AsUnsignedLong(item);
+    }
+
+    float coherence;
+    Py_BEGIN_ALLOW_THREADS
+    coherence = nimcp_get_phase_coherence(self->brain, neuron_ids, (uint32_t)count);
+    Py_END_ALLOW_THREADS
+
+    free(neuron_ids);
+
+    return PyFloat_FromDouble((double)coherence);
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS | METH_KEYWORDS,
      "Learn from a single example\n\n"
@@ -584,6 +1645,266 @@ static PyMethodDef Brain_methods[] = {
      "Returns:\n"
      "    dict: Brain statistics including neurons, synapses, accuracy,\n"
      "          memory usage, and COW sharing information"},
+
+    /* Training Pipeline Methods */
+    {"configure_training", (PyCFunction)Brain_configure_training, METH_VARARGS,
+     "Configure training pipeline\n\n"
+     "Sets up the internal training coordinator with specified loss function,\n"
+     "optimizer, and learning rate scheduler. Must be called before using\n"
+     "train_step() or train_batch().\n\n"
+     "Args:\n"
+     "    config (TrainingConfig): Training configuration object\n"
+     "Returns:\n"
+     "    None\n\n"
+     "Example:\n"
+     "    config = nimcp.TrainingConfig.default()\n"
+     "    config.loss_type = nimcp.LOSS_CROSS_ENTROPY\n"
+     "    config.optimizer_type = nimcp.OPT_ADAM\n"
+     "    config.learning_rate = 0.001\n"
+     "    brain.configure_training(config)"},
+
+    {"train_step", (PyCFunction)Brain_train_step, METH_VARARGS,
+     "Perform a single training step\n\n"
+     "Performs a complete training step using the configured training pipeline:\n"
+     "forward pass, loss computation, gradient computation, weight update.\n\n"
+     "Args:\n"
+     "    features (list): Input feature vector\n"
+     "    targets (list): Target output vector (one-hot or continuous)\n"
+     "Returns:\n"
+     "    TrainingResult: Training result with loss, learning_rate, step, etc.\n\n"
+     "Example:\n"
+     "    features = [0.1] * 784\n"
+     "    targets = [0,0,0,1,0,0,0,0,0,0]  # One-hot for class 3\n"
+     "    result = brain.train_step(features, targets)\n"
+     "    print(f'Loss: {result.loss:.4f}')"},
+
+    {"train_batch", (PyCFunction)Brain_train_batch, METH_VARARGS,
+     "Train on a batch of examples\n\n"
+     "Performs training on multiple examples, accumulating gradients before\n"
+     "applying weight updates (mini-batch gradient descent).\n\n"
+     "Args:\n"
+     "    features (list[list]): 2D array of features [batch_size][num_features]\n"
+     "    targets (list[list]): 2D array of targets [batch_size][num_targets]\n"
+     "Returns:\n"
+     "    TrainingResult: Training result with averaged loss\n\n"
+     "Example:\n"
+     "    features = [[0.1]*784 for _ in range(32)]  # 32 images\n"
+     "    targets = [[0]*10 for _ in range(32)]  # 32 one-hot labels\n"
+     "    result = brain.train_batch(features, targets)"},
+
+    {"get_training_stats", (PyCFunction)Brain_get_training_stats, METH_NOARGS,
+     "Get current training statistics\n\n"
+     "Returns:\n"
+     "    tuple: (total_steps, total_loss, current_lr)\n\n"
+     "Example:\n"
+     "    steps, loss, lr = brain.get_training_stats()\n"
+     "    print(f'Steps: {steps}, Total Loss: {loss:.4f}, LR: {lr:.6f}')"},
+
+    {"step_scheduler", (PyCFunction)Brain_step_scheduler, METH_VARARGS,
+     "Step the learning rate scheduler\n\n"
+     "Should be called at the end of each epoch or validation step.\n"
+     "For ReduceOnPlateau scheduler, pass the validation metric.\n\n"
+     "Args:\n"
+     "    validation_metric (float, optional): Validation metric for plateau detection\n"
+     "Returns:\n"
+     "    float: New learning rate after stepping\n\n"
+     "Example:\n"
+     "    # At end of epoch\n"
+     "    new_lr = brain.step_scheduler(validation_accuracy)\n"
+     "    print(f'New learning rate: {new_lr:.6f}')"},
+
+    /* Callback Methods */
+    {"enable_callbacks", (PyCFunction)Brain_enable_callbacks, METH_VARARGS,
+     "Enable training callbacks\n\n"
+     "Must be called after configure_training(). Enables the callback\n"
+     "system with the specified configuration.\n\n"
+     "Args:\n"
+     "    config (CallbackConfig, optional): Callback configuration\n"
+     "Returns:\n"
+     "    None\n\n"
+     "Example:\n"
+     "    config = nimcp.CallbackConfig.default()\n"
+     "    config.enable_early_stopping = True\n"
+     "    config.patience = 10\n"
+     "    brain.enable_callbacks(config)"},
+
+    {"disable_callbacks", (PyCFunction)Brain_disable_callbacks, METH_NOARGS,
+     "Disable training callbacks\n\n"
+     "Returns:\n"
+     "    None"},
+
+    {"register_callback", (PyCFunction)Brain_register_callback, METH_VARARGS | METH_KEYWORDS,
+     "Register a callback for a specific event type\n\n"
+     "Args:\n"
+     "    event (int): Event type (CB_STEP_COMPLETE, CB_EPOCH_COMPLETE, etc.)\n"
+     "    callback (callable): Callback function(event, metrics) -> action\n"
+     "    name (str, optional): Callback name for logging\n"
+     "    user_data (any, optional): User data passed to callback\n"
+     "Returns:\n"
+     "    int: Callback ID for later unregistration\n\n"
+     "Example:\n"
+     "    def on_step(event, metrics):\n"
+     "        print(f'Step {metrics.step}: loss={metrics.loss:.4f}')\n"
+     "        if metrics.is_diverging:\n"
+     "            return nimcp.CB_ACTION_REDUCE_LR\n"
+     "        return nimcp.CB_ACTION_CONTINUE\n\n"
+     "    cb_id = brain.register_callback(nimcp.CB_STEP_COMPLETE, on_step, 'logger')"},
+
+    {"unregister_callback", (PyCFunction)Brain_unregister_callback, METH_VARARGS,
+     "Unregister a callback\n\n"
+     "Args:\n"
+     "    callback_id (int): Callback ID from registration\n"
+     "Returns:\n"
+     "    None"},
+
+    {"get_callback_stats", (PyCFunction)Brain_get_callback_stats, METH_NOARGS,
+     "Get callback statistics\n\n"
+     "Returns:\n"
+     "    tuple: (total_fired, avg_time_us, early_stops)\n\n"
+     "Example:\n"
+     "    fired, avg_time, stops = brain.get_callback_stats()\n"
+     "    print(f'Callbacks fired: {fired}, Early stops: {stops}')"},
+
+    /* Snapshot Methods */
+    {"snapshot_save", (PyCFunction)Brain_snapshot_save, METH_VARARGS | METH_KEYWORDS,
+     "Save a named snapshot of the brain state\n\n"
+     "Snapshots are named, timestamped backups for versioning/backup/A/B testing.\n"
+     "Different from checkpoints which are auto-saved for resumption.\n\n"
+     "Args:\n"
+     "    name (str): Snapshot name (no path, just name)\n"
+     "    description (str, optional): Description of the snapshot\n"
+     "Returns:\n"
+     "    None\n\n"
+     "Example:\n"
+     "    brain.snapshot_save('before_training', 'Baseline state')\n"
+     "    # Train the model...\n"
+     "    brain.snapshot_save('after_epoch_1', 'After 1 epoch')"},
+
+    {"snapshot_restore", (PyCFunction)Brain_snapshot_restore, METH_VARARGS,
+     "Restore brain from a named snapshot\n\n"
+     "Args:\n"
+     "    name (str): Snapshot name or full path to snapshot file\n"
+     "Returns:\n"
+     "    Brain: New brain instance restored from snapshot\n\n"
+     "Example:\n"
+     "    restored = brain.snapshot_restore('before_training')"},
+
+    {"snapshot_list", (PyCFunction)Brain_snapshot_list, METH_VARARGS,
+     "List all available snapshots\n\n"
+     "Args:\n"
+     "    max_count (int, optional): Maximum snapshots to list (default: 100)\n"
+     "Returns:\n"
+     "    list[dict]: List of snapshot info dictionaries with:\n"
+     "        name, description, timestamp, file_size,\n"
+     "        is_compressed, is_encrypted\n\n"
+     "Example:\n"
+     "    for snap in brain.snapshot_list():\n"
+     "        print(f'{snap[\"name\"]}: {snap[\"description\"]}')"},
+
+    {"snapshot_delete", (PyCFunction)Brain_snapshot_delete, METH_VARARGS,
+     "Delete a named snapshot\n\n"
+     "Args:\n"
+     "    name (str): Snapshot name to delete\n"
+     "Returns:\n"
+     "    None"},
+
+    /* Working Memory Methods */
+    {"working_memory_add", (PyCFunction)Brain_working_memory_add, METH_VARARGS,
+     "Add item to working memory\n\n"
+     "Args:\n"
+     "    data (list): Item data (feature vector)\n"
+     "    salience (float): Initial salience (0.0-1.0)\n"
+     "Returns:\n"
+     "    None"},
+
+    {"working_memory_get", (PyCFunction)Brain_working_memory_get, METH_VARARGS,
+     "Get item from working memory by index\n\n"
+     "Args:\n"
+     "    index (int): Item index (0 = highest salience)\n"
+     "Returns:\n"
+     "    tuple: (data, size) or None if invalid index"},
+
+    {"working_memory_stats", (PyCFunction)Brain_working_memory_stats, METH_NOARGS,
+     "Get working memory statistics\n\n"
+     "Returns:\n"
+     "    tuple: (current_size, capacity)"},
+
+    {"working_memory_refresh", (PyCFunction)Brain_working_memory_refresh, METH_VARARGS,
+     "Refresh item in working memory (prevent decay)\n\n"
+     "Args:\n"
+     "    index (int): Item index to refresh\n"
+     "Returns:\n"
+     "    None"},
+
+    /* Global Workspace Methods */
+    {"workspace_compete", (PyCFunction)Brain_workspace_compete, METH_VARARGS,
+     "Compete for conscious access in global workspace\n\n"
+     "Args:\n"
+     "    module (int): Source module identifier\n"
+     "    content (list): Content vector\n"
+     "    strength (float): Competition strength (0.0-1.0)\n"
+     "Returns:\n"
+     "    bool: True if won competition and broadcast"},
+
+    {"workspace_read", (PyCFunction)Brain_workspace_read, METH_VARARGS,
+     "Read current global workspace broadcast\n\n"
+     "Args:\n"
+     "    max_dim (int, optional): Maximum buffer size (default: 256)\n"
+     "Returns:\n"
+     "    tuple: (content, dim, source_module) or None if no broadcast"},
+
+    {"workspace_subscribe", (PyCFunction)Brain_workspace_subscribe, METH_VARARGS,
+     "Subscribe module to workspace broadcasts\n\n"
+     "Args:\n"
+     "    module (int): Module to subscribe\n"
+     "Returns:\n"
+     "    None"},
+
+    {"workspace_unsubscribe", (PyCFunction)Brain_workspace_unsubscribe, METH_VARARGS,
+     "Unsubscribe module from workspace broadcasts\n\n"
+     "Args:\n"
+     "    module (int): Module to unsubscribe\n"
+     "Returns:\n"
+     "    None"},
+
+    {"workspace_has_broadcast", (PyCFunction)Brain_workspace_has_broadcast, METH_NOARGS,
+     "Check if workspace has active broadcast\n\n"
+     "Returns:\n"
+     "    bool: True if broadcast active"},
+
+    {"workspace_stats", (PyCFunction)Brain_workspace_stats, METH_NOARGS,
+     "Get workspace statistics\n\n"
+     "Returns:\n"
+     "    tuple: (total_broadcasts, total_competitions, avg_strength)"},
+
+    /* Complex Oscillation Methods */
+    {"enable_complex_oscillations", (PyCFunction)Brain_enable_complex_oscillations, METH_VARARGS,
+     "Enable or disable complex oscillation features\n\n"
+     "When enabled: neurons track oscillatory phase and amplitude,\n"
+     "synapses compute phase-dependent weights, ~15% memory overhead.\n\n"
+     "Args:\n"
+     "    enable (bool): True to enable, False to disable\n"
+     "Returns:\n"
+     "    bool: True on success"},
+
+    {"is_complex_oscillations_enabled", (PyCFunction)Brain_is_complex_oscillations_enabled, METH_NOARGS,
+     "Check if complex oscillation features are enabled\n\n"
+     "Returns:\n"
+     "    bool: True if enabled"},
+
+    {"get_oscillation_phasor", (PyCFunction)Brain_get_oscillation_phasor, METH_VARARGS,
+     "Get oscillation phasor for a specific neuron\n\n"
+     "Args:\n"
+     "    neuron_id (int): Neuron identifier\n"
+     "Returns:\n"
+     "    tuple: (amplitude, phase) in radians"},
+
+    {"get_phase_coherence", (PyCFunction)Brain_get_phase_coherence, METH_VARARGS,
+     "Compute phase coherence across multiple neurons\n\n"
+     "Args:\n"
+     "    neuron_ids (list): List of neuron identifiers\n"
+     "Returns:\n"
+     "    float: Phase coherence value [0, 1]"},
 
     {NULL, NULL, 0, NULL}
 };

@@ -99,6 +99,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/inference/nimcp_brain_inference.c   # Prediction, forward propagation, results (502 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/inference/nimcp_brain_quantum_reasoning.c # Quantum SAT solving for logical inference
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/persistence/nimcp_brain_persistence.c # Save/load, snapshots, checkpoints (1,187 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/persistence/nimcp_brain_kg_snapshot.c # KG-based snapshot persistence (Phase SNAPSHOT-KG)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/distributed/nimcp_brain_distributed.c # Copy-on-write, P2P sync, consensus (561 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/strategy/nimcp_brain_strategy.c     # Strategy pattern, monitoring, optimization (770 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_bio_async.c             # Phase BIO-ASYNC: Bio-async brain integration
@@ -928,6 +929,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/symbolic_logic/nimcp_symbolic_logic_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/symbolic_logic/nimcp_symbolic_logic_hub_bridge.c  # Symbolic logic - Cognitive Hub integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/symbolic_logic/nimcp_symbolic_logic_safety.c  # LGSS A1: Safety KB
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/symbolic_logic/nimcp_symbolic_logic_lgss_loader.c  # LGSS A1: JSON loader
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_fep_bridge.c
     # Core FEP Bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_column_fep_bridge.c
@@ -1486,6 +1489,15 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/training/nimcp_security_training_fep_bridge.c                  # Training-FEP bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/memory/nimcp_security_memory_fep_bridge.c                      # Memory-FEP bridge
 
+    # LGSS (Layered Governance Safety System) - Core safety enforcement
+    # A1-A2: Safety KB + Action Interceptor
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/nimcp_lgss.c                                              # LGSS unified context
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/nimcp_lgss_action_interceptor.c                           # Action interceptor
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/nimcp_lgss_override_controller.c                          # Override controller
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/nimcp_lgss_telemetry.c                                    # Hash-chained telemetry
+    # LGSS Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/lgss/bridges/nimcp_lgss_ethics_bridge.c                        # Ethics-LGSS integration
+
     # Utils - Memory & Thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/memory/nimcp_memory_guards.c
@@ -1929,6 +1941,13 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_topology_py.c
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_pink_noise_py.c
     ${CMAKE_SOURCE_DIR}/src/python/nimcp_community_py.c
+    ${CMAKE_SOURCE_DIR}/src/python/nimcp_training_py.c
+    ${CMAKE_SOURCE_DIR}/src/python/nimcp_callbacks_py.c
+    ${CMAKE_SOURCE_DIR}/src/python/nimcp_ethics_py.c
+    ${CMAKE_SOURCE_DIR}/src/python/nimcp_knowledge_py.c
+    ${CMAKE_SOURCE_DIR}/src/python/nimcp_bio_async_py.c
+    ${CMAKE_SOURCE_DIR}/src/python/nimcp_brain_immune_py.c
+    ${CMAKE_SOURCE_DIR}/src/python/nimcp_swarm_py.c
 
     # Middleware - Buffering
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/buffering/nimcp_circular_buffer.c

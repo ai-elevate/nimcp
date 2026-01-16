@@ -36,6 +36,8 @@
 #include "utils/logging/nimcp_logging.h"
 
 #include "core/brain/persistence/nimcp_brain_persistence.h"
+#include "core/brain/persistence/nimcp_brain_kg_snapshot.h"
+#include "core/brain/nimcp_brain_internal.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1056,6 +1058,32 @@ bool brain_save_snapshot(brain_t brain, const char* name, const char* descriptio
         return false;
     }
 
+    // Phase SNAPSHOT-KG: Backend selection
+    // Determine whether to use KG (QuestDB) or file-based storage
+    snapshot_backend_t backend = (snapshot_backend_t)brain->snapshot_backend;
+
+    if (backend == SNAPSHOT_BACKEND_AUTO) {
+        // AUTO: Use KG if available, otherwise file
+        backend = (brain->kg_persistence != NULL) ?
+                  SNAPSHOT_BACKEND_KG : SNAPSHOT_BACKEND_FILE;
+    }
+
+    if (backend == SNAPSHOT_BACKEND_KG) {
+        // Route to KG-based snapshot storage
+        if (!brain->kg_persistence) {
+            set_error("KG persistence not available but SNAPSHOT_BACKEND_KG requested");
+            return false;
+        }
+        int result = brain_save_snapshot_kg(brain, name, description, brain->kg_persistence);
+        if (result == 0) {
+            brain_clear_error();
+            return true;
+        }
+        return false;
+    }
+
+    // Fall through to file-based storage (SNAPSHOT_BACKEND_FILE or AUTO fallback)
+
     // Ensure snapshot directory exists
     const char* snapshot_dir = get_snapshot_dir(brain);
     if (!ensure_snapshot_dir(snapshot_dir)) {
@@ -1102,6 +1130,36 @@ brain_t brain_restore_snapshot(brain_t brain, const char* name)
         set_error("Null snapshot name provided");
         return NULL;
     }
+
+    // Phase SNAPSHOT-KG: Backend selection
+    // Try KG first if brain has KG persistence, then fall back to file
+    snapshot_backend_t backend = brain ? (snapshot_backend_t)brain->snapshot_backend : SNAPSHOT_BACKEND_FILE;
+
+    if (backend == SNAPSHOT_BACKEND_AUTO) {
+        // AUTO: Try KG first if available
+        if (brain && brain->kg_persistence) {
+            brain_t restored = brain_restore_snapshot_kg(name, brain->kg_persistence);
+            if (restored) {
+                brain_clear_error();
+                return restored;
+            }
+            // Fall through to file-based restore
+        }
+        backend = SNAPSHOT_BACKEND_FILE;
+    } else if (backend == SNAPSHOT_BACKEND_KG) {
+        // Explicit KG backend requested
+        if (!brain || !brain->kg_persistence) {
+            set_error("KG persistence not available but SNAPSHOT_BACKEND_KG requested");
+            return NULL;
+        }
+        brain_t restored = brain_restore_snapshot_kg(name, brain->kg_persistence);
+        if (!restored) {
+            set_error("Failed to restore snapshot from KG: %s", name);
+        }
+        return restored;
+    }
+
+    // File-based restore (SNAPSHOT_BACKEND_FILE or AUTO fallback)
 
     // Get snapshot directory (use default if brain is NULL)
     const char* snapshot_dir = brain ? get_snapshot_dir(brain) : "snapshots";

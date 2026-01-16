@@ -877,3 +877,17 @@ set_tests_properties(integration_security_test_orchestrator PROPERTIES
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt")
     add_subdirectory(exception)
 endif()
+
+# ============================================================================
+# LGSS (Layered Governance Safety System) Integration Tests
+# ============================================================================
+# WHAT: Integration tests for LGSS with brain and cognitive systems
+# WHY:  Verify safety enforcement across full brain lifecycle
+# HOW:  Test brain creation with LGSS enabled, action interception,
+#       ethics bridge integration, bio-async safety messaging, and
+#       coordinated lockdown scenarios
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lgss/CMakeLists.txt")
+    add_subdirectory(lgss)
+endif()

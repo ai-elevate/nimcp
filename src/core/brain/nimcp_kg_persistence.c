@@ -9,6 +9,7 @@
  */
 
 #include "core/brain/nimcp_kg_persistence.h"
+#include "core/brain/persistence/nimcp_brain_kg_snapshot.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -464,6 +465,10 @@ kg_persistence_t* kg_persistence_create(const kg_persistence_config_t* config) {
         nimcp_free(p);
         return NULL;
     }
+
+    /* Create brain snapshots schema (Phase SNAPSHOT-KG) */
+    /* Note: Non-fatal failure - schema may already exist or DB may not be ready */
+    kg_snapshot_create_schema(p);
 
     /* Initialize state */
     p->initialized = true;

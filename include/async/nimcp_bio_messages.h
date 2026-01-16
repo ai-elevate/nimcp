@@ -754,6 +754,47 @@ typedef enum {
     BIO_MSG_REPLAY_SEQUENCE_START,                    /**< Start sequence recording */
     BIO_MSG_REPLAY_SEQUENCE_END,                      /**< End sequence recording */
 
+    /* LGSS (Layered Governance Safety System) messages (0x1C00 - 0x1CFF) */
+    /* Evaluation messages (0x1C01 - 0x1C0F) */
+    BIO_MSG_LGSS_EVALUATE_REQUEST = 0x1C01,           /**< LGSS evaluation request */
+    BIO_MSG_LGSS_EVALUATE_RESPONSE,                   /**< LGSS evaluation response */
+
+    /* Violation notifications (0x1C03 - 0x1C0F) */
+    BIO_MSG_LGSS_POLICY_VIOLATION,                    /**< Policy violation detected */
+    BIO_MSG_LGSS_ACTION_BLOCKED,                      /**< Action blocked by LGSS */
+    BIO_MSG_LGSS_ACTION_ESCALATED,                    /**< Action escalated for review */
+
+    /* Uncertainty/risk alerts (0x1C06 - 0x1C0F) */
+    BIO_MSG_LGSS_UNCERTAINTY_ALERT,                   /**< High uncertainty detected */
+    BIO_MSG_LGSS_IMPACT_SCORE,                        /**< Impact score notification */
+    BIO_MSG_LGSS_RISK_ASSESSMENT,                     /**< Risk assessment result */
+
+    /* Override/control messages (0x1C10 - 0x1C1F) */
+    BIO_MSG_LGSS_OVERRIDE_REQUEST = 0x1C10,           /**< Request LGSS override */
+    BIO_MSG_LGSS_OVERRIDE_RESPONSE,                   /**< Override request response */
+    BIO_MSG_LGSS_HALT_COMMAND,                        /**< Emergency halt command */
+    BIO_MSG_LGSS_SOFT_RESET,                          /**< Soft reset command */
+    BIO_MSG_LGSS_HARD_RESET,                          /**< Hard reset command */
+
+    /* Telemetry/audit messages (0x1C20 - 0x1C2F) */
+    BIO_MSG_LGSS_TELEMETRY_LOG = 0x1C20,              /**< Telemetry log entry */
+    BIO_MSG_LGSS_AUDIT_REQUEST,                       /**< Request audit data */
+    BIO_MSG_LGSS_AUDIT_RESPONSE,                      /**< Audit data response */
+
+    /* Integrity messages (0x1C30 - 0x1C3F) */
+    BIO_MSG_LGSS_INTEGRITY_CHECK = 0x1C30,            /**< Request integrity check */
+    BIO_MSG_LGSS_INTEGRITY_RESULT,                    /**< Integrity check result */
+    BIO_MSG_LGSS_TAMPERING_DETECTED,                  /**< Tampering detected alert */
+
+    /* Plasticity coordination messages (0x1C40 - 0x1C4F) */
+    BIO_MSG_LGSS_SAFETY_EVENT = 0x1C40,               /**< Safety-relevant event */
+    BIO_MSG_LGSS_NEUROMOD_SIGNAL,                     /**< Neuromodulator safety signal */
+
+    /* External system communication (0x1C50 - 0x1C5F) - Phase B */
+    BIO_MSG_LGSS_EXTERNAL_HEARTBEAT = 0x1C50,         /**< External system heartbeat */
+    BIO_MSG_LGSS_EXTERNAL_ATTESTATION,                /**< External attestation */
+    BIO_MSG_LGSS_EXTERNAL_COMMAND,                    /**< External command received */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;
@@ -1547,6 +1588,16 @@ typedef enum {
     BIO_MODULE_IMAGINATION_CURIOSITY,           /**< Curiosity-imagination bridge */
     BIO_MODULE_IMAGINATION_PARIETAL,            /**< Parietal-imagination bridge */
     BIO_MODULE_IMAGINATION_COLLECTIVE,          /**< Collective imagination (swarm) */
+
+    /* LGSS (Layered Governance Safety System) modules (0x1C00 - 0x1C0F) */
+    BIO_MODULE_LGSS = 0x1C00,                   /**< LGSS core module */
+    BIO_MODULE_LGSS_EVALUATOR,                  /**< LGSS policy evaluator */
+    BIO_MODULE_LGSS_MONITOR,                    /**< LGSS real-time monitor */
+    BIO_MODULE_LGSS_AUDIT,                      /**< LGSS audit subsystem */
+    BIO_MODULE_LGSS_INTEGRITY,                  /**< LGSS integrity checker */
+    BIO_MODULE_LGSS_OVERRIDE,                   /**< LGSS override controller */
+    BIO_MODULE_LGSS_EXTERNAL,                   /**< LGSS external interface */
+    BIO_MODULE_LGSS_BIO_BRIDGE,                 /**< LGSS bio-async bridge */
 
     /* Special values (Phase 7: Runtime Message Orchestration) */
     BIO_MODULE_KG_DISPATCH = 0xFFFE, /**< KG-driven dispatch: route to all handlers for message type */

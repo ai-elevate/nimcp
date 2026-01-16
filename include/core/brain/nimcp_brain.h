@@ -890,6 +890,36 @@ typedef struct {
     bool save_initial_snapshot;       /**< Save snapshot at creation (default: true) */
     bool save_final_snapshot;         /**< Save snapshot at destruction (default: true) */
 
+    // === KG SNAPSHOT PERSISTENCE (Phase SNAPSHOT-KG) ===
+    /**
+     * KG-Based Snapshot Storage
+     *
+     * WHAT: Store brain snapshots in QuestDB via KG persistence layer
+     * WHY:  Unified encryption, HSM support, audit logging, transactional consistency
+     * HOW:  Uses kg_persistence_t for encrypted storage in kg_brain_snapshots table
+     *
+     * BACKENDS:
+     * - SNAPSHOT_BACKEND_AUTO (0): KG if available, else file (default)
+     * - SNAPSHOT_BACKEND_FILE (1): Force file-based storage
+     * - SNAPSHOT_BACKEND_KG (2): Force KG storage (fail if unavailable)
+     *
+     * SECURITY:
+     * - Encryption: Kyber1024 + AES-256-GCM (quantum-resistant)
+     * - HSM: Hardware key protection (optional)
+     * - HMAC: Integrity verification
+     * - Audit: Tamper-evident logging
+     *
+     * EXAMPLE:
+     * ```c
+     * config.enable_kg_persistence = true;
+     * config.snapshot_backend = SNAPSHOT_BACKEND_AUTO;
+     * config.kg_storage_path = ".aim/kg/questdb/";
+     * ```
+     */
+    bool enable_kg_persistence;       /**< Use KG layer for snapshot storage (default: false) */
+    int snapshot_backend;             /**< Backend selection: AUTO=0, FILE=1, KG=2 (default: AUTO) */
+    const char* kg_storage_path;      /**< KG storage path (default: ".aim/kg/questdb/") */
+
     // === BIOLOGICAL SECURITY (Phase 11) ===
     /**
      * Biological Attack Defense
@@ -1184,6 +1214,58 @@ typedef struct {
     bool immune_enable_bft_integration;   /**< Integrate with BFT if available (default: true) */
     bool immune_enable_swarm_integration; /**< Integrate with swarm immune if available (default: true) */
     bool immune_enable_bio_async;         /**< Enable cytokine signaling via bio-async (default: true) */
+
+    // === LGSS (LAYERED GOVERNANCE SAFETY SYSTEM) ===
+    /**
+     * LGSS Configuration
+     *
+     * WHAT: Multi-layered safety constraints for AGI systems
+     * WHY:  Ensure AI actions comply with safety rules before execution
+     * HOW:  Immutable safety KB + action interceptor + human oversight
+     *
+     * ARCHITECTURE:
+     * - L0: LGSS Safety KB (mprotect-locked, tamper-resistant rules)
+     * - L1-L5: Ethics directive layers (integrated via ethics bridge)
+     * - Action Interceptor: Central gate for all cognitive outputs
+     * - Override Controller: Human-in-the-loop emergency controls
+     * - Telemetry: Hash-chained audit log for accountability
+     *
+     * INTEGRATION:
+     * - Ethics Engine: L1-L5 layers integrated via lgss_ethics_bridge
+     * - Bio-Async: Safety signals via BIO_MSG_LGSS_* message types
+     * - Plasticity: Learning constraints via plasticity safety bridge
+     * - Executive: Action proposals routed through action interceptor
+     * - Output Gates: Motor, speech, autonomic outputs pass through gates
+     *
+     * CRITICAL BEHAVIOR:
+     * If enable_lgss is true, brain activation REQUIRES:
+     * 1. Safety KB loaded and mprotect-locked
+     * 2. Integrity verification passed
+     * 3. Safety probe tests passed
+     * Failure of ANY requirement prevents brain activation.
+     *
+     * PERFORMANCE:
+     * - Safety evaluation: ~10-100µs depending on rule complexity
+     * - Integrity check: ~5-20µs (SHA-256 verification)
+     * - Telemetry logging: ~1-5µs per entry (async option available)
+     */
+    bool enable_lgss;                     /**< Enable LGSS safety system (default: true for production) */
+
+    // LGSS rules configuration
+    char lgss_rules_path[512];            /**< Path to LGSS rules JSON (default: alignment/LGSS_core_rules.json) */
+    uint32_t lgss_max_rules;              /**< Max safety rules (default: 1000) */
+    uint32_t lgss_timeout_ms;             /**< Evaluation timeout (default: 5000ms) */
+
+    // LGSS features
+    bool enable_lgss_telemetry;           /**< Enable hash-chained audit log (default: true) */
+    bool lgss_verify_on_eval;             /**< Verify KB integrity on each eval (default: true) */
+    bool lgss_fail_safe;                  /**< Fail-safe mode: deny on error (default: true) */
+
+    // LGSS integration enables
+    bool lgss_enable_ethics_bridge;       /**< Integrate with ethics engine (default: true if ethics enabled) */
+    bool lgss_enable_plasticity_bridge;   /**< Enable learning constraints (default: true) */
+    bool lgss_enable_bio_async;           /**< Enable bio-async messaging (default: true) */
+    bool lgss_enable_output_gates;        /**< Enable motor/speech/autonomic gates (default: true) */
 
     // === COLLECTIVE COGNITION (Distributed Consciousness) ===
     /**

@@ -381,6 +381,11 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Copy configuration
     brain->config = *config;
 
+    // Copy KG persistence settings (Phase SNAPSHOT-KG)
+    brain->snapshot_backend = config->snapshot_backend;
+    brain->kg_persistence = NULL;  // Will be set if KG persistence is enabled
+    brain->owns_kg_persistence = false;
+
     // Create strategy for task
     brain->strategy = strategy_create(config->task);
     if (!brain->strategy) {

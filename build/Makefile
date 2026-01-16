@@ -3123,6 +3123,19 @@ unit_perception_immune_test_visual_immune_integration/fast:
 .PHONY : unit_perception_immune_test_visual_immune_integration/fast
 
 #=============================================================================
+# Target rules for targets named unit_persistence_test_brain_kg_snapshot
+
+# Build rule for target.
+unit_persistence_test_brain_kg_snapshot: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_persistence_test_brain_kg_snapshot
+.PHONY : unit_persistence_test_brain_kg_snapshot
+
+# fast build rule for target.
+unit_persistence_test_brain_kg_snapshot/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_persistence_test_brain_kg_snapshot.dir/build.make test/CMakeFiles/unit_persistence_test_brain_kg_snapshot.dir/build
+.PHONY : unit_persistence_test_brain_kg_snapshot/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_adaptive_test_adaptive
 
 # Build rule for target.
@@ -4746,6 +4759,19 @@ integration_parietal_test_parietal_fep_integration: cmake_check_build_system
 integration_parietal_test_parietal_fep_integration/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_parietal_test_parietal_fep_integration.dir/build.make test/CMakeFiles/integration_parietal_test_parietal_fep_integration.dir/build
 .PHONY : integration_parietal_test_parietal_fep_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_persistence_test_brain_kg_snapshot_integration
+
+# Build rule for target.
+integration_persistence_test_brain_kg_snapshot_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_persistence_test_brain_kg_snapshot_integration
+.PHONY : integration_persistence_test_brain_kg_snapshot_integration
+
+# fast build rule for target.
+integration_persistence_test_brain_kg_snapshot_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_persistence_test_brain_kg_snapshot_integration.dir/build.make test/CMakeFiles/integration_persistence_test_brain_kg_snapshot_integration.dir/build
+.PHONY : integration_persistence_test_brain_kg_snapshot_integration/fast
 
 #=============================================================================
 # Target rules for targets named integration_plasticity_adaptive_test_adaptive_integration
@@ -8347,6 +8373,19 @@ e2e_test_physics_modules: cmake_check_build_system
 e2e_test_physics_modules/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/physics/CMakeFiles/e2e_test_physics_modules.dir/build.make test/e2e/physics/CMakeFiles/e2e_test_physics_modules.dir/build
 .PHONY : e2e_test_physics_modules/fast
+
+#=============================================================================
+# Target rules for targets named test_lgss_e2e
+
+# Build rule for target.
+test_lgss_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lgss_e2e
+.PHONY : test_lgss_e2e
+
+# fast build rule for target.
+test_lgss_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/lgss/CMakeFiles/test_lgss_e2e.dir/build.make test/e2e/lgss/CMakeFiles/test_lgss_e2e.dir/build
+.PHONY : test_lgss_e2e/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -21193,6 +21232,19 @@ unit_security_test_exception_handling/fast:
 .PHONY : unit_security_test_exception_handling/fast
 
 #=============================================================================
+# Target rules for targets named test_lgss_unit
+
+# Build rule for target.
+test_lgss_unit: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lgss_unit
+.PHONY : test_lgss_unit
+
+# fast build rule for target.
+test_lgss_unit/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/security/lgss/CMakeFiles/test_lgss_unit.dir/build.make test/unit/security/lgss/CMakeFiles/test_lgss_unit.dir/build
+.PHONY : test_lgss_unit/fast
+
+#=============================================================================
 # Target rules for targets named integration_security_test_bbb_integration
 
 # Build rule for target.
@@ -21516,6 +21568,19 @@ integration_security_test_exception: cmake_check_build_system
 integration_security_test_exception/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/security/exception/CMakeFiles/integration_security_test_exception.dir/build.make test/integration/security/exception/CMakeFiles/integration_security_test_exception.dir/build
 .PHONY : integration_security_test_exception/fast
+
+#=============================================================================
+# Target rules for targets named test_lgss_integration
+
+# Build rule for target.
+test_lgss_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lgss_integration
+.PHONY : test_lgss_integration
+
+# fast build rule for target.
+test_lgss_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/security/lgss/CMakeFiles/test_lgss_integration.dir/build.make test/integration/security/lgss/CMakeFiles/test_lgss_integration.dir/build
+.PHONY : test_lgss_integration/fast
 
 #=============================================================================
 # Target rules for targets named regression_security_test_bbb_regression
@@ -28499,6 +28564,19 @@ regression_exception_test_exception_immune_regression/fast:
 .PHONY : regression_exception_test_exception_immune_regression/fast
 
 #=============================================================================
+# Target rules for targets named test_lgss_adversarial
+
+# Build rule for target.
+test_lgss_adversarial: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lgss_adversarial
+.PHONY : test_lgss_adversarial
+
+# fast build rule for target.
+test_lgss_adversarial/fast:
+	$(MAKE) $(MAKESILENT) -f test/adversarial/lgss/CMakeFiles/test_lgss_adversarial.dir/build.make test/adversarial/lgss/CMakeFiles/test_lgss_adversarial.dir/build
+.PHONY : test_lgss_adversarial/fast
+
+#=============================================================================
 # Target rules for targets named unit_python_test_python_memory_safety
 
 # Build rule for target.
@@ -29419,6 +29497,7 @@ help:
 	@echo "... integration_perception_exception_test_perception_exception_integration"
 	@echo "... integration_perception_test_cochlea_integration"
 	@echo "... integration_perception_test_lip_reading"
+	@echo "... integration_persistence_test_brain_kg_snapshot_integration"
 	@echo "... integration_physics_bio_async_test"
 	@echo "... integration_physics_bridges_test"
 	@echo "... integration_physics_fft_test"
@@ -29925,6 +30004,10 @@ help:
 	@echo "... test_immune_threat_logic"
 	@echo "... test_knowledge_base_interface"
 	@echo "... test_learning_stability"
+	@echo "... test_lgss_adversarial"
+	@echo "... test_lgss_e2e"
+	@echo "... test_lgss_integration"
+	@echo "... test_lgss_unit"
 	@echo "... test_medulla_cerebellum_bridge_integration"
 	@echo "... test_medulla_cerebellum_bridge_regression"
 	@echo "... test_networking_exception_integration"
@@ -30853,6 +30936,7 @@ help:
 	@echo "... unit_perception_test_speech_cortex_pe"
 	@echo "... unit_perception_test_speech_jepa_bridge"
 	@echo "... unit_perception_test_visual_jepa_bridge"
+	@echo "... unit_persistence_test_brain_kg_snapshot"
 	@echo "... unit_physics_biophysics_test_hodgkin_huxley"
 	@echo "... unit_physics_dynamics_test_dynamical_systems"
 	@echo "... unit_physics_ephaptic_test_ephaptic"

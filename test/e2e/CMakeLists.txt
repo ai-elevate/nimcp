@@ -2891,6 +2891,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/physics/CMakeLists.txt)
     add_subdirectory(physics)
 endif()
 
+# Include LGSS E2E test subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/lgss/CMakeLists.txt)
+    message(STATUS "Adding LGSS (Layered Governance Safety System) E2E tests...")
+    add_subdirectory(lgss)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")
