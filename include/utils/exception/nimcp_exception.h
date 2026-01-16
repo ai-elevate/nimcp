@@ -117,7 +117,8 @@ typedef enum {
     EXCEPTION_TYPE_SECURITY,           /**< Security exception */
     EXCEPTION_TYPE_COGNITIVE,          /**< Cognitive exception */
     EXCEPTION_TYPE_GPU,                /**< GPU exception */
-    EXCEPTION_TYPE_AGGREGATE           /**< Aggregate exception (contains children) */
+    EXCEPTION_TYPE_AGGREGATE,          /**< Aggregate exception (contains children) */
+    EXCEPTION_TYPE_SIGNAL              /**< Signal/crash exception */
 } nimcp_exception_type_t;
 
 /**
@@ -337,6 +338,36 @@ typedef struct {
 } nimcp_gpu_exception_t;
 
 /**
+ * @brief Signal/crash exception with crash context
+ *
+ * WHAT: Exception for signal-based crashes (SIGSEGV, SIGFPE, etc.)
+ * WHY:  Integrate signal handling with exception hierarchy for unified error handling
+ * HOW:  Capture crash context in signal handler, convert to exception for processing
+ *
+ * USAGE:
+ *   // After siglongjmp recovery:
+ *   nimcp_signal_exception_t* ex = nimcp_signal_exception_create_from_context(&ctx);
+ *   nimcp_exception_present_to_immune((nimcp_exception_t*)ex, NULL);
+ *   nimcp_exception_dispatch((nimcp_exception_t*)ex);
+ */
+#define NIMCP_SIGNAL_EXCEPTION_MEMORY_REGION_SIZE 256
+
+typedef struct {
+    nimcp_exception_t base;            /**< Base exception (must be first) */
+
+    /* Signal-specific fields */
+    int signal_number;                 /**< Signal number (SIGSEGV, SIGFPE, etc.) */
+    void* fault_address;               /**< Address that caused the fault */
+    void* instruction_pointer;         /**< Instruction pointer at crash time */
+    void* stack_pointer;               /**< Stack pointer at crash time */
+    void* base_pointer;                /**< Base pointer at crash time */
+    char memory_region[NIMCP_SIGNAL_EXCEPTION_MEMORY_REGION_SIZE]; /**< Memory region from /proc/self/maps */
+    bool recovery_attempted;           /**< Whether immune recovery was attempted */
+    bool siglongjmp_executed;          /**< Whether we recovered via siglongjmp */
+    int retry_count;                   /**< Number of retry attempts made */
+} nimcp_signal_exception_t;
+
+/**
  * @brief Aggregate exception for batch processing
  *
  * WHAT: Container for multiple related exceptions
@@ -472,6 +503,76 @@ nimcp_gpu_exception_t* nimcp_gpu_exception_create(
     const char* format,
     ...
 );
+
+/* ============================================================================
+ * Signal Exception API
+ * ============================================================================ */
+
+/* Forward declaration for signal crash context */
+struct signal_crash_context;
+
+/**
+ * @brief Create a signal exception
+ *
+ * WHAT: Create exception from a signal number with crash details
+ * WHY:  Convert signal crashes to unified exception handling
+ * HOW:  Allocate signal exception struct, populate from parameters
+ *
+ * @param signal_number Signal number (SIGSEGV, SIGFPE, etc.)
+ * @param fault_address Address that caused the fault (may be NULL)
+ * @param file Source file (__FILE__)
+ * @param line Source line (__LINE__)
+ * @param func Function name (__func__)
+ * @param format Printf-style message format
+ * @param ... Format arguments
+ * @return New signal exception or NULL on allocation failure
+ */
+nimcp_signal_exception_t* nimcp_signal_exception_create(
+    int signal_number,
+    void* fault_address,
+    const char* file,
+    int line,
+    const char* func,
+    const char* format,
+    ...
+);
+
+/**
+ * @brief Create a signal exception from crash context
+ *
+ * WHAT: Create exception from full crash context captured by signal handler
+ * WHY:  Preserve all crash information for diagnostics and immune processing
+ * HOW:  Copy crash context fields into signal exception structure
+ *
+ * @param ctx Crash context from signal handler (must not be NULL)
+ * @return New signal exception or NULL on allocation failure or NULL ctx
+ */
+nimcp_signal_exception_t* nimcp_signal_exception_create_from_context(
+    const struct signal_crash_context* ctx
+);
+
+/**
+ * @brief Get error code from signal number
+ *
+ * Maps signal numbers to NIMCP error codes:
+ * - SIGSEGV -> NIMCP_ERROR_SIGSEGV (7001)
+ * - SIGABRT -> NIMCP_ERROR_SIGABRT (7002)
+ * - SIGFPE  -> NIMCP_ERROR_SIGFPE  (7003)
+ * - SIGBUS  -> NIMCP_ERROR_SIGBUS  (7004)
+ * - SIGILL  -> NIMCP_ERROR_SIGILL  (7005)
+ *
+ * @param signal_number Signal number
+ * @return Corresponding NIMCP error code
+ */
+nimcp_error_t nimcp_signal_to_error_code(int signal_number);
+
+/**
+ * @brief Get signal name as string
+ *
+ * @param signal_number Signal number
+ * @return Static string name (e.g., "SIGSEGV")
+ */
+const char* nimcp_signal_name(int signal_number);
 
 /* ============================================================================
  * Aggregate Exception API

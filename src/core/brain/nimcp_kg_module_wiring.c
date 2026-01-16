@@ -332,6 +332,11 @@ int kg_module_wiring_set_weights(
 
     w->network_type = type;
 
+    /* Validate: if weights is NULL, size must be 0 */
+    if (!weights && size > 0) {
+        return -1;  /* Invalid: NULL data with non-zero size */
+    }
+
     /* If no weights provided, just set type */
     if (!weights || size == 0) {
         return 0;

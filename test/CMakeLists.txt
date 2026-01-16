@@ -757,6 +757,14 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/brain_regions/CMakeLists.txt")
 endif()
 
 # ============================================================================
+# Brain KG Module Wiring Regression Tests
+# ============================================================================
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/brain/CMakeLists.txt")
+    message(STATUS "Adding Brain KG module wiring regression tests...")
+    add_subdirectory(regression/brain)
+endif()
+
+# ============================================================================
 # Bridges Regression Tests
 # ============================================================================
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/bridges/CMakeLists.txt")

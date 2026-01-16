@@ -1539,6 +1539,7 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Signal Handling (Runtime Safety)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/signal/nimcp_signal_handler.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/signal/nimcp_signal_exception_queue.c
 
     # Core Events Infrastructure (Promoted from Fault Tolerance - Now Universal)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/events/nimcp_event_bus.c                    # Universal event bus for ALL brain activities (promoted to core)

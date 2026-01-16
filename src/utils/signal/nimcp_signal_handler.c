@@ -43,6 +43,9 @@ typedef signal_crash_context_t crash_context_t;
 #include "cognitive/immune/nimcp_code_immune.h"
 #endif
 
+/* Signal exception queue for bridging to exception hierarchy */
+#include "utils/signal/nimcp_signal_exception_queue.h"
+
 //=============================================================================
 // Signal-Safe Globals (accessed from signal handlers)
 //=============================================================================

@@ -545,6 +545,150 @@ nimcp_gpu_exception_t* nimcp_gpu_exception_create(
 }
 
 /* ============================================================================
+ * Signal Exception API
+ * ============================================================================ */
+
+#include <signal.h>
+#include "utils/signal/nimcp_signal_handler.h"
+
+nimcp_error_t nimcp_signal_to_error_code(int signal_number) {
+    switch (signal_number) {
+        case SIGSEGV: return NIMCP_ERROR_SIGSEGV;
+        case SIGABRT: return NIMCP_ERROR_SIGABRT;
+        case SIGFPE:  return NIMCP_ERROR_SIGFPE;
+        case SIGBUS:  return NIMCP_ERROR_SIGBUS;
+        case SIGILL:  return NIMCP_ERROR_SIGILL;
+        default:      return NIMCP_ERROR_SIGNAL_RECEIVED;
+    }
+}
+
+const char* nimcp_signal_name(int signal_number) {
+    switch (signal_number) {
+        case SIGSEGV: return "SIGSEGV";
+        case SIGABRT: return "SIGABRT";
+        case SIGFPE:  return "SIGFPE";
+        case SIGBUS:  return "SIGBUS";
+        case SIGILL:  return "SIGILL";
+        case SIGTERM: return "SIGTERM";
+        case SIGINT:  return "SIGINT";
+        case SIGHUP:  return "SIGHUP";
+        default:      return "UNKNOWN";
+    }
+}
+
+nimcp_signal_exception_t* nimcp_signal_exception_create(
+    int signal_number,
+    void* fault_address,
+    const char* file,
+    int line,
+    const char* func,
+    const char* format,
+    ...
+) {
+    nimcp_signal_exception_t* ex = nimcp_calloc(1, sizeof(nimcp_signal_exception_t));
+    if (!ex) return NULL;
+
+    nimcp_error_t code = nimcp_signal_to_error_code(signal_number);
+
+    ex->base.type = EXCEPTION_TYPE_SIGNAL;
+    ex->base.category = EXCEPTION_CATEGORY_SIGNAL;
+    ex->base.code = code;
+    ex->base.severity = EXCEPTION_SEVERITY_FATAL;
+    ex->base.file = file;
+    ex->base.line = line;
+    ex->base.function = func;
+    ex->base.timestamp_us = get_timestamp_us();
+    ex->base.ref_count = 1;
+    ex->base.suggested_action = RECOVERY_ACTION_EMERGENCY_SAVE;
+
+    ex->signal_number = signal_number;
+    ex->fault_address = fault_address;
+    ex->recovery_attempted = false;
+    ex->siglongjmp_executed = false;
+    ex->retry_count = 0;
+
+    /* Format message */
+    if (format) {
+        va_list args;
+        va_start(args, format);
+        vsnprintf(ex->base.message, NIMCP_EXCEPTION_MAX_MESSAGE, format, args);
+        va_end(args);
+    } else {
+        snprintf(ex->base.message, NIMCP_EXCEPTION_MAX_MESSAGE,
+                 "Signal %d (%s) at address %p",
+                 signal_number, nimcp_signal_name(signal_number), fault_address);
+    }
+
+    nimcp_exception_capture_stack_trace(&ex->base.stack_trace, 2);
+    nimcp_exception_generate_epitope(&ex->base);
+
+    return ex;
+}
+
+nimcp_signal_exception_t* nimcp_signal_exception_create_from_context(
+    const struct signal_crash_context* ctx
+) {
+    if (!ctx) return NULL;
+
+    nimcp_signal_exception_t* ex = nimcp_calloc(1, sizeof(nimcp_signal_exception_t));
+    if (!ex) return NULL;
+
+    nimcp_error_t code = nimcp_signal_to_error_code(ctx->signal);
+
+    ex->base.type = EXCEPTION_TYPE_SIGNAL;
+    ex->base.category = EXCEPTION_CATEGORY_SIGNAL;
+    ex->base.code = code;
+    ex->base.severity = EXCEPTION_SEVERITY_FATAL;
+    ex->base.file = NULL;  /* Not available from crash context */
+    ex->base.line = 0;
+    ex->base.function = NULL;
+    ex->base.timestamp_us = get_timestamp_us();
+    ex->base.ref_count = 1;
+    ex->base.suggested_action = RECOVERY_ACTION_EMERGENCY_SAVE;
+
+    /* Copy signal-specific fields from crash context */
+    ex->signal_number = ctx->signal;
+    ex->fault_address = ctx->fault_address;
+    ex->instruction_pointer = ctx->instruction_pointer;
+    ex->stack_pointer = ctx->stack_pointer;
+    ex->base_pointer = ctx->base_pointer;
+    ex->recovery_attempted = false;
+    ex->siglongjmp_executed = false;
+    ex->retry_count = 0;
+
+    /* Copy memory region info */
+    if (ctx->memory_region[0] != '\0') {
+        strncpy(ex->memory_region, ctx->memory_region,
+                NIMCP_SIGNAL_EXCEPTION_MEMORY_REGION_SIZE - 1);
+        ex->memory_region[NIMCP_SIGNAL_EXCEPTION_MEMORY_REGION_SIZE - 1] = '\0';
+    }
+
+    /* Format message */
+    snprintf(ex->base.message, NIMCP_EXCEPTION_MAX_MESSAGE,
+             "Signal %d (%s) at fault address %p, IP=%p",
+             ctx->signal, nimcp_signal_name(ctx->signal),
+             ctx->fault_address, ctx->instruction_pointer);
+
+    /* Copy backtrace from context if available */
+    if (ctx->backtrace_depth > 0) {
+        ex->base.stack_trace.depth = (size_t)ctx->backtrace_depth;
+        if (ex->base.stack_trace.depth > NIMCP_EXCEPTION_MAX_STACK_DEPTH) {
+            ex->base.stack_trace.depth = NIMCP_EXCEPTION_MAX_STACK_DEPTH;
+        }
+        for (size_t i = 0; i < ex->base.stack_trace.depth; i++) {
+            ex->base.stack_trace.frames[i].address = ctx->backtrace[i];
+            ex->base.stack_trace.frames[i].function = NULL;
+            ex->base.stack_trace.frames[i].file = NULL;
+            ex->base.stack_trace.frames[i].line = 0;
+        }
+    }
+
+    nimcp_exception_generate_epitope(&ex->base);
+
+    return ex;
+}
+
+/* ============================================================================
  * Aggregate Exception API
  * ============================================================================ */
 
@@ -781,6 +925,7 @@ const char* nimcp_exception_type_to_string(nimcp_exception_type_t type) {
         case EXCEPTION_TYPE_COGNITIVE: return "COGNITIVE";
         case EXCEPTION_TYPE_GPU:       return "GPU";
         case EXCEPTION_TYPE_AGGREGATE: return "AGGREGATE";
+        case EXCEPTION_TYPE_SIGNAL:    return "SIGNAL";
         default: return "UNKNOWN";
     }
 }

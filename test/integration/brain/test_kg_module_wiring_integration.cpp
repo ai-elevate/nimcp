@@ -101,7 +101,7 @@ protected:
 
         // Create module node
         uint32_t module_node = mockKG_.addNode(
-            wiring_->name,
+            wiring_->module_name,
             0,  // BRAIN_KG_NODE_CORE
             "Test module"
         );

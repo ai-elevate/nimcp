@@ -15356,6 +15356,19 @@ regression_brain_regions_test_speech_enhancement_backward_compat/fast:
 .PHONY : regression_brain_regions_test_speech_enhancement_backward_compat/fast
 
 #=============================================================================
+# Target rules for targets named regression_test_kg_module_wiring
+
+# Build rule for target.
+regression_test_kg_module_wiring: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_test_kg_module_wiring
+.PHONY : regression_test_kg_module_wiring
+
+# fast build rule for target.
+regression_test_kg_module_wiring/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/brain/CMakeFiles/regression_test_kg_module_wiring.dir/build.make test/regression/brain/CMakeFiles/regression_test_kg_module_wiring.dir/build
+.PHONY : regression_test_kg_module_wiring/fast
+
+#=============================================================================
 # Target rules for targets named regression_bridges_test_bridge_memory_leaks
 
 # Build rule for target.
@@ -29500,6 +29513,7 @@ help:
 	@echo "... regression_snn_test_regression"
 	@echo "... regression_social_fep"
 	@echo "... regression_swarm_bridges"
+	@echo "... regression_test_kg_module_wiring"
 	@echo "... regression_training_symbolic_logic_hub"
 	@echo "... regression_training_test_cnn_backprop_regression"
 	@echo "... regression_training_test_cnn_cortex_bridge_regression"

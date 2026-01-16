@@ -2153,6 +2153,14 @@
 /home/bbrelin/nimcp/build/test/regression/brain_regions/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/regression/brain_regions/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/regression/brain_regions/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/regression/brain/CMakeFiles/regression_test_kg_module_wiring.dir
+/home/bbrelin/nimcp/build/test/regression/brain/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/regression/brain/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/regression/brain/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/regression/brain/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/regression/brain/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/regression/brain/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/regression/brain/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/bridges/CMakeFiles/regression_bridges_test_bridge_memory_leaks.dir
 /home/bbrelin/nimcp/build/test/regression/bridges/CMakeFiles/regression_bridges_test_quantum_bridge_stability.dir
 /home/bbrelin/nimcp/build/test/regression/bridges/CMakeFiles/regression_bridges_test_substrate_bridge_stability.dir

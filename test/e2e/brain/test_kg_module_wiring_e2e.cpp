@@ -339,7 +339,8 @@ TEST_F(KGModuleWiringE2ETest, MultiModuleSubsystem) {
     }
 
     // Verify complete topology
-    EXPECT_EQ(kg_.nodes.size(), 5u + 4u);  // 5 modules + output sinks
+    // 5 modules + 3 unique output sinks (SENSORY_OUT, MEMORY_QUERY, MEMORY_RESULT)
+    EXPECT_EQ(kg_.nodes.size(), 5u + 3u);
 
     // Count edges to PFC
     uint32_t pfc_node = kg_.findNode("prefrontal_cortex");
