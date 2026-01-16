@@ -4,6 +4,7 @@
  */
 
 #include <string.h>  // For strdup
+#include <structmember.h>  // For PyMemberDef, T_UINT, T_OBJECT_EX
 
 #include "common/nimcp_module.h"
 #include "security/nimcp_security.h"
@@ -15,6 +16,8 @@
 #include "core/brain/nimcp_pretrained.h"
 #include "io/serialization/nimcp_network_serialization.h"
 #include "utils/logging/nimcp_logging.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include "api/nimcp_api_internal.h"  /* For internal brain access */
 #include "nimcp.h"  /* For training API */
 
 /* Forward declaration from nimcp_training_py.c */
@@ -29,9 +32,30 @@ extern PyTypeObject TrainingConfigType;
  * @brief Initialize Brain object from constructor arguments
  *
  * SIGNATURE: Brain(name, size, task, num_inputs, num_outputs)
+ *        OR: Brain(config) where config is a BrainConfig object
  */
 static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds)
 {
+    // Check if first argument is a BrainConfig
+    if (PyTuple_Size(args) == 1) {
+        PyObject* first_arg = PyTuple_GetItem(args, 0);
+        if (PyObject_TypeCheck(first_arg, &BrainConfigType)) {
+            BrainConfigObject* config = (BrainConfigObject*)first_arg;
+
+            // Create brain from config
+            self->brain = nimcp_brain_create("from_config", config->size,
+                                             config->task,
+                                             config->num_inputs, config->num_outputs);
+
+            if (!self->brain) {
+                PyErr_SetString(PyExc_RuntimeError, "Failed to create brain from config");
+                return -1;
+            }
+            return 0;
+        }
+    }
+
+    // Fall back to original argument parsing
     const char* name;
     int size, task;
     unsigned int num_inputs, num_outputs;
@@ -1524,6 +1548,107 @@ static PyObject* Brain_get_phase_coherence(BrainObject* self, PyObject* args)
     return PyFloat_FromDouble((double)coherence);
 }
 
+// Brain.process(inputs) -> dict
+// Simpler interface that returns a dictionary with prediction results
+static PyObject* Brain_process(BrainObject* self, PyObject* args)
+{
+    PyObject* inputs_obj;
+
+    if (!PyArg_ParseTuple(args, "O", &inputs_obj)) {
+        return NULL;
+    }
+
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        return NULL;
+    }
+
+    // Convert inputs to float array
+    if (!PyList_Check(inputs_obj)) {
+        PyErr_SetString(PyExc_TypeError, "inputs must be a list");
+        return NULL;
+    }
+
+    Py_ssize_t num_inputs = PyList_Size(inputs_obj);
+    if (num_inputs <= 0) {
+        PyErr_SetString(PyExc_ValueError, "inputs list must not be empty");
+        return NULL;
+    }
+
+    float* inputs = (float*)malloc(sizeof(float) * (size_t)num_inputs);
+    if (!inputs) {
+        return PyErr_NoMemory();
+    }
+
+    for (Py_ssize_t i = 0; i < num_inputs; i++) {
+        PyObject* item = PyList_GetItem(inputs_obj, i);
+        inputs[i] = (float)PyFloat_AsDouble(item);
+        if (PyErr_Occurred()) {
+            free(inputs);
+            return NULL;
+        }
+    }
+
+    // Get prediction
+    char label[64];
+    float confidence;
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_predict(self->brain, inputs, (uint32_t)num_inputs, label, &confidence);
+    Py_END_ALLOW_THREADS
+
+    free(inputs);
+
+    if (status != NIMCP_OK) {
+        PyErr_SetString(NIMCPError, "Failed to process inputs");
+        return NULL;
+    }
+
+    // Return a dict with the results
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+
+    PyDict_SetItemString(result, "label", PyUnicode_FromString(label));
+    PyDict_SetItemString(result, "confidence", PyFloat_FromDouble((double)confidence));
+
+    return result;
+}
+
+// Brain.release_dopamine(amount, predicted=0.0) -> float
+// Release dopamine for reward learning
+static PyObject* Brain_release_dopamine(BrainObject* self, PyObject* args, PyObject* kwds)
+{
+    float amount;
+    float predicted = 0.0f;
+
+    static char* kwlist[] = {"amount", "predicted", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "f|f", kwlist, &amount, &predicted)) {
+        return NULL;
+    }
+
+    if (!self->brain) {
+        PyErr_SetString(NIMCPError, "Brain not initialized");
+        return NULL;
+    }
+
+    // Get the neuromodulator system from the internal brain
+    neuromodulator_system_t neuromod = brain_get_neuromodulator_system(self->brain->internal_brain);
+    if (!neuromod) {
+        PyErr_SetString(NIMCPError, "Neuromodulator system not initialized");
+        return NULL;
+    }
+
+    // Release dopamine
+    float released;
+    Py_BEGIN_ALLOW_THREADS
+    released = neuromodulator_release_dopamine(neuromod, amount, predicted);
+    Py_END_ALLOW_THREADS
+
+    return PyFloat_FromDouble((double)released);
+}
+
 static PyMethodDef Brain_methods[] = {
     {"learn", (PyCFunction)Brain_learn, METH_VARARGS | METH_KEYWORDS,
      "Learn from a single example\n\n"
@@ -1544,6 +1669,29 @@ static PyMethodDef Brain_methods[] = {
      "    tuple: (label, confidence) - predicted label and confidence score\n\n"
      "Example:\n"
      "    label, conf = brain.decide([0.5, 0.3, 0.8])"},
+
+    {"process", (PyCFunction)Brain_process, METH_VARARGS,
+     "Process inputs and return prediction as dict\n\n"
+     "Args:\n"
+     "    inputs (list): Input feature vector\n"
+     "Returns:\n"
+     "    dict: {'label': str, 'confidence': float}\n\n"
+     "Example:\n"
+     "    result = brain.process([0.5, 0.3, 0.8])\n"
+     "    print(result['label'], result['confidence'])"},
+
+    {"release_dopamine", (PyCFunction)Brain_release_dopamine, METH_VARARGS | METH_KEYWORDS,
+     "Release dopamine for reward-based learning\n\n"
+     "Triggers dopamine release in the neuromodulator system,\n"
+     "enabling reward-based learning and reinforcement.\n\n"
+     "Args:\n"
+     "    amount (float): Reward magnitude (0.0-1.0)\n"
+     "    predicted (float): Predicted reward for TD learning (default: 0.0)\n"
+     "Returns:\n"
+     "    float: Amount of dopamine actually released\n\n"
+     "Example:\n"
+     "    brain.release_dopamine(0.8)  # Positive reward\n"
+     "    brain.release_dopamine(0.5, predicted=0.3)  # TD error"},
 
     {"clone_cow", (PyCFunction)Brain_clone_cow, METH_NOARGS,
      "Create a copy-on-write clone of this brain\n\n"
@@ -1930,6 +2078,137 @@ PyTypeObject BrainType = {
     .tp_init = (initproc) Brain_init,
     .tp_dealloc = (destructor) Brain_dealloc,
     .tp_methods = Brain_methods,
+};
+
+//=============================================================================
+// BrainConfig Type
+//=============================================================================
+
+/**
+ * @brief Map task name string to enum
+ */
+static nimcp_brain_task_t task_name_to_enum(const char* name)
+{
+    if (strcmp(name, "classification") == 0) return NIMCP_TASK_CLASSIFICATION;
+    if (strcmp(name, "regression") == 0) return NIMCP_TASK_REGRESSION;
+    if (strcmp(name, "pattern_matching") == 0) return NIMCP_TASK_PATTERN_MATCHING;
+    if (strcmp(name, "sequence") == 0) return NIMCP_TASK_SEQUENCE;
+    if (strcmp(name, "association") == 0) return NIMCP_TASK_ASSOCIATION;
+    return NIMCP_TASK_CLASSIFICATION;  // Default
+}
+
+/**
+ * @brief Initialize BrainConfig from constructor arguments
+ *
+ * SIGNATURE: BrainConfig(num_inputs, num_outputs, hidden_layers=None, task_name="classification")
+ */
+static int BrainConfig_init(BrainConfigObject* self, PyObject* args, PyObject* kwds)
+{
+    unsigned int num_inputs, num_outputs;
+    PyObject* hidden_layers = NULL;
+    const char* task_name = "classification";
+
+    static char* kwlist[] = {"num_inputs", "num_outputs", "hidden_layers", "task_name", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "II|Os", kwlist,
+                                     &num_inputs, &num_outputs, &hidden_layers, &task_name)) {
+        return -1;
+    }
+
+    self->num_inputs = num_inputs;
+    self->num_outputs = num_outputs;
+    strncpy(self->task_name, task_name, sizeof(self->task_name) - 1);
+    self->task_name[sizeof(self->task_name) - 1] = '\0';
+    self->task = task_name_to_enum(task_name);
+
+    // Determine brain size from hidden_layers
+    if (hidden_layers && PyList_Check(hidden_layers)) {
+        Py_ssize_t num_hidden = PyList_Size(hidden_layers);
+        Py_INCREF(hidden_layers);
+        self->hidden_layers = hidden_layers;
+
+        // Estimate size from total neurons
+        int total_neurons = (int)(num_inputs + num_outputs);
+        for (Py_ssize_t i = 0; i < num_hidden; i++) {
+            PyObject* item = PyList_GetItem(hidden_layers, i);
+            total_neurons += (int)PyLong_AsLong(item);
+        }
+
+        if (total_neurons < 100) self->size = NIMCP_BRAIN_TINY;
+        else if (total_neurons < 1000) self->size = NIMCP_BRAIN_SMALL;
+        else if (total_neurons < 10000) self->size = NIMCP_BRAIN_MEDIUM;
+        else self->size = NIMCP_BRAIN_LARGE;
+    } else {
+        self->hidden_layers = NULL;
+        self->size = NIMCP_BRAIN_SMALL;  // Default
+    }
+
+    return 0;
+}
+
+static void BrainConfig_dealloc(BrainConfigObject* self)
+{
+    Py_XDECREF(self->hidden_layers);
+    Py_TYPE(self)->tp_free((PyObject*) self);
+}
+
+static PyObject* BrainConfig_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    BrainConfigObject* self = (BrainConfigObject*) type->tp_alloc(type, 0);
+    if (self != NULL) {
+        self->num_inputs = 0;
+        self->num_outputs = 0;
+        self->hidden_layers = NULL;
+        self->task_name[0] = '\0';
+        self->size = NIMCP_BRAIN_SMALL;
+        self->task = NIMCP_TASK_CLASSIFICATION;
+    }
+    return (PyObject*) self;
+}
+
+static PyMemberDef BrainConfig_members[] = {
+    {"num_inputs", T_UINT, offsetof(BrainConfigObject, num_inputs), 0, "Number of input features"},
+    {"num_outputs", T_UINT, offsetof(BrainConfigObject, num_outputs), 0, "Number of output classes/values"},
+    {"hidden_layers", T_OBJECT_EX, offsetof(BrainConfigObject, hidden_layers), 0, "List of hidden layer sizes"},
+    {NULL}
+};
+
+static PyObject* BrainConfig_get_task_name(BrainConfigObject* self, void* closure)
+{
+    return PyUnicode_FromString(self->task_name);
+}
+
+static PyGetSetDef BrainConfig_getset[] = {
+    {"task_name", (getter)BrainConfig_get_task_name, NULL, "Task type name", NULL},
+    {NULL}
+};
+
+PyTypeObject BrainConfigType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "nimcp.BrainConfig",
+    .tp_doc = "NIMCP Brain Configuration\n\n"
+              "Configuration object for creating brains with custom parameters.\n\n"
+              "Args:\n"
+              "    num_inputs (int): Number of input features\n"
+              "    num_outputs (int): Number of output classes/values\n"
+              "    hidden_layers (list): Optional list of hidden layer sizes\n"
+              "    task_name (str): Task type ('classification', 'regression', etc.)\n\n"
+              "Example:\n"
+              "    config = nimcp.BrainConfig(\n"
+              "        num_inputs=10,\n"
+              "        num_outputs=5,\n"
+              "        hidden_layers=[20, 15],\n"
+              "        task_name='classification'\n"
+              "    )\n"
+              "    brain = nimcp.Brain(config)",
+    .tp_basicsize = sizeof(BrainConfigObject),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_new = BrainConfig_new,
+    .tp_init = (initproc) BrainConfig_init,
+    .tp_dealloc = (destructor) BrainConfig_dealloc,
+    .tp_members = BrainConfig_members,
+    .tp_getset = BrainConfig_getset,
 };
 
 //=============================================================================

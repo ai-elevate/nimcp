@@ -25,6 +25,7 @@ extern PyObject* NodeError;
 
 // Type objects
 extern PyTypeObject BrainType;
+extern PyTypeObject BrainConfigType;
 extern PyTypeObject NeuralNetworkType;
 extern PyTypeObject P2PNodeType;
 extern PyTypeObject NetworkConfigType;
@@ -35,6 +36,16 @@ extern PyTypeObject GlialIntegrationType;
 typedef struct {
     PyObject_HEAD nimcp_brain_t brain;
 } BrainObject;
+
+typedef struct {
+    PyObject_HEAD
+    uint32_t num_inputs;
+    uint32_t num_outputs;
+    PyObject* hidden_layers;    // List of layer sizes
+    char task_name[64];         // Task type name
+    nimcp_brain_size_t size;    // Brain size preset
+    nimcp_brain_task_t task;    // Task type enum
+} BrainConfigObject;
 
 typedef struct {
     PyObject_HEAD neural_network_t network;

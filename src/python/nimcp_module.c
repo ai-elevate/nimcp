@@ -49,6 +49,8 @@ PyMODINIT_FUNC PyInit_nimcp(void)
     // Initialize types
     if (PyType_Ready(&BrainType) < 0)
         return NULL;
+    if (PyType_Ready(&BrainConfigType) < 0)
+        return NULL;
     if (PyType_Ready(&NeuralNetworkType) < 0)
         return NULL;
     if (PyType_Ready(&P2PNodeType) < 0)
@@ -100,6 +102,12 @@ PyMODINIT_FUNC PyInit_nimcp(void)
     Py_INCREF(&BrainType);
     if (PyModule_AddObject(m, "Brain", (PyObject*) &BrainType) < 0) {
         Py_DECREF(&BrainType);
+        goto error_cleanup;
+    }
+
+    Py_INCREF(&BrainConfigType);
+    if (PyModule_AddObject(m, "BrainConfig", (PyObject*) &BrainConfigType) < 0) {
+        Py_DECREF(&BrainConfigType);
         goto error_cleanup;
     }
 

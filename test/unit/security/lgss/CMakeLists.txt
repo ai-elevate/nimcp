@@ -4,6 +4,7 @@
 set(LGSS_UNIT_TESTS
     test_lgss_safety_kb.cpp
     test_lgss_context.cpp
+    test_lgss_action_interceptor.cpp
 )
 
 # Create test executable
