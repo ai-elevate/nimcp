@@ -418,7 +418,7 @@ TEST_F(SynapsePlasticityBridgeTest, StatsTrackMechanismContributions) {
 
 TEST_F(SynapsePlasticityBridgeTest, ConnectBioAsyncNullReturnsError) {
     int result = synapse_plasticity_connect_bio_async(nullptr);
-    EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
+    EXPECT_EQ(result, NIMCP_ERROR_INVALID_PARAM);
 }
 
 TEST_F(SynapsePlasticityBridgeTest, DisconnectBioAsyncNullHandled) {

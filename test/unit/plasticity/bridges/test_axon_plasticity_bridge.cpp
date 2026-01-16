@@ -428,7 +428,7 @@ TEST_F(AxonPlasticityBridgeTest, StatsTrackMyelination) {
 
 TEST_F(AxonPlasticityBridgeTest, ConnectBioAsyncNullReturnsError) {
     int result = axon_plasticity_connect_bio_async(nullptr);
-    EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
+    EXPECT_EQ(result, NIMCP_ERROR_INVALID_PARAM);
 }
 
 TEST_F(AxonPlasticityBridgeTest, DisconnectBioAsyncNullHandled) {

@@ -331,7 +331,7 @@ TEST_F(NeuromodulatorTest, ComputeModulationEffects) {
     neuromodulator_set_level(system, NEUROMOD_DOPAMINE, 0.8f);
 
     receptor_profile_t receptors = neuromodulator_profile_cortical_excitatory();
-    modulation_effects_t effects = {};
+    modulation_effects_t effects = modulation_effects_create();
 
     ASSERT_TRUE(neuromodulator_compute_effects(system, &receptors, &effects));
 
@@ -347,7 +347,7 @@ TEST_F(NeuromodulatorTest, LearningRateModulation) {
     neuromodulator_set_level(system, NEUROMOD_ACETYLCHOLINE, 0.9f);
 
     receptor_profile_t receptors = neuromodulator_profile_hippocampal();
-    modulation_effects_t effects = {};
+    modulation_effects_t effects = modulation_effects_create();
     neuromodulator_compute_effects(system, &receptors, &effects);
 
     float base_lr = 0.01f;
@@ -364,7 +364,7 @@ TEST_F(NeuromodulatorTest, TransmissionModulation) {
     neuromodulator_set_level(system, NEUROMOD_NOREPINEPHRINE, 0.7f);
 
     receptor_profile_t receptors = neuromodulator_profile_cortical_excitatory();
-    modulation_effects_t effects = {};
+    modulation_effects_t effects = modulation_effects_create();
     neuromodulator_compute_effects(system, &receptors, &effects);
 
     float base_weight = 0.5f;
@@ -380,7 +380,7 @@ TEST_F(NeuromodulatorTest, ThresholdModulation) {
     neuromodulator_set_level(system, NEUROMOD_NOREPINEPHRINE, 0.9f);
 
     receptor_profile_t receptors = neuromodulator_profile_cortical_excitatory();
-    modulation_effects_t effects = {};
+    modulation_effects_t effects = modulation_effects_create();
     neuromodulator_compute_effects(system, &receptors, &effects);
 
     float base_threshold = 0.5f;
@@ -475,7 +475,7 @@ TEST_F(NeuromodulatorTest, ModulationEffectsPerformance) {
      * WHY:  Called per synapse, must be very fast
      */
     receptor_profile_t receptors = neuromodulator_profile_cortical_excitatory();
-    modulation_effects_t effects = {};
+    modulation_effects_t effects = modulation_effects_create();
 
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -717,7 +717,8 @@ TEST_F(NeuromodulatorTest, DifferentReceptorProfiles) {
     receptor_profile_t excitatory = neuromodulator_profile_cortical_excitatory();
     receptor_profile_t inhibitory = neuromodulator_profile_cortical_inhibitory();
 
-    modulation_effects_t effects_exc, effects_inh;
+    modulation_effects_t effects_exc = modulation_effects_create();
+    modulation_effects_t effects_inh = modulation_effects_create();
 
     neuromodulator_compute_effects(system, &excitatory, &effects_exc);
     neuromodulator_compute_effects(system, &inhibitory, &effects_inh);

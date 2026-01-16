@@ -416,7 +416,7 @@ TEST_F(DendritePlasticityBridgeTest, CalciumEventIncreasesStats) {
 
 TEST_F(DendritePlasticityBridgeTest, ConnectBioAsyncNullReturnsError) {
     int result = dendrite_plasticity_connect_bio_async(nullptr);
-    EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
+    EXPECT_EQ(result, NIMCP_ERROR_INVALID_PARAM);
 }
 
 TEST_F(DendritePlasticityBridgeTest, DisconnectBioAsyncNullHandled) {
