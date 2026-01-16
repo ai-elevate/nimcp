@@ -90,6 +90,9 @@ class DomainCategory(Enum):
     WEATHER = "weather"
     EARTH_SCIENCE = "earth_science"
 
+    # Academic & Research (NEW)
+    ACADEMIC_RESEARCH = "academic_research"
+
 
 @dataclass
 class StreamingDataset:
@@ -1380,6 +1383,203 @@ AGI_CURRICULUM_DATASETS: List[StreamingDataset] = [
         description="NOAA public weather data from AWS S3 with daily granularity",
         license="Public Domain",
         url="https://www.kaggle.com/datasets/goswamimurari/aws-open-source-weather-transaction-and-metadata"
+    ),
+
+    #=========================================================================
+    # ARXIV - Academic Research Papers
+    #=========================================================================
+
+    StreamingDataset(
+        name="arXiv Papers (Cornell)",
+        source=DatasetSource.KAGGLE,
+        identifier="Cornell-University/arxiv",
+        domain=DomainCategory.ACADEMIC_RESEARCH,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.8,
+        priority=1,
+        text_field="abstract",
+        description="1.7M+ scientific papers from arXiv.org, updated weekly",
+        license="CC0-1.0",
+        size_estimate="1.1TB",
+        url="https://www.kaggle.com/datasets/Cornell-University/arxiv"
+    ),
+
+    StreamingDataset(
+        name="ML-ArXiv Papers",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="CShorten/ML-ArXiv-Papers",
+        domain=DomainCategory.ACADEMIC_RESEARCH,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.8,
+        priority=1,
+        description="100K+ machine learning papers from arXiv",
+        license="CC-BY-4.0",
+        url="https://huggingface.co/datasets/CShorten/ML-ArXiv-Papers"
+    ),
+
+    StreamingDataset(
+        name="arXiv Dataset (Community)",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="arxiv-community/arxiv_dataset",
+        domain=DomainCategory.ACADEMIC_RESEARCH,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.8,
+        priority=2,
+        text_field="abstract",
+        description="1.7M+ arXiv paper metadata and abstracts",
+        license="CC0-1.0",
+        url="https://huggingface.co/datasets/arxiv-community/arxiv_dataset"
+    ),
+
+    StreamingDataset(
+        name="arXiv Abstracts 2021",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="gfissore/arxiv-abstracts-2021",
+        domain=DomainCategory.ACADEMIC_RESEARCH,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.7,
+        priority=2,
+        text_field="abstract",
+        description="2M+ arXiv paper abstracts through 2021",
+        license="CC0-1.0",
+        url="https://huggingface.co/datasets/gfissore/arxiv-abstracts-2021"
+    ),
+
+    StreamingDataset(
+        name="AI-ArXiv Papers",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="jamescalam/ai-arxiv",
+        domain=DomainCategory.ACADEMIC_RESEARCH,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.8,
+        priority=2,
+        description="AI and LLM-focused papers from arXiv",
+        license="Apache-2.0",
+        url="https://huggingface.co/datasets/jamescalam/ai-arxiv"
+    ),
+
+    StreamingDataset(
+        name="arXiv CS Papers",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="gfissore/arxiv-cs-abstracts",
+        domain=DomainCategory.COMPUTER_SCIENCE,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.8,
+        priority=2,
+        text_field="abstract",
+        description="Computer Science papers from arXiv",
+        license="CC0-1.0",
+        url="https://huggingface.co/datasets/gfissore/arxiv-cs-abstracts"
+    ),
+
+    StreamingDataset(
+        name="arXiv Math Papers",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="ccdv/arxiv-classification",
+        subset="math",
+        domain=DomainCategory.MATHEMATICS,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.9,
+        priority=2,
+        text_field="abstract",
+        description="Mathematics papers from arXiv for classification",
+        license="CC-BY-4.0",
+        url="https://huggingface.co/datasets/ccdv/arxiv-classification"
+    ),
+
+    #=========================================================================
+    # ADDITIONAL PROJECT GUTENBERG - Extended Literature
+    #=========================================================================
+
+    StreamingDataset(
+        name="Gutenberg Multilingual (LAION)",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="laion/Project-Gutenberg",
+        domain=DomainCategory.LITERATURE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=1,
+        description="Project Gutenberg books in 10 languages with metadata",
+        license="Public Domain",
+        url="https://huggingface.co/datasets/laion/Project-Gutenberg"
+    ),
+
+    StreamingDataset(
+        name="Gutenberg English (48K Books)",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="sedthh/gutenberg_english",
+        domain=DomainCategory.LITERATURE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=1,
+        description="48K English books from Project Gutenberg with cleaned text",
+        license="Public Domain",
+        url="https://huggingface.co/datasets/sedthh/gutenberg_english"
+    ),
+
+    StreamingDataset(
+        name="Gutenberg Poetry Corpus",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="biglam/gutenberg-poetry-corpus",
+        domain=DomainCategory.LITERATURE,
+        stages=[DevelopmentStage.CHILD, DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.4,
+        priority=2,
+        description="3M+ lines of poetry from Project Gutenberg (Shakespeare, Dickinson, Whitman, etc.)",
+        license="Public Domain",
+        url="https://huggingface.co/datasets/biglam/gutenberg-poetry-corpus"
+    ),
+
+    StreamingDataset(
+        name="PG-19 (Benchmark)",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="pg19",
+        domain=DomainCategory.LITERATURE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        description="Pre-1919 Project Gutenberg books - long-range language modeling benchmark",
+        license="Public Domain",
+        url="https://huggingface.co/datasets/pg19"
+    ),
+
+    StreamingDataset(
+        name="Gutenberg Books 2025 (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="lokeshparab/gutenberg-books-and-metadata-2025",
+        domain=DomainCategory.LITERATURE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=1,
+        description="75K+ Project Gutenberg books with full text and comprehensive metadata",
+        license="Public Domain",
+        url="https://www.kaggle.com/datasets/lokeshparab/gutenberg-books-and-metadata-2025"
+    ),
+
+    StreamingDataset(
+        name="Gutenberg Dialogues",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="HuggingFaceTB/gutenberg-dialogs",
+        domain=DomainCategory.LITERATURE,
+        stages=[DevelopmentStage.CHILD, DevelopmentStage.ADOLESCENT],
+        difficulty=0.4,
+        priority=2,
+        description="Extracted dialogues from Project Gutenberg books for conversation modeling",
+        license="Public Domain",
+        url="https://huggingface.co/datasets/HuggingFaceTB/gutenberg-dialogs"
+    ),
+
+    StreamingDataset(
+        name="Standard eBooks",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="tdoehmen/standardebooks",
+        domain=DomainCategory.LITERATURE,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        description="High-quality curated public domain ebooks from Standard eBooks project",
+        license="Public Domain",
+        url="https://huggingface.co/datasets/tdoehmen/standardebooks"
     ),
 ]
 
