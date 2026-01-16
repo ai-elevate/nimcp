@@ -46,3 +46,12 @@ add_integration_gpu_test(test_gpu_cpu_fallback_integration)
 # Language Layer Integration Tests
 # =============================================================================
 # Note: language subdirectory is added by test/CMakeLists.txt
+
+# =============================================================================
+# Brain KG Integration Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/brain/CMakeLists.txt)
+    message(STATUS "Adding Brain KG Integration tests...")
+    add_subdirectory(brain)
+endif()
+

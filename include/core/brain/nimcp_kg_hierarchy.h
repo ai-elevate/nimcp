@@ -1283,6 +1283,93 @@ uint32_t kg_hierarchy_count_isolated(const kg_hierarchy_t* hier);
  */
 void kg_hierarchy_free_components_result(kg_components_result_t* result);
 
+/* ============================================================================
+ * Edge Iteration API (for algorithm integration)
+ * ============================================================================ */
+
+/**
+ * @brief Simple edge structure for algorithm processing
+ */
+typedef struct {
+    brain_kg_node_id_t source;  /**< Source node ID */
+    brain_kg_node_id_t target;  /**< Target node ID */
+    float weight;               /**< Edge weight */
+} kg_edge_t;
+
+/**
+ * @brief Edge iterator (opaque)
+ */
+typedef struct kg_edge_iterator kg_edge_iterator_t;
+
+/**
+ * @brief Get total node count in hierarchy
+ *
+ * @param hier Hierarchy handle
+ * @param count Output node count
+ * @return 0 on success
+ */
+int kg_hierarchy_get_node_count(const kg_hierarchy_t* hier, uint32_t* count);
+
+/**
+ * @brief Create edge iterator for all edges
+ *
+ * @param hier Hierarchy handle
+ * @return Iterator or NULL on error
+ */
+kg_edge_iterator_t* kg_hierarchy_edge_iterator(const kg_hierarchy_t* hier);
+
+/**
+ * @brief Get next edge from iterator
+ *
+ * @param iter Iterator handle
+ * @param edge Output edge
+ * @return 0 on success, -1 when exhausted
+ */
+int kg_edge_iterator_next(kg_edge_iterator_t* iter, kg_edge_t* edge);
+
+/**
+ * @brief Free edge iterator
+ *
+ * @param iter Iterator to free (NULL safe)
+ */
+void kg_edge_iterator_free(kg_edge_iterator_t* iter);
+
+/**
+ * @brief Set integer metadata on an edge
+ *
+ * @param hier Hierarchy handle
+ * @param from Source node
+ * @param to Target node
+ * @param key Metadata key
+ * @param value Integer value
+ * @return 0 on success
+ */
+int kg_hierarchy_set_edge_metadata_int(
+    kg_hierarchy_t* hier,
+    brain_kg_node_id_t from,
+    brain_kg_node_id_t to,
+    const char* key,
+    int32_t value
+);
+
+/**
+ * @brief Get integer metadata from an edge
+ *
+ * @param hier Hierarchy handle
+ * @param from Source node
+ * @param to Target node
+ * @param key Metadata key
+ * @param value Output value
+ * @return 0 on success, -1 if not found
+ */
+int kg_hierarchy_get_edge_metadata_int(
+    const kg_hierarchy_t* hier,
+    brain_kg_node_id_t from,
+    brain_kg_node_id_t to,
+    const char* key,
+    int32_t* value
+);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1464,6 +1464,27 @@ nimcp_result_t nimcp_cond_init(nimcp_cond_t* cond)
 }
 
 /**
+ * @brief Create a new condition variable (allocate and initialize)
+ *
+ * @return Pointer to initialized condition variable or NULL on failure
+ */
+nimcp_cond_t* nimcp_cond_create(void)
+{
+    nimcp_cond_t* cond = (nimcp_cond_t*)nimcp_malloc(sizeof(nimcp_cond_t));
+    if (!cond) {
+        set_thread_error(NIMCP_ERROR_MEMORY, "Failed to allocate cond");
+        return NULL;
+    }
+
+    if (nimcp_cond_init(cond) != NIMCP_SUCCESS) {
+        nimcp_free(cond);
+        return NULL;
+    }
+
+    return cond;
+}
+
+/**
  * @brief Destroy condition variable (Adapter for pthread_cond_destroy)
  *
  * WHY DESTROY:

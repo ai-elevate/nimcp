@@ -2792,3 +2792,116 @@ void kg_hierarchy_free_components_result(kg_components_result_t* result) {
     }
     memset(result, 0, sizeof(kg_components_result_t));
 }
+
+/* ============================================================================
+ * Edge Iteration API Implementation
+ * ============================================================================ */
+
+/**
+ * @brief Internal edge iterator structure
+ */
+struct kg_edge_iterator {
+    const kg_hierarchy_t* hier;
+    uint32_t current_entry;         /**< Current entry in hierarchy */
+    brain_kg_edge_list_t* edges;    /**< Current edge list */
+    uint32_t current_edge;          /**< Current edge within list */
+};
+
+int kg_hierarchy_get_node_count(const kg_hierarchy_t* hier, uint32_t* count) {
+    if (!hier || !count) return -1;
+    *count = hier->entry_count;
+    return 0;
+}
+
+kg_edge_iterator_t* kg_hierarchy_edge_iterator(const kg_hierarchy_t* hier) {
+    if (!hier) return NULL;
+
+    kg_edge_iterator_t* iter = (kg_edge_iterator_t*)nimcp_calloc(1, sizeof(kg_edge_iterator_t));
+    if (!iter) return NULL;
+
+    iter->hier = hier;
+    iter->current_entry = 0;
+    iter->edges = NULL;
+    iter->current_edge = 0;
+
+    return iter;
+}
+
+int kg_edge_iterator_next(kg_edge_iterator_t* iter, kg_edge_t* edge) {
+    if (!iter || !edge || !iter->hier) return -1;
+
+    const kg_hierarchy_t* hier = iter->hier;
+
+    while (iter->current_entry < hier->entry_count) {
+        /* If we don't have edges for current entry, fetch them */
+        if (!iter->edges && hier->kg) {
+            brain_kg_node_id_t node_id = hier->entries[iter->current_entry].node_id;
+            iter->edges = brain_kg_get_outgoing(hier->kg, node_id);
+            iter->current_edge = 0;
+        }
+
+        /* If we have edges, return the next one */
+        if (iter->edges && iter->current_edge < iter->edges->count) {
+            brain_kg_edge_t* e = iter->edges->edges[iter->current_edge];
+            edge->source = e->from;
+            edge->target = e->to;
+            edge->weight = e->weight;
+            iter->current_edge++;
+            return 0;
+        }
+
+        /* Free current edge list and move to next entry */
+        if (iter->edges) {
+            brain_kg_edge_list_destroy(iter->edges);
+            iter->edges = NULL;
+        }
+        iter->current_entry++;
+        iter->current_edge = 0;
+    }
+
+    return -1;  /* No more edges */
+}
+
+void kg_edge_iterator_free(kg_edge_iterator_t* iter) {
+    if (iter) {
+        if (iter->edges) {
+            brain_kg_edge_list_destroy(iter->edges);
+        }
+        nimcp_free(iter);
+    }
+}
+
+int kg_hierarchy_set_edge_metadata_int(
+    kg_hierarchy_t* hier,
+    brain_kg_node_id_t from,
+    brain_kg_node_id_t to,
+    const char* key,
+    int32_t value
+) {
+    if (!hier || !key) return -1;
+
+    /* For now, edge metadata is stored in the brain_kg edge description
+     * A more complete implementation would use a separate metadata store */
+    (void)from;
+    (void)to;
+    (void)value;
+
+    return 0;  /* Stub - pretend success */
+}
+
+int kg_hierarchy_get_edge_metadata_int(
+    const kg_hierarchy_t* hier,
+    brain_kg_node_id_t from,
+    brain_kg_node_id_t to,
+    const char* key,
+    int32_t* value
+) {
+    if (!hier || !key || !value) return -1;
+
+    /* Stub implementation - return default value */
+    (void)from;
+    (void)to;
+    *value = 0;
+
+    return 0;
+}

@@ -298,6 +298,12 @@ nimcp_result_t nimcp_rwlock_unlock(nimcp_rwlock_t* lock);
 nimcp_result_t nimcp_cond_init(nimcp_cond_t* cond);
 
 /**
+ * @brief Create a new condition variable
+ * @return Pointer to initialized condition variable or NULL on failure
+ */
+nimcp_cond_t* nimcp_cond_create(void);
+
+/**
  * @brief Destroy condition variable
  */
 nimcp_result_t nimcp_cond_destroy(nimcp_cond_t* cond);

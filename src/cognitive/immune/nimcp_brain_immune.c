@@ -2896,3 +2896,215 @@ int brain_immune_query_self_knowledge(kg_reader_t* kg) {
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
 }
+
+/* ============================================================================
+ * Exception System Integration
+ * ============================================================================ */
+
+/* Exception callbacks - stored separately from other callbacks */
+static brain_immune_exception_cb_t g_exception_callback = NULL;
+static brain_immune_recovery_cb_t g_recovery_callback = NULL;
+static void* g_exception_callback_data = NULL;
+static void* g_recovery_callback_data = NULL;
+
+/**
+ * @brief Present exception as antigen to immune system
+ */
+int brain_immune_present_exception(
+    brain_immune_system_t* system,
+    const nimcp_exception_t* exception,
+    uint32_t* antigen_id_out
+) {
+    if (!system || !exception) return -1;
+
+    /* Access exception fields through known struct layout
+     * nimcp_exception_t layout (from header):
+     * - type (4 bytes, offset 0)
+     * - category (4 bytes, offset 4)
+     * - code (4 bytes, offset 8)
+     * - severity (4 bytes, offset 12)
+     * - message (256 bytes, offset 16)
+     * - file ptr (8 bytes, offset 272)
+     * - line (4 bytes, offset 280)
+     * - function ptr (8 bytes, offset 284)
+     * - timestamp (8 bytes, offset 292)
+     * - stack_trace (varies)
+     * - epitope (64 bytes at offset ~300+stack_trace)
+     */
+
+    /* For safety, we'll use offsets based on structure padding */
+    const uint32_t* severity_ptr = (const uint32_t*)((const uint8_t*)exception + 12);
+    uint32_t severity = *severity_ptr;
+
+    /* Epitope offset depends on stack_trace size - use a safe approximation */
+    /* Stack trace: nimcp_stack_frame_t frames[32] + size_t depth = ~32*24 + 8 = 776 bytes */
+    /* So epitope is at approximately offset 300 + 776 = 1076 */
+    const uint8_t* epitope = (const uint8_t*)exception + 1076;
+    size_t epitope_len = 64;
+
+    /* Validate and clamp severity to 1-10 range */
+    uint32_t immune_severity = severity;
+    if (immune_severity > 10) immune_severity = 10;
+    if (immune_severity < 1) immune_severity = 1;
+
+    /* Present as generic antigen */
+    int result = brain_immune_present_antigen(
+        system,
+        ANTIGEN_SOURCE_MANUAL,  /* Exceptions are manually presented */
+        epitope,
+        epitope_len,
+        immune_severity,
+        0,  /* source_node = 0 for exceptions */
+        antigen_id_out
+    );
+
+    /* Trigger exception callback if registered */
+    if (result == 0 && g_exception_callback && antigen_id_out) {
+        g_exception_callback(system, exception, *antigen_id_out, g_exception_callback_data);
+    }
+
+    return result;
+}
+
+/**
+ * @brief Set exception presentation callback
+ */
+int brain_immune_set_exception_callback(
+    brain_immune_system_t* system,
+    brain_immune_exception_cb_t callback,
+    void* user_data
+) {
+    (void)system;  /* Callback stored globally for simplicity */
+    g_exception_callback = callback;
+    g_exception_callback_data = user_data;
+    return 0;
+}
+
+/**
+ * @brief Set recovery completion callback
+ */
+int brain_immune_set_recovery_callback(
+    brain_immune_system_t* system,
+    brain_immune_recovery_cb_t callback,
+    void* user_data
+) {
+    (void)system;  /* Callback stored globally for simplicity */
+    g_recovery_callback = callback;
+    g_recovery_callback_data = user_data;
+    return 0;
+}
+
+/**
+ * @brief Notify immune system of recovery result
+ */
+int brain_immune_notify_recovery_result(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    int recovery_action,
+    bool success
+) {
+    if (!system) return -1;
+
+    LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
+        "Recovery result: antigen=%u, action=%d, success=%s",
+        antigen_id, recovery_action, success ? "true" : "false");
+
+    nimcp_mutex_lock(system->mutex);
+
+    /* Find antigen */
+    brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
+    if (antigen) {
+        if (success) {
+            antigen->neutralized = true;
+            system->stats.threats_neutralized++;
+
+            /* Release anti-inflammatory cytokine on success */
+            nimcp_mutex_unlock(system->mutex);
+            uint32_t cytokine_id;
+            brain_immune_release_cytokine(system, BRAIN_CYTOKINE_IL10, 0, 0.5f, 0, &cytokine_id);
+        } else {
+            nimcp_mutex_unlock(system->mutex);
+        }
+    } else {
+        nimcp_mutex_unlock(system->mutex);
+    }
+
+    /* Trigger callback */
+    if (g_recovery_callback) {
+        g_recovery_callback(system, antigen_id, recovery_action, success, g_recovery_callback_data);
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Get recommended recovery action for antigen
+ */
+int brain_immune_get_recovery_recommendation(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    int* action_out
+) {
+    if (!system || !action_out) return -1;
+
+    nimcp_mutex_lock(system->mutex);
+
+    brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
+    if (!antigen) {
+        nimcp_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    /* Check if we have a memory cell that matches this antigen */
+    for (size_t i = 0; i < system->b_cell_count; i++) {
+        brain_b_cell_t* b_cell = &system->b_cells[i];
+        if (b_cell->state == B_CELL_MEMORY) {
+            float affinity = brain_immune_compute_affinity(
+                b_cell->receptor,
+                b_cell->receptor_len,
+                antigen->epitope,
+                antigen->epitope_len
+            );
+
+            if (affinity >= system->config.recognition_threshold) {
+                /* Found matching memory cell - recommend based on source */
+                switch (antigen->source) {
+                    case ANTIGEN_SOURCE_BBB:
+                        *action_out = 8;  /* RECOVERY_ACTION_QUARANTINE */
+                        break;
+                    case ANTIGEN_SOURCE_BFT:
+                        *action_out = 5;  /* RECOVERY_ACTION_RESTART_THREAD */
+                        break;
+                    case ANTIGEN_SOURCE_ANOMALY:
+                        *action_out = 2;  /* RECOVERY_ACTION_GC */
+                        break;
+                    default:
+                        *action_out = 1;  /* RECOVERY_ACTION_RETRY */
+                        break;
+                }
+
+                nimcp_mutex_unlock(system->mutex);
+                LOG_MODULE_DEBUG(BRAIN_IMMUNE_MODULE_NAME,
+                    "Memory-based recovery recommendation: action=%d for antigen=%u",
+                    *action_out, antigen_id);
+                return 0;
+            }
+        }
+    }
+
+    /* Store severity before unlocking */
+    uint32_t severity = antigen->severity;
+
+    nimcp_mutex_unlock(system->mutex);
+
+    /* No memory match - return default recommendation based on severity */
+    if (severity >= 7) {
+        *action_out = 4;  /* RECOVERY_ACTION_ROLLBACK */
+    } else if (severity >= 5) {
+        *action_out = 2;  /* RECOVERY_ACTION_GC */
+    } else {
+        *action_out = 1;  /* RECOVERY_ACTION_RETRY */
+    }
+
+    return 0;
+}

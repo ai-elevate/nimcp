@@ -1516,6 +1516,123 @@ int brain_immune_send_imagination_modulation(brain_immune_system_t* system);
 int brain_immune_register_imagination_handler(brain_immune_system_t* system);
 
 /* ============================================================================
+ * Exception System Integration
+ * ============================================================================ */
+
+/* Forward declarations for exception types */
+struct nimcp_exception;
+typedef struct nimcp_exception nimcp_exception_t;
+
+/**
+ * @brief Callback for exception-based antigen presentation
+ *
+ * Called when exception system presents exception as antigen.
+ */
+typedef void (*brain_immune_exception_cb_t)(
+    brain_immune_system_t* system,
+    const nimcp_exception_t* exception,
+    uint32_t antigen_id,
+    void* user_data
+);
+
+/**
+ * @brief Callback for recovery action completion
+ *
+ * Called when recovery action completes (success or failure).
+ */
+typedef void (*brain_immune_recovery_cb_t)(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    int recovery_action,
+    bool success,
+    void* user_data
+);
+
+/**
+ * @brief Present exception as antigen to immune system
+ *
+ * WHAT: Convert exception to antigen and initiate immune response
+ * WHY:  Enable automatic error recovery through immune system
+ * HOW:  Create antigen from exception epitope, trigger processing
+ *
+ * @param system Brain immune system
+ * @param exception Exception to present
+ * @param antigen_id_out Output: assigned antigen ID
+ * @return 0 on success, -1 on error
+ */
+int brain_immune_present_exception(
+    brain_immune_system_t* system,
+    const nimcp_exception_t* exception,
+    uint32_t* antigen_id_out
+);
+
+/**
+ * @brief Set exception presentation callback
+ *
+ * @param system Immune system
+ * @param callback Callback function
+ * @param user_data User context
+ * @return 0 on success
+ */
+int brain_immune_set_exception_callback(
+    brain_immune_system_t* system,
+    brain_immune_exception_cb_t callback,
+    void* user_data
+);
+
+/**
+ * @brief Set recovery completion callback
+ *
+ * @param system Immune system
+ * @param callback Callback function
+ * @param user_data User context
+ * @return 0 on success
+ */
+int brain_immune_set_recovery_callback(
+    brain_immune_system_t* system,
+    brain_immune_recovery_cb_t callback,
+    void* user_data
+);
+
+/**
+ * @brief Notify immune system of recovery result
+ *
+ * WHAT: Inform immune system whether recovery succeeded
+ * WHY:  Enable memory formation for successful patterns
+ * HOW:  Update antibody effectiveness, form memory cells
+ *
+ * @param system Immune system
+ * @param antigen_id Antigen that was recovered
+ * @param recovery_action Action that was taken
+ * @param success Whether recovery succeeded
+ * @return 0 on success
+ */
+int brain_immune_notify_recovery_result(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    int recovery_action,
+    bool success
+);
+
+/**
+ * @brief Get recommended recovery action for antigen
+ *
+ * WHAT: Query immune system for best recovery action
+ * WHY:  Let immune memory guide recovery decisions
+ * HOW:  Check for matching memory cells, return learned action
+ *
+ * @param system Immune system
+ * @param antigen_id Antigen to query
+ * @param action_out Output: recommended action
+ * @return 0 on success, -1 if no recommendation
+ */
+int brain_immune_get_recovery_recommendation(
+    brain_immune_system_t* system,
+    uint32_t antigen_id,
+    int* action_out
+);
+
+/* ============================================================================
  * String Conversion Utilities
  * ============================================================================ */
 

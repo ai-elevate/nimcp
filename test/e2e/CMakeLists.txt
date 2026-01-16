@@ -2874,6 +2874,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/plasticity/CMakeLists.txt)
     add_subdirectory(plasticity)
 endif()
 
+# Include Brain E2E test subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/brain/CMakeLists.txt)
+    message(STATUS "Adding Brain KG E2E tests...")
+    add_subdirectory(brain)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

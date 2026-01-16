@@ -112,6 +112,29 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_kg_helpers.c           # KG helper utilities for module integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_hierarchy.c               # Hierarchical view of KG (3-level brain topology)
 
+    # KG Self-Awareness Extension Modules (Phase Jan 2026)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_metadata.c              # Node/edge metadata management
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_search.c                # Full-text and pattern search
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_algorithms.c            # Graph algorithms (centrality, paths, communities)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_module_wiring.c         # Module connection/wiring primitives
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_assembly.c              # Brain assembly from KG - TEMPORARILY DISABLED (API mismatch)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_io_dispatcher.c         # Async I/O dispatching
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_persistence.c           # KG persistence - TEMPORARILY DISABLED (API mismatch)
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_events.c                # Pub/sub event - TEMPORARILY DISABLED (incomplete)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_observability.c         # Prometheus metrics, tracing, health
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_degradation.c           # Circuit breaker and graceful degradation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_disaster_recovery.c     # Replication, backup, failover
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_gc.c                    # Garbage collection and compaction
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_gc_agent.c              # GC subagent background service
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_temporal.c              # Bi-temporal queries and versioning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_schema.c                # Schema evolution and migration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_ratelimit.c             # Rate limiting and quotas
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_federation.c            # Cross-brain federation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_analytics.c             # Graph analytics and insights
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_compliance.c            # Data governance and GDPR compliance
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_interchange.c           # Import/export formats
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_kg_gpu.c                   # GPU acceleration
+
     # Hemispheric Brain Architecture (Phase Dec 2024: Two-hemisphere bilateral processing)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_lateralization.c     # Hemisphere specialization profiles
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_corpus_callosum.c    # Inter-hemispheric bridge
@@ -1549,6 +1572,14 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Error Codes (Structured Error System)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/error/nimcp_error_codes.c
+
+    # Utils - Exception Handling with Brain Immune Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/exception/nimcp_exception.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/exception/nimcp_exception_handlers.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/exception/nimcp_exception_immune.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/exception/nimcp_exception_trace.c    # Distributed tracing & KG-aware propagation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/exception/nimcp_exception_circuit.c  # Circuit breaker & suppression
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/exception/nimcp_exception_metrics.c  # Metrics, telemetry & adaptive recovery
 
     # Utils - Spatial Indexing (KD-Tree)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/spatial/nimcp_kdtree.c
