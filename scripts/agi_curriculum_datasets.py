@@ -1581,6 +1581,172 @@ AGI_CURRICULUM_DATASETS: List[StreamingDataset] = [
         license="Public Domain",
         url="https://huggingface.co/datasets/tdoehmen/standardebooks"
     ),
+
+    #=========================================================================
+    # GITHUB - Source Code, Commits, Issues, Pull Requests
+    #=========================================================================
+
+    StreamingDataset(
+        name="GitHub Code (CodeParrot)",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="codeparrot/github-code",
+        domain=DomainCategory.SOFTWARE_ENGINEERING,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.6,
+        priority=1,
+        description="115M code files from GitHub in 32 programming languages (1TB)",
+        license="Various OSI-approved",
+        size_estimate="1TB",
+        url="https://huggingface.co/datasets/codeparrot/github-code"
+    ),
+
+    StreamingDataset(
+        name="GitHub Code 2025",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="nick007x/github-code-2025",
+        domain=DomainCategory.SOFTWARE_ENGINEERING,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.6,
+        priority=1,
+        description="1.5M+ curated repositories representing quality and innovation in 2025",
+        license="Various OSI-approved",
+        url="https://huggingface.co/datasets/nick007x/github-code-2025"
+    ),
+
+    StreamingDataset(
+        name="GitHub Code 2025 (2+ Stars)",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="utter-project/github-code-2025-above-2-stars",
+        domain=DomainCategory.SOFTWARE_ENGINEERING,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.6,
+        priority=2,
+        description="2025 GitHub repositories with 2+ stars for quality filtering",
+        license="Various OSI-approved",
+        url="https://huggingface.co/datasets/utter-project/github-code-2025-above-2-stars"
+    ),
+
+    StreamingDataset(
+        name="The Stack v2",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="bigcode/the-stack-v2",
+        domain=DomainCategory.SOFTWARE_ENGINEERING,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.6,
+        priority=1,
+        description="Updated Stack dataset - permissively licensed source code for StarCoder2",
+        license="Various OSI-approved",
+        size_estimate="67TB",
+        url="https://huggingface.co/datasets/bigcode/the-stack-v2"
+    ),
+
+    StreamingDataset(
+        name="The Stack (Deduplicated)",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="bigcode/the-stack-dedup",
+        domain=DomainCategory.SOFTWARE_ENGINEERING,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.6,
+        priority=1,
+        description="Near-deduplicated version of The Stack (3TB)",
+        license="Various OSI-approved",
+        size_estimate="3TB",
+        url="https://huggingface.co/datasets/bigcode/the-stack-dedup"
+    ),
+
+    StreamingDataset(
+        name="GitHub Issues (BigCode)",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="bigcode/the-stack-github-issues",
+        domain=DomainCategory.SOFTWARE_ENGINEERING,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=1,
+        text_field="content",
+        description="30M+ GitHub issues and pull request conversations",
+        license="Various OSI-approved",
+        size_estimate="54GB",
+        url="https://huggingface.co/datasets/bigcode/the-stack-github-issues"
+    ),
+
+    StreamingDataset(
+        name="CommitPack (Git Commits)",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="bigcode/commitpack",
+        domain=DomainCategory.SOFTWARE_ENGINEERING,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.7,
+        priority=1,
+        description="4TB of GitHub commits with diffs and commit messages",
+        license="Various OSI-approved",
+        size_estimate="4TB",
+        url="https://huggingface.co/datasets/bigcode/commitpack"
+    ),
+
+    StreamingDataset(
+        name="Git Commit Messages",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="Tavernari/git-commit-message-dt",
+        domain=DomainCategory.SOFTWARE_ENGINEERING,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        description="Git commit message dataset for learning conventional commits",
+        license="MIT",
+        url="https://huggingface.co/datasets/Tavernari/git-commit-message-dt"
+    ),
+
+    StreamingDataset(
+        name="Coding Agent GitHub 2025",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="DeepNLP/Coding-Agent-Github-2025-Feb",
+        domain=DomainCategory.SOFTWARE_ENGINEERING,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.8,
+        priority=2,
+        description="Coding agent repositories from GitHub including ICML/ICLR 2024 projects",
+        license="Various",
+        url="https://huggingface.co/datasets/DeepNLP/Coding-Agent-Github-2025-Feb"
+    ),
+
+    StreamingDataset(
+        name="LiveCodeBench",
+        source=DatasetSource.HUGGINGFACE,
+        identifier="livecodebench/code_generation_lite",
+        domain=DomainCategory.SOFTWARE_ENGINEERING,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.8,
+        priority=2,
+        description="880 coding problems benchmark (2023-2025), continuously updated",
+        license="MIT",
+        url="https://huggingface.co/datasets/livecodebench/code_generation_lite"
+    ),
+
+    StreamingDataset(
+        name="GitHub Repositories 2020 (Kaggle)",
+        source=DatasetSource.KAGGLE,
+        identifier="vatsalparsaniya/github-repositories-analysis",
+        domain=DomainCategory.SOFTWARE_ENGINEERING,
+        stages=[DevelopmentStage.ADOLESCENT, DevelopmentStage.ADULT],
+        difficulty=0.5,
+        priority=2,
+        description="1200+ top starred GitHub repositories by domain",
+        license="CC0-1.0",
+        url="https://www.kaggle.com/datasets/vatsalparsaniya/github-repositories-analysis"
+    ),
+
+    StreamingDataset(
+        name="GitHub Repos (Kaggle Official)",
+        source=DatasetSource.KAGGLE,
+        identifier="github/github-repos",
+        domain=DomainCategory.SOFTWARE_ENGINEERING,
+        stages=[DevelopmentStage.ADULT],
+        difficulty=0.6,
+        priority=2,
+        description="Official GitHub repositories dataset on Kaggle",
+        license="Various",
+        url="https://www.kaggle.com/datasets/github/github-repos"
+    ),
 ]
 
 
