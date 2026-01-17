@@ -33,3 +33,8 @@ add_ft_regression_test(test_recovery_pool_regression)
 
 # Enhanced Fault Tolerance Regression Tests (Phase FT-2)
 add_ft_regression_test(test_enhanced_fault_tolerance_regression)
+
+# Health Agent USE Function Regression Tests (Phase 1)
+add_ft_regression_test(test_health_agent_use_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_health_agent_use_regression
+                     PROPERTIES TIMEOUT 120)

@@ -42,3 +42,7 @@ add_fault_tolerance_test(test_graceful_degradation)
 add_fault_tolerance_test(test_recovery_observability)
 add_fault_tolerance_test(test_chaos_engineering)
 add_fault_tolerance_test(test_predictive_analysis)
+
+# Health Agent USE Function Tests (Phase 1)
+add_fault_tolerance_test(test_health_agent_use_functions)
+set_tests_properties(unit_utils_fault_tolerance_test_health_agent_use_functions PROPERTIES TIMEOUT 120)

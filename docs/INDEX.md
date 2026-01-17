@@ -74,6 +74,14 @@ The `docs/claude/` directory is the **primary developer reference** for working 
 
 ---
 
+### Plans (`docs/plans/`)
+
+| Document | Description |
+|----------|-------------|
+| [TRAINING_ARCHITECTURE_ENHANCEMENTS.md](plans/TRAINING_ARCHITECTURE_ENHANCEMENTS.md) | World model & ToM training enhancements |
+
+---
+
 ### Architecture (`docs/architecture/`)
 
 | Document | Description |

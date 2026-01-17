@@ -16,6 +16,7 @@ extern int init_knowledge_module(PyObject* module);
 extern int init_bio_async_module(PyObject* module);
 extern int init_brain_immune_module(PyObject* module);
 extern int init_swarm_module(PyObject* module);
+extern int init_health_agent_module(PyObject* module);
 
 // Define exception types
 // These are initialized in PyInit_nimcp()
@@ -228,6 +229,12 @@ PyMODINIT_FUNC PyInit_nimcp(void)
 
     // Initialize swarm module (SwarmBrain, SwarmBrainConfig)
     if (init_swarm_module(m) < 0) {
+        Py_DECREF(m);
+        return NULL;
+    }
+
+    // Initialize health agent module (HealthAgent, HealthAgentStats, USE functions)
+    if (init_health_agent_module(m) < 0) {
         Py_DECREF(m);
         return NULL;
     }

@@ -2873,6 +2873,13 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/biology/CMakeLists.txt)
     add_subdirectory(biology)
 endif()
 
+# Health Agent USE Functions Pipeline E2E Test (Portia/Dragonfly/Swarm Integration)
+add_e2e_test(e2e_test_health_agent_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_health_agent_pipeline.cpp
+)
+set_tests_properties(e2e_test_health_agent_pipeline PROPERTIES TIMEOUT 300)
+
 # Include Plasticity E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/plasticity/CMakeLists.txt)
     message(STATUS "Adding Plasticity E2E tests...")

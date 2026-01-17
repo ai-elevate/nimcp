@@ -13,8 +13,9 @@
 5. [Ethics Module](#ethics-module)
 6. [Knowledge Graph](#knowledge-graph)
 7. [Tensor Operations](#tensor-operations)
-8. [Error Handling](#error-handling)
-9. [Complete Examples](#complete-examples)
+8. [Health Agent API](#health-agent-api)
+9. [Error Handling](#error-handling)
+10. [Complete Examples](#complete-examples)
 
 ---
 
@@ -478,6 +479,281 @@ nimcp_tensor_t* softmax_out = nimcp_tensor_softmax(t, -1);  // Along last dim
 ```c
 nimcp_tensor_destroy(tensor);
 ```
+
+---
+
+## Health Agent API
+
+The Health Agent provides autonomous health monitoring with integration to cognitive modules (Portia, Dragonfly, Swarm, Memory systems).
+
+### Include Header
+
+```c
+#include "utils/fault_tolerance/nimcp_health_agent.h"
+```
+
+### Creating a Health Agent
+
+```c
+// Get default configuration
+health_agent_config_t config;
+nimcp_health_agent_default_config(&config);
+
+// Customize if needed
+strncpy(config.agent_name, "my_health_agent", sizeof(config.agent_name));
+config.heartbeat_interval_ms = 100;
+config.watchdog_timeout_ms = 500;
+
+// Create agent
+nimcp_health_agent_t* agent = nimcp_health_agent_create(&config);
+if (!agent) {
+    printf("Failed to create health agent\n");
+    return -1;
+}
+```
+
+### Starting and Stopping
+
+```c
+// Start the agent (spawns monitoring thread)
+nimcp_health_agent_start(agent);
+
+// Send heartbeats regularly from main code
+while (running) {
+    nimcp_health_agent_heartbeat(agent);
+    // ... your main loop ...
+}
+
+// Stop when done
+nimcp_health_agent_stop(agent);
+nimcp_health_agent_destroy(agent);
+```
+
+### Portia USE Functions (Platform Resource Control)
+
+```c
+// Set platform tier (0=full, 1=high, 2=medium, 3=low, 4=minimal)
+nimcp_health_agent_use_portia_set_tier(agent, 2);
+
+// Set degradation level (0=none, 1=minor, 2=moderate, 3=severe, 4=emergency)
+nimcp_health_agent_use_portia_degrade(agent, 1);
+
+// Get recommended neuron count based on resources
+uint32_t neurons;
+nimcp_health_agent_use_portia_get_recommended_neurons(agent, &neurons);
+
+// Get full Portia status
+uint32_t power, thermal, degradation;
+nimcp_health_agent_use_portia_get_status(agent, &power, &thermal, &degradation);
+```
+
+### Dragonfly USE Functions (Predictive Anomaly Tracking)
+
+```c
+// Track an anomaly with Dragonfly
+health_agent_message_t msg = {0};
+msg.type = HEALTH_MSG_MEMORY_CORRUPTION;
+msg.severity = HEALTH_SEVERITY_CRITICAL;
+msg.source = HEALTH_SOURCE_MEMORY;
+
+uint32_t target_id;
+nimcp_health_agent_use_dragonfly_track_anomaly(agent, &msg, &target_id);
+
+// Get prediction for the anomaly
+float time_to_failure, confidence;
+nimcp_health_agent_use_dragonfly_predict(agent, target_id, &time_to_failure, &confidence);
+printf("Predicted failure in %.1f seconds (%.0f%% confidence)\n",
+       time_to_failure, confidence * 100);
+
+// Start pursuing the anomaly
+nimcp_health_agent_use_dragonfly_pursue(agent);
+
+// Get current Dragonfly mode (0=idle, 1=scanning, 2=tracking, 3=pursuing, 4=intercepting)
+uint32_t mode;
+nimcp_health_agent_use_dragonfly_get_mode(agent, &mode);
+```
+
+### Swarm Immune USE Functions (Distributed Threat Detection)
+
+```c
+// Detect threats in data
+const uint8_t* data = /* suspicious data */;
+size_t data_len = /* length */;
+bool detected;
+uint32_t threat_id;
+
+nimcp_health_agent_use_swarm_detect_threat(agent, data, data_len, source_id, &detected, &threat_id);
+
+if (detected) {
+    // Generate coordinated response
+    uint32_t response_id;
+    nimcp_health_agent_use_swarm_generate_response(agent, threat_id, &response_id);
+}
+
+// Check component behavior for anomalies
+float anomaly_score;
+nimcp_health_agent_use_swarm_check_behavior(agent, component_id, &anomaly_score);
+```
+
+### Swarm Memory USE Functions (Distributed Pattern Storage)
+
+```c
+// Store a health pattern
+const void* pattern_data = /* pattern */;
+size_t pattern_size = /* size */;
+char pattern_id[65];
+
+nimcp_health_agent_use_swarm_memory_store(
+    agent, pattern_data, pattern_size,
+    0,  // pattern_type: 0=episodic, 1=semantic, 2=procedural, 3=threat, 4=spatial
+    2,  // importance: 0-3
+    pattern_id
+);
+
+// Trigger memory replay for consolidation
+int replayed = nimcp_health_agent_use_swarm_memory_replay(agent, 10);
+
+// Trigger memory consolidation
+nimcp_health_agent_use_swarm_memory_consolidate(agent);
+
+// Get memory statistics
+uint64_t total, consolidated;
+float avg_strength;
+nimcp_health_agent_use_swarm_memory_get_stats(agent, &total, &consolidated, &avg_strength);
+```
+
+### Engram USE Functions (Memory Encoding/Recall)
+
+```c
+// Encode a health event as an engram
+health_agent_message_t event = {0};
+event.type = HEALTH_MSG_ANOMALY_DETECTED;
+event.severity = HEALTH_SEVERITY_WARNING;
+event.source = HEALTH_SOURCE_NEURAL;
+
+uint64_t engram_id;
+nimcp_health_agent_use_engram_encode(agent, &event, &engram_id);
+
+// Recall similar past events
+uint64_t recalled_ids[10];
+uint32_t num_recalled;
+nimcp_health_agent_use_engram_recall(agent, &event, recalled_ids, 10, &num_recalled);
+
+// Get engram statistics
+uint32_t active, consolidated;
+float strength;
+nimcp_health_agent_use_engram_get_stats(agent, &active, &consolidated, &strength);
+```
+
+### Recovery Actions
+
+```c
+// Trigger garbage collection
+nimcp_health_agent_trigger_gc(agent, false);  // true to force
+
+// Create a checkpoint
+nimcp_health_agent_create_checkpoint(agent, "pre_experiment");
+
+// Rollback to checkpoint (0 for latest)
+nimcp_health_agent_rollback(agent, 0);
+
+// Reduce system load
+nimcp_health_agent_reduce_load(agent, 0.5f);  // 50% reduction
+
+// Restore normal load
+nimcp_health_agent_restore_load(agent);
+```
+
+### Getting Statistics
+
+```c
+health_agent_stats_t stats;
+nimcp_health_agent_get_stats(agent, &stats);
+
+printf("Uptime: %llu ms\n", stats.uptime_ms);
+printf("Checks performed: %llu\n", stats.checks_performed);
+printf("Anomalies detected: %llu\n", stats.anomalies_detected);
+printf("Recoveries: %llu/%llu succeeded\n",
+       stats.recoveries_succeeded, stats.recoveries_triggered);
+```
+
+### Python Bindings
+
+```python
+import nimcp
+
+# Create health agent
+agent = nimcp.HealthAgent(name="py_agent", heartbeat_ms=100)
+agent.start()
+
+# Portia integration
+agent.use_portia_set_tier(2)
+power, thermal, degrade = agent.use_portia_get_status()
+neurons = agent.use_portia_get_recommended_neurons()
+
+# Dragonfly integration
+target_id = agent.use_dragonfly_track_anomaly(
+    nimcp.HEALTH_MSG_MEMORY_CORRUPTION,
+    nimcp.HEALTH_SEVERITY_CRITICAL,
+    nimcp.HEALTH_SOURCE_MEMORY,
+    "Memory corruption detected"
+)
+ttf, conf = agent.use_dragonfly_predict(target_id)
+
+# Swarm memory
+pattern_id = agent.use_swarm_memory_store(b"pattern", 0, 2)
+total, consolidated, strength = agent.use_swarm_memory_get_stats()
+
+# Recovery
+agent.trigger_gc(force=False)
+agent.create_checkpoint("my_checkpoint")
+agent.rollback(0)  # 0 = latest
+
+# Statistics
+stats = agent.get_stats()
+print(f"Anomalies: {stats.anomalies_detected}")
+
+agent.stop()
+```
+
+### Message Types
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `HEALTH_MSG_ANOMALY_DETECTED` | 0 | Generic anomaly |
+| `HEALTH_MSG_CYTOKINE_SIGNAL` | 1 | Inflammatory signal |
+| `HEALTH_MSG_EMERGENCY` | 2 | Emergency condition |
+| `HEALTH_MSG_RECOVERY_REQUEST` | 3 | Recovery requested |
+| `HEALTH_MSG_STATE_CORRUPTION` | 4 | State corrupted |
+| `HEALTH_MSG_HEARTBEAT_TIMEOUT` | 5 | System may be hung |
+| `HEALTH_MSG_DEADLOCK_DETECTED` | 6 | Deadlock found |
+| `HEALTH_MSG_NAN_DETECTED` | 7 | NaN in computations |
+| `HEALTH_MSG_MEMORY_CORRUPTION` | 8 | Memory corrupted |
+| `HEALTH_MSG_RESOURCE_EXHAUSTION` | 9 | Resources running low |
+
+### Severity Levels
+
+| Level | Value | Description |
+|-------|-------|-------------|
+| `HEALTH_SEVERITY_INFO` | 0 | Informational only |
+| `HEALTH_SEVERITY_WARNING` | 1 | Potential issue |
+| `HEALTH_SEVERITY_ERROR` | 2 | Definite problem, recoverable |
+| `HEALTH_SEVERITY_CRITICAL` | 3 | Severe, may need rollback |
+| `HEALTH_SEVERITY_FATAL` | 4 | System integrity compromised |
+
+### Anomaly Sources
+
+| Source | Value | Description |
+|--------|-------|-------------|
+| `HEALTH_SOURCE_MEMORY` | 1 | Memory subsystem |
+| `HEALTH_SOURCE_THREADING` | 2 | Thread/lock subsystem |
+| `HEALTH_SOURCE_NEURAL` | 3 | Neural computation |
+| `HEALTH_SOURCE_KG` | 4 | Knowledge graph |
+| `HEALTH_SOURCE_IMMUNE` | 5 | Immune system |
+| `HEALTH_SOURCE_IO` | 6 | I/O operations |
+| `HEALTH_SOURCE_BRAIN_REGION` | 7 | Brain region |
+| `HEALTH_SOURCE_CHECKPOINT` | 8 | Checkpoint system |
+| `HEALTH_SOURCE_HEARTBEAT` | 9 | Heartbeat monitor |
 
 ---
 

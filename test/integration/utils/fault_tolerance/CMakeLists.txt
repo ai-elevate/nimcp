@@ -36,3 +36,8 @@ add_ft_integration_test(test_recovery_pool_integration)
 
 # Enhanced Fault Tolerance Integration Tests (Phase FT-2)
 add_ft_integration_test(test_enhanced_fault_tolerance_integration)
+
+# Health Agent USE Function Integration Tests (Phase 1)
+add_ft_integration_test(test_health_agent_use_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_health_agent_use_integration
+                     PROPERTIES TIMEOUT 180)
