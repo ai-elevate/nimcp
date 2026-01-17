@@ -22,6 +22,7 @@
 #define NIMCP_COMPOSITIONAL_SYSTEMATIC_H
 
 #include "nimcp.h"
+#include "common/nimcp_export.h"
 
 #ifdef __cplusplus
 extern "C" {

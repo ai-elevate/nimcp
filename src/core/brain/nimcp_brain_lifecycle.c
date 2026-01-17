@@ -47,6 +47,7 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/ethics/nimcp_core_directives.h"
 #include "core/brain/factory/init/nimcp_brain_init_pr_memory.h"
+#include "core/brain/factory/init/nimcp_brain_init_world_model.h"
 #include "core/medulla/nimcp_medulla.h"
 #include "cognitive/parietal/nimcp_parietal.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
@@ -743,6 +744,9 @@ void brain_destroy(brain_t brain)
 
     // Cleanup Prime Resonant memory system
     nimcp_brain_factory_destroy_pr_memory_subsystem(brain);
+
+    // Cleanup World Model system
+    nimcp_brain_factory_destroy_world_model_subsystem(brain);
 
     // Cleanup immune system
     if (brain->immune_system) {

@@ -16,6 +16,7 @@
 #define NIMCP_WORLD_MODEL_MULTIMODAL_H
 
 #include "nimcp.h"
+#include "common/nimcp_export.h"
 
 #ifdef __cplusplus
 extern "C" {

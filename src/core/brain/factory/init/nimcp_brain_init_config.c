@@ -274,6 +274,38 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->enable_axons = !minimal;
     config->enable_pr_memory = !minimal;  // PR memory enabled by default (except minimal mode)
 
+    // === WORLD MODEL CONFIGURATION ===
+    // World model enables generative simulation for counterfactual reasoning,
+    // policy evaluation, and mental imagery. Based on DreamerV3 and JEPA.
+    config->enable_world_model = false;            // Disabled by default (opt-in feature)
+    config->lazy_world_model_init = lazy;          // Lazy init follows global lazy setting
+    config->enable_omni_world_model = true;        // Omni WM on if world model enabled
+    config->enable_multimodal_world_model = true;  // Multimodal WM on if world model enabled
+
+    // Omni World Model defaults (DreamerV3-inspired)
+    config->omni_wm_state_dim = 64;                // State dimensionality
+    config->omni_wm_action_dim = 32;               // Action dimensionality
+    config->omni_wm_obs_dim = 64;                  // Observation dimensionality
+    config->omni_wm_latent_dim = 64;               // Latent space dimension
+    config->omni_wm_rssm_h_dim = 128;              // RSSM deterministic state
+    config->omni_wm_rssm_z_dim = 32;               // RSSM stochastic state
+    config->omni_wm_learning_rate = 0.0003F;       // Learning rate
+    config->omni_wm_enable_dreaming = true;        // Offline simulation enabled
+    config->omni_wm_dream_horizon = 15;            // Dream episode length
+
+    // Multimodal World Model defaults
+    config->mm_wm_latent_dim = 256;                // Latent dimension for cross-modal fusion
+    config->mm_wm_max_entities = 128;              // Max tracked entities
+    config->mm_wm_max_prediction_steps = 50;       // Max prediction horizon
+    config->mm_wm_learning_rate = 0.001F;          // Learning rate
+    config->mm_wm_enable_bio_async = !minimal;     // Bio-async integration
+
+    // World Model Integration Flags
+    config->world_model_connect_active_inference = true;  // Connect to active inference
+    config->world_model_connect_imagination = true;       // Connect to imagination engine
+    config->world_model_connect_hippocampus = true;       // Connect to hippocampus
+    config->world_model_connect_predictive = true;        // Connect to predictive processing
+
     // === CORTICAL COLUMNS CONFIGURATION ===
     // Disable cortical columns for TINY/SMALL brains (huge memory savings: ~48MB)
     // Only enable for MEDIUM and larger brains that need hierarchical feature processing

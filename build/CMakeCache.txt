@@ -21,7 +21,7 @@ BUILD_NETWORKING_IMMUNE_TESTS:BOOL=OFF
 BUILD_NLP_IMMUNE_TESTS:BOOL=OFF
 
 //No help, variable specified on the command line.
-BUILD_TESTING:UNINITIALIZED=ON
+BUILD_TESTING:UNINITIALIZED=OFF
 
 //Path to a program.
 CLANG_TIDY_EXE:FILEPATH=/usr/bin/clang-tidy
@@ -58,7 +58,7 @@ CMAKE_CUDA_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
 CMAKE_CUDA_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
 
 //CXX compiler
-CMAKE_CXX_COMPILER:STRING=/usr/bin/g++
+CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++
 
 //A wrapper around 'ar' adding the appropriate '--plugin' option
 // for the GCC compiler
@@ -84,7 +84,7 @@ CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
 CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
 
 //C compiler
-CMAKE_C_COMPILER:STRING=/usr/bin/gcc
+CMAKE_C_COMPILER:FILEPATH=/usr/bin/cc
 
 //A wrapper around 'ar' adding the appropriate '--plugin' option
 // for the GCC compiler
@@ -514,9 +514,6 @@ NIMCP_ASAN:BOOL=OFF
 //Value Computed by CMake
 NIMCP_BINARY_DIR:STATIC=/home/bbrelin/nimcp/build
 
-//No help, variable specified on the command line.
-NIMCP_BUILD_PYTHON:UNINITIALIZED=OFF
-
 //Enable code coverage reporting with gcov/lcov
 NIMCP_COVERAGE:BOOL=OFF
 
@@ -728,7 +725,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=428
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=432
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

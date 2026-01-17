@@ -1884,6 +1884,16 @@ gtest_discover_tests(unit_cognitive_test_symbolic_logic_integration
 )
 
 # ============================================================================
+# Extrapolation / World Model Tests
+# ============================================================================
+# WHAT: Unit tests for Multi-Modal World Model
+# WHY:  Verify modality processing, fusion, prediction, entity tracking
+# HOW:  Test all modalities, fusion types, prediction modes, entity CRUD
+# ============================================================================
+
+add_subdirectory(extrapolation)
+
+# ============================================================================
 # Exception Handling Tests
 # ============================================================================
 # WHAT: Unit tests for Cognitive Exception Handling
@@ -1892,3 +1902,15 @@ gtest_discover_tests(unit_cognitive_test_symbolic_logic_integration
 # ============================================================================
 
 add_subdirectory(exception)
+
+# ============================================================================
+# Omni World Model Tests
+# ============================================================================
+# WHAT: Unit tests for Omnidirectional Generative World Model
+# WHY:  Verify counterfactual reasoning, mental simulation, RSSM, MDN,
+#       experience replay, symlog transformation, dynamics prediction
+# HOW:  Test all APIs: lifecycle, state, RSSM, dynamics, latent encoding,
+#       MDN, counterfactual, rollouts, learning, experience replay, bio-async
+# ============================================================================
+
+add_subdirectory(omni)

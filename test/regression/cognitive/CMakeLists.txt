@@ -214,3 +214,38 @@ gtest_discover_tests(regression_cognitive_guardian_intervention
         LABELS "regression;cognitive;mental_health;guardian;intervention"
         TIMEOUT 120
 )
+
+# ============================================================================
+# World Model Regression Tests (Omni and Multimodal)
+# ============================================================================
+# WHAT: Comprehensive regression tests for World Model modules
+# WHY:  Test edge cases, error handling, boundary conditions, memory safety
+# HOW:  Cover NULL pointers, limits, numerical stability, state consistency
+
+add_executable(regression_cognitive_world_model
+    test_world_model_regression.cpp
+)
+
+target_link_libraries(regression_cognitive_world_model
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_cognitive_world_model
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_cognitive_world_model PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_cognitive_world_model
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;world_model;omni;multimodal"
+        TIMEOUT 300
+)

@@ -73,15 +73,15 @@ examples/CMakeFiles/event_demo.dir/event_demo.c.o: examples/CMakeFiles/event_dem
 examples/CMakeFiles/event_demo.dir/event_demo.c.o: /home/bbrelin/nimcp/examples/event_demo.c
 examples/CMakeFiles/event_demo.dir/event_demo.c.o: examples/CMakeFiles/event_demo.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/bbrelin/nimcp/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object examples/CMakeFiles/event_demo.dir/event_demo.c.o"
-	cd /home/bbrelin/nimcp/build/examples && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT examples/CMakeFiles/event_demo.dir/event_demo.c.o -MF CMakeFiles/event_demo.dir/event_demo.c.o.d -o CMakeFiles/event_demo.dir/event_demo.c.o -c /home/bbrelin/nimcp/examples/event_demo.c
+	cd /home/bbrelin/nimcp/build/examples && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT examples/CMakeFiles/event_demo.dir/event_demo.c.o -MF CMakeFiles/event_demo.dir/event_demo.c.o.d -o CMakeFiles/event_demo.dir/event_demo.c.o -c /home/bbrelin/nimcp/examples/event_demo.c
 
 examples/CMakeFiles/event_demo.dir/event_demo.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/event_demo.dir/event_demo.c.i"
-	cd /home/bbrelin/nimcp/build/examples && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/nimcp/examples/event_demo.c > CMakeFiles/event_demo.dir/event_demo.c.i
+	cd /home/bbrelin/nimcp/build/examples && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/bbrelin/nimcp/examples/event_demo.c > CMakeFiles/event_demo.dir/event_demo.c.i
 
 examples/CMakeFiles/event_demo.dir/event_demo.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/event_demo.dir/event_demo.c.s"
-	cd /home/bbrelin/nimcp/build/examples && /usr/bin/gcc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/nimcp/examples/event_demo.c -o CMakeFiles/event_demo.dir/event_demo.c.s
+	cd /home/bbrelin/nimcp/build/examples && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/bbrelin/nimcp/examples/event_demo.c -o CMakeFiles/event_demo.dir/event_demo.c.s
 
 # Object files for target event_demo
 event_demo_OBJECTS = \

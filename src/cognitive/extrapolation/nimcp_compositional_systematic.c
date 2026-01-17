@@ -9,6 +9,7 @@
 #include "cognitive/extrapolation/nimcp_compositional_systematic.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <math.h>
 #include <time.h>
 

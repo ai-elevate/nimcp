@@ -1122,6 +1122,148 @@ nimcp_error_t omni_wm_connect_bio_async(omni_world_model_t* wm);
  */
 nimcp_error_t omni_wm_disconnect_bio_async(omni_world_model_t* wm);
 
+/* ============================================================================
+ * Serialization / Persistence API
+ * ============================================================================ */
+
+/** Magic number for world model serialization format: 'OMWM' */
+#define OMNI_WM_SERIAL_MAGIC        0x4F4D574D
+
+/** Current serialization format version */
+#define OMNI_WM_SERIAL_VERSION      1
+
+/** Serialization flags */
+#define OMNI_WM_SERIAL_FLAG_COMPRESSED    0x01
+#define OMNI_WM_SERIAL_FLAG_HAS_REPLAY    0x02
+#define OMNI_WM_SERIAL_FLAG_HAS_RSSM      0x04
+#define OMNI_WM_SERIAL_FLAG_HAS_DYNAMICS  0x08
+
+/**
+ * @brief Serialize world model to buffer
+ *
+ * Converts the world model state to a portable binary format suitable for
+ * checkpointing and persistence. Uses big-endian format for cross-platform
+ * compatibility.
+ *
+ * SERIALIZATION FORMAT (Version 1):
+ * - Magic number: uint32_t (OMNI_WM_SERIAL_MAGIC)
+ * - Version: uint8_t
+ * - Flags: uint8_t
+ * - Config section
+ * - Current state section
+ * - RSSM state section (if flag set)
+ * - Replay buffer section (if flag set)
+ * - Dynamics weights section (if flag set)
+ * - Statistics section
+ * - Checksum: uint32_t CRC32
+ *
+ * @param wm World model to serialize
+ * @param buffer Output buffer (NULL to query required size)
+ * @param buffer_size Buffer size
+ * @return Required/used buffer size, or 0 on error
+ */
+size_t omni_wm_serialize(const omni_world_model_t* wm,
+                          uint8_t* buffer,
+                          size_t buffer_size);
+
+/**
+ * @brief Deserialize world model from buffer
+ *
+ * Reconstructs a world model from its serialized binary representation.
+ * Validates magic number, version, and checksum before restoration.
+ *
+ * @param buffer Input buffer containing serialized data
+ * @param buffer_size Buffer size
+ * @return World model or NULL on error
+ */
+omni_world_model_t* omni_wm_deserialize(const uint8_t* buffer,
+                                         size_t buffer_size);
+
+/**
+ * @brief Save world model to file
+ *
+ * Convenience function that serializes the world model and writes it
+ * to a file. Handles file I/O and compression automatically.
+ *
+ * @param wm World model to save
+ * @param filepath File path (created or overwritten)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t omni_wm_save(const omni_world_model_t* wm,
+                            const char* filepath);
+
+/**
+ * @brief Load world model from file
+ *
+ * Convenience function that reads a file and deserializes the world model.
+ *
+ * @param filepath File path to load from
+ * @return World model or NULL on error
+ */
+omni_world_model_t* omni_wm_load(const char* filepath);
+
+/**
+ * @brief Checkpoint data for in-memory snapshots
+ */
+typedef struct {
+    uint64_t id;              /**< Unique checkpoint ID */
+    uint8_t* data;            /**< Serialized snapshot data */
+    size_t data_size;         /**< Size of serialized data */
+    double timestamp;         /**< When checkpoint was created */
+    char description[64];     /**< Optional description */
+} omni_wm_checkpoint_t;
+
+/**
+ * @brief Create checkpoint of current state
+ *
+ * Creates an in-memory snapshot of the world model's current state.
+ * Checkpoints are stored internally and can be restored later.
+ *
+ * @param wm World model
+ * @return Checkpoint ID (non-zero) or 0 on error
+ */
+uint64_t omni_wm_checkpoint(omni_world_model_t* wm);
+
+/**
+ * @brief Restore from checkpoint
+ *
+ * Restores the world model to a previously checkpointed state.
+ *
+ * @param wm World model
+ * @param checkpoint_id Checkpoint ID returned by omni_wm_checkpoint
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t omni_wm_restore_checkpoint(omni_world_model_t* wm,
+                                          uint64_t checkpoint_id);
+
+/**
+ * @brief Delete a checkpoint
+ *
+ * Frees memory associated with a checkpoint.
+ *
+ * @param wm World model
+ * @param checkpoint_id Checkpoint ID to delete
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t omni_wm_delete_checkpoint(omni_world_model_t* wm,
+                                         uint64_t checkpoint_id);
+
+/**
+ * @brief Get number of stored checkpoints
+ *
+ * @param wm World model
+ * @return Number of checkpoints
+ */
+uint32_t omni_wm_get_checkpoint_count(const omni_world_model_t* wm);
+
+/**
+ * @brief Clear all checkpoints
+ *
+ * @param wm World model
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_error_t omni_wm_clear_checkpoints(omni_world_model_t* wm);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1882,6 +1882,25 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/exception")
 endif()
 
 # ============================================================================
+# World Model Tests (Omnidirectional + Multi-Modal)
+# ============================================================================
+# WHAT: Tests for world model modules (DreamerV3/JEPA-inspired)
+# WHY:  Verify RSSM, MDN, counterfactual reasoning, multi-modal fusion
+# HOW:  Unit, integration, regression, and E2E tests
+
+# NOTE: These subdirectories are already included via their parent directories:
+# - unit/cognitive/omni is included via unit/cognitive/CMakeLists.txt
+# - unit/cognitive/extrapolation is included via unit/cognitive/CMakeLists.txt
+# - integration/cognitive/world_model is included via integration/cognitive/CMakeLists.txt
+# - regression/cognitive/world_model is included via regression/cognitive/CMakeLists.txt
+# Direct includes removed to avoid "binary directory already used" CMake error.
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e/cognitive/CMakeLists.txt")
+    message(STATUS "Adding world model E2E tests...")
+    add_subdirectory(e2e/cognitive)
+endif()
+
+# ============================================================================
 # Adversarial Tests (Security Robustness)
 # ============================================================================
 # WHAT: Adversarial tests for security subsystems

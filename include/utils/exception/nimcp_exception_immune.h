@@ -51,9 +51,27 @@
 
 #include "utils/exception/nimcp_exception.h"
 
-/* Forward declaration to avoid circular include */
+/* Forward declarations to avoid circular includes */
 struct brain_immune_system;
 typedef struct brain_immune_system brain_immune_system_t;
+
+/* Forward declarations for recovery context types */
+/* These are defined with #ifndef guards to avoid conflicts with actual headers */
+#ifndef NIMCP_BRAIN_H
+typedef struct brain_struct* brain_t;
+#endif
+
+#ifndef NIMCP_KG_GC_H
+typedef struct kg_gc_context kg_gc_context_t;
+#endif
+
+#ifndef NIMCP_BLOOD_BRAIN_BARRIER_H
+typedef struct bbb_system_struct* bbb_system_t;
+#endif
+
+#ifndef NIMCP_RUNTIME_ADAPTATION_H
+typedef struct runtime_adaptation_context_internal* runtime_adaptation_context_t;
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -366,11 +384,54 @@ int nimcp_recovery_quarantine(nimcp_exception_t* ex, nimcp_recovery_action_t act
 int nimcp_recovery_emergency_save(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data);
 
 /**
+ * @brief Default load reduction recovery callback
+ *
+ * Reduces system load by adjusting batch size, disabling features.
+ */
+int nimcp_recovery_reduce_load(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data);
+
+/**
+ * @brief Default cache clear recovery callback
+ *
+ * Clears all caches to free memory.
+ */
+int nimcp_recovery_clear_cache(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data);
+
+/**
  * @brief Install default recovery callbacks
  *
  * @return 0 on success
  */
 int nimcp_exception_install_default_recovery_callbacks(void);
+
+/* ============================================================================
+ * Recovery Context Configuration
+ * ============================================================================ */
+
+/**
+ * @brief Configure recovery context with system references
+ *
+ * WHAT: Set up recovery callbacks with access to brain subsystems
+ * WHY:  Recovery actions need actual system references to operate
+ * HOW:  Store references for use by recovery callbacks
+ *
+ * Call this function after initializing the brain and its subsystems
+ * to enable full recovery functionality.
+ *
+ * @param brain Brain instance for recovery operations
+ * @param gc_context GC context for garbage collection (NULL if unavailable)
+ * @param bbb_system BBB system for quarantine actions (NULL if unavailable)
+ * @param ra_ctx Runtime adaptation context for load reduction (NULL if unavailable)
+ * @param checkpoint_dir Directory for checkpoint files (NULL if unavailable)
+ * @return 0 on success
+ */
+int nimcp_recovery_set_context(
+    brain_t brain,
+    kg_gc_context_t* gc_context,
+    bbb_system_t bbb_system,
+    runtime_adaptation_context_t ra_ctx,
+    const char* checkpoint_dir
+);
 
 /* ============================================================================
  * Statistics

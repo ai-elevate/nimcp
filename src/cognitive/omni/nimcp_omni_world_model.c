@@ -23,13 +23,18 @@
  */
 
 #include "cognitive/omni/nimcp_omni_world_model.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
 #include <float.h>
 #include <time.h>
+#include <stdio.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -38,6 +43,18 @@
 /* ============================================================================
  * Internal Structures
  * ============================================================================ */
+
+/** Maximum checkpoints stored in memory */
+#define OMNI_WM_MAX_CHECKPOINTS 32
+
+/**
+ * @brief Checkpoint storage structure
+ */
+typedef struct {
+    omni_wm_checkpoint_t checkpoints[OMNI_WM_MAX_CHECKPOINTS];
+    uint32_t count;
+    uint64_t next_id;
+} omni_wm_checkpoint_store_t;
 
 /**
  * @brief Experience replay buffer (circular)
@@ -103,6 +120,13 @@ struct omni_world_model {
     /* Random state for sampling */
     unsigned int rand_seed;
 
+    /* Checkpoint storage */
+    omni_wm_checkpoint_store_t* checkpoint_store;
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;
+    bool bio_async_connected;
+
     /* Initialized flag */
     bool initialized;
 };
@@ -142,6 +166,13 @@ void omni_wm_symexp_array(const float* input, float* output, uint32_t size) {
         output[i] = omni_wm_symexp(input[i]);
     }
 }
+
+/* ============================================================================
+ * Internal Helpers - Forward Declarations
+ * ============================================================================ */
+
+/* Checkpoint management (defined later in file) */
+static void checkpoint_store_destroy_internal(omni_wm_checkpoint_store_t* store);
 
 /* ============================================================================
  * Internal Helpers
@@ -297,8 +328,27 @@ nimcp_error_t omni_wm_get_default_config(omni_wm_config_t* config) {
 }
 
 omni_world_model_t* omni_wm_create(const omni_wm_config_t* config) {
+    /* Validate config dimensions if provided */
+    if (config) {
+        if (config->state_dim == 0 || config->action_dim == 0 || config->obs_dim == 0) {
+            NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "omni_wm_create: zero dimension in config");
+            return NULL;
+        }
+        if (config->state_dim > OMNI_WM_MAX_STATE_DIM ||
+            config->action_dim > OMNI_WM_MAX_ACTION_DIM ||
+            config->obs_dim > OMNI_WM_MAX_OBS_DIM) {
+            NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                "omni_wm_create: dimension exceeds maximum (state=%u, action=%u, obs=%u)",
+                config->state_dim, config->action_dim, config->obs_dim);
+            return NULL;
+        }
+    }
+
     omni_world_model_t* wm = nimcp_calloc(1, sizeof(omni_world_model_t));
-    if (!wm) return NULL;
+    if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_create: failed to allocate world model");
+        return NULL;
+    }
 
     /* Apply config or defaults */
     if (config) {
@@ -318,6 +368,7 @@ omni_world_model_t* omni_wm_create(const omni_wm_config_t* config) {
         wm->config.action_dim
     );
     if (!wm->forward_dynamics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_create: failed to create forward dynamics");
         nimcp_free(wm);
         return NULL;
     }
@@ -329,6 +380,7 @@ omni_world_model_t* omni_wm_create(const omni_wm_config_t* config) {
         wm->config.action_dim
     );
     if (!wm->backward_dynamics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_create: failed to create backward dynamics");
         dynamics_destroy(wm->forward_dynamics);
         nimcp_free(wm);
         return NULL;
@@ -414,6 +466,9 @@ void omni_wm_destroy(omni_world_model_t* wm) {
 
     omni_wm_state_destroy(wm->current_state);
     omni_wm_rssm_state_destroy(wm->rssm_state);
+
+    /* Clean up checkpoint store */
+    checkpoint_store_destroy_internal(wm->checkpoint_store);
 
     if (wm->mutex) {
         nimcp_mutex_destroy(wm->mutex);
@@ -1078,8 +1133,16 @@ float omni_wm_mdn_log_prob(const omni_wm_mdn_prediction_t* pred,
 omni_wm_experience_t* omni_wm_experience_create(uint32_t state_dim,
                                                   uint32_t action_dim,
                                                   uint32_t obs_dim) {
+    if (state_dim == 0 || action_dim == 0 || obs_dim == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "omni_wm_experience_create: zero dimension");
+        return NULL;
+    }
+
     omni_wm_experience_t* exp = nimcp_calloc(1, sizeof(omni_wm_experience_t));
-    if (!exp) return NULL;
+    if (!exp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_experience_create: allocation failed");
+        return NULL;
+    }
 
     exp->state = omni_wm_rssm_state_create(state_dim / 2, state_dim / 4);
     exp->next_state = omni_wm_rssm_state_create(state_dim / 2, state_dim / 4);
@@ -1289,6 +1352,7 @@ nimcp_error_t omni_wm_dream(omni_world_model_t* wm,
 
 nimcp_error_t omni_wm_set_learning_rate(omni_world_model_t* wm, float learning_rate) {
     if (!wm) return NIMCP_ERROR_INVALID_PARAM;
+    if (learning_rate < 0.0f || learning_rate > 1.0f) return NIMCP_ERROR_INVALID_PARAM;
     wm->config.learning_rate = learning_rate;
     return NIMCP_SUCCESS;
 }
@@ -1305,6 +1369,7 @@ omni_wm_counterfactual_query_t* omni_wm_cf_query_create(
     uint32_t horizon) {
 
     if (!initial_state || !hypothetical_action) return NULL;
+    if (horizon == 0) return NULL;
 
     omni_wm_counterfactual_query_t* query = nimcp_calloc(1, sizeof(omni_wm_counterfactual_query_t));
     if (!query) return NULL;
@@ -1727,17 +1792,1543 @@ const char* omni_wm_cf_type_to_string(omni_wm_counterfactual_type_t type) {
 }
 
 /* ============================================================================
- * Bio-Async Integration
+ * Bio-Async Integration - Message Structures
+ * ============================================================================ */
+
+/**
+ * @brief Prediction request message (BIO_MSG_OMNI_WM_PREDICT - 0x6201)
+ */
+typedef struct {
+    bio_message_header_t header;
+    float state[OMNI_WM_MAX_STATE_DIM];   /**< Current state */
+    uint32_t state_dim;                    /**< State dimensionality */
+    float action[OMNI_WM_MAX_ACTION_DIM]; /**< Action to predict */
+    uint32_t action_dim;                   /**< Action dimensionality */
+    omni_wm_direction_t direction;         /**< Dynamics direction */
+} bio_msg_omni_wm_predict_t;
+
+/**
+ * @brief Prediction response message
+ */
+typedef struct {
+    bio_message_header_t header;
+    float predicted_state[OMNI_WM_MAX_STATE_DIM]; /**< Predicted state */
+    uint32_t state_dim;                            /**< State dimensionality */
+    float prediction_error;                        /**< Prediction error estimate */
+    float confidence;                              /**< Prediction confidence */
+} bio_msg_omni_wm_predict_response_t;
+
+/**
+ * @brief Counterfactual query message (BIO_MSG_OMNI_WM_COUNTERFACTUAL - 0x6202)
+ */
+typedef struct {
+    bio_message_header_t header;
+    omni_wm_counterfactual_type_t cf_type;         /**< Type of counterfactual */
+    float initial_state[OMNI_WM_MAX_STATE_DIM];    /**< Starting state */
+    uint32_t state_dim;                             /**< State dimensionality */
+    float hypothetical_action[OMNI_WM_MAX_ACTION_DIM]; /**< Hypothetical action */
+    uint32_t action_dim;                            /**< Action dimensionality */
+    uint32_t horizon;                               /**< Simulation horizon */
+} bio_msg_omni_wm_counterfactual_t;
+
+/**
+ * @brief Counterfactual response message
+ */
+typedef struct {
+    bio_message_header_t header;
+    float expected_reward;       /**< Expected cumulative reward */
+    float divergence;            /**< Divergence from actual trajectory */
+    float confidence;            /**< Prediction confidence */
+    uint32_t trajectory_length;  /**< Number of simulated steps */
+} bio_msg_omni_wm_counterfactual_response_t;
+
+/**
+ * @brief Model update message (BIO_MSG_OMNI_WM_UPDATE - 0x6203)
+ */
+typedef struct {
+    bio_message_header_t header;
+    float state[OMNI_WM_MAX_STATE_DIM];       /**< Current state */
+    uint32_t state_dim;                        /**< State dimensionality */
+    float action[OMNI_WM_MAX_ACTION_DIM];     /**< Action taken */
+    uint32_t action_dim;                       /**< Action dimensionality */
+    float next_state[OMNI_WM_MAX_STATE_DIM];  /**< Resulting state */
+    float reward;                              /**< Reward received */
+} bio_msg_omni_wm_update_t;
+
+/**
+ * @brief Model update acknowledgment message
+ */
+typedef struct {
+    bio_message_header_t header;
+    nimcp_error_t status;       /**< Update status */
+    float prediction_error;     /**< Error before update */
+} bio_msg_omni_wm_update_ack_t;
+
+/**
+ * @brief Rollout request message (BIO_MSG_OMNI_WM_ROLLOUT - 0x6204)
+ */
+typedef struct {
+    bio_message_header_t header;
+    float initial_state[OMNI_WM_MAX_STATE_DIM]; /**< Starting state */
+    uint32_t state_dim;                          /**< State dimensionality */
+    float policy_actions[OMNI_WM_MAX_HORIZON * OMNI_WM_MAX_ACTION_DIM]; /**< Action sequence */
+    uint32_t action_dim;                         /**< Action dimensionality */
+    uint32_t horizon;                            /**< Rollout horizon */
+    float preferred_obs[OMNI_WM_MAX_OBS_DIM];   /**< Preferred observations (goal) */
+    uint32_t obs_dim;                            /**< Observation dimensionality */
+} bio_msg_omni_wm_rollout_t;
+
+/**
+ * @brief Rollout response message
+ */
+typedef struct {
+    bio_message_header_t header;
+    float total_reward;          /**< Cumulative reward */
+    float expected_free_energy;  /**< Expected free energy */
+    uint32_t steps_completed;    /**< Actual steps completed */
+    float final_state[OMNI_WM_MAX_STATE_DIM]; /**< Final state */
+    uint32_t state_dim;                        /**< State dimensionality */
+} bio_msg_omni_wm_rollout_response_t;
+
+/* ============================================================================
+ * Bio-Async Integration - Message Handlers
+ * ============================================================================ */
+
+/**
+ * @brief Handle prediction request message
+ *
+ * WHAT: Process forward/backward/lateral dynamics prediction request
+ * WHY:  Allow other modules to query world model predictions via bio-async
+ * HOW:  Extract state/action, call appropriate dynamics function, send response
+ */
+static nimcp_error_t handle_omni_wm_predict(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (msg_size < sizeof(bio_msg_omni_wm_predict_t)) {
+        NIMCP_LOGGING_ERROR("Predict request too small: %zu bytes", msg_size);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const bio_msg_omni_wm_predict_t* req = (const bio_msg_omni_wm_predict_t*)msg;
+    omni_world_model_t* wm = (omni_world_model_t*)user_data;
+
+    NIMCP_LOGGING_DEBUG("Received WM predict request: dir=%s, state_dim=%u, action_dim=%u",
+                        omni_wm_direction_to_string(req->direction),
+                        req->state_dim, req->action_dim);
+
+    /* Validate dimensions */
+    if (req->state_dim == 0 || req->state_dim > OMNI_WM_MAX_STATE_DIM ||
+        req->action_dim > OMNI_WM_MAX_ACTION_DIM) {
+        NIMCP_LOGGING_ERROR("Invalid dimensions in predict request");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Create temporary state from request */
+    omni_wm_state_t* state = omni_wm_state_from_values(req->state, req->state_dim);
+    if (!state) {
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    /* Prepare response */
+    bio_msg_omni_wm_predict_response_t response = {0};
+    bio_msg_init_header(&response.header, BIO_MSG_OMNI_WM_PREDICT,
+                        BIO_MODULE_OMNI_WORLD_MODEL,
+                        req->header.source_module,
+                        sizeof(response));
+
+    /* Perform prediction based on direction */
+    omni_wm_transition_t transition = {0};
+    nimcp_error_t result = NIMCP_SUCCESS;
+
+    switch (req->direction) {
+        case OMNI_WM_DIR_FORWARD:
+            result = omni_wm_predict_forward(wm, req->action, req->action_dim, &transition);
+            break;
+        case OMNI_WM_DIR_BACKWARD:
+            result = omni_wm_infer_backward(wm, state, &transition);
+            break;
+        case OMNI_WM_DIR_LATERAL:
+            /* For lateral, use action_dim as target modality ID */
+            result = omni_wm_predict_lateral(wm, state, req->action_dim,
+                                              transition.next_state);
+            break;
+        case OMNI_WM_DIR_HIERARCHICAL:
+            /* For hierarchical, use first action element as target level */
+            result = omni_wm_predict_hierarchical(wm, state,
+                                                   (uint32_t)req->action[0],
+                                                   transition.next_state);
+            break;
+        default:
+            result = NIMCP_ERROR_INVALID_PARAM;
+            break;
+    }
+
+    /* Fill response */
+    if (result == NIMCP_SUCCESS && transition.next_state) {
+        uint32_t copy_dim = transition.next_state->dim;
+        if (copy_dim > OMNI_WM_MAX_STATE_DIM) {
+            copy_dim = OMNI_WM_MAX_STATE_DIM;
+        }
+        memcpy(response.predicted_state, transition.next_state->values,
+               copy_dim * sizeof(float));
+        response.state_dim = copy_dim;
+        response.prediction_error = transition.prediction_error;
+        response.confidence = 1.0f - transition.prediction_error;
+    } else {
+        response.state_dim = 0;
+        response.prediction_error = 1.0f;
+        response.confidence = 0.0f;
+    }
+
+    /* Cleanup */
+    omni_wm_state_destroy(state);
+    if (transition.next_state) {
+        omni_wm_state_destroy(transition.next_state);
+    }
+    if (transition.action_taken) {
+        nimcp_free(transition.action_taken);
+    }
+
+    /* Send response via promise */
+    if (response_promise) {
+        nimcp_bio_promise_complete_sized(response_promise, &response, sizeof(response));
+    }
+
+    return result;
+}
+
+/**
+ * @brief Handle counterfactual query message
+ *
+ * WHAT: Process "what if" queries for alternative scenarios
+ * WHY:  Enable other modules to evaluate hypothetical actions
+ * HOW:  Execute counterfactual simulation and return expected outcome
+ */
+static nimcp_error_t handle_omni_wm_counterfactual(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (msg_size < sizeof(bio_msg_omni_wm_counterfactual_t)) {
+        NIMCP_LOGGING_ERROR("Counterfactual request too small: %zu bytes", msg_size);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const bio_msg_omni_wm_counterfactual_t* req = (const bio_msg_omni_wm_counterfactual_t*)msg;
+    omni_world_model_t* wm = (omni_world_model_t*)user_data;
+
+    NIMCP_LOGGING_DEBUG("Received WM counterfactual request: type=%s, horizon=%u",
+                        omni_wm_cf_type_to_string(req->cf_type), req->horizon);
+
+    /* Validate dimensions */
+    if (req->state_dim == 0 || req->state_dim > OMNI_WM_MAX_STATE_DIM ||
+        req->action_dim > OMNI_WM_MAX_ACTION_DIM ||
+        req->horizon > OMNI_WM_MAX_HORIZON) {
+        NIMCP_LOGGING_ERROR("Invalid dimensions in counterfactual request");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Create temporary state from request */
+    omni_wm_state_t* state = omni_wm_state_from_values(req->initial_state, req->state_dim);
+    if (!state) {
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    /* Prepare response */
+    bio_msg_omni_wm_counterfactual_response_t response = {0};
+    bio_msg_init_header(&response.header, BIO_MSG_OMNI_WM_COUNTERFACTUAL,
+                        BIO_MODULE_OMNI_WORLD_MODEL,
+                        req->header.source_module,
+                        sizeof(response));
+
+    /* Execute counterfactual query */
+    omni_wm_counterfactual_result_t cf_result = {0};
+    nimcp_error_t result = omni_wm_what_if(wm,
+                                            req->hypothetical_action,
+                                            req->action_dim,
+                                            req->horizon,
+                                            &cf_result);
+
+    /* Fill response */
+    if (result == NIMCP_SUCCESS) {
+        response.expected_reward = cf_result.expected_reward;
+        response.divergence = cf_result.divergence;
+        response.confidence = cf_result.confidence;
+        response.trajectory_length = cf_result.trajectory_len;
+
+        /* Cleanup counterfactual result */
+        omni_wm_cf_result_destroy(&cf_result);
+    } else {
+        response.expected_reward = 0.0f;
+        response.divergence = 1.0f;
+        response.confidence = 0.0f;
+        response.trajectory_length = 0;
+    }
+
+    /* Cleanup */
+    omni_wm_state_destroy(state);
+
+    /* Send response via promise */
+    if (response_promise) {
+        nimcp_bio_promise_complete_sized(response_promise, &response, sizeof(response));
+    }
+
+    return result;
+}
+
+/**
+ * @brief Handle model update message
+ *
+ * WHAT: Process experience tuple for model learning
+ * WHY:  Allow other modules to contribute to world model training
+ * HOW:  Call omni_wm_update with provided state transition
+ */
+static nimcp_error_t handle_omni_wm_update(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (msg_size < sizeof(bio_msg_omni_wm_update_t)) {
+        NIMCP_LOGGING_ERROR("Update request too small: %zu bytes", msg_size);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const bio_msg_omni_wm_update_t* req = (const bio_msg_omni_wm_update_t*)msg;
+    omni_world_model_t* wm = (omni_world_model_t*)user_data;
+
+    NIMCP_LOGGING_DEBUG("Received WM update request: state_dim=%u, action_dim=%u, reward=%.3f",
+                        req->state_dim, req->action_dim, req->reward);
+
+    /* Validate dimensions */
+    if (req->state_dim == 0 || req->state_dim > OMNI_WM_MAX_STATE_DIM ||
+        req->action_dim > OMNI_WM_MAX_ACTION_DIM) {
+        NIMCP_LOGGING_ERROR("Invalid dimensions in update request");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Create temporary states from request */
+    omni_wm_state_t* state = omni_wm_state_from_values(req->state, req->state_dim);
+    omni_wm_state_t* next_state = omni_wm_state_from_values(req->next_state, req->state_dim);
+
+    if (!state || !next_state) {
+        if (state) omni_wm_state_destroy(state);
+        if (next_state) omni_wm_state_destroy(next_state);
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    /* Prepare response */
+    bio_msg_omni_wm_update_ack_t response = {0};
+    bio_msg_init_header(&response.header, BIO_MSG_OMNI_WM_UPDATE,
+                        BIO_MODULE_OMNI_WORLD_MODEL,
+                        req->header.source_module,
+                        sizeof(response));
+
+    /* Get prediction error before update for reporting */
+    omni_wm_transition_t pred_transition = {0};
+    omni_wm_set_state(wm, state);
+    omni_wm_predict_forward(wm, req->action, req->action_dim, &pred_transition);
+
+    float prediction_error = 0.0f;
+    if (pred_transition.next_state) {
+        /* Compute MSE between predicted and actual next state */
+        for (uint32_t i = 0; i < req->state_dim && i < pred_transition.next_state->dim; i++) {
+            float diff = pred_transition.next_state->values[i] - req->next_state[i];
+            prediction_error += diff * diff;
+        }
+        prediction_error = sqrtf(prediction_error / req->state_dim);
+        omni_wm_state_destroy(pred_transition.next_state);
+    }
+    if (pred_transition.action_taken) {
+        nimcp_free(pred_transition.action_taken);
+    }
+
+    /* Perform the update */
+    nimcp_error_t result = omni_wm_update(wm, state, req->action, req->action_dim,
+                                           next_state, req->reward);
+
+    /* Fill response */
+    response.status = result;
+    response.prediction_error = prediction_error;
+
+    /* Cleanup */
+    omni_wm_state_destroy(state);
+    omni_wm_state_destroy(next_state);
+
+    /* Send response via promise */
+    if (response_promise) {
+        nimcp_bio_promise_complete_sized(response_promise, &response, sizeof(response));
+    }
+
+    NIMCP_LOGGING_DEBUG("WM update completed: status=%d, pred_error=%.4f",
+                        result, prediction_error);
+
+    return result;
+}
+
+/**
+ * @brief Handle rollout request message
+ *
+ * WHAT: Execute policy rollout for evaluation
+ * WHY:  Enable policy comparison via expected free energy
+ * HOW:  Simulate trajectory using provided action sequence
+ */
+static nimcp_error_t handle_omni_wm_rollout(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data)
+{
+    if (!msg || !user_data) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    if (msg_size < sizeof(bio_msg_omni_wm_rollout_t)) {
+        NIMCP_LOGGING_ERROR("Rollout request too small: %zu bytes", msg_size);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    const bio_msg_omni_wm_rollout_t* req = (const bio_msg_omni_wm_rollout_t*)msg;
+    omni_world_model_t* wm = (omni_world_model_t*)user_data;
+
+    NIMCP_LOGGING_DEBUG("Received WM rollout request: horizon=%u, state_dim=%u",
+                        req->horizon, req->state_dim);
+
+    /* Validate dimensions */
+    if (req->state_dim == 0 || req->state_dim > OMNI_WM_MAX_STATE_DIM ||
+        req->action_dim > OMNI_WM_MAX_ACTION_DIM ||
+        req->horizon > OMNI_WM_MAX_HORIZON ||
+        req->obs_dim > OMNI_WM_MAX_OBS_DIM) {
+        NIMCP_LOGGING_ERROR("Invalid dimensions in rollout request");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Create initial state from request */
+    omni_wm_state_t* initial_state = omni_wm_state_from_values(req->initial_state,
+                                                                req->state_dim);
+    if (!initial_state) {
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    /* Prepare response */
+    bio_msg_omni_wm_rollout_response_t response = {0};
+    bio_msg_init_header(&response.header, BIO_MSG_OMNI_WM_ROLLOUT,
+                        BIO_MODULE_OMNI_WORLD_MODEL,
+                        req->header.source_module,
+                        sizeof(response));
+
+    /* Execute rollout by manually stepping through actions */
+    omni_wm_set_state(wm, initial_state);
+
+    float total_reward = 0.0f;
+    uint32_t steps_completed = 0;
+    omni_wm_state_t* current_state = omni_wm_state_clone(initial_state);
+
+    for (uint32_t t = 0; t < req->horizon && current_state; t++) {
+        /* Get action for this timestep */
+        const float* action = &req->policy_actions[t * req->action_dim];
+
+        /* Predict next state */
+        omni_wm_transition_t transition = {0};
+        nimcp_error_t step_result = omni_wm_predict_forward(wm, action,
+                                                             req->action_dim, &transition);
+
+        if (step_result != NIMCP_SUCCESS || !transition.next_state) {
+            if (transition.action_taken) nimcp_free(transition.action_taken);
+            break;
+        }
+
+        /* Accumulate reward (using negative prediction error as proxy) */
+        total_reward += -transition.prediction_error;
+        steps_completed++;
+
+        /* Move to next state */
+        omni_wm_state_destroy(current_state);
+        current_state = transition.next_state;
+        omni_wm_set_state(wm, current_state);
+
+        if (transition.action_taken) nimcp_free(transition.action_taken);
+    }
+
+    /* Compute expected free energy */
+    float efe = 0.0f;
+    if (req->obs_dim > 0 && current_state) {
+        /* Predict observations from final state */
+        float predicted_obs[OMNI_WM_MAX_OBS_DIM];
+        omni_wm_predict_observations(wm, current_state, predicted_obs, req->obs_dim);
+
+        /* EFE = divergence from preferred + uncertainty */
+        for (uint32_t i = 0; i < req->obs_dim; i++) {
+            float diff = predicted_obs[i] - req->preferred_obs[i];
+            efe += diff * diff;
+        }
+        efe = sqrtf(efe / req->obs_dim);
+    }
+
+    /* Fill response */
+    response.total_reward = total_reward;
+    response.expected_free_energy = efe;
+    response.steps_completed = steps_completed;
+
+    if (current_state) {
+        uint32_t copy_dim = current_state->dim;
+        if (copy_dim > OMNI_WM_MAX_STATE_DIM) {
+            copy_dim = OMNI_WM_MAX_STATE_DIM;
+        }
+        memcpy(response.final_state, current_state->values, copy_dim * sizeof(float));
+        response.state_dim = copy_dim;
+        omni_wm_state_destroy(current_state);
+    }
+
+    /* Cleanup */
+    omni_wm_state_destroy(initial_state);
+
+    /* Send response via promise */
+    if (response_promise) {
+        nimcp_bio_promise_complete_sized(response_promise, &response, sizeof(response));
+    }
+
+    NIMCP_LOGGING_DEBUG("WM rollout completed: steps=%u, reward=%.3f, efe=%.3f",
+                        steps_completed, total_reward, efe);
+
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Bio-Async Integration - Connection Management
  * ============================================================================ */
 
 nimcp_error_t omni_wm_connect_bio_async(omni_world_model_t* wm) {
     if (!wm) return NIMCP_ERROR_INVALID_PARAM;
-    /* TODO: Register message handlers */
+
+    /* Already connected? */
+    if (wm->bio_async_connected) {
+        NIMCP_LOGGING_DEBUG("Omni world model already connected to bio-async");
+        return NIMCP_SUCCESS;
+    }
+
+    /* Check if router is available */
+    if (!bio_router_is_initialized()) {
+        NIMCP_LOGGING_WARN("Bio-async router not initialized, skipping registration");
+        return NIMCP_SUCCESS;
+    }
+
+    /* Register module with router */
+    bio_module_info_t info = {
+        .module_id = BIO_MODULE_OMNI_WORLD_MODEL,
+        .module_name = "omni_world_model",
+        .inbox_capacity = 64,
+        .user_data = wm
+    };
+
+    wm->bio_ctx = bio_router_register_module(&info);
+    if (!wm->bio_ctx) {
+        NIMCP_LOGGING_WARN("Failed to register omni world model with bio-async router");
+        return NIMCP_SUCCESS; /* Non-fatal: module can operate without bio-async */
+    }
+
+    /* Register message handlers */
+    nimcp_error_t result;
+
+    result = bio_router_register_handler(wm->bio_ctx, BIO_MSG_OMNI_WM_PREDICT,
+                                          handle_omni_wm_predict);
+    if (result != NIMCP_SUCCESS) {
+        NIMCP_LOGGING_WARN("Failed to register PREDICT handler: %d", result);
+    }
+
+    result = bio_router_register_handler(wm->bio_ctx, BIO_MSG_OMNI_WM_COUNTERFACTUAL,
+                                          handle_omni_wm_counterfactual);
+    if (result != NIMCP_SUCCESS) {
+        NIMCP_LOGGING_WARN("Failed to register COUNTERFACTUAL handler: %d", result);
+    }
+
+    result = bio_router_register_handler(wm->bio_ctx, BIO_MSG_OMNI_WM_UPDATE,
+                                          handle_omni_wm_update);
+    if (result != NIMCP_SUCCESS) {
+        NIMCP_LOGGING_WARN("Failed to register UPDATE handler: %d", result);
+    }
+
+    result = bio_router_register_handler(wm->bio_ctx, BIO_MSG_OMNI_WM_ROLLOUT,
+                                          handle_omni_wm_rollout);
+    if (result != NIMCP_SUCCESS) {
+        NIMCP_LOGGING_WARN("Failed to register ROLLOUT handler: %d", result);
+    }
+
+    wm->bio_async_connected = true;
+    NIMCP_LOGGING_INFO("Omni world model connected to bio-async with 4 handlers");
+
     return NIMCP_SUCCESS;
 }
 
 nimcp_error_t omni_wm_disconnect_bio_async(omni_world_model_t* wm) {
     if (!wm) return NIMCP_ERROR_INVALID_PARAM;
-    /* TODO: Unregister message handlers */
+
+    /* Not connected? */
+    if (!wm->bio_async_connected) {
+        return NIMCP_SUCCESS;
+    }
+
+    /* Unregister handlers */
+    if (wm->bio_ctx) {
+        bio_router_unregister_handler(wm->bio_ctx, BIO_MSG_OMNI_WM_PREDICT);
+        bio_router_unregister_handler(wm->bio_ctx, BIO_MSG_OMNI_WM_COUNTERFACTUAL);
+        bio_router_unregister_handler(wm->bio_ctx, BIO_MSG_OMNI_WM_UPDATE);
+        bio_router_unregister_handler(wm->bio_ctx, BIO_MSG_OMNI_WM_ROLLOUT);
+
+        /* Unregister module */
+        bio_router_unregister_module(wm->bio_ctx);
+        wm->bio_ctx = NULL;
+    }
+
+    wm->bio_async_connected = false;
+    NIMCP_LOGGING_INFO("Omni world model disconnected from bio-async");
+
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Serialization Helpers
+ * ============================================================================ */
+
+/**
+ * @brief Simple CRC32 implementation for checksum
+ */
+static uint32_t crc32_compute(const uint8_t* data, size_t length) {
+    uint32_t crc = 0xFFFFFFFF;
+    for (size_t i = 0; i < length; i++) {
+        crc ^= data[i];
+        for (int j = 0; j < 8; j++) {
+            crc = (crc >> 1) ^ (0xEDB88320 & -(crc & 1));
+        }
+    }
+    return ~crc;
+}
+
+/**
+ * @brief Write uint8 to buffer (big-endian)
+ */
+static size_t write_u8(uint8_t* buf, size_t pos, uint8_t val) {
+    if (buf) buf[pos] = val;
+    return pos + 1;
+}
+
+/**
+ * @brief Write uint32 to buffer (big-endian)
+ */
+static size_t write_u32(uint8_t* buf, size_t pos, uint32_t val) {
+    if (buf) {
+        buf[pos] = (val >> 24) & 0xFF;
+        buf[pos + 1] = (val >> 16) & 0xFF;
+        buf[pos + 2] = (val >> 8) & 0xFF;
+        buf[pos + 3] = val & 0xFF;
+    }
+    return pos + 4;
+}
+
+/**
+ * @brief Write uint64 to buffer (big-endian)
+ */
+static size_t write_u64(uint8_t* buf, size_t pos, uint64_t val) {
+    if (buf) {
+        buf[pos] = (val >> 56) & 0xFF;
+        buf[pos + 1] = (val >> 48) & 0xFF;
+        buf[pos + 2] = (val >> 40) & 0xFF;
+        buf[pos + 3] = (val >> 32) & 0xFF;
+        buf[pos + 4] = (val >> 24) & 0xFF;
+        buf[pos + 5] = (val >> 16) & 0xFF;
+        buf[pos + 6] = (val >> 8) & 0xFF;
+        buf[pos + 7] = val & 0xFF;
+    }
+    return pos + 8;
+}
+
+/**
+ * @brief Write float to buffer (as uint32, big-endian)
+ */
+static size_t write_float_be(uint8_t* buf, size_t pos, float val) {
+    union { float f; uint32_t i; } conv;
+    conv.f = val;
+    return write_u32(buf, pos, conv.i);
+}
+
+/**
+ * @brief Write double to buffer (as uint64, big-endian)
+ */
+static size_t write_double_be(uint8_t* buf, size_t pos, double val) {
+    union { double d; uint64_t i; } conv;
+    conv.d = val;
+    return write_u64(buf, pos, conv.i);
+}
+
+/**
+ * @brief Read uint8 from buffer
+ */
+static uint8_t read_u8(const uint8_t* buf, size_t* pos) {
+    uint8_t val = buf[*pos];
+    (*pos)++;
+    return val;
+}
+
+/**
+ * @brief Read uint32 from buffer (big-endian)
+ */
+static uint32_t read_u32(const uint8_t* buf, size_t* pos) {
+    uint32_t val = ((uint32_t)buf[*pos] << 24) |
+                   ((uint32_t)buf[*pos + 1] << 16) |
+                   ((uint32_t)buf[*pos + 2] << 8) |
+                   buf[*pos + 3];
+    (*pos) += 4;
+    return val;
+}
+
+/**
+ * @brief Read uint64 from buffer (big-endian)
+ */
+static uint64_t read_u64(const uint8_t* buf, size_t* pos) {
+    uint64_t val = ((uint64_t)buf[*pos] << 56) |
+                   ((uint64_t)buf[*pos + 1] << 48) |
+                   ((uint64_t)buf[*pos + 2] << 40) |
+                   ((uint64_t)buf[*pos + 3] << 32) |
+                   ((uint64_t)buf[*pos + 4] << 24) |
+                   ((uint64_t)buf[*pos + 5] << 16) |
+                   ((uint64_t)buf[*pos + 6] << 8) |
+                   buf[*pos + 7];
+    (*pos) += 8;
+    return val;
+}
+
+/**
+ * @brief Read float from buffer
+ */
+static float read_float_be(const uint8_t* buf, size_t* pos) {
+    union { uint32_t i; float f; } conv;
+    conv.i = read_u32(buf, pos);
+    return conv.f;
+}
+
+/**
+ * @brief Read double from buffer
+ */
+static double read_double_be(const uint8_t* buf, size_t* pos) {
+    union { uint64_t i; double d; } conv;
+    conv.i = read_u64(buf, pos);
+    return conv.d;
+}
+
+/* ============================================================================
+ * Serialization Implementation
+ * ============================================================================ */
+
+/**
+ * @brief Serialize config section
+ */
+static size_t serialize_config(uint8_t* buf, size_t pos, const omni_wm_config_t* cfg) {
+    /* Dimensionality settings */
+    pos = write_u32(buf, pos, cfg->state_dim);
+    pos = write_u32(buf, pos, cfg->action_dim);
+    pos = write_u32(buf, pos, cfg->obs_dim);
+    pos = write_u32(buf, pos, cfg->hidden_dim);
+    pos = write_u32(buf, pos, cfg->num_levels);
+
+    /* RSSM settings */
+    pos = write_u32(buf, pos, cfg->rssm_h_dim);
+    pos = write_u32(buf, pos, cfg->rssm_z_dim);
+    pos = write_u32(buf, pos, cfg->latent_dim);
+
+    /* MDN settings */
+    pos = write_u32(buf, pos, cfg->mdn_components);
+    pos = write_u8(buf, pos, (uint8_t)cfg->pred_type);
+
+    /* Learning settings */
+    pos = write_float_be(buf, pos, cfg->learning_rate);
+    pos = write_float_be(buf, pos, cfg->discount_factor);
+    pos = write_float_be(buf, pos, cfg->kl_weight);
+    pos = write_float_be(buf, pos, cfg->reward_scale);
+    pos = write_u8(buf, pos, (uint8_t)cfg->learn_mode);
+
+    /* Experience replay settings */
+    pos = write_u32(buf, pos, cfg->replay_buffer_size);
+    pos = write_u32(buf, pos, cfg->batch_size);
+    pos = write_float_be(buf, pos, cfg->priority_exponent);
+
+    /* Dreaming settings */
+    pos = write_u32(buf, pos, cfg->dream_horizon);
+    pos = write_u32(buf, pos, cfg->dream_episodes);
+    pos = write_float_be(buf, pos, cfg->imagination_noise);
+
+    /* Feature flags (packed as byte) */
+    uint8_t flags = 0;
+    if (cfg->enable_lateral) flags |= 0x01;
+    if (cfg->enable_hierarchical) flags |= 0x02;
+    if (cfg->enable_dreaming) flags |= 0x04;
+    if (cfg->use_symlog_rewards) flags |= 0x08;
+    if (cfg->use_rssm) flags |= 0x10;
+    if (cfg->use_mdn) flags |= 0x20;
+    pos = write_u8(buf, pos, flags);
+
+    return pos;
+}
+
+/**
+ * @brief Deserialize config section
+ */
+static size_t deserialize_config(const uint8_t* buf, size_t pos, omni_wm_config_t* cfg) {
+    /* Dimensionality settings */
+    cfg->state_dim = read_u32(buf, &pos);
+    cfg->action_dim = read_u32(buf, &pos);
+    cfg->obs_dim = read_u32(buf, &pos);
+    cfg->hidden_dim = read_u32(buf, &pos);
+    cfg->num_levels = read_u32(buf, &pos);
+
+    /* RSSM settings */
+    cfg->rssm_h_dim = read_u32(buf, &pos);
+    cfg->rssm_z_dim = read_u32(buf, &pos);
+    cfg->latent_dim = read_u32(buf, &pos);
+
+    /* MDN settings */
+    cfg->mdn_components = read_u32(buf, &pos);
+    cfg->pred_type = (omni_wm_prediction_type_t)read_u8(buf, &pos);
+
+    /* Learning settings */
+    cfg->learning_rate = read_float_be(buf, &pos);
+    cfg->discount_factor = read_float_be(buf, &pos);
+    cfg->kl_weight = read_float_be(buf, &pos);
+    cfg->reward_scale = read_float_be(buf, &pos);
+    cfg->learn_mode = (omni_wm_learn_mode_t)read_u8(buf, &pos);
+
+    /* Experience replay settings */
+    cfg->replay_buffer_size = read_u32(buf, &pos);
+    cfg->batch_size = read_u32(buf, &pos);
+    cfg->priority_exponent = read_float_be(buf, &pos);
+
+    /* Dreaming settings */
+    cfg->dream_horizon = read_u32(buf, &pos);
+    cfg->dream_episodes = read_u32(buf, &pos);
+    cfg->imagination_noise = read_float_be(buf, &pos);
+
+    /* Feature flags */
+    uint8_t flags = read_u8(buf, &pos);
+    cfg->enable_lateral = (flags & 0x01) != 0;
+    cfg->enable_hierarchical = (flags & 0x02) != 0;
+    cfg->enable_dreaming = (flags & 0x04) != 0;
+    cfg->use_symlog_rewards = (flags & 0x08) != 0;
+    cfg->use_rssm = (flags & 0x10) != 0;
+    cfg->use_mdn = (flags & 0x20) != 0;
+
+    return pos;
+}
+
+/**
+ * @brief Serialize state
+ */
+static size_t serialize_state(uint8_t* buf, size_t pos, const omni_wm_state_t* state) {
+    if (!state) {
+        pos = write_u8(buf, pos, 0); /* null marker */
+        return pos;
+    }
+
+    pos = write_u8(buf, pos, 1); /* present marker */
+    pos = write_u32(buf, pos, state->dim);
+    pos = write_float_be(buf, pos, state->uncertainty);
+    pos = write_double_be(buf, pos, state->timestamp);
+    pos = write_u32(buf, pos, state->level);
+
+    /* Write values array */
+    for (uint32_t i = 0; i < state->dim; i++) {
+        pos = write_float_be(buf, pos, state->values[i]);
+    }
+
+    return pos;
+}
+
+/**
+ * @brief Deserialize state
+ */
+static omni_wm_state_t* deserialize_state_from_buf(const uint8_t* buf, size_t* pos) {
+    uint8_t present = read_u8(buf, pos);
+    if (!present) return NULL;
+
+    uint32_t dim = read_u32(buf, pos);
+    omni_wm_state_t* state = omni_wm_state_create(dim);
+    if (!state) return NULL;
+
+    state->uncertainty = read_float_be(buf, pos);
+    state->timestamp = read_double_be(buf, pos);
+    state->level = read_u32(buf, pos);
+
+    for (uint32_t i = 0; i < dim; i++) {
+        state->values[i] = read_float_be(buf, pos);
+    }
+
+    return state;
+}
+
+/**
+ * @brief Serialize RSSM state
+ */
+static size_t serialize_rssm_state(uint8_t* buf, size_t pos, const omni_wm_rssm_state_t* state) {
+    if (!state) {
+        pos = write_u8(buf, pos, 0);
+        return pos;
+    }
+
+    pos = write_u8(buf, pos, 1);
+    pos = write_u32(buf, pos, state->h_dim);
+    pos = write_u32(buf, pos, state->z_dim);
+    pos = write_double_be(buf, pos, state->timestamp);
+
+    /* Write h array */
+    for (uint32_t i = 0; i < state->h_dim; i++) {
+        pos = write_float_be(buf, pos, state->h[i]);
+    }
+
+    /* Write z array */
+    for (uint32_t i = 0; i < state->z_dim; i++) {
+        pos = write_float_be(buf, pos, state->z[i]);
+    }
+
+    /* Write z_mean array */
+    for (uint32_t i = 0; i < state->z_dim; i++) {
+        pos = write_float_be(buf, pos, state->z_mean[i]);
+    }
+
+    /* Write z_std array */
+    for (uint32_t i = 0; i < state->z_dim; i++) {
+        pos = write_float_be(buf, pos, state->z_std[i]);
+    }
+
+    return pos;
+}
+
+/**
+ * @brief Deserialize RSSM state
+ */
+static omni_wm_rssm_state_t* deserialize_rssm_state_from_buf(const uint8_t* buf, size_t* pos) {
+    uint8_t present = read_u8(buf, pos);
+    if (!present) return NULL;
+
+    uint32_t h_dim = read_u32(buf, pos);
+    uint32_t z_dim = read_u32(buf, pos);
+
+    omni_wm_rssm_state_t* state = omni_wm_rssm_state_create(h_dim, z_dim);
+    if (!state) return NULL;
+
+    state->timestamp = read_double_be(buf, pos);
+
+    for (uint32_t i = 0; i < h_dim; i++) {
+        state->h[i] = read_float_be(buf, pos);
+    }
+
+    for (uint32_t i = 0; i < z_dim; i++) {
+        state->z[i] = read_float_be(buf, pos);
+    }
+
+    for (uint32_t i = 0; i < z_dim; i++) {
+        state->z_mean[i] = read_float_be(buf, pos);
+    }
+
+    for (uint32_t i = 0; i < z_dim; i++) {
+        state->z_std[i] = read_float_be(buf, pos);
+    }
+
+    return state;
+}
+
+/**
+ * @brief Serialize dynamics weights
+ */
+static size_t serialize_dynamics_weights(uint8_t* buf, size_t pos, const omni_wm_dynamics_t* dyn) {
+    if (!dyn) {
+        pos = write_u8(buf, pos, 0);
+        return pos;
+    }
+
+    pos = write_u8(buf, pos, 1);
+    pos = write_u32(buf, pos, dyn->h_dim);
+    pos = write_u32(buf, pos, dyn->z_dim);
+    pos = write_u32(buf, pos, dyn->obs_dim);
+    pos = write_u32(buf, pos, dyn->action_dim);
+
+    uint32_t input_dim = dyn->h_dim + dyn->z_dim + dyn->action_dim;
+
+    /* W_h: input_dim * h_dim */
+    for (uint32_t i = 0; i < input_dim * dyn->h_dim; i++) {
+        pos = write_float_be(buf, pos, dyn->W_h[i]);
+    }
+
+    /* W_z: h_dim * z_dim * 2 */
+    for (uint32_t i = 0; i < dyn->h_dim * dyn->z_dim * 2; i++) {
+        pos = write_float_be(buf, pos, dyn->W_z[i]);
+    }
+
+    /* W_obs: (h_dim + z_dim) * obs_dim */
+    for (uint32_t i = 0; i < (dyn->h_dim + dyn->z_dim) * dyn->obs_dim; i++) {
+        pos = write_float_be(buf, pos, dyn->W_obs[i]);
+    }
+
+    /* Biases */
+    for (uint32_t i = 0; i < dyn->h_dim; i++) {
+        pos = write_float_be(buf, pos, dyn->b_h[i]);
+    }
+    for (uint32_t i = 0; i < dyn->z_dim * 2; i++) {
+        pos = write_float_be(buf, pos, dyn->b_z[i]);
+    }
+    for (uint32_t i = 0; i < dyn->obs_dim; i++) {
+        pos = write_float_be(buf, pos, dyn->b_obs[i]);
+    }
+
+    return pos;
+}
+
+/**
+ * @brief Deserialize dynamics weights
+ */
+static omni_wm_dynamics_t* deserialize_dynamics_from_buf(const uint8_t* buf, size_t* pos) {
+    uint8_t present = read_u8(buf, pos);
+    if (!present) return NULL;
+
+    uint32_t h_dim = read_u32(buf, pos);
+    uint32_t z_dim = read_u32(buf, pos);
+    uint32_t obs_dim = read_u32(buf, pos);
+    uint32_t action_dim = read_u32(buf, pos);
+
+    omni_wm_dynamics_t* dyn = dynamics_create(h_dim, z_dim, obs_dim, action_dim);
+    if (!dyn) return NULL;
+
+    uint32_t input_dim = h_dim + z_dim + action_dim;
+
+    for (uint32_t i = 0; i < input_dim * h_dim; i++) {
+        dyn->W_h[i] = read_float_be(buf, pos);
+    }
+
+    for (uint32_t i = 0; i < h_dim * z_dim * 2; i++) {
+        dyn->W_z[i] = read_float_be(buf, pos);
+    }
+
+    for (uint32_t i = 0; i < (h_dim + z_dim) * obs_dim; i++) {
+        dyn->W_obs[i] = read_float_be(buf, pos);
+    }
+
+    for (uint32_t i = 0; i < h_dim; i++) {
+        dyn->b_h[i] = read_float_be(buf, pos);
+    }
+    for (uint32_t i = 0; i < z_dim * 2; i++) {
+        dyn->b_z[i] = read_float_be(buf, pos);
+    }
+    for (uint32_t i = 0; i < obs_dim; i++) {
+        dyn->b_obs[i] = read_float_be(buf, pos);
+    }
+
+    return dyn;
+}
+
+/**
+ * @brief Serialize statistics
+ */
+static size_t serialize_wm_stats(uint8_t* buf, size_t pos, const omni_wm_stats_t* stats) {
+    pos = write_u64(buf, pos, stats->forward_predictions);
+    pos = write_u64(buf, pos, stats->backward_inferences);
+    pos = write_u64(buf, pos, stats->lateral_predictions);
+    pos = write_u64(buf, pos, stats->counterfactual_queries);
+    pos = write_u64(buf, pos, stats->rollouts_completed);
+    pos = write_u64(buf, pos, stats->model_updates);
+    pos = write_float_be(buf, pos, stats->mean_prediction_error);
+    pos = write_float_be(buf, pos, stats->mean_counterfactual_divergence);
+    return pos;
+}
+
+/**
+ * @brief Deserialize statistics
+ */
+static size_t deserialize_wm_stats(const uint8_t* buf, size_t pos, omni_wm_stats_t* stats) {
+    stats->forward_predictions = read_u64(buf, &pos);
+    stats->backward_inferences = read_u64(buf, &pos);
+    stats->lateral_predictions = read_u64(buf, &pos);
+    stats->counterfactual_queries = read_u64(buf, &pos);
+    stats->rollouts_completed = read_u64(buf, &pos);
+    stats->model_updates = read_u64(buf, &pos);
+    stats->mean_prediction_error = read_float_be(buf, &pos);
+    stats->mean_counterfactual_divergence = read_float_be(buf, &pos);
+    return pos;
+}
+
+/* ============================================================================
+ * Public Serialization API
+ * ============================================================================ */
+
+size_t omni_wm_serialize(const omni_world_model_t* wm,
+                          uint8_t* buffer,
+                          size_t buffer_size) {
+    if (!wm) return 0;
+
+    size_t pos = 0;
+
+    /* Header */
+    pos = write_u32(buffer, pos, OMNI_WM_SERIAL_MAGIC);
+    pos = write_u8(buffer, pos, OMNI_WM_SERIAL_VERSION);
+
+    /* Compute flags */
+    uint8_t flags = OMNI_WM_SERIAL_FLAG_HAS_DYNAMICS;
+    if (wm->rssm_state) flags |= OMNI_WM_SERIAL_FLAG_HAS_RSSM;
+    if (wm->replay_buffer && wm->replay_buffer->size > 0) {
+        flags |= OMNI_WM_SERIAL_FLAG_HAS_REPLAY;
+    }
+    pos = write_u8(buffer, pos, flags);
+
+    /* Config */
+    pos = serialize_config(buffer, pos, &wm->config);
+
+    /* Current state */
+    pos = serialize_state(buffer, pos, wm->current_state);
+
+    /* RSSM state */
+    if (flags & OMNI_WM_SERIAL_FLAG_HAS_RSSM) {
+        pos = serialize_rssm_state(buffer, pos, wm->rssm_state);
+    }
+
+    /* Dynamics models */
+    pos = serialize_dynamics_weights(buffer, pos, wm->forward_dynamics);
+    pos = serialize_dynamics_weights(buffer, pos, wm->backward_dynamics);
+    pos = serialize_dynamics_weights(buffer, pos, wm->lateral_dynamics);
+
+    /* Encoder/decoder weights */
+    uint32_t enc_size = wm->config.obs_dim * wm->config.latent_dim;
+    pos = write_u32(buffer, pos, enc_size);
+    for (uint32_t i = 0; i < enc_size; i++) {
+        pos = write_float_be(buffer, pos, wm->encoder_W[i]);
+    }
+    pos = write_u32(buffer, pos, wm->config.latent_dim);
+    for (uint32_t i = 0; i < wm->config.latent_dim; i++) {
+        pos = write_float_be(buffer, pos, wm->encoder_b[i]);
+    }
+    for (uint32_t i = 0; i < enc_size; i++) {
+        pos = write_float_be(buffer, pos, wm->decoder_W[i]);
+    }
+    pos = write_u32(buffer, pos, wm->config.obs_dim);
+    for (uint32_t i = 0; i < wm->config.obs_dim; i++) {
+        pos = write_float_be(buffer, pos, wm->decoder_b[i]);
+    }
+
+    /* Replay buffer (limited serialization - just size info for now) */
+    if (flags & OMNI_WM_SERIAL_FLAG_HAS_REPLAY) {
+        pos = write_u32(buffer, pos, wm->replay_buffer->size);
+        /* Note: Full replay buffer serialization would be very large.
+         * For checkpointing, we just store the count. Full serialization
+         * could be added as an option in a future version. */
+    }
+
+    /* Statistics */
+    pos = serialize_wm_stats(buffer, pos, &wm->stats);
+
+    /* Random seed */
+    pos = write_u32(buffer, pos, wm->rand_seed);
+
+    /* Checksum (computed over all preceding data) */
+    if (buffer) {
+        uint32_t checksum = crc32_compute(buffer, pos);
+        pos = write_u32(buffer, pos, checksum);
+    } else {
+        pos += 4; /* Reserve space for checksum */
+    }
+
+    /* Verify buffer size if buffer provided */
+    if (buffer && pos > buffer_size) {
+        return 0; /* Buffer too small */
+    }
+
+    return pos;
+}
+
+omni_world_model_t* omni_wm_deserialize(const uint8_t* buffer,
+                                         size_t buffer_size) {
+    if (!buffer || buffer_size < 10) return NULL;
+
+    size_t pos = 0;
+
+    /* Verify magic */
+    uint32_t magic = read_u32(buffer, &pos);
+    if (magic != OMNI_WM_SERIAL_MAGIC) return NULL;
+
+    /* Verify version */
+    uint8_t version = read_u8(buffer, &pos);
+    if (version > OMNI_WM_SERIAL_VERSION) return NULL;
+
+    /* Read flags */
+    uint8_t flags = read_u8(buffer, &pos);
+
+    /* Read config */
+    omni_wm_config_t config;
+    pos = deserialize_config(buffer, pos, &config);
+
+    /* Create world model with config */
+    omni_world_model_t* wm = omni_wm_create(&config);
+    if (!wm) return NULL;
+
+    /* Read current state */
+    omni_wm_state_t* state = deserialize_state_from_buf(buffer, &pos);
+    if (state) {
+        if (wm->current_state) {
+            omni_wm_state_destroy(wm->current_state);
+        }
+        wm->current_state = state;
+    }
+
+    /* Read RSSM state */
+    if (flags & OMNI_WM_SERIAL_FLAG_HAS_RSSM) {
+        omni_wm_rssm_state_t* rssm = deserialize_rssm_state_from_buf(buffer, &pos);
+        if (rssm) {
+            if (wm->rssm_state) {
+                omni_wm_rssm_state_destroy(wm->rssm_state);
+            }
+            wm->rssm_state = rssm;
+        }
+    }
+
+    /* Read dynamics models */
+    omni_wm_dynamics_t* forward = deserialize_dynamics_from_buf(buffer, &pos);
+    if (forward) {
+        dynamics_destroy(wm->forward_dynamics);
+        wm->forward_dynamics = forward;
+    }
+
+    omni_wm_dynamics_t* backward = deserialize_dynamics_from_buf(buffer, &pos);
+    if (backward) {
+        dynamics_destroy(wm->backward_dynamics);
+        wm->backward_dynamics = backward;
+    }
+
+    omni_wm_dynamics_t* lateral = deserialize_dynamics_from_buf(buffer, &pos);
+    if (lateral) {
+        dynamics_destroy(wm->lateral_dynamics);
+        wm->lateral_dynamics = lateral;
+    }
+
+    /* Read encoder/decoder weights */
+    uint32_t enc_size = read_u32(buffer, &pos);
+    if (enc_size == wm->config.obs_dim * wm->config.latent_dim) {
+        for (uint32_t i = 0; i < enc_size; i++) {
+            wm->encoder_W[i] = read_float_be(buffer, &pos);
+        }
+    }
+
+    uint32_t enc_b_size = read_u32(buffer, &pos);
+    if (enc_b_size == wm->config.latent_dim) {
+        for (uint32_t i = 0; i < enc_b_size; i++) {
+            wm->encoder_b[i] = read_float_be(buffer, &pos);
+        }
+    }
+
+    for (uint32_t i = 0; i < enc_size; i++) {
+        wm->decoder_W[i] = read_float_be(buffer, &pos);
+    }
+
+    uint32_t dec_b_size = read_u32(buffer, &pos);
+    if (dec_b_size == wm->config.obs_dim) {
+        for (uint32_t i = 0; i < dec_b_size; i++) {
+            wm->decoder_b[i] = read_float_be(buffer, &pos);
+        }
+    }
+
+    /* Read replay buffer info */
+    if (flags & OMNI_WM_SERIAL_FLAG_HAS_REPLAY) {
+        uint32_t replay_size = read_u32(buffer, &pos);
+        (void)replay_size; /* Note: Full replay restoration not implemented */
+    }
+
+    /* Read statistics */
+    pos = deserialize_wm_stats(buffer, pos, &wm->stats);
+
+    /* Read random seed */
+    wm->rand_seed = read_u32(buffer, &pos);
+
+    /* Verify checksum */
+    if (pos + 4 <= buffer_size) {
+        uint32_t stored_checksum = read_u32(buffer, &pos);
+        uint32_t computed_checksum = crc32_compute(buffer, pos - 4);
+        if (stored_checksum != computed_checksum) {
+            omni_wm_destroy(wm);
+            return NULL;
+        }
+    }
+
+    return wm;
+}
+
+nimcp_error_t omni_wm_save(const omni_world_model_t* wm,
+                            const char* filepath) {
+    if (!wm || !filepath) return NIMCP_ERROR_INVALID_PARAM;
+
+    /* Get required size */
+    size_t required_size = omni_wm_serialize(wm, NULL, 0);
+    if (required_size == 0) return NIMCP_ERROR_SERIALIZATION;
+
+    /* Allocate buffer */
+    uint8_t* buffer = nimcp_malloc(required_size);
+    if (!buffer) return NIMCP_ERROR_NO_MEMORY;
+
+    /* Serialize */
+    size_t written = omni_wm_serialize(wm, buffer, required_size);
+    if (written == 0) {
+        nimcp_free(buffer);
+        return NIMCP_ERROR_SERIALIZATION;
+    }
+
+    /* Write to file */
+    FILE* fp = fopen(filepath, "wb");
+    if (!fp) {
+        nimcp_free(buffer);
+        return NIMCP_ERROR_FILE_OPEN;
+    }
+
+    size_t bytes_written = fwrite(buffer, 1, written, fp);
+    fclose(fp);
+    nimcp_free(buffer);
+
+    if (bytes_written != written) {
+        return NIMCP_ERROR_FILE_WRITE;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+omni_world_model_t* omni_wm_load(const char* filepath) {
+    if (!filepath) return NULL;
+
+    /* Open file */
+    FILE* fp = fopen(filepath, "rb");
+    if (!fp) return NULL;
+
+    /* Get file size */
+    fseek(fp, 0, SEEK_END);
+    long file_size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    if (file_size <= 0) {
+        fclose(fp);
+        return NULL;
+    }
+
+    /* Allocate buffer */
+    uint8_t* buffer = nimcp_malloc((size_t)file_size);
+    if (!buffer) {
+        fclose(fp);
+        return NULL;
+    }
+
+    /* Read file */
+    size_t bytes_read = fread(buffer, 1, (size_t)file_size, fp);
+    fclose(fp);
+
+    if (bytes_read != (size_t)file_size) {
+        nimcp_free(buffer);
+        return NULL;
+    }
+
+    /* Deserialize */
+    omni_world_model_t* wm = omni_wm_deserialize(buffer, (size_t)file_size);
+    nimcp_free(buffer);
+
+    return wm;
+}
+
+/* ============================================================================
+ * Checkpoint Management
+ * ============================================================================ */
+
+/**
+ * @brief Initialize checkpoint store
+ */
+static omni_wm_checkpoint_store_t* checkpoint_store_create(void) {
+    omni_wm_checkpoint_store_t* store = nimcp_calloc(1, sizeof(omni_wm_checkpoint_store_t));
+    if (!store) return NULL;
+    store->next_id = 1;
+    return store;
+}
+
+/**
+ * @brief Destroy checkpoint store - used in cleanup
+ */
+static void checkpoint_store_destroy_internal(omni_wm_checkpoint_store_t* store) {
+    if (!store) return;
+
+    for (uint32_t i = 0; i < store->count; i++) {
+        nimcp_free(store->checkpoints[i].data);
+    }
+    nimcp_free(store);
+}
+
+uint64_t omni_wm_checkpoint(omni_world_model_t* wm) {
+    if (!wm) return 0;
+
+    /* Create checkpoint store if needed */
+    if (!wm->checkpoint_store) {
+        wm->checkpoint_store = checkpoint_store_create();
+        if (!wm->checkpoint_store) return 0;
+    }
+
+    /* Check capacity */
+    if (wm->checkpoint_store->count >= OMNI_WM_MAX_CHECKPOINTS) {
+        return 0; /* No room for more checkpoints */
+    }
+
+    /* Serialize current state */
+    size_t required_size = omni_wm_serialize(wm, NULL, 0);
+    if (required_size == 0) return 0;
+
+    uint8_t* data = nimcp_malloc(required_size);
+    if (!data) return 0;
+
+    size_t written = omni_wm_serialize(wm, data, required_size);
+    if (written == 0) {
+        nimcp_free(data);
+        return 0;
+    }
+
+    /* Create checkpoint */
+    uint32_t idx = wm->checkpoint_store->count;
+    uint64_t id = wm->checkpoint_store->next_id++;
+
+    wm->checkpoint_store->checkpoints[idx].id = id;
+    wm->checkpoint_store->checkpoints[idx].data = data;
+    wm->checkpoint_store->checkpoints[idx].data_size = written;
+    wm->checkpoint_store->checkpoints[idx].timestamp = (double)time(NULL);
+    memset(wm->checkpoint_store->checkpoints[idx].description, 0, 64);
+
+    wm->checkpoint_store->count++;
+
+    return id;
+}
+
+nimcp_error_t omni_wm_restore_checkpoint(omni_world_model_t* wm,
+                                          uint64_t checkpoint_id) {
+    if (!wm || !wm->checkpoint_store || checkpoint_id == 0) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Find checkpoint */
+    omni_wm_checkpoint_t* cp = NULL;
+    for (uint32_t i = 0; i < wm->checkpoint_store->count; i++) {
+        if (wm->checkpoint_store->checkpoints[i].id == checkpoint_id) {
+            cp = &wm->checkpoint_store->checkpoints[i];
+            break;
+        }
+    }
+
+    if (!cp) return NIMCP_ERROR_NOT_FOUND;
+
+    /* Deserialize into temporary */
+    omni_world_model_t* restored = omni_wm_deserialize(cp->data, cp->data_size);
+    if (!restored) return NIMCP_ERROR_INVALID_STATE;
+
+    /* Preserve checkpoint store and mutex from current wm */
+    omni_wm_checkpoint_store_t* store = wm->checkpoint_store;
+    nimcp_mutex_t* mutex = wm->mutex;
+
+    /* Swap internals (avoiding checkpoint store and mutex) */
+    /* Free current state */
+    dynamics_destroy(wm->forward_dynamics);
+    dynamics_destroy(wm->backward_dynamics);
+    dynamics_destroy(wm->lateral_dynamics);
+    nimcp_free(wm->encoder_W);
+    nimcp_free(wm->encoder_b);
+    nimcp_free(wm->decoder_W);
+    nimcp_free(wm->decoder_b);
+    replay_buffer_destroy(wm->replay_buffer);
+    omni_wm_state_destroy(wm->current_state);
+    omni_wm_rssm_state_destroy(wm->rssm_state);
+
+    /* Copy restored state */
+    wm->config = restored->config;
+    wm->current_state = restored->current_state;
+    wm->rssm_state = restored->rssm_state;
+    wm->forward_dynamics = restored->forward_dynamics;
+    wm->backward_dynamics = restored->backward_dynamics;
+    wm->lateral_dynamics = restored->lateral_dynamics;
+    wm->encoder_W = restored->encoder_W;
+    wm->encoder_b = restored->encoder_b;
+    wm->decoder_W = restored->decoder_W;
+    wm->decoder_b = restored->decoder_b;
+    wm->replay_buffer = restored->replay_buffer;
+    wm->stats = restored->stats;
+    wm->rand_seed = restored->rand_seed;
+
+    /* Restore preserved items */
+    wm->checkpoint_store = store;
+    wm->mutex = mutex;
+
+    /* Free the temporary wrapper (but not its contents - now owned by wm) */
+    restored->current_state = NULL;
+    restored->rssm_state = NULL;
+    restored->forward_dynamics = NULL;
+    restored->backward_dynamics = NULL;
+    restored->lateral_dynamics = NULL;
+    restored->encoder_W = NULL;
+    restored->encoder_b = NULL;
+    restored->decoder_W = NULL;
+    restored->decoder_b = NULL;
+    restored->replay_buffer = NULL;
+    restored->checkpoint_store = NULL;
+    restored->mutex = NULL;
+    omni_wm_destroy(restored);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_error_t omni_wm_delete_checkpoint(omni_world_model_t* wm,
+                                         uint64_t checkpoint_id) {
+    if (!wm || !wm->checkpoint_store || checkpoint_id == 0) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Find and remove checkpoint */
+    for (uint32_t i = 0; i < wm->checkpoint_store->count; i++) {
+        if (wm->checkpoint_store->checkpoints[i].id == checkpoint_id) {
+            nimcp_free(wm->checkpoint_store->checkpoints[i].data);
+
+            /* Shift remaining checkpoints */
+            for (uint32_t j = i; j < wm->checkpoint_store->count - 1; j++) {
+                wm->checkpoint_store->checkpoints[j] = wm->checkpoint_store->checkpoints[j + 1];
+            }
+            wm->checkpoint_store->count--;
+
+            return NIMCP_SUCCESS;
+        }
+    }
+
+    return NIMCP_ERROR_NOT_FOUND;
+}
+
+uint32_t omni_wm_get_checkpoint_count(const omni_world_model_t* wm) {
+    if (!wm || !wm->checkpoint_store) return 0;
+    return wm->checkpoint_store->count;
+}
+
+nimcp_error_t omni_wm_clear_checkpoints(omni_world_model_t* wm) {
+    if (!wm) return NIMCP_ERROR_INVALID_PARAM;
+
+    if (wm->checkpoint_store) {
+        for (uint32_t i = 0; i < wm->checkpoint_store->count; i++) {
+            nimcp_free(wm->checkpoint_store->checkpoints[i].data);
+            wm->checkpoint_store->checkpoints[i].data = NULL;
+        }
+        wm->checkpoint_store->count = 0;
+    }
+
     return NIMCP_SUCCESS;
 }

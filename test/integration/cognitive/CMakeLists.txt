@@ -233,3 +233,6 @@ add_subdirectory(social)
 
 # Exception Handling Integration Tests
 add_subdirectory(exception)
+
+# World Model Integration Tests
+add_subdirectory(world_model)

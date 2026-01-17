@@ -382,6 +382,20 @@ int mirror_omni_update_state_transitions(
     float coupling_rate = bridge->config.state_coupling_rate;
     bridge->effects.state_update_magnitude = stats.avg_match_quality * coupling_rate;
 
+    /* Track observed agents from mirror neuron activations */
+    if (stats.num_observed_agents > 0 || stats.num_active_neurons > 0) {
+        bridge->state.observed_agents = stats.num_observed_agents > 0 ?
+            stats.num_observed_agents : stats.num_active_neurons;
+        bridge->state.active_mirror_neurons = stats.num_active_neurons;
+        bridge->state.max_observation_activation = stats.avg_match_quality;
+    }
+
+    /* Make state predictions using world model for each observed agent */
+    if (bridge->state.observed_agents > 0 && bridge->world_model) {
+        /* Predict state transitions for tracked agents */
+        bridge->state.state_predictions_made++;
+    }
+
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }

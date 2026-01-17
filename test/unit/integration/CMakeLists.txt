@@ -103,6 +103,74 @@ target_compile_features(unit_integration_neuromod_executive_bridge PRIVATE cxx_s
 gtest_discover_tests(unit_integration_neuromod_executive_bridge
     PROPERTIES LABELS "unit;integration;inter;neuromod_executive")
 
+# Neuromodulatory-World Model Bridge Tests
+if(NOT TARGET unit_integration_inter_test_neuromod_wm_bridge)
+    add_executable(unit_integration_inter_test_neuromod_wm_bridge
+        inter/test_neuromod_wm_bridge.cpp
+    )
+    target_link_libraries(unit_integration_inter_test_neuromod_wm_bridge
+        PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+    )
+    target_compile_features(unit_integration_inter_test_neuromod_wm_bridge PRIVATE cxx_std_17)
+    gtest_discover_tests(unit_integration_inter_test_neuromod_wm_bridge
+        PROPERTIES LABELS "unit;integration;inter;neuromod_wm")
+endif()
+
+# Neuromodulatory-Attention Bridge Tests
+add_executable(unit_integration_neuromod_attention_bridge
+    inter/test_neuromod_attention_bridge.cpp
+)
+target_link_libraries(unit_integration_neuromod_attention_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_integration_neuromod_attention_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_integration_neuromod_attention_bridge
+    PROPERTIES LABELS "unit;integration;inter;neuromod_attention")
+
+# Neuromodulatory-Emotion Bridge Tests
+add_executable(unit_integration_neuromod_emotion_bridge
+    inter/test_neuromod_emotion_bridge.cpp
+)
+target_link_libraries(unit_integration_neuromod_emotion_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_integration_neuromod_emotion_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_integration_neuromod_emotion_bridge
+    PROPERTIES LABELS "unit;integration;inter;neuromod_emotion")
+
+# Neuromodulatory-Plasticity Bridge Tests
+add_executable(unit_integration_neuromod_plasticity_bridge
+    inter/test_neuromod_plasticity_bridge.cpp
+)
+target_link_libraries(unit_integration_neuromod_plasticity_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_integration_neuromod_plasticity_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_integration_neuromod_plasticity_bridge
+    PROPERTIES LABELS "unit;integration;inter;neuromod_plasticity")
+
+# Neuromodulatory-Reasoning Bridge Tests
+add_executable(unit_integration_neuromod_reasoning_bridge
+    inter/test_neuromod_reasoning_bridge.cpp
+)
+target_link_libraries(unit_integration_neuromod_reasoning_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_integration_neuromod_reasoning_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_integration_neuromod_reasoning_bridge
+    PROPERTIES LABELS "unit;integration;inter;neuromod_reasoning")
+
+# Neuromodulatory-GameTheory Bridge Tests
+add_executable(unit_integration_neuromod_gametheory_bridge
+    inter/test_neuromod_gametheory_bridge.cpp
+)
+target_link_libraries(unit_integration_neuromod_gametheory_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_integration_neuromod_gametheory_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_integration_neuromod_gametheory_bridge
+    PROPERTIES LABELS "unit;integration;inter;neuromod_gametheory")
+
 # ============================================================================
 # Module Adapter Tests
 # ============================================================================

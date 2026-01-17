@@ -114,6 +114,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 #include "core/brain/factory/init/nimcp_brain_init_basal_ganglia.h"
 #include "core/brain/factory/init/nimcp_brain_init_pr_memory.h"
+#include "core/brain/factory/init/nimcp_brain_init_world_model.h"
 #include "core/brain/factory/validation/nimcp_brain_validation.h"
 
 #define LOG_MODULE "BRAIN_FACTORY"
@@ -233,6 +234,11 @@ extern void set_error(const char* format, ...);
 
 // Prime Resonant Memory subsystem macro (content-addressable consolidation)
 #define init_pr_memory_subsystem                    nimcp_brain_factory_init_pr_memory_subsystem
+
+// World Model subsystem macro (generative world model for mental simulation)
+#define init_world_model_subsystem                  nimcp_brain_factory_init_world_model_subsystem
+#define wire_world_model_active_inference           nimcp_brain_factory_wire_world_model_active_inference
+#define wire_world_model_imagination                nimcp_brain_factory_wire_world_model_imagination
 
 //=============================================================================
 // Main Factory Functions
@@ -605,6 +611,13 @@ brain_t brain_create_custom(const brain_config_t* config)
         if (!init_pr_memory_subsystem(brain)) { brain_destroy(brain); return NULL; }
     }
 
+    // World Model System (generative world model for mental simulation)
+    // Provides: Omni World Model (RSSM dynamics), Multimodal World Model (cross-modal fusion)
+    // Enables: Counterfactual reasoning, policy evaluation, dreaming, mental imagery
+    if (brain->config.enable_world_model && !brain->config.lazy_world_model_init) {
+        if (!init_world_model_subsystem(brain)) { brain_destroy(brain); return NULL; }
+    }
+
     // Phase 10.3: Executive functions (heavy - Portia integration, planning)
     if (!brain->config.lazy_executive_init) {
         if (!init_executive_subsystem(brain)) { brain_destroy(brain); return NULL; }
@@ -912,6 +925,22 @@ brain_t brain_create_custom(const brain_config_t* config)
     // ========================================================================
     // POST-INITIALIZATION
     // ========================================================================
+
+    // ========================================================================
+    // WORLD MODEL WIRING (Connect to Active Inference & Imagination)
+    // ========================================================================
+    // Wire the world model to dependent systems after all subsystems are initialized:
+    // - Active Inference: Uses world model for policy evaluation via mental simulation
+    // - Imagination Engine: Uses world model dynamics for scene generation
+    // Dependencies: World model, active inference, imagination must all be initialized
+    if (brain->world_model_enabled) {
+        if (!wire_world_model_active_inference(brain)) {
+            LOG_WARN(LOG_MODULE, "Failed to wire world model to active inference");
+        }
+        if (!wire_world_model_imagination(brain)) {
+            LOG_WARN(LOG_MODULE, "Failed to wire world model to imagination engine");
+        }
+    }
 
     // Save initial snapshot if configured
     if (config->snapshot_dir && config->save_initial_snapshot) {

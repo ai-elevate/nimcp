@@ -1675,6 +1675,74 @@ typedef struct {
     bool neuromod_enable_immune_bridge;   /**< Enable immune-neuromod bridge (default: true) */
     bool neuromod_enable_logging_bridge;  /**< Enable logging-neuromod bridge (default: true) */
     bool neuromod_enable_training_bridge; /**< Enable training-neuromod bridge (default: true) */
+
+    // === WORLD MODEL CONFIGURATION ===
+    /**
+     * World Model Configuration
+     *
+     * WHAT: Enable and configure generative world models for mental simulation
+     * WHY:  Support counterfactual reasoning, policy evaluation, and dreaming
+     * HOW:  Instantiate omni world model and/or multimodal world model
+     *
+     * MODELS:
+     * - Omni World Model: Omnidirectional prediction (forward/backward/lateral dynamics)
+     *   Uses RSSM (Recurrent State Space Model) inspired by DreamerV3
+     * - Multimodal World Model: Cross-modal state prediction and sensory fusion
+     *   Enables unified world representation across visual, auditory, tactile domains
+     *
+     * INTEGRATION:
+     * - Active Inference: Policy evaluation via world model simulation
+     * - Imagination Engine: Scene generation using world model dynamics
+     * - Hippocampus: Memory replay and consolidation
+     * - Predictive Processing: Forward model for prediction errors
+     * - Sleep System: Dreaming during offline consolidation
+     *
+     * @see nimcp_omni_world_model.h for omni world model API
+     * @see nimcp_world_model_multimodal.h for multimodal world model API
+     */
+    bool enable_world_model;              /**< Enable world model system (default: false) */
+    bool lazy_world_model_init;           /**< Defer world model initialization (default: true) */
+
+    // Omni World Model Configuration
+    bool enable_omni_world_model;         /**< Enable omnidirectional world model (default: true if enable_world_model) */
+    uint32_t omni_wm_state_dim;           /**< Omni WM state dimensionality (default: 64) */
+    uint32_t omni_wm_action_dim;          /**< Omni WM action dimensionality (default: 32) */
+    uint32_t omni_wm_obs_dim;             /**< Omni WM observation dimensionality (default: 64) */
+    uint32_t omni_wm_latent_dim;          /**< Omni WM latent space dimension (default: 64) */
+    uint32_t omni_wm_rssm_h_dim;          /**< RSSM deterministic state dim (default: 128) */
+    uint32_t omni_wm_rssm_z_dim;          /**< RSSM stochastic state dim (default: 32) */
+    float omni_wm_learning_rate;          /**< Omni WM learning rate (default: 0.0003) */
+    bool omni_wm_enable_dreaming;         /**< Enable offline dreaming/simulation (default: true) */
+    uint32_t omni_wm_dream_horizon;       /**< Dream episode length (default: 15) */
+
+    // Multimodal World Model Configuration
+    bool enable_multimodal_world_model;   /**< Enable multimodal world model (default: true if enable_world_model) */
+    uint32_t mm_wm_latent_dim;            /**< Multimodal WM latent dimension (default: 256) */
+    uint32_t mm_wm_max_entities;          /**< Maximum tracked entities (default: 128) */
+    uint32_t mm_wm_max_prediction_steps;  /**< Maximum prediction steps (default: 50) */
+    float mm_wm_learning_rate;            /**< Multimodal WM learning rate (default: 0.001) */
+    bool mm_wm_enable_bio_async;          /**< Enable bio-async integration (default: true) */
+
+    // World Model Integration Flags
+    bool world_model_connect_active_inference;    /**< Connect to active inference system (default: true) */
+    bool world_model_connect_imagination;         /**< Connect to imagination engine (default: true) */
+    bool world_model_connect_hippocampus;         /**< Connect to hippocampus for replay (default: true) */
+    bool world_model_connect_predictive;          /**< Connect to predictive processing (default: true) */
+
+    // World Model Bridge Configuration
+    // These bridges enable bidirectional information flow between the omni world
+    // model and brain subsystems. Default is true if enable_world_model is true.
+    bool enable_wm_security_immune_bridge;        /**< Security + Immune cytokine modulation bridge */
+    bool enable_wm_logging_bridge;                /**< Audit logging integration bridge */
+    bool enable_wm_cognitive_bridge;              /**< Full cognitive layer bridge */
+    bool enable_wm_parietal_bridge;               /**< Spatial/physics reasoning bridge */
+    bool enable_wm_hypothalamus_bridge;           /**< Homeostatic control bridge */
+    bool enable_wm_thalamic_bridge;               /**< Attention gating via nuclei bridge */
+    bool enable_wm_substrate_bridge;              /**< Metabolic constraints bridge */
+    bool enable_wm_memory_bridge;                 /**< Hippocampus + engrams + consolidation bridge */
+    bool enable_wm_kg_bridge;                     /**< Knowledge Graph wiring integration bridge */
+    bool enable_wm_tom_bridge;                    /**< Theory of Mind social world modeling bridge */
+    bool enable_wm_plasticity_bridge;             /**< SNN/STDP/Plasticity direct integration bridge */
 } brain_config_t;
 
 /**

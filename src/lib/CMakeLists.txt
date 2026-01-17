@@ -63,6 +63,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cognitive.c           # Cognitive subsystems (731 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_memory.c              # Memory subsystems (418 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_pr_memory.c          # Prime Resonant memory subsystem
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_world_model.c        # World Model subsystem (omni + multimodal)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/internal/nimcp_brain_pr_memory.c                   # Brain-PR memory integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/internal/nimcp_pr_memory_quantum_bridge.c          # PR memory-quantum integration (search, consolidation, entanglement)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_plasticity.c          # Plasticity subsystems (553 lines)
@@ -883,6 +884,23 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/nimcp_omni_active_inference.c
     # Omnidirectional Inference (Phase 9) - Generative World Model
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/nimcp_omni_world_model.c
+    # World Model Bridges (11 integration bridges for multi-system coupling)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_memory_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_substrate_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_cognitive_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_security_immune_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_logging_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_parietal_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_hypothalamus_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_thalamic_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_kg_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_tom_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_plasticity_bridge.c
+    # Multimodal World Model (cross-modal prediction and fusion)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/extrapolation/nimcp_world_model_multimodal.c
+    # Compositional and Counterfactual modules
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/extrapolation/nimcp_compositional_systematic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/extrapolation/nimcp_counterfactual_imagination.c
     # Omnidirectional Inference (Phase 10) - Metacognition
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/nimcp_omni_metacognition.c
     # Plasticity FEP Bridges

@@ -13081,6 +13081,19 @@ unit_cognitive_test_security_cognitive_hub_bridge/fast:
 .PHONY : unit_cognitive_test_security_cognitive_hub_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_extrapolation_test_world_model_multimodal
+
+# Build rule for target.
+unit_cognitive_extrapolation_test_world_model_multimodal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_extrapolation_test_world_model_multimodal
+.PHONY : unit_cognitive_extrapolation_test_world_model_multimodal
+
+# fast build rule for target.
+unit_cognitive_extrapolation_test_world_model_multimodal/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/extrapolation/CMakeFiles/unit_cognitive_extrapolation_test_world_model_multimodal.dir/build.make test/unit/cognitive/extrapolation/CMakeFiles/unit_cognitive_extrapolation_test_world_model_multimodal.dir/build
+.PHONY : unit_cognitive_extrapolation_test_world_model_multimodal/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_exception_handling
 
 # Build rule for target.
@@ -13092,6 +13105,19 @@ unit_cognitive_exception_handling: cmake_check_build_system
 unit_cognitive_exception_handling/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/exception/CMakeFiles/unit_cognitive_exception_handling.dir/build.make test/unit/cognitive/exception/CMakeFiles/unit_cognitive_exception_handling.dir/build
 .PHONY : unit_cognitive_exception_handling/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_omni_test_omni_world_model
+
+# Build rule for target.
+unit_cognitive_omni_test_omni_world_model: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_omni_test_omni_world_model
+.PHONY : unit_cognitive_omni_test_omni_world_model
+
+# fast build rule for target.
+unit_cognitive_omni_test_omni_world_model/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/omni/CMakeFiles/unit_cognitive_omni_test_omni_world_model.dir/build.make test/unit/cognitive/omni/CMakeFiles/unit_cognitive_omni_test_omni_world_model.dir/build
+.PHONY : unit_cognitive_omni_test_omni_world_model/fast
 
 #=============================================================================
 # Target rules for targets named integration_cognitive_bio_async_test
@@ -19243,6 +19269,19 @@ integration_cognitive_exception_integration/fast:
 .PHONY : integration_cognitive_exception_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_world_model_test_world_model_integration
+
+# Build rule for target.
+integration_cognitive_world_model_test_world_model_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_world_model_test_world_model_integration
+.PHONY : integration_cognitive_world_model_test_world_model_integration
+
+# fast build rule for target.
+integration_cognitive_world_model_test_world_model_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/world_model/CMakeFiles/integration_cognitive_world_model_test_world_model_integration.dir/build.make test/integration/cognitive/world_model/CMakeFiles/integration_cognitive_world_model_test_world_model_integration.dir/build
+.PHONY : integration_cognitive_world_model_test_world_model_integration/fast
+
+#=============================================================================
 # Target rules for targets named regression_cognitive_emotion_performance
 
 # Build rule for target.
@@ -19293,6 +19332,19 @@ regression_cognitive_guardian_intervention: cmake_check_build_system
 regression_cognitive_guardian_intervention/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/CMakeFiles/regression_cognitive_guardian_intervention.dir/build.make test/regression/cognitive/CMakeFiles/regression_cognitive_guardian_intervention.dir/build
 .PHONY : regression_cognitive_guardian_intervention/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_world_model
+
+# Build rule for target.
+regression_cognitive_world_model: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_world_model
+.PHONY : regression_cognitive_world_model
+
+# fast build rule for target.
+regression_cognitive_world_model/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/CMakeFiles/regression_cognitive_world_model.dir/build.make test/regression/cognitive/CMakeFiles/regression_cognitive_world_model.dir/build
+.PHONY : regression_cognitive_world_model/fast
 
 #=============================================================================
 # Target rules for targets named test_rcog_regression
@@ -27992,6 +28044,71 @@ unit_integration_neuromod_executive_bridge/fast:
 .PHONY : unit_integration_neuromod_executive_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_integration_neuromod_attention_bridge
+
+# Build rule for target.
+unit_integration_neuromod_attention_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_integration_neuromod_attention_bridge
+.PHONY : unit_integration_neuromod_attention_bridge
+
+# fast build rule for target.
+unit_integration_neuromod_attention_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/integration/CMakeFiles/unit_integration_neuromod_attention_bridge.dir/build.make test/unit/integration/CMakeFiles/unit_integration_neuromod_attention_bridge.dir/build
+.PHONY : unit_integration_neuromod_attention_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_integration_neuromod_emotion_bridge
+
+# Build rule for target.
+unit_integration_neuromod_emotion_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_integration_neuromod_emotion_bridge
+.PHONY : unit_integration_neuromod_emotion_bridge
+
+# fast build rule for target.
+unit_integration_neuromod_emotion_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/integration/CMakeFiles/unit_integration_neuromod_emotion_bridge.dir/build.make test/unit/integration/CMakeFiles/unit_integration_neuromod_emotion_bridge.dir/build
+.PHONY : unit_integration_neuromod_emotion_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_integration_neuromod_plasticity_bridge
+
+# Build rule for target.
+unit_integration_neuromod_plasticity_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_integration_neuromod_plasticity_bridge
+.PHONY : unit_integration_neuromod_plasticity_bridge
+
+# fast build rule for target.
+unit_integration_neuromod_plasticity_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/integration/CMakeFiles/unit_integration_neuromod_plasticity_bridge.dir/build.make test/unit/integration/CMakeFiles/unit_integration_neuromod_plasticity_bridge.dir/build
+.PHONY : unit_integration_neuromod_plasticity_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_integration_neuromod_reasoning_bridge
+
+# Build rule for target.
+unit_integration_neuromod_reasoning_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_integration_neuromod_reasoning_bridge
+.PHONY : unit_integration_neuromod_reasoning_bridge
+
+# fast build rule for target.
+unit_integration_neuromod_reasoning_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/integration/CMakeFiles/unit_integration_neuromod_reasoning_bridge.dir/build.make test/unit/integration/CMakeFiles/unit_integration_neuromod_reasoning_bridge.dir/build
+.PHONY : unit_integration_neuromod_reasoning_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_integration_neuromod_gametheory_bridge
+
+# Build rule for target.
+unit_integration_neuromod_gametheory_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_integration_neuromod_gametheory_bridge
+.PHONY : unit_integration_neuromod_gametheory_bridge
+
+# fast build rule for target.
+unit_integration_neuromod_gametheory_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/integration/CMakeFiles/unit_integration_neuromod_gametheory_bridge.dir/build.make test/unit/integration/CMakeFiles/unit_integration_neuromod_gametheory_bridge.dir/build
+.PHONY : unit_integration_neuromod_gametheory_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_integration_hh_dynamics_adapter
 
 # Build rule for target.
@@ -28616,6 +28733,19 @@ regression_exception_test_exception_immune_regression/fast:
 .PHONY : regression_exception_test_exception_immune_regression/fast
 
 #=============================================================================
+# Target rules for targets named e2e_cognitive_test_world_model_e2e
+
+# Build rule for target.
+e2e_cognitive_test_world_model_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_cognitive_test_world_model_e2e
+.PHONY : e2e_cognitive_test_world_model_e2e
+
+# fast build rule for target.
+e2e_cognitive_test_world_model_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_world_model_e2e.dir/build.make test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_world_model_e2e.dir/build
+.PHONY : e2e_cognitive_test_world_model_e2e/fast
+
+#=============================================================================
 # Target rules for targets named test_lgss_adversarial
 
 # Build rule for target.
@@ -29079,6 +29209,7 @@ help:
 	@echo "... cow_inference_server"
 	@echo "... cow_snapshot_learning"
 	@echo "... distributed_cow_demo"
+	@echo "... e2e_cognitive_test_world_model_e2e"
 	@echo "... e2e_core_brain_regions_hippocampus_test_hippocampus_e2e"
 	@echo "... e2e_core_brain_regions_motor_test_motor_e2e"
 	@echo "... e2e_core_geometry_surface"
@@ -29358,6 +29489,7 @@ help:
 	@echo "... integration_cognitive_wellbeing_enhanced"
 	@echo "... integration_cognitive_wellbeing_snn_plasticity"
 	@echo "... integration_cognitive_working_memory_pe"
+	@echo "... integration_cognitive_world_model_test_world_model_integration"
 	@echo "... integration_collective_cognition_cognitive"
 	@echo "... integration_collective_cognition_cortex"
 	@echo "... integration_collective_cognition_cortical_columns"
@@ -29772,6 +29904,7 @@ help:
 	@echo "... regression_cognitive_wellbeing_enhanced"
 	@echo "... regression_cognitive_wellbeing_snn_plasticity"
 	@echo "... regression_cognitive_working_memory_pe_test"
+	@echo "... regression_cognitive_world_model"
 	@echo "... regression_core_axon_performance"
 	@echo "... regression_core_brain_coordinator_regression"
 	@echo "... regression_core_brain_distributed_cow_regression"
@@ -30317,6 +30450,7 @@ help:
 	@echo "... unit_cognitive_explanations_test_explanations_integration"
 	@echo "... unit_cognitive_explanations_test_explanations_real"
 	@echo "... unit_cognitive_explanations_test_explanations_regression"
+	@echo "... unit_cognitive_extrapolation_test_world_model_multimodal"
 	@echo "... unit_cognitive_fault_tolerance_emotional_tagging"
 	@echo "... unit_cognitive_game_theory_test_auction"
 	@echo "... unit_cognitive_game_theory_test_bargaining"
@@ -30387,6 +30521,7 @@ help:
 	@echo "... unit_cognitive_mental_health_real"
 	@echo "... unit_cognitive_meta_learning_plasticity_bridge"
 	@echo "... unit_cognitive_meta_learning_snn_bridge"
+	@echo "... unit_cognitive_omni_test_omni_world_model"
 	@echo "... unit_cognitive_personality_test_personality"
 	@echo "... unit_cognitive_predictive_test_predictive"
 	@echo "... unit_cognitive_predictive_test_predictive_coverage"
@@ -30844,9 +30979,14 @@ help:
 	@echo "... unit_integration_layer_coordinator"
 	@echo "... unit_integration_layer_registry"
 	@echo "... unit_integration_metabolic_adapter"
+	@echo "... unit_integration_neuromod_attention_bridge"
+	@echo "... unit_integration_neuromod_emotion_bridge"
 	@echo "... unit_integration_neuromod_executive_bridge"
+	@echo "... unit_integration_neuromod_gametheory_bridge"
 	@echo "... unit_integration_neuromod_nucleus_adapter"
+	@echo "... unit_integration_neuromod_plasticity_bridge"
 	@echo "... unit_integration_neuromod_pool_adapter"
+	@echo "... unit_integration_neuromod_reasoning_bridge"
 	@echo "... unit_integration_neurotransmitter_adapter"
 	@echo "... unit_integration_pfc_adapter"
 	@echo "... unit_integration_physics_intra"

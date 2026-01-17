@@ -795,6 +795,242 @@ typedef enum {
     BIO_MSG_LGSS_EXTERNAL_ATTESTATION,                /**< External attestation */
     BIO_MSG_LGSS_EXTERNAL_COMMAND,                    /**< External command received */
 
+    /* =========================================================================
+     * World Model Bridge Messages (0x6300 - 0x6DFF)
+     * Bidirectional communication between omni world model and brain subsystems
+     * ========================================================================= */
+
+    /* Security-Immune Bridge (0x6300-0x63FF) */
+    /* Anomaly Prediction Messages (0x6300-0x630F) */
+    BIO_MSG_WM_SECURITY_ANOMALY_PRED = 0x6300,        /**< Anomaly prediction from WM */
+    BIO_MSG_WM_SECURITY_ANOMALY_DETECTED,             /**< Anomaly detected notification */
+    BIO_MSG_WM_SECURITY_ANOMALY_RESOLVED,             /**< Anomaly resolved notification */
+    /* Threat Forecast Messages (0x6310-0x631F) */
+    BIO_MSG_WM_SECURITY_THREAT_FORECAST = 0x6310,     /**< Threat forecast */
+    BIO_MSG_WM_SECURITY_THREAT_VERIFIED,              /**< Forecast verified by security */
+    BIO_MSG_WM_SECURITY_THREAT_SIGNATURE,             /**< New threat signature learned */
+    /* Security Event Messages (0x6320-0x632F) */
+    BIO_MSG_WM_SECURITY_EVENT = 0x6320,               /**< Security event for WM training */
+    BIO_MSG_WM_SECURITY_EVENT_TRAIN,                  /**< Security event for training */
+    BIO_MSG_WM_SECURITY_BBB_STATE,                    /**< BBB state update */
+    BIO_MSG_WM_SECURITY_BBB_BREACH,                   /**< BBB breach detected */
+    /* Immune Modulation Messages (0x6330-0x633F) */
+    BIO_MSG_WM_IMMUNE_CYTOKINE_UPDATE = 0x6330,       /**< Cytokine levels to WM */
+    BIO_MSG_WM_IMMUNE_MODULATION_APPLIED,             /**< Modulation applied to WM */
+    BIO_MSG_WM_IMMUNE_MODULATION_ACK,                 /**< Immune modulation acknowledged */
+    BIO_MSG_WM_IMMUNE_INFLAMMATION_STATE,             /**< Inflammation state change */
+    BIO_MSG_WM_IMMUNE_PE_RESPONSE,                    /**< Prediction error immune response */
+    /* WM -> Immune Messages (0x6340-0x634F) */
+    BIO_MSG_WM_PE_IMMUNE_TRIGGER = 0x6340,            /**< Prediction error triggers immune */
+    BIO_MSG_WM_THREAT_IMMUNE_ALERT,                   /**< WM threat triggers immune alert */
+    BIO_MSG_WM_ANOMALY_ANTIGEN_PRESENT,               /**< Present anomaly as antigen */
+    /* Bridge Status Messages (0x6350-0x635F) */
+    BIO_MSG_WM_SECURITY_IMMUNE_STATUS = 0x6350,       /**< Bridge status update */
+    BIO_MSG_WM_SECURITY_IMMUNE_ERROR,                 /**< Bridge error notification */
+    BIO_MSG_WM_SECURITY_IMMUNE_STATS,                 /**< Statistics update */
+
+    /* Logging Bridge (0x6400-0x64FF) */
+    BIO_MSG_WM_LOG_PREDICTION = 0x6400,               /**< Log prediction request/outcome */
+    BIO_MSG_WM_LOG_TRAINING,                          /**< Log training step */
+    BIO_MSG_WM_LOG_ANOMALY,                           /**< Log anomaly detection */
+    BIO_MSG_WM_LOG_CONFIDENCE,                        /**< Log confidence calibration */
+    BIO_MSG_WM_LOG_REPLAY,                            /**< Log replay buffer operation */
+    BIO_MSG_WM_LOG_COUNTERFACTUAL,                    /**< Log counterfactual event */
+    BIO_MSG_WM_LOG_WEIGHT_UPDATE = 0x6410,            /**< Log weight update event */
+    BIO_MSG_WM_LOG_GRADIENT,                          /**< Log gradient information */
+    BIO_MSG_WM_LOG_LOSS,                              /**< Log loss computation */
+    BIO_MSG_WM_LOG_INSTABILITY = 0x6420,              /**< Log training instability */
+    BIO_MSG_WM_LOG_UNCERTAINTY,                       /**< Log uncertainty metric */
+    BIO_MSG_WM_LOG_REPLAY_ADD = 0x6430,               /**< Add to replay buffer */
+    BIO_MSG_WM_LOG_REPLAY_SAMPLE,                     /**< Sample from replay buffer */
+    BIO_MSG_WM_LOG_DREAM_EPISODE,                     /**< Log dream/imagination episode */
+    BIO_MSG_WM_LOG_BRIDGE_STATUS = 0x6440,            /**< Bridge status update */
+    BIO_MSG_WM_LOG_BRIDGE_ERROR,                      /**< Bridge error notification */
+    BIO_MSG_WM_LOG_FLUSH,                             /**< Flush log buffer */
+    BIO_MSG_WM_LOG_STATS_UPDATE,                      /**< Statistics update */
+
+    /* Cognitive Bridge (0x6500-0x65FF) */
+    BIO_MSG_WM_COGNITIVE_STATE_PRED = 0x6500,         /**< State prediction for planning */
+    BIO_MSG_WM_COGNITIVE_GOAL_UPDATE,                 /**< Goal/intention update */
+    BIO_MSG_WM_COGNITIVE_ACTION_CONSEQUENCE,          /**< Action consequence prediction */
+    BIO_MSG_WM_ATTENTION_FOCUS = 0x6510,              /**< Attention focus signal */
+    BIO_MSG_WM_COGNITIVE_WORKING_MEM,                 /**< Working memory integration */
+    BIO_MSG_WM_COGNITIVE_SALIENCE,                    /**< Salience signal to WM */
+    BIO_MSG_WM_COGNITIVE_META_LEARNING,               /**< Meta-learning integration */
+
+    /* Parietal Bridge (0x6600-0x66FF) */
+    BIO_MSG_WM_PARIETAL_SPATIAL_PRED = 0x6600,        /**< Spatial state prediction */
+    BIO_MSG_WM_PARIETAL_SPATIAL_PRED_RESULT,          /**< Spatial prediction result */
+    BIO_MSG_WM_PARIETAL_PHYSICS_QUERY,                /**< Physics constraint query */
+    BIO_MSG_WM_PARIETAL_PHYSICS_RESULT,               /**< Physics query result */
+    BIO_MSG_WM_PARIETAL_PHYSICS_CONSTRAINT,           /**< Physics constraint notification */
+    BIO_MSG_WM_PARIETAL_COLLISION_CHECK,              /**< Collision check request */
+    BIO_MSG_WM_PARIETAL_COORD_TRANSFORM = 0x6610,     /**< Coordinate transformation */
+    BIO_MSG_WM_PARIETAL_COORD_RESULT,                 /**< Coordinate transform result */
+    BIO_MSG_WM_PARIETAL_FRAME_UPDATE,                 /**< Reference frame update */
+    BIO_MSG_WM_PARIETAL_TRAJECTORY,                   /**< Trajectory forecast */
+    BIO_MSG_WM_PARIETAL_TRAJECTORY_PRED,              /**< Trajectory prediction request */
+    BIO_MSG_WM_PARIETAL_TRAJECTORY_RESULT,            /**< Trajectory prediction result */
+    BIO_MSG_WM_PARIETAL_MATH_REASONING,               /**< Mathematical reasoning */
+    BIO_MSG_WM_PARIETAL_MATH_PRED = 0x6620,           /**< Math prediction request */
+    BIO_MSG_WM_PARIETAL_NUMERICAL_EST,                /**< Numerical estimation */
+    BIO_MSG_WM_PARIETAL_PATTERN_EXTRAP,               /**< Pattern extrapolation */
+    BIO_MSG_WM_PARIETAL_ATTENTION_UPDATE = 0x6630,    /**< Spatial attention update */
+    BIO_MSG_WM_PARIETAL_SALIENCE_MAP,                 /**< Salience map update */
+    BIO_MSG_WM_PARIETAL_FOCUS_SHIFT,                  /**< Focus shift notification */
+    BIO_MSG_WM_PARIETAL_BRIDGE_STATUS = 0x6640,       /**< Bridge status update */
+    BIO_MSG_WM_PARIETAL_BRIDGE_ERROR,                 /**< Bridge error notification */
+    BIO_MSG_WM_PARIETAL_STATS_UPDATE,                 /**< Statistics update */
+
+    /* Hypothalamus Bridge (0x6700-0x67FF) */
+    BIO_MSG_WM_HYPOTHAL_DRIVE_STATE = 0x6700,         /**< Homeostatic drive state */
+    BIO_MSG_WM_HYPOTHAL_DRIVE_URGENCY,                /**< Drive urgency signal */
+    BIO_MSG_WM_HYPOTHAL_DRIVE_PRIORITY,               /**< Drive priority update */
+    BIO_MSG_WM_HYPOTHAL_DRIVE_SATISFIED,              /**< Drive satisfaction event */
+    BIO_MSG_WM_HYPOTHAL_CIRCADIAN,                    /**< Circadian rhythm signal */
+    BIO_MSG_WM_HYPOTHAL_CIRCADIAN_MOD,                /**< Circadian modulation */
+    BIO_MSG_WM_HYPOTHAL_TIME_OF_DAY,                  /**< Time of day signal */
+    BIO_MSG_WM_HYPOTHAL_RESOURCE_PRED = 0x6710,       /**< Resource availability prediction */
+    BIO_MSG_WM_HYPOTHAL_RESOURCE_AVAIL,               /**< Resource availability update */
+    BIO_MSG_WM_HYPOTHAL_RESOURCE_FORECAST,            /**< Resource forecast */
+    BIO_MSG_WM_HYPOTHAL_STRESS_MOD,                   /**< Stress modulation signal */
+    BIO_MSG_WM_HYPOTHAL_STRESS_STATE,                 /**< Stress state update */
+    BIO_MSG_WM_HYPOTHAL_AROUSAL_STATE,                /**< Arousal state update */
+    BIO_MSG_WM_HYPOTHAL_REWARD_PRED,                  /**< Reward prediction from drives */
+    BIO_MSG_WM_HYPOTHAL_REWARD_SIGNAL,                /**< Reward signal notification */
+    BIO_MSG_WM_HYPOTHAL_HOMEOSTASIS = 0x6720,         /**< Homeostasis state */
+    BIO_MSG_WM_HYPOTHAL_CONSERVATIVE_MODE,            /**< Conservative mode activation */
+    BIO_MSG_WM_HYPOTHAL_ALIGNMENT_CHECK = 0x6730,     /**< Alignment verification check */
+    BIO_MSG_WM_HYPOTHAL_SETPOINT_ERROR,               /**< Homeostatic setpoint error */
+    BIO_MSG_WM_HYPOTHAL_CONTROLLER_OUT,               /**< Controller output signal */
+    BIO_MSG_WM_HYPOTHAL_BRIDGE_STATUS = 0x6740,       /**< Bridge status update */
+    BIO_MSG_WM_HYPOTHAL_BRIDGE_ERROR,                 /**< Bridge error notification */
+    BIO_MSG_WM_HYPOTHAL_STATS_UPDATE,                 /**< Statistics update */
+
+    /* Thalamic Bridge (0x6800-0x68FF) */
+    BIO_MSG_WM_THALAMIC_GATE_INPUT = 0x6800,          /**< Gated sensory input */
+    BIO_MSG_WM_THALAMIC_GATE_VISUAL,                  /**< Visual gating control */
+    BIO_MSG_WM_THALAMIC_GATE_AUDITORY,                /**< Auditory gating control */
+    BIO_MSG_WM_THALAMIC_GATE_MOTOR,                   /**< Motor gating control */
+    BIO_MSG_WM_THALAMIC_GATE_EXECUTIVE,               /**< Executive gating control */
+    BIO_MSG_WM_THALAMIC_ATTENTION_BIAS,               /**< Prediction-based attention bias */
+    BIO_MSG_WM_THALAMIC_ATTENTION_UPDATE,             /**< Attention state update */
+    BIO_MSG_WM_THALAMIC_TRN_INHIBIT = 0x6810,         /**< TRN selective inhibition */
+    BIO_MSG_WM_THALAMIC_TRN_RELEASE,                  /**< TRN release signal */
+    BIO_MSG_WM_THALAMIC_TRN_MODULATE,                 /**< TRN modulation */
+    BIO_MSG_WM_THALAMIC_LGN_MGN,                      /**< Visual/auditory gating */
+    BIO_MSG_WM_THALAMIC_PULVINAR,                     /**< Attention-guided selection */
+    BIO_MSG_WM_THALAMIC_PULVINAR_WEIGHT,              /**< Pulvinar weight update */
+    BIO_MSG_WM_THALAMIC_SALIENCE_PRED,                /**< Salience prediction */
+    BIO_MSG_WM_THALAMIC_MD,                           /**< Prefrontal-WM coordination */
+    BIO_MSG_WM_THALAMIC_VA_VL,                        /**< Motor prediction relay */
+    BIO_MSG_WM_THALAMIC_PRED_ERROR = 0x6820,          /**< Prediction error signal */
+    BIO_MSG_WM_THALAMIC_PRED_CONFIDENCE,              /**< Prediction confidence */
+    BIO_MSG_WM_THALAMIC_PRED_UPDATE,                  /**< Prediction state update */
+    BIO_MSG_WM_THALAMIC_MODE_TONIC = 0x6830,          /**< Tonic firing mode */
+    BIO_MSG_WM_THALAMIC_MODE_BURST,                   /**< Burst firing mode */
+    BIO_MSG_WM_THALAMIC_AROUSAL_UPDATE,               /**< Arousal state update */
+    BIO_MSG_WM_THALAMIC_BRIDGE_STATUS = 0x6840,       /**< Bridge status update */
+    BIO_MSG_WM_THALAMIC_BRIDGE_ERROR,                 /**< Bridge error notification */
+    BIO_MSG_WM_THALAMIC_STATS_UPDATE,                 /**< Statistics update */
+
+    /* Substrate Bridge (0x6900-0x69FF) */
+    BIO_MSG_WM_SUBSTRATE_METABOLIC = 0x6900,          /**< Metabolic state (ATP, O2, glucose) */
+    BIO_MSG_WM_SUBSTRATE_DEMAND,                      /**< Computational demand signal */
+    BIO_MSG_WM_SUBSTRATE_CONSTRAINT = 0x6910,         /**< Metabolic constraint alert */
+    BIO_MSG_WM_SUBSTRATE_HORIZON_ADJUST,              /**< Reduce prediction horizon */
+
+    /* Memory Bridge (0x6A00-0x6AFF) */
+    BIO_MSG_WM_MEMORY_REPLAY_SEQ = 0x6A00,            /**< Hippocampal replay sequence */
+    BIO_MSG_WM_MEMORY_REPLAY_TRAIN_REQ,               /**< Request training from replay */
+    BIO_MSG_WM_MEMORY_REPLAY_TRAIN_DONE,              /**< Training complete notification */
+    BIO_MSG_WM_MEMORY_ENGRAM_ENCODE = 0x6A10,         /**< Engram encoding request */
+    BIO_MSG_WM_MEMORY_ENGRAM_RETRIEVE,                /**< Engram retrieval result */
+    BIO_MSG_WM_MEMORY_ENGRAM_CONTEXT,                 /**< Episodic context response */
+    BIO_MSG_WM_MEMORY_CONSOLIDATION = 0x6A20,         /**< Consolidation signal */
+    BIO_MSG_WM_MEMORY_CONSOLIDATION_SYNC,             /**< Sync with consolidation cycle */
+    BIO_MSG_WM_MEMORY_SEMANTIC_TRANSFER,              /**< Semantic features for cortex */
+    BIO_MSG_WM_MEMORY_HIPPOCAMPAL_PRED = 0x6A30,      /**< Predicted sequence comparison */
+    BIO_MSG_WM_MEMORY_HIPPOCAMPAL_ERROR,              /**< Prediction error feedback */
+    BIO_MSG_WM_MEMORY_PATTERN_COMPLETE,               /**< Pattern completion request */
+    BIO_MSG_WM_MEMORY_PATTERN_SEPARATE,               /**< Pattern separation request */
+    BIO_MSG_WM_MEMORY_DG_SEPARATION,                  /**< Pattern separation result */
+    BIO_MSG_WM_MEMORY_CA3_COMPLETION,                 /**< Pattern completion result */
+    BIO_MSG_WM_MEMORY_CA1_TEMPORAL,                   /**< Temporal sequence encoding */
+    BIO_MSG_WM_MEMORY_BRIDGE_STATUS = 0x6A40,         /**< Bridge status update */
+    BIO_MSG_WM_MEMORY_BRIDGE_ERROR,                   /**< Bridge error notification */
+    BIO_MSG_WM_MEMORY_STATS_UPDATE,                   /**< Statistics update */
+
+    /* KG Wiring Bridge (0x6B00-0x6BFF) */
+    BIO_MSG_WM_KG_ENTITY_PRED = 0x6B00,               /**< KG entity state prediction */
+    BIO_MSG_WM_KG_ENTITY_BATCH_PRED,                  /**< Batch entity prediction */
+    BIO_MSG_WM_KG_RELATIONSHIP_PRED,                  /**< Relationship change prediction */
+    BIO_MSG_WM_KG_MODULE_PRED,                        /**< Module health prediction */
+    BIO_MSG_WM_KG_MODULE_HEALTH_UPDATE,               /**< Module health status update */
+    BIO_MSG_WM_KG_MODULE_DEGRADED,                    /**< Module degradation detected */
+    BIO_MSG_WM_KG_EXCEPTION_NOTIFY = 0x6B10,          /**< Exception notification to WM */
+    BIO_MSG_WM_KG_WIRING_CHANGE,                      /**< Wiring topology change */
+    BIO_MSG_WM_KG_REGISTRY_SYNC,                      /**< Registry synchronization */
+    BIO_MSG_WM_KG_ANOMALY_DETECTED,                   /**< KG anomaly detected */
+    BIO_MSG_WM_KG_FAILURE_PREDICTION,                 /**< Predicted failure notification */
+    BIO_MSG_WM_KG_TRAINING_EVENT = 0x6B20,            /**< KG event for WM training */
+    BIO_MSG_WM_KG_TRAINING_BATCH,                     /**< Batch training event */
+    BIO_MSG_WM_KG_SYSTEM_STABILITY,                   /**< System stability forecast */
+    BIO_MSG_WM_KG_BRIDGE_STATUS = 0x6B40,             /**< Bridge status update */
+    BIO_MSG_WM_KG_BRIDGE_ERROR,                       /**< Bridge error notification */
+    BIO_MSG_WM_KG_STATS_UPDATE,                       /**< Statistics update */
+
+    /* Theory of Mind Bridge (0x6C00-0x6CFF) */
+    BIO_MSG_WM_TOM_MENTAL_STATE_PRED = 0x6C00,        /**< Mental state prediction request */
+    BIO_MSG_WM_TOM_MENTAL_STATE_RESULT,               /**< Mental state prediction result */
+    BIO_MSG_WM_TOM_BELIEF_UPDATE,                     /**< Belief state update */
+    BIO_MSG_WM_TOM_DESIRE_UPDATE,                     /**< Desire state update */
+    BIO_MSG_WM_TOM_INTENTION_UPDATE,                  /**< Intention state update */
+    BIO_MSG_WM_TOM_TRAJECTORY_PRED = 0x6C10,          /**< Social trajectory prediction */
+    BIO_MSG_WM_TOM_TRAJECTORY_RESULT,                 /**< Trajectory prediction result */
+    BIO_MSG_WM_TOM_TRAJECTORY_STEP,                   /**< Single trajectory step */
+    BIO_MSG_WM_TOM_COUNTERFACTUAL_REQ = 0x6C20,       /**< Counterfactual reasoning request */
+    BIO_MSG_WM_TOM_COUNTERFACTUAL_RESULT,             /**< Counterfactual result */
+    BIO_MSG_WM_TOM_WHAT_IF_BELIEF,                    /**< What-if belief scenario */
+    BIO_MSG_WM_TOM_FALSE_BELIEF_DETECT = 0x6C30,      /**< False belief detected */
+    BIO_MSG_WM_TOM_BELIEF_REALITY_GAP,                /**< Belief-reality gap update */
+    BIO_MSG_WM_TOM_BELIEF_SYNC,                       /**< Belief synchronization */
+    BIO_MSG_WM_TOM_SOCIAL_INTERACTION = 0x6C40,       /**< Social interaction for training */
+    BIO_MSG_WM_TOM_INTERACTION_OUTCOME,               /**< Interaction outcome */
+    BIO_MSG_WM_TOM_COOPERATION_SIGNAL,                /**< Cooperation detected */
+    BIO_MSG_WM_TOM_COMPETITION_SIGNAL,                /**< Competition detected */
+    BIO_MSG_WM_TOM_JOINT_PREDICTION = 0x6C50,         /**< Multi-agent joint prediction */
+    BIO_MSG_WM_TOM_JOINT_RESULT,                      /**< Joint prediction result */
+    BIO_MSG_WM_TOM_GROUP_DYNAMICS,                    /**< Group dynamics update */
+    BIO_MSG_WM_TOM_EMPATHY_SIMULATION = 0x6C60,       /**< Empathetic perspective-taking */
+    BIO_MSG_WM_TOM_EMPATHY_RESULT,                    /**< Empathy simulation result */
+    BIO_MSG_WM_TOM_MIRROR_ACTION,                     /**< Mirror neuron action prediction */
+    BIO_MSG_WM_TOM_BRIDGE_STATUS = 0x6C80,            /**< Bridge status update */
+    BIO_MSG_WM_TOM_BRIDGE_ERROR,                      /**< Bridge error notification */
+    BIO_MSG_WM_TOM_STATS_UPDATE,                      /**< Statistics update */
+
+    /* Plasticity Bridge (0x6D00-0x6DFF) */
+    BIO_MSG_WM_PLASTICITY_STDP_EVENT = 0x6D00,        /**< STDP event notification */
+    BIO_MSG_WM_PLASTICITY_STDP_MOD,                   /**< STDP modulation params */
+    BIO_MSG_WM_PLASTICITY_STDP_BATCH,                 /**< Batch STDP processing */
+    BIO_MSG_WM_PLASTICITY_WEIGHT_UPDATE,              /**< Weight update notification */
+    BIO_MSG_WM_PLASTICITY_SPIKE_SEQ = 0x6D10,         /**< Spike sequence for training */
+    BIO_MSG_WM_PLASTICITY_SNN_PRED,                   /**< Predicted SNN activity */
+    BIO_MSG_WM_PLASTICITY_SNN_COMPARE,                /**< SNN prediction comparison */
+    BIO_MSG_WM_PLASTICITY_SNN_GUIDE,                  /**< SNN guidance signal */
+    BIO_MSG_WM_PLASTICITY_BCM_THRESHOLD = 0x6D20,     /**< BCM threshold update */
+    BIO_MSG_WM_PLASTICITY_BCM_CONFIDENCE,             /**< BCM confidence signal */
+    BIO_MSG_WM_PLASTICITY_ELIGIBILITY,                /**< Eligibility trace signal */
+    BIO_MSG_WM_PLASTICITY_THREE_FACTOR,               /**< Three-factor learning signal */
+    BIO_MSG_WM_PLASTICITY_STATE = 0x6D30,             /**< Plasticity state query */
+    BIO_MSG_WM_PLASTICITY_PE_FEEDBACK,                /**< PE → plasticity feedback */
+    BIO_MSG_WM_PLASTICITY_STP_STATE,                  /**< Short-term plasticity state */
+    BIO_MSG_WM_PLASTICITY_STP_MODULATE,               /**< STP modulation params */
+    BIO_MSG_WM_PLASTICITY_COORD_SYNC = 0x6D40,        /**< Coordinator sync */
+    BIO_MSG_WM_PLASTICITY_BRIDGE_STATUS = 0x6D50,     /**< Bridge status update */
+    BIO_MSG_WM_PLASTICITY_BRIDGE_ERROR,               /**< Bridge error notification */
+    BIO_MSG_WM_PLASTICITY_STATS_UPDATE,               /**< Statistics update */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;

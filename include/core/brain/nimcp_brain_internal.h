@@ -1508,6 +1508,68 @@ struct brain_struct {
     uint64_t last_vta_update_us;                                      // Last VTA update timestamp
     uint64_t last_raphe_update_us;                                    // Last Raphe update timestamp
     uint64_t last_habenula_update_us;                                 // Last Habenula update timestamp
+
+    // =========================================================================
+    // WORLD MODEL INTEGRATION (Generative World Model for Mental Simulation)
+    // =========================================================================
+    // The World Model provides generative simulation capabilities:
+    // - Omni World Model: Omnidirectional prediction (forward/backward/lateral)
+    // - Multimodal World Model: Cross-modal state prediction and fusion
+    //
+    // The world model enables:
+    // - Counterfactual reasoning: "What if I had done X instead?"
+    // - Policy evaluation: Simulate trajectories without acting
+    // - Mental imagery: Generate internal sensory experiences
+    // - Dreaming/consolidation: Offline simulation for learning
+    //
+    // THEORETICAL BASIS:
+    // - DreamerV3: RSSM world model with symlog rewards
+    // - JEPA (LeCun): Predict in latent space, not pixel space
+    // - Active Inference (Friston): Generative model for EFE minimization
+    //
+    // Integrates with:
+    // - Active Inference: Policy evaluation via world model simulation
+    // - Imagination Engine: Scene generation using world model dynamics
+    // - Hippocampus: Memory replay and consolidation
+    // - Predictive Processing: Forward model for prediction errors
+    // - Sleep System: Dreaming during offline consolidation
+    //
+    struct omni_world_model* omni_world_model;                        // Omni world model (forward/backward/lateral)
+    struct nimcp_world_model* multimodal_world_model;                 // Multimodal world model for cross-modal fusion
+    bool world_model_enabled;                                         // World model system enabled
+    bool world_model_lazy_init;                                       // Defer world model initialization
+    uint64_t last_world_model_update_us;                              // Last world model update timestamp
+    uint64_t world_model_update_interval_us;                          // Update interval (default: 10ms)
+
+    // =========================================================================
+    // World Model Integration Bridges
+    // =========================================================================
+    // Enable bidirectional information flow between the omni world model
+    // and brain subsystems for:
+    // - Security-aware prediction with immune modulation
+    // - Audit logging of world model operations
+    // - Full cognitive layer integration
+    // - Training layer synchronization
+    // - Parietal spatial/physics reasoning
+    // - Hypothalamic homeostatic control
+    // - Thalamic attention gating
+    // - Neural substrate metabolic constraints
+    // - Memory system (hippocampus, engrams, consolidation)
+    // - Knowledge Graph wiring system integration
+    // - Theory of Mind social world modeling
+    // - SNN/STDP/Plasticity direct integration
+    //
+    struct omni_wm_security_immune_bridge* wm_security_immune_bridge;  // Security + Immune cytokine modulation
+    struct omni_wm_logging_bridge* wm_logging_bridge;                  // Audit logging integration
+    struct omni_wm_cognitive_bridge* wm_cognitive_bridge;              // Full cognitive layer
+    struct omni_wm_parietal_bridge* wm_parietal_bridge;                // Spatial/physics reasoning
+    struct omni_wm_hypothalamus_bridge* wm_hypothalamus_bridge;        // Homeostatic control
+    struct omni_wm_thalamic_bridge* wm_thalamic_bridge;                // Attention gating via nuclei
+    struct omni_wm_substrate_bridge* wm_substrate_bridge;              // Metabolic constraints
+    struct omni_wm_memory_bridge* wm_memory_bridge;                    // Hippocampus + engrams + consolidation
+    struct omni_wm_kg_bridge* wm_kg_bridge;                            // Knowledge Graph wiring integration
+    struct omni_wm_tom_bridge* wm_tom_bridge;                          // Theory of Mind social world modeling
+    struct omni_wm_plasticity_bridge* wm_plasticity_bridge;            // SNN/STDP/Plasticity direct integration
 };
 
 //=============================================================================
