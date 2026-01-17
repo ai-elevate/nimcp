@@ -41,3 +41,13 @@ add_ft_integration_test(test_enhanced_fault_tolerance_integration)
 add_ft_integration_test(test_health_agent_use_integration)
 set_tests_properties(integration_utils_fault_tolerance_test_health_agent_use_integration
                      PROPERTIES TIMEOUT 180)
+
+# Health Agent Connection Integration Tests (Phase 2)
+add_ft_integration_test(test_health_agent_connection_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_health_agent_connection_integration
+                     PROPERTIES TIMEOUT 180)
+
+# Health Agent Consistency Integration Tests (Phase 3)
+add_ft_integration_test(test_health_agent_consistency_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_health_agent_consistency_integration
+                     PROPERTIES TIMEOUT 180)

@@ -46,3 +46,11 @@ add_fault_tolerance_test(test_predictive_analysis)
 # Health Agent USE Function Tests (Phase 1)
 add_fault_tolerance_test(test_health_agent_use_functions)
 set_tests_properties(unit_utils_fault_tolerance_test_health_agent_use_functions PROPERTIES TIMEOUT 120)
+
+# Health Agent Connection Function Tests (Phase 2)
+add_fault_tolerance_test(test_health_agent_connection_functions)
+set_tests_properties(unit_utils_fault_tolerance_test_health_agent_connection_functions PROPERTIES TIMEOUT 120)
+
+# Health Agent Consistency Function Tests (Phase 3)
+add_fault_tolerance_test(test_health_agent_consistency_functions)
+set_tests_properties(unit_utils_fault_tolerance_test_health_agent_consistency_functions PROPERTIES TIMEOUT 120)

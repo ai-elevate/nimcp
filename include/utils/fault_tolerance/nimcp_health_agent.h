@@ -186,6 +186,21 @@ typedef enum {
     HEALTH_RECOVERY_COUNT
 } health_agent_recovery_t;
 
+/**
+ * @brief Types of consistency checks that can be requested (Phase 3)
+ */
+typedef enum {
+    HEALTH_CHECK_ALL = 0,          /**< Run all consistency checks */
+    HEALTH_CHECK_CANARIES,         /**< Check memory canaries */
+    HEALTH_CHECK_MAGIC,            /**< Check magic numbers */
+    HEALTH_CHECK_REFCOUNTS,        /**< Check reference counts */
+    HEALTH_CHECK_BUFFERS,          /**< Check circular buffer integrity */
+    HEALTH_CHECK_MUTEX,            /**< Check mutex states */
+    HEALTH_CHECK_KG,               /**< Check knowledge graph consistency */
+    HEALTH_CHECK_NEURONS,          /**< Check neuron values for NaN/Inf */
+    HEALTH_CHECK_COUNT
+} health_agent_check_t;
+
 /* ============================================================================
  * Message Structure
  * ============================================================================ */
@@ -277,7 +292,41 @@ typedef struct {
     bool check_kg_consistency;         /**< Full KG validation */
     bool check_neuron_values;          /**< Check for NaN/Inf */
     uint32_t kg_check_sample_rate;     /**< Sample rate for KG (1=all, N=1/N) */
+    uint32_t consistency_check_interval_ms; /**< Interval between consistency checks */
 } health_agent_consistency_config_t;
+
+/**
+ * @brief State consistency check result
+ *
+ * WHAT: Results from a consistency check cycle
+ * WHY:  Report what was checked and any failures found
+ * HOW:  Each field indicates pass/fail for that check type
+ */
+typedef struct {
+    uint64_t timestamp_us;             /**< When check was performed */
+    bool overall_passed;               /**< True if all enabled checks passed */
+
+    /* Individual check results (true = passed, false = failed) */
+    bool refcount_check_passed;        /**< Reference count validation */
+    bool canary_check_passed;          /**< Memory canary validation */
+    bool magic_check_passed;           /**< Struct magic validation */
+    bool mutex_check_passed;           /**< Mutex state validation */
+    bool buffer_check_passed;          /**< Circular buffer validation */
+    bool kg_check_passed;              /**< Knowledge graph validation */
+    bool neuron_check_passed;          /**< NaN/Inf check in neurons */
+
+    /* Failure details */
+    uint32_t refcount_errors;          /**< Number of refcount errors */
+    uint32_t canary_corruptions;       /**< Number of corrupted canaries */
+    uint32_t magic_violations;         /**< Number of magic violations */
+    uint32_t mutex_anomalies;          /**< Number of mutex anomalies */
+    uint32_t buffer_errors;            /**< Number of buffer errors */
+    uint32_t kg_inconsistencies;       /**< Number of KG inconsistencies */
+    uint32_t nan_inf_count;            /**< Number of NaN/Inf values found */
+
+    /* Check timing */
+    uint64_t check_duration_us;        /**< Total check duration */
+} health_agent_consistency_result_t;
 
 /* ============================================================================
  * Agent Configuration
@@ -531,6 +580,112 @@ int nimcp_health_agent_request_check(nimcp_health_agent_t* agent);
  */
 int nimcp_health_agent_request_emergency_checkpoint(nimcp_health_agent_t* agent,
                                                      const char* reason);
+
+/* ============================================================================
+ * State Consistency API (Phase 3)
+ * ============================================================================ */
+
+/**
+ * @brief Run immediate state consistency check
+ *
+ * WHAT: Perform all enabled consistency checks synchronously
+ * WHY:  On-demand validation of system state integrity
+ * HOW:  Run each check type, aggregate results, optionally report failures
+ *
+ * @param agent Health agent
+ * @param result Output consistency result (can be NULL if not needed)
+ * @return 0 if all checks passed, number of failures otherwise
+ */
+int nimcp_health_agent_check_consistency(
+    nimcp_health_agent_t* agent,
+    health_agent_consistency_result_t* result
+);
+
+/**
+ * @brief Get last consistency check result
+ *
+ * WHAT: Retrieve results of most recent consistency check
+ * WHY:  Query check history without running new check
+ * HOW:  Copy cached result from agent
+ *
+ * @param agent Health agent
+ * @param result Output consistency result
+ * @return 0 on success, -1 if no check has been run
+ */
+int nimcp_health_agent_get_consistency_status(
+    const nimcp_health_agent_t* agent,
+    health_agent_consistency_result_t* result
+);
+
+/**
+ * @brief Update consistency checker configuration at runtime
+ *
+ * WHAT: Modify which consistency checks are enabled
+ * WHY:  Adjust checking based on system load or requirements
+ * HOW:  Safely update config under mutex protection
+ *
+ * @param agent Health agent
+ * @param config New consistency configuration
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_update_consistency_config(
+    nimcp_health_agent_t* agent,
+    const health_agent_consistency_config_t* config
+);
+
+/**
+ * @brief Check specific struct magic number
+ *
+ * WHAT: Validate magic number for a specific structure type
+ * WHY:  Detect memory corruption or type confusion
+ * HOW:  Compare against expected value
+ *
+ * @param ptr Pointer to structure
+ * @param expected_magic Expected magic value
+ * @param struct_name Name for error reporting
+ * @return true if magic is valid, false otherwise
+ */
+bool nimcp_health_agent_validate_magic(
+    const void* ptr,
+    uint32_t expected_magic,
+    const char* struct_name
+);
+
+/**
+ * @brief Register a structure for magic validation
+ *
+ * WHAT: Add a structure to the consistency checker's registry
+ * WHY:  Enable automatic magic validation for registered structures
+ * HOW:  Store pointer, expected magic, and name in registry
+ *
+ * @param agent Health agent
+ * @param ptr Pointer to structure (magic at offset 0)
+ * @param expected_magic Expected magic value
+ * @param name Structure name for reporting
+ * @return 0 on success, -1 if registry full
+ */
+int nimcp_health_agent_register_struct(
+    nimcp_health_agent_t* agent,
+    void* ptr,
+    uint32_t expected_magic,
+    const char* name
+);
+
+/**
+ * @brief Unregister a structure from magic validation
+ *
+ * WHAT: Remove a structure from the consistency checker's registry
+ * WHY:  Clean up when structure is destroyed
+ * HOW:  Find and remove from registry
+ *
+ * @param agent Health agent
+ * @param ptr Pointer to structure
+ * @return 0 on success, -1 if not found
+ */
+int nimcp_health_agent_unregister_struct(
+    nimcp_health_agent_t* agent,
+    void* ptr
+);
 
 /* ============================================================================
  * Query API

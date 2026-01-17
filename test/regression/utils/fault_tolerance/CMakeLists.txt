@@ -38,3 +38,13 @@ add_ft_regression_test(test_enhanced_fault_tolerance_regression)
 add_ft_regression_test(test_health_agent_use_regression)
 set_tests_properties(regression_utils_fault_tolerance_test_health_agent_use_regression
                      PROPERTIES TIMEOUT 120)
+
+# Health Agent Connection Regression Tests (Phase 2)
+add_ft_regression_test(test_health_agent_connection_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_health_agent_connection_regression
+                     PROPERTIES TIMEOUT 120)
+
+# Health Agent Consistency Regression Tests (Phase 3)
+add_ft_regression_test(test_health_agent_consistency_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_health_agent_consistency_regression
+                     PROPERTIES TIMEOUT 120)

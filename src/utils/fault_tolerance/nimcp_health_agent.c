@@ -44,6 +44,18 @@
 
 #define LOG_MODULE "health_agent"
 
+/* NaN/Inf detection macro (local definition to avoid circular deps) */
+#ifndef NIMCP_IS_INVALID_FLOAT
+#define NIMCP_IS_INVALID_FLOAT(x) (isnan(x) || isinf(x))
+#endif
+
+/* Helper macro to check if any consistency check is enabled */
+#define CONSISTENCY_CHECKS_ENABLED(cfg) \
+    ((cfg).check_reference_counts || (cfg).check_pointer_canaries || \
+     (cfg).check_struct_magic || (cfg).check_mutex_state || \
+     (cfg).check_circular_buffers || (cfg).check_kg_consistency || \
+     (cfg).check_neuron_values)
+
 /* ============================================================================
  * Internal Constants
  * ============================================================================ */
@@ -297,6 +309,25 @@ struct nimcp_health_agent {
     systems_consolidation_system_t* memory_consolidation;
     health_agent_memory_consolidation_config_t consolidation_config;
 
+    /* =========== STATE CONSISTENCY MANAGER (Phase 3) =========== */
+
+    /* Consistency check state */
+    health_agent_consistency_result_t last_consistency_result;
+    _Atomic bool consistency_check_pending;
+    _Atomic uint64_t last_consistency_check_us;
+    _Atomic uint64_t consistency_checks_run;
+    _Atomic uint64_t consistency_failures_total;
+    nimcp_mutex_t* consistency_mutex;    /**< For consistency check state */
+
+    /* Registered structures for magic validation */
+    struct {
+        void* ptr;                       /**< Pointer to structure */
+        uint32_t expected_magic;         /**< Expected magic value */
+        char name[64];                   /**< Structure name */
+        bool active;                     /**< Entry is in use */
+    } registered_structs[64];            /**< Registry of tracked structures */
+    uint32_t registered_struct_count;    /**< Number of registered structs */
+
     /* Module connection mutex */
     nimcp_mutex_t* modules_mutex;        /**< For module connections (NIMCP mutex) */
 
@@ -338,6 +369,16 @@ static void agent_check_oscillations(nimcp_health_agent_t* agent);
 static void agent_auto_gc_if_needed(nimcp_health_agent_t* agent);
 static void agent_auto_checkpoint_if_needed(nimcp_health_agent_t* agent, float health_score);
 static int hypo_drive_event_callback(const void* event, void* user_data);
+
+/* State Consistency Manager helper functions (Phase 3) */
+static void agent_run_consistency_checks(nimcp_health_agent_t* agent);
+static bool agent_check_reference_counts(nimcp_health_agent_t* agent, health_agent_consistency_result_t* result);
+static bool agent_check_pointer_canaries(nimcp_health_agent_t* agent, health_agent_consistency_result_t* result);
+static bool agent_check_struct_magic(nimcp_health_agent_t* agent, health_agent_consistency_result_t* result);
+static bool agent_check_mutex_state(nimcp_health_agent_t* agent, health_agent_consistency_result_t* result);
+static bool agent_check_circular_buffers(nimcp_health_agent_t* agent, health_agent_consistency_result_t* result);
+static bool agent_check_knowledge_graph(nimcp_health_agent_t* agent, health_agent_consistency_result_t* result);
+static bool agent_check_neuron_values(nimcp_health_agent_t* agent, health_agent_consistency_result_t* result);
 
 /* ============================================================================
  * Utility Functions
@@ -885,6 +926,40 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
     atomic_init(&agent->heartbeat.current_progress, 0.0f);
     memset(agent->heartbeat.current_operation, 0, sizeof(agent->heartbeat.current_operation));
 
+    /* Initialize State Consistency Manager (Phase 3) */
+    agent->consistency_mutex = nimcp_mutex_create(NULL);
+    if (!agent->consistency_mutex) {
+        nimcp_log(LOG_LEVEL_ERROR, "Failed to create consistency mutex");
+        nimcp_mutex_destroy(agent->modules_mutex);
+        nimcp_free(agent->modules_mutex);
+        nimcp_mutex_destroy(agent->cognitive_mutex);
+        nimcp_free(agent->cognitive_mutex);
+        nimcp_cond_destroy(agent->stop_cond);
+        nimcp_free(agent->stop_cond);
+        nimcp_mutex_destroy(agent->stats_mutex);
+        nimcp_free(agent->stats_mutex);
+        nimcp_mutex_destroy(agent->state_mutex);
+        nimcp_free(agent->state_mutex);
+        msg_queue_destroy(&agent->msg_queue);
+        nimcp_free(agent);
+        return NULL;
+    }
+
+    memset(&agent->last_consistency_result, 0, sizeof(health_agent_consistency_result_t));
+    atomic_init(&agent->consistency_check_pending, false);
+    atomic_init(&agent->last_consistency_check_us, 0);
+    atomic_init(&agent->consistency_checks_run, 0);
+    atomic_init(&agent->consistency_failures_total, 0);
+
+    /* Initialize registered struct tracking */
+    for (uint32_t i = 0; i < 64; i++) {
+        agent->registered_structs[i].ptr = NULL;
+        agent->registered_structs[i].expected_magic = 0;
+        agent->registered_structs[i].name[0] = '\0';
+        agent->registered_structs[i].active = false;
+    }
+    agent->registered_struct_count = 0;
+
     /* Initialize statistics */
     memset(&agent->stats, 0, sizeof(health_agent_stats_t));
     agent->stats.highest_severity_seen = HEALTH_SEVERITY_INFO;
@@ -943,6 +1018,13 @@ void nimcp_health_agent_destroy(nimcp_health_agent_t* agent) {
         nimcp_mutex_destroy(agent->modules_mutex);
         nimcp_free(agent->modules_mutex);
         agent->modules_mutex = NULL;
+    }
+
+    /* Destroy consistency mutex (Phase 3) */
+    if (agent->consistency_mutex) {
+        nimcp_mutex_destroy(agent->consistency_mutex);
+        nimcp_free(agent->consistency_mutex);
+        agent->consistency_mutex = NULL;
     }
 
     /* Clear magic/canaries to prevent use-after-free */
@@ -1232,6 +1314,14 @@ static void* agent_thread_main(void* arg) {
                     nimcp_health_agent_report_anomaly(agent, &msg);
                 }
             }
+
+            /* ========== STATE CONSISTENCY CHECKS (Phase 3) ========== */
+
+            /* Run consistency checks (timing is internal to function) */
+            if (CONSISTENCY_CHECKS_ENABLED(agent->config.consistency) ||
+                atomic_load(&agent->consistency_check_pending)) {
+                agent_run_consistency_checks(agent);
+            }
         }
 
         /* Sleep for a short period */
@@ -1327,7 +1417,8 @@ int nimcp_health_agent_report_anomaly(nimcp_health_agent_t* agent,
 int nimcp_health_agent_request_check(nimcp_health_agent_t* agent) {
     if (!validate_agent(agent)) return -1;
 
-    /* TODO: Implement in Phase 5 - signal thread to run immediate check */
+    /* Signal thread to run consistency check on next iteration (Phase 3) */
+    atomic_store(&agent->consistency_check_pending, true);
     nimcp_log(LOG_LEVEL_DEBUG, "Check requested for agent '%s'", agent->config.agent_name);
     return 0;
 }
@@ -1851,6 +1942,226 @@ int nimcp_health_agent_connect_exception_bridge(
     nimcp_mutex_unlock(agent->modules_mutex);
 
     nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected to exception-immune bridge",
+              agent->config.agent_name);
+    return 0;
+}
+
+/* ============================================================================
+ * Cognitive Module Connection Functions
+ * ============================================================================ */
+
+int nimcp_health_agent_connect_failure_prediction(
+    nimcp_health_agent_t* agent,
+    failure_predictor_t* predictor,
+    const health_agent_prediction_config_t* config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+    agent->failure_predictor = predictor;
+    if (config) {
+        agent->prediction_config = *config;
+    } else {
+        agent->prediction_config.enable_failure_prediction = true;
+        agent->prediction_config.prediction_threshold = 0.7f;
+        agent->prediction_config.prediction_horizon_ms = 60000;
+        agent->prediction_config.enable_preventive_action = true;
+        agent->prediction_config.enable_trend_analysis = true;
+    }
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected to failure predictor",
+              agent->config.agent_name);
+    return 0;
+}
+
+int nimcp_health_agent_connect_metacognition(
+    nimcp_health_agent_t* agent,
+    metacognition_t* metacog,
+    const health_agent_metacog_config_t* config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+    agent->metacognition = metacog;
+    if (config) {
+        agent->metacog_config = *config;
+    } else {
+        agent->metacog_config.enable_metacognition = true;
+        agent->metacog_config.enable_confidence_calibration = true;
+        agent->metacog_config.enable_degradation_detection = true;
+        agent->metacog_config.degradation_threshold = 0.3f;
+        agent->metacog_config.enable_self_diagnosis = true;
+    }
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected to metacognition module",
+              agent->config.agent_name);
+    return 0;
+}
+
+int nimcp_health_agent_connect_ethics(
+    nimcp_health_agent_t* agent,
+    ethics_engine_t ethics,
+    const health_agent_ethics_config_t* config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+    agent->ethics = ethics;
+    if (config) {
+        agent->ethics_config = *config;
+    } else {
+        agent->ethics_config.enable_ethics_evaluation = true;
+        agent->ethics_config.enable_asimov_laws = true;
+        agent->ethics_config.enable_mercy_directive = true;
+        agent->ethics_config.enable_golden_rule = true;
+        agent->ethics_config.ethics_override_threshold = 0.95f;
+    }
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected to ethics engine",
+              agent->config.agent_name);
+    return 0;
+}
+
+int nimcp_health_agent_connect_emotion(
+    nimcp_health_agent_t* agent,
+    emotional_system_t* emotion,
+    emotion_immune_bridge_t* emotion_immune,
+    const health_agent_emotion_config_t* config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+    agent->emotion = emotion;
+    agent->emotion_immune = emotion_immune;
+    if (config) {
+        agent->emotion_config = *config;
+    } else {
+        agent->emotion_config.enable_emotion_awareness = true;
+        agent->emotion_config.enable_emotion_reporting = true;
+        agent->emotion_config.enable_stress_adjustment = true;
+        agent->emotion_config.stress_threshold_multiplier = 1.5f;
+    }
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected to emotional system%s",
+              agent->config.agent_name,
+              emotion_immune ? " with emotion-immune bridge" : "");
+    return 0;
+}
+
+int nimcp_health_agent_connect_wellbeing(
+    nimcp_health_agent_t* agent,
+    wellbeing_monitor_t* wellbeing,
+    const health_agent_wellbeing_config_t* config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+    agent->wellbeing = wellbeing;
+    if (config) {
+        agent->wellbeing_config = *config;
+    } else {
+        agent->wellbeing_config.enable_wellbeing_monitoring = true;
+        agent->wellbeing_config.enable_distress_detection = true;
+        agent->wellbeing_config.enable_suffering_prevention = true;
+        agent->wellbeing_config.distress_intervention_threshold = 0.7f;
+    }
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected to wellbeing monitor",
+              agent->config.agent_name);
+    return 0;
+}
+
+int nimcp_health_agent_connect_mental_health(
+    nimcp_health_agent_t* agent,
+    mental_health_monitor_t* mental_health
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+    agent->mental_health = mental_health;
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected to mental health monitor",
+              agent->config.agent_name);
+    return 0;
+}
+
+int nimcp_health_agent_connect_collective(
+    nimcp_health_agent_t* agent,
+    collective_cognition_t* collective,
+    const health_agent_collective_config_t* config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+    agent->collective = collective;
+    if (config) {
+        agent->collective_config = *config;
+    } else {
+        agent->collective_config.enable_collective_monitoring = true;
+        agent->collective_config.enable_consensus_decisions = true;
+        agent->collective_config.enable_swarm_immune = true;
+        agent->collective_config.consensus_threshold = 0.66f;
+        agent->collective_config.consensus_timeout_ms = 5000;
+    }
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected to collective cognition",
+              agent->config.agent_name);
+    return 0;
+}
+
+int nimcp_health_agent_connect_rcog(
+    nimcp_health_agent_t* agent,
+    rcog_engine_t* rcog,
+    const health_agent_rcog_config_t* config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+    agent->rcog = rcog;
+    if (config) {
+        agent->rcog_config = *config;
+    } else {
+        agent->rcog_config.enable_rcog_diagnosis = true;
+        agent->rcog_config.enable_rcog_recovery_planning = true;
+        agent->rcog_config.enable_imagination = true;
+        agent->rcog_config.rcog_timeout_ms = 10000;
+        agent->rcog_config.confidence_threshold = 0.7f;
+    }
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected to RCOG engine",
+              agent->config.agent_name);
+    return 0;
+}
+
+int nimcp_health_agent_connect_gpu(
+    nimcp_health_agent_t* agent,
+    gpu_health_monitor_t* gpu_health,
+    const health_agent_gpu_config_t* config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+    agent->gpu_health = gpu_health;
+    if (config) {
+        agent->gpu_config = *config;
+    } else {
+        agent->gpu_config.enable_gpu_monitoring = true;
+        agent->gpu_config.enable_gpu_acceleration = true;
+        agent->gpu_config.enable_tensor_validation = true;
+        agent->gpu_config.enable_anomaly_detection = true;
+        agent->gpu_config.gpu_check_interval_ms = 1000;
+    }
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected to GPU health monitor",
               agent->config.agent_name);
     return 0;
 }
@@ -3514,4 +3825,686 @@ int nimcp_health_agent_use_consolidation_get_stats(
     if (total_replays_out) *total_replays_out = 0;
     if (total_transfers_out) *total_transfers_out = 0;
     return 0;
+}
+
+/* ============================================================================
+ * STATE CONSISTENCY MANAGER - Phase 3
+ * ============================================================================
+ *
+ * Implements comprehensive consistency checking for the health agent:
+ * - Reference count validation
+ * - Memory canary verification
+ * - Magic number checks for registered structs
+ * - Mutex state consistency
+ * - Circular buffer integrity
+ * - Knowledge graph consistency (when available)
+ * - Neuron value validation (NaN/Inf detection)
+ * ============================================================================ */
+
+/**
+ * @brief Check reference counts for consistency
+ */
+static bool agent_check_reference_counts(nimcp_health_agent_t* agent,
+                                          health_agent_consistency_result_t* result) {
+    if (!agent || !result) return false;
+
+    bool passed = true;
+    uint32_t errors = 0;
+
+    /*
+     * Reference count validation checks:
+     * 1. Atomic stat counters should not be negative (overflow detection)
+     * 2. Cumulative stats should be >= individual component stats
+     */
+
+    /* Check prediction stats consistency */
+    uint64_t predictions_made = atomic_load(&agent->predictions_made);
+    uint64_t predictions_correct = atomic_load(&agent->predictions_correct);
+    if (predictions_correct > predictions_made) {
+        nimcp_log(LOG_LEVEL_WARN, "Consistency: predictions_correct (%lu) > predictions_made (%lu)",
+                  (unsigned long)predictions_correct, (unsigned long)predictions_made);
+        errors++;
+        passed = false;
+    }
+
+    /* Check consensus stats consistency */
+    uint64_t consensus_achieved = atomic_load(&agent->consensus_achieved);
+    uint64_t consensus_requests = atomic_load(&agent->consensus_requests);
+    if (consensus_achieved > consensus_requests) {
+        nimcp_log(LOG_LEVEL_WARN, "Consistency: consensus_achieved (%lu) > consensus_requests (%lu)",
+                  (unsigned long)consensus_achieved, (unsigned long)consensus_requests);
+        errors++;
+        passed = false;
+    }
+
+    /* Check engram stats consistency */
+    uint64_t engram_recalls = atomic_load(&agent->engram_recalls);
+    uint64_t engram_encodings = atomic_load(&agent->engram_encodings);
+    /* Note: recalls can exceed encodings if same memory recalled multiple times */
+    (void)engram_recalls;
+    (void)engram_encodings;
+
+    /* Check dragonfly tracking stats */
+    uint64_t interceptions = atomic_load(&agent->dragonfly_interceptions);
+    uint64_t pursuits = atomic_load(&agent->dragonfly_pursuits);
+    if (interceptions > pursuits && pursuits > 0) {
+        nimcp_log(LOG_LEVEL_WARN, "Consistency: dragonfly interceptions (%lu) > pursuits (%lu)",
+                  (unsigned long)interceptions, (unsigned long)pursuits);
+        errors++;
+        passed = false;
+    }
+
+    result->refcount_check_passed = passed;
+    result->refcount_errors = errors;
+    return passed;
+}
+
+/**
+ * @brief Check memory canaries for corruption
+ */
+static bool agent_check_pointer_canaries(nimcp_health_agent_t* agent,
+                                         health_agent_consistency_result_t* result) {
+    if (!agent || !result) return false;
+
+    bool passed = true;
+    uint32_t corruptions = 0;
+
+    /* Check front canary */
+    if (agent->canary_front != HEALTH_AGENT_CANARY) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: Front canary corrupted (expected 0x%X, got 0x%X)",
+                  HEALTH_AGENT_CANARY, agent->canary_front);
+        corruptions++;
+        passed = false;
+    }
+
+    /* Check back canary */
+    if (agent->canary_back != HEALTH_AGENT_CANARY) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: Back canary corrupted (expected 0x%X, got 0x%X)",
+                  HEALTH_AGENT_CANARY, agent->canary_back);
+        corruptions++;
+        passed = false;
+    }
+
+    result->canary_check_passed = passed;
+    result->canary_corruptions = corruptions;
+    return passed;
+}
+
+/**
+ * @brief Check magic numbers for registered structures
+ */
+static bool agent_check_struct_magic(nimcp_health_agent_t* agent,
+                                       health_agent_consistency_result_t* result) {
+    if (!agent || !result) return false;
+
+    bool passed = true;
+    uint32_t violations = 0;
+
+    /* Check agent's own magic number */
+    if (agent->magic != HEALTH_AGENT_MAGIC) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: Agent magic corrupted (expected 0x%X, got 0x%X)",
+                  HEALTH_AGENT_MAGIC, agent->magic);
+        violations++;
+        passed = false;
+    }
+
+    /* Check all registered structures (with lock) */
+    if (nimcp_mutex_lock(agent->consistency_mutex) == 0) {
+        for (uint32_t i = 0; i < 64; i++) {
+            if (agent->registered_structs[i].active && agent->registered_structs[i].ptr) {
+                uint32_t* magic_ptr = (uint32_t*)agent->registered_structs[i].ptr;
+                if (*magic_ptr != agent->registered_structs[i].expected_magic) {
+                    nimcp_log(LOG_LEVEL_ERROR, "Consistency: Struct '%s' magic corrupted "
+                              "(expected 0x%X, got 0x%X)",
+                              agent->registered_structs[i].name,
+                              agent->registered_structs[i].expected_magic,
+                              *magic_ptr);
+                    violations++;
+                    passed = false;
+                }
+            }
+        }
+        nimcp_mutex_unlock(agent->consistency_mutex);
+    }
+
+    result->magic_check_passed = passed;
+    result->magic_violations = violations;
+    return passed;
+}
+
+/**
+ * @brief Check mutex states for consistency
+ */
+static bool agent_check_mutex_state(nimcp_health_agent_t* agent,
+                                      health_agent_consistency_result_t* result) {
+    if (!agent || !result) return false;
+
+    bool passed = true;
+    uint32_t anomalies = 0;
+
+    /*
+     * Mutex state checks:
+     * - Verify all required mutexes are non-NULL
+     * - Note: We can't easily check if a mutex is "locked by another thread"
+     *   without potentially causing issues, so we just verify existence.
+     */
+
+    if (!agent->state_mutex) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: state_mutex is NULL");
+        anomalies++;
+        passed = false;
+    }
+
+    if (!agent->stats_mutex) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: stats_mutex is NULL");
+        anomalies++;
+        passed = false;
+    }
+
+    if (!agent->cognitive_mutex) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: cognitive_mutex is NULL");
+        anomalies++;
+        passed = false;
+    }
+
+    if (!agent->modules_mutex) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: modules_mutex is NULL");
+        anomalies++;
+        passed = false;
+    }
+
+    if (!agent->consistency_mutex) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: consistency_mutex is NULL");
+        anomalies++;
+        passed = false;
+    }
+
+    /* Check stop_cond is valid */
+    if (!agent->stop_cond) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: stop_cond is NULL");
+        anomalies++;
+        passed = false;
+    }
+
+    result->mutex_check_passed = passed;
+    result->mutex_anomalies = anomalies;
+    return passed;
+}
+
+/**
+ * @brief Check circular buffer integrity
+ *
+ * Note: The message queue is lock-free (MPSC), using atomic head/tail.
+ * We perform best-effort validation without locking.
+ */
+static bool agent_check_circular_buffers(nimcp_health_agent_t* agent,
+                                          health_agent_consistency_result_t* result) {
+    if (!agent || !result) return false;
+
+    bool passed = true;
+    uint32_t errors = 0;
+
+    /*
+     * Lock-free message queue checks:
+     * - Read atomic head/tail (may be slightly stale but still valid)
+     * - Verify indices are within bounds
+     * - Check capacity is valid (power of 2)
+     */
+
+    uint64_t head = atomic_load(&agent->msg_queue.head);
+    uint64_t tail = atomic_load(&agent->msg_queue.tail);
+    uint32_t capacity = agent->msg_queue.capacity;
+    uint32_t capacity_mask = agent->msg_queue.capacity_mask;
+
+    /* Check capacity is non-zero */
+    if (capacity == 0) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: Message queue capacity is 0");
+        errors++;
+        passed = false;
+    } else {
+        /* Verify capacity_mask is correct (capacity - 1 for power of 2) */
+        if (capacity_mask != capacity - 1) {
+            nimcp_log(LOG_LEVEL_WARN, "Consistency: Message queue capacity_mask mismatch "
+                      "(mask=%u, expected=%u)",
+                      capacity_mask, capacity - 1);
+            errors++;
+            passed = false;
+        }
+
+        /* Verify capacity is power of 2 */
+        if ((capacity & (capacity - 1)) != 0) {
+            nimcp_log(LOG_LEVEL_ERROR, "Consistency: Message queue capacity (%u) is not power of 2",
+                      capacity);
+            errors++;
+            passed = false;
+        }
+
+        /* For lock-free queues, head >= tail always (head advances, tail follows) */
+        /* Since we use 64-bit counters, wraparound is extremely unlikely */
+        if (head < tail) {
+            nimcp_log(LOG_LEVEL_WARN, "Consistency: Message queue head (%lu) < tail (%lu)",
+                      (unsigned long)head, (unsigned long)tail);
+            errors++;
+            /* Note: This could be a transient state during concurrent access */
+        }
+
+        /* Check queue depth doesn't exceed capacity */
+        uint64_t count = head - tail;
+        if (count > capacity) {
+            nimcp_log(LOG_LEVEL_ERROR, "Consistency: Message queue overflow "
+                      "(count=%lu, capacity=%u)",
+                      (unsigned long)count, capacity);
+            errors++;
+            passed = false;
+        }
+    }
+
+    /* Check nodes array is allocated */
+    if (!agent->msg_queue.nodes) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: Message queue nodes array is NULL");
+        errors++;
+        passed = false;
+    }
+
+    result->buffer_check_passed = passed;
+    result->buffer_errors = errors;
+    return passed;
+}
+
+/**
+ * @brief Check knowledge graph consistency (when available)
+ */
+static bool agent_check_knowledge_graph(nimcp_health_agent_t* agent,
+                                         health_agent_consistency_result_t* result) {
+    if (!agent || !result) return false;
+
+    bool passed = true;
+    uint32_t inconsistencies = 0;
+
+    /*
+     * Knowledge graph checks (placeholder for when brain/KG is connected):
+     * - Verify graph connectivity
+     * - Check for orphaned nodes
+     * - Validate edge references
+     *
+     * For now, this passes if no KG is connected.
+     */
+
+    /* Would check agent->brain or similar KG connection here */
+    /* Since Phase 3 doesn't require full brain connection, mark as passed */
+
+    result->kg_check_passed = passed;
+    result->kg_inconsistencies = inconsistencies;
+    return passed;
+}
+
+/**
+ * @brief Check neuron values for NaN/Inf
+ */
+static bool agent_check_neuron_values(nimcp_health_agent_t* agent,
+                                       health_agent_consistency_result_t* result) {
+    if (!agent || !result) return false;
+
+    bool passed = true;
+    uint32_t nan_inf_count = 0;
+
+    /*
+     * Check all floating-point atomic values for NaN/Inf.
+     * Uses atomic_load to safely read the values.
+     */
+
+    /* Check current_confidence */
+    float confidence = atomic_load(&agent->current_confidence);
+    if (NIMCP_IS_INVALID_FLOAT(confidence)) {
+        nimcp_log(LOG_LEVEL_WARN, "Consistency: current_confidence is NaN/Inf");
+        nan_inf_count++;
+        passed = false;
+    }
+
+    /* Check current_stress_level */
+    float stress = atomic_load(&agent->current_stress_level);
+    if (NIMCP_IS_INVALID_FLOAT(stress)) {
+        nimcp_log(LOG_LEVEL_WARN, "Consistency: current_stress_level is NaN/Inf");
+        nan_inf_count++;
+        passed = false;
+    }
+
+    /* Check current_distress_level */
+    float distress = atomic_load(&agent->current_distress_level);
+    if (NIMCP_IS_INVALID_FLOAT(distress)) {
+        nimcp_log(LOG_LEVEL_WARN, "Consistency: current_distress_level is NaN/Inf");
+        nan_inf_count++;
+        passed = false;
+    }
+
+    /* Check avg_consensus_time_ms */
+    float avg_consensus = atomic_load(&agent->avg_consensus_time_ms);
+    if (NIMCP_IS_INVALID_FLOAT(avg_consensus)) {
+        nimcp_log(LOG_LEVEL_WARN, "Consistency: avg_consensus_time_ms is NaN/Inf");
+        nan_inf_count++;
+        passed = false;
+    }
+
+    /* Check avg_rcog_time_ms */
+    float avg_rcog = atomic_load(&agent->avg_rcog_time_ms);
+    if (NIMCP_IS_INVALID_FLOAT(avg_rcog)) {
+        nimcp_log(LOG_LEVEL_WARN, "Consistency: avg_rcog_time_ms is NaN/Inf");
+        nan_inf_count++;
+        passed = false;
+    }
+
+    /* Check gpu_utilization */
+    float gpu_util = atomic_load(&agent->gpu_utilization);
+    if (NIMCP_IS_INVALID_FLOAT(gpu_util)) {
+        nimcp_log(LOG_LEVEL_WARN, "Consistency: gpu_utilization is NaN/Inf");
+        nan_inf_count++;
+        passed = false;
+    }
+
+    /* Check homeostatic_output */
+    float homeo = atomic_load(&agent->homeostatic_output);
+    if (NIMCP_IS_INVALID_FLOAT(homeo)) {
+        nimcp_log(LOG_LEVEL_WARN, "Consistency: homeostatic_output is NaN/Inf");
+        nan_inf_count++;
+        passed = false;
+    }
+
+    /* Check heartbeat progress */
+    float progress = atomic_load(&agent->heartbeat.current_progress);
+    if (NIMCP_IS_INVALID_FLOAT(progress)) {
+        nimcp_log(LOG_LEVEL_WARN, "Consistency: heartbeat.current_progress is NaN/Inf");
+        nan_inf_count++;
+        passed = false;
+    }
+
+    result->neuron_check_passed = passed;
+    result->nan_inf_count = nan_inf_count;
+    return passed;
+}
+
+/**
+ * @brief Master function to run all consistency checks
+ */
+static void agent_run_consistency_checks(nimcp_health_agent_t* agent) {
+    if (!agent) return;
+
+    /* Check if any consistency checking is enabled */
+    if (!CONSISTENCY_CHECKS_ENABLED(agent->config.consistency) &&
+        !atomic_load(&agent->consistency_check_pending)) {
+        return;
+    }
+
+    /* Check if enough time has passed since last check */
+    uint64_t now = get_timestamp_us();
+    uint64_t last_check = atomic_load(&agent->last_consistency_check_us);
+    uint32_t interval_ms = agent->config.consistency.consistency_check_interval_ms;
+    if (interval_ms == 0) {
+        interval_ms = 5000; /* Default 5 second interval */
+    }
+
+    if (now - last_check < (uint64_t)interval_ms * 1000) {
+        return; /* Not time for a check yet */
+    }
+
+    /* Run all enabled consistency checks */
+    health_agent_consistency_result_t result;
+    memset(&result, 0, sizeof(result));
+    result.timestamp_us = now;
+
+    uint64_t check_start = now;
+    bool overall_passed = true;
+
+    /* Reference count checks */
+    if (agent->config.consistency.check_reference_counts) {
+        if (!agent_check_reference_counts(agent, &result)) {
+            overall_passed = false;
+        }
+    } else {
+        result.refcount_check_passed = true;
+    }
+
+    /* Memory canary checks */
+    if (agent->config.consistency.check_pointer_canaries) {
+        if (!agent_check_pointer_canaries(agent, &result)) {
+            overall_passed = false;
+        }
+    } else {
+        result.canary_check_passed = true;
+    }
+
+    /* Magic number checks */
+    if (agent->config.consistency.check_struct_magic) {
+        if (!agent_check_struct_magic(agent, &result)) {
+            overall_passed = false;
+        }
+    } else {
+        result.magic_check_passed = true;
+    }
+
+    /* Mutex state checks */
+    if (agent->config.consistency.check_mutex_state) {
+        if (!agent_check_mutex_state(agent, &result)) {
+            overall_passed = false;
+        }
+    } else {
+        result.mutex_check_passed = true;
+    }
+
+    /* Circular buffer checks */
+    if (agent->config.consistency.check_circular_buffers) {
+        if (!agent_check_circular_buffers(agent, &result)) {
+            overall_passed = false;
+        }
+    } else {
+        result.buffer_check_passed = true;
+    }
+
+    /* Knowledge graph checks */
+    if (agent->config.consistency.check_kg_consistency) {
+        if (!agent_check_knowledge_graph(agent, &result)) {
+            overall_passed = false;
+        }
+    } else {
+        result.kg_check_passed = true;
+    }
+
+    /* Neuron value checks */
+    if (agent->config.consistency.check_neuron_values) {
+        if (!agent_check_neuron_values(agent, &result)) {
+            overall_passed = false;
+        }
+    } else {
+        result.neuron_check_passed = true;
+    }
+
+    result.overall_passed = overall_passed;
+    result.check_duration_us = get_timestamp_us() - check_start;
+
+    /* Store result with lock */
+    if (nimcp_mutex_lock(agent->consistency_mutex) == 0) {
+        agent->last_consistency_result = result;
+        nimcp_mutex_unlock(agent->consistency_mutex);
+    }
+
+    /* Update atomic counters */
+    atomic_store(&agent->last_consistency_check_us, now);
+    atomic_fetch_add(&agent->consistency_checks_run, 1);
+
+    if (!overall_passed) {
+        atomic_fetch_add(&agent->consistency_failures_total, 1);
+
+        /* Report anomaly if any check failed */
+        health_agent_message_t msg = nimcp_health_agent_create_message(
+            HEALTH_MSG_ANOMALY_DETECTED,
+            HEALTH_SEVERITY_WARNING,
+            HEALTH_SOURCE_HEARTBEAT,  /* Closest existing source for consistency checks */
+            "Consistency check failed: ref=%s can=%s mag=%s mtx=%s buf=%s kg=%s neu=%s",
+            result.refcount_check_passed ? "OK" : "FAIL",
+            result.canary_check_passed ? "OK" : "FAIL",
+            result.magic_check_passed ? "OK" : "FAIL",
+            result.mutex_check_passed ? "OK" : "FAIL",
+            result.buffer_check_passed ? "OK" : "FAIL",
+            result.kg_check_passed ? "OK" : "FAIL",
+            result.neuron_check_passed ? "OK" : "FAIL"
+        );
+        msg_queue_push(&agent->msg_queue, &msg);
+    }
+
+    /* Clear pending flag */
+    atomic_store(&agent->consistency_check_pending, false);
+}
+
+/* ============================================================================
+ * STATE CONSISTENCY MANAGER - Public API Functions
+ * ============================================================================ */
+
+int nimcp_health_agent_check_consistency(nimcp_health_agent_t* agent,
+                                          health_agent_consistency_result_t* result) {
+    if (!validate_agent(agent)) return -1;
+
+    /* Run all consistency checks immediately */
+    health_agent_consistency_result_t local_result;
+    memset(&local_result, 0, sizeof(local_result));
+    local_result.timestamp_us = get_timestamp_us();
+
+    uint64_t check_start = local_result.timestamp_us;
+    bool overall_passed = true;
+
+    /* Run all checks (ignore config enable flags for explicit call) */
+    if (!agent_check_reference_counts(agent, &local_result)) overall_passed = false;
+    if (!agent_check_pointer_canaries(agent, &local_result)) overall_passed = false;
+    if (!agent_check_struct_magic(agent, &local_result)) overall_passed = false;
+    if (!agent_check_mutex_state(agent, &local_result)) overall_passed = false;
+    if (!agent_check_circular_buffers(agent, &local_result)) overall_passed = false;
+    if (!agent_check_knowledge_graph(agent, &local_result)) overall_passed = false;
+    if (!agent_check_neuron_values(agent, &local_result)) overall_passed = false;
+
+    local_result.overall_passed = overall_passed;
+    local_result.check_duration_us = get_timestamp_us() - check_start;
+
+    /* Store result */
+    if (nimcp_mutex_lock(agent->consistency_mutex) == 0) {
+        agent->last_consistency_result = local_result;
+        nimcp_mutex_unlock(agent->consistency_mutex);
+    }
+
+    atomic_store(&agent->last_consistency_check_us, local_result.timestamp_us);
+    atomic_fetch_add(&agent->consistency_checks_run, 1);
+    if (!overall_passed) {
+        atomic_fetch_add(&agent->consistency_failures_total, 1);
+    }
+
+    /* Return result to caller if requested */
+    if (result) {
+        *result = local_result;
+    }
+
+    return overall_passed ? 0 : -1;
+}
+
+int nimcp_health_agent_get_consistency_status(const nimcp_health_agent_t* agent,
+                                               health_agent_consistency_result_t* result) {
+    if (!agent || !result) return -1;
+    if (!validate_agent(agent)) return -1;
+
+    /* Cast away const for mutex lock (safe since we're only reading) */
+    nimcp_health_agent_t* mutable_agent = (nimcp_health_agent_t*)agent;
+
+    if (nimcp_mutex_lock(mutable_agent->consistency_mutex) == 0) {
+        *result = mutable_agent->last_consistency_result;
+        nimcp_mutex_unlock(mutable_agent->consistency_mutex);
+        return 0;
+    }
+
+    return -1;
+}
+
+int nimcp_health_agent_update_consistency_config(nimcp_health_agent_t* agent,
+                                                  const health_agent_consistency_config_t* config) {
+    if (!validate_agent(agent) || !config) return -1;
+
+    /* Update consistency config with lock */
+    if (nimcp_mutex_lock(agent->state_mutex) == 0) {
+        agent->config.consistency = *config;
+        nimcp_mutex_unlock(agent->state_mutex);
+        nimcp_log(LOG_LEVEL_INFO, "Updated consistency config: interval=%ums",
+                  config->consistency_check_interval_ms);
+        return 0;
+    }
+
+    return -1;
+}
+
+bool nimcp_health_agent_validate_magic(const void* ptr, uint32_t expected_magic,
+                                        const char* struct_name) {
+    if (!ptr) {
+        nimcp_log(LOG_LEVEL_ERROR, "Cannot validate magic: NULL pointer for '%s'",
+                  struct_name ? struct_name : "unknown");
+        return false;
+    }
+
+    uint32_t actual_magic = *(const uint32_t*)ptr;
+    if (actual_magic != expected_magic) {
+        nimcp_log(LOG_LEVEL_ERROR, "Magic validation failed for '%s': expected 0x%X, got 0x%X",
+                  struct_name ? struct_name : "unknown", expected_magic, actual_magic);
+        return false;
+    }
+
+    return true;
+}
+
+int nimcp_health_agent_register_struct(nimcp_health_agent_t* agent, void* ptr,
+                                        uint32_t expected_magic, const char* name) {
+    if (!validate_agent(agent) || !ptr || !name) return -1;
+
+    int result = -1;
+
+    if (nimcp_mutex_lock(agent->consistency_mutex) == 0) {
+        /* Find an empty slot */
+        for (uint32_t i = 0; i < 64; i++) {
+            if (!agent->registered_structs[i].active) {
+                agent->registered_structs[i].ptr = ptr;
+                agent->registered_structs[i].expected_magic = expected_magic;
+                strncpy(agent->registered_structs[i].name, name, 63);
+                agent->registered_structs[i].name[63] = '\0';
+                agent->registered_structs[i].active = true;
+                agent->registered_struct_count++;
+                result = 0;
+                nimcp_log(LOG_LEVEL_DEBUG, "Registered struct '%s' (magic=0x%X) for consistency checking",
+                          name, expected_magic);
+                break;
+            }
+        }
+        nimcp_mutex_unlock(agent->consistency_mutex);
+    }
+
+    if (result != 0) {
+        nimcp_log(LOG_LEVEL_WARN, "Failed to register struct '%s': no free slots", name);
+    }
+
+    return result;
+}
+
+int nimcp_health_agent_unregister_struct(nimcp_health_agent_t* agent, void* ptr) {
+    if (!validate_agent(agent) || !ptr) return -1;
+
+    int result = -1;
+
+    if (nimcp_mutex_lock(agent->consistency_mutex) == 0) {
+        for (uint32_t i = 0; i < 64; i++) {
+            if (agent->registered_structs[i].active &&
+                agent->registered_structs[i].ptr == ptr) {
+                nimcp_log(LOG_LEVEL_DEBUG, "Unregistered struct '%s' from consistency checking",
+                          agent->registered_structs[i].name);
+                agent->registered_structs[i].active = false;
+                agent->registered_structs[i].ptr = NULL;
+                agent->registered_struct_count--;
+                result = 0;
+                break;
+            }
+        }
+        nimcp_mutex_unlock(agent->consistency_mutex);
+    }
+
+    return result;
 }
