@@ -62,3 +62,7 @@ set_tests_properties(unit_utils_fault_tolerance_test_cognitive_recovery PROPERTI
 # Health Agent Neural Integration Tests (Phase 5.5: SNN/LNN Health Monitoring)
 add_fault_tolerance_test(test_health_agent_neural_functions)
 set_tests_properties(unit_utils_fault_tolerance_test_health_agent_neural_functions PROPERTIES TIMEOUT 120)
+
+# Health Agent Behavioral Integration Tests (Phase 5.6: Dragonfly/Portia Health Monitoring)
+add_fault_tolerance_test(test_health_agent_behavioral_functions)
+set_tests_properties(unit_utils_fault_tolerance_test_health_agent_behavioral_functions PROPERTIES TIMEOUT 120)

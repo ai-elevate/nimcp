@@ -26,13 +26,14 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include "dragonfly/nimcp_dragonfly.h"
+#include "security/nimcp_blood_brain_barrier.h"
 
 //=============================================================================
 // Forward Declarations
 //=============================================================================
 
 typedef struct dragonfly_immune_bridge_s* dragonfly_immune_bridge_t;
-typedef struct bbb_system_s* bbb_system_t;
+/* Note: bbb_system_t is already defined in nimcp_blood_brain_barrier.h */
 
 //=============================================================================
 // Type Definitions

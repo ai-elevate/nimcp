@@ -2201,6 +2201,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_sensor_fusion.c   # Multi-sensor fusion
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_swarm_bridge.c    # Portia-Swarm integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_tier_switch.c     # Tier switching
+    ${CMAKE_CURRENT_SOURCE_DIR}/../portia/nimcp_portia_monitoring.c      # Platform monitoring (thermal, power, CPU)
 
     # Dragonfly Interception Module - Bio-inspired target tracking and interception
     # Based on dragonfly neuroscience: 95% prey interception success

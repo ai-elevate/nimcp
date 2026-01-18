@@ -26,6 +26,10 @@
 #include "swarm/nimcp_swarm_immune.h"
 #include "swarm/nimcp_swarm_memory.h"
 
+/* Phase 5.6: Behavioral module (Dragonfly/Portia) immune integration */
+#include "dragonfly/nimcp_dragonfly_immune_bridge.h"
+#include "portia/nimcp_portia_monitoring.h"
+
 /* Phase 5.5: Neural module (SNN/LNN) immune integration */
 #include "snn/nimcp_snn_immune.h"
 #include "lnn/nimcp_lnn_immune.h"
@@ -49,9 +53,16 @@
 /* Phase 4: Additional fault tolerance includes */
 #include "core/brain/nimcp_kg_gc.h"
 #include "utils/fault_tolerance/nimcp_runtime_adaptation.h"
-/* Note: failure_prediction.h and metacognition.h have type conflicts with other headers.
- * The health agent header already has forward declarations for failure_predictor_t
- * and metacognition_t, so we use simplified stubs without the full APIs. */
+
+/* Phase 5: Cognitive module integration for real API calls
+ * Note: Cannot include full headers due to type conflicts (metric_type_t, cognitive_state_t)
+ * Forward-declare the specific functions we need from the cognitive modules */
+
+/* Forward declarations for failure_prediction.h functions */
+extern uint32_t failure_predictor_get_prediction_count(failure_predictor_t* predictor);
+
+/* Forward declarations for metacognition.h functions */
+extern bool metacognition_is_degraded(metacognition_t* meta, float threshold);
 
 #include <stdlib.h>
 #include <string.h>
@@ -335,6 +346,36 @@ struct nimcp_health_agent {
     _Atomic uint64_t dragonfly_interceptions;
     _Atomic uint32_t dragonfly_current_target;
 
+    /* =========== BEHAVIORAL MODULE (DRAGONFLY/PORTIA) IMMUNE INTEGRATION (Phase 5.6) =========== */
+
+    /* Dragonfly immune bridge - hunting behavior health monitoring */
+    dragonfly_immune_bridge_t dragonfly_immune;
+    health_agent_dragonfly_immune_config_t dragonfly_immune_config;
+    _Atomic uint64_t dragonfly_immune_checks_run;
+    _Atomic uint64_t dragonfly_stress_events;
+    _Atomic uint64_t dragonfly_injury_events;
+    _Atomic uint64_t dragonfly_rest_triggers;
+    uint64_t last_dragonfly_immune_check_us;
+
+    /* Portia monitor - platform resource health monitoring */
+    portia_monitor_t portia_monitor;
+    health_agent_portia_monitor_config_t portia_monitor_config;
+    _Atomic uint64_t portia_monitor_checks_run;
+    _Atomic uint64_t portia_thermal_warnings;
+    _Atomic uint64_t portia_power_warnings;
+    _Atomic uint64_t portia_coordination_actions;
+    uint64_t last_portia_monitor_check_us;
+
+    /* Combined behavioral health metrics (cached for fast access) */
+    behavioral_health_metrics_t behavioral_metrics;
+    nimcp_mutex_t* behavioral_mutex;     /**< For behavioral metrics access */
+
+    /* Cross-module coordination state */
+    _Atomic bool thermal_abort_active;
+    _Atomic bool power_conservation_active;
+    _Atomic bool rest_period_active;
+    _Atomic uint64_t last_coordination_us;
+
     /* Swarm immune system */
     NimcpSwarmImmuneSystem* swarm_immune;
     health_agent_swarm_immune_config_t swarm_immune_config;
@@ -405,6 +446,11 @@ static void agent_run_neural_check(nimcp_health_agent_t* agent);
 static void agent_check_snn_health(nimcp_health_agent_t* agent);
 static void agent_check_lnn_health(nimcp_health_agent_t* agent);
 static void agent_update_neural_metrics(nimcp_health_agent_t* agent);
+static void agent_run_behavioral_check(nimcp_health_agent_t* agent);
+static void agent_check_dragonfly_immune(nimcp_health_agent_t* agent);
+static void agent_check_portia_monitor(nimcp_health_agent_t* agent);
+static void agent_update_behavioral_metrics(nimcp_health_agent_t* agent);
+static void agent_run_cross_module_coordination(nimcp_health_agent_t* agent);
 static bool agent_check_ethics_permission(nimcp_health_agent_t* agent,
                                            const health_agent_message_t* msg,
                                            health_agent_recovery_t action);
@@ -876,6 +922,27 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
         return NULL;
     }
 
+    /* Initialize behavioral module mutex (Phase 5.6: Dragonfly/Portia health monitoring) */
+    agent->behavioral_mutex = nimcp_mutex_create(NULL);
+    if (!agent->behavioral_mutex) {
+        nimcp_log(LOG_LEVEL_ERROR, "Failed to create behavioral mutex");
+        nimcp_mutex_destroy(agent->neural_mutex);
+        nimcp_free(agent->neural_mutex);
+        nimcp_mutex_destroy(agent->modules_mutex);
+        nimcp_free(agent->modules_mutex);
+        nimcp_mutex_destroy(agent->cognitive_mutex);
+        nimcp_free(agent->cognitive_mutex);
+        nimcp_cond_destroy(agent->stop_cond);
+        nimcp_free(agent->stop_cond);
+        nimcp_mutex_destroy(agent->stats_mutex);
+        nimcp_free(agent->stats_mutex);
+        nimcp_mutex_destroy(agent->state_mutex);
+        nimcp_free(agent->state_mutex);
+        msg_queue_destroy(&agent->msg_queue);
+        nimcp_free(agent);
+        return NULL;
+    }
+
     /* Initialize atomic state */
     atomic_init(&agent->running, false);
     atomic_init(&agent->stop_requested, false);
@@ -963,6 +1030,28 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
     atomic_init(&agent->dragonfly_pursuits, 0);
     atomic_init(&agent->dragonfly_interceptions, 0);
     atomic_init(&agent->dragonfly_current_target, 0);
+
+    /* Initialize Behavioral Module (Dragonfly/Portia) immune integration (Phase 5.6) */
+    agent->dragonfly_immune = NULL;
+    agent->portia_monitor = NULL;
+    atomic_init(&agent->dragonfly_immune_checks_run, 0);
+    atomic_init(&agent->dragonfly_stress_events, 0);
+    atomic_init(&agent->dragonfly_injury_events, 0);
+    atomic_init(&agent->dragonfly_rest_triggers, 0);
+    agent->last_dragonfly_immune_check_us = 0;
+    atomic_init(&agent->portia_monitor_checks_run, 0);
+    atomic_init(&agent->portia_thermal_warnings, 0);
+    atomic_init(&agent->portia_power_warnings, 0);
+    atomic_init(&agent->portia_coordination_actions, 0);
+    agent->last_portia_monitor_check_us = 0;
+    memset(&agent->dragonfly_immune_config, 0, sizeof(agent->dragonfly_immune_config));
+    memset(&agent->portia_monitor_config, 0, sizeof(agent->portia_monitor_config));
+    memset(&agent->behavioral_metrics, 0, sizeof(agent->behavioral_metrics));
+    atomic_init(&agent->thermal_abort_active, false);
+    atomic_init(&agent->power_conservation_active, false);
+    atomic_init(&agent->rest_period_active, false);
+    atomic_init(&agent->last_coordination_us, 0);
+
     atomic_init(&agent->swarm_threats_detected, 0);
     atomic_init(&agent->swarm_responses_generated, 0);
     atomic_init(&agent->swarm_coordinated_responses, 0);
@@ -1097,6 +1186,13 @@ void nimcp_health_agent_destroy(nimcp_health_agent_t* agent) {
         nimcp_mutex_destroy(agent->neural_mutex);
         nimcp_free(agent->neural_mutex);
         agent->neural_mutex = NULL;
+    }
+
+    /* Destroy behavioral mutex (Phase 5.6: Dragonfly/Portia health monitoring) */
+    if (agent->behavioral_mutex) {
+        nimcp_mutex_destroy(agent->behavioral_mutex);
+        nimcp_free(agent->behavioral_mutex);
+        agent->behavioral_mutex = NULL;
     }
 
     /* Destroy consistency mutex (Phase 3) */
@@ -1385,6 +1481,16 @@ static void* agent_thread_main(void* arg) {
                     last_neural_us = now_us;
                     agent_run_neural_check(agent);
                 }
+            }
+
+            /* ========== BEHAVIORAL MODULE (DRAGONFLY/PORTIA) HEALTH CHECK (Phase 5.6) ========== */
+
+            /* Run behavioral module health checks if connected OR configured
+             * This ensures coordination flags are updated even with NULL bridges */
+            if (agent->dragonfly_immune || agent->portia_monitor ||
+                agent->dragonfly_immune_config.enable_dragonfly_immune ||
+                agent->portia_monitor_config.enable_portia_monitor) {
+                agent_run_behavioral_check(agent);
             }
 
             /* Auto-trigger GC if memory pressure detected (USE the GC) */
@@ -2221,6 +2327,200 @@ float nimcp_health_agent_get_neural_health_score(const nimcp_health_agent_t* age
     }
 
     return agent->neural_metrics.neural_health_score;
+}
+
+/* ============================================================================
+ * Behavioral Module (Dragonfly/Portia) Connection API (Phase 5.6)
+ * ============================================================================ */
+
+int nimcp_health_agent_connect_dragonfly_immune(
+    nimcp_health_agent_t* agent,
+    dragonfly_immune_bridge_t bridge,
+    const health_agent_dragonfly_immune_config_t* config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+    agent->dragonfly_immune = bridge;
+
+    if (config) {
+        agent->dragonfly_immune_config = *config;
+    } else {
+        /* Default configuration */
+        agent->dragonfly_immune_config.enable_dragonfly_immune = true;
+        agent->dragonfly_immune_config.enable_stress_monitoring = true;
+        agent->dragonfly_immune_config.enable_health_status_tracking = true;
+        agent->dragonfly_immune_config.enable_injury_detection = true;
+        agent->dragonfly_immune_config.enable_fatigue_tracking = true;
+        agent->dragonfly_immune_config.enable_cross_coordination = true;
+        agent->dragonfly_immune_config.stress_warning_threshold = 0.5f;
+        agent->dragonfly_immune_config.stress_critical_threshold = 0.8f;
+        agent->dragonfly_immune_config.fatigue_warning_threshold = 0.6f;
+        agent->dragonfly_immune_config.fatigue_critical_threshold = 0.9f;
+        agent->dragonfly_immune_config.abort_hunt_on_thermal = true;
+        agent->dragonfly_immune_config.abort_hunt_on_battery_low = true;
+        agent->dragonfly_immune_config.reduce_intensity_on_stress = true;
+        agent->dragonfly_immune_config.enable_auto_rest = true;
+        agent->dragonfly_immune_config.rest_trigger_fatigue = 0.7f;
+        agent->dragonfly_immune_config.min_rest_duration_ms = 5000;
+        agent->dragonfly_immune_config.check_interval_ms = 100;
+    }
+
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    /* Update behavioral metrics */
+    nimcp_mutex_lock(agent->behavioral_mutex);
+    agent->behavioral_metrics.dragonfly_connected = (bridge != NULL);
+    agent->behavioral_metrics.dragonfly_healthy = true;
+    atomic_store(&agent->dragonfly_immune_checks_run, 0);
+    nimcp_mutex_unlock(agent->behavioral_mutex);
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected dragonfly immune bridge%s",
+              agent->config.agent_name, bridge ? "" : " (NULL bridge)");
+
+    return 0;
+}
+
+int nimcp_health_agent_connect_portia_monitor(
+    nimcp_health_agent_t* agent,
+    portia_monitor_t monitor,
+    const health_agent_portia_monitor_config_t* config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+    agent->portia_monitor = monitor;
+
+    if (config) {
+        agent->portia_monitor_config = *config;
+    } else {
+        /* Default configuration */
+        agent->portia_monitor_config.enable_portia_monitor = true;
+        agent->portia_monitor_config.enable_thermal_monitoring = true;
+        agent->portia_monitor_config.enable_power_monitoring = true;
+        agent->portia_monitor_config.enable_cpu_load_monitoring = true;
+        agent->portia_monitor_config.enable_degradation_tracking = true;
+        agent->portia_monitor_config.enable_cross_coordination = true;
+        agent->portia_monitor_config.thermal_warning_temp_c = 70.0f;
+        agent->portia_monitor_config.thermal_critical_temp_c = 85.0f;
+        agent->portia_monitor_config.throttle_on_warm = true;
+        agent->portia_monitor_config.emergency_on_critical = true;
+        agent->portia_monitor_config.battery_warning_pct = 20.0f;
+        agent->portia_monitor_config.battery_critical_pct = 5.0f;
+        agent->portia_monitor_config.conservation_on_battery = true;
+        agent->portia_monitor_config.hibernate_on_critical = false;
+        agent->portia_monitor_config.cpu_warning_pct = 80.0f;
+        agent->portia_monitor_config.cpu_critical_pct = 95.0f;
+        agent->portia_monitor_config.reduce_load_on_warning = true;
+        agent->portia_monitor_config.notify_dragonfly_on_thermal = true;
+        agent->portia_monitor_config.notify_neural_on_power = true;
+        agent->portia_monitor_config.trigger_checkpoint_on_power_loss = true;
+        agent->portia_monitor_config.check_interval_ms = 500;
+    }
+
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    /* Update behavioral metrics */
+    nimcp_mutex_lock(agent->behavioral_mutex);
+    agent->behavioral_metrics.portia_connected = (monitor != NULL);
+    agent->behavioral_metrics.portia_healthy = true;
+    atomic_store(&agent->portia_monitor_checks_run, 0);
+    nimcp_mutex_unlock(agent->behavioral_mutex);
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected portia monitor%s",
+              agent->config.agent_name, monitor ? "" : " (NULL monitor)");
+
+    return 0;
+}
+
+int nimcp_health_agent_get_behavioral_metrics(
+    const nimcp_health_agent_t* agent,
+    behavioral_health_metrics_t* metrics
+) {
+    if (!validate_agent(agent)) return -1;
+    if (!metrics) return -1;
+
+    nimcp_mutex_lock(agent->behavioral_mutex);
+    *metrics = agent->behavioral_metrics;
+    nimcp_mutex_unlock(agent->behavioral_mutex);
+
+    return 0;
+}
+
+int nimcp_health_agent_configure_behavioral(
+    nimcp_health_agent_t* agent,
+    const health_agent_dragonfly_immune_config_t* dragonfly_config,
+    const health_agent_portia_monitor_config_t* portia_config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+
+    if (dragonfly_config) {
+        agent->dragonfly_immune_config = *dragonfly_config;
+    }
+    if (portia_config) {
+        agent->portia_monitor_config = *portia_config;
+    }
+
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    nimcp_log(LOG_LEVEL_DEBUG, "Agent '%s' behavioral configuration updated",
+              agent->config.agent_name);
+    return 0;
+}
+
+bool nimcp_health_agent_is_behavioral_unhealthy(const nimcp_health_agent_t* agent) {
+    if (!validate_agent(agent)) return false;
+
+    return agent->behavioral_metrics.any_behavioral_unhealthy;
+}
+
+float nimcp_health_agent_get_behavioral_health_score(const nimcp_health_agent_t* agent) {
+    /* Return perfect health (safe default) if agent is NULL or invalid */
+    if (!validate_agent(agent)) return 100.0f;
+
+    /* No behavioral modules connected - perfect health (nothing to degrade) */
+    if (!agent->behavioral_metrics.dragonfly_connected &&
+        !agent->behavioral_metrics.portia_connected) {
+        return 100.0f;
+    }
+
+    return agent->behavioral_metrics.behavioral_health_score;
+}
+
+int nimcp_health_agent_request_behavioral_coordination(
+    nimcp_health_agent_t* agent,
+    const char* action,
+    const char* reason
+) {
+    if (!validate_agent(agent)) return -1;
+    if (!action) return -1;
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' behavioral coordination request: %s - %s",
+              agent->config.agent_name, action, reason ? reason : "no reason");
+
+    uint64_t now_us = get_timestamp_us();
+    atomic_store(&agent->last_coordination_us, now_us);
+    atomic_fetch_add(&agent->portia_coordination_actions, 1);
+
+    /* Handle specific actions */
+    if (strcmp(action, "abort_hunt") == 0) {
+        atomic_store(&agent->thermal_abort_active, true);
+        nimcp_log(LOG_LEVEL_WARN, "Agent '%s' activated thermal abort for hunting",
+                  agent->config.agent_name);
+    } else if (strcmp(action, "conservation_mode") == 0) {
+        atomic_store(&agent->power_conservation_active, true);
+        nimcp_log(LOG_LEVEL_WARN, "Agent '%s' activated power conservation mode",
+                  agent->config.agent_name);
+    } else if (strcmp(action, "rest_period") == 0) {
+        atomic_store(&agent->rest_period_active, true);
+        atomic_fetch_add(&agent->dragonfly_rest_triggers, 1);
+        nimcp_log(LOG_LEVEL_INFO, "Agent '%s' activated rest period",
+                  agent->config.agent_name);
+    }
+
+    return 0;
 }
 
 /* ============================================================================
@@ -3222,12 +3522,25 @@ static int hypo_drive_event_callback(const void* event, void* user_data) {
 static void agent_run_failure_prediction(nimcp_health_agent_t* agent) {
     if (!agent || !agent->failure_predictor) return;
 
-    /* Query failure predictor - using simplified stub since full API has header conflicts */
-    /* The failure_predictor_t is a forward-declared opaque type */
-    /* For now, just track that prediction was attempted */
-    if (agent->failure_predictor) {
-        /* Prediction system is connected and active */
-        nimcp_log(LOG_LEVEL_DEBUG, "Failure predictor active");
+    /* Query failure predictor for current prediction count
+     * This indicates if there are any failures predicted */
+    uint32_t prediction_count = failure_predictor_get_prediction_count(agent->failure_predictor);
+
+    if (prediction_count > 0) {
+        /* There are active failure predictions - log and report */
+        nimcp_log(LOG_LEVEL_WARN, "Failure predictor has %u active predictions", prediction_count);
+
+        /* Report to immune system if enabled */
+        if (agent->prediction_config.enable_preventive_action) {
+            health_agent_message_t msg = nimcp_health_agent_create_message(
+                HEALTH_MSG_ANOMALY_DETECTED,
+                HEALTH_SEVERITY_WARNING,
+                HEALTH_SOURCE_NEURAL,
+                "Failure predictor has %u active predictions", prediction_count
+            );
+            msg.suggested_action = HEALTH_RECOVERY_REDUCE_LOAD;
+            nimcp_health_agent_report_anomaly(agent, &msg);
+        }
     }
 
     atomic_fetch_add(&agent->predictions_made, 1);
@@ -3236,11 +3549,29 @@ static void agent_run_failure_prediction(nimcp_health_agent_t* agent) {
 static void agent_run_metacognition_check(nimcp_health_agent_t* agent) {
     if (!agent || !agent->metacognition) return;
 
-    /* Run metacognition self-check - using simplified stub since full API has header conflicts */
-    /* The metacognition_t is a forward-declared opaque type */
-    /* For now, just track that metacognition check was attempted */
-    if (agent->metacognition) {
-        nimcp_log(LOG_LEVEL_DEBUG, "Metacognition system active");
+    /* Check if cognitive performance is degraded using real metacognition API
+     * Default threshold is 0.7 (70% of baseline) */
+    float threshold = agent->metacog_config.degradation_threshold;
+    if (threshold <= 0.0f || threshold > 1.0f) {
+        threshold = 0.7f;  /* Use default if invalid */
+    }
+
+    bool is_degraded = metacognition_is_degraded(agent->metacognition, threshold);
+
+    if (is_degraded) {
+        /* Cognitive performance is degraded - log and report */
+        nimcp_log(LOG_LEVEL_WARN, "Metacognition: cognitive performance degraded (threshold: %.2f)",
+                  threshold);
+
+        /* Report to health system */
+        health_agent_message_t msg = nimcp_health_agent_create_message(
+            HEALTH_MSG_ANOMALY_DETECTED,
+            HEALTH_SEVERITY_WARNING,
+            HEALTH_SOURCE_NEURAL,
+            "Metacognition: cognitive performance below %.0f%% of baseline", threshold * 100.0f
+        );
+        msg.suggested_action = HEALTH_RECOVERY_REDUCE_LOAD;
+        nimcp_health_agent_report_anomaly(agent, &msg);
     }
 
     atomic_fetch_add(&agent->self_diagnoses, 1);
@@ -3578,6 +3909,422 @@ static void agent_update_neural_metrics(nimcp_health_agent_t* agent) {
     agent->neural_metrics.last_check_time_us = get_timestamp_us();
 
     nimcp_mutex_unlock(agent->neural_mutex);
+}
+
+/* ============================================================================
+ * Behavioral Module (Dragonfly/Portia) Health Check Functions (Phase 5.6)
+ * ============================================================================ */
+
+/**
+ * @brief Run all behavioral module health checks
+ */
+static void agent_run_behavioral_check(nimcp_health_agent_t* agent) {
+    if (!agent) return;
+
+    /* Check dragonfly immune if connected */
+    if (agent->dragonfly_immune && agent->dragonfly_immune_config.enable_dragonfly_immune) {
+        agent_check_dragonfly_immune(agent);
+    }
+
+    /* Check portia monitor if connected */
+    if (agent->portia_monitor && agent->portia_monitor_config.enable_portia_monitor) {
+        agent_check_portia_monitor(agent);
+    }
+
+    /* Update aggregated behavioral metrics */
+    agent_update_behavioral_metrics(agent);
+
+    /* Run cross-module coordination if enabled AND at least one bridge is connected.
+     * We only run auto-coordination when we have actual sensor data from bridges.
+     * When bridges are NULL (using stub data), we don't want to auto-reset
+     * coordination flags that were set manually via request_behavioral_coordination.
+     * This prevents stub data (thermal_state=0) from triggering resets of
+     * manually-set flags during testing or lazy connection scenarios. */
+    if ((agent->dragonfly_immune_config.enable_cross_coordination ||
+         agent->portia_monitor_config.enable_cross_coordination) &&
+        (agent->dragonfly_immune || agent->portia_monitor)) {
+        agent_run_cross_module_coordination(agent);
+    }
+}
+
+/**
+ * @brief Check dragonfly immune bridge health
+ *
+ * WHAT: Query dragonfly immune bridge for hunting behavior health status
+ * WHY:  Enable health-aware hunting behavior and stress management
+ * HOW:  Call dragonfly_immune_get_state() to get real health data
+ */
+static void agent_check_dragonfly_immune(nimcp_health_agent_t* agent) {
+    if (!agent || !agent->dragonfly_immune) return;
+
+    uint64_t now = get_timestamp_us();
+    uint64_t interval_us = (uint64_t)agent->dragonfly_immune_config.check_interval_ms * 1000;
+
+    /* Check if enough time has passed since last check */
+    if (now - agent->last_dragonfly_immune_check_us < interval_us) {
+        return;
+    }
+    agent->last_dragonfly_immune_check_us = now;
+    atomic_fetch_add(&agent->dragonfly_immune_checks_run, 1);
+
+    /* Get dragonfly immune state from the actual bridge */
+    dragonfly_immune_state_t state;
+    int result = dragonfly_immune_get_state(agent->dragonfly_immune, &state);
+
+    nimcp_mutex_lock(agent->behavioral_mutex);
+
+    if (result == 0) {
+        /* Successfully retrieved state - update metrics with real data */
+        agent->behavioral_metrics.dragonfly_healthy =
+            (state.health_status == HEALTH_OPTIMAL || state.health_status == HEALTH_MILD_IMPAIRMENT);
+        agent->behavioral_metrics.health_status = (uint8_t)state.health_status;
+        agent->behavioral_metrics.stress_level = (uint8_t)state.stress_level;
+
+        /* Copy performance modifiers from modulation */
+        agent->behavioral_metrics.speed_modifier = state.modulation.speed_modifier;
+        agent->behavioral_metrics.accuracy_modifier = state.modulation.accuracy_modifier;
+        agent->behavioral_metrics.endurance_modifier = state.modulation.endurance_modifier;
+        agent->behavioral_metrics.hunting_recommended = state.modulation.hunting_recommended;
+        agent->behavioral_metrics.rest_urgency = state.modulation.rest_urgency;
+
+        /* Copy stress report data */
+        agent->behavioral_metrics.fatigue_level = state.stress_report.fatigue_level;
+        agent->behavioral_metrics.frustration_level = state.stress_report.frustration_level;
+        agent->behavioral_metrics.energy_reserves = state.stress_report.energy_reserves;
+        agent->behavioral_metrics.consecutive_failures = state.stress_report.consecutive_failures;
+
+        /* Copy injury state */
+        agent->behavioral_metrics.is_injured = state.is_injured;
+    } else {
+        /* Failed to get state - mark as unhealthy but don't crash */
+        nimcp_log(LOG_LEVEL_WARN, "Failed to get dragonfly immune state: %d", result);
+        agent->behavioral_metrics.dragonfly_healthy = false;
+    }
+
+    nimcp_mutex_unlock(agent->behavioral_mutex);
+
+    /* Check for stress/injury events and report if needed */
+    float fatigue = agent->behavioral_metrics.fatigue_level;
+    if (fatigue >= agent->dragonfly_immune_config.fatigue_warning_threshold) {
+        atomic_fetch_add(&agent->dragonfly_stress_events, 1);
+
+        if (fatigue >= agent->dragonfly_immune_config.fatigue_critical_threshold) {
+            /* Report critical fatigue */
+            health_agent_message_t msg = nimcp_health_agent_create_message(
+                HEALTH_MSG_ANOMALY_DETECTED,
+                HEALTH_SEVERITY_WARNING,
+                HEALTH_SOURCE_NEURAL,
+                "Dragonfly immune: critical fatigue level (%.2f)", fatigue
+            );
+            msg.suggested_action = HEALTH_RECOVERY_REDUCE_LOAD;
+            nimcp_health_agent_report_anomaly(agent, &msg);
+        }
+    }
+
+    /* Check for auto-rest trigger */
+    if (agent->dragonfly_immune_config.enable_auto_rest &&
+        fatigue >= agent->dragonfly_immune_config.rest_trigger_fatigue) {
+        nimcp_health_agent_request_behavioral_coordination(agent, "rest_period",
+            "Fatigue threshold exceeded");
+    }
+
+    /* Report injuries to immune system */
+    if (agent->behavioral_metrics.is_injured &&
+        agent->dragonfly_immune_config.enable_injury_detection) {
+        health_agent_message_t msg = nimcp_health_agent_create_message(
+            HEALTH_MSG_ANOMALY_DETECTED,
+            HEALTH_SEVERITY_WARNING,
+            HEALTH_SOURCE_NEURAL,
+            "Dragonfly immune: injury detected"
+        );
+        msg.suggested_action = HEALTH_RECOVERY_REDUCE_LOAD;
+        nimcp_health_agent_report_anomaly(agent, &msg);
+    }
+}
+
+/**
+ * @brief Check portia monitor health
+ *
+ * WHAT: Query portia monitor for platform resource metrics (thermal, power, CPU)
+ * WHY:  Enable resource-aware behavior adaptation and thermal/power management
+ * HOW:  Call portia_monitor_get_* functions to get real system metrics
+ */
+static void agent_check_portia_monitor(nimcp_health_agent_t* agent) {
+    if (!agent || !agent->portia_monitor) return;
+
+    uint64_t now = get_timestamp_us();
+    uint64_t interval_us = (uint64_t)agent->portia_monitor_config.check_interval_ms * 1000;
+
+    /* Check if enough time has passed since last check */
+    if (now - agent->last_portia_monitor_check_us < interval_us) {
+        return;
+    }
+    agent->last_portia_monitor_check_us = now;
+    atomic_fetch_add(&agent->portia_monitor_checks_run, 1);
+
+    /* Get real metrics from portia monitor */
+    float cpu_temp = portia_monitor_get_cpu_temp(agent->portia_monitor);
+    float battery_pct = portia_monitor_get_battery_pct(agent->portia_monitor);
+    float cpu_load = portia_monitor_get_cpu_load(agent->portia_monitor);
+    bool on_battery = portia_monitor_on_battery(agent->portia_monitor);
+
+    nimcp_mutex_lock(agent->behavioral_mutex);
+
+    /* Update metrics with real data */
+    bool temp_valid = portia_monitor_temp_valid(cpu_temp);
+    bool battery_valid = portia_monitor_battery_valid(battery_pct);
+    bool load_valid = portia_monitor_load_valid(cpu_load);
+
+    /* Determine thermal state from temperature */
+    uint8_t thermal_state = 0;  /* NOMINAL */
+    if (temp_valid) {
+        agent->behavioral_metrics.cpu_temp_c = cpu_temp;
+        if (cpu_temp >= agent->portia_monitor_config.thermal_critical_temp_c) {
+            thermal_state = 4;  /* CRITICAL */
+        } else if (cpu_temp >= agent->portia_monitor_config.thermal_warning_temp_c) {
+            thermal_state = 2;  /* WARNING */
+        } else if (cpu_temp >= agent->portia_monitor_config.thermal_warning_temp_c - 10.0f) {
+            thermal_state = 1;  /* WARM */
+        }
+    } else {
+        agent->behavioral_metrics.cpu_temp_c = 45.0f;  /* Default normal temp */
+    }
+    agent->behavioral_metrics.thermal_state = thermal_state;
+
+    /* Determine power state from battery */
+    uint8_t power_state = 0;  /* AC */
+    if (battery_valid) {
+        agent->behavioral_metrics.battery_pct = battery_pct;
+        agent->behavioral_metrics.ac_connected = !on_battery;
+        if (on_battery) {
+            if (battery_pct <= agent->portia_monitor_config.battery_critical_pct) {
+                power_state = 4;  /* BATTERY_CRITICAL */
+            } else if (battery_pct <= agent->portia_monitor_config.battery_warning_pct) {
+                power_state = 3;  /* BATTERY_LOW */
+            } else {
+                power_state = 1;  /* BATTERY_OK */
+            }
+        }
+    } else {
+        agent->behavioral_metrics.battery_pct = 100.0f;
+        agent->behavioral_metrics.ac_connected = true;
+    }
+    agent->behavioral_metrics.power_state = power_state;
+
+    /* Update CPU load */
+    if (load_valid) {
+        agent->behavioral_metrics.cpu_load_pct = cpu_load;
+        agent->behavioral_metrics.is_throttled =
+            (cpu_load >= agent->portia_monitor_config.cpu_critical_pct);
+    } else {
+        agent->behavioral_metrics.cpu_load_pct = 20.0f;
+        agent->behavioral_metrics.is_throttled = false;
+    }
+
+    /* Determine overall health and degradation */
+    agent->behavioral_metrics.portia_healthy =
+        (thermal_state < 4) && (power_state < 4);
+
+    /* Degradation based on thermal and load */
+    uint8_t degradation = 0;
+    if (thermal_state >= 2 || agent->behavioral_metrics.cpu_load_pct >= 80.0f) {
+        degradation = 1;  /* LIGHT */
+    }
+    if (thermal_state >= 3 || agent->behavioral_metrics.cpu_load_pct >= 90.0f) {
+        degradation = 2;  /* MODERATE */
+    }
+    if (thermal_state >= 4 || agent->behavioral_metrics.is_throttled) {
+        degradation = 3;  /* SEVERE */
+    }
+    agent->behavioral_metrics.degradation_level = degradation;
+
+    nimcp_mutex_unlock(agent->behavioral_mutex);
+
+    /* Check thermal thresholds and report */
+    if (temp_valid && cpu_temp >= agent->portia_monitor_config.thermal_warning_temp_c) {
+        atomic_fetch_add(&agent->portia_thermal_warnings, 1);
+
+        if (cpu_temp >= agent->portia_monitor_config.thermal_critical_temp_c) {
+            /* Critical thermal - report and potentially abort hunt */
+            health_agent_message_t msg = nimcp_health_agent_create_message(
+                HEALTH_MSG_ANOMALY_DETECTED,
+                HEALTH_SEVERITY_ERROR,
+                HEALTH_SOURCE_IO,
+                "Portia monitor: critical CPU temperature (%.1f°C)", cpu_temp
+            );
+            msg.suggested_action = HEALTH_RECOVERY_REDUCE_LOAD;
+            nimcp_health_agent_report_anomaly(agent, &msg);
+
+            if (agent->portia_monitor_config.emergency_on_critical) {
+                nimcp_health_agent_request_behavioral_coordination(agent, "abort_hunt",
+                    "Critical thermal condition");
+            }
+        }
+    }
+
+    /* Check power thresholds */
+    if (battery_valid && on_battery &&
+        battery_pct <= agent->portia_monitor_config.battery_warning_pct) {
+        atomic_fetch_add(&agent->portia_power_warnings, 1);
+
+        if (battery_pct <= agent->portia_monitor_config.battery_critical_pct) {
+            /* Critical battery - report and activate conservation */
+            health_agent_message_t msg = nimcp_health_agent_create_message(
+                HEALTH_MSG_ANOMALY_DETECTED,
+                HEALTH_SEVERITY_WARNING,
+                HEALTH_SOURCE_IO,
+                "Portia monitor: critical battery level (%.1f%%)", battery_pct
+            );
+            msg.suggested_action = HEALTH_RECOVERY_EMERGENCY_SAVE;
+            nimcp_health_agent_report_anomaly(agent, &msg);
+
+            if (agent->portia_monitor_config.trigger_checkpoint_on_power_loss) {
+                nimcp_health_agent_request_emergency_checkpoint(agent, "Critical battery");
+            }
+
+            nimcp_health_agent_request_behavioral_coordination(agent, "conservation_mode",
+                "Critical battery level");
+        }
+    }
+
+    /* Check CPU load thresholds */
+    if (load_valid && cpu_load >= agent->portia_monitor_config.cpu_warning_pct) {
+        if (cpu_load >= agent->portia_monitor_config.cpu_critical_pct) {
+            health_agent_message_t msg = nimcp_health_agent_create_message(
+                HEALTH_MSG_ANOMALY_DETECTED,
+                HEALTH_SEVERITY_WARNING,
+                HEALTH_SOURCE_IO,
+                "Portia monitor: high CPU load (%.1f%%)", cpu_load
+            );
+            msg.suggested_action = HEALTH_RECOVERY_REDUCE_LOAD;
+            nimcp_health_agent_report_anomaly(agent, &msg);
+
+            if (agent->portia_monitor_config.reduce_load_on_warning) {
+                nimcp_health_agent_request_behavioral_coordination(agent, "conservation_mode",
+                    "High CPU load");
+            }
+        }
+    }
+}
+
+/**
+ * @brief Update aggregated behavioral health metrics
+ */
+static void agent_update_behavioral_metrics(nimcp_health_agent_t* agent) {
+    if (!agent) return;
+
+    nimcp_mutex_lock(agent->behavioral_mutex);
+
+    /* Compute combined health score */
+    float total_score = 0.0f;
+    int connected_modules = 0;
+
+    if (agent->behavioral_metrics.dragonfly_connected) {
+        connected_modules++;
+        /* Dragonfly health score: based on health status and fatigue */
+        if (agent->behavioral_metrics.dragonfly_healthy) {
+            /* Score based on fatigue: 100 at 0 fatigue, 50 at 1.0 fatigue */
+            total_score += 100.0f - (agent->behavioral_metrics.fatigue_level * 50.0f);
+        } else {
+            total_score += fmaxf(0.0f, 30.0f);
+        }
+    }
+
+    if (agent->behavioral_metrics.portia_connected) {
+        connected_modules++;
+        /* Portia health score: based on thermal and power states */
+        if (agent->behavioral_metrics.portia_healthy) {
+            float score = 100.0f;
+            /* Reduce score based on thermal state */
+            score -= agent->behavioral_metrics.thermal_state * 15.0f;
+            /* Reduce score based on power state (if on battery) */
+            if (!agent->behavioral_metrics.ac_connected) {
+                score -= agent->behavioral_metrics.power_state * 10.0f;
+            }
+            /* Reduce score based on degradation */
+            score -= agent->behavioral_metrics.degradation_level * 10.0f;
+            total_score += fmaxf(0.0f, score);
+        } else {
+            total_score += fmaxf(0.0f, 30.0f);
+        }
+    }
+
+    /* Compute average score */
+    if (connected_modules > 0) {
+        agent->behavioral_metrics.behavioral_health_score = total_score / (float)connected_modules;
+    } else {
+        agent->behavioral_metrics.behavioral_health_score = 100.0f;
+    }
+
+    /* Update combined flags */
+    agent->behavioral_metrics.any_behavioral_unhealthy =
+        (agent->behavioral_metrics.dragonfly_connected && !agent->behavioral_metrics.dragonfly_healthy) ||
+        (agent->behavioral_metrics.portia_connected && !agent->behavioral_metrics.portia_healthy);
+
+    /* Update coordination recommendations */
+    agent->behavioral_metrics.thermal_abort_recommended =
+        atomic_load(&agent->thermal_abort_active);
+    agent->behavioral_metrics.power_abort_recommended =
+        (agent->behavioral_metrics.power_state >= 4);  /* PORTIA_POWER_BATTERY_CRITICAL */
+    agent->behavioral_metrics.conservation_mode_active =
+        atomic_load(&agent->power_conservation_active);
+
+    agent->behavioral_metrics.last_check_time_us = get_timestamp_us();
+
+    nimcp_mutex_unlock(agent->behavioral_mutex);
+}
+
+/**
+ * @brief Run cross-module coordination logic
+ */
+static void agent_run_cross_module_coordination(nimcp_health_agent_t* agent) {
+    if (!agent) return;
+
+    /* Thermal → Dragonfly coordination */
+    if (agent->dragonfly_immune_config.abort_hunt_on_thermal &&
+        agent->behavioral_metrics.thermal_state >= 4) {  /* PORTIA_THERMAL_CRITICAL */
+        if (!atomic_load(&agent->thermal_abort_active)) {
+            atomic_store(&agent->thermal_abort_active, true);
+            atomic_fetch_add(&agent->portia_coordination_actions, 1);
+            nimcp_log(LOG_LEVEL_WARN, "Cross-module: thermal critical, aborting hunt");
+        }
+    } else if (agent->behavioral_metrics.thermal_state <= 1) {  /* NOMINAL or WARM */
+        if (atomic_load(&agent->thermal_abort_active)) {
+            atomic_store(&agent->thermal_abort_active, false);
+            nimcp_log(LOG_LEVEL_INFO, "Cross-module: thermal recovered, hunt allowed");
+        }
+    }
+
+    /* Battery → Conservation coordination */
+    if (agent->dragonfly_immune_config.abort_hunt_on_battery_low &&
+        agent->behavioral_metrics.power_state >= 4) {  /* PORTIA_POWER_BATTERY_CRITICAL */
+        if (!atomic_load(&agent->power_conservation_active)) {
+            atomic_store(&agent->power_conservation_active, true);
+            atomic_fetch_add(&agent->portia_coordination_actions, 1);
+            nimcp_log(LOG_LEVEL_WARN, "Cross-module: battery critical, conservation mode");
+        }
+    } else if (agent->behavioral_metrics.power_state <= 2 ||
+               agent->behavioral_metrics.ac_connected) {
+        if (atomic_load(&agent->power_conservation_active)) {
+            atomic_store(&agent->power_conservation_active, false);
+            nimcp_log(LOG_LEVEL_INFO, "Cross-module: power recovered, normal mode");
+        }
+    }
+
+    /* Rest period management */
+    if (atomic_load(&agent->rest_period_active)) {
+        /* Check if rest period should end */
+        uint64_t now = get_timestamp_us();
+        uint64_t rest_start = atomic_load(&agent->last_coordination_us);
+        uint64_t rest_duration_us = agent->dragonfly_immune_config.min_rest_duration_ms * 1000ULL;
+
+        if (now - rest_start >= rest_duration_us &&
+            agent->behavioral_metrics.fatigue_level <
+            agent->dragonfly_immune_config.rest_trigger_fatigue * 0.5f) {
+            atomic_store(&agent->rest_period_active, false);
+            nimcp_log(LOG_LEVEL_INFO, "Cross-module: rest period ended, fatigue recovered");
+        }
+    }
 }
 
 static bool agent_check_ethics_permission(nimcp_health_agent_t* agent,

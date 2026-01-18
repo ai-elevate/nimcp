@@ -53,3 +53,8 @@ set_tests_properties(regression_utils_fault_tolerance_test_health_agent_consiste
 add_ft_regression_test(test_health_agent_neural_regression)
 set_tests_properties(regression_utils_fault_tolerance_test_health_agent_neural_regression
                      PROPERTIES TIMEOUT 120)
+
+# Health Agent Behavioral Integration Regression Tests (Phase 5.6: Dragonfly/Portia)
+add_ft_regression_test(test_health_agent_behavioral_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_health_agent_behavioral_regression
+                     PROPERTIES TIMEOUT 120)

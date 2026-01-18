@@ -37,3 +37,7 @@ set_tests_properties(e2e_fault_tolerance_test_health_agent_active_cognitive_e2e 
 # Health Agent Neural Integration E2E Tests (Phase 5.5: SNN/LNN)
 add_e2e_fault_tolerance_test(test_health_agent_neural_e2e)
 set_tests_properties(e2e_fault_tolerance_test_health_agent_neural_e2e PROPERTIES TIMEOUT 300)
+
+# Health Agent Behavioral Integration E2E Tests (Phase 5.6: Dragonfly/Portia)
+add_e2e_fault_tolerance_test(test_health_agent_behavioral_e2e)
+set_tests_properties(e2e_fault_tolerance_test_health_agent_behavioral_e2e PROPERTIES TIMEOUT 300)

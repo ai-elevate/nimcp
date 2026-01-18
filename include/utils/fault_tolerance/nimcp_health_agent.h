@@ -948,6 +948,16 @@ typedef struct portia_context_t portia_context_t;
 typedef struct dragonfly_system_s dragonfly_system_t;
 #endif
 
+/** Dragonfly immune bridge - hunting behavior immune integration (Phase 5.6) */
+#ifndef NIMCP_DRAGONFLY_IMMUNE_BRIDGE_H
+typedef struct dragonfly_immune_bridge_s* dragonfly_immune_bridge_t;
+#endif
+
+/** Portia monitor - platform resource monitoring (Phase 5.6) */
+#ifndef NIMCP_PORTIA_MONITORING_H
+typedef struct portia_monitor_struct* portia_monitor_t;
+#endif
+
 /*
  * Swarm immune system - distributed threat detection
  * Note: NimcpSwarmImmuneSystem is defined in nimcp_swarm_immune.h as an
@@ -1236,6 +1246,59 @@ typedef struct {
 } neural_health_metrics_t;
 
 /* ============================================================================
+ * Behavioral Module (Dragonfly/Portia) Health Metrics (Phase 5.6)
+ * ============================================================================ */
+
+/**
+ * @brief Aggregated behavioral health metrics from Dragonfly and Portia
+ *
+ * WHAT: Combined health status from behavioral and resource monitoring modules
+ * WHY:  Single view of behavioral module health for the health agent
+ * HOW:  Aggregates dragonfly_immune_state_t and portia monitoring data
+ */
+typedef struct {
+    /* Dragonfly immune metrics */
+    bool dragonfly_connected;             /**< Dragonfly bridge is connected */
+    bool dragonfly_healthy;               /**< Dragonfly system is healthy */
+    uint8_t health_status;                /**< health_status_t: OPTIMAL..CRITICAL */
+    uint8_t stress_level;                 /**< stress_level_t: NONE..CHRONIC */
+    float speed_modifier;                 /**< Hunting speed capability [0,1] */
+    float accuracy_modifier;              /**< Hunting accuracy capability [0,1] */
+    float endurance_modifier;             /**< Hunting endurance capability [0,1] */
+    float fatigue_level;                  /**< Physical fatigue [0,1] */
+    float frustration_level;              /**< Frustration from failures [0,1] */
+    float energy_reserves;                /**< Remaining energy [0,1] */
+    bool is_injured;                      /**< Currently injured */
+    bool hunting_recommended;             /**< Is hunting recommended? */
+    float rest_urgency;                   /**< Urgency to rest [0,1] */
+    uint32_t consecutive_failures;        /**< Consecutive hunt failures */
+
+    /* Portia monitor metrics */
+    bool portia_connected;                /**< Portia monitor is connected */
+    bool portia_healthy;                  /**< Portia system is healthy */
+    uint8_t thermal_state;                /**< portia_thermal_state_t: NOMINAL..CRITICAL */
+    uint8_t power_state;                  /**< portia_power_state_t: AC..CRITICAL */
+    uint8_t degradation_level;            /**< portia_degradation_level_t: NONE..EMERGENCY */
+    float cpu_temp_c;                     /**< Current CPU temperature (Celsius) */
+    float battery_pct;                    /**< Current battery level (0-100%) */
+    float cpu_load_pct;                   /**< Current CPU utilization (0-100%) */
+    bool ac_connected;                    /**< AC power connected */
+    bool is_throttled;                    /**< Thermal throttling active */
+    uint32_t thermal_warnings;            /**< Thermal warning count */
+    uint32_t power_warnings;              /**< Power warning count */
+
+    /* Cross-module coordination */
+    bool thermal_abort_recommended;       /**< Recommend abort due to thermal */
+    bool power_abort_recommended;         /**< Recommend abort due to power */
+    bool conservation_mode_active;        /**< Power conservation active */
+
+    /* Combined metrics */
+    bool any_behavioral_unhealthy;        /**< Any behavioral module unhealthy */
+    float behavioral_health_score;        /**< Combined behavioral health [0-100] */
+    uint64_t last_check_time_us;          /**< Last check timestamp */
+} behavioral_health_metrics_t;
+
+/* ============================================================================
  * Portia/Dragonfly/Swarm/Memory Integration Configuration
  * ============================================================================ */
 
@@ -1267,6 +1330,84 @@ typedef struct {
     float pursuit_timeout_s;              /**< Max time to pursue issue */
     uint32_t update_rate_hz;              /**< Dragonfly update rate */
 } health_agent_dragonfly_config_t;
+
+/* ============================================================================
+ * Behavioral Module (Dragonfly/Portia) Immune Integration Configuration
+ * ============================================================================ */
+
+/**
+ * @brief Configuration for Dragonfly immune bridge integration (Phase 5.6)
+ *
+ * WHAT: Configuration for hunting behavior health monitoring
+ * WHY:  Hunting stress and health status affect overall system health
+ * HOW:  Monitor dragonfly immune bridge for stress/health changes
+ */
+typedef struct {
+    bool enable_dragonfly_immune;         /**< Enable dragonfly immune monitoring */
+    bool enable_stress_monitoring;        /**< Monitor hunting stress levels */
+    bool enable_health_status_tracking;   /**< Track health status changes */
+    bool enable_injury_detection;         /**< Detect hunting injuries */
+    bool enable_fatigue_tracking;         /**< Track fatigue levels */
+    bool enable_cross_coordination;       /**< Coordinate with other modules */
+
+    /* Stress thresholds */
+    float stress_warning_threshold;       /**< Stress level for warning (0.5) */
+    float stress_critical_threshold;      /**< Stress level for critical (0.8) */
+    float fatigue_warning_threshold;      /**< Fatigue level for warning (0.6) */
+    float fatigue_critical_threshold;     /**< Fatigue level for critical (0.9) */
+
+    /* Health coordination */
+    bool abort_hunt_on_thermal;           /**< Abort hunt if thermal critical */
+    bool abort_hunt_on_battery_low;       /**< Abort hunt if battery critical */
+    bool reduce_intensity_on_stress;      /**< Reduce hunt intensity when stressed */
+
+    /* Recovery actions */
+    bool enable_auto_rest;                /**< Trigger automatic rest periods */
+    float rest_trigger_fatigue;           /**< Fatigue level to trigger rest (0.7) */
+    uint32_t min_rest_duration_ms;        /**< Minimum rest duration (5000) */
+
+    uint32_t check_interval_ms;           /**< Health check interval (100) */
+} health_agent_dragonfly_immune_config_t;
+
+/**
+ * @brief Configuration for Portia monitor integration (Phase 5.6)
+ *
+ * WHAT: Configuration for platform resource health monitoring
+ * WHY:  Thermal, power, and resource states affect system health
+ * HOW:  Monitor portia_monitor for state changes, coordinate responses
+ */
+typedef struct {
+    bool enable_portia_monitor;           /**< Enable portia monitoring */
+    bool enable_thermal_monitoring;       /**< Monitor thermal states */
+    bool enable_power_monitoring;         /**< Monitor power/battery states */
+    bool enable_cpu_load_monitoring;      /**< Monitor CPU utilization */
+    bool enable_degradation_tracking;     /**< Track degradation levels */
+    bool enable_cross_coordination;       /**< Coordinate with other modules */
+
+    /* Thermal thresholds */
+    float thermal_warning_temp_c;         /**< Warning temperature (70.0) */
+    float thermal_critical_temp_c;        /**< Critical temperature (85.0) */
+    bool throttle_on_warm;                /**< Begin throttling on warm state */
+    bool emergency_on_critical;           /**< Emergency action on critical thermal */
+
+    /* Power thresholds */
+    float battery_warning_pct;            /**< Battery warning level (20.0) */
+    float battery_critical_pct;           /**< Battery critical level (5.0) */
+    bool conservation_on_battery;         /**< Enable conservation on battery */
+    bool hibernate_on_critical;           /**< Hibernate on critical battery */
+
+    /* CPU load thresholds */
+    float cpu_warning_pct;                /**< CPU warning utilization (80.0) */
+    float cpu_critical_pct;               /**< CPU critical utilization (95.0) */
+    bool reduce_load_on_warning;          /**< Reduce load on warning */
+
+    /* Coordination actions */
+    bool notify_dragonfly_on_thermal;     /**< Notify dragonfly of thermal issues */
+    bool notify_neural_on_power;          /**< Notify neural modules of power issues */
+    bool trigger_checkpoint_on_power_loss;/**< Checkpoint before power loss */
+
+    uint32_t check_interval_ms;           /**< Resource check interval (500) */
+} health_agent_portia_monitor_config_t;
 
 /**
  * @brief Configuration for Swarm immune integration
@@ -1874,6 +2015,160 @@ bool nimcp_health_agent_is_neural_unhealthy(const nimcp_health_agent_t* agent);
  * @return Health score [0-100], 0 if no neural modules connected
  */
 float nimcp_health_agent_get_neural_health_score(const nimcp_health_agent_t* agent);
+
+/* ============================================================================
+ * Behavioral Module (Dragonfly/Portia) Connection API (Phase 5.6)
+ * ============================================================================ */
+
+/**
+ * @brief Connect Dragonfly immune bridge for behavioral health monitoring
+ *
+ * WHAT: Enable hunting behavior health monitoring via immune bridge
+ * WHY:  Detect stress, fatigue, injury affecting hunting performance
+ * HOW:  Periodic checks via dragonfly_immune_get_state(), report to immune
+ *
+ * DRAGONFLY HEALTH STATES:
+ * - HEALTH_OPTIMAL: Full hunting capability
+ * - HEALTH_MILD_IMPAIRMENT: Slightly reduced performance
+ * - HEALTH_MODERATE_IMPAIRMENT: Significantly reduced
+ * - HEALTH_SEVERE_IMPAIRMENT: Hunting not recommended
+ * - HEALTH_CRITICAL: Must rest/recover
+ *
+ * STRESS LEVELS:
+ * - STRESS_NONE: No stress
+ * - STRESS_LOW: Mild stress (energizing)
+ * - STRESS_MODERATE: Moderate stress
+ * - STRESS_HIGH: High stress (impairing)
+ * - STRESS_CHRONIC: Chronic stress (damaging)
+ *
+ * CROSS-MODULE COORDINATION:
+ * - Thermal critical → abort hunt recommended
+ * - Battery critical → conservation mode
+ * - High fatigue → auto-rest triggered
+ *
+ * @param agent Health agent to connect
+ * @param bridge Dragonfly immune bridge (must be already initialized)
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, negative error code on failure
+ */
+int nimcp_health_agent_connect_dragonfly_immune(
+    nimcp_health_agent_t* agent,
+    dragonfly_immune_bridge_t bridge,
+    const health_agent_dragonfly_immune_config_t* config
+);
+
+/**
+ * @brief Connect Portia monitor for resource health monitoring
+ *
+ * WHAT: Enable platform resource monitoring for health decisions
+ * WHY:  Thermal, power, CPU states affect system health and behavior
+ * HOW:  Monitor portia_monitor for state changes, coordinate responses
+ *
+ * PORTIA THERMAL STATES:
+ * - PORTIA_THERMAL_NOMINAL: Normal operating temperature
+ * - PORTIA_THERMAL_WARM: Elevated but safe
+ * - PORTIA_THERMAL_HOT: Approaching throttle threshold
+ * - PORTIA_THERMAL_THROTTLED: System throttling active
+ * - PORTIA_THERMAL_CRITICAL: Critical temperature
+ *
+ * PORTIA POWER STATES:
+ * - PORTIA_POWER_AC: Plugged in, unlimited power
+ * - PORTIA_POWER_BATTERY_FULL: Battery > 80%
+ * - PORTIA_POWER_BATTERY_MID: Battery 20-80%
+ * - PORTIA_POWER_BATTERY_LOW: Battery 5-20%
+ * - PORTIA_POWER_BATTERY_CRITICAL: Battery < 5%
+ *
+ * CROSS-MODULE COORDINATION:
+ * - Thermal critical → notify dragonfly to abort hunt
+ * - Power critical → notify neural modules, trigger checkpoint
+ * - Degradation escalation → coordinate graceful reduction
+ *
+ * @param agent Health agent to connect
+ * @param monitor Portia monitor (must be already initialized)
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, negative error code on failure
+ */
+int nimcp_health_agent_connect_portia_monitor(
+    nimcp_health_agent_t* agent,
+    portia_monitor_t monitor,
+    const health_agent_portia_monitor_config_t* config
+);
+
+/**
+ * @brief Get aggregated behavioral health metrics
+ *
+ * WHAT: Retrieve combined health metrics from Dragonfly and Portia
+ * WHY:  Single view of behavioral and resource health
+ * HOW:  Queries both bridges, aggregates metrics
+ *
+ * @param agent Health agent
+ * @param metrics Output for behavioral health metrics
+ * @return 0 on success, negative error code on failure
+ */
+int nimcp_health_agent_get_behavioral_metrics(
+    const nimcp_health_agent_t* agent,
+    behavioral_health_metrics_t* metrics
+);
+
+/**
+ * @brief Configure behavioral monitoring thresholds
+ *
+ * WHAT: Update Dragonfly/Portia monitoring configuration
+ * WHY:  Adjust thresholds based on workload or requirements
+ * HOW:  Applies config to both Dragonfly and Portia monitors
+ *
+ * @param agent Health agent
+ * @param dragonfly_config Dragonfly config (NULL to skip)
+ * @param portia_config Portia config (NULL to skip)
+ * @return 0 on success, negative error code on failure
+ */
+int nimcp_health_agent_configure_behavioral(
+    nimcp_health_agent_t* agent,
+    const health_agent_dragonfly_immune_config_t* dragonfly_config,
+    const health_agent_portia_monitor_config_t* portia_config
+);
+
+/**
+ * @brief Check if any behavioral module is unhealthy
+ *
+ * WHAT: Quick check for behavioral health issues
+ * WHY:  Fast path for health decisions
+ * HOW:  Checks health status and thermal/power states
+ *
+ * @param agent Health agent
+ * @return true if any behavioral module is unhealthy
+ */
+bool nimcp_health_agent_is_behavioral_unhealthy(const nimcp_health_agent_t* agent);
+
+/**
+ * @brief Get behavioral health score (0-100)
+ *
+ * WHAT: Combined health score for behavioral modules
+ * WHY:  Single metric for behavioral health
+ * HOW:  Weighted average of Dragonfly and Portia health
+ *
+ * @param agent Health agent
+ * @return Health score [0-100], 100 if no behavioral modules connected
+ */
+float nimcp_health_agent_get_behavioral_health_score(const nimcp_health_agent_t* agent);
+
+/**
+ * @brief Request behavioral coordination action
+ *
+ * WHAT: Request cross-module coordination from health agent
+ * WHY:  Allow external modules to trigger coordination
+ * HOW:  Send coordination request through health agent
+ *
+ * @param agent Health agent
+ * @param action Action type ("abort_hunt", "conservation_mode", "rest_period")
+ * @param reason Reason for the request
+ * @return 0 on success, negative error code on failure
+ */
+int nimcp_health_agent_request_behavioral_coordination(
+    nimcp_health_agent_t* agent,
+    const char* action,
+    const char* reason
+);
 
 /* ============================================================================
  * Portia/Dragonfly/Swarm/Memory Connection API

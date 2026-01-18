@@ -56,3 +56,8 @@ set_tests_properties(integration_utils_fault_tolerance_test_health_agent_consist
 add_ft_integration_test(test_health_agent_neural_integration)
 set_tests_properties(integration_utils_fault_tolerance_test_health_agent_neural_integration
                      PROPERTIES TIMEOUT 180)
+
+# Health Agent Behavioral Integration Tests (Phase 5.6: Dragonfly/Portia)
+add_ft_integration_test(test_health_agent_behavioral_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_health_agent_behavioral_integration
+                     PROPERTIES TIMEOUT 180)
