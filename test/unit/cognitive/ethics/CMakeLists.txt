@@ -64,3 +64,32 @@ set_tests_properties(unit_cognitive_ethics_test_ethics_plasticity_bridge PROPERT
     TIMEOUT 120
     LABELS "unit;cognitive;ethics;plasticity;bridge"
 )
+
+# ============================================================================
+# Health Ethics Bridge Tests (Phase 9: Section 28)
+# ============================================================================
+# Tests for health agent ethics integration (Asimov, mercy, proportionality)
+
+add_executable(unit_cognitive_ethics_test_health_ethics_bridge_functions
+    test_health_ethics_bridge_functions.cpp
+)
+target_link_libraries(unit_cognitive_ethics_test_health_ethics_bridge_functions
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        m
+        pthread
+)
+target_include_directories(unit_cognitive_ethics_test_health_ethics_bridge_functions
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(unit_cognitive_ethics_test_health_ethics_bridge_functions PRIVATE cxx_std_17)
+add_test(NAME unit_cognitive_ethics_test_health_ethics_bridge_functions
+         COMMAND unit_cognitive_ethics_test_health_ethics_bridge_functions)
+set_tests_properties(unit_cognitive_ethics_test_health_ethics_bridge_functions PROPERTIES
+    TIMEOUT 120
+    LABELS "unit;cognitive;ethics;health;bridge;phase9"
+)
