@@ -54,3 +54,7 @@ set_tests_properties(unit_utils_fault_tolerance_test_health_agent_connection_fun
 # Health Agent Consistency Function Tests (Phase 3)
 add_fault_tolerance_test(test_health_agent_consistency_functions)
 set_tests_properties(unit_utils_fault_tolerance_test_health_agent_consistency_functions PROPERTIES TIMEOUT 120)
+
+# Cognitive Recovery Coordinator Tests (Brain-Driven Recovery Orchestration)
+add_fault_tolerance_test(test_cognitive_recovery)
+set_tests_properties(unit_utils_fault_tolerance_test_cognitive_recovery PROPERTIES TIMEOUT 120)

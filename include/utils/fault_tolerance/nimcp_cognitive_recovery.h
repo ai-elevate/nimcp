@@ -162,7 +162,7 @@ void cognitive_recovery_default_config(cognitive_recovery_config_t* config);
  * THREAD-SAFE: Yes
  * MALLOC: Yes (coordinator + subsystems)
  */
-cognitive_recovery_coordinator_t* cognitive_recovery_create(
+cognitive_recovery_coordinator_t cognitive_recovery_create(
     brain_t brain,
     cognitive_recovery_config_t* config
 );
@@ -179,7 +179,7 @@ cognitive_recovery_coordinator_t* cognitive_recovery_create(
  * COMPLEXITY: O(n) where n = learned patterns
  * THREAD-SAFE: No (exclusive access required)
  */
-void cognitive_recovery_destroy(cognitive_recovery_coordinator_t* coordinator);
+void cognitive_recovery_destroy(cognitive_recovery_coordinator_t coordinator);
 
 /**
  * @brief Start cognitive recovery system
@@ -194,7 +194,7 @@ void cognitive_recovery_destroy(cognitive_recovery_coordinator_t* coordinator);
  * COMPLEXITY: O(1)
  * THREAD-SAFE: No
  */
-bool cognitive_recovery_start(cognitive_recovery_coordinator_t* coordinator);
+bool cognitive_recovery_start(cognitive_recovery_coordinator_t coordinator);
 
 /**
  * @brief Stop cognitive recovery system
@@ -205,7 +205,7 @@ bool cognitive_recovery_start(cognitive_recovery_coordinator_t* coordinator);
  * COMPLEXITY: O(1)
  * THREAD-SAFE: No
  */
-bool cognitive_recovery_stop(cognitive_recovery_coordinator_t* coordinator);
+bool cognitive_recovery_stop(cognitive_recovery_coordinator_t coordinator);
 
 //=============================================================================
 // Main Recovery API
@@ -261,7 +261,7 @@ typedef struct {
  * MALLOC: Yes (result structure)
  */
 cognitive_recovery_result_t* cognitive_recovery_execute(
-    cognitive_recovery_coordinator_t* coordinator,
+    cognitive_recovery_coordinator_t coordinator,
     diagnostic_result_t* diagnosis
 );
 
@@ -292,7 +292,7 @@ void cognitive_recovery_free_result(cognitive_recovery_result_t* result);
  * THREAD-SAFE: No
  */
 cognitive_recovery_result_t* cognitive_recovery_from_error(
-    cognitive_recovery_coordinator_t* coordinator,
+    cognitive_recovery_coordinator_t coordinator,
     error_type_t error_type,
     void* context
 );
@@ -313,7 +313,7 @@ cognitive_recovery_result_t* cognitive_recovery_from_error(
  * THREAD-SAFE: Signal-safe (limited allocation)
  */
 cognitive_recovery_result_t* cognitive_recovery_from_signal(
-    cognitive_recovery_coordinator_t* coordinator,
+    cognitive_recovery_coordinator_t coordinator,
     int signal,
     crash_context_t* crash_ctx
 );
@@ -333,7 +333,7 @@ cognitive_recovery_result_t* cognitive_recovery_from_signal(
  * THREAD-SAFE: No
  */
 cognitive_recovery_result_t* cognitive_recovery_preventive(
-    cognitive_recovery_coordinator_t* coordinator,
+    cognitive_recovery_coordinator_t coordinator,
     health_status_snapshot_t* health
 );
 
@@ -352,7 +352,7 @@ cognitive_recovery_result_t* cognitive_recovery_preventive(
  * THREAD-SAFE: Yes
  */
 bool cognitive_recovery_get_health(
-    cognitive_recovery_coordinator_t* coordinator,
+    cognitive_recovery_coordinator_t coordinator,
     health_status_snapshot_t* health
 );
 
@@ -369,7 +369,7 @@ bool cognitive_recovery_get_health(
  * COMPLEXITY: O(1)
  * THREAD-SAFE: Yes
  */
-bool cognitive_recovery_is_needed(cognitive_recovery_coordinator_t* coordinator);
+bool cognitive_recovery_is_needed(cognitive_recovery_coordinator_t coordinator);
 
 /**
  * @brief Get recovery readiness
@@ -384,7 +384,7 @@ bool cognitive_recovery_is_needed(cognitive_recovery_coordinator_t* coordinator)
  * COMPLEXITY: O(1)
  * THREAD-SAFE: Yes
  */
-bool cognitive_recovery_is_ready(cognitive_recovery_coordinator_t* coordinator);
+bool cognitive_recovery_is_ready(cognitive_recovery_coordinator_t coordinator);
 
 //=============================================================================
 // Learning & Analytics
@@ -433,7 +433,7 @@ typedef struct {
  * THREAD-SAFE: Yes
  */
 bool cognitive_recovery_get_stats(
-    cognitive_recovery_coordinator_t* coordinator,
+    cognitive_recovery_coordinator_t coordinator,
     cognitive_recovery_stats_t* stats
 );
 
@@ -449,7 +449,7 @@ bool cognitive_recovery_get_stats(
  * THREAD-SAFE: Yes
  */
 uint32_t cognitive_recovery_get_learned_patterns(
-    cognitive_recovery_coordinator_t* coordinator,
+    cognitive_recovery_coordinator_t coordinator,
     recovery_pattern_t* patterns,
     uint32_t max_patterns
 );
@@ -469,7 +469,7 @@ uint32_t cognitive_recovery_get_learned_patterns(
  * THREAD-SAFE: No
  */
 bool cognitive_recovery_update_config(
-    cognitive_recovery_coordinator_t* coordinator,
+    cognitive_recovery_coordinator_t coordinator,
     cognitive_recovery_config_t* config
 );
 
@@ -484,7 +484,7 @@ bool cognitive_recovery_update_config(
  * THREAD-SAFE: Yes
  */
 bool cognitive_recovery_get_config(
-    cognitive_recovery_coordinator_t* coordinator,
+    cognitive_recovery_coordinator_t coordinator,
     cognitive_recovery_config_t* config
 );
 
@@ -511,7 +511,7 @@ bool cognitive_recovery_get_config(
  * THREAD-SAFE: Yes
  */
 bool cognitive_recovery_save(
-    cognitive_recovery_coordinator_t* coordinator,
+    cognitive_recovery_coordinator_t coordinator,
     const char* filepath
 );
 
@@ -526,7 +526,7 @@ bool cognitive_recovery_save(
  * COMPLEXITY: O(n)
  * THREAD-SAFE: Yes
  */
-cognitive_recovery_coordinator_t* cognitive_recovery_load(
+cognitive_recovery_coordinator_t cognitive_recovery_load(
     brain_t brain,
     const char* filepath,
     cognitive_recovery_config_t* config
@@ -546,7 +546,7 @@ cognitive_recovery_coordinator_t* cognitive_recovery_load(
  * THREAD-SAFE: Yes
  */
 void cognitive_recovery_report(
-    cognitive_recovery_coordinator_t* coordinator,
+    cognitive_recovery_coordinator_t coordinator,
     FILE* output
 );
 
@@ -562,7 +562,7 @@ void cognitive_recovery_report(
  * THREAD-SAFE: Yes
  */
 int32_t cognitive_recovery_export_json(
-    cognitive_recovery_coordinator_t* coordinator,
+    cognitive_recovery_coordinator_t coordinator,
     char* json_buffer,
     size_t buffer_size
 );
@@ -592,7 +592,7 @@ int32_t cognitive_recovery_export_json(
  * THREAD-SAFE: No
  */
 bool cognitive_recovery_install_signal_handlers(
-    cognitive_recovery_coordinator_t* coordinator
+    cognitive_recovery_coordinator_t coordinator
 );
 
 /**
@@ -604,7 +604,7 @@ bool cognitive_recovery_install_signal_handlers(
  * THREAD-SAFE: No
  */
 void cognitive_recovery_uninstall_signal_handlers(
-    cognitive_recovery_coordinator_t* coordinator
+    cognitive_recovery_coordinator_t coordinator
 );
 
 #ifdef __cplusplus

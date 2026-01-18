@@ -1611,6 +1611,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_health_monitor.c                # Runtime health monitoring
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_brain_recovery_integration.c    # Brain-driven intelligent recovery
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_runtime_adaptation.c            # Runtime parameter adaptation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_cognitive_recovery.c            # Cognitive Recovery Coordinator (orchestrates brain-driven recovery)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_fault_state_machine.c           # Fault state machine (HEALTHY/DEGRADED/FAILED)
     # ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_fault_event_bus.c             # DEPRECATED: Moved to core/events/nimcp_event_bus.c (promoted to universal)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_lockfree_metrics.c              # Lock-free metrics ring buffer (4x faster)
