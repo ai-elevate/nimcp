@@ -391,14 +391,18 @@ TEST_F(HealthAgentUSERegressionTest, UnconnectedModuleOperations) {
  * Regression: Reconnecting modules must work
  */
 TEST_F(HealthAgentUSERegressionTest, ModuleReconnection) {
-    // Connect Portia
+    // Initialize Portia global system for testing
+    portia_config_t portia_sys_config = portia_get_default_config();
+    portia_init(&portia_sys_config);
+
+    // Connect Portia (using global API via nullptr context)
     health_agent_portia_config_t cfg1 = {0};
     cfg1.enable_portia = true;
     cfg1.enable_tier_monitoring = true;
     cfg1.enable_auto_tier_switch = true;
     EXPECT_EQ(nimcp_health_agent_connect_portia(agent, nullptr, &cfg1), 0);
 
-    // Use it
+    // Use it (now works since Portia is initialized)
     EXPECT_EQ(nimcp_health_agent_use_portia_set_tier(agent, PLATFORM_TIER_FULL), 0);
 
     // Reconnect with different config (should work)
@@ -410,6 +414,9 @@ TEST_F(HealthAgentUSERegressionTest, ModuleReconnection) {
 
     // Should still work
     EXPECT_EQ(nimcp_health_agent_use_portia_set_tier(agent, PLATFORM_TIER_MEDIUM), 0);
+
+    // Cleanup Portia
+    portia_destroy();
 }
 
 //=============================================================================

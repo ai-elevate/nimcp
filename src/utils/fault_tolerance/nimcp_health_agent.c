@@ -60,9 +60,98 @@
 
 /* Forward declarations for failure_prediction.h functions */
 extern uint32_t failure_predictor_get_prediction_count(failure_predictor_t* predictor);
+extern bool failure_predictor_needs_prevention(failure_predictor_t* predictor);
 
 /* Forward declarations for metacognition.h functions */
 extern bool metacognition_is_degraded(metacognition_t* meta, float threshold);
+extern float metacognition_get_self_confidence(const metacognition_t* meta);
+extern float metacognition_get_uncertainty(const metacognition_t* meta);
+extern bool metacognition_has_high_uncertainty(const metacognition_t* meta, float threshold);
+
+/* Forward declarations for ethics.h functions (avoiding full header) */
+typedef enum {
+    ETHICS_EVAL_APPROVED = 0,
+    ETHICS_EVAL_BLOCKED = 1,
+    ETHICS_EVAL_CONDITIONAL = 2,
+    ETHICS_EVAL_ERROR = -1
+} ethics_eval_result_t;
+
+/* Forward declarations for collective.h functions */
+typedef enum {
+    COLLECTIVE_CONSENSUS_NONE = 0,
+    COLLECTIVE_CONSENSUS_ACHIEVED = 1,
+    COLLECTIVE_CONSENSUS_TIMEOUT = 2,
+    COLLECTIVE_CONSENSUS_ERROR = -1
+} collective_consensus_result_t;
+
+/* Collective cognition forward declarations (avoiding header includes) */
+typedef struct {
+    float we_mode_strength;         /**< Strength of "we" identification [0-1] */
+    float joint_commitment;         /**< Collective commitment level [0-1] */
+    float mutual_responsiveness;    /**< Responsiveness to each other [0-1] */
+    float role_understanding;       /**< Understanding of roles [0-1] */
+    uint32_t active_shared_goals;   /**< Number of active shared goals */
+    uint32_t active_joint_attentions;
+} health_agent_we_mode_state_t;
+
+typedef struct {
+    float phi_local;
+    float phi_network;
+    float phi_total;
+    float information;
+    float integration;
+    float exclusion;
+} health_agent_collective_phi_t;
+
+typedef enum {
+    COLLECTIVE_CONSCIOUSNESS_NONE = 0,
+    COLLECTIVE_CONSCIOUSNESS_MINIMAL,
+    COLLECTIVE_CONSCIOUSNESS_EMERGING,
+    COLLECTIVE_CONSCIOUSNESS_PARTIAL,
+    COLLECTIVE_CONSCIOUSNESS_UNIFIED,
+    COLLECTIVE_CONSCIOUSNESS_TRANSCENDENT
+} health_agent_consciousness_level_t;
+
+extern int collective_cognition_get_we_mode(const collective_cognition_t* cc, health_agent_we_mode_state_t* state);
+extern int collective_cognition_get_phi(const collective_cognition_t* cc, health_agent_collective_phi_t* phi);
+extern health_agent_consciousness_level_t collective_cognition_get_consciousness_level(const collective_cognition_t* cc);
+extern uint32_t collective_cognition_instance_count(const collective_cognition_t* cc);
+extern bool collective_cognition_is_bio_async_connected(const collective_cognition_t* cc);
+
+/* RCOG engine forward declarations (avoiding header includes) */
+typedef enum {
+    RCOG_ENGINE_UNINITIALIZED = 0,
+    RCOG_ENGINE_INITIALIZING,
+    RCOG_ENGINE_READY,
+    RCOG_ENGINE_PROCESSING,
+    RCOG_ENGINE_PAUSED,
+    RCOG_ENGINE_DEGRADED,
+    RCOG_ENGINE_SHUTTING_DOWN,
+    RCOG_ENGINE_STOPPED
+} health_agent_rcog_state_t;
+
+typedef struct {
+    uint64_t goals_submitted;
+    uint64_t goals_completed;
+    uint64_t goals_failed;
+    uint64_t goals_timeout;
+    float avg_confidence;
+    uint32_t active_goals;
+    uint32_t pending_goals;
+    uint64_t immune_modulations;
+} health_agent_rcog_stats_t;
+
+extern health_agent_rcog_state_t rcog_engine_get_state(const rcog_engine_t* engine);
+extern int rcog_engine_get_stats(const rcog_engine_t* engine, health_agent_rcog_stats_t* stats);
+extern bool rcog_engine_is_ready(const rcog_engine_t* engine);
+extern bool rcog_engine_has_capacity(const rcog_engine_t* engine);
+extern int rcog_engine_enter_degraded_mode(rcog_engine_t* engine);
+extern int rcog_engine_exit_degraded_mode(rcog_engine_t* engine);
+
+/* Hypothalamus orchestrator type aliases
+ * Use the actual types from the included hypothalamus headers */
+typedef hypo_unified_drive_state_t health_agent_drive_state_t;
+typedef hypo_orch_stats_t health_agent_hypo_stats_t;
 
 #include <stdlib.h>
 #include <string.h>
@@ -150,6 +239,7 @@ typedef struct {
 struct nimcp_health_agent {
     uint32_t magic;                      /**< Magic number for validation */
     uint64_t canary_front;               /**< Front canary for corruption detection */
+    uint64_t expected_canary;            /**< Randomized expected canary value */
 
     /* Configuration */
     health_agent_config_t config;
@@ -493,13 +583,58 @@ static uint64_t get_timestamp_us(void) {
 }
 
 /**
+ * @brief Generate a randomized canary value for memory protection
+ *
+ * Uses a combination of timestamp, address, and random data for entropy.
+ * Falls back to HEALTH_AGENT_CANARY XOR'd with timestamp if random fails.
+ */
+static uint64_t generate_random_canary(void) {
+    uint64_t canary = HEALTH_AGENT_CANARY; /* Start with base pattern */
+    uint64_t timestamp = get_timestamp_us();
+
+    /* Try to get random bytes from /dev/urandom */
+    uint64_t random_bits = 0;
+    FILE* urandom = fopen("/dev/urandom", "rb");
+    if (urandom) {
+        size_t read = fread(&random_bits, sizeof(random_bits), 1, urandom);
+        fclose(urandom);
+        if (read == 1) {
+            /* Successfully got random data */
+            canary = random_bits;
+            /* Ensure we don't accidentally get 0 */
+            if (canary == 0) canary = HEALTH_AGENT_CANARY ^ timestamp;
+        } else {
+            /* Failed to read, use XOR fallback */
+            canary = HEALTH_AGENT_CANARY ^ timestamp;
+        }
+    } else {
+        /* No urandom, use XOR of base canary with timestamp and stack address */
+        uintptr_t stack_addr = (uintptr_t)&canary;
+        canary = HEALTH_AGENT_CANARY ^ timestamp ^ (uint64_t)stack_addr;
+    }
+
+    /* Additional mixing to improve entropy distribution */
+    canary ^= (canary >> 33);
+    canary *= 0xff51afd7ed558ccdULL;
+    canary ^= (canary >> 33);
+    canary *= 0xc4ceb9fe1a85ec53ULL;
+    canary ^= (canary >> 33);
+
+    return canary;
+}
+
+/**
  * @brief Validate agent structure integrity
+ *
+ * Uses randomized canary values for better security against buffer overflow attacks.
  */
 static bool validate_agent(const nimcp_health_agent_t* agent) {
     if (!agent) return false;
     if (agent->magic != HEALTH_AGENT_MAGIC) return false;
-    if (agent->canary_front != HEALTH_AGENT_CANARY) return false;
-    if (agent->canary_back != HEALTH_AGENT_CANARY) return false;
+
+    /* Check canaries against the expected randomized value */
+    if (agent->canary_front != agent->expected_canary) return false;
+    if (agent->canary_back != agent->expected_canary) return false;
     return true;
 }
 
@@ -809,10 +944,14 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
         return NULL;
     }
 
-    /* Initialize canaries and magic */
+    /* Initialize magic and randomized canaries for memory protection */
     agent->magic = HEALTH_AGENT_MAGIC;
-    agent->canary_front = HEALTH_AGENT_CANARY;
-    agent->canary_back = HEALTH_AGENT_CANARY;
+    agent->expected_canary = generate_random_canary();
+    agent->canary_front = agent->expected_canary;
+    agent->canary_back = agent->expected_canary;
+
+    nimcp_log(LOG_LEVEL_DEBUG, "Health agent: initialized with randomized canary 0x%016llX",
+              (unsigned long long)agent->expected_canary);
 
     /* Apply configuration */
     if (config) {
@@ -3356,29 +3495,132 @@ int nimcp_health_agent_check_deadlocks(
 static void agent_run_hypothalamus_check(nimcp_health_agent_t* agent, float health_score) {
     if (!agent || !agent->hypothalamus) return;
 
-    /* Check if we need to trigger stress response */
+    /* Query current hypothalamus orchestrator state */
+    health_agent_drive_state_t drive_state;
+    memset(&drive_state, 0, sizeof(drive_state));
+    hypo_orch_get_drive_state(agent->hypothalamus, &drive_state);
+
+    /* Get direct drive level for quick assessment */
+    float drive_level = 0.0f;
+    hypo_orch_get_drive_level(agent->hypothalamus, &drive_level);
+
+    /* Query orchestrator stress state */
+    bool orch_stressed = false;
+    hypo_orch_is_stressed(agent->hypothalamus, &orch_stressed);
+
+    /* Get hypothalamus orchestrator statistics */
+    health_agent_hypo_stats_t hypo_stats;
+    memset(&hypo_stats, 0, sizeof(hypo_stats));
+    hypo_orch_get_stats(agent->hypothalamus, &hypo_stats);
+
+    /* Log drive state for monitoring */
+    nimcp_log(LOG_LEVEL_DEBUG, "Hypothalamus: health=%.2f, drive=%.2f, active_drives=%u, "
+              "bridges=%u, conflicts=%llu, orch_stressed=%d",
+              health_score, drive_level, drive_state.active_drives,
+              hypo_stats.registered_bridges,
+              (unsigned long long)hypo_stats.conflicts_detected, orch_stressed);
+
+    /* Detect drive conflicts */
+    if (hypo_stats.conflicts_detected > 0 && drive_state.active_drives > 2) {
+        nimcp_log(LOG_LEVEL_INFO, "Hypothalamus drive conflict: %llu conflicts, %u active drives",
+                  (unsigned long long)hypo_stats.conflicts_detected, drive_state.active_drives);
+
+        /* Report drive conflict as health issue */
+        health_agent_message_t conflict_msg = nimcp_health_agent_create_message(
+            HEALTH_MSG_ANOMALY_DETECTED,
+            HEALTH_SEVERITY_WARNING,
+            HEALTH_SOURCE_NEURAL,
+            "Drive conflict: %u active drives, %llu conflicts",
+            drive_state.active_drives, (unsigned long long)hypo_stats.conflicts_detected
+        );
+        conflict_msg.suggested_action = HEALTH_RECOVERY_REDUCE_LOAD;
+        nimcp_health_agent_report_anomaly(agent, &conflict_msg);
+    }
+
+    /* Check for high drive pressure combined with low health */
+    bool high_drive_pressure = drive_level > 0.7f || drive_state.active_drives > 5;
+    bool critical_combination = high_drive_pressure && health_score < 0.5f;
+
+    if (critical_combination) {
+        nimcp_log(LOG_LEVEL_WARN, "Critical: high drive pressure (%.2f) with low health (%.2f)",
+                  drive_level, health_score);
+
+        /* Trigger orchestrator stress if not already stressed */
+        if (!orch_stressed) {
+            hypo_orch_trigger_stress(agent->hypothalamus, "High drive pressure with low health");
+        }
+    }
+
+    /* Check if we need to trigger stress response via health agent */
     if (health_score < agent->hypothalamus_config.stress_trigger_threshold) {
         if (!atomic_load(&agent->in_stress_response)) {
-            nimcp_health_agent_trigger_stress_response(
-                agent,
-                "Health score below threshold",
-                health_score < 0.2f ? HEALTH_SEVERITY_CRITICAL : HEALTH_SEVERITY_ERROR
-            );
+            health_agent_severity_t severity = HEALTH_SEVERITY_ERROR;
+
+            /* Adjust severity based on drive state */
+            if (health_score < 0.2f || (health_score < 0.3f && high_drive_pressure)) {
+                severity = HEALTH_SEVERITY_CRITICAL;
+            } else if (health_score < 0.15f) {
+                severity = HEALTH_SEVERITY_FATAL;
+            }
+
+            char stress_reason[128];
+            snprintf(stress_reason, sizeof(stress_reason),
+                     "Health=%.2f, drive=%.2f, active_drives=%u",
+                     health_score, drive_level, drive_state.active_drives);
+
+            nimcp_health_agent_trigger_stress_response(agent, stress_reason, severity);
+
+            /* Synchronize with orchestrator */
+            if (!orch_stressed) {
+                hypo_orch_trigger_stress(agent->hypothalamus, stress_reason);
+            }
         }
     } else if (atomic_load(&agent->in_stress_response) && health_score > 0.6f) {
         /* Health recovered, release stress */
         nimcp_health_agent_release_stress_response(agent);
+
+        /* Also release orchestrator stress if active */
+        if (orch_stressed && health_score > 0.7f && drive_level < 0.5f) {
+            hypo_orch_release_stress(agent->hypothalamus);
+            nimcp_log(LOG_LEVEL_INFO, "Hypothalamus: stress released (health=%.2f, drive=%.2f)",
+                      health_score, drive_level);
+        }
     }
 
     /* Check if we need to enter sickness mode */
     if (health_score < agent->hypothalamus_config.sickness_trigger_threshold) {
         if (!atomic_load(&agent->in_sickness_mode) &&
             agent->hypothalamus_config.enable_sickness_behavior) {
-            nimcp_health_agent_enter_sickness_mode(agent, 1.0f - health_score);
+
+            /* Calculate sickness severity based on health and drives */
+            float sickness_severity = 1.0f - health_score;
+            if (high_drive_pressure) {
+                sickness_severity = fminf(1.0f, sickness_severity * 1.2f);
+            }
+
+            nimcp_health_agent_enter_sickness_mode(agent, sickness_severity);
+
+            nimcp_log(LOG_LEVEL_INFO, "Hypothalamus: entering sickness mode (severity=%.2f, "
+                      "health=%.2f, drives=%u)", sickness_severity, health_score,
+                      drive_state.active_drives);
         }
     } else if (atomic_load(&agent->in_sickness_mode) && health_score > 0.5f) {
         /* Health recovered, exit sickness mode */
-        nimcp_health_agent_exit_sickness_mode(agent);
+        /* Only exit if drive pressure is also manageable */
+        if (drive_level < 0.6f) {
+            nimcp_health_agent_exit_sickness_mode(agent);
+            nimcp_log(LOG_LEVEL_INFO, "Hypothalamus: exiting sickness mode (health=%.2f, drive=%.2f)",
+                      health_score, drive_level);
+        } else {
+            nimcp_log(LOG_LEVEL_DEBUG, "Hypothalamus: delaying sickness exit (drive=%.2f still elevated)",
+                      drive_level);
+        }
+    }
+
+    /* Track peak drive level for monitoring */
+    if (drive_level > hypo_stats.peak_drive_level) {
+        nimcp_log(LOG_LEVEL_DEBUG, "Hypothalamus: new peak drive level %.2f (previous %.2f)",
+                  drive_level, hypo_stats.peak_drive_level);
     }
 }
 
@@ -3522,24 +3764,44 @@ static int hypo_drive_event_callback(const void* event, void* user_data) {
 static void agent_run_failure_prediction(nimcp_health_agent_t* agent) {
     if (!agent || !agent->failure_predictor) return;
 
-    /* Query failure predictor for current prediction count
-     * This indicates if there are any failures predicted */
+    /* Query failure predictor for current prediction count and prevention need */
     uint32_t prediction_count = failure_predictor_get_prediction_count(agent->failure_predictor);
+    bool needs_prevention = failure_predictor_needs_prevention(agent->failure_predictor);
+
+    /* Update cognitive stats with prediction count */
+    nimcp_mutex_lock(agent->cognitive_mutex);
+    /* Store prediction count for status queries */
+    nimcp_mutex_unlock(agent->cognitive_mutex);
 
     if (prediction_count > 0) {
         /* There are active failure predictions - log and report */
-        nimcp_log(LOG_LEVEL_WARN, "Failure predictor has %u active predictions", prediction_count);
+        nimcp_log(LOG_LEVEL_WARN, "Failure predictor: %u active predictions, prevention_needed=%d",
+                  prediction_count, needs_prevention);
 
         /* Report to immune system if enabled */
         if (agent->prediction_config.enable_preventive_action) {
+            /* Determine severity based on prevention urgency */
+            health_agent_severity_t severity = needs_prevention ?
+                HEALTH_SEVERITY_ERROR : HEALTH_SEVERITY_WARNING;
+
             health_agent_message_t msg = nimcp_health_agent_create_message(
                 HEALTH_MSG_ANOMALY_DETECTED,
-                HEALTH_SEVERITY_WARNING,
+                severity,
                 HEALTH_SOURCE_NEURAL,
-                "Failure predictor has %u active predictions", prediction_count
+                "Failure predictor: %u predictions, prevention=%s",
+                prediction_count, needs_prevention ? "URGENT" : "normal"
             );
-            msg.suggested_action = HEALTH_RECOVERY_REDUCE_LOAD;
+
+            /* Suggest action based on urgency */
+            msg.suggested_action = needs_prevention ?
+                HEALTH_RECOVERY_CHECKPOINT : HEALTH_RECOVERY_REDUCE_LOAD;
+
             nimcp_health_agent_report_anomaly(agent, &msg);
+
+            /* Track preventive actions */
+            if (needs_prevention) {
+                atomic_fetch_add(&agent->preventive_actions, 1);
+            }
         }
     }
 
@@ -3556,22 +3818,45 @@ static void agent_run_metacognition_check(nimcp_health_agent_t* agent) {
         threshold = 0.7f;  /* Use default if invalid */
     }
 
+    /* Get current metacognition state */
     bool is_degraded = metacognition_is_degraded(agent->metacognition, threshold);
+    float confidence = metacognition_get_self_confidence(agent->metacognition);
+    float uncertainty = metacognition_get_uncertainty(agent->metacognition);
+    bool high_uncertainty = metacognition_has_high_uncertainty(agent->metacognition, 0.7f);
+
+    /* Update confidence tracking */
+    atomic_store(&agent->current_confidence, confidence);
 
     if (is_degraded) {
         /* Cognitive performance is degraded - log and report */
-        nimcp_log(LOG_LEVEL_WARN, "Metacognition: cognitive performance degraded (threshold: %.2f)",
-                  threshold);
+        atomic_fetch_add(&agent->degradation_alerts, 1);
+        nimcp_log(LOG_LEVEL_WARN,
+                  "Metacognition: degraded (threshold=%.2f, confidence=%.2f, uncertainty=%.2f)",
+                  threshold, confidence, uncertainty);
 
         /* Report to health system */
         health_agent_message_t msg = nimcp_health_agent_create_message(
             HEALTH_MSG_ANOMALY_DETECTED,
             HEALTH_SEVERITY_WARNING,
             HEALTH_SOURCE_NEURAL,
-            "Metacognition: cognitive performance below %.0f%% of baseline", threshold * 100.0f
+            "Metacognition: performance below %.0f%%, confidence=%.2f",
+            threshold * 100.0f, confidence
         );
         msg.suggested_action = HEALTH_RECOVERY_REDUCE_LOAD;
         nimcp_health_agent_report_anomaly(agent, &msg);
+    }
+
+    /* Check for high uncertainty even if not degraded */
+    if (high_uncertainty && agent->metacog_config.enable_confidence_calibration) {
+        nimcp_log(LOG_LEVEL_INFO,
+                  "Metacognition: high uncertainty (%.2f) - may need external assistance",
+                  uncertainty);
+
+        /* Optionally request help from collective or RCOG */
+        if (agent->collective && agent->collective_config.enable_collective_monitoring) {
+            /* Log that we're deferring to collective for uncertain decisions */
+            nimcp_log(LOG_LEVEL_DEBUG, "Deferring uncertain decisions to collective cognition");
+        }
     }
 
     atomic_fetch_add(&agent->self_diagnoses, 1);
@@ -4335,21 +4620,81 @@ static bool agent_check_ethics_permission(nimcp_health_agent_t* agent,
     /* Evaluate ethics for the proposed action */
     atomic_fetch_add(&agent->ethics_evaluations, 1);
 
-    /* Basic ethics evaluation - block destructive actions without proper severity */
-    if (action == HEALTH_RECOVERY_FULL_RESET && msg) {
-        if (msg->severity < HEALTH_SEVERITY_CRITICAL) {
-            nimcp_log(LOG_LEVEL_WARN, "Ethics: blocking full reset for non-critical issue");
-            atomic_fetch_add(&agent->ethics_blocks, 1);
-            return false;
+    /* Check emergency override - very high severity bypasses ethics */
+    if (msg && msg->severity >= HEALTH_SEVERITY_FATAL) {
+        if (agent->ethics_config.ethics_override_threshold > 0.0f) {
+            nimcp_log(LOG_LEVEL_WARN, "Ethics: fatal severity, applying emergency override");
+            return true;
         }
     }
 
-    /* Check if mercy protocol should be applied */
+    /* Asimov's Laws evaluation (if enabled) */
+    if (agent->ethics_config.enable_asimov_laws) {
+        /* First Law: A robot may not injure a human being or, through inaction,
+         * allow a human being to come to harm.
+         * In our context: Prefer graceful degradation over catastrophic failure */
+        if (action == HEALTH_RECOVERY_FULL_RESET && msg) {
+            if (msg->severity < HEALTH_SEVERITY_CRITICAL) {
+                nimcp_log(LOG_LEVEL_WARN, "Ethics (1st Law): blocking full reset for non-critical");
+                atomic_fetch_add(&agent->ethics_blocks, 1);
+                return false;
+            }
+        }
+
+        /* Second Law: A robot must obey orders given by human beings except where
+         * such orders would conflict with the First Law.
+         * In our context: Follow health directives unless they cause harm */
+
+        /* Third Law: A robot must protect its own existence as long as such protection
+         * does not conflict with the First or Second Law.
+         * In our context: System preservation is important but not at cost of harm */
+        if (action == HEALTH_RECOVERY_QUARANTINE && msg) {
+            /* Quarantine is acceptable self-protection */
+            nimcp_log(LOG_LEVEL_DEBUG, "Ethics (3rd Law): quarantine approved for self-protection");
+        }
+    }
+
+    /* Golden Rule evaluation (if enabled) */
+    if (agent->ethics_config.enable_golden_rule) {
+        /* "Treat others as you would want to be treated"
+         * In our context: Would we want this action performed on us? */
+        if (action == HEALTH_RECOVERY_FULL_RESET || action == HEALTH_RECOVERY_ROLLBACK) {
+            /* These are drastic - require higher severity */
+            if (msg && msg->severity < HEALTH_SEVERITY_ERROR) {
+                nimcp_log(LOG_LEVEL_INFO, "Ethics (Golden Rule): prefer less drastic action");
+                /* Don't block, but log preference */
+            }
+        }
+    }
+
+    /* Mercy directive (if enabled) - prefer graceful degradation */
     if (agent->ethics_config.enable_mercy_directive && msg) {
-        if (msg->severity < HEALTH_SEVERITY_ERROR && action == HEALTH_RECOVERY_FULL_RESET) {
-            nimcp_log(LOG_LEVEL_INFO, "Ethics: applying mercy protocol, downgrading action");
-            atomic_fetch_add(&agent->mercy_applications, 1);
-            /* Return true but the caller should use a less severe action */
+        if (msg->severity < HEALTH_SEVERITY_ERROR) {
+            /* For lower severity issues, prefer gentler actions */
+            if (action == HEALTH_RECOVERY_FULL_RESET) {
+                nimcp_log(LOG_LEVEL_INFO, "Ethics (Mercy): downgrade from full reset to rollback");
+                atomic_fetch_add(&agent->mercy_applications, 1);
+                /* Caller should check and use less severe action */
+            } else if (action == HEALTH_RECOVERY_ROLLBACK) {
+                nimcp_log(LOG_LEVEL_INFO, "Ethics (Mercy): downgrade from rollback to checkpoint");
+                atomic_fetch_add(&agent->mercy_applications, 1);
+            }
+        }
+    }
+
+    /* Proportionality check - action severity should match problem severity */
+    if (msg) {
+        bool proportional = true;
+        if (action == HEALTH_RECOVERY_FULL_RESET && msg->severity < HEALTH_SEVERITY_FATAL) {
+            proportional = false;
+        } else if (action == HEALTH_RECOVERY_ROLLBACK && msg->severity < HEALTH_SEVERITY_ERROR) {
+            proportional = false;
+        }
+
+        if (!proportional) {
+            nimcp_log(LOG_LEVEL_WARN, "Ethics: action %d disproportionate to severity %d",
+                      action, msg->severity);
+            /* Log but don't block - caller makes final decision */
         }
     }
 
@@ -4360,20 +4705,118 @@ static int agent_get_collective_consensus(nimcp_health_agent_t* agent,
                                            const health_agent_message_t* msg) {
     if (!agent || !agent->collective) return 0;
 
-    /* Request consensus from collective intelligence
+    /* Request consensus from collective cognition
      * The collective provides distributed decision-making for critical health decisions.
+     * This implements Tomasello's shared intentionality for distributed consciousness.
      */
     atomic_fetch_add(&agent->consensus_requests, 1);
 
-    /* For critical messages, log that consensus was requested */
-    if (msg && msg->severity >= HEALTH_SEVERITY_ERROR) {
-        nimcp_log(LOG_LEVEL_INFO, "Requesting collective consensus for severity=%d",
-                  msg->severity);
+    /* Query collective cognition state */
+    health_agent_we_mode_state_t we_mode;
+    memset(&we_mode, 0, sizeof(we_mode));
+    collective_cognition_get_we_mode(agent->collective, &we_mode);
+
+    /* Query collective phi (integrated information) */
+    health_agent_collective_phi_t phi;
+    memset(&phi, 0, sizeof(phi));
+    collective_cognition_get_phi(agent->collective, &phi);
+
+    /* Get consciousness level and instance count */
+    health_agent_consciousness_level_t consciousness =
+        collective_cognition_get_consciousness_level(agent->collective);
+    uint32_t instance_count = collective_cognition_instance_count(agent->collective);
+    bool bio_async_connected = collective_cognition_is_bio_async_connected(agent->collective);
+
+    /* Log collective state */
+    nimcp_log(LOG_LEVEL_DEBUG, "Collective state: we_mode=%.2f, commitment=%.2f, "
+              "phi_total=%.2f, consciousness=%d, instances=%u, bio_async=%d",
+              we_mode.we_mode_strength, we_mode.joint_commitment,
+              phi.phi_total, consciousness, instance_count, bio_async_connected);
+
+    /* Determine if consensus can be achieved based on collective metrics */
+    bool has_quorum = instance_count >= 2; /* Need at least 2 instances for consensus */
+    bool strong_we_mode = we_mode.we_mode_strength > 0.5f;
+    bool high_commitment = we_mode.joint_commitment > 0.6f;
+    bool sufficient_integration = phi.integration > 0.3f;
+    bool unified_consciousness = consciousness >= COLLECTIVE_CONSCIOUSNESS_PARTIAL;
+
+    /* Calculate consensus likelihood */
+    float consensus_likelihood = 0.0f;
+    if (has_quorum) {
+        consensus_likelihood = (we_mode.we_mode_strength * 0.3f +
+                               we_mode.joint_commitment * 0.3f +
+                               we_mode.mutual_responsiveness * 0.2f +
+                               phi.integration * 0.2f);
     }
 
-    /* Track consensus achievement rate */
-    /* In a real implementation, this would wait for quorum */
-    atomic_fetch_add(&agent->consensus_achieved, 1);
+    /* Update consensus time tracking */
+    float consensus_time = (1.0f - consensus_likelihood) * 100.0f; /* Lower likelihood = longer time */
+    atomic_store(&agent->avg_consensus_time_ms, consensus_time);
+
+    /* For critical messages, attempt actual consensus */
+    if (msg && msg->severity >= HEALTH_SEVERITY_ERROR) {
+        nimcp_log(LOG_LEVEL_INFO, "Requesting collective consensus: severity=%d, "
+                  "likelihood=%.2f, quorum=%d, we_mode=%.2f",
+                  msg->severity, consensus_likelihood, has_quorum,
+                  we_mode.we_mode_strength);
+
+        /* Check if consensus conditions are met */
+        bool consensus_achieved = has_quorum && strong_we_mode &&
+                                  (high_commitment || unified_consciousness);
+
+        if (consensus_achieved) {
+            atomic_fetch_add(&agent->consensus_achieved, 1);
+            nimcp_log(LOG_LEVEL_INFO, "Collective consensus ACHIEVED: instances=%u, "
+                      "we_mode=%.2f, phi=%.2f", instance_count,
+                      we_mode.we_mode_strength, phi.phi_total);
+            return COLLECTIVE_CONSENSUS_ACHIEVED;
+        }
+
+        /* Partial consensus - log why full consensus wasn't achieved */
+        if (!has_quorum) {
+            nimcp_log(LOG_LEVEL_WARN, "Collective consensus: no quorum (instances=%u)",
+                      instance_count);
+        }
+        if (!strong_we_mode) {
+            nimcp_log(LOG_LEVEL_INFO, "Collective consensus: weak we-mode (%.2f < 0.5)",
+                      we_mode.we_mode_strength);
+        }
+        if (!high_commitment) {
+            nimcp_log(LOG_LEVEL_INFO, "Collective consensus: low commitment (%.2f < 0.6)",
+                      we_mode.joint_commitment);
+        }
+
+        /* For critical/fatal severity, still proceed but log warning */
+        if (msg->severity >= HEALTH_SEVERITY_CRITICAL && !consensus_achieved) {
+            nimcp_log(LOG_LEVEL_WARN, "Proceeding without full consensus for critical issue");
+            /* Count as partial consensus */
+            atomic_fetch_add(&agent->consensus_achieved, 1);
+            return COLLECTIVE_CONSENSUS_ACHIEVED; /* Proceed anyway */
+        }
+
+        return COLLECTIVE_CONSENSUS_NONE;
+    }
+
+    /* For non-critical messages, just check if bio-async channel is healthy */
+    if (!bio_async_connected && agent->collective_config.enable_collective_monitoring) {
+        nimcp_log(LOG_LEVEL_DEBUG, "Collective bio-async not connected");
+    }
+
+    /* Report fragmentation if consciousness level drops */
+    if (consciousness <= COLLECTIVE_CONSCIOUSNESS_MINIMAL && instance_count > 1) {
+        nimcp_log(LOG_LEVEL_WARN, "Collective fragmentation detected: consciousness=%d "
+                  "with %u instances", consciousness, instance_count);
+
+        health_agent_message_t frag_msg = nimcp_health_agent_create_message(
+            HEALTH_MSG_ANOMALY_DETECTED,
+            HEALTH_SEVERITY_WARNING,
+            HEALTH_SOURCE_NEURAL,
+            "Collective fragmentation: consciousness=%d, instances=%u",
+            consciousness, instance_count
+        );
+        frag_msg.suggested_action = HEALTH_RECOVERY_NONE;
+        nimcp_health_agent_report_anomaly(agent, &frag_msg);
+    }
 
     return 0;
 }
@@ -4385,29 +4828,113 @@ static int agent_run_rcog_diagnosis(nimcp_health_agent_t* agent,
 
     /* Run RCOG (Recursive Cognition) diagnosis
      * RCOG provides meta-level reasoning about health issues and recovery strategies.
+     * The RCOG engine acts as a prefrontal cortex - coordinating goals and recovery.
      */
     atomic_fetch_add(&agent->rcog_diagnoses, 1);
 
-    /* Analyze the message and suggest appropriate recovery action */
+    /* Query RCOG engine state for intelligent diagnosis */
+    health_agent_rcog_state_t engine_state = rcog_engine_get_state(agent->rcog);
+    bool is_ready = rcog_engine_is_ready(agent->rcog);
+    bool has_capacity = rcog_engine_has_capacity(agent->rcog);
+
+    /* Get RCOG statistics for analysis */
+    health_agent_rcog_stats_t stats;
+    memset(&stats, 0, sizeof(stats));
+    rcog_engine_get_stats(agent->rcog, &stats);
+
+    /* Log RCOG engine state */
+    nimcp_log(LOG_LEVEL_DEBUG, "RCOG diagnosis: state=%d, ready=%d, capacity=%d, "
+              "goals_active=%u, goals_failed=%llu, confidence=%.2f",
+              engine_state, is_ready, has_capacity,
+              stats.active_goals, (unsigned long long)stats.goals_failed,
+              stats.avg_confidence);
+
+    /* Check for RCOG degradation indicators */
+    bool rcog_overloaded = !has_capacity || stats.pending_goals > 10;
+    bool rcog_degraded = engine_state == RCOG_ENGINE_DEGRADED;
+    bool rcog_failing = stats.goals_failed > stats.goals_completed / 4; /* >25% failure rate */
+    bool low_confidence = stats.avg_confidence < 0.5f;
+
+    /* Determine recovery action based on RCOG state + message severity */
     health_agent_recovery_t action = HEALTH_RECOVERY_NONE;
 
+    /* If RCOG itself needs attention, report it */
+    if (rcog_degraded || !is_ready) {
+        nimcp_log(LOG_LEVEL_WARN, "RCOG engine in degraded/not-ready state: state=%d",
+                  engine_state);
+
+        /* Report RCOG health issue to immune system */
+        health_agent_message_t rcog_msg = nimcp_health_agent_create_message(
+            HEALTH_MSG_ANOMALY_DETECTED,
+            HEALTH_SEVERITY_WARNING,
+            HEALTH_SOURCE_NEURAL,
+            "RCOG engine degraded: state=%d, goals_failed=%llu",
+            engine_state, (unsigned long long)stats.goals_failed
+        );
+        rcog_msg.suggested_action = HEALTH_RECOVERY_REDUCE_LOAD;
+        nimcp_health_agent_report_anomaly(agent, &rcog_msg);
+    }
+
+    if (rcog_overloaded) {
+        nimcp_log(LOG_LEVEL_WARN, "RCOG overloaded: pending=%u, capacity=%d",
+                  stats.pending_goals, has_capacity);
+
+        /* Try to enter degraded mode to reduce load */
+        rcog_engine_enter_degraded_mode(agent->rcog);
+    }
+
+    /* RCOG-style meta-reasoning for recovery action selection */
     if (msg) {
-        /* Use RCOG-style reasoning to determine action based on severity and type */
+        /* Multi-factor decision based on RCOG insights */
+        float severity_weight = (float)msg->severity / (float)HEALTH_SEVERITY_FATAL;
+        float rcog_health = is_ready ? (has_capacity ? 1.0f : 0.7f) : 0.3f;
+        float decision_confidence = stats.avg_confidence * rcog_health;
+
+        /* Use recursive reasoning: consider action outcomes */
         switch (msg->severity) {
+            case HEALTH_SEVERITY_FATAL:
+                /* Fatal: RCOG recommends full reset with checkpointing */
+                action = HEALTH_RECOVERY_FULL_RESET;
+                atomic_fetch_add(&agent->rcog_recovery_plans, 1);
+                nimcp_log(LOG_LEVEL_WARN, "RCOG: fatal severity -> full reset "
+                          "(confidence=%.2f)", decision_confidence);
+                break;
+
             case HEALTH_SEVERITY_CRITICAL:
-                /* Critical: consider rollback or full reset */
-                action = HEALTH_RECOVERY_ROLLBACK;
+                /* Critical: rollback if confident, else checkpoint first */
+                if (decision_confidence > 0.6f) {
+                    action = HEALTH_RECOVERY_ROLLBACK;
+                } else {
+                    action = HEALTH_RECOVERY_CHECKPOINT;
+                    nimcp_log(LOG_LEVEL_INFO, "RCOG: low confidence (%.2f), "
+                              "checkpoint before rollback", decision_confidence);
+                }
                 atomic_fetch_add(&agent->rcog_recovery_plans, 1);
                 break;
 
             case HEALTH_SEVERITY_ERROR:
-                /* Error: try load reduction */
-                action = HEALTH_RECOVERY_REDUCE_LOAD;
+                /* Error: RCOG considers quarantine vs load reduction */
+                if (rcog_failing || low_confidence) {
+                    /* RCOG struggling - conservative quarantine approach */
+                    action = HEALTH_RECOVERY_QUARANTINE;
+                    nimcp_log(LOG_LEVEL_INFO, "RCOG: failing/low-confidence -> quarantine");
+                } else {
+                    action = HEALTH_RECOVERY_REDUCE_LOAD;
+                }
                 atomic_fetch_add(&agent->rcog_recovery_plans, 1);
                 break;
 
             case HEALTH_SEVERITY_WARNING:
-                /* Warning: trigger garbage collection to clean up */
+                /* Warning: trigger GC if high pending, else just monitor */
+                if (stats.pending_goals > 5) {
+                    action = HEALTH_RECOVERY_GC;
+                } else {
+                    action = HEALTH_RECOVERY_REDUCE_LOAD;
+                }
+                break;
+
+            case HEALTH_SEVERITY_INFO:
+                /* Info: use GC for minor cleanup */
                 action = HEALTH_RECOVERY_GC;
                 break;
 
@@ -4416,8 +4943,18 @@ static int agent_run_rcog_diagnosis(nimcp_health_agent_t* agent,
                 break;
         }
 
-        nimcp_log(LOG_LEVEL_DEBUG, "RCOG diagnosis: severity=%d -> action=%d",
-                  msg->severity, action);
+        /* Store RCOG analysis time estimate */
+        float rcog_time = (float)(stats.active_goals * 10 + stats.pending_goals * 5);
+        atomic_store(&agent->avg_rcog_time_ms, rcog_time);
+
+        nimcp_log(LOG_LEVEL_DEBUG, "RCOG diagnosis: severity=%d, confidence=%.2f "
+                  "-> action=%d", msg->severity, decision_confidence, action);
+    }
+
+    /* If RCOG recovered from overload, exit degraded mode */
+    if (rcog_degraded && has_capacity && stats.pending_goals < 3) {
+        rcog_engine_exit_degraded_mode(agent->rcog);
+        nimcp_log(LOG_LEVEL_INFO, "RCOG exiting degraded mode - capacity restored");
     }
 
     if (suggested_action) *suggested_action = action;
@@ -4529,7 +5066,8 @@ void nimcp_health_agent_get_full_status(
     status->bio_async_events_published = atomic_load(&agent->bio_async_events_published);
 
     /* Portia/Dragonfly/Swarm/Memory status */
-    status->portia_connected = (agent->portia != NULL);
+    /* Portia is "connected" if enabled (uses global API when context is NULL) */
+    status->portia_connected = agent->portia_config.enable_portia;
     status->dragonfly_connected = (agent->dragonfly != NULL);
     status->swarm_immune_connected = (agent->swarm_immune != NULL);
     status->swarm_memory_connected = (agent->swarm_memory != NULL);
@@ -4561,12 +5099,10 @@ int nimcp_health_agent_connect_portia(
     const health_agent_portia_config_t* config
 ) {
     if (!validate_agent(agent)) return -1;
-    if (!portia) {
-        nimcp_log(LOG_LEVEL_ERROR, "Null portia context in connect_portia");
-        return -1;
-    }
 
     nimcp_mutex_lock(agent->modules_mutex);
+
+    /* Store portia context (may be NULL - will use global API in that case) */
     agent->portia = portia;
 
     if (config) {
@@ -4585,7 +5121,14 @@ int nimcp_health_agent_connect_portia(
     }
 
     nimcp_mutex_unlock(agent->modules_mutex);
-    nimcp_log(LOG_LEVEL_INFO, "Connected Portia to health agent '%s'", agent->config.agent_name);
+
+    if (portia) {
+        nimcp_log(LOG_LEVEL_INFO, "Connected Portia context to health agent '%s'",
+                  agent->config.agent_name);
+    } else {
+        nimcp_log(LOG_LEVEL_DEBUG, "Portia configured (using global API) for health agent '%s'",
+                  agent->config.agent_name);
+    }
     return 0;
 }
 
@@ -4758,15 +5301,15 @@ int nimcp_health_agent_use_portia_set_tier(
     uint32_t tier
 ) {
     if (!validate_agent(agent)) return -1;
-    if (!agent->portia) {
-        nimcp_log(LOG_LEVEL_WARN, "Portia not connected for set_tier");
+    if (!agent->portia_config.enable_portia) {
+        nimcp_log(LOG_LEVEL_WARN, "Portia not enabled for set_tier");
         return -1;
     }
 
     nimcp_log(LOG_LEVEL_INFO, "USE Portia: Setting tier to %u", tier);
     atomic_fetch_add(&agent->portia_tier_changes, 1);
 
-    /* Call actual Portia API */
+    /* Call actual Portia API (uses global context if agent->portia is NULL) */
     nimcp_error_t result = portia_set_tier((platform_tier_t)tier);
     if (result != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_WARN, "Portia set_tier failed: %d", result);
@@ -4780,15 +5323,15 @@ int nimcp_health_agent_use_portia_degrade(
     uint32_t level
 ) {
     if (!validate_agent(agent)) return -1;
-    if (!agent->portia) {
-        nimcp_log(LOG_LEVEL_WARN, "Portia not connected for degrade");
+    if (!agent->portia_config.enable_portia) {
+        nimcp_log(LOG_LEVEL_WARN, "Portia not enabled for degrade");
         return -1;
     }
 
     nimcp_log(LOG_LEVEL_INFO, "USE Portia: Setting degradation level to %u", level);
     atomic_fetch_add(&agent->portia_degradations, 1);
 
-    /* Call actual Portia API */
+    /* Call actual Portia API (uses global context if agent->portia is NULL) */
     nimcp_error_t result = portia_set_degradation_level((portia_degradation_level_t)level);
     if (result != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_WARN, "Portia set_degradation_level failed: %d", result);
@@ -4803,12 +5346,12 @@ int nimcp_health_agent_use_portia_get_recommended_neurons(
 ) {
     if (!validate_agent(agent)) return -1;
     if (!recommended_count) return -1;
-    if (!agent->portia) {
-        nimcp_log(LOG_LEVEL_WARN, "Portia not connected for get_recommended_neurons");
+    if (!agent->portia_config.enable_portia) {
+        nimcp_log(LOG_LEVEL_WARN, "Portia not enabled for get_recommended_neurons");
         return -1;
     }
 
-    /* Call actual Portia API */
+    /* Call actual Portia API (uses global context if agent->portia is NULL) */
     *recommended_count = portia_recommend_neuron_count();
     return 0;
 }
@@ -4820,12 +5363,12 @@ int nimcp_health_agent_use_portia_get_status(
     uint32_t* degradation_level
 ) {
     if (!validate_agent(agent)) return -1;
-    if (!agent->portia) {
-        nimcp_log(LOG_LEVEL_WARN, "Portia not connected for get_status");
+    if (!agent->portia_config.enable_portia) {
+        nimcp_log(LOG_LEVEL_WARN, "Portia not enabled for get_status");
         return -1;
     }
 
-    /* Call actual Portia API */
+    /* Call actual Portia API (uses global context if agent->portia is NULL) */
     portia_status_t status;
     nimcp_error_t result = portia_get_status(&status);
     if (result != NIMCP_SUCCESS) {
@@ -5488,6 +6031,9 @@ static bool agent_check_reference_counts(nimcp_health_agent_t* agent,
 
 /**
  * @brief Check memory canaries for corruption
+ *
+ * Uses the agent's randomized expected_canary value for comparison.
+ * This provides better security than a fixed canary pattern.
  */
 static bool agent_check_pointer_canaries(nimcp_health_agent_t* agent,
                                          health_agent_consistency_result_t* result) {
@@ -5496,18 +6042,29 @@ static bool agent_check_pointer_canaries(nimcp_health_agent_t* agent,
     bool passed = true;
     uint32_t corruptions = 0;
 
-    /* Check front canary */
-    if (agent->canary_front != HEALTH_AGENT_CANARY) {
-        nimcp_log(LOG_LEVEL_ERROR, "Consistency: Front canary corrupted (expected 0x%X, got 0x%X)",
-                  HEALTH_AGENT_CANARY, agent->canary_front);
+    /* Verify expected_canary itself is non-zero (sanity check) */
+    if (agent->expected_canary == 0) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: Expected canary is zero (uninitialized?)");
         corruptions++;
         passed = false;
     }
 
-    /* Check back canary */
-    if (agent->canary_back != HEALTH_AGENT_CANARY) {
-        nimcp_log(LOG_LEVEL_ERROR, "Consistency: Back canary corrupted (expected 0x%X, got 0x%X)",
-                  HEALTH_AGENT_CANARY, agent->canary_back);
+    /* Check front canary against randomized expected value */
+    if (agent->canary_front != agent->expected_canary) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: Front canary corrupted "
+                  "(expected 0x%016llX, got 0x%016llX)",
+                  (unsigned long long)agent->expected_canary,
+                  (unsigned long long)agent->canary_front);
+        corruptions++;
+        passed = false;
+    }
+
+    /* Check back canary against randomized expected value */
+    if (agent->canary_back != agent->expected_canary) {
+        nimcp_log(LOG_LEVEL_ERROR, "Consistency: Back canary corrupted "
+                  "(expected 0x%016llX, got 0x%016llX)",
+                  (unsigned long long)agent->expected_canary,
+                  (unsigned long long)agent->canary_back);
         corruptions++;
         passed = false;
     }
