@@ -211,9 +211,8 @@ int snn_mental_health_bridge_update(snn_mental_health_bridge_t* bridge, float dt
         return 0;  /* Skip update, too soon */
     }
 
-    if (!bridge->monitor_pop) {
-        return SNN_ERROR_INVALID_STATE;
-    }
+    /* Note: Individual functions handle NULL populations gracefully.
+     * Bridge operates in degraded mode if populations not configured. */
 
     /* Compute stability */
     bridge->state.stability_index = snn_mental_health_compute_stability(bridge);

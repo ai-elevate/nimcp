@@ -187,3 +187,37 @@ set_tests_properties(unit_cognitive_mental_health_guardian PROPERTIES
     LABELS "unit;mental_health;guardian"
     TIMEOUT 120
 )
+
+# ============================================================================
+# NIMCP Mental Health Comprehensive Tests (Phase 10.5)
+# ============================================================================
+# WHAT: Comprehensive tests for the Mental Health Monitoring System
+# WHY:  Verify all 23 disorder detectors, intervention system, and monitoring pipeline
+# HOW:  Test lifecycle, severity classification, all disorder detection, reporting, stats
+
+add_executable(unit_cognitive_mental_health_nimcp
+    test_nimcp_mental_health.cpp
+)
+target_link_libraries(unit_cognitive_mental_health_nimcp
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_compile_definitions(unit_cognitive_mental_health_nimcp PRIVATE NIMCP_TESTING)
+target_include_directories(unit_cognitive_mental_health_nimcp
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/core/brain
+        ${CMAKE_SOURCE_DIR}/src/cognitive/mental_health
+        ${CMAKE_SOURCE_DIR}/test/utils
+)
+add_test(NAME unit_cognitive_mental_health_nimcp
+         COMMAND unit_cognitive_mental_health_nimcp --gtest_brief=1)
+set_tests_properties(unit_cognitive_mental_health_nimcp PROPERTIES
+    LABELS "unit;mental_health;comprehensive"
+    TIMEOUT 120
+)
