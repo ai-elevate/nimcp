@@ -1,0 +1,720 @@
+/**
+ * @file nimcp_health_emotion_bridge.c
+ * @brief Health Agent Emotion Integration Bridge Implementation
+ *
+ * WHAT: Bidirectional emotion-health integration
+ * WHY:  Emotional state affects appropriate health thresholds
+ * HOW:  Query emotion system, adjust monitoring sensitivity
+ *
+ * Part of Phase 9 (Section 28) of the NIMCP Self-Contained Resilience System.
+ *
+ * @copyright Copyright (c) 2025 NIMCP Project
+ */
+
+#include "cognitive/emotion/nimcp_health_emotion_bridge.h"
+#include "utils/memory/nimcp_memory.h"
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
+
+/*==============================================================================
+ * CONSTANTS
+ *============================================================================*/
+
+/** High stress threshold */
+#define HIGH_STRESS_AROUSAL 0.7f
+
+/** Negative valence threshold */
+#define NEGATIVE_VALENCE_THRESHOLD -0.3f
+
+/** Positive valence threshold */
+#define POSITIVE_VALENCE_THRESHOLD 0.3f
+
+/** Low stability threshold */
+#define LOW_STABILITY_THRESHOLD 0.4f
+
+/** Neutral valence threshold (for is_positive/is_negative) */
+#define NEUTRAL_VALENCE_THRESHOLD 0.2f
+
+/** Calm arousal threshold */
+#define CALM_AROUSAL_THRESHOLD 0.3f
+
+/*==============================================================================
+ * DEFAULT FACTORS
+ *============================================================================*/
+
+void health_emotion_default_factors(threshold_adjustment_factors_t* factors) {
+    if (!factors) return;
+
+    factors->high_stress_modifier = 0.8f;        /* Lower thresholds by 20% */
+    factors->negative_valence_modifier = 1.2f;   /* Raise sensitivity by 20% */
+    factors->positive_valence_modifier = 0.9f;   /* Relax thresholds by 10% */
+    factors->instability_modifier = 1.3f;        /* Raise sensitivity by 30% */
+    factors->inflammation_modifier = 1.25f;      /* Raise sensitivity by 25% */
+}
+
+/*==============================================================================
+ * EVENT MAPPING
+ *============================================================================*/
+
+/**
+ * @brief Default emotion mappings for health events
+ */
+static const health_event_emotion_mapping_t default_event_mappings[] = {
+    [HEALTH_EMOTION_EVENT_MINOR_ANOMALY] = {
+        .valence_delta = -0.05f,
+        .arousal_delta = 0.1f,
+        .duration_ms = 5000,
+        .triggers_fear = false,
+        .triggers_relief = false,
+        .triggers_stress = false
+    },
+    [HEALTH_EMOTION_EVENT_MODERATE_ANOMALY] = {
+        .valence_delta = -0.15f,
+        .arousal_delta = 0.25f,
+        .duration_ms = 15000,
+        .triggers_fear = false,
+        .triggers_relief = false,
+        .triggers_stress = true
+    },
+    [HEALTH_EMOTION_EVENT_CRITICAL_ANOMALY] = {
+        .valence_delta = -0.4f,
+        .arousal_delta = 0.5f,
+        .duration_ms = 30000,
+        .triggers_fear = true,
+        .triggers_relief = false,
+        .triggers_stress = true
+    },
+    [HEALTH_EMOTION_EVENT_RECOVERY_SUCCESS] = {
+        .valence_delta = 0.2f,
+        .arousal_delta = -0.15f,
+        .duration_ms = 10000,
+        .triggers_fear = false,
+        .triggers_relief = true,
+        .triggers_stress = false
+    },
+    [HEALTH_EMOTION_EVENT_RECOVERY_FAILURE] = {
+        .valence_delta = -0.25f,
+        .arousal_delta = 0.3f,
+        .duration_ms = 20000,
+        .triggers_fear = true,
+        .triggers_relief = false,
+        .triggers_stress = true
+    },
+    [HEALTH_EMOTION_EVENT_SYSTEM_STABLE] = {
+        .valence_delta = 0.1f,
+        .arousal_delta = -0.2f,
+        .duration_ms = 5000,
+        .triggers_fear = false,
+        .triggers_relief = true,
+        .triggers_stress = false
+    },
+    [HEALTH_EMOTION_EVENT_PROLONGED_CRISIS] = {
+        .valence_delta = -0.35f,
+        .arousal_delta = 0.15f,  /* Arousal may decrease due to exhaustion */
+        .duration_ms = 60000,
+        .triggers_fear = true,
+        .triggers_relief = false,
+        .triggers_stress = true
+    }
+};
+
+/**
+ * @brief Event type names
+ */
+static const char* event_type_names[] = {
+    [HEALTH_EMOTION_EVENT_MINOR_ANOMALY]    = "Minor Anomaly",
+    [HEALTH_EMOTION_EVENT_MODERATE_ANOMALY] = "Moderate Anomaly",
+    [HEALTH_EMOTION_EVENT_CRITICAL_ANOMALY] = "Critical Anomaly",
+    [HEALTH_EMOTION_EVENT_RECOVERY_SUCCESS] = "Recovery Success",
+    [HEALTH_EMOTION_EVENT_RECOVERY_FAILURE] = "Recovery Failure",
+    [HEALTH_EMOTION_EVENT_SYSTEM_STABLE]    = "System Stable",
+    [HEALTH_EMOTION_EVENT_PROLONGED_CRISIS] = "Prolonged Crisis"
+};
+
+/**
+ * @brief Recovery action names
+ */
+static const char* recovery_action_names[] = {
+    [HEALTH_RECOVERY_NONE]               = "None",
+    [HEALTH_RECOVERY_LOG_ONLY]           = "Log Only",
+    [HEALTH_RECOVERY_CLEAR_CACHE]        = "Clear Cache",
+    [HEALTH_RECOVERY_REDUCE_LOAD]        = "Reduce Load",
+    [HEALTH_RECOVERY_PARTIAL_RESTART]    = "Partial Restart",
+    [HEALTH_RECOVERY_FULL_RESTART]       = "Full Restart",
+    [HEALTH_RECOVERY_QUARANTINE]         = "Quarantine",
+    [HEALTH_RECOVERY_ROLLBACK]           = "Rollback",
+    [HEALTH_RECOVERY_EMERGENCY_SHUTDOWN] = "Emergency Shutdown"
+};
+
+/**
+ * @brief Shadow pattern names
+ */
+static const char* shadow_pattern_names[] = {
+    [HEALTH_SHADOW_NONE]               = "None",
+    [HEALTH_SHADOW_HYPERVIGILANCE]     = "Hypervigilance",
+    [HEALTH_SHADOW_OVERREACTION]       = "Overreaction",
+    [HEALTH_SHADOW_DENIAL]             = "Denial",
+    [HEALTH_SHADOW_PROCRASTINATION]    = "Procrastination",
+    [HEALTH_SHADOW_OBSESSIVE_CHECKING] = "Obsessive Checking",
+    [HEALTH_SHADOW_NEVER_GOOD_ENOUGH]  = "Never Good Enough",
+    [HEALTH_SHADOW_OVER_ESCALATION]    = "Over Escalation",
+    [HEALTH_SHADOW_DECISION_PARALYSIS] = "Decision Paralysis"
+};
+
+/**
+ * @brief Inflammation level names
+ */
+static const char* inflammation_names[] = {
+    [INFLAMMATION_NONE]     = "None",
+    [INFLAMMATION_LOW]      = "Low",
+    [INFLAMMATION_MODERATE] = "Moderate",
+    [INFLAMMATION_HIGH]     = "High",
+    [INFLAMMATION_SEVERE]   = "Severe"
+};
+
+/*==============================================================================
+ * THRESHOLD COMPUTATION
+ *============================================================================*/
+
+int health_emotion_compute_thresholds(
+    nimcp_health_agent_t* agent,
+    const emotional_system_t* emotion_system,
+    const threshold_adjustment_factors_t* factors,
+    emotion_adjusted_thresholds_t* thresholds
+) {
+    (void)agent;  /* May use agent for baseline thresholds */
+
+    if (!thresholds) return -1;
+
+    /* Get default factors if not provided */
+    threshold_adjustment_factors_t local_factors;
+    if (!factors) {
+        health_emotion_default_factors(&local_factors);
+        factors = &local_factors;
+    }
+
+    /* Default thresholds */
+    thresholds->memory_warning_threshold = 0.75f;
+    thresholds->memory_critical_threshold = 0.90f;
+    thresholds->cpu_warning_threshold = 0.80f;
+    thresholds->cpu_critical_threshold = 0.95f;
+    thresholds->anomaly_sensitivity = 1.0f;
+    thresholds->recovery_aggressiveness = 0.5f;
+    thresholds->check_frequency_modifier = 1.0f;
+    thresholds->response_delay_modifier = 1.0f;
+
+    /* If no emotion system, return defaults */
+    if (!emotion_system) return 0;
+
+    /* Query emotional state */
+    health_emotion_state_t emotion_state;
+    int result = health_emotion_get_state(emotion_system, &emotion_state);
+    if (result != 0) return 0;  /* Use defaults on error */
+
+    /* Apply stress-based adjustments */
+    if (emotion_state.is_stressed) {
+        /* Lower thresholds (more sensitive) */
+        thresholds->memory_warning_threshold *= factors->high_stress_modifier;
+        thresholds->cpu_warning_threshold *= factors->high_stress_modifier;
+        thresholds->check_frequency_modifier = 1.5f;  /* More frequent checks */
+        thresholds->response_delay_modifier = 0.7f;   /* Faster response */
+    }
+
+    /* Apply valence-based adjustments */
+    if (emotion_state.is_negative) {
+        /* Increase sensitivity */
+        thresholds->anomaly_sensitivity *= factors->negative_valence_modifier;
+        thresholds->recovery_aggressiveness *= 0.8f;  /* More conservative */
+    } else if (emotion_state.is_positive) {
+        /* Relax thresholds slightly */
+        thresholds->memory_warning_threshold *= (1.0f / factors->positive_valence_modifier);
+        thresholds->cpu_warning_threshold *= (1.0f / factors->positive_valence_modifier);
+        thresholds->recovery_aggressiveness *= 1.1f;  /* Can be more aggressive */
+    }
+
+    /* Apply stability-based adjustments */
+    if (emotion_state.stability < LOW_STABILITY_THRESHOLD) {
+        thresholds->anomaly_sensitivity *= factors->instability_modifier;
+        thresholds->recovery_aggressiveness *= 0.7f;  /* Very conservative */
+    }
+
+    /* Clamp values to reasonable ranges */
+    if (thresholds->memory_warning_threshold < 0.5f)
+        thresholds->memory_warning_threshold = 0.5f;
+    if (thresholds->memory_warning_threshold > 0.9f)
+        thresholds->memory_warning_threshold = 0.9f;
+
+    if (thresholds->cpu_warning_threshold < 0.5f)
+        thresholds->cpu_warning_threshold = 0.5f;
+    if (thresholds->cpu_warning_threshold > 0.95f)
+        thresholds->cpu_warning_threshold = 0.95f;
+
+    if (thresholds->anomaly_sensitivity < 0.5f)
+        thresholds->anomaly_sensitivity = 0.5f;
+    if (thresholds->anomaly_sensitivity > 2.0f)
+        thresholds->anomaly_sensitivity = 2.0f;
+
+    if (thresholds->recovery_aggressiveness < 0.2f)
+        thresholds->recovery_aggressiveness = 0.2f;
+    if (thresholds->recovery_aggressiveness > 1.0f)
+        thresholds->recovery_aggressiveness = 1.0f;
+
+    return 0;
+}
+
+/*==============================================================================
+ * EMOTIONAL STATE QUERY
+ *============================================================================*/
+
+int health_emotion_get_state(
+    const emotional_system_t* emotion_system,
+    health_emotion_state_t* state
+) {
+    if (!state) return -1;
+
+    memset(state, 0, sizeof(health_emotion_state_t));
+
+    /* Default to neutral if no emotion system */
+    if (!emotion_system) {
+        state->valence = 0.0f;
+        state->arousal = 0.3f;
+        state->stability = 0.8f;
+        state->stress_index = 0.2f;
+        state->is_calm = true;
+        return 0;
+    }
+
+    /* Query emotion system - in real implementation, this would call
+     * emotion_system_get_state() or similar */
+
+    /* For now, return moderate defaults
+     * This will be replaced with actual emotion system API calls */
+    state->valence = 0.0f;
+    state->arousal = 0.4f;
+    state->stability = 0.7f;
+
+    /* Derive stress index from arousal and valence */
+    state->stress_index = state->arousal * (1.0f - ((state->valence + 1.0f) / 2.0f));
+
+    /* Set boolean flags */
+    state->is_positive = (state->valence > NEUTRAL_VALENCE_THRESHOLD);
+    state->is_negative = (state->valence < -NEUTRAL_VALENCE_THRESHOLD);
+    state->is_stressed = (state->arousal > HIGH_STRESS_AROUSAL);
+    state->is_calm = (state->arousal < CALM_AROUSAL_THRESHOLD);
+
+    return 0;
+}
+
+/*==============================================================================
+ * EVENT REPORTING
+ *============================================================================*/
+
+void health_emotion_get_event_mapping(
+    health_emotion_event_type_t event_type,
+    float severity,
+    health_event_emotion_mapping_t* mapping
+) {
+    if (!mapping) return;
+
+    if (event_type >= HEALTH_EMOTION_EVENT_COUNT) {
+        event_type = HEALTH_EMOTION_EVENT_MINOR_ANOMALY;
+    }
+
+    /* Copy base mapping */
+    *mapping = default_event_mappings[event_type];
+
+    /* Scale by severity */
+    mapping->valence_delta *= severity;
+    mapping->arousal_delta *= severity;
+    mapping->duration_ms = (uint32_t)(mapping->duration_ms * (0.5f + severity));
+}
+
+int health_emotion_report_event(
+    nimcp_health_agent_t* agent,
+    emotional_system_t* emotion_system,
+    health_emotion_event_type_t event_type,
+    float severity
+) {
+    (void)agent;  /* May be used for context */
+
+    if (!emotion_system) return -1;
+
+    if (event_type >= HEALTH_EMOTION_EVENT_COUNT) return -1;
+    if (severity < 0.0f || severity > 1.0f) severity = 0.5f;
+
+    /* Get emotion mapping */
+    health_event_emotion_mapping_t mapping;
+    health_emotion_get_event_mapping(event_type, severity, &mapping);
+
+    /* In real implementation, this would call emotion system APIs:
+     * - emotion_system_inject_event()
+     * - emotion_system_modulate_valence()
+     * - emotion_system_modulate_arousal()
+     *
+     * For now, we just return success as the emotion system
+     * integration will be completed in a later phase */
+
+    (void)mapping;  /* Will be used in full implementation */
+
+    return 0;
+}
+
+/*==============================================================================
+ * ACTION GATING
+ *============================================================================*/
+
+bool health_emotion_permits_action(
+    const emotional_system_t* emotion_system,
+    health_recovery_action_t action
+) {
+    if (!emotion_system) return true;  /* No emotion system = no restrictions */
+
+    /* Query emotional state */
+    health_emotion_state_t state;
+    if (health_emotion_get_state(emotion_system, &state) != 0) {
+        return true;  /* Error querying = allow action */
+    }
+
+    /* Low severity actions always permitted */
+    if (action <= HEALTH_RECOVERY_CLEAR_CACHE) {
+        return true;
+    }
+
+    /* Check for emotional instability */
+    if (state.stability < LOW_STABILITY_THRESHOLD) {
+        /* Only allow low-impact actions during instability */
+        if (action >= HEALTH_RECOVERY_FULL_RESTART) {
+            return false;
+        }
+    }
+
+    /* Check for high stress */
+    if (state.is_stressed) {
+        /* Avoid aggressive actions under stress unless critical */
+        if (action >= HEALTH_RECOVERY_EMERGENCY_SHUTDOWN) {
+            return false;
+        }
+    }
+
+    /* Check for very negative valence */
+    if (state.valence < -0.5f) {
+        /* Avoid irreversible actions during emotional crisis */
+        if (action >= HEALTH_RECOVERY_QUARANTINE) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+int health_emotion_adjust_recovery(
+    const emotional_system_t* emotion_system,
+    health_recovery_action_t proposed_action,
+    health_recovery_action_t* adjusted_action
+) {
+    if (!adjusted_action) return -1;
+
+    *adjusted_action = proposed_action;
+
+    if (!emotion_system) return 0;
+
+    /* Check if proposed action is permitted */
+    if (!health_emotion_permits_action(emotion_system, proposed_action)) {
+        /* Downgrade to next lower severity action */
+        if (proposed_action > HEALTH_RECOVERY_LOG_ONLY) {
+            *adjusted_action = (health_recovery_action_t)(proposed_action - 1);
+        }
+    }
+
+    return 0;
+}
+
+/*==============================================================================
+ * SHADOW PATTERN DETECTION
+ *============================================================================*/
+
+int health_agent_detect_shadow_patterns(
+    const nimcp_health_agent_t* agent,
+    shadow_detection_result_t* detected_patterns,
+    uint32_t max_patterns,
+    uint32_t* num_detected
+) {
+    if (!detected_patterns || !num_detected || max_patterns == 0) return -1;
+
+    *num_detected = 0;
+
+    /* Without access to agent history, we can't detect patterns
+     * In real implementation, this would analyze:
+     * - False positive rate (hypervigilance)
+     * - Escalation frequency (over-escalation)
+     * - Ignored anomalies (denial)
+     * - Action latency (procrastination)
+     * - Check frequency (obsessive checking)
+     * - Human help requests (decision paralysis)
+     */
+
+    (void)agent;  /* Will be used in full implementation */
+
+    /* Return empty result for now */
+    return 0;
+}
+
+shadow_intervention_type_t health_shadow_get_intervention(health_shadow_pattern_t pattern) {
+    switch (pattern) {
+        case HEALTH_SHADOW_HYPERVIGILANCE:
+            return SHADOW_INTERVENTION_RAISE_THRESHOLD;
+        case HEALTH_SHADOW_OVERREACTION:
+            return SHADOW_INTERVENTION_RAISE_THRESHOLD;
+        case HEALTH_SHADOW_DENIAL:
+            return SHADOW_INTERVENTION_LOWER_THRESHOLD;
+        case HEALTH_SHADOW_PROCRASTINATION:
+            return SHADOW_INTERVENTION_REQUIRE_ACTION;
+        case HEALTH_SHADOW_OBSESSIVE_CHECKING:
+            return SHADOW_INTERVENTION_LIMIT_FREQUENCY;
+        case HEALTH_SHADOW_NEVER_GOOD_ENOUGH:
+            return SHADOW_INTERVENTION_ACCEPT_GOOD_ENOUGH;
+        case HEALTH_SHADOW_OVER_ESCALATION:
+            return SHADOW_INTERVENTION_REDUCE_ESCALATION;
+        case HEALTH_SHADOW_DECISION_PARALYSIS:
+            return SHADOW_INTERVENTION_FORCE_DEFAULT;
+        default:
+            return SHADOW_INTERVENTION_NONE;
+    }
+}
+
+int health_agent_intervene_shadow(
+    nimcp_health_agent_t* agent,
+    health_shadow_pattern_t pattern
+) {
+    if (!agent) return -1;
+    if (pattern == HEALTH_SHADOW_NONE || pattern >= HEALTH_SHADOW_COUNT) return 0;
+
+    shadow_intervention_type_t intervention = health_shadow_get_intervention(pattern);
+
+    /* In real implementation, this would apply the intervention:
+     * - RAISE_THRESHOLD: Increase anomaly thresholds
+     * - LOWER_THRESHOLD: Decrease anomaly thresholds
+     * - LIMIT_FREQUENCY: Set minimum interval between checks
+     * - FORCE_DEFAULT: Use default action on next decision
+     * - REDUCE_ESCALATION: Disable human escalation temporarily
+     * - REQUIRE_ACTION: Force action on next anomaly
+     * - ACCEPT_GOOD_ENOUGH: Accept current state as stable
+     */
+
+    (void)intervention;  /* Will be used in full implementation */
+
+    return 0;
+}
+
+/*==============================================================================
+ * UNIFIED STATE
+ *============================================================================*/
+
+int health_emotion_update_unified_state(
+    const nimcp_health_agent_t* agent,
+    const emotional_system_t* emotion_system,
+    const emotion_immune_bridge_t* emotion_immune_bridge,
+    immune_emotion_health_state_t* state
+) {
+    if (!state) return -1;
+
+    memset(state, 0, sizeof(immune_emotion_health_state_t));
+
+    /* Default values */
+    state->inflammation_level = INFLAMMATION_NONE;
+    state->immune_health_score = 1.0f;
+    state->active_threats = 0;
+
+    state->valence = 0.0f;
+    state->arousal = 0.3f;
+    state->emotional_stability = 0.8f;
+
+    state->overall_health_score = 1.0f;
+    state->active_anomalies = 0;
+    state->agent_stress = 0.0f;
+    state->agent_confidence = 1.0f;
+
+    /* Query emotion system if available */
+    if (emotion_system) {
+        health_emotion_state_t emotion_state;
+        if (health_emotion_get_state(emotion_system, &emotion_state) == 0) {
+            state->valence = emotion_state.valence;
+            state->arousal = emotion_state.arousal;
+            state->emotional_stability = emotion_state.stability;
+        }
+    }
+
+    /* Query immune bridge if available */
+    (void)emotion_immune_bridge;  /* Will integrate in full implementation */
+
+    /* Query health agent if available */
+    (void)agent;  /* Will integrate in full implementation */
+
+    /* Compute derived metrics */
+    state->combined_stress_index = health_emotion_compute_combined_stress(state);
+
+    /* Resilience is inverse of stress, modulated by stability */
+    state->system_resilience = (1.0f - state->combined_stress_index) * state->emotional_stability;
+
+    /* Recovery capacity depends on immune health and available resources */
+    state->recovery_capacity = state->immune_health_score *
+                               (1.0f - (float)state->active_anomalies * 0.1f);
+    if (state->recovery_capacity < 0.1f) state->recovery_capacity = 0.1f;
+
+    return 0;
+}
+
+float health_emotion_compute_combined_stress(const immune_emotion_health_state_t* state) {
+    if (!state) return 0.5f;
+
+    /* Weights for each component */
+    const float w_inflammation = 0.25f;
+    const float w_arousal = 0.25f;
+    const float w_anomaly = 0.25f;
+    const float w_agent_stress = 0.15f;
+    const float w_valence = 0.10f;
+
+    /* Normalize inflammation to [0, 1] */
+    float inflammation_norm = (float)state->inflammation_level / 4.0f;
+
+    /* Arousal already in [0, 1] */
+    float arousal = state->arousal;
+
+    /* Normalize anomaly count (assume 10+ is max stress) */
+    float anomaly_norm = (float)state->active_anomalies / 10.0f;
+    if (anomaly_norm > 1.0f) anomaly_norm = 1.0f;
+
+    /* Agent stress already in [0, 1] */
+    float agent_stress = state->agent_stress;
+
+    /* Negative valence contributes to stress */
+    float valence_stress = (state->valence < 0.0f) ? -state->valence : 0.0f;
+
+    /* Base stress computation */
+    float stress = w_inflammation * inflammation_norm +
+                   w_arousal * arousal +
+                   w_anomaly * anomaly_norm +
+                   w_agent_stress * agent_stress +
+                   w_valence * valence_stress;
+
+    /* Cross-system effects */
+
+    /* Inflammation + high arousal has compounding effect */
+    if (inflammation_norm > 0.5f && arousal > 0.6f) {
+        stress += 0.1f;
+    }
+
+    /* Multiple active anomalies + agent stress compounds */
+    if (state->active_anomalies > 3 && agent_stress > 0.5f) {
+        stress += 0.1f;
+    }
+
+    /* Clamp to [0, 1] */
+    if (stress > 1.0f) stress = 1.0f;
+    if (stress < 0.0f) stress = 0.0f;
+
+    return stress;
+}
+
+int health_emotion_get_holistic_recommendation(
+    const immune_emotion_health_state_t* state,
+    health_recovery_action_t base_recommendation,
+    health_recovery_action_t* adjusted_recommendation
+) {
+    if (!adjusted_recommendation) return -1;
+
+    *adjusted_recommendation = base_recommendation;
+
+    if (!state) return 0;
+
+    /* High combined stress = more conservative */
+    if (state->combined_stress_index > 0.7f) {
+        if (base_recommendation > HEALTH_RECOVERY_PARTIAL_RESTART) {
+            *adjusted_recommendation = HEALTH_RECOVERY_PARTIAL_RESTART;
+        }
+    }
+
+    /* Low resilience = even more conservative */
+    if (state->system_resilience < 0.3f) {
+        if (base_recommendation > HEALTH_RECOVERY_REDUCE_LOAD) {
+            *adjusted_recommendation = HEALTH_RECOVERY_REDUCE_LOAD;
+        }
+    }
+
+    /* High inflammation + low recovery capacity = minimal action */
+    if (state->inflammation_level >= INFLAMMATION_HIGH &&
+        state->recovery_capacity < 0.3f) {
+        if (base_recommendation > HEALTH_RECOVERY_LOG_ONLY) {
+            *adjusted_recommendation = HEALTH_RECOVERY_LOG_ONLY;
+        }
+    }
+
+    /* Low agent confidence = defer to conservative action */
+    if (state->agent_confidence < 0.4f) {
+        if (base_recommendation > HEALTH_RECOVERY_CLEAR_CACHE) {
+            *adjusted_recommendation = HEALTH_RECOVERY_CLEAR_CACHE;
+        }
+    }
+
+    return 0;
+}
+
+/*==============================================================================
+ * STATISTICS
+ *============================================================================*/
+
+int health_emotion_get_stats(
+    const nimcp_health_agent_t* agent,
+    health_emotion_stats_t* stats
+) {
+    if (!stats) return -1;
+
+    memset(stats, 0, sizeof(health_emotion_stats_t));
+
+    /* In full implementation, this would query accumulated statistics
+     * from the health agent's emotion bridge state */
+
+    (void)agent;  /* Will be used in full implementation */
+
+    return 0;
+}
+
+void health_emotion_reset_stats(nimcp_health_agent_t* agent) {
+    /* In full implementation, this would reset the emotion bridge
+     * statistics stored in the health agent */
+
+    (void)agent;  /* Will be used in full implementation */
+}
+
+/*==============================================================================
+ * UTILITY FUNCTIONS
+ *============================================================================*/
+
+const char* health_emotion_event_name(health_emotion_event_type_t event_type) {
+    if (event_type >= HEALTH_EMOTION_EVENT_COUNT) {
+        return "Unknown";
+    }
+    return event_type_names[event_type];
+}
+
+const char* health_emotion_recovery_action_name(health_recovery_action_t action) {
+    if (action > HEALTH_RECOVERY_EMERGENCY_SHUTDOWN) {
+        return "Unknown";
+    }
+    return recovery_action_names[action];
+}
+
+const char* health_shadow_pattern_name(health_shadow_pattern_t pattern) {
+    if (pattern >= HEALTH_SHADOW_COUNT) {
+        return "Unknown";
+    }
+    return shadow_pattern_names[pattern];
+}
+
+const char* health_inflammation_level_name(brain_inflammation_level_t level) {
+    if (level > INFLAMMATION_SEVERE) {
+        return "Unknown";
+    }
+    return inflammation_names[level];
+}

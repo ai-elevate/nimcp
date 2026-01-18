@@ -1631,6 +1631,10 @@ set(NIMCP_CORE_SOURCES
     # GPU Health Monitoring (Phase 7: Section 26 - GPU Health & Resilience)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/gpu/nimcp_gpu_health.c                               # GPU health monitor and resilience
 
+    # Health Agent Ethics & Emotion Integration (Phase 9: Section 28 - Ethics & Emotion)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/ethics/nimcp_health_ethics_bridge.c              # Health-ethics bridge (Asimov, mercy, proportionality)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion/nimcp_health_emotion_bridge.c            # Health-emotion bridge (threshold adjustment, shadow detection)
+
     # Utils - Error Codes (Structured Error System)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/error/nimcp_error_codes.c
 
