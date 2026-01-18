@@ -48,3 +48,8 @@ set_tests_properties(regression_utils_fault_tolerance_test_health_agent_connecti
 add_ft_regression_test(test_health_agent_consistency_regression)
 set_tests_properties(regression_utils_fault_tolerance_test_health_agent_consistency_regression
                      PROPERTIES TIMEOUT 120)
+
+# Health Agent Neural Integration Regression Tests (Phase 5.5: SNN/LNN)
+add_ft_regression_test(test_health_agent_neural_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_health_agent_neural_regression
+                     PROPERTIES TIMEOUT 120)

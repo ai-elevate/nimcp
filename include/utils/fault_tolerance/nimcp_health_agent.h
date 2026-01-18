@@ -921,6 +921,20 @@ typedef struct exception_immune_integration exception_immune_t;
 #endif
 
 /* ============================================================================
+ * Neural Module (SNN/LNN) Forward Declarations
+ * ============================================================================ */
+
+/** SNN immune bridge - spiking neural network immune integration */
+#ifndef NIMCP_SNN_IMMUNE_H
+typedef struct snn_immune_bridge_s snn_immune_bridge_t;
+#endif
+
+/** LNN immune bridge - liquid neural network immune integration */
+#ifndef NIMCP_LNN_IMMUNE_H
+typedef struct lnn_immune_bridge lnn_immune_bridge_t;
+#endif
+
+/* ============================================================================
  * Portia/Dragonfly/Swarm/Memory Module Forward Declarations
  * ============================================================================ */
 
@@ -1137,6 +1151,89 @@ typedef struct {
     bool enable_recovery_callbacks;      /**< Use recovery callbacks */
     uint32_t exception_severity_threshold; /**< Min severity for auto-present */
 } health_agent_exception_config_t;
+
+/* ============================================================================
+ * Neural Module (SNN/LNN) Integration Configuration
+ * ============================================================================ */
+
+/**
+ * @brief Configuration for SNN immune bridge integration
+ *
+ * WHAT: Configuration for spiking neural network health monitoring
+ * WHY:  SNN can exhibit instabilities (silent network, explosions, NaN)
+ * HOW:  Periodic health checks via snn_immune_get_health()
+ */
+typedef struct {
+    bool enable_snn_monitoring;          /**< Enable SNN health monitoring */
+    bool enable_instability_detection;   /**< Detect SNN instabilities */
+    bool enable_auto_report;             /**< Auto-report instabilities to immune */
+    bool enable_learning_modulation;     /**< Allow immune to modulate STDP */
+    float max_spike_rate_hz;             /**< Max firing rate before alert (100.0) */
+    float min_spike_rate_hz;             /**< Min firing rate (silent detect) (0.1) */
+    float burst_threshold;               /**< Burst ratio for epileptiform (0.5) */
+    float sync_threshold;                /**< Hypersynchrony threshold (0.8) */
+    uint32_t check_interval_ms;          /**< How often to check SNN health (100) */
+} health_agent_snn_config_t;
+
+/**
+ * @brief Configuration for LNN immune bridge integration
+ *
+ * WHAT: Configuration for liquid neural network health monitoring
+ * WHY:  LNN can exhibit ODE instabilities (divergence, tau collapse, NaN)
+ * HOW:  Periodic stability checks via lnn_immune_check_stability()
+ */
+typedef struct {
+    bool enable_lnn_monitoring;          /**< Enable LNN health monitoring */
+    bool enable_stability_detection;     /**< Detect LNN instabilities */
+    bool enable_auto_report;             /**< Auto-report instabilities to immune */
+    bool enable_tau_modulation;          /**< Allow immune to modulate tau */
+    bool enable_lr_modulation;           /**< Allow immune to modulate LR */
+    float state_explosion_threshold;     /**< State norm for explosion (1000.0) */
+    float state_collapse_threshold;      /**< State norm for collapse (1e-6) */
+    float tau_max;                       /**< Maximum allowed tau (10.0) */
+    float tau_min;                       /**< Minimum allowed tau (0.001) */
+    float gradient_explosion_threshold;  /**< Gradient norm for explosion (100.0) */
+    float gradient_vanishing_threshold;  /**< Gradient norm for vanishing (1e-7) */
+    uint32_t check_interval_ms;          /**< How often to check LNN health (100) */
+} health_agent_lnn_config_t;
+
+/**
+ * @brief Aggregated neural health metrics from SNN and LNN
+ *
+ * WHAT: Combined health status from all neural computation modules
+ * WHY:  Single view of neural computation health for the health agent
+ * HOW:  Aggregates snn_health_metrics_t and lnn stability checks
+ */
+typedef struct {
+    /* SNN metrics */
+    bool snn_connected;                  /**< SNN bridge is connected */
+    bool snn_healthy;                    /**< SNN network is healthy */
+    float snn_mean_rate;                 /**< Mean firing rate (Hz) */
+    float snn_max_rate;                  /**< Maximum neuron rate (Hz) */
+    float snn_burst_ratio;               /**< Fraction of spikes in bursts */
+    float snn_sync_index;                /**< Population synchrony [0, 1] */
+    uint32_t snn_silent_neurons;         /**< Number of silent neurons */
+    uint32_t snn_saturated_neurons;      /**< Neurons at max rate */
+    uint32_t snn_instability_count;      /**< Total instabilities detected */
+
+    /* LNN metrics */
+    bool lnn_connected;                  /**< LNN bridge is connected */
+    bool lnn_healthy;                    /**< LNN network is healthy */
+    float lnn_tau_scale;                 /**< Current tau scale factor */
+    float lnn_lr_factor;                 /**< Current learning rate factor */
+    float lnn_state_damping;             /**< Current state damping factor */
+    uint32_t lnn_instability_count;      /**< Total instabilities detected */
+    uint32_t lnn_nan_detections;         /**< NaN detections in LNN */
+    uint32_t lnn_inf_detections;         /**< Inf detections in LNN */
+    uint32_t lnn_tau_violations;         /**< Tau bound violations */
+    uint32_t lnn_gradient_issues;        /**< Gradient explosion/vanishing */
+
+    /* Combined metrics */
+    bool any_neural_unhealthy;           /**< Any neural module unhealthy */
+    float neural_health_score;           /**< Combined neural health [0-100] */
+    uint32_t total_instabilities;        /**< Total across all neural modules */
+    uint64_t last_check_time_us;         /**< Last check timestamp */
+} neural_health_metrics_t;
 
 /* ============================================================================
  * Portia/Dragonfly/Swarm/Memory Integration Configuration
@@ -1651,6 +1748,132 @@ int nimcp_health_agent_connect_exception_bridge(
     exception_immune_t* exception_bridge,
     const health_agent_exception_config_t* config
 );
+
+/* ============================================================================
+ * Neural Module (SNN/LNN) Connection API
+ * ============================================================================ */
+
+/**
+ * @brief Connect SNN immune bridge for neural health monitoring
+ *
+ * WHAT: Enable spiking neural network health monitoring
+ * WHY:  Detect SNN instabilities (silent, explosion, NaN, hypersynchrony)
+ * HOW:  Periodic checks via snn_immune_get_health(), auto-report to immune
+ *
+ * SNN HEALTH STATES:
+ * - SNN_STATE_HEALTHY: Normal operation
+ * - SNN_STATE_SILENT: No spikes (dead network)
+ * - SNN_STATE_EXPLOSION: Runaway firing
+ * - SNN_STATE_NAN_DETECTED: NaN in membrane potential or weights
+ * - SNN_STATE_WEIGHT_EXPLOSION: Weights exceeding bounds
+ * - SNN_STATE_UNSTABLE: Oscillating or divergent
+ *
+ * RECOVERY ACTIONS:
+ * - RECOVERY_ACTION_CLEAR_NAN: Clear NaN values
+ * - RECOVERY_ACTION_HOMEOSTATIC_SCALE: Apply homeostatic scaling
+ * - RECOVERY_ACTION_GRADIENT_CLIP: Clip gradients
+ *
+ * @param agent Health agent to connect
+ * @param snn_bridge SNN immune bridge (must be already initialized)
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, negative error code on failure
+ */
+int nimcp_health_agent_connect_snn(
+    nimcp_health_agent_t* agent,
+    snn_immune_bridge_t* snn_bridge,
+    const health_agent_snn_config_t* config
+);
+
+/**
+ * @brief Connect LNN immune bridge for neural health monitoring
+ *
+ * WHAT: Enable liquid neural network health monitoring
+ * WHY:  Detect LNN instabilities (ODE divergence, tau collapse, NaN)
+ * HOW:  Periodic stability checks via lnn_immune_check_stability()
+ *
+ * LNN INSTABILITY TYPES:
+ * - LNN_INSTABILITY_NAN_STATE: NaN in state vector
+ * - LNN_INSTABILITY_INF_STATE: Inf in state vector
+ * - LNN_INSTABILITY_STATE_EXPLOSION: ||x|| > threshold
+ * - LNN_INSTABILITY_STATE_COLLAPSE: ||x|| < threshold
+ * - LNN_INSTABILITY_TAU_EXPLOSION: τ > max_tau
+ * - LNN_INSTABILITY_TAU_COLLAPSE: τ < min_tau
+ * - LNN_INSTABILITY_GRADIENT_EXPLOSION: ||∇|| > threshold
+ * - LNN_INSTABILITY_GRADIENT_VANISHING: ||∇|| < threshold
+ * - LNN_INSTABILITY_ODE_DIVERGENCE: ODE solver diverged
+ *
+ * IMMUNE MODULATION:
+ * - Fever model: Higher inflammation → higher tau (slower dynamics)
+ * - Learning suppression: Reduced LR during inflammation
+ *
+ * @param agent Health agent to connect
+ * @param lnn_bridge LNN immune bridge (must be already initialized)
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, negative error code on failure
+ */
+int nimcp_health_agent_connect_lnn(
+    nimcp_health_agent_t* agent,
+    lnn_immune_bridge_t* lnn_bridge,
+    const health_agent_lnn_config_t* config
+);
+
+/**
+ * @brief Get aggregated neural health metrics
+ *
+ * WHAT: Retrieve combined health metrics from SNN and LNN
+ * WHY:  Single view of neural computation health
+ * HOW:  Queries both bridges, aggregates metrics
+ *
+ * @param agent Health agent
+ * @param metrics Output for neural health metrics
+ * @return 0 on success, negative error code on failure
+ */
+int nimcp_health_agent_get_neural_metrics(
+    const nimcp_health_agent_t* agent,
+    neural_health_metrics_t* metrics
+);
+
+/**
+ * @brief Configure neural monitoring thresholds
+ *
+ * WHAT: Update SNN/LNN monitoring configuration
+ * WHY:  Adjust thresholds based on workload or requirements
+ * HOW:  Applies config to both SNN and LNN bridges
+ *
+ * @param agent Health agent
+ * @param snn_config SNN config (NULL to skip)
+ * @param lnn_config LNN config (NULL to skip)
+ * @return 0 on success, negative error code on failure
+ */
+int nimcp_health_agent_configure_neural(
+    nimcp_health_agent_t* agent,
+    const health_agent_snn_config_t* snn_config,
+    const health_agent_lnn_config_t* lnn_config
+);
+
+/**
+ * @brief Check if any neural module is unhealthy
+ *
+ * WHAT: Quick check for neural health issues
+ * WHY:  Fast path for health decisions
+ * HOW:  Checks has_instability flags on both bridges
+ *
+ * @param agent Health agent
+ * @return true if any neural module is unhealthy
+ */
+bool nimcp_health_agent_is_neural_unhealthy(const nimcp_health_agent_t* agent);
+
+/**
+ * @brief Get neural health score (0-100)
+ *
+ * WHAT: Combined health score for neural modules
+ * WHY:  Single metric for neural health
+ * HOW:  Weighted average of SNN and LNN health
+ *
+ * @param agent Health agent
+ * @return Health score [0-100], 0 if no neural modules connected
+ */
+float nimcp_health_agent_get_neural_health_score(const nimcp_health_agent_t* agent);
 
 /* ============================================================================
  * Portia/Dragonfly/Swarm/Memory Connection API

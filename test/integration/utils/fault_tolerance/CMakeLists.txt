@@ -51,3 +51,8 @@ set_tests_properties(integration_utils_fault_tolerance_test_health_agent_connect
 add_ft_integration_test(test_health_agent_consistency_integration)
 set_tests_properties(integration_utils_fault_tolerance_test_health_agent_consistency_integration
                      PROPERTIES TIMEOUT 180)
+
+# Health Agent Neural Integration Tests (Phase 5.5: SNN/LNN Health Monitoring)
+add_ft_integration_test(test_health_agent_neural_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_health_agent_neural_integration
+                     PROPERTIES TIMEOUT 180)

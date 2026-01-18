@@ -26,6 +26,10 @@
 #include "swarm/nimcp_swarm_immune.h"
 #include "swarm/nimcp_swarm_memory.h"
 
+/* Phase 5.5: Neural module (SNN/LNN) immune integration */
+#include "snn/nimcp_snn_immune.h"
+#include "lnn/nimcp_lnn_immune.h"
+
 /* Phase 4: Hypothalamus integration */
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_orchestrator.h"
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_homeostasis.h"
@@ -293,6 +297,28 @@ struct nimcp_health_agent {
     exception_immune_t* exception_bridge;
     health_agent_exception_config_t exception_config;
 
+    /* =========== NEURAL MODULE (SNN/LNN) CONNECTIONS =========== */
+
+    /* SNN immune bridge - spiking neural network health monitoring */
+    snn_immune_bridge_t* snn_bridge;
+    health_agent_snn_config_t snn_config;
+    _Atomic uint64_t snn_checks_run;
+    _Atomic uint64_t snn_instabilities_detected;
+    _Atomic uint64_t snn_recoveries_triggered;
+    uint64_t last_snn_check_us;
+
+    /* LNN immune bridge - liquid neural network health monitoring */
+    lnn_immune_bridge_t* lnn_bridge;
+    health_agent_lnn_config_t lnn_config;
+    _Atomic uint64_t lnn_checks_run;
+    _Atomic uint64_t lnn_instabilities_detected;
+    _Atomic uint64_t lnn_recoveries_triggered;
+    uint64_t last_lnn_check_us;
+
+    /* Combined neural health metrics (cached for fast access) */
+    neural_health_metrics_t neural_metrics;
+    nimcp_mutex_t* neural_mutex;         /**< For neural metrics access */
+
     /* =========== PORTIA/DRAGONFLY/SWARM/MEMORY CONNECTIONS =========== */
 
     /* Portia adaptive resource management */
@@ -375,6 +401,10 @@ static void agent_run_metacognition_check(nimcp_health_agent_t* agent);
 static void agent_run_wellbeing_check(nimcp_health_agent_t* agent);
 static void agent_apply_emotion_adjustments(nimcp_health_agent_t* agent);
 static void agent_check_gpu_health(nimcp_health_agent_t* agent);
+static void agent_run_neural_check(nimcp_health_agent_t* agent);
+static void agent_check_snn_health(nimcp_health_agent_t* agent);
+static void agent_check_lnn_health(nimcp_health_agent_t* agent);
+static void agent_update_neural_metrics(nimcp_health_agent_t* agent);
 static bool agent_check_ethics_permission(nimcp_health_agent_t* agent,
                                            const health_agent_message_t* msg,
                                            health_agent_recovery_t action);
@@ -827,6 +857,25 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
         return NULL;
     }
 
+    /* Initialize neural module mutex (Phase 5.5: SNN/LNN health monitoring) */
+    agent->neural_mutex = nimcp_mutex_create(NULL);
+    if (!agent->neural_mutex) {
+        nimcp_log(LOG_LEVEL_ERROR, "Failed to create neural mutex");
+        nimcp_mutex_destroy(agent->modules_mutex);
+        nimcp_free(agent->modules_mutex);
+        nimcp_mutex_destroy(agent->cognitive_mutex);
+        nimcp_free(agent->cognitive_mutex);
+        nimcp_cond_destroy(agent->stop_cond);
+        nimcp_free(agent->stop_cond);
+        nimcp_mutex_destroy(agent->stats_mutex);
+        nimcp_free(agent->stats_mutex);
+        nimcp_mutex_destroy(agent->state_mutex);
+        nimcp_free(agent->state_mutex);
+        msg_queue_destroy(&agent->msg_queue);
+        nimcp_free(agent);
+        return NULL;
+    }
+
     /* Initialize atomic state */
     atomic_init(&agent->running, false);
     atomic_init(&agent->stop_requested, false);
@@ -1043,6 +1092,13 @@ void nimcp_health_agent_destroy(nimcp_health_agent_t* agent) {
         agent->modules_mutex = NULL;
     }
 
+    /* Destroy neural mutex (Phase 5.5: SNN/LNN health monitoring) */
+    if (agent->neural_mutex) {
+        nimcp_mutex_destroy(agent->neural_mutex);
+        nimcp_free(agent->neural_mutex);
+        agent->neural_mutex = NULL;
+    }
+
     /* Destroy consistency mutex (Phase 3) */
     if (agent->consistency_mutex) {
         nimcp_mutex_destroy(agent->consistency_mutex);
@@ -1234,6 +1290,7 @@ static void* agent_thread_main(void* arg) {
     uint64_t last_prediction_us = get_timestamp_us();
     uint64_t last_metacog_us = get_timestamp_us();
     uint64_t last_wellbeing_us = get_timestamp_us();
+    uint64_t last_neural_us = get_timestamp_us();  /* Phase 5.5: SNN/LNN check timing */
     uint32_t check_interval_us = agent->config.check_interval_ms * 1000;
 
     while (!atomic_load(&agent->stop_requested)) {
@@ -1308,6 +1365,26 @@ static void* agent_thread_main(void* arg) {
             /* Check oscillations if connected */
             if (agent->oscillations && agent->oscillations_config.enable_oscillation_monitoring) {
                 agent_check_oscillations(agent);
+            }
+
+            /* ========== NEURAL MODULE (SNN/LNN) HEALTH CHECK (Phase 5.5) ========== */
+
+            /* Run neural module health checks if connected */
+            if (agent->snn_bridge || agent->lnn_bridge) {
+                /* Check interval: use SNN or LNN config, whichever is shorter */
+                uint32_t neural_interval_ms = 1000;  /* Default 1 second */
+                if (agent->snn_bridge && agent->snn_config.check_interval_ms > 0) {
+                    neural_interval_ms = agent->snn_config.check_interval_ms;
+                }
+                if (agent->lnn_bridge && agent->lnn_config.check_interval_ms > 0) {
+                    if (agent->lnn_config.check_interval_ms < neural_interval_ms) {
+                        neural_interval_ms = agent->lnn_config.check_interval_ms;
+                    }
+                }
+                if (now_us - last_neural_us >= neural_interval_ms * 1000ULL) {
+                    last_neural_us = now_us;
+                    agent_run_neural_check(agent);
+                }
             }
 
             /* Auto-trigger GC if memory pressure detected (USE the GC) */
@@ -1997,6 +2074,153 @@ int nimcp_health_agent_connect_exception_bridge(
     nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected to exception-immune bridge",
               agent->config.agent_name);
     return 0;
+}
+
+/* ============================================================================
+ * Neural Module (SNN/LNN) Connection Functions
+ * ============================================================================ */
+
+int nimcp_health_agent_connect_snn(
+    nimcp_health_agent_t* agent,
+    snn_immune_bridge_t* snn_bridge,
+    const health_agent_snn_config_t* config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+
+    agent->snn_bridge = snn_bridge;
+
+    /* Apply config or defaults */
+    if (config) {
+        agent->snn_config = *config;
+    } else {
+        /* Default SNN configuration */
+        agent->snn_config.enable_snn_monitoring = true;
+        agent->snn_config.enable_instability_detection = true;
+        agent->snn_config.enable_auto_report = true;
+        agent->snn_config.enable_learning_modulation = true;
+        agent->snn_config.max_spike_rate_hz = 100.0f;
+        agent->snn_config.min_spike_rate_hz = 0.1f;
+        agent->snn_config.burst_threshold = 0.5f;
+        agent->snn_config.sync_threshold = 0.8f;
+        agent->snn_config.check_interval_ms = 100;
+    }
+
+    /* Initialize neural metrics for SNN - only mark connected if bridge is non-NULL */
+    agent->neural_metrics.snn_connected = (snn_bridge != NULL);
+    agent->neural_metrics.snn_healthy = true;
+    atomic_store(&agent->snn_checks_run, 0);
+    atomic_store(&agent->snn_instabilities_detected, 0);
+    atomic_store(&agent->snn_recoveries_triggered, 0);
+    agent->last_snn_check_us = get_timestamp_us();
+
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected to SNN immune bridge%s",
+              agent->config.agent_name, snn_bridge ? "" : " (NULL bridge)");
+    return 0;
+}
+
+int nimcp_health_agent_connect_lnn(
+    nimcp_health_agent_t* agent,
+    lnn_immune_bridge_t* lnn_bridge,
+    const health_agent_lnn_config_t* config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+
+    agent->lnn_bridge = lnn_bridge;
+
+    /* Apply config or defaults */
+    if (config) {
+        agent->lnn_config = *config;
+    } else {
+        /* Default LNN configuration */
+        agent->lnn_config.enable_lnn_monitoring = true;
+        agent->lnn_config.enable_stability_detection = true;
+        agent->lnn_config.enable_auto_report = true;
+        agent->lnn_config.enable_tau_modulation = true;
+        agent->lnn_config.enable_lr_modulation = true;
+        agent->lnn_config.state_explosion_threshold = 1000.0f;
+        agent->lnn_config.state_collapse_threshold = 1e-6f;
+        agent->lnn_config.tau_max = 10.0f;
+        agent->lnn_config.tau_min = 0.001f;
+        agent->lnn_config.gradient_explosion_threshold = 100.0f;
+        agent->lnn_config.gradient_vanishing_threshold = 1e-7f;
+        agent->lnn_config.check_interval_ms = 100;
+    }
+
+    /* Initialize neural metrics for LNN - only mark connected if bridge is non-NULL */
+    agent->neural_metrics.lnn_connected = (lnn_bridge != NULL);
+    agent->neural_metrics.lnn_healthy = true;
+    atomic_store(&agent->lnn_checks_run, 0);
+    atomic_store(&agent->lnn_instabilities_detected, 0);
+    atomic_store(&agent->lnn_recoveries_triggered, 0);
+    agent->last_lnn_check_us = get_timestamp_us();
+
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    nimcp_log(LOG_LEVEL_INFO, "Agent '%s' connected to LNN immune bridge%s",
+              agent->config.agent_name, lnn_bridge ? "" : " (NULL bridge)");
+    return 0;
+}
+
+int nimcp_health_agent_get_neural_metrics(
+    const nimcp_health_agent_t* agent,
+    neural_health_metrics_t* metrics
+) {
+    if (!validate_agent(agent)) return -1;
+    if (!metrics) return -1;
+
+    nimcp_mutex_lock(agent->neural_mutex);
+    *metrics = agent->neural_metrics;
+    nimcp_mutex_unlock(agent->neural_mutex);
+
+    return 0;
+}
+
+int nimcp_health_agent_configure_neural(
+    nimcp_health_agent_t* agent,
+    const health_agent_snn_config_t* snn_config,
+    const health_agent_lnn_config_t* lnn_config
+) {
+    if (!validate_agent(agent)) return -1;
+
+    nimcp_mutex_lock(agent->modules_mutex);
+
+    if (snn_config) {
+        agent->snn_config = *snn_config;
+    }
+    if (lnn_config) {
+        agent->lnn_config = *lnn_config;
+    }
+
+    nimcp_mutex_unlock(agent->modules_mutex);
+
+    nimcp_log(LOG_LEVEL_DEBUG, "Agent '%s' neural configuration updated",
+              agent->config.agent_name);
+    return 0;
+}
+
+bool nimcp_health_agent_is_neural_unhealthy(const nimcp_health_agent_t* agent) {
+    if (!validate_agent(agent)) return false;
+
+    /* Quick check without full lock */
+    return agent->neural_metrics.any_neural_unhealthy;
+}
+
+float nimcp_health_agent_get_neural_health_score(const nimcp_health_agent_t* agent) {
+    /* Return perfect health (safe default) if agent is NULL or invalid */
+    if (!validate_agent(agent)) return 100.0f;
+
+    /* No neural modules connected - perfect health (nothing to degrade) */
+    if (!agent->neural_metrics.snn_connected && !agent->neural_metrics.lnn_connected) {
+        return 100.0f;
+    }
+
+    return agent->neural_metrics.neural_health_score;
 }
 
 /* ============================================================================
@@ -3070,6 +3294,290 @@ static void agent_check_gpu_health(nimcp_health_agent_t* agent) {
     }
 
     atomic_fetch_add(&agent->gpu_accelerated_checks, 1);
+}
+
+/* ============================================================================
+ * Neural Module (SNN/LNN) Health Check Functions
+ * ============================================================================ */
+
+/**
+ * @brief Run all neural health checks (SNN and LNN)
+ */
+static void agent_run_neural_check(nimcp_health_agent_t* agent) {
+    if (!agent) return;
+
+    /* Check SNN health if connected */
+    if (agent->snn_bridge && agent->snn_config.enable_snn_monitoring) {
+        agent_check_snn_health(agent);
+    }
+
+    /* Check LNN health if connected */
+    if (agent->lnn_bridge && agent->lnn_config.enable_lnn_monitoring) {
+        agent_check_lnn_health(agent);
+    }
+
+    /* Update aggregated neural metrics */
+    agent_update_neural_metrics(agent);
+}
+
+/**
+ * @brief Check SNN immune bridge health
+ */
+static void agent_check_snn_health(nimcp_health_agent_t* agent) {
+    if (!agent || !agent->snn_bridge) return;
+
+    uint64_t now = get_timestamp_us();
+    uint64_t interval_us = (uint64_t)agent->snn_config.check_interval_ms * 1000;
+
+    /* Rate limit checks */
+    if ((now - agent->last_snn_check_us) < interval_us) {
+        return;
+    }
+    agent->last_snn_check_us = now;
+
+    /* Get SNN health metrics from bridge */
+    snn_health_metrics_t snn_health;
+    int result = snn_immune_get_health(agent->snn_bridge, &snn_health);
+    if (result != 0) {
+        nimcp_log(LOG_LEVEL_WARN, "Failed to get SNN health metrics: %d", result);
+        return;
+    }
+
+    atomic_fetch_add(&agent->snn_checks_run, 1);
+
+    /* Update cached metrics */
+    nimcp_mutex_lock(agent->neural_mutex);
+    agent->neural_metrics.snn_healthy = !snn_health.has_instability;
+    agent->neural_metrics.snn_mean_rate = snn_health.mean_rate;
+    agent->neural_metrics.snn_max_rate = snn_health.max_rate;
+    agent->neural_metrics.snn_burst_ratio = snn_health.burst_ratio;
+    agent->neural_metrics.snn_sync_index = snn_health.sync_index;
+    agent->neural_metrics.snn_silent_neurons = snn_health.silent_neurons;
+    agent->neural_metrics.snn_saturated_neurons = snn_health.saturated_neurons;
+    nimcp_mutex_unlock(agent->neural_mutex);
+
+    /* Detect instabilities and report to immune system */
+    if (snn_health.has_instability) {
+        atomic_fetch_add(&agent->snn_instabilities_detected, 1);
+        atomic_fetch_add(&agent->neural_metrics.snn_instability_count, 1);
+
+        /* Map SNN health state to severity */
+        health_agent_severity_t severity = HEALTH_SEVERITY_WARNING;
+        const char* state_name = "unknown";
+
+        switch (snn_health.health) {
+            case SNN_STATE_HEALTHY:
+                /* Should not reach here if has_instability is true */
+                return;
+            case SNN_STATE_SILENT:
+                severity = HEALTH_SEVERITY_ERROR;
+                state_name = "silent network";
+                break;
+            case SNN_STATE_EXPLOSION:
+                severity = HEALTH_SEVERITY_CRITICAL;
+                state_name = "spike explosion";
+                break;
+            case SNN_STATE_NAN_DETECTED:
+                severity = HEALTH_SEVERITY_CRITICAL;
+                state_name = "NaN detected";
+                break;
+            case SNN_STATE_INF_DETECTED:
+                severity = HEALTH_SEVERITY_CRITICAL;
+                state_name = "Inf detected";
+                break;
+            case SNN_STATE_WEIGHT_EXPLOSION:
+                severity = HEALTH_SEVERITY_ERROR;
+                state_name = "weight explosion";
+                break;
+            case SNN_STATE_UNSTABLE:
+                severity = HEALTH_SEVERITY_ERROR;
+                state_name = "unstable";
+                break;
+        }
+
+        nimcp_log(LOG_LEVEL_WARN, "SNN instability: %s (rate=%.1fHz, sync=%.2f)",
+                  state_name, snn_health.mean_rate, snn_health.sync_index);
+
+        /* Auto-report to immune system if enabled */
+        if (agent->snn_config.enable_auto_report) {
+            health_agent_message_t msg = {0};
+            msg.type = HEALTH_MSG_ANOMALY_DETECTED;
+            msg.severity = severity;
+            msg.source = HEALTH_SOURCE_NEURAL;
+            msg.timestamp_us = now;
+            snprintf(msg.description, sizeof(msg.description),
+                     "SNN %s: rate=%.1fHz, sync=%.2f", state_name,
+                     snn_health.mean_rate, snn_health.sync_index);
+
+            msg_queue_push(&agent->msg_queue, &msg);
+            atomic_fetch_add(&agent->snn_recoveries_triggered, 1);
+        }
+    }
+}
+
+/**
+ * @brief Check LNN immune bridge health
+ */
+static void agent_check_lnn_health(nimcp_health_agent_t* agent) {
+    if (!agent || !agent->lnn_bridge) return;
+
+    uint64_t now = get_timestamp_us();
+    uint64_t interval_us = (uint64_t)agent->lnn_config.check_interval_ms * 1000;
+
+    /* Rate limit checks */
+    if ((now - agent->last_lnn_check_us) < interval_us) {
+        return;
+    }
+    agent->last_lnn_check_us = now;
+
+    atomic_fetch_add(&agent->lnn_checks_run, 1);
+
+    /* Check LNN stability */
+    lnn_instability_type_t instability = lnn_immune_check_stability(agent->lnn_bridge);
+
+    /* Get cytokine effects for metrics */
+    lnn_cytokine_effects_t effects;
+    lnn_immune_get_effects(agent->lnn_bridge, &effects);
+
+    /* Update cached metrics */
+    nimcp_mutex_lock(agent->neural_mutex);
+    agent->neural_metrics.lnn_healthy = (instability == LNN_INSTABILITY_NONE);
+    agent->neural_metrics.lnn_tau_scale = effects.tau_scale;
+    agent->neural_metrics.lnn_lr_factor = effects.lr_factor;
+    agent->neural_metrics.lnn_state_damping = effects.state_damping;
+    nimcp_mutex_unlock(agent->neural_mutex);
+
+    /* Handle instabilities */
+    if (instability != LNN_INSTABILITY_NONE) {
+        atomic_fetch_add(&agent->lnn_instabilities_detected, 1);
+        atomic_fetch_add(&agent->neural_metrics.lnn_instability_count, 1);
+
+        /* Map LNN instability to severity */
+        health_agent_severity_t severity = HEALTH_SEVERITY_WARNING;
+        const char* inst_name = "unknown";
+
+        switch (instability) {
+            case LNN_INSTABILITY_NONE:
+                return;
+            case LNN_INSTABILITY_NAN_STATE:
+                severity = HEALTH_SEVERITY_CRITICAL;
+                inst_name = "NaN state";
+                atomic_fetch_add(&agent->neural_metrics.lnn_nan_detections, 1);
+                break;
+            case LNN_INSTABILITY_INF_STATE:
+                severity = HEALTH_SEVERITY_CRITICAL;
+                inst_name = "Inf state";
+                atomic_fetch_add(&agent->neural_metrics.lnn_inf_detections, 1);
+                break;
+            case LNN_INSTABILITY_STATE_EXPLOSION:
+                severity = HEALTH_SEVERITY_ERROR;
+                inst_name = "state explosion";
+                break;
+            case LNN_INSTABILITY_STATE_COLLAPSE:
+                severity = HEALTH_SEVERITY_WARNING;
+                inst_name = "state collapse";
+                break;
+            case LNN_INSTABILITY_TAU_EXPLOSION:
+                severity = HEALTH_SEVERITY_ERROR;
+                inst_name = "tau explosion";
+                atomic_fetch_add(&agent->neural_metrics.lnn_tau_violations, 1);
+                break;
+            case LNN_INSTABILITY_TAU_COLLAPSE:
+                severity = HEALTH_SEVERITY_WARNING;
+                inst_name = "tau collapse";
+                atomic_fetch_add(&agent->neural_metrics.lnn_tau_violations, 1);
+                break;
+            case LNN_INSTABILITY_GRADIENT_EXPLOSION:
+                severity = HEALTH_SEVERITY_ERROR;
+                inst_name = "gradient explosion";
+                atomic_fetch_add(&agent->neural_metrics.lnn_gradient_issues, 1);
+                break;
+            case LNN_INSTABILITY_GRADIENT_VANISHING:
+                severity = HEALTH_SEVERITY_WARNING;
+                inst_name = "gradient vanishing";
+                atomic_fetch_add(&agent->neural_metrics.lnn_gradient_issues, 1);
+                break;
+            case LNN_INSTABILITY_ODE_DIVERGENCE:
+                severity = HEALTH_SEVERITY_CRITICAL;
+                inst_name = "ODE divergence";
+                break;
+            default:
+                break;
+        }
+
+        nimcp_log(LOG_LEVEL_WARN, "LNN instability: %s (tau_scale=%.2f, lr=%.2f)",
+                  inst_name, effects.tau_scale, effects.lr_factor);
+
+        /* Auto-report to immune system if enabled */
+        if (agent->lnn_config.enable_auto_report) {
+            health_agent_message_t msg = {0};
+            msg.type = HEALTH_MSG_ANOMALY_DETECTED;
+            msg.severity = severity;
+            msg.source = HEALTH_SOURCE_NEURAL;
+            msg.timestamp_us = now;
+            snprintf(msg.description, sizeof(msg.description),
+                     "LNN %s: tau=%.2f, lr=%.2f", inst_name,
+                     effects.tau_scale, effects.lr_factor);
+
+            msg_queue_push(&agent->msg_queue, &msg);
+            atomic_fetch_add(&agent->lnn_recoveries_triggered, 1);
+        }
+    }
+}
+
+/**
+ * @brief Update aggregated neural health metrics
+ */
+static void agent_update_neural_metrics(nimcp_health_agent_t* agent) {
+    if (!agent) return;
+
+    nimcp_mutex_lock(agent->neural_mutex);
+
+    /* Compute combined health score */
+    float total_score = 0.0f;
+    int connected_modules = 0;
+
+    if (agent->neural_metrics.snn_connected) {
+        connected_modules++;
+        /* SNN health score: 100 if healthy, 0-50 based on instability count */
+        if (agent->neural_metrics.snn_healthy) {
+            total_score += 100.0f;
+        } else {
+            uint32_t inst = agent->neural_metrics.snn_instability_count;
+            total_score += fmaxf(0.0f, 50.0f - (float)inst * 10.0f);
+        }
+    }
+
+    if (agent->neural_metrics.lnn_connected) {
+        connected_modules++;
+        /* LNN health score: 100 if healthy, 0-50 based on instability count */
+        if (agent->neural_metrics.lnn_healthy) {
+            total_score += 100.0f;
+        } else {
+            uint32_t inst = agent->neural_metrics.lnn_instability_count;
+            total_score += fmaxf(0.0f, 50.0f - (float)inst * 10.0f);
+        }
+    }
+
+    /* Compute average score */
+    if (connected_modules > 0) {
+        agent->neural_metrics.neural_health_score = total_score / (float)connected_modules;
+    } else {
+        agent->neural_metrics.neural_health_score = 0.0f;
+    }
+
+    /* Update combined flags */
+    agent->neural_metrics.any_neural_unhealthy =
+        (agent->neural_metrics.snn_connected && !agent->neural_metrics.snn_healthy) ||
+        (agent->neural_metrics.lnn_connected && !agent->neural_metrics.lnn_healthy);
+
+    agent->neural_metrics.total_instabilities =
+        agent->neural_metrics.snn_instability_count +
+        agent->neural_metrics.lnn_instability_count;
+
+    agent->neural_metrics.last_check_time_us = get_timestamp_us();
+
+    nimcp_mutex_unlock(agent->neural_mutex);
 }
 
 static bool agent_check_ethics_permission(nimcp_health_agent_t* agent,
