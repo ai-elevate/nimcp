@@ -1914,3 +1914,13 @@ add_subdirectory(exception)
 # ============================================================================
 
 add_subdirectory(omni)
+
+# ============================================================================
+# Cognitive Health Integration Tests (Phase 8)
+# ============================================================================
+# WHAT: Unit tests for cognitive health integration
+# WHY:  Validate collective health, RCOG health, meta-health, cognitive bridge
+# HOW:  Test lifecycle, API functions, intelligent handling, statistics
+# ============================================================================
+
+add_subdirectory(health)

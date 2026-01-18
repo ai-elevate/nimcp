@@ -236,3 +236,6 @@ add_subdirectory(exception)
 
 # World Model Integration Tests
 add_subdirectory(world_model)
+
+# Phase 8 Health Cognitive Integration Tests
+add_subdirectory(health)

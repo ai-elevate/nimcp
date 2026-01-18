@@ -117,6 +117,9 @@ add_subdirectory(imagination)
 # Social Cognition FEP Bridge Regression Tests
 add_subdirectory(social)
 
+# Phase 8 Health Cognitive Regression Tests
+add_subdirectory(health)
+
 # ============================================================================
 # Cognitive Bridge Completeness Tests
 # ============================================================================

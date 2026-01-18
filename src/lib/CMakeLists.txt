@@ -1310,6 +1310,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/collective_cognition/nimcp_shared_intentionality.c      # Joint goals and we-mode cognition
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/collective_cognition/nimcp_collective_cognition_immune_bridge.c  # Collective-immune integration
 
+    # Phase 8: Cognitive Health Integration (Collective & Recursive Cognition for Health)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/health/nimcp_collective_health.c        # Distributed health monitoring across brain instances
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/health/nimcp_rcog_health.c              # RCOG-powered intelligent diagnosis and recovery
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/health/nimcp_meta_health.c              # Meta-health self-reflection and improvement
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/health/nimcp_health_cognitive_bridge.c  # Unified cognitive bridge for health agent
+
     # Additional Cognitive Thalamic Bridges (Phase 7: Complete Coverage)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/consolidation/nimcp_consolidation_thalamic_bridge.c  # Consolidation-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_tensor/nimcp_emotion_tensor_thalamic_bridge.c  # Emotion-tensor-thalamic integration
