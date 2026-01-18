@@ -29,3 +29,7 @@ set_tests_properties(e2e_fault_tolerance_test_health_agent_connection_e2e PROPER
 # Health Agent Consistency E2E Tests (Phase 3)
 add_e2e_fault_tolerance_test(test_health_agent_consistency_e2e)
 set_tests_properties(e2e_fault_tolerance_test_health_agent_consistency_e2e PROPERTIES TIMEOUT 300)
+
+# Health Agent Active Cognitive Integration E2E Tests (Phase 5)
+add_e2e_fault_tolerance_test(test_health_agent_active_cognitive_e2e)
+set_tests_properties(e2e_fault_tolerance_test_health_agent_active_cognitive_e2e PROPERTIES TIMEOUT 600)
