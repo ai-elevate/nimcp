@@ -54,6 +54,9 @@
 #include "core/brain/nimcp_kg_gc.h"
 #include "utils/fault_tolerance/nimcp_runtime_adaptation.h"
 
+/* Phase 7 (Section 26): GPU health monitoring */
+#include "utils/gpu/nimcp_gpu_health.h"
+
 /* Phase 5: Cognitive module integration for real API calls
  * Note: Cannot include full headers due to type conflicts (metric_type_t, cognitive_state_t)
  * Forward-declare the specific functions we need from the cognitive modules */
@@ -1947,7 +1950,13 @@ void nimcp_health_agent_default_cognitive_config(health_agent_cognitive_config_t
     config->gpu.enable_gpu_acceleration = false;
     config->gpu.enable_tensor_validation = false;
     config->gpu.enable_anomaly_detection = false;
+    config->gpu.enable_auto_recovery = true;
+    config->gpu.enable_predictive_monitoring = true;
     config->gpu.gpu_check_interval_ms = 1000;
+    config->gpu.temp_warning_celsius = 75.0f;
+    config->gpu.temp_critical_celsius = 85.0f;
+    config->gpu.memory_warning_pct = 0.80f;
+    config->gpu.memory_critical_pct = 0.95f;
 
     /* Hypothalamus defaults */
     config->hypothalamus.enable_hypothalamus = true;
@@ -3898,18 +3907,96 @@ static void agent_apply_emotion_adjustments(nimcp_health_agent_t* agent) {
 static void agent_check_gpu_health(nimcp_health_agent_t* agent) {
     if (!agent || !agent->gpu_health) return;
 
-    /* Check GPU health status via utilization tracking */
-    float gpu_util = atomic_load((volatile _Atomic float*)&agent->gpu_utilization);
-    bool gpu_ok = atomic_load(&agent->gpu_healthy);
-
-    /* Monitor GPU health based on utilization patterns */
-    if (!gpu_ok || gpu_util > 0.95f) {
-        nimcp_log(LOG_LEVEL_WARN, "GPU health: utilization=%.1f%%, healthy=%d",
-                  gpu_util * 100.0f, gpu_ok);
-        atomic_store(&agent->gpu_healthy, false);
+    /* Get number of GPU devices */
+    int num_devices = gpu_health_get_device_count(agent->gpu_health);
+    if (num_devices <= 0) {
+        /* No GPUs to monitor */
+        atomic_store(&agent->gpu_healthy, true);
+        atomic_store(&agent->gpu_utilization, 0.0f);
+        return;
     }
 
+    /* Check each GPU's health */
+    bool all_healthy = true;
+    float total_utilization = 0.0f;
+    float min_health_score = 1.0f;
+
+    for (int i = 0; i < num_devices; i++) {
+        gpu_health_metrics_t metrics;
+        if (gpu_health_get_metrics(agent->gpu_health, i, &metrics) == 0) {
+            /* Track utilization */
+            total_utilization += metrics.gpu_utilization;
+
+            /* Track minimum health score */
+            if (metrics.health_score < min_health_score) {
+                min_health_score = metrics.health_score;
+            }
+
+            /* Check health status */
+            if (metrics.status >= GPU_HEALTH_DEGRADED) {
+                all_healthy = false;
+
+                /* Report anomaly for degraded/critical GPUs */
+                if (metrics.status >= GPU_HEALTH_CRITICAL) {
+                    health_agent_message_t msg = nimcp_health_agent_create_message(
+                        HEALTH_MSG_RESOURCE_EXHAUSTION,
+                        HEALTH_SEVERITY_CRITICAL,
+                        HEALTH_SOURCE_MEMORY,  /* GPU memory is a memory resource */
+                        "GPU %d health critical: score=%.2f",
+                        i, metrics.health_score
+                    );
+
+                    /* Add GPU-specific details via resource variant */
+                    msg.data.resource.memory_used = metrics.memory_used;
+                    msg.data.resource.memory_limit = metrics.memory_total;
+                    msg.data.resource.utilization_pct = (1.0f - metrics.health_score) * 100.0f;
+
+                    nimcp_health_agent_report_anomaly(agent, &msg);
+                }
+            }
+
+            /* Check for GPU errors */
+            gpu_error_event_t error;
+            if (gpu_error_check_async(agent->gpu_health, i, &error) > 0) {
+                /* Error detected - get immune response */
+                gpu_immune_response_t response;
+                if (gpu_immune_get_response(agent->gpu_health, &error, &response) == 0) {
+                    nimcp_log(LOG_LEVEL_WARN, "GPU %d error: %s - suggested recovery: %s",
+                              i, error.description,
+                              gpu_recovery_action_name(response.suggested_recovery));
+
+                    /* Execute auto-recovery if enabled */
+                    if (agent->gpu_config.enable_auto_recovery && response.urgency >= 0.5f) {
+                        gpu_immune_execute_recovery(agent->gpu_health, i, response.suggested_recovery);
+                    }
+                }
+            }
+
+            /* Predict failure probability */
+            if (agent->gpu_config.enable_predictive_monitoring) {
+                float failure_prob = gpu_health_predict_failure_probability(
+                    agent->gpu_health, i, 60  /* 60 minutes horizon */
+                );
+
+                if (failure_prob > 0.5f) {
+                    nimcp_log(LOG_LEVEL_WARN, "GPU %d: %.0f%% failure probability in next hour",
+                              i, failure_prob * 100.0f);
+                }
+            }
+        }
+    }
+
+    /* Update aggregated stats */
+    float avg_utilization = (num_devices > 0) ? total_utilization / num_devices : 0.0f;
+    atomic_store(&agent->gpu_utilization, avg_utilization);
+    atomic_store(&agent->gpu_healthy, all_healthy);
     atomic_fetch_add(&agent->gpu_accelerated_checks, 1);
+
+    /* Log summary if issues detected */
+    if (!all_healthy || min_health_score < 0.7f) {
+        nimcp_log(LOG_LEVEL_INFO, "GPU health check: %d devices, avg_util=%.1f%%, min_score=%.2f, healthy=%d",
+                  num_devices, avg_utilization * 100.0f, min_health_score, all_healthy);
+    }
 }
 
 /* ============================================================================

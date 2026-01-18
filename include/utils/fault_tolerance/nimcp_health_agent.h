@@ -1076,7 +1076,13 @@ typedef struct {
     bool enable_gpu_acceleration;       /**< Use GPU for health computations */
     bool enable_tensor_validation;      /**< GPU-accelerated tensor validation */
     bool enable_anomaly_detection;      /**< GPU-accelerated anomaly detection */
+    bool enable_auto_recovery;          /**< Auto-execute GPU recovery actions */
+    bool enable_predictive_monitoring;  /**< Predict GPU failures */
     uint32_t gpu_check_interval_ms;     /**< GPU health check interval */
+    float temp_warning_celsius;         /**< Temperature warning threshold */
+    float temp_critical_celsius;        /**< Temperature critical threshold */
+    float memory_warning_pct;           /**< Memory usage warning (0.0-1.0) */
+    float memory_critical_pct;          /**< Memory usage critical (0.0-1.0) */
 } health_agent_gpu_config_t;
 
 /**
