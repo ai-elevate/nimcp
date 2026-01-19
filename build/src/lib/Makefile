@@ -14825,6 +14825,30 @@ __/core/brain/factory/init/nimcp_brain_init_gpu.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_gpu.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu.c.s
 
+__/core/brain/factory/init/nimcp_brain_init_health_agent.o: __/core/brain/factory/init/nimcp_brain_init_health_agent.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_health_agent.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_health_agent.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_health_agent.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_health_agent.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_health_agent.i: __/core/brain/factory/init/nimcp_brain_init_health_agent.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_health_agent.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_health_agent.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_health_agent.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_health_agent.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_health_agent.s: __/core/brain/factory/init/nimcp_brain_init_health_agent.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_health_agent.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_health_agent.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_health_agent.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_health_agent.c.s
+
 __/core/brain/factory/init/nimcp_brain_init_hippocampus.o: __/core/brain/factory/init/nimcp_brain_init_hippocampus.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_hippocampus.o
 
@@ -45757,6 +45781,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_health_agent.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_health_agent.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_health_agent.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_hippocampus.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_hippocampus.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_hippocampus.s"

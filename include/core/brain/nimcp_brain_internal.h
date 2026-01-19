@@ -976,6 +976,22 @@ struct brain_struct {
     bool fault_tolerance_enabled;                          // Fault tolerance enabled for this brain
     uint64_t last_fault_check_us;                          // Last fault check timestamp
 
+    // === HEALTH AGENT INTEGRATION (Autonomous Health Monitoring) ===
+    //
+    // The Health Agent provides independent, continuous monitoring of brain health:
+    // - Memory: Track allocation trends, detect leaks and corruption
+    // - Neural Networks: Monitor SNN/LNN stability, detect divergence
+    // - Behavioral: Monitor Dragonfly/Portia behavioral modules
+    // - Oscillations: Monitor brain wave patterns for anomalies
+    // - Cross-module: Coordinate health across cognitive subsystems
+    //
+    // DESIGN: The health agent runs in a separate thread for independence.
+    // Even if main processing hangs, the agent can still detect and respond.
+    //
+    struct nimcp_health_agent* health_agent;               // Autonomous health monitoring agent
+    bool health_agent_enabled;                             // Health agent enabled for this brain
+    bool health_agent_owns_agent;                          // Whether brain owns (should destroy) the agent
+
     // === BROCA'S REGION INTEGRATION (Language Production) ===
     //
     // Broca's Region (BA44/45) provides language production capabilities:

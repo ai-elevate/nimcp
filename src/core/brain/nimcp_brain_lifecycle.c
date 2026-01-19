@@ -756,6 +756,10 @@ void brain_destroy(brain_t brain)
         brain->immune_enabled = false;
     }
 
+    // Cleanup health agent (autonomous monitoring)
+    // Must be cleaned up after immune system since it communicates with it
+    nimcp_brain_factory_destroy_health_agent_subsystem(brain);
+
     // ========================================================================
     // COORDINATOR/ORCHESTRATOR CLEANUP (reverse initialization order)
     // ========================================================================

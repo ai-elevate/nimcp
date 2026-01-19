@@ -8596,6 +8596,32 @@ e2e_fault_tolerance_test_world_imagination_health_e2e/fast:
 .PHONY : e2e_fault_tolerance_test_world_imagination_health_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_crash_recovery
+
+# Build rule for target.
+e2e_fault_tolerance_test_crash_recovery: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_crash_recovery
+.PHONY : e2e_fault_tolerance_test_crash_recovery
+
+# fast build rule for target.
+e2e_fault_tolerance_test_crash_recovery/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_crash_recovery.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_crash_recovery.dir/build
+.PHONY : e2e_fault_tolerance_test_crash_recovery/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_resilience_stress
+
+# Build rule for target.
+e2e_fault_tolerance_test_resilience_stress: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_resilience_stress
+.PHONY : e2e_fault_tolerance_test_resilience_stress
+
+# fast build rule for target.
+e2e_fault_tolerance_test_resilience_stress/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_resilience_stress.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_resilience_stress.dir/build
+.PHONY : e2e_fault_tolerance_test_resilience_stress/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_integration
 
 # Build rule for target.
@@ -30047,6 +30073,7 @@ help:
 	@echo "... e2e_core_geometry_surface"
 	@echo "... e2e_fault_tolerance_test_brain_probe_health_e2e"
 	@echo "... e2e_fault_tolerance_test_capacity_manager_e2e"
+	@echo "... e2e_fault_tolerance_test_crash_recovery"
 	@echo "... e2e_fault_tolerance_test_health_agent_active_cognitive_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_behavioral_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_connection_e2e"
@@ -30054,6 +30081,7 @@ help:
 	@echo "... e2e_fault_tolerance_test_health_agent_memory_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_neural_e2e"
 	@echo "... e2e_fault_tolerance_test_perception_cortical_health_e2e"
+	@echo "... e2e_fault_tolerance_test_resilience_stress"
 	@echo "... e2e_fault_tolerance_test_substrate_health_e2e"
 	@echo "... e2e_fault_tolerance_test_symbolic_logic_health_e2e"
 	@echo "... e2e_fault_tolerance_test_thalamic_middleware_health_e2e"

@@ -1579,6 +1579,26 @@ typedef struct {
     uint32_t fault_tolerance_max_steps;   /**< Max recovery plan steps (default: 10, 0=use default) */
     float fault_tolerance_replanning_threshold; /**< Confidence threshold for replanning (default: 0.3) */
 
+    // === HEALTH AGENT CONFIGURATION ===
+    /**
+     * Health Agent Configuration
+     *
+     * WHAT: Autonomous health monitoring running in separate thread
+     * WHY:  Independent monitoring even when main system is stressed
+     * HOW:  Watchdog thread monitors memory, neural networks, behaviors
+     *
+     * When enabled, the health agent:
+     * - Monitors memory for leaks and corruption
+     * - Tracks SNN/LNN stability metrics
+     * - Checks behavioral module (Dragonfly/Portia) health
+     * - Monitors brain oscillations for anomalies
+     * - Coordinates cross-module health checks
+     * - Triggers recovery actions on detected problems
+     */
+    bool enable_health_agent;             /**< Enable health agent (default: false) */
+    uint32_t health_check_interval_ms;    /**< Health check interval (default: 100ms) */
+    bool health_agent_auto_recovery;      /**< Enable automatic recovery (default: true) */
+
     // === GPU ACCELERATION CONFIGURATION ===
     /**
      * GPU Acceleration Configuration

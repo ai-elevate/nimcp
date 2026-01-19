@@ -85,6 +85,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_internal_kg.c        # Internal runtime KG with CRUD
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_mental_health_guardian.c  # Mental Health Guardian (independent monitor)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_fault_tolerance.c    # Fault tolerance with parietal integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_health_agent.c      # Health agent autonomous monitoring
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_basal_ganglia.c     # Enhanced basal ganglia action selection
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_broca.c            # Broca's region language production
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_wernicke.c         # Wernicke's region language comprehension

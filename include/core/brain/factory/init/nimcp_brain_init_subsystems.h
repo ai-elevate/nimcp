@@ -175,6 +175,18 @@ bool brain_get_mental_health_guardian_status(brain_t brain, mental_health_guardi
 // Uses software engineering analysis, pattern detection, and spatial reasoning
 bool nimcp_brain_factory_init_fault_tolerance_subsystem(brain_t brain);
 
+// === HEALTH AGENT SUBSYSTEM (Autonomous Monitoring) ===
+// Independent monitoring thread that watches brain health continuously
+// Integrates with: memory, SNN/LNN, Dragonfly/Portia, oscillations, immune
+bool nimcp_brain_factory_init_health_agent_subsystem(brain_t brain);
+void nimcp_brain_factory_destroy_health_agent_subsystem(brain_t brain);
+
+// Health agent accessor functions
+struct nimcp_health_agent* brain_get_health_agent(brain_t brain);
+bool brain_start_health_agent(brain_t brain);
+bool brain_stop_health_agent(brain_t brain);
+float brain_get_health_score(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

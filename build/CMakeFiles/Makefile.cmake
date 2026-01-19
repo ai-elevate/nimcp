@@ -1594,6 +1594,8 @@ set(CMAKE_DEPEND_INFO_FILES
   "test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_perception_cortical_health_e2e.dir/DependInfo.cmake"
   "test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_brain_probe_health_e2e.dir/DependInfo.cmake"
   "test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_world_imagination_health_e2e.dir/DependInfo.cmake"
+  "test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_crash_recovery.dir/DependInfo.cmake"
+  "test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_resilience_stress.dir/DependInfo.cmake"
   "test/unit/middleware/CMakeFiles/unit_middleware_integration.dir/DependInfo.cmake"
   "test/unit/middleware/CMakeFiles/unit_brain_spike_features.dir/DependInfo.cmake"
   "test/unit/middleware/CMakeFiles/unit_brain_population_coding.dir/DependInfo.cmake"

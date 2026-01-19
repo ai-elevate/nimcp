@@ -229,6 +229,10 @@ extern void set_error(const char* format, ...);
 // Fault Tolerance subsystem macro (intelligent recovery with parietal integration)
 #define init_fault_tolerance_subsystem              nimcp_brain_factory_init_fault_tolerance_subsystem
 
+// Health Agent subsystem macro (autonomous health monitoring)
+#define init_health_agent_subsystem                 nimcp_brain_factory_init_health_agent_subsystem
+#define destroy_health_agent_subsystem              nimcp_brain_factory_destroy_health_agent_subsystem
+
 // Enhanced Basal Ganglia subsystem macro (action selection & motor control)
 #define init_basal_ganglia_subsystem                nimcp_brain_factory_init_basal_ganglia_subsystem
 
@@ -826,6 +830,19 @@ brain_t brain_create_custom(const brain_config_t* config)
     // - Metacognitive monitoring: Self-awareness during recovery
     // DEPENDS ON: Parietal lobe (for code analysis), Working memory (fault tracking)
     if (!init_fault_tolerance_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // HEALTH AGENT SUBSYSTEM (AUTONOMOUS MONITORING)
+    // ========================================================================
+    // Initialize health agent for independent, continuous health monitoring:
+    // - Memory: Track allocations, detect leaks and corruption
+    // - Neural: Monitor SNN/LNN stability, detect divergence
+    // - Behavioral: Monitor Dragonfly/Portia behavioral modules
+    // - Oscillations: Detect abnormal brain wave patterns
+    // - Cross-module: Coordinate health responses across subsystems
+    // BIOLOGICAL: Maps to autonomous nervous system monitoring
+    // DEPENDS ON: Immune system, Oscillations, SNN/LNN (if present)
+    if (!init_health_agent_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // ENHANCED BASAL GANGLIA (ACTION SELECTION & MOTOR CONTROL)

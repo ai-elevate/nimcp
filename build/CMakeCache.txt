@@ -529,6 +529,9 @@ NIMCP_ENABLE_LINT:BOOL=OFF
 //No help, variable specified on the command line.
 NIMCP_ENABLE_TESTING:UNINITIALIZED=ON
 
+//No help, variable specified on the command line.
+NIMCP_ENABLE_TESTS:UNINITIALIZED=ON
+
 //Value Computed by CMake
 NIMCP_IS_TOP_LEVEL:STATIC=ON
 
