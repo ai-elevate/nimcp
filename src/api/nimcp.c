@@ -18,6 +18,7 @@
 static void api_set_error(const char* fmt, ...);
 #define NIMCP_API_SET_ERROR(fmt, ...) api_set_error(fmt, ##__VA_ARGS__)
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"  /* For exception system shutdown */
 
 #include "nimcp.h"
 #include "core/brain/nimcp_brain.h"
@@ -242,6 +243,10 @@ void nimcp_shutdown(void) {
     // Cleanup adaptive module memory pool (before memory cleanup)
     LOG_DEBUG("Cleaning up adaptive network memory pool");
     adaptive_pool_cleanup();
+
+    // Shutdown exception system (before memory cleanup to avoid dangling references)
+    LOG_DEBUG("Shutting down exception system");
+    nimcp_exception_system_shutdown();
 
     // Cleanup memory tracking (last)
     LOG_DEBUG("Cleaning up memory tracking");

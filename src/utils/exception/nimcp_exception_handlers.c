@@ -429,3 +429,33 @@ const nimcp_handler_registration_t* nimcp_handler_get(size_t index) {
     if (index >= g_handler_count) return NULL;
     return g_handlers[index];
 }
+
+/* ============================================================================
+ * System Shutdown
+ * ============================================================================ */
+
+void nimcp_exception_handlers_shutdown(void) {
+    if (!g_handlers_initialized) return;
+
+    /* Free all registered handlers */
+    for (size_t i = 0; i < g_handler_count; i++) {
+        if (g_handlers[i]) {
+            nimcp_free(g_handlers[i]);
+            g_handlers[i] = NULL;
+        }
+    }
+    g_handler_count = 0;
+
+    /* Clear default handler references */
+    g_default_logging_reg = NULL;
+    g_default_immune_reg = NULL;
+
+    /* Free handler mutex */
+    if (g_handler_mutex) {
+        nimcp_platform_mutex_destroy(g_handler_mutex);
+        nimcp_free(g_handler_mutex);
+        g_handler_mutex = NULL;
+    }
+
+    g_handlers_initialized = false;
+}

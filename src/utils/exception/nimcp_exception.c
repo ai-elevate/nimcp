@@ -1057,9 +1057,17 @@ int nimcp_exception_system_init(void) {
 }
 
 void nimcp_exception_system_shutdown(void) {
-    if (!g_exception_system_initialized) return;
-
+    /* Always clear thread-local exception, even if system wasn't explicitly initialized.
+     * This handles the case where exceptions were thrown via NIMCP_THROW_TO_IMMUNE
+     * which uses ensure_initialized() in handlers.c but not nimcp_exception_system_init().
+     * Without this, tl_current_exception holds a reference that gets freed after
+     * memory tracking is cleaned up, causing "ptr NOT FOUND in tracking list" errors. */
     nimcp_exception_clear_current();
+
+    /* Shutdown exception handlers (frees registered handlers and handler mutex) */
+    nimcp_exception_handlers_shutdown();
+
+    if (!g_exception_system_initialized) return;
 
     if (g_exception_mutex) {
         nimcp_platform_mutex_destroy(g_exception_mutex);

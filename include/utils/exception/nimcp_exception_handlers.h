@@ -437,6 +437,14 @@ size_t nimcp_handler_count(void);
  */
 const nimcp_handler_registration_t* nimcp_handler_get(size_t index);
 
+/**
+ * @brief Shutdown exception handlers system
+ *
+ * Frees registered handlers and handler mutex.
+ * Should be called during library shutdown before memory cleanup.
+ */
+void nimcp_exception_handlers_shutdown(void);
+
 #ifdef __cplusplus
 }
 #endif
