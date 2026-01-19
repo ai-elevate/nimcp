@@ -910,8 +910,9 @@ brain_t brain_load(const char* filepath)
 
     brain->network = network;
 
-    // Load metadata
-    if (!nimcp_brain_load_metadata(brain, filepath)) {
+    // Load metadata (includes stats if available)
+    bool metadata_loaded = nimcp_brain_load_metadata(brain, filepath);
+    if (!metadata_loaded) {
         // Use defaults if no metadata
         brain->config.size = BRAIN_SIZE_SMALL;
         brain->config.task = BRAIN_TASK_CLASSIFICATION;
@@ -919,6 +920,11 @@ brain_t brain_load(const char* filepath)
         brain->config.sparsity_target = 0.8F;
         brain->config.enable_explanations = true;
         snprintf(brain->config.task_name, sizeof(brain->config.task_name), "loaded_brain");
+
+        // Initialize statistics only if metadata wasn't loaded
+        // (nimcp_brain_load_metadata already loads stats from file)
+        init_brain_stats(&brain->stats, brain->config.task_name, brain->config.size,
+                         brain->config.num_inputs, brain->config.learning_rate);
     }
 
     // CRITICAL: Restore actual dimensions from saved network config
@@ -941,15 +947,18 @@ brain_t brain_load(const char* filepath)
         return NULL;
     }
 
-    // Initialize statistics
-    init_brain_stats(&brain->stats, brain->config.task_name, brain->config.size,
-                     brain->config.num_inputs, brain->config.learning_rate);
-
-    // CRITICAL: Override num_neurons with actual network neuron count
-    // init_brain_stats derives from size enum, but loaded network may differ
-    brain->stats.num_neurons = adaptive_network_get_neuron_count(brain->network);
-    brain->stats.num_synapses = brain->stats.num_neurons * brain->config.num_inputs;
-    brain->stats.num_active_synapses = brain->stats.num_synapses;
+    // NOTE: If metadata was loaded successfully, stats already contain saved values
+    // including num_neurons. Only initialize stats if metadata wasn't loaded.
+    if (!metadata_loaded) {
+        // Override with actual network neuron count only if metadata wasn't loaded
+        uint32_t actual_neurons = adaptive_network_get_neuron_count(brain->network);
+        brain->stats.num_neurons = actual_neurons;
+        brain->stats.num_synapses = brain->stats.num_neurons * brain->config.num_inputs;
+        brain->stats.num_active_synapses = brain->stats.num_synapses;
+    }
+    // When metadata IS loaded, trust the saved stats - they represent the brain's
+    // reported state at save time. The network's internal neuron count may differ
+    // from what the brain reports as "num_neurons" (which is a stats/probe value).
 
     // Re-initialize mirror neurons if enabled but not loaded from file
     // (Handles case where brain was saved without mirror neurons but loaded config has them enabled)
