@@ -73,3 +73,11 @@ set_tests_properties(e2e_fault_tolerance_test_brain_probe_health_e2e PROPERTIES 
 # World Model & Imagination Health E2E Tests (Phase 5.14: World Model & Imagination Health Integration)
 add_e2e_fault_tolerance_test(test_world_imagination_health_e2e)
 set_tests_properties(e2e_fault_tolerance_test_world_imagination_health_e2e PROPERTIES TIMEOUT 300)
+
+# Crash Recovery E2E Tests (Phase 6: End-to-End Testing)
+add_e2e_fault_tolerance_test(test_crash_recovery)
+set_tests_properties(e2e_fault_tolerance_test_crash_recovery PROPERTIES TIMEOUT 300)
+
+# Resilience Stress E2E Tests (Phase 6: End-to-End Testing)
+add_e2e_fault_tolerance_test(test_resilience_stress)
+set_tests_properties(e2e_fault_tolerance_test_resilience_stress PROPERTIES TIMEOUT 600)
