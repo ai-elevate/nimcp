@@ -66,3 +66,31 @@ set_tests_properties(unit_utils_fault_tolerance_test_health_agent_neural_functio
 # Health Agent Behavioral Integration Tests (Phase 5.6: Dragonfly/Portia Health Monitoring)
 add_fault_tolerance_test(test_health_agent_behavioral_functions)
 set_tests_properties(unit_utils_fault_tolerance_test_health_agent_behavioral_functions PROPERTIES TIMEOUT 120)
+
+# Health Agent Memory System Health Tests (Phase 5.7: Hippocampus/Mammillary Health Monitoring)
+add_fault_tolerance_test(test_health_agent_memory_functions)
+set_tests_properties(unit_utils_fault_tolerance_test_health_agent_memory_functions PROPERTIES TIMEOUT 120)
+
+# Capacity Manager Tests (Phase 5.8: Dynamic Capacity Management)
+add_fault_tolerance_test(test_capacity_manager_functions)
+set_tests_properties(unit_utils_fault_tolerance_test_capacity_manager_functions PROPERTIES TIMEOUT 120)
+
+# Symbolic Logic Health Tests (Phase 5.9: Symbolic Logic Health Integration)
+add_fault_tolerance_test(test_symbolic_logic_health_functions)
+set_tests_properties(unit_utils_fault_tolerance_test_symbolic_logic_health_functions PROPERTIES TIMEOUT 120)
+
+# Neural Substrate Health Tests (Phase 5.10: Neural Substrate Health Integration)
+add_fault_tolerance_test(test_substrate_health_functions)
+set_tests_properties(unit_utils_fault_tolerance_test_substrate_health_functions PROPERTIES TIMEOUT 120)
+
+# Thalamic/Middleware Health Tests (Phase 5.11: Thalamic/Middleware Health Integration)
+add_fault_tolerance_test(test_thalamic_middleware_health_functions)
+set_tests_properties(unit_utils_fault_tolerance_test_thalamic_middleware_health_functions PROPERTIES TIMEOUT 120)
+
+# Perception/Cortical Health Tests (Phase 5.12: Perception/Cortical Health Integration)
+add_fault_tolerance_test(test_perception_cortical_health_functions)
+set_tests_properties(unit_utils_fault_tolerance_test_perception_cortical_health_functions PROPERTIES TIMEOUT 120)
+
+# Brain Probe Health Tests (Phase 5.13: Brain Probes Enhancement)
+add_fault_tolerance_test(test_brain_probe_health_functions)
+set_tests_properties(unit_utils_fault_tolerance_test_brain_probe_health_functions PROPERTIES TIMEOUT 120)

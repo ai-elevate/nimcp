@@ -75,6 +75,12 @@ struct health_monitor;
 typedef struct health_monitor health_monitor_t;
 #endif
 
+/** Capacity manager forward declaration */
+#ifndef NIMCP_CAPACITY_MANAGER_H
+struct capacity_manager;
+typedef struct capacity_manager capacity_manager_t;
+#endif
+
 /* ============================================================================
  * Constants
  * ============================================================================ */
@@ -96,6 +102,9 @@ typedef struct health_monitor health_monitor_t;
 
 /** Canary value for memory corruption detection */
 #define HEALTH_AGENT_CANARY              0xDEADBEEFCAFEBABEULL
+
+/** Maximum number of capacity managers to track */
+#define HEALTH_AGENT_MAX_CAPACITY_MANAGERS 32
 
 /* ============================================================================
  * Message Types (Agent → Immune System)
@@ -3294,6 +3303,2070 @@ typedef struct {
 void nimcp_health_agent_get_full_status(
     const nimcp_health_agent_t* agent,
     health_agent_full_status_t* status
+);
+
+/* ============================================================================
+ * Phase 5.7: Memory System Health Integration
+ * ============================================================================
+ *
+ * Integrates health monitoring with memory system tiers:
+ * - Hippocampus: Episodic memory, spatial navigation, theta-gamma rhythms
+ * - Mammillary Bodies: Memory consolidation relay, head direction cells
+ * - Cross-tier consistency validation
+ * - Metabolic coupling monitoring
+ */
+
+/* Forward declarations for memory system types */
+typedef struct nimcp_hippocampus nimcp_hippocampus_t;
+typedef struct nimcp_mammillary nimcp_mammillary_t;
+
+/**
+ * @brief Memory system health metrics
+ */
+typedef struct {
+    /* Hippocampus health */
+    struct {
+        float overall_health;           /* 0.0-1.0 combined health score */
+        float dg_activity;              /* Dentate gyrus pattern separation */
+        float ca3_stability;            /* CA3 autoassociative stability */
+        float ca1_output_quality;       /* CA1 output coherence */
+        float theta_power;              /* Theta rhythm power (4-8 Hz) */
+        float gamma_power;              /* Gamma rhythm power (30-100 Hz) */
+        float theta_gamma_coupling;     /* Phase-amplitude coupling strength */
+        uint32_t episodes_encoded;      /* Total episodes stored */
+        uint32_t episodes_capacity;     /* Maximum episode capacity */
+        float episode_utilization;      /* episodes_encoded / capacity */
+        uint32_t place_cells_active;    /* Active place cells */
+        uint32_t replay_events;         /* Sharp-wave ripple events */
+        bool rhythm_disrupted;          /* Oscillation abnormality detected */
+        bool pattern_separation_degraded; /* DG function impaired */
+        bool pattern_completion_degraded; /* CA3 function impaired */
+    } hippocampus;
+
+    /* Mammillary bodies health */
+    struct {
+        float overall_health;           /* 0.0-1.0 combined health score */
+        float relay_efficiency;         /* Memory relay throughput */
+        float hd_cell_coherence;        /* Head direction cell agreement */
+        float hd_drift_rate;            /* HD cell drift degrees/second */
+        float fornix_strength;          /* Hippocampal-mammillary connection */
+        float papez_circuit_integrity;  /* Full circuit health */
+        uint32_t memory_traces_active;  /* Active consolidation traces */
+        uint32_t memory_traces_capacity; /* Maximum trace capacity */
+        float trace_utilization;        /* traces_active / capacity */
+        uint32_t consolidation_events;  /* Successful consolidations */
+        uint32_t hd_corrections;        /* HD drift corrections performed */
+        bool circuit_broken;            /* Papez circuit disconnected */
+        bool hd_drifting;               /* Excessive HD cell drift */
+        bool consolidation_stalled;     /* Memory consolidation blocked */
+    } mammillary;
+
+    /* Cross-tier consistency */
+    struct {
+        float hippo_to_mammillary_sync; /* Signal correlation */
+        float mammillary_to_thalamus_sync; /* Forward relay health */
+        float thalamus_to_cortex_sync;  /* Output pathway health */
+        float overall_circuit_integrity; /* Full memory circuit health */
+        uint32_t sync_failures;         /* Cross-tier sync failures */
+        uint32_t circuit_repairs;       /* Auto-repair events */
+        bool tier_mismatch_detected;    /* Inconsistency found */
+    } cross_tier;
+
+    /* Metabolic coupling */
+    struct {
+        float hippocampus_atp_level;    /* Energy availability */
+        float mammillary_atp_level;     /* Energy availability */
+        float metabolic_stress;         /* Combined stress level */
+        bool energy_constrained;        /* Low energy warning */
+    } metabolic;
+
+    /* Aggregate metrics */
+    float overall_memory_health;        /* Combined memory system health */
+    uint64_t total_anomalies_detected;  /* Lifetime anomaly count */
+    uint64_t total_recoveries;          /* Successful recoveries */
+    uint64_t last_check_timestamp;      /* Last health check time */
+} memory_health_metrics_t;
+
+/**
+ * @brief Configuration for hippocampus health monitoring
+ */
+typedef struct {
+    /* Health thresholds */
+    float ca3_stability_threshold;      /* Min acceptable CA3 stability */
+    float theta_gamma_min_coupling;     /* Min coupling strength */
+    float episode_utilization_warning;  /* Warning threshold (e.g., 0.8) */
+    float episode_utilization_critical; /* Critical threshold (e.g., 0.95) */
+
+    /* Rhythm monitoring */
+    float theta_power_min;              /* Minimum theta power */
+    float gamma_power_min;              /* Minimum gamma power */
+    bool monitor_oscillations;          /* Enable rhythm monitoring */
+
+    /* Pattern monitoring */
+    bool monitor_pattern_separation;    /* Monitor DG function */
+    bool monitor_pattern_completion;    /* Monitor CA3 function */
+
+    /* Check intervals */
+    uint32_t health_check_interval_ms;  /* How often to check */
+} health_agent_hippocampus_config_t;
+
+/**
+ * @brief Configuration for mammillary health monitoring
+ */
+typedef struct {
+    /* Health thresholds */
+    float relay_efficiency_threshold;   /* Min relay efficiency */
+    float hd_drift_max_degrees;         /* Max acceptable HD drift */
+    float fornix_strength_threshold;    /* Min fornix strength */
+    float trace_utilization_warning;    /* Warning threshold */
+    float trace_utilization_critical;   /* Critical threshold */
+
+    /* Papez circuit monitoring */
+    bool monitor_papez_circuit;         /* Enable circuit monitoring */
+    float papez_integrity_threshold;    /* Min circuit integrity */
+
+    /* HD cell monitoring */
+    bool monitor_hd_cells;              /* Enable HD cell monitoring */
+    float hd_coherence_threshold;       /* Min HD cell coherence */
+
+    /* Check intervals */
+    uint32_t health_check_interval_ms;  /* How often to check */
+} health_agent_mammillary_config_t;
+
+/**
+ * @brief Memory-specific recovery actions
+ */
+typedef enum {
+    MEMORY_RECOVERY_NONE = 0,
+    MEMORY_RECOVERY_RESET_CA3,          /* Reset CA3 autoassociative state */
+    MEMORY_RECOVERY_STABILIZE_RHYTHMS,  /* Restore theta-gamma coupling */
+    MEMORY_RECOVERY_HD_DRIFT_CORRECT,   /* Correct head direction drift */
+    MEMORY_RECOVERY_FORNIX_STRENGTHEN,  /* Strengthen hippocampal-mammillary */
+    MEMORY_RECOVERY_FORCE_CONSOLIDATION, /* Force memory consolidation */
+    MEMORY_RECOVERY_PAPEZ_REPAIR,       /* Repair Papez circuit */
+    MEMORY_RECOVERY_EXPAND_CAPACITY,    /* Expand memory capacity */
+    MEMORY_RECOVERY_GC_OLD_TRACES,      /* Garbage collect old traces */
+    MEMORY_RECOVERY_CROSS_TIER_SYNC,    /* Synchronize memory tiers */
+    MEMORY_RECOVERY_METABOLIC_BOOST,    /* Request more energy */
+    MEMORY_RECOVERY_EMERGENCY_SAVE      /* Emergency memory save */
+} memory_recovery_action_t;
+
+/**
+ * @brief Connect hippocampus to health agent
+ *
+ * WHAT: Enable hippocampus health monitoring
+ * WHY:  Detect episodic memory issues, rhythm disruptions, capacity problems
+ * HOW:  Poll hippocampus health APIs, monitor oscillations, track patterns
+ *
+ * USE CASES:
+ * - Detect CA3 instability before memory corruption
+ * - Monitor theta-gamma coupling for learning efficiency
+ * - Alert on episode capacity exhaustion
+ * - Detect pattern separation/completion degradation
+ *
+ * @param agent Health agent
+ * @param hippocampus Hippocampus module
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_connect_hippocampus(
+    nimcp_health_agent_t* agent,
+    nimcp_hippocampus_t* hippocampus,
+    const health_agent_hippocampus_config_t* config
+);
+
+/**
+ * @brief Connect mammillary bodies to health agent
+ *
+ * WHAT: Enable mammillary health monitoring
+ * WHY:  Detect consolidation issues, HD drift, circuit problems
+ * HOW:  Poll mammillary health APIs, monitor Papez circuit, track HD cells
+ *
+ * USE CASES:
+ * - Detect memory consolidation stalls
+ * - Monitor head direction cell drift
+ * - Alert on Papez circuit disruption
+ * - Track fornix connection strength
+ *
+ * @param agent Health agent
+ * @param mammillary Mammillary bodies module
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_connect_mammillary(
+    nimcp_health_agent_t* agent,
+    nimcp_mammillary_t* mammillary,
+    const health_agent_mammillary_config_t* config
+);
+
+/**
+ * @brief Get aggregated memory system health metrics
+ *
+ * @param agent Health agent
+ * @param metrics Output metrics structure
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_get_memory_metrics(
+    const nimcp_health_agent_t* agent,
+    memory_health_metrics_t* metrics
+);
+
+/**
+ * @brief Validate cross-tier memory consistency
+ *
+ * WHAT: Check consistency between hippocampus, mammillary, and thalamus
+ * WHY:  Detect mismatches that could cause memory errors
+ * HOW:  Compare activity patterns, timing, and content across tiers
+ *
+ * @param agent Health agent
+ * @return 0 if consistent, positive count of inconsistencies, -1 on error
+ */
+int nimcp_health_agent_validate_memory_consistency(
+    nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Trigger memory-specific recovery action
+ *
+ * @param agent Health agent
+ * @param action Recovery action to trigger
+ * @param target_module Which memory module to target (0=hippocampus, 1=mammillary, 2=both)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_memory_recovery(
+    nimcp_health_agent_t* agent,
+    memory_recovery_action_t action,
+    int target_module
+);
+
+/**
+ * @brief Check if memory system needs attention
+ *
+ * Quick check without full metrics collection.
+ *
+ * @param agent Health agent
+ * @return true if memory health is below threshold, false otherwise
+ */
+bool nimcp_health_agent_memory_needs_attention(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get default hippocampus health configuration
+ *
+ * @param config Output configuration
+ */
+void nimcp_health_agent_hippocampus_config_default(
+    health_agent_hippocampus_config_t* config
+);
+
+/**
+ * @brief Get default mammillary health configuration
+ *
+ * @param config Output configuration
+ */
+void nimcp_health_agent_mammillary_config_default(
+    health_agent_mammillary_config_t* config
+);
+
+/* ============================================================================
+ * Phase 5.8: Dynamic Capacity Management Integration
+ * ============================================================================ */
+
+/**
+ * @brief Capacity health metrics for health agent
+ */
+typedef struct {
+    uint32_t num_managers;          /**< Number of registered managers */
+    uint32_t managers_at_warning;   /**< Managers at warning level */
+    uint32_t managers_at_critical;  /**< Managers at critical level */
+    float overall_pressure;         /**< Weighted average utilization */
+    float time_to_first_exhaustion; /**< Seconds until first manager full */
+    const char* critical_module;    /**< Name of most critical module (if any) */
+    bool any_at_capacity;           /**< True if any manager at capacity */
+    uint32_t total_expansions;      /**< Total expansions across all managers */
+    uint32_t total_failed_allocs;   /**< Total failed allocations */
+} capacity_health_metrics_t;
+
+/**
+ * @brief Register capacity manager with health agent
+ *
+ * The health agent will monitor this capacity manager and include its
+ * metrics in health checks.
+ *
+ * @param agent Health agent
+ * @param cm Capacity manager to register
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_register_capacity_manager(
+    nimcp_health_agent_t* agent,
+    capacity_manager_t* cm
+);
+
+/**
+ * @brief Unregister capacity manager from health agent
+ *
+ * @param agent Health agent
+ * @param cm Capacity manager to unregister
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_unregister_capacity_manager(
+    nimcp_health_agent_t* agent,
+    capacity_manager_t* cm
+);
+
+/**
+ * @brief Get capacity health metrics from health agent
+ *
+ * Aggregates metrics from all registered capacity managers.
+ *
+ * @param agent Health agent
+ * @param metrics Pointer to receive metrics
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_get_capacity_metrics(
+    nimcp_health_agent_t* agent,
+    capacity_health_metrics_t* metrics
+);
+
+/**
+ * @brief Check if any capacity manager needs attention
+ *
+ * @param agent Health agent
+ * @return true if any manager at warning or critical level
+ */
+bool nimcp_health_agent_capacity_needs_attention(
+    const nimcp_health_agent_t* agent
+);
+
+/* ============================================================================
+ * Phase 5.9: Symbolic Logic Health Integration
+ * ============================================================================ */
+
+/** Symbolic logic forward declaration */
+#ifndef NIMCP_SYMBOLIC_LOGIC_H
+typedef struct symbolic_logic symbolic_logic_t;
+#endif
+
+/** Maximum number of symbolic logic engines to track */
+#define HEALTH_AGENT_MAX_LOGIC_ENGINES 8
+
+/**
+ * @brief Symbolic logic health metrics
+ *
+ * WHAT: Combined health status from symbolic logic engines
+ * WHY:  Monitor inference health, KB integrity, and reasoning performance
+ * HOW:  Aggregates metrics from all registered logic engines
+ */
+typedef struct {
+    /* Connection status */
+    uint32_t num_engines;               /**< Number of registered logic engines */
+    bool any_engine_unhealthy;          /**< Any engine reporting issues */
+
+    /* Inference health */
+    uint64_t total_inferences;          /**< Total inferences performed */
+    uint64_t failed_inferences;         /**< Inferences that failed */
+    uint64_t infinite_loop_detections;  /**< Inference loops detected */
+    uint64_t unification_failures;      /**< Unification attempts that failed */
+    float avg_inference_time_ms;        /**< Average inference duration */
+    float max_inference_time_ms;        /**< Maximum inference time seen */
+    bool inference_overload;            /**< Inference taking too long */
+
+    /* Knowledge base health */
+    uint32_t total_facts;               /**< Total facts across all KBs */
+    uint32_t total_rules;               /**< Total rules across all KBs */
+    uint32_t kb_capacity;               /**< Total KB capacity */
+    float kb_utilization;               /**< Facts+rules / capacity */
+    bool kb_near_capacity;              /**< KB approaching capacity limit */
+    uint32_t inconsistencies_detected;  /**< Logical inconsistencies found */
+    uint32_t kb_corruptions;            /**< KB corruption events */
+
+    /* Reasoning performance */
+    float reasoning_accuracy;           /**< Inference accuracy (if verifiable) */
+    float unification_success_rate;     /**< Successful unifications / attempts */
+    uint32_t resolution_steps;          /**< Total resolution steps performed */
+    uint32_t resolution_timeouts;       /**< Resolutions that timed out */
+    bool reasoning_degraded;            /**< Performance below threshold */
+
+    /* Resource usage */
+    uint64_t memory_used_bytes;         /**< Memory used by logic engines */
+    float memory_utilization;           /**< Memory used / allocated */
+    uint32_t stack_depth_max;           /**< Maximum inference stack depth */
+    bool memory_pressure;               /**< Memory usage critical */
+
+    /* Aggregate health */
+    float overall_logic_health;         /**< Combined health score [0-100] */
+    uint64_t total_anomalies;           /**< Lifetime anomaly count */
+    uint64_t total_recoveries;          /**< Successful recoveries */
+    uint64_t last_check_timestamp_us;   /**< Last health check time */
+} logic_health_metrics_t;
+
+/**
+ * @brief Configuration for symbolic logic health monitoring
+ */
+typedef struct {
+    /* Inference monitoring */
+    bool enable_inference_monitoring;   /**< Monitor inference operations */
+    float inference_timeout_ms;         /**< Max inference time before alert (100.0) */
+    uint32_t max_inference_depth;       /**< Max recursion depth (1000) */
+    float loop_detection_threshold;     /**< Cycles before loop alert (10000) */
+
+    /* KB monitoring */
+    bool enable_kb_monitoring;          /**< Monitor knowledge base health */
+    float kb_utilization_warning;       /**< Warning threshold (0.8) */
+    float kb_utilization_critical;      /**< Critical threshold (0.95) */
+    bool detect_inconsistencies;        /**< Check for logical inconsistencies */
+
+    /* Performance monitoring */
+    bool enable_performance_monitoring; /**< Monitor reasoning performance */
+    float unification_success_min;      /**< Min success rate (0.5) */
+    float reasoning_accuracy_min;       /**< Min accuracy threshold (0.7) */
+
+    /* Resource monitoring */
+    bool enable_resource_monitoring;    /**< Monitor memory/stack usage */
+    float memory_warning_threshold;     /**< Memory warning (0.8) */
+    float memory_critical_threshold;    /**< Memory critical (0.95) */
+    uint32_t stack_depth_warning;       /**< Stack depth warning (500) */
+
+    /* Auto-recovery */
+    bool enable_auto_recovery;          /**< Enable automatic recovery */
+    bool enable_loop_interruption;      /**< Interrupt infinite loops */
+    bool enable_gc_on_pressure;         /**< GC when memory pressure */
+
+    /* Check intervals */
+    uint32_t health_check_interval_ms;  /**< How often to check (100) */
+} health_agent_symbolic_logic_config_t;
+
+/**
+ * @brief Logic-specific recovery actions
+ */
+typedef enum {
+    LOGIC_RECOVERY_NONE = 0,
+    LOGIC_RECOVERY_INTERRUPT_INFERENCE,  /**< Stop runaway inference */
+    LOGIC_RECOVERY_RESET_UNIFIER,        /**< Reset unification state */
+    LOGIC_RECOVERY_GC_KB,                /**< Garbage collect KB */
+    LOGIC_RECOVERY_COMPACT_KB,           /**< Compact knowledge base */
+    LOGIC_RECOVERY_CLEAR_CACHE,          /**< Clear inference cache */
+    LOGIC_RECOVERY_RESOLVE_INCONSISTENCY,/**< Resolve logical inconsistency */
+    LOGIC_RECOVERY_REDUCE_DEPTH,         /**< Reduce max inference depth */
+    LOGIC_RECOVERY_CHECKPOINT_KB,        /**< Checkpoint knowledge base */
+    LOGIC_RECOVERY_RESTORE_KB,           /**< Restore KB from checkpoint */
+    LOGIC_RECOVERY_SOFT_RESET,           /**< Soft reset engine state */
+    LOGIC_RECOVERY_FULL_RESET            /**< Full engine reset */
+} logic_recovery_action_t;
+
+/**
+ * @brief Connect symbolic logic engine to health agent
+ *
+ * WHAT: Enable symbolic logic health monitoring
+ * WHY:  Detect inference problems, KB issues, reasoning degradation
+ * HOW:  Poll logic engine health APIs, monitor performance, track resources
+ *
+ * USE CASES:
+ * - Detect infinite inference loops before resource exhaustion
+ * - Monitor KB capacity and trigger GC when needed
+ * - Detect logical inconsistencies
+ * - Track reasoning performance degradation
+ *
+ * @param agent Health agent
+ * @param logic Symbolic logic engine
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_connect_symbolic_logic(
+    nimcp_health_agent_t* agent,
+    symbolic_logic_t* logic,
+    const health_agent_symbolic_logic_config_t* config
+);
+
+/**
+ * @brief Disconnect symbolic logic engine from health agent
+ *
+ * @param agent Health agent
+ * @param logic Symbolic logic engine to disconnect
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_disconnect_symbolic_logic(
+    nimcp_health_agent_t* agent,
+    symbolic_logic_t* logic
+);
+
+/**
+ * @brief Get aggregated symbolic logic health metrics
+ *
+ * @param agent Health agent
+ * @param metrics Output metrics structure
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_get_logic_metrics(
+    const nimcp_health_agent_t* agent,
+    logic_health_metrics_t* metrics
+);
+
+/**
+ * @brief Trigger logic-specific recovery action
+ *
+ * @param agent Health agent
+ * @param action Recovery action to trigger
+ * @param engine_index Index of engine to target (0 for first, -1 for all)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_logic_recovery(
+    nimcp_health_agent_t* agent,
+    logic_recovery_action_t action,
+    int engine_index
+);
+
+/**
+ * @brief Check if symbolic logic needs attention
+ *
+ * Quick check without full metrics collection.
+ *
+ * @param agent Health agent
+ * @return true if logic health is below threshold, false otherwise
+ */
+bool nimcp_health_agent_logic_needs_attention(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get overall logic health score (0-100)
+ *
+ * @param agent Health agent
+ * @return Health score [0-100], 100 if no logic engines connected
+ */
+float nimcp_health_agent_get_logic_health_score(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get default symbolic logic health configuration
+ *
+ * @param config Output configuration
+ */
+void nimcp_health_agent_symbolic_logic_config_default(
+    health_agent_symbolic_logic_config_t* config
+);
+
+/**
+ * @brief Update symbolic logic health configuration at runtime
+ *
+ * @param agent Health agent
+ * @param config New configuration
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_update_logic_config(
+    nimcp_health_agent_t* agent,
+    const health_agent_symbolic_logic_config_t* config
+);
+
+/* ============================================================================
+ * Phase 5.10: Neural Substrate Health Integration
+ * ============================================================================ */
+
+/** Neural substrate forward declaration */
+#ifndef NIMCP_NEURAL_SUBSTRATE_H
+struct neural_substrate;
+typedef struct neural_substrate neural_substrate_t;
+#endif
+
+/** Maximum number of neural substrates to track */
+#define HEALTH_AGENT_MAX_NEURAL_SUBSTRATES 8
+
+/**
+ * @brief Neural substrate health metrics
+ *
+ * WHAT: Combined health status from neural substrates
+ * WHY:  Monitor metabolic, physical, and computational substrate health
+ * HOW:  Aggregates metrics from all registered neural substrates
+ */
+typedef struct {
+    /* Connection status */
+    uint32_t num_substrates;            /**< Number of registered substrates */
+    bool any_substrate_unhealthy;       /**< Any substrate reporting issues */
+
+    /* Metabolic health */
+    float avg_atp_level;                /**< Average ATP level [0-1] */
+    float min_atp_level;                /**< Minimum ATP level seen */
+    float avg_oxygen_saturation;        /**< Average O2 saturation [0-1] */
+    float min_oxygen_saturation;        /**< Minimum O2 saturation */
+    float avg_glucose_level;            /**< Average glucose level [0-1] */
+    float min_glucose_level;            /**< Minimum glucose level */
+    float avg_metabolic_capacity;       /**< Average metabolic score [0-1] */
+    bool metabolic_crisis;              /**< Any metabolic critical */
+
+    /* Physical health */
+    float avg_temperature;              /**< Average temperature (°C) */
+    float max_temperature;              /**< Maximum temperature seen */
+    float min_temperature;              /**< Minimum temperature seen */
+    float avg_membrane_integrity;       /**< Average membrane health [0-1] */
+    float min_membrane_integrity;       /**< Minimum membrane integrity */
+    float avg_ion_balance;              /**< Average ion balance [0-1] */
+    float min_ion_balance;              /**< Minimum ion balance */
+    float avg_physical_capacity;        /**< Average physical score [0-1] */
+    bool physical_crisis;               /**< Any physical critical */
+
+    /* Modulation status */
+    float avg_firing_rate_mod;          /**< Average firing modulation [0-1.5] */
+    float avg_transmission_efficiency;  /**< Average transmission [0-1] */
+    float avg_conduction_velocity;      /**< Average conduction [0.5-1.5] */
+    float avg_plasticity_capacity;      /**< Average plasticity [0-1] */
+    float avg_overall_capacity;         /**< Average overall capacity [0-1] */
+
+    /* Alert tracking */
+    uint32_t total_alerts;              /**< Total alerts generated */
+    uint32_t low_atp_alerts;            /**< ATP depletion alerts */
+    uint32_t hypoxia_alerts;            /**< Hypoxia alerts */
+    uint32_t hypoglycemia_alerts;       /**< Hypoglycemia alerts */
+    uint32_t hyperthermia_alerts;       /**< High temperature alerts */
+    uint32_t hypothermia_alerts;        /**< Low temperature alerts */
+    uint32_t ion_imbalance_alerts;      /**< Ion imbalance alerts */
+    uint32_t membrane_damage_alerts;    /**< Membrane damage alerts */
+
+    /* Resource usage */
+    uint64_t total_spikes_processed;    /**< Total spikes recorded */
+    uint64_t total_transmissions;       /**< Total transmissions recorded */
+    float total_atp_consumed;           /**< Total ATP consumed */
+    float peak_metabolic_rate;          /**< Peak consumption rate */
+
+    /* Aggregate health */
+    float overall_substrate_health;     /**< Combined health score [0-100] */
+    uint64_t total_critical_events;     /**< Lifetime critical events */
+    uint64_t total_recoveries;          /**< Successful recoveries */
+    uint64_t last_check_timestamp_us;   /**< Last health check time */
+} substrate_health_metrics_t;
+
+/**
+ * @brief Configuration for neural substrate health monitoring
+ */
+typedef struct {
+    /* Metabolic monitoring */
+    bool enable_metabolic_monitoring;   /**< Monitor ATP, O2, glucose */
+    float atp_warning_threshold;        /**< ATP warning level (0.5) */
+    float atp_critical_threshold;       /**< ATP critical level (0.3) */
+    float oxygen_warning_threshold;     /**< O2 warning level (0.7) */
+    float oxygen_critical_threshold;    /**< O2 critical level (0.5) */
+    float glucose_warning_threshold;    /**< Glucose warning (0.6) */
+    float glucose_critical_threshold;   /**< Glucose critical (0.4) */
+
+    /* Physical monitoring */
+    bool enable_physical_monitoring;    /**< Monitor temperature, membrane, ions */
+    float hyperthermia_threshold;       /**< High temp threshold (40.0°C) */
+    float hypothermia_threshold;        /**< Low temp threshold (32.0°C) */
+    float membrane_warning_threshold;   /**< Membrane warning (0.7) */
+    float membrane_critical_threshold;  /**< Membrane critical (0.5) */
+    float ion_warning_threshold;        /**< Ion balance warning (0.6) */
+    float ion_critical_threshold;       /**< Ion balance critical (0.5) */
+
+    /* Performance monitoring */
+    bool enable_performance_monitoring; /**< Monitor modulation factors */
+    float capacity_warning_threshold;   /**< Overall capacity warning (0.5) */
+    float capacity_critical_threshold;  /**< Overall capacity critical (0.3) */
+
+    /* Auto-recovery */
+    bool enable_auto_recovery;          /**< Enable automatic recovery */
+    bool enable_energy_boost;           /**< Boost ATP on depletion */
+    bool enable_temp_regulation;        /**< Regulate temperature */
+    bool enable_ion_correction;         /**< Correct ion imbalance */
+    bool enable_membrane_repair;        /**< Repair membrane damage */
+
+    /* Check intervals */
+    uint32_t health_check_interval_ms;  /**< How often to check (50) */
+} health_agent_substrate_config_t;
+
+/**
+ * @brief Neural substrate recovery actions
+ */
+typedef enum {
+    SUBSTRATE_RECOVERY_NONE = 0,
+    SUBSTRATE_RECOVERY_BOOST_ATP,        /**< Inject ATP (emergency energy) */
+    SUBSTRATE_RECOVERY_BOOST_OXYGEN,     /**< Increase O2 saturation */
+    SUBSTRATE_RECOVERY_BOOST_GLUCOSE,    /**< Increase glucose level */
+    SUBSTRATE_RECOVERY_COOL_DOWN,        /**< Reduce temperature */
+    SUBSTRATE_RECOVERY_WARM_UP,          /**< Increase temperature */
+    SUBSTRATE_RECOVERY_BALANCE_IONS,     /**< Reset ion balance */
+    SUBSTRATE_RECOVERY_REPAIR_MEMBRANE,  /**< Repair membrane damage */
+    SUBSTRATE_RECOVERY_REDUCE_ACTIVITY,  /**< Lower firing/transmission */
+    SUBSTRATE_RECOVERY_RESET_STATS,      /**< Reset statistics */
+    SUBSTRATE_RECOVERY_SOFT_RESET,       /**< Soft reset substrate state */
+    SUBSTRATE_RECOVERY_FULL_RESET        /**< Full substrate reset */
+} substrate_recovery_action_t;
+
+/**
+ * @brief Connect neural substrate to health agent
+ *
+ * WHAT: Enable neural substrate health monitoring
+ * WHY:  Detect metabolic depletion, physical degradation, modulation issues
+ * HOW:  Poll substrate state APIs, monitor alerts, track statistics
+ *
+ * USE CASES:
+ * - Detect ATP depletion before computational failure
+ * - Monitor temperature for hyper/hypothermia
+ * - Track ion balance and membrane integrity
+ * - Observe modulation factor degradation
+ *
+ * @param agent Health agent
+ * @param substrate Neural substrate
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_connect_substrate(
+    nimcp_health_agent_t* agent,
+    neural_substrate_t* substrate,
+    const health_agent_substrate_config_t* config
+);
+
+/**
+ * @brief Disconnect neural substrate from health agent
+ *
+ * @param agent Health agent
+ * @param substrate Neural substrate to disconnect
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_disconnect_substrate(
+    nimcp_health_agent_t* agent,
+    neural_substrate_t* substrate
+);
+
+/**
+ * @brief Get aggregated neural substrate health metrics
+ *
+ * @param agent Health agent
+ * @param metrics Output metrics structure
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_get_substrate_metrics(
+    const nimcp_health_agent_t* agent,
+    substrate_health_metrics_t* metrics
+);
+
+/**
+ * @brief Trigger substrate-specific recovery action
+ *
+ * @param agent Health agent
+ * @param action Recovery action to trigger
+ * @param substrate_index Index of substrate to target (0 for first, -1 for all)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_substrate_recovery(
+    nimcp_health_agent_t* agent,
+    substrate_recovery_action_t action,
+    int substrate_index
+);
+
+/**
+ * @brief Check if neural substrate needs attention
+ *
+ * Quick check without full metrics collection.
+ *
+ * @param agent Health agent
+ * @return true if substrate health is below threshold, false otherwise
+ */
+bool nimcp_health_agent_substrate_needs_attention(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get overall substrate health score (0-100)
+ *
+ * @param agent Health agent
+ * @return Health score [0-100], 100 if no substrates connected
+ */
+float nimcp_health_agent_get_substrate_health_score(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get default neural substrate health configuration
+ *
+ * @param config Output configuration
+ */
+void nimcp_health_agent_substrate_config_default(
+    health_agent_substrate_config_t* config
+);
+
+/**
+ * @brief Update neural substrate health configuration at runtime
+ *
+ * @param agent Health agent
+ * @param config New configuration
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_update_substrate_config(
+    nimcp_health_agent_t* agent,
+    const health_agent_substrate_config_t* config
+);
+
+/* ============================================================================
+ * Phase 5.11: Thalamic/Middleware Health Integration
+ * ============================================================================ */
+
+/** Thalamic bridge forward declarations */
+#ifndef NIMCP_OMNI_WM_THALAMIC_BRIDGE_H
+struct omni_wm_thalamic_bridge;
+typedef struct omni_wm_thalamic_bridge omni_wm_thalamic_bridge_t;
+#endif
+
+/** Training integration forward declaration */
+#ifndef NIMCP_BRAIN_TRAINING_INTEGRATION_H
+struct nimcp_brain_training_ctx;
+typedef struct nimcp_brain_training_ctx nimcp_brain_training_ctx_t;
+#endif
+
+/** Maximum number of thalamic bridges to track */
+#define HEALTH_AGENT_MAX_THALAMIC_BRIDGES 8
+
+/** Maximum number of middleware training contexts to track */
+#define HEALTH_AGENT_MAX_TRAINING_CONTEXTS 4
+
+/**
+ * @brief Thalamic bridge health metrics
+ *
+ * WHAT: Combined health status from thalamic bridges
+ * WHY:  Monitor attention gating, sensory filtering, prediction biasing
+ * HOW:  Aggregates metrics from all registered thalamic bridges
+ */
+typedef struct {
+    /* Connection status */
+    uint32_t num_bridges;               /**< Number of registered bridges */
+    bool any_bridge_unhealthy;          /**< Any bridge reporting issues */
+    bool any_connection_lost;           /**< Any bridge lost connection */
+
+    /* Gating performance */
+    uint64_t total_inputs_gated;        /**< Total inputs processed */
+    uint64_t total_inputs_passed;       /**< Inputs that passed gating */
+    uint64_t total_inputs_blocked;      /**< Inputs blocked by gating */
+    float avg_gating_attention;         /**< Average attention during gating */
+    float min_gating_attention;         /**< Minimum attention observed */
+    float max_gating_attention;         /**< Maximum attention observed */
+    float gating_efficiency;            /**< Pass/total ratio */
+
+    /* Per-nucleus health (averaged across bridges) */
+    float avg_lgn_attention;            /**< Avg LGN (visual) attention */
+    float avg_mgn_attention;            /**< Avg MGN (auditory) attention */
+    float avg_pulvinar_attention;       /**< Avg pulvinar attention */
+    float avg_md_attention;             /**< Avg mediodorsal attention */
+    float avg_trn_inhibition;           /**< Avg TRN inhibition */
+    float avg_va_vl_attention;          /**< Avg VA/VL (motor) attention */
+
+    /* Prediction biasing */
+    uint64_t total_bias_updates;        /**< Attention bias updates */
+    uint64_t total_salience_predictions;/**< Salience predictions made */
+    float avg_bias_confidence;          /**< Average bias confidence */
+    float min_bias_confidence;          /**< Minimum bias confidence */
+    float avg_prediction_error;         /**< Average prediction error */
+    float max_prediction_error;         /**< Maximum prediction error */
+
+    /* TRN inhibition */
+    uint64_t total_trn_inhibitions;     /**< TRN inhibition events */
+    uint64_t total_trn_releases;        /**< TRN release events */
+    float avg_trn_strength;             /**< Average inhibition strength */
+    bool inhibition_imbalance;          /**< TRN inhibition imbalanced */
+
+    /* Pulvinar coordination */
+    uint64_t pulvinar_coordination_events; /**< Pulvinar coordination count */
+    float avg_pulvinar_focus;           /**< Average focus strength */
+    bool pulvinar_overload;             /**< Pulvinar overloaded */
+
+    /* Firing mode statistics */
+    float avg_tonic_fraction;           /**< Fraction in tonic mode */
+    float avg_burst_fraction;           /**< Fraction in burst mode */
+    uint64_t total_mode_switches;       /**< Tonic<->burst switches */
+    float avg_arousal_level;            /**< Average arousal level */
+
+    /* Timing statistics */
+    uint64_t total_updates;             /**< Total update cycles */
+    double total_processing_time_ms;    /**< Total processing time */
+    double avg_update_time_ms;          /**< Average update duration */
+    double max_update_time_ms;          /**< Maximum update duration */
+
+    /* Error statistics */
+    uint64_t total_errors;              /**< Total errors encountered */
+    uint64_t gating_errors;             /**< Gating-related errors */
+    uint64_t biasing_errors;            /**< Biasing-related errors */
+    uint64_t trn_errors;                /**< TRN-related errors */
+
+    /* Aggregate health */
+    float overall_thalamic_health;      /**< Combined health score [0-100] */
+    uint64_t total_critical_events;     /**< Lifetime critical events */
+    uint64_t total_recoveries;          /**< Successful recoveries */
+    uint64_t last_check_timestamp_us;   /**< Last health check time */
+} thalamic_health_metrics_t;
+
+/**
+ * @brief Middleware training health metrics
+ *
+ * WHAT: Combined health status from training middleware
+ * WHY:  Monitor training stability, convergence, gradient health
+ * HOW:  Aggregates metrics from all registered training contexts
+ */
+typedef struct {
+    /* Connection status */
+    uint32_t num_contexts;              /**< Number of registered contexts */
+    bool any_context_unhealthy;         /**< Any context reporting issues */
+    bool any_training_active;           /**< Any training currently active */
+
+    /* Training progress */
+    uint64_t total_epochs_completed;    /**< Total epochs across contexts */
+    uint64_t total_batches_processed;   /**< Total batches processed */
+    uint64_t total_samples_trained;     /**< Total samples processed */
+    uint64_t total_weight_updates;      /**< Total weight updates */
+    bool any_training_paused;           /**< Any training paused */
+    bool any_training_converged;        /**< Any training converged */
+    bool any_training_diverged;         /**< Any training diverged */
+
+    /* Loss statistics */
+    float avg_loss;                     /**< Average loss across contexts */
+    float min_loss;                     /**< Minimum loss observed */
+    float max_loss;                     /**< Maximum loss observed */
+    float loss_variance;                /**< Loss variance */
+    float loss_trend;                   /**< Loss trend (positive = increasing) */
+    bool loss_explosion_detected;       /**< Loss explosion detected */
+    bool loss_plateau_detected;         /**< Loss plateau detected */
+
+    /* Gradient health */
+    uint64_t total_gradient_clips;      /**< Total gradient clips */
+    uint64_t total_nan_gradients;       /**< NaN gradient detections */
+    uint64_t total_inf_gradients;       /**< Inf gradient detections */
+    float avg_gradient_norm;            /**< Average gradient norm */
+    float max_gradient_norm;            /**< Maximum gradient norm */
+    float avg_clip_ratio;               /**< Average clip ratio */
+    bool gradient_health_critical;      /**< Gradient health critical */
+
+    /* Learning rate */
+    float avg_learning_rate;            /**< Average learning rate */
+    float min_learning_rate;            /**< Minimum learning rate */
+    float max_learning_rate;            /**< Maximum learning rate */
+    uint64_t total_lr_changes;          /**< Total LR scheduler steps */
+    bool lr_too_high;                   /**< LR potentially too high */
+    bool lr_too_low;                    /**< LR potentially too low */
+
+    /* Regularization */
+    float avg_regularization_loss;      /**< Average regularization loss */
+    uint64_t total_dropout_masks;       /**< Dropout masks generated */
+    float dropout_rate;                 /**< Current dropout rate */
+
+    /* Early stopping */
+    uint32_t avg_early_stop_patience;   /**< Average patience remaining */
+    uint32_t early_stops_triggered;     /**< Early stops triggered */
+    float best_loss_seen;               /**< Best loss for early stopping */
+
+    /* Resource usage */
+    uint64_t total_training_time_ns;    /**< Total training time */
+    double avg_batch_time_ms;           /**< Average batch time */
+    double max_batch_time_ms;           /**< Maximum batch time */
+    float resource_utilization;         /**< Resource utilization [0-1] */
+
+    /* Plasticity bridge stats (if connected) */
+    uint64_t total_rpe_computations;    /**< RPE computations */
+    uint64_t total_biological_updates;  /**< Biological weight updates */
+    float avg_dopamine_level;           /**< Average dopamine level */
+    float avg_lr_modulation;            /**< Average LR modulation factor */
+
+    /* Callback stats */
+    uint64_t total_callback_events;     /**< Callback events fired */
+    uint64_t callback_stop_requests;    /**< Callback stop requests */
+    uint64_t callback_rollbacks;        /**< Callback rollback requests */
+
+    /* Aggregate health */
+    float overall_middleware_health;    /**< Combined health score [0-100] */
+    uint64_t total_critical_events;     /**< Lifetime critical events */
+    uint64_t total_recoveries;          /**< Successful recoveries */
+    uint64_t last_check_timestamp_us;   /**< Last health check time */
+} middleware_health_metrics_t;
+
+/**
+ * @brief Configuration for thalamic health monitoring
+ */
+typedef struct {
+    /* Gating monitoring */
+    bool enable_gating_monitoring;      /**< Monitor gating performance */
+    float min_gating_efficiency;        /**< Min acceptable efficiency (0.1) */
+    float attention_imbalance_threshold;/**< Nucleus attention variance (0.5) */
+    float max_blocked_ratio;             /**< Max blocked/total ratio (0.9) */
+
+    /* Prediction monitoring */
+    bool enable_prediction_monitoring;  /**< Monitor prediction biasing */
+    float min_bias_confidence;          /**< Min acceptable confidence (0.3) */
+    float max_prediction_error;         /**< Max acceptable PE (0.8) */
+
+    /* TRN monitoring */
+    bool enable_trn_monitoring;         /**< Monitor TRN inhibition */
+    float trn_imbalance_threshold;      /**< TRN imbalance threshold (0.6) */
+    float max_inhibition_duration_ms;   /**< Max sustained inhibition (1000) */
+
+    /* Timing monitoring */
+    bool enable_timing_monitoring;      /**< Monitor update timing */
+    double max_update_time_ms;          /**< Max acceptable update time (10.0) */
+
+    /* Auto-recovery */
+    bool enable_auto_recovery;          /**< Enable automatic recovery */
+    bool enable_attention_rebalance;    /**< Rebalance attention on imbalance */
+    bool enable_trn_release;            /**< Release TRN on stuck */
+    bool enable_arousal_adjustment;     /**< Adjust arousal on issues */
+
+    /* Check intervals */
+    uint32_t health_check_interval_ms;  /**< How often to check (100) */
+} health_agent_thalamic_config_t;
+
+/**
+ * @brief Configuration for middleware training health monitoring
+ */
+typedef struct {
+    /* Loss monitoring */
+    bool enable_loss_monitoring;        /**< Monitor loss values */
+    float loss_explosion_threshold;     /**< Loss explosion threshold (10.0) */
+    float loss_plateau_threshold;       /**< Loss plateau delta (0.001) */
+    uint32_t plateau_patience;          /**< Batches before plateau (100) */
+
+    /* Gradient monitoring */
+    bool enable_gradient_monitoring;    /**< Monitor gradient health */
+    float max_gradient_norm;            /**< Max acceptable gradient norm (10.0) */
+    uint32_t max_nan_count;             /**< Max NaN before critical (5) */
+    float high_clip_ratio_threshold;    /**< Clip ratio warning (0.5) */
+
+    /* Learning rate monitoring */
+    bool enable_lr_monitoring;          /**< Monitor learning rate */
+    float lr_too_high_threshold;        /**< LR too high threshold (0.1) */
+    float lr_too_low_threshold;         /**< LR too low threshold (1e-8) */
+
+    /* Timing monitoring */
+    bool enable_timing_monitoring;      /**< Monitor batch timing */
+    double max_batch_time_ms;           /**< Max acceptable batch time (1000.0) */
+    float timing_variance_threshold;    /**< Timing variance warning (0.5) */
+
+    /* Auto-recovery */
+    bool enable_auto_recovery;          /**< Enable automatic recovery */
+    bool enable_lr_reduction;           /**< Reduce LR on issues */
+    bool enable_gradient_reset;         /**< Reset gradients on NaN */
+    bool enable_auto_pause;             /**< Pause training on critical */
+    bool enable_auto_checkpoint;        /**< Auto checkpoint before recovery */
+
+    /* Check intervals */
+    uint32_t health_check_interval_ms;  /**< How often to check (100) */
+} health_agent_middleware_config_t;
+
+/**
+ * @brief Thalamic recovery actions
+ */
+typedef enum {
+    THALAMIC_RECOVERY_NONE = 0,
+    THALAMIC_RECOVERY_RESET_ATTENTION,   /**< Reset attention to baseline */
+    THALAMIC_RECOVERY_REBALANCE_NUCLEI,  /**< Rebalance nucleus attention */
+    THALAMIC_RECOVERY_RELEASE_TRN,       /**< Release TRN inhibition */
+    THALAMIC_RECOVERY_BOOST_AROUSAL,     /**< Increase arousal level */
+    THALAMIC_RECOVERY_REDUCE_AROUSAL,    /**< Decrease arousal level */
+    THALAMIC_RECOVERY_CLEAR_BIAS,        /**< Clear prediction bias */
+    THALAMIC_RECOVERY_RESET_PULVINAR,    /**< Reset pulvinar state */
+    THALAMIC_RECOVERY_FORCE_TONIC,       /**< Force tonic mode */
+    THALAMIC_RECOVERY_RESET_STATS,       /**< Reset bridge statistics */
+    THALAMIC_RECOVERY_SOFT_RESET,        /**< Soft reset bridge state */
+    THALAMIC_RECOVERY_FULL_RESET         /**< Full bridge reset */
+} thalamic_recovery_action_t;
+
+/**
+ * @brief Middleware training recovery actions
+ */
+typedef enum {
+    MIDDLEWARE_RECOVERY_NONE = 0,
+    MIDDLEWARE_RECOVERY_REDUCE_LR,       /**< Reduce learning rate */
+    MIDDLEWARE_RECOVERY_INCREASE_LR,     /**< Increase learning rate */
+    MIDDLEWARE_RECOVERY_RESET_GRADIENTS, /**< Zero out gradients */
+    MIDDLEWARE_RECOVERY_CLEAR_NAM,       /**< Clear NaN/Inf values */
+    MIDDLEWARE_RECOVERY_PAUSE_TRAINING,  /**< Pause training */
+    MIDDLEWARE_RECOVERY_RESUME_TRAINING, /**< Resume training */
+    MIDDLEWARE_RECOVERY_SAVE_CHECKPOINT, /**< Save checkpoint now */
+    MIDDLEWARE_RECOVERY_LOAD_CHECKPOINT, /**< Rollback to checkpoint */
+    MIDDLEWARE_RECOVERY_RESET_EARLY_STOP,/**< Reset early stopping */
+    MIDDLEWARE_RECOVERY_RESET_STATS,     /**< Reset training statistics */
+    MIDDLEWARE_RECOVERY_SOFT_RESET,      /**< Soft reset training state */
+    MIDDLEWARE_RECOVERY_FULL_RESET       /**< Full training reset */
+} middleware_recovery_action_t;
+
+/* ============================================================================
+ * Thalamic Health API Functions
+ * ============================================================================ */
+
+/**
+ * @brief Connect thalamic bridge to health agent
+ *
+ * WHAT: Enable thalamic bridge health monitoring
+ * WHY:  Detect attention gating issues, TRN imbalance, prediction errors
+ * HOW:  Poll bridge state APIs, monitor statistics, track performance
+ *
+ * USE CASES:
+ * - Detect attention gating failures
+ * - Monitor TRN inhibition balance
+ * - Track prediction biasing performance
+ * - Observe arousal and firing mode changes
+ *
+ * @param agent Health agent
+ * @param bridge Thalamic bridge
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_connect_thalamic(
+    nimcp_health_agent_t* agent,
+    omni_wm_thalamic_bridge_t* bridge,
+    const health_agent_thalamic_config_t* config
+);
+
+/**
+ * @brief Disconnect thalamic bridge from health agent
+ *
+ * @param agent Health agent
+ * @param bridge Thalamic bridge to disconnect
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_disconnect_thalamic(
+    nimcp_health_agent_t* agent,
+    omni_wm_thalamic_bridge_t* bridge
+);
+
+/**
+ * @brief Get aggregated thalamic health metrics
+ *
+ * @param agent Health agent
+ * @param metrics Output metrics structure
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_get_thalamic_metrics(
+    const nimcp_health_agent_t* agent,
+    thalamic_health_metrics_t* metrics
+);
+
+/**
+ * @brief Trigger thalamic-specific recovery action
+ *
+ * @param agent Health agent
+ * @param action Recovery action to trigger
+ * @param bridge_index Index of bridge to target (0 for first, -1 for all)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_thalamic_recovery(
+    nimcp_health_agent_t* agent,
+    thalamic_recovery_action_t action,
+    int bridge_index
+);
+
+/**
+ * @brief Check if thalamic bridges need attention
+ *
+ * Quick check without full metrics collection.
+ *
+ * @param agent Health agent
+ * @return true if thalamic health is below threshold, false otherwise
+ */
+bool nimcp_health_agent_thalamic_needs_attention(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get overall thalamic health score (0-100)
+ *
+ * @param agent Health agent
+ * @return Health score [0-100], 100 if no bridges connected
+ */
+float nimcp_health_agent_get_thalamic_health_score(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get default thalamic health configuration
+ *
+ * @param config Output configuration
+ */
+void nimcp_health_agent_thalamic_config_default(
+    health_agent_thalamic_config_t* config
+);
+
+/**
+ * @brief Update thalamic health configuration at runtime
+ *
+ * @param agent Health agent
+ * @param config New configuration
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_update_thalamic_config(
+    nimcp_health_agent_t* agent,
+    const health_agent_thalamic_config_t* config
+);
+
+/* ============================================================================
+ * Middleware Training Health API Functions
+ * ============================================================================ */
+
+/**
+ * @brief Connect training context to health agent
+ *
+ * WHAT: Enable middleware training health monitoring
+ * WHY:  Detect training instability, gradient issues, divergence
+ * HOW:  Poll training state APIs, monitor statistics, track progress
+ *
+ * USE CASES:
+ * - Detect loss explosion or divergence
+ * - Monitor gradient health (NaN, Inf, clipping)
+ * - Track learning rate changes
+ * - Observe early stopping progress
+ *
+ * @param agent Health agent
+ * @param training_ctx Training context
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_connect_middleware(
+    nimcp_health_agent_t* agent,
+    nimcp_brain_training_ctx_t* training_ctx,
+    const health_agent_middleware_config_t* config
+);
+
+/**
+ * @brief Disconnect training context from health agent
+ *
+ * @param agent Health agent
+ * @param training_ctx Training context to disconnect
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_disconnect_middleware(
+    nimcp_health_agent_t* agent,
+    nimcp_brain_training_ctx_t* training_ctx
+);
+
+/**
+ * @brief Get aggregated middleware health metrics
+ *
+ * @param agent Health agent
+ * @param metrics Output metrics structure
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_get_middleware_metrics(
+    const nimcp_health_agent_t* agent,
+    middleware_health_metrics_t* metrics
+);
+
+/**
+ * @brief Trigger middleware-specific recovery action
+ *
+ * @param agent Health agent
+ * @param action Recovery action to trigger
+ * @param context_index Index of context to target (0 for first, -1 for all)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_middleware_recovery(
+    nimcp_health_agent_t* agent,
+    middleware_recovery_action_t action,
+    int context_index
+);
+
+/**
+ * @brief Check if middleware needs attention
+ *
+ * Quick check without full metrics collection.
+ *
+ * @param agent Health agent
+ * @return true if middleware health is below threshold, false otherwise
+ */
+bool nimcp_health_agent_middleware_needs_attention(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get overall middleware health score (0-100)
+ *
+ * @param agent Health agent
+ * @return Health score [0-100], 100 if no contexts connected
+ */
+float nimcp_health_agent_get_middleware_health_score(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get default middleware health configuration
+ *
+ * @param config Output configuration
+ */
+void nimcp_health_agent_middleware_config_default(
+    health_agent_middleware_config_t* config
+);
+
+/**
+ * @brief Update middleware health configuration at runtime
+ *
+ * @param agent Health agent
+ * @param config New configuration
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_update_middleware_config(
+    nimcp_health_agent_t* agent,
+    const health_agent_middleware_config_t* config
+);
+
+/* ============================================================================
+ * Phase 5.12: Perception/Cortical Health Integration
+ * ============================================================================ */
+
+/*
+ * Integrates health monitoring for:
+ * - Visual cortical bridges (V1 processing, orientation columns)
+ * - Audio cortical bridges (auditory cortex, frequency maps)
+ * - Cortical immune system (microglial surveillance, inflammation)
+ * - Cortical columns (hypercolumns, minicolumns)
+ *
+ * Monitors perception pipeline health including:
+ * - Sensory processing latency
+ * - Feature selectivity degradation
+ * - Cortical inflammation levels
+ * - Column competition dynamics
+ * - Layer communication health
+ */
+
+/** Visual cortical bridge forward declaration */
+#ifndef NIMCP_VISUAL_CORTICAL_BRIDGE_H
+struct visual_cortical_bridge;
+typedef struct visual_cortical_bridge visual_cortical_bridge_t;
+#endif
+
+/** Audio cortical bridge forward declaration */
+#ifndef NIMCP_AUDIO_CORTICAL_BRIDGE_H
+struct audio_cortical_bridge;
+typedef struct audio_cortical_bridge audio_cortical_bridge_t;
+#endif
+
+/** Cortical immune system forward declaration */
+#ifndef NIMCP_CORTICAL_IMMUNE_H
+struct cortical_immune_system;
+typedef struct cortical_immune_system cortical_immune_system_t;
+#endif
+
+/** Hypercolumn forward declaration */
+#ifndef NIMCP_CORTICAL_COLUMN_H
+struct hypercolumn;
+typedef struct hypercolumn hypercolumn_t;
+#endif
+
+/** Maximum number of perception bridges to track */
+#define HEALTH_AGENT_MAX_PERCEPTION_BRIDGES 8
+
+/** Maximum number of cortical columns to track */
+#define HEALTH_AGENT_MAX_CORTICAL_COLUMNS 16
+
+/**
+ * @brief Perception health metrics
+ *
+ * Aggregated health metrics for visual and audio cortical processing.
+ */
+typedef struct {
+    /* Connection status */
+    uint32_t num_visual_bridges;        /**< Number of visual cortical bridges */
+    uint32_t num_audio_bridges;         /**< Number of audio cortical bridges */
+    bool any_bridge_unhealthy;          /**< Any perception bridge unhealthy */
+    bool any_connection_lost;           /**< Any bridge disconnected */
+
+    /* Processing latency */
+    double avg_visual_latency_ms;       /**< Average visual processing latency */
+    double max_visual_latency_ms;       /**< Maximum visual processing latency */
+    double avg_audio_latency_ms;        /**< Average audio processing latency */
+    double max_audio_latency_ms;        /**< Maximum audio processing latency */
+    uint64_t total_frames_processed;    /**< Total visual frames processed */
+    uint64_t total_samples_processed;   /**< Total audio samples processed */
+
+    /* Feature detection health */
+    float avg_orientation_selectivity;  /**< Average orientation tuning sharpness */
+    float avg_frequency_selectivity;    /**< Average frequency tuning sharpness */
+    float feature_selectivity_score;    /**< Overall feature selectivity (0-100) */
+    bool selectivity_degraded;          /**< Feature selectivity below threshold */
+
+    /* Retinotopic/tonotopic mapping */
+    float retinotopic_mapping_quality;  /**< Visual field mapping quality (0-1) */
+    float tonotopic_mapping_quality;    /**< Frequency field mapping quality (0-1) */
+    uint32_t mapping_errors_detected;   /**< Mapping discontinuities found */
+
+    /* Column integration */
+    float hypercolumn_competition_score;/**< Winner-take-all dynamics health */
+    float cross_column_inhibition_score;/**< Lateral inhibition effectiveness */
+    uint32_t column_timeout_events;     /**< Column computation timeouts */
+
+    /* Error tracking */
+    uint64_t total_processing_errors;   /**< Total perception processing errors */
+    uint64_t total_overflow_events;     /**< Buffer overflow events */
+    uint64_t total_underflow_events;    /**< Buffer underflow events */
+
+    /* Timestamps and health */
+    uint64_t last_check_timestamp_us;   /**< Last health check timestamp */
+    uint64_t total_critical_events;     /**< Total critical events detected */
+    uint64_t total_recoveries;          /**< Total recovery actions performed */
+    float overall_perception_health;    /**< Overall health score (0-100) */
+} perception_health_metrics_t;
+
+/**
+ * @brief Cortical health metrics
+ *
+ * Aggregated health metrics for cortical columns and immune system.
+ */
+typedef struct {
+    /* Connection status */
+    uint32_t num_immune_systems;        /**< Number of cortical immune systems */
+    uint32_t num_hypercolumns;          /**< Number of tracked hypercolumns */
+    bool any_column_unhealthy;          /**< Any cortical column unhealthy */
+    bool immune_system_active;          /**< Cortical immune system responding */
+
+    /* Layer health (cortical layers 2/3, 4, 5/6) */
+    float layer_2_3_health;             /**< Layer 2/3 (cortico-cortical) health */
+    float layer_4_health;               /**< Layer 4 (thalamic input) health */
+    float layer_5_6_health;             /**< Layer 5/6 (subcortical output) health */
+    float inter_layer_comm_score;       /**< Inter-layer communication health */
+    bool layer_communication_failure;   /**< Layer communication breakdown */
+
+    /* Column dynamics */
+    float avg_column_activity;          /**< Average column activation level */
+    float min_column_activity;          /**< Minimum column activity */
+    float max_column_activity;          /**< Maximum column activity */
+    float activity_variance;            /**< Column activity variance */
+    bool hyperexcitability_detected;    /**< Seizure-like activity detected */
+    bool hypoactivity_detected;         /**< Stroke-like silence detected */
+
+    /* Competition and inhibition */
+    float wta_effectiveness;            /**< Winner-take-all effectiveness */
+    float lateral_inhibition_balance;   /**< E/I ratio balance score */
+    uint64_t competition_failures;      /**< Competition resolution failures */
+
+    /* Cortical immune metrics */
+    float microglial_activation_level;  /**< Microglial activation (0-1) */
+    float inflammation_index;           /**< Cortical inflammation level (0-1) */
+    float cytokine_level;               /**< Cytokine concentration proxy */
+    uint64_t immune_responses_triggered;/**< Total immune responses */
+    uint64_t antigens_presented;        /**< Abnormal patterns detected */
+    bool inflammation_critical;         /**< Inflammation above threshold */
+
+    /* Feature selectivity */
+    float orientation_tuning_width;     /**< Orientation tuning curve width */
+    float frequency_tuning_width;       /**< Frequency tuning curve width */
+    bool tuning_curves_broadened;       /**< Selectivity loss detected */
+
+    /* Plasticity health */
+    float plasticity_modulation;        /**< Current plasticity level */
+    uint64_t synaptic_pruning_events;   /**< Microglial pruning events */
+    uint64_t circuit_remodeling_events; /**< Circuit remodeling events */
+
+    /* Timestamps and health */
+    uint64_t last_check_timestamp_us;   /**< Last health check timestamp */
+    uint64_t total_critical_events;     /**< Total critical events detected */
+    uint64_t total_recoveries;          /**< Total recovery actions performed */
+    float overall_cortical_health;      /**< Overall health score (0-100) */
+} cortical_health_metrics_t;
+
+/**
+ * @brief Perception health monitoring configuration
+ */
+typedef struct {
+    /* Latency monitoring */
+    bool enable_latency_monitoring;     /**< Monitor processing latency */
+    double max_visual_latency_ms;       /**< Max acceptable visual latency */
+    double max_audio_latency_ms;        /**< Max acceptable audio latency */
+
+    /* Feature selectivity monitoring */
+    bool enable_selectivity_monitoring; /**< Monitor feature selectivity */
+    float min_orientation_selectivity;  /**< Min acceptable orientation tuning */
+    float min_frequency_selectivity;    /**< Min acceptable frequency tuning */
+    float selectivity_degradation_threshold; /**< Degradation alert threshold */
+
+    /* Buffer monitoring */
+    bool enable_buffer_monitoring;      /**< Monitor buffer health */
+    uint32_t max_overflow_count;        /**< Max acceptable overflows */
+    uint32_t max_underflow_count;       /**< Max acceptable underflows */
+
+    /* Mapping quality */
+    bool enable_mapping_monitoring;     /**< Monitor topographic mapping */
+    float min_mapping_quality;          /**< Min acceptable mapping quality */
+
+    /* Auto-recovery */
+    bool enable_auto_recovery;          /**< Enable automatic recovery */
+    bool enable_buffer_flush;           /**< Allow buffer flush on overflow */
+    bool enable_gain_adjustment;        /**< Allow gain adjustment */
+
+    /* Check interval */
+    uint32_t health_check_interval_ms;  /**< Health check interval in ms */
+} health_agent_perception_config_t;
+
+/**
+ * @brief Cortical health monitoring configuration
+ */
+typedef struct {
+    /* Layer monitoring */
+    bool enable_layer_monitoring;       /**< Monitor cortical layer health */
+    float min_layer_health;             /**< Min acceptable layer health */
+    float layer_comm_threshold;         /**< Layer communication alert threshold */
+
+    /* Activity monitoring */
+    bool enable_activity_monitoring;    /**< Monitor column activity */
+    float hyperexcitability_threshold;  /**< Activity level for hyperexcitability */
+    float hypoactivity_threshold;       /**< Activity level for hypoactivity */
+    float max_activity_variance;        /**< Max acceptable activity variance */
+
+    /* Competition monitoring */
+    bool enable_competition_monitoring; /**< Monitor column competition */
+    float min_wta_effectiveness;        /**< Min WTA effectiveness */
+    float min_inhibition_balance;       /**< Min E/I balance score */
+
+    /* Immune monitoring */
+    bool enable_immune_monitoring;      /**< Monitor cortical immune system */
+    float inflammation_threshold;       /**< Inflammation alert threshold */
+    float max_microglial_activation;    /**< Max acceptable microglial activation */
+    float cytokine_alert_level;         /**< Cytokine level for alert */
+
+    /* Selectivity monitoring */
+    bool enable_tuning_monitoring;      /**< Monitor tuning curve health */
+    float max_tuning_width;             /**< Max acceptable tuning width */
+
+    /* Auto-recovery */
+    bool enable_auto_recovery;          /**< Enable automatic recovery */
+    bool enable_inflammation_control;   /**< Allow inflammation reduction */
+    bool enable_activity_normalization; /**< Allow activity normalization */
+    bool enable_competition_reset;      /**< Allow competition reset */
+
+    /* Check interval */
+    uint32_t health_check_interval_ms;  /**< Health check interval in ms */
+} health_agent_cortical_config_t;
+
+/**
+ * @brief Perception-specific recovery actions
+ */
+typedef enum {
+    PERCEPTION_RECOVERY_NONE = 0,       /**< No action */
+    PERCEPTION_RECOVERY_FLUSH_BUFFERS,  /**< Flush perception buffers */
+    PERCEPTION_RECOVERY_RESET_GAIN,     /**< Reset input gain to defaults */
+    PERCEPTION_RECOVERY_ADJUST_GAIN,    /**< Adjust gain based on activity */
+    PERCEPTION_RECOVERY_RESET_FILTERS,  /**< Reset filter banks */
+    PERCEPTION_RECOVERY_CLEAR_MAPS,     /**< Clear topographic maps */
+    PERCEPTION_RECOVERY_REBUILD_MAPS,   /**< Rebuild topographic maps */
+    PERCEPTION_RECOVERY_RESET_SELECTIVITY, /**< Reset feature selectivity */
+    PERCEPTION_RECOVERY_SOFT_RESET,     /**< Soft reset perception pipeline */
+    PERCEPTION_RECOVERY_FULL_RESET      /**< Full reset perception pipeline */
+} perception_recovery_action_t;
+
+/**
+ * @brief Cortical-specific recovery actions
+ */
+typedef enum {
+    CORTICAL_RECOVERY_NONE = 0,         /**< No action */
+    CORTICAL_RECOVERY_NORMALIZE_ACTIVITY, /**< Normalize column activity */
+    CORTICAL_RECOVERY_RESET_COMPETITION,/**< Reset winner-take-all state */
+    CORTICAL_RECOVERY_REBALANCE_INHIBITION, /**< Rebalance E/I ratio */
+    CORTICAL_RECOVERY_REDUCE_INFLAMMATION, /**< Reduce inflammation level */
+    CORTICAL_RECOVERY_SUPPRESS_MICROGLIA, /**< Suppress microglial activation */
+    CORTICAL_RECOVERY_RESET_LAYERS,     /**< Reset layer communication */
+    CORTICAL_RECOVERY_SHARPEN_TUNING,   /**< Sharpen tuning curves */
+    CORTICAL_RECOVERY_RESET_PLASTICITY, /**< Reset plasticity modulation */
+    CORTICAL_RECOVERY_SOFT_RESET,       /**< Soft reset cortical state */
+    CORTICAL_RECOVERY_FULL_RESET        /**< Full reset cortical state */
+} cortical_recovery_action_t;
+
+/* -------------------------------------------------------------------------
+ * Perception Health API
+ * ------------------------------------------------------------------------- */
+
+/**
+ * @brief Get default perception health configuration
+ *
+ * @param config Output configuration
+ */
+void nimcp_health_agent_perception_config_default(
+    health_agent_perception_config_t* config
+);
+
+/**
+ * @brief Connect visual cortical bridge to health agent
+ *
+ * @param agent Health agent
+ * @param bridge Visual cortical bridge
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_connect_visual(
+    nimcp_health_agent_t* agent,
+    visual_cortical_bridge_t* bridge,
+    const health_agent_perception_config_t* config
+);
+
+/**
+ * @brief Disconnect visual cortical bridge from health agent
+ *
+ * @param agent Health agent
+ * @param bridge Visual cortical bridge to disconnect
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_disconnect_visual(
+    nimcp_health_agent_t* agent,
+    visual_cortical_bridge_t* bridge
+);
+
+/**
+ * @brief Connect audio cortical bridge to health agent
+ *
+ * @param agent Health agent
+ * @param bridge Audio cortical bridge
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_connect_audio(
+    nimcp_health_agent_t* agent,
+    audio_cortical_bridge_t* bridge,
+    const health_agent_perception_config_t* config
+);
+
+/**
+ * @brief Disconnect audio cortical bridge from health agent
+ *
+ * @param agent Health agent
+ * @param bridge Audio cortical bridge to disconnect
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_disconnect_audio(
+    nimcp_health_agent_t* agent,
+    audio_cortical_bridge_t* bridge
+);
+
+/**
+ * @brief Get aggregated perception health metrics
+ *
+ * @param agent Health agent
+ * @param metrics Output metrics structure
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_get_perception_metrics(
+    const nimcp_health_agent_t* agent,
+    perception_health_metrics_t* metrics
+);
+
+/**
+ * @brief Trigger perception-specific recovery action
+ *
+ * @param agent Health agent
+ * @param action Recovery action to trigger
+ * @param bridge_index Index of bridge to target (-1 for all)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_perception_recovery(
+    nimcp_health_agent_t* agent,
+    perception_recovery_action_t action,
+    int bridge_index
+);
+
+/**
+ * @brief Check if perception needs attention
+ *
+ * @param agent Health agent
+ * @return true if perception health is below threshold
+ */
+bool nimcp_health_agent_perception_needs_attention(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get overall perception health score (0-100)
+ *
+ * @param agent Health agent
+ * @return Health score [0-100], 100 if no bridges connected
+ */
+float nimcp_health_agent_get_perception_health_score(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Update perception health configuration at runtime
+ *
+ * @param agent Health agent
+ * @param config New configuration
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_update_perception_config(
+    nimcp_health_agent_t* agent,
+    const health_agent_perception_config_t* config
+);
+
+/* -------------------------------------------------------------------------
+ * Cortical Health API
+ * ------------------------------------------------------------------------- */
+
+/**
+ * @brief Get default cortical health configuration
+ *
+ * @param config Output configuration
+ */
+void nimcp_health_agent_cortical_config_default(
+    health_agent_cortical_config_t* config
+);
+
+/**
+ * @brief Connect cortical immune system to health agent
+ *
+ * @param agent Health agent
+ * @param immune_system Cortical immune system
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_connect_cortical_immune(
+    nimcp_health_agent_t* agent,
+    cortical_immune_system_t* immune_system,
+    const health_agent_cortical_config_t* config
+);
+
+/**
+ * @brief Disconnect cortical immune system from health agent
+ *
+ * @param agent Health agent
+ * @param immune_system Cortical immune system to disconnect
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_disconnect_cortical_immune(
+    nimcp_health_agent_t* agent,
+    cortical_immune_system_t* immune_system
+);
+
+/**
+ * @brief Connect hypercolumn to health agent
+ *
+ * @param agent Health agent
+ * @param column Hypercolumn
+ * @param config Configuration (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_connect_cortical_column(
+    nimcp_health_agent_t* agent,
+    hypercolumn_t* column,
+    const health_agent_cortical_config_t* config
+);
+
+/**
+ * @brief Disconnect hypercolumn from health agent
+ *
+ * @param agent Health agent
+ * @param column Hypercolumn to disconnect
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_disconnect_cortical_column(
+    nimcp_health_agent_t* agent,
+    hypercolumn_t* column
+);
+
+/**
+ * @brief Get aggregated cortical health metrics
+ *
+ * @param agent Health agent
+ * @param metrics Output metrics structure
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_get_cortical_metrics(
+    const nimcp_health_agent_t* agent,
+    cortical_health_metrics_t* metrics
+);
+
+/**
+ * @brief Trigger cortical-specific recovery action
+ *
+ * @param agent Health agent
+ * @param action Recovery action to trigger
+ * @param column_index Index of column to target (-1 for all)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_cortical_recovery(
+    nimcp_health_agent_t* agent,
+    cortical_recovery_action_t action,
+    int column_index
+);
+
+/**
+ * @brief Check if cortical system needs attention
+ *
+ * @param agent Health agent
+ * @return true if cortical health is below threshold
+ */
+bool nimcp_health_agent_cortical_needs_attention(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get overall cortical health score (0-100)
+ *
+ * @param agent Health agent
+ * @return Health score [0-100], 100 if no columns connected
+ */
+float nimcp_health_agent_get_cortical_health_score(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Update cortical health configuration at runtime
+ *
+ * @param agent Health agent
+ * @param config New configuration
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_update_cortical_config(
+    nimcp_health_agent_t* agent,
+    const health_agent_cortical_config_t* config
+);
+
+/* ============================================================================
+ * Phase 5.13: Brain Probes Enhancement
+ * ============================================================================
+ *
+ * WHAT: Health monitoring integration with brain probe system
+ * WHY:  Monitor brain statistics for anomalies, degradation, and resource issues
+ * HOW:  Periodic probing of registered brains with threshold-based alerts
+ *
+ * ARCHITECTURE:
+ * ```
+ * ┌─────────────────────────────────────────────────────────────────┐
+ * │                 BRAIN PROBE HEALTH MONITORING                    │
+ * ├─────────────────────────────────────────────────────────────────┤
+ * │  Probe Integration:          │  Health Indicators:              │
+ * │  • nimcp_brain_probe()       │  • Neuron/synapse counts        │
+ * │  • Periodic health checks    │  • Memory usage trends          │
+ * │  • Performance tracking      │  • Inference time anomalies     │
+ * │  • Resource monitoring       │  • Learning rate stability      │
+ * │                              │  • Sparsity changes             │
+ * ├─────────────────────────────────────────────────────────────────┤
+ * │  Recovery Actions:           │  Anomaly Detection:              │
+ * │  • Garbage collection        │  • Memory growth rate           │
+ * │  • Learning rate adjustment  │  • Performance degradation      │
+ * │  • Pruning trigger           │  • COW overhead monitoring      │
+ * │  • Checkpoint recommendation │  • Synapse explosion/collapse   │
+ * └─────────────────────────────────────────────────────────────────┘
+ * ```
+ */
+
+/** Maximum number of brains to monitor */
+#define HEALTH_AGENT_MAX_BRAINS 64
+
+/**
+ * @brief Recovery actions for brain probe health issues
+ */
+typedef enum {
+    BRAIN_PROBE_RECOVERY_NONE = 0,
+    BRAIN_PROBE_RECOVERY_TRIGGER_GC,        /**< Trigger garbage collection */
+    BRAIN_PROBE_RECOVERY_REDUCE_LR,         /**< Reduce learning rate */
+    BRAIN_PROBE_RECOVERY_INCREASE_SPARSITY, /**< Increase pruning threshold */
+    BRAIN_PROBE_RECOVERY_TRIGGER_PRUNE,     /**< Force synapse pruning */
+    BRAIN_PROBE_RECOVERY_CHECKPOINT,        /**< Save checkpoint now */
+    BRAIN_PROBE_RECOVERY_THROTTLE_INFERENCE,/**< Reduce inference frequency */
+    BRAIN_PROBE_RECOVERY_DETACH_COW,        /**< Detach COW to free shared memory */
+    BRAIN_PROBE_RECOVERY_RESET_STATS,       /**< Reset performance statistics */
+    BRAIN_PROBE_RECOVERY_FULL_RESET,        /**< Full brain state reset */
+    BRAIN_PROBE_RECOVERY_COUNT
+} brain_probe_recovery_action_t;
+
+/**
+ * @brief Configuration for brain probe health monitoring
+ *
+ * WHAT: Settings for brain statistics monitoring
+ * WHY:  Customize thresholds for different brain sizes and workloads
+ * HOW:  Applied per-brain or as defaults for all registered brains
+ */
+typedef struct {
+    bool enable_probe_monitoring;        /**< Enable periodic brain probing */
+    bool enable_memory_tracking;         /**< Track memory usage trends */
+    bool enable_performance_tracking;    /**< Track inference performance */
+    bool enable_learning_monitoring;     /**< Monitor learning rate changes */
+    bool enable_synapse_monitoring;      /**< Monitor synapse count changes */
+    bool enable_cow_monitoring;          /**< Monitor COW clone health */
+    bool enable_auto_recovery;           /**< Auto-execute recovery actions */
+
+    uint32_t probe_interval_ms;          /**< Interval between probes (default: 1000) */
+    uint32_t trend_window_probes;        /**< Number of probes for trend analysis (default: 10) */
+
+    /* Memory thresholds */
+    size_t memory_warning_bytes;         /**< Memory usage warning threshold */
+    size_t memory_critical_bytes;        /**< Memory usage critical threshold */
+    float memory_growth_rate_warning;    /**< Growth rate %/sec for warning (0.1 = 10%/sec) */
+
+    /* Performance thresholds */
+    float inference_time_warning_us;     /**< Inference time warning threshold (microseconds) */
+    float inference_time_critical_us;    /**< Inference time critical threshold */
+    float performance_degradation_pct;   /**< % degradation for warning (0.2 = 20%) */
+
+    /* Learning thresholds */
+    float lr_change_warning_pct;         /**< Learning rate change warning (0.5 = 50%) */
+    float accuracy_drop_warning;         /**< Accuracy drop for warning (0.05 = 5%) */
+
+    /* Synapse thresholds */
+    float synapse_growth_warning_pct;    /**< Synapse count growth warning (0.2 = 20%) */
+    float synapse_loss_warning_pct;      /**< Synapse count loss warning (0.3 = 30%) */
+    uint32_t min_active_synapses;        /**< Minimum active synapses threshold */
+
+    /* COW thresholds */
+    float cow_private_ratio_warning;     /**< Private/shared ratio warning (0.5 = 50% private) */
+    size_t cow_overhead_warning_bytes;   /**< COW overhead warning threshold */
+} health_agent_brain_probe_config_t;
+
+/**
+ * @brief Health metrics from brain probe monitoring
+ *
+ * Aggregated metrics from periodic brain probing
+ */
+typedef struct {
+    /* Current snapshot */
+    uint32_t num_neurons;               /**< Current neuron count */
+    uint32_t num_synapses;              /**< Total synapse count */
+    uint32_t num_active_synapses;       /**< Active (non-pruned) synapses */
+    size_t memory_bytes;                /**< Current memory usage */
+    float avg_inference_time_us;        /**< Current avg inference time */
+    float current_learning_rate;        /**< Current learning rate */
+    float avg_sparsity;                 /**< Current sparsity level */
+    float accuracy;                     /**< Current accuracy */
+
+    /* Trend analysis */
+    float memory_growth_rate;           /**< Memory growth rate (bytes/sec) */
+    float inference_time_trend;         /**< Inference time trend (+/- us/sec) */
+    float synapse_change_rate;          /**< Synapse count change rate (%/sec) */
+    float accuracy_trend;               /**< Accuracy trend (+/- per probe) */
+
+    /* COW statistics */
+    bool is_cow_clone;                  /**< Is this a COW clone */
+    uint32_t cow_ref_count;             /**< COW reference count */
+    size_t cow_shared_bytes;            /**< COW shared memory */
+    size_t cow_private_bytes;           /**< COW private memory */
+    float cow_private_ratio;            /**< Private/total ratio */
+
+    /* Health status */
+    float overall_health_score;         /**< Combined health score [0-100] */
+    uint32_t warnings_active;           /**< Number of active warnings */
+    uint32_t critical_issues;           /**< Number of critical issues */
+    uint64_t total_probes;              /**< Total probes performed */
+    uint64_t last_probe_timestamp_ms;   /**< Timestamp of last probe */
+
+    /* Recent history (last 10 probes) */
+    size_t memory_history[10];          /**< Memory history ring buffer */
+    float inference_history[10];        /**< Inference time history */
+    uint8_t history_index;              /**< Current history index */
+    uint8_t history_count;              /**< Number of valid history entries */
+} brain_probe_health_metrics_t;
+
+/**
+ * @brief Get default brain probe configuration
+ *
+ * @param config Configuration structure to fill with defaults
+ */
+void nimcp_health_agent_brain_probe_config_default(
+    health_agent_brain_probe_config_t* config
+);
+
+/**
+ * @brief Register a brain for probe health monitoring
+ *
+ * WHAT: Register a brain instance for periodic health probing
+ * WHY:  Enable monitoring of brain statistics and anomaly detection
+ * HOW:  Stores brain reference and begins periodic probing
+ *
+ * NOTE: This is different from nimcp_health_agent_connect_brain() which
+ *       connects to the main brain for the agent's core functions. This
+ *       function registers additional brains for probe-based monitoring.
+ *
+ * @param agent Health agent
+ * @param brain Brain to monitor via probe
+ * @param config Optional per-brain configuration (NULL for defaults)
+ * @return 0 on success, -1 on error (max brains reached or NULL)
+ */
+int nimcp_health_agent_register_brain_probe(
+    nimcp_health_agent_t* agent,
+    brain_t brain,
+    const health_agent_brain_probe_config_t* config
+);
+
+/**
+ * @brief Unregister a brain from probe health monitoring
+ *
+ * @param agent Health agent
+ * @param brain Brain to unregister
+ * @return 0 on success, -1 if not found
+ */
+int nimcp_health_agent_unregister_brain_probe(
+    nimcp_health_agent_t* agent,
+    brain_t brain
+);
+
+/**
+ * @brief Get brain probe health metrics
+ *
+ * @param agent Health agent
+ * @param brain_index Index of brain (0 to num_brains-1)
+ * @param metrics Output metrics structure
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_get_brain_probe_metrics(
+    const nimcp_health_agent_t* agent,
+    uint32_t brain_index,
+    brain_probe_health_metrics_t* metrics
+);
+
+/**
+ * @brief Execute brain probe recovery action
+ *
+ * @param agent Health agent
+ * @param action Recovery action to execute
+ * @param brain_index Index of brain to act on (-1 for all brains)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_brain_probe_recovery(
+    nimcp_health_agent_t* agent,
+    brain_probe_recovery_action_t action,
+    int brain_index
+);
+
+/**
+ * @brief Check if any brain needs attention
+ *
+ * @param agent Health agent
+ * @return true if any brain has warnings or critical issues
+ */
+bool nimcp_health_agent_brain_needs_attention(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get overall brain probe health score
+ *
+ * Aggregates health scores across all monitored brains
+ *
+ * @param agent Health agent
+ * @return Health score [0-100], 100 if no brains connected
+ */
+float nimcp_health_agent_get_brain_probe_health_score(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Update brain probe configuration at runtime
+ *
+ * @param agent Health agent
+ * @param config New configuration
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_update_brain_probe_config(
+    nimcp_health_agent_t* agent,
+    const health_agent_brain_probe_config_t* config
+);
+
+/**
+ * @brief Force immediate probe of all registered brains
+ *
+ * Useful for on-demand health checks outside the normal interval
+ *
+ * @param agent Health agent
+ * @return Number of brains probed, -1 on error
+ */
+int nimcp_health_agent_probe_all_brains_now(
+    nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get number of registered brains
+ *
+ * @param agent Health agent
+ * @return Number of brains being monitored
+ */
+uint32_t nimcp_health_agent_get_brain_count(
+    const nimcp_health_agent_t* agent
 );
 
 #ifdef __cplusplus

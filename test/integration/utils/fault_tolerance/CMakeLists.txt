@@ -61,3 +61,38 @@ set_tests_properties(integration_utils_fault_tolerance_test_health_agent_neural_
 add_ft_integration_test(test_health_agent_behavioral_integration)
 set_tests_properties(integration_utils_fault_tolerance_test_health_agent_behavioral_integration
                      PROPERTIES TIMEOUT 180)
+
+# Health Agent Memory Integration Tests (Phase 5.7: Hippocampus/Mammillary)
+add_ft_integration_test(test_health_agent_memory_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_health_agent_memory_integration
+                     PROPERTIES TIMEOUT 180)
+
+# Capacity Manager Integration Tests (Phase 5.8: Dynamic Capacity Management)
+add_ft_integration_test(test_capacity_manager_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_capacity_manager_integration
+                     PROPERTIES TIMEOUT 180)
+
+# Symbolic Logic Health Integration Tests (Phase 5.9: Symbolic Logic Health Integration)
+add_ft_integration_test(test_symbolic_logic_health_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_symbolic_logic_health_integration
+                     PROPERTIES TIMEOUT 180)
+
+# Neural Substrate Health Integration Tests (Phase 5.10: Neural Substrate Health Integration)
+add_ft_integration_test(test_substrate_health_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_substrate_health_integration
+                     PROPERTIES TIMEOUT 180)
+
+# Thalamic/Middleware Health Integration Tests (Phase 5.11: Thalamic/Middleware Health Integration)
+add_ft_integration_test(test_thalamic_middleware_health_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_thalamic_middleware_health_integration
+                     PROPERTIES TIMEOUT 180)
+
+# Perception/Cortical Health Integration Tests (Phase 5.12: Perception/Cortical Health Integration)
+add_ft_integration_test(test_perception_cortical_health_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_perception_cortical_health_integration
+                     PROPERTIES TIMEOUT 180)
+
+# Brain Probe Health Integration Tests (Phase 5.13: Brain Probes Enhancement)
+add_ft_integration_test(test_brain_probe_health_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_brain_probe_health_integration
+                     PROPERTIES TIMEOUT 180)

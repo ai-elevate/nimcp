@@ -1622,6 +1622,7 @@ set(NIMCP_CORE_SOURCES
     # ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_fault_event_bus.c             # DEPRECATED: Moved to core/events/nimcp_event_bus.c (promoted to universal)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_lockfree_metrics.c              # Lock-free metrics ring buffer (4x faster)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_health_agent.c                  # Independent health monitor agent
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_capacity_manager.c             # Dynamic capacity management (Phase 5.8)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_metrics_aggregator.c            # Metrics aggregation (P50/P95/P99)
 
     # Enhanced Fault Tolerance Modules (Phase FT-2: Immune System Integration)

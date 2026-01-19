@@ -273,7 +273,7 @@ typedef struct {
 /**
  * @brief Complete neural substrate state
  */
-typedef struct {
+typedef struct neural_substrate {
     /* State components */
     substrate_metabolic_state_t metabolic;
     substrate_physical_state_t physical;

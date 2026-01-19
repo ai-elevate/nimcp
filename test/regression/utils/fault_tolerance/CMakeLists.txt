@@ -58,3 +58,38 @@ set_tests_properties(regression_utils_fault_tolerance_test_health_agent_neural_r
 add_ft_regression_test(test_health_agent_behavioral_regression)
 set_tests_properties(regression_utils_fault_tolerance_test_health_agent_behavioral_regression
                      PROPERTIES TIMEOUT 120)
+
+# Health Agent Memory System Regression Tests (Phase 5.7: Hippocampus/Mammillary)
+add_ft_regression_test(test_health_agent_memory_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_health_agent_memory_regression
+                     PROPERTIES TIMEOUT 120)
+
+# Capacity Manager Regression Tests (Phase 5.8: Dynamic Capacity Management)
+add_ft_regression_test(test_capacity_manager_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_capacity_manager_regression
+                     PROPERTIES TIMEOUT 120)
+
+# Symbolic Logic Health Regression Tests (Phase 5.9: Symbolic Logic Health Integration)
+add_ft_regression_test(test_symbolic_logic_health_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_symbolic_logic_health_regression
+                     PROPERTIES TIMEOUT 120)
+
+# Neural Substrate Health Regression Tests (Phase 5.10: Neural Substrate Health Integration)
+add_ft_regression_test(test_substrate_health_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_substrate_health_regression
+                     PROPERTIES TIMEOUT 120)
+
+# Thalamic/Middleware Health Regression Tests (Phase 5.11: Thalamic/Middleware Health Integration)
+add_ft_regression_test(test_thalamic_middleware_health_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_thalamic_middleware_health_regression
+                     PROPERTIES TIMEOUT 120)
+
+# Perception/Cortical Health Regression Tests (Phase 5.12: Perception/Cortical Health Integration)
+add_ft_regression_test(test_perception_cortical_health_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_perception_cortical_health_regression
+                     PROPERTIES TIMEOUT 120)
+
+# Brain Probe Health Regression Tests (Phase 5.13: Brain Probes Enhancement)
+add_ft_regression_test(test_brain_probe_health_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_brain_probe_health_regression
+                     PROPERTIES TIMEOUT 120)

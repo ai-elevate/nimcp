@@ -41,3 +41,31 @@ set_tests_properties(e2e_fault_tolerance_test_health_agent_neural_e2e PROPERTIES
 # Health Agent Behavioral Integration E2E Tests (Phase 5.6: Dragonfly/Portia)
 add_e2e_fault_tolerance_test(test_health_agent_behavioral_e2e)
 set_tests_properties(e2e_fault_tolerance_test_health_agent_behavioral_e2e PROPERTIES TIMEOUT 300)
+
+# Health Agent Memory System E2E Tests (Phase 5.7: Hippocampus/Mammillary)
+add_e2e_fault_tolerance_test(test_health_agent_memory_e2e)
+set_tests_properties(e2e_fault_tolerance_test_health_agent_memory_e2e PROPERTIES TIMEOUT 300)
+
+# Capacity Manager E2E Tests (Phase 5.8: Dynamic Capacity Management)
+add_e2e_fault_tolerance_test(test_capacity_manager_e2e)
+set_tests_properties(e2e_fault_tolerance_test_capacity_manager_e2e PROPERTIES TIMEOUT 300)
+
+# Symbolic Logic Health E2E Tests (Phase 5.9: Symbolic Logic Health Integration)
+add_e2e_fault_tolerance_test(test_symbolic_logic_health_e2e)
+set_tests_properties(e2e_fault_tolerance_test_symbolic_logic_health_e2e PROPERTIES TIMEOUT 300)
+
+# Neural Substrate Health E2E Tests (Phase 5.10: Neural Substrate Health Integration)
+add_e2e_fault_tolerance_test(test_substrate_health_e2e)
+set_tests_properties(e2e_fault_tolerance_test_substrate_health_e2e PROPERTIES TIMEOUT 300)
+
+# Thalamic/Middleware Health E2E Tests (Phase 5.11: Thalamic/Middleware Health Integration)
+add_e2e_fault_tolerance_test(test_thalamic_middleware_health_e2e)
+set_tests_properties(e2e_fault_tolerance_test_thalamic_middleware_health_e2e PROPERTIES TIMEOUT 300)
+
+# Perception/Cortical Health E2E Tests (Phase 5.12: Perception/Cortical Health Integration)
+add_e2e_fault_tolerance_test(test_perception_cortical_health_e2e)
+set_tests_properties(e2e_fault_tolerance_test_perception_cortical_health_e2e PROPERTIES TIMEOUT 300)
+
+# Brain Probe Health E2E Tests (Phase 5.13: Brain Probes Enhancement)
+add_e2e_fault_tolerance_test(test_brain_probe_health_e2e)
+set_tests_properties(e2e_fault_tolerance_test_brain_probe_health_e2e PROPERTIES TIMEOUT 300)
