@@ -14,6 +14,11 @@
 
 #define LOG_MODULE "API"
 
+/* Exception integration for API layer */
+static void api_set_error(const char* fmt, ...);
+#define NIMCP_API_SET_ERROR(fmt, ...) api_set_error(fmt, ##__VA_ARGS__)
+#include "api/nimcp_api_exception.h"
+
 #include "nimcp.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/strategy/nimcp_brain_strategy.h"
@@ -106,6 +111,14 @@ int nimcp_version_int(void) {
 //=============================================================================
 
 static void set_error(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(g_last_error, sizeof(g_last_error), fmt, args);
+    va_end(args);
+}
+
+/* Wrapper for exception integration macros */
+static void api_set_error(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
     vsnprintf(g_last_error, sizeof(g_last_error), fmt, args);
@@ -254,20 +267,14 @@ nimcp_brain_t nimcp_brain_create(
     LOG_INFO("Creating brain: name='%s', size=%d, task=%d, inputs=%u, outputs=%u",
              name ? name : "NULL", size, task, num_inputs, num_outputs);
 
-    if (!name) {
-        LOG_ERROR("Brain name cannot be NULL");
-        set_error("Brain name cannot be NULL");
-        return NULL;
-    }
+    /* Use exception-integrated validation (returns NULL on error) */
+    NIMCP_API_CHECK_NULL_RET_NULL(name, "Brain name cannot be NULL");
 
-    // Allocate handle
+    /* Allocate handle with exception-integrated check */
     LOG_DEBUG("Allocating brain handle (%zu bytes)", sizeof(struct nimcp_brain_handle));
     nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
-    if (!handle) {
-        LOG_ERROR("Failed to allocate brain handle");
-        set_error("Failed to allocate brain handle");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC_SIZE(handle, sizeof(struct nimcp_brain_handle),
+                               "Failed to allocate brain handle");
 
     // Map public enums to internal enums
     brain_size_t internal_size = (brain_size_t)size;
@@ -328,58 +335,38 @@ nimcp_status_t nimcp_brain_learn_example(
     LOG_DEBUG("Learning example: label='%s', num_features=%u, confidence=%.3f",
               label ? label : "NULL", num_features, confidence);
 
-    if (!brain) {
-        LOG_ERROR("Brain handle is NULL");
-        set_error("Brain handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    /* Exception-integrated parameter validation */
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_API_CHECK_NULL(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    NIMCP_API_CHECK_NULL(label, NIMCP_ERROR_NULL_ARG, "Label is NULL");
 
-    if (!features) {
-        LOG_ERROR("Features array is NULL");
-        set_error("Features array is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!label) {
-        LOG_ERROR("Label is NULL");
-        set_error("Label is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    // === PHASE IS-1: BBB INPUT VALIDATION ===
-    // Validate external input data through Blood-Brain Barrier before processing
+    /* === PHASE IS-1: BBB INPUT VALIDATION === */
+    /* Validate external input data through Blood-Brain Barrier before processing */
     if (brain->internal_brain && brain->internal_brain->bbb_enabled &&
         brain->internal_brain->bbb_system) {
         LOG_DEBUG("BBB enabled, validating inputs");
         bbb_validation_result_t result;
 
-        // Validate features array (external input data)
+        /* Validate features array (external input data) */
         if (!bbb_validate_input(brain->internal_brain->bbb_system,
                                features, num_features * sizeof(float), &result)) {
-            LOG_WARN("BBB rejected features: %s", result.reason);
-            set_error("BBB rejected features: %s", result.reason);
-            return NIMCP_ERROR_INVALID;
+            NIMCP_API_CHECK_BBB(false, result, NIMCP_ERROR_BBB_REJECTED);
         }
 
-        // Validate label string (external string input)
+        /* Validate label string (external string input) */
         if (!bbb_validate_string(brain->internal_brain->bbb_system, label, &result)) {
-            LOG_WARN("BBB rejected label: %s", result.reason);
-            set_error("BBB rejected label: %s", result.reason);
-            return NIMCP_ERROR_INVALID;
+            NIMCP_API_CHECK_BBB(false, result, NIMCP_ERROR_BBB_REJECTED);
         }
         LOG_DEBUG("BBB validation passed");
     }
 
-    // Call internal brain API
+    /* Call internal brain API */
     LOG_DEBUG("Invoking internal brain_learn_example");
     float loss = brain_learn_example(brain->internal_brain, features, num_features, label, confidence);
 
-    // brain_learn_example returns -1.0f on error, >= 0.0f on success (where value is the loss)
-    if (loss < 0.0F) {
-        LOG_ERROR("Brain learning failed for label '%s'", label);
-        set_error("Brain learning failed");
-        return NIMCP_ERROR;
-    }
+    /* brain_learn_example returns -1.0f on error, >= 0.0f on success */
+    NIMCP_API_CHECK_FLOAT(loss, NIMCP_ERROR_LEARNING_FAILED,
+                          "Brain learning failed for label");
 
     set_error("No error");
     LOG_DEBUG("Learning example completed successfully");

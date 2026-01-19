@@ -16,7 +16,7 @@
  * 6000-6999: Threading/Concurrency errors
  * 7000-7999: Signal/Crash errors
  * 8000-8999: Phase 10 cognitive errors
- * 9000-9999: Reserved for future use
+ * 9000-9099: Security errors (BBB, threats, access control)
  *
  * @author NIMCP Team
  * @date 2025-11-09
@@ -217,6 +217,22 @@ typedef int32_t nimcp_error_t;
 #define NIMCP_ERROR_EXPLANATIONS        8006 /**< Natural explanations error */
 #define NIMCP_ERROR_META_LEARNING       8007 /**< Meta-learning error */
 #define NIMCP_ERROR_PREDICTIVE          8008 /**< Predictive processing error */
+
+//=============================================================================
+// Security Errors (9000-9099)
+//=============================================================================
+
+#define NIMCP_ERROR_SECURITY_BASE           9000 /**< Security error base */
+#define NIMCP_ERROR_BBB_REJECTED            9001 /**< Blood-Brain Barrier rejected input */
+#define NIMCP_ERROR_BBB_VALIDATION          9002 /**< BBB validation failed */
+#define NIMCP_ERROR_SECURITY_THREAT         9003 /**< Security threat detected */
+#define NIMCP_ERROR_ACCESS_DENIED           9004 /**< Security access denied */
+#define NIMCP_ERROR_SIGNATURE_INVALID       9005 /**< Signature validation failed */
+#define NIMCP_ERROR_ENCRYPTION_FAILED       9006 /**< Encryption operation failed */
+#define NIMCP_ERROR_DECRYPTION_FAILED       9007 /**< Decryption operation failed */
+#define NIMCP_ERROR_CERTIFICATE_INVALID     9008 /**< Certificate validation failed */
+#define NIMCP_ERROR_POLICY_VIOLATION        9009 /**< Security policy violation */
+#define NIMCP_ERROR_QUARANTINE_REQUIRED     9010 /**< Resource requires quarantine */
 
 //=============================================================================
 // Brain Region Errors (10000-19999)
