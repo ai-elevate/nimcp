@@ -96,3 +96,8 @@ set_tests_properties(integration_utils_fault_tolerance_test_perception_cortical_
 add_ft_integration_test(test_brain_probe_health_integration)
 set_tests_properties(integration_utils_fault_tolerance_test_brain_probe_health_integration
                      PROPERTIES TIMEOUT 180)
+
+# World Model & Imagination Health Integration Tests (Phase 5.14: World Model & Imagination Health Integration)
+add_ft_integration_test(test_world_imagination_health_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_world_imagination_health_integration
+                     PROPERTIES TIMEOUT 180)

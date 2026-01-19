@@ -93,3 +93,8 @@ set_tests_properties(regression_utils_fault_tolerance_test_perception_cortical_h
 add_ft_regression_test(test_brain_probe_health_regression)
 set_tests_properties(regression_utils_fault_tolerance_test_brain_probe_health_regression
                      PROPERTIES TIMEOUT 120)
+
+# World Model & Imagination Health Regression Tests (Phase 5.14: World Model & Imagination Health Integration)
+add_ft_regression_test(test_world_imagination_health_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_world_imagination_health_regression
+                     PROPERTIES TIMEOUT 120)

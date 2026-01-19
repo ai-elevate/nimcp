@@ -5369,6 +5369,501 @@ uint32_t nimcp_health_agent_get_brain_count(
     const nimcp_health_agent_t* agent
 );
 
+/* ============================================================================
+ * Phase 5.14: World Model & Imagination Health Integration
+ * ============================================================================
+ *
+ * WHAT: Health monitoring for world model (JEPA/Omni-WM) and imagination engine
+ * WHY:  Predictive processing is core to cognition; degraded world models cause
+ *       poor planning, invalid counterfactuals, and incoherent mental simulation
+ * HOW:  Monitor prediction accuracy, imagination coherence, counterfactual validity
+ *
+ * ARCHITECTURE:
+ * ```
+ * ┌─────────────────────────────────────────────────────────────────────────────┐
+ * │              WORLD MODEL & IMAGINATION HEALTH MONITORING                     │
+ * ├─────────────────────────────────────────────────────────────────────────────┤
+ * │  World Model Health:               │  Imagination Health:                   │
+ * │  • JEPA prediction error trends    │  • Scene coherence score               │
+ * │  • Omni-WM rollout accuracy        │  • Vividness levels                    │
+ * │  • Forward/backward dynamics       │  • Reality check pass rate             │
+ * │  • State space coverage            │  • Workspace utilization               │
+ * │  • Counterfactual validity         │  • Generation latency                  │
+ * │                                    │                                        │
+ * │  Anomaly Detection:                │  Recovery Actions:                     │
+ * │  • Prediction error explosion      │  • Reset predictor weights             │
+ * │  • Embedding collapse              │  • Clear imagination workspace         │
+ * │  • Dynamics drift                  │  • Reduce simulation horizon           │
+ * │  • Hallucination detection         │  • Increase reality checking           │
+ * └─────────────────────────────────────────────────────────────────────────────┘
+ * ```
+ *
+ * BIOLOGICAL BASIS:
+ * -----------------
+ * - Predictive coding: Brain constantly predicts sensory input
+ * - Mental simulation: Hippocampus + PFC for scenario construction
+ * - Reality monitoring: Distinguishing imagined from perceived
+ * - Default mode network: Spontaneous mental simulation
+ *
+ * INTEGRATION POINTS:
+ * - JEPA Predictor: Latent space prediction health
+ * - Omni World Model: Dynamics and counterfactual health
+ * - Imagination Engine: Scene generation and coherence
+ * - Free Energy Principle: Prediction error as health signal
+ */
+
+/*=============================================================================
+ * Forward Declarations for Phase 5.14
+ *===========================================================================*/
+
+/** @brief JEPA predictor - latent space prediction */
+typedef struct jepa_predictor jepa_predictor_t;
+
+/** @brief Omni world model - generative dynamics */
+typedef struct omni_world_model omni_world_model_t;
+
+/** @brief Imagination engine - mental simulation */
+typedef struct imagination_engine imagination_engine_t;
+
+/** @brief Imagination workspace - active scenario buffer */
+typedef struct imagination_workspace imagination_workspace_t;
+
+/*=============================================================================
+ * World Model Health Enumerations
+ *===========================================================================*/
+
+/**
+ * @brief World model health states
+ */
+typedef enum {
+    WM_HEALTH_OPTIMAL = 0,           /**< Predictions accurate, dynamics stable */
+    WM_HEALTH_DEGRADED,              /**< Elevated prediction errors */
+    WM_HEALTH_PREDICTION_DRIFT,      /**< Systematic prediction bias */
+    WM_HEALTH_EMBEDDING_COLLAPSE,    /**< Latent space degeneracy */
+    WM_HEALTH_DYNAMICS_UNSTABLE,     /**< Chaotic or divergent dynamics */
+    WM_HEALTH_HALLUCINATING,         /**< Generating impossible states */
+    WM_HEALTH_CRITICAL               /**< Severe malfunction */
+} world_model_health_state_t;
+
+/**
+ * @brief Imagination health states
+ */
+typedef enum {
+    IMAG_HEALTH_VIVID = 0,           /**< Clear, coherent imagination */
+    IMAG_HEALTH_HAZY,                /**< Reduced vividness */
+    IMAG_HEALTH_FRAGMENTED,          /**< Incoherent scene elements */
+    IMAG_HEALTH_STUCK,               /**< Unable to generate new content */
+    IMAG_HEALTH_CONFABULATING,       /**< Mixing imagined with real */
+    IMAG_HEALTH_OVERACTIVE,          /**< Excessive/intrusive imagination */
+    IMAG_HEALTH_IMPAIRED             /**< Severe imagination deficit */
+} imagination_health_state_t;
+
+/**
+ * @brief Recovery actions for world model/imagination anomalies
+ */
+typedef enum {
+    WM_RECOVERY_NONE = 0,
+    WM_RECOVERY_RESET_PREDICTOR,     /**< Reset JEPA predictor weights */
+    WM_RECOVERY_PRUNE_LATENT,        /**< Prune degenerate latent dims */
+    WM_RECOVERY_RETRAIN_DYNAMICS,    /**< Trigger dynamics relearning */
+    WM_RECOVERY_CLEAR_WORKSPACE,     /**< Clear imagination workspace */
+    WM_RECOVERY_REDUCE_HORIZON,      /**< Shorten simulation horizon */
+    WM_RECOVERY_INCREASE_REALITY_CHECK, /**< More frequent reality checks */
+    WM_RECOVERY_THROTTLE_IMAGINATION,/**< Rate-limit imagination */
+    WM_RECOVERY_BOOST_GROUNDING,     /**< Increase sensory grounding */
+    WM_RECOVERY_CHECKPOINT_RESTORE   /**< Restore from checkpoint */
+} world_model_recovery_action_t;
+
+/*=============================================================================
+ * World Model Health Metrics
+ *===========================================================================*/
+
+/**
+ * @brief JEPA predictor health metrics
+ */
+typedef struct {
+    /* Prediction accuracy */
+    float mean_prediction_error;      /**< Average prediction error */
+    float prediction_error_std;       /**< Error standard deviation */
+    float prediction_error_trend;     /**< Error trend (+ = worsening) */
+    float worst_prediction_error;     /**< Max error in window */
+
+    /* Embedding health */
+    float embedding_variance;         /**< Latent space variance */
+    float embedding_utilization;      /**< % of latent dims active */
+    float embedding_orthogonality;    /**< Dimension independence [0-1] */
+    bool embedding_collapse_detected; /**< Degenerate latent space */
+
+    /* Gradient health */
+    float gradient_norm;              /**< Current gradient magnitude */
+    float gradient_variance;          /**< Gradient stability */
+    bool gradient_explosion;          /**< Gradient too large */
+    bool gradient_vanishing;          /**< Gradient too small */
+
+    /* Performance */
+    float prediction_latency_us;      /**< Inference time */
+    uint64_t predictions_total;       /**< Total predictions made */
+    uint64_t predictions_failed;      /**< Failed predictions */
+} jepa_health_metrics_t;
+
+/**
+ * @brief Omni world model health metrics
+ */
+typedef struct {
+    /* Forward dynamics health */
+    float forward_accuracy;           /**< Next-state prediction accuracy */
+    float forward_consistency;        /**< Rollout consistency [0-1] */
+    uint32_t forward_horizon_stable;  /**< Steps before divergence */
+
+    /* Backward dynamics health */
+    float backward_accuracy;          /**< Past-state inference accuracy */
+    float action_inference_accuracy;  /**< Past-action inference accuracy */
+
+    /* Lateral dynamics health */
+    float crossmodal_coherence;       /**< Cross-modal prediction alignment */
+
+    /* Counterfactual health */
+    float counterfactual_validity;    /**< % counterfactuals physically valid */
+    float counterfactual_diversity;   /**< Variety of generated alternatives */
+    uint32_t counterfactuals_generated; /**< Total counterfactuals */
+    uint32_t counterfactuals_rejected;  /**< Failed validity checks */
+
+    /* State space health */
+    float state_coverage;             /**< Explored state space fraction */
+    float state_density_uniformity;   /**< Even coverage [0-1] */
+    bool state_space_collapse;        /**< States clustering abnormally */
+
+    /* Overall health */
+    world_model_health_state_t health_state;
+    float health_score;               /**< Composite health [0-1] */
+} omni_wm_health_metrics_t;
+
+/**
+ * @brief Imagination engine health metrics
+ */
+typedef struct {
+    /* Scene generation quality */
+    float scene_coherence;            /**< Internal consistency [0-1] */
+    float scene_vividness;            /**< Detail/clarity [0-1] */
+    float scene_stability;            /**< Frame-to-frame consistency */
+    float scene_novelty;              /**< Creativity vs repetition */
+
+    /* Reality monitoring */
+    float reality_check_pass_rate;    /**< % scenes passing validity */
+    uint32_t reality_violations;      /**< Impossible elements detected */
+    float imagination_reality_blur;   /**< Confusion risk [0-1] */
+
+    /* Workspace utilization */
+    float workspace_utilization;      /**< Active buffer usage [0-1] */
+    uint32_t active_scenarios;        /**< Concurrent simulations */
+    uint32_t scenarios_completed;     /**< Successfully finished */
+    uint32_t scenarios_abandoned;     /**< Terminated early */
+
+    /* Performance */
+    float generation_latency_ms;      /**< Scene generation time */
+    float manipulation_latency_ms;    /**< Scene modification time */
+    uint32_t generation_timeouts;     /**< Timed out generations */
+
+    /* Mode distribution */
+    uint32_t passive_imaginations;    /**< Spontaneous/daydream */
+    uint32_t directed_imaginations;   /**< Goal-directed */
+    uint32_t counterfactual_imaginations; /**< "What if" scenarios */
+    uint32_t prospective_imaginations;    /**< Future planning */
+
+    /* Overall health */
+    imagination_health_state_t health_state;
+    float health_score;               /**< Composite health [0-1] */
+} imagination_health_metrics_t;
+
+/**
+ * @brief Combined world model and imagination health metrics
+ */
+typedef struct {
+    /* Component health */
+    jepa_health_metrics_t jepa;
+    omni_wm_health_metrics_t world_model;
+    imagination_health_metrics_t imagination;
+
+    /* Cross-system health */
+    float wm_imagination_alignment;   /**< WM-imagination coherence */
+    float prediction_imagination_sync;/**< Predictions guide imagination */
+    float memory_imagination_grounding; /**< Memory constrains imagination */
+
+    /* Free energy integration */
+    float predictive_free_energy;     /**< FEP prediction component */
+    float free_energy_trend;          /**< Direction of free energy */
+
+    /* Anomaly summary */
+    uint32_t active_anomalies;        /**< Current anomaly count */
+    uint32_t anomalies_this_window;   /**< Anomalies in check window */
+    world_model_recovery_action_t recommended_action;
+
+    /* Timestamps */
+    uint64_t last_check_timestamp_us;
+    uint64_t check_count;
+} world_imagination_health_t;
+
+/*=============================================================================
+ * World Model Health Configuration
+ *===========================================================================*/
+
+/**
+ * @brief Configuration for world model health monitoring
+ */
+typedef struct {
+    /* Check intervals */
+    uint32_t check_interval_ms;       /**< Health check interval (default: 500) */
+    uint32_t trend_window_ms;         /**< Window for trend analysis (default: 10000) */
+
+    /* JEPA thresholds */
+    float jepa_error_warning;         /**< Prediction error warning (default: 0.3) */
+    float jepa_error_critical;        /**< Prediction error critical (default: 0.6) */
+    float embedding_variance_min;     /**< Min variance before collapse (default: 0.01) */
+    float gradient_norm_max;          /**< Max gradient before explosion (default: 100.0) */
+    float gradient_norm_min;          /**< Min gradient before vanishing (default: 1e-7) */
+
+    /* World model thresholds */
+    float forward_accuracy_warning;   /**< Forward accuracy warning (default: 0.7) */
+    float forward_accuracy_critical;  /**< Forward accuracy critical (default: 0.5) */
+    uint32_t horizon_min_stable;      /**< Min stable horizon steps (default: 5) */
+    float counterfactual_validity_min;/**< Min valid counterfactuals (default: 0.8) */
+
+    /* Imagination thresholds */
+    float coherence_warning;          /**< Scene coherence warning (default: 0.6) */
+    float coherence_critical;         /**< Scene coherence critical (default: 0.4) */
+    float vividness_warning;          /**< Vividness warning (default: 0.4) */
+    float reality_check_min;          /**< Min reality check rate (default: 0.9) */
+    float imagination_reality_blur_max; /**< Max blur before alert (default: 0.3) */
+
+    /* Recovery settings */
+    bool auto_recovery_enabled;       /**< Enable automatic recovery */
+    uint32_t recovery_cooldown_ms;    /**< Cooldown between recoveries */
+    uint32_t max_recoveries_per_hour; /**< Rate limit recoveries */
+
+    /* Immune integration */
+    bool report_to_immune;            /**< Report anomalies to immune system */
+    uint8_t immune_severity_base;     /**< Base severity for immune reports */
+} health_agent_wm_imagination_config_t;
+
+/*=============================================================================
+ * World Model Health API
+ *===========================================================================*/
+
+/**
+ * @brief Initialize default world model/imagination health config
+ *
+ * @param config Configuration struct to initialize
+ */
+void nimcp_health_agent_wm_imagination_config_default(
+    health_agent_wm_imagination_config_t* config
+);
+
+/**
+ * @brief Connect JEPA predictor to health agent
+ *
+ * @param agent Health agent
+ * @param jepa JEPA predictor instance
+ * @param config Optional config (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_connect_jepa(
+    nimcp_health_agent_t* agent,
+    jepa_predictor_t* jepa,
+    const health_agent_wm_imagination_config_t* config
+);
+
+/**
+ * @brief Disconnect JEPA predictor from health agent
+ *
+ * @param agent Health agent
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_disconnect_jepa(
+    nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Connect Omni world model to health agent
+ *
+ * @param agent Health agent
+ * @param world_model Omni world model instance
+ * @param config Optional config (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_connect_world_model(
+    nimcp_health_agent_t* agent,
+    omni_world_model_t* world_model,
+    const health_agent_wm_imagination_config_t* config
+);
+
+/**
+ * @brief Disconnect world model from health agent
+ *
+ * @param agent Health agent
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_disconnect_world_model(
+    nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Connect imagination engine to health agent
+ *
+ * @param agent Health agent
+ * @param imagination Imagination engine instance
+ * @param config Optional config (NULL for defaults)
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_connect_imagination(
+    nimcp_health_agent_t* agent,
+    imagination_engine_t* imagination,
+    const health_agent_wm_imagination_config_t* config
+);
+
+/**
+ * @brief Disconnect imagination engine from health agent
+ *
+ * @param agent Health agent
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_disconnect_imagination(
+    nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get JEPA predictor health metrics
+ *
+ * @param agent Health agent
+ * @param metrics Output metrics struct
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_get_jepa_metrics(
+    const nimcp_health_agent_t* agent,
+    jepa_health_metrics_t* metrics
+);
+
+/**
+ * @brief Get world model health metrics
+ *
+ * @param agent Health agent
+ * @param metrics Output metrics struct
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_get_world_model_metrics(
+    const nimcp_health_agent_t* agent,
+    omni_wm_health_metrics_t* metrics
+);
+
+/**
+ * @brief Get imagination engine health metrics
+ *
+ * @param agent Health agent
+ * @param metrics Output metrics struct
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_get_imagination_metrics(
+    const nimcp_health_agent_t* agent,
+    imagination_health_metrics_t* metrics
+);
+
+/**
+ * @brief Get combined world model and imagination health
+ *
+ * @param agent Health agent
+ * @param health Output combined health struct
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_get_world_imagination_health(
+    const nimcp_health_agent_t* agent,
+    world_imagination_health_t* health
+);
+
+/**
+ * @brief Trigger world model recovery action
+ *
+ * @param agent Health agent
+ * @param action Recovery action to execute
+ * @param reason Human-readable reason for recovery
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_world_model_recovery(
+    nimcp_health_agent_t* agent,
+    world_model_recovery_action_t action,
+    const char* reason
+);
+
+/**
+ * @brief Check if world model needs attention
+ *
+ * @param agent Health agent
+ * @return true if anomalies detected requiring attention
+ */
+bool nimcp_health_agent_world_model_needs_attention(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Check if imagination needs attention
+ *
+ * @param agent Health agent
+ * @return true if anomalies detected requiring attention
+ */
+bool nimcp_health_agent_imagination_needs_attention(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get world model health score
+ *
+ * @param agent Health agent
+ * @return Health score [0-1], or -1 on error
+ */
+float nimcp_health_agent_get_world_model_health_score(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Get imagination health score
+ *
+ * @param agent Health agent
+ * @return Health score [0-1], or -1 on error
+ */
+float nimcp_health_agent_get_imagination_health_score(
+    const nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Update world model/imagination health config
+ *
+ * @param agent Health agent
+ * @param config New configuration
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_update_wm_imagination_config(
+    nimcp_health_agent_t* agent,
+    const health_agent_wm_imagination_config_t* config
+);
+
+/**
+ * @brief Force immediate world model health check
+ *
+ * @param agent Health agent
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_check_world_model_now(
+    nimcp_health_agent_t* agent
+);
+
+/**
+ * @brief Force immediate imagination health check
+ *
+ * @param agent Health agent
+ * @return 0 on success, -1 on error
+ */
+int nimcp_health_agent_check_imagination_now(
+    nimcp_health_agent_t* agent
+);
+
 #ifdef __cplusplus
 }
 #endif

@@ -785,6 +785,7 @@
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_thalamic_middleware_health_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_perception_cortical_health_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_brain_probe_health_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_world_imagination_health_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -2716,6 +2717,7 @@
 /home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_thalamic_middleware_health_functions.dir
 /home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_perception_cortical_health_functions.dir
 /home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_brain_probe_health_functions.dir
+/home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_health_agent_world_imagination_functions.dir
 /home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -2746,6 +2748,7 @@
 /home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_thalamic_middleware_health_integration.dir
 /home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_perception_cortical_health_integration.dir
 /home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_brain_probe_health_integration.dir
+/home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_world_imagination_health_integration.dir
 /home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -2773,6 +2776,7 @@
 /home/bbrelin/nimcp/build/test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_thalamic_middleware_health_regression.dir
 /home/bbrelin/nimcp/build/test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_perception_cortical_health_regression.dir
 /home/bbrelin/nimcp/build/test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_brain_probe_health_regression.dir
+/home/bbrelin/nimcp/build/test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_world_imagination_health_regression.dir
 /home/bbrelin/nimcp/build/test/regression/utils/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/utils/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/utils/fault_tolerance/CMakeFiles/rebuild_cache.dir

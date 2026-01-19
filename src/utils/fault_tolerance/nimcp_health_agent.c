@@ -698,6 +698,43 @@ struct nimcp_health_agent {
     /* Module connection mutex */
     nimcp_mutex_t* modules_mutex;        /**< For module connections (NIMCP mutex) */
 
+    /* =========== WORLD MODEL & IMAGINATION HEALTH (Phase 5.14) =========== */
+
+    /* Connected world model and imagination components */
+    jepa_predictor_t* jepa_predictor;     /**< JEPA predictor for latent space prediction */
+    omni_world_model_t* world_model;      /**< Omni world model for dynamics */
+    imagination_engine_t* imagination;    /**< Imagination engine for mental simulation */
+    nimcp_mutex_t* wm_imagination_mutex;  /**< For world model/imagination state */
+
+    /* Configuration */
+    health_agent_wm_imagination_config_t wm_imagination_config;
+
+    /* Health metrics caches */
+    jepa_health_metrics_t jepa_metrics;
+    omni_wm_health_metrics_t wm_metrics;
+    imagination_health_metrics_t imagination_metrics;
+    world_imagination_health_t combined_wm_health;
+
+    /* Health tracking */
+    _Atomic uint64_t wm_checks_run;
+    _Atomic uint64_t wm_anomalies_detected;
+    _Atomic uint64_t wm_recoveries_performed;
+    _Atomic uint64_t imagination_checks_run;
+    _Atomic uint64_t imagination_anomalies_detected;
+    _Atomic uint64_t imagination_recoveries_performed;
+    _Atomic float wm_health_score;        /**< Current world model health score [0-1] */
+    _Atomic float imagination_health_score; /**< Current imagination health score [0-1] */
+    uint64_t last_wm_check_us;            /**< Timestamp of last world model check */
+    uint64_t last_imagination_check_us;   /**< Timestamp of last imagination check */
+
+    /* Trend tracking buffers (ring buffers for trend analysis) */
+    float jepa_error_history[10];         /**< Prediction error history */
+    uint32_t jepa_error_idx;
+    float wm_accuracy_history[10];        /**< Forward accuracy history */
+    uint32_t wm_accuracy_idx;
+    float imagination_coherence_history[10]; /**< Scene coherence history */
+    uint32_t imagination_coherence_idx;
+
     uint64_t canary_back;                /**< Back canary for corruption detection */
 };
 
@@ -10892,4 +10929,831 @@ uint32_t nimcp_health_agent_get_brain_count(
     }
 
     return atomic_load(&((nimcp_health_agent_t*)agent)->num_monitored_brains);
+}
+
+/* ============================================================================
+ * Phase 5.14: World Model & Imagination Health Implementation
+ * ============================================================================
+ *
+ * WHAT: Health monitoring for JEPA predictor, Omni world model, and imagination
+ * WHY:  Predictive processing health is critical for planning and reasoning
+ * HOW:  Monitor prediction accuracy, dynamics stability, imagination coherence
+ */
+
+/* -------------------------------------------------------------------------
+ * Default Configuration
+ * ------------------------------------------------------------------------- */
+
+void nimcp_health_agent_wm_imagination_config_default(
+    health_agent_wm_imagination_config_t* config
+) {
+    if (!config) {
+        return;
+    }
+
+    /* Check intervals */
+    config->check_interval_ms = 500;
+    config->trend_window_ms = 10000;
+
+    /* JEPA thresholds */
+    config->jepa_error_warning = 0.3f;
+    config->jepa_error_critical = 0.6f;
+    config->embedding_variance_min = 0.01f;
+    config->gradient_norm_max = 100.0f;
+    config->gradient_norm_min = 1e-7f;
+
+    /* World model thresholds */
+    config->forward_accuracy_warning = 0.7f;
+    config->forward_accuracy_critical = 0.5f;
+    config->horizon_min_stable = 5;
+    config->counterfactual_validity_min = 0.8f;
+
+    /* Imagination thresholds */
+    config->coherence_warning = 0.6f;
+    config->coherence_critical = 0.4f;
+    config->vividness_warning = 0.4f;
+    config->reality_check_min = 0.9f;
+    config->imagination_reality_blur_max = 0.3f;
+
+    /* Recovery settings */
+    config->auto_recovery_enabled = true;
+    config->recovery_cooldown_ms = 5000;
+    config->max_recoveries_per_hour = 10;
+
+    /* Immune integration */
+    config->report_to_immune = true;
+    config->immune_severity_base = 6;
+}
+
+/* -------------------------------------------------------------------------
+ * JEPA Connection
+ * ------------------------------------------------------------------------- */
+
+int nimcp_health_agent_connect_jepa(
+    nimcp_health_agent_t* agent,
+    jepa_predictor_t* jepa,
+    const health_agent_wm_imagination_config_t* config
+) {
+    if (!agent || !jepa) {
+        return -1;
+    }
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_lock(agent->wm_imagination_mutex);
+    }
+
+    agent->jepa_predictor = jepa;
+
+    /* Apply config if provided, otherwise use defaults */
+    if (config) {
+        memcpy(&agent->wm_imagination_config, config, sizeof(*config));
+    } else if (agent->wm_imagination_config.check_interval_ms == 0) {
+        nimcp_health_agent_wm_imagination_config_default(&agent->wm_imagination_config);
+    }
+
+    /* Initialize JEPA metrics to healthy defaults */
+    memset(&agent->jepa_metrics, 0, sizeof(agent->jepa_metrics));
+    agent->jepa_metrics.embedding_orthogonality = 1.0f;
+    agent->jepa_metrics.embedding_utilization = 1.0f;
+
+    /* Initialize world model health score if this is the first WM component */
+    if (!agent->world_model) {
+        atomic_store(&agent->wm_health_score, 1.0f);
+    }
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_unlock(agent->wm_imagination_mutex);
+    }
+
+    nimcp_log(LOG_LEVEL_INFO, "Connected JEPA predictor to health agent");
+    return 0;
+}
+
+int nimcp_health_agent_disconnect_jepa(
+    nimcp_health_agent_t* agent
+) {
+    if (!agent) {
+        return -1;
+    }
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_lock(agent->wm_imagination_mutex);
+    }
+
+    agent->jepa_predictor = NULL;
+    memset(&agent->jepa_metrics, 0, sizeof(agent->jepa_metrics));
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_unlock(agent->wm_imagination_mutex);
+    }
+
+    nimcp_log(LOG_LEVEL_INFO, "Disconnected JEPA predictor from health agent");
+    return 0;
+}
+
+/* -------------------------------------------------------------------------
+ * World Model Connection
+ * ------------------------------------------------------------------------- */
+
+int nimcp_health_agent_connect_world_model(
+    nimcp_health_agent_t* agent,
+    omni_world_model_t* world_model,
+    const health_agent_wm_imagination_config_t* config
+) {
+    if (!agent || !world_model) {
+        return -1;
+    }
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_lock(agent->wm_imagination_mutex);
+    }
+
+    agent->world_model = world_model;
+
+    /* Apply config if provided */
+    if (config) {
+        memcpy(&agent->wm_imagination_config, config, sizeof(*config));
+    } else if (agent->wm_imagination_config.check_interval_ms == 0) {
+        nimcp_health_agent_wm_imagination_config_default(&agent->wm_imagination_config);
+    }
+
+    /* Initialize world model metrics */
+    memset(&agent->wm_metrics, 0, sizeof(agent->wm_metrics));
+    agent->wm_metrics.health_state = WM_HEALTH_OPTIMAL;
+    agent->wm_metrics.health_score = 1.0f;
+    agent->wm_metrics.forward_accuracy = 1.0f;
+    agent->wm_metrics.forward_consistency = 1.0f;
+    agent->wm_metrics.counterfactual_validity = 1.0f;
+    agent->wm_metrics.crossmodal_coherence = 1.0f;
+
+    /* Initialize world model health score atomic */
+    atomic_store(&agent->wm_health_score, 1.0f);
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_unlock(agent->wm_imagination_mutex);
+    }
+
+    nimcp_log(LOG_LEVEL_INFO, "Connected world model to health agent");
+    return 0;
+}
+
+int nimcp_health_agent_disconnect_world_model(
+    nimcp_health_agent_t* agent
+) {
+    if (!agent) {
+        return -1;
+    }
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_lock(agent->wm_imagination_mutex);
+    }
+
+    agent->world_model = NULL;
+    memset(&agent->wm_metrics, 0, sizeof(agent->wm_metrics));
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_unlock(agent->wm_imagination_mutex);
+    }
+
+    nimcp_log(LOG_LEVEL_INFO, "Disconnected world model from health agent");
+    return 0;
+}
+
+/* -------------------------------------------------------------------------
+ * Imagination Connection
+ * ------------------------------------------------------------------------- */
+
+int nimcp_health_agent_connect_imagination(
+    nimcp_health_agent_t* agent,
+    imagination_engine_t* imagination,
+    const health_agent_wm_imagination_config_t* config
+) {
+    if (!agent || !imagination) {
+        return -1;
+    }
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_lock(agent->wm_imagination_mutex);
+    }
+
+    agent->imagination = imagination;
+
+    /* Apply config if provided */
+    if (config) {
+        memcpy(&agent->wm_imagination_config, config, sizeof(*config));
+    } else if (agent->wm_imagination_config.check_interval_ms == 0) {
+        nimcp_health_agent_wm_imagination_config_default(&agent->wm_imagination_config);
+    }
+
+    /* Initialize imagination metrics */
+    memset(&agent->imagination_metrics, 0, sizeof(agent->imagination_metrics));
+    agent->imagination_metrics.health_state = IMAG_HEALTH_VIVID;
+    agent->imagination_metrics.health_score = 1.0f;
+    agent->imagination_metrics.scene_coherence = 1.0f;
+    agent->imagination_metrics.scene_vividness = 1.0f;
+    agent->imagination_metrics.reality_check_pass_rate = 1.0f;
+
+    /* Initialize imagination health score atomic */
+    atomic_store(&agent->imagination_health_score, 1.0f);
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_unlock(agent->wm_imagination_mutex);
+    }
+
+    nimcp_log(LOG_LEVEL_INFO, "Connected imagination engine to health agent");
+    return 0;
+}
+
+int nimcp_health_agent_disconnect_imagination(
+    nimcp_health_agent_t* agent
+) {
+    if (!agent) {
+        return -1;
+    }
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_lock(agent->wm_imagination_mutex);
+    }
+
+    agent->imagination = NULL;
+    memset(&agent->imagination_metrics, 0, sizeof(agent->imagination_metrics));
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_unlock(agent->wm_imagination_mutex);
+    }
+
+    nimcp_log(LOG_LEVEL_INFO, "Disconnected imagination engine from health agent");
+    return 0;
+}
+
+/* -------------------------------------------------------------------------
+ * Metrics Retrieval
+ * ------------------------------------------------------------------------- */
+
+int nimcp_health_agent_get_jepa_metrics(
+    const nimcp_health_agent_t* agent,
+    jepa_health_metrics_t* metrics
+) {
+    if (!agent || !metrics) {
+        return -1;
+    }
+
+    if (((nimcp_health_agent_t*)agent)->wm_imagination_mutex) {
+        nimcp_mutex_lock(((nimcp_health_agent_t*)agent)->wm_imagination_mutex);
+    }
+
+    memcpy(metrics, &((nimcp_health_agent_t*)agent)->jepa_metrics, sizeof(*metrics));
+
+    if (((nimcp_health_agent_t*)agent)->wm_imagination_mutex) {
+        nimcp_mutex_unlock(((nimcp_health_agent_t*)agent)->wm_imagination_mutex);
+    }
+
+    return 0;
+}
+
+int nimcp_health_agent_get_world_model_metrics(
+    const nimcp_health_agent_t* agent,
+    omni_wm_health_metrics_t* metrics
+) {
+    if (!agent || !metrics) {
+        return -1;
+    }
+
+    if (((nimcp_health_agent_t*)agent)->wm_imagination_mutex) {
+        nimcp_mutex_lock(((nimcp_health_agent_t*)agent)->wm_imagination_mutex);
+    }
+
+    memcpy(metrics, &((nimcp_health_agent_t*)agent)->wm_metrics, sizeof(*metrics));
+
+    if (((nimcp_health_agent_t*)agent)->wm_imagination_mutex) {
+        nimcp_mutex_unlock(((nimcp_health_agent_t*)agent)->wm_imagination_mutex);
+    }
+
+    return 0;
+}
+
+int nimcp_health_agent_get_imagination_metrics(
+    const nimcp_health_agent_t* agent,
+    imagination_health_metrics_t* metrics
+) {
+    if (!agent || !metrics) {
+        return -1;
+    }
+
+    if (((nimcp_health_agent_t*)agent)->wm_imagination_mutex) {
+        nimcp_mutex_lock(((nimcp_health_agent_t*)agent)->wm_imagination_mutex);
+    }
+
+    memcpy(metrics, &((nimcp_health_agent_t*)agent)->imagination_metrics, sizeof(*metrics));
+
+    if (((nimcp_health_agent_t*)agent)->wm_imagination_mutex) {
+        nimcp_mutex_unlock(((nimcp_health_agent_t*)agent)->wm_imagination_mutex);
+    }
+
+    return 0;
+}
+
+int nimcp_health_agent_get_world_imagination_health(
+    const nimcp_health_agent_t* agent,
+    world_imagination_health_t* health
+) {
+    if (!agent || !health) {
+        return -1;
+    }
+
+    if (((nimcp_health_agent_t*)agent)->wm_imagination_mutex) {
+        nimcp_mutex_lock(((nimcp_health_agent_t*)agent)->wm_imagination_mutex);
+    }
+
+    /* Copy component metrics */
+    memcpy(&health->jepa, &((nimcp_health_agent_t*)agent)->jepa_metrics,
+           sizeof(health->jepa));
+    memcpy(&health->world_model, &((nimcp_health_agent_t*)agent)->wm_metrics,
+           sizeof(health->world_model));
+    memcpy(&health->imagination, &((nimcp_health_agent_t*)agent)->imagination_metrics,
+           sizeof(health->imagination));
+
+    /* Compute cross-system health metrics */
+    float wm_score = atomic_load(&((nimcp_health_agent_t*)agent)->wm_health_score);
+    float imag_score = atomic_load(&((nimcp_health_agent_t*)agent)->imagination_health_score);
+
+    health->wm_imagination_alignment = (wm_score + imag_score) / 2.0f;
+    health->prediction_imagination_sync = wm_score > 0.5f ?
+        fminf(1.0f, imag_score / wm_score) : 0.0f;
+    health->memory_imagination_grounding = imag_score;
+
+    /* Free energy integration (placeholder - would connect to FEP system) */
+    health->predictive_free_energy =
+        ((nimcp_health_agent_t*)agent)->jepa_metrics.mean_prediction_error;
+    health->free_energy_trend =
+        ((nimcp_health_agent_t*)agent)->jepa_metrics.prediction_error_trend;
+
+    /* Anomaly summary */
+    health->active_anomalies = 0;
+    if (((nimcp_health_agent_t*)agent)->wm_metrics.health_state != WM_HEALTH_OPTIMAL) {
+        health->active_anomalies++;
+    }
+    if (((nimcp_health_agent_t*)agent)->imagination_metrics.health_state != IMAG_HEALTH_VIVID) {
+        health->active_anomalies++;
+    }
+    if (((nimcp_health_agent_t*)agent)->jepa_metrics.embedding_collapse_detected) {
+        health->active_anomalies++;
+    }
+    if (((nimcp_health_agent_t*)agent)->jepa_metrics.gradient_explosion ||
+        ((nimcp_health_agent_t*)agent)->jepa_metrics.gradient_vanishing) {
+        health->active_anomalies++;
+    }
+
+    health->anomalies_this_window =
+        atomic_load(&((nimcp_health_agent_t*)agent)->wm_anomalies_detected) +
+        atomic_load(&((nimcp_health_agent_t*)agent)->imagination_anomalies_detected);
+
+    /* Recommended action based on state */
+    health->recommended_action = WM_RECOVERY_NONE;
+    if (((nimcp_health_agent_t*)agent)->jepa_metrics.embedding_collapse_detected) {
+        health->recommended_action = WM_RECOVERY_PRUNE_LATENT;
+    } else if (((nimcp_health_agent_t*)agent)->wm_metrics.health_state == WM_HEALTH_DYNAMICS_UNSTABLE) {
+        health->recommended_action = WM_RECOVERY_RETRAIN_DYNAMICS;
+    } else if (((nimcp_health_agent_t*)agent)->imagination_metrics.health_state == IMAG_HEALTH_CONFABULATING) {
+        health->recommended_action = WM_RECOVERY_INCREASE_REALITY_CHECK;
+    } else if (((nimcp_health_agent_t*)agent)->imagination_metrics.health_state == IMAG_HEALTH_STUCK) {
+        health->recommended_action = WM_RECOVERY_CLEAR_WORKSPACE;
+    }
+
+    /* Timestamps */
+    health->last_check_timestamp_us =
+        fmaxf(((nimcp_health_agent_t*)agent)->last_wm_check_us,
+              ((nimcp_health_agent_t*)agent)->last_imagination_check_us);
+    health->check_count =
+        atomic_load(&((nimcp_health_agent_t*)agent)->wm_checks_run) +
+        atomic_load(&((nimcp_health_agent_t*)agent)->imagination_checks_run);
+
+    if (((nimcp_health_agent_t*)agent)->wm_imagination_mutex) {
+        nimcp_mutex_unlock(((nimcp_health_agent_t*)agent)->wm_imagination_mutex);
+    }
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------
+ * Recovery Actions
+ * ------------------------------------------------------------------------- */
+
+int nimcp_health_agent_world_model_recovery(
+    nimcp_health_agent_t* agent,
+    world_model_recovery_action_t action,
+    const char* reason
+) {
+    if (!agent) {
+        return -1;
+    }
+
+    nimcp_log(LOG_LEVEL_INFO, "World model recovery: action=%d, reason=%s",
+              action, reason ? reason : "unspecified");
+
+    /* Track recovery */
+    atomic_fetch_add(&agent->wm_recoveries_performed, 1);
+
+    /* Execute recovery based on action */
+    switch (action) {
+        case WM_RECOVERY_NONE:
+            /* No action */
+            break;
+
+        case WM_RECOVERY_RESET_PREDICTOR:
+            /* Would call JEPA reset function */
+            nimcp_log(LOG_LEVEL_WARN, "JEPA predictor reset requested");
+            break;
+
+        case WM_RECOVERY_PRUNE_LATENT:
+            /* Would prune degenerate latent dimensions */
+            nimcp_log(LOG_LEVEL_WARN, "Latent space pruning requested");
+            break;
+
+        case WM_RECOVERY_RETRAIN_DYNAMICS:
+            /* Would trigger dynamics relearning */
+            nimcp_log(LOG_LEVEL_WARN, "Dynamics retraining requested");
+            break;
+
+        case WM_RECOVERY_CLEAR_WORKSPACE:
+            /* Would clear imagination workspace */
+            nimcp_log(LOG_LEVEL_WARN, "Imagination workspace clear requested");
+            break;
+
+        case WM_RECOVERY_REDUCE_HORIZON:
+            /* Would shorten simulation horizon */
+            nimcp_log(LOG_LEVEL_WARN, "Simulation horizon reduction requested");
+            break;
+
+        case WM_RECOVERY_INCREASE_REALITY_CHECK:
+            /* Would increase reality checking frequency */
+            nimcp_log(LOG_LEVEL_WARN, "Reality check increase requested");
+            break;
+
+        case WM_RECOVERY_THROTTLE_IMAGINATION:
+            /* Would rate-limit imagination */
+            nimcp_log(LOG_LEVEL_WARN, "Imagination throttling requested");
+            break;
+
+        case WM_RECOVERY_BOOST_GROUNDING:
+            /* Would increase sensory grounding */
+            nimcp_log(LOG_LEVEL_WARN, "Sensory grounding boost requested");
+            break;
+
+        case WM_RECOVERY_CHECKPOINT_RESTORE:
+            /* Would restore from checkpoint */
+            nimcp_log(LOG_LEVEL_WARN, "Checkpoint restore requested");
+            break;
+
+        default:
+            nimcp_log(LOG_LEVEL_ERROR, "Unknown recovery action: %d", action);
+            return -1;
+    }
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------
+ * Health Status Queries
+ * ------------------------------------------------------------------------- */
+
+bool nimcp_health_agent_world_model_needs_attention(
+    const nimcp_health_agent_t* agent
+) {
+    if (!agent) {
+        return false;
+    }
+
+    /* No attention needed if nothing is connected */
+    if (!((nimcp_health_agent_t*)agent)->jepa_predictor &&
+        !((nimcp_health_agent_t*)agent)->world_model) {
+        return false;
+    }
+
+    /* Check world model health state */
+    if (((nimcp_health_agent_t*)agent)->wm_metrics.health_state != WM_HEALTH_OPTIMAL &&
+        ((nimcp_health_agent_t*)agent)->wm_metrics.health_state != WM_HEALTH_DEGRADED) {
+        return true;
+    }
+
+    /* Check JEPA health */
+    if (((nimcp_health_agent_t*)agent)->jepa_metrics.embedding_collapse_detected ||
+        ((nimcp_health_agent_t*)agent)->jepa_metrics.gradient_explosion ||
+        ((nimcp_health_agent_t*)agent)->jepa_metrics.gradient_vanishing) {
+        return true;
+    }
+
+    /* Check prediction error threshold */
+    float error = ((nimcp_health_agent_t*)agent)->jepa_metrics.mean_prediction_error;
+    if (error > ((nimcp_health_agent_t*)agent)->wm_imagination_config.jepa_error_warning) {
+        return true;
+    }
+
+    /* Check world model health score */
+    float score = atomic_load(&((nimcp_health_agent_t*)agent)->wm_health_score);
+    if (score < 0.7f) {
+        return true;
+    }
+
+    return false;
+}
+
+bool nimcp_health_agent_imagination_needs_attention(
+    const nimcp_health_agent_t* agent
+) {
+    if (!agent) {
+        return false;
+    }
+
+    /* No attention needed if nothing is connected */
+    if (!((nimcp_health_agent_t*)agent)->imagination) {
+        return false;
+    }
+
+    /* Check imagination health state */
+    imagination_health_state_t state =
+        ((nimcp_health_agent_t*)agent)->imagination_metrics.health_state;
+    if (state != IMAG_HEALTH_VIVID && state != IMAG_HEALTH_HAZY) {
+        return true;
+    }
+
+    /* Check coherence threshold */
+    float coherence = ((nimcp_health_agent_t*)agent)->imagination_metrics.scene_coherence;
+    if (coherence < ((nimcp_health_agent_t*)agent)->wm_imagination_config.coherence_warning) {
+        return true;
+    }
+
+    /* Check reality check pass rate */
+    float reality_rate =
+        ((nimcp_health_agent_t*)agent)->imagination_metrics.reality_check_pass_rate;
+    if (reality_rate < ((nimcp_health_agent_t*)agent)->wm_imagination_config.reality_check_min) {
+        return true;
+    }
+
+    /* Check imagination-reality blur */
+    float blur = ((nimcp_health_agent_t*)agent)->imagination_metrics.imagination_reality_blur;
+    if (blur > ((nimcp_health_agent_t*)agent)->wm_imagination_config.imagination_reality_blur_max) {
+        return true;
+    }
+
+    /* Check imagination health score */
+    float score = atomic_load(&((nimcp_health_agent_t*)agent)->imagination_health_score);
+    if (score < 0.7f) {
+        return true;
+    }
+
+    return false;
+}
+
+float nimcp_health_agent_get_world_model_health_score(
+    const nimcp_health_agent_t* agent
+) {
+    if (!agent) {
+        return -1.0f;
+    }
+
+    return atomic_load(&((nimcp_health_agent_t*)agent)->wm_health_score);
+}
+
+float nimcp_health_agent_get_imagination_health_score(
+    const nimcp_health_agent_t* agent
+) {
+    if (!agent) {
+        return -1.0f;
+    }
+
+    return atomic_load(&((nimcp_health_agent_t*)agent)->imagination_health_score);
+}
+
+/* -------------------------------------------------------------------------
+ * Configuration Update
+ * ------------------------------------------------------------------------- */
+
+int nimcp_health_agent_update_wm_imagination_config(
+    nimcp_health_agent_t* agent,
+    const health_agent_wm_imagination_config_t* config
+) {
+    if (!agent || !config) {
+        return -1;
+    }
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_lock(agent->wm_imagination_mutex);
+    }
+
+    memcpy(&agent->wm_imagination_config, config, sizeof(*config));
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_unlock(agent->wm_imagination_mutex);
+    }
+
+    nimcp_log(LOG_LEVEL_DEBUG, "Updated world model/imagination health config");
+    return 0;
+}
+
+/* -------------------------------------------------------------------------
+ * Immediate Health Checks
+ * ------------------------------------------------------------------------- */
+
+int nimcp_health_agent_check_world_model_now(
+    nimcp_health_agent_t* agent
+) {
+    if (!agent) {
+        return -1;
+    }
+
+    uint64_t now = get_timestamp_us();
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_lock(agent->wm_imagination_mutex);
+    }
+
+    /* Update check count */
+    atomic_fetch_add(&agent->wm_checks_run, 1);
+    agent->last_wm_check_us = now;
+
+    /* Check JEPA health if connected */
+    if (agent->jepa_predictor) {
+        /* In production, would call real JEPA health API */
+        /* For now, maintain current metrics */
+
+        /* Update trend tracking */
+        agent->jepa_error_history[agent->jepa_error_idx] =
+            agent->jepa_metrics.mean_prediction_error;
+        agent->jepa_error_idx = (agent->jepa_error_idx + 1) % 10;
+
+        /* Compute trend */
+        float trend = 0.0f;
+        for (int i = 1; i < 10; i++) {
+            int curr = (agent->jepa_error_idx + i) % 10;
+            int prev = (agent->jepa_error_idx + i - 1) % 10;
+            trend += agent->jepa_error_history[curr] - agent->jepa_error_history[prev];
+        }
+        agent->jepa_metrics.prediction_error_trend = trend / 9.0f;
+
+        /* Check thresholds */
+        if (agent->jepa_metrics.mean_prediction_error >
+            agent->wm_imagination_config.jepa_error_critical) {
+            atomic_fetch_add(&agent->wm_anomalies_detected, 1);
+        }
+
+        /* Check gradient health */
+        if (agent->jepa_metrics.gradient_norm > agent->wm_imagination_config.gradient_norm_max) {
+            agent->jepa_metrics.gradient_explosion = true;
+            atomic_fetch_add(&agent->wm_anomalies_detected, 1);
+        } else {
+            agent->jepa_metrics.gradient_explosion = false;
+        }
+
+        if (agent->jepa_metrics.gradient_norm < agent->wm_imagination_config.gradient_norm_min) {
+            agent->jepa_metrics.gradient_vanishing = true;
+            atomic_fetch_add(&agent->wm_anomalies_detected, 1);
+        } else {
+            agent->jepa_metrics.gradient_vanishing = false;
+        }
+
+        /* Check embedding health */
+        if (agent->jepa_metrics.embedding_variance <
+            agent->wm_imagination_config.embedding_variance_min) {
+            agent->jepa_metrics.embedding_collapse_detected = true;
+            atomic_fetch_add(&agent->wm_anomalies_detected, 1);
+        } else {
+            agent->jepa_metrics.embedding_collapse_detected = false;
+        }
+    }
+
+    /* Check world model health if connected */
+    if (agent->world_model) {
+        /* In production, would call real world model health API */
+
+        /* Update trend tracking */
+        agent->wm_accuracy_history[agent->wm_accuracy_idx] =
+            agent->wm_metrics.forward_accuracy;
+        agent->wm_accuracy_idx = (agent->wm_accuracy_idx + 1) % 10;
+
+        /* Determine health state */
+        if (agent->wm_metrics.forward_accuracy <
+            agent->wm_imagination_config.forward_accuracy_critical) {
+            agent->wm_metrics.health_state = WM_HEALTH_CRITICAL;
+            atomic_fetch_add(&agent->wm_anomalies_detected, 1);
+        } else if (agent->wm_metrics.forward_accuracy <
+                   agent->wm_imagination_config.forward_accuracy_warning) {
+            agent->wm_metrics.health_state = WM_HEALTH_DEGRADED;
+        } else if (agent->wm_metrics.state_space_collapse) {
+            agent->wm_metrics.health_state = WM_HEALTH_EMBEDDING_COLLAPSE;
+            atomic_fetch_add(&agent->wm_anomalies_detected, 1);
+        } else if (agent->wm_metrics.forward_horizon_stable <
+                   agent->wm_imagination_config.horizon_min_stable) {
+            agent->wm_metrics.health_state = WM_HEALTH_DYNAMICS_UNSTABLE;
+            atomic_fetch_add(&agent->wm_anomalies_detected, 1);
+        } else {
+            agent->wm_metrics.health_state = WM_HEALTH_OPTIMAL;
+        }
+
+        /* Compute health score */
+        float score = agent->wm_metrics.forward_accuracy * 0.4f +
+                     agent->wm_metrics.forward_consistency * 0.3f +
+                     agent->wm_metrics.counterfactual_validity * 0.3f;
+        agent->wm_metrics.health_score = fmaxf(0.0f, fminf(1.0f, score));
+    }
+
+    /* Update overall world model health score */
+    float combined_score = 1.0f;
+    int components = 0;
+
+    if (agent->jepa_predictor) {
+        float jepa_score = 1.0f - agent->jepa_metrics.mean_prediction_error;
+        if (agent->jepa_metrics.embedding_collapse_detected) jepa_score *= 0.5f;
+        if (agent->jepa_metrics.gradient_explosion) jepa_score *= 0.7f;
+        if (agent->jepa_metrics.gradient_vanishing) jepa_score *= 0.7f;
+        combined_score = jepa_score;
+        components++;
+    }
+
+    if (agent->world_model) {
+        combined_score = components > 0 ?
+            (combined_score + agent->wm_metrics.health_score) / 2.0f :
+            agent->wm_metrics.health_score;
+        components++;
+    }
+
+    atomic_store(&agent->wm_health_score, combined_score);
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_unlock(agent->wm_imagination_mutex);
+    }
+
+    nimcp_log(LOG_LEVEL_DEBUG, "World model health check complete: score=%.2f",
+              combined_score);
+    return 0;
+}
+
+int nimcp_health_agent_check_imagination_now(
+    nimcp_health_agent_t* agent
+) {
+    if (!agent) {
+        return -1;
+    }
+
+    uint64_t now = get_timestamp_us();
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_lock(agent->wm_imagination_mutex);
+    }
+
+    /* Update check count */
+    atomic_fetch_add(&agent->imagination_checks_run, 1);
+    agent->last_imagination_check_us = now;
+
+    /* Check imagination health if connected */
+    if (agent->imagination) {
+        /* In production, would call real imagination health API */
+
+        /* Update trend tracking */
+        agent->imagination_coherence_history[agent->imagination_coherence_idx] =
+            agent->imagination_metrics.scene_coherence;
+        agent->imagination_coherence_idx = (agent->imagination_coherence_idx + 1) % 10;
+
+        /* Determine health state */
+        if (agent->imagination_metrics.scene_coherence <
+            agent->wm_imagination_config.coherence_critical) {
+            agent->imagination_metrics.health_state = IMAG_HEALTH_FRAGMENTED;
+            atomic_fetch_add(&agent->imagination_anomalies_detected, 1);
+        } else if (agent->imagination_metrics.scene_coherence <
+                   agent->wm_imagination_config.coherence_warning) {
+            agent->imagination_metrics.health_state = IMAG_HEALTH_HAZY;
+        } else if (agent->imagination_metrics.imagination_reality_blur >
+                   agent->wm_imagination_config.imagination_reality_blur_max) {
+            agent->imagination_metrics.health_state = IMAG_HEALTH_CONFABULATING;
+            atomic_fetch_add(&agent->imagination_anomalies_detected, 1);
+        } else if (agent->imagination_metrics.workspace_utilization > 0.95f &&
+                   agent->imagination_metrics.scenarios_abandoned >
+                   agent->imagination_metrics.scenarios_completed) {
+            agent->imagination_metrics.health_state = IMAG_HEALTH_STUCK;
+            atomic_fetch_add(&agent->imagination_anomalies_detected, 1);
+        } else if (agent->imagination_metrics.scene_vividness <
+                   agent->wm_imagination_config.vividness_warning) {
+            agent->imagination_metrics.health_state = IMAG_HEALTH_HAZY;
+        } else {
+            agent->imagination_metrics.health_state = IMAG_HEALTH_VIVID;
+        }
+
+        /* Compute health score */
+        float score = agent->imagination_metrics.scene_coherence * 0.3f +
+                     agent->imagination_metrics.scene_vividness * 0.2f +
+                     agent->imagination_metrics.reality_check_pass_rate * 0.3f +
+                     (1.0f - agent->imagination_metrics.imagination_reality_blur) * 0.2f;
+        agent->imagination_metrics.health_score = fmaxf(0.0f, fminf(1.0f, score));
+    }
+
+    /* Update overall imagination health score */
+    float score = agent->imagination ? agent->imagination_metrics.health_score : 1.0f;
+    atomic_store(&agent->imagination_health_score, score);
+
+    if (agent->wm_imagination_mutex) {
+        nimcp_mutex_unlock(agent->wm_imagination_mutex);
+    }
+
+    nimcp_log(LOG_LEVEL_DEBUG, "Imagination health check complete: score=%.2f", score);
+    return 0;
 }

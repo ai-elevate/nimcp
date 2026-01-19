@@ -69,3 +69,7 @@ set_tests_properties(e2e_fault_tolerance_test_perception_cortical_health_e2e PRO
 # Brain Probe Health E2E Tests (Phase 5.13: Brain Probes Enhancement)
 add_e2e_fault_tolerance_test(test_brain_probe_health_e2e)
 set_tests_properties(e2e_fault_tolerance_test_brain_probe_health_e2e PROPERTIES TIMEOUT 300)
+
+# World Model & Imagination Health E2E Tests (Phase 5.14: World Model & Imagination Health Integration)
+add_e2e_fault_tolerance_test(test_world_imagination_health_e2e)
+set_tests_properties(e2e_fault_tolerance_test_world_imagination_health_e2e PROPERTIES TIMEOUT 300)

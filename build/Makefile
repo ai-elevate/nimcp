@@ -8583,6 +8583,19 @@ e2e_fault_tolerance_test_brain_probe_health_e2e/fast:
 .PHONY : e2e_fault_tolerance_test_brain_probe_health_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_world_imagination_health_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_world_imagination_health_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_world_imagination_health_e2e
+.PHONY : e2e_fault_tolerance_test_world_imagination_health_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_world_imagination_health_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_world_imagination_health_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_world_imagination_health_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_world_imagination_health_e2e/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_integration
 
 # Build rule for target.
@@ -17943,6 +17956,19 @@ unit_utils_fault_tolerance_test_brain_probe_health_functions/fast:
 .PHONY : unit_utils_fault_tolerance_test_brain_probe_health_functions/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_health_agent_world_imagination_functions
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_health_agent_world_imagination_functions: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_health_agent_world_imagination_functions
+.PHONY : unit_utils_fault_tolerance_test_health_agent_world_imagination_functions
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_health_agent_world_imagination_functions/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_health_agent_world_imagination_functions.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_health_agent_world_imagination_functions.dir/build
+.PHONY : unit_utils_fault_tolerance_test_health_agent_world_imagination_functions/fast
+
+#=============================================================================
 # Target rules for targets named integration_utils_fault_tolerance_test_async_checkpoint_integration
 
 # Build rule for target.
@@ -18242,6 +18268,19 @@ integration_utils_fault_tolerance_test_brain_probe_health_integration/fast:
 .PHONY : integration_utils_fault_tolerance_test_brain_probe_health_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_world_imagination_health_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_world_imagination_health_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_world_imagination_health_integration
+.PHONY : integration_utils_fault_tolerance_test_world_imagination_health_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_world_imagination_health_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_world_imagination_health_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_world_imagination_health_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_world_imagination_health_integration/fast
+
+#=============================================================================
 # Target rules for targets named regression_utils_fault_tolerance_test_checkpoint_format
 
 # Build rule for target.
@@ -18500,6 +18539,19 @@ regression_utils_fault_tolerance_test_brain_probe_health_regression: cmake_check
 regression_utils_fault_tolerance_test_brain_probe_health_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_brain_probe_health_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_brain_probe_health_regression.dir/build
 .PHONY : regression_utils_fault_tolerance_test_brain_probe_health_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_world_imagination_health_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_world_imagination_health_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_world_imagination_health_regression
+.PHONY : regression_utils_fault_tolerance_test_world_imagination_health_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_world_imagination_health_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_world_imagination_health_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_world_imagination_health_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_world_imagination_health_regression/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_exception_test_exception
@@ -30005,6 +30057,7 @@ help:
 	@echo "... e2e_fault_tolerance_test_substrate_health_e2e"
 	@echo "... e2e_fault_tolerance_test_symbolic_logic_health_e2e"
 	@echo "... e2e_fault_tolerance_test_thalamic_middleware_health_e2e"
+	@echo "... e2e_fault_tolerance_test_world_imagination_health_e2e"
 	@echo "... e2e_gpu_test_e2e_brain_simulation_gpu"
 	@echo "... e2e_gpu_test_e2e_cognitive_processing_gpu"
 	@echo "... e2e_gpu_test_e2e_dragonfly_hunting_gpu"
@@ -30598,6 +30651,7 @@ help:
 	@echo "... integration_utils_fault_tolerance_test_substrate_health_integration"
 	@echo "... integration_utils_fault_tolerance_test_symbolic_logic_health_integration"
 	@echo "... integration_utils_fault_tolerance_test_thalamic_middleware_health_integration"
+	@echo "... integration_utils_fault_tolerance_test_world_imagination_health_integration"
 	@echo "... integration_utils_logging_test_logging_integration"
 	@echo "... integration_utils_logging_test_logging_memory_integration"
 	@echo "... integration_utils_logging_test_logging_security_integration"
@@ -30967,6 +31021,7 @@ help:
 	@echo "... regression_utils_fault_tolerance_test_substrate_health_regression"
 	@echo "... regression_utils_fault_tolerance_test_symbolic_logic_health_regression"
 	@echo "... regression_utils_fault_tolerance_test_thalamic_middleware_health_regression"
+	@echo "... regression_utils_fault_tolerance_test_world_imagination_health_regression"
 	@echo "... regression_utils_logging_test_logging_performance"
 	@echo "... regression_utils_logging_test_logging_stress"
 	@echo "... regression_utils_memory_test_brain_pools_regression"
@@ -32156,6 +32211,7 @@ help:
 	@echo "... unit_utils_fault_tolerance_test_health_agent_memory_functions"
 	@echo "... unit_utils_fault_tolerance_test_health_agent_neural_functions"
 	@echo "... unit_utils_fault_tolerance_test_health_agent_use_functions"
+	@echo "... unit_utils_fault_tolerance_test_health_agent_world_imagination_functions"
 	@echo "... unit_utils_fault_tolerance_test_health_monitor"
 	@echo "... unit_utils_fault_tolerance_test_hierarchical_recovery"
 	@echo "... unit_utils_fault_tolerance_test_lockfree_metrics"

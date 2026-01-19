@@ -94,3 +94,7 @@ set_tests_properties(unit_utils_fault_tolerance_test_perception_cortical_health_
 # Brain Probe Health Tests (Phase 5.13: Brain Probes Enhancement)
 add_fault_tolerance_test(test_brain_probe_health_functions)
 set_tests_properties(unit_utils_fault_tolerance_test_brain_probe_health_functions PROPERTIES TIMEOUT 120)
+
+# World Model & Imagination Health Tests (Phase 5.14: World Model & Imagination Health Integration)
+add_fault_tolerance_test(test_health_agent_world_imagination_functions)
+set_tests_properties(unit_utils_fault_tolerance_test_health_agent_world_imagination_functions PROPERTIES TIMEOUT 120)
