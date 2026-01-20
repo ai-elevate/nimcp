@@ -22,6 +22,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/platform/nimcp_platform_mutex.h"  /* P0 fix: Thread-safe accum buffer */
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -128,19 +129,22 @@ nimcp_gradient_manager_ctx_t* nimcp_gradient_manager_create(
     const nimcp_gradient_manager_config_t* config
 ) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_gradient_manager_create: NULL config");
         return NULL;
     }
 
     if (nimcp_gradient_manager_validate_config(config) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_gradient_manager_create: invalid config");
         return NULL;
     }
 
     nimcp_gradient_manager_ctx_t* ctx = (nimcp_gradient_manager_ctx_t*)nimcp_calloc(
         1, sizeof(nimcp_gradient_manager_ctx_t)
     );
-    if (!ctx) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC_SIZE(ctx, sizeof(nimcp_gradient_manager_ctx_t),
+        "nimcp_gradient_manager_create: failed to allocate context");
 
     memcpy(&ctx->config, config, sizeof(nimcp_gradient_manager_config_t));
 

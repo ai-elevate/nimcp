@@ -4,6 +4,7 @@
 
 #include "physics/bridges/nimcp_thermo_quantum_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 

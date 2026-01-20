@@ -13,6 +13,8 @@
 #include "superhuman/nimcp_synesthesia.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -254,6 +256,8 @@ synesthesia_module_t* synesthesia_create(const synesthesia_config_t* config) {
     synesthesia_module_t* module = nimcp_calloc(1, sizeof(synesthesia_module_t));
     if (!module) {
         LOG_ERROR("[%s] Failed to allocate module", SYNESTHESIA_LOG_MODULE);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(synesthesia_module_t),
+                           "synesthesia_create: Failed to allocate module");
         return NULL;
     }
 
@@ -269,6 +273,9 @@ synesthesia_module_t* synesthesia_create(const synesthesia_config_t* config) {
     module->association_store = nimcp_calloc(module->store_capacity, sizeof(association_entry_t*));
     if (!module->association_store) {
         LOG_ERROR("[%s] Failed to allocate association store", SYNESTHESIA_LOG_MODULE);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           module->store_capacity * sizeof(association_entry_t*),
+                           "synesthesia_create: Failed to allocate association store");
         synesthesia_destroy(module);
         return NULL;
     }
@@ -281,6 +288,9 @@ synesthesia_module_t* synesthesia_create(const synesthesia_config_t* config) {
                                                sizeof(grapheme_color_entry_t*));
         if (!module->grapheme_colors) {
             LOG_ERROR("[%s] Failed to allocate grapheme-color store", SYNESTHESIA_LOG_MODULE);
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                               module->grapheme_color_capacity * sizeof(grapheme_color_entry_t*),
+                               "synesthesia_create: Failed to allocate grapheme-color store");
             synesthesia_destroy(module);
             return NULL;
         }
@@ -340,7 +350,11 @@ void synesthesia_destroy(synesthesia_module_t* module) {
 }
 
 bool synesthesia_reset(synesthesia_module_t* module) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "synesthesia_reset: NULL module pointer");
+        return false;
+    }
 
     LOG_DEBUG("[%s] Resetting module", SYNESTHESIA_LOG_MODULE);
 
@@ -402,6 +416,9 @@ bool synesthesia_add_grapheme_color(
     float strength
 ) {
     if (!module || !grapheme || !color) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_add_grapheme_color: Invalid parameters (module=%p, grapheme=%p, color=%p)",
+                              (void*)module, (void*)grapheme, (void*)color);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -416,6 +433,8 @@ bool synesthesia_add_grapheme_color(
     /* Create entry */
     grapheme_color_entry_t* entry = nimcp_calloc(1, sizeof(grapheme_color_entry_t));
     if (!entry) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(grapheme_color_entry_t),
+                           "synesthesia_add_grapheme_color: Failed to allocate entry");
         set_error(module, SYNESTHESIA_ERROR_MAPPING_FAILED);
         return false;
     }
@@ -451,6 +470,9 @@ bool synesthesia_get_grapheme_color(
     synesthesia_color_t* color
 ) {
     if (!module || !grapheme || !color) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_get_grapheme_color: Invalid parameters (module=%p, grapheme=%p, color=%p)",
+                              (void*)module, (void*)grapheme, (void*)color);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -504,6 +526,9 @@ bool synesthesia_colorize_text(
     uint32_t* color_count
 ) {
     if (!module || !text || !colors || !color_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_colorize_text: Invalid parameters (module=%p, text=%p, colors=%p)",
+                              (void*)module, (void*)text, (void*)colors);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -540,6 +565,9 @@ bool synesthesia_add_sound_shape(
     float strength
 ) {
     if (!module || !sound || !shape) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_add_sound_shape: Invalid parameters (module=%p, sound=%p, shape=%p)",
+                              (void*)module, (void*)sound, (void*)shape);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -550,6 +578,8 @@ bool synesthesia_add_sound_shape(
     /* Create entry */
     sound_shape_entry_t* entry = nimcp_calloc(1, sizeof(sound_shape_entry_t));
     if (!entry) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(sound_shape_entry_t),
+                           "synesthesia_add_sound_shape: Failed to allocate entry");
         set_error(module, SYNESTHESIA_ERROR_MAPPING_FAILED);
         return false;
     }
@@ -591,6 +621,9 @@ bool synesthesia_get_sound_shape(
     synesthesia_shape_t* shape
 ) {
     if (!module || !sound || !shape) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_get_sound_shape: Invalid parameters (module=%p, sound=%p, shape=%p)",
+                              (void*)module, (void*)sound, (void*)shape);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -644,6 +677,9 @@ bool synesthesia_generate_shape_from_sound(
     synesthesia_shape_t* shape
 ) {
     if (!module || !sound || !shape) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_generate_shape_from_sound: Invalid parameters (module=%p, sound=%p, shape=%p)",
+                              (void*)module, (void*)sound, (void*)shape);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -669,6 +705,9 @@ bool synesthesia_add_taste_touch(
     float strength
 ) {
     if (!module || !taste || !tactile) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_add_taste_touch: Invalid parameters (module=%p, taste=%p, tactile=%p)",
+                              (void*)module, (void*)taste, (void*)tactile);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -700,6 +739,9 @@ bool synesthesia_get_taste_touch(
     synesthesia_tactile_t* tactile
 ) {
     if (!module || !taste || !tactile) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_get_taste_touch: Invalid parameters (module=%p, taste=%p, tactile=%p)",
+                              (void*)module, (void*)taste, (void*)tactile);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -745,11 +787,17 @@ uint64_t synesthesia_create_association(
 ) {
     if (!module || !inducer_features || inducer_count == 0 ||
         !concurrent_features || concurrent_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_create_association: Invalid parameters (module=%p, inducer=%p, concurrent=%p)",
+                              (void*)module, (void*)inducer_features, (void*)concurrent_features);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return 0;
     }
 
     if (module->association_count >= module->config.max_associations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+                              "synesthesia_create_association: Max associations reached (%lu >= %u)",
+                              (unsigned long)module->association_count, module->config.max_associations);
         set_error(module, SYNESTHESIA_ERROR_CAPACITY_EXCEEDED);
         return 0;
     }
@@ -760,6 +808,8 @@ uint64_t synesthesia_create_association(
     /* Create entry */
     association_entry_t* entry = nimcp_calloc(1, sizeof(association_entry_t));
     if (!entry) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(association_entry_t),
+                           "synesthesia_create_association: Failed to allocate entry");
         set_error(module, SYNESTHESIA_ERROR_MAPPING_FAILED);
         return 0;
     }
@@ -778,6 +828,8 @@ uint64_t synesthesia_create_association(
     /* Copy inducer features */
     entry->association.inducer_features = nimcp_calloc(inducer_count, sizeof(float));
     if (!entry->association.inducer_features) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, inducer_count * sizeof(float),
+                           "synesthesia_create_association: Failed to allocate inducer features");
         free_association_entry(entry);
         set_error(module, SYNESTHESIA_ERROR_MAPPING_FAILED);
         return 0;
@@ -788,6 +840,8 @@ uint64_t synesthesia_create_association(
     /* Copy concurrent features */
     entry->association.concurrent_features = nimcp_calloc(concurrent_count, sizeof(float));
     if (!entry->association.concurrent_features) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, concurrent_count * sizeof(float),
+                           "synesthesia_create_association: Failed to allocate concurrent features");
         free_association_entry(entry);
         set_error(module, SYNESTHESIA_ERROR_MAPPING_FAILED);
         return 0;
@@ -853,11 +907,16 @@ bool synesthesia_trigger_experience(
     synesthetic_experience_t* experience
 ) {
     if (!module || !inducer_features || inducer_count == 0 || !experience) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_trigger_experience: Invalid parameters (module=%p, features=%p, experience=%p)",
+                              (void*)module, (void*)inducer_features, (void*)experience);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return false;
     }
 
     if (module->inhibited) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                              "synesthesia_trigger_experience: Module is inhibited");
         set_error(module, SYNESTHESIA_ERROR_INHIBITION_ACTIVE);
         module->stats.inhibited_activations++;
         return false;
@@ -878,6 +937,8 @@ bool synesthesia_trigger_experience(
     uint32_t match_count = 0;
 
     if (!match_strengths || !match_features || !match_counts || !match_modalities) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, max_matches * sizeof(float),
+                           "synesthesia_trigger_experience: Failed to allocate match arrays");
         if (match_strengths) nimcp_free(match_strengths);
         if (match_features) nimcp_free(match_features);
         if (match_counts) nimcp_free(match_counts);
@@ -991,7 +1052,12 @@ bool synesthesia_get_association(
     uint64_t association_id,
     cross_modal_association_t* association
 ) {
-    if (!module || association_id == 0 || !association) return false;
+    if (!module || association_id == 0 || !association) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_get_association: Invalid parameters (module=%p, id=%lu, assoc=%p)",
+                              (void*)module, (unsigned long)association_id, (void*)association);
+        return false;
+    }
 
     uint32_t hash_idx = hash_association_id(association_id, module->store_capacity);
     association_entry_t* entry = module->association_store[hash_idx];
@@ -1016,6 +1082,9 @@ bool synesthesia_update_strength(
     float new_strength
 ) {
     if (!module || association_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_update_strength: Invalid parameters (module=%p, id=%lu)",
+                              (void*)module, (unsigned long)association_id);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1053,6 +1122,9 @@ bool synesthesia_remove_association(
     uint64_t association_id
 ) {
     if (!module || association_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_remove_association: Invalid parameters (module=%p, id=%lu)",
+                              (void*)module, (unsigned long)association_id);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1094,6 +1166,9 @@ bool synesthesia_cascade(
     cascade_result_t* result
 ) {
     if (!module || !start_features || feature_count == 0 || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_cascade: Invalid parameters (module=%p, features=%p, result=%p)",
+                              (void*)module, (void*)start_features, (void*)result);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1103,6 +1178,8 @@ bool synesthesia_cascade(
     }
 
     if (module->inhibited) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                              "synesthesia_cascade: Module is inhibited");
         set_error(module, SYNESTHESIA_ERROR_INHIBITION_ACTIVE);
         return false;
     }
@@ -1228,7 +1305,11 @@ bool synesthesia_cascade(
 }
 
 bool synesthesia_set_inhibition(synesthesia_module_t* module, bool inhibit) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "synesthesia_set_inhibition: NULL module pointer");
+        return false;
+    }
 
     module->inhibited = inhibit;
     module->status = inhibit ? SYNESTHESIA_STATUS_INHIBITED : SYNESTHESIA_STATUS_IDLE;
@@ -1257,6 +1338,9 @@ uint64_t synesthesia_train_cooccurrence(
     uint32_t concurrent_count
 ) {
     if (!module || !inducer_features || !concurrent_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_train_cooccurrence: Invalid parameters (module=%p, inducer=%p, concurrent=%p)",
+                              (void*)module, (void*)inducer_features, (void*)concurrent_features);
         set_error(module, SYNESTHESIA_ERROR_INVALID_INPUT);
         return 0;
     }
@@ -1337,7 +1421,11 @@ uint32_t synesthesia_decay_unused(
     float decay_rate,
     uint32_t min_activations
 ) {
-    if (!module) return 0;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "synesthesia_decay_unused: NULL module pointer");
+        return 0;
+    }
 
     uint32_t decayed = 0;
 
@@ -1367,7 +1455,11 @@ uint32_t synesthesia_decay_unused(
 }
 
 uint32_t synesthesia_init_grapheme_colors(synesthesia_module_t* module) {
-    if (!module || !module->config.enable_grapheme_color) return 0;
+    if (!module || !module->config.enable_grapheme_color) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_init_grapheme_colors: Invalid module or feature disabled");
+        return 0;
+    }
 
     LOG_DEBUG("[%s] Initializing standard grapheme-color palette", SYNESTHESIA_LOG_MODULE);
 
@@ -1452,7 +1544,11 @@ uint32_t synesthesia_init_grapheme_colors(synesthesia_module_t* module) {
 }
 
 uint32_t synesthesia_init_bouba_kiki(synesthesia_module_t* module) {
-    if (!module) return 0;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "synesthesia_init_bouba_kiki: NULL module pointer");
+        return 0;
+    }
 
     LOG_DEBUG("[%s] Initializing bouba-kiki mappings", SYNESTHESIA_LOG_MODULE);
 
@@ -1514,7 +1610,11 @@ bool synesthesia_set_experience_callback(
     synesthesia_experience_callback_t callback,
     void* user_data
 ) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "synesthesia_set_experience_callback: NULL module pointer");
+        return false;
+    }
     module->experience_callback = callback;
     module->experience_user_data = user_data;
     return true;
@@ -1525,7 +1625,11 @@ bool synesthesia_set_cascade_callback(
     synesthesia_cascade_callback_t callback,
     void* user_data
 ) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "synesthesia_set_cascade_callback: NULL module pointer");
+        return false;
+    }
     module->cascade_callback = callback;
     module->cascade_user_data = user_data;
     return true;
@@ -1536,7 +1640,11 @@ bool synesthesia_set_learning_callback(
     synesthesia_learning_callback_t callback,
     void* user_data
 ) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "synesthesia_set_learning_callback: NULL module pointer");
+        return false;
+    }
     module->learning_callback = callback;
     module->learning_user_data = user_data;
     return true;
@@ -1587,13 +1695,23 @@ const char* synesthesia_status_string(synesthesia_status_t status) {
 }
 
 bool synesthesia_get_stats(const synesthesia_module_t* module, synesthesia_stats_t* stats) {
-    if (!module || !stats) return false;
+    if (!module || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_get_stats: Invalid parameters (module=%p, stats=%p)",
+                              (void*)module, (void*)stats);
+        return false;
+    }
     *stats = module->stats;
     return true;
 }
 
 bool synesthesia_get_config(const synesthesia_module_t* module, synesthesia_config_t* config) {
-    if (!module || !config) return false;
+    if (!module || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "synesthesia_get_config: Invalid parameters (module=%p, config=%p)",
+                              (void*)module, (void*)config);
+        return false;
+    }
     *config = module->config;
     return true;
 }

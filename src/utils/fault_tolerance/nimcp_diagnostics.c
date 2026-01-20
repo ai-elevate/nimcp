@@ -12,6 +12,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/thread/nimcp_atomic.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "utils_diagnostics"
 

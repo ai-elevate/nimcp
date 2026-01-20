@@ -6,6 +6,9 @@
  */
 
 #include "nlp/immune/nimcp_spike_nlp_immune_bridge.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -62,7 +65,10 @@ static float compute_spike_synchrony(
  * ============================================================================ */
 
 int spike_nlp_immune_default_config(spike_nlp_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "spike_nlp_immune_default_config: NULL config");
+        return -1;
+    }
 
     config->enable_cytokine_spike_modulation = true;
     config->enable_inflammation_jitter = true;
@@ -88,12 +94,14 @@ spike_nlp_immune_bridge_t* spike_nlp_immune_bridge_create(
     neural_network_t network
 ) {
     if (!immune_system || !network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_nlp_immune_bridge_create: immune_system and network required");
         NIMCP_LOGGING_ERROR("spike_nlp_immune_bridge_create: invalid parameters");
         return NULL;
     }
 
     spike_nlp_immune_bridge_t* bridge = nimcp_malloc(sizeof(spike_nlp_immune_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spike_nlp_immune_bridge_create: allocation failed");
         NIMCP_LOGGING_ERROR("spike_nlp_immune_bridge_create: allocation failed");
         return NULL;
     }
@@ -142,10 +150,14 @@ void spike_nlp_immune_bridge_destroy(spike_nlp_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int spike_nlp_immune_apply_cytokine_effects(spike_nlp_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "spike_nlp_immune_apply_cytokine_effects: NULL bridge or immune_system");
+        return -1;
+    }
 
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "spike_nlp_immune_apply_cytokine_effects: failed to get immune stats");
         return -1;
     }
 
@@ -169,10 +181,14 @@ int spike_nlp_immune_apply_cytokine_effects(spike_nlp_immune_bridge_t* bridge) {
 }
 
 int spike_nlp_immune_apply_inflammation_jitter(spike_nlp_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "spike_nlp_immune_apply_inflammation_jitter: NULL bridge or immune_system");
+        return -1;
+    }
 
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "spike_nlp_immune_apply_inflammation_jitter: failed to get immune stats");
         return -1;
     }
 
@@ -207,7 +223,10 @@ int spike_nlp_immune_detect_pattern_anomalies(
     uint32_t num_spikes,
     float time_window_ms
 ) {
-    if (!bridge || !spike_times || num_spikes == 0) return -1;
+    if (!bridge || !spike_times || num_spikes == 0) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "spike_nlp_immune_detect_pattern_anomalies: invalid parameters");
+        return -1;
+    }
 
     /* Compute synchrony */
     bridge->spike_modulation.synchrony_level =
@@ -241,7 +260,10 @@ int spike_nlp_immune_release_il10_from_healthy(
     const uint64_t* spike_times,
     uint32_t num_spikes
 ) {
-    if (!bridge || !spike_times || num_spikes == 0) return -1;
+    if (!bridge || !spike_times || num_spikes == 0) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "spike_nlp_immune_release_il10_from_healthy: invalid parameters");
+        return -1;
+    }
     if (!bridge->config.enable_healthy_dynamics_il10) return 0;
 
     float synchrony = compute_spike_synchrony(spike_times, num_spikes, 100.0f);
@@ -272,7 +294,10 @@ int spike_nlp_immune_bridge_update(
     spike_nlp_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "spike_nlp_immune_bridge_update: NULL bridge");
+        return -1;
+    }
 
     pthread_mutex_t* mutex = (pthread_mutex_t*)bridge->base.mutex;
     if (mutex) pthread_mutex_lock(mutex);
@@ -311,7 +336,10 @@ bool spike_nlp_immune_has_pattern_anomaly(const spike_nlp_immune_bridge_t* bridg
  * ============================================================================ */
 
 int spike_nlp_immune_connect_bio_async(spike_nlp_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "spike_nlp_immune_connect_bio_async: NULL bridge");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -332,7 +360,10 @@ int spike_nlp_immune_connect_bio_async(spike_nlp_immune_bridge_t* bridge) {
 }
 
 int spike_nlp_immune_disconnect_bio_async(spike_nlp_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "spike_nlp_immune_disconnect_bio_async: NULL bridge");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

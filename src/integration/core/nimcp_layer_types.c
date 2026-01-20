@@ -12,6 +12,7 @@
  */
 
 #include "integration/core/nimcp_layer_types.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -165,7 +166,7 @@ nimcp_layer_msg_t* nimcp_layer_msg_create(
     uint32_t payload_size
 ) {
     nimcp_layer_msg_t* msg = (nimcp_layer_msg_t*)calloc(1, sizeof(nimcp_layer_msg_t));
-    if (!msg) return NULL;
+    NIMCP_API_CHECK_ALLOC(msg, "Failed to allocate layer message");
 
     msg->header.msg_type = msg_type;
     msg->header.source_layer = source;
@@ -204,10 +205,10 @@ void nimcp_layer_msg_destroy(nimcp_layer_msg_t* msg) {
 }
 
 nimcp_layer_msg_t* nimcp_layer_msg_clone(const nimcp_layer_msg_t* msg) {
-    if (!msg) return NULL;
+    NIMCP_API_CHECK_NULL_RET_NULL(msg, "Source message is NULL in clone");
 
     nimcp_layer_msg_t* clone = (nimcp_layer_msg_t*)calloc(1, sizeof(nimcp_layer_msg_t));
-    if (!clone) return NULL;
+    NIMCP_API_CHECK_ALLOC(clone, "Failed to allocate cloned layer message");
 
     /* Copy header */
     clone->header = msg->header;

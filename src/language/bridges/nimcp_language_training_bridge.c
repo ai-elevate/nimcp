@@ -22,6 +22,7 @@
  */
 
 #include "language/bridges/nimcp_language_training_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
@@ -221,6 +222,7 @@ language_training_bridge_t* language_training_bridge_create(
     language_training_bridge_t* bridge = (language_training_bridge_t*)
         nimcp_calloc(1, sizeof(language_training_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_training_bridge_create: allocation failed");
         LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
         return NULL;
     }

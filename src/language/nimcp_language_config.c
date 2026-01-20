@@ -11,6 +11,7 @@
  */
 
 #include "language/nimcp_language_config.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
@@ -20,7 +21,10 @@
 
 void language_perception_default_config(language_perception_config_t* config)
 {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_default_config: NULL config");
+        return;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -55,7 +59,10 @@ void language_perception_default_config(language_perception_config_t* config)
 
 void language_cognitive_default_config(language_cognitive_config_t* config)
 {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_default_config: NULL config");
+        return;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -91,7 +98,10 @@ void language_cognitive_default_config(language_cognitive_config_t* config)
 
 void language_training_default_config(language_training_config_t* config)
 {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_default_config: NULL config");
+        return;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -132,7 +142,10 @@ void language_training_default_config(language_training_config_t* config)
 
 void language_omni_default_config(language_omni_config_t* config)
 {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_default_config: NULL config");
+        return;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -165,7 +178,10 @@ void language_omni_default_config(language_omni_config_t* config)
 
 void language_immune_default_config(language_immune_config_t* config)
 {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_default_config: NULL config");
+        return;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -202,7 +218,10 @@ void language_immune_default_config(language_immune_config_t* config)
 
 void language_gpu_default_config(language_gpu_config_t* config)
 {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_default_config: NULL config");
+        return;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -234,7 +253,10 @@ void language_gpu_default_config(language_gpu_config_t* config)
 
 void language_thalamic_default_config(language_thalamic_config_t* config)
 {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_default_config: NULL config");
+        return;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -260,7 +282,10 @@ void language_thalamic_default_config(language_thalamic_config_t* config)
 
 void language_substrate_default_config(language_substrate_config_t* config)
 {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_substrate_default_config: NULL config");
+        return;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -289,7 +314,10 @@ void language_substrate_default_config(language_substrate_config_t* config)
 
 void language_logic_default_config(language_logic_config_t* config)
 {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_default_config: NULL config");
+        return;
+    }
 
     memset(config, 0, sizeof(*config));
 

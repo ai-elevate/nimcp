@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "plasticity/stdp/nimcp_stdp_pink_noise_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -25,10 +26,7 @@ stdp_pink_noise_bridge_t* stdp_pink_noise_create(
     /* Allocate bridge structure */
     stdp_pink_noise_bridge_t* bridge =
         (stdp_pink_noise_bridge_t*)nimcp_calloc(1, sizeof(stdp_pink_noise_bridge_t));
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate pink noise bridge");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "STDP pink noise bridge allocation failed");
 
     /* Set configuration */
     bridge->config = config ? *config : stdp_pink_noise_default_config();
@@ -96,15 +94,8 @@ int stdp_pink_noise_connect_optimizer(
     stdp_pink_noise_bridge_t* bridge,
     qstdp_optimizer_t optimizer
 ) {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge in connect_optimizer");
-        return -1;
-    }
-
-    if (!optimizer) {
-        NIMCP_LOGGING_ERROR("NULL optimizer in connect_optimizer");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP pink noise bridge is NULL");
+    NIMCP_API_CHECK_NULL(optimizer, -1, "QSTDP optimizer is NULL");
 
     bridge->stdp_optimizer = optimizer;
     bridge->optimizer_connected = true;
@@ -119,7 +110,7 @@ int stdp_pink_noise_connect_optimizer(
  * HOW:  Clear handle, reset connection flag
  */
 int stdp_pink_noise_disconnect_optimizer(stdp_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP pink noise bridge is NULL");
 
     bridge->stdp_optimizer = NULL;
     bridge->optimizer_connected = false;
@@ -147,7 +138,7 @@ bool stdp_pink_noise_has_optimizer(const stdp_pink_noise_bridge_t* bridge) {
  * HOW:  Generate samples for each parameter based on targets
  */
 int stdp_pink_noise_update_samples(stdp_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP pink noise bridge is NULL");
 
     if (!bridge->is_enabled) {
         /* Zero out noise when disabled */
@@ -225,7 +216,7 @@ int stdp_pink_noise_update_samples(stdp_pink_noise_bridge_t* bridge) {
  * HOW:  Read base params, apply noise based on mode, clamp to bounds
  */
 int stdp_pink_noise_apply_modulation(stdp_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP pink noise bridge is NULL");
 
     if (!stdp_pink_noise_has_optimizer(bridge)) {
         NIMCP_LOGGING_ERROR("No optimizer connected for noise modulation");
@@ -372,7 +363,7 @@ int stdp_pink_noise_get_noisy_params(
     float* tau_plus,
     float* tau_minus
 ) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP pink noise bridge is NULL");
 
     if (lr) *lr = bridge->noisy_lr;
     if (a_plus) *a_plus = bridge->noisy_a_plus;
@@ -396,7 +387,7 @@ int stdp_pink_noise_set_enabled(
     stdp_pink_noise_bridge_t* bridge,
     bool enabled
 ) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP pink noise bridge is NULL");
 
     bridge->is_enabled = enabled;
     bridge->config.enabled = enabled;
@@ -432,7 +423,7 @@ int stdp_pink_noise_set_mode(
     stdp_pink_noise_bridge_t* bridge,
     stdp_noise_mode_t mode
 ) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP pink noise bridge is NULL");
 
     bridge->config.noise_mode = mode;
     NIMCP_LOGGING_INFO("Set noise mode to %s", stdp_noise_mode_name(mode));
@@ -448,7 +439,7 @@ int stdp_pink_noise_set_targets(
     stdp_pink_noise_bridge_t* bridge,
     stdp_noise_target_t targets
 ) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP pink noise bridge is NULL");
 
     bridge->config.noise_targets = targets;
     NIMCP_LOGGING_INFO("Set noise targets to 0x%02X", targets);
@@ -483,7 +474,8 @@ int stdp_pink_noise_get_stats(
     const stdp_pink_noise_bridge_t* bridge,
     stdp_pink_noise_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP pink noise bridge is NULL");
+    NIMCP_API_CHECK_NULL(stats, -1, "Stats output pointer is NULL");
 
     stats->samples_generated = bridge->samples_generated;
     stats->parameters_modulated = bridge->parameters_modulated;
@@ -508,7 +500,7 @@ int stdp_pink_noise_get_stats(
  * HOW:  Zero all stat fields
  */
 int stdp_pink_noise_reset_stats(stdp_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP pink noise bridge is NULL");
 
     bridge->samples_generated = 0;
     bridge->parameters_modulated = 0;
@@ -534,7 +526,7 @@ int stdp_pink_noise_reset(
     stdp_pink_noise_bridge_t* bridge,
     uint32_t new_seed
 ) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP pink noise bridge is NULL");
 
     /* Reset pink quantum bridge */
     if (bridge->pink_bridge) {

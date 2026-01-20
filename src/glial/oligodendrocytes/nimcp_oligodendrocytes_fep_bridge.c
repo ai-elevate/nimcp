@@ -6,6 +6,7 @@
 #include "glial/oligodendrocytes/nimcp_oligodendrocytes_fep_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/validation/nimcp_common.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 
@@ -32,10 +33,7 @@ oligodendrocytes_fep_bridge_t* oligodendrocytes_fep_create(
 
     oligodendrocytes_fep_bridge_t* bridge = (oligodendrocytes_fep_bridge_t*)
         nimcp_malloc(sizeof(oligodendrocytes_fep_bridge_t));
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("oligodendrocytes_fep_create: allocation failed");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "oligodendrocytes_fep_create: allocation failed");
 
     memset(bridge, 0, sizeof(oligodendrocytes_fep_bridge_t));
     memcpy(&bridge->config, config, sizeof(oligodendrocytes_fep_config_t));

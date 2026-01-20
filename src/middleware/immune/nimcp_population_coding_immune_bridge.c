@@ -13,6 +13,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/rng/nimcp_rand.h"
 #include <string.h>
 #include <stdlib.h>

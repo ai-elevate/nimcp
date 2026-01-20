@@ -21,6 +21,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"  /* P0 fix: Thread-safe state buffer */
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"

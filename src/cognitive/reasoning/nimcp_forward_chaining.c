@@ -12,6 +12,7 @@
 #include "cognitive/reasoning/nimcp_forward_chaining.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"

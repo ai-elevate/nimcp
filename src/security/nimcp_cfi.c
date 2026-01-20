@@ -21,6 +21,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "security_cfi"
 
@@ -170,8 +171,7 @@ nimcp_cfi_context_t* nimcp_cfi_create(void)
     nimcp_cfi_context_t* cfi =
         (nimcp_cfi_context_t*)nimcp_calloc(1, sizeof(nimcp_cfi_context_t));
 
-    if (!cfi)
-        return NULL;
+    NIMCP_API_CHECK_ALLOC(cfi, "Failed to allocate CFI context");
 
     cfi->mode = NIMCP_CFI_MODE_DISABLED;
     cfi->initialized = false;
@@ -181,11 +181,8 @@ nimcp_cfi_context_t* nimcp_cfi_create(void)
 
 nimcp_result_t nimcp_cfi_init(nimcp_cfi_context_t* cfi, nimcp_cfi_mode_t mode)
 {
-    if (!cfi)
-        return NIMCP_INVALID_PARAM;
-
-    if (cfi->initialized)
-        return NIMCP_INVALID_STATE;
+    NIMCP_API_CHECK_NULL(cfi, NIMCP_INVALID_PARAM, "NULL CFI context in init");
+    NIMCP_API_CHECK(!cfi->initialized, NIMCP_INVALID_STATE, "CFI context already initialized");
 
     cfi->mode = mode;
     cfi->initialized = true;
@@ -256,8 +253,9 @@ nimcp_result_t nimcp_cfi_unregister_target(
     nimcp_cfi_context_t* cfi,
     int32_t target_index)
 {
-    if (!cfi || target_index < 0 || (uint32_t)target_index >= cfi->num_targets)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(cfi, NIMCP_INVALID_PARAM, "NULL CFI context in unregister_target");
+    NIMCP_API_CHECK(target_index >= 0 && (uint32_t)target_index < cfi->num_targets,
+                   NIMCP_INVALID_PARAM, "Invalid target index in unregister_target");
 
     cfi->targets[target_index].valid = false;
 
@@ -419,8 +417,7 @@ nimcp_result_t nimcp_cfi_set_violation_handler(
     nimcp_cfi_violation_callback_t callback,
     void* user_data)
 {
-    if (!cfi)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(cfi, NIMCP_INVALID_PARAM, "NULL CFI context in set_violation_handler");
 
     cfi->violation_callback = callback;
     cfi->callback_user_data = user_data;
@@ -444,8 +441,8 @@ nimcp_result_t nimcp_cfi_get_stats(
     nimcp_cfi_context_t* cfi,
     nimcp_cfi_stats_t* stats)
 {
-    if (!cfi || !stats)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(cfi, NIMCP_INVALID_PARAM, "NULL CFI context in get_stats");
+    NIMCP_API_CHECK_NULL(stats, NIMCP_INVALID_PARAM, "NULL stats output in get_stats");
 
     memcpy(stats, &cfi->stats, sizeof(nimcp_cfi_stats_t));
 
@@ -454,8 +451,7 @@ nimcp_result_t nimcp_cfi_get_stats(
 
 nimcp_result_t nimcp_cfi_reset_stats(nimcp_cfi_context_t* cfi)
 {
-    if (!cfi)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(cfi, NIMCP_INVALID_PARAM, "NULL CFI context in reset_stats");
 
     memset(&cfi->stats, 0, sizeof(nimcp_cfi_stats_t));
 
@@ -464,8 +460,7 @@ nimcp_result_t nimcp_cfi_reset_stats(nimcp_cfi_context_t* cfi)
 
 nimcp_result_t nimcp_cfi_set_mode(nimcp_cfi_context_t* cfi, nimcp_cfi_mode_t mode)
 {
-    if (!cfi)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(cfi, NIMCP_INVALID_PARAM, "NULL CFI context in set_mode");
 
     cfi->mode = mode;
 

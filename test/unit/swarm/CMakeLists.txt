@@ -180,3 +180,6 @@ add_subdirectory(sleep)
 
 # Immune Bridge Tests
 add_subdirectory(immune)
+
+# Exception Handling Tests
+add_subdirectory(exception)

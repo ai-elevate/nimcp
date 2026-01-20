@@ -17,6 +17,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -67,6 +68,8 @@ static uint8_t* compress_zlib(const uint8_t* data, size_t size, size_t* out_size
     uint8_t* compressed = nimcp_malloc(bound + sizeof(uint32_t));
 
     if (!compressed) {
+        LOG_ERROR("Failed to allocate compression buffer");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, bound + sizeof(uint32_t), "Failed to allocate compression buffer");
         *out_size = 0;
         return NULL;
     }
@@ -105,6 +108,8 @@ static uint8_t* decompress_zlib(const uint8_t* data, size_t size, size_t* out_si
 
     uint8_t* decompressed = nimcp_malloc(orig_size);
     if (!decompressed) {
+        LOG_ERROR("Failed to allocate decompression buffer");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, orig_size, "Failed to allocate decompression buffer");
         *out_size = 0;
         return NULL;
     }
@@ -134,6 +139,8 @@ static uint8_t* compress_fallback(const uint8_t* data, size_t size, size_t* out_
 {
     uint8_t* copy = nimcp_malloc(size + sizeof(uint32_t));
     if (!copy) {
+        LOG_ERROR("Failed to allocate fallback compression buffer");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, size + sizeof(uint32_t), "Failed to allocate fallback compression buffer");
         *out_size = 0;
         return NULL;
     }
@@ -160,6 +167,8 @@ static uint8_t* decompress_fallback(const uint8_t* data, size_t size, size_t* ou
 
     uint8_t* copy = nimcp_malloc(orig_size);
     if (!copy) {
+        LOG_ERROR("Failed to allocate fallback decompression buffer");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, orig_size, "Failed to allocate fallback decompression buffer");
         *out_size = 0;
         return NULL;
     }
@@ -172,9 +181,21 @@ static uint8_t* decompress_fallback(const uint8_t* data, size_t size, size_t* ou
 uint8_t* nimcp_compress(const uint8_t* data, size_t size, size_t* out_size)
 {
     LOG_DEBUG("Entering nimcp_compress");
-    if (!data || size == 0 || !out_size) {
+    if (!data) {
+        LOG_ERROR("nimcp_compress: NULL data");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL data in nimcp_compress");
         if (out_size) *out_size = 0;
-        LOG_ERROR("nimcp_compress failed: returning error");
+        return NULL;
+    }
+    if (size == 0) {
+        LOG_ERROR("nimcp_compress: zero size");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Zero size in nimcp_compress");
+        if (out_size) *out_size = 0;
+        return NULL;
+    }
+    if (!out_size) {
+        LOG_ERROR("nimcp_compress: NULL out_size");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL out_size in nimcp_compress");
         return NULL;
     }
 
@@ -188,9 +209,21 @@ uint8_t* nimcp_compress(const uint8_t* data, size_t size, size_t* out_size)
 uint8_t* nimcp_decompress(const uint8_t* data, size_t size, size_t* out_size)
 {
     LOG_DEBUG("Entering nimcp_decompress");
-    if (!data || size == 0 || !out_size) {
+    if (!data) {
+        LOG_ERROR("nimcp_decompress: NULL data");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL data in nimcp_decompress");
         if (out_size) *out_size = 0;
-        LOG_ERROR("nimcp_decompress failed: returning error");
+        return NULL;
+    }
+    if (size == 0) {
+        LOG_ERROR("nimcp_decompress: zero size");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Zero size in nimcp_decompress");
+        if (out_size) *out_size = 0;
+        return NULL;
+    }
+    if (!out_size) {
+        LOG_ERROR("nimcp_decompress: NULL out_size");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL out_size in nimcp_decompress");
         return NULL;
     }
 
@@ -226,6 +259,8 @@ static uint8_t* xor_cipher(const uint8_t* data, size_t size,
 
     uint8_t* result = nimcp_malloc(size);
     if (!result) {
+        LOG_ERROR("Failed to allocate XOR cipher buffer");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, size, "Failed to allocate XOR cipher buffer");
         *out_size = 0;
         return NULL;
     }

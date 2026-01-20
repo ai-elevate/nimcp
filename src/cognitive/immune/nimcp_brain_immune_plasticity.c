@@ -19,6 +19,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 #include <stdio.h>

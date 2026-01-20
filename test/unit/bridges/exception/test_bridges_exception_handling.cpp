@@ -506,11 +506,11 @@ TEST_F(BridgesExceptionHandlingTest, BridgeRecoveryStrategy) {
         );
         ASSERT_NE(ex, nullptr);
 
-        nimcp_recovery_strategy_t strategy;
+        nimcp_exception_recovery_strategy_t strategy;
         nimcp_exception_get_recovery_strategy(ex, &strategy);
 
         // All bridge exceptions should have a valid primary action
-        EXPECT_NE(strategy.primary_action, (nimcp_recovery_action_t)-1)
+        EXPECT_NE(strategy.primary_action, (nimcp_exception_recovery_action_t)-1)
             << "Invalid strategy for: " << tc.bridge_type;
 
         nimcp_exception_unref(ex);
@@ -528,12 +528,12 @@ TEST_F(BridgesExceptionHandlingTest, BridgeReconnectionRecovery) {
     );
 
     ASSERT_NE(ex, nullptr);
-    ex->suggested_action = RECOVERY_ACTION_RESTART_COMPONENT;
+    ex->suggested_action = EXCEPTION_RECOVERY_RESTART_COMPONENT;
 
     nimcp_exception_set_context(ex, "bridge_type", "hemispheric_fep");
     nimcp_exception_set_context(ex, "recovery_hint", "reconnect_systems");
 
-    EXPECT_EQ(ex->suggested_action, RECOVERY_ACTION_RESTART_COMPONENT);
+    EXPECT_EQ(ex->suggested_action, EXCEPTION_RECOVERY_RESTART_COMPONENT);
 
     nimcp_exception_unref(ex);
 }

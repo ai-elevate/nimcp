@@ -1135,6 +1135,24 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/ternary")
 endif()
 
 # ============================================================================
+# Ternary Unit Tests (Exception Handling)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/ternary")
+    message(STATUS "Adding ternary unit tests...")
+    add_subdirectory(unit/ternary)
+endif()
+
+# ============================================================================
+# Distributed Unit Tests (Exception Handling)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/distributed")
+    message(STATUS "Adding distributed unit tests...")
+    add_subdirectory(unit/distributed)
+endif()
+
+# ============================================================================
 # Ternary Integration Tests
 # ============================================================================
 
@@ -1843,6 +1861,12 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/physics/dynamics")
     message(STATUS "Adding physics dynamical systems unit tests...")
     add_subdirectory(unit/physics/dynamics)
+endif()
+
+# Exception handling tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/physics/exception/CMakeLists.txt")
+    message(STATUS "Adding physics exception handling unit tests...")
+    add_subdirectory(unit/physics/exception)
 endif()
 
 # ============================================================================

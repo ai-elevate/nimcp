@@ -12,6 +12,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -91,9 +92,7 @@ nimcp_auction_config_t nimcp_auction_default_config(void) {
 
 nimcp_auction_t nimcp_auction_create(const nimcp_auction_config_t* config) {
     nimcp_auction_t auction = nimcp_calloc(1, sizeof(struct nimcp_auction_struct));
-    if (!auction) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(auction, "Failed to allocate auction");
 
     if (config) {
         auction->config = *config;

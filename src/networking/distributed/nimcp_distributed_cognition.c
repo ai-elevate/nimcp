@@ -31,6 +31,8 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_security.h"
 #include "utils/config/nimcp_dynamic_config.h"
 #include "utils/logging/nimcp_logging.h"
@@ -245,6 +247,8 @@ distrib_cognition_t distrib_cognition_create(
     // Allocate coordinator
     distrib_cognition_t dc = (distrib_cognition_t)nimcp_calloc(1, sizeof(struct distrib_cognition_struct));
     if (!dc) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct distrib_cognition_struct),
+                          "Failed to allocate distributed cognition coordinator");
         LOG_ERROR(LOG_MODULE, "Failed to allocate coordinator");
         return NULL;
     }
@@ -261,6 +265,8 @@ distrib_cognition_t distrib_cognition_create(
 
     // Initialize rwlock
     if (nimcp_rwlock_init(&dc->rwlock) != NIMCP_SUCCESS) {
+        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE, 0,
+                             "Failed to initialize rwlock for distributed cognition coordinator");
         LOG_ERROR(LOG_MODULE, "Failed to initialize rwlock");
         nimcp_free(dc);
         return NULL;
@@ -270,6 +276,9 @@ distrib_cognition_t distrib_cognition_create(
     dc->neuromod_pool_capacity = 4;
     dc->neuromod_pools = (registered_neuromod_t*)nimcp_calloc(dc->neuromod_pool_capacity, sizeof(registered_neuromod_t));
     if (!dc->neuromod_pools) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                          dc->neuromod_pool_capacity * sizeof(registered_neuromod_t),
+                          "Failed to allocate neuromodulator pool storage");
         nimcp_rwlock_destroy(&dc->rwlock);
         nimcp_free(dc);
         return NULL;
@@ -278,6 +287,9 @@ distrib_cognition_t distrib_cognition_create(
     dc->glial_system_capacity = 4;
     dc->glial_systems = (registered_glial_t*)nimcp_calloc(dc->glial_system_capacity, sizeof(registered_glial_t));
     if (!dc->glial_systems) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                          dc->glial_system_capacity * sizeof(registered_glial_t),
+                          "Failed to allocate glial system storage");
         nimcp_free(dc->neuromod_pools);
         nimcp_rwlock_destroy(&dc->rwlock);
         nimcp_free(dc);
@@ -287,6 +299,9 @@ distrib_cognition_t distrib_cognition_create(
     dc->brain_region_capacity = 8;
     dc->brain_regions = (registered_region_t*)nimcp_calloc(dc->brain_region_capacity, sizeof(registered_region_t));
     if (!dc->brain_regions) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                          dc->brain_region_capacity * sizeof(registered_region_t),
+                          "Failed to allocate brain region storage");
         nimcp_free(dc->glial_systems);
         nimcp_free(dc->neuromod_pools);
         nimcp_rwlock_destroy(&dc->rwlock);
@@ -396,6 +411,10 @@ bool distrib_cognition_register_neuromod_pool(
         );
 
         if (!new_pools) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                              new_capacity * sizeof(registered_neuromod_t),
+                              "Failed to expand neuromod pool capacity from %zu to %zu",
+                              dc->neuromod_pool_capacity, new_capacity);
             nimcp_rwlock_unlock(&dc->rwlock);
             log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Failed to expand neuromod pool capacity");
             return false;
@@ -480,6 +499,10 @@ bool distrib_cognition_register_glial_system(
         );
 
         if (!new_systems) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                              new_capacity * sizeof(registered_glial_t),
+                              "Failed to expand glial system capacity from %zu to %zu",
+                              dc->glial_system_capacity, new_capacity);
             nimcp_rwlock_unlock(&dc->rwlock);
             log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Failed to expand glial system capacity");
             return false;
@@ -608,6 +631,10 @@ bool distrib_cognition_register_brain_region(
         );
 
         if (!new_regions) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                              new_capacity * sizeof(registered_region_t),
+                              "Failed to expand brain region capacity from %zu to %zu",
+                              dc->brain_region_capacity, new_capacity);
             nimcp_rwlock_unlock(&dc->rwlock);
             log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Failed to expand brain region capacity");
             return false;

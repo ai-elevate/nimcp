@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -263,13 +264,13 @@ void nimcp_body_default_config(nimcp_body_config_t* config) {
 
 nimcp_body_context_t* nimcp_body_create(const nimcp_body_config_t* config) {
     if (!config) {
-        LOG_ERROR("NULL configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL configuration in body_create");
         return NULL;
     }
 
     nimcp_body_context_t* ctx = nimcp_malloc(sizeof(nimcp_body_context_t));
     if (!ctx) {
-        LOG_ERROR("Failed to allocate body context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate body context");
         return NULL;
     }
 

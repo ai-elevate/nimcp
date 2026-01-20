@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 
 /**
@@ -111,7 +112,8 @@ lnn_sleep_bridge_t lnn_sleep_bridge_create(
     sleep_system_t sleep_system)
 {
     if (!sleep_system) {
-        NIMCP_LOGGING_ERROR("lnn_sleep_bridge_create: NULL sleep_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "NULL sleep_system in lnn_sleep_bridge_create");
         return NULL;
     }
 

@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -466,13 +467,13 @@ void nimcp_sim_default_config(nimcp_sim_config_t* config) {
 
 nimcp_sim_context_t* nimcp_sim_create(const nimcp_sim_config_t* config) {
     if (!config) {
-        LOG_ERROR("NULL configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL configuration in sim_create");
         return NULL;
     }
 
     nimcp_sim_context_t* ctx = nimcp_malloc(sizeof(nimcp_sim_context_t));
     if (!ctx) {
-        LOG_ERROR("Failed to allocate simulation context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate simulation context");
         return NULL;
     }
 

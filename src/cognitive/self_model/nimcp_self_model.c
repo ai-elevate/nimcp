@@ -8,6 +8,7 @@
 #include "cognitive/self_model/nimcp_self_model_plasticity_bridge.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
@@ -66,18 +67,14 @@ self_model_system_t self_model_create(const char* name,
                                       const char* purpose)
 {
     // Guard: NULL checks
-    if (!name || !role || !purpose) {
-        LOG_ERROR("NULL parameter or allocation failure");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(name, "NULL name in self_model_create");
+    NIMCP_API_CHECK_NULL_RET_NULL(role, "NULL role in self_model_create");
+    NIMCP_API_CHECK_NULL_RET_NULL(purpose, "NULL purpose in self_model_create");
 
     // Allocate system
     struct self_model_system* system =
         nimcp_calloc(1, sizeof(struct self_model_system));
-    if (!system) {
-        LOG_ERROR("NULL parameter or allocation failure");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(system, "Failed to allocate self model system");
 
     // Initialize model
     memset(&system->model, 0, sizeof(self_model_t));

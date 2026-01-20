@@ -15,6 +15,7 @@
 #include "lnn/nimcp_lnn_types.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -111,14 +112,16 @@ lnn_ternary_matrix_t* lnn_ternary_matrix_create(
 ) {
     /* Guard: validate dimensions */
     if (rows == 0 || cols == 0) {
-        NIMCP_LOGGING_ERROR("Invalid dimensions: rows=%u, cols=%u", rows, cols);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid dimensions: rows=%u, cols=%u", rows, cols);
         return NULL;
     }
 
     /* Allocate structure */
     lnn_ternary_matrix_t* mat = nimcp_malloc(sizeof(lnn_ternary_matrix_t));
     if (!mat) {
-        NIMCP_LOGGING_ERROR("Failed to allocate ternary matrix");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(lnn_ternary_matrix_t),
+                          "Failed to allocate ternary matrix");
         return NULL;
     }
 
@@ -164,7 +167,8 @@ lnn_ternary_matrix_t* lnn_ternary_matrix_from_float(
 ) {
     /* Guard: validate inputs */
     if (!float_weights) {
-        NIMCP_LOGGING_ERROR("NULL float_weights");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "NULL float_weights in lnn_ternary_matrix_from_float");
         return NULL;
     }
 
@@ -179,7 +183,8 @@ lnn_ternary_matrix_t* lnn_ternary_matrix_from_float(
     /* Get tensor dimensions (must be 2D) */
     uint32_t rank = nimcp_tensor_rank(float_weights);
     if (rank != 2) {
-        NIMCP_LOGGING_ERROR("Expected 2D tensor, got rank %u", rank);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_DIMENSION_MISMATCH,
+                             "Expected 2D tensor, got rank %u", rank);
         return NULL;
     }
 
@@ -335,8 +340,9 @@ int lnn_ternary_matmul(
     size_t x_len = nimcp_tensor_numel(x);
     size_t y_len = nimcp_tensor_numel(y);
     if (x_len != mat->cols || y_len != mat->rows) {
-        NIMCP_LOGGING_ERROR("Dimension mismatch: mat[%u,%u], x[%zu], y[%zu]",
-                           mat->rows, mat->cols, x_len, y_len);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_DIMENSION_MISMATCH,
+                             "Dimension mismatch: mat[%u,%u], x[%zu], y[%zu]",
+                             mat->rows, mat->cols, x_len, y_len);
         return LNN_ERROR_INVALID_DIMENSION;
     }
 
@@ -598,20 +604,26 @@ void lnn_ternary_config_default(lnn_ternary_config_t* config) {
 }
 
 int lnn_ternary_config_validate(const lnn_ternary_config_t* config) {
-    if (!config) return LNN_ERROR_NULL_POINTER;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "NULL config in lnn_ternary_config_validate");
+        return LNN_ERROR_NULL_POINTER;
+    }
 
     if (config->threshold < LNN_TERNARY_MIN_THRESHOLD ||
         config->threshold > LNN_TERNARY_MAX_THRESHOLD) {
-        NIMCP_LOGGING_ERROR("Invalid threshold: %.4f (must be in [%.4f, %.4f])",
-                           config->threshold,
-                           LNN_TERNARY_MIN_THRESHOLD,
-                           LNN_TERNARY_MAX_THRESHOLD);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid threshold: %.4f (must be in [%.4f, %.4f])",
+                             config->threshold,
+                             LNN_TERNARY_MIN_THRESHOLD,
+                             LNN_TERNARY_MAX_THRESHOLD);
         return LNN_ERROR_INVALID_CONFIG;
     }
 
     if (config->scale_factor <= 0.0f) {
-        NIMCP_LOGGING_ERROR("Invalid scale_factor: %.4f (must be > 0)",
-                           config->scale_factor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid scale_factor: %.4f (must be > 0)",
+                             config->scale_factor);
         return LNN_ERROR_INVALID_CONFIG;
     }
 

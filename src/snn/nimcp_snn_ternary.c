@@ -14,6 +14,7 @@
  */
 
 #include "snn/nimcp_snn_ternary.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -41,11 +42,19 @@ snn_ternary_weight_matrix_t* snn_ternary_create(
     uint32_t post_size,
     const snn_ternary_config_t* config
 ) {
-    if (pre_size == 0 || post_size == 0) return NULL;
+    if (pre_size == 0 || post_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid dimensions: pre_size=%u, post_size=%u", pre_size, post_size);
+        return NULL;
+    }
 
     snn_ternary_weight_matrix_t* weights = (snn_ternary_weight_matrix_t*)
         calloc(1, sizeof(snn_ternary_weight_matrix_t));
-    if (!weights) return NULL;
+    if (!weights) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_ternary_weight_matrix_t),
+                          "Failed to allocate snn_ternary_weight_matrix_t");
+        return NULL;
+    }
 
     /* Apply config or defaults */
     snn_ternary_config_t cfg;
@@ -101,7 +110,16 @@ snn_ternary_weight_matrix_t* snn_ternary_from_floats(
     float threshold,
     const snn_ternary_config_t* config
 ) {
-    if (!float_weights || pre_size == 0 || post_size == 0) return NULL;
+    if (!float_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "NULL float_weights in snn_ternary_from_floats");
+        return NULL;
+    }
+    if (pre_size == 0 || post_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "Invalid dimensions: pre_size=%u, post_size=%u", pre_size, post_size);
+        return NULL;
+    }
 
     snn_ternary_weight_matrix_t* weights = snn_ternary_create(pre_size, post_size, config);
     if (!weights) return NULL;
@@ -122,8 +140,16 @@ int snn_ternary_to_floats(
     const snn_ternary_weight_matrix_t* weights,
     float* output
 ) {
-    if (!weights || weights->magic != SNN_TERNARY_MAGIC) return -1;
-    if (!output) return -1;
+    if (!weights || weights->magic != SNN_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Invalid weights in snn_ternary_to_floats");
+        return -1;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "NULL output in snn_ternary_to_floats");
+        return -1;
+    }
 
     for (uint32_t pre = 0; pre < weights->pre_size; pre++) {
         for (uint32_t post = 0; post < weights->post_size; post++) {
@@ -147,8 +173,16 @@ int snn_ternary_forward(
     const uint8_t* input_spikes,
     float* output
 ) {
-    if (!weights || weights->magic != SNN_TERNARY_MAGIC) return -1;
-    if (!input_spikes || !output) return -1;
+    if (!weights || weights->magic != SNN_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Invalid weights in snn_ternary_forward");
+        return -1;
+    }
+    if (!input_spikes || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "NULL input_spikes or output in snn_ternary_forward");
+        return -1;
+    }
 
     /* Clear output */
     memset(output, 0, weights->post_size * sizeof(float));
@@ -176,8 +210,16 @@ int snn_ternary_forward_float(
     const float* input,
     float* output
 ) {
-    if (!weights || weights->magic != SNN_TERNARY_MAGIC) return -1;
-    if (!input || !output) return -1;
+    if (!weights || weights->magic != SNN_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Invalid weights in snn_ternary_forward_float");
+        return -1;
+    }
+    if (!input || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "NULL input or output in snn_ternary_forward_float");
+        return -1;
+    }
 
     /* Clear output */
     memset(output, 0, weights->post_size * sizeof(float));

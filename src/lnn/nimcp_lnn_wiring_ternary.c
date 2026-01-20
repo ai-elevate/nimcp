@@ -15,6 +15,7 @@
 #include "lnn/nimcp_lnn_ternary.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -298,11 +299,13 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_create(
 ) {
     /* Guard: validate input */
     if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "NULL config in lnn_ternary_wiring_create");
         return NULL;
     }
     if (config->n_neurons == 0) {
-        NIMCP_LOGGING_ERROR("n_neurons must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "n_neurons must be > 0 in lnn_ternary_wiring_create");
         return NULL;
     }
 
@@ -312,7 +315,8 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_create(
     /* Allocate structure */
     lnn_ternary_wiring_t* wiring = nimcp_malloc(sizeof(lnn_ternary_wiring_t));
     if (!wiring) {
-        NIMCP_LOGGING_ERROR("Failed to allocate wiring");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(lnn_ternary_wiring_t),
+                          "Failed to allocate wiring structure");
         return NULL;
     }
     memset(wiring, 0, sizeof(lnn_ternary_wiring_t));
@@ -715,20 +719,28 @@ void lnn_ternary_wiring_config_default(lnn_ternary_wiring_config_t* config) {
 }
 
 int lnn_ternary_wiring_config_validate(const lnn_ternary_wiring_config_t* config) {
-    if (!config) return LNN_ERROR_NULL_POINTER;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "NULL config in lnn_ternary_wiring_config_validate");
+        return LNN_ERROR_NULL_POINTER;
+    }
 
     if (config->n_neurons == 0) {
-        NIMCP_LOGGING_ERROR("n_neurons must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "n_neurons must be > 0");
         return LNN_ERROR_INVALID_CONFIG;
     }
 
     if (config->sparsity < 0.0f || config->sparsity >= 1.0f) {
-        NIMCP_LOGGING_ERROR("sparsity must be in [0, 1)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "sparsity must be in [0, 1), got %.4f", config->sparsity);
         return LNN_ERROR_INVALID_CONFIG;
     }
 
     if (config->excitatory_ratio < 0.0f || config->excitatory_ratio > 1.0f) {
-        NIMCP_LOGGING_ERROR("excitatory_ratio must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "excitatory_ratio must be in [0, 1], got %.4f",
+                             config->excitatory_ratio);
         return LNN_ERROR_INVALID_CONFIG;
     }
 
@@ -736,7 +748,9 @@ int lnn_ternary_wiring_config_validate(const lnn_ternary_wiring_config_t* config
         uint32_t sum = config->n_sensory + config->n_inter +
                       config->n_command + config->n_motor;
         if (sum != config->n_neurons) {
-            NIMCP_LOGGING_ERROR("NCP neuron counts must sum to n_neurons");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                                 "NCP neuron counts must sum to n_neurons (%u != %u)",
+                                 sum, config->n_neurons);
             return LNN_ERROR_INVALID_CONFIG;
         }
     }

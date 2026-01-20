@@ -30,6 +30,9 @@
 #include "training/nimcp_adversarial_training.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -131,6 +134,7 @@ static void softmax(const float* logits, float* probs, size_t size);
 
 int adv_default_config(adv_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "adv_default_config: config is NULL");
         return -1;
     }
 
@@ -216,15 +220,19 @@ int adv_trades_config(adv_config_t* config) {
 
 adv_ctx_t* adv_create(const adv_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "adv_create: config is NULL");
         return NULL;
     }
 
     if (adv_validate_config(config) != 0) {
+        NIMCP_THROW(NIMCP_ERROR_CONFIG_INVALID, "adv_create: config validation failed");
         return NULL;
     }
 
     adv_ctx_t* ctx = nimcp_calloc(1, sizeof(adv_ctx_t));
     if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(adv_ctx_t),
+                          "adv_create: failed to allocate context");
         return NULL;
     }
 

@@ -8,6 +8,7 @@
 
 #include "physics/bridges/nimcp_physics_kg_wiring.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 
 //=============================================================================

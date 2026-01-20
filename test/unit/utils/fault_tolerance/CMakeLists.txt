@@ -98,3 +98,7 @@ set_tests_properties(unit_utils_fault_tolerance_test_brain_probe_health_function
 # World Model & Imagination Health Tests (Phase 5.14: World Model & Imagination Health Integration)
 add_fault_tolerance_test(test_health_agent_world_imagination_functions)
 set_tests_properties(unit_utils_fault_tolerance_test_health_agent_world_imagination_functions PROPERTIES TIMEOUT 120)
+
+# Heartbeat Module Tests (Phase 8: Heartbeat for Long Operations)
+add_fault_tolerance_test(test_heartbeat_module_functions)
+set_tests_properties(unit_utils_fault_tolerance_test_heartbeat_module_functions PROPERTIES TIMEOUT 120)

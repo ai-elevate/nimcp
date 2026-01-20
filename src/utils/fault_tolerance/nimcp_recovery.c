@@ -18,6 +18,7 @@
 #include "core/neuralnet/nimcp_neuralnet_core.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "utils_recovery"
 
@@ -391,9 +392,7 @@ static recovery_status_t action_emergency_save(brain_t brain)
 
 recovery_strategy_t* recovery_select_strategy(diagnostic_summary_t* diagnosis)
 {
-    if (!diagnosis) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL(diagnosis, NIMCP_ERROR_NULL_POINTER, "recovery_select_strategy: NULL diagnosis");
 
     // Select strategy based on signal
     switch (diagnosis->signal) {
@@ -480,9 +479,17 @@ recovery_result_t recovery_execute_strategy(brain_t brain, diagnostic_summary_t*
     recovery_result_t result = {0};
     uint64_t start_time = get_time_us();
 
-    if (!brain || !diagnosis) {
+    // Validate inputs using API exception macros
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_execute_strategy: NULL brain");
         result.status = RECOVERY_FAILED;
-        result.message = "Invalid arguments";
+        result.message = "NULL brain parameter";
+        return result;
+    }
+    if (!diagnosis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_execute_strategy: NULL diagnosis");
+        result.status = RECOVERY_FAILED;
+        result.message = "NULL diagnosis parameter";
         return result;
     }
 
@@ -772,21 +779,16 @@ bool recovery_adjust_parameters(brain_t brain, adjustment_type_t type)
 
 circuit_breaker_t* circuit_breaker_create(uint32_t failure_threshold, uint32_t timeout_ms)
 {
-    if (failure_threshold == 0 || failure_threshold > 100) {
-        LOG_ERROR("Circuit breaker: Invalid failure threshold: %u", failure_threshold);
-        return NULL;
-    }
+    // Validate failure threshold using API exception macro
+    NIMCP_API_CHECK(failure_threshold > 0 && failure_threshold <= 100,
+        NIMCP_ERROR_INVALID_PARAM, "Circuit breaker: Invalid failure threshold (must be 1-100)");
 
-    if (timeout_ms < 100 || timeout_ms > 60000) {
-        LOG_ERROR("Circuit breaker: Invalid timeout: %u ms", timeout_ms);
-        return NULL;
-    }
+    // Validate timeout using API exception macro
+    NIMCP_API_CHECK(timeout_ms >= 100 && timeout_ms <= 60000,
+        NIMCP_ERROR_INVALID_PARAM, "Circuit breaker: Invalid timeout (must be 100-60000 ms)");
 
     circuit_breaker_t* cb = (circuit_breaker_t*)nimcp_calloc(1, sizeof(circuit_breaker_t));
-    if (!cb) {
-        LOG_ERROR("Circuit breaker: Allocation failed");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(cb, "Circuit breaker allocation failed");
 
     cb->state = CIRCUIT_CLOSED;
     cb->failure_threshold = failure_threshold;

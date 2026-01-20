@@ -110,13 +110,13 @@ protected:
     // Recovery callback for quarantine
     static int quarantine_recovery(
         nimcp_exception_t* ex,
-        nimcp_recovery_action_t action,
+        nimcp_exception_recovery_action_t action,
         void* user_data
     ) {
         (void)user_data;
         (void)ex;
 
-        if (action == RECOVERY_ACTION_QUARANTINE) {
+        if (action == EXCEPTION_RECOVERY_QUARANTINE) {
             recovery_action_count++;
             return 0;  // Success
         }
@@ -126,13 +126,13 @@ protected:
     // Recovery callback for rollback
     static int rollback_recovery(
         nimcp_exception_t* ex,
-        nimcp_recovery_action_t action,
+        nimcp_exception_recovery_action_t action,
         void* user_data
     ) {
         (void)user_data;
         (void)ex;
 
-        if (action == RECOVERY_ACTION_ROLLBACK) {
+        if (action == EXCEPTION_RECOVERY_ROLLBACK) {
             recovery_action_count++;
             return 0;
         }
@@ -385,7 +385,7 @@ TEST_F(SecurityExceptionIntegrationTest, SecurityExceptionQuarantineRecovery) {
 
     // Register quarantine recovery
     EXPECT_EQ(nimcp_register_recovery_callback(
-        RECOVERY_ACTION_QUARANTINE,
+        EXCEPTION_RECOVERY_QUARANTINE,
         quarantine_recovery,
         nullptr
     ), 0);
@@ -403,7 +403,7 @@ TEST_F(SecurityExceptionIntegrationTest, SecurityExceptionQuarantineRecovery) {
     ASSERT_NE(ex, nullptr);
 
     // Get recovery strategy
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
     // Execute primary recovery
@@ -417,7 +417,7 @@ TEST_F(SecurityExceptionIntegrationTest, SecurityExceptionQuarantineRecovery) {
     EXPECT_GT(recovery_action_count.load(), 0);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_QUARANTINE);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_QUARANTINE);
 }
 
 TEST_F(SecurityExceptionIntegrationTest, SecurityExceptionRollbackRecovery) {
@@ -425,7 +425,7 @@ TEST_F(SecurityExceptionIntegrationTest, SecurityExceptionRollbackRecovery) {
     // WHY:  Some attacks require rolling back to clean state
 
     EXPECT_EQ(nimcp_register_recovery_callback(
-        RECOVERY_ACTION_ROLLBACK,
+        EXCEPTION_RECOVERY_ROLLBACK,
         rollback_recovery,
         nullptr
     ), 0);
@@ -445,14 +445,14 @@ TEST_F(SecurityExceptionIntegrationTest, SecurityExceptionRollbackRecovery) {
     recovery_action_count = 0;
     int result = nimcp_execute_recovery(
         (nimcp_exception_t*)ex,
-        RECOVERY_ACTION_ROLLBACK
+        EXCEPTION_RECOVERY_ROLLBACK
     );
 
     EXPECT_EQ(result, 0);
     EXPECT_GT(recovery_action_count.load(), 0);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_ROLLBACK);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK);
 }
 
 TEST_F(SecurityExceptionIntegrationTest, ChainedRecoveryActions) {
@@ -460,13 +460,13 @@ TEST_F(SecurityExceptionIntegrationTest, ChainedRecoveryActions) {
     // WHY:  Complex attacks may need multiple recovery steps
 
     EXPECT_EQ(nimcp_register_recovery_callback(
-        RECOVERY_ACTION_QUARANTINE,
+        EXCEPTION_RECOVERY_QUARANTINE,
         quarantine_recovery,
         nullptr
     ), 0);
 
     EXPECT_EQ(nimcp_register_recovery_callback(
-        RECOVERY_ACTION_ROLLBACK,
+        EXCEPTION_RECOVERY_ROLLBACK,
         rollback_recovery,
         nullptr
     ), 0);
@@ -486,17 +486,17 @@ TEST_F(SecurityExceptionIntegrationTest, ChainedRecoveryActions) {
     recovery_action_count = 0;
 
     // Execute quarantine first
-    nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_QUARANTINE);
+    nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_QUARANTINE);
 
     // Then rollback
-    nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_ROLLBACK);
+    nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_ROLLBACK);
 
     // Both should have executed
     EXPECT_EQ(recovery_action_count.load(), 2);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_QUARANTINE);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_ROLLBACK);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_QUARANTINE);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK);
 }
 
 //=============================================================================

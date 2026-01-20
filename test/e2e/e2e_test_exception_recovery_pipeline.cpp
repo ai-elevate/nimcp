@@ -96,7 +96,7 @@ struct RecoveryTracker {
 
     // Track which exceptions triggered recovery
     nimcp_exception_t* last_exception{nullptr};
-    nimcp_recovery_action_t last_action{RECOVERY_ACTION_NONE};
+    nimcp_exception_recovery_action_t last_action{EXCEPTION_RECOVERY_NONE};
 
     // Configurable success/failure for testing
     bool gc_should_succeed{true};
@@ -120,7 +120,7 @@ struct RecoveryTracker {
         successful_recoveries = 0;
         failed_recoveries = 0;
         last_exception = nullptr;
-        last_action = RECOVERY_ACTION_NONE;
+        last_action = EXCEPTION_RECOVERY_NONE;
         gc_should_succeed = true;
         retry_should_succeed = true;
         rollback_should_succeed = true;
@@ -132,7 +132,7 @@ struct RecoveryTracker {
 static RecoveryTracker g_recovery_tracker;
 
 // Recovery callback implementations
-static int gc_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+static int gc_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)user_data;
     g_recovery_tracker.gc_calls++;
     g_recovery_tracker.last_exception = ex;
@@ -147,7 +147,7 @@ static int gc_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t a
     }
 }
 
-static int retry_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+static int retry_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)user_data;
     g_recovery_tracker.retry_calls++;
     g_recovery_tracker.last_exception = ex;
@@ -162,7 +162,7 @@ static int retry_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_
     }
 }
 
-static int rollback_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+static int rollback_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)user_data;
     g_recovery_tracker.rollback_calls++;
     g_recovery_tracker.last_exception = ex;
@@ -177,7 +177,7 @@ static int rollback_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_acti
     }
 }
 
-static int thread_restart_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+static int thread_restart_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)user_data;
     g_recovery_tracker.thread_restart_calls++;
     g_recovery_tracker.last_exception = ex;
@@ -192,7 +192,7 @@ static int thread_restart_recovery_callback(nimcp_exception_t* ex, nimcp_recover
     }
 }
 
-static int quarantine_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+static int quarantine_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)user_data;
     g_recovery_tracker.quarantine_calls++;
     g_recovery_tracker.last_exception = ex;
@@ -207,7 +207,7 @@ static int quarantine_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_ac
     }
 }
 
-static int emergency_save_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+static int emergency_save_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)ex;
     (void)action;
     (void)user_data;
@@ -216,7 +216,7 @@ static int emergency_save_recovery_callback(nimcp_exception_t* ex, nimcp_recover
     return 0;
 }
 
-static int reduce_load_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+static int reduce_load_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)ex;
     (void)action;
     (void)user_data;
@@ -225,7 +225,7 @@ static int reduce_load_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_a
     return 0;
 }
 
-static int clear_cache_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+static int clear_cache_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)ex;
     (void)action;
     (void)user_data;
@@ -234,7 +234,7 @@ static int clear_cache_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_a
     return 0;
 }
 
-static int component_restart_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+static int component_restart_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)ex;
     (void)action;
     (void)user_data;
@@ -243,7 +243,7 @@ static int component_restart_recovery_callback(nimcp_exception_t* ex, nimcp_reco
     return 0;
 }
 
-static int graceful_shutdown_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+static int graceful_shutdown_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)ex;
     (void)action;
     (void)user_data;
@@ -252,7 +252,7 @@ static int graceful_shutdown_recovery_callback(nimcp_exception_t* ex, nimcp_reco
     return 0;
 }
 
-static int compact_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+static int compact_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)ex;
     (void)action;
     (void)user_data;
@@ -302,17 +302,17 @@ protected:
 
     void TearDown() override {
         // Unregister all recovery callbacks
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_GC);
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_RETRY);
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_ROLLBACK);
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_RESTART_THREAD);
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_QUARANTINE);
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_EMERGENCY_SAVE);
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_REDUCE_LOAD);
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_CLEAR_CACHE);
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_RESTART_COMPONENT);
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_GRACEFUL_SHUTDOWN);
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_COMPACT);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_GC);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RETRY);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RESTART_THREAD);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_QUARANTINE);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_EMERGENCY_SAVE);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_REDUCE_LOAD);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_CLEAR_CACHE);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RESTART_COMPONENT);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_COMPACT);
 
         // Disconnect and cleanup
         nimcp_exception_immune_disconnect();
@@ -330,17 +330,17 @@ protected:
     }
 
     void RegisterAllRecoveryCallbacks() {
-        nimcp_register_recovery_callback(RECOVERY_ACTION_GC, gc_recovery_callback, nullptr);
-        nimcp_register_recovery_callback(RECOVERY_ACTION_RETRY, retry_recovery_callback, nullptr);
-        nimcp_register_recovery_callback(RECOVERY_ACTION_ROLLBACK, rollback_recovery_callback, nullptr);
-        nimcp_register_recovery_callback(RECOVERY_ACTION_RESTART_THREAD, thread_restart_recovery_callback, nullptr);
-        nimcp_register_recovery_callback(RECOVERY_ACTION_QUARANTINE, quarantine_recovery_callback, nullptr);
-        nimcp_register_recovery_callback(RECOVERY_ACTION_EMERGENCY_SAVE, emergency_save_recovery_callback, nullptr);
-        nimcp_register_recovery_callback(RECOVERY_ACTION_REDUCE_LOAD, reduce_load_recovery_callback, nullptr);
-        nimcp_register_recovery_callback(RECOVERY_ACTION_CLEAR_CACHE, clear_cache_recovery_callback, nullptr);
-        nimcp_register_recovery_callback(RECOVERY_ACTION_RESTART_COMPONENT, component_restart_recovery_callback, nullptr);
-        nimcp_register_recovery_callback(RECOVERY_ACTION_GRACEFUL_SHUTDOWN, graceful_shutdown_recovery_callback, nullptr);
-        nimcp_register_recovery_callback(RECOVERY_ACTION_COMPACT, compact_recovery_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_GC, gc_recovery_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_RETRY, retry_recovery_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK, rollback_recovery_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_RESTART_THREAD, thread_restart_recovery_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_QUARANTINE, quarantine_recovery_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_EMERGENCY_SAVE, emergency_save_recovery_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_REDUCE_LOAD, reduce_load_recovery_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_CLEAR_CACHE, clear_cache_recovery_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_RESTART_COMPONENT, component_restart_recovery_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN, graceful_shutdown_recovery_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_COMPACT, compact_recovery_callback, nullptr);
     }
 };
 
@@ -352,23 +352,23 @@ TEST_F(ExceptionRecoveryPipelineTest, RecoveryCallbackRegistration) {
     E2E_PIPELINE_START("Recovery Callback Registration Pipeline");
 
     E2E_STAGE_BEGIN("Register GC callback", MAX_RECOVERY_TIME_MS);
-    EXPECT_EQ(nimcp_register_recovery_callback(RECOVERY_ACTION_GC, gc_recovery_callback, nullptr), 0);
+    EXPECT_EQ(nimcp_register_recovery_callback(EXCEPTION_RECOVERY_GC, gc_recovery_callback, nullptr), 0);
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Register RETRY callback", MAX_RECOVERY_TIME_MS);
-    EXPECT_EQ(nimcp_register_recovery_callback(RECOVERY_ACTION_RETRY, retry_recovery_callback, nullptr), 0);
+    EXPECT_EQ(nimcp_register_recovery_callback(EXCEPTION_RECOVERY_RETRY, retry_recovery_callback, nullptr), 0);
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Register ROLLBACK callback", MAX_RECOVERY_TIME_MS);
-    EXPECT_EQ(nimcp_register_recovery_callback(RECOVERY_ACTION_ROLLBACK, rollback_recovery_callback, nullptr), 0);
+    EXPECT_EQ(nimcp_register_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK, rollback_recovery_callback, nullptr), 0);
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Register RESTART_THREAD callback", MAX_RECOVERY_TIME_MS);
-    EXPECT_EQ(nimcp_register_recovery_callback(RECOVERY_ACTION_RESTART_THREAD, thread_restart_recovery_callback, nullptr), 0);
+    EXPECT_EQ(nimcp_register_recovery_callback(EXCEPTION_RECOVERY_RESTART_THREAD, thread_restart_recovery_callback, nullptr), 0);
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Register QUARANTINE callback", MAX_RECOVERY_TIME_MS);
-    EXPECT_EQ(nimcp_register_recovery_callback(RECOVERY_ACTION_QUARANTINE, quarantine_recovery_callback, nullptr), 0);
+    EXPECT_EQ(nimcp_register_recovery_callback(EXCEPTION_RECOVERY_QUARANTINE, quarantine_recovery_callback, nullptr), 0);
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Test callback execution", MAX_RECOVERY_TIME_MS);
@@ -380,16 +380,16 @@ TEST_F(ExceptionRecoveryPipelineTest, RecoveryCallbackRegistration) {
     );
 
     // Execute GC recovery
-    int result = nimcp_execute_recovery(ex, RECOVERY_ACTION_GC);
+    int result = nimcp_execute_recovery(ex, EXCEPTION_RECOVERY_GC);
     EXPECT_EQ(result, 0);
     EXPECT_EQ(g_recovery_tracker.gc_calls.load(), 1);
-    EXPECT_EQ(g_recovery_tracker.last_action, RECOVERY_ACTION_GC);
+    EXPECT_EQ(g_recovery_tracker.last_action, EXCEPTION_RECOVERY_GC);
 
     nimcp_exception_unref(ex);
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Unregister callback", MAX_RECOVERY_TIME_MS);
-    EXPECT_EQ(nimcp_unregister_recovery_callback(RECOVERY_ACTION_GC), 0);
+    EXPECT_EQ(nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_GC), 0);
 
     // Verify callback no longer executes
     ex = nimcp_exception_create(
@@ -401,7 +401,7 @@ TEST_F(ExceptionRecoveryPipelineTest, RecoveryCallbackRegistration) {
 
     int initial_gc_calls = g_recovery_tracker.gc_calls.load();
     // May return error or success depending on implementation
-    nimcp_execute_recovery(ex, RECOVERY_ACTION_GC);
+    nimcp_execute_recovery(ex, EXCEPTION_RECOVERY_GC);
     // GC callback should not have been called again (or called but not our callback)
     // Implementation dependent - just verify no crash
 
@@ -432,33 +432,33 @@ TEST_F(ExceptionRecoveryPipelineTest, GCRecoveryPipeline) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Get recovery strategy", MAX_STRATEGY_TIME_MS);
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)mem_ex, &strategy);
 
     // Memory exceptions typically suggest GC
     EXPECT_TRUE(
-        strategy.primary_action == RECOVERY_ACTION_GC ||
-        strategy.primary_action == RECOVERY_ACTION_COMPACT
+        strategy.primary_action == EXCEPTION_RECOVERY_GC ||
+        strategy.primary_action == EXCEPTION_RECOVERY_COMPACT
     );
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Execute GC recovery", MAX_RECOVERY_TIME_MS);
-    int result = nimcp_exception_execute_recovery((nimcp_exception_t*)mem_ex, RECOVERY_ACTION_GC);
+    int result = nimcp_exception_execute_recovery((nimcp_exception_t*)mem_ex, EXCEPTION_RECOVERY_GC);
     EXPECT_EQ(result, 0);
     EXPECT_GE(g_recovery_tracker.gc_calls.load(), 1);
     EXPECT_GE(g_recovery_tracker.successful_recoveries.load(), 1);
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Notify recovery result", MAX_RECOVERY_TIME_MS);
-    result = nimcp_exception_notify_recovery_result((nimcp_exception_t*)mem_ex, RECOVERY_ACTION_GC, true);
+    result = nimcp_exception_notify_recovery_result((nimcp_exception_t*)mem_ex, EXCEPTION_RECOVERY_GC, true);
     EXPECT_EQ(result, 0);
     EXPECT_TRUE(((nimcp_exception_t*)mem_ex)->recovery_succeeded);
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Record recovery metrics", MAX_RECOVERY_TIME_MS);
-    nimcp_metrics_record_recovery((nimcp_exception_t*)mem_ex, RECOVERY_ACTION_GC, true, 5000);
+    nimcp_metrics_record_recovery((nimcp_exception_t*)mem_ex, EXCEPTION_RECOVERY_GC, true, 5000);
 
-    float gc_rate = nimcp_metrics_get_recovery_rate(RECOVERY_ACTION_GC);
+    float gc_rate = nimcp_metrics_get_recovery_rate(EXCEPTION_RECOVERY_GC);
     EXPECT_GT(gc_rate, 0.0f);
     E2E_STAGE_END();
 
@@ -487,7 +487,7 @@ TEST_F(ExceptionRecoveryPipelineTest, RetryRecoveryPipeline) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Execute retry recovery", MAX_RECOVERY_TIME_MS);
-    int result = nimcp_exception_execute_recovery((nimcp_exception_t*)io_ex, RECOVERY_ACTION_RETRY);
+    int result = nimcp_exception_execute_recovery((nimcp_exception_t*)io_ex, EXCEPTION_RECOVERY_RETRY);
     EXPECT_EQ(result, 0);
     EXPECT_GE(g_recovery_tracker.retry_calls.load(), 1);
     E2E_STAGE_END();
@@ -503,7 +503,7 @@ TEST_F(ExceptionRecoveryPipelineTest, RetryRecoveryPipeline) {
         "Failed retry test"
     );
 
-    result = nimcp_exception_execute_recovery((nimcp_exception_t*)io_ex2, RECOVERY_ACTION_RETRY);
+    result = nimcp_exception_execute_recovery((nimcp_exception_t*)io_ex2, EXCEPTION_RECOVERY_RETRY);
     EXPECT_EQ(result, -1);  // Should fail
     EXPECT_GE(g_recovery_tracker.failed_recoveries.load(), 1);
 
@@ -538,16 +538,16 @@ TEST_F(ExceptionRecoveryPipelineTest, RollbackRecoveryPipeline) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Execute rollback recovery", MAX_RECOVERY_TIME_MS);
-    int result = nimcp_exception_execute_recovery((nimcp_exception_t*)brain_ex, RECOVERY_ACTION_ROLLBACK);
+    int result = nimcp_exception_execute_recovery((nimcp_exception_t*)brain_ex, EXCEPTION_RECOVERY_ROLLBACK);
     EXPECT_EQ(result, 0);
     EXPECT_GE(g_recovery_tracker.rollback_calls.load(), 1);
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify rollback tracking", MAX_RECOVERY_TIME_MS);
-    nimcp_exception_notify_recovery_result((nimcp_exception_t*)brain_ex, RECOVERY_ACTION_ROLLBACK, true);
-    nimcp_metrics_record_recovery((nimcp_exception_t*)brain_ex, RECOVERY_ACTION_ROLLBACK, true, 10000);
+    nimcp_exception_notify_recovery_result((nimcp_exception_t*)brain_ex, EXCEPTION_RECOVERY_ROLLBACK, true);
+    nimcp_metrics_record_recovery((nimcp_exception_t*)brain_ex, EXCEPTION_RECOVERY_ROLLBACK, true, 10000);
 
-    float rollback_rate = nimcp_metrics_get_recovery_rate(RECOVERY_ACTION_ROLLBACK);
+    float rollback_rate = nimcp_metrics_get_recovery_rate(EXCEPTION_RECOVERY_ROLLBACK);
     EXPECT_GT(rollback_rate, 0.0f);
     E2E_STAGE_END();
 
@@ -576,7 +576,7 @@ TEST_F(ExceptionRecoveryPipelineTest, ThreadRestartRecoveryPipeline) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Execute thread restart recovery", MAX_RECOVERY_TIME_MS);
-    int result = nimcp_exception_execute_recovery((nimcp_exception_t*)thread_ex, RECOVERY_ACTION_RESTART_THREAD);
+    int result = nimcp_exception_execute_recovery((nimcp_exception_t*)thread_ex, EXCEPTION_RECOVERY_RESTART_THREAD);
     EXPECT_EQ(result, 0);
     EXPECT_GE(g_recovery_tracker.thread_restart_calls.load(), 1);
     E2E_STAGE_END();
@@ -592,13 +592,13 @@ TEST_F(ExceptionRecoveryPipelineTest, ThreadRestartRecoveryPipeline) {
     deadlock_ex->is_deadlock = true;
     deadlock_ex->deadlock_cycle_len = 3;
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)deadlock_ex, &strategy);
 
     // Deadlock should suggest thread restart
     EXPECT_TRUE(
-        strategy.primary_action == RECOVERY_ACTION_RESTART_THREAD ||
-        strategy.primary_action == RECOVERY_ACTION_RESTART_COMPONENT
+        strategy.primary_action == EXCEPTION_RECOVERY_RESTART_THREAD ||
+        strategy.primary_action == EXCEPTION_RECOVERY_RESTART_COMPONENT
     );
 
     nimcp_exception_unref((nimcp_exception_t*)deadlock_ex);
@@ -631,19 +631,19 @@ TEST_F(ExceptionRecoveryPipelineTest, QuarantineRecoveryPipeline) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Execute quarantine recovery", MAX_RECOVERY_TIME_MS);
-    int result = nimcp_exception_execute_recovery((nimcp_exception_t*)sec_ex, RECOVERY_ACTION_QUARANTINE);
+    int result = nimcp_exception_execute_recovery((nimcp_exception_t*)sec_ex, EXCEPTION_RECOVERY_QUARANTINE);
     EXPECT_EQ(result, 0);
     EXPECT_GE(g_recovery_tracker.quarantine_calls.load(), 1);
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify security exception strategy", MAX_STRATEGY_TIME_MS);
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)sec_ex, &strategy);
 
     // Security exceptions with quarantine_required should suggest quarantine
     EXPECT_TRUE(
-        strategy.primary_action == RECOVERY_ACTION_QUARANTINE ||
-        strategy.fallback_action == RECOVERY_ACTION_QUARANTINE
+        strategy.primary_action == EXCEPTION_RECOVERY_QUARANTINE ||
+        strategy.fallback_action == EXCEPTION_RECOVERY_QUARANTINE
     );
     E2E_STAGE_END();
 
@@ -671,20 +671,20 @@ TEST_F(ExceptionRecoveryPipelineTest, EmergencySaveRecoveryPipeline) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Execute emergency save recovery", MAX_RECOVERY_TIME_MS);
-    int result = nimcp_exception_execute_recovery(fatal_ex, RECOVERY_ACTION_EMERGENCY_SAVE);
+    int result = nimcp_exception_execute_recovery(fatal_ex, EXCEPTION_RECOVERY_EMERGENCY_SAVE);
     EXPECT_EQ(result, 0);
     EXPECT_GE(g_recovery_tracker.emergency_save_calls.load(), 1);
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify fatal exception strategy", MAX_STRATEGY_TIME_MS);
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(fatal_ex, &strategy);
 
     // Fatal exceptions should include emergency save or graceful shutdown
     EXPECT_TRUE(
-        strategy.primary_action == RECOVERY_ACTION_EMERGENCY_SAVE ||
-        strategy.primary_action == RECOVERY_ACTION_GRACEFUL_SHUTDOWN ||
-        strategy.fallback_action == RECOVERY_ACTION_EMERGENCY_SAVE
+        strategy.primary_action == EXCEPTION_RECOVERY_EMERGENCY_SAVE ||
+        strategy.primary_action == EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN ||
+        strategy.fallback_action == EXCEPTION_RECOVERY_EMERGENCY_SAVE
     );
     E2E_STAGE_END();
 
@@ -717,10 +717,10 @@ TEST_F(ExceptionRecoveryPipelineTest, AdaptiveLearningPipeline) {
         nimcp_exception_generate_epitope((nimcp_exception_t*)ex);
 
         // Execute GC recovery successfully
-        nimcp_exception_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_GC);
+        nimcp_exception_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_GC);
 
         // Record outcome for learning
-        nimcp_adaptive_record_outcome((nimcp_exception_t*)ex, RECOVERY_ACTION_GC, true);
+        nimcp_adaptive_record_outcome((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_GC, true);
 
         nimcp_exception_unref((nimcp_exception_t*)ex);
     }
@@ -736,11 +736,11 @@ TEST_F(ExceptionRecoveryPipelineTest, AdaptiveLearningPipeline) {
     );
     nimcp_exception_generate_epitope((nimcp_exception_t*)test_ex);
 
-    nimcp_recovery_action_t suggested = nimcp_adaptive_suggest_action((nimcp_exception_t*)test_ex);
+    nimcp_exception_recovery_action_t suggested = nimcp_adaptive_suggest_action((nimcp_exception_t*)test_ex);
 
     // After enough successful GC recoveries, adaptive should suggest GC
     // (or NONE if not enough samples yet)
-    EXPECT_TRUE(suggested == RECOVERY_ACTION_GC || suggested == RECOVERY_ACTION_NONE);
+    EXPECT_TRUE(suggested == EXCEPTION_RECOVERY_GC || suggested == EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref((nimcp_exception_t*)test_ex);
     E2E_STAGE_END();
@@ -760,10 +760,10 @@ TEST_F(ExceptionRecoveryPipelineTest, AdaptiveLearningPipeline) {
         nimcp_exception_generate_epitope((nimcp_exception_t*)ex);
 
         // Try GC (fails)
-        nimcp_adaptive_record_outcome((nimcp_exception_t*)ex, RECOVERY_ACTION_GC, false);
+        nimcp_adaptive_record_outcome((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_GC, false);
 
         // Try RETRY (succeeds)
-        nimcp_adaptive_record_outcome((nimcp_exception_t*)ex, RECOVERY_ACTION_RETRY, true);
+        nimcp_adaptive_record_outcome((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_RETRY, true);
 
         nimcp_exception_unref((nimcp_exception_t*)ex);
     }
@@ -788,7 +788,7 @@ TEST_F(ExceptionRecoveryPipelineTest, AdaptiveLearningPipeline) {
     );
     nimcp_exception_generate_epitope((nimcp_exception_t*)conf_ex);
 
-    float confidence = nimcp_adaptive_get_confidence((nimcp_exception_t*)conf_ex, RECOVERY_ACTION_GC);
+    float confidence = nimcp_adaptive_get_confidence((nimcp_exception_t*)conf_ex, EXCEPTION_RECOVERY_GC);
     // Confidence may be low if not enough samples
     EXPECT_GE(confidence, 0.0f);
     EXPECT_LE(confidence, 1.0f);
@@ -815,13 +815,13 @@ TEST_F(ExceptionRecoveryPipelineTest, RecoveryStrategySelectionPipeline) {
         "Memory strategy test"
     );
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)mem_ex, &strategy);
 
     // Memory exception primary: GC or COMPACT
     EXPECT_TRUE(
-        strategy.primary_action == RECOVERY_ACTION_GC ||
-        strategy.primary_action == RECOVERY_ACTION_COMPACT
+        strategy.primary_action == EXCEPTION_RECOVERY_GC ||
+        strategy.primary_action == EXCEPTION_RECOVERY_COMPACT
     );
 
     nimcp_exception_unref((nimcp_exception_t*)mem_ex);
@@ -840,8 +840,8 @@ TEST_F(ExceptionRecoveryPipelineTest, RecoveryStrategySelectionPipeline) {
 
     // IO exception primary: RETRY
     EXPECT_TRUE(
-        strategy.primary_action == RECOVERY_ACTION_RETRY ||
-        strategy.primary_action == RECOVERY_ACTION_ROLLBACK
+        strategy.primary_action == EXCEPTION_RECOVERY_RETRY ||
+        strategy.primary_action == EXCEPTION_RECOVERY_ROLLBACK
     );
 
     nimcp_exception_unref((nimcp_exception_t*)io_ex);
@@ -861,8 +861,8 @@ TEST_F(ExceptionRecoveryPipelineTest, RecoveryStrategySelectionPipeline) {
 
     // Deadlock primary: RESTART_THREAD
     EXPECT_TRUE(
-        strategy.primary_action == RECOVERY_ACTION_RESTART_THREAD ||
-        strategy.primary_action == RECOVERY_ACTION_RESTART_COMPONENT
+        strategy.primary_action == EXCEPTION_RECOVERY_RESTART_THREAD ||
+        strategy.primary_action == EXCEPTION_RECOVERY_RESTART_COMPONENT
     );
 
     nimcp_exception_unref((nimcp_exception_t*)thread_ex);
@@ -882,8 +882,8 @@ TEST_F(ExceptionRecoveryPipelineTest, RecoveryStrategySelectionPipeline) {
 
     // Security exception with quarantine: QUARANTINE
     EXPECT_TRUE(
-        strategy.primary_action == RECOVERY_ACTION_QUARANTINE ||
-        strategy.fallback_action == RECOVERY_ACTION_QUARANTINE
+        strategy.primary_action == EXCEPTION_RECOVERY_QUARANTINE ||
+        strategy.fallback_action == EXCEPTION_RECOVERY_QUARANTINE
     );
 
     nimcp_exception_unref((nimcp_exception_t*)sec_ex);
@@ -905,9 +905,9 @@ TEST_F(ExceptionRecoveryPipelineTest, RecoveryStrategySelectionPipeline) {
 
     // Diverged learning: ROLLBACK or CLEAR_CACHE
     EXPECT_TRUE(
-        strategy.primary_action == RECOVERY_ACTION_ROLLBACK ||
-        strategy.primary_action == RECOVERY_ACTION_CLEAR_CACHE ||
-        strategy.primary_action == RECOVERY_ACTION_RESTART_COMPONENT
+        strategy.primary_action == EXCEPTION_RECOVERY_ROLLBACK ||
+        strategy.primary_action == EXCEPTION_RECOVERY_CLEAR_CACHE ||
+        strategy.primary_action == EXCEPTION_RECOVERY_RESTART_COMPONENT
     );
 
     nimcp_exception_unref((nimcp_exception_t*)brain_ex);
@@ -937,15 +937,15 @@ TEST_F(ExceptionRecoveryPipelineTest, FailedRecoveryEscalationPipeline) {
     );
 
     // Get strategy
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
     // Try primary action (GC - will fail)
-    int result = nimcp_exception_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_GC);
+    int result = nimcp_exception_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_GC);
     EXPECT_EQ(result, -1);
 
     // Record failure for metrics
-    nimcp_metrics_record_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_GC, false, 1000);
+    nimcp_metrics_record_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_GC, false, 1000);
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Execute fallback action", MAX_RECOVERY_TIME_MS);
@@ -958,7 +958,7 @@ TEST_F(ExceptionRecoveryPipelineTest, FailedRecoveryEscalationPipeline) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify metrics show failure pattern", MAX_RECOVERY_TIME_MS);
-    float gc_rate = nimcp_metrics_get_recovery_rate(RECOVERY_ACTION_GC);
+    float gc_rate = nimcp_metrics_get_recovery_rate(EXCEPTION_RECOVERY_GC);
     float fallback_rate = nimcp_metrics_get_recovery_rate(strategy.fallback_action);
 
     // GC should have lower success rate than fallback
@@ -981,23 +981,23 @@ TEST_F(ExceptionRecoveryPipelineTest, AllRecoveryActionsPipeline) {
     RegisterAllRecoveryCallbacks();
 
     struct ActionTest {
-        nimcp_recovery_action_t action;
+        nimcp_exception_recovery_action_t action;
         const char* name;
         std::atomic<int>* counter;
     };
 
     ActionTest tests[] = {
-        {RECOVERY_ACTION_GC, "GC", &g_recovery_tracker.gc_calls},
-        {RECOVERY_ACTION_RETRY, "RETRY", &g_recovery_tracker.retry_calls},
-        {RECOVERY_ACTION_ROLLBACK, "ROLLBACK", &g_recovery_tracker.rollback_calls},
-        {RECOVERY_ACTION_RESTART_THREAD, "RESTART_THREAD", &g_recovery_tracker.thread_restart_calls},
-        {RECOVERY_ACTION_QUARANTINE, "QUARANTINE", &g_recovery_tracker.quarantine_calls},
-        {RECOVERY_ACTION_EMERGENCY_SAVE, "EMERGENCY_SAVE", &g_recovery_tracker.emergency_save_calls},
-        {RECOVERY_ACTION_REDUCE_LOAD, "REDUCE_LOAD", &g_recovery_tracker.reduce_load_calls},
-        {RECOVERY_ACTION_CLEAR_CACHE, "CLEAR_CACHE", &g_recovery_tracker.clear_cache_calls},
-        {RECOVERY_ACTION_RESTART_COMPONENT, "RESTART_COMPONENT", &g_recovery_tracker.component_restart_calls},
-        {RECOVERY_ACTION_GRACEFUL_SHUTDOWN, "GRACEFUL_SHUTDOWN", &g_recovery_tracker.graceful_shutdown_calls},
-        {RECOVERY_ACTION_COMPACT, "COMPACT", &g_recovery_tracker.compact_calls},
+        {EXCEPTION_RECOVERY_GC, "GC", &g_recovery_tracker.gc_calls},
+        {EXCEPTION_RECOVERY_RETRY, "RETRY", &g_recovery_tracker.retry_calls},
+        {EXCEPTION_RECOVERY_ROLLBACK, "ROLLBACK", &g_recovery_tracker.rollback_calls},
+        {EXCEPTION_RECOVERY_RESTART_THREAD, "RESTART_THREAD", &g_recovery_tracker.thread_restart_calls},
+        {EXCEPTION_RECOVERY_QUARANTINE, "QUARANTINE", &g_recovery_tracker.quarantine_calls},
+        {EXCEPTION_RECOVERY_EMERGENCY_SAVE, "EMERGENCY_SAVE", &g_recovery_tracker.emergency_save_calls},
+        {EXCEPTION_RECOVERY_REDUCE_LOAD, "REDUCE_LOAD", &g_recovery_tracker.reduce_load_calls},
+        {EXCEPTION_RECOVERY_CLEAR_CACHE, "CLEAR_CACHE", &g_recovery_tracker.clear_cache_calls},
+        {EXCEPTION_RECOVERY_RESTART_COMPONENT, "RESTART_COMPONENT", &g_recovery_tracker.component_restart_calls},
+        {EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN, "GRACEFUL_SHUTDOWN", &g_recovery_tracker.graceful_shutdown_calls},
+        {EXCEPTION_RECOVERY_COMPACT, "COMPACT", &g_recovery_tracker.compact_calls},
     };
 
     for (const auto& test : tests) {
@@ -1065,7 +1065,7 @@ TEST_F(ExceptionRecoveryPipelineTest, ImmuneMediatedRecoveryPipeline) {
 
     E2E_STAGE_BEGIN("Execute immune-triggered recovery", MAX_RECOVERY_TIME_MS);
     // Get strategy from exception
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
     // Execute recovery
@@ -1111,7 +1111,7 @@ TEST_F(ExceptionRecoveryPipelineTest, PatternResetRelearningPipeline) {
 
     // Record some outcomes
     for (int i = 0; i < 5; i++) {
-        nimcp_adaptive_record_outcome(template_ex, RECOVERY_ACTION_RETRY, true);
+        nimcp_adaptive_record_outcome(template_ex, EXCEPTION_RECOVERY_RETRY, true);
     }
     E2E_STAGE_END();
 
@@ -1122,7 +1122,7 @@ TEST_F(ExceptionRecoveryPipelineTest, PatternResetRelearningPipeline) {
     E2E_STAGE_BEGIN("Retrain pattern", MAX_LEARNING_TIME_MS);
     // Record new outcomes with different action
     for (int i = 0; i < 5; i++) {
-        nimcp_adaptive_record_outcome(template_ex, RECOVERY_ACTION_GC, true);
+        nimcp_adaptive_record_outcome(template_ex, EXCEPTION_RECOVERY_GC, true);
     }
     E2E_STAGE_END();
 
@@ -1172,14 +1172,14 @@ TEST_F(ExceptionRecoveryPipelineTest, ConcurrentRecoveryOperations) {
                 }
 
                 // Execute different recovery actions
-                nimcp_recovery_action_t actions[] = {
-                    RECOVERY_ACTION_GC,
-                    RECOVERY_ACTION_RETRY,
-                    RECOVERY_ACTION_CLEAR_CACHE,
-                    RECOVERY_ACTION_REDUCE_LOAD
+                nimcp_exception_recovery_action_t actions[] = {
+                    EXCEPTION_RECOVERY_GC,
+                    EXCEPTION_RECOVERY_RETRY,
+                    EXCEPTION_RECOVERY_CLEAR_CACHE,
+                    EXCEPTION_RECOVERY_REDUCE_LOAD
                 };
 
-                nimcp_recovery_action_t action = actions[i % 4];
+                nimcp_exception_recovery_action_t action = actions[i % 4];
                 int result = nimcp_execute_recovery(ex, action);
 
                 if (result == 0) {
@@ -1208,7 +1208,7 @@ TEST_F(ExceptionRecoveryPipelineTest, ConcurrentRecoveryOperations) {
 
     // Sum of all recovery attempts should match total
     uint64_t total_attempts = 0;
-    for (int i = 0; i < NIMCP_METRICS_RECOVERY_ACTION_COUNT; i++) {
+    for (int i = 0; i < NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT; i++) {
         total_attempts += metrics.recovery[i].attempts;
     }
 

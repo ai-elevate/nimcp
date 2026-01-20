@@ -22,6 +22,7 @@
 
 #include "physics/ephaptic/nimcp_ephaptic.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -169,6 +170,8 @@ static nimcp_error_t ensure_neuron_capacity(nimcp_ephaptic_system_t* system) {
         new_capacity * sizeof(nimcp_ephaptic_neuron_t)
     );
     if (!new_neurons) {
+        LOG_ERROR("Failed to reallocate ephaptic neuron array to capacity %u", new_capacity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to reallocate ephaptic neurons");
         return EPHAPTIC_ERROR_OUT_OF_MEMORY;
     }
 
@@ -243,6 +246,8 @@ nimcp_error_t nimcp_ephaptic_init(
         sizeof(nimcp_ephaptic_neuron_t)
     );
     if (!system->neurons) {
+        LOG_ERROR("Failed to allocate ephaptic neuron array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate ephaptic neurons");
         return EPHAPTIC_ERROR_OUT_OF_MEMORY;
     }
     system->neuron_capacity = INITIAL_NEURON_CAPACITY;

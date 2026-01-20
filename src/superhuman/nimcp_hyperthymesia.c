@@ -13,6 +13,8 @@
 #include "superhuman/nimcp_hyperthymesia.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -132,11 +134,17 @@ static int32_t get_year_index(hyperthymesia_module_t* module, uint16_t year) {
  */
 static temporal_node_t* create_temporal_node(uint32_t initial_capacity) {
     temporal_node_t* node = nimcp_calloc(1, sizeof(temporal_node_t));
-    if (!node) return NULL;
+    if (!node) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(temporal_node_t),
+                           "create_temporal_node: Failed to allocate node");
+        return NULL;
+    }
 
     if (initial_capacity > 0) {
         node->memory_ids = nimcp_calloc(initial_capacity, sizeof(uint64_t));
         if (!node->memory_ids) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, initial_capacity * sizeof(uint64_t),
+                               "create_temporal_node: Failed to allocate memory_ids");
             nimcp_free(node);
             return NULL;
         }
@@ -149,12 +157,20 @@ static temporal_node_t* create_temporal_node(uint32_t initial_capacity) {
  * @brief Add memory ID to temporal node
  */
 static bool add_to_temporal_node(temporal_node_t* node, uint64_t memory_id) {
-    if (!node) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "add_to_temporal_node: NULL node pointer");
+        return false;
+    }
 
     if (node->memory_count >= node->capacity) {
         uint32_t new_capacity = node->capacity == 0 ? 16 : node->capacity * 2;
         uint64_t* new_ids = nimcp_realloc(node->memory_ids, new_capacity * sizeof(uint64_t));
-        if (!new_ids) return false;
+        if (!new_ids) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, new_capacity * sizeof(uint64_t),
+                               "add_to_temporal_node: Failed to expand memory_ids");
+            return false;
+        }
         node->memory_ids = new_ids;
         node->capacity = new_capacity;
     }
@@ -181,34 +197,54 @@ static void free_temporal_node(temporal_node_t* node) {
  * @brief Copy memory context
  */
 static bool copy_memory_context(memory_context_t* dst, const memory_context_t* src) {
-    if (!dst || !src) return false;
+    if (!dst || !src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "copy_memory_context: NULL parameter");
+        return false;
+    }
 
     memset(dst, 0, sizeof(memory_context_t));
 
     if (src->spatial_context && src->spatial_dim > 0) {
         dst->spatial_context = nimcp_calloc(src->spatial_dim, sizeof(float));
-        if (!dst->spatial_context) return false;
+        if (!dst->spatial_context) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, src->spatial_dim * sizeof(float),
+                               "copy_memory_context: Failed to allocate spatial_context");
+            return false;
+        }
         memcpy(dst->spatial_context, src->spatial_context, src->spatial_dim * sizeof(float));
         dst->spatial_dim = src->spatial_dim;
     }
 
     if (src->social_context && src->social_dim > 0) {
         dst->social_context = nimcp_calloc(src->social_dim, sizeof(float));
-        if (!dst->social_context) return false;
+        if (!dst->social_context) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, src->social_dim * sizeof(float),
+                               "copy_memory_context: Failed to allocate social_context");
+            return false;
+        }
         memcpy(dst->social_context, src->social_context, src->social_dim * sizeof(float));
         dst->social_dim = src->social_dim;
     }
 
     if (src->activity_context && src->activity_dim > 0) {
         dst->activity_context = nimcp_calloc(src->activity_dim, sizeof(float));
-        if (!dst->activity_context) return false;
+        if (!dst->activity_context) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, src->activity_dim * sizeof(float),
+                               "copy_memory_context: Failed to allocate activity_context");
+            return false;
+        }
         memcpy(dst->activity_context, src->activity_context, src->activity_dim * sizeof(float));
         dst->activity_dim = src->activity_dim;
     }
 
     if (src->semantic_context && src->semantic_dim > 0) {
         dst->semantic_context = nimcp_calloc(src->semantic_dim, sizeof(float));
-        if (!dst->semantic_context) return false;
+        if (!dst->semantic_context) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, src->semantic_dim * sizeof(float),
+                               "copy_memory_context: Failed to allocate semantic_context");
+            return false;
+        }
         memcpy(dst->semantic_context, src->semantic_context, src->semantic_dim * sizeof(float));
         dst->semantic_dim = src->semantic_dim;
     }
@@ -354,6 +390,8 @@ hyperthymesia_module_t* hyperthymesia_create(const hyperthymesia_config_t* confi
     hyperthymesia_module_t* module = nimcp_calloc(1, sizeof(hyperthymesia_module_t));
     if (!module) {
         LOG_ERROR("[%s] Failed to allocate module", HYPERTHYMESIA_LOG_MODULE);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(hyperthymesia_module_t),
+                           "hyperthymesia_create: Failed to allocate module");
         return NULL;
     }
 
@@ -369,6 +407,9 @@ hyperthymesia_module_t* hyperthymesia_create(const hyperthymesia_config_t* confi
     module->memory_store = nimcp_calloc(module->store_capacity, sizeof(memory_entry_t*));
     if (!module->memory_store) {
         LOG_ERROR("[%s] Failed to allocate memory store", HYPERTHYMESIA_LOG_MODULE);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           module->store_capacity * sizeof(memory_entry_t*),
+                           "hyperthymesia_create: Failed to allocate memory store");
         hyperthymesia_destroy(module);
         return NULL;
     }
@@ -381,6 +422,9 @@ hyperthymesia_module_t* hyperthymesia_create(const hyperthymesia_config_t* confi
         module->year_index = nimcp_calloc(module->index_year_count, sizeof(temporal_node_t));
         if (!module->year_index) {
             LOG_ERROR("[%s] Failed to allocate temporal index", HYPERTHYMESIA_LOG_MODULE);
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                               module->index_year_count * sizeof(temporal_node_t),
+                               "hyperthymesia_create: Failed to allocate temporal index");
             hyperthymesia_destroy(module);
             return NULL;
         }
@@ -434,7 +478,11 @@ void hyperthymesia_destroy(hyperthymesia_module_t* module) {
 }
 
 bool hyperthymesia_reset(hyperthymesia_module_t* module) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hyperthymesia_reset: NULL module pointer");
+        return false;
+    }
 
     LOG_DEBUG("[%s] Resetting module", HYPERTHYMESIA_LOG_MODULE);
 
@@ -484,11 +532,15 @@ uint64_t hyperthymesia_encode_memory(
     const emotional_state_t* emotion
 ) {
     if (!module || !timestamp || !core_features || feature_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "hyperthymesia_encode_memory: Invalid parameters");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return 0;
     }
 
     if (module->memory_count >= module->config.memory_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+                              "hyperthymesia_encode_memory: Memory capacity full");
         set_error(module, HYPERTHYMESIA_ERROR_MEMORY_FULL);
         return 0;
     }
@@ -501,6 +553,8 @@ uint64_t hyperthymesia_encode_memory(
     /* Create memory entry */
     memory_entry_t* entry = nimcp_calloc(1, sizeof(memory_entry_t));
     if (!entry) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(memory_entry_t),
+                           "hyperthymesia_encode_memory: Failed to allocate memory entry");
         set_error(module, HYPERTHYMESIA_ERROR_ENCODING_FAILED);
         return 0;
     }
@@ -513,6 +567,8 @@ uint64_t hyperthymesia_encode_memory(
     /* Copy core features */
     entry->memory.core_features = nimcp_calloc(feature_count, sizeof(float));
     if (!entry->memory.core_features) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, feature_count * sizeof(float),
+                           "hyperthymesia_encode_memory: Failed to allocate core_features");
         free_memory_entry(entry);
         set_error(module, HYPERTHYMESIA_ERROR_ENCODING_FAILED);
         return 0;
@@ -589,6 +645,8 @@ bool hyperthymesia_add_sensory_trace(
     const sensory_trace_t* trace
 ) {
     if (!module || memory_id == 0 || !trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "hyperthymesia_add_sensory_trace: Invalid parameters");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -616,6 +674,8 @@ bool hyperthymesia_add_sensory_trace(
         new_count * sizeof(sensory_trace_t)
     );
     if (!new_traces) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, new_count * sizeof(sensory_trace_t),
+                           "hyperthymesia_add_sensory_trace: Failed to expand traces");
         set_error(module, HYPERTHYMESIA_ERROR_ENCODING_FAILED);
         return false;
     }
@@ -656,6 +716,8 @@ uint64_t hyperthymesia_encode_flashbulb(
     const char* narrative_tag
 ) {
     if (!module || !timestamp || !core_features || feature_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "hyperthymesia_encode_flashbulb: Invalid parameters");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return 0;
     }
@@ -708,6 +770,8 @@ bool hyperthymesia_link_memories(
     const char* narrative_tag
 ) {
     if (!module || memory_id_1 == 0 || memory_id_2 == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "hyperthymesia_link_memories: Invalid parameters");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -782,6 +846,8 @@ bool hyperthymesia_retrieve_by_date(
     retrieval_result_t* result
 ) {
     if (!module || !datetime || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hyperthymesia_retrieve_by_date: NULL parameter");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -828,6 +894,9 @@ bool hyperthymesia_retrieve_by_date(
     result->memories = nimcp_calloc(node->memory_count, sizeof(autobiographical_memory_t));
     result->relevance_scores = nimcp_calloc(node->memory_count, sizeof(float));
     if (!result->memories || !result->relevance_scores) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           node->memory_count * sizeof(autobiographical_memory_t),
+                           "hyperthymesia_retrieve_by_date: Failed to allocate results");
         hyperthymesia_free_result(result);
         set_error(module, HYPERTHYMESIA_ERROR_RETRIEVAL_FAILED);
         return false;
@@ -863,6 +932,8 @@ bool hyperthymesia_query_date_range(
     retrieval_result_t* result
 ) {
     if (!module || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hyperthymesia_query_date_range: NULL parameter");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -876,6 +947,9 @@ bool hyperthymesia_query_date_range(
     result->memories = nimcp_calloc(max_results, sizeof(autobiographical_memory_t));
     result->relevance_scores = nimcp_calloc(max_results, sizeof(float));
     if (!result->memories || !result->relevance_scores) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           max_results * sizeof(autobiographical_memory_t),
+                           "hyperthymesia_query_date_range: Failed to allocate results");
         hyperthymesia_free_result(result);
         set_error(module, HYPERTHYMESIA_ERROR_RETRIEVAL_FAILED);
         return false;
@@ -943,6 +1017,8 @@ bool hyperthymesia_retrieve_by_anniversary(
     retrieval_result_t* result
 ) {
     if (!module || month < 1 || month > 12 || day < 1 || day > 31 || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "hyperthymesia_retrieve_by_anniversary: Invalid parameters");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -972,6 +1048,9 @@ bool hyperthymesia_retrieve_by_anniversary(
     result->memories = nimcp_calloc(total, sizeof(autobiographical_memory_t));
     result->relevance_scores = nimcp_calloc(total, sizeof(float));
     if (!result->memories || !result->relevance_scores) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           total * sizeof(autobiographical_memory_t),
+                           "hyperthymesia_retrieve_by_anniversary: Failed to allocate results");
         hyperthymesia_free_result(result);
         set_error(module, HYPERTHYMESIA_ERROR_RETRIEVAL_FAILED);
         return false;
@@ -1023,6 +1102,8 @@ bool hyperthymesia_reexperience(
     reexperience_result_t* result
 ) {
     if (!module || memory_id == 0 || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "hyperthymesia_reexperience: Invalid parameters");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1138,6 +1219,8 @@ bool hyperthymesia_reexperience_modality(
     sensory_trace_t* trace
 ) {
     if (!module || memory_id == 0 || !trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "hyperthymesia_reexperience_modality: Invalid parameters");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1188,6 +1271,8 @@ bool hyperthymesia_reexperience_emotion(
     emotional_state_t* emotion
 ) {
     if (!module || memory_id == 0 || !emotion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "hyperthymesia_reexperience_emotion: Invalid parameters");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1226,6 +1311,8 @@ bool hyperthymesia_create_cursor(
     timeline_cursor_t* cursor
 ) {
     if (!module || !start_date || !cursor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hyperthymesia_create_cursor: NULL parameter");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1264,6 +1351,8 @@ bool hyperthymesia_navigate_timeline(
     int32_t offset
 ) {
     if (!module || !cursor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hyperthymesia_navigate_timeline: NULL parameter");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1349,6 +1438,8 @@ bool hyperthymesia_set_zoom(
     temporal_resolution_t new_zoom
 ) {
     if (!module || !cursor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hyperthymesia_set_zoom: NULL parameter");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1389,6 +1480,8 @@ bool hyperthymesia_jump_to_date(
     const hyperthymesia_datetime_t* target_date
 ) {
     if (!module || !cursor || !target_date) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hyperthymesia_jump_to_date: NULL parameter");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1441,7 +1534,11 @@ bool hyperthymesia_get_memory(
     uint64_t memory_id,
     autobiographical_memory_t* memory
 ) {
-    if (!module || memory_id == 0 || !memory) return false;
+    if (!module || memory_id == 0 || !memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "hyperthymesia_get_memory: Invalid parameters");
+        return false;
+    }
 
     uint32_t hash_idx = hash_memory_id(memory_id, module->store_capacity);
     memory_entry_t* entry = module->memory_store[hash_idx];
@@ -1463,6 +1560,8 @@ bool hyperthymesia_update_vividness(
     memory_vividness_t vividness
 ) {
     if (!module || memory_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "hyperthymesia_update_vividness: Invalid parameters");
         set_error(module, HYPERTHYMESIA_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1486,7 +1585,11 @@ uint32_t hyperthymesia_consolidate(
     hyperthymesia_module_t* module,
     float strength_threshold
 ) {
-    if (!module) return 0;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hyperthymesia_consolidate: NULL module pointer");
+        return 0;
+    }
 
     module->status = HYPERTHYMESIA_STATUS_CONSOLIDATING;
 
@@ -1522,7 +1625,11 @@ bool hyperthymesia_set_encode_callback(
     hyperthymesia_encode_callback_t callback,
     void* user_data
 ) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hyperthymesia_set_encode_callback: NULL module pointer");
+        return false;
+    }
     module->encode_callback = callback;
     module->encode_user_data = user_data;
     return true;
@@ -1533,7 +1640,11 @@ bool hyperthymesia_set_reexperience_callback(
     hyperthymesia_reexperience_callback_t callback,
     void* user_data
 ) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hyperthymesia_set_reexperience_callback: NULL module pointer");
+        return false;
+    }
     module->reexperience_callback = callback;
     module->reexperience_user_data = user_data;
     return true;
@@ -1544,7 +1655,11 @@ bool hyperthymesia_set_navigation_callback(
     hyperthymesia_navigation_callback_t callback,
     void* user_data
 ) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hyperthymesia_set_navigation_callback: NULL module pointer");
+        return false;
+    }
     module->navigation_callback = callback;
     module->navigation_user_data = user_data;
     return true;
@@ -1597,13 +1712,21 @@ const char* hyperthymesia_status_string(hyperthymesia_status_t status) {
 }
 
 bool hyperthymesia_get_stats(const hyperthymesia_module_t* module, hyperthymesia_stats_t* stats) {
-    if (!module || !stats) return false;
+    if (!module || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hyperthymesia_get_stats: NULL parameter");
+        return false;
+    }
     *stats = module->stats;
     return true;
 }
 
 bool hyperthymesia_get_config(const hyperthymesia_module_t* module, hyperthymesia_config_t* config) {
-    if (!module || !config) return false;
+    if (!module || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hyperthymesia_get_config: NULL parameter");
+        return false;
+    }
     *config = module->config;
     return true;
 }

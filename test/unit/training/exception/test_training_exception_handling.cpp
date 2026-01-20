@@ -81,7 +81,7 @@ protected:
         return false;  // Don't consume - allow chain to continue
     }
 
-    static int test_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+    static int test_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
         (void)ex;
         (void)action;
         (void)user_data;
@@ -167,14 +167,14 @@ TEST_F(GradientExplosionExceptionTest, GradientExplosion_RecoveryStrategy) {
     );
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
     // Brain exceptions should suggest GC or rollback
     EXPECT_TRUE(
-        strategy.primary_action == RECOVERY_ACTION_GC ||
-        strategy.primary_action == RECOVERY_ACTION_ROLLBACK ||
-        strategy.primary_action == RECOVERY_ACTION_REDUCE_LOAD
+        strategy.primary_action == EXCEPTION_RECOVERY_GC ||
+        strategy.primary_action == EXCEPTION_RECOVERY_ROLLBACK ||
+        strategy.primary_action == EXCEPTION_RECOVERY_REDUCE_LOAD
     );
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
@@ -422,14 +422,14 @@ TEST_F(TrainingDivergenceExceptionTest, Divergence_RecoveryRollback) {
     ASSERT_NE(ex, nullptr);
 
     // Register rollback recovery callback
-    nimcp_register_recovery_callback(RECOVERY_ACTION_ROLLBACK, test_recovery_callback, nullptr);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK, test_recovery_callback, nullptr);
 
     recovery_attempted = false;
-    int result = nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_ROLLBACK);
+    int result = nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_ROLLBACK);
     EXPECT_EQ(result, 0);
     EXPECT_TRUE(recovery_attempted.load());
 
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_ROLLBACK);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK);
     nimcp_exception_unref((nimcp_exception_t*)ex);
 }
 
@@ -535,14 +535,14 @@ TEST_F(CheckpointExceptionTest, Checkpoint_RecoveryEmergencySave) {
     );
     ASSERT_NE(ex, nullptr);
 
-    nimcp_register_recovery_callback(RECOVERY_ACTION_EMERGENCY_SAVE, test_recovery_callback, nullptr);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_EMERGENCY_SAVE, test_recovery_callback, nullptr);
 
     recovery_attempted = false;
-    int result = nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_EMERGENCY_SAVE);
+    int result = nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_EMERGENCY_SAVE);
     EXPECT_EQ(result, 0);
     EXPECT_TRUE(recovery_attempted.load());
 
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_EMERGENCY_SAVE);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_EMERGENCY_SAVE);
     nimcp_exception_unref((nimcp_exception_t*)ex);
 }
 
@@ -843,13 +843,13 @@ TEST_F(TrainingRecoveryActionTest, VerifyRecoveryActionStrings) {
     // WHAT: Verify recovery action string conversion
     // WHY:  Human-readable action names for logging
 
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_NONE), "NONE");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_RETRY), "RETRY");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_GC), "GC");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_ROLLBACK), "ROLLBACK");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_REDUCE_LOAD), "REDUCE_LOAD");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_EMERGENCY_SAVE), "EMERGENCY_SAVE");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_GRACEFUL_SHUTDOWN), "GRACEFUL_SHUTDOWN");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_NONE), "NONE");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_RETRY), "RETRY");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_GC), "GC");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_ROLLBACK), "ROLLBACK");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_REDUCE_LOAD), "REDUCE_LOAD");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_EMERGENCY_SAVE), "EMERGENCY_SAVE");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN), "GRACEFUL_SHUTDOWN");
 }
 
 TEST_F(TrainingRecoveryActionTest, MultipleRecoveryCallbacks) {
@@ -859,18 +859,18 @@ TEST_F(TrainingRecoveryActionTest, MultipleRecoveryCallbacks) {
     static bool gc_called = false;
     static bool rollback_called = false;
 
-    auto gc_callback = [](nimcp_exception_t*, nimcp_recovery_action_t, void*) -> int {
+    auto gc_callback = [](nimcp_exception_t*, nimcp_exception_recovery_action_t, void*) -> int {
         gc_called = true;
         return 0;
     };
 
-    auto rollback_callback = [](nimcp_exception_t*, nimcp_recovery_action_t, void*) -> int {
+    auto rollback_callback = [](nimcp_exception_t*, nimcp_exception_recovery_action_t, void*) -> int {
         rollback_called = true;
         return 0;
     };
 
-    nimcp_register_recovery_callback(RECOVERY_ACTION_GC, gc_callback, nullptr);
-    nimcp_register_recovery_callback(RECOVERY_ACTION_ROLLBACK, rollback_callback, nullptr);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_GC, gc_callback, nullptr);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK, rollback_callback, nullptr);
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
         NIMCP_ERROR_BACKWARD_PASS,
@@ -883,17 +883,17 @@ TEST_F(TrainingRecoveryActionTest, MultipleRecoveryCallbacks) {
     gc_called = false;
     rollback_called = false;
 
-    nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_GC);
+    nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_GC);
     EXPECT_TRUE(gc_called);
     EXPECT_FALSE(rollback_called);
 
     gc_called = false;
-    nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_ROLLBACK);
+    nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_ROLLBACK);
     EXPECT_FALSE(gc_called);
     EXPECT_TRUE(rollback_called);
 
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_GC);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_ROLLBACK);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_GC);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK);
     nimcp_exception_unref((nimcp_exception_t*)ex);
 }
 

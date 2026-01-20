@@ -167,11 +167,14 @@ typedef struct {
 } nimcp_recovery_cache_t;
 
 /**
- * @brief Error context for signature generation
+ * @brief Signal/crash context for recovery signature generation
  *
  * WHAT: Context information for error fingerprinting
  * WHY: Create unique signatures for different error scenarios
  * HOW: Combine signal, address, and context hash
+ *
+ * NOTE: Named nimcp_signal_error_context_t to avoid collision with
+ * nimcp_error_context_t in error/nimcp_error_codes.h which has different fields
  */
 typedef struct {
     int signal;                                              /**< Signal number */
@@ -179,7 +182,7 @@ typedef struct {
     uint64_t context_hash;                                   /**< Additional context */
     const char* function_name;                               /**< Function where error occurred */
     int error_code;                                          /**< System error code */
-} nimcp_error_context_t;
+} nimcp_signal_error_context_t;
 
 /* ============================================================================
  * CACHE LIFECYCLE
@@ -244,7 +247,7 @@ bool nimcp_recovery_cache_clear(nimcp_recovery_cache_t* cache);
  * @note Fast: <50ns typical
  */
 bool nimcp_recovery_cache_compute_signature(
-    const nimcp_error_context_t* context,
+    const nimcp_signal_error_context_t* context,
     nimcp_error_signature_t* signature
 );
 

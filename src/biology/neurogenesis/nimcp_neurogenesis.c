@@ -12,6 +12,9 @@
  */
 
 #include "biology/neurogenesis/nimcp_neurogenesis.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "utils/rng/nimcp_rand.h"
 #include <stdlib.h>
 #include <string.h>
@@ -240,7 +243,10 @@ nimcp_neurogenesis_config_t nimcp_neurogenesis_default_config(void) {
 
 nimcp_neurogenesis_t nimcp_neurogenesis_create(const nimcp_neurogenesis_config_t* config) {
     nimcp_neurogenesis_t ng = (nimcp_neurogenesis_t)calloc(1, sizeof(struct nimcp_neurogenesis_struct));
-    if (!ng) return NULL;
+    if (!ng) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct nimcp_neurogenesis_struct), "Neurogenesis allocation failed");
+        return NULL;
+    }
 
     ng->config = config ? *config : nimcp_neurogenesis_default_config();
 
@@ -248,6 +254,7 @@ nimcp_neurogenesis_t nimcp_neurogenesis_create(const nimcp_neurogenesis_config_t
     ng->max_niches = ng->config.max_niches;
     ng->niches = (niche_t*)calloc(ng->max_niches, sizeof(niche_t));
     if (!ng->niches) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, ng->max_niches * sizeof(niche_t), "Niche array allocation failed");
         free(ng);
         return NULL;
     }
@@ -256,6 +263,7 @@ nimcp_neurogenesis_t nimcp_neurogenesis_create(const nimcp_neurogenesis_config_t
     ng->max_pending = ng->config.max_pending_neurons;
     ng->pending_neurons = (pending_neuron_t*)calloc(ng->max_pending, sizeof(pending_neuron_t));
     if (!ng->pending_neurons) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, ng->max_pending * sizeof(pending_neuron_t), "Pending neurons allocation failed");
         free(ng->niches);
         free(ng);
         return NULL;
@@ -292,8 +300,14 @@ nimcp_neurogenesis_error_t nimcp_neurogenesis_init(
     nimcp_neurogenesis_t ng,
     nimcp_brain_t brain
 ) {
-    if (!ng) return NEUROGENESIS_ERR_NULL_PTR;
-    if (ng->is_initialized) return NEUROGENESIS_ERR_ALREADY_INITIALIZED;
+    if (!ng) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Neurogenesis handle is NULL");
+        return NEUROGENESIS_ERR_NULL_PTR;
+    }
+    if (ng->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "Neurogenesis already initialized");
+        return NEUROGENESIS_ERR_ALREADY_INITIALIZED;
+    }
 
     ng->brain = brain;
     ng->is_initialized = true;
@@ -316,7 +330,10 @@ nimcp_neurogenesis_error_t nimcp_neurogenesis_shutdown(nimcp_neurogenesis_t ng) 
 //=============================================================================
 
 nimcp_neurogenesis_error_t nimcp_neurogenesis_update(nimcp_neurogenesis_t ng, float dt) {
-    if (!ng) return NEUROGENESIS_ERR_NULL_PTR;
+    if (!ng) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Neurogenesis handle is NULL in update");
+        return NEUROGENESIS_ERR_NULL_PTR;
+    }
 
     ng->current_time += (uint64_t)(dt * 1000.0f);
 
@@ -486,7 +503,10 @@ nimcp_neurogenesis_error_t nimcp_neurogenesis_create_niche(
     niche->config = *config;
     niche->max_stem_cells = ng->config.max_stem_cells_per_niche;
     niche->stem_cells = (stem_cell_t*)calloc(niche->max_stem_cells, sizeof(stem_cell_t));
-    if (!niche->stem_cells) return NEUROGENESIS_ERR_NO_MEMORY;
+    if (!niche->stem_cells) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, niche->max_stem_cells * sizeof(stem_cell_t), "Stem cells array allocation failed for niche");
+        return NEUROGENESIS_ERR_NO_MEMORY;
+    }
 
     /* Initialize stem cells */
     for (uint32_t i = 0; i < config->initial_stem_cells && i < niche->max_stem_cells; i++) {

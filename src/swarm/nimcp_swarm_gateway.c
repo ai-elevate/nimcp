@@ -10,6 +10,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "common/nimcp_internal.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "api/nimcp_api_exception.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <string.h>
 #include <stdlib.h>

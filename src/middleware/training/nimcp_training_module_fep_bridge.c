@@ -6,6 +6,7 @@
 #include "middleware/training/nimcp_training_module_fep_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 

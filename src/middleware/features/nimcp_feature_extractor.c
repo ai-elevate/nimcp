@@ -7,6 +7,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/validation/nimcp_common.h"
+#include "api/nimcp_api_exception.h"
 
 /* Quantum bridge integration */
 #define NIMCP_FEATURE_QUANTUM_BRIDGE_IMPLEMENTATION

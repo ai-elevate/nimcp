@@ -10,6 +10,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/platform/nimcp_platform_time.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -169,7 +170,7 @@ int fep_orchestrator_default_config(fep_orchestrator_config_t* config) {
 
 fep_orchestrator_t* fep_orchestrator_create(const fep_orchestrator_config_t* config) {
     fep_orchestrator_t* orchestrator = (fep_orchestrator_t*)nimcp_calloc(1, sizeof(fep_orchestrator_t));
-    if (!orchestrator) return NULL;
+    NIMCP_API_CHECK_ALLOC(orchestrator, "Failed to allocate FEP orchestrator");
     
     /* Apply configuration */
     if (config) {

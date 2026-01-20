@@ -30,6 +30,9 @@
 #include "training/nimcp_gradient_scaling.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -105,6 +108,7 @@ static void update_running_stats(layer_state_t* layer, float norm, float smoothi
 
 int gs_default_config(gs_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "gs_default_config: config is NULL");
         return -1;
     }
 
@@ -161,15 +165,19 @@ int gs_snn_config(gs_config_t* config) {
 
 gs_ctx_t* gs_create(const gs_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "gs_create: config is NULL");
         return NULL;
     }
 
     if (gs_validate_config(config) != 0) {
+        NIMCP_THROW(NIMCP_ERROR_CONFIG_INVALID, "gs_create: config validation failed");
         return NULL;
     }
 
     gs_ctx_t* ctx = nimcp_calloc(1, sizeof(gs_ctx_t));
     if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(gs_ctx_t),
+                          "gs_create: failed to allocate context");
         return NULL;
     }
 
@@ -180,6 +188,8 @@ gs_ctx_t* gs_create(const gs_config_t* config) {
     ctx->max_layers = GS_MAX_LAYERS;
     ctx->layers = nimcp_calloc(ctx->max_layers, sizeof(layer_state_t));
     if (!ctx->layers) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, ctx->max_layers * sizeof(layer_state_t),
+                          "gs_create: failed to allocate layers array");
         nimcp_free(ctx);
         return NULL;
     }
@@ -199,6 +209,8 @@ gs_ctx_t* gs_create(const gs_config_t* config) {
     /* Allocate layer stats array */
     ctx->stats.layer_stats = nimcp_calloc(ctx->max_layers, sizeof(gs_layer_stats_t));
     if (!ctx->stats.layer_stats) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, ctx->max_layers * sizeof(gs_layer_stats_t),
+                          "gs_create: failed to allocate stats array");
         nimcp_free(ctx->layers);
         nimcp_free(ctx);
         return NULL;
@@ -207,6 +219,8 @@ gs_ctx_t* gs_create(const gs_config_t* config) {
     /* Create mutex */
     ctx->mutex = nimcp_mutex_create(NULL);
     if (!ctx->mutex) {
+        NIMCP_THROW_THREADING(NIMCP_ERROR_MUTEX_INIT, 0,
+                             "gs_create: failed to create mutex");
         nimcp_free(ctx->stats.layer_stats);
         nimcp_free(ctx->layers);
         nimcp_free(ctx);
@@ -233,13 +247,20 @@ void gs_destroy(gs_ctx_t* ctx) {
 }
 
 int gs_register_layer(gs_ctx_t* ctx, const gs_layer_config_t* layer_config) {
-    if (!ctx || !layer_config) {
+    if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "gs_register_layer: ctx is NULL");
+        return -1;
+    }
+    if (!layer_config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "gs_register_layer: layer_config is NULL");
         return -1;
     }
 
     nimcp_mutex_lock(ctx->mutex);
 
     if (ctx->num_layers >= ctx->max_layers) {
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE, "gs_register_layer: max layers (%u) reached",
+                   ctx->max_layers);
         nimcp_mutex_unlock(ctx->mutex);
         return -1;
     }

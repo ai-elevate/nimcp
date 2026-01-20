@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "api/nimcp_api_exception.h"
 
 // Platform-specific headers
 #ifdef __linux__
@@ -258,6 +259,8 @@ static bool query_neuromorphic(neuromorphic_capabilities_t* neuro)
 bool system_resources_query(system_resources_t* resources)
 {
     if (!resources) {
+        LOG_ERROR("system_resources_query: resources pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "System resources query failed: NULL pointer");
         return false;
     }
 
@@ -297,6 +300,8 @@ bool system_resources_query(system_resources_t* resources)
 uint32_t system_resources_estimate_max_neurons(const system_resources_t* resources, bool use_gpu)
 {
     if (!resources) {
+        LOG_WARN("system_resources_estimate_max_neurons: resources pointer is NULL, using safe default");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Estimate max neurons: NULL resources pointer");
         return 1000;  // Safe default
     }
 
@@ -339,6 +344,8 @@ bool system_resources_can_resize(const system_resources_t* resources,
                                   uint32_t target_neurons, bool use_gpu)
 {
     if (!resources) {
+        LOG_WARN("system_resources_can_resize: resources pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Can resize check: NULL resources pointer");
         return false;
     }
 
@@ -351,6 +358,8 @@ uint32_t system_resources_recommend_size(const system_resources_t* resources,
                                           uint32_t current_neurons, bool use_gpu)
 {
     if (!resources) {
+        LOG_WARN("system_resources_recommend_size: resources pointer is NULL, using default growth factor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Recommend size: NULL resources pointer");
         return (uint32_t)(current_neurons * 1.5F);  // Default 1.5× growth
     }
 

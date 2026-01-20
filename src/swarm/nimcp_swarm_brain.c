@@ -17,6 +17,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"

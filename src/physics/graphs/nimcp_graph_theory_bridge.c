@@ -13,6 +13,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_handlers.h"
 #include "core/brain/nimcp_brain_kg_helpers.h"
+#include "api/nimcp_api_exception.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -116,10 +117,7 @@ graph_theory_bridge_t graph_theory_bridge_create(
     const graph_theory_bridge_config_t* config)
 {
     struct graph_theory_bridge* bridge = calloc(1, sizeof(struct graph_theory_bridge));
-    if (!bridge) {
-        NIMCP_LOG_ERROR(LOG_TAG, "Failed to allocate bridge");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate graph theory bridge");
 
     /* Apply configuration */
     if (config) {

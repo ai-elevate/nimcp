@@ -19,6 +19,9 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "security/nimcp_security.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "OPTIMIZATION"
 
@@ -84,6 +87,7 @@ static void init_rng(quantum_annealer_t annealer) {
 
     if (!annealer) {
         LOG_ERROR("init_rng: null annealer");
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "init_rng: null annealer");
         return;
     }
 
@@ -99,6 +103,8 @@ static void init_rng(quantum_annealer_t annealer) {
     annealer->rng_state = nimcp_malloc(sizeof(uint32_t));
     if (!annealer->rng_state) {
         LOG_ERROR("Failed to allocate RNG state");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(uint32_t),
+                          "Failed to allocate RNG state for quantum annealer");
         return;
     }
 
@@ -184,27 +190,38 @@ static bool validate_config(const quantum_annealing_config_t* config) {
 
     if (!config) {
         LOG_ERROR("validate_config: null config");
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "validate_config: null config");
         return false;
     }
     if (config->initial_temperature <= 0.0F) {
         LOG_ERROR("Invalid initial_temperature: %f (must be > 0)", config->initial_temperature);
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                   "Invalid initial_temperature: %f (must be > 0)", config->initial_temperature);
         return false;
     }
     if (config->final_temperature <= 0.0F) {
         LOG_ERROR("Invalid final_temperature: %f (must be > 0)", config->final_temperature);
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                   "Invalid final_temperature: %f (must be > 0)", config->final_temperature);
         return false;
     }
     if (config->final_temperature >= config->initial_temperature) {
         LOG_ERROR("Invalid temperature range: final (%f) >= initial (%f)",
                   config->final_temperature, config->initial_temperature);
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                   "Invalid temperature range: final (%f) >= initial (%f)",
+                   config->final_temperature, config->initial_temperature);
         return false;
     }
     if (config->num_iterations == 0) {
         LOG_ERROR("Invalid num_iterations: 0 (must be > 0)");
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Invalid num_iterations: 0 (must be > 0)");
         return false;
     }
     if (config->quantum_strength < 0.0F || config->quantum_strength > 1.0F) {
         LOG_ERROR("Invalid quantum_strength: %f (must be in [0, 1])", config->quantum_strength);
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                   "Invalid quantum_strength: %f (must be in [0, 1])", config->quantum_strength);
         return false;
     }
 
@@ -426,7 +443,10 @@ quantum_annealer_t quantum_annealer_create(const quantum_annealing_config_t* con
      */
 
     // Guard: null config
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_create: null config");
+        return NULL;
+    }
 
     // Guard: invalid configuration
     if (!validate_config(config)) return NULL;
@@ -434,7 +454,11 @@ quantum_annealer_t quantum_annealer_create(const quantum_annealing_config_t* con
     // Allocate annealer
     // BUGFIX: Use nimcp_malloc for consistency with memory tracking
     quantum_annealer_t annealer = nimcp_malloc(sizeof(struct quantum_annealer_struct));
-    if (!annealer) return NULL;
+    if (!annealer) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct quantum_annealer_struct),
+                          "Failed to allocate quantum annealer structure");
+        return NULL;
+    }
 
     // Copy configuration
     memcpy(&annealer->config, config, sizeof(quantum_annealing_config_t));
@@ -506,20 +530,35 @@ float quantum_anneal(
      * COMPLEXITY: O(N * D * E) where E = energy_func cost
      */
 
-    // Guard clauses
-    if (!annealer) return INFINITY;
-    if (!energy_func) return INFINITY;
-    if (!initial_state || !optimized_state) return INFINITY;
-    if (dim == 0) return INFINITY;
+    // Guard clauses with exception handling
+    if (!annealer) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_anneal: null annealer");
+        return INFINITY;
+    }
+    if (!energy_func) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_anneal: null energy_func");
+        return INFINITY;
+    }
+    if (!initial_state || !optimized_state) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_anneal: null state pointer");
+        return INFINITY;
+    }
+    if (dim == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "quantum_anneal: dim must be > 0");
+        return INFINITY;
+    }
 
     // Allocate temporary state vectors
     // BUGFIX: Use nimcp_malloc instead of malloc for consistency with memory tracking
     // WHY: Regular malloc/free can cause heap corruption detected by nimcp memory tracker
-    float* current_state = nimcp_malloc(dim * sizeof(float));
-    float* best_state = nimcp_malloc(dim * sizeof(float));
-    float* neighbor_state = nimcp_malloc(dim * sizeof(float));
+    size_t state_alloc_size = dim * sizeof(float);
+    float* current_state = nimcp_malloc(state_alloc_size);
+    float* best_state = nimcp_malloc(state_alloc_size);
+    float* neighbor_state = nimcp_malloc(state_alloc_size);
 
     if (!current_state || !best_state || !neighbor_state) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, state_alloc_size * 3,
+                          "Failed to allocate state vectors for quantum annealing (dim=%u)", dim);
         nimcp_free(current_state);
         nimcp_free(best_state);
         nimcp_free(neighbor_state);
@@ -623,7 +662,20 @@ float quantum_annealer_optimize_adaptive_mc(
     void* user_data,
     qmc_anneal_result_t* result
 ) {
-    if (!annealer || !energy_func || !initial_state || !optimized_state || !result) {
+    if (!annealer) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_optimize_adaptive_mc: null annealer");
+        return INFINITY;
+    }
+    if (!energy_func) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_optimize_adaptive_mc: null energy_func");
+        return INFINITY;
+    }
+    if (!initial_state || !optimized_state) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_optimize_adaptive_mc: null state pointer");
+        return INFINITY;
+    }
+    if (!result) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_optimize_adaptive_mc: null result");
         return INFINITY;
     }
 
@@ -688,13 +740,31 @@ uint32_t quantum_annealer_sample_boltzmann_mc(
     uint32_t dim,
     void* user_data
 ) {
-    if (!annealer || !energy_func || !states || num_states == 0) {
+    if (!annealer) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_sample_boltzmann_mc: null annealer");
+        return 0;
+    }
+    if (!energy_func) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_sample_boltzmann_mc: null energy_func");
+        return 0;
+    }
+    if (!states) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_sample_boltzmann_mc: null states");
+        return 0;
+    }
+    if (num_states == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "quantum_annealer_sample_boltzmann_mc: num_states must be > 0");
         return 0;
     }
 
     /* Compute Boltzmann weights */
-    float* weights = nimcp_malloc(num_states * sizeof(float));
-    if (!weights) return 0;
+    size_t weights_size = num_states * sizeof(float);
+    float* weights = nimcp_malloc(weights_size);
+    if (!weights) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, weights_size,
+                          "Failed to allocate weights array for Boltzmann sampling (num_states=%u)", num_states);
+        return 0;
+    }
 
     float max_energy = -INFINITY;
     for (uint32_t i = 0; i < num_states; i++) {
@@ -754,7 +824,23 @@ float quantum_annealer_estimate_partition_mc(
     void* user_data,
     float* variance_out
 ) {
-    if (!annealer || !energy_func || !sample_states || num_samples == 0) {
+    if (!annealer) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_estimate_partition_mc: null annealer");
+        if (variance_out) *variance_out = INFINITY;
+        return 0.0f;
+    }
+    if (!energy_func) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_estimate_partition_mc: null energy_func");
+        if (variance_out) *variance_out = INFINITY;
+        return 0.0f;
+    }
+    if (!sample_states) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_estimate_partition_mc: null sample_states");
+        if (variance_out) *variance_out = INFINITY;
+        return 0.0f;
+    }
+    if (num_samples == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "quantum_annealer_estimate_partition_mc: num_samples must be > 0");
         if (variance_out) *variance_out = INFINITY;
         return 0.0f;
     }

@@ -6,6 +6,7 @@
  */
 
 #include "integration/inter/biology_neuromod/nimcp_biology_neuromod_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -35,7 +36,7 @@ nimcp_biology_neuromod_config_t nimcp_biology_neuromod_default_config(void) {
 
 nimcp_biology_neuromod_bridge_t nimcp_biology_neuromod_create(const nimcp_biology_neuromod_config_t* config) {
     nimcp_biology_neuromod_bridge_t bridge = (nimcp_biology_neuromod_bridge_t)calloc(1, sizeof(struct nimcp_biology_neuromod_bridge_struct));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate biology-neuromod bridge");
     bridge->config = config ? *config : nimcp_biology_neuromod_default_config();
     bridge->state.bridge_coherence = 1.0f;
     bridge->state.receptor_density_level = 0.5f;
@@ -55,8 +56,9 @@ nimcp_layer_error_t nimcp_biology_neuromod_init(
     nimcp_biology_intra_t biology,
     nimcp_neuromod_intra_t neuromod
 ) {
-    if (!bridge || !registry) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (bridge->is_initialized) return NIMCP_LAYER_ERR_ALREADY_REGISTERED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in biology_neuromod_init");
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in biology_neuromod_init");
+    NIMCP_API_CHECK(!bridge->is_initialized, NIMCP_LAYER_ERR_ALREADY_REGISTERED, "Bridge already initialized in biology_neuromod_init");
     bridge->registry = registry;
     bridge->biology = biology;
     bridge->neuromod = neuromod;
@@ -65,15 +67,15 @@ nimcp_layer_error_t nimcp_biology_neuromod_init(
 }
 
 nimcp_layer_error_t nimcp_biology_neuromod_shutdown(nimcp_biology_neuromod_bridge_t bridge) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in biology_neuromod_shutdown");
+    NIMCP_API_CHECK(bridge->is_initialized, NIMCP_LAYER_ERR_NOT_INITIALIZED, "Bridge not initialized in biology_neuromod_shutdown");
     bridge->is_initialized = false;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_biology_neuromod_update(nimcp_biology_neuromod_bridge_t bridge, float dt) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in biology_neuromod_update");
+    NIMCP_API_CHECK(bridge->is_initialized, NIMCP_LAYER_ERR_NOT_INITIALIZED, "Bridge not initialized in biology_neuromod_update");
 
     /* Gene expression affects receptor density */
     bridge->state.receptor_density_level *= (1.0f - dt * 0.01f);
@@ -97,27 +99,31 @@ nimcp_layer_error_t nimcp_biology_neuromod_update(nimcp_biology_neuromod_bridge_
 }
 
 nimcp_layer_error_t nimcp_biology_neuromod_transfer_bottom_up(nimcp_biology_neuromod_bridge_t bridge, const nimcp_layer_msg_t* msg) {
-    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in biology_neuromod_transfer_bottom_up");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in biology_neuromod_transfer_bottom_up");
     bridge->state.bottom_up_messages++;
     bridge->stats.receptor_density_changes++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_biology_neuromod_transfer_top_down(nimcp_biology_neuromod_bridge_t bridge, const nimcp_layer_msg_t* msg) {
-    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in biology_neuromod_transfer_top_down");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in biology_neuromod_transfer_top_down");
     bridge->state.top_down_messages++;
     bridge->stats.bdnf_expressions++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_biology_neuromod_get_state(nimcp_biology_neuromod_bridge_t bridge, nimcp_biology_neuromod_state_t* state_out) {
-    if (!bridge || !state_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in biology_neuromod_get_state");
+    NIMCP_API_CHECK_NULL(state_out, NIMCP_LAYER_ERR_NULL_PTR, "state_out is NULL in biology_neuromod_get_state");
     *state_out = bridge->state;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_biology_neuromod_get_stats(nimcp_biology_neuromod_bridge_t bridge, nimcp_biology_neuromod_stats_t* stats_out) {
-    if (!bridge || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in biology_neuromod_get_stats");
+    NIMCP_API_CHECK_NULL(stats_out, NIMCP_LAYER_ERR_NULL_PTR, "stats_out is NULL in biology_neuromod_get_stats");
     *stats_out = bridge->stats;
     return NIMCP_LAYER_OK;
 }
@@ -127,7 +133,7 @@ float nimcp_biology_neuromod_get_coherence(nimcp_biology_neuromod_bridge_t bridg
 }
 
 nimcp_layer_error_t nimcp_biology_neuromod_reset_stats(nimcp_biology_neuromod_bridge_t bridge) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in biology_neuromod_reset_stats");
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return NIMCP_LAYER_OK;
 }

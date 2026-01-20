@@ -24,6 +24,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "security_continuous_monitor"
 
@@ -424,8 +425,7 @@ nimcp_continuous_monitor_t* nimcp_monitor_create(
     nimcp_continuous_monitor_t* monitor =
         (nimcp_continuous_monitor_t*)nimcp_calloc(1, sizeof(nimcp_continuous_monitor_t));
 
-    if (!monitor)
-        return NULL;
+    NIMCP_API_CHECK_ALLOC(monitor, "Failed to allocate continuous monitor");
 
     monitor->coverage = coverage;
     monitor->state = NIMCP_MONITOR_STATE_STOPPED;
@@ -444,8 +444,7 @@ nimcp_result_t nimcp_monitor_init(
     nimcp_continuous_monitor_t* monitor,
     const nimcp_monitor_config_t* config)
 {
-    if (!monitor)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(monitor, NIMCP_INVALID_PARAM, "NULL monitor in init");
 
     if (monitor->initialized)
         return NIMCP_INVALID_STATE;

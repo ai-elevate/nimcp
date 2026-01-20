@@ -14,6 +14,7 @@
 #include "cognitive/jepa/nimcp_jepa_context.h"
 #include "cognitive/jepa/nimcp_jepa_latent.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -135,10 +136,7 @@ jepa_context_encoder_t* jepa_context_encoder_create(
 
     /* Allocate encoder */
     encoder = (jepa_context_encoder_t*)nimcp_calloc(1, sizeof(jepa_context_encoder_t));
-    if (!encoder) {
-        NIMCP_LOGGING_ERROR("Failed to allocate context encoder");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(encoder, "Failed to allocate context encoder");
 
     /* Initialize bridge base */
     bridge_base_init(&encoder->base, BIO_MODULE_JEPA_CONTEXT, "JEPA_CONTEXT");

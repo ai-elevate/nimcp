@@ -21,6 +21,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
@@ -438,10 +439,7 @@ nimcp_rate_limiter_t nimcp_rate_limiter_create(
     // Allocate limiter
     nimcp_rate_limiter_t limiter = (nimcp_rate_limiter_t)calloc(
         1, sizeof(struct nimcp_rate_limiter_impl));
-    if (!limiter) {
-        LOG_ERROR("Failed to allocate rate limiter");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(limiter, "Failed to allocate rate limiter");
 
     // Initialize
     limiter->magic = NIMCP_RATE_LIMITER_MAGIC;
@@ -459,7 +457,7 @@ nimcp_rate_limiter_t nimcp_rate_limiter_create(
 
     // Initialize main lock
     if (nimcp_platform_mutex_init(&limiter->limiter_lock, false) != 0) {
-        LOG_ERROR("Failed to initialize limiter lock");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Failed to initialize rate limiter lock");
         free(limiter);
         return NULL;
     }
@@ -468,7 +466,7 @@ nimcp_rate_limiter_t nimcp_rate_limiter_create(
     limiter->client_table = (client_hash_table_t*)calloc(
         1, sizeof(client_hash_table_t));
     if (!limiter->client_table) {
-        LOG_ERROR("Failed to allocate client hash table");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(client_hash_table_t), "Failed to allocate rate limiter client hash table");
         nimcp_platform_mutex_destroy(&limiter->limiter_lock);
         free(limiter);
         return NULL;
@@ -810,9 +808,9 @@ nimcp_error_t nimcp_rate_limiter_get_stats(
     nimcp_rate_limiter_t limiter,
     nimcp_rate_limit_stats_t* stats)
 {
-    if (!is_valid_limiter(limiter) || stats == NULL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_API_CHECK_NULL(limiter, NIMCP_ERROR_NULL_POINTER, "NULL limiter in get_stats");
+    NIMCP_API_CHECK_NULL(stats, NIMCP_ERROR_NULL_POINTER, "NULL stats output in get_stats");
+    NIMCP_API_CHECK(is_valid_limiter(limiter), NIMCP_ERROR_INVALID_PARAM, "Invalid limiter magic in get_stats");
 
     nimcp_platform_mutex_lock(&limiter->limiter_lock);
     *stats = limiter->stats;
@@ -828,9 +826,8 @@ nimcp_error_t nimcp_rate_limiter_get_stats(
 }
 
 nimcp_error_t nimcp_rate_limiter_reset_stats(nimcp_rate_limiter_t limiter) {
-    if (!is_valid_limiter(limiter)) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_API_CHECK_NULL(limiter, NIMCP_ERROR_NULL_POINTER, "NULL limiter in reset_stats");
+    NIMCP_API_CHECK(is_valid_limiter(limiter), NIMCP_ERROR_INVALID_PARAM, "Invalid limiter magic in reset_stats");
 
     nimcp_platform_mutex_lock(&limiter->limiter_lock);
     memset(&limiter->stats, 0, sizeof(nimcp_rate_limit_stats_t));
@@ -853,9 +850,9 @@ nimcp_error_t nimcp_rate_limiter_reset_client(
     nimcp_rate_limiter_t limiter,
     const char* client_id)
 {
-    if (!is_valid_limiter(limiter) || client_id == NULL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_API_CHECK_NULL(limiter, NIMCP_ERROR_NULL_POINTER, "NULL limiter in reset_client");
+    NIMCP_API_CHECK_NULL(client_id, NIMCP_ERROR_NULL_POINTER, "NULL client_id in reset_client");
+    NIMCP_API_CHECK(is_valid_limiter(limiter), NIMCP_ERROR_INVALID_PARAM, "Invalid limiter magic in reset_client");
 
     client_bucket_t* bucket = get_client_bucket(limiter, client_id, false);
     if (!bucket) {
@@ -882,9 +879,9 @@ nimcp_error_t nimcp_rate_limiter_block_client(
     nimcp_rate_limiter_t limiter,
     const char* client_id)
 {
-    if (!is_valid_limiter(limiter) || client_id == NULL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_API_CHECK_NULL(limiter, NIMCP_ERROR_NULL_POINTER, "NULL limiter in block_client");
+    NIMCP_API_CHECK_NULL(client_id, NIMCP_ERROR_NULL_POINTER, "NULL client_id in block_client");
+    NIMCP_API_CHECK(is_valid_limiter(limiter), NIMCP_ERROR_INVALID_PARAM, "Invalid limiter magic in block_client");
 
     client_bucket_t* bucket = get_client_bucket(limiter, client_id, true);
     if (!bucket) {
@@ -909,9 +906,9 @@ nimcp_error_t nimcp_rate_limiter_unblock_client(
     nimcp_rate_limiter_t limiter,
     const char* client_id)
 {
-    if (!is_valid_limiter(limiter) || client_id == NULL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_API_CHECK_NULL(limiter, NIMCP_ERROR_NULL_POINTER, "NULL limiter in unblock_client");
+    NIMCP_API_CHECK_NULL(client_id, NIMCP_ERROR_NULL_POINTER, "NULL client_id in unblock_client");
+    NIMCP_API_CHECK(is_valid_limiter(limiter), NIMCP_ERROR_INVALID_PARAM, "Invalid limiter magic in unblock_client");
 
     client_bucket_t* bucket = get_client_bucket(limiter, client_id, false);
     if (!bucket) {
@@ -940,9 +937,10 @@ nimcp_error_t nimcp_rate_limiter_get_client_stats(
     const char* client_id,
     nimcp_client_stats_t* stats)
 {
-    if (!is_valid_limiter(limiter) || client_id == NULL || stats == NULL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_API_CHECK_NULL(limiter, NIMCP_ERROR_NULL_POINTER, "NULL limiter in get_client_stats");
+    NIMCP_API_CHECK_NULL(client_id, NIMCP_ERROR_NULL_POINTER, "NULL client_id in get_client_stats");
+    NIMCP_API_CHECK_NULL(stats, NIMCP_ERROR_NULL_POINTER, "NULL stats output in get_client_stats");
+    NIMCP_API_CHECK(is_valid_limiter(limiter), NIMCP_ERROR_INVALID_PARAM, "Invalid limiter magic in get_client_stats");
 
     client_bucket_t* bucket = get_client_bucket(limiter, client_id, false);
     if (!bucket) {
@@ -962,9 +960,8 @@ nimcp_error_t nimcp_rate_limiter_set_violation_callback(
     nimcp_rate_limit_violation_callback_t callback,
     void* user_data)
 {
-    if (!is_valid_limiter(limiter)) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_API_CHECK_NULL(limiter, NIMCP_ERROR_NULL_POINTER, "NULL limiter in set_violation_callback");
+    NIMCP_API_CHECK(is_valid_limiter(limiter), NIMCP_ERROR_INVALID_PARAM, "Invalid limiter magic in set_violation_callback");
 
     nimcp_platform_mutex_lock(&limiter->limiter_lock);
     limiter->violation_callback = callback;
@@ -978,9 +975,9 @@ nimcp_error_t nimcp_rate_limiter_set_rate(
     nimcp_rate_limiter_t limiter,
     float requests_per_second)
 {
-    if (!is_valid_limiter(limiter) || requests_per_second <= 0.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_API_CHECK_NULL(limiter, NIMCP_ERROR_NULL_POINTER, "NULL limiter in set_rate");
+    NIMCP_API_CHECK(is_valid_limiter(limiter), NIMCP_ERROR_INVALID_PARAM, "Invalid limiter magic in set_rate");
+    NIMCP_API_CHECK(requests_per_second > 0.0F, NIMCP_ERROR_INVALID_PARAM, "Invalid requests_per_second in set_rate");
 
     nimcp_platform_mutex_lock(&limiter->limiter_lock);
     limiter->config.requests_per_second = requests_per_second;
@@ -995,9 +992,9 @@ nimcp_error_t nimcp_rate_limiter_set_burst(
     nimcp_rate_limiter_t limiter,
     uint32_t burst_size)
 {
-    if (!is_valid_limiter(limiter) || burst_size == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_API_CHECK_NULL(limiter, NIMCP_ERROR_NULL_POINTER, "NULL limiter in set_burst");
+    NIMCP_API_CHECK(is_valid_limiter(limiter), NIMCP_ERROR_INVALID_PARAM, "Invalid limiter magic in set_burst");
+    NIMCP_API_CHECK(burst_size > 0, NIMCP_ERROR_INVALID_PARAM, "Invalid burst_size in set_burst");
 
     nimcp_platform_mutex_lock(&limiter->limiter_lock);
     limiter->config.burst_size = burst_size;

@@ -27,6 +27,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"

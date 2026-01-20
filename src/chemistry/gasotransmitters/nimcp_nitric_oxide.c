@@ -6,6 +6,7 @@
  */
 
 #include "chemistry/gasotransmitters/nimcp_nitric_oxide.h"
+#include "api/nimcp_api_exception.h"
 
 #include <string.h>
 #include <math.h>
@@ -219,6 +220,7 @@ nimcp_no_error_t nimcp_no_init(
     const nimcp_no_config_t* config
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Nitric oxide system is NULL");
         return NO_ERR_NULL_PTR;
     }
 
@@ -245,6 +247,7 @@ nimcp_no_error_t nimcp_no_init(
 
 nimcp_no_error_t nimcp_no_shutdown(nimcp_no_system_t* system) {
     if (!system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Nitric oxide system is NULL in shutdown");
         return NO_ERR_NULL_PTR;
     }
 
@@ -255,10 +258,12 @@ nimcp_no_error_t nimcp_no_shutdown(nimcp_no_system_t* system) {
 
 nimcp_no_error_t nimcp_no_reset(nimcp_no_system_t* system) {
     if (!system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Nitric oxide system is NULL in reset");
         return NO_ERR_NULL_PTR;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "Nitric oxide system not initialized in reset");
         return NO_ERR_NOT_INITIALIZED;
     }
 
@@ -306,14 +311,17 @@ nimcp_no_error_t nimcp_no_add_source(
     uint32_t* source_id
 ) {
     if (!system || !position || !source_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NO add_source: NULL argument");
         return NO_ERR_NULL_PTR;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "NO system not initialized in add_source");
         return NO_ERR_NOT_INITIALIZED;
     }
 
     if (system->num_sources >= NO_MAX_SOURCES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "NO source capacity exceeded");
         return NO_ERR_CAPACITY_EXCEEDED;
     }
 
@@ -354,14 +362,17 @@ nimcp_no_error_t nimcp_no_remove_source(
     uint32_t source_id
 ) {
     if (!system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO remove_source: system is NULL");
         return NO_ERR_NULL_PTR;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "NO system not initialized in remove_source");
         return NO_ERR_NOT_INITIALIZED;
     }
 
     if (source_id >= system->num_sources) {
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE, "NO source_id %u not found (max: %u)", source_id, system->num_sources);
         return NO_ERR_SOURCE_NOT_FOUND;
     }
 
@@ -387,10 +398,12 @@ nimcp_no_error_t nimcp_no_add_target(
     nimcp_no_retrograde_mode_t mode
 ) {
     if (!source) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO add_target: source is NULL");
         return NO_ERR_NULL_PTR;
     }
 
     if (source->num_targets >= NO_MAX_TARGETS_PER_SOURCE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "NO target capacity exceeded: max %d", NO_MAX_TARGETS_PER_SOURCE);
         return NO_ERR_CAPACITY_EXCEEDED;
     }
 
@@ -414,6 +427,7 @@ nimcp_no_error_t nimcp_no_remove_target(
     uint32_t synapse_id
 ) {
     if (!source) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO remove_target: source is NULL");
         return NO_ERR_NULL_PTR;
     }
 
@@ -439,6 +453,7 @@ nimcp_no_error_t nimcp_no_get_target_potentiation(
     float* potentiation
 ) {
     if (!source || !potentiation) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO get_target_potentiation: NULL argument");
         return NO_ERR_NULL_PTR;
     }
 
@@ -461,6 +476,7 @@ nimcp_no_error_t nimcp_no_set_calcium(
     float calcium_um
 ) {
     if (!source) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO set_calcium: source is NULL");
         return NO_ERR_NULL_PTR;
     }
 
@@ -479,6 +495,7 @@ nimcp_no_error_t nimcp_no_set_nmda_activation(
     float activation
 ) {
     if (!source) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO set_nmda_activation: source is NULL");
         return NO_ERR_NULL_PTR;
     }
 
@@ -494,6 +511,7 @@ nimcp_no_error_t nimcp_no_set_substrate(
     float bh4
 ) {
     if (!source) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO set_substrate: source is NULL");
         return NO_ERR_NULL_PTR;
     }
 
@@ -509,6 +527,7 @@ nimcp_no_error_t nimcp_no_get_nos_activity(
     float* activity
 ) {
     if (!source || !activity) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO get_nos_activity: NULL argument");
         return NO_ERR_NULL_PTR;
     }
 
@@ -527,6 +546,7 @@ nimcp_no_error_t nimcp_no_update_source(
     float dt
 ) {
     if (!system || !source) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO update_source: NULL argument");
         return NO_ERR_NULL_PTR;
     }
 
@@ -579,6 +599,7 @@ nimcp_no_error_t nimcp_no_diffuse(
     nimcp_no_source_t* source
 ) {
     if (!system || !source) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO diffuse: NULL argument");
         return NO_ERR_NULL_PTR;
     }
 
@@ -646,10 +667,12 @@ nimcp_no_error_t nimcp_no_update(
     float dt
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Nitric oxide system is NULL in update");
         return NO_ERR_NULL_PTR;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "Nitric oxide system not initialized");
         return NO_ERR_NOT_INITIALIZED;
     }
 
@@ -716,10 +739,12 @@ nimcp_no_error_t nimcp_no_get_cgmp(
     float* cgmp
 ) {
     if (!system || !cgmp) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO get_cgmp: NULL argument");
         return NO_ERR_NULL_PTR;
     }
 
     if (source_id >= system->num_sources) {
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE, "NO source_id %u not found in get_cgmp", source_id);
         return NO_ERR_SOURCE_NOT_FOUND;
     }
 
@@ -741,6 +766,7 @@ nimcp_no_error_t nimcp_no_get_vasodilation(
     float* factor
 ) {
     if (!system || !factor) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO get_vasodilation: NULL argument");
         return NO_ERR_NULL_PTR;
     }
 
@@ -754,6 +780,7 @@ nimcp_no_error_t nimcp_no_get_plasticity_modifier(
     float* modifier
 ) {
     if (!system || !modifier) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO get_plasticity_modifier: NULL argument");
         return NO_ERR_NULL_PTR;
     }
 
@@ -771,6 +798,7 @@ nimcp_no_error_t nimcp_no_get_metrics(
     nimcp_no_metrics_t* metrics
 ) {
     if (!system || !metrics) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NO get_metrics: NULL argument");
         return NO_ERR_NULL_PTR;
     }
 

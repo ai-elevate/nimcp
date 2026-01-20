@@ -18,6 +18,7 @@
 #include "security/nimcp_policy_parser.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
@@ -210,10 +211,7 @@ nimcp_policy_engine_t nimcp_policy_engine_create(
     }
 
     struct nimcp_policy_engine* engine = calloc(1, sizeof(struct nimcp_policy_engine));
-    if (!engine) {
-        LOG_ERROR("Failed to allocate policy engine");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(engine, "Failed to allocate policy engine");
 
     engine->magic = ENGINE_MAGIC;
     engine->config = *config;
@@ -221,7 +219,7 @@ nimcp_policy_engine_t nimcp_policy_engine_create(
     pthread_mutex_init(&engine->lock, NULL);
 
     if (!engine->function_registry) {
-        LOG_ERROR("Failed to create function registry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create function registry for policy engine");
         free(engine);
         return NULL;
     }

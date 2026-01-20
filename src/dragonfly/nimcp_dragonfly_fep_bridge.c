@@ -4,6 +4,7 @@
  */
 
 #include "dragonfly/nimcp_dragonfly_fep_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -186,10 +187,11 @@ dragonfly_fep_bridge_t* dragonfly_fep_bridge_create(
     const dragonfly_fep_config_t* config
 ) {
     dragonfly_fep_bridge_t* bridge = calloc(1, sizeof(dragonfly_fep_bridge_t));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "dragonfly_fep_bridge_create: failed to allocate bridge");
 
     if (config) {
         if (dragonfly_fep_bridge_validate_config(config) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_fep_bridge_create: invalid config");
             free(bridge);
             return NULL;
         }
@@ -225,7 +227,10 @@ void dragonfly_fep_bridge_destroy(dragonfly_fep_bridge_t* bridge) {
 }
 
 int dragonfly_fep_bridge_reset(dragonfly_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Reset beliefs */
     for (uint32_t i = 0; i < bridge->state_dim; i++) {
@@ -261,7 +266,18 @@ int dragonfly_fep_compute_errors(
     uint32_t obs_dim,
     dragonfly_fep_errors_t* errors
 ) {
-    if (!bridge || !observations || !errors) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_compute_errors: bridge is NULL");
+        return -1;
+    }
+    if (!observations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_compute_errors: observations is NULL");
+        return -1;
+    }
+    if (!errors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_compute_errors: errors is NULL");
+        return -1;
+    }
 
     /* Store observations */
     bridge->obs_dim = (obs_dim > DRAGONFLY_FEP_MAX_OBS_DIM) ?
@@ -336,7 +352,10 @@ int dragonfly_fep_update_precision(
     float sensory_reliability,
     float proprioceptive_reliability
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_update_precision: bridge is NULL");
+        return -1;
+    }
 
     if (bridge->config.precision_mode == FEP_PRECISION_ADAPTIVE) {
         /* Update precision based on reliability */
@@ -367,7 +386,18 @@ int dragonfly_fep_infer_state(
     uint32_t obs_dim,
     dragonfly_fep_inference_t* inference
 ) {
-    if (!bridge || !observations || !inference) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_infer_state: bridge is NULL");
+        return -1;
+    }
+    if (!observations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_infer_state: observations is NULL");
+        return -1;
+    }
+    if (!inference) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_infer_state: inference is NULL");
+        return -1;
+    }
 
     /* Perform belief update (gradient descent on free energy) */
     uint32_t compare_dim = (obs_dim < bridge->state_dim) ? obs_dim : bridge->state_dim;
@@ -399,7 +429,14 @@ int dragonfly_fep_select_action(
     dragonfly_fep_action_t* action,
     float* action_value
 ) {
-    if (!bridge || !action) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_select_action: bridge is NULL");
+        return -1;
+    }
+    if (!action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_select_action: action is NULL");
+        return -1;
+    }
 
     /* Compute expected free energy for each action */
     float min_efe = 1e10f;
@@ -427,8 +464,14 @@ int dragonfly_fep_apply_action(
     dragonfly_fep_bridge_t* bridge,
     dragonfly_fep_action_t action
 ) {
-    if (!bridge) return -1;
-    if (action > FEP_ACTION_PREDICT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_apply_action: bridge is NULL");
+        return -1;
+    }
+    if (action > FEP_ACTION_PREDICT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_fep_apply_action: invalid action");
+        return -1;
+    }
 
     bridge->current_action = action;
 
@@ -518,8 +561,14 @@ int dragonfly_fep_set_model(
     dragonfly_fep_bridge_t* bridge,
     dragonfly_fep_model_t model
 ) {
-    if (!bridge) return -1;
-    if (model > FEP_MODEL_EVASIVE) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_set_model: bridge is NULL");
+        return -1;
+    }
+    if (model > FEP_MODEL_EVASIVE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_fep_set_model: invalid model");
+        return -1;
+    }
 
     if (bridge->current_model != model) {
         bridge->stats.model_switches++;
@@ -562,7 +611,14 @@ int dragonfly_fep_predict(
     float* predicted_state,
     uint32_t state_dim
 ) {
-    if (!bridge || !predicted_state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_predict: bridge is NULL");
+        return -1;
+    }
+    if (!predicted_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_predict: predicted_state is NULL");
+        return -1;
+    }
 
     float temp_state[DRAGONFLY_FEP_MAX_STATE_DIM];
     memcpy(temp_state, bridge->beliefs, bridge->state_dim * sizeof(float));
@@ -593,7 +649,10 @@ int dragonfly_fep_connect_dragonfly(
     dragonfly_fep_bridge_t* bridge,
     dragonfly_system_t* dragonfly
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_connect_dragonfly: bridge is NULL");
+        return -1;
+    }
     bridge->dragonfly = dragonfly;
     return 0;
 }
@@ -602,13 +661,19 @@ int dragonfly_fep_connect_system(
     dragonfly_fep_bridge_t* bridge,
     void* fep_system
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_connect_system: bridge is NULL");
+        return -1;
+    }
     bridge->fep_system = fep_system;
     return 0;
 }
 
 int dragonfly_fep_update(dragonfly_fep_bridge_t* bridge, float dt_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_update: bridge is NULL");
+        return -1;
+    }
 
     bridge->current_time_ms += dt_ms;
 
@@ -652,13 +717,19 @@ int dragonfly_fep_update(dragonfly_fep_bridge_t* bridge, float dt_ms) {
 }
 
 int dragonfly_fep_sync_with_tracker(dragonfly_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_sync_with_tracker: bridge is NULL");
+        return -1;
+    }
     /* Would sync beliefs with tracker state */
     return 0;
 }
 
 int dragonfly_fep_sync_with_tsdn(dragonfly_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_sync_with_tsdn: bridge is NULL");
+        return -1;
+    }
     /* Would sync with TSDN population vector */
     return 0;
 }
@@ -671,13 +742,23 @@ int dragonfly_fep_bridge_get_stats(
     const dragonfly_fep_bridge_t* bridge,
     dragonfly_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_bridge_get_stats: stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int dragonfly_fep_bridge_reset_stats(dragonfly_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_fep_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
 }

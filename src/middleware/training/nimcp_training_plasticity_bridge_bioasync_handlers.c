@@ -28,6 +28,7 @@
 #include "nimcp.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_messages.h"
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"

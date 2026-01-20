@@ -25,6 +25,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "middleware_flow_tracker"
 

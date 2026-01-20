@@ -6,6 +6,7 @@
  */
 
 #include "integration/core/nimcp_layer_registry.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -52,7 +53,7 @@ nimcp_layer_registry_config_t nimcp_layer_registry_default_config(void) {
 
 nimcp_layer_registry_t nimcp_layer_registry_create(const nimcp_layer_registry_config_t* config) {
     nimcp_layer_registry_t registry = (nimcp_layer_registry_t)calloc(1, sizeof(struct nimcp_layer_registry_struct));
-    if (!registry) return NULL;
+    NIMCP_API_CHECK_ALLOC(registry, "Failed to allocate layer registry");
     registry->config = config ? *config : nimcp_layer_registry_default_config();
     return registry;
 }
@@ -62,7 +63,7 @@ void nimcp_layer_registry_destroy(nimcp_layer_registry_t registry) {
 }
 
 nimcp_layer_error_t nimcp_layer_registry_reset(nimcp_layer_registry_t registry) {
-    if (!registry) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in reset");
     memset(registry->layers, 0, sizeof(registry->layers));
     memset(registry->connections, 0, sizeof(registry->connections));
     registry->connection_count = 0;
@@ -72,8 +73,9 @@ nimcp_layer_error_t nimcp_layer_registry_reset(nimcp_layer_registry_t registry) 
 }
 
 nimcp_layer_error_t nimcp_layer_registry_register_layer(nimcp_layer_registry_t registry, const nimcp_layer_config_t* config) {
-    if (!registry || !config) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (config->layer_id >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in register_layer");
+    NIMCP_API_CHECK_NULL(config, NIMCP_LAYER_ERR_NULL_PTR, "Config is NULL in register_layer");
+    NIMCP_API_CHECK(config->layer_id < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid layer_id in register_layer");
 
     layer_entry_t* entry = &registry->layers[config->layer_id];
     if (entry->registered) return NIMCP_LAYER_ERR_ALREADY_REGISTERED;
@@ -88,8 +90,8 @@ nimcp_layer_error_t nimcp_layer_registry_register_layer(nimcp_layer_registry_t r
 }
 
 nimcp_layer_error_t nimcp_layer_registry_unregister_layer(nimcp_layer_registry_t registry, nimcp_layer_id_t layer_id) {
-    if (!registry) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (layer_id >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in unregister_layer");
+    NIMCP_API_CHECK(layer_id < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid layer_id in unregister_layer");
 
     layer_entry_t* entry = &registry->layers[layer_id];
     if (!entry->registered) return NIMCP_LAYER_ERR_NOT_REGISTERED;
@@ -107,15 +109,18 @@ bool nimcp_layer_registry_is_layer_registered(nimcp_layer_registry_t registry, n
 }
 
 nimcp_layer_error_t nimcp_layer_registry_get_layer_config(nimcp_layer_registry_t registry, nimcp_layer_id_t layer_id, nimcp_layer_config_t* config_out) {
-    if (!registry || !config_out) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (layer_id >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in get_layer_config");
+    NIMCP_API_CHECK_NULL(config_out, NIMCP_LAYER_ERR_NULL_PTR, "config_out is NULL in get_layer_config");
+    NIMCP_API_CHECK(layer_id < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid layer_id in get_layer_config");
     if (!registry->layers[layer_id].registered) return NIMCP_LAYER_ERR_NOT_REGISTERED;
     *config_out = registry->layers[layer_id].config;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_layer_registry_get_layers(nimcp_layer_registry_t registry, nimcp_layer_id_t* layer_ids_out, size_t max_layers, size_t* count_out) {
-    if (!registry || !layer_ids_out || !count_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in get_layers");
+    NIMCP_API_CHECK_NULL(layer_ids_out, NIMCP_LAYER_ERR_NULL_PTR, "layer_ids_out is NULL in get_layers");
+    NIMCP_API_CHECK_NULL(count_out, NIMCP_LAYER_ERR_NULL_PTR, "count_out is NULL in get_layers");
     size_t count = 0;
     for (int i = 0; i < NIMCP_LAYER_COUNT && count < max_layers; i++) {
         if (registry->layers[i].registered) {
@@ -130,8 +135,12 @@ nimcp_layer_error_t nimcp_layer_registry_register_module(
     nimcp_layer_registry_t registry, nimcp_layer_id_t layer_id,
     void* module_ptr, nimcp_module_interface_t* interface, const char* name, uint32_t* module_id_out
 ) {
-    if (!registry || !module_ptr || !interface || !name || !module_id_out) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (layer_id >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in register_module");
+    NIMCP_API_CHECK_NULL(module_ptr, NIMCP_LAYER_ERR_NULL_PTR, "module_ptr is NULL in register_module");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "interface is NULL in register_module");
+    NIMCP_API_CHECK_NULL(name, NIMCP_LAYER_ERR_NULL_PTR, "name is NULL in register_module");
+    NIMCP_API_CHECK_NULL(module_id_out, NIMCP_LAYER_ERR_NULL_PTR, "module_id_out is NULL in register_module");
+    NIMCP_API_CHECK(layer_id < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid layer_id in register_module");
 
     layer_entry_t* layer = &registry->layers[layer_id];
     if (!layer->registered) return NIMCP_LAYER_ERR_NOT_REGISTERED;
@@ -154,8 +163,8 @@ nimcp_layer_error_t nimcp_layer_registry_register_module(
 }
 
 nimcp_layer_error_t nimcp_layer_registry_unregister_module(nimcp_layer_registry_t registry, nimcp_layer_id_t layer_id, uint32_t module_id) {
-    if (!registry) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (layer_id >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in unregister_module");
+    NIMCP_API_CHECK(layer_id < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid layer_id in unregister_module");
 
     layer_entry_t* layer = &registry->layers[layer_id];
     if (!layer->registered) return NIMCP_LAYER_ERR_NOT_REGISTERED;
@@ -172,8 +181,9 @@ nimcp_layer_error_t nimcp_layer_registry_unregister_module(nimcp_layer_registry_
 }
 
 nimcp_layer_error_t nimcp_layer_registry_get_module(nimcp_layer_registry_t registry, nimcp_layer_id_t layer_id, uint32_t module_id, nimcp_module_info_t* info_out) {
-    if (!registry || !info_out) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (layer_id >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in get_module");
+    NIMCP_API_CHECK_NULL(info_out, NIMCP_LAYER_ERR_NULL_PTR, "info_out is NULL in get_module");
+    NIMCP_API_CHECK(layer_id < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid layer_id in get_module");
 
     layer_entry_t* layer = &registry->layers[layer_id];
     if (!layer->registered) return NIMCP_LAYER_ERR_NOT_REGISTERED;
@@ -188,8 +198,10 @@ nimcp_layer_error_t nimcp_layer_registry_get_module(nimcp_layer_registry_t regis
 }
 
 nimcp_layer_error_t nimcp_layer_registry_get_modules(nimcp_layer_registry_t registry, nimcp_layer_id_t layer_id, nimcp_module_info_t* modules_out, size_t max_modules, size_t* count_out) {
-    if (!registry || !modules_out || !count_out) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (layer_id >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in get_modules");
+    NIMCP_API_CHECK_NULL(modules_out, NIMCP_LAYER_ERR_NULL_PTR, "modules_out is NULL in get_modules");
+    NIMCP_API_CHECK_NULL(count_out, NIMCP_LAYER_ERR_NULL_PTR, "count_out is NULL in get_modules");
+    NIMCP_API_CHECK(layer_id < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid layer_id in get_modules");
 
     layer_entry_t* layer = &registry->layers[layer_id];
     if (!layer->registered) return NIMCP_LAYER_ERR_NOT_REGISTERED;
@@ -205,8 +217,10 @@ nimcp_layer_error_t nimcp_layer_registry_get_modules(nimcp_layer_registry_t regi
 }
 
 nimcp_layer_error_t nimcp_layer_registry_find_module_by_name(nimcp_layer_registry_t registry, nimcp_layer_id_t layer_id, const char* name, nimcp_module_info_t* info_out) {
-    if (!registry || !name || !info_out) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (layer_id >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in find_module_by_name");
+    NIMCP_API_CHECK_NULL(name, NIMCP_LAYER_ERR_NULL_PTR, "name is NULL in find_module_by_name");
+    NIMCP_API_CHECK_NULL(info_out, NIMCP_LAYER_ERR_NULL_PTR, "info_out is NULL in find_module_by_name");
+    NIMCP_API_CHECK(layer_id < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid layer_id in find_module_by_name");
 
     layer_entry_t* layer = &registry->layers[layer_id];
     if (!layer->registered) return NIMCP_LAYER_ERR_NOT_REGISTERED;
@@ -232,8 +246,10 @@ int nimcp_layer_registry_get_module_count(nimcp_layer_registry_t registry, nimcp
 }
 
 nimcp_layer_error_t nimcp_layer_registry_register_connection(nimcp_layer_registry_t registry, const nimcp_layer_connection_t* connection) {
-    if (!registry || !connection) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (connection->layer_a >= NIMCP_LAYER_COUNT || connection->layer_b >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in register_connection");
+    NIMCP_API_CHECK_NULL(connection, NIMCP_LAYER_ERR_NULL_PTR, "connection is NULL in register_connection");
+    NIMCP_API_CHECK(connection->layer_a < NIMCP_LAYER_COUNT && connection->layer_b < NIMCP_LAYER_COUNT,
+                    NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid layer IDs in register_connection");
     if (registry->connection_count >= MAX_CONNECTIONS) return NIMCP_LAYER_ERR_CAPACITY;
 
     connection_entry_t* entry = &registry->connections[registry->connection_count];
@@ -244,7 +260,7 @@ nimcp_layer_error_t nimcp_layer_registry_register_connection(nimcp_layer_registr
 }
 
 nimcp_layer_error_t nimcp_layer_registry_unregister_connection(nimcp_layer_registry_t registry, nimcp_layer_id_t layer_a, nimcp_layer_id_t layer_b) {
-    if (!registry) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in unregister_connection");
     for (uint32_t i = 0; i < registry->connection_count; i++) {
         connection_entry_t* entry = &registry->connections[i];
         if (entry->active &&
@@ -271,7 +287,8 @@ bool nimcp_layer_registry_are_connected(nimcp_layer_registry_t registry, nimcp_l
 }
 
 nimcp_layer_error_t nimcp_layer_registry_get_connection(nimcp_layer_registry_t registry, nimcp_layer_id_t layer_a, nimcp_layer_id_t layer_b, nimcp_layer_connection_t* connection_out) {
-    if (!registry || !connection_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in get_connection");
+    NIMCP_API_CHECK_NULL(connection_out, NIMCP_LAYER_ERR_NULL_PTR, "connection_out is NULL in get_connection");
     for (uint32_t i = 0; i < registry->connection_count; i++) {
         connection_entry_t* entry = &registry->connections[i];
         if (entry->active &&
@@ -285,7 +302,9 @@ nimcp_layer_error_t nimcp_layer_registry_get_connection(nimcp_layer_registry_t r
 }
 
 nimcp_layer_error_t nimcp_layer_registry_get_layer_connections(nimcp_layer_registry_t registry, nimcp_layer_id_t layer_id, nimcp_layer_connection_t* connections_out, size_t max_connections, size_t* count_out) {
-    if (!registry || !connections_out || !count_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in get_layer_connections");
+    NIMCP_API_CHECK_NULL(connections_out, NIMCP_LAYER_ERR_NULL_PTR, "connections_out is NULL in get_layer_connections");
+    NIMCP_API_CHECK_NULL(count_out, NIMCP_LAYER_ERR_NULL_PTR, "count_out is NULL in get_layer_connections");
     size_t count = 0;
     for (uint32_t i = 0; i < registry->connection_count && count < max_connections; i++) {
         connection_entry_t* entry = &registry->connections[i];
@@ -317,7 +336,8 @@ int nimcp_layer_registry_get_connection_count(nimcp_layer_registry_t registry) {
 }
 
 nimcp_layer_error_t nimcp_layer_registry_foreach_layer(nimcp_layer_registry_t registry, nimcp_layer_iterator_cb callback, void* user_data) {
-    if (!registry || !callback) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in foreach_layer");
+    NIMCP_API_CHECK_NULL(callback, NIMCP_LAYER_ERR_NULL_PTR, "callback is NULL in foreach_layer");
     for (int i = 0; i < NIMCP_LAYER_COUNT; i++) {
         if (registry->layers[i].registered) {
             if (!callback((nimcp_layer_id_t)i, &registry->layers[i].config, user_data)) {
@@ -329,8 +349,9 @@ nimcp_layer_error_t nimcp_layer_registry_foreach_layer(nimcp_layer_registry_t re
 }
 
 nimcp_layer_error_t nimcp_layer_registry_foreach_module(nimcp_layer_registry_t registry, nimcp_layer_id_t layer_id, nimcp_module_iterator_cb callback, void* user_data) {
-    if (!registry || !callback) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (layer_id >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in foreach_module");
+    NIMCP_API_CHECK_NULL(callback, NIMCP_LAYER_ERR_NULL_PTR, "callback is NULL in foreach_module");
+    NIMCP_API_CHECK(layer_id < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid layer_id in foreach_module");
 
     layer_entry_t* layer = &registry->layers[layer_id];
     if (!layer->registered) return NIMCP_LAYER_ERR_NOT_REGISTERED;
@@ -346,7 +367,8 @@ nimcp_layer_error_t nimcp_layer_registry_foreach_module(nimcp_layer_registry_t r
 }
 
 nimcp_layer_error_t nimcp_layer_registry_foreach_all_modules(nimcp_layer_registry_t registry, nimcp_module_iterator_cb callback, void* user_data) {
-    if (!registry || !callback) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in foreach_all_modules");
+    NIMCP_API_CHECK_NULL(callback, NIMCP_LAYER_ERR_NULL_PTR, "callback is NULL in foreach_all_modules");
     for (int i = 0; i < NIMCP_LAYER_COUNT; i++) {
         if (registry->layers[i].registered) {
             layer_entry_t* layer = &registry->layers[i];

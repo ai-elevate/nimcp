@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/structural/nimcp_structural_immune_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -17,10 +18,7 @@
  * ============================================================================ */
 
 int structural_immune_default_config(structural_immune_config_t* config) {
-    if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config pointer");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(config, -1, "Structural-immune config is NULL");
 
     config->enable_cytokine_modulation = true;
     config->enable_microglia_pruning = true;
@@ -40,17 +38,12 @@ structural_immune_bridge_t* structural_immune_bridge_create(
     brain_immune_system_t* immune_system,
     structural_plasticity_system_t* structural_system
 ) {
-    if (!immune_system || !structural_system) {
-        NIMCP_LOGGING_ERROR("NULL system parameter");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(immune_system, "Immune system is NULL");
+    NIMCP_API_CHECK_NULL_RET_NULL(structural_system, "Structural system is NULL");
 
     structural_immune_bridge_t* bridge =
         (structural_immune_bridge_t*)nimcp_malloc(sizeof(*bridge));
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate structural-immune bridge");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "Structural-immune bridge allocation failed");
 
     memset(bridge, 0, sizeof(*bridge));
 
@@ -73,8 +66,9 @@ structural_immune_bridge_t* structural_immune_bridge_create(
     /* Create mutex */
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        LOG_ERROR("Structural-immune bridge mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Structural-immune bridge mutex creation failed");
         return NULL;
     }
 
@@ -107,10 +101,7 @@ void structural_immune_bridge_destroy(structural_immune_bridge_t* bridge) {
 int structural_immune_apply_cytokine_effects(
     structural_immune_bridge_t* bridge
 ) {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "Structural-immune bridge is NULL");
 
     if (!bridge->enable_cytokine_modulation) {
         return 0;
@@ -184,10 +175,7 @@ int structural_immune_apply_cytokine_effects(
 int structural_immune_apply_inflammation_effects(
     structural_immune_bridge_t* bridge
 ) {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "Structural-immune bridge is NULL");
 
     if (!bridge->enable_inflammation_effects) {
         return 0;
@@ -241,10 +229,7 @@ int structural_immune_apply_inflammation_effects(
 }
 
 int structural_immune_microglia_prune(structural_immune_bridge_t* bridge) {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "Structural-immune bridge is NULL");
 
     if (!bridge->enable_microglia_pruning) {
         return 0;
@@ -349,10 +334,7 @@ uint32_t structural_immune_tag_weak_spines(
  * ============================================================================ */
 
 int structural_immune_signal_density(structural_immune_bridge_t* bridge) {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "Structural-immune bridge is NULL");
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
@@ -378,10 +360,7 @@ int structural_immune_request_pruning(
     structural_immune_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "Structural-immune bridge is NULL");
 
     /* Tag synapse with complement */
     uint8_t tag[STRUCTURAL_EPITOPE_SIZE];
@@ -406,10 +385,7 @@ int structural_immune_bridge_update(
     structural_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "Structural-immune bridge is NULL");
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
 
@@ -443,9 +419,8 @@ int structural_immune_get_cytokine_effects(
     const structural_immune_bridge_t* bridge,
     cytokine_structural_effects_t* effects
 ) {
-    if (!bridge || !effects) {
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "Structural-immune bridge is NULL");
+    NIMCP_API_CHECK_NULL(effects, -1, "Effects output pointer is NULL");
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
     *effects = bridge->cytokine_effects;
@@ -458,9 +433,8 @@ int structural_immune_get_microglia_state(
     const structural_immune_bridge_t* bridge,
     microglia_pruning_state_t* state
 ) {
-    if (!bridge || !state) {
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "Structural-immune bridge is NULL");
+    NIMCP_API_CHECK_NULL(state, -1, "State output pointer is NULL");
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
     *state = bridge->microglia_state;

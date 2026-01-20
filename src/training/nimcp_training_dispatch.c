@@ -16,6 +16,9 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/tensor/nimcp_tensor.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 // SNN training includes
 #include "snn/nimcp_snn_training.h"
@@ -36,6 +39,28 @@
 
 #include <string.h>
 #include <math.h>
+
+//=============================================================================
+// Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+// Avoid including full header to prevent type conflicts
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/**
+ * @brief Send heartbeat from training operation
+ * @param brain Brain context with health agent
+ * @param operation Operation name
+ * @param progress Progress value [0.0-1.0]
+ */
+static inline void training_heartbeat(brain_t brain, const char* operation, float progress) {
+    if (brain && brain->health_agent_enabled && brain->health_agent) {
+        nimcp_health_agent_heartbeat_ex(brain->health_agent, operation, progress);
+    }
+}
 
 //=============================================================================
 // Internal Helper Functions
@@ -468,6 +493,9 @@ int training_dispatch_step(
     if (!brain || !inputs || !targets) {
         return -1;
     }
+
+    /* Phase 8: Send heartbeat at start of training step */
+    training_heartbeat(brain, "training_step", 0.0f);
 
     // Initialize result
     if (result) {

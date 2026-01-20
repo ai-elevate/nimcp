@@ -10,6 +10,7 @@
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 

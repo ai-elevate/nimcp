@@ -12,6 +12,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -86,14 +87,14 @@ nimcp_bargaining_config_t nimcp_bargaining_default_config(uint32_t num_players) 
 //=============================================================================
 
 nimcp_bargaining_t nimcp_bargaining_create(const nimcp_bargaining_config_t* config) {
-    if (!config || config->num_players == 0 || config->num_players > NIMCP_GT_MAX_PLAYERS) {
+    NIMCP_API_CHECK_NULL_RET_NULL(config, "NULL config in nimcp_bargaining_create");
+    if (config->num_players == 0 || config->num_players > NIMCP_GT_MAX_PLAYERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid player count: %u", config->num_players);
         return NULL;
     }
 
     nimcp_bargaining_t bargaining = nimcp_calloc(1, sizeof(struct nimcp_bargaining_struct));
-    if (!bargaining) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bargaining, "Failed to allocate bargaining structure");
 
     bargaining->config = *config;
     bargaining->state = NIMCP_BARGAINING_STATE_INITIALIZED;

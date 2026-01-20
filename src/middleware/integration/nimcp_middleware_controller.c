@@ -18,6 +18,7 @@
 #include "async/nimcp_bio_router.h"
 #include "middleware/routing/nimcp_attention_gate.h"
 #include "middleware/routing/nimcp_routing_table.h"
+#include "api/nimcp_api_exception.h"
 #include "middleware/patterns/nimcp_pattern_library.h"
 #include "middleware/integration/nimcp_shannon_monitor.h"
 #include "utils/memory/nimcp_memory.h"

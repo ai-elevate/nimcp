@@ -16,6 +16,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -974,20 +975,21 @@ nimcp_spatial_game_t nimcp_spatial_create(
     const nimcp_spatial_config_t* config,
     const float* payoff_matrix
 ) {
-    if (!config || !payoff_matrix) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(config, "NULL config in nimcp_spatial_create");
+    NIMCP_API_CHECK_NULL_RET_NULL(payoff_matrix, "NULL payoff_matrix in nimcp_spatial_create");
 
     if (config->num_strategies < 1 || config->num_strategies > NIMCP_SPATIAL_MAX_STRATEGIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid strategy count: %u", config->num_strategies);
         return NULL;
     }
 
     if (config->num_nodes < 1 || config->num_nodes > NIMCP_SPATIAL_MAX_NODES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid node count: %u", config->num_nodes);
         return NULL;
     }
 
     nimcp_spatial_game_t ctx = nimcp_calloc(1, sizeof(struct nimcp_spatial_game_struct));
-    if (!ctx) return NULL;
+    NIMCP_API_CHECK_ALLOC(ctx, "Failed to allocate spatial game context");
 
     ctx->config = *config;
     ctx->state = NIMCP_SPATIAL_STATE_UNINITIALIZED;

@@ -18,6 +18,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <time.h>
 #include <stdatomic.h>
@@ -369,15 +370,12 @@ override_config_t override_controller_default_config(void) {
 override_controller_t override_controller_create(const override_config_t* config) {
     // Allocate controller instance
     override_controller_t controller = nimcp_calloc(1, sizeof(struct override_controller_impl));
-    if (!controller) {
-        LOG_ERROR("%s: Failed to allocate override controller", MODULE_NAME);
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(controller, "Failed to allocate override controller");
 
     // Initialize mutex
     int mutex_result = nimcp_platform_mutex_init(&controller->mutex, false);
     if (mutex_result != 0) {
-        LOG_ERROR("%s: Failed to initialize mutex", MODULE_NAME);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Failed to initialize override controller mutex");
         nimcp_free(controller);
         return NULL;
     }

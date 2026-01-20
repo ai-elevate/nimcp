@@ -20,6 +20,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "security_shadow_stack"
 
@@ -223,11 +224,11 @@ nimcp_shadow_stack_t* nimcp_shadow_stack_create(uint32_t size)
     nimcp_shadow_stack_t* ss =
         (nimcp_shadow_stack_t*)nimcp_calloc(1, sizeof(nimcp_shadow_stack_t));
 
-    if (!ss)
-        return NULL;
+    NIMCP_API_CHECK_ALLOC(ss, "Failed to allocate shadow stack");
 
     ss->entries = (nimcp_ss_entry_t*)nimcp_calloc(size, sizeof(nimcp_ss_entry_t));
     if (!ss->entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate shadow stack entries");
         nimcp_free(ss);
         return NULL;
     }
@@ -248,11 +249,8 @@ nimcp_result_t nimcp_shadow_stack_init(
     nimcp_shadow_stack_t* ss,
     nimcp_ss_mode_t mode)
 {
-    if (!ss)
-        return NIMCP_INVALID_PARAM;
-
-    if (ss->initialized)
-        return NIMCP_INVALID_STATE;
+    NIMCP_API_CHECK_NULL(ss, NIMCP_INVALID_PARAM, "NULL shadow stack in init");
+    NIMCP_API_CHECK(!ss->initialized, NIMCP_INVALID_STATE, "Shadow stack already initialized");
 
     ss->mode = mode;
     ss->initialized = true;
@@ -545,8 +543,7 @@ bool nimcp_shadow_stack_is_full(nimcp_shadow_stack_t* ss)
 
 nimcp_result_t nimcp_shadow_stack_clear(nimcp_shadow_stack_t* ss)
 {
-    if (!ss)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(ss, NIMCP_INVALID_PARAM, "NULL shadow stack in clear");
 
     // Zero all entries
     memset(ss->entries, 0, ss->size * sizeof(nimcp_ss_entry_t));
@@ -629,8 +626,8 @@ nimcp_result_t nimcp_shadow_stack_get_stats(
     nimcp_shadow_stack_t* ss,
     nimcp_ss_stats_t* stats)
 {
-    if (!ss || !stats)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(ss, NIMCP_INVALID_PARAM, "NULL shadow stack in get_stats");
+    NIMCP_API_CHECK_NULL(stats, NIMCP_INVALID_PARAM, "NULL stats output in get_stats");
 
     memcpy(stats, &ss->stats, sizeof(nimcp_ss_stats_t));
 
@@ -639,8 +636,7 @@ nimcp_result_t nimcp_shadow_stack_get_stats(
 
 nimcp_result_t nimcp_shadow_stack_reset_stats(nimcp_shadow_stack_t* ss)
 {
-    if (!ss)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(ss, NIMCP_INVALID_PARAM, "NULL shadow stack in reset_stats");
 
     // Keep current_depth, reset everything else
     uint32_t depth = ss->stats.current_depth;
@@ -654,8 +650,7 @@ nimcp_result_t nimcp_shadow_stack_set_mode(
     nimcp_shadow_stack_t* ss,
     nimcp_ss_mode_t mode)
 {
-    if (!ss)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(ss, NIMCP_INVALID_PARAM, "NULL shadow stack in set_mode");
 
     ss->mode = mode;
 
@@ -675,8 +670,7 @@ nimcp_result_t nimcp_shadow_stack_set_handler(
     nimcp_ss_mismatch_callback_t callback,
     void* user_data)
 {
-    if (!ss)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(ss, NIMCP_INVALID_PARAM, "NULL shadow stack in set_handler");
 
     ss->callback = callback;
     ss->callback_user_data = user_data;

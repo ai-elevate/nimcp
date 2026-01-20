@@ -98,3 +98,8 @@ set_tests_properties(regression_utils_fault_tolerance_test_brain_probe_health_re
 add_ft_regression_test(test_world_imagination_health_regression)
 set_tests_properties(regression_utils_fault_tolerance_test_world_imagination_health_regression
                      PROPERTIES TIMEOUT 120)
+
+# Heartbeat Module Regression Tests (Phase 8: Heartbeat for Long Operations)
+add_ft_regression_test(test_heartbeat_module_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_heartbeat_module_regression
+                     PROPERTIES TIMEOUT 120)

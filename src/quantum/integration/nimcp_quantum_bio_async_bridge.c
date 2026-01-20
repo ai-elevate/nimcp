@@ -45,6 +45,7 @@
 #include "utils/memory/nimcp_memory_guards.h"
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_router.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
@@ -114,7 +115,11 @@ static quantum_bio_subscription_t* quantum_find_subscription(
  * ============================================================================ */
 
 int quantum_bio_async_default_config(quantum_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        LOG_ERROR("NULL config pointer in quantum_bio_async_default_config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config pointer");
+        return -1;
+    }
 
     config->state_broadcast_interval_ms = QUANTUM_BIO_DEFAULT_BROADCAST_INTERVAL_MS;
     config->enable_auto_broadcast = true;
@@ -138,7 +143,7 @@ quantum_bio_async_bridge_t* quantum_bio_async_bridge_create(
     const quantum_bio_async_config_t* config
 ) {
     quantum_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(quantum_bio_async_bridge_t));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate quantum bio-async bridge");
 
     if (config) {
         bridge->config = *config;
@@ -149,6 +154,8 @@ quantum_bio_async_bridge_t* quantum_bio_async_bridge_create(
     /* Create mutex for thread safety */
     bridge->mutex = nimcp_mutex_create(NULL);
     if (!bridge->mutex) {
+        LOG_ERROR("Failed to create mutex for quantum bio-async bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create quantum bio-async bridge mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -158,6 +165,8 @@ quantum_bio_async_bridge_t* quantum_bio_async_bridge_create(
         bridge->subscription_capacity, sizeof(quantum_bio_subscription_t)
     );
     if (!bridge->subscriptions) {
+        LOG_ERROR("Failed to allocate subscriptions for quantum bio-async bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate quantum bio-async bridge subscriptions");
         nimcp_mutex_destroy(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
@@ -195,7 +204,11 @@ int quantum_bio_async_connect(
     quantum_bio_async_bridge_t* bridge,
     bio_router_t router
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_connect");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
 
     bridge->router = router;
 
@@ -216,7 +229,11 @@ int quantum_bio_async_connect(
 }
 
 int quantum_bio_async_disconnect(quantum_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_disconnect");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
 
     /* Unregister from router */
     if (bridge->module_ctx) {
@@ -242,7 +259,16 @@ int quantum_bio_async_process_inbox(
     quantum_bio_async_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_process_inbox");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        LOG_ERROR("Bridge not connected in quantum_bio_async_process_inbox");
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "Bridge not connected");
+        return -1;
+    }
     if (!bridge->module_ctx) return 0;
 
     /* Use the router to process inbox messages */
@@ -265,7 +291,16 @@ int quantum_bio_async_update(
     quantum_bio_async_bridge_t* bridge,
     uint32_t delta_ms
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        LOG_ERROR("Bridge not connected in quantum_bio_async_update");
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "Bridge not connected");
+        return -1;
+    }
 
     bridge->time_since_broadcast_ms += delta_ms;
 
@@ -305,6 +340,7 @@ static int quantum_broadcast_via_router(
         if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
         bridge->stats.routing_errors++;
         if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+        NIMCP_THROW(err, "Bio-router broadcast failed");
         return -1;
     }
     return 0;
@@ -315,7 +351,15 @@ int quantum_bio_async_broadcast_coherence(
     float coherence_level,
     uint32_t num_qubits
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_broadcast_coherence");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "Bridge not connected for coherence broadcast");
+        return -1;
+    }
     if (!bridge->config.enable_coherence_routing) return 0;
 
     quantum_bio_coherence_msg_t msg = {0};
@@ -376,7 +420,15 @@ int quantum_bio_async_broadcast_entanglement(
     float fidelity,
     bool is_creation
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_broadcast_entanglement");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "Bridge not connected for entanglement broadcast");
+        return -1;
+    }
     if (!bridge->config.enable_entanglement_routing) return 0;
 
     quantum_bio_entanglement_msg_t msg = {0};
@@ -423,7 +475,15 @@ int quantum_bio_async_broadcast_measurement(
     int32_t outcome,
     float probability
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_broadcast_measurement");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "Bridge not connected for measurement broadcast");
+        return -1;
+    }
     if (!bridge->config.enable_measurement_routing) return 0;
 
     quantum_bio_measurement_msg_t msg = {0};
@@ -459,7 +519,15 @@ int quantum_bio_async_broadcast_walk_update(
     uint32_t step_number,
     float amplitude_at_target
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_broadcast_walk_update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "Bridge not connected for walk update broadcast");
+        return -1;
+    }
 
     quantum_bio_walk_msg_t msg = {0};
     msg.header.type = BIO_MSG_ELIG_QUANTUM_WALK_DIFFUSION;
@@ -494,7 +562,15 @@ int quantum_bio_async_broadcast_annealing(
     float temperature,
     float current_energy
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_broadcast_annealing");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "Bridge not connected for annealing broadcast");
+        return -1;
+    }
 
     quantum_bio_annealing_msg_t msg = {0};
     msg.header.type = BIO_MSG_ELIG_QUANTUM_ANNEAL_STATE;
@@ -528,7 +604,15 @@ int quantum_bio_async_broadcast_gate(
     uint32_t target_qubit,
     float gate_fidelity
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_broadcast_gate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "Bridge not connected for gate broadcast");
+        return -1;
+    }
 
     quantum_bio_gate_msg_t msg = {0};
     msg.header.type = BIO_MSG_ELIG_QUANTUM_GATE_APPLIED;
@@ -561,7 +645,15 @@ int quantum_bio_async_broadcast_error(
     uint32_t qubit_id,
     bool is_correctable
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_broadcast_error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "Bridge not connected for error broadcast");
+        return -1;
+    }
     if (!bridge->config.enable_error_routing) return 0;
 
     quantum_bio_error_msg_t msg = {0};
@@ -598,7 +690,15 @@ int quantum_bio_async_broadcast_amplitude(
     float estimated_amplitude,
     float variance
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_broadcast_amplitude");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "Bridge not connected for amplitude broadcast");
+        return -1;
+    }
 
     quantum_bio_amplitude_msg_t msg = {0};
     msg.header.type = BIO_MSG_ELIG_QUANTUM_AMPLITUDE_ESTIMATE;
@@ -635,7 +735,11 @@ int quantum_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_subscribe_module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
 
     if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
 
@@ -648,6 +752,7 @@ int quantum_bio_async_subscribe_module(
 
     if (bridge->subscription_count >= bridge->subscription_capacity) {
         if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+        NIMCP_THROW(NIMCP_ERROR_BUFFER_FULL, "Subscription capacity exceeded");
         return -1;
     }
 
@@ -672,7 +777,11 @@ int quantum_bio_async_unsubscribe_module(
     quantum_bio_async_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_unsubscribe_module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
 
     if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
 
@@ -687,6 +796,7 @@ int quantum_bio_async_unsubscribe_module(
 
     if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
 
+    NIMCP_THROW(NIMCP_ERROR_NOT_FOUND, "Subscription not found for module");
     return -1;
 }
 
@@ -723,7 +833,16 @@ int quantum_bio_async_get_stats(
     const quantum_bio_async_bridge_t* bridge,
     quantum_bio_async_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
+    if (!stats) {
+        LOG_ERROR("NULL stats pointer in quantum_bio_async_get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL stats pointer");
+        return -1;
+    }
 
     /* Note: casting away const for mutex - safe since we're only reading */
     quantum_bio_async_bridge_t* mutable_bridge = (quantum_bio_async_bridge_t*)bridge;
@@ -737,7 +856,11 @@ int quantum_bio_async_get_stats(
 }
 
 int quantum_bio_async_reset_stats(quantum_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        LOG_ERROR("NULL bridge in quantum_bio_async_reset_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge pointer");
+        return -1;
+    }
 
     if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
 

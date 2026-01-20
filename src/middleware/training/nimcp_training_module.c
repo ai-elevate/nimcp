@@ -23,6 +23,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
@@ -133,10 +134,8 @@ nimcp_training_context_t* nimcp_training_create(
     const nimcp_training_module_config_t* config)
 {
     nimcp_training_context_t* ctx = nimcp_calloc(1, sizeof(nimcp_training_context_t));
-    if (!ctx) {
-        LOG_ERROR("Failed to allocate training context");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC_SIZE(ctx, sizeof(nimcp_training_context_t),
+        "nimcp_training_create: failed to allocate training context");
 
     /* Apply configuration */
     if (config) {

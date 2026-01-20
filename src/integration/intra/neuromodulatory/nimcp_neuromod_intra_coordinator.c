@@ -6,6 +6,7 @@
  */
 
 #include "integration/intra/neuromodulatory/nimcp_neuromod_intra_coordinator.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -49,7 +50,7 @@ nimcp_neuromod_intra_config_t nimcp_neuromod_intra_default_config(void) {
 
 nimcp_neuromod_intra_t nimcp_neuromod_intra_create(const nimcp_neuromod_intra_config_t* config) {
     nimcp_neuromod_intra_t coord = (nimcp_neuromod_intra_t)calloc(1, sizeof(struct nimcp_neuromod_intra_struct));
-    if (!coord) return NULL;
+    NIMCP_API_CHECK_ALLOC(coord, "Failed to allocate neuromod intra coordinator");
     coord->config = config ? *config : nimcp_neuromod_intra_default_config();
     coord->state.norepinephrine_level = 0.5f;
     coord->state.dopamine_level = 0.5f;
@@ -64,7 +65,8 @@ void nimcp_neuromod_intra_destroy(nimcp_neuromod_intra_t coord) {
 }
 
 nimcp_layer_error_t nimcp_neuromod_intra_init(nimcp_neuromod_intra_t coord, nimcp_layer_registry_t registry) {
-    if (!coord || !registry) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL");
     if (coord->is_initialized) return NIMCP_LAYER_ERR_ALREADY_REGISTERED;
     coord->registry = registry;
     coord->is_initialized = true;
@@ -73,14 +75,16 @@ nimcp_layer_error_t nimcp_neuromod_intra_init(nimcp_neuromod_intra_t coord, nimc
 }
 
 nimcp_layer_error_t nimcp_neuromod_intra_shutdown(nimcp_neuromod_intra_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
     if (!coord->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     coord->is_initialized = false;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_neuromod_intra_connect_lc(nimcp_neuromod_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL");
     coord->lc.module = module;
     coord->lc.interface = *interface;
     coord->lc.connected = true;
@@ -89,7 +93,9 @@ nimcp_layer_error_t nimcp_neuromod_intra_connect_lc(nimcp_neuromod_intra_t coord
 }
 
 nimcp_layer_error_t nimcp_neuromod_intra_connect_vta(nimcp_neuromod_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL");
     coord->vta.module = module;
     coord->vta.interface = *interface;
     coord->vta.connected = true;
@@ -98,7 +104,9 @@ nimcp_layer_error_t nimcp_neuromod_intra_connect_vta(nimcp_neuromod_intra_t coor
 }
 
 nimcp_layer_error_t nimcp_neuromod_intra_connect_raphe(nimcp_neuromod_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL");
     coord->raphe.module = module;
     coord->raphe.interface = *interface;
     coord->raphe.connected = true;
@@ -107,7 +115,9 @@ nimcp_layer_error_t nimcp_neuromod_intra_connect_raphe(nimcp_neuromod_intra_t co
 }
 
 nimcp_layer_error_t nimcp_neuromod_intra_connect_habenula(nimcp_neuromod_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL");
     coord->habenula.module = module;
     coord->habenula.interface = *interface;
     coord->habenula.connected = true;
@@ -116,7 +126,7 @@ nimcp_layer_error_t nimcp_neuromod_intra_connect_habenula(nimcp_neuromod_intra_t
 }
 
 nimcp_layer_error_t nimcp_neuromod_intra_update(nimcp_neuromod_intra_t coord, float dt) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
     if (!coord->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
 
     /* Homeostatic regulation of neurotransmitter levels */
@@ -133,32 +143,36 @@ nimcp_layer_error_t nimcp_neuromod_intra_update(nimcp_neuromod_intra_t coord, fl
 }
 
 nimcp_layer_error_t nimcp_neuromod_intra_sync(nimcp_neuromod_intra_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_neuromod_intra_send(nimcp_neuromod_intra_t coord, uint32_t target_module, nimcp_layer_msg_t* msg) {
-    if (!coord || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL");
     (void)target_module;
     coord->stats.messages_sent++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_neuromod_intra_broadcast(nimcp_neuromod_intra_t coord, uint32_t source_module, const nimcp_layer_msg_t* msg) {
-    if (!coord || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL");
     (void)source_module;
     coord->stats.messages_sent += NEUROMOD_MODULE_COUNT;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_neuromod_intra_get_state(nimcp_neuromod_intra_t coord, nimcp_neuromod_intra_state_t* state_out) {
-    if (!coord || !state_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(state_out, NIMCP_LAYER_ERR_NULL_PTR, "state_out is NULL");
     *state_out = coord->state;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_neuromod_intra_get_stats(nimcp_neuromod_intra_t coord, nimcp_neuromod_intra_stats_t* stats_out) {
-    if (!coord || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(stats_out, NIMCP_LAYER_ERR_NULL_PTR, "stats_out is NULL");
     *stats_out = coord->stats;
     return NIMCP_LAYER_OK;
 }
@@ -168,7 +182,7 @@ float nimcp_neuromod_intra_get_coherence(nimcp_neuromod_intra_t coord) {
 }
 
 nimcp_layer_error_t nimcp_neuromod_intra_reset_stats(nimcp_neuromod_intra_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
     memset(&coord->stats, 0, sizeof(coord->stats));
     return NIMCP_LAYER_OK;
 }

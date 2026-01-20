@@ -29,6 +29,9 @@
 #include "io/stream/nimcp_stream.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdatomic.h>
 #include <stdio.h>
@@ -144,11 +147,16 @@ static ring_buffer_t* ring_buffer_create(uint32_t capacity)
     capacity++;
 
     ring_buffer_t* rb = nimcp_calloc(1, sizeof(ring_buffer_t));
-    if (!rb)
+    if (!rb) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(ring_buffer_t),
+                          "Failed to allocate ring buffer structure");
         return NULL;
+    }
 
     rb->buffer = nimcp_calloc(capacity, sizeof(stream_input_t));
     if (!rb->buffer) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, capacity * sizeof(stream_input_t),
+                          "Failed to allocate ring buffer entries");
         nimcp_free(rb);
         return NULL;
     }
@@ -255,6 +263,8 @@ static bool ring_buffer_enqueue(ring_buffer_t* rb, const float* features, uint32
 
     entry->features = nimcp_malloc(num_features * sizeof(float));
     if (!entry->features) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_features * sizeof(float),
+                          "Failed to allocate stream input features buffer");
         return false;
     }
 
@@ -516,6 +526,8 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
      */
     brain_stream_t stream = nimcp_calloc(1, sizeof(struct brain_stream_struct));
     if (!stream) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct brain_stream_struct),
+                          "Failed to allocate brain stream structure");
         stream_set_error("Failed to allocate stream structure");
         return NULL;
     }

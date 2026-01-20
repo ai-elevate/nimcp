@@ -15,6 +15,7 @@
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 

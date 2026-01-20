@@ -25,6 +25,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -172,7 +174,11 @@ static void init_fovea(eagle_fovea_state_t* fovea, eagle_fovea_type_t type) {
  */
 static int alloc_frame_history(eagle_vision_system_t* sys, uint32_t size) {
     sys->frame_history = nimcp_calloc(size, sizeof(frame_history_entry_t));
-    if (!sys->frame_history) return EAGLE_VISION_ERROR_NO_MEMORY;
+    if (!sys->frame_history) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, size * sizeof(frame_history_entry_t),
+                           "alloc_frame_history: Failed to allocate frame history");
+        return EAGLE_VISION_ERROR_NO_MEMORY;
+    }
 
     sys->history_size = size;
     sys->history_count = 0;
@@ -206,7 +212,11 @@ static void free_frame_history(eagle_vision_system_t* sys) {
  */
 static int add_frame_to_history(eagle_vision_system_t* sys,
                                 const eagle_vision_input_t* input) {
-    if (!sys || !input || !input->data) return EAGLE_VISION_ERROR_NULL_POINTER;
+    if (!sys || !input || !input->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "add_frame_to_history: NULL parameter");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
 
     frame_history_entry_t* entry = &sys->frame_history[sys->history_head];
 
@@ -218,7 +228,11 @@ static int add_frame_to_history(eagle_vision_system_t* sys,
         entry->height != input->height) {
         if (entry->data) nimcp_free(entry->data);
         entry->data = nimcp_malloc(required_size * sizeof(float));
-        if (!entry->data) return EAGLE_VISION_ERROR_NO_MEMORY;
+        if (!entry->data) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, required_size * sizeof(float),
+                               "add_frame_to_history: Failed to allocate frame data");
+            return EAGLE_VISION_ERROR_NO_MEMORY;
+        }
     }
 
     /* Copy frame data */
@@ -350,7 +364,11 @@ static void update_target_prediction(internal_target_t* t) {
  * ============================================================================ */
 
 int eagle_vision_default_config(eagle_vision_config_t* config) {
-    if (!config) return EAGLE_VISION_ERROR_NULL_POINTER;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_default_config: config is NULL");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
 
     /* Acuity settings */
     config->acuity_multiplier = EAGLE_VISION_DEFAULT_ACUITY;
@@ -390,6 +408,8 @@ eagle_vision_system_t* eagle_vision_create(const eagle_vision_config_t* config) 
     eagle_vision_system_t* sys = nimcp_calloc(1, sizeof(eagle_vision_system_t));
     if (!sys) {
         NIMCP_LOGGING_ERROR("Failed to allocate eagle vision system");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(eagle_vision_system_t),
+                           "eagle_vision_create: Failed to allocate system");
         return NULL;
     }
 
@@ -410,6 +430,7 @@ eagle_vision_system_t* eagle_vision_create(const eagle_vision_config_t* config) 
     /* Allocate frame history */
     if (alloc_frame_history(sys, config->motion_history_frames) != 0) {
         NIMCP_LOGGING_ERROR("Failed to allocate frame history");
+        /* Exception already thrown in alloc_frame_history */
         eagle_vision_destroy(sys);
         return NULL;
     }
@@ -420,6 +441,9 @@ eagle_vision_system_t* eagle_vision_create(const eagle_vision_config_t* config) 
                                       sizeof(eagle_motion_vector_t));
     if (!sys->motion_buffer) {
         NIMCP_LOGGING_ERROR("Failed to allocate motion buffer");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           sys->motion_buffer_size * sizeof(eagle_motion_vector_t),
+                           "eagle_vision_create: Failed to allocate motion buffer");
         eagle_vision_destroy(sys);
         return NULL;
     }
@@ -429,6 +453,9 @@ eagle_vision_system_t* eagle_vision_create(const eagle_vision_config_t* config) 
     sys->targets = nimcp_calloc(sys->max_targets, sizeof(internal_target_t));
     if (!sys->targets) {
         NIMCP_LOGGING_ERROR("Failed to allocate target tracking");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           sys->max_targets * sizeof(internal_target_t),
+                           "eagle_vision_create: Failed to allocate target tracking");
         eagle_vision_destroy(sys);
         return NULL;
     }
@@ -440,6 +467,9 @@ eagle_vision_system_t* eagle_vision_create(const eagle_vision_config_t* config) 
                                        sizeof(eagle_pattern_result_t));
     if (!sys->pattern_buffer) {
         NIMCP_LOGGING_ERROR("Failed to allocate pattern buffer");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           sys->pattern_buffer_size * sizeof(eagle_pattern_result_t),
+                           "eagle_vision_create: Failed to allocate pattern buffer");
         eagle_vision_destroy(sys);
         return NULL;
     }
@@ -448,6 +478,8 @@ eagle_vision_system_t* eagle_vision_create(const eagle_vision_config_t* config) 
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE,
+                              "eagle_vision_create: Failed to create mutex");
         eagle_vision_destroy(sys);
         return NULL;
     }
@@ -486,7 +518,11 @@ void eagle_vision_destroy(eagle_vision_system_t* system) {
 }
 
 int eagle_vision_reset(eagle_vision_system_t* system) {
-    if (!system) return EAGLE_VISION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_reset: system is NULL");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -530,7 +566,11 @@ int eagle_vision_reset(eagle_vision_system_t* system) {
 
 int eagle_vision_set_config(eagle_vision_system_t* system,
                             const eagle_vision_config_t* config) {
-    if (!system || !config) return EAGLE_VISION_ERROR_NULL_POINTER;
+    if (!system || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_set_config: NULL parameter");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     system->config = *config;
@@ -546,14 +586,22 @@ int eagle_vision_set_config(eagle_vision_system_t* system,
 
 int eagle_vision_get_config(const eagle_vision_system_t* system,
                             eagle_vision_config_t* config) {
-    if (!system || !config) return EAGLE_VISION_ERROR_NULL_POINTER;
+    if (!system || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_get_config: NULL parameter");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
 
     *config = system->config;
     return EAGLE_VISION_SUCCESS;
 }
 
 int eagle_vision_set_acuity(eagle_vision_system_t* system, float acuity) {
-    if (!system) return EAGLE_VISION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_set_acuity: system is NULL");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
 
     acuity = clamp_f(acuity, EAGLE_VISION_MIN_ACUITY, EAGLE_VISION_MAX_ACUITY);
 
@@ -576,7 +624,11 @@ int eagle_vision_set_acuity(eagle_vision_system_t* system, float acuity) {
 int eagle_vision_set_gaze(eagle_vision_system_t* system,
                           eagle_fovea_type_t fovea,
                           eagle_point_t point) {
-    if (!system) return EAGLE_VISION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_set_gaze: system is NULL");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
 
     /* Clamp point to valid range */
     point.x = clamp_f(point.x, 0.0f, 1.0f);
@@ -602,8 +654,16 @@ int eagle_vision_set_gaze(eagle_vision_system_t* system,
 int eagle_vision_process_frame(eagle_vision_system_t* system,
                                const eagle_vision_input_t* input,
                                eagle_vision_output_t* output) {
-    if (!system || !input || !output) return EAGLE_VISION_ERROR_NULL_POINTER;
-    if (!input->data) return EAGLE_VISION_ERROR_NO_INPUT;
+    if (!system || !input || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_process_frame: NULL parameter");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
+    if (!input->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "eagle_vision_process_frame: input->data is NULL");
+        return EAGLE_VISION_ERROR_NO_INPUT;
+    }
 
     uint64_t start_time = get_time_ms();
 
@@ -681,6 +741,8 @@ int eagle_vision_detect_motion(eagle_vision_system_t* system,
                                uint32_t max_vectors,
                                uint32_t* num_vectors) {
     if (!system || !input || !vectors || !num_vectors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_detect_motion: NULL parameter");
         return EAGLE_VISION_ERROR_NULL_POINTER;
     }
 
@@ -792,8 +854,14 @@ int eagle_vision_detect_motion(eagle_vision_system_t* system,
 int eagle_vision_process_uv(eagle_vision_system_t* system,
                             const eagle_vision_input_t* input,
                             eagle_uv_result_t* result) {
-    if (!system || !input || !result) return EAGLE_VISION_ERROR_NULL_POINTER;
+    if (!system || !input || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_process_uv: NULL parameter");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
     if (!input->has_uv_channel || input->channels < 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "eagle_vision_process_uv: UV channel not available");
         return EAGLE_VISION_ERROR_INVALID_PARAM;
     }
 
@@ -864,6 +932,8 @@ int eagle_vision_detect_patterns(eagle_vision_system_t* system,
                                  uint32_t max_patterns,
                                  uint32_t* num_patterns) {
     if (!system || !input || !patterns || !num_patterns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_detect_patterns: NULL parameter");
         return EAGLE_VISION_ERROR_NULL_POINTER;
     }
 
@@ -941,6 +1011,8 @@ int eagle_vision_track_targets(eagle_vision_system_t* system,
                                uint32_t max_targets,
                                uint32_t* num_targets) {
     if (!system || !input || !targets || !num_targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_track_targets: NULL parameter");
         return EAGLE_VISION_ERROR_NULL_POINTER;
     }
 
@@ -1049,7 +1121,11 @@ int eagle_vision_track_targets(eagle_vision_system_t* system,
 int eagle_vision_estimate_distance(eagle_vision_system_t* system,
                                    const eagle_target_t* target,
                                    float* distance) {
-    if (!system || !target || !distance) return EAGLE_VISION_ERROR_NULL_POINTER;
+    if (!system || !target || !distance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_estimate_distance: NULL parameter");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
 
     /* Simple distance estimation based on apparent size and motion parallax */
     /* Real system would use stereo vision or learned priors */
@@ -1074,7 +1150,11 @@ int eagle_vision_estimate_distance(eagle_vision_system_t* system,
 
 int eagle_vision_get_state(const eagle_vision_system_t* system,
                            eagle_vision_state_t* state) {
-    if (!system || !state) return EAGLE_VISION_ERROR_NULL_POINTER;
+    if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_get_state: NULL parameter");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
 
     *state = system->state;
     return EAGLE_VISION_SUCCESS;
@@ -1082,14 +1162,22 @@ int eagle_vision_get_state(const eagle_vision_system_t* system,
 
 int eagle_vision_get_stats(const eagle_vision_system_t* system,
                            eagle_vision_stats_t* stats) {
-    if (!system || !stats) return EAGLE_VISION_ERROR_NULL_POINTER;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_get_stats: NULL parameter");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
 
     *stats = system->stats;
     return EAGLE_VISION_SUCCESS;
 }
 
 int eagle_vision_reset_stats(eagle_vision_system_t* system) {
-    if (!system) return EAGLE_VISION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_reset_stats: system is NULL");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     memset(&system->stats, 0, sizeof(eagle_vision_stats_t));
@@ -1101,8 +1189,16 @@ int eagle_vision_reset_stats(eagle_vision_system_t* system) {
 int eagle_vision_get_fovea_state(const eagle_vision_system_t* system,
                                  eagle_fovea_type_t fovea,
                                  eagle_fovea_state_t* state) {
-    if (!system || !state) return EAGLE_VISION_ERROR_NULL_POINTER;
-    if (fovea == EAGLE_FOVEA_BOTH) return EAGLE_VISION_ERROR_INVALID_PARAM;
+    if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "eagle_vision_get_fovea_state: NULL parameter");
+        return EAGLE_VISION_ERROR_NULL_POINTER;
+    }
+    if (fovea == EAGLE_FOVEA_BOTH) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "eagle_vision_get_fovea_state: EAGLE_FOVEA_BOTH not allowed");
+        return EAGLE_VISION_ERROR_INVALID_PARAM;
+    }
 
     uint32_t idx = (fovea == EAGLE_FOVEA_CENTRAL) ? 0 : 1;
     *state = system->foveae[idx];
@@ -1118,13 +1214,19 @@ eagle_vision_output_t* eagle_vision_output_create(uint32_t max_targets,
                                                   uint32_t max_motions,
                                                   uint32_t max_patterns) {
     eagle_vision_output_t* output = nimcp_calloc(1, sizeof(eagle_vision_output_t));
-    if (!output) return NULL;
+    if (!output) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(eagle_vision_output_t),
+                           "eagle_vision_output_create: Failed to allocate output");
+        return NULL;
+    }
 
     output->targets = nimcp_calloc(max_targets, sizeof(eagle_target_t));
     output->motion_vectors = nimcp_calloc(max_motions, sizeof(eagle_motion_vector_t));
     output->patterns = nimcp_calloc(max_patterns, sizeof(eagle_pattern_result_t));
 
     if (!output->targets || !output->motion_vectors || !output->patterns) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 0,
+                           "eagle_vision_output_create: Failed to allocate buffers");
         eagle_vision_output_destroy(output);
         return NULL;
     }

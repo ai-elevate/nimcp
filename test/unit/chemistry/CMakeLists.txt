@@ -16,3 +16,8 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/gasotransmitters/CMakeLists.txt")
     add_subdirectory(gasotransmitters)
 endif()
+
+# Exception handling tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt")
+    add_subdirectory(exception)
+endif()

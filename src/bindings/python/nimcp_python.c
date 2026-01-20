@@ -55,6 +55,8 @@
 
 #include "nimcp.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 // Forward declaration for signal filter module
@@ -76,12 +78,14 @@ extern int init_signal_filter_module(PyObject* module);
 static float* py_list_to_float_array(PyObject* list, Py_ssize_t* size) {
     // Guard: Validate input
     if (!PyList_Check(list)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "py_list_to_float_array: Expected list of floats");
         PyErr_SetString(PyExc_TypeError, "Expected list of floats");
         return NULL;
     }
 
     *size = PyList_Size(list);
     if (*size == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "py_list_to_float_array: List cannot be empty");
         PyErr_SetString(PyExc_ValueError, "List cannot be empty");
         return NULL;
     }
@@ -89,6 +93,8 @@ static float* py_list_to_float_array(PyObject* list, Py_ssize_t* size) {
     // Allocate array
     float* array = (float*)malloc((*size) * sizeof(float));
     if (!array) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, (*size) * sizeof(float),
+                          "py_list_to_float_array: Failed to allocate float array");
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate float array");
         return NULL;
     }
@@ -98,6 +104,8 @@ static float* py_list_to_float_array(PyObject* list, Py_ssize_t* size) {
         PyObject* item = PyList_GetItem(list, i);
         if (!PyFloat_Check(item) && !PyLong_Check(item)) {
             free(array);
+            NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                       "py_list_to_float_array: List element %zd is not a number", i);
             PyErr_SetString(PyExc_TypeError, "List must contain only numbers");
             return NULL;
         }
@@ -164,6 +172,7 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds) {
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iiII", kwlist,
                                      &name, &size, &task, &num_inputs, &num_outputs)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_init: Invalid arguments");
         return -1;
     }
 
@@ -171,6 +180,8 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds) {
                                      (nimcp_brain_task_t)task, num_inputs, num_outputs);
 
     if (!self->brain) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_NOT_INITIALIZED, 0, "python_binding",
+                         "Brain_init: Failed to create brain '%s'", name);
         PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
         return -1;
     }
@@ -194,12 +205,14 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
     float confidence = 1.0F;
 
     if (!PyArg_ParseTuple(args, "Os|f", &features_list, &label, &confidence)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_learn: Invalid arguments");
         return NULL;
     }
 
     Py_ssize_t num_features;
     float* features = py_list_to_float_array(features_list, &num_features);
     if (!features) {
+        // Exception already thrown in py_list_to_float_array
         return NULL;
     }
 
@@ -208,6 +221,8 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
     free(features);
 
     if (loss < 0.0F) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
+                         "Brain_learn: Failed to learn example with label '%s'", label);
         PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
         return NULL;
     }
@@ -227,12 +242,14 @@ static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
     PyObject* features_list;
 
     if (!PyArg_ParseTuple(args, "O", &features_list)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_predict: Invalid arguments");
         return NULL;
     }
 
     Py_ssize_t num_features;
     float* features = py_list_to_float_array(features_list, &num_features);
     if (!features) {
+        // Exception already thrown in py_list_to_float_array
         return NULL;
     }
 
@@ -244,6 +261,8 @@ static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
     free(features);
 
     if (status != NIMCP_OK) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
+                         "Brain_predict: Prediction failed");
         PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
         return NULL;
     }
@@ -263,16 +282,19 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
     PyObject* features_batch;
 
     if (!PyArg_ParseTuple(args, "O", &features_batch)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_predict_batch: Invalid arguments");
         return NULL;
     }
 
     if (!PyList_Check(features_batch)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_predict_batch: features_batch must be a list");
         PyErr_SetString(PyExc_TypeError, "features_batch must be a list of lists");
         return NULL;
     }
 
     Py_ssize_t batch_size = PyList_Size(features_batch);
     if (batch_size == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_predict_batch: Batch cannot be empty");
         PyErr_SetString(PyExc_ValueError, "Batch cannot be empty");
         return NULL;
     }
@@ -282,6 +304,7 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
     Py_ssize_t num_features;
     float* first_features = py_list_to_float_array(first_example, &num_features);
     if (!first_features) {
+        // Exception already thrown in py_list_to_float_array
         return NULL;
     }
 
@@ -297,6 +320,8 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
         free(feature_arrays);
         free(labels);
         free(confidences);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, batch_size * sizeof(float*),
+                          "Brain_predict_batch: Failed to allocate batch arrays");
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate batch arrays");
         return NULL;
     }
@@ -339,6 +364,8 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
             free(feature_arrays);
             free(labels);
             free(confidences);
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 256,
+                              "Brain_predict_batch: Failed to allocate label buffer %zd", i);
             PyErr_SetString(PyExc_MemoryError, "Failed to allocate label buffers");
             return NULL;
         }
@@ -399,12 +426,15 @@ static PyObject* Brain_save(BrainObject* self, PyObject* args) {
     const char* filepath;
 
     if (!PyArg_ParseTuple(args, "s", &filepath)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_save: Invalid arguments");
         return NULL;
     }
 
     nimcp_status_t status = nimcp_brain_save(self->brain, filepath);
 
     if (status != NIMCP_OK) {
+        NIMCP_THROW_IO(NIMCP_ERROR_FILE_WRITE, filepath,
+                      "Brain_save: Failed to save brain to '%s'", filepath);
         PyErr_SetString(PyExc_IOError, nimcp_get_error());
         return NULL;
     }
@@ -421,17 +451,27 @@ static PyObject* Brain_load(PyTypeObject* type, PyObject* args) {
     const char* filepath;
 
     if (!PyArg_ParseTuple(args, "s", &filepath)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_load: Invalid arguments");
         return NULL;
     }
 
     nimcp_brain_t brain = nimcp_brain_load(filepath);
 
     if (!brain) {
+        NIMCP_THROW_IO(NIMCP_ERROR_FILE_READ, filepath,
+                      "Brain_load: Failed to load brain from '%s'", filepath);
         PyErr_SetString(PyExc_IOError, nimcp_get_error());
         return NULL;
     }
 
     BrainObject* self = (BrainObject*)type->tp_alloc(type, 0);
+    if (!self) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(BrainObject),
+                          "Brain_load: Failed to allocate BrainObject");
+        nimcp_brain_destroy(brain);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate Brain object");
+        return NULL;
+    }
     self->brain = brain;
 
     return (PyObject*)self;
@@ -453,6 +493,7 @@ static PyObject* Brain_resize(BrainObject* self, PyObject* args) {
     uint32_t new_neuron_count;
 
     if (!PyArg_ParseTuple(args, "I", &new_neuron_count)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_resize: Invalid arguments");
         return NULL;
     }
 
@@ -462,6 +503,8 @@ static PyObject* Brain_resize(BrainObject* self, PyObject* args) {
     bool success = nimcp_brain_resize(self->brain, new_neuron_count);
 
     if (!success) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
+                         "Brain_resize: Failed to resize brain to %u neurons", new_neuron_count);
         PyErr_SetString(PyExc_RuntimeError, "Failed to resize brain. Check that new size > current size and sufficient memory available.");
         return NULL;
     }
@@ -525,6 +568,8 @@ static PyObject* Brain_get_utilization_metrics(BrainObject* self, PyObject* args
     bool success = nimcp_brain_get_utilization_metrics(self->brain, &utilization, &saturation);
 
     if (!success) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
+                         "Brain_get_utilization_metrics: Failed to get metrics");
         PyErr_SetString(PyExc_RuntimeError, "Failed to get utilization metrics");
         return NULL;
     }
@@ -591,6 +636,8 @@ static PyObject* nimcp_get_version(PyObject* self, PyObject* args) {
 static PyObject* nimcp_initialize(PyObject* self, PyObject* args) {
     nimcp_status_t status = nimcp_init();
     if (status != NIMCP_OK) {
+        NIMCP_THROW_CRITICAL(NIMCP_ERROR_NOT_INITIALIZED,
+                            "nimcp_initialize: Failed to initialize NIMCP library");
         PyErr_SetString(PyExc_RuntimeError, "Failed to initialize NIMCP");
         return NULL;
     }
@@ -638,6 +685,8 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     // Initialize NIMCP library
     if (nimcp_init() != NIMCP_OK) {
         LOG_MODULE_ERROR("bindings.python", "Failed to initialize NIMCP core library");
+        NIMCP_THROW_CRITICAL(NIMCP_ERROR_NOT_INITIALIZED,
+                            "PyInit_nimcp: Failed to initialize NIMCP core library");
         PyErr_SetString(PyExc_RuntimeError, "Failed to initialize NIMCP");
         return NULL;
     }

@@ -103,7 +103,7 @@ protected:
     // Recovery callback for testing
     static int test_recovery_callback(
         nimcp_exception_t* ex,
-        nimcp_recovery_action_t action,
+        nimcp_exception_recovery_action_t action,
         void* user_data
     ) {
         (void)user_data;
@@ -675,11 +675,11 @@ TEST_F(SecurityExceptionHandlingTest, SecurityExceptionRecoveryStrategy) {
 
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
     // Security threats should suggest quarantine
-    EXPECT_EQ(strategy.primary_action, RECOVERY_ACTION_QUARANTINE);
+    EXPECT_EQ(strategy.primary_action, EXCEPTION_RECOVERY_QUARANTINE);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
 }
@@ -689,7 +689,7 @@ TEST_F(SecurityExceptionHandlingTest, SecurityRecoveryCallbackRegistration) {
     // WHY:  Security modules need custom recovery logic
 
     int result = nimcp_register_recovery_callback(
-        RECOVERY_ACTION_QUARANTINE,
+        EXCEPTION_RECOVERY_QUARANTINE,
         test_recovery_callback,
         nullptr
     );
@@ -697,7 +697,7 @@ TEST_F(SecurityExceptionHandlingTest, SecurityRecoveryCallbackRegistration) {
     EXPECT_EQ(result, 0);
 
     // Clean up
-    result = nimcp_unregister_recovery_callback(RECOVERY_ACTION_QUARANTINE);
+    result = nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_QUARANTINE);
     EXPECT_EQ(result, 0);
 }
 
@@ -707,7 +707,7 @@ TEST_F(SecurityExceptionHandlingTest, ExecuteSecurityRecovery) {
 
     // Register recovery callback
     nimcp_register_recovery_callback(
-        RECOVERY_ACTION_QUARANTINE,
+        EXCEPTION_RECOVERY_QUARANTINE,
         test_recovery_callback,
         nullptr
     );
@@ -727,13 +727,13 @@ TEST_F(SecurityExceptionHandlingTest, ExecuteSecurityRecovery) {
     // Execute recovery
     int result = nimcp_execute_recovery(
         (nimcp_exception_t*)ex,
-        RECOVERY_ACTION_QUARANTINE
+        EXCEPTION_RECOVERY_QUARANTINE
     );
 
     EXPECT_EQ(result, 0);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_QUARANTINE);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_QUARANTINE);
 }
 
 //=============================================================================
@@ -1067,12 +1067,12 @@ TEST_F(SecurityExceptionHandlingTest, RecoveryActionToString) {
     // WHAT: Test recovery action string conversion
     // WHY:  Human-readable action names for logging
 
-    EXPECT_NE(nimcp_recovery_action_to_string(RECOVERY_ACTION_NONE), nullptr);
-    EXPECT_NE(nimcp_recovery_action_to_string(RECOVERY_ACTION_RETRY), nullptr);
-    EXPECT_NE(nimcp_recovery_action_to_string(RECOVERY_ACTION_GC), nullptr);
-    EXPECT_NE(nimcp_recovery_action_to_string(RECOVERY_ACTION_QUARANTINE), nullptr);
-    EXPECT_NE(nimcp_recovery_action_to_string(RECOVERY_ACTION_ROLLBACK), nullptr);
-    EXPECT_NE(nimcp_recovery_action_to_string(RECOVERY_ACTION_GRACEFUL_SHUTDOWN), nullptr);
+    EXPECT_NE(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_NONE), nullptr);
+    EXPECT_NE(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_RETRY), nullptr);
+    EXPECT_NE(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_GC), nullptr);
+    EXPECT_NE(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_QUARANTINE), nullptr);
+    EXPECT_NE(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_ROLLBACK), nullptr);
+    EXPECT_NE(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN), nullptr);
 }
 
 }  // namespace

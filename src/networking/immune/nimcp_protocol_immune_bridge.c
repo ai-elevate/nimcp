@@ -10,6 +10,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
@@ -96,6 +98,8 @@ protocol_immune_bridge_t* protocol_immune_bridge_create(
 
     protocol_immune_bridge_t* bridge = nimcp_malloc(sizeof(protocol_immune_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(protocol_immune_bridge_t),
+                          "Failed to allocate protocol-immune bridge");
         NIMCP_LOGGING_ERROR("protocol_immune_bridge_create: allocation failed");
         return NULL;
     }

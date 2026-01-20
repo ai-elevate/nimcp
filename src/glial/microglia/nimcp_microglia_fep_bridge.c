@@ -6,6 +6,7 @@
 #include "glial/microglia/nimcp_microglia_fep_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/validation/nimcp_common.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 
@@ -34,10 +35,7 @@ microglia_fep_bridge_t* microglia_fep_create(
 
     microglia_fep_bridge_t* bridge = (microglia_fep_bridge_t*)
         nimcp_malloc(sizeof(microglia_fep_bridge_t));
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("microglia_fep_create: allocation failed");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "microglia_fep_create: allocation failed");
 
     memset(bridge, 0, sizeof(microglia_fep_bridge_t));
     memcpy(&bridge->config, config, sizeof(microglia_fep_config_t));

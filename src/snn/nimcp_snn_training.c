@@ -20,6 +20,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/validation/nimcp_common.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -90,12 +91,17 @@ void snn_homeostatic_config_default(snn_homeostatic_config_t* config) {
 
 snn_training_ctx_t* snn_training_create_stdp(const snn_stdp_config_t* config) {
     if (!config) {
-        NIMCP_LOGGING_ERROR("snn_training_create_stdp: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "NULL config in snn_training_create_stdp");
         return NULL;
     }
 
     snn_training_ctx_t* ctx = nimcp_malloc(sizeof(snn_training_ctx_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_training_ctx_t),
+                          "Failed to allocate STDP training context");
+        return NULL;
+    }
 
     memset(ctx, 0, sizeof(snn_training_ctx_t));
     ctx->mode = SNN_TRAIN_STDP;

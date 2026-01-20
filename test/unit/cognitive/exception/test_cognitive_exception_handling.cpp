@@ -547,11 +547,11 @@ TEST_F(CognitiveExceptionHandlingTest, CognitiveRecoveryStrategy) {
 
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(ex, &strategy);
 
     // Cognitive exceptions should have defined recovery strategies
-    EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE);
+    EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref(ex);
 }
@@ -570,9 +570,9 @@ TEST_F(CognitiveExceptionHandlingTest, SuggestedRecoveryAction) {
 
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_action_t suggested = nimcp_exception_get_suggested_recovery(ex);
+    nimcp_exception_recovery_action_t suggested = nimcp_exception_get_suggested_recovery(ex);
     // Should return a valid recovery action
-    EXPECT_NE(suggested, RECOVERY_ACTION_NONE);
+    EXPECT_NE(suggested, EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref(ex);
 }

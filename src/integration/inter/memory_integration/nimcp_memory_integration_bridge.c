@@ -6,6 +6,7 @@
  */
 
 #include "integration/inter/memory_integration/nimcp_memory_integration_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -37,7 +38,7 @@ nimcp_memory_integration_config_t nimcp_memory_integration_default_config(void) 
 
 nimcp_memory_integration_bridge_t nimcp_memory_integration_create(const nimcp_memory_integration_config_t* config) {
     nimcp_memory_integration_bridge_t bridge = (nimcp_memory_integration_bridge_t)calloc(1, sizeof(struct nimcp_memory_integration_bridge_struct));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate memory-integration bridge");
     bridge->config = config ? *config : nimcp_memory_integration_default_config();
     bridge->state.bridge_coherence = 1.0f;
     bridge->state.gw_entry_level = 0.5f;
@@ -57,8 +58,9 @@ nimcp_layer_error_t nimcp_memory_integration_init(
     nimcp_memory_intra_t memory,
     nimcp_integration_intra_t integration
 ) {
-    if (!bridge || !registry) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (bridge->is_initialized) return NIMCP_LAYER_ERR_ALREADY_REGISTERED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in memory_integration_init");
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in memory_integration_init");
+    NIMCP_API_CHECK(!bridge->is_initialized, NIMCP_LAYER_ERR_ALREADY_REGISTERED, "Bridge already initialized in memory_integration_init");
     bridge->registry = registry;
     bridge->memory = memory;
     bridge->integration = integration;
@@ -67,15 +69,15 @@ nimcp_layer_error_t nimcp_memory_integration_init(
 }
 
 nimcp_layer_error_t nimcp_memory_integration_shutdown(nimcp_memory_integration_bridge_t bridge) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in memory_integration_shutdown");
+    NIMCP_API_CHECK(bridge->is_initialized, NIMCP_LAYER_ERR_NOT_INITIALIZED, "Bridge not initialized in memory_integration_shutdown");
     bridge->is_initialized = false;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_memory_integration_update(nimcp_memory_integration_bridge_t bridge, float dt) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in memory_integration_update");
+    NIMCP_API_CHECK(bridge->is_initialized, NIMCP_LAYER_ERR_NOT_INITIALIZED, "Bridge not initialized in memory_integration_update");
 
     /* Memory retrieval entry to global workspace */
     bridge->state.gw_entry_level *= (1.0f - dt * 0.01f);
@@ -105,27 +107,31 @@ nimcp_layer_error_t nimcp_memory_integration_update(nimcp_memory_integration_bri
 }
 
 nimcp_layer_error_t nimcp_memory_integration_transfer_bottom_up(nimcp_memory_integration_bridge_t bridge, const nimcp_layer_msg_t* msg) {
-    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in memory_integration_transfer_bottom_up");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in memory_integration_transfer_bottom_up");
     bridge->state.bottom_up_messages++;
     bridge->stats.gw_entries++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_memory_integration_transfer_top_down(nimcp_memory_integration_bridge_t bridge, const nimcp_layer_msg_t* msg) {
-    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in memory_integration_transfer_top_down");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in memory_integration_transfer_top_down");
     bridge->state.top_down_messages++;
     bridge->stats.consolidation_triggers++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_memory_integration_get_state(nimcp_memory_integration_bridge_t bridge, nimcp_memory_integration_state_t* state_out) {
-    if (!bridge || !state_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in memory_integration_get_state");
+    NIMCP_API_CHECK_NULL(state_out, NIMCP_LAYER_ERR_NULL_PTR, "state_out is NULL in memory_integration_get_state");
     *state_out = bridge->state;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_memory_integration_get_stats(nimcp_memory_integration_bridge_t bridge, nimcp_memory_integration_stats_t* stats_out) {
-    if (!bridge || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in memory_integration_get_stats");
+    NIMCP_API_CHECK_NULL(stats_out, NIMCP_LAYER_ERR_NULL_PTR, "stats_out is NULL in memory_integration_get_stats");
     *stats_out = bridge->stats;
     return NIMCP_LAYER_OK;
 }
@@ -135,7 +141,7 @@ float nimcp_memory_integration_get_coherence(nimcp_memory_integration_bridge_t b
 }
 
 nimcp_layer_error_t nimcp_memory_integration_reset_stats(nimcp_memory_integration_bridge_t bridge) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in memory_integration_reset_stats");
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return NIMCP_LAYER_OK;
 }

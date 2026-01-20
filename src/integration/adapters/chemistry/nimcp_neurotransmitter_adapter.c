@@ -12,6 +12,7 @@
  */
 
 #include "integration/adapters/chemistry/nimcp_neurotransmitter_adapter.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -273,7 +274,7 @@ nimcp_nt_adapter_t nimcp_nt_adapter_create(
 ) {
     nimcp_nt_adapter_t adapter = (nimcp_nt_adapter_t)calloc(
         1, sizeof(struct nimcp_nt_adapter_struct));
-    if (!adapter) return NULL;
+    NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate neurotransmitter adapter");
 
     adapter->config = config ? *config : nimcp_nt_adapter_default_config();
 

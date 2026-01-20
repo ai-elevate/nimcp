@@ -11,6 +11,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "utils_fault_state_machine"
 
@@ -40,9 +41,7 @@ static const bool transition_matrix[NIMCP_STATE_COUNT][NIMCP_STATE_COUNT] = {
 
 nimcp_state_machine_t* nimcp_state_machine_create(void) {
     nimcp_state_machine_t* sm = (nimcp_state_machine_t*)nimcp_calloc(1, sizeof(nimcp_state_machine_t));
-    if (!sm) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(sm, "nimcp_state_machine_create: allocation failed");
 
     /* Initialize to HEALTHY state */
     sm->current_state = NIMCP_STATE_HEALTHY;

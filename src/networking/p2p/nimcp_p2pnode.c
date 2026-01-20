@@ -37,6 +37,8 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -432,29 +434,42 @@ static bool setup_listen_socket(p2p_node_t node)
     // Step 1: Create socket
     node->listen_socket = create_tcp_socket();
     // Guard clause: Check creation
-    if (node->listen_socket < 0)
+    if (node->listen_socket < 0) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, "listen",
+                      "Failed to create TCP listen socket: errno=%d", errno);
         return false;
+    }
 
     // Step 2: Set non-blocking
     if (!set_socket_nonblocking(node->listen_socket)) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, "listen",
+                      "Failed to set socket non-blocking mode: errno=%d", errno);
         close(node->listen_socket);
         return false;
     }
 
     // Step 3: Enable reuse
     if (!enable_socket_reuse(node->listen_socket)) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, "listen",
+                      "Failed to enable socket address reuse: errno=%d", errno);
         close(node->listen_socket);
         return false;
     }
 
     // Step 4: Bind to port
     if (!bind_socket(node->listen_socket, node->config.listen_port)) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, "listen",
+                      "Failed to bind socket to port %u: errno=%d",
+                      node->config.listen_port, errno);
         close(node->listen_socket);
         return false;
     }
 
     // Step 5: Start listening
     if (!start_listening(node->listen_socket)) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, "listen",
+                      "Failed to start listening on port %u: errno=%d",
+                      node->config.listen_port, errno);
         close(node->listen_socket);
         return false;
     }
@@ -600,8 +615,11 @@ p2p_node_t p2p_node_create(const node_config_t* config)
     // Allocate node structure
     p2p_node_t node = nimcp_calloc(1, sizeof(struct p2p_node_struct));
     // Guard clause: Check allocation
-    if (!node)
+    if (!node) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct p2p_node_struct),
+                          "Failed to allocate P2P node structure");
         return NULL;
+    }
 
     // Copy configuration
     memcpy(&node->config, config, sizeof(node_config_t));
@@ -621,12 +639,17 @@ p2p_node_t p2p_node_create(const node_config_t* config)
     // Guard clause: Check hash table creation
     if (!node->peer_table) {
         LOG_ERROR(LOG_MODULE, "Failed to create peer hash table");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, HASH_TABLE_SIZE * sizeof(void*),
+                          "Failed to allocate peer hash table for P2P node");
         nimcp_free(node);
         return NULL;
     }
 
     // Allocate peer storage
     if (!allocate_peer_storage(node)) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                          node->config.max_peers * sizeof(peer_info_t),
+                          "Failed to allocate peer storage array");
         hash_table_destroy(node->peer_table);
         nimcp_free(node);
         return NULL;
@@ -637,7 +660,10 @@ p2p_node_t p2p_node_create(const node_config_t* config)
 
     // Initialize mutex for thread safety
     if (nimcp_mutex_init(&node->lock, NULL) != NIMCP_SUCCESS) {
+        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE, 0,
+                             "Failed to initialize mutex for P2P node");
         nimcp_free(node->peers);
+        hash_table_destroy(node->peer_table);
         nimcp_free(node);
         return NULL;
     }
@@ -648,7 +674,10 @@ p2p_node_t p2p_node_create(const node_config_t* config)
     if (!node->topology_graph) {
         LOG_ERROR(LOG_MODULE, "Failed to create topology graph for node on port %u",
                   config->listen_port);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 0,
+                          "Failed to create topology graph for P2P node");
         nimcp_mutex_destroy(&node->lock);
+        hash_table_destroy(node->peer_table);
         nimcp_free(node->peers);
         nimcp_free(node);
         return NULL;
@@ -1038,6 +1067,8 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     int sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     // Guard clause: Check socket creation
     if (sock < 0) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, peer_ip,
+                      "Failed to create socket for peer connection: errno=%d", errno);
         node->failed_connections++;
         nimcp_mutex_unlock(&node->lock);
         return false;
@@ -1046,6 +1077,8 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     // Create socket address
     struct sockaddr_in addr;
     if (!create_sockaddr(&addr, peer_ip, peer_port)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                   "Failed to create socket address for peer %s:%u", peer_ip, peer_port);
         close(sock);
         node->failed_connections++;
         nimcp_mutex_unlock(&node->lock);
@@ -1054,6 +1087,8 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
 
     // Attempt connection
     if (!attempt_connection(sock, &addr)) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, peer_ip,
+                      "Failed to connect to peer %s:%u: errno=%d", peer_ip, peer_port, errno);
         close(sock);
         node->failed_connections++;
         nimcp_mutex_unlock(&node->lock);
@@ -1062,6 +1097,8 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
 
     // Add peer to node
     if (!add_peer_to_node(node, peer_ip, peer_port, sock)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE,
+                             "Failed to add peer %s:%u to node storage", peer_ip, peer_port);
         close(sock);
         node->failed_connections++;
         nimcp_mutex_unlock(&node->lock);

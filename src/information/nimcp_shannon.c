@@ -16,6 +16,8 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "security/nimcp_security.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "INFORMATION"
 
@@ -155,6 +157,8 @@ float shannon_entropy(const shannon_distribution_t* distribution)
 
     if (!distribution || !distribution->probabilities) {
         LOG_ERROR("NULL distribution or probabilities");
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "shannon_entropy: NULL distribution or probabilities");
         return 0.0F;
     }
 
@@ -199,6 +203,8 @@ float shannon_mutual_information(const shannon_joint_distribution_t* joint_distr
 
     if (!joint_distribution || !joint_distribution->joint_probabilities) {
         LOG_ERROR("NULL joint distribution or probabilities");
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "shannon_mutual_information: NULL joint distribution or probabilities");
         return 0.0F;
     }
 
@@ -213,6 +219,8 @@ float shannon_mutual_information(const shannon_joint_distribution_t* joint_distr
 
     if (!p_x || !p_y) {
         LOG_ERROR("Failed to allocate marginal distributions");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_x * sizeof(float) + num_y * sizeof(float),
+                          "shannon_mutual_information: Failed to allocate marginal distributions");
         nimcp_free(p_x);
         nimcp_free(p_y);
         return 0.0F;
@@ -491,6 +499,11 @@ shannon_neuron_metrics_t shannon_analyze_neuron(
         uint32_t num_isi_bins = 10;
         float* isi_histogram = (float*)nimcp_calloc(num_isi_bins, sizeof(float));
 
+        if (!isi_histogram) {
+            // Log but don't throw - partial result is acceptable here
+            LOG_WARN("shannon_analyze_neuron: Failed to allocate ISI histogram");
+        }
+
         if (isi_histogram) {
             // Compute ISIs
             for (uint32_t i = 1; i < history_length; i++) {
@@ -669,11 +682,15 @@ shannon_distribution_t* shannon_distribution_create(
     const float* probabilities)
 {
     if (num_states == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                    "shannon_distribution_create: num_states cannot be 0");
         return NULL;
     }
 
     shannon_distribution_t* dist = (shannon_distribution_t*)nimcp_malloc(sizeof(shannon_distribution_t));
     if (!dist) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(shannon_distribution_t),
+                          "shannon_distribution_create: Failed to allocate distribution");
         return NULL;
     }
 
@@ -681,6 +698,8 @@ shannon_distribution_t* shannon_distribution_create(
     dist->probabilities = (float*)nimcp_malloc(num_states * sizeof(float));
 
     if (!dist->probabilities) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_states * sizeof(float),
+                          "shannon_distribution_create: Failed to allocate probabilities");
         nimcp_free(dist);
         return NULL;
     }
@@ -752,12 +771,16 @@ shannon_joint_distribution_t* shannon_joint_distribution_create(
     const float* joint_probabilities)
 {
     if (num_x_states == 0 || num_y_states == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                    "shannon_joint_distribution_create: states cannot be 0");
         return NULL;
     }
 
     shannon_joint_distribution_t* joint = (shannon_joint_distribution_t*)
         nimcp_malloc(sizeof(shannon_joint_distribution_t));
     if (!joint) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(shannon_joint_distribution_t),
+                          "shannon_joint_distribution_create: Failed to allocate joint distribution");
         return NULL;
     }
 
@@ -768,6 +791,8 @@ shannon_joint_distribution_t* shannon_joint_distribution_create(
     joint->joint_probabilities = (float*)nimcp_malloc(total_size * sizeof(float));
 
     if (!joint->joint_probabilities) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, total_size * sizeof(float),
+                          "shannon_joint_distribution_create: Failed to allocate joint probabilities");
         nimcp_free(joint);
         return NULL;
     }
@@ -809,6 +834,8 @@ shannon_distribution_t* shannon_marginal_x(
     const shannon_joint_distribution_t* joint_distribution)
 {
     if (!joint_distribution) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "shannon_marginal_x: NULL joint distribution");
         return NULL;
     }
 
@@ -817,6 +844,8 @@ shannon_distribution_t* shannon_marginal_x(
 
     float* marginal_probs = (float*)nimcp_calloc(num_x, sizeof(float));
     if (!marginal_probs) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_x * sizeof(float),
+                          "shannon_marginal_x: Failed to allocate marginal probs");
         return NULL;
     }
 
@@ -837,6 +866,8 @@ shannon_distribution_t* shannon_marginal_y(
     const shannon_joint_distribution_t* joint_distribution)
 {
     if (!joint_distribution) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "shannon_marginal_y: NULL joint distribution");
         return NULL;
     }
 
@@ -845,6 +876,8 @@ shannon_distribution_t* shannon_marginal_y(
 
     float* marginal_probs = (float*)nimcp_calloc(num_y, sizeof(float));
     if (!marginal_probs) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_y * sizeof(float),
+                          "shannon_marginal_y: Failed to allocate marginal probs");
         return NULL;
     }
 

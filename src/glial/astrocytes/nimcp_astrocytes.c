@@ -9,6 +9,7 @@
 #include "glial/astrocytes/nimcp_astrocytes.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -422,10 +423,7 @@ astrocyte_t* astrocyte_create(uint32_t id, astrocyte_type_t type, float x, float
     }
 
     astrocyte_t* astro = (astrocyte_t*) nimcp_malloc(sizeof(astrocyte_t));
-    if (!astro) {
-        LOG_MODULE_ERROR("ASTROCYTE", "Failed to allocate astrocyte structure");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(astro, "astrocyte_create: Failed to allocate astrocyte structure");
 
     memset(astro, 0, sizeof(astrocyte_t));
 
@@ -992,9 +990,7 @@ void astrocyte_update_atp_level(astrocyte_t* astro, float neural_activity, float
 astrocyte_network_t* astrocyte_network_create(uint32_t capacity)
 {
     astrocyte_network_t* network = (astrocyte_network_t*) nimcp_malloc(sizeof(astrocyte_network_t));
-    if (!network) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(network, "astrocyte_network_create: Failed to allocate network structure");
 
     memset(network, 0, sizeof(astrocyte_network_t));
 
@@ -1002,6 +998,8 @@ astrocyte_network_t* astrocyte_network_create(uint32_t capacity)
     network->num_astrocytes = 0;
     network->astrocytes = (astrocyte_t**) nimcp_malloc(capacity * sizeof(astrocyte_t*));
     if (!network->astrocytes) {
+        LOG_ERROR("astrocyte_network_create: Failed to allocate astrocytes array");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, capacity * sizeof(astrocyte_t*), "astrocyte_network_create: allocation failed");
         nimcp_free(network);
         return NULL;
     }

@@ -13,6 +13,7 @@
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "api/nimcp_api_exception.h"
 #include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
@@ -328,13 +329,13 @@ static hash_entry_t* create_entry(const void* key, size_t key_size, const void* 
                                   size_t value_size, uint32_t hash)
 {
     hash_entry_t* entry = (hash_entry_t*) nimcp_malloc(sizeof(hash_entry_t));
-    if (!entry) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(entry, "Failed to allocate hash entry");
 
     // Copy key
     entry->key = nimcp_malloc(key_size);
     if (!entry->key) {
+        LOG_ERROR("Failed to allocate key memory (%zu bytes)", key_size);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, key_size, "Failed to allocate key memory");
         nimcp_free(entry);
         return NULL;
     }
@@ -344,6 +345,8 @@ static hash_entry_t* create_entry(const void* key, size_t key_size, const void* 
     // Copy value
     entry->value = nimcp_malloc(value_size);
     if (!entry->value) {
+        LOG_ERROR("Failed to allocate value memory (%zu bytes)", value_size);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, value_size, "Failed to allocate value memory");
         nimcp_free(entry->key);
         nimcp_free(entry);
         return NULL;
@@ -420,9 +423,7 @@ static hash_entry_t* find_entry(hash_table_t* table, hash_entry_t* head, const v
 hash_table_t* hash_table_create(const hash_table_config_t* config)
 {
     hash_table_t* table = (hash_table_t*) nimcp_malloc(sizeof(hash_table_t));
-    if (!table) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(table, "Failed to allocate hash table structure");
 
     // Set configuration with defaults
     if (config) {
@@ -459,6 +460,9 @@ hash_table_t* hash_table_create(const hash_table_config_t* config)
     table->bucket_count = table->config.initial_buckets;
     table->buckets = (hash_entry_t**) nimcp_calloc(table->bucket_count, sizeof(hash_entry_t*));
     if (!table->buckets) {
+        LOG_ERROR("Failed to allocate bucket array (%zu buckets)", table->bucket_count);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, table->bucket_count * sizeof(hash_entry_t*),
+                          "Failed to allocate bucket array");
         nimcp_free(table);
         return NULL;
     }

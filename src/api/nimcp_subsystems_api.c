@@ -13,6 +13,8 @@
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/error/nimcp_error_codes.h"
+#include "api/nimcp_api_exception.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -33,10 +35,8 @@ NIMCP_EXPORT nimcp_network_t nimcp_network_create(
 {
     // Allocate handle
     nimcp_network_t handle = (nimcp_network_t)nimcp_malloc(sizeof(struct nimcp_network_handle));
-    if (!handle) {
-        set_error("Failed to allocate network handle");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC_SIZE(handle, sizeof(struct nimcp_network_handle),
+        "Failed to allocate network handle");
 
     // Create config for internal API
     network_config_t config = {0};
@@ -50,6 +50,7 @@ NIMCP_EXPORT nimcp_network_t nimcp_network_create(
     handle->internal_network = neural_network_create(&config);
 
     if (!handle->internal_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NETWORK_CREATION, "Failed to create internal neural network");
         set_error("Failed to create internal neural network");
         nimcp_free(handle);
         return NULL;
@@ -78,20 +79,9 @@ NIMCP_EXPORT nimcp_status_t nimcp_network_forward(
     float* outputs,
     uint32_t num_outputs)
 {
-    if (!network) {
-        set_error("Network handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!inputs) {
-        set_error("Inputs array is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!outputs) {
-        set_error("Outputs array is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_API_CHECK_NULL(network, NIMCP_ERROR_NULL_ARG, "Network handle is NULL");
+    NIMCP_API_CHECK_NULL(inputs, NIMCP_ERROR_NULL_ARG, "Inputs array is NULL");
+    NIMCP_API_CHECK_NULL(outputs, NIMCP_ERROR_NULL_ARG, "Outputs array is NULL");
 
     // Call internal network API
     bool success = neural_network_forward(network->internal_network,
@@ -99,6 +89,7 @@ NIMCP_EXPORT nimcp_status_t nimcp_network_forward(
                                          outputs, num_outputs);
 
     if (!success) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INFERENCE_FAILED, "Network forward pass failed");
         set_error("Network forward pass failed");
         return NIMCP_ERROR;
     }
@@ -114,12 +105,12 @@ NIMCP_EXPORT nimcp_status_t nimcp_network_train(
     const float* targets,
     uint32_t num_targets)
 {
-    if (!network) {
-        set_error("Network handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_API_CHECK_NULL(network, NIMCP_ERROR_NULL_ARG, "Network handle is NULL");
+    NIMCP_API_CHECK_NULL(inputs, NIMCP_ERROR_NULL_ARG, "Inputs array is NULL");
+    NIMCP_API_CHECK_NULL(targets, NIMCP_ERROR_NULL_ARG, "Targets array is NULL");
 
     // Training not yet implemented in internal API
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_IMPLEMENTED, "Network training not yet implemented");
     set_error("Training not yet implemented");
     return NIMCP_ERROR;
 }
@@ -130,10 +121,8 @@ NIMCP_EXPORT nimcp_status_t nimcp_network_train(
 
 NIMCP_EXPORT nimcp_ethics_t nimcp_ethics_create(void) {
     nimcp_ethics_t handle = (nimcp_ethics_t)nimcp_malloc(sizeof(struct nimcp_ethics_handle));
-    if (!handle) {
-        set_error("Failed to allocate ethics handle");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC_SIZE(handle, sizeof(struct nimcp_ethics_handle),
+        "Failed to allocate ethics handle");
 
     // Create default ethics configuration
     ethics_config_t config = {0};
@@ -152,6 +141,7 @@ NIMCP_EXPORT nimcp_ethics_t nimcp_ethics_create(void) {
     handle->internal_ethics = ethics_engine_create(&config);
 
     if (!handle->internal_ethics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ETHICS_CREATION, "Failed to create internal ethics engine");
         set_error("Failed to create internal ethics engine");
         nimcp_free(handle);
         return NULL;
@@ -179,20 +169,9 @@ NIMCP_EXPORT nimcp_status_t nimcp_ethics_check(
     uint32_t num_features,
     float* out_score)
 {
-    if (!ethics) {
-        set_error("Ethics handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!situation) {
-        set_error("Situation array is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!out_score) {
-        set_error("Output score pointer is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_API_CHECK_NULL(ethics, NIMCP_ERROR_NULL_ARG, "Ethics handle is NULL");
+    NIMCP_API_CHECK_NULL(situation, NIMCP_ERROR_NULL_ARG, "Situation array is NULL");
+    NIMCP_API_CHECK_NULL(out_score, NIMCP_ERROR_NULL_ARG, "Output score pointer is NULL");
 
     // Create action context from situation features
     action_context_t action = {0};
@@ -219,15 +198,14 @@ NIMCP_EXPORT nimcp_status_t nimcp_ethics_check(
 
 NIMCP_EXPORT nimcp_knowledge_t nimcp_knowledge_create(void) {
     nimcp_knowledge_t handle = (nimcp_knowledge_t)nimcp_malloc(sizeof(struct nimcp_knowledge_handle));
-    if (!handle) {
-        set_error("Failed to allocate knowledge handle");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC_SIZE(handle, sizeof(struct nimcp_knowledge_handle),
+        "Failed to allocate knowledge handle");
 
     // Create internal knowledge system
     handle->internal_knowledge = knowledge_system_create("default");
 
     if (!handle->internal_knowledge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_KNOWLEDGE_CREATION, "Failed to create internal knowledge system");
         set_error("Failed to create internal knowledge system");
         nimcp_free(handle);
         return NULL;
@@ -255,15 +233,10 @@ NIMCP_EXPORT nimcp_status_t nimcp_knowledge_add_fact(
     const char* predicate,
     const char* object)
 {
-    if (!knowledge) {
-        set_error("Knowledge handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!subject || !predicate || !object) {
-        set_error("Subject, predicate, or object is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_API_CHECK_NULL(knowledge, NIMCP_ERROR_NULL_ARG, "Knowledge handle is NULL");
+    NIMCP_API_CHECK_NULL(subject, NIMCP_ERROR_NULL_ARG, "Subject is NULL");
+    NIMCP_API_CHECK_NULL(predicate, NIMCP_ERROR_NULL_ARG, "Predicate is NULL");
+    NIMCP_API_CHECK_NULL(object, NIMCP_ERROR_NULL_ARG, "Object is NULL");
 
     // Create a knowledge item from the fact
     knowledge_item_t item = {0};
@@ -288,6 +261,7 @@ NIMCP_EXPORT nimcp_status_t nimcp_knowledge_add_fact(
     bool success = knowledge_add_item(knowledge->internal_knowledge, &item);
 
     if (!success) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to add knowledge item '%s'", subject);
         set_error("Failed to add knowledge item");
         return NIMCP_ERROR;
     }
@@ -302,20 +276,10 @@ NIMCP_EXPORT nimcp_status_t nimcp_knowledge_query(
     char* out_result,
     uint32_t max_result_len)
 {
-    if (!knowledge) {
-        set_error("Knowledge handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!query) {
-        set_error("Query is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!out_result) {
-        set_error("Output result buffer is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_API_CHECK_NULL(knowledge, NIMCP_ERROR_NULL_ARG, "Knowledge handle is NULL");
+    NIMCP_API_CHECK_NULL(query, NIMCP_ERROR_NULL_ARG, "Query is NULL");
+    NIMCP_API_CHECK_NULL(out_result, NIMCP_ERROR_NULL_ARG, "Output result buffer is NULL");
+    NIMCP_API_CHECK(max_result_len > 0, NIMCP_ERROR_INVALID, "Invalid max_result_len (0)");
 
     // Try to retrieve knowledge about the query concept
     knowledge_item_t item;

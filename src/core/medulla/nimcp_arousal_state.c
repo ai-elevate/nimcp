@@ -8,6 +8,7 @@
  */
 
 #include "core/medulla/nimcp_arousal_state.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"

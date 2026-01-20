@@ -11,6 +11,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_messages.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 
@@ -41,13 +42,16 @@ snn_emotion_bridge_t* snn_emotion_bridge_create(
     emotional_system_t* emotion_system
 ) {
     if (!config || !snn) {
-        NIMCP_LOGGING_ERROR("Null parameters to snn_emotion_bridge_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null parameters to snn_emotion_bridge_create: config=%p, snn=%p",
+                             (void*)config, (void*)snn);
         return NULL;
     }
 
     snn_emotion_bridge_t* bridge = nimcp_malloc(sizeof(snn_emotion_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate SNN-emotion bridge");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_emotion_bridge_t),
+                          "Failed to allocate SNN-emotion bridge");
         return NULL;
     }
 

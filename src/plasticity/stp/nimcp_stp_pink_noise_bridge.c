@@ -14,6 +14,7 @@
  */
 
 #include "plasticity/stp/nimcp_stp_pink_noise_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -72,10 +73,7 @@ static void init_noise_config(pink_noise_config_t* config, float amplitude) {
  * HOW:  Set modulation amplitudes and enable all features
  */
 int stp_pink_noise_default_config(stp_pink_noise_config_t* config) {
-    if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config pointer");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(config, -1, "STP-pink noise config is NULL");
 
     memset(config, 0, sizeof(stp_pink_noise_config_t));
 
@@ -127,10 +125,7 @@ stp_pink_noise_bridge_t* stp_pink_noise_create(const stp_pink_noise_config_t* co
 
     // Allocate bridge
     stp_pink_noise_bridge_t* bridge = nimcp_malloc(sizeof(stp_pink_noise_bridge_t));
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate bridge");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "STP-pink noise bridge allocation failed");
 
     memset(bridge, 0, sizeof(stp_pink_noise_bridge_t));
     memcpy(&bridge->config, config, sizeof(stp_pink_noise_config_t));
@@ -207,14 +202,8 @@ int stp_pink_noise_connect_stp(
     stp_pink_noise_bridge_t* bridge,
     stp_state_t* stp_state
 ) {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return -1;
-    }
-    if (!stp_state) {
-        NIMCP_LOGGING_ERROR("NULL STP state pointer");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "STP-pink noise bridge is NULL");
+    NIMCP_API_CHECK_NULL(stp_state, -1, "STP state is NULL");
 
     bridge->stp_state = stp_state;
 
@@ -235,7 +224,7 @@ int stp_pink_noise_connect_stp(
  * HOW:  Clear pointer
  */
 int stp_pink_noise_disconnect(stp_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STP-pink noise bridge is NULL");
 
     bridge->stp_state = NULL;
     NIMCP_LOGGING_INFO("Disconnected from STP state");
@@ -392,9 +381,9 @@ int stp_pink_noise_get_effective_tau(
     float* tau_d_out,
     float* tau_f_out
 ) {
-    if (!bridge || !tau_d_out || !tau_f_out) {
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "STP-pink noise bridge is NULL");
+    NIMCP_API_CHECK_NULL(tau_d_out, -1, "tau_d output pointer is NULL");
+    NIMCP_API_CHECK_NULL(tau_f_out, -1, "tau_f output pointer is NULL");
 
     *tau_d_out = base_tau_d * bridge->noise_effects.effective_tau_d_factor;
     *tau_f_out = base_tau_f * bridge->noise_effects.effective_tau_f_factor;
@@ -455,9 +444,7 @@ int stp_pink_noise_report_stp_state(
     float u,
     float x
 ) {
-    if (!bridge) {
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "STP-pink noise bridge is NULL");
 
     // Update feedback state
     bridge->stp_feedback.current_u = u;
@@ -487,9 +474,7 @@ int stp_pink_noise_report_stp_state(
  * HOW:  Sample noise generators, compute modulation, update stats
  */
 int stp_pink_noise_update(stp_pink_noise_bridge_t* bridge) {
-    if (!bridge) {
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "STP-pink noise bridge is NULL");
 
     // Update STP state if connected
     if (bridge->stp_state) {
@@ -554,9 +539,8 @@ int stp_pink_noise_get_state(
     const stp_pink_noise_bridge_t* bridge,
     stp_pink_noise_state_t* state
 ) {
-    if (!bridge || !state) {
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "STP-pink noise bridge is NULL");
+    NIMCP_API_CHECK_NULL(state, -1, "State output pointer is NULL");
 
     memcpy(state, &bridge->state, sizeof(stp_pink_noise_state_t));
     return 0;
@@ -573,9 +557,8 @@ int stp_pink_noise_get_stats(
     const stp_pink_noise_bridge_t* bridge,
     stp_pink_noise_stats_t* stats
 ) {
-    if (!bridge || !stats) {
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "STP-pink noise bridge is NULL");
+    NIMCP_API_CHECK_NULL(stats, -1, "Stats output pointer is NULL");
 
     memcpy(stats, &bridge->stats, sizeof(stp_pink_noise_stats_t));
     return 0;
@@ -589,9 +572,7 @@ int stp_pink_noise_get_stats(
  * HOW:  Zero stats struct
  */
 int stp_pink_noise_reset_stats(stp_pink_noise_bridge_t* bridge) {
-    if (!bridge) {
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "STP-pink noise bridge is NULL");
 
     memset(&bridge->stats, 0, sizeof(stp_pink_noise_stats_t));
     NIMCP_LOGGING_INFO("Statistics reset");
@@ -610,9 +591,7 @@ int stp_pink_noise_reset_stats(stp_pink_noise_bridge_t* bridge) {
  * HOW:  Set enable flags
  */
 int stp_pink_noise_enable(stp_pink_noise_bridge_t* bridge, bool enable) {
-    if (!bridge) {
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "STP-pink noise bridge is NULL");
 
     bridge->config.enable_u_modulation = enable;
     bridge->config.enable_tau_d_modulation = enable;
@@ -649,9 +628,7 @@ bool stp_pink_noise_is_enabled(const stp_pink_noise_bridge_t* bridge) {
  * HOW:  Register module, store context
  */
 int stp_pink_noise_connect_bio_async(stp_pink_noise_bridge_t* bridge) {
-    if (!bridge) {
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "STP-pink noise bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return 0; // Already connected

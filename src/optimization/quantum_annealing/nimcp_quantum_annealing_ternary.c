@@ -3,6 +3,10 @@
 //=============================================================================
 
 #include "optimization/quantum_annealing/nimcp_quantum_annealing_ternary.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -37,7 +41,14 @@ uint32_t quantum_ternary_sweep(
     float gamma,
     uint64_t* rng
 ) {
-    if (!ising || !rng) return 0;
+    if (!ising) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_ternary_sweep: null ising config");
+        return 0;
+    }
+    if (!rng) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_ternary_sweep: null rng state");
+        return 0;
+    }
 
     uint32_t accepted = 0;
     uint32_t n = ising->n_spins;
@@ -79,8 +90,17 @@ int quantum_ternary_anneal(
     const quantum_ternary_config_t* config,
     quantum_ternary_result_t* result
 ) {
-    /* Validate inputs */
-    if (!ising || !config || !result) {
+    /* Validate inputs with exception handling */
+    if (!ising) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_ternary_anneal: null ising config");
+        return -1;
+    }
+    if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_ternary_anneal: null config");
+        return -1;
+    }
+    if (!result) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_ternary_anneal: null result");
         return -1;
     }
 
@@ -101,8 +121,14 @@ int quantum_ternary_anneal(
     /* Tracking best configuration */
     trit_t* best_spins = NULL;
     if (config->track_best) {
-        best_spins = (trit_t*)malloc(ising->n_spins * sizeof(trit_t));
-        if (!best_spins) return -2;
+        size_t best_spins_size = ising->n_spins * sizeof(trit_t);
+        best_spins = (trit_t*)malloc(best_spins_size);
+        if (!best_spins) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, best_spins_size,
+                              "Failed to allocate best_spins array for ternary annealing (n_spins=%u)",
+                              ising->n_spins);
+            return -2;
+        }
     }
 
     result->best_energy = 1e30;

@@ -121,7 +121,7 @@ TEST_F(RecoveryExecutiveIntegrationTest, BrainGuidesPlanCreation) {
         bool has_strategy_action = false;
         for (uint32_t i = 0; i < plan->step_count; i++) {
             // Check if any step matches the strategy
-            if (plan->steps[i].action != RECOVERY_ACTION_NONE) {
+            if (plan->steps[i].action != EXCEPTION_RECOVERY_NONE) {
                 has_strategy_action = true;
                 break;
             }
@@ -556,7 +556,7 @@ TEST_F(RecoveryExecutiveIntegrationTest, HandleComplexMultiStepRecovery) {
 
     // Verify plan had logical structure
     for (uint32_t i = 0; i < plan->step_count; i++) {
-        EXPECT_NE(plan->steps[i].action, RECOVERY_ACTION_NONE);
+        EXPECT_NE(plan->steps[i].action, EXCEPTION_RECOVERY_NONE);
         EXPECT_GT(plan->steps[i].timeout_ms, 0);
     }
 

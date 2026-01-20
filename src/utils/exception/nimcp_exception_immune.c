@@ -258,66 +258,66 @@ uint32_t nimcp_exception_to_immune_severity(nimcp_exception_severity_t severity)
 
 void nimcp_exception_get_recovery_strategy(
     const nimcp_exception_t* ex,
-    nimcp_recovery_strategy_t* strategy
+    nimcp_exception_recovery_strategy_t* strategy
 ) {
     if (!strategy) return;
 
-    memset(strategy, 0, sizeof(nimcp_recovery_strategy_t));
+    memset(strategy, 0, sizeof(nimcp_exception_recovery_strategy_t));
 
     if (!ex) {
-        strategy->primary_action = RECOVERY_ACTION_NONE;
-        strategy->fallback_action = RECOVERY_ACTION_NONE;
+        strategy->primary_action = EXCEPTION_RECOVERY_NONE;
+        strategy->fallback_action = EXCEPTION_RECOVERY_NONE;
         return;
     }
 
     /* Set based on exception category */
     switch (ex->category) {
         case EXCEPTION_CATEGORY_MEMORY:
-            strategy->primary_action = RECOVERY_ACTION_GC;
-            strategy->fallback_action = RECOVERY_ACTION_QUARANTINE;
+            strategy->primary_action = EXCEPTION_RECOVERY_GC;
+            strategy->fallback_action = EXCEPTION_RECOVERY_QUARANTINE;
             strategy->retry_count = 3;
             strategy->cooldown_ms = 100;
             break;
 
         case EXCEPTION_CATEGORY_BRAIN:
         case EXCEPTION_CATEGORY_BRAIN_REGION:
-            strategy->primary_action = RECOVERY_ACTION_ROLLBACK;
-            strategy->fallback_action = RECOVERY_ACTION_REDUCE_LOAD;
+            strategy->primary_action = EXCEPTION_RECOVERY_ROLLBACK;
+            strategy->fallback_action = EXCEPTION_RECOVERY_REDUCE_LOAD;
             strategy->retry_count = 1;
             strategy->cooldown_ms = 500;
             break;
 
         case EXCEPTION_CATEGORY_THREADING:
-            strategy->primary_action = RECOVERY_ACTION_RESTART_THREAD;
-            strategy->fallback_action = RECOVERY_ACTION_GRACEFUL_SHUTDOWN;
+            strategy->primary_action = EXCEPTION_RECOVERY_RESTART_THREAD;
+            strategy->fallback_action = EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN;
             strategy->retry_count = 2;
             strategy->cooldown_ms = 1000;
             break;
 
         case EXCEPTION_CATEGORY_IO:
-            strategy->primary_action = RECOVERY_ACTION_RETRY;
-            strategy->fallback_action = RECOVERY_ACTION_ROLLBACK;
+            strategy->primary_action = EXCEPTION_RECOVERY_RETRY;
+            strategy->fallback_action = EXCEPTION_RECOVERY_ROLLBACK;
             strategy->retry_count = 5;
             strategy->cooldown_ms = 200;
             break;
 
         case EXCEPTION_CATEGORY_SIGNAL:
-            strategy->primary_action = RECOVERY_ACTION_EMERGENCY_SAVE;
-            strategy->fallback_action = RECOVERY_ACTION_GRACEFUL_SHUTDOWN;
+            strategy->primary_action = EXCEPTION_RECOVERY_EMERGENCY_SAVE;
+            strategy->fallback_action = EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN;
             strategy->retry_count = 1;
             strategy->cooldown_ms = 0;
             break;
 
         case EXCEPTION_CATEGORY_GPU:
-            strategy->primary_action = RECOVERY_ACTION_CLEAR_CACHE;
-            strategy->fallback_action = RECOVERY_ACTION_REDUCE_LOAD;
+            strategy->primary_action = EXCEPTION_RECOVERY_CLEAR_CACHE;
+            strategy->fallback_action = EXCEPTION_RECOVERY_REDUCE_LOAD;
             strategy->retry_count = 3;
             strategy->cooldown_ms = 50;
             break;
 
         case EXCEPTION_CATEGORY_SECURITY:
-            strategy->primary_action = RECOVERY_ACTION_QUARANTINE;
-            strategy->fallback_action = RECOVERY_ACTION_GRACEFUL_SHUTDOWN;
+            strategy->primary_action = EXCEPTION_RECOVERY_QUARANTINE;
+            strategy->fallback_action = EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN;
             strategy->retry_count = 1;
             strategy->cooldown_ms = 0;
             break;
@@ -325,15 +325,15 @@ void nimcp_exception_get_recovery_strategy(
         case EXCEPTION_CATEGORY_COGNITIVE:
             /* Cognitive errors (working memory, executive control, etc.) */
             /* Typically need to free resources or reduce load */
-            strategy->primary_action = RECOVERY_ACTION_GC;
-            strategy->fallback_action = RECOVERY_ACTION_REDUCE_LOAD;
+            strategy->primary_action = EXCEPTION_RECOVERY_GC;
+            strategy->fallback_action = EXCEPTION_RECOVERY_REDUCE_LOAD;
             strategy->retry_count = 2;
             strategy->cooldown_ms = 100;
             break;
 
         default:
-            strategy->primary_action = RECOVERY_ACTION_RETRY;
-            strategy->fallback_action = RECOVERY_ACTION_NONE;
+            strategy->primary_action = EXCEPTION_RECOVERY_RETRY;
+            strategy->fallback_action = EXCEPTION_RECOVERY_NONE;
             strategy->retry_count = 3;
             strategy->cooldown_ms = 100;
             break;
@@ -463,7 +463,7 @@ int nimcp_exception_present_to_immune(
         if (response) {
             response->antigen_id = ex->antigen_id;
             response->antibody_id = 0;
-            response->action_taken = RECOVERY_ACTION_NONE;
+            response->action_taken = EXCEPTION_RECOVERY_NONE;
             response->recovery_attempted = false;
             response->recovery_succeeded = false;
             response->response_time_us = response_time;
@@ -523,7 +523,7 @@ int nimcp_exception_present_to_immune(
     if (response) {
         response->antigen_id = antigen_id;
         response->antibody_id = 0;  /* Will be set by immune response */
-        response->action_taken = RECOVERY_ACTION_NONE;
+        response->action_taken = EXCEPTION_RECOVERY_NONE;
         response->recovery_attempted = false;
         response->recovery_succeeded = false;
         response->response_time_us = response_time;
@@ -531,7 +531,7 @@ int nimcp_exception_present_to_immune(
     }
 
     /* Auto-execute recovery if enabled */
-    if (g_config.enable_auto_recovery && ex->suggested_action != RECOVERY_ACTION_NONE) {
+    if (g_config.enable_auto_recovery && ex->suggested_action != EXCEPTION_RECOVERY_NONE) {
         int recovery_result = nimcp_exception_execute_recovery(ex, ex->suggested_action);
 
         if (response) {
@@ -608,14 +608,14 @@ size_t nimcp_exception_immune_process_pending(size_t max_count) {
 
 int nimcp_exception_execute_recovery(
     nimcp_exception_t* ex,
-    nimcp_recovery_action_t action
+    nimcp_exception_recovery_action_t action
 ) {
     return nimcp_execute_recovery(ex, action);
 }
 
 int nimcp_exception_notify_recovery_result(
     nimcp_exception_t* ex,
-    nimcp_recovery_action_t action,
+    nimcp_exception_recovery_action_t action,
     bool success
 ) {
     if (!ex) return -1;
@@ -625,7 +625,7 @@ int nimcp_exception_notify_recovery_result(
 
     LOG_INFO("Recovery result: code=%d, action=%s, success=%s",
              ex->code,
-             nimcp_recovery_action_to_string(action),
+             nimcp_exception_recovery_action_to_string(action),
              success ? "true" : "false");
 
     /* Notify immune system of result */
@@ -656,7 +656,7 @@ int nimcp_exception_notify_recovery_result(
  * WHY:  Memory exhaustion/pressure exceptions need memory freed
  * HOW:  Call kg_gc_run() with all targets, then compact if needed
  */
-int nimcp_recovery_gc(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+int nimcp_recovery_gc(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)ex;
     (void)action;
     (void)user_data;
@@ -702,7 +702,7 @@ int nimcp_recovery_gc(nimcp_exception_t* ex, nimcp_recovery_action_t action, voi
  * WHY:  Transient failures (network, resource contention) may succeed on retry
  * HOW:  Implement exponential backoff directly (avoids nimcp_recovery.h conflict)
  */
-int nimcp_recovery_retry(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+int nimcp_recovery_retry(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)action;
     (void)user_data;
 
@@ -746,7 +746,7 @@ int nimcp_recovery_retry(nimcp_exception_t* ex, nimcp_recovery_action_t action, 
  * WHY:  Corrupted state needs restoration to recover
  * HOW:  Use checkpoint_load() directly (avoids nimcp_recovery.h conflict)
  */
-int nimcp_recovery_rollback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+int nimcp_recovery_rollback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)ex;
     (void)action;
     (void)user_data;
@@ -802,7 +802,7 @@ int nimcp_recovery_rollback(nimcp_exception_t* ex, nimcp_recovery_action_t actio
  * WHY:  Thread-level failures can be isolated and restarted
  * HOW:  Signal thread to terminate and recreate it
  */
-int nimcp_recovery_restart_thread(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+int nimcp_recovery_restart_thread(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)action;
     (void)user_data;
 
@@ -840,7 +840,7 @@ int nimcp_recovery_restart_thread(nimcp_exception_t* ex, nimcp_recovery_action_t
  * WHY:  Security/memory violations need containment
  * HOW:  Use BBB system to quarantine affected memory
  */
-int nimcp_recovery_quarantine(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+int nimcp_recovery_quarantine(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)action;
     (void)user_data;
 
@@ -893,7 +893,7 @@ int nimcp_recovery_quarantine(nimcp_exception_t* ex, nimcp_recovery_action_t act
  * WHY:  Preserve state for post-mortem analysis and recovery
  * HOW:  Use checkpoint_save() with emergency path
  */
-int nimcp_recovery_emergency_save(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+int nimcp_recovery_emergency_save(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)action;
     (void)user_data;
 
@@ -945,7 +945,7 @@ int nimcp_recovery_emergency_save(nimcp_exception_t* ex, nimcp_recovery_action_t
  * WHY:  Memory/CPU pressure can be relieved by reducing workload
  * HOW:  Use runtime adaptation to reduce batch size, disable features
  */
-int nimcp_recovery_reduce_load(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+int nimcp_recovery_reduce_load(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)ex;
     (void)action;
     (void)user_data;
@@ -980,7 +980,7 @@ int nimcp_recovery_reduce_load(nimcp_exception_t* ex, nimcp_recovery_action_t ac
  * WHY:  Cache thrashing or memory pressure needs cache flush
  * HOW:  Use GC to clear stale cache entries
  */
-int nimcp_recovery_clear_cache(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+int nimcp_recovery_clear_cache(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)ex;
     (void)action;
     (void)user_data;
@@ -1014,14 +1014,14 @@ int nimcp_recovery_clear_cache(nimcp_exception_t* ex, nimcp_recovery_action_t ac
  * HOW:  Call nimcp_register_recovery_callback() for each action
  */
 int nimcp_exception_install_default_recovery_callbacks(void) {
-    nimcp_register_recovery_callback(RECOVERY_ACTION_GC, nimcp_recovery_gc, NULL);
-    nimcp_register_recovery_callback(RECOVERY_ACTION_RETRY, nimcp_recovery_retry, NULL);
-    nimcp_register_recovery_callback(RECOVERY_ACTION_ROLLBACK, nimcp_recovery_rollback, NULL);
-    nimcp_register_recovery_callback(RECOVERY_ACTION_RESTART_THREAD, nimcp_recovery_restart_thread, NULL);
-    nimcp_register_recovery_callback(RECOVERY_ACTION_QUARANTINE, nimcp_recovery_quarantine, NULL);
-    nimcp_register_recovery_callback(RECOVERY_ACTION_EMERGENCY_SAVE, nimcp_recovery_emergency_save, NULL);
-    nimcp_register_recovery_callback(RECOVERY_ACTION_REDUCE_LOAD, nimcp_recovery_reduce_load, NULL);
-    nimcp_register_recovery_callback(RECOVERY_ACTION_CLEAR_CACHE, nimcp_recovery_clear_cache, NULL);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_GC, nimcp_recovery_gc, NULL);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_RETRY, nimcp_recovery_retry, NULL);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK, nimcp_recovery_rollback, NULL);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_RESTART_THREAD, nimcp_recovery_restart_thread, NULL);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_QUARANTINE, nimcp_recovery_quarantine, NULL);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_EMERGENCY_SAVE, nimcp_recovery_emergency_save, NULL);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_REDUCE_LOAD, nimcp_recovery_reduce_load, NULL);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_CLEAR_CACHE, nimcp_recovery_clear_cache, NULL);
 
     LOG_INFO("Installed default recovery callbacks (8 actions registered)");
     return 0;

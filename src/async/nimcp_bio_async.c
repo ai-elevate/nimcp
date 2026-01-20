@@ -19,6 +19,7 @@
  */
 
 #include "async/nimcp_bio_async.h"
+#include "api/nimcp_api_exception.h"
 #include "async/nimcp_biological_timescales.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
@@ -937,6 +938,7 @@ nimcp_error_t nimcp_bio_async_init(const nimcp_bio_async_config_t* config) {
     }
     g_bio_async.thread_pool = nimcp_pool_create(pool_size);
     if (!g_bio_async.thread_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_THREAD_CREATE, "Bio-async thread pool creation failed");
         LOG_ERROR("Failed to create thread pool");
         if (g_bio_async.mem_mgr) {
             unified_mem_destroy(g_bio_async.mem_mgr);
@@ -947,6 +949,7 @@ nimcp_error_t nimcp_bio_async_init(const nimcp_bio_async_config_t* config) {
 
     /* Initialize stats lock */
     if (nimcp_rwlock_init(&g_bio_async.stats_lock) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Bio-async stats rwlock init failed");
         LOG_ERROR("Failed to create stats rwlock");
         nimcp_pool_destroy(g_bio_async.thread_pool);
         if (g_bio_async.mem_mgr) {

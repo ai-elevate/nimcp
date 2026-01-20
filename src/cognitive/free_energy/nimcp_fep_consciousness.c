@@ -15,6 +15,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 
@@ -85,10 +86,7 @@ fep_consciousness_bridge_t* fep_consciousness_create(
 ) {
     fep_consciousness_bridge_t* bridge = (fep_consciousness_bridge_t*)nimcp_calloc(
         1, sizeof(fep_consciousness_bridge_t));
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate consciousness bridge");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate consciousness bridge");
 
     /* Apply configuration */
     fep_consciousness_config_t default_cfg;

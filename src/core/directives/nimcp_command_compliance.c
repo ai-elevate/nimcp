@@ -8,6 +8,7 @@
  */
 
 #include "core/directives/nimcp_command_compliance.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"

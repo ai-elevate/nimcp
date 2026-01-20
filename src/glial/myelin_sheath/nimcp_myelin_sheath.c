@@ -23,6 +23,7 @@
 #include "glial/myelin_sheath/nimcp_myelin_sheath.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
@@ -90,9 +91,7 @@ myelin_sheath_pool_t* myelin_sheath_pool_create(uint32_t capacity)
     uint32_t aligned_capacity = ((capacity + 63) / 64) * 64;
 
     myelin_sheath_pool_t* pool = nimcp_calloc(1, sizeof(myelin_sheath_pool_t));
-    if (!pool) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(pool, "myelin_sheath_pool_create: Failed to allocate pool");
 
     pool->capacity = aligned_capacity;
     pool->num_bitmap_words = aligned_capacity / 64;
@@ -298,9 +297,7 @@ myelin_sheath_t* myelin_sheath_create(uint32_t id, uint32_t axon_id,
     }
 
     myelin_sheath_t* sheath = nimcp_calloc(1, sizeof(myelin_sheath_t));
-    if (!sheath) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(sheath, "myelin_sheath_create: Failed to allocate sheath");
 
     sheath->id = id;
     sheath->axon_id = axon_id;

@@ -783,3 +783,8 @@ gtest_discover_tests(unit_dragonfly_test_coordinator
         LABELS "unit;dragonfly;coordinator"
         TIMEOUT 120
 )
+
+# Exception handling tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt")
+    add_subdirectory(exception)
+endif()

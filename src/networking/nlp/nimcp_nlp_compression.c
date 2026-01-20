@@ -27,6 +27,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "api/nimcp_api_exception.h"
 
 #include <string.h>
 #include <stdlib.h>

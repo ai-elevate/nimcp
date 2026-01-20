@@ -17,6 +17,7 @@
  */
 
 #include "core/brain/hemispheric/nimcp_lateralization.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/memory/nimcp_memory.h"
 #include <string.h>
 #include <math.h>

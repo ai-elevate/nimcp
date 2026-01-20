@@ -179,6 +179,25 @@ typedef struct task_strategy task_strategy_t;
 bool ensure_writable_network(brain_t brain);
 
 //=============================================================================
+// Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+//=============================================================================
+extern void nimcp_health_agent_heartbeat_ex(struct nimcp_health_agent* agent,
+                                             const char* operation,
+                                             float progress);
+
+/**
+ * @brief Send heartbeat from brain operation
+ * @param brain Brain context with health agent
+ * @param operation Operation name
+ * @param progress Progress value [0.0-1.0]
+ */
+static inline void brain_heartbeat(brain_t brain, const char* operation, float progress) {
+    if (brain && brain->health_agent_enabled && brain->health_agent) {
+        nimcp_health_agent_heartbeat_ex(brain->health_agent, operation, progress);
+    }
+}
+
+//=============================================================================
 // Bio-Async Message Handlers and Integration
 //=============================================================================
 
@@ -3283,6 +3302,9 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         set_error("Invalid parameters to brain_decide");
         return NULL;
     }
+
+    /* Phase 8: Send heartbeat at start of cognitive decision */
+    brain_heartbeat(brain, "brain_decide", 0.0f);
 
     // Guard: Check dimensions
     if (num_features != brain->config.num_inputs) {

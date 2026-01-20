@@ -7,6 +7,7 @@
 
 #include "physics/geometry/nimcp_information_geometry_bridge.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -46,9 +47,7 @@ info_geom_bridge_config_t info_geom_bridge_default_config(void)
 info_geom_bridge_t info_geom_bridge_create(const info_geom_bridge_config_t* config)
 {
     struct info_geom_bridge_struct* bridge = calloc(1, sizeof(struct info_geom_bridge_struct));
-    if (!bridge) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate information geometry bridge");
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(info_geom_bridge_config_t));

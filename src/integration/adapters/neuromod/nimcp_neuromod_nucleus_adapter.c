@@ -12,6 +12,7 @@
  */
 
 #include "integration/adapters/neuromod/nimcp_neuromod_nucleus_adapter.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -330,7 +331,7 @@ nimcp_nucleus_adapter_t nimcp_nucleus_adapter_create(
 ) {
     nimcp_nucleus_adapter_t adapter = (nimcp_nucleus_adapter_t)calloc(
         1, sizeof(struct nimcp_nucleus_adapter_struct));
-    if (!adapter) return NULL;
+    NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate neuromod nucleus adapter");
 
     adapter->config = config ? *config : nimcp_nucleus_adapter_default_config(NUCLEUS_LC);
 

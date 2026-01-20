@@ -19,6 +19,7 @@
 #include "cognitive/fault_tolerance/nimcp_metacognition.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -139,10 +140,7 @@ metacognition_t* metacognition_create(const metacognition_config_t* config) {
     LOG_DEBUG("Creating module");
     // GUARD: Allocate main structure
     metacognition_t* meta = (metacognition_t*)nimcp_malloc(sizeof(metacognition_t));
-    if (!meta) {
-        LOG_ERROR("Failed to allocate metacognition structure");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(meta, "Failed to allocate metacognition structure");
 
     // Initialize to zero
     memset(meta, 0, sizeof(metacognition_t));

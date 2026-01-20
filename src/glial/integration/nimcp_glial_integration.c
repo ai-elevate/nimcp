@@ -16,6 +16,7 @@
 #include "glial/integration/nimcp_glial_integration.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
@@ -115,9 +116,7 @@ glial_integration_t* glial_integration_create(neural_network_t network, uint32_t
     }
 
     glial_integration_t* gi = (glial_integration_t*)nimcp_malloc(sizeof(glial_integration_t));
-    if (!gi) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(gi, "glial_integration_create: Failed to allocate structure");
 
     memset(gi, 0, sizeof(glial_integration_t));
 

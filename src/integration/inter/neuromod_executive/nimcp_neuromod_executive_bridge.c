@@ -6,6 +6,7 @@
  */
 
 #include "integration/inter/neuromod_executive/nimcp_neuromod_executive_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -37,7 +38,7 @@ nimcp_neuromod_executive_config_t nimcp_neuromod_executive_default_config(void) 
 
 nimcp_neuromod_executive_bridge_t nimcp_neuromod_executive_create(const nimcp_neuromod_executive_config_t* config) {
     nimcp_neuromod_executive_bridge_t bridge = (nimcp_neuromod_executive_bridge_t)calloc(1, sizeof(struct nimcp_neuromod_executive_bridge_struct));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate neuromod-executive bridge");
     bridge->config = config ? *config : nimcp_neuromod_executive_default_config();
     bridge->state.bridge_coherence = 1.0f;
     bridge->state.motivation_level = 0.5f;
@@ -58,8 +59,9 @@ nimcp_layer_error_t nimcp_neuromod_executive_init(
     nimcp_neuromod_intra_t neuromod,
     nimcp_executive_intra_t executive
 ) {
-    if (!bridge || !registry) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (bridge->is_initialized) return NIMCP_LAYER_ERR_ALREADY_REGISTERED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_executive_init");
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in neuromod_executive_init");
+    NIMCP_API_CHECK(!bridge->is_initialized, NIMCP_LAYER_ERR_ALREADY_REGISTERED, "Bridge already initialized in neuromod_executive_init");
     bridge->registry = registry;
     bridge->neuromod = neuromod;
     bridge->executive = executive;
@@ -68,15 +70,15 @@ nimcp_layer_error_t nimcp_neuromod_executive_init(
 }
 
 nimcp_layer_error_t nimcp_neuromod_executive_shutdown(nimcp_neuromod_executive_bridge_t bridge) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_executive_shutdown");
+    NIMCP_API_CHECK(bridge->is_initialized, NIMCP_LAYER_ERR_NOT_INITIALIZED, "Bridge not initialized in neuromod_executive_shutdown");
     bridge->is_initialized = false;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_neuromod_executive_update(nimcp_neuromod_executive_bridge_t bridge, float dt) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_executive_update");
+    NIMCP_API_CHECK(bridge->is_initialized, NIMCP_LAYER_ERR_NOT_INITIALIZED, "Bridge not initialized in neuromod_executive_update");
 
     /* DA levels affect motivation */
     bridge->state.motivation_level *= (1.0f - dt * 0.01f);
@@ -107,29 +109,33 @@ nimcp_layer_error_t nimcp_neuromod_executive_update(nimcp_neuromod_executive_bri
 }
 
 nimcp_layer_error_t nimcp_neuromod_executive_transfer_bottom_up(nimcp_neuromod_executive_bridge_t bridge, const nimcp_layer_msg_t* msg) {
-    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_executive_transfer_bottom_up");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in neuromod_executive_transfer_bottom_up");
+    NIMCP_API_CHECK(bridge->is_initialized, NIMCP_LAYER_ERR_NOT_INITIALIZED, "Bridge not initialized in neuromod_executive_transfer_bottom_up");
     bridge->state.bottom_up_messages++;
     bridge->stats.motivation_updates++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_neuromod_executive_transfer_top_down(nimcp_neuromod_executive_bridge_t bridge, const nimcp_layer_msg_t* msg) {
-    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_executive_transfer_top_down");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in neuromod_executive_transfer_top_down");
+    NIMCP_API_CHECK(bridge->is_initialized, NIMCP_LAYER_ERR_NOT_INITIALIZED, "Bridge not initialized in neuromod_executive_transfer_top_down");
     bridge->state.top_down_messages++;
     bridge->stats.goal_rewards++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_neuromod_executive_get_state(nimcp_neuromod_executive_bridge_t bridge, nimcp_neuromod_executive_state_t* state_out) {
-    if (!bridge || !state_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_executive_get_state");
+    NIMCP_API_CHECK_NULL(state_out, NIMCP_LAYER_ERR_NULL_PTR, "state_out is NULL in neuromod_executive_get_state");
     *state_out = bridge->state;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_neuromod_executive_get_stats(nimcp_neuromod_executive_bridge_t bridge, nimcp_neuromod_executive_stats_t* stats_out) {
-    if (!bridge || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_executive_get_stats");
+    NIMCP_API_CHECK_NULL(stats_out, NIMCP_LAYER_ERR_NULL_PTR, "stats_out is NULL in neuromod_executive_get_stats");
     *stats_out = bridge->stats;
     return NIMCP_LAYER_OK;
 }
@@ -139,7 +145,7 @@ float nimcp_neuromod_executive_get_coherence(nimcp_neuromod_executive_bridge_t b
 }
 
 nimcp_layer_error_t nimcp_neuromod_executive_reset_stats(nimcp_neuromod_executive_bridge_t bridge) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_executive_reset_stats");
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return NIMCP_LAYER_OK;
 }

@@ -4,6 +4,7 @@
 
 #include "physics/bridges/nimcp_ephaptic_quantum_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 
@@ -379,7 +380,7 @@ int ephaptic_qmc_field_walk(
     // Build adjacency matrix from positions
     uint32_t n = system->neuron_count;
     uint8_t* adjacency = nimcp_calloc(n * n, sizeof(uint8_t));
-    if (!adjacency) return -1;
+    NIMCP_API_CHECK_ALLOC(adjacency, "Failed to allocate adjacency matrix for quantum walk");
 
     // Connect neurons within field decay distance
     float max_dist = 3.0f / system->config.field_decay_constant;  // 3 decay lengths
@@ -482,7 +483,7 @@ int ephaptic_qmc_collective_entropy(
 
     // Extract phases for entropy estimation
     float* phases = nimcp_calloc(system->neuron_count, sizeof(float));
-    if (!phases) return -1;
+    NIMCP_API_CHECK_ALLOC(phases, "Failed to allocate phases array for entropy estimation");
 
     for (uint32_t i = 0; i < system->neuron_count; i++) {
         phases[i] = system->neurons[i].phase;
@@ -492,6 +493,8 @@ int ephaptic_qmc_collective_entropy(
     uint32_t num_bins = 36;  // 10-degree bins
     float* phase_probs = nimcp_calloc(num_bins, sizeof(float));
     if (!phase_probs) {
+        LOG_ERROR("Failed to allocate phase probabilities array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate phase probabilities");
         nimcp_free(phases);
         return -1;
     }
@@ -596,6 +599,8 @@ int ephaptic_qmc_region_mutual_info(
     float* phases1 = nimcp_calloc(count1, sizeof(float));
     float* phases2 = nimcp_calloc(count2, sizeof(float));
     if (!phases1 || !phases2) {
+        LOG_ERROR("Failed to allocate phase arrays for mutual information");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate phase arrays");
         if (phases1) nimcp_free(phases1);
         if (phases2) nimcp_free(phases2);
         return -1;
@@ -619,6 +624,8 @@ int ephaptic_qmc_region_mutual_info(
     // Combine phases and compute joint coherence
     float* combined = nimcp_calloc(count1 + count2, sizeof(float));
     if (!combined) {
+        LOG_ERROR("Failed to allocate combined phases array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate combined phases");
         nimcp_free(phases1);
         nimcp_free(phases2);
         return -1;
@@ -667,6 +674,8 @@ int ephaptic_qmc_discover_patterns(
     bool* assigned = nimcp_calloc(n, sizeof(bool));
     ephaptic_sync_pattern_t* patterns = nimcp_calloc(config->max_patterns, sizeof(ephaptic_sync_pattern_t));
     if (!assigned || !patterns) {
+        LOG_ERROR("Failed to allocate pattern discovery arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate pattern discovery arrays");
         if (assigned) nimcp_free(assigned);
         if (patterns) nimcp_free(patterns);
         return -1;

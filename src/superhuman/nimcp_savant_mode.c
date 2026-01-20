@@ -26,6 +26,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -203,7 +205,11 @@ static int init_prime_cache(prime_cache_t* cache, int64_t limit) {
     /* Allocate sieve */
     size_t sieve_size = (size_t)((limit / 8) + 1);
     cache->sieve = nimcp_calloc(sieve_size, 1);
-    if (!cache->sieve) return SAVANT_ERROR_NO_MEMORY;
+    if (!cache->sieve) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sieve_size,
+                           "init_prime_cache: Failed to allocate sieve");
+        return SAVANT_ERROR_NO_MEMORY;
+    }
 
     cache->limit = limit;
 
@@ -224,6 +230,8 @@ static int init_prime_cache(prime_cache_t* cache, int64_t limit) {
     uint32_t estimated_count = (uint32_t)(limit / (log((double)limit) - 1.0) * 1.3);
     cache->prime_list = nimcp_malloc(estimated_count * sizeof(int64_t));
     if (!cache->prime_list) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, estimated_count * sizeof(int64_t),
+                           "init_prime_cache: Failed to allocate prime list");
         nimcp_free(cache->sieve);
         cache->sieve = NULL;
         return SAVANT_ERROR_NO_MEMORY;
@@ -344,7 +352,11 @@ static void free_pattern_bucket(pattern_bucket_t* bucket) {
  * ============================================================================ */
 
 int savant_default_config(savant_config_t* config) {
-    if (!config) return SAVANT_ERROR_NULL_POINTER;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_default_config: config is NULL");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     /* Ability settings */
     config->enabled_abilities = 0xFFFFFFFF;  /* All enabled */
@@ -383,6 +395,8 @@ savant_system_t* savant_create(const savant_config_t* config) {
     savant_system_t* sys = nimcp_calloc(1, sizeof(savant_system_t));
     if (!sys) {
         NIMCP_LOGGING_ERROR("Failed to allocate savant system");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(savant_system_t),
+                           "savant_create: Failed to allocate system");
         return NULL;
     }
 
@@ -399,6 +413,9 @@ savant_system_t* savant_create(const savant_config_t* config) {
     sys->pattern_table = nimcp_calloc(sys->table_size, sizeof(pattern_bucket_t*));
     if (!sys->pattern_table) {
         NIMCP_LOGGING_ERROR("Failed to allocate pattern table");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           sys->table_size * sizeof(pattern_bucket_t*),
+                           "savant_create: Failed to allocate pattern table");
         savant_destroy(sys);
         return NULL;
     }
@@ -409,6 +426,7 @@ savant_system_t* savant_create(const savant_config_t* config) {
         int result = init_prime_cache(&sys->prime_cache, config->prime_cache_limit);
         if (result != SAVANT_SUCCESS) {
             NIMCP_LOGGING_ERROR("Failed to initialize prime cache");
+            /* Exception already thrown in init_prime_cache */
             savant_destroy(sys);
             return NULL;
         }
@@ -418,6 +436,8 @@ savant_system_t* savant_create(const savant_config_t* config) {
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE,
+                              "savant_create: Failed to create mutex");
         savant_destroy(sys);
         return NULL;
     }
@@ -465,7 +485,11 @@ void savant_destroy(savant_system_t* system) {
 }
 
 int savant_reset(savant_system_t* system) {
-    if (!system) return SAVANT_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_reset: system is NULL");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -502,7 +526,11 @@ int savant_reset(savant_system_t* system) {
  * ============================================================================ */
 
 int savant_set_config(savant_system_t* system, const savant_config_t* config) {
-    if (!system || !config) return SAVANT_ERROR_NULL_POINTER;
+    if (!system || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_set_config: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     system->config = *config;
@@ -512,14 +540,22 @@ int savant_set_config(savant_system_t* system, const savant_config_t* config) {
 }
 
 int savant_get_config(const savant_system_t* system, savant_config_t* config) {
-    if (!system || !config) return SAVANT_ERROR_NULL_POINTER;
+    if (!system || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_get_config: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     *config = system->config;
     return SAVANT_SUCCESS;
 }
 
 int savant_enable_ability(savant_system_t* system, savant_ability_t ability) {
-    if (!system) return SAVANT_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_enable_ability: system is NULL");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -555,7 +591,11 @@ int savant_enable_ability(savant_system_t* system, savant_ability_t ability) {
 }
 
 int savant_disable_ability(savant_system_t* system, savant_ability_t ability) {
-    if (!system) return SAVANT_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_disable_ability: system is NULL");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -597,9 +637,21 @@ int savant_disable_ability(savant_system_t* system, savant_ability_t ability) {
 int savant_calendar_day_of_week(savant_system_t* system,
                                 const savant_date_t* date,
                                 savant_calendar_result_t* result) {
-    if (!system || !date || !result) return SAVANT_ERROR_NULL_POINTER;
-    if (!system->config.enable_calendar) return SAVANT_ERROR_INVALID_STATE;
-    if (!savant_validate_date(date)) return SAVANT_ERROR_INVALID_DATE;
+    if (!system || !date || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_calendar_day_of_week: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
+    if (!system->config.enable_calendar) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                              "savant_calendar_day_of_week: calendar not enabled");
+        return SAVANT_ERROR_INVALID_STATE;
+    }
+    if (!savant_validate_date(date)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "savant_calendar_day_of_week: invalid date");
+        return SAVANT_ERROR_INVALID_DATE;
+    }
 
     float start_time = get_time_ms();
 
@@ -670,9 +722,21 @@ int savant_calendar_next_day(savant_system_t* system,
                              const savant_date_t* from,
                              savant_day_t target_day,
                              savant_date_t* result) {
-    if (!system || !from || !result) return SAVANT_ERROR_NULL_POINTER;
-    if (!savant_validate_date(from)) return SAVANT_ERROR_INVALID_DATE;
-    if (target_day > SAVANT_SATURDAY) return SAVANT_ERROR_INVALID_PARAM;
+    if (!system || !from || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_calendar_next_day: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
+    if (!savant_validate_date(from)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "savant_calendar_next_day: invalid date");
+        return SAVANT_ERROR_INVALID_DATE;
+    }
+    if (target_day > SAVANT_SATURDAY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "savant_calendar_next_day: invalid target day");
+        return SAVANT_ERROR_INVALID_PARAM;
+    }
 
     savant_calendar_result_t cal;
     savant_calendar_day_of_week(system, from, &cal);
@@ -694,8 +758,14 @@ int savant_calendar_days_between(savant_system_t* system,
                                  const savant_date_t* date1,
                                  const savant_date_t* date2,
                                  int32_t* days) {
-    if (!system || !date1 || !date2 || !days) return SAVANT_ERROR_NULL_POINTER;
+    if (!system || !date1 || !date2 || !days) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_calendar_days_between: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
     if (!savant_validate_date(date1) || !savant_validate_date(date2)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "savant_calendar_days_between: invalid date");
         return SAVANT_ERROR_INVALID_DATE;
     }
 
@@ -723,8 +793,16 @@ savant_date_t savant_make_date(int32_t year, int32_t month, int32_t day) {
 int savant_is_prime(savant_system_t* system,
                     int64_t number,
                     savant_prime_result_t* result) {
-    if (!system || !result) return SAVANT_ERROR_NULL_POINTER;
-    if (!system->config.enable_prime) return SAVANT_ERROR_INVALID_STATE;
+    if (!system || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_is_prime: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
+    if (!system->config.enable_prime) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                              "savant_is_prime: prime detection not enabled");
+        return SAVANT_ERROR_INVALID_STATE;
+    }
 
     float start_time = get_time_ms();
 
@@ -789,8 +867,16 @@ int savant_factorize(savant_system_t* system,
                      int64_t* factors,
                      uint32_t max_factors,
                      uint32_t* num_factors) {
-    if (!system || !factors || !num_factors) return SAVANT_ERROR_NULL_POINTER;
-    if (!system->config.enable_factorization) return SAVANT_ERROR_INVALID_STATE;
+    if (!system || !factors || !num_factors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_factorize: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
+    if (!system->config.enable_factorization) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                              "savant_factorize: factorization not enabled");
+        return SAVANT_ERROR_INVALID_STATE;
+    }
 
     *num_factors = 0;
 
@@ -826,8 +912,16 @@ int savant_factorize(savant_system_t* system,
 int savant_nth_prime(savant_system_t* system,
                      uint32_t n,
                      int64_t* prime) {
-    if (!system || !prime) return SAVANT_ERROR_NULL_POINTER;
-    if (n < 1) return SAVANT_ERROR_INVALID_PARAM;
+    if (!system || !prime) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_nth_prime: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
+    if (n < 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "savant_nth_prime: n must be >= 1");
+        return SAVANT_ERROR_INVALID_PARAM;
+    }
 
     if (n <= system->prime_cache.prime_count) {
         *prime = system->prime_cache.prime_list[n - 1];
@@ -840,7 +934,11 @@ int savant_nth_prime(savant_system_t* system,
 int savant_count_primes(savant_system_t* system,
                         int64_t limit,
                         uint32_t* count) {
-    if (!system || !count) return SAVANT_ERROR_NULL_POINTER;
+    if (!system || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_count_primes: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     if (limit <= system->prime_cache.limit) {
         /* Count from cache */
@@ -862,7 +960,11 @@ int savant_nearest_prime(savant_system_t* system,
                          int64_t number,
                          int32_t direction,
                          int64_t* prime) {
-    if (!system || !prime) return SAVANT_ERROR_NULL_POINTER;
+    if (!system || !prime) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_nearest_prime: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     savant_prime_result_t result;
     savant_is_prime(system, number, &result);
@@ -895,9 +997,19 @@ int savant_learn_pattern(savant_system_t* system,
                          savant_pattern_type_t type,
                          const char* label,
                          uint32_t* pattern_id) {
-    if (!system || !data || !pattern_id) return SAVANT_ERROR_NULL_POINTER;
-    if (!system->config.enable_memorization) return SAVANT_ERROR_INVALID_STATE;
+    if (!system || !data || !pattern_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_learn_pattern: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
+    if (!system->config.enable_memorization) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                              "savant_learn_pattern: memorization not enabled");
+        return SAVANT_ERROR_INVALID_STATE;
+    }
     if (length == 0 || length > system->config.max_pattern_length) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "savant_learn_pattern: invalid pattern length");
         return SAVANT_ERROR_INVALID_PARAM;
     }
 
@@ -905,6 +1017,8 @@ int savant_learn_pattern(savant_system_t* system,
 
     /* Check capacity */
     if (system->pattern_count >= system->config.max_patterns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+                              "savant_learn_pattern: pattern capacity exceeded");
         nimcp_platform_mutex_unlock(system->mutex);
         return SAVANT_ERROR_CAPACITY_EXCEEDED;
     }
@@ -916,6 +1030,8 @@ int savant_learn_pattern(savant_system_t* system,
     /* Allocate bucket */
     pattern_bucket_t* bucket = nimcp_calloc(1, sizeof(pattern_bucket_t));
     if (!bucket) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(pattern_bucket_t),
+                           "savant_learn_pattern: Failed to allocate bucket");
         nimcp_platform_mutex_unlock(system->mutex);
         return SAVANT_ERROR_NO_MEMORY;
     }
@@ -923,6 +1039,8 @@ int savant_learn_pattern(savant_system_t* system,
     /* Copy data */
     bucket->data_copy = nimcp_malloc(length * sizeof(float));
     if (!bucket->data_copy) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, length * sizeof(float),
+                           "savant_learn_pattern: Failed to copy pattern data");
         nimcp_free(bucket);
         nimcp_platform_mutex_unlock(system->mutex);
         return SAVANT_ERROR_NO_MEMORY;
@@ -973,7 +1091,11 @@ int savant_recall_pattern(savant_system_t* system,
                           uint32_t buffer_size,
                           uint32_t* length,
                           savant_recall_level_t* recall_level) {
-    if (!system || !data || !length) return SAVANT_ERROR_NULL_POINTER;
+    if (!system || !data || !length) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_recall_pattern: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1047,9 +1169,15 @@ int savant_find_patterns(savant_system_t* system,
                          uint32_t max_matches,
                          uint32_t* num_matches) {
     if (!system || !query || !matches || !num_matches) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_find_patterns: NULL parameter");
         return SAVANT_ERROR_NULL_POINTER;
     }
-    if (!system->config.enable_pattern) return SAVANT_ERROR_INVALID_STATE;
+    if (!system->config.enable_pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                              "savant_find_patterns: pattern finding not enabled");
+        return SAVANT_ERROR_INVALID_STATE;
+    }
 
     *num_matches = 0;
 
@@ -1145,7 +1273,11 @@ int savant_find_patterns(savant_system_t* system,
 }
 
 int savant_forget_pattern(savant_system_t* system, uint32_t pattern_id) {
-    if (!system) return SAVANT_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_forget_pattern: system is NULL");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1176,7 +1308,11 @@ int savant_forget_pattern(savant_system_t* system, uint32_t pattern_id) {
 int savant_strengthen_pattern(savant_system_t* system,
                               uint32_t pattern_id,
                               float amount) {
-    if (!system) return SAVANT_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_strengthen_pattern: system is NULL");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1211,8 +1347,16 @@ int savant_count_items(savant_system_t* system,
                        const float* items,
                        uint32_t array_length,
                        savant_count_result_t* result) {
-    if (!system || !items || !result) return SAVANT_ERROR_NULL_POINTER;
-    if (!system->config.enable_counting) return SAVANT_ERROR_INVALID_STATE;
+    if (!system || !items || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_count_items: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
+    if (!system->config.enable_counting) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                              "savant_count_items: counting not enabled");
+        return SAVANT_ERROR_INVALID_STATE;
+    }
 
     float start_time = get_time_ms();
 
@@ -1255,8 +1399,16 @@ int savant_estimate_count(savant_system_t* system,
                           uint32_t array_length,
                           float sample_rate,
                           savant_count_result_t* result) {
-    if (!system || !items || !result) return SAVANT_ERROR_NULL_POINTER;
-    if (sample_rate <= 0.0f || sample_rate > 1.0f) return SAVANT_ERROR_INVALID_PARAM;
+    if (!system || !items || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_estimate_count: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
+    if (sample_rate <= 0.0f || sample_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "savant_estimate_count: invalid sample rate");
+        return SAVANT_ERROR_INVALID_PARAM;
+    }
 
     float start_time = get_time_ms();
 
@@ -1302,21 +1454,33 @@ int savant_estimate_count(savant_system_t* system,
  * ============================================================================ */
 
 int savant_get_state(const savant_system_t* system, savant_state_t* state) {
-    if (!system || !state) return SAVANT_ERROR_NULL_POINTER;
+    if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_get_state: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     *state = system->state;
     return SAVANT_SUCCESS;
 }
 
 int savant_get_stats(const savant_system_t* system, savant_stats_t* stats) {
-    if (!system || !stats) return SAVANT_ERROR_NULL_POINTER;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_get_stats: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     *stats = system->stats;
     return SAVANT_SUCCESS;
 }
 
 int savant_reset_stats(savant_system_t* system) {
-    if (!system) return SAVANT_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_reset_stats: system is NULL");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     memset(&system->stats, 0, sizeof(savant_stats_t));
@@ -1328,7 +1492,11 @@ int savant_reset_stats(savant_system_t* system) {
 int savant_get_pattern_info(const savant_system_t* system,
                             uint32_t pattern_id,
                             savant_pattern_t* pattern) {
-    if (!system || !pattern) return SAVANT_ERROR_NULL_POINTER;
+    if (!system || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "savant_get_pattern_info: NULL parameter");
+        return SAVANT_ERROR_NULL_POINTER;
+    }
 
     for (uint32_t i = 0; i < system->table_size; i++) {
         pattern_bucket_t* bucket = system->pattern_table[i];
@@ -1350,11 +1518,17 @@ int savant_get_pattern_info(const savant_system_t* system,
 
 savant_prime_result_t* savant_prime_result_create(uint32_t max_factors) {
     savant_prime_result_t* result = nimcp_calloc(1, sizeof(savant_prime_result_t));
-    if (!result) return NULL;
+    if (!result) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(savant_prime_result_t),
+                           "savant_prime_result_create: Failed to allocate result");
+        return NULL;
+    }
 
     if (max_factors > 0) {
         result->factors = nimcp_calloc(max_factors, sizeof(int64_t));
         if (!result->factors) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, max_factors * sizeof(int64_t),
+                               "savant_prime_result_create: Failed to allocate factors");
             nimcp_free(result);
             return NULL;
         }

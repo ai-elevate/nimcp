@@ -16,6 +16,7 @@
 
 #include "physics/bridges/nimcp_ephaptic_fft_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 
@@ -258,9 +259,7 @@ ephaptic_fft_bridge_t* ephaptic_fft_bridge_create(
     const ephaptic_fft_config_t* config
 ) {
     ephaptic_fft_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate ephaptic FFT bridge");
 
     /* Apply configuration */
     if (config) {
@@ -286,6 +285,8 @@ ephaptic_fft_bridge_t* ephaptic_fft_bridge_create(
     /* Create FFT plan */
     bridge->fft_plan = fft_plan_create(bridge->config.fft_size, FFT_REAL);
     if (!bridge->fft_plan) {
+        LOG_ERROR("Failed to create FFT plan for ephaptic bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create FFT plan");
         nimcp_free(bridge);
         return NULL;
     }
@@ -296,6 +297,8 @@ ephaptic_fft_bridge_t* ephaptic_fft_bridge_create(
     /* Allocate LFP buffer */
     bridge->lfp_buffer = nimcp_calloc(bridge->config.fft_size, sizeof(float));
     if (!bridge->lfp_buffer) {
+        LOG_ERROR("Failed to allocate LFP buffer for FFT bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate LFP buffer");
         fft_plan_destroy(bridge->fft_plan);
         nimcp_free(bridge);
         return NULL;
@@ -304,6 +307,8 @@ ephaptic_fft_bridge_t* ephaptic_fft_bridge_create(
     /* Allocate windowed signal buffer */
     bridge->windowed_signal = nimcp_calloc(bridge->config.fft_size, sizeof(float));
     if (!bridge->windowed_signal) {
+        LOG_ERROR("Failed to allocate windowed signal buffer for FFT bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate windowed signal buffer");
         nimcp_free(bridge->lfp_buffer);
         fft_plan_destroy(bridge->fft_plan);
         nimcp_free(bridge);
@@ -313,6 +318,8 @@ ephaptic_fft_bridge_t* ephaptic_fft_bridge_create(
     /* Allocate spectrum */
     bridge->spectrum = nimcp_calloc(bridge->num_bins, sizeof(fft_complex_t));
     if (!bridge->spectrum) {
+        LOG_ERROR("Failed to allocate FFT spectrum buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate FFT spectrum buffer");
         nimcp_free(bridge->windowed_signal);
         nimcp_free(bridge->lfp_buffer);
         fft_plan_destroy(bridge->fft_plan);
@@ -323,6 +330,8 @@ ephaptic_fft_bridge_t* ephaptic_fft_bridge_create(
     /* Allocate power spectrum */
     bridge->power_spectrum = nimcp_calloc(bridge->num_bins, sizeof(float));
     if (!bridge->power_spectrum) {
+        LOG_ERROR("Failed to allocate power spectrum buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate power spectrum buffer");
         nimcp_free(bridge->spectrum);
         nimcp_free(bridge->windowed_signal);
         nimcp_free(bridge->lfp_buffer);

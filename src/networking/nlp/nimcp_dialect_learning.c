@@ -11,6 +11,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_wiring_helpers.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

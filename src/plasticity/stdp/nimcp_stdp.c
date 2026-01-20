@@ -10,6 +10,7 @@
 #include "plasticity/stdp/nimcp_stdp_sleep_bridge.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "plasticity/neuromodulators/nimcp_phasic_tonic.h"
+#include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"

@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 
 struct population_coding_sleep_bridge_struct {
@@ -92,13 +93,16 @@ population_coding_sleep_bridge_t population_coding_sleep_bridge_create(
 {
     if (!sleep_system) {
         NIMCP_LOGGING_ERROR("population_coding_sleep_bridge_create: NULL sleep_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "population_coding_sleep_bridge_create: NULL sleep_system");
         return NULL;
     }
 
     struct population_coding_sleep_bridge_struct* bridge =
         (struct population_coding_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct population_coding_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC_SIZE(bridge, sizeof(struct population_coding_sleep_bridge_struct),
+        "population_coding_sleep_bridge_create: failed to allocate bridge");
 
     memset(bridge, 0, sizeof(struct population_coding_sleep_bridge_struct));
 
@@ -116,6 +120,8 @@ population_coding_sleep_bridge_t population_coding_sleep_bridge_create(
 
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(nimcp_platform_mutex_t),
+            "population_coding_sleep_bridge_create: failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }

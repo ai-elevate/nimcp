@@ -300,3 +300,8 @@ set_tests_properties(PortiaCollectiveBridge PROPERTIES
 # Portia-Immune Bridge Tests
 # ============================================================================
 add_subdirectory(immune)
+
+# Exception handling tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt")
+    add_subdirectory(exception)
+endif()

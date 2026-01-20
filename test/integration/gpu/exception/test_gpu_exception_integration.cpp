@@ -107,7 +107,7 @@ protected:
     }
 
     static int test_recovery(nimcp_exception_t* ex,
-                             nimcp_recovery_action_t action,
+                             nimcp_exception_recovery_action_t action,
                              void* user_data) {
         (void)ex;
         (void)action;
@@ -170,11 +170,11 @@ TEST_F(GpuExceptionIntegrationTest, GpuMemoryExceptionToImmune) {
     EXPECT_EQ(result, 0);
 
     // Get recovery strategy - should suggest GC for memory issues
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
     // Memory-related errors should have appropriate recovery
-    EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE);
+    EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
 }
@@ -427,7 +427,7 @@ TEST_F(GpuExceptionIntegrationTest, RecoveryGCExecution) {
     // Execute GC recovery
     int result = nimcp_exception_execute_recovery(
         (nimcp_exception_t*)ex,
-        RECOVERY_ACTION_GC
+        EXCEPTION_RECOVERY_GC
     );
 
     // Result depends on whether GC callback is registered
@@ -454,7 +454,7 @@ TEST_F(GpuExceptionIntegrationTest, RecoveryReduceLoad) {
     // Execute reduce load recovery
     int result = nimcp_exception_execute_recovery(
         (nimcp_exception_t*)ex,
-        RECOVERY_ACTION_REDUCE_LOAD
+        EXCEPTION_RECOVERY_REDUCE_LOAD
     );
     (void)result;
 
@@ -610,7 +610,7 @@ TEST_F(GpuExceptionIntegrationTest, RecoveryResultNotification) {
     // Notify recovery result
     int result = nimcp_exception_notify_recovery_result(
         (nimcp_exception_t*)ex,
-        RECOVERY_ACTION_GC,
+        EXCEPTION_RECOVERY_GC,
         true  // success
     );
     EXPECT_EQ(result, 0);

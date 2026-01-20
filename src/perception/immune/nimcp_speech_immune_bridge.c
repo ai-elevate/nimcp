@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
@@ -115,7 +116,7 @@ static bool is_illness_word(const char* word) {
  * ============================================================================ */
 
 int speech_immune_default_config(speech_immune_config_t* config) {
-    if (!config) return -1;
+    NIMCP_API_CHECK_NULL(config, -1, "speech_immune_default_config: NULL config");
 
     /* All features enabled by default */
     config->enable_cytokine_speech_modulation = true;
@@ -141,19 +142,13 @@ speech_immune_bridge_t* speech_immune_bridge_create(
     speech_cortex_t* speech_cortex
 ) {
     /* Guard: require immune and speech systems */
-    if (!immune_system || !speech_cortex) {
-        LOG_MODULE_ERROR("speech_immune_bridge",
-                  "Cannot create bridge without immune and speech systems");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(immune_system, "speech_immune_bridge_create: NULL immune_system");
+    NIMCP_API_CHECK_NULL_RET_NULL(speech_cortex, "speech_immune_bridge_create: NULL speech_cortex");
 
     /* Allocate bridge */
     speech_immune_bridge_t* bridge = (speech_immune_bridge_t*)
         nimcp_malloc(sizeof(speech_immune_bridge_t));
-    if (!bridge) {
-        LOG_MODULE_ERROR("speech_immune_bridge", "Allocation failed");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "speech_immune_bridge_create: Failed to allocate bridge");
 
     /* Initialize to zero */
     memset(bridge, 0, sizeof(speech_immune_bridge_t));
@@ -209,9 +204,10 @@ void speech_immune_bridge_destroy(speech_immune_bridge_t* bridge) {
 
 int speech_immune_apply_cytokine_effects(speech_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "speech_immune_apply_cytokine_effects: NULL bridge");
     if (!bridge->enable_cytokine_speech_modulation) return 0;
-    if (!bridge->immune_system || !bridge->speech_cortex) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "speech_immune_apply_cytokine_effects: NULL immune_system");
+    NIMCP_API_CHECK_NULL(bridge->speech_cortex, -1, "speech_immune_apply_cytokine_effects: NULL speech_cortex");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -290,9 +286,9 @@ int speech_immune_apply_cytokine_effects(speech_immune_bridge_t* bridge) {
 
 int speech_immune_apply_inflammation_effects(speech_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "speech_immune_apply_inflammation_effects: NULL bridge");
     if (!bridge->enable_inflammation_impairment) return 0;
-    if (!bridge->immune_system) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "speech_immune_apply_inflammation_effects: NULL immune_system");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -405,9 +401,10 @@ float speech_immune_get_speech_rate_factor(
 
 int speech_immune_trigger_from_effort(speech_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "speech_immune_trigger_from_effort: NULL bridge");
     if (!bridge->enable_speech_immune_trigger) return 0;
-    if (!bridge->immune_system || !bridge->speech_cortex) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "speech_immune_trigger_from_effort: NULL immune_system");
+    NIMCP_API_CHECK_NULL(bridge->speech_cortex, -1, "speech_immune_trigger_from_effort: NULL speech_cortex");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -462,9 +459,9 @@ int speech_immune_detect_distress_vocalization(
     const void* prosody_features
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "speech_immune_detect_distress_vocalization: NULL bridge");
     if (!bridge->enable_distress_vocalization_trigger) return 0;
-    if (!prosody_features) return -1;
+    NIMCP_API_CHECK_NULL(prosody_features, -1, "speech_immune_detect_distress_vocalization: NULL prosody_features");
 
     /* In full implementation, would analyze prosody features for:
      * - High pitch (pain/distress marker)
@@ -521,7 +518,7 @@ int speech_immune_trigger_from_illness_expression(
     const char* word
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "speech_immune_trigger_from_illness_expression: NULL bridge");
     if (!bridge->enable_speech_immune_trigger) return 0;
     if (!word || !is_illness_word(word)) return 0;
 
@@ -554,7 +551,7 @@ int speech_immune_bridge_update(
     speech_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "speech_immune_bridge_update: NULL bridge");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->total_updates++;
@@ -593,7 +590,8 @@ int speech_immune_get_cytokine_effects(
     const speech_immune_bridge_t* bridge,
     cytokine_speech_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "speech_immune_get_cytokine_effects: NULL bridge");
+    NIMCP_API_CHECK_NULL(effects, -1, "speech_immune_get_cytokine_effects: NULL effects");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_speech_effects_t));
@@ -606,7 +604,8 @@ int speech_immune_get_inflammation_state(
     const speech_immune_bridge_t* bridge,
     inflammation_speech_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "speech_immune_get_inflammation_state: NULL bridge");
+    NIMCP_API_CHECK_NULL(state, -1, "speech_immune_get_inflammation_state: NULL state");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_speech_state_t));
@@ -644,7 +643,7 @@ float speech_immune_get_working_memory_capacity(
  * @brief Connect bridge to bio-async router
  */
 int speech_immune_connect_bio_async(speech_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "speech_immune_connect_bio_async: NULL bridge");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -669,7 +668,7 @@ int speech_immune_connect_bio_async(speech_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int speech_immune_disconnect_bio_async(speech_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "speech_immune_disconnect_bio_async: NULL bridge");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

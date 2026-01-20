@@ -8,6 +8,7 @@
 #define _POSIX_C_SOURCE 199309L
 
 #include "integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -85,7 +86,7 @@ neuromod_attention_config_t neuromod_attention_default_config(void) {
 
 neuromod_attention_bridge_t* neuromod_attention_create(const neuromod_attention_config_t* config) {
     neuromod_attention_bridge_t* bridge = calloc(1, sizeof(neuromod_attention_bridge_t));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate neuromod-attention bridge");
 
     bridge->magic = NEUROMOD_ATTENTION_BRIDGE_MAGIC;
 

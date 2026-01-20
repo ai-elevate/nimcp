@@ -11,6 +11,9 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 // Global BBB security system
 static bbb_system_t g_bbb_system = NULL;
@@ -115,6 +118,8 @@ static bool ensure_capacity(NimcpSerializer* serializer, size_t additional_size)
 
     uint8_t* new_buffer = nimcp_realloc(serializer->buffer, new_capacity);
     if (!new_buffer) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, new_capacity,
+                          "Serializer buffer realloc failed for capacity %zu", new_capacity);
         serializer->has_error = true;
         return false;
     }
@@ -136,11 +141,15 @@ NimcpSerializer* nimcp_serializer_create(size_t initial_capacity)
 
     NimcpSerializer* serializer = nimcp_malloc(sizeof(NimcpSerializer));
     if (!serializer) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(NimcpSerializer),
+                          "Failed to allocate serializer structure");
         return NULL;
     }
 
     serializer->buffer = nimcp_malloc(initial_capacity);
     if (!serializer->buffer) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, initial_capacity,
+                          "Failed to allocate serializer buffer of size %zu", initial_capacity);
         nimcp_free(serializer);
         return NULL;
     }
@@ -233,6 +242,8 @@ NimcpSerialResult nimcp_serializer_compress(NimcpSerializer* serializer)
     const int max_dst_size = LZ4_compressBound(serializer->length);
     uint8_t* compressed_buffer = nimcp_malloc(max_dst_size);
     if (!compressed_buffer) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, max_dst_size,
+                          "Failed to allocate compression buffer of size %d", max_dst_size);
         return NIMCP_SERIAL_ERROR_MEMORY;
     }
 
@@ -241,12 +252,16 @@ NimcpSerialResult nimcp_serializer_compress(NimcpSerializer* serializer)
                              serializer->length, max_dst_size);
 
     if (compressed_size <= 0) {
+        NIMCP_THROW_IO(NIMCP_ERROR_OPERATION_FAILED, "serializer",
+                      "LZ4 compression failed for data of size %zu", serializer->length);
         nimcp_free(compressed_buffer);
         return NIMCP_SERIAL_ERROR_COMPRESSION;
     }
 
     uint8_t* final_buffer = nimcp_malloc(compressed_size + sizeof(uint32_t));
     if (!final_buffer) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, compressed_size + sizeof(uint32_t),
+                          "Failed to allocate final compressed buffer");
         nimcp_free(compressed_buffer);
         return NIMCP_SERIAL_ERROR_MEMORY;
     }
@@ -279,6 +294,8 @@ NimcpSerialResult nimcp_serializer_decompress(NimcpSerializer* serializer)
     uint32_t original_size = *(uint32_t*) serializer->buffer;
     uint8_t* decompressed_buffer = nimcp_malloc(original_size);
     if (!decompressed_buffer) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, original_size,
+                          "Failed to allocate decompression buffer of size %u", original_size);
         return NIMCP_SERIAL_ERROR_MEMORY;
     }
 
@@ -287,6 +304,9 @@ NimcpSerialResult nimcp_serializer_decompress(NimcpSerializer* serializer)
         serializer->length - sizeof(uint32_t), original_size);
 
     if (decompressed_size < 0 || (uint32_t) decompressed_size != original_size) {
+        NIMCP_THROW_IO(NIMCP_ERROR_OPERATION_FAILED, "serializer",
+                      "LZ4 decompression failed: expected %u bytes, got %d",
+                      original_size, decompressed_size);
         nimcp_free(decompressed_buffer);
         return NIMCP_SERIAL_ERROR_COMPRESSION;
     }

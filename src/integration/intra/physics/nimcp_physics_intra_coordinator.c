@@ -6,6 +6,7 @@
  */
 
 #include "integration/intra/physics/nimcp_physics_intra_coordinator.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -50,7 +51,7 @@ nimcp_physics_intra_config_t nimcp_physics_intra_default_config(void) {
 
 nimcp_physics_intra_t nimcp_physics_intra_create(const nimcp_physics_intra_config_t* config) {
     nimcp_physics_intra_t coord = (nimcp_physics_intra_t)calloc(1, sizeof(struct nimcp_physics_intra_struct));
-    if (!coord) return NULL;
+    NIMCP_API_CHECK_ALLOC(coord, "Failed to allocate physics intra coordinator");
     coord->config = config ? *config : nimcp_physics_intra_default_config();
     coord->state.temperature = coord->config.temperature_kelvin;
     return coord;
@@ -63,7 +64,8 @@ void nimcp_physics_intra_destroy(nimcp_physics_intra_t coord) {
 }
 
 nimcp_layer_error_t nimcp_physics_intra_init(nimcp_physics_intra_t coord, nimcp_layer_registry_t registry) {
-    if (!coord || !registry) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in physics_intra_init");
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in physics_intra_init");
     if (coord->is_initialized) return NIMCP_LAYER_ERR_ALREADY_REGISTERED;
     coord->registry = registry;
     coord->is_initialized = true;
@@ -72,14 +74,16 @@ nimcp_layer_error_t nimcp_physics_intra_init(nimcp_physics_intra_t coord, nimcp_
 }
 
 nimcp_layer_error_t nimcp_physics_intra_shutdown(nimcp_physics_intra_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in physics_intra_shutdown");
     if (!coord->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     coord->is_initialized = false;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_physics_intra_connect_ephaptic(nimcp_physics_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in connect_ephaptic");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL in connect_ephaptic");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL in connect_ephaptic");
     coord->ephaptic.module = module;
     coord->ephaptic.interface = *interface;
     coord->ephaptic.connected = true;
@@ -88,7 +92,9 @@ nimcp_layer_error_t nimcp_physics_intra_connect_ephaptic(nimcp_physics_intra_t c
 }
 
 nimcp_layer_error_t nimcp_physics_intra_connect_info_geometry(nimcp_physics_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in connect_info_geometry");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL in connect_info_geometry");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL in connect_info_geometry");
     coord->info_geometry.module = module;
     coord->info_geometry.interface = *interface;
     coord->info_geometry.connected = true;
@@ -97,7 +103,9 @@ nimcp_layer_error_t nimcp_physics_intra_connect_info_geometry(nimcp_physics_intr
 }
 
 nimcp_layer_error_t nimcp_physics_intra_connect_hh_dynamics(nimcp_physics_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in connect_hh_dynamics");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL in connect_hh_dynamics");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL in connect_hh_dynamics");
     coord->hh_dynamics.module = module;
     coord->hh_dynamics.interface = *interface;
     coord->hh_dynamics.connected = true;
@@ -106,7 +114,9 @@ nimcp_layer_error_t nimcp_physics_intra_connect_hh_dynamics(nimcp_physics_intra_
 }
 
 nimcp_layer_error_t nimcp_physics_intra_connect_thermodynamics(nimcp_physics_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in connect_thermodynamics");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL in connect_thermodynamics");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL in connect_thermodynamics");
     coord->thermodynamics.module = module;
     coord->thermodynamics.interface = *interface;
     coord->thermodynamics.connected = true;
@@ -115,7 +125,7 @@ nimcp_layer_error_t nimcp_physics_intra_connect_thermodynamics(nimcp_physics_int
 }
 
 nimcp_layer_error_t nimcp_physics_intra_update(nimcp_physics_intra_t coord, float dt) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in physics_intra_update");
     if (!coord->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
 
     /* Accumulate energy/entropy stats */
@@ -138,28 +148,30 @@ nimcp_layer_error_t nimcp_physics_intra_update(nimcp_physics_intra_t coord, floa
 }
 
 nimcp_layer_error_t nimcp_physics_intra_sync(nimcp_physics_intra_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in physics_intra_sync");
     if (!coord->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     coord->stats.sync_events++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_physics_intra_send(nimcp_physics_intra_t coord, uint32_t target_module, nimcp_layer_msg_t* msg) {
-    if (!coord || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in physics_intra_send");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in physics_intra_send");
     (void)target_module;
     coord->stats.messages_sent++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_physics_intra_broadcast(nimcp_physics_intra_t coord, uint32_t source_module, const nimcp_layer_msg_t* msg) {
-    if (!coord || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in physics_intra_broadcast");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in physics_intra_broadcast");
     (void)source_module;
     coord->stats.messages_sent += PHYSICS_MODULE_COUNT;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_physics_intra_update_energy(nimcp_physics_intra_t coord, float delta_energy) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in update_energy");
 
     if (coord->config.enforce_energy_conservation) {
         /* In closed system, energy should be conserved - track violations */
@@ -173,7 +185,7 @@ nimcp_layer_error_t nimcp_physics_intra_update_energy(nimcp_physics_intra_t coor
 }
 
 nimcp_layer_error_t nimcp_physics_intra_update_entropy(nimcp_physics_intra_t coord, float delta_entropy) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in update_entropy");
 
     if (coord->config.enforce_entropy_increase && delta_entropy < 0.0f) {
         coord->stats.constraint_violations++;
@@ -184,19 +196,22 @@ nimcp_layer_error_t nimcp_physics_intra_update_entropy(nimcp_physics_intra_t coo
 }
 
 nimcp_layer_error_t nimcp_physics_intra_check_constraints(nimcp_physics_intra_t coord, uint32_t* violations_out) {
-    if (!coord || !violations_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in check_constraints");
+    NIMCP_API_CHECK_NULL(violations_out, NIMCP_LAYER_ERR_NULL_PTR, "violations_out is NULL in check_constraints");
     *violations_out = (uint32_t)coord->stats.constraint_violations;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_physics_intra_get_state(nimcp_physics_intra_t coord, nimcp_physics_intra_state_t* state_out) {
-    if (!coord || !state_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in get_state");
+    NIMCP_API_CHECK_NULL(state_out, NIMCP_LAYER_ERR_NULL_PTR, "state_out is NULL in get_state");
     *state_out = coord->state;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_physics_intra_get_stats(nimcp_physics_intra_t coord, nimcp_physics_intra_stats_t* stats_out) {
-    if (!coord || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in get_stats");
+    NIMCP_API_CHECK_NULL(stats_out, NIMCP_LAYER_ERR_NULL_PTR, "stats_out is NULL in get_stats");
     *stats_out = coord->stats;
     return NIMCP_LAYER_OK;
 }
@@ -206,7 +221,7 @@ float nimcp_physics_intra_get_coherence(nimcp_physics_intra_t coord) {
 }
 
 nimcp_layer_error_t nimcp_physics_intra_reset_stats(nimcp_physics_intra_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in reset_stats");
     memset(&coord->stats, 0, sizeof(coord->stats));
     return NIMCP_LAYER_OK;
 }

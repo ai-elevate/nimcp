@@ -13,6 +13,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 
@@ -130,10 +131,7 @@ void fep_context_default_config(fep_context_config_t* config) {
 fep_context_system_t* fep_context_create(const fep_context_config_t* config) {
     fep_context_system_t* sys = (fep_context_system_t*)nimcp_calloc(
         1, sizeof(fep_context_system_t));
-    if (!sys) {
-        NIMCP_LOGGING_ERROR("Failed to allocate context system");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(sys, "Failed to allocate FEP context system");
 
     /* Apply configuration */
     fep_context_config_t default_cfg;

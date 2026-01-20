@@ -341,6 +341,7 @@
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "api/nimcp_api_exception.h"
 #include <stdio.h>
 #include <string.h>
 #include "utils/memory/nimcp_memory.h"
@@ -580,16 +581,24 @@ static json_t* resolve_json_path(json_t* root, const char* path, json_t** parent
 JsonResult nimcp_json_create_context(JsonContext** ctx)
 {
     LOG_DEBUG("Entering nimcp_json_create_context");
-    if (!ctx)
+    if (!ctx) {
+        LOG_ERROR("nimcp_json_create_context: NULL ctx pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL ctx pointer in nimcp_json_create_context");
         return JSON_ERROR_INVALID_PARAM;
+    }
 
     // Allocate context (calloc zeros memory)
     JsonContext* new_ctx = nimcp_calloc(1, sizeof(JsonContext));
-    if (!new_ctx)
+    if (!new_ctx) {
+        LOG_ERROR("Failed to allocate JSON context");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(JsonContext), "Failed to allocate JSON context");
         return JSON_ERROR_MEMORY;
+    }
 
     // Initialize mutex for thread safety
     if (nimcp_mutex_init(&new_ctx->mutex, NULL) != NIMCP_SUCCESS) {
+        LOG_ERROR("Failed to initialize JSON context mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SYSTEM, "Failed to initialize JSON context mutex");
         nimcp_free(new_ctx);
         return JSON_ERROR_LOCK;
     }

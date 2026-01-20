@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "swarm_proprioception"
 

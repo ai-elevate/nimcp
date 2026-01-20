@@ -150,13 +150,13 @@ TEST_F(NetworkingExceptionHandlingTest, ProtocolVersionMismatchException) {
     nimcp_exception_set_context(ex, "peer_ip", "192.168.1.100");
 
     // Expected recovery: reduce functionality or reject connection
-    ex->suggested_action = RECOVERY_ACTION_REDUCE_LOAD;
+    ex->suggested_action = EXCEPTION_RECOVERY_REDUCE_LOAD;
 
     handler_call_count = 0;
     nimcp_exception_dispatch(ex);
 
     EXPECT_GE(handler_call_count.load(), 1);
-    EXPECT_EQ(ex->suggested_action, RECOVERY_ACTION_REDUCE_LOAD);
+    EXPECT_EQ(ex->suggested_action, EXCEPTION_RECOVERY_REDUCE_LOAD);
 
     nimcp_exception_unref(ex);
 }
@@ -178,7 +178,7 @@ TEST_F(NetworkingExceptionHandlingTest, ProtocolChecksumFailureException) {
     nimcp_exception_set_context(ex, "message_type", "STATE_UPDATE");
 
     // Checksum failure suggests retry
-    ex->suggested_action = RECOVERY_ACTION_RETRY;
+    ex->suggested_action = EXCEPTION_RECOVERY_RETRY;
 
     handler_call_count = 0;
     nimcp_exception_dispatch(ex);
@@ -210,7 +210,7 @@ TEST_F(NetworkingExceptionHandlingTest, P2PConnectionRefusedException) {
     io_ex->errno_value = 111;  // ECONNREFUSED
 
     nimcp_exception_t* ex = (nimcp_exception_t*)io_ex;
-    ex->suggested_action = RECOVERY_ACTION_RETRY;
+    ex->suggested_action = EXCEPTION_RECOVERY_RETRY;
 
     handler_call_count = 0;
     nimcp_exception_dispatch(ex);
@@ -241,7 +241,7 @@ TEST_F(NetworkingExceptionHandlingTest, P2PConnectionTimeoutException) {
     nimcp_exception_t* ex = (nimcp_exception_t*)io_ex;
 
     // Timeout should suggest retry or load reduction
-    ex->suggested_action = RECOVERY_ACTION_RETRY;
+    ex->suggested_action = EXCEPTION_RECOVERY_RETRY;
 
     handler_call_count = 0;
     nimcp_exception_dispatch(ex);
@@ -272,7 +272,7 @@ TEST_F(NetworkingExceptionHandlingTest, P2PPeerDisconnectedException) {
     nimcp_exception_t* ex = (nimcp_exception_t*)io_ex;
 
     // Disconnect should suggest reconnection attempt
-    ex->suggested_action = RECOVERY_ACTION_RESTART_COMPONENT;
+    ex->suggested_action = EXCEPTION_RECOVERY_RESTART_COMPONENT;
 
     handler_call_count = 0;
     nimcp_exception_dispatch(ex);
@@ -305,7 +305,7 @@ TEST_F(NetworkingExceptionHandlingTest, DistributedSyncFailureException) {
     nimcp_exception_set_context(ex, "neuromod_type", "DOPAMINE");
 
     // Sync failure should trigger rollback or retry
-    ex->suggested_action = RECOVERY_ACTION_ROLLBACK;
+    ex->suggested_action = EXCEPTION_RECOVERY_ROLLBACK;
 
     handler_call_count = 0;
     nimcp_exception_dispatch(ex);
@@ -422,7 +422,7 @@ TEST_F(NetworkingExceptionHandlingTest, NLPEncryptionFailureException) {
     nimcp_exception_set_context(ex, "message_type", "SPIKE_BATCH");
 
     // Encryption failure should trigger key rotation or quarantine
-    ex->suggested_action = RECOVERY_ACTION_QUARANTINE;
+    ex->suggested_action = EXCEPTION_RECOVERY_QUARANTINE;
 
     handler_call_count = 0;
     nimcp_exception_dispatch(ex);
@@ -456,7 +456,7 @@ TEST_F(NetworkingExceptionHandlingTest, NLPReplayAttackException) {
     nimcp_exception_set_context(ex, "timestamp_diff", "-300");  // 300s ago
 
     // Replay attack triggers immediate quarantine
-    ex->suggested_action = RECOVERY_ACTION_QUARANTINE;
+    ex->suggested_action = EXCEPTION_RECOVERY_QUARANTINE;
 
     handler_call_count = 0;
     nimcp_exception_dispatch(ex);
@@ -484,7 +484,7 @@ TEST_F(NetworkingExceptionHandlingTest, NLPSessionTimeoutException) {
     nimcp_exception_set_context(ex, "timeout_ms", "30000");
 
     // Session timeout suggests restart
-    ex->suggested_action = RECOVERY_ACTION_RESTART_COMPONENT;
+    ex->suggested_action = EXCEPTION_RECOVERY_RESTART_COMPONENT;
 
     handler_call_count = 0;
     nimcp_exception_dispatch(ex);
@@ -544,7 +544,7 @@ TEST_F(NetworkingExceptionHandlingTest, MessageFragmentationException) {
     nimcp_exception_set_context(ex, "missing_fragment", "3");
 
     // Fragment failure should trigger retry
-    ex->suggested_action = RECOVERY_ACTION_RETRY;
+    ex->suggested_action = EXCEPTION_RECOVERY_RETRY;
 
     handler_call_count = 0;
     nimcp_exception_dispatch(ex);
@@ -574,11 +574,11 @@ TEST_F(NetworkingExceptionHandlingTest, NetworkRecoveryActionRetry) {
     nimcp_exception_t* ex = (nimcp_exception_t*)io_ex;
 
     // Get suggested recovery
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(ex, &strategy);
 
     // For I/O errors, primary should be RETRY
-    EXPECT_EQ(strategy.primary_action, RECOVERY_ACTION_RETRY);
+    EXPECT_EQ(strategy.primary_action, EXCEPTION_RECOVERY_RETRY);
 
     nimcp_exception_unref(ex);
 }
@@ -599,9 +599,9 @@ TEST_F(NetworkingExceptionHandlingTest, NetworkRecoveryActionQuarantine) {
     sec_ex->quarantine_required = true;
 
     nimcp_exception_t* ex = (nimcp_exception_t*)sec_ex;
-    ex->suggested_action = RECOVERY_ACTION_QUARANTINE;
+    ex->suggested_action = EXCEPTION_RECOVERY_QUARANTINE;
 
-    EXPECT_EQ(ex->suggested_action, RECOVERY_ACTION_QUARANTINE);
+    EXPECT_EQ(ex->suggested_action, EXCEPTION_RECOVERY_QUARANTINE);
 
     nimcp_exception_unref(ex);
 }

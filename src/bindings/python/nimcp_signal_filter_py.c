@@ -23,6 +23,8 @@
 #include <numpy/arrayobject.h>
 #include "utils/signal/nimcp_signal_filter.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Signal Filter Type
@@ -63,6 +65,7 @@ static int SignalFilter_init(SignalFilterObject* self, PyObject* args, PyObject*
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|sffffis", kwlist,
                                       &filter_type_str, &low_freq, &high_freq,
                                       &cutoff_freq, &sample_rate, &order, &window_str)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "SignalFilter_init: Invalid arguments");
         return -1;
     }
 
@@ -97,18 +100,25 @@ static int SignalFilter_init(SignalFilterObject* self, PyObject* args, PyObject*
     } else if (strcmp(window_str, "rectangular") == 0) {
         config.window = WINDOW_RECTANGULAR;
     } else {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                   "SignalFilter_init: Invalid window type '%s'", window_str);
         PyErr_SetString(PyExc_ValueError, "Invalid window type");
         return -1;
     }
 
     // Validate and create filter
     if (!signal_filter_validate_config(&config)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                   "SignalFilter_init: Invalid filter configuration (type=%s, order=%d)",
+                   filter_type_str, order);
         PyErr_SetString(PyExc_ValueError, "Invalid filter configuration");
         return -1;
     }
 
     self->filter = signal_filter_create(&config);
     if (!self->filter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                             "SignalFilter_init: Failed to create signal filter");
         PyErr_SetString(PyExc_RuntimeError, "Failed to create signal filter");
         return -1;
     }
@@ -124,22 +134,27 @@ static PyObject* SignalFilter_apply(SignalFilterObject* self, PyObject* args) {
     PyArrayObject* input_array;
 
     if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &input_array)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "SignalFilter_apply: Invalid arguments");
         return NULL;
     }
 
     // Guard clause
     if (!self->filter) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "SignalFilter_apply: Filter not initialized");
         PyErr_SetString(PyExc_RuntimeError, "Filter not initialized");
         return NULL;
     }
 
     // Validate input array
     if (PyArray_NDIM(input_array) != 1) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "SignalFilter_apply: Input must be 1D array");
         PyErr_SetString(PyExc_ValueError, "Input must be 1D array");
         return NULL;
     }
 
     if (PyArray_TYPE(input_array) != NPY_FLOAT32 && PyArray_TYPE(input_array) != NPY_FLOAT64) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                   "SignalFilter_apply: Input must be float32 or float64 array");
         PyErr_SetString(PyExc_ValueError, "Input must be float32 or float64 array");
         return NULL;
     }
@@ -150,6 +165,8 @@ static PyObject* SignalFilter_apply(SignalFilterObject* self, PyObject* args) {
     npy_intp dims[1] = {n};
     PyArrayObject* output_array = (PyArrayObject*)PyArray_SimpleNew(1, dims, NPY_FLOAT32);
     if (!output_array) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, n * sizeof(float),
+                          "SignalFilter_apply: Failed to allocate output array");
         return NULL;
     }
 
@@ -160,6 +177,8 @@ static PyObject* SignalFilter_apply(SignalFilterObject* self, PyObject* args) {
     // Apply filter
     if (!signal_filter_apply(self->filter, input_data, output_data, (uint32_t)n)) {
         Py_DECREF(output_array);
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED,
+                   "SignalFilter_apply: Filter operation failed on %lld samples", (long long)n);
         PyErr_SetString(PyExc_RuntimeError, "Filter operation failed");
         return NULL;
     }
@@ -169,11 +188,13 @@ static PyObject* SignalFilter_apply(SignalFilterObject* self, PyObject* args) {
 
 static PyObject* SignalFilter_reset(SignalFilterObject* self, PyObject* Py_UNUSED(ignored)) {
     if (!self->filter) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "SignalFilter_reset: Filter not initialized");
         PyErr_SetString(PyExc_RuntimeError, "Filter not initialized");
         return NULL;
     }
 
     if (!signal_filter_reset(self->filter)) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "SignalFilter_reset: Failed to reset filter");
         PyErr_SetString(PyExc_RuntimeError, "Failed to reset filter");
         return NULL;
     }
@@ -183,6 +204,7 @@ static PyObject* SignalFilter_reset(SignalFilterObject* self, PyObject* Py_UNUSE
 
 static PyObject* SignalFilter_get_delay(SignalFilterObject* self, PyObject* Py_UNUSED(ignored)) {
     if (!self->filter) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "SignalFilter_get_delay: Filter not initialized");
         PyErr_SetString(PyExc_RuntimeError, "Filter not initialized");
         return NULL;
     }
@@ -195,16 +217,20 @@ static PyObject* SignalFilter_get_response(SignalFilterObject* self, PyObject* a
     PyArrayObject* freq_array;
 
     if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &freq_array)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "SignalFilter_get_response: Invalid arguments");
         return NULL;
     }
 
     if (!self->filter) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "SignalFilter_get_response: Filter not initialized");
         PyErr_SetString(PyExc_RuntimeError, "Filter not initialized");
         return NULL;
     }
 
     // Validate input
     if (PyArray_NDIM(freq_array) != 1) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                   "SignalFilter_get_response: Frequencies must be 1D array");
         PyErr_SetString(PyExc_ValueError, "Frequencies must be 1D array");
         return NULL;
     }
@@ -215,6 +241,8 @@ static PyObject* SignalFilter_get_response(SignalFilterObject* self, PyObject* a
     npy_intp dims[1] = {n};
     PyArrayObject* response_array = (PyArrayObject*)PyArray_SimpleNew(1, dims, NPY_FLOAT32);
     if (!response_array) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, n * sizeof(float),
+                          "SignalFilter_get_response: Failed to allocate response array");
         return NULL;
     }
 
@@ -223,6 +251,8 @@ static PyObject* SignalFilter_get_response(SignalFilterObject* self, PyObject* a
 
     if (!signal_filter_get_response(self->filter, freqs, response, (uint32_t)n)) {
         Py_DECREF(response_array);
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED,
+                   "SignalFilter_get_response: Failed to compute frequency response");
         PyErr_SetString(PyExc_RuntimeError, "Failed to compute frequency response");
         return NULL;
     }

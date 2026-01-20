@@ -9,6 +9,7 @@
 #include "physics/bridges/nimcp_physics_cognitive_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 
@@ -147,7 +148,7 @@ physics_cog_bridge_t* physics_cog_bridge_create(
     const physics_cog_config_t* config
 ) {
     physics_cog_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate physics-cognitive bridge");
 
     /* Apply configuration */
     if (config) {

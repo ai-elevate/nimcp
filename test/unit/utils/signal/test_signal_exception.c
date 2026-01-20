@@ -345,12 +345,12 @@ START_TEST(test_signal_recovery_strategy)
     );
     ck_assert_ptr_nonnull(ex);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
     /* SIGNAL category should use EMERGENCY_SAVE as primary action */
-    ck_assert_int_eq(strategy.primary_action, RECOVERY_ACTION_EMERGENCY_SAVE);
-    ck_assert_int_eq(strategy.fallback_action, RECOVERY_ACTION_GRACEFUL_SHUTDOWN);
+    ck_assert_int_eq(strategy.primary_action, EXCEPTION_RECOVERY_EMERGENCY_SAVE);
+    ck_assert_int_eq(strategy.fallback_action, EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN);
     ck_assert_int_eq(strategy.retry_count, 1);
     ck_assert_int_eq(strategy.cooldown_ms, 0);
 

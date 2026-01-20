@@ -99,7 +99,7 @@ TEST_F(RecoveryCacheRegressionTest, LookupTimeBenchmark) {
     /* Warmup phase to eliminate cold cache effects */
     for (int i = 0; i < NUM_WARMUP; i++) {
         int idx = i % signatures.size();
-        nimcp_recovery_strategy_t strategy;
+        nimcp_exception_recovery_strategy_t strategy;
         nimcp_recovery_cache_lookup(cache, &signatures[idx], &strategy);
     }
 
@@ -107,7 +107,7 @@ TEST_F(RecoveryCacheRegressionTest, LookupTimeBenchmark) {
     std::vector<uint64_t> lookup_times;
     for (int i = 0; i < NUM_LOOKUPS; i++) {
         int idx = i % signatures.size();
-        nimcp_recovery_strategy_t strategy;
+        nimcp_exception_recovery_strategy_t strategy;
 
         auto time = measure_time_ns([&]() {
             EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &signatures[idx], &strategy));
@@ -227,7 +227,7 @@ TEST_F(RecoveryCacheRegressionTest, HitRateStability) {
         /* Perform lookups */
         for (int i = 0; i < 1000; i++) {
             int idx = i % signatures.size();
-            nimcp_recovery_strategy_t strategy;
+            nimcp_exception_recovery_strategy_t strategy;
             EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &signatures[idx], &strategy));
         }
 
@@ -284,7 +284,7 @@ TEST_F(RecoveryCacheRegressionTest, HitRateWithEviction) {
         }
 
         /* Lookup or store */
-        nimcp_recovery_strategy_t strategy;
+        nimcp_exception_recovery_strategy_t strategy;
         if (!nimcp_recovery_cache_lookup(cache, sig, &strategy)) {
             EXPECT_TRUE(nimcp_recovery_cache_store(cache, sig,
                         NIMCP_RECOVERY_STRATEGY_RETRY, nullptr));
@@ -382,7 +382,7 @@ TEST_F(RecoveryCacheRegressionTest, ConcurrentStressTest) {
                     }
                 } else if (i % 3 == 1) {
                     /* Lookup */
-                    nimcp_recovery_strategy_t strategy;
+                    nimcp_exception_recovery_strategy_t strategy;
                     nimcp_recovery_cache_lookup(cache, &sig, &strategy);
                 } else {
                     /* Update success */
@@ -464,7 +464,7 @@ TEST_F(RecoveryCacheRegressionTest, HashCollisionHandling) {
         nimcp_error_signature_t sig;
         ASSERT_TRUE(nimcp_recovery_cache_compute_signature(&ctx, &sig));
 
-        nimcp_recovery_strategy_t strategy;
+        nimcp_exception_recovery_strategy_t strategy;
         EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
     }
 
@@ -511,7 +511,7 @@ TEST_F(RecoveryCacheRegressionTest, LRUOrderMaintenance) {
     }
 
     /* Access entries in specific order */
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &signatures[0], &strategy));
     EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &signatures[2], &strategy));
     EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &signatures[4], &strategy));
@@ -559,7 +559,7 @@ TEST_F(RecoveryCacheRegressionTest, ConsistentPerformanceOverTime) {
         auto round_time = measure_time_ns([&]() {
             for (int i = 0; i < OPS_PER_ROUND; i++) {
                 int idx = i % signatures.size();
-                nimcp_recovery_strategy_t strategy;
+                nimcp_exception_recovery_strategy_t strategy;
                 EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &signatures[idx], &strategy));
             }
         });

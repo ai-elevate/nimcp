@@ -21,3 +21,8 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/neurovascular/CMakeLists.txt")
     add_subdirectory(neurovascular)
 endif()
+
+# Exception handling tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt")
+    add_subdirectory(exception)
+endif()

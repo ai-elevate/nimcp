@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -617,13 +618,13 @@ nimcp_affordance_context_t* nimcp_affordance_create(
     const nimcp_affordance_config_t* config
 ) {
     if (!config) {
-        LOG_ERROR("NULL configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL configuration in affordance_create");
         return NULL;
     }
 
     nimcp_affordance_context_t* ctx = nimcp_malloc(sizeof(nimcp_affordance_context_t));
     if (!ctx) {
-        LOG_ERROR("Failed to allocate affordance context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate affordance context");
         return NULL;
     }
 

@@ -13,6 +13,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/rng/nimcp_rand.h"
 #include "async/nimcp_bio_router.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

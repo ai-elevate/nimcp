@@ -21,6 +21,7 @@
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security_integration.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

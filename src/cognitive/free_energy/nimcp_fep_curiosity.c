@@ -13,6 +13,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -117,10 +118,7 @@ void fep_curiosity_default_config(fep_curiosity_config_t* config) {
 fep_curiosity_system_t* fep_curiosity_create(const fep_curiosity_config_t* config) {
     fep_curiosity_system_t* sys = (fep_curiosity_system_t*)nimcp_calloc(
         1, sizeof(fep_curiosity_system_t));
-    if (!sys) {
-        NIMCP_LOGGING_ERROR("Failed to allocate curiosity system");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(sys, "Failed to allocate curiosity system");
 
     /* Apply configuration */
     fep_curiosity_config_t default_cfg;

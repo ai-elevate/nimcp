@@ -48,12 +48,14 @@
  * - Callback execution on completion thread (no queuing overhead)
  * - Cache-line alignment to prevent false sharing
  *
+ * NOTE: Exception handling is integrated via api/nimcp_api_exception.h
  * @author NIMCP Development Team
  * @date 2025-11-28
  * @version 1.0.0
  */
 
 #include "async/nimcp_future.h"
+#include "api/nimcp_api_exception.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 

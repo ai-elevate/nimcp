@@ -24,6 +24,7 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
 
 /* ============================================================================
  * Internal Structure Definition

@@ -101,3 +101,8 @@ set_tests_properties(integration_utils_fault_tolerance_test_brain_probe_health_i
 add_ft_integration_test(test_world_imagination_health_integration)
 set_tests_properties(integration_utils_fault_tolerance_test_world_imagination_health_integration
                      PROPERTIES TIMEOUT 180)
+
+# Heartbeat Module Integration Tests (Phase 8: Heartbeat for Long Operations)
+add_ft_integration_test(test_heartbeat_module_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_heartbeat_module_integration
+                     PROPERTIES TIMEOUT 180)

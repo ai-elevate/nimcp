@@ -56,6 +56,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 
@@ -87,7 +88,11 @@ static const char* METHOD_NAMES[] = {
 //=============================================================================
 
 int surface_quantum_bridge_default_config(surface_quantum_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        LOG_ERROR("NULL config pointer in surface_quantum_bridge_default_config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config pointer");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -371,7 +376,11 @@ int surface_quantum_estimate_area(
     BRIDGE_NULL_CHECK(branch_points);
     BRIDGE_NULL_CHECK(result);
 
-    if (num_points == 0) return -1;
+    if (num_points == 0) {
+        LOG_ERROR("Zero points in surface_quantum_estimate_area");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Zero branch points");
+        return -1;
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -505,7 +514,11 @@ int surface_quantum_anneal_positions(
     BRIDGE_NULL_CHECK(branch_points);
     BRIDGE_NULL_CHECK(final_area);
 
-    if (num_points == 0) return -1;
+    if (num_points == 0) {
+        LOG_ERROR("Zero points in surface_quantum_anneal_positions");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Zero branch points");
+        return -1;
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -522,6 +535,8 @@ int surface_quantum_anneal_positions(
     float best_area = 1e10f;
     float* best_positions = nimcp_malloc(num_points * 3 * sizeof(float));
     if (!best_positions) {
+        LOG_ERROR("Failed to allocate best_positions in surface_quantum_anneal_positions");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate position buffer");
         BRIDGE_UNLOCK(bridge);
         return -1;
     }
@@ -598,7 +613,11 @@ int surface_quantum_mcts_optimize(
     BRIDGE_NULL_CHECK(terminals);
     BRIDGE_NULL_CHECK(result);
 
-    if (num_terminals < 2) return -1;
+    if (num_terminals < 2) {
+        LOG_ERROR("Insufficient terminals (%u < 2) in surface_quantum_mcts_optimize", num_terminals);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Need at least 2 terminals");
+        return -1;
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -610,6 +629,8 @@ int surface_quantum_mcts_optimize(
     result->optimal_topology = nimcp_malloc(
         max_points * sizeof(surface_branch_point_t));
     if (!result->optimal_topology) {
+        LOG_ERROR("Failed to allocate optimal_topology in surface_quantum_mcts_optimize");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate topology buffer");
         BRIDGE_UNLOCK(bridge);
         return -1;
     }
@@ -841,7 +862,11 @@ int surface_quantum_hybrid_optimize(
     BRIDGE_NULL_CHECK(terminals);
     BRIDGE_NULL_CHECK(result);
 
-    if (num_terminals < 2) return -1;
+    if (num_terminals < 2) {
+        LOG_ERROR("Insufficient terminals (%u < 2) in surface_quantum_hybrid_optimize", num_terminals);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Need at least 2 terminals");
+        return -1;
+    }
 
     /* Initialize result to safe state before any operations */
     memset(result, 0, sizeof(*result));

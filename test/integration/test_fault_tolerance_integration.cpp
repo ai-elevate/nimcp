@@ -308,7 +308,7 @@ TEST_F(RecoveryTest, TierName) {
 }
 
 TEST_F(RecoveryTest, ActionName) {
-    EXPECT_STREQ(recovery_action_name(RECOVERY_ACTION_NONE), "NONE");
+    EXPECT_STREQ(recovery_action_name(EXCEPTION_RECOVERY_NONE), "NONE");
     EXPECT_STREQ(recovery_action_name(RECOVERY_ACTION_CLEAR_NAN), "CLEAR_NAN");
     EXPECT_STREQ(recovery_action_name(RECOVERY_ACTION_RELOAD_CHECKPOINT), "RELOAD_CHECKPOINT");
     EXPECT_STREQ(recovery_action_name(RECOVERY_ACTION_FALLBACK_CPU), "FALLBACK_CPU");

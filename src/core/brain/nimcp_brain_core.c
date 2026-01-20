@@ -18,6 +18,7 @@
 #include "core/brain/nimcp_brain_core.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory_guards.h"
@@ -79,6 +80,7 @@ bool brain_core_init_all_subsystems(brain_t brain)
 {
     if (!brain) {
         LOG_MODULE_ERROR("BRAIN_CORE", "NULL brain in init_all_subsystems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_core_init_all_subsystems: NULL brain");
         return false;
     }
 

@@ -15,6 +15,7 @@
 #include "async/nimcp_bio_router.h"
 
 #include "utils/validation/nimcp_common.h"
+#include "api/nimcp_api_exception.h"
 
 /* Error code aliases for this file */
 #ifndef NIMCP_OK
@@ -206,10 +207,7 @@ static nimcp_error_t sc_inbox_handler(
 nimcp_supply_chain_t nimcp_supply_chain_create(const nimcp_supply_chain_config_t* config) {
     /* Allocate context */
     nimcp_supply_chain_t sc = (nimcp_supply_chain_t)calloc(1, sizeof(struct nimcp_supply_chain));
-    if (!sc) {
-        LOG_ERROR("nimcp_supply_chain_create: Memory allocation failed");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(sc, "Failed to allocate supply chain context");
 
     /* Set magic number */
     sc->magic = NIMCP_SUPPLY_CHAIN_MAGIC;
@@ -239,8 +237,8 @@ nimcp_supply_chain_t nimcp_supply_chain_create(const nimcp_supply_chain_config_t
     sc->dependencies = (nimcp_dependency_t*)calloc(sc->dependency_capacity,
                                                     sizeof(nimcp_dependency_t));
     if (!sc->dependencies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate supply chain dependencies");
         free(sc);
-        LOG_ERROR("nimcp_supply_chain_create: Dependency allocation failed");
         return NULL;
     }
 

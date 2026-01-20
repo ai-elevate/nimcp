@@ -8,6 +8,7 @@
  */
 
 #include "security/lgss/gates/nimcp_lgss_motor_gate.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -119,9 +120,7 @@ static void fill_violation(
 
 motor_gate_t* motor_gate_create(const motor_gate_config_t* config) {
     motor_gate_t* gate = (motor_gate_t*)calloc(1, sizeof(motor_gate_t));
-    if (gate == NULL) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(gate, "Failed to allocate motor gate");
 
     gate->magic = NIMCP_MOTOR_GATE_MAGIC;
     gate->enabled = true;
@@ -185,15 +184,10 @@ nimcp_result_t motor_gate_set_constraints(
     motor_region_t region,
     const motor_safety_constraints_t* constraints
 ) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!validate_region(region)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (constraints == NULL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_API_CHECK_NULL(gate, NIMCP_ERROR_INVALID_PARAM, "NULL gate in set_constraints");
+    NIMCP_API_CHECK(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "Invalid gate magic in set_constraints");
+    NIMCP_API_CHECK(validate_region(region), NIMCP_ERROR_INVALID_PARAM, "Invalid region in set_constraints");
+    NIMCP_API_CHECK_NULL(constraints, NIMCP_ERROR_NULL_POINTER, "NULL constraints in set_constraints");
 
     /* Validate constraint values */
     if (constraints->force_limit < 0.0f ||

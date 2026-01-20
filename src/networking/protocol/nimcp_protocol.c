@@ -34,6 +34,8 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "NETWORKING"
 
@@ -388,30 +390,45 @@ int protocol_deserialize_message(const uint8_t* buffer, uint32_t buffer_size, ms
 {
     // Step 0: BBB perimeter defense (Phase IS-1) - validate untrusted network data
     if (!bbb_validate_network_buffer(buffer, buffer_size)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "buffer",
+                              "BBB perimeter defense rejected network buffer");
         return -1;  // BBB rejected the input
     }
 
     // Step 1: Validate inputs
     if (!validate_deserialize_inputs(buffer, buffer_size, header)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                   "Invalid deserialization inputs: buffer=%p, buffer_size=%u, header=%p",
+                   (void*)buffer, buffer_size, (void*)header);
         return -1;
     }
 
     // Step 2: Extract and validate header
     if (!extract_and_validate_header(buffer, header)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "message header",
+                            "Failed to extract or validate message header");
         return -1;
     }
 
     // Step 2.5: SECURITY - Check buffer contains full payload (prevent buffer overflow)
     // Validates that buffer_size >= sizeof(msg_header_t) + header->length
     if (header->length > UINT32_MAX - sizeof(msg_header_t)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "header->length",
+                              "Integer overflow in payload length: %u", header->length);
         return -1;  // Integer overflow protection
     }
     if (buffer_size < sizeof(msg_header_t) + header->length) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "buffer_size",
+                              "Buffer too small for claimed payload: buffer=%u, required=%lu",
+                              buffer_size, (unsigned long)(sizeof(msg_header_t) + header->length));
         return -1;  // Buffer too small for claimed payload
     }
 
     // Step 3: Check payload size
     if (header->length > payload_size) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "payload_size",
+                              "Payload buffer too small: available=%u, required=%u",
+                              payload_size, header->length);
         return -1;
     }
 
@@ -420,6 +437,8 @@ int protocol_deserialize_message(const uint8_t* buffer, uint32_t buffer_size, ms
 
     // Step 5: Verify checksum
     if (!verify_message_checksum(header, payload)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "checksum",
+                            "Message checksum verification failed");
         return -1;
     }
 
@@ -886,11 +905,15 @@ int event_packet_deserialize(const uint8_t* buffer, uint32_t buffer_size, event_
 {
     // Step 0: BBB perimeter defense (Phase IS-1) - validate untrusted network data
     if (!bbb_validate_network_buffer(buffer, buffer_size)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "buffer",
+                              "BBB perimeter defense rejected event packet buffer");
         return -1;  // BBB rejected the input
     }
 
     // Step 1: Validate inputs
     if (!validate_event_deserialize_inputs(buffer, buffer_size, packet)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                   "Invalid event deserialization inputs");
         return -1;
     }
 
@@ -899,11 +922,16 @@ int event_packet_deserialize(const uint8_t* buffer, uint32_t buffer_size, event_
 
     // Step 3: Validate packet
     if (!event_packet_validate(packet)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "event packet",
+                            "Event packet validation failed");
         return -1;
     }
 
     // Step 4: Extract payload if present
     if (!extract_event_payload(buffer, payload, payload_size, packet->payload_length)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "payload_size",
+                              "Event payload extraction failed: available=%u, required=%u",
+                              payload_size, packet->payload_length);
         return -1;
     }
 
@@ -1198,11 +1226,15 @@ int control_message_deserialize(const uint8_t* buffer, uint32_t buffer_size, con
 {
     // Step 0: BBB perimeter defense (Phase IS-1) - validate untrusted network data
     if (!bbb_validate_network_buffer(buffer, buffer_size)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "buffer",
+                              "BBB perimeter defense rejected control message buffer");
         return -1;  // BBB rejected the input
     }
 
     // Step 1: Validate inputs
     if (!validate_control_deserialize_inputs(buffer, buffer_size, msg)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                   "Invalid control message deserialization inputs");
         return -1;
     }
 
@@ -1211,6 +1243,9 @@ int control_message_deserialize(const uint8_t* buffer, uint32_t buffer_size, con
 
     // Step 3: Validate message
     if (!control_message_validate(msg)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "control message",
+                            "Control message validation failed: type=%u, version=%u",
+                            msg->msg_type, msg->version);
         return -1;
     }
 
@@ -1219,6 +1254,9 @@ int control_message_deserialize(const uint8_t* buffer, uint32_t buffer_size, con
 
     // Step 5: Extract parameters if present
     if (!extract_control_params(buffer, params, param_size, actual_param_size)) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "param_size",
+                              "Control params extraction failed: available=%u, required=%u",
+                              param_size, actual_param_size);
         return -1;
     }
 

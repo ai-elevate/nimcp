@@ -6,6 +6,9 @@
  */
 
 #include "nlp/immune/nimcp_multimodal_nlp_immune_bridge.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -41,7 +44,10 @@ static float get_inflammation_multimodal_capacity(brain_inflammation_level_t lev
  * ============================================================================ */
 
 int multimodal_nlp_immune_default_config(multimodal_nlp_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_default_config: NULL config");
+        return -1;
+    }
 
     config->enable_cytokine_multimodal_impairment = true;
     config->enable_inflammation_binding_errors = true;
@@ -68,12 +74,14 @@ multimodal_nlp_immune_bridge_t* multimodal_nlp_immune_bridge_create(
     audio_cortex_t* audio_cortex
 ) {
     if (!immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_bridge_create: immune_system required");
         NIMCP_LOGGING_ERROR("multimodal_nlp_immune_bridge_create: immune_system required");
         return NULL;
     }
 
     multimodal_nlp_immune_bridge_t* bridge = nimcp_malloc(sizeof(multimodal_nlp_immune_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multimodal_nlp_immune_bridge_create: allocation failed");
         NIMCP_LOGGING_ERROR("multimodal_nlp_immune_bridge_create: allocation failed");
         return NULL;
     }
@@ -124,10 +132,14 @@ void multimodal_nlp_immune_bridge_destroy(multimodal_nlp_immune_bridge_t* bridge
  * ============================================================================ */
 
 int multimodal_nlp_immune_apply_cytokine_effects(multimodal_nlp_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_apply_cytokine_effects: NULL bridge or immune_system");
+        return -1;
+    }
 
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "multimodal_nlp_immune_apply_cytokine_effects: failed to get immune stats");
         return -1;
     }
 
@@ -157,10 +169,14 @@ int multimodal_nlp_immune_apply_cytokine_effects(multimodal_nlp_immune_bridge_t*
 }
 
 int multimodal_nlp_immune_apply_inflammation_effects(multimodal_nlp_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_apply_inflammation_effects: NULL bridge or immune_system");
+        return -1;
+    }
 
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "multimodal_nlp_immune_apply_inflammation_effects: failed to get immune stats");
         return -1;
     }
 
@@ -215,7 +231,10 @@ int multimodal_nlp_immune_trigger_binding_failure_inflammation(
     multimodal_nlp_immune_bridge_t* bridge,
     float binding_error_rate
 ) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_trigger_binding_failure_inflammation: NULL bridge or immune_system");
+        return -1;
+    }
     if (!bridge->config.enable_binding_failure_inflammation) return 0;
 
     if (binding_error_rate < (1.0f - bridge->config.binding_failure_threshold)) {
@@ -247,7 +266,10 @@ int multimodal_nlp_immune_trigger_speech_error_inflammation(
     multimodal_nlp_immune_bridge_t* bridge,
     float speech_error_rate
 ) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_trigger_speech_error_inflammation: NULL bridge or immune_system");
+        return -1;
+    }
     if (!bridge->config.enable_speech_error_inflammation) return 0;
 
     if (speech_error_rate < bridge->config.speech_error_threshold) {
@@ -279,7 +301,10 @@ int multimodal_nlp_immune_release_il10_from_fluent_speech(
     multimodal_nlp_immune_bridge_t* bridge,
     float fluency_rate
 ) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_release_il10_from_fluent_speech: NULL bridge or immune_system");
+        return -1;
+    }
     if (!bridge->config.enable_fluent_speech_il10) return 0;
 
     if (fluency_rate < bridge->config.fluency_success_threshold) {
@@ -315,7 +340,10 @@ int multimodal_nlp_immune_bridge_update(
     multimodal_nlp_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_bridge_update: NULL bridge");
+        return -1;
+    }
 
     pthread_mutex_t* mutex = (pthread_mutex_t*)bridge->base.mutex;
     if (mutex) pthread_mutex_lock(mutex);
@@ -345,7 +373,10 @@ int multimodal_nlp_immune_bridge_update(
 int multimodal_nlp_immune_apply_modulation(
     multimodal_nlp_immune_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_apply_modulation: NULL bridge");
+        return -1;
+    }
     return 0;
 }
 
@@ -357,7 +388,10 @@ int multimodal_nlp_immune_get_cytokine_effects(
     const multimodal_nlp_immune_bridge_t* bridge,
     multimodal_cytokine_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_get_cytokine_effects: NULL bridge or effects");
+        return -1;
+    }
     *effects = bridge->cytokine_effects;
     return 0;
 }
@@ -366,7 +400,10 @@ int multimodal_nlp_immune_get_inflammation_state(
     const multimodal_nlp_immune_bridge_t* bridge,
     multimodal_inflammation_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_get_inflammation_state: NULL bridge or state");
+        return -1;
+    }
     *state = bridge->inflammation_state;
     return 0;
 }
@@ -398,7 +435,10 @@ float multimodal_nlp_immune_get_binding_error_rate(
 int multimodal_nlp_immune_connect_bio_async(
     multimodal_nlp_immune_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_connect_bio_async: NULL bridge");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -421,7 +461,10 @@ int multimodal_nlp_immune_connect_bio_async(
 int multimodal_nlp_immune_disconnect_bio_async(
     multimodal_nlp_immune_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_disconnect_bio_async: NULL bridge");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

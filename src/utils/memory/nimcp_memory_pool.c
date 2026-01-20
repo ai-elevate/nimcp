@@ -55,6 +55,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -201,20 +202,40 @@ static inline block_header_t* get_block_at_index(
  */
 NIMCP_EXPORT memory_pool_t memory_pool_create(const memory_pool_config_t* config) {
     // Validate configuration
-    if (!config) return NULL;
-    if (config->num_blocks == 0) return NULL;
-    if (config->block_size == 0) return NULL;
+    if (!config) {
+        LOG_ERROR("MEMORY_POOL", "NULL config in memory_pool_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config in memory_pool_create");
+        return NULL;
+    }
+    if (config->num_blocks == 0) {
+        LOG_ERROR("MEMORY_POOL", "num_blocks cannot be 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "num_blocks cannot be 0 in memory_pool_create");
+        return NULL;
+    }
+    if (config->block_size == 0) {
+        LOG_ERROR("MEMORY_POOL", "block_size cannot be 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "block_size cannot be 0 in memory_pool_create");
+        return NULL;
+    }
 
     // Validate alignment
     size_t alignment = config->alignment;
     if (alignment == 0) alignment = DEFAULT_ALIGNMENT;
     if (alignment < MIN_ALIGNMENT) alignment = MIN_ALIGNMENT;
-    if (alignment > MAX_ALIGNMENT) return NULL;
-    if (!is_power_of_2(alignment)) return NULL;
+    if (alignment > MAX_ALIGNMENT) {
+        LOG_ERROR("MEMORY_POOL", "alignment %zu exceeds MAX_ALIGNMENT %d", alignment, MAX_ALIGNMENT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "alignment %zu exceeds max %d", alignment, MAX_ALIGNMENT);
+        return NULL;
+    }
+    if (!is_power_of_2(alignment)) {
+        LOG_ERROR("MEMORY_POOL", "alignment %zu is not a power of 2", alignment);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "alignment must be power of 2, got %zu", alignment);
+        return NULL;
+    }
 
     // Allocate pool structure using NIMCP memory
     struct memory_pool_struct* pool = nimcp_calloc(1, sizeof(struct memory_pool_struct));
-    if (!pool) return NULL;
+    NIMCP_API_CHECK_ALLOC(pool, "Failed to allocate memory pool structure");
 
     // Initialize immutable configuration
     pool->magic = MEMORY_POOL_MAGIC;
@@ -229,14 +250,19 @@ NIMCP_EXPORT memory_pool_t memory_pool_create(const memory_pool_config_t* config
 
     // Check for overflow: total_block_size * num_blocks
     if (pool->num_blocks > SIZE_MAX / pool->total_block_size) {
+        LOG_ERROR("MEMORY_POOL", "Size overflow: num_blocks=%zu, total_block_size=%zu",
+                  pool->num_blocks, pool->total_block_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "Memory pool size overflow");
         nimcp_free(pool);
-        return NULL;  // Overflow would occur
+        return NULL;
     }
     pool->total_size = pool->total_block_size * pool->num_blocks;
 
     // Allocate large memory region
     pool->memory_region = nimcp_aligned_malloc(pool->total_size, alignment);
     if (!pool->memory_region) {
+        LOG_ERROR("MEMORY_POOL", "Failed to allocate memory region (%zu bytes)", pool->total_size);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, pool->total_size, "Failed to allocate memory pool region");
         nimcp_free(pool);
         return NULL;
     }
@@ -268,6 +294,8 @@ NIMCP_EXPORT memory_pool_t memory_pool_create(const memory_pool_config_t* config
 
     // Initialize mutex
     if (nimcp_platform_mutex_init(&pool->mutex, false) != 0) {
+        LOG_ERROR("MEMORY_POOL", "Failed to initialize pool mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "Failed to initialize memory pool mutex");
         nimcp_aligned_free(pool->memory_region);
         nimcp_free(pool);
         return NULL;

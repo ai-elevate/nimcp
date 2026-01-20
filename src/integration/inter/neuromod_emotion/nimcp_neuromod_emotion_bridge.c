@@ -6,6 +6,7 @@
  */
 
 #include "integration/inter/neuromod_emotion/nimcp_neuromod_emotion_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -87,7 +88,7 @@ neuromod_emotion_config_t neuromod_emotion_default_config(void) {
 
 neuromod_emotion_bridge_t* neuromod_emotion_create(const neuromod_emotion_config_t* config) {
     neuromod_emotion_bridge_t* bridge = calloc(1, sizeof(neuromod_emotion_bridge_t));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate neuromod-emotion bridge");
 
     bridge->magic = NEUROMOD_EMOTION_BRIDGE_MAGIC;
 

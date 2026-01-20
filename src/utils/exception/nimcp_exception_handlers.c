@@ -299,19 +299,19 @@ bool nimcp_in_try_block(void) {
  * ============================================================================ */
 
 int nimcp_register_recovery_callback(
-    nimcp_recovery_action_t action,
+    nimcp_exception_recovery_action_t action,
     nimcp_recovery_callback_fn callback,
     void* user_data
 ) {
-    if (action <= RECOVERY_ACTION_NONE || action >= 12) return -1;
+    if (action <= EXCEPTION_RECOVERY_NONE || action >= 12) return -1;
 
     g_recovery_callbacks[action].callback = callback;
     g_recovery_callbacks[action].user_data = user_data;
     return 0;
 }
 
-int nimcp_unregister_recovery_callback(nimcp_recovery_action_t action) {
-    if (action <= RECOVERY_ACTION_NONE || action >= 12) return -1;
+int nimcp_unregister_recovery_callback(nimcp_exception_recovery_action_t action) {
+    if (action <= EXCEPTION_RECOVERY_NONE || action >= 12) return -1;
 
     g_recovery_callbacks[action].callback = NULL;
     g_recovery_callbacks[action].user_data = NULL;
@@ -320,22 +320,22 @@ int nimcp_unregister_recovery_callback(nimcp_recovery_action_t action) {
 
 int nimcp_execute_recovery(
     nimcp_exception_t* ex,
-    nimcp_recovery_action_t action
+    nimcp_exception_recovery_action_t action
 ) {
     if (!ex) return -1;
-    if (action <= RECOVERY_ACTION_NONE || action >= 12) return -1;
+    if (action <= EXCEPTION_RECOVERY_NONE || action >= 12) return -1;
 
     nimcp_recovery_callback_fn callback = g_recovery_callbacks[action].callback;
     void* user_data = g_recovery_callbacks[action].user_data;
 
     if (!callback) {
         LOG_WARNING("No recovery callback registered for action %s",
-                    nimcp_recovery_action_to_string(action));
+                    nimcp_exception_recovery_action_to_string(action));
         return -1;
     }
 
     LOG_INFO("Executing recovery action %s for exception code %d",
-             nimcp_recovery_action_to_string(action), ex->code);
+             nimcp_exception_recovery_action_to_string(action), ex->code);
 
     ex->recovery_attempted = true;
     int result = callback(ex, action, user_data);

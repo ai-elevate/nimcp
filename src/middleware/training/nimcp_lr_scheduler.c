@@ -14,6 +14,7 @@
 #include "middleware/training/nimcp_lr_scheduler.h"
 #include "security/nimcp_security_integration.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

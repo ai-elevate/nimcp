@@ -14,6 +14,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/tensor/nimcp_tensor.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdio.h>
 #include "async/nimcp_bio_async.h"
@@ -55,7 +56,27 @@ DEFINE_HANDLER_MAP_END()
  */
 DEFINE_HANDLER_CALLBACK(thalamic_router, thalamic_router_t, router)
 
+/*=============================================================================
+ * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+ *============================================================================*/
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
 
+/* Global health agent for thalamic router operations */
+static nimcp_health_agent_t* g_thalamic_router_health_agent = NULL;
+
+void thalamic_router_set_health_agent(nimcp_health_agent_t* agent) {
+    g_thalamic_router_health_agent = agent;
+}
+
+static inline void thalamic_heartbeat(const char* operation, float progress) {
+    if (g_thalamic_router_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_thalamic_router_health_agent, operation, progress);
+    }
+}
 
 #define LOG_MODULE "nimcp_thalamic_router"
 #define LOG_MODULE_ID 0x052C
@@ -675,6 +696,9 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
                                     uint32_t* num_processed) {
     if (!router) return false;
 
+    /* Phase 8: Send heartbeat at start of thalamic queue processing */
+    thalamic_heartbeat("thalamic_process_queue", 0.0f);
+
     // Process bio-async messages first
     if (router->bio_async_enabled && router->bio_ctx) {
         bio_router_process_inbox(router->bio_ctx, 8);
@@ -697,6 +721,10 @@ bool thalamic_router_process_queue(thalamic_router_t* router,
      * HOW: Copy signal data under lock, deliver outside lock, then update queue
      */
     while (processed < max_signals) {
+        /* Phase 8: Send progress heartbeat */
+        if (max_signals > 0) {
+            thalamic_heartbeat("thalamic_process_queue", (float)processed / (float)max_signals);
+        }
         signal_wrapper_t wrapper = NULL;
         signal_wrapper_t original_wrapper = NULL;  /* Track for cleanup after delivery */
         uint32_t source_id = 0;

@@ -16,6 +16,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "utils_recovery_cache"
 
@@ -194,16 +195,14 @@ nimcp_recovery_cache_t* nimcp_recovery_cache_create(size_t capacity) {
     }
 
     nimcp_recovery_cache_t* cache = nimcp_calloc(1, sizeof(nimcp_recovery_cache_t));
-    if (!cache) {
-        NIMCP_LOGGING_ERROR("Failed to allocate recovery cache");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(cache, "nimcp_recovery_cache_create: Failed to allocate recovery cache");
 
     /* Allocate hash table */
     cache->hash_size = NIMCP_RECOVERY_CACHE_HASH_SIZE;
     cache->hash_table = nimcp_calloc(cache->hash_size, sizeof(nimcp_cache_entry_t*));
     if (!cache->hash_table) {
-        NIMCP_LOGGING_ERROR("Failed to allocate hash table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "nimcp_recovery_cache_create: Failed to allocate hash table");
         nimcp_free(cache);
         return NULL;
     }
@@ -309,7 +308,7 @@ bool nimcp_recovery_cache_clear(nimcp_recovery_cache_t* cache) {
  * ============================================================================ */
 
 bool nimcp_recovery_cache_compute_signature(
-    const nimcp_error_context_t* context,
+    const nimcp_signal_error_context_t* context,
     nimcp_error_signature_t* signature)
 {
     if (!context || !signature) {

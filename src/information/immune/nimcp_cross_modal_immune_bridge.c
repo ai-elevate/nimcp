@@ -9,6 +9,8 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -109,6 +111,8 @@ cross_modal_immune_bridge_t* cross_modal_immune_create(
     /* Guard: require immune system */
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("cross_modal_immune_create: immune_system required");
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "cross_modal_immune_create: immune_system required");
         return NULL;
     }
 
@@ -116,6 +120,8 @@ cross_modal_immune_bridge_t* cross_modal_immune_create(
     cross_modal_immune_bridge_t* bridge = nimcp_malloc(sizeof(cross_modal_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("cross_modal_immune_create: allocation failed");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(cross_modal_immune_bridge_t),
+                          "cross_modal_immune_create: Failed to allocate bridge");
         return NULL;
     }
 
@@ -139,6 +145,9 @@ cross_modal_immune_bridge_t* cross_modal_immune_create(
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_WARN("cross_modal_immune_create: mutex creation failed");
+        NIMCP_THROW_THREADING(NIMCP_ERROR_MUTEX_INIT, 0,
+                             "cross_modal_immune_create: mutex creation failed");
+        /* Continue without mutex - non-fatal but log warning */
     }
 
     NIMCP_LOGGING_INFO("cross_modal_immune_bridge: created successfully");

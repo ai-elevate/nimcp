@@ -12,6 +12,9 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 // Global BBB security system
 static bbb_system_t g_bbb_system = NULL;
@@ -227,6 +230,8 @@ nimcp_network_serial_result_t nimcp_network_serialize(
         // Create a temporary serializer for the data after header
         NimcpSerializer* data_serializer = nimcp_serializer_create(full_length - 6);
         if (!data_serializer) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, full_length - 6,
+                              "Failed to allocate compression serializer buffer");
             return NIMCP_NETWORK_SERIAL_ERROR_WRITE_FAILED;
         }
 
@@ -236,6 +241,8 @@ nimcp_network_serial_result_t nimcp_network_serialize(
         // Compress the data portion
         NimcpSerialResult result = nimcp_serializer_compress(data_serializer);
         if (result != NIMCP_SERIAL_SUCCESS) {
+            NIMCP_THROW_IO(NIMCP_ERROR_OPERATION_FAILED, "network_serialize",
+                          "Failed to compress network data");
             nimcp_serializer_destroy(data_serializer);
             return NIMCP_NETWORK_SERIAL_ERROR_WRITE_FAILED;
         }
@@ -272,6 +279,8 @@ nimcp_network_serial_result_t nimcp_network_serialize(
         // Allocate buffer for encrypted data
         uint8_t* encrypted_buffer = (uint8_t*)nimcp_malloc(encrypted_len);
         if (!encrypted_buffer) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, encrypted_len,
+                              "Failed to allocate encryption buffer");
             return NIMCP_NETWORK_SERIAL_ERROR_ALLOCATION_FAILED;
         }
 
@@ -285,6 +294,8 @@ nimcp_network_serial_result_t nimcp_network_serialize(
                 encrypted_buffer,
                 &actual_encrypted_len
             )) {
+            NIMCP_THROW_IO(NIMCP_ERROR_OPERATION_FAILED, "network_serialize",
+                          "Failed to encrypt network data");
             nimcp_free(encrypted_buffer);
             return NIMCP_NETWORK_SERIAL_ERROR_ENCRYPTION_FAILED;
         }
@@ -384,6 +395,8 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
         size_t decrypted_len = encrypted_length;  // Upper bound
         uint8_t* decrypted_buffer = (uint8_t*)nimcp_malloc(decrypted_len);
         if (!decrypted_buffer) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, decrypted_len,
+                              "Failed to allocate decryption buffer");
             return NIMCP_NETWORK_SERIAL_ERROR_ALLOCATION_FAILED;
         }
 
@@ -396,6 +409,8 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
                 decrypted_buffer,
                 &decrypted_len
             )) {
+            NIMCP_THROW_IO(NIMCP_ERROR_OPERATION_FAILED, "network_deserialize",
+                          "Failed to decrypt network data - invalid password or corrupted data");
             nimcp_free(decrypted_buffer);
             return NIMCP_NETWORK_SERIAL_ERROR_INVALID_PASSWORD;
         }
@@ -403,6 +418,8 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
         // Create new serializer with full decrypted buffer
         decrypted_serializer = nimcp_serializer_create(6 + decrypted_len);
         if (!decrypted_serializer) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 6 + decrypted_len,
+                              "Failed to allocate decrypted serializer");
             nimcp_free(decrypted_buffer);
             return NIMCP_NETWORK_SERIAL_ERROR_ALLOCATION_FAILED;
         }
@@ -441,6 +458,8 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
         // Create temp serializer with compressed data
         NimcpSerializer* compressed_serializer = nimcp_serializer_create(compressed_length);
         if (!compressed_serializer) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, compressed_length,
+                              "Failed to allocate compressed serializer buffer");
             if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
             return NIMCP_NETWORK_SERIAL_ERROR_READ_FAILED;
         }
@@ -451,6 +470,8 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
         // Decompress
         NimcpSerialResult result = nimcp_serializer_decompress(compressed_serializer);
         if (result != NIMCP_SERIAL_SUCCESS) {
+            NIMCP_THROW_IO(NIMCP_ERROR_OPERATION_FAILED, "network_deserialize",
+                          "Failed to decompress network data");
             nimcp_serializer_destroy(compressed_serializer);
             if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
             return NIMCP_NETWORK_SERIAL_ERROR_READ_FAILED;
@@ -463,6 +484,8 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
         // Create new serializer with full decompressed buffer
         decompressed_serializer = nimcp_serializer_create(6 + decompressed_length);
         if (!decompressed_serializer) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 6 + decompressed_length,
+                              "Failed to allocate decompressed serializer");
             nimcp_serializer_destroy(compressed_serializer);
             if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
             return NIMCP_NETWORK_SERIAL_ERROR_ALLOCATION_FAILED;
@@ -515,6 +538,8 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
     // Create network with configuration
     neural_network_t network = neural_network_create(&config);
     if (!network) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 0,
+                          "Failed to create neural network during deserialization");
         if (decrypted_serializer) nimcp_serializer_destroy(decrypted_serializer);
         if (decompressed_serializer) nimcp_serializer_destroy(decompressed_serializer);
         return NIMCP_NETWORK_SERIAL_ERROR_ALLOCATION_FAILED;

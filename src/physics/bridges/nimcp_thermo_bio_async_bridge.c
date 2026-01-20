@@ -7,6 +7,7 @@
 
 #include "physics/bridges/nimcp_thermo_bio_async_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -80,7 +81,11 @@ static double compute_landauer_limit(double temp_k) {
  * ============================================================================ */
 
 int thermo_bio_async_default_config(thermo_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        LOG_ERROR("NULL config in thermo_bio_async_default_config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config pointer");
+        return -1;
+    }
 
     config->broadcast_interval_ms = THERMO_BIO_DEFAULT_BROADCAST_INTERVAL_MS;
     config->enable_auto_broadcast = true;
@@ -104,7 +109,7 @@ thermo_bio_async_bridge_t* thermo_bio_async_bridge_create(
     const thermo_bio_async_config_t* config
 ) {
     thermo_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate thermo bio-async bridge");
 
     if (config) {
         bridge->config = *config;
@@ -116,6 +121,8 @@ thermo_bio_async_bridge_t* thermo_bio_async_bridge_create(
     bridge->subscriptions = nimcp_calloc(bridge->subscription_capacity,
                                          sizeof(thermo_bio_subscription_t));
     if (!bridge->subscriptions) {
+        LOG_ERROR("Failed to allocate thermo bio-async subscriptions");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate thermo bio-async subscriptions");
         nimcp_free(bridge);
         return NULL;
     }

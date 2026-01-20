@@ -12,6 +12,8 @@
 #include "core/brain/oscillations/nimcp_brain_complex_oscillations.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/error/nimcp_error_codes.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "API.OSCILLATION"
 
@@ -27,11 +29,15 @@ extern void set_error(const char* fmt, ...);
  */
 NIMCP_EXPORT bool nimcp_enable_complex_oscillations(nimcp_brain_t brain, bool enable) {
     if (!brain) {
+        LOG_ERROR("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in enable_complex_oscillations");
         set_error("Brain handle is NULL");
         return false;
     }
 
     if (!brain->internal_brain) {
+        LOG_ERROR("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in enable_complex_oscillations");
         set_error("Brain has NULL internal_brain");
         return false;
     }
@@ -72,17 +78,23 @@ NIMCP_EXPORT nimcp_oscillation_phasor_t nimcp_get_oscillation_phasor(
 
     // Guard: Validate parameters
     if (!brain) {
+        LOG_ERROR("NULL brain provided to nimcp_get_oscillation_phasor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to get_oscillation_phasor");
         set_error("NULL brain provided to nimcp_get_oscillation_phasor");
         return result;
     }
 
     if (!brain->internal_brain) {
+        LOG_ERROR("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in get_oscillation_phasor");
         set_error("Brain has NULL internal_brain");
         return result;
     }
 
     // Check if complex oscillations are enabled
     if (!brain_complex_oscillation_is_enabled(brain->internal_brain)) {
+        LOG_WARN("Complex oscillations not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Complex oscillations not enabled");
         set_error("Complex oscillations not enabled - call nimcp_enable_complex_oscillations first");
         return result;
     }
@@ -90,6 +102,8 @@ NIMCP_EXPORT nimcp_oscillation_phasor_t nimcp_get_oscillation_phasor(
     // Get brain's oscillation analyzer
     brain_oscillation_analyzer_t* analyzer = brain_get_oscillations(brain->internal_brain);
     if (!analyzer) {
+        LOG_ERROR("Brain oscillation analyzer not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Brain oscillation analyzer not available");
         set_error("Brain oscillation analyzer not available");
         return result;
     }
@@ -101,6 +115,8 @@ NIMCP_EXPORT nimcp_oscillation_phasor_t nimcp_get_oscillation_phasor(
     // Get neuron phasor
     neural_phasor_t phasor;
     if (!brain_complex_oscillation_get_phasor(complex_state, neuron_id, &phasor)) {
+        LOG_WARN("Invalid neuron ID %u or failed to get phasor", neuron_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid neuron ID %u or failed to get phasor", neuron_id);
         set_error("Invalid neuron ID or failed to get phasor");
         return result;
     }
@@ -123,27 +139,37 @@ NIMCP_EXPORT float nimcp_get_phase_coherence(
 {
     // Guard: Validate parameters
     if (!brain) {
+        LOG_ERROR("NULL brain provided to nimcp_get_phase_coherence");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to get_phase_coherence");
         set_error("NULL brain provided to nimcp_get_phase_coherence");
         return 0.0f;
     }
 
     if (!brain->internal_brain) {
+        LOG_ERROR("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in get_phase_coherence");
         set_error("Brain has NULL internal_brain");
         return 0.0f;
     }
 
     if (!neuron_ids) {
+        LOG_ERROR("NULL neuron_ids provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL neuron_ids provided to get_phase_coherence");
         set_error("NULL neuron_ids provided");
         return 0.0f;
     }
 
     if (count == 0) {
+        LOG_WARN("Invalid count (0) provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid count (0) provided to get_phase_coherence");
         set_error("Invalid count (0) provided");
         return 0.0f;
     }
 
     // Check if complex oscillations are enabled
     if (!brain_complex_oscillation_is_enabled(brain->internal_brain)) {
+        LOG_WARN("Complex oscillations not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Complex oscillations not enabled in get_phase_coherence");
         set_error("Complex oscillations not enabled");
         return 0.0f;
     }
@@ -151,6 +177,8 @@ NIMCP_EXPORT float nimcp_get_phase_coherence(
     // Get brain's oscillation analyzer
     brain_oscillation_analyzer_t* analyzer = brain_get_oscillations(brain->internal_brain);
     if (!analyzer) {
+        LOG_ERROR("Brain oscillation analyzer not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Brain oscillation analyzer not available");
         set_error("Brain oscillation analyzer not available");
         return 0.0f;
     }
@@ -163,6 +191,8 @@ NIMCP_EXPORT float nimcp_get_phase_coherence(
     phase_coherence_result_t result;
     if (!brain_complex_oscillation_compute_coherence_subset(
             complex_state, neuron_ids, count, &result)) {
+        LOG_ERROR("Failed to compute phase coherence");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to compute phase coherence");
         set_error("Failed to compute phase coherence");
         return 0.0f;
     }
@@ -181,28 +211,38 @@ NIMCP_EXPORT float nimcp_get_pac_modulation(
 {
     // Guard: Validate parameters
     if (!brain) {
+        LOG_ERROR("NULL brain provided to nimcp_get_pac_modulation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL brain provided to get_pac_modulation");
         set_error("NULL brain provided to nimcp_get_pac_modulation");
         return 0.0f;
     }
 
     if (!brain->internal_brain) {
+        LOG_ERROR("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain has NULL internal_brain in get_pac_modulation");
         set_error("Brain has NULL internal_brain");
         return 0.0f;
     }
 
     // Validate frequency ranges
     if (theta_freq < 4.0f || theta_freq > 8.0f) {
+        LOG_WARN("Theta frequency %.2f out of range 4-8 Hz", theta_freq);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Theta frequency %.2f out of range 4-8 Hz", theta_freq);
         set_error("Theta frequency should be in range 4-8 Hz");
         return 0.0f;
     }
 
     if (gamma_freq < 30.0f || gamma_freq > 100.0f) {
+        LOG_WARN("Gamma frequency %.2f out of range 30-100 Hz", gamma_freq);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Gamma frequency %.2f out of range 30-100 Hz", gamma_freq);
         set_error("Gamma frequency should be in range 30-100 Hz");
         return 0.0f;
     }
 
     // Check if complex oscillations are enabled
     if (!brain_complex_oscillation_is_enabled(brain->internal_brain)) {
+        LOG_WARN("Complex oscillations not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Complex oscillations not enabled in get_pac_modulation");
         set_error("Complex oscillations not enabled");
         return 0.0f;
     }
@@ -210,6 +250,8 @@ NIMCP_EXPORT float nimcp_get_pac_modulation(
     // Get brain's oscillation analyzer
     brain_oscillation_analyzer_t* analyzer = brain_get_oscillations(brain->internal_brain);
     if (!analyzer) {
+        LOG_ERROR("Brain oscillation analyzer not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Brain oscillation analyzer not available");
         set_error("Brain oscillation analyzer not available");
         return 0.0f;
     }
@@ -222,6 +264,8 @@ NIMCP_EXPORT float nimcp_get_pac_modulation(
     uint32_t num_neurons = brain_complex_oscillation_get_num_neurons(complex_state);
 
     if (num_neurons == 0) {
+        LOG_WARN("No neurons in complex oscillation state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "No neurons in complex oscillation state");
         set_error("No neurons in complex oscillation state");
         return 0.0f;
     }
@@ -231,6 +275,9 @@ NIMCP_EXPORT float nimcp_get_pac_modulation(
     float* amplitude_values = (float*)nimcp_malloc(num_neurons * sizeof(float));
 
     if (!phase_indices || !amplitude_values) {
+        LOG_ERROR("Failed to allocate memory for PAC computation");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_neurons * sizeof(uint32_t),
+            "Failed to allocate memory for PAC computation");
         set_error("Failed to allocate memory for PAC computation");
         if (phase_indices) nimcp_free(phase_indices);
         if (amplitude_values) nimcp_free(amplitude_values);
@@ -265,6 +312,8 @@ NIMCP_EXPORT float nimcp_get_pac_modulation(
     nimcp_free(amplitude_values);
 
     if (!success) {
+        LOG_ERROR("Failed to compute PAC modulation index");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to compute PAC modulation index");
         set_error("Failed to compute PAC modulation index");
         return 0.0f;
     }

@@ -92,7 +92,7 @@ typedef bool (*nimcp_exception_handler_fn)(
  */
 typedef int (*nimcp_recovery_callback_fn)(
     nimcp_exception_t* ex,
-    nimcp_recovery_action_t action,
+    nimcp_exception_recovery_action_t action,
     void* user_data
 );
 
@@ -356,7 +356,7 @@ bool nimcp_in_try_block(void);
  * @return 0 on success
  */
 int nimcp_register_recovery_callback(
-    nimcp_recovery_action_t action,
+    nimcp_exception_recovery_action_t action,
     nimcp_recovery_callback_fn callback,
     void* user_data
 );
@@ -367,7 +367,7 @@ int nimcp_register_recovery_callback(
  * @param action Recovery action type
  * @return 0 on success
  */
-int nimcp_unregister_recovery_callback(nimcp_recovery_action_t action);
+int nimcp_unregister_recovery_callback(nimcp_exception_recovery_action_t action);
 
 /**
  * @brief Execute recovery action
@@ -380,7 +380,7 @@ int nimcp_unregister_recovery_callback(nimcp_recovery_action_t action);
  */
 int nimcp_execute_recovery(
     nimcp_exception_t* ex,
-    nimcp_recovery_action_t action
+    nimcp_exception_recovery_action_t action
 );
 
 /* ============================================================================

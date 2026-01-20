@@ -6,6 +6,7 @@
  */
 
 #include "integration/intra/memory/nimcp_memory_intra_coordinator.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -51,7 +52,7 @@ nimcp_memory_intra_config_t nimcp_memory_intra_default_config(void) {
 
 nimcp_memory_intra_t nimcp_memory_intra_create(const nimcp_memory_intra_config_t* config) {
     nimcp_memory_intra_t coord = (nimcp_memory_intra_t)calloc(1, sizeof(struct nimcp_memory_intra_struct));
-    if (!coord) return NULL;
+    NIMCP_API_CHECK_ALLOC(coord, "Failed to allocate memory intra coordinator");
     coord->config = config ? *config : nimcp_memory_intra_default_config();
     return coord;
 }
@@ -63,7 +64,8 @@ void nimcp_memory_intra_destroy(nimcp_memory_intra_t coord) {
 }
 
 nimcp_layer_error_t nimcp_memory_intra_init(nimcp_memory_intra_t coord, nimcp_layer_registry_t registry) {
-    if (!coord || !registry) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL");
     if (coord->is_initialized) return NIMCP_LAYER_ERR_ALREADY_REGISTERED;
     coord->registry = registry;
     coord->is_initialized = true;
@@ -72,14 +74,16 @@ nimcp_layer_error_t nimcp_memory_intra_init(nimcp_memory_intra_t coord, nimcp_la
 }
 
 nimcp_layer_error_t nimcp_memory_intra_shutdown(nimcp_memory_intra_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
     if (!coord->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     coord->is_initialized = false;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_memory_intra_connect_entorhinal(nimcp_memory_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL");
     coord->entorhinal.module = module;
     coord->entorhinal.interface = *interface;
     coord->entorhinal.connected = true;
@@ -88,7 +92,9 @@ nimcp_layer_error_t nimcp_memory_intra_connect_entorhinal(nimcp_memory_intra_t c
 }
 
 nimcp_layer_error_t nimcp_memory_intra_connect_perirhinal(nimcp_memory_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL");
     coord->perirhinal.module = module;
     coord->perirhinal.interface = *interface;
     coord->perirhinal.connected = true;
@@ -97,7 +103,9 @@ nimcp_layer_error_t nimcp_memory_intra_connect_perirhinal(nimcp_memory_intra_t c
 }
 
 nimcp_layer_error_t nimcp_memory_intra_connect_parahippocampal(nimcp_memory_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL");
     coord->parahippocampal.module = module;
     coord->parahippocampal.interface = *interface;
     coord->parahippocampal.connected = true;
@@ -106,7 +114,9 @@ nimcp_layer_error_t nimcp_memory_intra_connect_parahippocampal(nimcp_memory_intr
 }
 
 nimcp_layer_error_t nimcp_memory_intra_connect_mammillary(nimcp_memory_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL");
     coord->mammillary.module = module;
     coord->mammillary.interface = *interface;
     coord->mammillary.connected = true;
@@ -115,7 +125,7 @@ nimcp_layer_error_t nimcp_memory_intra_connect_mammillary(nimcp_memory_intra_t c
 }
 
 nimcp_layer_error_t nimcp_memory_intra_update(nimcp_memory_intra_t coord, float dt) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
     if (!coord->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
 
     /* Update theta oscillation (4-8 Hz) */
@@ -140,32 +150,36 @@ nimcp_layer_error_t nimcp_memory_intra_update(nimcp_memory_intra_t coord, float 
 }
 
 nimcp_layer_error_t nimcp_memory_intra_sync(nimcp_memory_intra_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_memory_intra_send(nimcp_memory_intra_t coord, uint32_t target_module, nimcp_layer_msg_t* msg) {
-    if (!coord || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL");
     (void)target_module;
     coord->stats.messages_sent++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_memory_intra_broadcast(nimcp_memory_intra_t coord, uint32_t source_module, const nimcp_layer_msg_t* msg) {
-    if (!coord || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL");
     (void)source_module;
     coord->stats.messages_sent += MEMORY_MODULE_COUNT;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_memory_intra_get_state(nimcp_memory_intra_t coord, nimcp_memory_intra_state_t* state_out) {
-    if (!coord || !state_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(state_out, NIMCP_LAYER_ERR_NULL_PTR, "state_out is NULL");
     *state_out = coord->state;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_memory_intra_get_stats(nimcp_memory_intra_t coord, nimcp_memory_intra_stats_t* stats_out) {
-    if (!coord || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(stats_out, NIMCP_LAYER_ERR_NULL_PTR, "stats_out is NULL");
     *stats_out = coord->stats;
     return NIMCP_LAYER_OK;
 }
@@ -175,7 +189,7 @@ float nimcp_memory_intra_get_coherence(nimcp_memory_intra_t coord) {
 }
 
 nimcp_layer_error_t nimcp_memory_intra_reset_stats(nimcp_memory_intra_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
     memset(&coord->stats, 0, sizeof(coord->stats));
     return NIMCP_LAYER_OK;
 }

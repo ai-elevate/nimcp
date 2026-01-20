@@ -13,6 +13,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -97,10 +98,7 @@ void fep_planning_default_config(fep_planning_config_t* config) {
 fep_planning_system_t* fep_planning_create(const fep_planning_config_t* config) {
     fep_planning_system_t* sys = (fep_planning_system_t*)nimcp_calloc(
         1, sizeof(fep_planning_system_t));
-    if (!sys) {
-        NIMCP_LOGGING_ERROR("Failed to allocate planning system");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(sys, "Failed to allocate planning system");
 
     /* Apply configuration */
     fep_planning_config_t default_cfg;

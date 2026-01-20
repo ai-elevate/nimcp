@@ -35,6 +35,7 @@
 #include "utils/fault_tolerance/nimcp_checkpoint.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "utils_async_checkpoint"
 #include "utils/logging/nimcp_logging.h"

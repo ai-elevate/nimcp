@@ -5,6 +5,7 @@
 #include "physics/biophysics/nimcp_hodgkin_huxley.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread_pool.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -834,7 +835,11 @@ nimcp_error_t nimcp_hh_population_create(nimcp_hh_population_t* population,
     memset(population, 0, sizeof(*population));
 
     population->neurons = (nimcp_hh_neuron_t*)nimcp_calloc(count, sizeof(nimcp_hh_neuron_t));
-    if (!population->neurons) return NIMCP_ERROR_NO_MEMORY;
+    if (!population->neurons) {
+        LOG_ERROR("Failed to allocate HH population neurons array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate HH population");
+        return NIMCP_ERROR_NO_MEMORY;
+    }
 
     population->count = count;
     population->capacity = count;
@@ -1012,6 +1017,8 @@ nimcp_error_t nimcp_hh_population_update_parallel(
         num_threads, sizeof(hh_parallel_task_t)
     );
     if (!tasks) {
+        LOG_ERROR("Failed to allocate parallel update tasks");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate parallel tasks");
         if (own_pool) nimcp_pool_destroy(pool);
         return NIMCP_ERROR_NO_MEMORY;
     }

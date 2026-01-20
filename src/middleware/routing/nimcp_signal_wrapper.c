@@ -16,6 +16,7 @@
 #include "middleware/routing/nimcp_signal_wrapper.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_cow_manager.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"

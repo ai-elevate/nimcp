@@ -32,6 +32,7 @@
 #include "plasticity/nimcp_second_messengers.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 #include "cognitive/global_workspace/nimcp_global_workspace.h"  // Global Workspace integration
 #include "cognitive/immune/nimcp_brain_immune.h"  // Brain immune integration (cytokine enums)
 #include "cognitive/nimcp_sleep_wake.h"  // Sleep state integration

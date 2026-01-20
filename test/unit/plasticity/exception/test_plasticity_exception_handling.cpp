@@ -544,12 +544,12 @@ TEST_F(PlasticityExceptionHandlingTest, LearningExceptionRecoveryStrategy) {
 
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(ex, &strategy);
 
     // Learning exceptions should have retry as primary action
     // (actual strategy depends on implementation)
-    EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE);
+    EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref(ex);
 }
@@ -568,13 +568,13 @@ TEST_F(PlasticityExceptionHandlingTest, CriticalPlasticityExceptionRecovery) {
     ASSERT_NE(ex, nullptr);
     EXPECT_EQ(ex->severity, EXCEPTION_SEVERITY_CRITICAL);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(ex, &strategy);
 
     // Critical errors should trigger some kind of recovery action
     // The actual action depends on the recovery strategy implementation
-    EXPECT_TRUE(strategy.primary_action != RECOVERY_ACTION_NONE ||
-                strategy.fallback_action != RECOVERY_ACTION_NONE ||
+    EXPECT_TRUE(strategy.primary_action != EXCEPTION_RECOVERY_NONE ||
+                strategy.fallback_action != EXCEPTION_RECOVERY_NONE ||
                 strategy.retry_count > 0);
 
     nimcp_exception_unref(ex);

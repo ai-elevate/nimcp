@@ -19,6 +19,7 @@
 #include <string.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 
 /* ========================================================================
  * PLATFORM NAME

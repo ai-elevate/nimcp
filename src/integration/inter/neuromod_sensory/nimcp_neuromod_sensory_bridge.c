@@ -6,6 +6,7 @@
  */
 
 #include "integration/inter/neuromod_sensory/nimcp_neuromod_sensory_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -36,7 +37,7 @@ nimcp_neuromod_sensory_config_t nimcp_neuromod_sensory_default_config(void) {
 
 nimcp_neuromod_sensory_bridge_t nimcp_neuromod_sensory_create(const nimcp_neuromod_sensory_config_t* config) {
     nimcp_neuromod_sensory_bridge_t bridge = (nimcp_neuromod_sensory_bridge_t)calloc(1, sizeof(struct nimcp_neuromod_sensory_bridge_struct));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate neuromod-sensory bridge");
     bridge->config = config ? *config : nimcp_neuromod_sensory_default_config();
     bridge->state.bridge_coherence = 1.0f;
     bridge->state.sensory_gain = 1.0f;
@@ -56,8 +57,9 @@ nimcp_layer_error_t nimcp_neuromod_sensory_init(
     nimcp_neuromod_intra_t neuromod,
     nimcp_sensory_intra_t sensory
 ) {
-    if (!bridge || !registry) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (bridge->is_initialized) return NIMCP_LAYER_ERR_ALREADY_REGISTERED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_sensory_init");
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in neuromod_sensory_init");
+    NIMCP_API_CHECK(!bridge->is_initialized, NIMCP_LAYER_ERR_ALREADY_REGISTERED, "Bridge already initialized in neuromod_sensory_init");
     bridge->registry = registry;
     bridge->neuromod = neuromod;
     bridge->sensory = sensory;
@@ -66,15 +68,15 @@ nimcp_layer_error_t nimcp_neuromod_sensory_init(
 }
 
 nimcp_layer_error_t nimcp_neuromod_sensory_shutdown(nimcp_neuromod_sensory_bridge_t bridge) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_sensory_shutdown");
+    NIMCP_API_CHECK(bridge->is_initialized, NIMCP_LAYER_ERR_NOT_INITIALIZED, "Bridge not initialized in neuromod_sensory_shutdown");
     bridge->is_initialized = false;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_neuromod_sensory_update(nimcp_neuromod_sensory_bridge_t bridge, float dt) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_sensory_update");
+    NIMCP_API_CHECK(bridge->is_initialized, NIMCP_LAYER_ERR_NOT_INITIALIZED, "Bridge not initialized in neuromod_sensory_update");
 
     /* NE levels affect sensory gain */
     bridge->state.sensory_gain *= (1.0f - dt * 0.01f);
@@ -101,27 +103,31 @@ nimcp_layer_error_t nimcp_neuromod_sensory_update(nimcp_neuromod_sensory_bridge_
 }
 
 nimcp_layer_error_t nimcp_neuromod_sensory_transfer_bottom_up(nimcp_neuromod_sensory_bridge_t bridge, const nimcp_layer_msg_t* msg) {
-    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_sensory_transfer_bottom_up");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in neuromod_sensory_transfer_bottom_up");
     bridge->state.bottom_up_messages++;
     bridge->stats.gain_modulations++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_neuromod_sensory_transfer_top_down(nimcp_neuromod_sensory_bridge_t bridge, const nimcp_layer_msg_t* msg) {
-    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_sensory_transfer_top_down");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in neuromod_sensory_transfer_top_down");
     bridge->state.top_down_messages++;
     bridge->stats.novel_stimuli++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_neuromod_sensory_get_state(nimcp_neuromod_sensory_bridge_t bridge, nimcp_neuromod_sensory_state_t* state_out) {
-    if (!bridge || !state_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_sensory_get_state");
+    NIMCP_API_CHECK_NULL(state_out, NIMCP_LAYER_ERR_NULL_PTR, "state_out is NULL in neuromod_sensory_get_state");
     *state_out = bridge->state;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_neuromod_sensory_get_stats(nimcp_neuromod_sensory_bridge_t bridge, nimcp_neuromod_sensory_stats_t* stats_out) {
-    if (!bridge || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_sensory_get_stats");
+    NIMCP_API_CHECK_NULL(stats_out, NIMCP_LAYER_ERR_NULL_PTR, "stats_out is NULL in neuromod_sensory_get_stats");
     *stats_out = bridge->stats;
     return NIMCP_LAYER_OK;
 }
@@ -131,7 +137,7 @@ float nimcp_neuromod_sensory_get_coherence(nimcp_neuromod_sensory_bridge_t bridg
 }
 
 nimcp_layer_error_t nimcp_neuromod_sensory_reset_stats(nimcp_neuromod_sensory_bridge_t bridge) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in neuromod_sensory_reset_stats");
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return NIMCP_LAYER_OK;
 }

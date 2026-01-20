@@ -6,6 +6,7 @@
  */
 
 #include "glial/integration/nimcp_glial_bio_async_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

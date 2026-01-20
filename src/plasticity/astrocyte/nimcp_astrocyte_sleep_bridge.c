@@ -10,6 +10,7 @@
  */
 
 #include "plasticity/astrocyte/nimcp_astrocyte_sleep_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -101,7 +102,7 @@ float astrocyte_sleep_get_calcium_factor(sleep_state_t state) {
  * ============================================================================ */
 
 int astrocyte_sleep_default_config(astrocyte_sleep_config_t* config) {
-    if (!config) return -1;
+    NIMCP_API_CHECK_NULL(config, -1, "Astrocyte-sleep config is NULL");
 
     /* All modulations enabled by default */
     config->enable_d_serine_modulation = true;
@@ -119,18 +120,13 @@ astrocyte_sleep_bridge_t astrocyte_sleep_bridge_create(
     astrocyte_plasticity_t astrocyte_system
 ) {
     /* Guard: require both systems */
-    if (!sleep_system || !astrocyte_system) {
-        NIMCP_LOGGING_ERROR("Cannot create bridge without sleep and astrocyte systems");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(sleep_system, "Sleep system is NULL");
+    NIMCP_API_CHECK_NULL_RET_NULL(astrocyte_system, "Astrocyte system is NULL");
 
     /* Allocate bridge */
     astrocyte_sleep_bridge_t bridge = (astrocyte_sleep_bridge_t)
         nimcp_malloc(sizeof(struct astrocyte_sleep_bridge_struct));
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("Bridge allocation failed");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "Astrocyte-sleep bridge allocation failed");
     memset(bridge, 0, sizeof(struct astrocyte_sleep_bridge_struct));
 
     /* Link systems */
@@ -157,6 +153,8 @@ astrocyte_sleep_bridge_t astrocyte_sleep_bridge_create(
     bridge->base.mutex = (pthread_mutex_t*)nimcp_malloc(sizeof(pthread_mutex_t));
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        LOG_ERROR("Astrocyte-sleep bridge mutex allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Astrocyte-sleep bridge mutex allocation failed");
         return NULL;
     }
     pthread_mutex_init(bridge->base.mutex, NULL);
@@ -185,8 +183,8 @@ void astrocyte_sleep_bridge_destroy(astrocyte_sleep_bridge_t bridge) {
 
 int astrocyte_sleep_update(astrocyte_sleep_bridge_t bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
-    if (!bridge->sleep_system) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Astrocyte-sleep bridge is NULL");
+    NIMCP_API_CHECK_NULL(bridge->sleep_system, -1, "Sleep system is NULL");
 
     pthread_mutex_lock(bridge->base.mutex);
 
@@ -250,8 +248,8 @@ int astrocyte_sleep_update(astrocyte_sleep_bridge_t bridge) {
 
 int astrocyte_sleep_apply_modulation(astrocyte_sleep_bridge_t bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
-    if (!bridge->astrocyte_system) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Astrocyte-sleep bridge is NULL");
+    NIMCP_API_CHECK_NULL(bridge->astrocyte_system, -1, "Astrocyte system is NULL");
 
     pthread_mutex_lock(bridge->base.mutex);
 
@@ -311,7 +309,8 @@ int astrocyte_sleep_apply_modulation(astrocyte_sleep_bridge_t bridge) {
 
 int astrocyte_sleep_get_effects(const astrocyte_sleep_bridge_t bridge,
                                  astrocyte_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Astrocyte-sleep bridge is NULL");
+    NIMCP_API_CHECK_NULL(effects, -1, "Effects output pointer is NULL");
 
     pthread_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(astrocyte_sleep_effects_t));

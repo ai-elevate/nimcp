@@ -10,6 +10,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_common.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
@@ -90,6 +92,8 @@ p2p_immune_bridge_t* p2p_immune_bridge_create(
 
     p2p_immune_bridge_t* bridge = nimcp_malloc(sizeof(p2p_immune_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(p2p_immune_bridge_t),
+                          "Failed to allocate P2P-immune bridge");
         NIMCP_LOGGING_ERROR("p2p_immune_bridge_create: allocation failed");
         return NULL;
     }

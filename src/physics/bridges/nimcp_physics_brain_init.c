@@ -15,6 +15,7 @@
 #include "physics/bridges/nimcp_physics_immune_bridge.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 
 //=============================================================================

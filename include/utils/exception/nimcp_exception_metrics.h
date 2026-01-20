@@ -66,7 +66,7 @@ extern "C" {
 #define NIMCP_METRICS_EMA_ALPHA          0.1f  /**< EMA smoothing factor */
 #define NIMCP_METRICS_MIN_SAMPLES        5     /**< Min samples before pattern is "learned" */
 #define NIMCP_METRICS_MAX_CONSECUTIVE_FAILURES 10 /**< Reset pattern after this many failures */
-#define NIMCP_METRICS_RECOVERY_ACTION_COUNT 12 /**< Number of recovery action types */
+#define NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT 12 /**< Number of recovery action types */
 #define NIMCP_METRICS_MAX_CATEGORIES     20    /**< Max exception categories */
 
 /* ============================================================================
@@ -97,7 +97,7 @@ typedef struct {
  * Tracks success rates and timing statistics for each recovery action.
  */
 typedef struct {
-    nimcp_recovery_action_t action;       /**< Recovery action type */
+    nimcp_exception_recovery_action_t action;       /**< Recovery action type */
     uint64_t attempts;                    /**< Total attempts */
     uint64_t successes;                   /**< Successful recoveries */
     uint64_t failures;                    /**< Failed recoveries */
@@ -121,9 +121,9 @@ typedef struct {
 typedef struct {
     uint8_t epitope[64];                  /**< Exception fingerprint */
     size_t epitope_len;                   /**< Epitope length */
-    nimcp_recovery_action_t preferred_action; /**< Currently preferred action */
-    float action_success_rates[NIMCP_METRICS_RECOVERY_ACTION_COUNT]; /**< Per-action success rate */
-    uint32_t action_attempts[NIMCP_METRICS_RECOVERY_ACTION_COUNT];   /**< Per-action attempt count */
+    nimcp_exception_recovery_action_t preferred_action; /**< Currently preferred action */
+    float action_success_rates[NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT]; /**< Per-action success rate */
+    uint32_t action_attempts[NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT];   /**< Per-action attempt count */
     uint64_t last_success_us;             /**< Timestamp of last successful recovery */
     uint32_t consecutive_failures;        /**< Consecutive failures (reset trigger) */
     bool learned;                         /**< Has enough data to be reliable */
@@ -152,7 +152,7 @@ typedef struct {
     size_t category_count;                /**< Number of active categories */
 
     /* Per-action recovery metrics */
-    nimcp_recovery_metrics_t recovery[NIMCP_METRICS_RECOVERY_ACTION_COUNT];
+    nimcp_recovery_metrics_t recovery[NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT];
 } nimcp_exception_metrics_t;
 
 /* ============================================================================
@@ -235,7 +235,7 @@ void nimcp_metrics_record_exception(nimcp_exception_t* ex);
  */
 void nimcp_metrics_record_recovery(
     nimcp_exception_t* ex,
-    nimcp_recovery_action_t action,
+    nimcp_exception_recovery_action_t action,
     bool success,
     uint64_t duration_us
 );
@@ -284,7 +284,7 @@ uint64_t nimcp_metrics_get_count(
  * @param action Recovery action type
  * @return Success rate (0.0 - 1.0)
  */
-float nimcp_metrics_get_recovery_rate(nimcp_recovery_action_t action);
+float nimcp_metrics_get_recovery_rate(nimcp_exception_recovery_action_t action);
 
 /**
  * @brief Get Mean Time To Recovery for an action type
@@ -292,7 +292,7 @@ float nimcp_metrics_get_recovery_rate(nimcp_recovery_action_t action);
  * @param action Recovery action type
  * @return Average recovery time in microseconds
  */
-float nimcp_metrics_get_mttr(nimcp_recovery_action_t action);
+float nimcp_metrics_get_mttr(nimcp_exception_recovery_action_t action);
 
 /* ============================================================================
  * Top-N Query API
@@ -352,9 +352,9 @@ void nimcp_adaptive_shutdown(void);
  * HOW:  Look up epitope, return action with highest historical success rate
  *
  * @param ex Exception needing recovery
- * @return Suggested recovery action (or RECOVERY_ACTION_NONE if not learned)
+ * @return Suggested recovery action (or EXCEPTION_RECOVERY_NONE if not learned)
  */
-nimcp_recovery_action_t nimcp_adaptive_suggest_action(nimcp_exception_t* ex);
+nimcp_exception_recovery_action_t nimcp_adaptive_suggest_action(nimcp_exception_t* ex);
 
 /**
  * @brief Record recovery outcome for pattern learning
@@ -370,7 +370,7 @@ nimcp_recovery_action_t nimcp_adaptive_suggest_action(nimcp_exception_t* ex);
  */
 int nimcp_adaptive_record_outcome(
     nimcp_exception_t* ex,
-    nimcp_recovery_action_t action,
+    nimcp_exception_recovery_action_t action,
     bool success
 );
 
@@ -385,7 +385,7 @@ int nimcp_adaptive_record_outcome(
  */
 float nimcp_adaptive_get_confidence(
     nimcp_exception_t* ex,
-    nimcp_recovery_action_t action
+    nimcp_exception_recovery_action_t action
 );
 
 /**
@@ -402,7 +402,7 @@ float nimcp_adaptive_get_confidence(
 int nimcp_adaptive_force_action(
     const uint8_t* epitope,
     size_t len,
-    nimcp_recovery_action_t action
+    nimcp_exception_recovery_action_t action
 );
 
 /**

@@ -9,6 +9,7 @@
 #include "physics/bridges/nimcp_physics_lnn_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 
@@ -184,7 +185,7 @@ physics_lnn_bridge_t* physics_lnn_bridge_create(
     const physics_lnn_config_t* config
 ) {
     physics_lnn_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate physics-LNN bridge");
 
     /* Apply configuration */
     if (config) {
@@ -200,6 +201,8 @@ physics_lnn_bridge_t* physics_lnn_bridge_create(
         sizeof(spike_history_entry_t)
     );
     if (!bridge->spike_history) {
+        LOG_ERROR("Failed to allocate spike history buffer for physics-LNN bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate spike history buffer");
         nimcp_free(bridge);
         return NULL;
     }
@@ -211,6 +214,8 @@ physics_lnn_bridge_t* physics_lnn_bridge_create(
         sizeof(float)
     );
     if (!bridge->encoded_currents) {
+        LOG_ERROR("Failed to allocate encoded currents buffer for physics-LNN bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate encoded currents buffer");
         nimcp_free(bridge->spike_history);
         nimcp_free(bridge);
         return NULL;
@@ -223,6 +228,8 @@ physics_lnn_bridge_t* physics_lnn_bridge_create(
         sizeof(float)
     );
     if (!bridge->modulation_values) {
+        LOG_ERROR("Failed to allocate modulation buffer for physics-LNN bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate modulation buffer");
         nimcp_free(bridge->encoded_currents);
         nimcp_free(bridge->spike_history);
         nimcp_free(bridge);
@@ -286,6 +293,8 @@ int physics_lnn_connect_hh(
             sizeof(float)
         );
         if (!bridge->prev_voltages) {
+            LOG_ERROR("Failed to allocate voltage history buffer");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate voltage history buffer");
             return -1;
         }
 

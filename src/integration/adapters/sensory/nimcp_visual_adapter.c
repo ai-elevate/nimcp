@@ -6,6 +6,7 @@
  */
 
 #include "integration/adapters/sensory/nimcp_visual_adapter.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -95,7 +96,7 @@ nimcp_visual_adapter_config_t nimcp_visual_adapter_default_config(void) {
 
 nimcp_visual_adapter_t nimcp_visual_adapter_create(const nimcp_visual_adapter_config_t* config) {
     nimcp_visual_adapter_t adapter = (nimcp_visual_adapter_t)calloc(1, sizeof(struct nimcp_visual_adapter_struct));
-    if (!adapter) return NULL;
+    NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate visual adapter");
     adapter->config = config ? *config : nimcp_visual_adapter_default_config();
     adapter->interface.init = visual_init;
     adapter->interface.shutdown = visual_shutdown;

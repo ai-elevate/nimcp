@@ -19,6 +19,7 @@
 #include "core/directives/nimcp_self_preservation.h"
 #include "core/directives/nimcp_reciprocity_eval.h"
 #include "core/directives/nimcp_combinatorial_harm.h"
+#include "api/nimcp_api_exception.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
@@ -203,10 +204,7 @@ void core_directives_default_config(core_directives_config_t* config) {
 core_directives_system_t* core_directives_create(const core_directives_config_t* config) {
     /* Allocate system structure */
     core_directives_system_t* system = nimcp_malloc(sizeof(core_directives_system_t));
-    if (!system) {
-        NIMCP_LOGGING_ERROR("Failed to allocate core directives system");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC_SIZE(system, sizeof(core_directives_system_t), "core_directives_create: failed to allocate system");
 
     memset(system, 0, sizeof(core_directives_system_t));
 
@@ -220,7 +218,8 @@ core_directives_system_t* core_directives_create(const core_directives_config_t*
     /* Create mutex for thread safety */
     system->mutex = nimcp_platform_mutex_create();
     if (!system->mutex) {
-        NIMCP_LOGGING_ERROR("Failed to create mutex");
+        LOG_ERROR("core_directives_create: failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "core_directives_create: mutex creation failed");
         nimcp_free(system);
         return NULL;
     }
@@ -236,7 +235,8 @@ core_directives_system_t* core_directives_create(const core_directives_config_t*
 
     system->ethics_engine = ethics_engine_create(&ethics_cfg);
     if (!system->ethics_engine) {
-        NIMCP_LOGGING_ERROR("Failed to create ethics engine");
+        LOG_ERROR("core_directives_create: failed to create ethics engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR, "core_directives_create: ethics engine creation failed");
         nimcp_platform_mutex_destroy(system->mutex);
         nimcp_free(system);
         return NULL;
@@ -258,7 +258,8 @@ core_directives_system_t* core_directives_create(const core_directives_config_t*
 
     system->action_history = action_history_create(&hist_cfg);
     if (!system->action_history) {
-        NIMCP_LOGGING_ERROR("Failed to create action history");
+        LOG_ERROR("core_directives_create: failed to create action history");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR, "core_directives_create: action history creation failed");
         ethics_engine_destroy(system->ethics_engine);
         nimcp_platform_mutex_destroy(system->mutex);
         nimcp_free(system);
@@ -316,9 +317,9 @@ int core_directives_evaluate(core_directives_system_t* system,
                               const proposed_action_t* action,
                               directive_evaluation_t* evaluation) {
     /* Guard clauses */
-    if (!system) return NIMCP_ERROR_NULL_ARG;
-    if (!action) return NIMCP_ERROR_NULL_ARG;
-    if (!evaluation) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_API_CHECK_NULL(system, NIMCP_ERROR_NULL_ARG, "core_directives_evaluate: system is NULL");
+    NIMCP_API_CHECK_NULL(action, NIMCP_ERROR_NULL_ARG, "core_directives_evaluate: action is NULL");
+    NIMCP_API_CHECK_NULL(evaluation, NIMCP_ERROR_NULL_ARG, "core_directives_evaluate: evaluation is NULL");
 
     /* Start timing */
     uint64_t start_time = get_timestamp_us();

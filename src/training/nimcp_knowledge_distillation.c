@@ -14,6 +14,9 @@
 #include "training/nimcp_knowledge_distillation.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -109,6 +112,7 @@ static float log_softmax_at(const float* logits, size_t count, size_t index);
 
 int kd_default_config(kd_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "kd_default_config: config is NULL");
         return -1;
     }
 
@@ -172,16 +176,20 @@ int kd_default_config(kd_config_t* config) {
 
 kd_ctx_t* kd_create(const kd_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "kd_create: config is NULL");
         return NULL;
     }
 
     /* Validate configuration */
     if (kd_validate_config(config) != 0) {
+        NIMCP_THROW(NIMCP_ERROR_CONFIG_INVALID, "kd_create: config validation failed");
         return NULL;
     }
 
     kd_ctx_t* ctx = nimcp_calloc(1, sizeof(kd_ctx_t));
     if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(kd_ctx_t),
+                          "kd_create: failed to allocate context");
         return NULL;
     }
 
@@ -193,6 +201,8 @@ kd_ctx_t* kd_create(const kd_config_t* config) {
     attr.type = MUTEX_TYPE_NORMAL;
     ctx->mutex = nimcp_mutex_create(&attr);
     if (!ctx->mutex) {
+        NIMCP_THROW_THREADING(NIMCP_ERROR_MUTEX_INIT, 0,
+                             "kd_create: failed to create mutex");
         nimcp_free(ctx);
         return NULL;
     }

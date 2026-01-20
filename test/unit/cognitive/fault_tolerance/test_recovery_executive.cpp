@@ -315,7 +315,7 @@ TEST_F(RecoveryExecutiveTest, CreatePlanForDifferentErrorTypes) {
         // Verify plan has steps appropriate to error type
         bool has_relevant_action = false;
         for (uint32_t j = 0; j < plan->step_count; j++) {
-            if (plan->steps[j].action != RECOVERY_ACTION_NONE) {
+            if (plan->steps[j].action != EXCEPTION_RECOVERY_NONE) {
                 has_relevant_action = true;
                 break;
             }

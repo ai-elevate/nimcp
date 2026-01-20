@@ -12,6 +12,7 @@
 #include "utils/time/nimcp_time.h"
 #include <string.h>
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 //=============================================================================
 // Module Configuration

@@ -13,6 +13,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
@@ -127,7 +128,7 @@ static void estimate_cytokine_levels(
  * ============================================================================ */
 
 int audio_immune_default_config(audio_immune_config_t* config) {
-    if (!config) return -1;
+    NIMCP_API_CHECK_NULL(config, -1, "audio_immune_default_config: NULL config");
 
     /* All features enabled by default */
     config->enable_cytokine_audio_modulation = true;
@@ -155,19 +156,13 @@ audio_immune_bridge_t* audio_immune_bridge_create(
     audio_cortex_t* audio_cortex
 ) {
     /* Guard: require immune and audio systems */
-    if (!immune_system || !audio_cortex) {
-        LOG_MODULE_ERROR("audio_immune_bridge",
-                  "Cannot create bridge without immune and audio systems");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(immune_system, "audio_immune_bridge_create: NULL immune_system");
+    NIMCP_API_CHECK_NULL_RET_NULL(audio_cortex, "audio_immune_bridge_create: NULL audio_cortex");
 
     /* Allocate bridge */
     audio_immune_bridge_t* bridge = (audio_immune_bridge_t*)
         nimcp_malloc(sizeof(audio_immune_bridge_t));
-    if (!bridge) {
-        LOG_MODULE_ERROR("audio_immune_bridge", "Allocation failed");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "audio_immune_bridge_create: Failed to allocate bridge");
 
     /* Initialize to zero */
     memset(bridge, 0, sizeof(audio_immune_bridge_t));
@@ -229,9 +224,10 @@ void audio_immune_bridge_destroy(audio_immune_bridge_t* bridge) {
 
 int audio_immune_apply_cytokine_effects(audio_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "audio_immune_apply_cytokine_effects: NULL bridge");
     if (!bridge->enable_cytokine_audio_modulation) return 0;
-    if (!bridge->immune_system || !bridge->audio_cortex) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "audio_immune_apply_cytokine_effects: NULL immune_system");
+    NIMCP_API_CHECK_NULL(bridge->audio_cortex, -1, "audio_immune_apply_cytokine_effects: NULL audio_cortex");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -276,9 +272,9 @@ int audio_immune_apply_cytokine_effects(audio_immune_bridge_t* bridge) {
 
 int audio_immune_apply_inflammation_effects(audio_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "audio_immune_apply_inflammation_effects: NULL bridge");
     if (!bridge->enable_inflammation_processing_impairment) return 0;
-    if (!bridge->immune_system) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "audio_immune_apply_inflammation_effects: NULL immune_system");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -391,9 +387,9 @@ int audio_immune_trigger_from_threat(
     float anomaly_score
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "audio_immune_trigger_from_threat: NULL bridge");
     if (!bridge->enable_audio_immune_trigger) return 0;
-    if (!bridge->immune_system) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "audio_immune_trigger_from_threat: NULL immune_system");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -454,9 +450,9 @@ int audio_immune_trigger_from_processing_failure(
     float failure_rate
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "audio_immune_trigger_from_processing_failure: NULL bridge");
     if (!bridge->enable_audio_immune_trigger) return 0;
-    if (!bridge->immune_system) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "audio_immune_trigger_from_processing_failure: NULL immune_system");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -499,9 +495,9 @@ int audio_immune_amplify_tinnitus_inflammation(
     float tinnitus_severity
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "audio_immune_amplify_tinnitus_inflammation: NULL bridge");
     if (!bridge->enable_tinnitus_inflammation_coupling) return 0;
-    if (!bridge->immune_system) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "audio_immune_amplify_tinnitus_inflammation: NULL immune_system");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -544,9 +540,9 @@ int audio_immune_boost_from_calm_environment(
     float predictability
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "audio_immune_boost_from_calm_environment: NULL bridge");
     if (!bridge->enable_audio_immune_boost) return 0;
-    if (!bridge->immune_system) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "audio_immune_boost_from_calm_environment: NULL immune_system");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -586,7 +582,7 @@ int audio_immune_bridge_update(
     audio_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "audio_immune_bridge_update: NULL bridge");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->total_updates++;
@@ -609,7 +605,8 @@ int audio_immune_get_cytokine_effects(
     const audio_immune_bridge_t* bridge,
     cytokine_audio_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "audio_immune_get_cytokine_effects: NULL bridge");
+    NIMCP_API_CHECK_NULL(effects, -1, "audio_immune_get_cytokine_effects: NULL effects");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_audio_effects_t));
@@ -622,7 +619,8 @@ int audio_immune_get_inflammation_state(
     const audio_immune_bridge_t* bridge,
     inflammation_audio_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "audio_immune_get_inflammation_state: NULL bridge");
+    NIMCP_API_CHECK_NULL(state, -1, "audio_immune_get_inflammation_state: NULL state");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_audio_state_t));
@@ -686,7 +684,7 @@ float audio_immune_get_attention_level(const audio_immune_bridge_t* bridge) {
  * @brief Connect bridge to bio-async router
  */
 int audio_immune_connect_bio_async(audio_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "audio_immune_connect_bio_async: NULL bridge");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -711,7 +709,7 @@ int audio_immune_connect_bio_async(audio_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int audio_immune_disconnect_bio_async(audio_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "audio_immune_disconnect_bio_async: NULL bridge");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

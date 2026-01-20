@@ -41,6 +41,7 @@
 #include "async/nimcp_bio_messages.h"
 #include <errno.h>
 #include <stdio.h>
+#include "api/nimcp_api_exception.h"
 
 /* ========================================================================
  * PLATFORM-SPECIFIC INCLUDES
@@ -92,10 +93,14 @@ int nimcp_platform_time_init(void)
 
     LARGE_INTEGER freq;
     if (!QueryPerformanceFrequency(&freq)) {
+        LOG_ERROR("nimcp_platform_time_init: QueryPerformanceFrequency failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Platform time init failed: QueryPerformanceFrequency error");
         return EINVAL;  /* Failed to get frequency */
     }
 
     if (freq.QuadPart <= 0) {
+        LOG_ERROR("nimcp_platform_time_init: invalid performance counter frequency");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Platform time init failed: invalid frequency");
         return EINVAL;  /* Invalid frequency */
     }
 
@@ -111,10 +116,14 @@ int nimcp_platform_time_init(void)
 
     kern_return_t result = mach_timebase_info(&g_mach_timebase);
     if (result != KERN_SUCCESS) {
+        LOG_ERROR("nimcp_platform_time_init: mach_timebase_info failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Platform time init failed: mach_timebase_info error");
         return EIO;  /* Failed to get timebase */
     }
 
     if (g_mach_timebase.denom <= 0) {
+        LOG_ERROR("nimcp_platform_time_init: invalid mach timebase denominator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Platform time init failed: invalid timebase");
         return EINVAL;  /* Invalid timebase */
     }
 
@@ -296,8 +305,15 @@ void nimcp_platform_sleep_ms(uint32_t ms)
 int nimcp_platform_time_to_string(uint64_t time_ms, char* buffer, size_t size)
 {
     /* Validate inputs */
-    if (!buffer || size < 32) {
-        return -1;  /* Buffer too small or NULL pointer */
+    if (!buffer) {
+        LOG_ERROR("nimcp_platform_time_to_string: buffer pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Time to string failed: NULL buffer");
+        return -1;
+    }
+    if (size < 32) {
+        LOG_ERROR("nimcp_platform_time_to_string: buffer size too small (need at least 32 bytes)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Time to string failed: buffer too small");
+        return -1;  /* Buffer too small */
     }
 
     /* Convert milliseconds to time components */

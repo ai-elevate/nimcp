@@ -25,6 +25,28 @@
 #include <float.h>
 
 /*=============================================================================
+ * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+ *===========================================================================*/
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent reference for LNN training */
+static nimcp_health_agent_t* g_lnn_health_agent = NULL;
+
+void lnn_training_set_health_agent(nimcp_health_agent_t* agent) {
+    g_lnn_health_agent = agent;
+}
+
+static inline void lnn_training_heartbeat(const char* operation, float progress) {
+    if (g_lnn_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_lnn_health_agent, operation, progress);
+    }
+}
+
+/*=============================================================================
  * Constants
  *===========================================================================*/
 
@@ -671,6 +693,9 @@ int lnn_training_epoch(
 
     /* Process each batch */
     for (uint32_t batch_idx = 0; batch_idx < num_batches; batch_idx++) {
+        /* Phase 8: Send heartbeat with batch progress */
+        lnn_training_heartbeat("lnn_train_epoch", (float)batch_idx / (float)num_batches);
+
         uint32_t batch_start = batch_idx * batch_size;
         uint32_t batch_end = batch_start + batch_size;
         if (batch_end > n_samples) batch_end = n_samples;

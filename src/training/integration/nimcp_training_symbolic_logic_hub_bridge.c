@@ -6,6 +6,10 @@
  */
 
 #include "training/integration/nimcp_training_symbolic_logic_hub_bridge.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

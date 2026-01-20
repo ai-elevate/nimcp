@@ -19,6 +19,7 @@
 #include "core/brain/nimcp_brain_io.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/logging/nimcp_logging.h"
 #include <cjson/cJSON.h>
 #include <dirent.h>

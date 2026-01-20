@@ -13,6 +13,7 @@
 #include "physics/bridges/nimcp_ephaptic_bio_async_bridge.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -198,9 +199,7 @@ ephaptic_bio_async_bridge_t* ephaptic_bio_async_bridge_create(
     const ephaptic_bio_async_config_t* config
 ) {
     ephaptic_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate ephaptic bio-async bridge");
 
     // Apply configuration
     if (config) {

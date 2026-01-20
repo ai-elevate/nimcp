@@ -111,14 +111,17 @@ typedef enum {
 
 /**
  * @brief Recovery strategy for an exception type
+ *
+ * NOTE: Named nimcp_exception_recovery_strategy_t to avoid collision with
+ * nimcp_recovery_strategy_t enum in fault_tolerance/nimcp_recovery_cache.h
  */
 typedef struct {
-    nimcp_recovery_action_t primary_action;    /**< Primary recovery action */
-    nimcp_recovery_action_t fallback_action;   /**< Fallback if primary fails */
+    nimcp_exception_recovery_action_t primary_action;    /**< Primary recovery action */
+    nimcp_exception_recovery_action_t fallback_action;   /**< Fallback if primary fails */
     uint32_t retry_count;                      /**< Max retries for primary */
     uint32_t cooldown_ms;                      /**< Cooldown between retries */
     float severity_threshold;                  /**< Min severity for activation */
-} nimcp_recovery_strategy_t;
+} nimcp_exception_recovery_strategy_t;
 
 /* ============================================================================
  * Immune Response Result
@@ -130,7 +133,7 @@ typedef struct {
 typedef struct {
     uint32_t antigen_id;               /**< Assigned antigen ID */
     uint32_t antibody_id;              /**< Produced antibody ID (if any) */
-    nimcp_recovery_action_t action_taken; /**< Recovery action executed */
+    nimcp_exception_recovery_action_t action_taken; /**< Recovery action executed */
     bool recovery_attempted;           /**< Recovery was attempted */
     bool recovery_succeeded;           /**< Recovery succeeded */
     uint64_t response_time_us;         /**< Time to respond (microseconds) */
@@ -274,7 +277,7 @@ uint32_t nimcp_exception_to_immune_severity(
  */
 void nimcp_exception_get_recovery_strategy(
     const nimcp_exception_t* ex,
-    nimcp_recovery_strategy_t* strategy
+    nimcp_exception_recovery_strategy_t* strategy
 );
 
 /* ============================================================================
@@ -318,7 +321,7 @@ size_t nimcp_exception_compute_epitope(
  */
 int nimcp_exception_execute_recovery(
     nimcp_exception_t* ex,
-    nimcp_recovery_action_t action
+    nimcp_exception_recovery_action_t action
 );
 
 /**
@@ -333,7 +336,7 @@ int nimcp_exception_execute_recovery(
  */
 int nimcp_exception_notify_recovery_result(
     nimcp_exception_t* ex,
-    nimcp_recovery_action_t action,
+    nimcp_exception_recovery_action_t action,
     bool success
 );
 
@@ -346,56 +349,56 @@ int nimcp_exception_notify_recovery_result(
  *
  * Triggers garbage collection and memory compaction.
  */
-int nimcp_recovery_gc(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data);
+int nimcp_recovery_gc(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data);
 
 /**
  * @brief Default retry recovery callback
  *
  * Retries the failed operation (requires context in exception).
  */
-int nimcp_recovery_retry(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data);
+int nimcp_recovery_retry(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data);
 
 /**
  * @brief Default rollback recovery callback
  *
  * Rolls back to last checkpoint.
  */
-int nimcp_recovery_rollback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data);
+int nimcp_recovery_rollback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data);
 
 /**
  * @brief Default thread restart recovery callback
  *
  * Restarts the affected thread.
  */
-int nimcp_recovery_restart_thread(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data);
+int nimcp_recovery_restart_thread(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data);
 
 /**
  * @brief Default quarantine recovery callback
  *
  * Quarantines affected memory region or component.
  */
-int nimcp_recovery_quarantine(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data);
+int nimcp_recovery_quarantine(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data);
 
 /**
  * @brief Default emergency save recovery callback
  *
  * Performs emergency state save.
  */
-int nimcp_recovery_emergency_save(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data);
+int nimcp_recovery_emergency_save(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data);
 
 /**
  * @brief Default load reduction recovery callback
  *
  * Reduces system load by adjusting batch size, disabling features.
  */
-int nimcp_recovery_reduce_load(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data);
+int nimcp_recovery_reduce_load(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data);
 
 /**
  * @brief Default cache clear recovery callback
  *
  * Clears all caches to free memory.
  */
-int nimcp_recovery_clear_cache(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data);
+int nimcp_recovery_clear_cache(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data);
 
 /**
  * @brief Install default recovery callbacks

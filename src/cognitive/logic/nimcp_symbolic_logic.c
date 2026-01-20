@@ -11,6 +11,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
@@ -73,16 +74,10 @@ struct symbolic_logic {
 logical_term_t* logic_term_create(term_type_t type, const char* name)
 {
     LOG_DEBUG("Creating module");
-    if (!name) {
-        LOG_ERROR("NULL parameter or allocation failure");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(name, "NULL name in logic_term_create");
 
     logical_term_t* term = (logical_term_t*)nimcp_calloc(1, sizeof(logical_term_t));
-    if (!term) {
-        LOG_ERROR("NULL parameter or allocation failure");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(term, "Failed to allocate logical term");
 
     term->type = type;
     strncpy(term->name, name, LOGIC_MAX_NAME_LENGTH - 1);
@@ -158,21 +153,16 @@ static bool terms_equal(const logical_term_t* t1, const logical_term_t* t2)
 atomic_formula_t* logic_atom_create(const char* name, logical_term_t** terms, uint8_t arity)
 {
     LOG_DEBUG("Creating module");
-    if (!name) {
-        LOG_ERROR("NULL parameter or allocation failure");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(name, "NULL name in logic_atom_create");
 
     if (arity > LOGIC_MAX_ARITY) {
         LOG_ERROR("Arity %d exceeds maximum %d", arity, LOGIC_MAX_ARITY);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Arity %d exceeds maximum %d", arity, LOGIC_MAX_ARITY);
         return NULL;
     }
 
     atomic_formula_t* atom = (atomic_formula_t*)nimcp_calloc(1, sizeof(atomic_formula_t));
-    if (!atom) {
-        LOG_ERROR("NULL parameter or allocation failure");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(atom, "Failed to allocate atomic formula");
 
     strncpy(atom->name, name, LOGIC_MAX_NAME_LENGTH - 1);
     atom->name[LOGIC_MAX_NAME_LENGTH - 1] = '\0';
@@ -548,20 +538,16 @@ static logic_clause_t* logic_clause_copy(const logic_clause_t* clause)
 symbolic_logic_t* symbolic_logic_create(const logic_config_t* config)
 {
     LOG_DEBUG("Creating module");
-    if (!nimcp_validate_pointer(config, "config")) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(config, "NULL config in symbolic_logic_create");
 
     if (config->max_predicates == 0 || config->max_predicates > LOGIC_MAX_PREDICATES) {
         LOG_ERROR("Invalid max_predicates: %u", config->max_predicates);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid max_predicates: %u", config->max_predicates);
         return NULL;
     }
 
     symbolic_logic_t* logic = (symbolic_logic_t*)nimcp_calloc(1, sizeof(symbolic_logic_t));
-    if (!logic) {
-        LOG_ERROR("NULL parameter or allocation failure");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(logic, "Failed to allocate symbolic logic engine");
 
     logic->config = *config;
 
@@ -822,16 +808,11 @@ bool symbolic_logic_query(symbolic_logic_t* logic, logic_clause_t* query,
 
 unification_t* symbolic_logic_unify(logical_term_t* term1, logical_term_t* term2)
 {
-    if (!term1 || !term2) {
-        LOG_ERROR("NULL parameter or allocation failure");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(term1, "NULL term1 in symbolic_logic_unify");
+    NIMCP_API_CHECK_NULL_RET_NULL(term2, "NULL term2 in symbolic_logic_unify");
 
     unification_t* unif = (unification_t*)nimcp_calloc(1, sizeof(unification_t));
-    if (!unif) {
-        LOG_ERROR("NULL parameter or allocation failure");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(unif, "Failed to allocate unification result");
 
     unif->success = false;
     unif->bindings = NULL;
@@ -917,10 +898,8 @@ unification_t* symbolic_logic_unify(logical_term_t* term1, logical_term_t* term2
 
 logical_term_t* symbolic_logic_substitute(logical_term_t* term, const substitution_t* subst)
 {
-    if (!term || !subst) {
-        LOG_ERROR("NULL parameter or allocation failure");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(term, "NULL term in symbolic_logic_substitute");
+    NIMCP_API_CHECK_NULL_RET_NULL(subst, "NULL subst in symbolic_logic_substitute");
 
     // If term is the variable being substituted, return the value
     if (terms_equal(term, subst->variable)) {

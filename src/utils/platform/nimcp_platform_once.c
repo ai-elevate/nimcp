@@ -29,6 +29,7 @@
 #include <errno.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 
 /* ========================================================================
  * WINDOWS-SPECIFIC CALLBACK WRAPPER
@@ -74,7 +75,14 @@ static BOOL CALLBACK nimcp_platform_once_callback(
 int nimcp_platform_once(nimcp_platform_once_t* once_control,
                         nimcp_platform_once_routine_t init_routine)
 {
-    if (!once_control || !init_routine) {
+    if (!once_control) {
+        LOG_ERROR("nimcp_platform_once: once_control pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Once init failed: NULL once_control pointer");
+        return EINVAL;
+    }
+    if (!init_routine) {
+        LOG_ERROR("nimcp_platform_once: init_routine pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Once init failed: NULL init_routine pointer");
         return EINVAL;
     }
 

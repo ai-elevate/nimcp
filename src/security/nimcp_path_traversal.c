@@ -27,6 +27,7 @@
 
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "security_path_traversal"
 
@@ -307,10 +308,7 @@ nimcp_path_validator_t nimcp_path_validator_create(
     nimcp_path_validator_t validator = (nimcp_path_validator_t)
         nimcp_calloc(1, sizeof(struct nimcp_path_validator_struct));
 
-    if (!validator) {
-        LOG_ERROR(LOG_MODULE, "Failed to allocate path validator");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(validator, "Failed to allocate path validator");
 
     /* Initialize */
     validator->magic = NIMCP_PATH_VALIDATOR_MAGIC;
@@ -352,7 +350,7 @@ nimcp_path_error_t nimcp_path_validate(
     nimcp_path_validation_result_t* result)
 {
     /* Guard: NULL parameters */
-    if (!result) return NIMCP_PATH_ERROR_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(result, NIMCP_PATH_ERROR_INVALID_PARAM, "NULL result in path validate");
 
     /* Initialize result */
     memset(result, 0, sizeof(*result));

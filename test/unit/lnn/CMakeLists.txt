@@ -151,3 +151,8 @@ endif()
 # - test_lnn_bio_async.cpp
 # - test_lnn_immune.cpp
 # - test_lnn_parallel.cpp
+
+# Exception handling tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt")
+    add_subdirectory(exception)
+endif()

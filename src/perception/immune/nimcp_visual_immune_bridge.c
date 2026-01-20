@@ -13,6 +13,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
@@ -143,7 +144,7 @@ static float inflammation_to_visual_factor(brain_inflammation_level_t level) {
  * ============================================================================ */
 
 int visual_immune_default_config(visual_immune_config_t* config) {
-    if (!config) return -1;
+    NIMCP_API_CHECK_NULL(config, -1, "visual_immune_default_config: NULL config");
 
     /* All features enabled by default */
     config->enable_cytokine_visual_modulation = true;
@@ -171,19 +172,13 @@ visual_immune_bridge_t* visual_immune_bridge_create(
     visual_cortex_t* visual_cortex
 ) {
     /* Guard: require both systems */
-    if (!immune_system || !visual_cortex) {
-        LOG_MODULE_ERROR("visual_immune_bridge",
-                  "Cannot create bridge without immune and visual systems");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(immune_system, "visual_immune_bridge_create: NULL immune_system");
+    NIMCP_API_CHECK_NULL_RET_NULL(visual_cortex, "visual_immune_bridge_create: NULL visual_cortex");
 
     /* Allocate bridge */
     visual_immune_bridge_t* bridge = (visual_immune_bridge_t*)
         nimcp_malloc(sizeof(visual_immune_bridge_t));
-    if (!bridge) {
-        LOG_MODULE_ERROR("visual_immune_bridge", "Allocation failed");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "visual_immune_bridge_create: Failed to allocate bridge");
 
     /* Initialize to zero */
     memset(bridge, 0, sizeof(visual_immune_bridge_t));
@@ -248,9 +243,10 @@ void visual_immune_bridge_destroy(visual_immune_bridge_t* bridge) {
 
 int visual_immune_apply_cytokine_effects(visual_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_apply_cytokine_effects: NULL bridge");
     if (!bridge->enable_cytokine_visual_modulation) return 0;
-    if (!bridge->immune_system || !bridge->visual_cortex) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "visual_immune_apply_cytokine_effects: NULL immune_system");
+    NIMCP_API_CHECK_NULL(bridge->visual_cortex, -1, "visual_immune_apply_cytokine_effects: NULL visual_cortex");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -293,9 +289,9 @@ int visual_immune_apply_cytokine_effects(visual_immune_bridge_t* bridge) {
 
 int visual_immune_apply_inflammation_effects(visual_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_apply_inflammation_effects: NULL bridge");
     if (!bridge->enable_inflammation_visual_impairment) return 0;
-    if (!bridge->immune_system) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "visual_immune_apply_inflammation_effects: NULL immune_system");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -345,9 +341,9 @@ int visual_immune_apply_inflammation_effects(visual_immune_bridge_t* bridge) {
 
 int visual_immune_apply_sickness_effects(visual_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_apply_sickness_effects: NULL bridge");
     if (!bridge->enable_sickness_visual_reduction) return 0;
-    if (!bridge->immune_system) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "visual_immune_apply_sickness_effects: NULL immune_system");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -390,8 +386,9 @@ float visual_immune_compute_tunnel_vision(const visual_immune_bridge_t* bridge) 
 
 int visual_immune_modulate_neurotransmitters(visual_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
-    if (!bridge->immune_system || !bridge->visual_cortex) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_modulate_neurotransmitters: NULL bridge");
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "visual_immune_modulate_neurotransmitters: NULL immune_system");
+    NIMCP_API_CHECK_NULL(bridge->visual_cortex, -1, "visual_immune_modulate_neurotransmitters: NULL visual_cortex");
 
     /* Get inflammation level */
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
@@ -423,10 +420,11 @@ int visual_immune_trigger_from_threat(
     float salience
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_trigger_from_threat: NULL bridge");
     if (!bridge->enable_visual_immune_trigger) return 0;
-    if (!threat_features || num_features == 0) return -1;
-    if (!bridge->immune_system) return -1;
+    NIMCP_API_CHECK_NULL(threat_features, -1, "visual_immune_trigger_from_threat: NULL threat_features");
+    NIMCP_API_CHECK(num_features > 0, -1, "visual_immune_trigger_from_threat: num_features is 0");
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "visual_immune_trigger_from_threat: NULL immune_system");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -477,9 +475,9 @@ int visual_immune_trigger_from_anomaly(
     float anomaly_score
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_trigger_from_anomaly: NULL bridge");
     if (!bridge->enable_visual_immune_trigger) return 0;
-    if (!bridge->immune_system) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "visual_immune_trigger_from_anomaly: NULL immune_system");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -524,9 +522,9 @@ int visual_immune_trigger_from_anomaly(
 
 int visual_immune_trigger_from_visual_stress(visual_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_trigger_from_visual_stress: NULL bridge");
     if (!bridge->enable_visual_immune_trigger) return 0;
-    if (!bridge->immune_system) return -1;
+    NIMCP_API_CHECK_NULL(bridge->immune_system, -1, "visual_immune_trigger_from_visual_stress: NULL immune_system");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -572,7 +570,7 @@ int visual_immune_bridge_update(
     visual_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_bridge_update: NULL bridge");
 
     /* Update visual stress duration */
     bridge->visual_trigger.visual_stress_duration_sec += (float)delta_ms / 1000.0f;
@@ -598,7 +596,8 @@ int visual_immune_get_cytokine_effects(
     const visual_immune_bridge_t* bridge,
     cytokine_visual_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_get_cytokine_effects: NULL bridge");
+    NIMCP_API_CHECK_NULL(effects, -1, "visual_immune_get_cytokine_effects: NULL effects");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->cytokine_effects;
@@ -611,7 +610,8 @@ int visual_immune_get_inflammation_state(
     const visual_immune_bridge_t* bridge,
     inflammation_visual_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_get_inflammation_state: NULL bridge");
+    NIMCP_API_CHECK_NULL(state, -1, "visual_immune_get_inflammation_state: NULL state");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->inflammation_state;
@@ -678,7 +678,7 @@ float visual_immune_get_threat_salience_boost(const visual_immune_bridge_t* brid
  * @brief Connect bridge to bio-async router
  */
 int visual_immune_connect_bio_async(visual_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_connect_bio_async: NULL bridge");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -703,7 +703,7 @@ int visual_immune_connect_bio_async(visual_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int visual_immune_disconnect_bio_async(visual_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "visual_immune_disconnect_bio_async: NULL bridge");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

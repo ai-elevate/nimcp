@@ -6,6 +6,7 @@
  */
 
 #include "integration/inter/neuromod_reasoning/nimcp_neuromod_reasoning_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -96,7 +97,7 @@ neuromod_reasoning_config_t neuromod_reasoning_default_config(void) {
 
 neuromod_reasoning_bridge_t* neuromod_reasoning_create(const neuromod_reasoning_config_t* config) {
     neuromod_reasoning_bridge_t* bridge = calloc(1, sizeof(neuromod_reasoning_bridge_t));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate neuromod-reasoning bridge");
 
     bridge->magic = NEUROMOD_REASONING_BRIDGE_MAGIC;
 

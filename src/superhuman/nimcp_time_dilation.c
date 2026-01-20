@@ -25,6 +25,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -152,6 +154,8 @@ static int alloc_buffer(time_buffer_t* buf, uint32_t capacity) {
     buf->timestamps_us = nimcp_calloc(capacity, sizeof(uint64_t));
 
     if (!buf->samples || !buf->timestamps_us) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, capacity * sizeof(float),
+                           "alloc_buffer: Failed to allocate temporal buffer");
         if (buf->samples) nimcp_free(buf->samples);
         if (buf->timestamps_us) nimcp_free(buf->timestamps_us);
         buf->samples = NULL;
@@ -296,7 +300,11 @@ static void record_reaction_time(time_dilation_system_t* sys, float time_ms) {
  * ============================================================================ */
 
 int time_dilation_default_config(time_dilation_config_t* config) {
-    if (!config) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_default_config: config is NULL");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     /* Dilation settings */
     config->mode = TIME_MODE_ADAPTIVE;
@@ -337,6 +345,8 @@ time_dilation_system_t* time_dilation_create(const time_dilation_config_t* confi
     time_dilation_system_t* sys = nimcp_calloc(1, sizeof(time_dilation_system_t));
     if (!sys) {
         NIMCP_LOGGING_ERROR("Failed to allocate time dilation system");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(time_dilation_system_t),
+                           "time_dilation_create: Failed to allocate system");
         return NULL;
     }
 
@@ -353,6 +363,9 @@ time_dilation_system_t* time_dilation_create(const time_dilation_config_t* confi
     sys->events = nimcp_calloc(sys->event_capacity, sizeof(event_entry_t));
     if (!sys->events) {
         NIMCP_LOGGING_ERROR("Failed to allocate event queue");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           sys->event_capacity * sizeof(event_entry_t),
+                           "time_dilation_create: Failed to allocate event queue");
         time_dilation_destroy(sys);
         return NULL;
     }
@@ -361,12 +374,14 @@ time_dilation_system_t* time_dilation_create(const time_dilation_config_t* confi
     /* Allocate temporal buffers */
     if (alloc_buffer(&sys->input_buffer, config->input_buffer_size) != 0) {
         NIMCP_LOGGING_ERROR("Failed to allocate input buffer");
+        /* Exception already thrown in alloc_buffer */
         time_dilation_destroy(sys);
         return NULL;
     }
 
     if (alloc_buffer(&sys->output_buffer, config->output_buffer_size) != 0) {
         NIMCP_LOGGING_ERROR("Failed to allocate output buffer");
+        /* Exception already thrown in alloc_buffer */
         time_dilation_destroy(sys);
         return NULL;
     }
@@ -375,6 +390,8 @@ time_dilation_system_t* time_dilation_create(const time_dilation_config_t* confi
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE,
+                              "time_dilation_create: Failed to create mutex");
         time_dilation_destroy(sys);
         return NULL;
     }
@@ -440,7 +457,11 @@ void time_dilation_destroy(time_dilation_system_t* system) {
 }
 
 int time_dilation_reset(time_dilation_system_t* system) {
-    if (!system) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_reset: system is NULL");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -500,7 +521,11 @@ int time_dilation_reset(time_dilation_system_t* system) {
 
 int time_dilation_set_config(time_dilation_system_t* system,
                              const time_dilation_config_t* config) {
-    if (!system || !config) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_set_config: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     system->config = *config;
@@ -512,7 +537,11 @@ int time_dilation_set_config(time_dilation_system_t* system,
 
 int time_dilation_get_config(const time_dilation_system_t* system,
                              time_dilation_config_t* config) {
-    if (!system || !config) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_get_config: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     *config = system->config;
     return TIME_DILATION_SUCCESS;
@@ -520,7 +549,11 @@ int time_dilation_get_config(const time_dilation_system_t* system,
 
 int time_dilation_set_mode(time_dilation_system_t* system,
                            time_dilation_mode_t mode) {
-    if (!system) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_set_mode: system is NULL");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -549,7 +582,11 @@ int time_dilation_set_mode(time_dilation_system_t* system,
 }
 
 int time_dilation_set_factor(time_dilation_system_t* system, float factor) {
-    if (!system) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_set_factor: system is NULL");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     factor = clamp_f(factor, system->config.min_dilation_factor,
                      system->config.max_dilation_factor);
@@ -567,7 +604,11 @@ int time_dilation_set_factor(time_dilation_system_t* system, float factor) {
 
 int time_dilation_set_resolution(time_dilation_system_t* system,
                                  time_resolution_t resolution) {
-    if (!system) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_set_resolution: system is NULL");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -587,7 +628,11 @@ int time_dilation_set_resolution(time_dilation_system_t* system,
 int time_dilation_activate(time_dilation_system_t* system,
                            time_dilation_trigger_t trigger,
                            float factor) {
-    if (!system) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_activate: system is NULL");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -660,7 +705,11 @@ int time_dilation_activate(time_dilation_system_t* system,
 }
 
 int time_dilation_deactivate(time_dilation_system_t* system) {
-    if (!system) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_deactivate: system is NULL");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -686,7 +735,11 @@ int time_dilation_check_triggers(time_dilation_system_t* system,
                                  float threat_level,
                                  float novelty_level,
                                  float complexity_level) {
-    if (!system) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_check_triggers: system is NULL");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
     if (!system->config.enable_auto_triggers) return TIME_DILATION_SUCCESS;
 
     /* Check threat trigger (highest priority) */
@@ -722,13 +775,19 @@ int time_dilation_submit_event(time_dilation_system_t* system,
                                time_event_priority_t priority,
                                float deadline_ms,
                                uint32_t* event_id) {
-    if (!system || !data || !event_id) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !data || !event_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_submit_event: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
     /* Find empty slot */
     event_entry_t* entry = find_empty_slot(system);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+                              "time_dilation_submit_event: event buffer full");
         nimcp_platform_mutex_unlock(system->mutex);
         return TIME_DILATION_ERROR_BUFFER_FULL;
     }
@@ -736,6 +795,8 @@ int time_dilation_submit_event(time_dilation_system_t* system,
     /* Copy data */
     entry->data_copy = nimcp_malloc(data_size * sizeof(float));
     if (!entry->data_copy) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, data_size * sizeof(float),
+                           "time_dilation_submit_event: Failed to copy event data");
         nimcp_platform_mutex_unlock(system->mutex);
         return TIME_DILATION_ERROR_NO_MEMORY;
     }
@@ -765,7 +826,11 @@ int time_dilation_submit_event(time_dilation_system_t* system,
 int time_dilation_process(time_dilation_system_t* system,
                           float real_delta_ms,
                           uint32_t* events_processed) {
-    if (!system || !events_processed) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !events_processed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_process: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     uint64_t start_time = get_time_us();
     *events_processed = 0;
@@ -890,7 +955,11 @@ int time_dilation_process(time_dilation_system_t* system,
 
 int time_dilation_get_event(time_dilation_system_t* system,
                             time_event_t* event) {
-    if (!system || !event) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_get_event: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -928,7 +997,11 @@ int time_dilation_get_event(time_dilation_system_t* system,
 }
 
 int time_dilation_clear_events(time_dilation_system_t* system) {
-    if (!system) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_clear_events: system is NULL");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -953,7 +1026,11 @@ int time_dilation_clear_events(time_dilation_system_t* system) {
 int time_dilation_real_to_subjective(time_dilation_system_t* system,
                                      uint64_t real_time_us,
                                      uint64_t* subjective_time_us) {
-    if (!system || !subjective_time_us) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !subjective_time_us) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_real_to_subjective: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     /* Convert using current dilation factor */
     /* Note: This is an approximation - true conversion would track history */
@@ -967,7 +1044,11 @@ int time_dilation_real_to_subjective(time_dilation_system_t* system,
 int time_dilation_subjective_to_real(time_dilation_system_t* system,
                                      uint64_t subjective_time_us,
                                      uint64_t* real_time_us) {
-    if (!system || !real_time_us) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !real_time_us) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_subjective_to_real: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     /* Inverse conversion */
     if (system->current_factor < 0.001f) {
@@ -983,7 +1064,11 @@ int time_dilation_subjective_to_real(time_dilation_system_t* system,
 
 int time_dilation_get_subjective_time(time_dilation_system_t* system,
                                       uint64_t* subjective_time_us) {
-    if (!system || !subjective_time_us) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !subjective_time_us) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_get_subjective_time: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     *subjective_time_us = system->state.subjective_time_us;
     return TIME_DILATION_SUCCESS;
@@ -991,7 +1076,11 @@ int time_dilation_get_subjective_time(time_dilation_system_t* system,
 
 int time_dilation_get_resolution(const time_dilation_system_t* system,
                                  float* resolution_us) {
-    if (!system || !resolution_us) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !resolution_us) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_get_resolution: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     /* Effective resolution improves with dilation */
     *resolution_us = system->state.effective_resolution_us / system->current_factor;
@@ -1005,7 +1094,11 @@ int time_dilation_get_resolution(const time_dilation_system_t* system,
 
 int time_dilation_start_reaction(time_dilation_system_t* system,
                                  time_reaction_t* reaction) {
-    if (!system || !reaction) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !reaction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_start_reaction: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     memset(reaction, 0, sizeof(time_reaction_t));
     reaction->stimulus_time_ms = get_time_ms();
@@ -1016,7 +1109,11 @@ int time_dilation_start_reaction(time_dilation_system_t* system,
 
 int time_dilation_record_response(time_dilation_system_t* system,
                                   time_reaction_t* reaction) {
-    if (!system || !reaction) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !reaction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_record_response: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     reaction->response_time_ms = get_time_ms();
     reaction->decision_time_ms = reaction->response_time_ms - reaction->stimulus_time_ms;
@@ -1027,7 +1124,11 @@ int time_dilation_record_response(time_dilation_system_t* system,
 int time_dilation_complete_reaction(time_dilation_system_t* system,
                                     time_reaction_t* reaction,
                                     bool is_accurate) {
-    if (!system || !reaction) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !reaction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_complete_reaction: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     float complete_time = get_time_ms();
     reaction->motor_time_ms = complete_time - reaction->response_time_ms;
@@ -1049,7 +1150,11 @@ int time_dilation_complete_reaction(time_dilation_system_t* system,
 
 int time_dilation_get_avg_reaction(const time_dilation_system_t* system,
                                    float* avg_ms) {
-    if (!system || !avg_ms) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !avg_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_get_avg_reaction: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     if (system->reactions.count == 0) {
         *avg_ms = 0.0f;
@@ -1066,7 +1171,11 @@ int time_dilation_get_avg_reaction(const time_dilation_system_t* system,
 
 int time_dilation_get_state(const time_dilation_system_t* system,
                             time_dilation_state_t* state) {
-    if (!system || !state) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_get_state: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     *state = system->state;
     return TIME_DILATION_SUCCESS;
@@ -1074,14 +1183,22 @@ int time_dilation_get_state(const time_dilation_system_t* system,
 
 int time_dilation_get_stats(const time_dilation_system_t* system,
                             time_dilation_stats_t* stats) {
-    if (!system || !stats) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_get_stats: NULL parameter");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     *stats = system->stats;
     return TIME_DILATION_SUCCESS;
 }
 
 int time_dilation_reset_stats(time_dilation_system_t* system) {
-    if (!system) return TIME_DILATION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "time_dilation_reset_stats: system is NULL");
+        return TIME_DILATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     memset(&system->stats, 0, sizeof(time_dilation_stats_t));

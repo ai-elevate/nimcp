@@ -17,6 +17,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/serialization/nimcp_serialization.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

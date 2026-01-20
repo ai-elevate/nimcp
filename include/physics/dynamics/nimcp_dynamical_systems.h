@@ -174,7 +174,7 @@ typedef enum {
 typedef struct nimcp_brain_struct* nimcp_brain_t;
 typedef struct nimcp_bio_router_struct* nimcp_bio_router_t;
 typedef struct nimcp_brain_immune_struct* nimcp_brain_immune_t;
-typedef struct nimcp_exception_handler_struct* nimcp_exception_handler_t;
+typedef struct dynsys_exception_handler_struct* dynsys_exception_handler_t;
 
 //=============================================================================
 // Opaque Handle Types
@@ -829,7 +829,7 @@ NIMCP_EXPORT int dynsys_bridge_register_kg(
  */
 NIMCP_EXPORT int dynsys_bridge_register_exception_handler(
     dynsys_bridge_t bridge,
-    nimcp_exception_handler_t handler
+    dynsys_exception_handler_t handler
 );
 
 /**

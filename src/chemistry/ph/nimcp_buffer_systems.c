@@ -6,6 +6,7 @@
  */
 
 #include "chemistry/ph/nimcp_buffer_systems.h"
+#include "api/nimcp_api_exception.h"
 
 #include <string.h>
 #include <math.h>
@@ -122,6 +123,7 @@ nimcp_buffer_error_t nimcp_buffer_init(
     const nimcp_buffer_config_t* config
 ) {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Buffer manager is NULL");
         return BUFFER_ERR_NULL_PTR;
     }
 
@@ -169,6 +171,7 @@ nimcp_buffer_error_t nimcp_buffer_init(
 
 nimcp_buffer_error_t nimcp_buffer_shutdown(nimcp_buffer_manager_t* manager) {
     if (!manager) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Buffer manager is NULL in shutdown");
         return BUFFER_ERR_NULL_PTR;
     }
 
@@ -179,6 +182,7 @@ nimcp_buffer_error_t nimcp_buffer_shutdown(nimcp_buffer_manager_t* manager) {
 
 nimcp_buffer_error_t nimcp_buffer_reset(nimcp_buffer_manager_t* manager) {
     if (!manager) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Buffer manager is NULL in reset");
         return BUFFER_ERR_NULL_PTR;
     }
 
@@ -223,10 +227,12 @@ nimcp_buffer_error_t nimcp_bicarbonate_set_concentration(
     float concentration
 ) {
     if (!buffer) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Bicarbonate buffer is NULL in set_concentration");
         return BUFFER_ERR_NULL_PTR;
     }
 
     if (concentration < 0.0f) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Bicarbonate concentration cannot be negative: %f", concentration);
         return BUFFER_ERR_INVALID_PARAM;
     }
 
@@ -250,10 +256,12 @@ nimcp_buffer_error_t nimcp_bicarbonate_set_pco2(
     float pco2
 ) {
     if (!buffer) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Bicarbonate buffer is NULL in set_pco2");
         return BUFFER_ERR_NULL_PTR;
     }
 
     if (pco2 < 0.0f) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "pCO2 cannot be negative: %f", pco2);
         return BUFFER_ERR_INVALID_PARAM;
     }
 
@@ -268,6 +276,7 @@ nimcp_buffer_error_t nimcp_bicarbonate_calculate_ph(
     float* ph
 ) {
     if (!buffer || !ph) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Bicarbonate calculate_ph: NULL argument");
         return BUFFER_ERR_NULL_PTR;
     }
 
@@ -299,6 +308,7 @@ nimcp_buffer_error_t nimcp_bicarbonate_apply_acid(
     float* delta_ph
 ) {
     if (!buffer || !delta_ph) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Bicarbonate apply_acid: NULL argument");
         return BUFFER_ERR_NULL_PTR;
     }
 
@@ -349,10 +359,12 @@ nimcp_buffer_error_t nimcp_phosphate_set_concentration(
     float concentration
 ) {
     if (!buffer) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Phosphate buffer is NULL in set_concentration");
         return BUFFER_ERR_NULL_PTR;
     }
 
     if (concentration < 0.0f) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Phosphate concentration cannot be negative: %f", concentration);
         return BUFFER_ERR_INVALID_PARAM;
     }
 
@@ -382,6 +394,7 @@ nimcp_buffer_error_t nimcp_phosphate_apply_acid(
     float* delta_ph
 ) {
     if (!buffer || !delta_ph) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Phosphate apply_acid: NULL argument");
         return BUFFER_ERR_NULL_PTR;
     }
 
@@ -425,10 +438,12 @@ nimcp_buffer_error_t nimcp_protein_set_concentration(
     float concentration
 ) {
     if (!buffer) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Protein buffer is NULL in set_concentration");
         return BUFFER_ERR_NULL_PTR;
     }
 
     if (concentration < 0.0f) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Protein concentration cannot be negative: %f", concentration);
         return BUFFER_ERR_INVALID_PARAM;
     }
 
@@ -445,6 +460,7 @@ nimcp_buffer_error_t nimcp_protein_apply_acid(
     float* delta_ph
 ) {
     if (!buffer || !delta_ph) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Protein apply_acid: NULL argument");
         return BUFFER_ERR_NULL_PTR;
     }
 
@@ -493,10 +509,12 @@ nimcp_buffer_error_t nimcp_buffer_add_component(
     float concentration
 ) {
     if (!manager || !name) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Buffer add_component: NULL argument");
         return BUFFER_ERR_NULL_PTR;
     }
 
     if (manager->num_components >= BUFFER_MAX_SYSTEMS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "Buffer component capacity exceeded: max %d", BUFFER_MAX_SYSTEMS);
         return BUFFER_ERR_CAPACITY_EXCEEDED;
     }
 
@@ -538,10 +556,12 @@ nimcp_buffer_error_t nimcp_buffer_apply_acid_load(
     float* new_ph
 ) {
     if (!manager || !new_ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Buffer manager or output pH is NULL");
         return BUFFER_ERR_NULL_PTR;
     }
 
     if (!manager->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "Buffer manager not initialized");
         return BUFFER_ERR_NOT_INITIALIZED;
     }
 
@@ -624,6 +644,7 @@ nimcp_buffer_error_t nimcp_buffer_apply_base_load(
     float* new_ph
 ) {
     if (!manager || !new_ph) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Buffer apply_base_load: NULL argument");
         return BUFFER_ERR_NULL_PTR;
     }
 
@@ -636,6 +657,7 @@ nimcp_buffer_error_t nimcp_buffer_get_total_capacity(
     float* capacity
 ) {
     if (!manager || !capacity) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Buffer get_total_capacity: NULL argument");
         return BUFFER_ERR_NULL_PTR;
     }
 
@@ -649,10 +671,12 @@ nimcp_buffer_error_t nimcp_buffer_update(
     float dt
 ) {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Buffer manager is NULL in update");
         return BUFFER_ERR_NULL_PTR;
     }
 
     if (!manager->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "Buffer manager not initialized");
         return BUFFER_ERR_NOT_INITIALIZED;
     }
 

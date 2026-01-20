@@ -6,6 +6,7 @@
  */
 
 #include "integration/inter/superhuman_neuromod/nimcp_superhuman_neuromod_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -38,7 +39,7 @@ nimcp_superhuman_neuromod_config_t nimcp_superhuman_neuromod_default_config(void
 
 nimcp_superhuman_neuromod_bridge_t nimcp_superhuman_neuromod_create(const nimcp_superhuman_neuromod_config_t* config) {
     nimcp_superhuman_neuromod_bridge_t bridge = (nimcp_superhuman_neuromod_bridge_t)calloc(1, sizeof(struct nimcp_superhuman_neuromod_bridge_struct));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate superhuman-neuromod bridge");
     bridge->config = config ? *config : nimcp_superhuman_neuromod_default_config();
     bridge->state.bridge_coherence = 1.0f;
     bridge->state.sensitivity_level = 0.5f;
@@ -58,8 +59,9 @@ nimcp_layer_error_t nimcp_superhuman_neuromod_init(
     nimcp_superhuman_intra_t superhuman,
     nimcp_neuromod_intra_t neuromod
 ) {
-    if (!bridge || !registry) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (bridge->is_initialized) return NIMCP_LAYER_ERR_ALREADY_REGISTERED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in superhuman_neuromod_init");
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL in superhuman_neuromod_init");
+    NIMCP_API_CHECK(!bridge->is_initialized, NIMCP_LAYER_ERR_ALREADY_REGISTERED, "Bridge already initialized in superhuman_neuromod_init");
     bridge->registry = registry;
     bridge->superhuman = superhuman;
     bridge->neuromod = neuromod;
@@ -68,15 +70,15 @@ nimcp_layer_error_t nimcp_superhuman_neuromod_init(
 }
 
 nimcp_layer_error_t nimcp_superhuman_neuromod_shutdown(nimcp_superhuman_neuromod_bridge_t bridge) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in superhuman_neuromod_shutdown");
+    NIMCP_API_CHECK(bridge->is_initialized, NIMCP_LAYER_ERR_NOT_INITIALIZED, "Bridge not initialized in superhuman_neuromod_shutdown");
     bridge->is_initialized = false;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_superhuman_neuromod_update(nimcp_superhuman_neuromod_bridge_t bridge, float dt) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (!bridge->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in superhuman_neuromod_update");
+    NIMCP_API_CHECK(bridge->is_initialized, NIMCP_LAYER_ERR_NOT_INITIALIZED, "Bridge not initialized in superhuman_neuromod_update");
 
     /* Novel enhanced percepts trigger LC (NE) */
     bridge->state.novel_enhancement_signal *= (1.0f - dt * 0.03f);
@@ -112,27 +114,31 @@ nimcp_layer_error_t nimcp_superhuman_neuromod_update(nimcp_superhuman_neuromod_b
 }
 
 nimcp_layer_error_t nimcp_superhuman_neuromod_transfer_feedback(nimcp_superhuman_neuromod_bridge_t bridge, const nimcp_layer_msg_t* msg) {
-    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in superhuman_neuromod_transfer_feedback");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in superhuman_neuromod_transfer_feedback");
     bridge->state.feedback_messages++;
     bridge->stats.novel_enhancements++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_superhuman_neuromod_transfer_modulation(nimcp_superhuman_neuromod_bridge_t bridge, const nimcp_layer_msg_t* msg) {
-    if (!bridge || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in superhuman_neuromod_transfer_modulation");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in superhuman_neuromod_transfer_modulation");
     bridge->state.modulation_messages++;
     bridge->stats.sensitivity_updates++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_superhuman_neuromod_get_state(nimcp_superhuman_neuromod_bridge_t bridge, nimcp_superhuman_neuromod_state_t* state_out) {
-    if (!bridge || !state_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in superhuman_neuromod_get_state");
+    NIMCP_API_CHECK_NULL(state_out, NIMCP_LAYER_ERR_NULL_PTR, "state_out is NULL in superhuman_neuromod_get_state");
     *state_out = bridge->state;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_superhuman_neuromod_get_stats(nimcp_superhuman_neuromod_bridge_t bridge, nimcp_superhuman_neuromod_stats_t* stats_out) {
-    if (!bridge || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in superhuman_neuromod_get_stats");
+    NIMCP_API_CHECK_NULL(stats_out, NIMCP_LAYER_ERR_NULL_PTR, "stats_out is NULL in superhuman_neuromod_get_stats");
     *stats_out = bridge->stats;
     return NIMCP_LAYER_OK;
 }
@@ -142,7 +148,7 @@ float nimcp_superhuman_neuromod_get_coherence(nimcp_superhuman_neuromod_bridge_t
 }
 
 nimcp_layer_error_t nimcp_superhuman_neuromod_reset_stats(nimcp_superhuman_neuromod_bridge_t bridge) {
-    if (!bridge) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(bridge, NIMCP_LAYER_ERR_NULL_PTR, "Bridge is NULL in superhuman_neuromod_reset_stats");
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return NIMCP_LAYER_OK;
 }

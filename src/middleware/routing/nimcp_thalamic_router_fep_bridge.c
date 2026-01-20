@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 
@@ -35,10 +36,8 @@ thalamic_router_fep_bridge_t* thalamic_router_fep_bridge_create(
 ) {
     thalamic_router_fep_bridge_t* bridge = (thalamic_router_fep_bridge_t*)
         nimcp_calloc(1, sizeof(thalamic_router_fep_bridge_t));
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate thalamic-FEP bridge");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC_SIZE(bridge, sizeof(thalamic_router_fep_bridge_t),
+        "thalamic_router_fep_bridge_create: failed to allocate bridge");
 
     thalamic_router_fep_config_t default_cfg;
     if (!config) {

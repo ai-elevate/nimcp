@@ -10,6 +10,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -119,18 +120,12 @@ hr_config_t hr_default_config(void) {
 }
 
 hr_context_t* hr_create(const hr_config_t* config) {
-    // Guard: Validate config
-    if (!config) {
-        LOG_ERROR("HR", "NULL config provided");
-        return NULL;
-    }
+    // Guard: Validate config using API exception macro
+    NIMCP_API_CHECK_NULL(config, NIMCP_ERROR_NULL_POINTER, "hr_create: NULL config provided");
 
     // Allocate context
     hr_context_t* ctx = nimcp_malloc(sizeof(hr_context_t));
-    if (!ctx) {
-        LOG_ERROR("HR", "Failed to allocate context");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(ctx, "hr_create: Failed to allocate context");
 
     // Initialize
     memset(ctx, 0, sizeof(hr_context_t));
@@ -256,9 +251,11 @@ bool hr_get_node_context(hr_context_t* ctx, uint32_t node_id, hr_node_context_t*
 //=============================================================================
 
 hr_result_t hr_submit_recovery(hr_context_t* ctx, const hr_recovery_request_t* request, hr_recovery_response_t* response) {
-    // Guard: Validate inputs
-    if (!ctx || !request || !response) return HR_RESULT_FAILED;
-    if (!ctx->running) return HR_RESULT_FAILED;
+    // Guard: Validate inputs using API exception macros
+    NIMCP_API_CHECK_NULL(ctx, NIMCP_ERROR_NULL_POINTER, "hr_submit_recovery: NULL context");
+    NIMCP_API_CHECK_NULL(request, NIMCP_ERROR_NULL_POINTER, "hr_submit_recovery: NULL request");
+    NIMCP_API_CHECK_NULL(response, NIMCP_ERROR_NULL_POINTER, "hr_submit_recovery: NULL response");
+    NIMCP_API_CHECK(ctx->running, NIMCP_ERROR_INVALID_STATE, "hr_submit_recovery: context not running");
 
     uint64_t start_time = nimcp_time_get_ms();
     hr_result_t result = HR_RESULT_FAILED;

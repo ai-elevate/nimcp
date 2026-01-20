@@ -8,6 +8,7 @@
 #include "chemistry/ph/nimcp_ph_dynamics.h"
 #include "chemistry/ph/nimcp_proton_pumps.h"
 #include "chemistry/ph/nimcp_buffer_systems.h"
+#include "api/nimcp_api_exception.h"
 
 #include <string.h>
 #include <math.h>
@@ -205,10 +206,12 @@ nimcp_ph_error_t nimcp_ph_init(
     const nimcp_ph_config_t* config
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pH system is NULL");
         return PH_ERR_NULL_PTR;
     }
 
     if (system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "pH system already initialized");
         return PH_ERR_ALREADY_INITIALIZED;
     }
 
@@ -239,6 +242,7 @@ nimcp_ph_error_t nimcp_ph_init(
 
 nimcp_ph_error_t nimcp_ph_shutdown(nimcp_ph_system_t* system) {
     if (!system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH system is NULL in shutdown");
         return PH_ERR_NULL_PTR;
     }
 
@@ -250,10 +254,12 @@ nimcp_ph_error_t nimcp_ph_shutdown(nimcp_ph_system_t* system) {
 
 nimcp_ph_error_t nimcp_ph_reset(nimcp_ph_system_t* system) {
     if (!system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH system is NULL in reset");
         return PH_ERR_NULL_PTR;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "pH system not initialized in reset");
         return PH_ERR_NOT_INITIALIZED;
     }
 
@@ -294,14 +300,17 @@ nimcp_ph_error_t nimcp_ph_add_region(
     uint32_t* region_id
 ) {
     if (!system || !name || !region_id) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH add_region: NULL argument");
         return PH_ERR_NULL_PTR;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "pH system not initialized in add_region");
         return PH_ERR_NOT_INITIALIZED;
     }
 
     if (system->num_regions >= PH_MAX_REGIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pH region capacity exceeded: max %d", PH_MAX_REGIONS);
         return PH_ERR_REGION_FULL;
     }
 
@@ -343,14 +352,17 @@ nimcp_ph_error_t nimcp_ph_remove_region(
     uint32_t region_id
 ) {
     if (!system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH remove_region: system is NULL");
         return PH_ERR_NULL_PTR;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "pH system not initialized in remove_region");
         return PH_ERR_NOT_INITIALIZED;
     }
 
     if (region_id >= system->num_regions) {
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE, "pH region_id %u not found (max: %u)", region_id, system->num_regions);
         return PH_ERR_REGION_NOT_FOUND;
     }
 
@@ -375,14 +387,17 @@ nimcp_ph_error_t nimcp_ph_set_compartment_ph(
     float ph_value
 ) {
     if (!region) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH set_compartment_ph: region is NULL");
         return PH_ERR_NULL_PTR;
     }
 
     if (compartment >= PH_COMPARTMENT_COUNT) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Invalid pH compartment: %d", compartment);
         return PH_ERR_INVALID_PARAM;
     }
 
     if (ph_value < PH_MIN_VALID || ph_value > PH_MAX_VALID) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "pH value out of range: %f (valid: %f-%f)", ph_value, PH_MIN_VALID, PH_MAX_VALID);
         return PH_ERR_INVALID_PARAM;
     }
 
@@ -403,10 +418,12 @@ nimcp_ph_error_t nimcp_ph_get_compartment_ph(
     float* ph_value
 ) {
     if (!region || !ph_value) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH get_compartment_ph: NULL argument");
         return PH_ERR_NULL_PTR;
     }
 
     if (compartment >= PH_COMPARTMENT_COUNT) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Invalid pH compartment: %d", compartment);
         return PH_ERR_INVALID_PARAM;
     }
 
@@ -420,10 +437,12 @@ nimcp_ph_error_t nimcp_ph_apply_acid_load(
     float acid_load
 ) {
     if (!region) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pH region is NULL in acid load");
         return PH_ERR_NULL_PTR;
     }
 
     if (compartment >= PH_COMPARTMENT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid pH compartment");
         return PH_ERR_INVALID_PARAM;
     }
 
@@ -453,10 +472,12 @@ nimcp_ph_error_t nimcp_ph_apply_base_load(
     float base_load
 ) {
     if (!region) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH apply_base_load: region is NULL");
         return PH_ERR_NULL_PTR;
     }
 
     if (compartment >= PH_COMPARTMENT_COUNT) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Invalid pH compartment in apply_base_load: %d", compartment);
         return PH_ERR_INVALID_PARAM;
     }
 
@@ -491,14 +512,17 @@ nimcp_ph_error_t nimcp_ph_add_buffer(
     float concentration
 ) {
     if (!region) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH add_buffer: region is NULL");
         return PH_ERR_NULL_PTR;
     }
 
     if (type >= PH_BUFFER_COUNT) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Invalid pH buffer type: %d", type);
         return PH_ERR_INVALID_PARAM;
     }
 
     if (region->num_buffers >= PH_MAX_BUFFERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pH buffer capacity exceeded: max %d", PH_MAX_BUFFERS);
         return PH_ERR_REGION_FULL;
     }
 
@@ -543,6 +567,7 @@ nimcp_ph_error_t nimcp_ph_get_buffering_capacity(
     float* capacity
 ) {
     if (!region || !capacity) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH get_buffering_capacity: NULL argument");
         return PH_ERR_NULL_PTR;
     }
 
@@ -565,6 +590,7 @@ nimcp_ph_error_t nimcp_ph_calculate_buffer_response(
     float* delta_ph
 ) {
     if (!region || !delta_ph) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH calculate_buffer_response: NULL argument");
         return PH_ERR_NULL_PTR;
     }
 
@@ -596,10 +622,12 @@ nimcp_ph_error_t nimcp_ph_set_pump_activity(
     float activity
 ) {
     if (!region) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH set_pump_activity: region is NULL");
         return PH_ERR_NULL_PTR;
     }
 
     if (pump_type >= PH_PUMP_COUNT) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Invalid pH pump type: %d", pump_type);
         return PH_ERR_INVALID_PARAM;
     }
 
@@ -614,10 +642,12 @@ nimcp_ph_error_t nimcp_ph_get_pump_activity(
     float* activity
 ) {
     if (!region || !activity) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH get_pump_activity: NULL argument");
         return PH_ERR_NULL_PTR;
     }
 
     if (pump_type >= PH_PUMP_COUNT) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Invalid pH pump type: %d", pump_type);
         return PH_ERR_INVALID_PARAM;
     }
 
@@ -632,10 +662,12 @@ nimcp_ph_error_t nimcp_ph_set_pump_enabled(
     bool enabled
 ) {
     if (!region) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH set_pump_enabled: region is NULL");
         return PH_ERR_NULL_PTR;
     }
 
     if (pump_type >= PH_PUMP_COUNT) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Invalid pH pump type: %d", pump_type);
         return PH_ERR_INVALID_PARAM;
     }
 
@@ -654,6 +686,7 @@ nimcp_ph_error_t nimcp_ph_update_region(
     float dt
 ) {
     if (!system || !region) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH update_region: NULL argument");
         return PH_ERR_NULL_PTR;
     }
 
@@ -747,10 +780,12 @@ nimcp_ph_error_t nimcp_ph_update(
     float dt
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pH system is NULL in update");
         return PH_ERR_NULL_PTR;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pH system not initialized");
         return PH_ERR_NOT_INITIALIZED;
     }
 
@@ -806,6 +841,7 @@ nimcp_ph_error_t nimcp_ph_set_activity(
     float activity
 ) {
     if (!region) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH set_activity: region is NULL");
         return PH_ERR_NULL_PTR;
     }
 
@@ -824,10 +860,12 @@ nimcp_ph_error_t nimcp_ph_get_conductance_modifier(
     float* modifier
 ) {
     if (!system || !modifier) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH get_conductance_modifier: NULL argument");
         return PH_ERR_NULL_PTR;
     }
 
     if (region_id >= system->num_regions) {
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE, "pH region_id %u not found in get_conductance_modifier", region_id);
         return PH_ERR_REGION_NOT_FOUND;
     }
 
@@ -843,10 +881,12 @@ nimcp_ph_error_t nimcp_ph_get_release_modifier(
     float* modifier
 ) {
     if (!system || !modifier) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH get_release_modifier: NULL argument");
         return PH_ERR_NULL_PTR;
     }
 
     if (region_id >= system->num_regions) {
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE, "pH region_id %u not found in get_release_modifier", region_id);
         return PH_ERR_REGION_NOT_FOUND;
     }
 
@@ -865,10 +905,12 @@ nimcp_ph_error_t nimcp_ph_get_metabolic_modifier(
     float* modifier
 ) {
     if (!system || !modifier) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH get_metabolic_modifier: NULL argument");
         return PH_ERR_NULL_PTR;
     }
 
     if (region_id >= system->num_regions) {
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE, "pH region_id %u not found in get_metabolic_modifier", region_id);
         return PH_ERR_REGION_NOT_FOUND;
     }
 
@@ -883,6 +925,7 @@ nimcp_ph_error_t nimcp_ph_get_function_modifier(
     float* modifier
 ) {
     if (!system || !modifier) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH get_function_modifier: NULL argument");
         return PH_ERR_NULL_PTR;
     }
 
@@ -910,6 +953,7 @@ nimcp_ph_error_t nimcp_ph_get_metrics(
     nimcp_ph_metrics_t* metrics
 ) {
     if (!system || !metrics) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "pH get_metrics: NULL argument");
         return PH_ERR_NULL_PTR;
     }
 

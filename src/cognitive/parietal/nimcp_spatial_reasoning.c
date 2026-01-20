@@ -10,6 +10,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -281,6 +282,7 @@ spatial_reasoning_t* spatial_reasoning_create_custom(const spatial_config_t* con
 
     if (config) {
         if (!spatial_validate_config(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid spatial reasoning config");
             return NULL;
         }
         cfg = *config;
@@ -289,10 +291,7 @@ spatial_reasoning_t* spatial_reasoning_create_custom(const spatial_config_t* con
     }
 
     spatial_reasoning_t* sr = calloc(1, sizeof(spatial_reasoning_t));
-    if (!sr) {
-        set_spatial_error("Failed to allocate spatial reasoning");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(sr, "Failed to allocate spatial reasoning");
 
     sr->config = cfg;
     sr->effective_rotation_rate = cfg.rotation_rate_deg_ms;
@@ -871,12 +870,15 @@ uint32_t spatial_find_in_radius(
 
 spatial_query_result_t* spatial_query_result_create(uint32_t capacity) {
     spatial_query_result_t* result = calloc(1, sizeof(spatial_query_result_t));
-    if (!result) return NULL;
+    NIMCP_API_CHECK_ALLOC(result, "Failed to allocate spatial query result");
 
     result->objects = calloc(capacity, sizeof(spatial_object_t*));
     result->distances = calloc(capacity, sizeof(float));
 
     if (!result->objects || !result->distances) {
+        LOG_ERROR("Failed to allocate spatial query result arrays");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, capacity * (sizeof(spatial_object_t*) + sizeof(float)),
+                          "Failed to allocate spatial query arrays");
         free(result->objects);
         free(result->distances);
         free(result);
@@ -905,13 +907,20 @@ spatial_attention_t* spatial_attention_create(
 ) {
     (void)sr;
 
-    if (grid_width == 0 || grid_height == 0) return NULL;
+    if (grid_width == 0 || grid_height == 0) {
+        LOG_ERROR("Invalid grid dimensions: %u x %u", grid_width, grid_height);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid grid dimensions: %u x %u", grid_width, grid_height);
+        return NULL;
+    }
 
     spatial_attention_t* attn = calloc(1, sizeof(spatial_attention_t));
-    if (!attn) return NULL;
+    NIMCP_API_CHECK_ALLOC(attn, "Failed to allocate spatial attention");
 
     attn->weights = calloc(grid_width * grid_height, sizeof(float));
     if (!attn->weights) {
+        LOG_ERROR("Failed to allocate attention weights");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, grid_width * grid_height * sizeof(float),
+                          "Failed to allocate attention weights");
         free(attn);
         return NULL;
     }

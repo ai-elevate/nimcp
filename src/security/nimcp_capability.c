@@ -20,6 +20,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "security_capability"
 
@@ -134,12 +135,12 @@ nimcp_capability_system_t* nimcp_capability_system_create(void)
     nimcp_capability_system_t* caps =
         (nimcp_capability_system_t*)nimcp_calloc(1, sizeof(nimcp_capability_system_t));
 
-    if (!caps)
-        return NULL;
+    NIMCP_API_CHECK_ALLOC(caps, "Failed to allocate capability system");
 
     // Create mutex for thread safety
     caps->mutex = nimcp_mutex_create(NULL);
     if (!caps->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Failed to create capability system mutex");
         nimcp_free(caps);
         return NULL;
     }
@@ -153,11 +154,9 @@ nimcp_capability_system_t* nimcp_capability_system_create(void)
 
 nimcp_result_t nimcp_capability_system_init(nimcp_capability_system_t* caps)
 {
-    if (!caps)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(caps, NIMCP_INVALID_PARAM, "NULL capability system in init");
 
-    if (caps->initialized)
-        return NIMCP_INVALID_STATE;
+    NIMCP_API_CHECK(!caps->initialized, NIMCP_INVALID_STATE, "Capability system already initialized");
 
     caps->initialized = true;
 
@@ -245,8 +244,8 @@ nimcp_result_t nimcp_capability_create(
     uint32_t permissions,
     nimcp_capability_t* capability)
 {
-    if (!caps || !capability)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(caps, NIMCP_INVALID_PARAM, "NULL capability system in create");
+    NIMCP_API_CHECK_NULL(capability, NIMCP_INVALID_PARAM, "NULL capability output in create");
 
     nimcp_mutex_lock(caps->mutex);
     nimcp_result_t result = capability_create_unlocked(
@@ -260,8 +259,8 @@ nimcp_result_t nimcp_capability_create_root(
     nimcp_capability_system_t* caps,
     nimcp_capability_t* capability)
 {
-    if (!caps || !capability)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(caps, NIMCP_INVALID_PARAM, "NULL capability system in create_root");
+    NIMCP_API_CHECK_NULL(capability, NIMCP_INVALID_PARAM, "NULL capability output in create_root");
 
     nimcp_mutex_lock(caps->mutex);
 
@@ -298,8 +297,8 @@ nimcp_result_t nimcp_capability_delegate(
     uint32_t permissions,
     nimcp_capability_t* child)
 {
-    if (!caps || !child)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(caps, NIMCP_INVALID_PARAM, "NULL capability system in delegate");
+    NIMCP_API_CHECK_NULL(child, NIMCP_INVALID_PARAM, "NULL child capability output in delegate");
 
     nimcp_mutex_lock(caps->mutex);
 
@@ -487,8 +486,7 @@ nimcp_result_t nimcp_capability_revoke(
     nimcp_capability_system_t* caps,
     nimcp_capability_t capability)
 {
-    if (!caps)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(caps, NIMCP_INVALID_PARAM, "NULL capability system in revoke");
 
     nimcp_mutex_lock(caps->mutex);
 
@@ -594,8 +592,8 @@ nimcp_result_t nimcp_capability_register_holder(
     const char* name,
     uint32_t* holder_id)
 {
-    if (!caps || !holder_id)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(caps, NIMCP_INVALID_PARAM, "NULL capability system in register_holder");
+    NIMCP_API_CHECK_NULL(holder_id, NIMCP_INVALID_PARAM, "NULL holder_id output in register_holder");
 
     nimcp_mutex_lock(caps->mutex);
 
@@ -626,8 +624,7 @@ nimcp_result_t nimcp_capability_assign(
     uint32_t holder_id,
     nimcp_capability_t capability)
 {
-    if (!caps)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(caps, NIMCP_INVALID_PARAM, "NULL capability system in assign");
 
     nimcp_mutex_lock(caps->mutex);
 
@@ -670,8 +667,7 @@ nimcp_result_t nimcp_capability_remove_holder(
     nimcp_capability_system_t* caps,
     uint32_t holder_id)
 {
-    if (!caps)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(caps, NIMCP_INVALID_PARAM, "NULL capability system in remove_holder");
 
     nimcp_mutex_lock(caps->mutex);
 
@@ -699,8 +695,8 @@ nimcp_result_t nimcp_capability_get_stats(
     nimcp_capability_system_t* caps,
     nimcp_cap_stats_t* stats)
 {
-    if (!caps || !stats)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(caps, NIMCP_INVALID_PARAM, "NULL capability system in get_stats");
+    NIMCP_API_CHECK_NULL(stats, NIMCP_INVALID_PARAM, "NULL stats output in get_stats");
 
     nimcp_mutex_lock(caps->mutex);
     memcpy(stats, &caps->stats, sizeof(nimcp_cap_stats_t));
@@ -711,8 +707,7 @@ nimcp_result_t nimcp_capability_get_stats(
 
 nimcp_result_t nimcp_capability_reset_stats(nimcp_capability_system_t* caps)
 {
-    if (!caps)
-        return NIMCP_INVALID_PARAM;
+    NIMCP_API_CHECK_NULL(caps, NIMCP_INVALID_PARAM, "NULL capability system in reset_stats");
 
     nimcp_mutex_lock(caps->mutex);
 

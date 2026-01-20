@@ -122,41 +122,41 @@ nimcp_exception_severity_t nimcp_exception_get_severity_from_code(nimcp_error_t 
 /**
  * @brief Get suggested recovery action
  */
-nimcp_recovery_action_t nimcp_exception_get_suggested_recovery(nimcp_exception_t* ex) {
-    if (!ex) return RECOVERY_ACTION_NONE;
+nimcp_exception_recovery_action_t nimcp_exception_get_suggested_recovery(nimcp_exception_t* ex) {
+    if (!ex) return EXCEPTION_RECOVERY_NONE;
 
     switch (ex->category) {
         case EXCEPTION_CATEGORY_MEMORY:
-            return RECOVERY_ACTION_GC;
+            return EXCEPTION_RECOVERY_GC;
 
         case EXCEPTION_CATEGORY_BRAIN:
         case EXCEPTION_CATEGORY_BRAIN_REGION:
             if (ex->code == NIMCP_ERROR_FORWARD_PASS ||
                 ex->code == NIMCP_ERROR_BACKWARD_PASS) {
-                return RECOVERY_ACTION_ROLLBACK;
+                return EXCEPTION_RECOVERY_ROLLBACK;
             }
-            return RECOVERY_ACTION_REDUCE_LOAD;
+            return EXCEPTION_RECOVERY_REDUCE_LOAD;
 
         case EXCEPTION_CATEGORY_IO:
-            return RECOVERY_ACTION_RETRY;
+            return EXCEPTION_RECOVERY_RETRY;
 
         case EXCEPTION_CATEGORY_THREADING:
             if (ex->code == NIMCP_ERROR_DEADLOCK) {
-                return RECOVERY_ACTION_RESTART_THREAD;
+                return EXCEPTION_RECOVERY_RESTART_THREAD;
             }
-            return RECOVERY_ACTION_RETRY;
+            return EXCEPTION_RECOVERY_RETRY;
 
         case EXCEPTION_CATEGORY_SIGNAL:
-            return RECOVERY_ACTION_EMERGENCY_SAVE;
+            return EXCEPTION_RECOVERY_EMERGENCY_SAVE;
 
         case EXCEPTION_CATEGORY_GPU:
-            return RECOVERY_ACTION_CLEAR_CACHE;
+            return EXCEPTION_RECOVERY_CLEAR_CACHE;
 
         case EXCEPTION_CATEGORY_SECURITY:
-            return RECOVERY_ACTION_QUARANTINE;
+            return EXCEPTION_RECOVERY_QUARANTINE;
 
         default:
-            return RECOVERY_ACTION_NONE;
+            return EXCEPTION_RECOVERY_NONE;
     }
 }
 
@@ -324,7 +324,7 @@ nimcp_memory_exception_t* nimcp_memory_exception_create(
     ex->base.function = func;
     ex->base.timestamp_us = get_timestamp_us();
     ex->base.ref_count = 1;
-    ex->base.suggested_action = RECOVERY_ACTION_GC;
+    ex->base.suggested_action = EXCEPTION_RECOVERY_GC;
 
     ex->requested_size = requested_size;
     ex->is_heap = true;
@@ -366,7 +366,7 @@ nimcp_brain_exception_t* nimcp_brain_exception_create(
     ex->base.function = func;
     ex->base.timestamp_us = get_timestamp_us();
     ex->base.ref_count = 1;
-    ex->base.suggested_action = RECOVERY_ACTION_ROLLBACK;
+    ex->base.suggested_action = EXCEPTION_RECOVERY_ROLLBACK;
 
     ex->brain_id = brain_id;
     ex->region_name = region_name;
@@ -406,7 +406,7 @@ nimcp_io_exception_t* nimcp_io_exception_create(
     ex->base.function = func;
     ex->base.timestamp_us = get_timestamp_us();
     ex->base.ref_count = 1;
-    ex->base.suggested_action = RECOVERY_ACTION_RETRY;
+    ex->base.suggested_action = EXCEPTION_RECOVERY_RETRY;
 
     ex->path = path;
 
@@ -445,7 +445,7 @@ nimcp_threading_exception_t* nimcp_threading_exception_create(
     ex->base.function = func;
     ex->base.timestamp_us = get_timestamp_us();
     ex->base.ref_count = 1;
-    ex->base.suggested_action = RECOVERY_ACTION_RESTART_THREAD;
+    ex->base.suggested_action = EXCEPTION_RECOVERY_RESTART_THREAD;
 
     ex->thread_id = thread_id;
     ex->is_deadlock = (code == NIMCP_ERROR_DEADLOCK);
@@ -485,7 +485,7 @@ nimcp_security_exception_t* nimcp_security_exception_create(
     ex->base.function = func;
     ex->base.timestamp_us = get_timestamp_us();
     ex->base.ref_count = 1;
-    ex->base.suggested_action = RECOVERY_ACTION_QUARANTINE;
+    ex->base.suggested_action = EXCEPTION_RECOVERY_QUARANTINE;
 
     ex->threat_type = threat_type;
     ex->quarantine_required = (severity >= EXCEPTION_SEVERITY_SEVERE);
@@ -526,7 +526,7 @@ nimcp_gpu_exception_t* nimcp_gpu_exception_create(
     ex->base.function = func;
     ex->base.timestamp_us = get_timestamp_us();
     ex->base.ref_count = 1;
-    ex->base.suggested_action = RECOVERY_ACTION_CLEAR_CACHE;
+    ex->base.suggested_action = EXCEPTION_RECOVERY_CLEAR_CACHE;
 
     ex->device_id = device_id;
     ex->cuda_error = cuda_error;
@@ -599,7 +599,7 @@ nimcp_signal_exception_t* nimcp_signal_exception_create(
     ex->base.function = func;
     ex->base.timestamp_us = get_timestamp_us();
     ex->base.ref_count = 1;
-    ex->base.suggested_action = RECOVERY_ACTION_EMERGENCY_SAVE;
+    ex->base.suggested_action = EXCEPTION_RECOVERY_EMERGENCY_SAVE;
 
     ex->signal_number = signal_number;
     ex->fault_address = fault_address;
@@ -644,7 +644,7 @@ nimcp_signal_exception_t* nimcp_signal_exception_create_from_context(
     ex->base.function = NULL;
     ex->base.timestamp_us = get_timestamp_us();
     ex->base.ref_count = 1;
-    ex->base.suggested_action = RECOVERY_ACTION_EMERGENCY_SAVE;
+    ex->base.suggested_action = EXCEPTION_RECOVERY_EMERGENCY_SAVE;
 
     /* Copy signal-specific fields from crash context */
     ex->signal_number = ctx->signal;
@@ -713,7 +713,7 @@ nimcp_aggregate_exception_t* nimcp_aggregate_exception_create(
     ex->base.function = func;
     ex->base.timestamp_us = get_timestamp_us();
     ex->base.ref_count = 1;
-    ex->base.suggested_action = RECOVERY_ACTION_NONE;
+    ex->base.suggested_action = EXCEPTION_RECOVERY_NONE;
 
     ex->child_count = 0;
 
@@ -930,20 +930,20 @@ const char* nimcp_exception_type_to_string(nimcp_exception_type_t type) {
     }
 }
 
-const char* nimcp_recovery_action_to_string(nimcp_recovery_action_t action) {
+const char* nimcp_exception_recovery_action_to_string(nimcp_exception_recovery_action_t action) {
     switch (action) {
-        case RECOVERY_ACTION_NONE:             return "NONE";
-        case RECOVERY_ACTION_RETRY:            return "RETRY";
-        case RECOVERY_ACTION_GC:               return "GC";
-        case RECOVERY_ACTION_COMPACT:          return "COMPACT";
-        case RECOVERY_ACTION_ROLLBACK:         return "ROLLBACK";
-        case RECOVERY_ACTION_RESTART_THREAD:   return "RESTART_THREAD";
-        case RECOVERY_ACTION_RESTART_COMPONENT: return "RESTART_COMPONENT";
-        case RECOVERY_ACTION_QUARANTINE:       return "QUARANTINE";
-        case RECOVERY_ACTION_REDUCE_LOAD:      return "REDUCE_LOAD";
-        case RECOVERY_ACTION_CLEAR_CACHE:      return "CLEAR_CACHE";
-        case RECOVERY_ACTION_EMERGENCY_SAVE:   return "EMERGENCY_SAVE";
-        case RECOVERY_ACTION_GRACEFUL_SHUTDOWN: return "GRACEFUL_SHUTDOWN";
+        case EXCEPTION_RECOVERY_NONE:             return "NONE";
+        case EXCEPTION_RECOVERY_RETRY:            return "RETRY";
+        case EXCEPTION_RECOVERY_GC:               return "GC";
+        case EXCEPTION_RECOVERY_COMPACT:          return "COMPACT";
+        case EXCEPTION_RECOVERY_ROLLBACK:         return "ROLLBACK";
+        case EXCEPTION_RECOVERY_RESTART_THREAD:   return "RESTART_THREAD";
+        case EXCEPTION_RECOVERY_RESTART_COMPONENT: return "RESTART_COMPONENT";
+        case EXCEPTION_RECOVERY_QUARANTINE:       return "QUARANTINE";
+        case EXCEPTION_RECOVERY_REDUCE_LOAD:      return "REDUCE_LOAD";
+        case EXCEPTION_RECOVERY_CLEAR_CACHE:      return "CLEAR_CACHE";
+        case EXCEPTION_RECOVERY_EMERGENCY_SAVE:   return "EMERGENCY_SAVE";
+        case EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN: return "GRACEFUL_SHUTDOWN";
         default: return "UNKNOWN";
     }
 }
@@ -991,7 +991,7 @@ size_t nimcp_exception_to_string(
         ex->file ? ex->file : "unknown",
         ex->line,
         ex->function ? ex->function : "unknown",
-        nimcp_recovery_action_to_string(ex->suggested_action)
+        nimcp_exception_recovery_action_to_string(ex->suggested_action)
     );
 
     return (size_t)(written > 0 ? written : 0);

@@ -20,6 +20,9 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 // Global BBB security system
 static bbb_system_t g_bbb_system = NULL;
@@ -118,6 +121,8 @@ static bool derive_key_from_password(
             ARGON2_ALG
         ) != 0) {
         // Out of memory or invalid parameters
+        NIMCP_THROW_IO(NIMCP_ERROR_OPERATION_FAILED, "encryption",
+                      "Argon2id key derivation failed - out of memory or invalid parameters");
         return false;
     }
 
@@ -151,6 +156,8 @@ bool nimcp_encrypt_with_password(
 
     // Initialize libsodium (safe to call multiple times)
     if (sodium_init() < 0) {
+        NIMCP_THROW_IO(NIMCP_ERROR_NOT_INITIALIZED, "libsodium",
+                      "Failed to initialize libsodium encryption library");
         return false;
     }
 
@@ -186,6 +193,8 @@ bool nimcp_encrypt_with_password(
             key
         ) != 0) {
         // Encryption failed
+        NIMCP_THROW_IO(NIMCP_ERROR_OPERATION_FAILED, "encryption",
+                      "XChaCha20-Poly1305 encryption failed for data of size %zu", plaintext_len);
         sodium_memzero(key, KEY_BYTES);
         return false;
     }
@@ -225,6 +234,8 @@ bool nimcp_decrypt_with_password(
 
     // Initialize libsodium
     if (sodium_init() < 0) {
+        NIMCP_THROW_IO(NIMCP_ERROR_NOT_INITIALIZED, "libsodium",
+                      "Failed to initialize libsodium encryption library");
         return false;
     }
 
@@ -262,6 +273,8 @@ bool nimcp_decrypt_with_password(
             key
         ) != 0) {
         // Decryption failed (wrong password or tampered data)
+        NIMCP_THROW_IO(NIMCP_ERROR_OPERATION_FAILED, "decryption",
+                      "XChaCha20-Poly1305 decryption failed - wrong password or tampered data");
         sodium_memzero(key, KEY_BYTES);
         return false;
     }

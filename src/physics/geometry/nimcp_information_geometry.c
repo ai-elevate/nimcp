@@ -6,6 +6,7 @@
  */
 
 #include "physics/geometry/nimcp_information_geometry.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -200,7 +201,11 @@ nimcp_info_geom_config_t nimcp_info_geom_default_config(void) {
 
 nimcp_info_geometry_t nimcp_info_geom_create(const nimcp_info_geom_config_t* config) {
     nimcp_info_geometry_t geom = (nimcp_info_geometry_t)calloc(1, sizeof(struct nimcp_info_geometry_struct));
-    if (!geom) return NULL;
+    if (!geom) {
+        LOG_ERROR("Failed to allocate information geometry structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate info geometry");
+        return NULL;
+    }
 
     geom->config = config ? *config : nimcp_info_geom_default_config();
 
@@ -220,6 +225,8 @@ nimcp_info_geometry_t nimcp_info_geom_create(const nimcp_info_geom_config_t* con
     geom->fisher_inverse = (float*)calloc(dim * dim, sizeof(float));
 
     if (!geom->fisher_matrix || !geom->fisher_inverse) {
+        LOG_ERROR("Failed to allocate Fisher matrices");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate Fisher matrices");
         nimcp_info_geom_destroy(geom);
         return NULL;
     }
@@ -233,6 +240,8 @@ nimcp_info_geometry_t nimcp_info_geom_create(const nimcp_info_geom_config_t* con
     if (geom->config.enable_ema) {
         geom->fisher_ema = (float*)calloc(dim * dim, sizeof(float));
         if (!geom->fisher_ema) {
+            LOG_ERROR("Failed to allocate Fisher EMA buffer");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate Fisher EMA");
             nimcp_info_geom_destroy(geom);
             return NULL;
         }
@@ -484,7 +493,11 @@ nimcp_fisher_config_t nimcp_fisher_default_config(void) {
 
 nimcp_fisher_info_t nimcp_fisher_create(const nimcp_fisher_config_t* config) {
     nimcp_fisher_info_t fisher = (nimcp_fisher_info_t)calloc(1, sizeof(struct nimcp_fisher_info_struct));
-    if (!fisher) return NULL;
+    if (!fisher) {
+        LOG_ERROR("Failed to allocate Fisher info structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate Fisher info");
+        return NULL;
+    }
 
     fisher->config = config ? *config : nimcp_fisher_default_config();
     fisher->dim = fisher->config.param_dim;
@@ -495,6 +508,8 @@ nimcp_fisher_info_t nimcp_fisher_create(const nimcp_fisher_config_t* config) {
     fisher->gradient_accum = (float*)calloc(fisher->dim * fisher->dim, sizeof(float));
 
     if (!fisher->matrix || !fisher->inverse || !fisher->gradient_accum) {
+        LOG_ERROR("Failed to allocate Fisher matrices or gradient buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate Fisher buffers");
         nimcp_fisher_destroy(fisher);
         return NULL;
     }
@@ -629,7 +644,11 @@ nimcp_natural_gradient_t nimcp_natural_grad_create(
     uint32_t param_dim
 ) {
     nimcp_natural_gradient_t ng = (nimcp_natural_gradient_t)calloc(1, sizeof(struct nimcp_natural_gradient_struct));
-    if (!ng) return NULL;
+    if (!ng) {
+        LOG_ERROR("Failed to allocate natural gradient structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate natural gradient");
+        return NULL;
+    }
 
     ng->config = config ? *config : nimcp_natural_grad_default_config();
     ng->param_dim = param_dim;
@@ -637,6 +656,8 @@ nimcp_natural_gradient_t nimcp_natural_grad_create(
 
     ng->momentum_buffer = (float*)calloc(param_dim, sizeof(float));
     if (!ng->momentum_buffer) {
+        LOG_ERROR("Failed to allocate momentum buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate momentum buffer");
         free(ng);
         return NULL;
     }
@@ -729,7 +750,11 @@ nimcp_neural_manifold_t nimcp_manifold_create(
     uint32_t ambient_dim
 ) {
     nimcp_neural_manifold_t manifold = (nimcp_neural_manifold_t)calloc(1, sizeof(struct nimcp_neural_manifold_struct));
-    if (!manifold) return NULL;
+    if (!manifold) {
+        LOG_ERROR("Failed to allocate neural manifold structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate manifold");
+        return NULL;
+    }
 
     manifold->config = config ? *config : nimcp_manifold_default_config();
     manifold->ambient_dim = ambient_dim;
@@ -737,6 +762,8 @@ nimcp_neural_manifold_t nimcp_manifold_create(
 
     manifold->samples = (float*)calloc(manifold->max_samples * ambient_dim, sizeof(float));
     if (!manifold->samples) {
+        LOG_ERROR("Failed to allocate manifold samples buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate manifold samples");
         free(manifold);
         return NULL;
     }

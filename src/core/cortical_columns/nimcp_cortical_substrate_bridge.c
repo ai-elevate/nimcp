@@ -21,6 +21,7 @@
  */
 
 #include "core/cortical_columns/nimcp_cortical_substrate_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"

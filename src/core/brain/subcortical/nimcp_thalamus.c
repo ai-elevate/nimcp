@@ -11,6 +11,7 @@
  */
 
 #include "core/brain/subcortical/nimcp_thalamus.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"

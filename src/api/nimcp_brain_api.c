@@ -15,6 +15,8 @@
 #include "utils/config/nimcp_config.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/metrics/nimcp_metrics.h"
+#include "utils/error/nimcp_error_codes.h"
+#include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include <stdio.h>
@@ -40,20 +42,13 @@ NIMCP_EXPORT nimcp_brain_t nimcp_brain_create(
     LOG_INFO("Creating brain: name='%s', size=%d, task=%d, inputs=%u, outputs=%u",
              name ? name : "NULL", size, task, num_inputs, num_outputs);
 
-    if (!name) {
-        LOG_ERROR("Brain name cannot be NULL");
-        set_error("Brain name cannot be NULL");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(name, "Brain name cannot be NULL");
 
     // Allocate handle
     LOG_DEBUG("Allocating brain handle (%zu bytes)", sizeof(struct nimcp_brain_handle));
     nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
-    if (!handle) {
-        LOG_ERROR("Failed to allocate brain handle");
-        set_error("Failed to allocate brain handle");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC_SIZE(handle, sizeof(struct nimcp_brain_handle),
+        "Failed to allocate brain handle");
 
     // Map public enums to internal enums
     brain_size_t internal_size = (brain_size_t)size;
@@ -67,6 +62,7 @@ NIMCP_EXPORT nimcp_brain_t nimcp_brain_create(
 
     if (!handle->internal_brain) {
         LOG_ERROR("Failed to create internal brain for '%s'", name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BRAIN_CREATION, "Failed to create internal brain '%s'", name);
         set_error("Failed to create internal brain");
         nimcp_free(handle);
         return NULL;
@@ -107,23 +103,9 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_learn_example(
     LOG_DEBUG("Learning example: label='%s', num_features=%u, confidence=%.3f",
               label ? label : "NULL", num_features, confidence);
 
-    if (!brain) {
-        LOG_ERROR("Brain handle is NULL");
-        set_error("Brain handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!features) {
-        LOG_ERROR("Features array is NULL");
-        set_error("Features array is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!label) {
-        LOG_ERROR("Label is NULL");
-        set_error("Label is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_API_CHECK_NULL(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    NIMCP_API_CHECK_NULL(label, NIMCP_ERROR_NULL_ARG, "Label is NULL");
 
     // === PHASE IS-1: BBB INPUT VALIDATION ===
     // Validate external input data through Blood-Brain Barrier before processing
@@ -156,6 +138,7 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_learn_example(
     // brain_learn_example returns -1.0f on error, >= 0.0f on success (where value is the loss)
     if (loss < 0.0f) {
         LOG_ERROR("Brain learning failed for label '%s'", label);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LEARNING_FAILED, "Brain learning failed for label '%s'", label);
         set_error("Brain learning failed");
         return NIMCP_ERROR;
     }
@@ -172,25 +155,10 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_predict(
     char* out_label,
     float* out_confidence)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!features) {
-        set_error("Features array is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!out_label) {
-        set_error("Output label buffer is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!out_confidence) {
-        set_error("Output confidence pointer is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_API_CHECK_NULL(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    NIMCP_API_CHECK_NULL(out_label, NIMCP_ERROR_NULL_ARG, "Output label buffer is NULL");
+    NIMCP_API_CHECK_NULL(out_confidence, NIMCP_ERROR_NULL_ARG, "Output confidence pointer is NULL");
 
     // === PHASE IS-1: BBB INPUT VALIDATION ===
     // Validate external input data through Blood-Brain Barrier before processing
@@ -210,6 +178,7 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_predict(
     brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
 
     if (!decision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INFERENCE_FAILED, "Brain prediction failed");
         set_error("Brain prediction failed");
         return NIMCP_ERROR;
     }
@@ -233,25 +202,15 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_infer(
     float* outputs,
     uint32_t num_outputs)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!features) {
-        set_error("Features array is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!outputs) {
-        set_error("Outputs array is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_API_CHECK_NULL(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    NIMCP_API_CHECK_NULL(outputs, NIMCP_ERROR_NULL_ARG, "Outputs array is NULL");
 
     // Call internal brain API to get decision (which includes output vector)
     brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
 
     if (!decision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INFERENCE_FAILED, "Brain inference failed");
         set_error("Brain inference failed");
         return NIMCP_ERROR;
     }
@@ -275,20 +234,14 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_infer(
 }
 
 NIMCP_EXPORT nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!filepath) {
-        set_error("Filepath is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_API_CHECK_NULL(filepath, NIMCP_ERROR_NULL_ARG, "Filepath is NULL");
 
     // Call internal brain API
     bool success = brain_save(brain->internal_brain, filepath);
 
     if (!success) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FILE_WRITE, "Failed to save brain to '%s'", filepath);
         set_error("Failed to save brain");
         return NIMCP_ERROR_IO;
     }
@@ -298,22 +251,18 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* fi
 }
 
 NIMCP_EXPORT nimcp_brain_t nimcp_brain_load(const char* filepath) {
-    if (!filepath) {
-        set_error("Filepath is NULL");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(filepath, "Filepath is NULL");
 
     // Allocate handle
     nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
-    if (!handle) {
-        set_error("Failed to allocate brain handle");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC_SIZE(handle, sizeof(struct nimcp_brain_handle),
+        "Failed to allocate brain handle for load");
 
     // Load internal brain
     handle->internal_brain = brain_load(filepath);
 
     if (!handle->internal_brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FILE_READ, "Failed to load brain from '%s'", filepath);
         set_error("Failed to load brain from file");
         nimcp_free(handle);
         return NULL;
@@ -324,14 +273,12 @@ NIMCP_EXPORT nimcp_brain_t nimcp_brain_load(const char* filepath) {
 }
 
 NIMCP_EXPORT nimcp_brain_t nimcp_brain_create_from_config(const char* config_filepath) {
-    if (!config_filepath) {
-        set_error("Config filepath is NULL");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(config_filepath, "Config filepath is NULL");
 
     // Load configuration from YAML/JSON
     nimcp_brain_config_t config;
     if (!nimcp_config_load(config_filepath, &config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FILE_READ, "Failed to load config from '%s'", config_filepath);
         set_error("Failed to load config from %s", config_filepath);
         return NULL;
     }
@@ -346,6 +293,7 @@ NIMCP_EXPORT nimcp_brain_t nimcp_brain_create_from_config(const char* config_fil
     );
 
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BRAIN_CREATION, "Failed to create brain from config '%s'", config_filepath);
         set_error("Failed to create brain from config");
         return NULL;
     }
@@ -359,19 +307,13 @@ NIMCP_EXPORT nimcp_brain_t nimcp_brain_create_from_config(const char* config_fil
 }
 
 NIMCP_EXPORT nimcp_status_t nimcp_brain_probe(nimcp_brain_t brain, nimcp_brain_probe_t* probe) {
-    if (!brain) {
-        set_error("Brain is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!probe) {
-        set_error("Probe output structure is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Brain is NULL");
+    NIMCP_API_CHECK_NULL(probe, NIMCP_ERROR_NULL_ARG, "Probe output structure is NULL");
 
     // Get internal brain statistics
     brain_stats_t internal_stats;
     if (!brain_get_stats(brain->internal_brain, &internal_stats)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to get brain statistics");
         set_error("Failed to get brain statistics");
         return NIMCP_ERROR;
     }
@@ -470,11 +412,8 @@ static bio_module_context_t get_brain_module_ctx(void) {
  * @return NIMCP_OK on success, error code otherwise
  */
 NIMCP_EXPORT nimcp_status_t nimcp_brain_broadcast_probe(nimcp_brain_t brain) {
-    if (!brain || !brain->internal_brain) {
-        LOG_ERROR("Invalid brain handle for probe broadcast");
-        set_error("Invalid brain handle");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_ARG, "Invalid brain handle for probe broadcast");
+    NIMCP_API_CHECK_NULL(brain->internal_brain, NIMCP_ERROR_NULL_ARG, "Brain has NULL internal_brain");
 
     // Get probe data
     nimcp_brain_probe_t probe;

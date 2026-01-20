@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 
 struct audio_sleep_bridge_struct {
@@ -80,7 +81,7 @@ static void audio_on_sleep_state_change(sleep_state_t new_state, void* user_data
 }
 
 int audio_sleep_default_config(audio_sleep_config_t* config) {
-    if (!config) return -1;
+    NIMCP_API_CHECK_NULL(config, -1, "audio_sleep_default_config: NULL config");
     config->enable_threshold_modulation = true;
     config->enable_frequency_modulation = true;
     config->enable_speed_modulation = true;
@@ -92,14 +93,11 @@ audio_sleep_bridge_t audio_sleep_bridge_create(
     const audio_sleep_config_t* config,
     sleep_system_t sleep_system)
 {
-    if (!sleep_system) {
-        NIMCP_LOGGING_ERROR("audio_sleep_bridge_create: NULL sleep_system");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(sleep_system, "audio_sleep_bridge_create: NULL sleep_system");
 
     struct audio_sleep_bridge_struct* bridge =
         (struct audio_sleep_bridge_struct*)nimcp_malloc(sizeof(struct audio_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "audio_sleep_bridge_create: Failed to allocate bridge");
 
     memset(bridge, 0, sizeof(struct audio_sleep_bridge_struct));
 
@@ -161,7 +159,7 @@ void audio_sleep_bridge_destroy(audio_sleep_bridge_t bridge) {
 }
 
 int audio_sleep_update(audio_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "audio_sleep_update: NULL bridge");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -197,7 +195,8 @@ int audio_sleep_update(audio_sleep_bridge_t bridge) {
 }
 
 int audio_sleep_get_effects(const audio_sleep_bridge_t bridge, audio_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "audio_sleep_get_effects: NULL bridge");
+    NIMCP_API_CHECK_NULL(effects, -1, "audio_sleep_get_effects: NULL effects");
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);

@@ -122,22 +122,25 @@ typedef enum {
 } nimcp_exception_type_t;
 
 /**
- * @brief Recovery action types (maps to immune antibody responses)
+ * @brief Exception recovery action types (maps to immune antibody responses)
+ *
+ * NOTE: These use EXCEPTION_RECOVERY_* prefix to avoid conflicts with
+ * fault_tolerance/nimcp_recovery.h which defines RECOVERY_ACTION_* values.
  */
 typedef enum {
-    RECOVERY_ACTION_NONE = 0,          /**< No recovery needed */
-    RECOVERY_ACTION_RETRY,             /**< Retry the operation */
-    RECOVERY_ACTION_GC,                /**< Trigger garbage collection */
-    RECOVERY_ACTION_COMPACT,           /**< Memory compaction */
-    RECOVERY_ACTION_ROLLBACK,          /**< Rollback to checkpoint */
-    RECOVERY_ACTION_RESTART_THREAD,    /**< Restart affected thread */
-    RECOVERY_ACTION_RESTART_COMPONENT, /**< Restart affected component */
-    RECOVERY_ACTION_QUARANTINE,        /**< Quarantine affected region */
-    RECOVERY_ACTION_REDUCE_LOAD,       /**< Reduce system load */
-    RECOVERY_ACTION_CLEAR_CACHE,       /**< Clear caches */
-    RECOVERY_ACTION_EMERGENCY_SAVE,    /**< Emergency state save */
-    RECOVERY_ACTION_GRACEFUL_SHUTDOWN  /**< Graceful shutdown */
-} nimcp_recovery_action_t;
+    EXCEPTION_RECOVERY_NONE = 0,          /**< No recovery needed */
+    EXCEPTION_RECOVERY_RETRY,             /**< Retry the operation */
+    EXCEPTION_RECOVERY_GC,                /**< Trigger garbage collection */
+    EXCEPTION_RECOVERY_COMPACT,           /**< Memory compaction */
+    EXCEPTION_RECOVERY_ROLLBACK,          /**< Rollback to checkpoint */
+    EXCEPTION_RECOVERY_RESTART_THREAD,    /**< Restart affected thread */
+    EXCEPTION_RECOVERY_RESTART_COMPONENT, /**< Restart affected component */
+    EXCEPTION_RECOVERY_QUARANTINE,        /**< Quarantine affected region */
+    EXCEPTION_RECOVERY_REDUCE_LOAD,       /**< Reduce system load */
+    EXCEPTION_RECOVERY_CLEAR_CACHE,       /**< Clear caches */
+    EXCEPTION_RECOVERY_EMERGENCY_SAVE,    /**< Emergency state save */
+    EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN  /**< Graceful shutdown */
+} nimcp_exception_recovery_action_t;
 
 /* ============================================================================
  * Context Key-Value Entry
@@ -214,7 +217,7 @@ struct nimcp_exception {
     uint32_t antigen_id;               /**< Assigned antigen ID (if presented) */
 
     /* Recovery */
-    nimcp_recovery_action_t suggested_action; /**< Suggested recovery action */
+    nimcp_exception_recovery_action_t suggested_action; /**< Suggested recovery action */
     bool recovery_attempted;           /**< Recovery was attempted */
     bool recovery_succeeded;           /**< Recovery succeeded */
 
@@ -756,7 +759,7 @@ size_t nimcp_exception_generate_epitope(nimcp_exception_t* ex);
  * @param ex Exception
  * @return Suggested recovery action
  */
-nimcp_recovery_action_t nimcp_exception_get_suggested_recovery(nimcp_exception_t* ex);
+nimcp_exception_recovery_action_t nimcp_exception_get_suggested_recovery(nimcp_exception_t* ex);
 
 /* ============================================================================
  * Exception Logging/Printing API
@@ -811,7 +814,7 @@ size_t nimcp_stack_trace_to_string(
 const char* nimcp_exception_severity_to_string(nimcp_exception_severity_t severity);
 const char* nimcp_exception_category_to_string(nimcp_exception_category_t category);
 const char* nimcp_exception_type_to_string(nimcp_exception_type_t type);
-const char* nimcp_recovery_action_to_string(nimcp_recovery_action_t action);
+const char* nimcp_exception_recovery_action_to_string(nimcp_exception_recovery_action_t action);
 
 /* ============================================================================
  * Thread-Local Exception Context

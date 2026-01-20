@@ -24,6 +24,9 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/rng/nimcp_rand.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <errno.h>
 #include <math.h>
@@ -201,6 +204,8 @@ static bool csv_initialize(void** context, const dataset_config_t* config)
     // Allocate context
     csv_context_t* csv_ctx = nimcp_calloc(1, sizeof(csv_context_t));
     if (!csv_ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(csv_context_t),
+                          "Failed to allocate CSV context");
         dataio_set_error("Failed to allocate CSV context");
         return false;
     }
@@ -208,6 +213,8 @@ static bool csv_initialize(void** context, const dataset_config_t* config)
     // Open CSV file
     csv_ctx->file = fopen(config->location, "r");
     if (!csv_ctx->file) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, config->location,
+                      "Failed to open CSV file '%s': %s", config->location, strerror(errno));
         dataio_set_error("Failed to open CSV file '%s': %s", config->location, strerror(errno));
         nimcp_free(csv_ctx);
         return false;
@@ -638,9 +645,15 @@ static bool json_initialize(void** context, const dataset_config_t* config)
         return false;
     }
     json_context_t* json_ctx = nimcp_calloc(1, sizeof(json_context_t));
-    if (!json_ctx) return false;
+    if (!json_ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(json_context_t),
+                          "Failed to allocate JSON context");
+        return false;
+    }
     FILE* file = fopen(config->location, "rb");
     if (!file) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, config->location,
+                      "Failed to open JSON file '%s'", config->location);
         dataio_set_error("Failed to open JSON file '%s'", config->location);
         nimcp_free(json_ctx);
         return false;
@@ -649,11 +662,20 @@ static bool json_initialize(void** context, const dataset_config_t* config)
     long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
     if (file_size <= 0 || file_size > 100 * 1024 * 1024) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO_SIZE, config->location,
+                      "JSON file size out of range: %ld bytes", file_size);
         fclose(file);
         nimcp_free(json_ctx);
         return false;
     }
     json_ctx->json_buffer = nimcp_malloc(file_size + 1);
+    if (!json_ctx->json_buffer) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, file_size + 1,
+                          "Failed to allocate JSON buffer");
+        fclose(file);
+        nimcp_free(json_ctx);
+        return false;
+    }
     fread(json_ctx->json_buffer, 1, file_size, file);
     fclose(file);
     json_ctx->json_buffer[file_size] = '\0';
@@ -1781,6 +1803,8 @@ bool brain_export_predictions(brain_t brain, dataset_t input_dataset, const char
     // Open output file
     FILE* out = fopen(output_file, "w");
     if (!out) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, output_file,
+                      "Failed to open output file for predictions: %s", strerror(errno));
         dataio_set_error("Failed to open output file: %s", strerror(errno));
         return false;
     }
@@ -1926,6 +1950,8 @@ bool dataset_save_csv(float** features, char** labels, uint32_t num_samples, uin
 
     FILE* f = fopen(filepath, "w");
     if (!f) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, filepath,
+                      "Failed to open CSV file for writing: %s", strerror(errno));
         dataio_set_error("Failed to open file: %s", strerror(errno));
         return false;
     }

@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/structural/nimcp_structural_plasticity.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -180,10 +181,7 @@ static void invoke_callback(
  * ============================================================================ */
 
 int structural_plasticity_default_config(structural_plasticity_config_t* config) {
-    if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config pointer");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(config, -1, "Structural plasticity config is NULL");
 
     config->formation_threshold_hz = STRUCTURAL_FORMATION_THRESHOLD_MAX;
     config->formation_rate = 0.01f;
@@ -210,10 +208,7 @@ structural_plasticity_system_t* structural_plasticity_create(
 ) {
     structural_plasticity_system_t* system =
         (structural_plasticity_system_t*)nimcp_malloc(sizeof(*system));
-    if (!system) {
-        NIMCP_LOGGING_ERROR("Failed to allocate structural plasticity system");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(system, "Structural plasticity system allocation failed");
 
     memset(system, 0, sizeof(*system));
 
@@ -229,8 +224,9 @@ structural_plasticity_system_t* structural_plasticity_create(
     system->spines = (synapse_structural_state_t*)nimcp_malloc(
         sizeof(synapse_structural_state_t) * system->max_spines);
     if (!system->spines) {
-        NIMCP_LOGGING_ERROR("Failed to allocate spine array");
         nimcp_free(system);
+        LOG_ERROR("Structural plasticity spine array allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Structural plasticity spine array allocation failed");
         return NULL;
     }
 
@@ -240,9 +236,10 @@ structural_plasticity_system_t* structural_plasticity_create(
     /* Create mutex */
     system->mutex = nimcp_platform_mutex_create();
     if (!system->mutex) {
-        NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(system->spines);
         nimcp_free(system);
+        LOG_ERROR("Structural plasticity mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Structural plasticity mutex creation failed");
         return NULL;
     }
 
@@ -278,10 +275,8 @@ int structural_plasticity_form_synapse(
     float activity_hz,
     uint32_t* synapse_id
 ) {
-    if (!system || !synapse_id) {
-        NIMCP_LOGGING_ERROR("NULL parameter");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
+    NIMCP_API_CHECK_NULL(synapse_id, -1, "Synapse ID output pointer is NULL");
 
     /* Validate activity_hz to prevent NaN propagation */
     if (isnan(activity_hz) || isinf(activity_hz)) {
@@ -370,10 +365,7 @@ int structural_plasticity_eliminate_synapse(
     structural_plasticity_system_t* system,
     uint32_t synapse_id
 ) {
-    if (!system) {
-        NIMCP_LOGGING_ERROR("NULL system");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -439,10 +431,7 @@ int structural_plasticity_stabilize_synapse(
     structural_plasticity_system_t* system,
     uint32_t synapse_id
 ) {
-    if (!system) {
-        NIMCP_LOGGING_ERROR("NULL system");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -483,10 +472,7 @@ int structural_plasticity_potentiate_synapse(
     structural_plasticity_system_t* system,
     uint32_t synapse_id
 ) {
-    if (!system) {
-        NIMCP_LOGGING_ERROR("NULL system");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -527,10 +513,7 @@ int structural_plasticity_tag_for_consolidation(
     structural_plasticity_system_t* system,
     uint32_t synapse_id
 ) {
-    if (!system) {
-        NIMCP_LOGGING_ERROR("NULL system");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -555,10 +538,7 @@ int structural_plasticity_update_activity(
     uint32_t synapse_id,
     uint64_t current_time
 ) {
-    if (!system) {
-        NIMCP_LOGGING_ERROR("NULL system");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -600,10 +580,7 @@ int structural_plasticity_record_ltp(
     uint32_t synapse_id,
     float ltp_magnitude
 ) {
-    if (!system) {
-        NIMCP_LOGGING_ERROR("NULL system");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
 
     /* PARAMETER VALIDATION: Validate LTP magnitude
      * WHAT: Ensure ltp_magnitude is finite and non-negative
@@ -666,10 +643,7 @@ int structural_plasticity_record_ltd(
     uint32_t synapse_id,
     float ltd_magnitude
 ) {
-    if (!system) {
-        NIMCP_LOGGING_ERROR("NULL system");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
 
     /* PARAMETER VALIDATION: Validate LTD magnitude
      * WHAT: Ensure ltd_magnitude is finite and non-negative
@@ -733,10 +707,7 @@ int structural_plasticity_update(
     structural_plasticity_system_t* system,
     float delta_sec
 ) {
-    if (!system) {
-        NIMCP_LOGGING_ERROR("NULL system");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
 
     /* Validate delta_sec to prevent numerical issues */
     if (isnan(delta_sec) || isinf(delta_sec) || delta_sec < 0.0f) {
@@ -905,9 +876,8 @@ int structural_plasticity_get_synapse_state(
     uint32_t synapse_id,
     synapse_structural_state_t* state
 ) {
-    if (!system || !state) {
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
+    NIMCP_API_CHECK_NULL(state, -1, "State output pointer is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -930,9 +900,8 @@ int structural_plasticity_get_morphology(
     uint32_t synapse_id,
     spine_morphology_t* morphology
 ) {
-    if (!system || !morphology) {
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
+    NIMCP_API_CHECK_NULL(morphology, -1, "Morphology output pointer is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -994,10 +963,7 @@ int structural_plasticity_register_callback(
     structural_change_callback_t callback,
     void* user_data
 ) {
-    if (!system) {
-        NIMCP_LOGGING_ERROR("NULL system");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
     system->callback = callback;
@@ -1017,10 +983,8 @@ int structural_plasticity_tag_complement(
     const uint8_t* tag,
     size_t tag_len
 ) {
-    if (!system || !tag) {
-        NIMCP_LOGGING_ERROR("NULL parameter");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
+    NIMCP_API_CHECK_NULL(tag, -1, "Complement tag is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1075,9 +1039,9 @@ int structural_plasticity_get_complement_tagged(
     uint32_t max_count,
     uint32_t* count
 ) {
-    if (!system || !synapse_ids || !count) {
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(system, -1, "Structural plasticity system is NULL");
+    NIMCP_API_CHECK_NULL(synapse_ids, -1, "Synapse IDs output pointer is NULL");
+    NIMCP_API_CHECK_NULL(count, -1, "Count output pointer is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 

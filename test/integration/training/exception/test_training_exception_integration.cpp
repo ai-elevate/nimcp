@@ -44,7 +44,7 @@ protected:
     static std::atomic<int> exception_handler_count;
     static std::atomic<int> immune_presentation_count;
     static std::atomic<int> recovery_callback_count;
-    static std::atomic<nimcp_recovery_action_t> last_recovery_action;
+    static std::atomic<nimcp_exception_recovery_action_t> last_recovery_action;
     static std::atomic<bool> rollback_executed;
     static std::atomic<bool> emergency_save_executed;
     static std::atomic<bool> gc_executed;
@@ -56,7 +56,7 @@ protected:
         exception_handler_count = 0;
         immune_presentation_count = 0;
         recovery_callback_count = 0;
-        last_recovery_action = RECOVERY_ACTION_NONE;
+        last_recovery_action = EXCEPTION_RECOVERY_NONE;
         rollback_executed = false;
         emergency_save_executed = false;
         gc_executed = false;
@@ -87,9 +87,9 @@ protected:
         immune_handler_reg = nimcp_handler_register(&options);
 
         // Register recovery callbacks
-        nimcp_register_recovery_callback(RECOVERY_ACTION_ROLLBACK, rollback_recovery_callback, nullptr);
-        nimcp_register_recovery_callback(RECOVERY_ACTION_EMERGENCY_SAVE, emergency_save_callback, nullptr);
-        nimcp_register_recovery_callback(RECOVERY_ACTION_GC, gc_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK, rollback_recovery_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_EMERGENCY_SAVE, emergency_save_callback, nullptr);
+        nimcp_register_recovery_callback(EXCEPTION_RECOVERY_GC, gc_callback, nullptr);
     }
 
     void TearDown() override {
@@ -102,9 +102,9 @@ protected:
             immune_handler_reg = nullptr;
         }
 
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_ROLLBACK);
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_EMERGENCY_SAVE);
-        nimcp_unregister_recovery_callback(RECOVERY_ACTION_GC);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_EMERGENCY_SAVE);
+        nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_GC);
 
         nimcp_exception_clear_current();
         nimcp_exception_immune_shutdown();
@@ -125,7 +125,7 @@ protected:
         return false;
     }
 
-    static int rollback_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+    static int rollback_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
         (void)ex;
         (void)user_data;
         recovery_callback_count++;
@@ -134,7 +134,7 @@ protected:
         return 0;
     }
 
-    static int emergency_save_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+    static int emergency_save_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
         (void)ex;
         (void)user_data;
         recovery_callback_count++;
@@ -143,7 +143,7 @@ protected:
         return 0;
     }
 
-    static int gc_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+    static int gc_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
         (void)ex;
         (void)user_data;
         recovery_callback_count++;
@@ -156,7 +156,7 @@ protected:
 std::atomic<int> TrainingExceptionIntegrationTest::exception_handler_count(0);
 std::atomic<int> TrainingExceptionIntegrationTest::immune_presentation_count(0);
 std::atomic<int> TrainingExceptionIntegrationTest::recovery_callback_count(0);
-std::atomic<nimcp_recovery_action_t> TrainingExceptionIntegrationTest::last_recovery_action(RECOVERY_ACTION_NONE);
+std::atomic<nimcp_exception_recovery_action_t> TrainingExceptionIntegrationTest::last_recovery_action(EXCEPTION_RECOVERY_NONE);
 std::atomic<bool> TrainingExceptionIntegrationTest::rollback_executed(false);
 std::atomic<bool> TrainingExceptionIntegrationTest::emergency_save_executed(false);
 std::atomic<bool> TrainingExceptionIntegrationTest::gc_executed(false);
@@ -200,7 +200,7 @@ TEST_F(TrainingExceptionIntegrationTest, GradientExplosion_FullPipeline) {
     // Execute recovery
     rollback_executed = false;
     gc_executed = false;
-    nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_ROLLBACK);
+    nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_ROLLBACK);
     EXPECT_TRUE(rollback_executed.load());
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
@@ -220,9 +220,9 @@ TEST_F(TrainingExceptionIntegrationTest, GradientExplosion_TriggersGC) {
     ASSERT_NE(ex, nullptr);
 
     gc_executed = false;
-    nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_GC);
+    nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_GC);
     EXPECT_TRUE(gc_executed.load());
-    EXPECT_EQ(last_recovery_action.load(), RECOVERY_ACTION_GC);
+    EXPECT_EQ(last_recovery_action.load(), EXCEPTION_RECOVERY_GC);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
 }
@@ -252,14 +252,14 @@ TEST_F(TrainingExceptionIntegrationTest, NaNDetection_ImmuneResponse) {
     EXPECT_EQ(result, 0);
 
     // Get recovery strategy
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
     // Brain exceptions should suggest rollback or GC
     EXPECT_TRUE(
-        strategy.primary_action == RECOVERY_ACTION_GC ||
-        strategy.primary_action == RECOVERY_ACTION_ROLLBACK ||
-        strategy.primary_action == RECOVERY_ACTION_REDUCE_LOAD
+        strategy.primary_action == EXCEPTION_RECOVERY_GC ||
+        strategy.primary_action == EXCEPTION_RECOVERY_ROLLBACK ||
+        strategy.primary_action == EXCEPTION_RECOVERY_REDUCE_LOAD
     );
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
@@ -283,7 +283,7 @@ TEST_F(TrainingExceptionIntegrationTest, NaNDetection_RollbackRecovery) {
     nimcp_exception_set_context((nimcp_exception_t*)ex, "current_epoch", "50");
 
     rollback_executed = false;
-    nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_ROLLBACK);
+    nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_ROLLBACK);
     EXPECT_TRUE(rollback_executed.load());
 
     // Verify recovery was attempted flag is set
@@ -318,7 +318,7 @@ TEST_F(TrainingExceptionIntegrationTest, Divergence_EmergencySaveRecovery) {
     nimcp_exception_set_context((nimcp_exception_t*)ex, "steps", "100");
 
     emergency_save_executed = false;
-    nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_EMERGENCY_SAVE);
+    nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_EMERGENCY_SAVE);
     EXPECT_TRUE(emergency_save_executed.load());
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
@@ -337,15 +337,15 @@ TEST_F(TrainingExceptionIntegrationTest, Divergence_ReduceLoadRecovery) {
     );
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
     // Recovery strategy should include REDUCE_LOAD as an option
     EXPECT_TRUE(
-        strategy.primary_action == RECOVERY_ACTION_REDUCE_LOAD ||
-        strategy.fallback_action == RECOVERY_ACTION_REDUCE_LOAD ||
-        strategy.primary_action == RECOVERY_ACTION_GC ||
-        strategy.primary_action == RECOVERY_ACTION_ROLLBACK
+        strategy.primary_action == EXCEPTION_RECOVERY_REDUCE_LOAD ||
+        strategy.fallback_action == EXCEPTION_RECOVERY_REDUCE_LOAD ||
+        strategy.primary_action == EXCEPTION_RECOVERY_GC ||
+        strategy.primary_action == EXCEPTION_RECOVERY_ROLLBACK
     );
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
@@ -374,7 +374,7 @@ TEST_F(TrainingExceptionIntegrationTest, CheckpointFailure_EmergencySave) {
 
     // Attempt emergency save
     emergency_save_executed = false;
-    nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_EMERGENCY_SAVE);
+    nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_EMERGENCY_SAVE);
     EXPECT_TRUE(emergency_save_executed.load());
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
@@ -397,7 +397,7 @@ TEST_F(TrainingExceptionIntegrationTest, CheckpointCorruption_RetryRecovery) {
     nimcp_exception_set_context((nimcp_exception_t*)ex, "fallback_checkpoint", "epoch_45");
 
     rollback_executed = false;
-    nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_ROLLBACK);
+    nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_ROLLBACK);
     EXPECT_TRUE(rollback_executed.load());
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
@@ -634,19 +634,19 @@ TEST_F(TrainingExceptionIntegrationTest, RecoveryChain_PrimaryThenFallback) {
     static std::atomic<int> primary_call_count(0);
     static std::atomic<int> fallback_call_count(0);
 
-    auto failing_primary = [](nimcp_exception_t*, nimcp_recovery_action_t, void*) -> int {
+    auto failing_primary = [](nimcp_exception_t*, nimcp_exception_recovery_action_t, void*) -> int {
         primary_call_count++;
         return -1;  // Fail
     };
 
-    auto fallback = [](nimcp_exception_t*, nimcp_recovery_action_t, void*) -> int {
+    auto fallback = [](nimcp_exception_t*, nimcp_exception_recovery_action_t, void*) -> int {
         fallback_call_count++;
         return 0;  // Success
     };
 
     // Use RETRY as primary, GC as fallback for this test
-    nimcp_register_recovery_callback(RECOVERY_ACTION_RETRY, failing_primary, nullptr);
-    nimcp_register_recovery_callback(RECOVERY_ACTION_COMPACT, fallback, nullptr);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_RETRY, failing_primary, nullptr);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_COMPACT, fallback, nullptr);
 
     nimcp_brain_exception_t* ex = nimcp_brain_exception_create(
         NIMCP_ERROR_BACKWARD_PASS,
@@ -660,17 +660,17 @@ TEST_F(TrainingExceptionIntegrationTest, RecoveryChain_PrimaryThenFallback) {
     fallback_call_count = 0;
 
     // Try primary - it should fail
-    int result = nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_RETRY);
+    int result = nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_RETRY);
     EXPECT_NE(result, 0);
     EXPECT_EQ(primary_call_count.load(), 1);
 
     // Try fallback - it should succeed
-    result = nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_COMPACT);
+    result = nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_COMPACT);
     EXPECT_EQ(result, 0);
     EXPECT_EQ(fallback_call_count.load(), 1);
 
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_RETRY);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_COMPACT);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RETRY);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_COMPACT);
     nimcp_exception_unref((nimcp_exception_t*)ex);
 }
 
@@ -815,7 +815,7 @@ TEST_F(TrainingExceptionIntegrationTest, NotifyRecoveryResult_Success) {
     // Notify successful recovery
     int result = nimcp_exception_notify_recovery_result(
         (nimcp_exception_t*)ex,
-        RECOVERY_ACTION_ROLLBACK,
+        EXCEPTION_RECOVERY_ROLLBACK,
         true  // success
     );
     EXPECT_EQ(result, 0);
@@ -841,7 +841,7 @@ TEST_F(TrainingExceptionIntegrationTest, NotifyRecoveryResult_Failure) {
     // Notify failed recovery
     int result = nimcp_exception_notify_recovery_result(
         (nimcp_exception_t*)ex,
-        RECOVERY_ACTION_ROLLBACK,
+        EXCEPTION_RECOVERY_ROLLBACK,
         false  // failure
     );
     EXPECT_EQ(result, 0);

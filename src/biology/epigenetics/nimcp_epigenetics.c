@@ -12,6 +12,9 @@
  */
 
 #include "biology/epigenetics/nimcp_epigenetics.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -196,7 +199,10 @@ nimcp_epigenetics_config_t nimcp_epigenetics_default_config(void) {
 
 nimcp_epigenetics_t nimcp_epigenetics_create(const nimcp_epigenetics_config_t* config) {
     nimcp_epigenetics_t epi = (nimcp_epigenetics_t)calloc(1, sizeof(struct nimcp_epigenetics_struct));
-    if (!epi) return NULL;
+    if (!epi) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct nimcp_epigenetics_struct), "Epigenetics allocation failed");
+        return NULL;
+    }
 
     epi->config = config ? *config : nimcp_epigenetics_default_config();
 
@@ -204,6 +210,7 @@ nimcp_epigenetics_t nimcp_epigenetics_create(const nimcp_epigenetics_config_t* c
     epi->max_methylations = epi->config.max_neurons * 4;  /* Avg 4 per neuron */
     epi->methylations = (methylation_entry_t*)calloc(epi->max_methylations, sizeof(methylation_entry_t));
     if (!epi->methylations) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, epi->max_methylations * sizeof(methylation_entry_t), "Methylation array allocation failed");
         free(epi);
         return NULL;
     }
@@ -212,6 +219,7 @@ nimcp_epigenetics_t nimcp_epigenetics_create(const nimcp_epigenetics_config_t* c
     epi->max_histones = EPIGENETICS_MAX_HISTONES * 16;
     epi->histones = (histone_entry_t*)calloc(epi->max_histones, sizeof(histone_entry_t));
     if (!epi->histones) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, epi->max_histones * sizeof(histone_entry_t), "Histone array allocation failed");
         free(epi->methylations);
         free(epi);
         return NULL;
@@ -221,6 +229,7 @@ nimcp_epigenetics_t nimcp_epigenetics_create(const nimcp_epigenetics_config_t* c
     epi->max_regions = EPIGENETICS_MAX_REGIONS;
     epi->regions = (chromatin_entry_t*)calloc(epi->max_regions, sizeof(chromatin_entry_t));
     if (!epi->regions) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, epi->max_regions * sizeof(chromatin_entry_t), "Chromatin regions array allocation failed");
         free(epi->histones);
         free(epi->methylations);
         free(epi);
@@ -231,6 +240,7 @@ nimcp_epigenetics_t nimcp_epigenetics_create(const nimcp_epigenetics_config_t* c
     epi->max_imprints = EPIGENETICS_MAX_IMPRINTS;
     epi->imprints = (imprint_entry_t*)calloc(epi->max_imprints, sizeof(imprint_entry_t));
     if (!epi->imprints) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, epi->max_imprints * sizeof(imprint_entry_t), "Imprints array allocation failed");
         free(epi->regions);
         free(epi->histones);
         free(epi->methylations);
@@ -263,8 +273,14 @@ nimcp_epigenetics_error_t nimcp_epigenetics_init(
     nimcp_epigenetics_t epi,
     nimcp_brain_t brain
 ) {
-    if (!epi) return EPIGENETICS_ERR_NULL_PTR;
-    if (epi->is_initialized) return EPIGENETICS_ERR_ALREADY_INITIALIZED;
+    if (!epi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Epigenetics handle is NULL");
+        return EPIGENETICS_ERR_NULL_PTR;
+    }
+    if (epi->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "Epigenetics already initialized");
+        return EPIGENETICS_ERR_ALREADY_INITIALIZED;
+    }
 
     epi->brain = brain;
     epi->is_initialized = true;
@@ -287,7 +303,10 @@ nimcp_epigenetics_error_t nimcp_epigenetics_shutdown(nimcp_epigenetics_t epi) {
 //=============================================================================
 
 nimcp_epigenetics_error_t nimcp_epigenetics_update(nimcp_epigenetics_t epi, float dt) {
-    if (!epi) return EPIGENETICS_ERR_NULL_PTR;
+    if (!epi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Epigenetics handle is NULL in update");
+        return EPIGENETICS_ERR_NULL_PTR;
+    }
 
     epi->current_time += (uint64_t)(dt * 1000.0f);
 

@@ -203,14 +203,14 @@ TEST_F(MiddlewareExceptionHandlingTest, BufferUnderflowExceptionHandling) {
     ASSERT_NE(ex, nullptr);
 
     // Get recovery strategy for buffer errors
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(ex, &strategy);
 
     // Buffer errors should suggest retry or continue
     EXPECT_TRUE(
-        strategy.primary_action == RECOVERY_ACTION_RETRY ||
-        strategy.primary_action == RECOVERY_ACTION_NONE ||
-        strategy.primary_action == RECOVERY_ACTION_GC
+        strategy.primary_action == EXCEPTION_RECOVERY_RETRY ||
+        strategy.primary_action == EXCEPTION_RECOVERY_NONE ||
+        strategy.primary_action == EXCEPTION_RECOVERY_GC
     );
 
     nimcp_exception_unref(ex);
@@ -618,11 +618,11 @@ TEST_F(MiddlewareExceptionHandlingTest, MiddlewareRecoveryStrategies) {
         );
         ASSERT_NE(ex, nullptr) << "Failed for: " << tc.name;
 
-        nimcp_recovery_strategy_t strategy;
+        nimcp_exception_recovery_strategy_t strategy;
         nimcp_exception_get_recovery_strategy(ex, &strategy);
 
         // All should have a valid recovery action
-        EXPECT_NE(strategy.primary_action, (nimcp_recovery_action_t)-1)
+        EXPECT_NE(strategy.primary_action, (nimcp_exception_recovery_action_t)-1)
             << "Invalid strategy for: " << tc.name;
 
         nimcp_exception_unref(ex);

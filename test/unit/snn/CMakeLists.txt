@@ -236,3 +236,8 @@ endif()
 # ============================================================================
 # - test_snn_population.cpp
 # - test_snn_simulation.cpp
+
+# Exception handling tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt")
+    add_subdirectory(exception)
+endif()

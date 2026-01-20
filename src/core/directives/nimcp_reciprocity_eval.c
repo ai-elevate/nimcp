@@ -6,6 +6,7 @@
  */
 
 #include "core/directives/nimcp_reciprocity_eval.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>

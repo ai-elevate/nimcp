@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/homeostatic/nimcp_homeostatic_fep_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -15,7 +16,7 @@
 #define LOG_MODULE_HOMEOSTATIC_FEP "HOMEOSTATIC_FEP_BRIDGE"
 
 int homeostatic_fep_bridge_default_config(homeostatic_fep_config_t* config) {
-    if (!config) return -1;
+    NIMCP_API_CHECK_NULL(config, -1, "Homeostatic-FEP config is NULL");
     config->precision_target_gain = HOMEOSTATIC_FEP_TARGET_RATE_SCALING;
     config->free_energy_scaling_factor = 1.0f;
     config->stability_threshold = 0.01f;
@@ -27,12 +28,17 @@ int homeostatic_fep_bridge_default_config(homeostatic_fep_config_t* config) {
 
 homeostatic_fep_bridge_t* homeostatic_fep_bridge_create(const homeostatic_fep_config_t* config) {
     homeostatic_fep_bridge_t* bridge = (homeostatic_fep_bridge_t*)nimcp_malloc(sizeof(homeostatic_fep_bridge_t));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Homeostatic-FEP bridge allocation failed");
     memset(bridge, 0, sizeof(homeostatic_fep_bridge_t));
     if (config) bridge->config = *config;
     else homeostatic_fep_bridge_default_config(&bridge->config);
     bridge->base.mutex = nimcp_platform_mutex_create();
-    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
+        nimcp_free(bridge);
+        LOG_ERROR("Homeostatic-FEP bridge mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Homeostatic-FEP bridge mutex creation failed");
+        return NULL;
+    }
     bridge->effects.total_normalization_factor = 1.0f;
     bridge->effects.precision_target_rate = 1.0f;  /* Initialize to 1.0 for proper get_effective_target_rate */
     NIMCP_LOGGING_INFO("Homeostatic-FEP bridge created");
@@ -47,7 +53,7 @@ void homeostatic_fep_bridge_destroy(homeostatic_fep_bridge_t* bridge) {
 }
 
 int homeostatic_fep_bridge_connect_fep(homeostatic_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic-FEP bridge is NULL");
     /* Allow NULL fep to disconnect/reset FEP connection */
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -56,7 +62,7 @@ int homeostatic_fep_bridge_connect_fep(homeostatic_fep_bridge_t* bridge, fep_sys
 }
 
 int homeostatic_fep_bridge_connect_homeostatic(homeostatic_fep_bridge_t* bridge, homeostatic_controller_t homeostatic) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic-FEP bridge is NULL");
     /* Allow NULL homeostatic to disconnect/reset connection */
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->homeostatic_system = homeostatic;
@@ -65,7 +71,7 @@ int homeostatic_fep_bridge_connect_homeostatic(homeostatic_fep_bridge_t* bridge,
 }
 
 int homeostatic_fep_bridge_disconnect(homeostatic_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic-FEP bridge is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->homeostatic_system = NULL;
@@ -93,7 +99,7 @@ float homeostatic_fep_get_effective_target_rate(const homeostatic_fep_bridge_t* 
 }
 
 int homeostatic_fep_report_scaling(homeostatic_fep_bridge_t* bridge, float scaling_factor) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic-FEP bridge is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.avg_scaling_factor = (bridge->stats.avg_scaling_factor * bridge->stats.total_updates + scaling_factor) /
                                         (bridge->stats.total_updates + 1);
@@ -102,7 +108,7 @@ int homeostatic_fep_report_scaling(homeostatic_fep_bridge_t* bridge, float scali
 }
 
 int homeostatic_fep_bridge_update(homeostatic_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic-FEP bridge is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->fep_system) {
         float precision_norm = homeostatic_fep_apply_precision_normalization(bridge, bridge->effects.precision_value);
@@ -118,19 +124,21 @@ int homeostatic_fep_bridge_update(homeostatic_fep_bridge_t* bridge, uint64_t del
 }
 
 int homeostatic_fep_bridge_get_state(const homeostatic_fep_bridge_t* bridge, homeostatic_fep_state_t* state) {
-    if (!bridge || !state) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic-FEP bridge is NULL");
+    NIMCP_API_CHECK_NULL(state, -1, "State output pointer is NULL");
     *state = bridge->state;
     return 0;
 }
 
 int homeostatic_fep_bridge_get_stats(const homeostatic_fep_bridge_t* bridge, homeostatic_fep_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic-FEP bridge is NULL");
+    NIMCP_API_CHECK_NULL(stats, -1, "Stats output pointer is NULL");
     *stats = bridge->stats;
     return 0;
 }
 
 int homeostatic_fep_bridge_connect_bio_async(homeostatic_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic-FEP bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_HOMEOSTATIC_BRIDGE,
@@ -147,7 +155,7 @@ int homeostatic_fep_bridge_connect_bio_async(homeostatic_fep_bridge_t* bridge) {
 }
 
 int homeostatic_fep_bridge_disconnect_bio_async(homeostatic_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic-FEP bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected - success */
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;

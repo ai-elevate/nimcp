@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -457,13 +458,13 @@ void nimcp_intero_default_config(nimcp_intero_config_t* config) {
 
 nimcp_intero_context_t* nimcp_intero_create(const nimcp_intero_config_t* config) {
     if (!config) {
-        LOG_ERROR("NULL configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL configuration in intero_create");
         return NULL;
     }
 
     nimcp_intero_context_t* ctx = nimcp_malloc(sizeof(nimcp_intero_context_t));
     if (!ctx) {
-        LOG_ERROR("Failed to allocate interoceptive context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate interoceptive context");
         return NULL;
     }
 

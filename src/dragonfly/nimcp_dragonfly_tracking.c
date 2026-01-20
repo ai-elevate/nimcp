@@ -13,10 +13,33 @@
 #include "dragonfly/nimcp_dragonfly_tracking.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+
+/*=============================================================================
+ * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+ *===========================================================================*/
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent for dragonfly tracking */
+static nimcp_health_agent_t* g_dragonfly_health_agent = NULL;
+
+void dragonfly_tracker_set_health_agent(nimcp_health_agent_t* agent) {
+    g_dragonfly_health_agent = agent;
+}
+
+static inline void dragonfly_heartbeat(const char* operation, float progress) {
+    if (g_dragonfly_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_dragonfly_health_agent, operation, progress);
+    }
+}
 
 //=============================================================================
 // Constants
@@ -295,11 +318,12 @@ dragonfly_tracker_t* dragonfly_tracker_create(const tracking_config_t* config) {
     tracking_config_t cfg = config ? *config : tracking_default_config();
 
     if (!tracking_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_tracker_create: invalid config");
         return NULL;
     }
 
     dragonfly_tracker_t* tracker = nimcp_calloc(1, sizeof(dragonfly_tracker_t));
-    if (!tracker) return NULL;
+    NIMCP_API_CHECK_ALLOC(tracker, "dragonfly_tracker_create: failed to allocate tracker");
 
     tracker->config = cfg;
     tracker->state = TRACK_STATE_SEARCHING;
@@ -310,6 +334,7 @@ dragonfly_tracker_t* dragonfly_tracker_create(const tracking_config_t* config) {
 
     tracker->mutex = nimcp_mutex_create(NULL);
     if (!tracker->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_tracker_create: failed to create mutex");
         nimcp_free(tracker);
         return NULL;
     }
@@ -328,7 +353,10 @@ void dragonfly_tracker_destroy(dragonfly_tracker_t* tracker) {
 }
 
 int dragonfly_tracker_reset(dragonfly_tracker_t* tracker) {
-    if (!tracker) return -1;
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_reset: tracker is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(tracker->mutex);
 
@@ -518,9 +546,21 @@ int dragonfly_tracker_update(
     uint32_t num_observations,
     float dt
 ) {
-    if (!tracker) return -1;
-    if (num_observations > 0 && !observations) return -1;
-    if (dt <= 0.0f) return -1;
+    /* Phase 8: Send heartbeat at start of tracking update */
+    dragonfly_heartbeat("tracker_update", 0.0f);
+
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_update: tracker is NULL");
+        return -1;
+    }
+    if (num_observations > 0 && !observations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_update: observations is NULL");
+        return -1;
+    }
+    if (dt <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_tracker_update: invalid dt");
+        return -1;
+    }
 
     nimcp_mutex_lock(tracker->mutex);
 
@@ -681,8 +721,18 @@ int dragonfly_tracker_predict(
     float position[3],
     float velocity[3]
 ) {
-    if (!tracker || !position) return -1;
-    if (lookahead_ms < 0.0f) return -1;
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_predict: tracker is NULL");
+        return -1;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_predict: position is NULL");
+        return -1;
+    }
+    if (lookahead_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_tracker_predict: invalid lookahead_ms");
+        return -1;
+    }
 
     nimcp_mutex_lock(tracker->mutex);
 
@@ -725,7 +775,10 @@ int dragonfly_tracker_force_lock(
     dragonfly_tracker_t* tracker,
     uint32_t target_id
 ) {
-    if (!tracker) return -1;
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_force_lock: tracker is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(tracker->mutex);
 
@@ -740,7 +793,10 @@ int dragonfly_tracker_force_lock(
 }
 
 int dragonfly_tracker_break_lock(dragonfly_tracker_t* tracker) {
-    if (!tracker) return -1;
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_break_lock: tracker is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(tracker->mutex);
 
@@ -795,7 +851,14 @@ int dragonfly_tracker_get_stats(
     const dragonfly_tracker_t* tracker,
     tracking_stats_t* stats
 ) {
-    if (!tracker || !stats) return -1;
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_get_stats: tracker is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)tracker->mutex);
     *stats = tracker->stats;
@@ -805,7 +868,10 @@ int dragonfly_tracker_get_stats(
 }
 
 int dragonfly_tracker_reset_stats(dragonfly_tracker_t* tracker) {
-    if (!tracker) return -1;
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_reset_stats: tracker is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(tracker->mutex);
     memset(&tracker->stats, 0, sizeof(tracker->stats));
@@ -836,8 +902,18 @@ int dragonfly_tracker_set_config(
     dragonfly_tracker_t* tracker,
     const tracking_config_t* config
 ) {
-    if (!tracker || !config) return -1;
-    if (!tracking_validate_config(config)) return -1;
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_set_config: tracker is NULL");
+        return -1;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_set_config: config is NULL");
+        return -1;
+    }
+    if (!tracking_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_tracker_set_config: invalid config");
+        return -1;
+    }
 
     nimcp_mutex_lock(tracker->mutex);
     tracker->config = *config;
@@ -850,7 +926,14 @@ int dragonfly_tracker_get_config(
     const dragonfly_tracker_t* tracker,
     tracking_config_t* config
 ) {
-    if (!tracker || !config) return -1;
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_get_config: tracker is NULL");
+        return -1;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_get_config: config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)tracker->mutex);
     *config = tracker->config;
@@ -869,7 +952,18 @@ int dragonfly_tracker_get_history(
     uint32_t max_positions,
     uint32_t* count
 ) {
-    if (!tracker || !positions || !count) return -1;
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_get_history: tracker is NULL");
+        return -1;
+    }
+    if (!positions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_get_history: positions is NULL");
+        return -1;
+    }
+    if (!count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_get_history: count is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)tracker->mutex);
 
@@ -917,8 +1011,18 @@ int dragonfly_tracker_set_external_velocity(
     const float velocity[3],
     float confidence
 ) {
-    if (!tracker || !velocity) return -1;
-    if (confidence < 0.0f || confidence > 1.0f) return -1;
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_set_external_velocity: tracker is NULL");
+        return -1;
+    }
+    if (!velocity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_set_external_velocity: velocity is NULL");
+        return -1;
+    }
+    if (confidence < 0.0f || confidence > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_tracker_set_external_velocity: invalid confidence");
+        return -1;
+    }
 
     nimcp_mutex_lock(tracker->mutex);
 

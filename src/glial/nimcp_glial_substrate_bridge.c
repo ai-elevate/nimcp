@@ -8,6 +8,7 @@
 #include "glial/nimcp_glial_substrate_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/validation/nimcp_common.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 
@@ -47,7 +48,8 @@ static inline float clamp(float value, float min, float max) {
 
 int glial_substrate_default_config(glial_substrate_config_t* config) {
     if (!config) {
-        NIMCP_LOGGING_ERROR("glial_substrate_default_config: NULL config");
+        LOG_ERROR("glial_substrate_default_config: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_default_config: NULL config");
         return -1;
     }
 
@@ -77,18 +79,12 @@ glial_substrate_bridge_t* glial_substrate_bridge_create(
     microglia_network_t* micro_network,
     myelin_sheath_network_t* myelin_network
 ) {
-    if (!substrate) {
-        NIMCP_LOGGING_ERROR("glial_substrate_bridge_create: NULL substrate");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(substrate, "glial_substrate_bridge_create: NULL substrate");
 
     glial_substrate_bridge_t* bridge = (glial_substrate_bridge_t*)nimcp_malloc(
         sizeof(glial_substrate_bridge_t)
     );
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("glial_substrate_bridge_create: allocation failed");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "glial_substrate_bridge_create: allocation failed");
 
     memset(bridge, 0, sizeof(glial_substrate_bridge_t));
 
@@ -109,7 +105,8 @@ glial_substrate_bridge_t* glial_substrate_bridge_create(
     /* Create mutex using platform API (allocates + initializes internally) */
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("glial_substrate_bridge_create: mutex creation failed");
+        LOG_ERROR("glial_substrate_bridge_create: mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "glial_substrate_bridge_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
     }

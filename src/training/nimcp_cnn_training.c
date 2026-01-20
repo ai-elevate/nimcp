@@ -14,6 +14,9 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* Cortex integration for CNN-Cortex Bridge */
 #include "perception/nimcp_visual_cortex.h"
@@ -23,6 +26,38 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+
+//=============================================================================
+// Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+// Avoid including full header to prevent type conflicts
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent reference for CNN training - set by cnn_trainer_set_health_agent() */
+static nimcp_health_agent_t* g_cnn_health_agent = NULL;
+
+/**
+ * @brief Set health agent for CNN training heartbeat monitoring
+ * @param agent Health agent to use for heartbeats
+ */
+void cnn_trainer_set_health_agent(nimcp_health_agent_t* agent) {
+    g_cnn_health_agent = agent;
+}
+
+/**
+ * @brief Send heartbeat from CNN training operation
+ * @param operation Operation name
+ * @param progress Progress value [0.0-1.0]
+ */
+static inline void cnn_training_heartbeat(const char* operation, float progress) {
+    if (g_cnn_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_cnn_health_agent, operation, progress);
+    }
+}
 
 //=============================================================================
 // Tensor API Helpers (work around opaque tensor type)
@@ -2271,6 +2306,10 @@ nimcp_error_t cnn_trainer_fit(cnn_trainer_t* trainer,
     NIMCP_LOGGING_INFO("Starting training for %u epochs", trainer->config.max_epochs);
 
     for (uint32_t epoch = 0; epoch < trainer->config.max_epochs; epoch++) {
+        /* Phase 8: Send heartbeat with epoch progress */
+        float progress = (float)epoch / (float)trainer->config.max_epochs;
+        cnn_training_heartbeat("cnn_train_epoch", progress);
+
         /* Train epoch */
         cnn_epoch_result_t epoch_result;
         nimcp_error_t err = cnn_trainer_train_epoch(trainer, train_loader, &epoch_result);
@@ -2916,6 +2955,9 @@ nimcp_error_t cnn_to_snn_finetune_stdp(cnn_to_snn_result_t* result,
      */
 
     for (uint32_t epoch = 0; epoch < epochs; epoch++) {
+        /* Phase 8: Send heartbeat with STDP fine-tuning progress */
+        cnn_training_heartbeat("cnn_stdp_finetune", (float)epoch / (float)epochs);
+
         /* Placeholder for actual STDP fine-tuning */
         result->conversion_accuracy += 0.001f * (1.0f - result->conversion_accuracy);
     }

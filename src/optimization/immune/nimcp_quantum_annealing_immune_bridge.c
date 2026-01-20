@@ -15,6 +15,9 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -103,7 +106,10 @@ static uint32_t compute_problem_severity(qa_problem_type_t type, const qa_immune
  * ============================================================================ */
 
 int qa_immune_default_config(qa_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_default_config: null config");
+        return -1;
+    }
 
     memset(config, 0, sizeof(qa_immune_config_t));
 
@@ -141,8 +147,14 @@ qa_immune_bridge_t* qa_immune_create(
     quantum_annealer_t annealer,
     brain_immune_system_t* immune_system
 ) {
-    if (!annealer || !immune_system) {
-        NIMCP_LOGGING_ERROR("Invalid parameters: annealer and immune_system required");
+    if (!annealer) {
+        NIMCP_LOGGING_ERROR("Invalid parameters: annealer required");
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_create: null annealer");
+        return NULL;
+    }
+    if (!immune_system) {
+        NIMCP_LOGGING_ERROR("Invalid parameters: immune_system required");
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_create: null immune_system");
         return NULL;
     }
 
@@ -150,6 +162,8 @@ qa_immune_bridge_t* qa_immune_create(
     qa_immune_bridge_t* bridge = (qa_immune_bridge_t*)nimcp_malloc(sizeof(qa_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate quantum annealing immune bridge");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(qa_immune_bridge_t),
+                          "Failed to allocate quantum annealing immune bridge");
         return NULL;
     }
 
@@ -170,17 +184,20 @@ qa_immune_bridge_t* qa_immune_create(
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_THREADING(NIMCP_ERROR_MUTEX_INIT, 0, "Failed to create mutex for QA immune bridge");
         nimcp_free(bridge);
         return NULL;
     }
 
     /* Allocate history */
     bridge->history_capacity = bridge->config.history_size;
-    bridge->history = (qa_immune_metrics_t*)nimcp_malloc(
-        sizeof(qa_immune_metrics_t) * bridge->history_capacity
-    );
+    size_t history_size = sizeof(qa_immune_metrics_t) * bridge->history_capacity;
+    bridge->history = (qa_immune_metrics_t*)nimcp_malloc(history_size);
     if (!bridge->history) {
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, history_size,
+                          "Failed to allocate history buffer for QA immune bridge (capacity=%zu)",
+                          bridge->history_capacity);
         nimcp_platform_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
@@ -188,11 +205,13 @@ qa_immune_bridge_t* qa_immune_create(
 
     /* Allocate events */
     bridge->event_capacity = 64;
-    bridge->events = (qa_immune_problem_event_t*)nimcp_malloc(
-        sizeof(qa_immune_problem_event_t) * bridge->event_capacity
-    );
+    size_t events_size = sizeof(qa_immune_problem_event_t) * bridge->event_capacity;
+    bridge->events = (qa_immune_problem_event_t*)nimcp_malloc(events_size);
     if (!bridge->events) {
         NIMCP_LOGGING_ERROR("Failed to allocate event buffer");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, events_size,
+                          "Failed to allocate event buffer for QA immune bridge (capacity=%zu)",
+                          bridge->event_capacity);
         nimcp_free(bridge->history);
         nimcp_platform_mutex_destroy(bridge->base.mutex);
         nimcp_free(bridge);
@@ -248,7 +267,10 @@ void qa_immune_destroy(qa_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int qa_immune_connect_bio_async(qa_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_connect_bio_async: null bridge");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -274,7 +296,10 @@ int qa_immune_connect_bio_async(qa_immune_bridge_t* bridge) {
 }
 
 int qa_immune_disconnect_bio_async(qa_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_disconnect_bio_async: null bridge");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
@@ -301,7 +326,14 @@ bool qa_immune_is_bio_async_connected(const qa_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int qa_immune_update(qa_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_update: null bridge");
+        return -1;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_update: null immune_system");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -342,7 +374,14 @@ int qa_immune_update(qa_immune_bridge_t* bridge) {
 }
 
 int qa_immune_apply_modulation(qa_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->annealer) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_apply_modulation: null bridge");
+        return -1;
+    }
+    if (!bridge->annealer) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_apply_modulation: null annealer");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -367,7 +406,10 @@ int qa_immune_update_metrics(
     float energy,
     float temperature
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_update_metrics: null bridge");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -417,7 +459,10 @@ qa_problem_type_t qa_immune_check_convergence(
     qa_immune_bridge_t* bridge,
     float final_energy
 ) {
-    if (!bridge) return QA_PROBLEM_NONE;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_check_convergence: null bridge");
+        return QA_PROBLEM_NONE;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -495,7 +540,14 @@ int qa_immune_report_problem(
     uint32_t severity,
     uint32_t* event_id
 ) {
-    if (!bridge || !event_id) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_report_problem: null bridge");
+        return -1;
+    }
+    if (!event_id) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_report_problem: null event_id");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -540,7 +592,14 @@ int qa_immune_trigger_immune_response(
     qa_immune_bridge_t* bridge,
     uint32_t event_id
 ) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_trigger_immune_response: null bridge");
+        return -1;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_trigger_immune_response: null immune_system");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -624,7 +683,14 @@ int qa_immune_get_cytokine_effects(
     const qa_immune_bridge_t* bridge,
     qa_immune_cytokine_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_get_cytokine_effects: null bridge");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_get_cytokine_effects: null effects");
+        return -1;
+    }
 
     memcpy(effects, &bridge->cytokine_effects, sizeof(qa_immune_cytokine_effects_t));
     return 0;
@@ -634,7 +700,14 @@ int qa_immune_get_stats(
     const qa_immune_bridge_t* bridge,
     qa_immune_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_get_stats: null bridge");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_get_stats: null stats");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(qa_immune_stats_t));
@@ -647,7 +720,14 @@ int qa_immune_get_current_metrics(
     const qa_immune_bridge_t* bridge,
     qa_immune_metrics_t* metrics
 ) {
-    if (!bridge || !metrics) return -1;
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_get_current_metrics: null bridge");
+        return -1;
+    }
+    if (!metrics) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qa_immune_get_current_metrics: null metrics");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)bridge->base.mutex);
     memcpy(metrics, &bridge->current_metrics, sizeof(qa_immune_metrics_t));

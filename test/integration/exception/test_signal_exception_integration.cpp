@@ -130,10 +130,10 @@ TEST_F(SignalExceptionIntegrationTest, ExceptionToImmuneFlow) {
     EXPECT_EQ(result, 0);
 
     // For SIGNAL category, primary action should be EMERGENCY_SAVE
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
-    EXPECT_EQ(strategy.primary_action, RECOVERY_ACTION_EMERGENCY_SAVE);
-    EXPECT_EQ(strategy.fallback_action, RECOVERY_ACTION_GRACEFUL_SHUTDOWN);
+    EXPECT_EQ(strategy.primary_action, EXCEPTION_RECOVERY_EMERGENCY_SAVE);
+    EXPECT_EQ(strategy.fallback_action, EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
 }

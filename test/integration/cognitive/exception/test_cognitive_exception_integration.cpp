@@ -43,7 +43,7 @@ protected:
     static std::atomic<int> handler_call_count;
     static std::atomic<int> immune_presentation_count;
     static std::atomic<int> recovery_callback_count;
-    static std::atomic<nimcp_recovery_action_t> last_recovery_action;
+    static std::atomic<nimcp_exception_recovery_action_t> last_recovery_action;
     static std::atomic<bool> recovery_succeeded;
     static std::vector<nimcp_error_t> presented_error_codes;
 
@@ -53,7 +53,7 @@ protected:
         handler_call_count = 0;
         immune_presentation_count = 0;
         recovery_callback_count = 0;
-        last_recovery_action = RECOVERY_ACTION_NONE;
+        last_recovery_action = EXCEPTION_RECOVERY_NONE;
         recovery_succeeded = false;
         presented_error_codes.clear();
 
@@ -98,7 +98,7 @@ protected:
     }
 
     static int test_recovery_callback(nimcp_exception_t* ex,
-                                       nimcp_recovery_action_t action,
+                                       nimcp_exception_recovery_action_t action,
                                        void* user_data) {
         (void)user_data;
         recovery_callback_count++;
@@ -106,13 +106,13 @@ protected:
 
         // Simulate recovery based on action type
         switch (action) {
-            case RECOVERY_ACTION_GC:
-            case RECOVERY_ACTION_CLEAR_CACHE:
-            case RECOVERY_ACTION_REDUCE_LOAD:
+            case EXCEPTION_RECOVERY_GC:
+            case EXCEPTION_RECOVERY_CLEAR_CACHE:
+            case EXCEPTION_RECOVERY_REDUCE_LOAD:
                 recovery_succeeded = true;
                 return 0;  // Success
-            case RECOVERY_ACTION_ROLLBACK:
-            case RECOVERY_ACTION_RESTART_COMPONENT:
+            case EXCEPTION_RECOVERY_ROLLBACK:
+            case EXCEPTION_RECOVERY_RESTART_COMPONENT:
                 recovery_succeeded = true;
                 return 0;
             default:
@@ -125,7 +125,7 @@ protected:
 std::atomic<int> CognitiveExceptionIntegrationTest::handler_call_count(0);
 std::atomic<int> CognitiveExceptionIntegrationTest::immune_presentation_count(0);
 std::atomic<int> CognitiveExceptionIntegrationTest::recovery_callback_count(0);
-std::atomic<nimcp_recovery_action_t> CognitiveExceptionIntegrationTest::last_recovery_action(RECOVERY_ACTION_NONE);
+std::atomic<nimcp_exception_recovery_action_t> CognitiveExceptionIntegrationTest::last_recovery_action(EXCEPTION_RECOVERY_NONE);
 std::atomic<bool> CognitiveExceptionIntegrationTest::recovery_succeeded(false);
 std::vector<nimcp_error_t> CognitiveExceptionIntegrationTest::presented_error_codes;
 
@@ -165,13 +165,13 @@ TEST_F(CognitiveExceptionIntegrationTest, WorkingMemoryExceptionToImmune) {
     EXPECT_TRUE(ex->presented_to_immune);
 
     // Get recovery strategy
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(ex, &strategy);
 
     // Working memory errors should suggest GC or cache clearing
-    EXPECT_TRUE(strategy.primary_action == RECOVERY_ACTION_GC ||
-                strategy.primary_action == RECOVERY_ACTION_CLEAR_CACHE ||
-                strategy.primary_action == RECOVERY_ACTION_REDUCE_LOAD);
+    EXPECT_TRUE(strategy.primary_action == EXCEPTION_RECOVERY_GC ||
+                strategy.primary_action == EXCEPTION_RECOVERY_CLEAR_CACHE ||
+                strategy.primary_action == EXCEPTION_RECOVERY_REDUCE_LOAD);
 
     nimcp_exception_unref(ex);
 }
@@ -183,7 +183,7 @@ TEST_F(CognitiveExceptionIntegrationTest, ExecutiveControlExceptionRecovery) {
 
     // Register recovery callback for REDUCE_LOAD action
     int reg_result = nimcp_register_recovery_callback(
-        RECOVERY_ACTION_REDUCE_LOAD,
+        EXCEPTION_RECOVERY_REDUCE_LOAD,
         test_recovery_callback,
         nullptr
     );
@@ -204,20 +204,20 @@ TEST_F(CognitiveExceptionIntegrationTest, ExecutiveControlExceptionRecovery) {
 
     // Execute recovery
     recovery_callback_count = 0;
-    int recovery_result = nimcp_exception_execute_recovery(ex, RECOVERY_ACTION_REDUCE_LOAD);
+    int recovery_result = nimcp_exception_execute_recovery(ex, EXCEPTION_RECOVERY_REDUCE_LOAD);
     EXPECT_EQ(recovery_result, 0);
     EXPECT_EQ(recovery_callback_count.load(), 1);
-    EXPECT_EQ(last_recovery_action.load(), RECOVERY_ACTION_REDUCE_LOAD);
+    EXPECT_EQ(last_recovery_action.load(), EXCEPTION_RECOVERY_REDUCE_LOAD);
     EXPECT_TRUE(recovery_succeeded.load());
 
     // Notify immune of recovery result
     int notify_result = nimcp_exception_notify_recovery_result(
-        ex, RECOVERY_ACTION_REDUCE_LOAD, true
+        ex, EXCEPTION_RECOVERY_REDUCE_LOAD, true
     );
     EXPECT_EQ(notify_result, 0);
 
     // Clean up
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_REDUCE_LOAD);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_REDUCE_LOAD);
     nimcp_exception_unref(ex);
 }
 
@@ -300,10 +300,10 @@ TEST_F(CognitiveExceptionIntegrationTest, CascadingCognitiveFailure) {
     EXPECT_EQ(result, 0);
 
     // Recovery should target root cause
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(exec_failure, &strategy);
     // For severe cognitive errors, expect significant recovery action
-    EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE);
+    EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref(exec_failure);
 }
@@ -410,11 +410,11 @@ TEST_F(CognitiveExceptionIntegrationTest, RecoveryStrategyByErrorType) {
         );
         ASSERT_NE(ex, nullptr) << "Failed for " << error.name;
 
-        nimcp_recovery_strategy_t strategy;
+        nimcp_exception_recovery_strategy_t strategy;
         nimcp_exception_get_recovery_strategy(ex, &strategy);
 
         // All cognitive errors should have some recovery strategy
-        EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE)
+        EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE)
             << "No primary action for " << error.name;
 
         // Should have defined retry count
@@ -432,7 +432,7 @@ TEST_F(CognitiveExceptionIntegrationTest, FallbackRecoveryExecution) {
 
     // Register failing primary callback
     auto failing_callback = [](nimcp_exception_t* ex,
-                               nimcp_recovery_action_t action,
+                               nimcp_exception_recovery_action_t action,
                                void* user_data) -> int {
         (void)ex;
         (void)action;
@@ -440,8 +440,8 @@ TEST_F(CognitiveExceptionIntegrationTest, FallbackRecoveryExecution) {
         return -1;  // Failure
     };
 
-    nimcp_register_recovery_callback(RECOVERY_ACTION_GC, failing_callback, nullptr);
-    nimcp_register_recovery_callback(RECOVERY_ACTION_CLEAR_CACHE, test_recovery_callback, nullptr);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_GC, failing_callback, nullptr);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_CLEAR_CACHE, test_recovery_callback, nullptr);
 
     nimcp_exception_t* ex = nimcp_exception_create(
         NIMCP_ERROR_WORKING_MEMORY,
@@ -451,17 +451,17 @@ TEST_F(CognitiveExceptionIntegrationTest, FallbackRecoveryExecution) {
     );
 
     // Primary recovery should fail
-    int primary_result = nimcp_exception_execute_recovery(ex, RECOVERY_ACTION_GC);
+    int primary_result = nimcp_exception_execute_recovery(ex, EXCEPTION_RECOVERY_GC);
     EXPECT_EQ(primary_result, -1);
 
     // Fallback should succeed
     recovery_callback_count = 0;
-    int fallback_result = nimcp_exception_execute_recovery(ex, RECOVERY_ACTION_CLEAR_CACHE);
+    int fallback_result = nimcp_exception_execute_recovery(ex, EXCEPTION_RECOVERY_CLEAR_CACHE);
     EXPECT_EQ(fallback_result, 0);
     EXPECT_TRUE(recovery_succeeded.load());
 
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_GC);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_CLEAR_CACHE);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_GC);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_CLEAR_CACHE);
     nimcp_exception_unref(ex);
 }
 

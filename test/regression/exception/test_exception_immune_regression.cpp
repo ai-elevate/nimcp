@@ -183,12 +183,12 @@ TEST_F(ExceptionImmuneRegressionTest, MemoryExceptionRecoveryStrategy) {
     );
     ASSERT_NE(mem_ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)mem_ex, &strategy);
 
-    EXPECT_EQ(strategy.primary_action, RECOVERY_ACTION_GC)
+    EXPECT_EQ(strategy.primary_action, EXCEPTION_RECOVERY_GC)
         << "MEMORY exception primary action must be GC";
-    EXPECT_EQ(strategy.fallback_action, RECOVERY_ACTION_QUARANTINE)
+    EXPECT_EQ(strategy.fallback_action, EXCEPTION_RECOVERY_QUARANTINE)
         << "MEMORY exception fallback action must be QUARANTINE";
 
     nimcp_exception_unref((nimcp_exception_t*)mem_ex);
@@ -206,12 +206,12 @@ TEST_F(ExceptionImmuneRegressionTest, BrainExceptionRecoveryStrategy) {
     );
     ASSERT_NE(brain_ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)brain_ex, &strategy);
 
     // Brain exceptions should have CLEAR_CACHE or similar as primary
     // and ROLLBACK as fallback
-    EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE)
+    EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE)
         << "BRAIN exception must have a primary action";
 
     nimcp_exception_unref((nimcp_exception_t*)brain_ex);
@@ -228,12 +228,12 @@ TEST_F(ExceptionImmuneRegressionTest, SignalExceptionRecoveryStrategy) {
     );
     ASSERT_NE(sig_ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)sig_ex, &strategy);
 
-    EXPECT_EQ(strategy.primary_action, RECOVERY_ACTION_EMERGENCY_SAVE)
+    EXPECT_EQ(strategy.primary_action, EXCEPTION_RECOVERY_EMERGENCY_SAVE)
         << "SIGNAL exception primary action must be EMERGENCY_SAVE";
-    EXPECT_EQ(strategy.fallback_action, RECOVERY_ACTION_GRACEFUL_SHUTDOWN)
+    EXPECT_EQ(strategy.fallback_action, EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN)
         << "SIGNAL exception fallback action must be GRACEFUL_SHUTDOWN";
     EXPECT_EQ(strategy.retry_count, 1u)
         << "SIGNAL exception retry_count must be 1 (one chance)";
@@ -255,10 +255,10 @@ TEST_F(ExceptionImmuneRegressionTest, ThreadingExceptionRecoveryStrategy) {
     );
     ASSERT_NE(thread_ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)thread_ex, &strategy);
 
-    EXPECT_EQ(strategy.primary_action, RECOVERY_ACTION_RESTART_THREAD)
+    EXPECT_EQ(strategy.primary_action, EXCEPTION_RECOVERY_RESTART_THREAD)
         << "THREADING exception primary action must be RESTART_THREAD";
 
     nimcp_exception_unref((nimcp_exception_t*)thread_ex);
@@ -276,10 +276,10 @@ TEST_F(ExceptionImmuneRegressionTest, IOExceptionRecoveryStrategy) {
     );
     ASSERT_NE(io_ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)io_ex, &strategy);
 
-    EXPECT_EQ(strategy.primary_action, RECOVERY_ACTION_RETRY)
+    EXPECT_EQ(strategy.primary_action, EXCEPTION_RECOVERY_RETRY)
         << "IO exception primary action must be RETRY";
 
     nimcp_exception_unref((nimcp_exception_t*)io_ex);
@@ -576,9 +576,9 @@ TEST_F(ExceptionImmuneRegressionTest, RecoveryExecutionWithoutCallback) {
     ASSERT_NE(ex, nullptr);
 
     // Unregister to ensure no callback
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_COMPACT);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_COMPACT);
 
-    int result = nimcp_exception_execute_recovery(ex, RECOVERY_ACTION_COMPACT);
+    int result = nimcp_exception_execute_recovery(ex, EXCEPTION_RECOVERY_COMPACT);
     EXPECT_EQ(result, -1)
         << "Recovery execution without callback must return -1";
 
@@ -598,7 +598,7 @@ TEST_F(ExceptionImmuneRegressionTest, RecoveryNotificationContract) {
 
     int result = nimcp_exception_notify_recovery_result(
         ex,
-        RECOVERY_ACTION_GC,
+        EXCEPTION_RECOVERY_GC,
         true  // success
     );
     // Should succeed or be no-op (return 0)
@@ -663,10 +663,10 @@ TEST_F(ExceptionImmuneRegressionTest, SuggestedRecoveryForMemory) {
     );
     ASSERT_NE(mem_ex, nullptr);
 
-    nimcp_recovery_action_t suggested = nimcp_exception_get_suggested_recovery(
+    nimcp_exception_recovery_action_t suggested = nimcp_exception_get_suggested_recovery(
         (nimcp_exception_t*)mem_ex
     );
-    EXPECT_EQ(suggested, RECOVERY_ACTION_GC)
+    EXPECT_EQ(suggested, EXCEPTION_RECOVERY_GC)
         << "Memory exception suggested recovery must be GC";
 
     nimcp_exception_unref((nimcp_exception_t*)mem_ex);
@@ -683,10 +683,10 @@ TEST_F(ExceptionImmuneRegressionTest, SuggestedRecoveryForSignal) {
     );
     ASSERT_NE(sig_ex, nullptr);
 
-    nimcp_recovery_action_t suggested = nimcp_exception_get_suggested_recovery(
+    nimcp_exception_recovery_action_t suggested = nimcp_exception_get_suggested_recovery(
         (nimcp_exception_t*)sig_ex
     );
-    EXPECT_EQ(suggested, RECOVERY_ACTION_EMERGENCY_SAVE)
+    EXPECT_EQ(suggested, EXCEPTION_RECOVERY_EMERGENCY_SAVE)
         << "Signal exception suggested recovery must be EMERGENCY_SAVE";
 
     nimcp_exception_unref((nimcp_exception_t*)sig_ex);
@@ -708,14 +708,14 @@ TEST_F(ExceptionImmuneRegressionTest, RecoveryStrategyFieldsPopulated) {
     );
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     memset(&strategy, 0xFF, sizeof(strategy));  // Fill with garbage
 
     nimcp_exception_get_recovery_strategy(ex, &strategy);
 
     // All fields should be set to valid values (not 0xFF garbage)
-    EXPECT_NE(strategy.primary_action, (nimcp_recovery_action_t)0xFFFFFFFF);
-    EXPECT_NE(strategy.fallback_action, (nimcp_recovery_action_t)0xFFFFFFFF);
+    EXPECT_NE(strategy.primary_action, (nimcp_exception_recovery_action_t)0xFFFFFFFF);
+    EXPECT_NE(strategy.fallback_action, (nimcp_exception_recovery_action_t)0xFFFFFFFF);
     // retry_count and cooldown_ms can be 0 or other values
 
     nimcp_exception_unref(ex);
@@ -735,7 +735,7 @@ TEST_F(ExceptionImmuneRegressionTest, ImmuneResponseStructSize) {
     // Check that all expected fields exist by accessing them
     response.antigen_id = 0;
     response.antibody_id = 0;
-    response.action_taken = RECOVERY_ACTION_NONE;
+    response.action_taken = EXCEPTION_RECOVERY_NONE;
     response.recovery_attempted = false;
     response.recovery_succeeded = false;
     response.response_time_us = 0;
@@ -814,7 +814,7 @@ TEST_F(ExceptionImmuneRegressionTest, NullParameterSafety) {
     // Should return some value (clamped or default)
 
     // nimcp_exception_get_recovery_strategy with NULL exception
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(nullptr, &strategy);
     // Should not crash
 

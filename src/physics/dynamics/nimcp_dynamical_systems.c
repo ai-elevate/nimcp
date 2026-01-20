@@ -7,6 +7,7 @@
 
 #include "physics/dynamics/nimcp_dynamical_systems.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -171,9 +172,7 @@ dynsys_system_t dynsys_create(
     }
 
     struct dynsys_system_struct* sys = calloc(1, sizeof(struct dynsys_system_struct));
-    if (!sys) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(sys, "Failed to allocate dynamical system");
 
     memcpy(&sys->config, config, sizeof(dynsys_config_t));
     sys->func = func;
@@ -184,6 +183,8 @@ dynsys_system_t dynsys_create(
     if (config->param_dim > 0) {
         sys->params = calloc(config->param_dim, sizeof(float));
         if (!sys->params) {
+            LOG_ERROR("Failed to allocate dynamical system parameters");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate dynamical system parameters");
             free(sys);
             return NULL;
         }
@@ -982,7 +983,7 @@ int dynsys_bridge_register_kg(dynsys_bridge_t bridge, brain_kg_t* kg)
     return 0;
 }
 
-int dynsys_bridge_register_exception_handler(dynsys_bridge_t bridge, nimcp_exception_handler_t handler)
+int dynsys_bridge_register_exception_handler(dynsys_bridge_t bridge, dynsys_exception_handler_t handler)
 {
     if (!bridge) return -1;
     bridge->exception_handler = handler;

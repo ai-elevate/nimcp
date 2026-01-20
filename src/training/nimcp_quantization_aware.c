@@ -14,6 +14,9 @@
 #include "training/nimcp_quantization_aware.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -111,6 +114,7 @@ static float clamp(float x, float min_val, float max_val);
 
 int qat_default_config(qat_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qat_default_config: config is NULL");
         return -1;
     }
 
@@ -197,11 +201,13 @@ int qat_binary_config(qat_config_t* config) {
 
 qat_ctx_t* qat_create(const qat_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "qat_create: config is NULL");
         return NULL;
     }
 
     /* Validate configuration */
     if (qat_validate_config(config) != 0) {
+        NIMCP_THROW(NIMCP_ERROR_CONFIG_INVALID, "qat_create: config validation failed");
         return NULL;
     }
 

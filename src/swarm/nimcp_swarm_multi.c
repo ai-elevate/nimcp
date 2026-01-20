@@ -12,6 +12,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "utils/containers/nimcp_darray.h"
+#include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_wiring_helpers.h"

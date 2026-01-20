@@ -12,6 +12,7 @@
 #include "middleware/normalization/nimcp_normalization_immune.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>

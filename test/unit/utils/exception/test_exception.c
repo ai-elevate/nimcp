@@ -370,12 +370,12 @@ END_TEST
 
 START_TEST(test_recovery_action_to_string)
 {
-    ck_assert_str_eq(nimcp_recovery_action_to_string(RECOVERY_ACTION_NONE), "NONE");
-    ck_assert_str_eq(nimcp_recovery_action_to_string(RECOVERY_ACTION_RETRY), "RETRY");
-    ck_assert_str_eq(nimcp_recovery_action_to_string(RECOVERY_ACTION_GC), "GC");
-    ck_assert_str_eq(nimcp_recovery_action_to_string(RECOVERY_ACTION_COMPACT), "COMPACT");
-    ck_assert_str_eq(nimcp_recovery_action_to_string(RECOVERY_ACTION_ROLLBACK), "ROLLBACK");
-    ck_assert_str_eq(nimcp_recovery_action_to_string(RECOVERY_ACTION_QUARANTINE), "QUARANTINE");
+    ck_assert_str_eq(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_NONE), "NONE");
+    ck_assert_str_eq(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_RETRY), "RETRY");
+    ck_assert_str_eq(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_GC), "GC");
+    ck_assert_str_eq(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_COMPACT), "COMPACT");
+    ck_assert_str_eq(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_ROLLBACK), "ROLLBACK");
+    ck_assert_str_eq(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_QUARANTINE), "QUARANTINE");
 }
 END_TEST
 
@@ -813,9 +813,9 @@ END_TEST
  *=============================================================================*/
 
 static bool recovery_callback_called = false;
-static nimcp_recovery_action_t recovery_action_received = RECOVERY_ACTION_NONE;
+static nimcp_exception_recovery_action_t recovery_action_received = EXCEPTION_RECOVERY_NONE;
 
-static int test_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+static int test_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     (void)ex;
     (void)user_data;
     recovery_callback_called = true;
@@ -826,19 +826,19 @@ static int test_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t
 static void recovery_setup(void) {
     setup();
     recovery_callback_called = false;
-    recovery_action_received = RECOVERY_ACTION_NONE;
+    recovery_action_received = EXCEPTION_RECOVERY_NONE;
 }
 
 START_TEST(test_register_recovery_callback)
 {
     int ret = nimcp_register_recovery_callback(
-        RECOVERY_ACTION_GC,
+        EXCEPTION_RECOVERY_GC,
         test_recovery_callback,
         NULL
     );
     ck_assert_int_eq(ret, 0);
 
-    ret = nimcp_unregister_recovery_callback(RECOVERY_ACTION_GC);
+    ret = nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_GC);
     ck_assert_int_eq(ret, 0);
 }
 END_TEST
@@ -846,7 +846,7 @@ END_TEST
 START_TEST(test_execute_recovery)
 {
     nimcp_register_recovery_callback(
-        RECOVERY_ACTION_RETRY,
+        EXCEPTION_RECOVERY_RETRY,
         test_recovery_callback,
         NULL
     );
@@ -858,15 +858,15 @@ START_TEST(test_execute_recovery)
         "IO error for retry"
     );
 
-    int ret = nimcp_execute_recovery(ex, RECOVERY_ACTION_RETRY);
+    int ret = nimcp_execute_recovery(ex, EXCEPTION_RECOVERY_RETRY);
     ck_assert_int_eq(ret, 0);
     ck_assert(recovery_callback_called);
-    ck_assert_int_eq(recovery_action_received, RECOVERY_ACTION_RETRY);
+    ck_assert_int_eq(recovery_action_received, EXCEPTION_RECOVERY_RETRY);
     ck_assert(ex->recovery_attempted);
     ck_assert(ex->recovery_succeeded);
 
     nimcp_exception_unref(ex);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_RETRY);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RETRY);
 }
 END_TEST
 
@@ -879,7 +879,7 @@ START_TEST(test_recovery_no_callback)
         "No callback registered"
     );
 
-    int ret = nimcp_execute_recovery(ex, RECOVERY_ACTION_COMPACT);
+    int ret = nimcp_execute_recovery(ex, EXCEPTION_RECOVERY_COMPACT);
     ck_assert_int_eq(ret, -1);  /* Should fail - no callback */
 
     nimcp_exception_unref(ex);
@@ -955,12 +955,12 @@ START_TEST(test_recovery_strategy)
     );
     mem_ex->category = EXCEPTION_CATEGORY_MEMORY;
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(mem_ex, &strategy);
 
     /* Memory exceptions should use GC or compact as primary */
-    ck_assert(strategy.primary_action == RECOVERY_ACTION_GC ||
-              strategy.primary_action == RECOVERY_ACTION_COMPACT);
+    ck_assert(strategy.primary_action == EXCEPTION_RECOVERY_GC ||
+              strategy.primary_action == EXCEPTION_RECOVERY_COMPACT);
 
     nimcp_exception_unref(mem_ex);
 }
@@ -1082,8 +1082,8 @@ START_TEST(test_suggested_recovery)
         "OOM"
     );
 
-    nimcp_recovery_action_t action = nimcp_exception_get_suggested_recovery((nimcp_exception_t*)mex);
-    ck_assert(action == RECOVERY_ACTION_GC || action == RECOVERY_ACTION_COMPACT);
+    nimcp_exception_recovery_action_t action = nimcp_exception_get_suggested_recovery((nimcp_exception_t*)mex);
+    ck_assert(action == EXCEPTION_RECOVERY_GC || action == EXCEPTION_RECOVERY_COMPACT);
 
     nimcp_exception_unref((nimcp_exception_t*)mex);
 }
@@ -1116,8 +1116,8 @@ START_TEST(test_full_exception_workflow)
     ck_assert_uint_gt(epitope_len, 0);
 
     /* Get suggested recovery */
-    nimcp_recovery_action_t action = nimcp_exception_get_suggested_recovery(ex);
-    ck_assert_int_ne(action, RECOVERY_ACTION_NONE);
+    nimcp_exception_recovery_action_t action = nimcp_exception_get_suggested_recovery(ex);
+    ck_assert_int_ne(action, EXCEPTION_RECOVERY_NONE);
 
     /* Format as string */
     char buffer[512];
@@ -1636,7 +1636,7 @@ START_TEST(test_metrics_record)
     nimcp_metrics_record_exception(ex);
 
     /* Record recovery - pass 0 for duration_us */
-    nimcp_metrics_record_recovery(ex, RECOVERY_ACTION_RETRY, true, 0);
+    nimcp_metrics_record_recovery(ex, EXCEPTION_RECOVERY_RETRY, true, 0);
 
     nimcp_exception_unref(ex);
 }
@@ -1700,7 +1700,7 @@ START_TEST(test_adaptive_suggest_action)
     nimcp_exception_generate_epitope(ex);
 
     /* No data yet - should suggest default action */
-    nimcp_recovery_action_t action = nimcp_adaptive_suggest_action(ex);
+    nimcp_exception_recovery_action_t action = nimcp_adaptive_suggest_action(ex);
     /* Action may be NONE or a default - just verify no crash */
     (void)action;
 
@@ -1720,15 +1720,15 @@ START_TEST(test_adaptive_record_outcome)
 
     /* Record multiple outcomes to train the system */
     for (int i = 0; i < 10; i++) {
-        int ret = nimcp_adaptive_record_outcome(ex, RECOVERY_ACTION_RETRY, true);
+        int ret = nimcp_adaptive_record_outcome(ex, EXCEPTION_RECOVERY_RETRY, true);
         ck_assert_int_eq(ret, 0);
     }
 
     /* System should now suggest RETRY for this pattern */
-    nimcp_recovery_action_t action = nimcp_adaptive_suggest_action(ex);
+    nimcp_exception_recovery_action_t action = nimcp_adaptive_suggest_action(ex);
     /* After enough samples, should suggest the successful action */
-    if (action != RECOVERY_ACTION_NONE) {
-        ck_assert_int_eq(action, RECOVERY_ACTION_RETRY);
+    if (action != EXCEPTION_RECOVERY_NONE) {
+        ck_assert_int_eq(action, EXCEPTION_RECOVERY_RETRY);
     }
 
     nimcp_exception_unref(ex);
@@ -1746,16 +1746,16 @@ START_TEST(test_adaptive_get_confidence)
     nimcp_exception_generate_epitope(ex);
 
     /* No data - low confidence */
-    float conf = nimcp_adaptive_get_confidence(ex, RECOVERY_ACTION_RETRY);
+    float conf = nimcp_adaptive_get_confidence(ex, EXCEPTION_RECOVERY_RETRY);
     ck_assert(conf >= 0.0f && conf <= 1.0f);
 
     /* Record outcomes to build confidence */
     for (int i = 0; i < 20; i++) {
-        nimcp_adaptive_record_outcome(ex, RECOVERY_ACTION_GC, true);
+        nimcp_adaptive_record_outcome(ex, EXCEPTION_RECOVERY_GC, true);
     }
 
     /* Should have higher confidence now */
-    float new_conf = nimcp_adaptive_get_confidence(ex, RECOVERY_ACTION_GC);
+    float new_conf = nimcp_adaptive_get_confidence(ex, EXCEPTION_RECOVERY_GC);
     ck_assert(new_conf >= 0.0f && new_conf <= 1.0f);
 
     nimcp_exception_unref(ex);
@@ -1774,14 +1774,14 @@ START_TEST(test_adaptive_reset_pattern)
 
     /* Train the pattern */
     for (int i = 0; i < 10; i++) {
-        nimcp_adaptive_record_outcome(ex, RECOVERY_ACTION_RETRY, true);
+        nimcp_adaptive_record_outcome(ex, EXCEPTION_RECOVERY_RETRY, true);
     }
 
     /* Reset this specific pattern */
     nimcp_adaptive_reset_pattern(ex->epitope, ex->epitope_len);
 
     /* Confidence should be back to low */
-    float conf = nimcp_adaptive_get_confidence(ex, RECOVERY_ACTION_RETRY);
+    float conf = nimcp_adaptive_get_confidence(ex, EXCEPTION_RECOVERY_RETRY);
     ck_assert(conf < 0.5f);
 
     nimcp_exception_unref(ex);

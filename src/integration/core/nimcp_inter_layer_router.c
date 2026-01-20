@@ -7,6 +7,7 @@
 
 #include "integration/core/nimcp_inter_layer_router.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -46,7 +47,7 @@ nimcp_inter_layer_router_t nimcp_inter_layer_router_create(
     const nimcp_inter_layer_router_config_t* config, nimcp_layer_registry_t registry
 ) {
     nimcp_inter_layer_router_t router = (nimcp_inter_layer_router_t)calloc(1, sizeof(struct nimcp_inter_layer_router_struct));
-    if (!router) return NULL;
+    NIMCP_API_CHECK_ALLOC(router, "Failed to allocate inter-layer router");
     router->config = config ? *config : nimcp_inter_layer_router_default_config();
     router->registry = registry;
     return router;
@@ -67,7 +68,7 @@ void nimcp_inter_layer_router_destroy(nimcp_inter_layer_router_t router) {
 }
 
 nimcp_layer_error_t nimcp_inter_layer_router_reset(nimcp_inter_layer_router_t router) {
-    if (!router) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(router, NIMCP_LAYER_ERR_NULL_PTR, "Router is NULL in reset");
     for (int i = 0; i < MAX_QUEUES; i++) {
         message_queue_t* q = &router->queues[i];
         while (q->count > 0) {
@@ -81,10 +82,11 @@ nimcp_layer_error_t nimcp_inter_layer_router_reset(nimcp_inter_layer_router_t ro
 }
 
 nimcp_layer_error_t nimcp_inter_layer_router_route(nimcp_inter_layer_router_t router, nimcp_layer_msg_t* msg) {
-    if (!router || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(router, NIMCP_LAYER_ERR_NULL_PTR, "Router is NULL in route");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in route");
 
     nimcp_layer_id_t target = msg->header.target_layer;
-    if (target >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK(target < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid target layer in route");
 
     message_queue_t* q = &router->queues[target];
     if (q->count >= 256) {
@@ -106,7 +108,8 @@ nimcp_layer_error_t nimcp_inter_layer_router_route(nimcp_inter_layer_router_t ro
 nimcp_layer_error_t nimcp_inter_layer_router_route_directed(
     nimcp_inter_layer_router_t router, nimcp_layer_msg_t* msg, nimcp_msg_direction_t direction
 ) {
-    if (!router || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(router, NIMCP_LAYER_ERR_NULL_PTR, "Router is NULL in route_directed");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in route_directed");
     msg->header.direction = direction;
     return nimcp_inter_layer_router_route(router, msg);
 }
@@ -114,7 +117,8 @@ nimcp_layer_error_t nimcp_inter_layer_router_route_directed(
 nimcp_layer_error_t nimcp_inter_layer_router_broadcast(
     nimcp_inter_layer_router_t router, nimcp_layer_id_t source_layer, const nimcp_layer_msg_t* msg
 ) {
-    if (!router || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(router, NIMCP_LAYER_ERR_NULL_PTR, "Router is NULL in broadcast");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in broadcast");
 
     for (int i = 0; i < NIMCP_LAYER_COUNT; i++) {
         if (i != source_layer && router->registry && nimcp_layer_registry_is_layer_registered(router->registry, i)) {
@@ -133,7 +137,8 @@ nimcp_layer_error_t nimcp_inter_layer_router_broadcast_directed(
     nimcp_inter_layer_router_t router, nimcp_layer_id_t source_layer,
     const nimcp_layer_msg_t* msg, nimcp_msg_direction_t direction
 ) {
-    if (!router || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(router, NIMCP_LAYER_ERR_NULL_PTR, "Router is NULL in broadcast_directed");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in broadcast_directed");
 
     for (int i = 0; i < NIMCP_LAYER_COUNT; i++) {
         if (i != source_layer) {
@@ -159,8 +164,8 @@ nimcp_layer_error_t nimcp_inter_layer_router_process_layer(
     nimcp_inter_layer_router_t router, nimcp_layer_id_t layer_id,
     uint32_t max_messages, uint32_t* processed_out
 ) {
-    if (!router) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (layer_id >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK_NULL(router, NIMCP_LAYER_ERR_NULL_PTR, "Router is NULL in process_layer");
+    NIMCP_API_CHECK(layer_id < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid layer_id in process_layer");
 
     message_queue_t* q = &router->queues[layer_id];
     uint32_t processed = 0;
@@ -184,7 +189,7 @@ nimcp_layer_error_t nimcp_inter_layer_router_process_layer(
 nimcp_layer_error_t nimcp_inter_layer_router_process_all(
     nimcp_inter_layer_router_t router, uint32_t max_messages, uint32_t* processed_out
 ) {
-    if (!router) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(router, NIMCP_LAYER_ERR_NULL_PTR, "Router is NULL in process_all");
 
     uint32_t total_processed = 0;
     for (int i = 0; i < NIMCP_LAYER_COUNT && (max_messages == 0 || total_processed < max_messages); i++) {
@@ -201,8 +206,9 @@ nimcp_layer_error_t nimcp_inter_layer_router_process_all(
 nimcp_layer_error_t nimcp_inter_layer_router_peek(
     nimcp_inter_layer_router_t router, nimcp_layer_id_t layer_id, const nimcp_layer_msg_t** msg_out
 ) {
-    if (!router || !msg_out) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (layer_id >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK_NULL(router, NIMCP_LAYER_ERR_NULL_PTR, "Router is NULL in peek");
+    NIMCP_API_CHECK_NULL(msg_out, NIMCP_LAYER_ERR_NULL_PTR, "msg_out is NULL in peek");
+    NIMCP_API_CHECK(layer_id < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid layer_id in peek");
 
     message_queue_t* q = &router->queues[layer_id];
     if (q->count == 0) return NIMCP_LAYER_ERR_QUEUE_EMPTY;
@@ -241,7 +247,8 @@ bool nimcp_inter_layer_router_route_available(
 nimcp_layer_error_t nimcp_inter_layer_router_get_stats(
     nimcp_inter_layer_router_t router, nimcp_inter_layer_router_stats_t* stats_out
 ) {
-    if (!router || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(router, NIMCP_LAYER_ERR_NULL_PTR, "Router is NULL in get_stats");
+    NIMCP_API_CHECK_NULL(stats_out, NIMCP_LAYER_ERR_NULL_PTR, "stats_out is NULL in get_stats");
     *stats_out = router->stats;
     router->stats.current_queue_depth = 0;
     for (int i = 0; i < MAX_QUEUES; i++) {
@@ -252,7 +259,7 @@ nimcp_layer_error_t nimcp_inter_layer_router_get_stats(
 }
 
 nimcp_layer_error_t nimcp_inter_layer_router_reset_stats(nimcp_inter_layer_router_t router) {
-    if (!router) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(router, NIMCP_LAYER_ERR_NULL_PTR, "Router is NULL in reset_stats");
     memset(&router->stats, 0, sizeof(router->stats));
     return NIMCP_LAYER_OK;
 }
@@ -261,8 +268,10 @@ nimcp_layer_error_t nimcp_inter_layer_router_get_path(
     nimcp_inter_layer_router_t router, nimcp_layer_id_t source, nimcp_layer_id_t target,
     nimcp_layer_id_t* path_out, size_t max_path_len, size_t* path_len_out
 ) {
-    if (!router || !path_out || !path_len_out) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (max_path_len < 2) return NIMCP_LAYER_ERR_CAPACITY;
+    NIMCP_API_CHECK_NULL(router, NIMCP_LAYER_ERR_NULL_PTR, "Router is NULL in get_path");
+    NIMCP_API_CHECK_NULL(path_out, NIMCP_LAYER_ERR_NULL_PTR, "path_out is NULL in get_path");
+    NIMCP_API_CHECK_NULL(path_len_out, NIMCP_LAYER_ERR_NULL_PTR, "path_len_out is NULL in get_path");
+    NIMCP_API_CHECK(max_path_len >= 2, NIMCP_LAYER_ERR_CAPACITY, "max_path_len too small in get_path");
 
     /* Simple direct path */
     path_out[0] = source;
@@ -274,7 +283,7 @@ nimcp_layer_error_t nimcp_inter_layer_router_get_path(
 nimcp_layer_error_t nimcp_inter_layer_router_set_callback(
     nimcp_inter_layer_router_t router, nimcp_route_callback_t callback, void* user_data
 ) {
-    if (!router) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(router, NIMCP_LAYER_ERR_NULL_PTR, "Router is NULL in set_callback");
     router->callback = callback;
     router->callback_data = user_data;
     return NIMCP_LAYER_OK;

@@ -4,6 +4,7 @@
 
 #include "physics/bridges/nimcp_hh_quantum_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 
@@ -301,7 +302,7 @@ int hh_qmc_optimize_parameters(
 
     // Initial state from current neuron parameters
     float* initial_state = nimcp_calloc(dim, sizeof(float));
-    if (!initial_state) return -1;
+    NIMCP_API_CHECK_ALLOC(initial_state, "Failed to allocate HH optimization initial state");
 
     initial_state[0] = neuron->channels[NIMCP_ION_CHANNEL_NA].g_max;
     initial_state[1] = neuron->channels[NIMCP_ION_CHANNEL_K].g_max;
@@ -518,7 +519,7 @@ int hh_qmc_spike_train_entropy(
     // Collect spike times
     nimcp_hh_neuron_reset(neuron);
     float* spike_times = nimcp_calloc(stimulus_len, sizeof(float));
-    if (!spike_times) return -1;
+    NIMCP_API_CHECK_ALLOC(spike_times, "Failed to allocate spike times array for entropy analysis");
 
     uint32_t num_spikes = 0;
     float time = 0.0f;
@@ -543,6 +544,8 @@ int hh_qmc_spike_train_entropy(
     float* isis = nimcp_calloc(num_spikes - 1, sizeof(float));
     float* isi_probs = nimcp_calloc(config->num_bins, sizeof(float));
     if (!isis || !isi_probs) {
+        LOG_ERROR("Failed to allocate ISI arrays for entropy analysis");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate ISI arrays");
         nimcp_free(spike_times);
         if (isis) nimcp_free(isis);
         if (isi_probs) nimcp_free(isi_probs);
@@ -624,7 +627,7 @@ int hh_qmc_mutual_information(
     // Collect response distributions for each stimulus
     float total_response_entropy = 0.0f;
     float* response_counts = nimcp_calloc(num_stimuli, sizeof(float));
-    if (!response_counts) return -1;
+    NIMCP_API_CHECK_ALLOC(response_counts, "Failed to allocate response counts for mutual information");
 
     for (uint32_t s = 0; s < num_stimuli; s++) {
         uint32_t total_spikes = 0;
@@ -691,6 +694,8 @@ int hh_qmc_stochastic_simulation(
     float* voltages = nimcp_calloc(config->num_trajectories, sizeof(float));
     float* spike_times = nimcp_calloc(config->num_trajectories, sizeof(float));
     if (!voltages || !spike_times) {
+        LOG_ERROR("Failed to allocate trajectory arrays for stochastic simulation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate trajectory arrays");
         if (voltages) nimcp_free(voltages);
         if (spike_times) nimcp_free(spike_times);
         return -1;
@@ -813,7 +818,7 @@ int hh_qmc_population_coherence(
 
     // Compute voltage distribution entropy
     float* v_probs = nimcp_calloc(100, sizeof(float));
-    if (!v_probs) return -1;
+    NIMCP_API_CHECK_ALLOC(v_probs, "Failed to allocate voltage probability array");
 
     float v_min = -100.0f, v_max = 50.0f;
     float bin_width = (v_max - v_min) / 100.0f;

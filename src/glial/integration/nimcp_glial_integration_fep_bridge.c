@@ -6,6 +6,7 @@
 #include "glial/integration/nimcp_glial_integration_fep_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/validation/nimcp_common.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 
@@ -32,10 +33,7 @@ glial_integration_fep_bridge_t* glial_integration_fep_create(
 
     glial_integration_fep_bridge_t* bridge = (glial_integration_fep_bridge_t*)
         nimcp_malloc(sizeof(glial_integration_fep_bridge_t));
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("glial_integration_fep_create: allocation failed");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "glial_integration_fep_create: allocation failed");
 
     memset(bridge, 0, sizeof(glial_integration_fep_bridge_t));
     memcpy(&bridge->config, config, sizeof(glial_integration_fep_config_t));

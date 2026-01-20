@@ -20,6 +20,7 @@
 
 #include "physics/thermodynamics/nimcp_thermodynamics.h"
 #include "utils/memory/nimcp_memory_guards.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -211,6 +212,8 @@ nimcp_error_t nimcp_thermo_init(
     /* Allocate internal state */
     nimcp_thermo_internal_t* internal = nimcp_calloc(1, sizeof(nimcp_thermo_internal_t));
     if (!internal) {
+        LOG_ERROR("Failed to allocate thermodynamic internal state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate thermo internal state");
         return NIMCP_ERROR_NO_MEMORY;
     }
 

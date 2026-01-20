@@ -16,6 +16,7 @@
  */
 
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "api/nimcp_api_exception.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -293,10 +294,7 @@ static const char* strcasestr_local(const char* haystack, const char* needle) {
 
 kg_reader_t* kg_reader_create(void) {
     kg_reader_t* reader = calloc(1, sizeof(kg_reader_t));
-    if (!reader) {
-        set_error("Failed to allocate KG reader");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(reader, "Failed to allocate KG reader");
     return reader;
 }
 
@@ -322,10 +320,7 @@ void kg_reader_destroy(kg_reader_t* reader) {
 }
 
 int kg_reader_load(kg_reader_t* reader, const char* file_path) {
-    if (!reader) {
-        set_error("NULL reader");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(reader, -1, "NULL reader in kg_reader_load");
 
     const char* path = file_path ? file_path : KG_DEFAULT_PATH;
 
@@ -396,10 +391,8 @@ int kg_reader_load(kg_reader_t* reader, const char* file_path) {
 }
 
 int kg_reader_reload(kg_reader_t* reader) {
-    if (!reader || reader->file_path[0] == '\0') {
-        set_error("No file loaded to reload");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(reader, -1, "NULL reader in kg_reader_reload");
+    NIMCP_API_CHECK(reader->file_path[0] != '\0', -1, "No file loaded to reload");
     return kg_reader_load(reader, reader->file_path);
 }
 

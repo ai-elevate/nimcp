@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/calcium/nimcp_calcium_sleep_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -95,7 +96,7 @@ static void calcium_on_sleep_state_change(sleep_state_t new_state, void* user_da
  * ============================================================================ */
 
 int calcium_sleep_default_config(calcium_sleep_config_t* config) {
-    if (!config) return -1;
+    NIMCP_API_CHECK_NULL(config, -1, "Calcium-sleep config is NULL");
 
     config->enable_influx_modulation = true;
     config->enable_decay_modulation = true;
@@ -112,15 +113,13 @@ calcium_sleep_bridge_t calcium_sleep_bridge_create(
     sleep_system_t sleep_system,
     calcium_dynamics_t calcium
 ) {
-    if (!sleep_system || !calcium) {
-        NIMCP_LOGGING_ERROR("calcium_sleep_bridge_create: NULL sleep_system or calcium");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(sleep_system, "Sleep system is NULL");
+    NIMCP_API_CHECK_NULL_RET_NULL(calcium, "Calcium dynamics is NULL");
 
     struct calcium_sleep_bridge_struct* bridge =
         (struct calcium_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct calcium_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Calcium-sleep bridge allocation failed");
 
     memset(bridge, 0, sizeof(struct calcium_sleep_bridge_struct));
 
@@ -146,6 +145,8 @@ calcium_sleep_bridge_t calcium_sleep_bridge_create(
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        LOG_ERROR("Calcium-sleep bridge mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Calcium-sleep bridge mutex creation failed");
         return NULL;
     }
 
@@ -193,7 +194,7 @@ void calcium_sleep_bridge_destroy(calcium_sleep_bridge_t bridge) {
  * ============================================================================ */
 
 int calcium_sleep_update(calcium_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-sleep bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -232,7 +233,8 @@ int calcium_sleep_update(calcium_sleep_bridge_t bridge) {
 
 int calcium_sleep_get_effects(const calcium_sleep_bridge_t bridge,
                                calcium_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-sleep bridge is NULL");
+    NIMCP_API_CHECK_NULL(effects, -1, "Effects output pointer is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
@@ -273,7 +275,8 @@ float calcium_sleep_get_learning_rate(const calcium_sleep_bridge_t bridge,
 }
 
 int calcium_sleep_apply_modulation(calcium_sleep_bridge_t bridge) {
-    if (!bridge || !bridge->calcium) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-sleep bridge is NULL");
+    NIMCP_API_CHECK_NULL(bridge->calcium, -1, "Calcium dynamics is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 

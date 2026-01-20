@@ -81,3 +81,19 @@ set_tests_properties(e2e_fault_tolerance_test_crash_recovery PROPERTIES TIMEOUT 
 # Resilience Stress E2E Tests (Phase 6: End-to-End Testing)
 add_e2e_fault_tolerance_test(test_resilience_stress)
 set_tests_properties(e2e_fault_tolerance_test_resilience_stress PROPERTIES TIMEOUT 600)
+
+# Exception Resilience E2E Tests (Phase 6: Exception System Stress Testing)
+add_e2e_fault_tolerance_test(test_exception_resilience_e2e)
+set_tests_properties(e2e_fault_tolerance_test_exception_resilience_e2e PROPERTIES TIMEOUT 600)
+
+# Exception Brain Integration E2E Tests (Phase 6: Exception-Brain Integration)
+add_e2e_fault_tolerance_test(test_exception_brain_integration_e2e)
+set_tests_properties(e2e_fault_tolerance_test_exception_brain_integration_e2e PROPERTIES TIMEOUT 300)
+
+# Exception Flow E2E Tests (Complete Exception Handling Pipeline)
+add_e2e_fault_tolerance_test(test_exception_flow_e2e)
+set_tests_properties(e2e_fault_tolerance_test_exception_flow_e2e PROPERTIES TIMEOUT 300)
+
+# Heartbeat Module E2E Tests (Phase 8: Heartbeat for Long Operations)
+add_e2e_fault_tolerance_test(test_heartbeat_module_e2e)
+set_tests_properties(e2e_fault_tolerance_test_heartbeat_module_e2e PROPERTIES TIMEOUT 300)

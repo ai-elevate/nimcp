@@ -6,6 +6,7 @@
  */
 
 #include "chemistry/ph/nimcp_proton_pumps.h"
+#include "api/nimcp_api_exception.h"
 
 #include <string.h>
 #include <math.h>
@@ -144,6 +145,7 @@ nimcp_pump_error_t nimcp_pump_init(
     const nimcp_pump_config_t* config
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Proton pump system is NULL");
         return PUMP_ERR_NULL_PTR;
     }
 
@@ -176,6 +178,7 @@ nimcp_pump_error_t nimcp_pump_init(
 
 nimcp_pump_error_t nimcp_pump_shutdown(nimcp_pump_system_t* system) {
     if (!system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Proton pump system is NULL in shutdown");
         return PUMP_ERR_NULL_PTR;
     }
 
@@ -186,6 +189,7 @@ nimcp_pump_error_t nimcp_pump_shutdown(nimcp_pump_system_t* system) {
 
 nimcp_pump_error_t nimcp_pump_reset(nimcp_pump_system_t* system) {
     if (!system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Proton pump system is NULL in reset");
         return PUMP_ERR_NULL_PTR;
     }
 
@@ -227,6 +231,7 @@ nimcp_pump_error_t nimcp_vatpase_set_activity(
     float activity
 ) {
     if (!vatpase) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "V-ATPase is NULL in set_activity");
         return PUMP_ERR_NULL_PTR;
     }
 
@@ -251,6 +256,7 @@ nimcp_pump_error_t nimcp_vatpase_set_assembly(
     float assembly
 ) {
     if (!vatpase) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "V-ATPase is NULL in set_assembly");
         return PUMP_ERR_NULL_PTR;
     }
 
@@ -267,6 +273,7 @@ nimcp_pump_error_t nimcp_vatpase_calculate_flux(
     float* atp_cost
 ) {
     if (!vatpase || !h_flux || !atp_cost) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "V-ATPase calculate_flux: NULL argument");
         return PUMP_ERR_NULL_PTR;
     }
 
@@ -309,6 +316,7 @@ nimcp_pump_error_t nimcp_nhe_set_activity(
     float activity
 ) {
     if (!nhe) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NHE is NULL in set_activity");
         return PUMP_ERR_NULL_PTR;
     }
 
@@ -333,10 +341,12 @@ nimcp_pump_error_t nimcp_nhe_set_setpoint(
     float set_point
 ) {
     if (!nhe) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NHE is NULL in set_setpoint");
         return PUMP_ERR_NULL_PTR;
     }
 
     if (set_point < 6.5f || set_point > 7.5f) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "NHE set_point out of range: %f", set_point);
         return PUMP_ERR_INVALID_PARAM;
     }
 
@@ -352,6 +362,7 @@ nimcp_pump_error_t nimcp_nhe_calculate_exchange(
     float* exchange_rate
 ) {
     if (!nhe || !exchange_rate) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NHE calculate_exchange: NULL argument");
         return PUMP_ERR_NULL_PTR;
     }
 
@@ -390,6 +401,7 @@ nimcp_pump_error_t nimcp_nbc_set_activity(
     float activity
 ) {
     if (!nbc) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NBC is NULL in set_activity");
         return PUMP_ERR_NULL_PTR;
     }
 
@@ -416,6 +428,7 @@ nimcp_pump_error_t nimcp_nbc_calculate_transport(
     float* transport_rate
 ) {
     if (!nbc || !transport_rate) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "NBC calculate_transport: NULL argument");
         return PUMP_ERR_NULL_PTR;
     }
 
@@ -456,10 +469,12 @@ nimcp_pump_error_t nimcp_pump_update(
     float vesicular_ph
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Proton pump system is NULL in update");
         return PUMP_ERR_NULL_PTR;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "Proton pump system not initialized");
         return PUMP_ERR_NOT_INITIALIZED;
     }
 
@@ -545,6 +560,7 @@ nimcp_pump_error_t nimcp_pump_get_net_h_flux(
     float* h_flux
 ) {
     if (!system || !h_flux) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Pump get_net_h_flux: NULL argument");
         return PUMP_ERR_NULL_PTR;
     }
 
@@ -558,6 +574,7 @@ nimcp_pump_error_t nimcp_pump_get_atp_consumption(
     float* atp_rate
 ) {
     if (!system || !atp_rate) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Pump get_atp_consumption: NULL argument");
         return PUMP_ERR_NULL_PTR;
     }
 
@@ -572,10 +589,12 @@ nimcp_pump_error_t nimcp_pump_supply_atp(
     float atp_amount
 ) {
     if (!system) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Pump supply_atp: system is NULL");
         return PUMP_ERR_NULL_PTR;
     }
 
     if (atp_amount < 0.0f) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Pump supply_atp: negative ATP amount: %f", atp_amount);
         return PUMP_ERR_INVALID_PARAM;
     }
 

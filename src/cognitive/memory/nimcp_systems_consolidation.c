@@ -36,6 +36,28 @@
 #include <string.h>
 #include <math.h>
 
+/*=============================================================================
+ * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+ *===========================================================================*/
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent for consolidation operations */
+static nimcp_health_agent_t* g_consolidation_health_agent = NULL;
+
+void systems_consolidation_set_health_agent(nimcp_health_agent_t* agent) {
+    g_consolidation_health_agent = agent;
+}
+
+static inline void consolidation_heartbeat(const char* operation, float progress) {
+    if (g_consolidation_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_consolidation_health_agent, operation, progress);
+    }
+}
+
 //=============================================================================
 // BIO-ASYNC MODULE REGISTRATION
 //=============================================================================
@@ -568,6 +590,9 @@ uint32_t systems_consolidation_execute_replays(
         return 0;
     }
 
+    /* Phase 8: Send heartbeat at start of replay execution */
+    consolidation_heartbeat("consolidation_replays", 0.0f);
+
     // WHAT: Determine replay rate based on sleep state
     // WHY: SWS has highest replay rate (Born & Wilhelm, 2012)
     float replay_rate_hz;
@@ -592,6 +617,10 @@ uint32_t systems_consolidation_execute_replays(
     // WHAT: Execute replays
     uint32_t executed_count = 0;
     for (uint32_t i = 0; i < replays_to_execute && i < system->replay_queue_size; i++) {
+        /* Phase 8: Send progress heartbeat for long replay sequences */
+        if (replays_to_execute > 0) {
+            consolidation_heartbeat("consolidation_replays", (float)i / (float)replays_to_execute);
+        }
         replay_event_t* event = &system->replay_queue[i];
 
         // WHAT: Transfer engram to cortex
@@ -748,6 +777,9 @@ void systems_consolidation_update(
     if (!system || time_delta_seconds <= 0.0F) {
         return;
     }
+
+    /* Phase 8: Send heartbeat at start of consolidation update */
+    consolidation_heartbeat("consolidation_update", 0.0f);
 
     // Process pending bio-async messages
     if (system->bio_async_enabled && system->bio_ctx) {

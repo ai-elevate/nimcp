@@ -15,6 +15,7 @@
 #include "cognitive/jepa/nimcp_jepa_latent.h"
 #include "cognitive/jepa/nimcp_jepa_predictor.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -125,10 +126,7 @@ jepa_multimodal_t* jepa_multimodal_create(const jepa_multimodal_config_t* config
 
     /* Allocate system */
     mm = (jepa_multimodal_t*)nimcp_calloc(1, sizeof(jepa_multimodal_t));
-    if (!mm) {
-        NIMCP_LOGGING_ERROR("Failed to allocate multimodal system");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(mm, "Failed to allocate multimodal system");
 
     /* Initialize bridge base */
     bridge_base_init(&mm->base, BIO_MODULE_JEPA_MULTIMODAL, "jepa_multimodal");

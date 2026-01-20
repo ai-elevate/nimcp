@@ -20,6 +20,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/containers/nimcp_hash_table.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "gossip_beliefs"
 

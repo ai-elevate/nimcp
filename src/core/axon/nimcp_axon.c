@@ -15,6 +15,7 @@
 #include "core/axon/nimcp_axon.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
@@ -174,12 +175,14 @@ axon_t* axon_create(uint32_t id,
 {
     // Guard: validate parameters
     if (!axon_validate_params(length, diameter)) {
+        LOG_ERROR("axon_create: invalid parameters (length=%.2f, diameter=%.2f)", length, diameter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_create: invalid parameters");
         return NULL;
     }
 
     // Allocate axon structure
     axon_t* axon = (axon_t*)nimcp_calloc(1, sizeof(axon_t));
-    if (!axon) return NULL;
+    NIMCP_API_CHECK_ALLOC_SIZE(axon, sizeof(axon_t), "axon_create: failed to allocate axon");
 
     // Initialize identification
     axon->id = id;
@@ -244,7 +247,8 @@ axon_t* axon_create_with_positions(uint32_t id,
                                     float diameter)
 {
     // Guard clauses
-    if (!start_pos || !end_pos) return NULL;
+    NIMCP_API_CHECK_NULL_RET_NULL(start_pos, "axon_create_with_positions: start_pos is NULL");
+    NIMCP_API_CHECK_NULL_RET_NULL(end_pos, "axon_create_with_positions: end_pos is NULL");
 
     // Calculate length from positions
     float length = axon_distance_3d(start_pos, end_pos);
@@ -299,9 +303,21 @@ bool axon_create_segments(axon_t* axon,
                           float internode_length)
 {
     // Guard clauses
-    if (!axon) return false;
-    if (num_segments == 0 || num_segments > NIMCP_AXON_MAX_SEGMENTS) return false;
-    if (internode_length <= 0.0F) return false;
+    if (!axon) {
+        LOG_ERROR("axon_create_segments: axon is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_create_segments: axon is NULL");
+        return false;
+    }
+    if (num_segments == 0 || num_segments > NIMCP_AXON_MAX_SEGMENTS) {
+        LOG_ERROR("axon_create_segments: invalid num_segments=%u", num_segments);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_create_segments: invalid num_segments");
+        return false;
+    }
+    if (internode_length <= 0.0F) {
+        LOG_ERROR("axon_create_segments: invalid internode_length=%.2f", internode_length);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_create_segments: invalid internode_length");
+        return false;
+    }
 
     // Free existing segments
     if (axon->segments) {
@@ -311,7 +327,11 @@ bool axon_create_segments(axon_t* axon,
     // Allocate segment array
     axon->segments = (axon_segment_t*)nimcp_calloc(num_segments,
                                                     sizeof(axon_segment_t));
-    if (!axon->segments) return false;
+    if (!axon->segments) {
+        LOG_ERROR("axon_create_segments: failed to allocate segments");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_segments * sizeof(axon_segment_t), "axon_create_segments: allocation failed");
+        return false;
+    }
 
     axon->num_segments = num_segments;
 

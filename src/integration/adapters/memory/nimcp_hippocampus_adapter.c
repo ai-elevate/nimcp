@@ -6,6 +6,7 @@
  */
 
 #include "integration/adapters/memory/nimcp_hippocampus_adapter.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -116,7 +117,7 @@ nimcp_hippocampus_config_t nimcp_hippocampus_adapter_default_config(void) {
 
 nimcp_hippocampus_adapter_t nimcp_hippocampus_adapter_create(const nimcp_hippocampus_config_t* config) {
     nimcp_hippocampus_adapter_t adapter = (nimcp_hippocampus_adapter_t)calloc(1, sizeof(struct nimcp_hippocampus_adapter_struct));
-    if (!adapter) return NULL;
+    NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate hippocampus adapter");
     adapter->config = config ? *config : nimcp_hippocampus_adapter_default_config();
     adapter->interface.init = hipp_init;
     adapter->interface.shutdown = hipp_shutdown;

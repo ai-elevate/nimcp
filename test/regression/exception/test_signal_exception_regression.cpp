@@ -235,12 +235,12 @@ TEST_F(SignalExceptionRegressionTest, ImmuneRecoveryStrategyContract) {
     );
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
     // SIGNAL category contract:
-    EXPECT_EQ(strategy.primary_action, RECOVERY_ACTION_EMERGENCY_SAVE);
-    EXPECT_EQ(strategy.fallback_action, RECOVERY_ACTION_GRACEFUL_SHUTDOWN);
+    EXPECT_EQ(strategy.primary_action, EXCEPTION_RECOVERY_EMERGENCY_SAVE);
+    EXPECT_EQ(strategy.fallback_action, EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN);
     EXPECT_EQ(strategy.retry_count, 1);
     EXPECT_EQ(strategy.cooldown_ms, 0u);
 

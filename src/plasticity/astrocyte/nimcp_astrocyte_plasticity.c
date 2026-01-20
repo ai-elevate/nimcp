@@ -11,6 +11,7 @@
  */
 
 #include "plasticity/astrocyte/nimcp_astrocyte_plasticity.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -120,7 +121,7 @@ static float compute_a1r_inhibition(float adenosine_level) {
  * ============================================================================ */
 
 int astrocyte_plasticity_default_config(astrocyte_config_t* config) {
-    if (!config) return -1;
+    NIMCP_API_CHECK_NULL(config, -1, "Astrocyte config is NULL");
 
     /* Baseline gliotransmitter levels */
     config->baseline_d_serine = ASTROCYTE_D_SERINE_BASELINE;
@@ -163,17 +164,15 @@ astrocyte_plasticity_t astrocyte_plasticity_create(
 ) {
     /* Guard: require at least one astrocyte */
     if (num_astrocytes == 0) {
-        NIMCP_LOGGING_ERROR("Cannot create astrocyte system with 0 astrocytes");
+        LOG_ERROR("Cannot create astrocyte system with 0 astrocytes");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Cannot create astrocyte system with 0 astrocytes");
         return NULL;
     }
 
     /* Allocate system */
     astrocyte_plasticity_t astro = (astrocyte_plasticity_t)
         nimcp_malloc(sizeof(struct astrocyte_plasticity_struct));
-    if (!astro) {
-        NIMCP_LOGGING_ERROR("Astrocyte system allocation failed");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(astro, "Astrocyte system allocation failed");
     memset(astro, 0, sizeof(struct astrocyte_plasticity_struct));
 
     /* Apply configuration */
@@ -190,7 +189,8 @@ astrocyte_plasticity_t astrocyte_plasticity_create(
         nimcp_malloc(sizeof(astrocyte_state_t) * num_astrocytes);
     if (!astro->states) {
         nimcp_free(astro);
-        NIMCP_LOGGING_ERROR("Astrocyte states allocation failed");
+        LOG_ERROR("Astrocyte states allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Astrocyte states allocation failed");
         return NULL;
     }
 
@@ -225,6 +225,8 @@ astrocyte_plasticity_t astrocyte_plasticity_create(
     if (!astro->mutex) {
         nimcp_free(astro->states);
         nimcp_free(astro);
+        LOG_ERROR("Astrocyte mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Astrocyte mutex creation failed");
         return NULL;
     }
 
@@ -263,8 +265,8 @@ int astrocyte_plasticity_update(
     uint64_t delta_ms
 ) {
     /* Guard clauses */
-    if (!astro) return -1;
-    if (astrocyte_id >= astro->num_astrocytes) return -1;
+    NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
 
     nimcp_platform_mutex_lock(astro->mutex);
 
@@ -361,8 +363,8 @@ int astrocyte_plasticity_trigger_calcium_wave(
     float amplitude
 ) {
     /* Guard clauses */
-    if (!astro) return -1;
-    if (source_id >= astro->num_astrocytes) return -1;
+    NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_API_CHECK(source_id < astro->num_astrocytes, -1, "Source astrocyte ID out of range");
     if (!astro->config.enable_calcium_waves) return 0;
 
     nimcp_platform_mutex_lock(astro->mutex);
@@ -379,8 +381,8 @@ int astrocyte_plasticity_release_gliotransmitter(
     float amount
 ) {
     /* Guard clauses */
-    if (!astro) return -1;
-    if (astrocyte_id >= astro->num_astrocytes) return -1;
+    NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
 
     nimcp_platform_mutex_lock(astro->mutex);
 
@@ -441,8 +443,9 @@ int astrocyte_plasticity_get_effects(
     astrocyte_plasticity_effects_t* effects
 ) {
     /* Guard clauses */
-    if (!astro || !effects) return -1;
-    if (astrocyte_id >= astro->num_astrocytes) return -1;
+    NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_API_CHECK_NULL(effects, -1, "Effects output pointer is NULL");
+    NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
 
     nimcp_platform_mutex_lock(astro->mutex);
 
@@ -532,8 +535,8 @@ int astrocyte_plasticity_notify_glutamate_release(
     float glutamate_amount
 ) {
     /* Guard clauses */
-    if (!astro) return -1;
-    if (astrocyte_id >= astro->num_astrocytes) return -1;
+    NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
 
     nimcp_platform_mutex_lock(astro->mutex);
 
@@ -560,8 +563,8 @@ int astrocyte_plasticity_notify_ltp_induction(
     uint32_t astrocyte_id
 ) {
     /* Guard clauses */
-    if (!astro) return -1;
-    if (astrocyte_id >= astro->num_astrocytes) return -1;
+    NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
 
     nimcp_platform_mutex_lock(astro->mutex);
 
@@ -595,8 +598,8 @@ int astrocyte_plasticity_set_reactive_state(
     float intensity
 ) {
     /* Guard clauses */
-    if (!astro) return -1;
-    if (astrocyte_id >= astro->num_astrocytes) return -1;
+    NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
     if (!astro->config.enable_reactive_astrogliosis) return 0;
 
     nimcp_platform_mutex_lock(astro->mutex);
@@ -672,8 +675,9 @@ int astrocyte_plasticity_get_state(
     astrocyte_state_t* state
 ) {
     /* Guard clauses */
-    if (!astro || !state) return -1;
-    if (astrocyte_id >= astro->num_astrocytes) return -1;
+    NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_API_CHECK_NULL(state, -1, "State output pointer is NULL");
+    NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
 
     nimcp_platform_mutex_lock(astro->mutex);
     memcpy(state, &astro->states[astrocyte_id], sizeof(astrocyte_state_t));

@@ -15,6 +15,7 @@
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <stddef.h>
 #include <math.h>
 
@@ -96,9 +97,10 @@ int metabolic_compute_effects(
     const metabolic_modulation_config_t* config,
     metabolic_effects_t* effects
 ) {
-    if (!input || !config || !effects) {
-        return -1;
-    }
+    /* Validate parameters using API exception macros */
+    NIMCP_API_CHECK_NULL(input, NIMCP_ERROR_NULL_POINTER, "metabolic_compute_effects: NULL input");
+    NIMCP_API_CHECK_NULL(config, NIMCP_ERROR_NULL_POINTER, "metabolic_compute_effects: NULL config");
+    NIMCP_API_CHECK_NULL(effects, NIMCP_ERROR_NULL_POINTER, "metabolic_compute_effects: NULL effects");
 
     float atp = input->atp_level;
     float cap = input->metabolic_capacity;
@@ -164,10 +166,11 @@ metabolic_modulation_config_t metabolic_config_from_fields(
  * ============================================================================ */
 
 metabolic_effects_tensor_t* metabolic_effects_tensor_create(uint32_t batch_size) {
-    if (batch_size == 0) return NULL;
+    NIMCP_API_CHECK(batch_size > 0, NIMCP_ERROR_INVALID_PARAM,
+        "metabolic_effects_tensor_create: batch_size must be > 0");
 
     metabolic_effects_tensor_t* effects = nimcp_calloc(1, sizeof(metabolic_effects_tensor_t));
-    if (!effects) return NULL;
+    NIMCP_API_CHECK_ALLOC(effects, "metabolic_effects_tensor_create: allocation failed");
 
     /* Create tensor with shape [batch_size, METABOLIC_EFFECT_COUNT] */
     uint32_t dims[2] = { batch_size, METABOLIC_EFFECT_COUNT };
@@ -176,6 +179,8 @@ metabolic_effects_tensor_t* metabolic_effects_tensor_create(uint32_t batch_size)
 
     effects->effects = nimcp_tensor_zeros(dim_ptr, rank, NIMCP_DTYPE_F32);
     if (!effects->effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "metabolic_effects_tensor_create: tensor allocation failed");
         nimcp_free(effects);
         return NULL;
     }
@@ -196,21 +201,26 @@ void metabolic_effects_tensor_destroy(metabolic_effects_tensor_t* effects) {
 }
 
 metabolic_input_tensor_t* metabolic_input_tensor_create(uint32_t batch_size) {
-    if (batch_size == 0) return NULL;
+    NIMCP_API_CHECK(batch_size > 0, NIMCP_ERROR_INVALID_PARAM,
+        "metabolic_input_tensor_create: batch_size must be > 0");
 
     metabolic_input_tensor_t* input = nimcp_calloc(1, sizeof(metabolic_input_tensor_t));
-    if (!input) return NULL;
+    NIMCP_API_CHECK_ALLOC(input, "metabolic_input_tensor_create: allocation failed");
 
     uint32_t dims[1] = { batch_size };
 
     input->atp_levels = nimcp_tensor_zeros(dims, 1, NIMCP_DTYPE_F32);
     if (!input->atp_levels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "metabolic_input_tensor_create: atp_levels tensor allocation failed");
         nimcp_free(input);
         return NULL;
     }
 
     input->metabolic_capacities = nimcp_tensor_zeros(dims, 1, NIMCP_DTYPE_F32);
     if (!input->metabolic_capacities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "metabolic_input_tensor_create: metabolic_capacities tensor allocation failed");
         nimcp_tensor_destroy(input->atp_levels);
         nimcp_free(input);
         return NULL;
@@ -229,10 +239,11 @@ void metabolic_input_tensor_destroy(metabolic_input_tensor_t* input) {
 }
 
 metabolic_multipliers_tensor_t* metabolic_multipliers_tensor_create(uint32_t batch_size) {
-    if (batch_size == 0) return NULL;
+    NIMCP_API_CHECK(batch_size > 0, NIMCP_ERROR_INVALID_PARAM,
+        "metabolic_multipliers_tensor_create: batch_size must be > 0");
 
     metabolic_multipliers_tensor_t* mult = nimcp_calloc(1, sizeof(metabolic_multipliers_tensor_t));
-    if (!mult) return NULL;
+    NIMCP_API_CHECK_ALLOC(mult, "metabolic_multipliers_tensor_create: allocation failed");
 
     /* Shape: [batch_size, 4] for the 4 multiplier types */
     uint32_t dims[2] = { batch_size, 4 };
@@ -241,6 +252,8 @@ metabolic_multipliers_tensor_t* metabolic_multipliers_tensor_create(uint32_t bat
 
     mult->multipliers = nimcp_tensor_ones(dim_ptr, rank, NIMCP_DTYPE_F32);
     if (!mult->multipliers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "metabolic_multipliers_tensor_create: tensor allocation failed");
         nimcp_free(mult);
         return NULL;
     }
@@ -329,11 +342,16 @@ int metabolic_compute_effects_tensor(
     const metabolic_multipliers_tensor_t* multipliers,
     metabolic_effects_tensor_t* effects
 ) {
-    if (!input || !config || !effects) return -1;
-    if (!input->atp_levels || !input->metabolic_capacities || !effects->effects) return -1;
+    /* Validate parameters using API exception macros */
+    NIMCP_API_CHECK_NULL(input, NIMCP_ERROR_NULL_POINTER, "metabolic_compute_effects_tensor: NULL input");
+    NIMCP_API_CHECK_NULL(config, NIMCP_ERROR_NULL_POINTER, "metabolic_compute_effects_tensor: NULL config");
+    NIMCP_API_CHECK_NULL(effects, NIMCP_ERROR_NULL_POINTER, "metabolic_compute_effects_tensor: NULL effects");
+    NIMCP_API_CHECK(input->atp_levels && input->metabolic_capacities && effects->effects,
+        NIMCP_ERROR_INVALID_PARAM, "metabolic_compute_effects_tensor: NULL tensor member");
 
     uint32_t batch = input->batch_size;
-    if (batch != effects->batch_size) return -1;
+    NIMCP_API_CHECK(batch == effects->batch_size, NIMCP_ERROR_INVALID_PARAM,
+        "metabolic_compute_effects_tensor: batch size mismatch");
 
     /* Use default multipliers if none provided */
     metabolic_effect_multipliers_t default_mult = metabolic_default_multipliers();

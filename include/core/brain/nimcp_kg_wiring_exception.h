@@ -208,7 +208,7 @@ nimcp_kg_wiring_exception_t* nimcp_kg_wiring_exception_create_string(
  * @param code KG wiring error code
  * @return Suggested recovery action
  */
-nimcp_recovery_action_t kg_wiring_get_recovery_action(nimcp_error_t code);
+nimcp_exception_recovery_action_t kg_wiring_get_recovery_action(nimcp_error_t code);
 
 /* ============================================================================
  * Exception Handler Registration

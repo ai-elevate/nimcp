@@ -21,6 +21,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include <errno.h>
+#include "api/nimcp_api_exception.h"
 
 #if defined(NIMCP_PLATFORM_POSIX)
     #include <sys/time.h>  /* gettimeofday for timedwait */
@@ -35,6 +36,8 @@
 int nimcp_platform_cond_init(nimcp_platform_cond_t* cond)
 {
     if (!cond) {
+        LOG_ERROR("nimcp_platform_cond_init: cond pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Condition init failed: NULL pointer");
         return EINVAL;
     }
 
@@ -54,6 +57,8 @@ int nimcp_platform_cond_init(nimcp_platform_cond_t* cond)
 int nimcp_platform_cond_destroy(nimcp_platform_cond_t* cond)
 {
     if (!cond) {
+        LOG_ERROR("nimcp_platform_cond_destroy: cond pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Condition destroy failed: NULL pointer");
         return EINVAL;
     }
 
@@ -72,7 +77,14 @@ int nimcp_platform_cond_destroy(nimcp_platform_cond_t* cond)
 int nimcp_platform_cond_wait(nimcp_platform_cond_t* cond,
                              nimcp_platform_mutex_t* mutex)
 {
-    if (!cond || !mutex) {
+    if (!cond) {
+        LOG_ERROR("nimcp_platform_cond_wait: cond pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Condition wait failed: NULL cond pointer");
+        return EINVAL;
+    }
+    if (!mutex) {
+        LOG_ERROR("nimcp_platform_cond_wait: mutex pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Condition wait failed: NULL mutex pointer");
         return EINVAL;
     }
 
@@ -93,7 +105,14 @@ int nimcp_platform_cond_timedwait(nimcp_platform_cond_t* cond,
                                   nimcp_platform_mutex_t* mutex,
                                   uint32_t timeout_ms)
 {
-    if (!cond || !mutex) {
+    if (!cond) {
+        LOG_ERROR("nimcp_platform_cond_timedwait: cond pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Condition timedwait failed: NULL cond pointer");
+        return EINVAL;
+    }
+    if (!mutex) {
+        LOG_ERROR("nimcp_platform_cond_timedwait: mutex pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Condition timedwait failed: NULL mutex pointer");
         return EINVAL;
     }
 
@@ -132,6 +151,8 @@ int nimcp_platform_cond_timedwait(nimcp_platform_cond_t* cond,
 int nimcp_platform_cond_signal(nimcp_platform_cond_t* cond)
 {
     if (!cond) {
+        LOG_ERROR("nimcp_platform_cond_signal: cond pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Condition signal failed: NULL pointer");
         return EINVAL;
     }
 
@@ -151,6 +172,8 @@ int nimcp_platform_cond_signal(nimcp_platform_cond_t* cond)
 int nimcp_platform_cond_broadcast(nimcp_platform_cond_t* cond)
 {
     if (!cond) {
+        LOG_ERROR("nimcp_platform_cond_broadcast: cond pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Condition broadcast failed: NULL pointer");
         return EINVAL;
     }
 

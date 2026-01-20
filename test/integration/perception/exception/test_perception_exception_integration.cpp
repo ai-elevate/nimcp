@@ -42,14 +42,14 @@ protected:
     static std::atomic<int> handler_call_count;
     static std::atomic<int> recovery_call_count;
     static std::atomic<bool> immune_presentation_called;
-    static std::atomic<nimcp_recovery_action_t> last_recovery_action;
+    static std::atomic<nimcp_exception_recovery_action_t> last_recovery_action;
     static std::vector<nimcp_error_t> handled_exception_codes;
 
     void SetUp() override {
         handler_call_count = 0;
         recovery_call_count = 0;
         immune_presentation_called = false;
-        last_recovery_action = RECOVERY_ACTION_NONE;
+        last_recovery_action = EXCEPTION_RECOVERY_NONE;
         handled_exception_codes.clear();
 
         // Initialize systems
@@ -79,7 +79,7 @@ protected:
     // Recovery callback for perception modules
     static int perception_recovery_callback(
         nimcp_exception_t* ex,
-        nimcp_recovery_action_t action,
+        nimcp_exception_recovery_action_t action,
         void* user_data
     ) {
         (void)ex;
@@ -109,7 +109,7 @@ protected:
 std::atomic<int> PerceptionExceptionIntegrationTest::handler_call_count(0);
 std::atomic<int> PerceptionExceptionIntegrationTest::recovery_call_count(0);
 std::atomic<bool> PerceptionExceptionIntegrationTest::immune_presentation_called(false);
-std::atomic<nimcp_recovery_action_t> PerceptionExceptionIntegrationTest::last_recovery_action(RECOVERY_ACTION_NONE);
+std::atomic<nimcp_exception_recovery_action_t> PerceptionExceptionIntegrationTest::last_recovery_action(EXCEPTION_RECOVERY_NONE);
 std::vector<nimcp_error_t> PerceptionExceptionIntegrationTest::handled_exception_codes;
 
 //=============================================================================
@@ -219,7 +219,7 @@ TEST_F(PerceptionExceptionIntegrationTest, ChainedPerceptionExceptionsWithRecove
 
     // Register recovery callback
     nimcp_register_recovery_callback(
-        RECOVERY_ACTION_RESTART_COMPONENT,
+        EXCEPTION_RECOVERY_RESTART_COMPONENT,
         perception_recovery_callback,
         nullptr
     );
@@ -254,13 +254,13 @@ TEST_F(PerceptionExceptionIntegrationTest, ChainedPerceptionExceptionsWithRecove
 
     // Test recovery execution
     recovery_call_count = 0;
-    int recovery_result = nimcp_execute_recovery(speech_ex, RECOVERY_ACTION_RESTART_COMPONENT);
+    int recovery_result = nimcp_execute_recovery(speech_ex, EXCEPTION_RECOVERY_RESTART_COMPONENT);
     EXPECT_EQ(recovery_result, 0);
     EXPECT_EQ(recovery_call_count.load(), 1);
-    EXPECT_EQ(last_recovery_action.load(), RECOVERY_ACTION_RESTART_COMPONENT);
+    EXPECT_EQ(last_recovery_action.load(), EXCEPTION_RECOVERY_RESTART_COMPONENT);
 
     nimcp_exception_unref(speech_ex);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_RESTART_COMPONENT);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RESTART_COMPONENT);
 }
 
 //=============================================================================
@@ -398,12 +398,12 @@ TEST_F(PerceptionExceptionIntegrationTest, RecoveryStrategyExecution) {
 
     // Register multiple recovery callbacks
     nimcp_register_recovery_callback(
-        RECOVERY_ACTION_RETRY,
+        EXCEPTION_RECOVERY_RETRY,
         perception_recovery_callback,
         nullptr
     );
     nimcp_register_recovery_callback(
-        RECOVERY_ACTION_CLEAR_CACHE,
+        EXCEPTION_RECOVERY_CLEAR_CACHE,
         perception_recovery_callback,
         nullptr
     );
@@ -417,20 +417,20 @@ TEST_F(PerceptionExceptionIntegrationTest, RecoveryStrategyExecution) {
     ASSERT_NE(ex, nullptr);
 
     // Get recovery strategy
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(ex, &strategy);
 
     // Execute primary recovery action
     recovery_call_count = 0;
-    if (strategy.primary_action != RECOVERY_ACTION_NONE) {
+    if (strategy.primary_action != EXCEPTION_RECOVERY_NONE) {
         int result = nimcp_exception_execute_recovery(ex, strategy.primary_action);
         // Recovery may or may not succeed depending on registered callbacks
         (void)result;
     }
 
     nimcp_exception_unref(ex);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_RETRY);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_CLEAR_CACHE);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RETRY);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_CLEAR_CACHE);
 }
 
 //=============================================================================
@@ -868,7 +868,7 @@ TEST_F(PerceptionExceptionIntegrationTest, RecoveryResultNotification) {
     // Notify immune of success
     int result = nimcp_exception_notify_recovery_result(
         ex,
-        RECOVERY_ACTION_RETRY,
+        EXCEPTION_RECOVERY_RETRY,
         true  // success
     );
     // Result depends on immune system state
@@ -878,7 +878,7 @@ TEST_F(PerceptionExceptionIntegrationTest, RecoveryResultNotification) {
     ex->recovery_succeeded = false;
     result = nimcp_exception_notify_recovery_result(
         ex,
-        RECOVERY_ACTION_RETRY,
+        EXCEPTION_RECOVERY_RETRY,
         false  // failure
     );
     (void)result;

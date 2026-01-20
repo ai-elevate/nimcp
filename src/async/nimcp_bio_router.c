@@ -21,6 +21,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "api/nimcp_api_exception.h"
 
 #include "async/nimcp_bio_messages.h"
 #include "core/brain/nimcp_brain_kg.h"  /* Phase 7: KG-driven dispatch */
@@ -42,6 +43,28 @@
 
 // Global BBB system accessor (defined in nimcp_brain_init.c)
 extern bbb_system_t nimcp_bbb_get_global_system(void);
+
+/*=============================================================================
+ * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+ *============================================================================*/
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent for bio router operations */
+static nimcp_health_agent_t* g_bio_router_health_agent = NULL;
+
+void bio_router_set_health_agent(nimcp_health_agent_t* agent) {
+    g_bio_router_health_agent = agent;
+}
+
+static inline void bio_router_heartbeat(const char* operation, float progress) {
+    if (g_bio_router_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_bio_router_health_agent, operation, progress);
+    }
+}
 
 /*=============================================================================
  * CONSTANTS
@@ -568,6 +591,7 @@ nimcp_error_t bio_router_init(const bio_router_config_t* config) {
     g_router = nimcp_calloc(1, sizeof(struct bio_router_struct));
     if (!g_router) {
         nimcp_platform_mutex_unlock(&g_router_init_mutex);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct bio_router_struct), "Bio-router allocation failed");
         LOG_ERROR("Failed to allocate bio-router");
         return NIMCP_ERROR_NO_MEMORY;
     }
@@ -582,6 +606,7 @@ nimcp_error_t bio_router_init(const bio_router_config_t* config) {
         nimcp_free(g_router);
         g_router = NULL;
         nimcp_platform_mutex_unlock(&g_router_init_mutex);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, cfg.max_modules * sizeof(bio_module_entry_t), "Module registry allocation failed");
         LOG_ERROR("Failed to allocate module registry");
         return NIMCP_ERROR_NO_MEMORY;
     }
@@ -592,6 +617,7 @@ nimcp_error_t bio_router_init(const bio_router_config_t* config) {
         nimcp_free(g_router);
         g_router = NULL;
         nimcp_platform_mutex_unlock(&g_router_init_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Bio-router modules mutex init failed");
         LOG_ERROR("Failed to initialize modules mutex");
         return NIMCP_ERROR_MUTEX_INIT;
     }
@@ -1525,10 +1551,17 @@ uint32_t bio_router_process_inbox(bio_module_context_t ctx, uint32_t max_message
     bio_module_entry_t* entry = ctx->entry;
     if (!entry || entry->magic != BIO_MODULE_MAGIC) return 0;
 
+    /* Phase 8: Send heartbeat at start of inbox processing */
+    bio_router_heartbeat("process_inbox", 0.0f);
+
     uint32_t processed = 0;
     uint32_t limit = max_messages > 0 ? max_messages : UINT32_MAX;
 
     while (processed < limit) {
+        /* Phase 8: Send progress heartbeat for batch message processing */
+        if (limit != UINT32_MAX && limit > 0) {
+            bio_router_heartbeat("process_inbox", (float)processed / (float)limit);
+        }
         void* msg_data = NULL;
         size_t msg_size = 0;
         nimcp_bio_promise_t response_promise = NULL;

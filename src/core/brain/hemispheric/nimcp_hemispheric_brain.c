@@ -22,6 +22,7 @@
  */
 
 #include "core/brain/hemispheric/nimcp_hemispheric_brain.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"

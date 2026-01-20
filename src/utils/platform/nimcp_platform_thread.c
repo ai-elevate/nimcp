@@ -23,6 +23,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include <errno.h>
 #include <stdlib.h>
+#include "api/nimcp_api_exception.h"
 
 #if defined(NIMCP_PLATFORM_WINDOWS)
     #include <process.h>  /* _beginthreadex */
@@ -86,7 +87,14 @@ int nimcp_platform_thread_create(nimcp_platform_thread_t* thread,
                                  nimcp_thread_func_t start_routine,
                                  void* arg)
 {
-    if (!thread || !start_routine) {
+    if (!thread) {
+        LOG_ERROR("nimcp_platform_thread_create: thread pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Thread create failed: NULL thread pointer");
+        return EINVAL;
+    }
+    if (!start_routine) {
+        LOG_ERROR("nimcp_platform_thread_create: start_routine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Thread create failed: NULL start routine");
         return EINVAL;
     }
 
@@ -99,6 +107,8 @@ int nimcp_platform_thread_create(nimcp_platform_thread_t* thread,
     /* Windows: Create thread with wrapper */
     win_thread_wrapper_t* wrapper = (win_thread_wrapper_t*)nimcp_malloc(sizeof(win_thread_wrapper_t));
     if (!wrapper) {
+        LOG_ERROR("nimcp_platform_thread_create: failed to allocate thread wrapper");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(win_thread_wrapper_t), "Thread wrapper allocation failed");
         return ENOMEM;
     }
 
@@ -116,6 +126,8 @@ int nimcp_platform_thread_create(nimcp_platform_thread_t* thread,
     );
 
     if (handle == 0) {
+        LOG_ERROR("nimcp_platform_thread_create: _beginthreadex failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_THREAD_CREATE, "Thread creation failed on Windows");
         nimcp_free(wrapper);
         return EAGAIN;  /* Thread creation failed */
     }

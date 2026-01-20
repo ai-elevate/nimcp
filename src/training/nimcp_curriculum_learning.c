@@ -21,6 +21,9 @@
 #include "training/nimcp_curriculum_learning.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -274,6 +277,7 @@ static void update_stats(curriculum_ctx_t* ctx) {
 
 int curriculum_default_config(curriculum_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "curriculum_default_config: config is NULL");
         NIMCP_LOGGING_ERROR("NULL config pointer");
         return -1;
     }
@@ -320,6 +324,7 @@ curriculum_ctx_t* curriculum_create(
     const curriculum_config_t* config
 ) {
     if (num_samples == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "curriculum_create: num_samples cannot be 0");
         NIMCP_LOGGING_ERROR("num_samples cannot be 0");
         return NULL;
     }
@@ -336,6 +341,8 @@ curriculum_ctx_t* curriculum_create(
         1, sizeof(curriculum_ctx_t)
     );
     if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(curriculum_ctx_t),
+                          "curriculum_create: failed to allocate context");
         NIMCP_LOGGING_ERROR("Failed to allocate curriculum context");
         return NULL;
     }
@@ -353,6 +360,8 @@ curriculum_ctx_t* curriculum_create(
 
     if (!ctx->difficulties || !ctx->difficulty_ema || !ctx->update_counts ||
         !ctx->initialized || !ctx->sorted_indices) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_samples * sizeof(float),
+                          "curriculum_create: failed to allocate difficulty arrays");
         NIMCP_LOGGING_ERROR("Failed to allocate difficulty arrays");
         curriculum_destroy(ctx);
         return NULL;

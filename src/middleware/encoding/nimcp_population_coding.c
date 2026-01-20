@@ -10,6 +10,7 @@
 #include "middleware/encoding/nimcp_population_coding.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"

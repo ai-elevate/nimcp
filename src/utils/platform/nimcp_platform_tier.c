@@ -27,6 +27,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "api/nimcp_api_exception.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -485,6 +486,7 @@ platform_tier_t platform_tier_detect(void)
     if (!system_resources_query(&resources)) {
         // If query fails, assume minimal platform
         LOG_WARN("Failed to query system resources, defaulting to MINIMAL tier");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Platform tier detection: system resources query failed, using MINIMAL");
         return PLATFORM_TIER_MINIMAL;
     }
 
@@ -575,8 +577,14 @@ uint32_t platform_tier_recommend_neuron_count(platform_tier_t tier,
                                                const system_resources_t* resources)
 {
     // Validate inputs
-    if (tier >= PLATFORM_TIER_COUNT || !resources) {
-        LOG_WARN("Invalid inputs to platform_tier_recommend_neuron_count");
+    if (tier >= PLATFORM_TIER_COUNT) {
+        LOG_WARN("Invalid tier %d in platform_tier_recommend_neuron_count", tier);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Recommend neuron count: invalid tier value");
+        return 1000;  // Safe default
+    }
+    if (!resources) {
+        LOG_WARN("NULL resources pointer in platform_tier_recommend_neuron_count");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Recommend neuron count: NULL resources pointer");
         return 1000;  // Safe default
     }
 
@@ -621,9 +629,19 @@ bool platform_tier_validate_config(platform_tier_t tier,
                                     size_t error_msg_len)
 {
     // Validate inputs
-    if (tier >= PLATFORM_TIER_COUNT || !config) {
+    if (tier >= PLATFORM_TIER_COUNT) {
+        LOG_WARN("Invalid tier %d in platform_tier_validate_config", tier);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Validate config: invalid tier value");
         if (error_msg && error_msg_len > 0) {
-            snprintf(error_msg, error_msg_len, "Invalid tier or NULL config");
+            snprintf(error_msg, error_msg_len, "Invalid tier value: %d", tier);
+        }
+        return false;
+    }
+    if (!config) {
+        LOG_WARN("NULL config pointer in platform_tier_validate_config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Validate config: NULL config pointer");
+        if (error_msg && error_msg_len > 0) {
+            snprintf(error_msg, error_msg_len, "NULL config pointer");
         }
         return false;
     }

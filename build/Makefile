@@ -8622,6 +8622,58 @@ e2e_fault_tolerance_test_resilience_stress/fast:
 .PHONY : e2e_fault_tolerance_test_resilience_stress/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_exception_resilience_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_exception_resilience_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_exception_resilience_e2e
+.PHONY : e2e_fault_tolerance_test_exception_resilience_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_exception_resilience_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_resilience_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_resilience_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_exception_resilience_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_exception_brain_integration_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_exception_brain_integration_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_exception_brain_integration_e2e
+.PHONY : e2e_fault_tolerance_test_exception_brain_integration_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_exception_brain_integration_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_brain_integration_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_brain_integration_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_exception_brain_integration_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_exception_flow_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_exception_flow_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_exception_flow_e2e
+.PHONY : e2e_fault_tolerance_test_exception_flow_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_exception_flow_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_flow_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_flow_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_exception_flow_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_module_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_module_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_module_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_module_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_module_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_module_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_module_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_module_e2e/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_integration
 
 # Build rule for target.
@@ -17995,6 +18047,19 @@ unit_utils_fault_tolerance_test_health_agent_world_imagination_functions/fast:
 .PHONY : unit_utils_fault_tolerance_test_health_agent_world_imagination_functions/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_heartbeat_module_functions
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_heartbeat_module_functions: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_heartbeat_module_functions
+.PHONY : unit_utils_fault_tolerance_test_heartbeat_module_functions
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_heartbeat_module_functions/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_heartbeat_module_functions.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_heartbeat_module_functions.dir/build
+.PHONY : unit_utils_fault_tolerance_test_heartbeat_module_functions/fast
+
+#=============================================================================
 # Target rules for targets named integration_utils_fault_tolerance_test_async_checkpoint_integration
 
 # Build rule for target.
@@ -18307,6 +18372,19 @@ integration_utils_fault_tolerance_test_world_imagination_health_integration/fast
 .PHONY : integration_utils_fault_tolerance_test_world_imagination_health_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_heartbeat_module_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_heartbeat_module_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_heartbeat_module_integration
+.PHONY : integration_utils_fault_tolerance_test_heartbeat_module_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_heartbeat_module_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_heartbeat_module_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_heartbeat_module_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_heartbeat_module_integration/fast
+
+#=============================================================================
 # Target rules for targets named regression_utils_fault_tolerance_test_checkpoint_format
 
 # Build rule for target.
@@ -18578,6 +18656,19 @@ regression_utils_fault_tolerance_test_world_imagination_health_regression: cmake
 regression_utils_fault_tolerance_test_world_imagination_health_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_world_imagination_health_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_world_imagination_health_regression.dir/build
 .PHONY : regression_utils_fault_tolerance_test_world_imagination_health_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_heartbeat_module_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_heartbeat_module_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_heartbeat_module_regression
+.PHONY : regression_utils_fault_tolerance_test_heartbeat_module_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_heartbeat_module_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_heartbeat_module_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_heartbeat_module_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_heartbeat_module_regression/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_exception_test_exception
@@ -19033,6 +19124,32 @@ unit_utils_ternary_test_ternary_core: cmake_check_build_system
 unit_utils_ternary_test_ternary_core/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/utils/ternary/CMakeFiles/unit_utils_ternary_test_ternary_core.dir/build.make test/unit/utils/ternary/CMakeFiles/unit_utils_ternary_test_ternary_core.dir/build
 .PHONY : unit_utils_ternary_test_ternary_core/fast
+
+#=============================================================================
+# Target rules for targets named unit_ternary_exception_handling
+
+# Build rule for target.
+unit_ternary_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_ternary_exception_handling
+.PHONY : unit_ternary_exception_handling
+
+# fast build rule for target.
+unit_ternary_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/ternary/exception/CMakeFiles/unit_ternary_exception_handling.dir/build.make test/unit/ternary/exception/CMakeFiles/unit_ternary_exception_handling.dir/build
+.PHONY : unit_ternary_exception_handling/fast
+
+#=============================================================================
+# Target rules for targets named unit_distributed_exception_handling
+
+# Build rule for target.
+unit_distributed_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_distributed_exception_handling
+.PHONY : unit_distributed_exception_handling
+
+# fast build rule for target.
+unit_distributed_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/distributed/exception/CMakeFiles/unit_distributed_exception_handling.dir/build.make test/unit/distributed/exception/CMakeFiles/unit_distributed_exception_handling.dir/build
+.PHONY : unit_distributed_exception_handling/fast
 
 #=============================================================================
 # Target rules for targets named integration_ternary_test_neuralnet_ternary_integration
@@ -25080,6 +25197,19 @@ unit_swarm_immune_bridges/fast:
 .PHONY : unit_swarm_immune_bridges/fast
 
 #=============================================================================
+# Target rules for targets named unit_swarm_exception_handling
+
+# Build rule for target.
+unit_swarm_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_swarm_exception_handling
+.PHONY : unit_swarm_exception_handling
+
+# fast build rule for target.
+unit_swarm_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/swarm/exception/CMakeFiles/unit_swarm_exception_handling.dir/build.make test/unit/swarm/exception/CMakeFiles/unit_swarm_exception_handling.dir/build
+.PHONY : unit_swarm_exception_handling/fast
+
+#=============================================================================
 # Target rules for targets named test_swarm_communication_integration
 
 # Build rule for target.
@@ -25637,6 +25767,19 @@ unit_portia_immune_bridges: cmake_check_build_system
 unit_portia_immune_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/portia/immune/CMakeFiles/unit_portia_immune_bridges.dir/build.make test/unit/portia/immune/CMakeFiles/unit_portia_immune_bridges.dir/build
 .PHONY : unit_portia_immune_bridges/fast
+
+#=============================================================================
+# Target rules for targets named unit_portia_exception_handling
+
+# Build rule for target.
+unit_portia_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_portia_exception_handling
+.PHONY : unit_portia_exception_handling
+
+# fast build rule for target.
+unit_portia_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/portia/exception/CMakeFiles/unit_portia_exception_handling.dir/build.make test/unit/portia/exception/CMakeFiles/unit_portia_exception_handling.dir/build
+.PHONY : unit_portia_exception_handling/fast
 
 #=============================================================================
 # Target rules for targets named test_portia_tier_integration
@@ -26679,6 +26822,58 @@ integration_exception_test_signal_exception_integration/fast:
 .PHONY : integration_exception_test_signal_exception_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_exception_test_exception_recovery_integration
+
+# Build rule for target.
+integration_exception_test_exception_recovery_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_exception_test_exception_recovery_integration
+.PHONY : integration_exception_test_exception_recovery_integration
+
+# fast build rule for target.
+integration_exception_test_exception_recovery_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/exception/CMakeFiles/integration_exception_test_exception_recovery_integration.dir/build.make test/integration/exception/CMakeFiles/integration_exception_test_exception_recovery_integration.dir/build
+.PHONY : integration_exception_test_exception_recovery_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_exception_test_handler_chain_integration
+
+# Build rule for target.
+integration_exception_test_handler_chain_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_exception_test_handler_chain_integration
+.PHONY : integration_exception_test_handler_chain_integration
+
+# fast build rule for target.
+integration_exception_test_handler_chain_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/exception/CMakeFiles/integration_exception_test_handler_chain_integration.dir/build.make test/integration/exception/CMakeFiles/integration_exception_test_handler_chain_integration.dir/build
+.PHONY : integration_exception_test_handler_chain_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_exception_test_exception_propagation_integration
+
+# Build rule for target.
+integration_exception_test_exception_propagation_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_exception_test_exception_propagation_integration
+.PHONY : integration_exception_test_exception_propagation_integration
+
+# fast build rule for target.
+integration_exception_test_exception_propagation_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/exception/CMakeFiles/integration_exception_test_exception_propagation_integration.dir/build.make test/integration/exception/CMakeFiles/integration_exception_test_exception_propagation_integration.dir/build
+.PHONY : integration_exception_test_exception_propagation_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_exception_test_exception_immune_integration
+
+# Build rule for target.
+integration_exception_test_exception_immune_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_exception_test_exception_immune_integration
+.PHONY : integration_exception_test_exception_immune_integration
+
+# fast build rule for target.
+integration_exception_test_exception_immune_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/exception/CMakeFiles/integration_exception_test_exception_immune_integration.dir/build.make test/integration/exception/CMakeFiles/integration_exception_test_exception_immune_integration.dir/build
+.PHONY : integration_exception_test_exception_immune_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_gpu_test_gpu_cpu_equivalence
 
 # Build rule for target.
@@ -27002,6 +27197,19 @@ unit_lnn_test_lnn_sleep_bridge: cmake_check_build_system
 unit_lnn_test_lnn_sleep_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/lnn/CMakeFiles/unit_lnn_test_lnn_sleep_bridge.dir/build.make test/unit/lnn/CMakeFiles/unit_lnn_test_lnn_sleep_bridge.dir/build
 .PHONY : unit_lnn_test_lnn_sleep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_lnn_exception_handling
+
+# Build rule for target.
+unit_lnn_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_lnn_exception_handling
+.PHONY : unit_lnn_exception_handling
+
+# fast build rule for target.
+unit_lnn_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/lnn/exception/CMakeFiles/unit_lnn_exception_handling.dir/build.make test/unit/lnn/exception/CMakeFiles/unit_lnn_exception_handling.dir/build
+.PHONY : unit_lnn_exception_handling/fast
 
 #=============================================================================
 # Target rules for targets named unit_snn_test_snn_config
@@ -27602,6 +27810,19 @@ test_snn_medulla_bridge/fast:
 .PHONY : test_snn_medulla_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_snn_exception_handling
+
+# Build rule for target.
+unit_snn_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_exception_handling
+.PHONY : unit_snn_exception_handling
+
+# fast build rule for target.
+unit_snn_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/exception/CMakeFiles/unit_snn_exception_handling.dir/build.make test/unit/snn/exception/CMakeFiles/unit_snn_exception_handling.dir/build
+.PHONY : unit_snn_exception_handling/fast
+
+#=============================================================================
 # Target rules for targets named integration_snn_test_integration
 
 # Build rule for target.
@@ -28003,6 +28224,19 @@ unit_quantum_test_quantum_superposition: cmake_check_build_system
 unit_quantum_test_quantum_superposition/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/quantum/CMakeFiles/unit_quantum_test_quantum_superposition.dir/build.make test/unit/quantum/CMakeFiles/unit_quantum_test_quantum_superposition.dir/build
 .PHONY : unit_quantum_test_quantum_superposition/fast
+
+#=============================================================================
+# Target rules for targets named unit_quantum_exception_handling
+
+# Build rule for target.
+unit_quantum_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_quantum_exception_handling
+.PHONY : unit_quantum_exception_handling
+
+# fast build rule for target.
+unit_quantum_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/quantum/exception/CMakeFiles/unit_quantum_exception_handling.dir/build.make test/unit/quantum/exception/CMakeFiles/unit_quantum_exception_handling.dir/build
+.PHONY : unit_quantum_exception_handling/fast
 
 #=============================================================================
 # Target rules for targets named integration_quantum_bridges
@@ -28655,6 +28889,19 @@ unit_dragonfly_test_coordinator/fast:
 .PHONY : unit_dragonfly_test_coordinator/fast
 
 #=============================================================================
+# Target rules for targets named unit_dragonfly_exception_handling
+
+# Build rule for target.
+unit_dragonfly_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_dragonfly_exception_handling
+.PHONY : unit_dragonfly_exception_handling
+
+# fast build rule for target.
+unit_dragonfly_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/dragonfly/exception/CMakeFiles/unit_dragonfly_exception_handling.dir/build.make test/unit/dragonfly/exception/CMakeFiles/unit_dragonfly_exception_handling.dir/build
+.PHONY : unit_dragonfly_exception_handling/fast
+
+#=============================================================================
 # Target rules for targets named integration_dragonfly_brain
 
 # Build rule for target.
@@ -29175,6 +29422,19 @@ unit_chemistry_gasotransmitters_test_nitric_oxide/fast:
 .PHONY : unit_chemistry_gasotransmitters_test_nitric_oxide/fast
 
 #=============================================================================
+# Target rules for targets named unit_chemistry_exception_handling
+
+# Build rule for target.
+unit_chemistry_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_chemistry_exception_handling
+.PHONY : unit_chemistry_exception_handling
+
+# fast build rule for target.
+unit_chemistry_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/chemistry/exception/CMakeFiles/unit_chemistry_exception_handling.dir/build.make test/unit/chemistry/exception/CMakeFiles/unit_chemistry_exception_handling.dir/build
+.PHONY : unit_chemistry_exception_handling/fast
+
+#=============================================================================
 # Target rules for targets named unit_biology_epigenetics_test_epigenetics
 
 # Build rule for target.
@@ -29212,6 +29472,19 @@ unit_biology_neurovascular_test_neurovascular: cmake_check_build_system
 unit_biology_neurovascular_test_neurovascular/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/biology/neurovascular/CMakeFiles/unit_biology_neurovascular_test_neurovascular.dir/build.make test/unit/biology/neurovascular/CMakeFiles/unit_biology_neurovascular_test_neurovascular.dir/build
 .PHONY : unit_biology_neurovascular_test_neurovascular/fast
+
+#=============================================================================
+# Target rules for targets named unit_biology_exception_handling
+
+# Build rule for target.
+unit_biology_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_biology_exception_handling
+.PHONY : unit_biology_exception_handling
+
+# fast build rule for target.
+unit_biology_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/biology/exception/CMakeFiles/unit_biology_exception_handling.dir/build.make test/unit/biology/exception/CMakeFiles/unit_biology_exception_handling.dir/build
+.PHONY : unit_biology_exception_handling/fast
 
 #=============================================================================
 # Target rules for targets named integration_chemistry_ph_test_ph_integration
@@ -29342,6 +29615,19 @@ unit_physics_dynamics_test_dynamical_systems: cmake_check_build_system
 unit_physics_dynamics_test_dynamical_systems/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/physics/dynamics/CMakeFiles/unit_physics_dynamics_test_dynamical_systems.dir/build.make test/unit/physics/dynamics/CMakeFiles/unit_physics_dynamics_test_dynamical_systems.dir/build
 .PHONY : unit_physics_dynamics_test_dynamical_systems/fast
+
+#=============================================================================
+# Target rules for targets named unit_physics_exception_handling
+
+# Build rule for target.
+unit_physics_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_exception_handling
+.PHONY : unit_physics_exception_handling
+
+# fast build rule for target.
+unit_physics_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/physics/exception/CMakeFiles/unit_physics_exception_handling.dir/build.make test/unit/physics/exception/CMakeFiles/unit_physics_exception_handling.dir/build
+.PHONY : unit_physics_exception_handling/fast
 
 #=============================================================================
 # Target rules for targets named integration_physics_bio_async_test
@@ -30074,12 +30360,16 @@ help:
 	@echo "... e2e_fault_tolerance_test_brain_probe_health_e2e"
 	@echo "... e2e_fault_tolerance_test_capacity_manager_e2e"
 	@echo "... e2e_fault_tolerance_test_crash_recovery"
+	@echo "... e2e_fault_tolerance_test_exception_brain_integration_e2e"
+	@echo "... e2e_fault_tolerance_test_exception_flow_e2e"
+	@echo "... e2e_fault_tolerance_test_exception_resilience_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_active_cognitive_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_behavioral_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_connection_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_consistency_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_memory_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_neural_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_module_e2e"
 	@echo "... e2e_fault_tolerance_test_perception_cortical_health_e2e"
 	@echo "... e2e_fault_tolerance_test_resilience_stress"
 	@echo "... e2e_fault_tolerance_test_substrate_health_e2e"
@@ -30474,6 +30764,10 @@ help:
 	@echo "... integration_dragonfly_sensory"
 	@echo "... integration_emotion_immune_pipeline"
 	@echo "... integration_error_propagation"
+	@echo "... integration_exception_test_exception_immune_integration"
+	@echo "... integration_exception_test_exception_propagation_integration"
+	@echo "... integration_exception_test_exception_recovery_integration"
+	@echo "... integration_exception_test_handler_chain_integration"
 	@echo "... integration_exception_test_signal_exception_integration"
 	@echo "... integration_executive_cognitive"
 	@echo "... integration_fault_tolerance_test_fault_tolerance_integration"
@@ -30672,6 +30966,7 @@ help:
 	@echo "... integration_utils_fault_tolerance_test_health_agent_memory_integration"
 	@echo "... integration_utils_fault_tolerance_test_health_agent_neural_integration"
 	@echo "... integration_utils_fault_tolerance_test_health_agent_use_integration"
+	@echo "... integration_utils_fault_tolerance_test_heartbeat_module_integration"
 	@echo "... integration_utils_fault_tolerance_test_lockfree_metrics_integration"
 	@echo "... integration_utils_fault_tolerance_test_perception_cortical_health_integration"
 	@echo "... integration_utils_fault_tolerance_test_recovery_cache_integration"
@@ -31042,6 +31337,7 @@ help:
 	@echo "... regression_utils_fault_tolerance_test_health_agent_memory_regression"
 	@echo "... regression_utils_fault_tolerance_test_health_agent_neural_regression"
 	@echo "... regression_utils_fault_tolerance_test_health_agent_use_regression"
+	@echo "... regression_utils_fault_tolerance_test_heartbeat_module_regression"
 	@echo "... regression_utils_fault_tolerance_test_lockfree_metrics_regression"
 	@echo "... regression_utils_fault_tolerance_test_perception_cortical_health_regression"
 	@echo "... regression_utils_fault_tolerance_test_recovery_cache_regression"
@@ -31299,12 +31595,14 @@ help:
 	@echo "... unit_async_wiring_diagram_kg_sync"
 	@echo "... unit_async_wiring_diagram_validation"
 	@echo "... unit_biology_epigenetics_test_epigenetics"
+	@echo "... unit_biology_exception_handling"
 	@echo "... unit_biology_neurogenesis_test_neurogenesis"
 	@echo "... unit_biology_neurovascular_test_neurovascular"
 	@echo "... unit_brain_integration"
 	@echo "... unit_brain_population_coding"
 	@echo "... unit_brain_spike_features"
 	@echo "... unit_brain_test_kg_module_wiring"
+	@echo "... unit_chemistry_exception_handling"
 	@echo "... unit_chemistry_gasotransmitters_test_nitric_oxide"
 	@echo "... unit_chemistry_ph_test_ph_dynamics"
 	@echo "... unit_cognitive_analysis_test_analysis_fep_bridge"
@@ -31744,6 +32042,8 @@ help:
 	@echo "... unit_core_topology_topology_tests"
 	@echo "... unit_core_wernicke_adapter"
 	@echo "... unit_core_wernicke_bridges"
+	@echo "... unit_distributed_exception_handling"
+	@echo "... unit_dragonfly_exception_handling"
 	@echo "... unit_dragonfly_test_audio_bridge"
 	@echo "... unit_dragonfly_test_bio_async_bridge"
 	@echo "... unit_dragonfly_test_cnn_bridge"
@@ -31918,6 +32218,7 @@ help:
 	@echo "... unit_lc_test_ne_release"
 	@echo "... unit_lc_test_novelty_detection"
 	@echo "... unit_lib_cognitive_test_hierarchical"
+	@echo "... unit_lnn_exception_handling"
 	@echo "... unit_lnn_test_lnn_config"
 	@echo "... unit_lnn_test_lnn_layer"
 	@echo "... unit_lnn_test_lnn_neuron"
@@ -32046,6 +32347,7 @@ help:
 	@echo "... unit_physics_biophysics_test_hodgkin_huxley"
 	@echo "... unit_physics_dynamics_test_dynamical_systems"
 	@echo "... unit_physics_ephaptic_test_ephaptic"
+	@echo "... unit_physics_exception_handling"
 	@echo "... unit_physics_geometry_test_information_geometry"
 	@echo "... unit_physics_geometry_test_information_geometry_bridge"
 	@echo "... unit_physics_graphs_test_graph_theory_bridge"
@@ -32124,9 +32426,11 @@ help:
 	@echo "... unit_plasticity_test_coordinator"
 	@echo "... unit_plasticity_test_fep_bridges"
 	@echo "... unit_plasticity_triplet_stdp"
+	@echo "... unit_portia_exception_handling"
 	@echo "... unit_portia_immune_bridges"
 	@echo "... unit_python_test_python_memory_safety"
 	@echo "... unit_quantum_bridges"
+	@echo "... unit_quantum_exception_handling"
 	@echo "... unit_quantum_test_broca_quantum_bridge"
 	@echo "... unit_quantum_test_grover_search"
 	@echo "... unit_quantum_test_quantum_bridge_integration"
@@ -32184,6 +32488,7 @@ help:
 	@echo "... unit_security_test_shell_detector"
 	@echo "... unit_security_test_supply_chain"
 	@echo "... unit_shannon_monitor_bio_async"
+	@echo "... unit_snn_exception_handling"
 	@echo "... unit_snn_test_snn_bio_async"
 	@echo "... unit_snn_test_snn_config"
 	@echo "... unit_snn_test_snn_encoding"
@@ -32191,8 +32496,10 @@ help:
 	@echo "... unit_snn_test_snn_network"
 	@echo "... unit_snn_test_snn_numerical_stability"
 	@echo "... unit_snn_test_snn_training"
+	@echo "... unit_swarm_exception_handling"
 	@echo "... unit_swarm_immune_bridges"
 	@echo "... unit_swarm_sleep_bridges"
+	@echo "... unit_ternary_exception_handling"
 	@echo "... unit_test_brain_full_simulation"
 	@echo "... unit_test_comprehensive_integration"
 	@echo "... unit_test_training_integration_hub"
@@ -32241,6 +32548,7 @@ help:
 	@echo "... unit_utils_fault_tolerance_test_health_agent_use_functions"
 	@echo "... unit_utils_fault_tolerance_test_health_agent_world_imagination_functions"
 	@echo "... unit_utils_fault_tolerance_test_health_monitor"
+	@echo "... unit_utils_fault_tolerance_test_heartbeat_module_functions"
 	@echo "... unit_utils_fault_tolerance_test_hierarchical_recovery"
 	@echo "... unit_utils_fault_tolerance_test_lockfree_metrics"
 	@echo "... unit_utils_fault_tolerance_test_metrics_aggregator"

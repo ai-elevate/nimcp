@@ -48,6 +48,7 @@
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"

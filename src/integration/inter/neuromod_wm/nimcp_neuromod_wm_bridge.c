@@ -6,6 +6,7 @@
  */
 
 #include "integration/inter/neuromod_wm/nimcp_neuromod_wm_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -81,7 +82,7 @@ neuromod_wm_config_t neuromod_wm_default_config(void) {
 
 neuromod_wm_bridge_t* neuromod_wm_create(const neuromod_wm_config_t* config) {
     neuromod_wm_bridge_t* bridge = calloc(1, sizeof(neuromod_wm_bridge_t));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate neuromod-wm bridge");
 
     bridge->magic = NEUROMOD_WM_BRIDGE_MAGIC;
 

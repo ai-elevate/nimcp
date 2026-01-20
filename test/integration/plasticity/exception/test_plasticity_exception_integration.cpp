@@ -119,10 +119,10 @@ protected:
     static bool recovery_handler(nimcp_exception_t* ex, void* user_data) {
         (void)user_data;
 
-        nimcp_recovery_strategy_t strategy;
+        nimcp_exception_recovery_strategy_t strategy;
         nimcp_exception_get_recovery_strategy(ex, &strategy);
 
-        if (strategy.primary_action != RECOVERY_ACTION_NONE) {
+        if (strategy.primary_action != EXCEPTION_RECOVERY_NONE) {
             recovery_action_count++;
         }
 
@@ -372,11 +372,11 @@ TEST_F(PlasticityExceptionIntegrationTest, CytokineEffectOnExceptionSeverity) {
     );
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(ex, &strategy);
 
     // During inflammation, recovery strategy might be more conservative
-    EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE);
+    EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref(ex);
 }
@@ -482,14 +482,14 @@ TEST_F(PlasticityExceptionIntegrationTest, RecoveryStrategyByCategory) {
         );
         ASSERT_NE(ex, nullptr);
 
-        nimcp_recovery_strategy_t strategy;
+        nimcp_exception_recovery_strategy_t strategy;
         nimcp_exception_get_recovery_strategy(ex, &strategy);
 
         // All non-trivial exceptions should have some recovery action
         // Critical exceptions should have more aggressive recovery
         if (tc.severity == EXCEPTION_SEVERITY_CRITICAL) {
-            EXPECT_TRUE(strategy.primary_action != RECOVERY_ACTION_NONE ||
-                       strategy.fallback_action != RECOVERY_ACTION_NONE ||
+            EXPECT_TRUE(strategy.primary_action != EXCEPTION_RECOVERY_NONE ||
+                       strategy.fallback_action != EXCEPTION_RECOVERY_NONE ||
                        strategy.retry_count > 0);
         }
 

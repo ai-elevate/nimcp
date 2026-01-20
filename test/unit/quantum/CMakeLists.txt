@@ -240,3 +240,8 @@ gtest_discover_tests(unit_quantum_test_quantum_superposition
         LABELS "unit;quantum;superposition"
         TIMEOUT 120
 )
+
+# Exception handling tests
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt")
+    add_subdirectory(exception)
+endif()

@@ -14,6 +14,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/validation/nimcp_common.h"
+#include "api/nimcp_api_exception.h"
 #include <errno.h>
 #include <sys/time.h>
 #include <time.h>

@@ -74,13 +74,13 @@ bool tracking_handler(nimcp_exception_t* ex, void* user_data) {
 
 // Recovery callback tracking
 struct RecoveryCallRecord {
-    nimcp_recovery_action_t action;
+    nimcp_exception_recovery_action_t action;
     nimcp_error_t ex_code;
 };
 
 std::vector<RecoveryCallRecord> g_recovery_calls;
 
-int tracking_recovery_callback(nimcp_exception_t* ex, nimcp_recovery_action_t action, void* user_data) {
+int tracking_recovery_callback(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data) {
     RecoveryCallRecord record;
     record.action = action;
     record.ex_code = ex->code;
@@ -518,7 +518,7 @@ TEST_F(ExceptionContractsRegressionTest, RecoveryCallbackRegistration) {
     // REGRESSION: nimcp_register_recovery_callback must register callbacks
 
     int result = nimcp_register_recovery_callback(
-        RECOVERY_ACTION_GC,
+        EXCEPTION_RECOVERY_GC,
         tracking_recovery_callback,
         nullptr
     );
@@ -533,30 +533,30 @@ TEST_F(ExceptionContractsRegressionTest, RecoveryCallbackRegistration) {
         "Recovery test"
     );
 
-    result = nimcp_execute_recovery(ex, RECOVERY_ACTION_GC);
+    result = nimcp_execute_recovery(ex, EXCEPTION_RECOVERY_GC);
     EXPECT_EQ(result, 0)
         << "nimcp_execute_recovery must return 0 on success";
 
     ASSERT_EQ(g_recovery_calls.size(), 1u);
-    EXPECT_EQ(g_recovery_calls[0].action, RECOVERY_ACTION_GC);
+    EXPECT_EQ(g_recovery_calls[0].action, EXCEPTION_RECOVERY_GC);
     EXPECT_EQ(g_recovery_calls[0].ex_code, NIMCP_ERROR_NO_MEMORY);
 
     // Clean up
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_GC);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_GC);
     nimcp_exception_unref(ex);
 }
 
 TEST_F(ExceptionContractsRegressionTest, RecoveryCallbackUnregistration) {
     // REGRESSION: nimcp_unregister_recovery_callback removes callback
 
-    nimcp_register_recovery_callback(RECOVERY_ACTION_RETRY, tracking_recovery_callback, nullptr);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_RETRY, tracking_recovery_callback, nullptr);
 
-    int result = nimcp_unregister_recovery_callback(RECOVERY_ACTION_RETRY);
+    int result = nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RETRY);
     EXPECT_EQ(result, 0)
         << "nimcp_unregister_recovery_callback must return 0 on success";
 
     // Second unregister is idempotent (returns 0 even if not registered)
-    result = nimcp_unregister_recovery_callback(RECOVERY_ACTION_RETRY);
+    result = nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RETRY);
     EXPECT_EQ(result, 0)
         << "nimcp_unregister_recovery_callback is idempotent";
 }

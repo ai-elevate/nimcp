@@ -40,13 +40,13 @@ class MiddlewareExceptionIntegrationTest : public ::testing::Test {
 protected:
     static std::atomic<int> handler_call_count;
     static std::atomic<int> recovery_call_count;
-    static std::atomic<nimcp_recovery_action_t> last_recovery_action;
+    static std::atomic<nimcp_exception_recovery_action_t> last_recovery_action;
     static std::atomic<bool> immune_presented;
 
     void SetUp() override {
         handler_call_count = 0;
         recovery_call_count = 0;
-        last_recovery_action = RECOVERY_ACTION_NONE;
+        last_recovery_action = EXCEPTION_RECOVERY_NONE;
         immune_presented = false;
 
         nimcp_exception_system_init();
@@ -82,7 +82,7 @@ protected:
     // Recovery callback for testing
     static int test_recovery_callback(
         nimcp_exception_t* ex,
-        nimcp_recovery_action_t action,
+        nimcp_exception_recovery_action_t action,
         void* user_data
     ) {
         (void)ex;
@@ -106,7 +106,7 @@ protected:
 
 std::atomic<int> MiddlewareExceptionIntegrationTest::handler_call_count(0);
 std::atomic<int> MiddlewareExceptionIntegrationTest::recovery_call_count(0);
-std::atomic<nimcp_recovery_action_t> MiddlewareExceptionIntegrationTest::last_recovery_action(RECOVERY_ACTION_NONE);
+std::atomic<nimcp_exception_recovery_action_t> MiddlewareExceptionIntegrationTest::last_recovery_action(EXCEPTION_RECOVERY_NONE);
 std::atomic<bool> MiddlewareExceptionIntegrationTest::immune_presented(false);
 
 //=============================================================================
@@ -150,7 +150,7 @@ TEST_F(MiddlewareExceptionIntegrationTest, PipelineFailureWithRecovery) {
 
     // Register recovery callback
     nimcp_register_recovery_callback(
-        RECOVERY_ACTION_RETRY,
+        EXCEPTION_RECOVERY_RETRY,
         test_recovery_callback,
         NULL
     );
@@ -164,16 +164,16 @@ TEST_F(MiddlewareExceptionIntegrationTest, PipelineFailureWithRecovery) {
         "Transient pipeline failure"
     );
     ASSERT_NE(ex, nullptr);
-    ex->suggested_action = RECOVERY_ACTION_RETRY;
+    ex->suggested_action = EXCEPTION_RECOVERY_RETRY;
 
     // Execute recovery
-    int result = nimcp_execute_recovery(ex, RECOVERY_ACTION_RETRY);
+    int result = nimcp_execute_recovery(ex, EXCEPTION_RECOVERY_RETRY);
 
     EXPECT_EQ(result, 0);
     EXPECT_EQ(recovery_call_count.load(), 1);
-    EXPECT_EQ(last_recovery_action.load(), RECOVERY_ACTION_RETRY);
+    EXPECT_EQ(last_recovery_action.load(), EXCEPTION_RECOVERY_RETRY);
 
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_RETRY);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RETRY);
     nimcp_exception_unref(ex);
 }
 
@@ -182,7 +182,7 @@ TEST_F(MiddlewareExceptionIntegrationTest, BufferOverflowWithGCRecovery) {
     // WHY:  Memory pressure from buffer overflow should trigger cleanup
 
     nimcp_register_recovery_callback(
-        RECOVERY_ACTION_GC,
+        EXCEPTION_RECOVERY_GC,
         test_recovery_callback,
         NULL
     );
@@ -204,15 +204,15 @@ TEST_F(MiddlewareExceptionIntegrationTest, BufferOverflowWithGCRecovery) {
     nimcp_exception_present_to_immune((nimcp_exception_t*)ex, &response);
 
     // Execute suggested recovery
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
-    if (strategy.primary_action == RECOVERY_ACTION_GC) {
-        nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_GC);
+    if (strategy.primary_action == EXCEPTION_RECOVERY_GC) {
+        nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_GC);
         EXPECT_EQ(recovery_call_count.load(), 1);
     }
 
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_GC);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_GC);
     nimcp_exception_unref((nimcp_exception_t*)ex);
 }
 
@@ -408,7 +408,7 @@ TEST_F(MiddlewareExceptionIntegrationTest, RecoverySuccessTracking) {
     // WHY:  Verify recovery metrics are properly recorded
 
     nimcp_register_recovery_callback(
-        RECOVERY_ACTION_RETRY,
+        EXCEPTION_RECOVERY_RETRY,
         test_recovery_callback,
         NULL
     );
@@ -423,8 +423,8 @@ TEST_F(MiddlewareExceptionIntegrationTest, RecoverySuccessTracking) {
         "Recoverable exception"
     );
 
-    nimcp_execute_recovery(ex, RECOVERY_ACTION_RETRY);
-    nimcp_exception_notify_recovery_result(ex, RECOVERY_ACTION_RETRY, true);
+    nimcp_execute_recovery(ex, EXCEPTION_RECOVERY_RETRY);
+    nimcp_exception_notify_recovery_result(ex, EXCEPTION_RECOVERY_RETRY, true);
 
     nimcp_exception_immune_stats_t updated_stats;
     nimcp_exception_immune_get_stats(&updated_stats);
@@ -434,7 +434,7 @@ TEST_F(MiddlewareExceptionIntegrationTest, RecoverySuccessTracking) {
     EXPECT_GE(updated_stats.recoveries_succeeded,
               baseline_stats.recoveries_succeeded);
 
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_RETRY);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RETRY);
     nimcp_exception_unref(ex);
 }
 
@@ -617,7 +617,7 @@ TEST_F(MiddlewareExceptionIntegrationTest, RecoveryNotificationToImmune) {
 
     // Notify successful recovery
     int result = nimcp_exception_notify_recovery_result(
-        ex, RECOVERY_ACTION_REDUCE_LOAD, true
+        ex, EXCEPTION_RECOVERY_REDUCE_LOAD, true
     );
     EXPECT_EQ(result, 0);
 

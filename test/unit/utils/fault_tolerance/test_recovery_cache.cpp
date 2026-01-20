@@ -241,7 +241,7 @@ TEST_F(RecoveryCacheTest, LookupMiss) {
     auto ctx = create_test_context();
     auto sig = create_signature(ctx);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     EXPECT_FALSE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
 
     /* Verify stats */
@@ -263,7 +263,7 @@ TEST_F(RecoveryCacheTest, StoreAndLookupHit) {
                 NIMCP_RECOVERY_STRATEGY_RETRY, "Test retry"));
 
     /* Lookup */
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
     EXPECT_EQ(strategy, NIMCP_RECOVERY_STRATEGY_RETRY);
 
@@ -279,7 +279,7 @@ TEST_F(RecoveryCacheTest, StoreMultipleStrategies) {
     ASSERT_NE(cache, nullptr);
 
     /* Store different strategies for different errors */
-    nimcp_recovery_strategy_t strategies[] = {
+    nimcp_exception_recovery_strategy_t strategies[] = {
         NIMCP_RECOVERY_STRATEGY_RETRY,
         NIMCP_RECOVERY_STRATEGY_ROLLBACK,
         NIMCP_RECOVERY_STRATEGY_CHECKPOINT_RESTORE,
@@ -297,7 +297,7 @@ TEST_F(RecoveryCacheTest, StoreMultipleStrategies) {
         auto ctx = create_test_context(11, (void*)(uintptr_t)(0x1000 + i * 0x100));
         auto sig = create_signature(ctx);
 
-        nimcp_recovery_strategy_t strategy;
+        nimcp_exception_recovery_strategy_t strategy;
         EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
         EXPECT_EQ(strategy, strategies[i]);
     }
@@ -321,7 +321,7 @@ TEST_F(RecoveryCacheTest, StoreUpdateExisting) {
     EXPECT_EQ(cache->current_size, 1);  // Size shouldn't increase
 
     /* Verify updated strategy */
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
     EXPECT_EQ(strategy, NIMCP_RECOVERY_STRATEGY_ROLLBACK);
 }
@@ -345,7 +345,7 @@ TEST_F(RecoveryCacheTest, LookupNullInputs) {
 
     auto ctx = create_test_context();
     auto sig = create_signature(ctx);
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
 
     EXPECT_FALSE(nimcp_recovery_cache_lookup(nullptr, &sig, &strategy));
     EXPECT_FALSE(nimcp_recovery_cache_lookup(cache, nullptr, &strategy));
@@ -406,7 +406,7 @@ TEST_F(RecoveryCacheTest, LRUOrderMaintained) {
                 NIMCP_RECOVERY_STRATEGY_RETRY, nullptr));
 
     /* Access sig1 to move it to front */
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig1, &strategy));
 
     /* Add new entry - sig2 should be evicted (oldest non-accessed) */
@@ -490,7 +490,7 @@ TEST_F(RecoveryCacheTest, InvalidateEntry) {
                 NIMCP_RECOVERY_STRATEGY_RETRY, nullptr));
     EXPECT_EQ(cache->current_size, 1);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
 
     /* Invalidate */
@@ -605,7 +605,7 @@ TEST_F(RecoveryCacheTest, StatisticsAccuracy) {
     EXPECT_TRUE(nimcp_recovery_cache_store(cache, &sig1,
                 NIMCP_RECOVERY_STRATEGY_RETRY, nullptr));
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig1, &strategy));  // Hit
 
     auto ctx2 = create_test_context(11, (void*)0x2000);
@@ -632,7 +632,7 @@ TEST_F(RecoveryCacheTest, ResetStatistics) {
     EXPECT_TRUE(nimcp_recovery_cache_store(cache, &sig,
                 NIMCP_RECOVERY_STRATEGY_RETRY, nullptr));
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
 
     /* Reset */
@@ -716,7 +716,7 @@ TEST_F(RecoveryCacheTest, StrategyNames) {
     EXPECT_STREQ(nimcp_recovery_strategy_name(NIMCP_RECOVERY_STRATEGY_SAFE_MODE), "SAFE_MODE");
     EXPECT_STREQ(nimcp_recovery_strategy_name(NIMCP_RECOVERY_STRATEGY_RESET), "RESET");
     EXPECT_STREQ(nimcp_recovery_strategy_name(NIMCP_RECOVERY_STRATEGY_CUSTOM), "CUSTOM");
-    EXPECT_STREQ(nimcp_recovery_strategy_name((nimcp_recovery_strategy_t)999), "UNKNOWN");
+    EXPECT_STREQ(nimcp_recovery_strategy_name((nimcp_exception_recovery_strategy_t)999), "UNKNOWN");
 }
 
 TEST_F(RecoveryCacheTest, PrintStats) {
@@ -804,7 +804,7 @@ TEST_F(RecoveryCacheTest, ConcurrentLookupsAndStores) {
         threads.emplace_back([this, &signatures]() {
             for (int i = 0; i < 100; i++) {
                 int idx = i % signatures.size();
-                nimcp_recovery_strategy_t strategy;
+                nimcp_exception_recovery_strategy_t strategy;
                 nimcp_recovery_cache_lookup(cache, &signatures[idx], &strategy);
             }
         });
@@ -852,7 +852,7 @@ TEST_F(RecoveryCacheTest, LookupPerformance) {
     /* Perform many lookups */
     for (int i = 0; i < 1000; i++) {
         int idx = i % signatures.size();
-        nimcp_recovery_strategy_t strategy;
+        nimcp_exception_recovery_strategy_t strategy;
         EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &signatures[idx], &strategy));
     }
 
@@ -902,7 +902,7 @@ TEST_F(RecoveryCacheTest, SingleEntryCache) {
     EXPECT_EQ(cache->current_size, 1);
 
     /* First should be gone */
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     EXPECT_FALSE(nimcp_recovery_cache_lookup(cache, &sig1, &strategy));
     EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig2, &strategy));
 }

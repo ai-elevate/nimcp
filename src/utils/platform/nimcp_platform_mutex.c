@@ -24,6 +24,7 @@
 #include <errno.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 
 /* ========================================================================
  * MUTEX FUNCTIONS
@@ -32,6 +33,8 @@
 int nimcp_platform_mutex_init(nimcp_platform_mutex_t* mutex, bool recursive)
 {
     if (!mutex) {
+        LOG_ERROR("nimcp_platform_mutex_init: mutex pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Mutex init failed: NULL pointer");
         return EINVAL;
     }
 
@@ -61,6 +64,8 @@ int nimcp_platform_mutex_init(nimcp_platform_mutex_t* mutex, bool recursive)
 int nimcp_platform_mutex_destroy(nimcp_platform_mutex_t* mutex)
 {
     if (!mutex) {
+        LOG_ERROR("nimcp_platform_mutex_destroy: mutex pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Mutex destroy failed: NULL pointer");
         return EINVAL;
     }
 
@@ -79,6 +84,8 @@ int nimcp_platform_mutex_destroy(nimcp_platform_mutex_t* mutex)
 int nimcp_platform_mutex_lock(nimcp_platform_mutex_t* mutex)
 {
     if (!mutex) {
+        LOG_ERROR("nimcp_platform_mutex_lock: mutex pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Mutex lock failed: NULL pointer");
         return EINVAL;
     }
 
@@ -97,6 +104,8 @@ int nimcp_platform_mutex_lock(nimcp_platform_mutex_t* mutex)
 int nimcp_platform_mutex_trylock(nimcp_platform_mutex_t* mutex)
 {
     if (!mutex) {
+        LOG_ERROR("nimcp_platform_mutex_trylock: mutex pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Mutex trylock failed: NULL pointer");
         return EINVAL;
     }
 
@@ -115,6 +124,8 @@ int nimcp_platform_mutex_trylock(nimcp_platform_mutex_t* mutex)
 int nimcp_platform_mutex_unlock(nimcp_platform_mutex_t* mutex)
 {
     if (!mutex) {
+        LOG_ERROR("nimcp_platform_mutex_unlock: mutex pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Mutex unlock failed: NULL pointer");
         return EINVAL;
     }
 
@@ -135,11 +146,11 @@ nimcp_platform_mutex_t* nimcp_platform_mutex_create(void)
     nimcp_platform_mutex_t* mutex = (nimcp_platform_mutex_t*)nimcp_malloc(
         sizeof(nimcp_platform_mutex_t)
     );
-    if (!mutex) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(mutex, "Failed to allocate mutex structure");
 
     if (nimcp_platform_mutex_init(mutex, false) != 0) {
+        LOG_ERROR("nimcp_platform_mutex_create: failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Mutex create failed: init error");
         nimcp_free(mutex);
         return NULL;
     }

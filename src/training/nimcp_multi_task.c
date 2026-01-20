@@ -30,6 +30,9 @@
 #include "training/nimcp_multi_task.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -132,6 +135,7 @@ static float compute_variance(const float* values, uint32_t n);
 
 int mtl_default_config(mtl_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "mtl_default_config: config is NULL");
         return -1;
     }
 
@@ -181,16 +185,20 @@ int mtl_default_config(mtl_config_t* config) {
 
 mtl_ctx_t* mtl_create(const mtl_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "mtl_create: config is NULL");
         return NULL;
     }
 
     /* Validate configuration */
     if (mtl_validate_config(config) != 0) {
+        NIMCP_THROW(NIMCP_ERROR_CONFIG_INVALID, "mtl_create: config validation failed");
         return NULL;
     }
 
     mtl_ctx_t* ctx = nimcp_calloc(1, sizeof(mtl_ctx_t));
     if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(mtl_ctx_t),
+                          "mtl_create: failed to allocate context");
         return NULL;
     }
 
@@ -200,12 +208,16 @@ mtl_ctx_t* mtl_create(const mtl_config_t* config) {
     /* Allocate task storage */
     ctx->tasks = nimcp_calloc(MTL_MAX_TASKS, sizeof(task_state_t));
     if (!ctx->tasks) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, MTL_MAX_TASKS * sizeof(task_state_t),
+                          "mtl_create: failed to allocate tasks array");
         nimcp_free(ctx);
         return NULL;
     }
 
     ctx->active_task_ids = nimcp_calloc(MTL_MAX_TASKS, sizeof(uint32_t));
     if (!ctx->active_task_ids) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, MTL_MAX_TASKS * sizeof(uint32_t),
+                          "mtl_create: failed to allocate active task IDs");
         nimcp_free(ctx->tasks);
         nimcp_free(ctx);
         return NULL;
@@ -221,6 +233,8 @@ mtl_ctx_t* mtl_create(const mtl_config_t* config) {
 
         if (!ctx->gradnorm.weights || !ctx->gradnorm.initial_losses ||
             !ctx->gradnorm.weight_momentum) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, MTL_MAX_TASKS * sizeof(float),
+                              "mtl_create: failed to allocate GradNorm state");
             mtl_destroy(ctx);
             return NULL;
         }

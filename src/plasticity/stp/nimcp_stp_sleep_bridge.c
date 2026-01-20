@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/stp/nimcp_stp_sleep_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -80,7 +81,7 @@ static void stp_on_sleep_state_change(sleep_state_t new_state, void* user_data)
 }
 
 int stp_sleep_default_config(stp_sleep_config_t* config) {
-    if (!config) return -1;
+    NIMCP_API_CHECK_NULL(config, -1, "STP-sleep config is NULL");
     config->enable_u_modulation = true;
     config->enable_tau_d_modulation = true;
     config->enable_tau_f_modulation = true;
@@ -92,15 +93,12 @@ stp_sleep_bridge_t stp_sleep_bridge_create(
     const stp_sleep_config_t* config,
     sleep_system_t sleep_system)
 {
-    if (!sleep_system) {
-        NIMCP_LOGGING_ERROR("stp_sleep_bridge_create: NULL sleep_system");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(sleep_system, "Sleep system is NULL");
 
     struct stp_sleep_bridge_struct* bridge =
         (struct stp_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct stp_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "STP-sleep bridge allocation failed");
 
     memset(bridge, 0, sizeof(struct stp_sleep_bridge_struct));
 
@@ -119,6 +117,8 @@ stp_sleep_bridge_t stp_sleep_bridge_create(
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        LOG_ERROR("STP-sleep bridge mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "STP-sleep bridge mutex creation failed");
         return NULL;
     }
 
@@ -162,7 +162,7 @@ void stp_sleep_bridge_destroy(stp_sleep_bridge_t bridge) {
 }
 
 int stp_sleep_update(stp_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STP-sleep bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -198,7 +198,8 @@ int stp_sleep_update(stp_sleep_bridge_t bridge) {
 
 int stp_sleep_get_effects(const stp_sleep_bridge_t bridge,
                            stp_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STP-sleep bridge is NULL");
+    NIMCP_API_CHECK_NULL(effects, -1, "Effects output pointer is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

@@ -254,6 +254,7 @@ bool multimodal_nlp_is_speech(
     float threshold
 ) {
     if (!audio_cortex || !audio_data) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_is_speech: NULL audio_cortex or audio_data");
         return false;
     }
 
@@ -281,6 +282,7 @@ bool multimodal_nlp_process_audio(
     bool* speech_detected
 ) {
     if (!audio_cortex || !speech_cortex || !nlp_network || !audio_data || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_process_audio: NULL parameter");
         return false;
     }
 

@@ -14,6 +14,9 @@
 #include "training/nimcp_distributed_training.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -146,6 +149,7 @@ static const char* backend_names[] = {
 
 int dist_default_config(dist_config_t* config, uint32_t world_size, uint32_t rank) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "dist_default_config: config is NULL");
         return -1;
     }
 
@@ -211,16 +215,20 @@ int dist_default_config(dist_config_t* config, uint32_t world_size, uint32_t ran
 
 dist_ctx_t* dist_create(const dist_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "dist_create: config is NULL");
         return NULL;
     }
 
     /* Validate configuration */
     if (dist_validate_config(config) != 0) {
+        NIMCP_THROW(NIMCP_ERROR_CONFIG_INVALID, "dist_create: config validation failed");
         return NULL;
     }
 
     dist_ctx_t* ctx = nimcp_calloc(1, sizeof(dist_ctx_t));
     if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(dist_ctx_t),
+                          "dist_create: failed to allocate context");
         return NULL;
     }
 
@@ -233,6 +241,8 @@ dist_ctx_t* dist_create(const dist_config_t* config) {
     attr.type = MUTEX_TYPE_NORMAL;
     ctx->mutex = nimcp_mutex_create(&attr);
     if (!ctx->mutex) {
+        NIMCP_THROW_THREADING(NIMCP_ERROR_MUTEX_INIT, 0,
+                             "dist_create: failed to create mutex");
         nimcp_free(ctx);
         return NULL;
     }
@@ -240,6 +250,8 @@ dist_ctx_t* dist_create(const dist_config_t* config) {
     /* Create world group */
     ctx->world_group = nimcp_calloc(1, sizeof(dist_group_t));
     if (!ctx->world_group) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(dist_group_t),
+                          "dist_create: failed to allocate world group");
         nimcp_mutex_destroy(ctx->mutex);
         nimcp_free(ctx);
         return NULL;
@@ -248,6 +260,8 @@ dist_ctx_t* dist_create(const dist_config_t* config) {
     ctx->world_group->num_ranks = config->worker.world_size;
     ctx->world_group->ranks = nimcp_calloc(config->worker.world_size, sizeof(uint32_t));
     if (!ctx->world_group->ranks) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, config->worker.world_size * sizeof(uint32_t),
+                          "dist_create: failed to allocate ranks array");
         nimcp_free(ctx->world_group);
         nimcp_mutex_destroy(ctx->mutex);
         nimcp_free(ctx);
@@ -369,6 +383,7 @@ void dist_destroy(dist_ctx_t* ctx) {
 
 int dist_init(dist_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "dist_init: ctx is NULL");
         return -1;
     }
 
@@ -437,17 +452,30 @@ dist_group_t* dist_create_group(
     const uint32_t* ranks,
     uint32_t num_ranks
 ) {
-    if (!ctx || !ranks || num_ranks == 0) {
+    if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "dist_create_group: ctx is NULL");
+        return NULL;
+    }
+    if (!ranks) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "dist_create_group: ranks is NULL");
+        return NULL;
+    }
+    if (num_ranks == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "dist_create_group: num_ranks is 0");
         return NULL;
     }
 
     dist_group_t* group = nimcp_calloc(1, sizeof(dist_group_t));
     if (!group) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(dist_group_t),
+                          "dist_create_group: failed to allocate group");
         return NULL;
     }
 
     group->ranks = nimcp_calloc(num_ranks, sizeof(uint32_t));
     if (!group->ranks) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_ranks * sizeof(uint32_t),
+                          "dist_create_group: failed to allocate ranks array");
         nimcp_free(group);
         return NULL;
     }
@@ -507,7 +535,16 @@ int dist_all_reduce_gradients(
     size_t count,
     dist_group_t* group
 ) {
-    if (!ctx || !gradients || count == 0) {
+    if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "dist_all_reduce_gradients: ctx is NULL");
+        return -1;
+    }
+    if (!gradients) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "dist_all_reduce_gradients: gradients is NULL");
+        return -1;
+    }
+    if (count == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "dist_all_reduce_gradients: count is 0");
         return -1;
     }
 
@@ -577,7 +614,12 @@ int dist_all_reduce_tensor(
     nimcp_tensor_t* tensor,
     dist_group_t* group
 ) {
-    if (!ctx || !tensor) {
+    if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "dist_all_reduce_tensor: ctx is NULL");
+        return -1;
+    }
+    if (!tensor) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "dist_all_reduce_tensor: tensor is NULL");
         return -1;
     }
 

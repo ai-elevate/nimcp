@@ -22,6 +22,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 /* Quantum bridge integration */
 #define NIMCP_SEMANTIC_QUANTUM_BRIDGE_IMPLEMENTATION
@@ -189,11 +190,7 @@ semantic_memory_system_t* semantic_memory_create(void) {
 
     semantic_memory_system_t* system =
         (semantic_memory_system_t*)nimcp_calloc(1, sizeof(semantic_memory_system_t));
-
-    if (!system) {
-        LOG_ERROR("Failed to allocate semantic memory system (%zu bytes)", sizeof(semantic_memory_system_t));
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(system, "Failed to allocate semantic memory system");
 
     // Initialize unified memory manager for CoW support
     unified_mem_config_t mem_config = unified_mem_default_config();

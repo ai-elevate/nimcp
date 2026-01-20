@@ -11,6 +11,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/json/nimcp_json.h"
+#include "api/nimcp_api_exception.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -104,6 +105,11 @@ static float parse_float_safe(const char* str, float default_val) {
 }
 
 void nimcp_config_init_defaults(nimcp_brain_config_t* config) {
+    if (!config) {
+        LOG_ERROR("nimcp_config_init_defaults: NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config pointer in nimcp_config_init_defaults");
+        return;
+    }
     memset(config, 0, sizeof(nimcp_brain_config_t));
 
     strncpy(config->name, "default_brain", sizeof(config->name) - 1);
@@ -137,9 +143,21 @@ void nimcp_config_init_defaults(nimcp_brain_config_t* config) {
 }
 
 bool nimcp_config_load_yaml(const char* filepath, nimcp_brain_config_t* config) {
+    if (!filepath) {
+        LOG_ERROR("nimcp_config_load_yaml: NULL filepath");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL filepath in nimcp_config_load_yaml");
+        return false;
+    }
+    if (!config) {
+        LOG_ERROR("nimcp_config_load_yaml: NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config pointer in nimcp_config_load_yaml");
+        return false;
+    }
+
     FILE* file = fopen(filepath, "r");
     if (!file) {
-        fprintf(stderr, "Failed to open config file: %s\n", filepath);
+        LOG_ERROR("Failed to open config file: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "Failed to open config file: %s", filepath);
         return false;
     }
 
@@ -247,16 +265,29 @@ bool nimcp_config_load_yaml(const char* filepath, nimcp_brain_config_t* config) 
 }
 
 bool nimcp_config_load_json(const char* filepath, nimcp_brain_config_t* config) {
+    if (!filepath) {
+        LOG_ERROR("nimcp_config_load_json: NULL filepath");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL filepath in nimcp_config_load_json");
+        return false;
+    }
+    if (!config) {
+        LOG_ERROR("nimcp_config_load_json: NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config pointer in nimcp_config_load_json");
+        return false;
+    }
+
     // Use the nimcp_json module for proper JSON parsing
     JsonContext* ctx = NULL;
 
     if (nimcp_json_create_context(&ctx) != JSON_SUCCESS) {
-        fprintf(stderr, "Failed to create JSON context\n");
+        LOG_ERROR("Failed to create JSON context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create JSON context");
         return false;
     }
 
     if (nimcp_json_load_file(ctx, filepath, 0) != JSON_SUCCESS) {
-        fprintf(stderr, "Failed to load JSON config file: %s\n", filepath);
+        LOG_ERROR("Failed to load JSON config file: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "Failed to load JSON config file: %s", filepath);
         nimcp_json_destroy_context(ctx);
         return false;
     }
@@ -335,6 +366,17 @@ bool nimcp_config_load_json(const char* filepath, nimcp_brain_config_t* config) 
 }
 
 bool nimcp_config_load(const char* filepath, nimcp_brain_config_t* config) {
+    if (!filepath) {
+        LOG_ERROR("nimcp_config_load: NULL filepath");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL filepath in nimcp_config_load");
+        return false;
+    }
+    if (!config) {
+        LOG_ERROR("nimcp_config_load: NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config pointer in nimcp_config_load");
+        return false;
+    }
+
     // Auto-detect format based on extension
     size_t len = strlen(filepath);
 

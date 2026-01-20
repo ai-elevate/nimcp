@@ -22,6 +22,7 @@
 #include "utils/platform/nimcp_platform_rwlock.h"
 #include "utils/platform/nimcp_platform_thread.h"
 #include "utils/platform/nimcp_platform_cond.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

@@ -14,6 +14,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 
 // Bio-async integration
 #include "async/nimcp_bio_async.h"

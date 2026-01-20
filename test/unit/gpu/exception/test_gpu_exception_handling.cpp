@@ -73,7 +73,7 @@ protected:
     }
 
     static int test_recovery_callback(nimcp_exception_t* ex,
-                                       nimcp_recovery_action_t action,
+                                       nimcp_exception_recovery_action_t action,
                                        void* user_data) {
         (void)ex;
         (void)action;
@@ -336,13 +336,13 @@ TEST_F(GpuExceptionHandlingTest, GpuMemoryRecoveryStrategy) {
     );
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
     // GPU memory errors should have some recovery strategy
     EXPECT_TRUE(
-        strategy.primary_action != RECOVERY_ACTION_NONE ||
-        strategy.fallback_action != RECOVERY_ACTION_NONE ||
+        strategy.primary_action != EXCEPTION_RECOVERY_NONE ||
+        strategy.fallback_action != EXCEPTION_RECOVERY_NONE ||
         strategy.retry_count > 0
     );
 
@@ -361,11 +361,11 @@ TEST_F(GpuExceptionHandlingTest, GpuKernelRecoveryStrategy) {
     );
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
     // Should have some recovery action
-    EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE);
+    EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
 }
@@ -375,7 +375,7 @@ TEST_F(GpuExceptionHandlingTest, RegisterRecoveryCallback) {
     // WHY:  Allow custom recovery for GPU errors
 
     int result = nimcp_register_recovery_callback(
-        RECOVERY_ACTION_RETRY,
+        EXCEPTION_RECOVERY_RETRY,
         test_recovery_callback,
         nullptr
     );
@@ -390,11 +390,11 @@ TEST_F(GpuExceptionHandlingTest, RegisterRecoveryCallback) {
     ASSERT_NE(ex, nullptr);
 
     recovery_attempted = false;
-    nimcp_execute_recovery((nimcp_exception_t*)ex, RECOVERY_ACTION_RETRY);
+    nimcp_execute_recovery((nimcp_exception_t*)ex, EXCEPTION_RECOVERY_RETRY);
     EXPECT_TRUE(recovery_attempted);
 
     nimcp_exception_unref((nimcp_exception_t*)ex);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_RETRY);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RETRY);
 }
 
 //=============================================================================

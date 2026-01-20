@@ -13,6 +13,7 @@
 #include "swarm/nimcp_swarm_dragonfly_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>

@@ -598,7 +598,7 @@ TEST_F(CoreExceptionTest, SuggestedRecoveryAction) {
         "Memory test"
     );
     mem_ex->category = EXCEPTION_CATEGORY_MEMORY;
-    EXPECT_EQ(nimcp_exception_get_suggested_recovery(mem_ex), RECOVERY_ACTION_GC);
+    EXPECT_EQ(nimcp_exception_get_suggested_recovery(mem_ex), EXCEPTION_RECOVERY_GC);
     nimcp_exception_unref(mem_ex);
 
     // I/O exception -> Retry
@@ -609,7 +609,7 @@ TEST_F(CoreExceptionTest, SuggestedRecoveryAction) {
         "IO test"
     );
     io_ex->category = EXCEPTION_CATEGORY_IO;
-    EXPECT_EQ(nimcp_exception_get_suggested_recovery(io_ex), RECOVERY_ACTION_RETRY);
+    EXPECT_EQ(nimcp_exception_get_suggested_recovery(io_ex), EXCEPTION_RECOVERY_RETRY);
     nimcp_exception_unref(io_ex);
 
     // Threading/deadlock -> Restart thread
@@ -620,7 +620,7 @@ TEST_F(CoreExceptionTest, SuggestedRecoveryAction) {
         "Threading test"
     );
     thread_ex->category = EXCEPTION_CATEGORY_THREADING;
-    EXPECT_EQ(nimcp_exception_get_suggested_recovery(thread_ex), RECOVERY_ACTION_RESTART_THREAD);
+    EXPECT_EQ(nimcp_exception_get_suggested_recovery(thread_ex), EXCEPTION_RECOVERY_RESTART_THREAD);
     nimcp_exception_unref(thread_ex);
 
     // Signal -> Emergency save
@@ -631,7 +631,7 @@ TEST_F(CoreExceptionTest, SuggestedRecoveryAction) {
         "Signal test"
     );
     signal_ex->category = EXCEPTION_CATEGORY_SIGNAL;
-    EXPECT_EQ(nimcp_exception_get_suggested_recovery(signal_ex), RECOVERY_ACTION_EMERGENCY_SAVE);
+    EXPECT_EQ(nimcp_exception_get_suggested_recovery(signal_ex), EXCEPTION_RECOVERY_EMERGENCY_SAVE);
     nimcp_exception_unref(signal_ex);
 
     // Security -> Quarantine
@@ -642,7 +642,7 @@ TEST_F(CoreExceptionTest, SuggestedRecoveryAction) {
         "Security test"
     );
     sec_ex->category = EXCEPTION_CATEGORY_SECURITY;
-    EXPECT_EQ(nimcp_exception_get_suggested_recovery(sec_ex), RECOVERY_ACTION_QUARANTINE);
+    EXPECT_EQ(nimcp_exception_get_suggested_recovery(sec_ex), EXCEPTION_RECOVERY_QUARANTINE);
     nimcp_exception_unref(sec_ex);
 }
 
@@ -767,11 +767,11 @@ TEST_F(CoreExceptionTest, RecoveryActionToString) {
     // WHY:  Verify human-readable action names
     // HOW:  Convert and check strings
 
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_NONE), "NONE");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_RETRY), "RETRY");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_GC), "GC");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_ROLLBACK), "ROLLBACK");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_QUARANTINE), "QUARANTINE");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_NONE), "NONE");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_RETRY), "RETRY");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_GC), "GC");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_ROLLBACK), "ROLLBACK");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_QUARANTINE), "QUARANTINE");
 }
 
 // ============================================================================
@@ -878,11 +878,11 @@ TEST_F(CoreExceptionTest, RecoveryStrategy) {
     mem_ex->category = EXCEPTION_CATEGORY_MEMORY;
     mem_ex->type = EXCEPTION_TYPE_MEMORY;
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(mem_ex, &strategy);
 
     // Memory errors should suggest GC as primary
-    EXPECT_EQ(strategy.primary_action, RECOVERY_ACTION_GC);
+    EXPECT_EQ(strategy.primary_action, EXCEPTION_RECOVERY_GC);
 
     nimcp_exception_unref(mem_ex);
 }
@@ -933,7 +933,7 @@ TEST_F(CoreExceptionTest, BrainModuleExceptions) {
     ASSERT_NE(fwd_ex, nullptr);
     EXPECT_EQ(fwd_ex->base.category, EXCEPTION_CATEGORY_BRAIN);
     EXPECT_EQ(nimcp_exception_get_suggested_recovery((nimcp_exception_t*)fwd_ex),
-              RECOVERY_ACTION_ROLLBACK);
+              EXCEPTION_RECOVERY_ROLLBACK);
     nimcp_exception_unref((nimcp_exception_t*)fwd_ex);
 
     // Backward pass error
@@ -948,7 +948,7 @@ TEST_F(CoreExceptionTest, BrainModuleExceptions) {
     bwd_ex->has_nan_weights = true;
     bwd_ex->gradient_norm = INFINITY;
     EXPECT_EQ(nimcp_exception_get_suggested_recovery((nimcp_exception_t*)bwd_ex),
-              RECOVERY_ACTION_ROLLBACK);
+              EXCEPTION_RECOVERY_ROLLBACK);
     nimcp_exception_unref((nimcp_exception_t*)bwd_ex);
 }
 
@@ -993,9 +993,9 @@ TEST_F(CoreExceptionTest, NullSafety) {
     nimcp_handler_disable(nullptr);
     nimcp_handler_enable(nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(nullptr, &strategy);
-    EXPECT_EQ(strategy.primary_action, RECOVERY_ACTION_NONE);
+    EXPECT_EQ(strategy.primary_action, EXCEPTION_RECOVERY_NONE);
 }
 
 // ============================================================================

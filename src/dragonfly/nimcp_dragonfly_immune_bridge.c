@@ -14,6 +14,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/rng/nimcp_rand.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -235,11 +236,12 @@ dragonfly_immune_bridge_t dragonfly_immune_bridge_create(
     dragonfly_immune_config_t cfg = config ? *config : dragonfly_immune_default_config();
 
     if (!dragonfly_immune_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_immune_bridge_create: invalid config");
         return NULL;
     }
 
     dragonfly_immune_bridge_t bridge = nimcp_calloc(1, sizeof(struct dragonfly_immune_bridge_s));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "dragonfly_immune_bridge_create: failed to allocate bridge");
 
     bridge->config = cfg;
     bridge->creation_time_us = get_time_us();
@@ -257,6 +259,7 @@ dragonfly_immune_bridge_t dragonfly_immune_bridge_create(
 
     bridge->mutex = nimcp_mutex_create(NULL);
     if (!bridge->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_immune_bridge_create: failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -279,7 +282,10 @@ int dragonfly_immune_bridge_connect(
     dragonfly_system_t* dragonfly,
     bbb_system_t bbb
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_immune_bridge_connect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->dragonfly = dragonfly;
@@ -291,7 +297,10 @@ int dragonfly_immune_bridge_connect(
 }
 
 int dragonfly_immune_bridge_disconnect(dragonfly_immune_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_immune_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->dragonfly = NULL;
@@ -310,7 +319,14 @@ int dragonfly_immune_bridge_update(
     dragonfly_immune_bridge_t bridge,
     float dt_s
 ) {
-    if (!bridge || dt_s <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_immune_bridge_update: bridge is NULL");
+        return -1;
+    }
+    if (dt_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_immune_bridge_update: invalid dt_s");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -376,7 +392,10 @@ int dragonfly_immune_report_hunt(
     float duration_s,
     float energy_used
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_immune_report_hunt: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -441,7 +460,10 @@ int dragonfly_immune_report_stress(
     float pursuit_intensity,
     float duration_s
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_immune_report_stress: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -466,7 +488,10 @@ int dragonfly_immune_report_rest(
     dragonfly_immune_bridge_t bridge,
     float duration_s
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_immune_report_rest: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -503,7 +528,14 @@ int dragonfly_immune_get_modulation(
     const dragonfly_immune_bridge_t bridge,
     immune_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_immune_get_modulation: bridge is NULL");
+        return -1;
+    }
+    if (!modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_immune_get_modulation: modulation is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
     *modulation = bridge->state.modulation;
@@ -531,7 +563,14 @@ int dragonfly_immune_get_state(
     const dragonfly_immune_bridge_t bridge,
     dragonfly_immune_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_immune_get_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_immune_get_state: state is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
     *state = bridge->state;
@@ -544,7 +583,14 @@ int dragonfly_immune_get_stats(
     const dragonfly_immune_bridge_t bridge,
     dragonfly_immune_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_immune_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_immune_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
     *stats = bridge->stats;

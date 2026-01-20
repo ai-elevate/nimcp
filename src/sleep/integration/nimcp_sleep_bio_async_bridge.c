@@ -6,6 +6,7 @@
  */
 
 #include "sleep/integration/nimcp_sleep_bio_async_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -94,7 +95,7 @@ sleep_bio_async_bridge_t* sleep_bio_async_bridge_create(
     const sleep_bio_async_config_t* config
 ) {
     sleep_bio_async_bridge_t* bridge = calloc(1, sizeof(sleep_bio_async_bridge_t));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "sleep_bio_async_bridge_create: Failed to allocate bridge");
 
     if (config) {
         bridge->config = *config;

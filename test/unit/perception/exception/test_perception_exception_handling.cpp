@@ -468,13 +468,13 @@ TEST_F(PerceptionExceptionTest, RecoveryStrategyForVisualError) {
     );
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     memset(&strategy, 0, sizeof(strategy));
     nimcp_exception_get_recovery_strategy(ex, &strategy);
 
     // Brain region errors should get some recovery action
     // The exact action is implementation-specific
-    EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE)
+    EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE)
         << "Perception errors should have a recovery strategy";
 
     nimcp_exception_unref(ex);
@@ -492,11 +492,11 @@ TEST_F(PerceptionExceptionTest, RecoveryStrategyForAudioError) {
     );
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(ex, &strategy);
 
     // Should have fallback defined
-    EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE);
+    EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref(ex);
 }
@@ -513,11 +513,11 @@ TEST_F(PerceptionExceptionTest, RecoveryStrategyForSpeechError) {
     );
     ASSERT_NE(ex, nullptr);
 
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(ex, &strategy);
 
     // Warning severity should still get recovery action
-    EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE);
+    EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref(ex);
 }

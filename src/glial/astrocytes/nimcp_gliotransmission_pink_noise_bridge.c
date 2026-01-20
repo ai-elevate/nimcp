@@ -6,6 +6,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 
@@ -13,7 +14,7 @@ static float clamp(float v, float min, float max) { return v < min ? min : (v > 
 
 glio_pink_noise_bridge_t* glio_pink_noise_create(const glio_pink_noise_config_t* config) {
     glio_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(glio_pink_noise_bridge_t));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "glio_pink_noise_create: Failed to allocate bridge");
 
     bridge->config = config ? *config : glio_pink_noise_default_config();
 

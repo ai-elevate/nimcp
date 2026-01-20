@@ -13,6 +13,7 @@
  */
 
 #include "middleware/normalization/nimcp_zscore_normalizer.h"
+#include "api/nimcp_api_exception.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 

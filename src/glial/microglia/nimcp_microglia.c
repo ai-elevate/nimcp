@@ -18,6 +18,7 @@
 #include "glial/microglia/nimcp_microglia.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -540,10 +541,7 @@ microglia_t* microglia_create(uint32_t id, float x, float y, float z,
     }
 
     microglia_t* mg = (microglia_t*)nimcp_malloc(sizeof(microglia_t));
-    if (!mg) {
-        LOG_MODULE_ERROR("MICROGLIA", "Failed to allocate microglia structure");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(mg, "microglia_create: Failed to allocate microglia structure");
 
     memset(mg, 0, sizeof(microglia_t));
 

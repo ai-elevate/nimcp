@@ -32,6 +32,7 @@
 #include "core/neuron_models/nimcp_neuron_model.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/neuron_models/nimcp_neuron_model_internal.h"
@@ -115,7 +116,11 @@ static void neuron_model_bio_cleanup(void) {
  */
 neuron_model_state_t neuron_model_create(const neuron_model_vtable_t* vtable, const void* params) {
     // Guard: Validate vtable
-    if (!vtable || !vtable->init || vtable->state_size == 0) {
+    NIMCP_API_CHECK_NULL_RET_NULL(vtable, "neuron_model_create: vtable is NULL");
+    NIMCP_API_CHECK_NULL_RET_NULL(vtable->init, "neuron_model_create: vtable->init is NULL");
+    if (vtable->state_size == 0) {
+        LOG_ERROR("neuron_model_create: vtable->state_size is 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vtable->state_size is 0");
         return NULL;
     }
 
@@ -124,9 +129,7 @@ neuron_model_state_t neuron_model_create(const neuron_model_vtable_t* vtable, co
     neuron_model_state_t state = (neuron_model_state_t)nimcp_calloc(1, total_size);
 
     // Guard: Check allocation
-    if (!state) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC_SIZE(state, total_size, "neuron_model_create: failed to allocate state");
 
     // Initialize vtable pointer
     state->vtable = vtable;

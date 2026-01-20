@@ -15,6 +15,7 @@
  */
 
 #include "integration/knowledge/nimcp_sensory_kg_wiring.h"
+#include "api/nimcp_api_exception.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -167,7 +168,7 @@ int sensory_kg_default_config(sensory_kg_config_t* config) {
 
 sensory_kg_wiring_t* sensory_kg_wiring_create(const sensory_kg_config_t* config) {
     sensory_kg_wiring_t* wiring = (sensory_kg_wiring_t*)calloc(1, sizeof(sensory_kg_wiring_t));
-    if (!wiring) return NULL;
+    NIMCP_API_CHECK_ALLOC(wiring, "Failed to allocate sensory KG wiring");
 
     if (config) {
         memcpy(&wiring->config, config, sizeof(sensory_kg_config_t));

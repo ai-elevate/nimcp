@@ -15,6 +15,9 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/rng/nimcp_rand.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -147,6 +150,7 @@ static double get_time_sec(void);
 
 int hpo_default_config(hpo_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "hpo_default_config: config is NULL");
         return -1;
     }
 
@@ -206,17 +210,25 @@ hpo_ctx_t* hpo_create(
     const hpo_config_t* config,
     const hpo_search_space_t* search_space
 ) {
-    if (!config || !search_space) {
+    if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "hpo_create: config is NULL");
+        return NULL;
+    }
+    if (!search_space) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "hpo_create: search_space is NULL");
         return NULL;
     }
 
     /* Validate configuration */
     if (hpo_validate_config(config) != 0) {
+        NIMCP_THROW(NIMCP_ERROR_CONFIG_INVALID, "hpo_create: config validation failed");
         return NULL;
     }
 
     hpo_ctx_t* ctx = nimcp_calloc(1, sizeof(hpo_ctx_t));
     if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(hpo_ctx_t),
+                          "hpo_create: failed to allocate context");
         return NULL;
     }
 
@@ -227,10 +239,15 @@ hpo_ctx_t* hpo_create(
     ctx->search_space.num_params = search_space->num_params;
     if (search_space->num_params > 0 && search_space->params) {
         ctx->search_space.params = nimcp_calloc(search_space->num_params, sizeof(hpo_param_def_t));
-        if (ctx->search_space.params) {
-            memcpy(ctx->search_space.params, search_space->params,
-                   search_space->num_params * sizeof(hpo_param_def_t));
+        if (!ctx->search_space.params) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                              search_space->num_params * sizeof(hpo_param_def_t),
+                              "hpo_create: failed to allocate search space params");
+            nimcp_free(ctx);
+            return NULL;
         }
+        memcpy(ctx->search_space.params, search_space->params,
+               search_space->num_params * sizeof(hpo_param_def_t));
     }
 
     /* Create mutex */
@@ -238,6 +255,8 @@ hpo_ctx_t* hpo_create(
     attr.type = MUTEX_TYPE_NORMAL;
     ctx->mutex = nimcp_mutex_create(&attr);
     if (!ctx->mutex) {
+        NIMCP_THROW_THREADING(NIMCP_ERROR_MUTEX_INIT, 0,
+                             "hpo_create: failed to create mutex");
         if (ctx->search_space.params) nimcp_free(ctx->search_space.params);
         nimcp_free(ctx);
         return NULL;

@@ -14,6 +14,7 @@
 #include "core/logic/nimcp_neural_logic_factory.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "core/logic/nimcp_neural_logic_attachment.h"
 #include "core/brain/nimcp_brain_internal.h"

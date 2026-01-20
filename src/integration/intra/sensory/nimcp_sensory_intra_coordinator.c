@@ -6,6 +6,7 @@
  */
 
 #include "integration/intra/sensory/nimcp_sensory_intra_coordinator.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -45,7 +46,7 @@ nimcp_sensory_intra_config_t nimcp_sensory_intra_default_config(void) {
 
 nimcp_sensory_intra_t nimcp_sensory_intra_create(const nimcp_sensory_intra_config_t* config) {
     nimcp_sensory_intra_t coord = (nimcp_sensory_intra_t)calloc(1, sizeof(struct nimcp_sensory_intra_struct));
-    if (!coord) return NULL;
+    NIMCP_API_CHECK_ALLOC(coord, "Failed to allocate sensory intra coordinator");
     coord->config = config ? *config : nimcp_sensory_intra_default_config();
     return coord;
 }
@@ -57,7 +58,8 @@ void nimcp_sensory_intra_destroy(nimcp_sensory_intra_t coord) {
 }
 
 nimcp_layer_error_t nimcp_sensory_intra_init(nimcp_sensory_intra_t coord, nimcp_layer_registry_t registry) {
-    if (!coord || !registry) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(registry, NIMCP_LAYER_ERR_NULL_PTR, "Registry is NULL");
     if (coord->is_initialized) return NIMCP_LAYER_ERR_ALREADY_REGISTERED;
     coord->registry = registry;
     coord->is_initialized = true;
@@ -66,14 +68,16 @@ nimcp_layer_error_t nimcp_sensory_intra_init(nimcp_sensory_intra_t coord, nimcp_
 }
 
 nimcp_layer_error_t nimcp_sensory_intra_shutdown(nimcp_sensory_intra_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
     if (!coord->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     coord->is_initialized = false;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_sensory_intra_connect_somatosensory(nimcp_sensory_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL");
     coord->somatosensory.module = module;
     coord->somatosensory.interface = *interface;
     coord->somatosensory.connected = true;
@@ -82,7 +86,9 @@ nimcp_layer_error_t nimcp_sensory_intra_connect_somatosensory(nimcp_sensory_intr
 }
 
 nimcp_layer_error_t nimcp_sensory_intra_connect_olfactory(nimcp_sensory_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL");
     coord->olfactory.module = module;
     coord->olfactory.interface = *interface;
     coord->olfactory.connected = true;
@@ -91,7 +97,9 @@ nimcp_layer_error_t nimcp_sensory_intra_connect_olfactory(nimcp_sensory_intra_t 
 }
 
 nimcp_layer_error_t nimcp_sensory_intra_connect_gustatory(nimcp_sensory_intra_t coord, void* module, nimcp_module_interface_t* interface) {
-    if (!coord || !module || !interface) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(module, NIMCP_LAYER_ERR_NULL_PTR, "Module is NULL");
+    NIMCP_API_CHECK_NULL(interface, NIMCP_LAYER_ERR_NULL_PTR, "Interface is NULL");
     coord->gustatory.module = module;
     coord->gustatory.interface = *interface;
     coord->gustatory.connected = true;
@@ -100,7 +108,7 @@ nimcp_layer_error_t nimcp_sensory_intra_connect_gustatory(nimcp_sensory_intra_t 
 }
 
 nimcp_layer_error_t nimcp_sensory_intra_update(nimcp_sensory_intra_t coord, float dt) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
     if (!coord->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
 
     /* Sensory decay */
@@ -120,32 +128,36 @@ nimcp_layer_error_t nimcp_sensory_intra_update(nimcp_sensory_intra_t coord, floa
 }
 
 nimcp_layer_error_t nimcp_sensory_intra_sync(nimcp_sensory_intra_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_sensory_intra_send(nimcp_sensory_intra_t coord, uint32_t target_module, nimcp_layer_msg_t* msg) {
-    if (!coord || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL");
     (void)target_module;
     coord->stats.messages_sent++;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_sensory_intra_broadcast(nimcp_sensory_intra_t coord, uint32_t source_module, const nimcp_layer_msg_t* msg) {
-    if (!coord || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL");
     (void)source_module;
     coord->stats.messages_sent += SENSORY_MODULE_COUNT;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_sensory_intra_get_state(nimcp_sensory_intra_t coord, nimcp_sensory_intra_state_t* state_out) {
-    if (!coord || !state_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(state_out, NIMCP_LAYER_ERR_NULL_PTR, "state_out is NULL");
     *state_out = coord->state;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_sensory_intra_get_stats(nimcp_sensory_intra_t coord, nimcp_sensory_intra_stats_t* stats_out) {
-    if (!coord || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
+    NIMCP_API_CHECK_NULL(stats_out, NIMCP_LAYER_ERR_NULL_PTR, "stats_out is NULL");
     *stats_out = coord->stats;
     return NIMCP_LAYER_OK;
 }
@@ -155,7 +167,7 @@ float nimcp_sensory_intra_get_coherence(nimcp_sensory_intra_t coord) {
 }
 
 nimcp_layer_error_t nimcp_sensory_intra_reset_stats(nimcp_sensory_intra_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL");
     memset(&coord->stats, 0, sizeof(coord->stats));
     return NIMCP_LAYER_OK;
 }

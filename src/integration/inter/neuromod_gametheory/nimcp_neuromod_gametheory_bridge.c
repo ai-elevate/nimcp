@@ -6,6 +6,7 @@
  */
 
 #include "integration/inter/neuromod_gametheory/nimcp_neuromod_gametheory_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -90,7 +91,7 @@ neuromod_gametheory_config_t neuromod_gametheory_default_config(void) {
 
 neuromod_gametheory_bridge_t* neuromod_gametheory_create(const neuromod_gametheory_config_t* config) {
     neuromod_gametheory_bridge_t* bridge = calloc(1, sizeof(neuromod_gametheory_bridge_t));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate neuromod-gametheory bridge");
 
     bridge->magic = NEUROMOD_GAMETHEORY_BRIDGE_MAGIC;
 

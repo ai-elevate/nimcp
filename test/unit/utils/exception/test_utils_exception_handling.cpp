@@ -175,14 +175,14 @@ TEST_F(MemoryExceptionTest, MemoryExceptionSuggestsRecovery) {
 
     ASSERT_NE(mex, nullptr);
 
-    nimcp_recovery_action_t action = nimcp_exception_get_suggested_recovery(
+    nimcp_exception_recovery_action_t action = nimcp_exception_get_suggested_recovery(
         (nimcp_exception_t*)mex
     );
 
     // Memory errors should suggest GC or compact
-    EXPECT_TRUE(action == RECOVERY_ACTION_GC ||
-                action == RECOVERY_ACTION_COMPACT ||
-                action == RECOVERY_ACTION_NONE);
+    EXPECT_TRUE(action == EXCEPTION_RECOVERY_GC ||
+                action == EXCEPTION_RECOVERY_COMPACT ||
+                action == EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref((nimcp_exception_t*)mex);
 }
@@ -350,14 +350,14 @@ TEST_F(ThreadingExceptionTest, ThreadingExceptionSuggestsRecovery) {
 
     ASSERT_NE(tex, nullptr);
 
-    nimcp_recovery_action_t action = nimcp_exception_get_suggested_recovery(
+    nimcp_exception_recovery_action_t action = nimcp_exception_get_suggested_recovery(
         (nimcp_exception_t*)tex
     );
 
     // Threading errors might suggest restart
-    EXPECT_TRUE(action == RECOVERY_ACTION_RESTART_THREAD ||
-                action == RECOVERY_ACTION_RETRY ||
-                action == RECOVERY_ACTION_NONE);
+    EXPECT_TRUE(action == EXCEPTION_RECOVERY_RESTART_THREAD ||
+                action == EXCEPTION_RECOVERY_RETRY ||
+                action == EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref((nimcp_exception_t*)tex);
 }
@@ -1068,10 +1068,10 @@ TEST_F(StringConversionTest, CategoryToString) {
  * WHY:  Verify recovery action enum conversion
  */
 TEST_F(StringConversionTest, RecoveryActionToString) {
-    const char* none = nimcp_recovery_action_to_string(RECOVERY_ACTION_NONE);
-    const char* retry = nimcp_recovery_action_to_string(RECOVERY_ACTION_RETRY);
-    const char* gc = nimcp_recovery_action_to_string(RECOVERY_ACTION_GC);
-    const char* rollback = nimcp_recovery_action_to_string(RECOVERY_ACTION_ROLLBACK);
+    const char* none = nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_NONE);
+    const char* retry = nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_RETRY);
+    const char* gc = nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_GC);
+    const char* rollback = nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_ROLLBACK);
 
     EXPECT_NE(none, nullptr);
     EXPECT_NE(retry, nullptr);

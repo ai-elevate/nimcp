@@ -11,6 +11,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "security/nimcp_blood_brain_barrier.h"  // Phase IS-1: BBB perimeter defense
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 

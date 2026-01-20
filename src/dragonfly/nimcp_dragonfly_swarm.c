@@ -13,6 +13,7 @@
 #include "dragonfly/nimcp_dragonfly_swarm.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -184,17 +185,19 @@ dragonfly_swarm_detector_t dragonfly_swarm_create(const swarm_config_t* config) 
     swarm_config_t cfg = config ? *config : swarm_default_config();
 
     if (!swarm_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_swarm_create: invalid config");
         return NULL;
     }
 
     dragonfly_swarm_detector_t detector = nimcp_calloc(1, sizeof(struct dragonfly_swarm_detector_s));
-    if (!detector) return NULL;
+    NIMCP_API_CHECK_ALLOC(detector, "dragonfly_swarm_create: failed to allocate detector");
 
     detector->config = cfg;
     detector->creation_time_us = get_time_us();
 
     detector->mutex = nimcp_mutex_create(NULL);
     if (!detector->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_swarm_create: failed to create mutex");
         nimcp_free(detector);
         return NULL;
     }
@@ -213,7 +216,10 @@ void dragonfly_swarm_destroy(dragonfly_swarm_detector_t detector) {
 }
 
 int dragonfly_swarm_reset(dragonfly_swarm_detector_t detector) {
-    if (!detector) return -1;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_reset: detector is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(detector->mutex);
 
@@ -581,7 +587,14 @@ int dragonfly_swarm_add_detection(
     const float velocity[3],
     float size
 ) {
-    if (!detector || !position) return -1;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_add_detection: detector is NULL");
+        return -1;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_add_detection: position is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(detector->mutex);
 
@@ -644,7 +657,10 @@ int dragonfly_swarm_add_detection(
 }
 
 int dragonfly_swarm_clear_detections(dragonfly_swarm_detector_t detector) {
-    if (!detector) return -1;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_clear_detections: detector is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(detector->mutex);
 
@@ -665,7 +681,14 @@ int dragonfly_swarm_analyze(
     const float self_position[3],
     swarm_analysis_t* analysis
 ) {
-    if (!detector || !analysis) return -1;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_analyze: detector is NULL");
+        return -1;
+    }
+    if (!analysis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_analyze: analysis is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(detector->mutex);
 
@@ -750,7 +773,14 @@ int dragonfly_swarm_select_target(
     float self_speed,
     swarm_individual_t* best_target
 ) {
-    if (!detector || !best_target) return -1;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_select_target: detector is NULL");
+        return -1;
+    }
+    if (!best_target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_select_target: best_target is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(detector->mutex);
 
@@ -816,7 +846,18 @@ int dragonfly_swarm_get_recommendations(
     uint32_t max_targets,
     uint32_t* num_targets
 ) {
-    if (!detector || !targets || !num_targets) return -1;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_get_recommendations: detector is NULL");
+        return -1;
+    }
+    if (!targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_get_recommendations: targets is NULL");
+        return -1;
+    }
+    if (!num_targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_get_recommendations: num_targets is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)detector->mutex);
 
@@ -889,7 +930,14 @@ int dragonfly_swarm_get_individual(
     uint32_t id,
     swarm_individual_t* individual
 ) {
-    if (!detector || !individual) return -1;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_get_individual: detector is NULL");
+        return -1;
+    }
+    if (!individual) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_get_individual: individual is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)detector->mutex);
 
@@ -929,7 +977,14 @@ int dragonfly_swarm_get_cluster(
     uint32_t cluster_id,
     swarm_cluster_t* cluster
 ) {
-    if (!detector || !cluster) return -1;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_get_cluster: detector is NULL");
+        return -1;
+    }
+    if (!cluster) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_get_cluster: cluster is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)detector->mutex);
 
@@ -949,7 +1004,14 @@ int dragonfly_swarm_get_stats(
     const dragonfly_swarm_detector_t detector,
     swarm_stats_t* stats
 ) {
-    if (!detector || !stats) return -1;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_get_stats: detector is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)detector->mutex);
     *stats = detector->stats;

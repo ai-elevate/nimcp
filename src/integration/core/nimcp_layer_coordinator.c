@@ -6,6 +6,7 @@
  */
 
 #include "integration/core/nimcp_layer_coordinator.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -41,7 +42,7 @@ nimcp_layer_coordinator_config_t nimcp_layer_coordinator_default_config(void) {
 
 nimcp_layer_coordinator_t nimcp_layer_coordinator_create(const nimcp_layer_coordinator_config_t* config, brain_t brain) {
     nimcp_layer_coordinator_t coord = (nimcp_layer_coordinator_t)calloc(1, sizeof(struct nimcp_layer_coordinator_struct));
-    if (!coord) return NULL;
+    NIMCP_API_CHECK_ALLOC(coord, "Failed to allocate layer coordinator");
 
     coord->config = config ? *config : nimcp_layer_coordinator_default_config();
     coord->brain = brain;
@@ -76,7 +77,7 @@ void nimcp_layer_coordinator_destroy(nimcp_layer_coordinator_t coord) {
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_init_all(nimcp_layer_coordinator_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in init_all");
     if (coord->state == NIMCP_COORD_STATE_RUNNING) return NIMCP_LAYER_ERR_ALREADY_REGISTERED;
 
     coord->state = NIMCP_COORD_STATE_INITIALIZING;
@@ -92,7 +93,7 @@ nimcp_layer_error_t nimcp_layer_coordinator_init_all(nimcp_layer_coordinator_t c
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_shutdown(nimcp_layer_coordinator_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in shutdown");
     if (coord->state != NIMCP_COORD_STATE_RUNNING && coord->state != NIMCP_COORD_STATE_PAUSED) {
         return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     }
@@ -108,7 +109,7 @@ nimcp_layer_error_t nimcp_layer_coordinator_shutdown(nimcp_layer_coordinator_t c
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_reset(nimcp_layer_coordinator_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in reset");
     if (coord->router) nimcp_inter_layer_router_reset(coord->router);
     if (coord->registry) nimcp_layer_registry_reset(coord->registry);
     memset(&coord->stats, 0, sizeof(coord->stats));
@@ -117,7 +118,8 @@ nimcp_layer_error_t nimcp_layer_coordinator_reset(nimcp_layer_coordinator_t coor
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_register_layer(nimcp_layer_coordinator_t coord, const nimcp_layer_config_t* config) {
-    if (!coord || !config) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in register_layer");
+    NIMCP_API_CHECK_NULL(config, NIMCP_LAYER_ERR_NULL_PTR, "Config is NULL in register_layer");
     nimcp_layer_error_t err = nimcp_layer_registry_register_layer(coord->registry, config);
     if (err == NIMCP_LAYER_OK) {
         coord->stats.layers_registered++;
@@ -126,7 +128,7 @@ nimcp_layer_error_t nimcp_layer_coordinator_register_layer(nimcp_layer_coordinat
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_register_standard_layers(nimcp_layer_coordinator_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in register_standard_layers");
 
     nimcp_layer_config_t config;
     nimcp_layer_id_t layers[] = {
@@ -148,7 +150,7 @@ nimcp_layer_error_t nimcp_layer_coordinator_register_standard_layers(nimcp_layer
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_register_standard_connections(nimcp_layer_coordinator_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in register_standard_connections");
 
     /* Define standard connections */
     nimcp_layer_connection_t conn = {0};
@@ -234,7 +236,7 @@ nimcp_layer_error_t nimcp_layer_coordinator_register_module(
     nimcp_layer_coordinator_t coord, nimcp_layer_id_t layer_id,
     void* module_ptr, nimcp_module_interface_t* interface, const char* name, uint32_t* module_id_out
 ) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in register_module");
     nimcp_layer_error_t err = nimcp_layer_registry_register_module(coord->registry, layer_id, module_ptr, interface, name, module_id_out);
     if (err == NIMCP_LAYER_OK) {
         coord->stats.modules_registered++;
@@ -243,7 +245,7 @@ nimcp_layer_error_t nimcp_layer_coordinator_register_module(
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_update(nimcp_layer_coordinator_t coord, float dt) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in update");
     if (coord->state != NIMCP_COORD_STATE_RUNNING) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
 
     coord->stats.update_count++;
@@ -272,15 +274,15 @@ nimcp_layer_error_t nimcp_layer_coordinator_update(nimcp_layer_coordinator_t coo
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_update_layer(nimcp_layer_coordinator_t coord, nimcp_layer_id_t layer_id, float dt) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
-    if (coord->state != NIMCP_COORD_STATE_RUNNING) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
-    if (layer_id >= NIMCP_LAYER_COUNT) return NIMCP_LAYER_ERR_INVALID_LAYER;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in update_layer");
+    NIMCP_API_CHECK(coord->state == NIMCP_COORD_STATE_RUNNING, NIMCP_LAYER_ERR_NOT_INITIALIZED, "Coordinator not running in update_layer");
+    NIMCP_API_CHECK(layer_id < NIMCP_LAYER_COUNT, NIMCP_LAYER_ERR_INVALID_LAYER, "Invalid layer_id in update_layer");
     (void)dt;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_pause(nimcp_layer_coordinator_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in pause");
     if (coord->state != NIMCP_COORD_STATE_RUNNING) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     coord->state = NIMCP_COORD_STATE_PAUSED;
     coord->stats.state = NIMCP_COORD_STATE_PAUSED;
@@ -288,7 +290,7 @@ nimcp_layer_error_t nimcp_layer_coordinator_pause(nimcp_layer_coordinator_t coor
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_resume(nimcp_layer_coordinator_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in resume");
     if (coord->state != NIMCP_COORD_STATE_PAUSED) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     coord->state = NIMCP_COORD_STATE_RUNNING;
     coord->stats.state = NIMCP_COORD_STATE_RUNNING;
@@ -296,31 +298,35 @@ nimcp_layer_error_t nimcp_layer_coordinator_resume(nimcp_layer_coordinator_t coo
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_send_message(nimcp_layer_coordinator_t coord, nimcp_layer_msg_t* msg) {
-    if (!coord || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in send_message");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in send_message");
     if (coord->state != NIMCP_COORD_STATE_RUNNING) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     return nimcp_inter_layer_router_route(coord->router, msg);
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_broadcast(nimcp_layer_coordinator_t coord, nimcp_layer_id_t source_layer, const nimcp_layer_msg_t* msg) {
-    if (!coord || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in broadcast");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in broadcast");
     if (coord->state != NIMCP_COORD_STATE_RUNNING) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     return nimcp_inter_layer_router_broadcast(coord->router, source_layer, msg);
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_broadcast_bottom_up(nimcp_layer_coordinator_t coord, nimcp_layer_id_t source_layer, const nimcp_layer_msg_t* msg) {
-    if (!coord || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in broadcast_bottom_up");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in broadcast_bottom_up");
     if (coord->state != NIMCP_COORD_STATE_RUNNING) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     return nimcp_inter_layer_router_broadcast_directed(coord->router, source_layer, msg, NIMCP_MSG_DIR_BOTTOM_UP);
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_broadcast_top_down(nimcp_layer_coordinator_t coord, nimcp_layer_id_t source_layer, const nimcp_layer_msg_t* msg) {
-    if (!coord || !msg) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in broadcast_top_down");
+    NIMCP_API_CHECK_NULL(msg, NIMCP_LAYER_ERR_NULL_PTR, "Message is NULL in broadcast_top_down");
     if (coord->state != NIMCP_COORD_STATE_RUNNING) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     return nimcp_inter_layer_router_broadcast_directed(coord->router, source_layer, msg, NIMCP_MSG_DIR_TOP_DOWN);
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_sync(nimcp_layer_coordinator_t coord, uint32_t timeout_ms) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in sync");
     if (coord->state != NIMCP_COORD_STATE_RUNNING) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     (void)timeout_ms;
     return NIMCP_LAYER_OK;
@@ -337,13 +343,13 @@ float nimcp_layer_coordinator_get_layer_coherence(nimcp_layer_coordinator_t coor
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_connect_bio_async(nimcp_layer_coordinator_t coord, bio_router_t router) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in connect_bio_async");
     coord->bio_router = router;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_connect_immune(nimcp_layer_coordinator_t coord, nimcp_brain_immune_t immune) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in connect_immune");
     coord->immune = immune;
     return NIMCP_LAYER_OK;
 }
@@ -357,13 +363,14 @@ nimcp_layer_coordinator_state_t nimcp_layer_coordinator_get_state(nimcp_layer_co
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_get_stats(nimcp_layer_coordinator_t coord, nimcp_layer_coordinator_stats_t* stats_out) {
-    if (!coord || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in get_stats");
+    NIMCP_API_CHECK_NULL(stats_out, NIMCP_LAYER_ERR_NULL_PTR, "stats_out is NULL in get_stats");
     *stats_out = coord->stats;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_layer_coordinator_reset_stats(nimcp_layer_coordinator_t coord) {
-    if (!coord) return NIMCP_LAYER_ERR_NULL_PTR;
+    NIMCP_API_CHECK_NULL(coord, NIMCP_LAYER_ERR_NULL_PTR, "Coordinator is NULL in reset_stats");
     nimcp_layer_coordinator_state_t state = coord->stats.state;
     memset(&coord->stats, 0, sizeof(coord->stats));
     coord->stats.state = state;

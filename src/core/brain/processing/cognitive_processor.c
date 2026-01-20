@@ -19,6 +19,7 @@
 #include "async/nimcp_bio_async.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"

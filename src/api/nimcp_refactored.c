@@ -18,6 +18,8 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/error/nimcp_error_codes.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "API"
 
@@ -128,6 +130,7 @@ nimcp_status_t nimcp_init(void) {
     nimcp_bio_async_config_t bio_async_config = {0};
     if (nimcp_bio_async_init(&bio_async_config) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize bio-async system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "Failed to initialize bio-async system");
         nimcp_memory_cleanup();
         set_error("Failed to initialize bio-async system");
         return NIMCP_ERROR;
@@ -137,6 +140,7 @@ nimcp_status_t nimcp_init(void) {
     LOG_DEBUG("Initializing bio-async router");
     if (bio_router_init(NULL) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize bio-async router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "Failed to initialize bio-async router");
         nimcp_bio_async_shutdown();
         nimcp_memory_cleanup();
         set_error("Failed to initialize bio-async router");

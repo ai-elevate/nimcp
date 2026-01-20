@@ -5,6 +5,7 @@
 #include "physics/bridges/nimcp_physics_swarm_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 
 //=============================================================================
@@ -59,7 +60,7 @@ physics_swarm_bridge_t* physics_swarm_bridge_create(
     const physics_swarm_config_t* config
 ) {
     physics_swarm_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate physics-swarm bridge");
 
     if (config) {
         bridge->config = *config;

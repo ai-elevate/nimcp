@@ -14,6 +14,9 @@
 #include "training/nimcp_meta_learning.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -107,6 +110,7 @@ static int compute_hessian_vector_product(
 
 int meta_default_config(meta_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "meta_default_config: config is NULL");
         return -1;
     }
 
@@ -163,16 +167,20 @@ int meta_default_config(meta_config_t* config) {
 
 meta_ctx_t* meta_create(const meta_config_t* config) {
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "meta_create: config is NULL");
         return NULL;
     }
 
     /* Validate configuration */
     if (meta_validate_config(config) != 0) {
+        NIMCP_THROW(NIMCP_ERROR_CONFIG_INVALID, "meta_create: config validation failed");
         return NULL;
     }
 
     meta_ctx_t* ctx = nimcp_calloc(1, sizeof(meta_ctx_t));
     if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(meta_ctx_t),
+                          "meta_create: failed to allocate context");
         return NULL;
     }
 
@@ -184,6 +192,8 @@ meta_ctx_t* meta_create(const meta_config_t* config) {
     attr.type = MUTEX_TYPE_NORMAL;
     ctx->mutex = nimcp_mutex_create(&attr);
     if (!ctx->mutex) {
+        NIMCP_THROW_THREADING(NIMCP_ERROR_MUTEX_INIT, 0,
+                             "meta_create: failed to create mutex");
         nimcp_free(ctx);
         return NULL;
     }
@@ -191,6 +201,13 @@ meta_ctx_t* meta_create(const meta_config_t* config) {
     /* Initialize task buffer */
     ctx->task_buffer_size = META_MAX_TASKS_PER_BATCH * 10;
     ctx->task_buffer = nimcp_calloc(ctx->task_buffer_size, sizeof(meta_task_t));
+    if (!ctx->task_buffer) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, ctx->task_buffer_size * sizeof(meta_task_t),
+                          "meta_create: failed to allocate task buffer");
+        nimcp_mutex_destroy(ctx->mutex);
+        nimcp_free(ctx);
+        return NULL;
+    }
     ctx->num_buffered_tasks = 0;
 
     /* Reset statistics */
@@ -239,7 +256,16 @@ int meta_register_params(
     nimcp_tensor_t** params,
     uint32_t num_params
 ) {
-    if (!ctx || !params || num_params == 0) {
+    if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "meta_register_params: ctx is NULL");
+        return -1;
+    }
+    if (!params) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "meta_register_params: params is NULL");
+        return -1;
+    }
+    if (num_params == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "meta_register_params: num_params is 0");
         return -1;
     }
 
@@ -281,12 +307,31 @@ meta_task_t* meta_create_task(
     uint32_t k_shot,
     uint32_t query_size
 ) {
-    if (!ctx || !data || !labels || n_way == 0 || k_shot == 0) {
+    if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "meta_create_task: ctx is NULL");
+        return NULL;
+    }
+    if (!data) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "meta_create_task: data is NULL");
+        return NULL;
+    }
+    if (!labels) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "meta_create_task: labels is NULL");
+        return NULL;
+    }
+    if (n_way == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "meta_create_task: n_way is 0");
+        return NULL;
+    }
+    if (k_shot == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "meta_create_task: k_shot is 0");
         return NULL;
     }
 
     meta_task_t* task = nimcp_calloc(1, sizeof(meta_task_t));
     if (!task) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(meta_task_t),
+                          "meta_create_task: failed to allocate task");
         return NULL;
     }
 
@@ -332,7 +377,12 @@ meta_task_batch_t* meta_sample_tasks(
     meta_ctx_t* ctx,
     uint32_t num_tasks
 ) {
-    if (!ctx || num_tasks == 0) {
+    if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "meta_sample_tasks: ctx is NULL");
+        return NULL;
+    }
+    if (num_tasks == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "meta_sample_tasks: num_tasks is 0");
         return NULL;
     }
 
@@ -342,11 +392,15 @@ meta_task_batch_t* meta_sample_tasks(
 
     meta_task_batch_t* batch = nimcp_calloc(1, sizeof(meta_task_batch_t));
     if (!batch) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(meta_task_batch_t),
+                          "meta_sample_tasks: failed to allocate batch");
         return NULL;
     }
 
     batch->tasks = nimcp_calloc(num_tasks, sizeof(meta_task_t));
     if (!batch->tasks) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_tasks * sizeof(meta_task_t),
+                          "meta_sample_tasks: failed to allocate tasks array");
         nimcp_free(batch);
         return NULL;
     }

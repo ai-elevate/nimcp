@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/bcm/nimcp_bcm_fep_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -15,7 +16,7 @@
 #define LOG_MODULE_BCM_FEP "BCM_FEP_BRIDGE"
 
 int bcm_fep_bridge_default_config(bcm_fep_config_t* config) {
-    if (!config) return -1;
+    NIMCP_API_CHECK_NULL(config, -1, "BCM-FEP config is NULL");
     config->complexity_threshold_gain = BCM_FEP_THRESHOLD_SCALING;
     config->precision_selectivity_gain = BCM_FEP_SELECTIVITY_GAIN;
     config->pe_lr_sensitivity = 1.0f;
@@ -30,7 +31,7 @@ int bcm_fep_bridge_default_config(bcm_fep_config_t* config) {
 
 bcm_fep_bridge_t* bcm_fep_bridge_create(const bcm_fep_config_t* config) {
     bcm_fep_bridge_t* bridge = (bcm_fep_bridge_t*)nimcp_malloc(sizeof(bcm_fep_bridge_t));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "BCM-FEP bridge allocation failed");
     memset(bridge, 0, sizeof(bcm_fep_bridge_t));
 
     if (config) {
@@ -42,6 +43,8 @@ bcm_fep_bridge_t* bcm_fep_bridge_create(const bcm_fep_config_t* config) {
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        LOG_ERROR("BCM-FEP bridge mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "BCM-FEP bridge mutex creation failed");
         return NULL;
     }
 
@@ -60,7 +63,7 @@ void bcm_fep_bridge_destroy(bcm_fep_bridge_t* bridge) {
 }
 
 int bcm_fep_bridge_connect_fep(bcm_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM-FEP bridge is NULL");
     /* Allow NULL fep to disconnect/reset FEP connection */
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -69,7 +72,9 @@ int bcm_fep_bridge_connect_fep(bcm_fep_bridge_t* bridge, fep_system_t* fep) {
 }
 
 int bcm_fep_bridge_connect_bcm(bcm_fep_bridge_t* bridge, bcm_synapse_t* bcm, uint32_t num) {
-    if (!bridge || !bcm || num == 0) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM-FEP bridge is NULL");
+    NIMCP_API_CHECK_NULL(bcm, -1, "BCM synapse array is NULL");
+    NIMCP_API_CHECK(num > 0, -1, "Number of synapses must be greater than 0");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->bcm_system = bcm;
     bridge->num_synapses = num;
@@ -78,7 +83,7 @@ int bcm_fep_bridge_connect_bcm(bcm_fep_bridge_t* bridge, bcm_synapse_t* bcm, uin
 }
 
 int bcm_fep_bridge_disconnect(bcm_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM-FEP bridge is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->bcm_system = NULL;
@@ -123,7 +128,7 @@ float bcm_fep_get_effective_lr(const bcm_fep_bridge_t* bridge, float base_lr) {
 }
 
 int bcm_fep_report_threshold_changes(bcm_fep_bridge_t* bridge, float threshold_delta) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM-FEP bridge is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.complexity_adjustments++;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -140,7 +145,7 @@ float bcm_fep_compute_sparsity(const bcm_fep_bridge_t* bridge) {
 }
 
 int bcm_fep_report_sparsity(bcm_fep_bridge_t* bridge, uint32_t active_count) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM-FEP bridge is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->state.sparsity_level = active_count;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -148,7 +153,7 @@ int bcm_fep_report_sparsity(bcm_fep_bridge_t* bridge, uint32_t active_count) {
 }
 
 int bcm_fep_bridge_update(bcm_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM-FEP bridge is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (bridge->fep_system) {
@@ -174,19 +179,21 @@ int bcm_fep_bridge_update(bcm_fep_bridge_t* bridge, uint64_t delta_ms) {
 }
 
 int bcm_fep_bridge_get_state(const bcm_fep_bridge_t* bridge, bcm_fep_state_t* state) {
-    if (!bridge || !state) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM-FEP bridge is NULL");
+    NIMCP_API_CHECK_NULL(state, -1, "State output pointer is NULL");
     *state = bridge->state;
     return 0;
 }
 
 int bcm_fep_bridge_get_stats(const bcm_fep_bridge_t* bridge, bcm_fep_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM-FEP bridge is NULL");
+    NIMCP_API_CHECK_NULL(stats, -1, "Stats output pointer is NULL");
     *stats = bridge->stats;
     return 0;
 }
 
 int bcm_fep_bridge_connect_bio_async(bcm_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM-FEP bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_BCM_BRIDGE,
@@ -203,7 +210,7 @@ int bcm_fep_bridge_connect_bio_async(bcm_fep_bridge_t* bridge) {
 }
 
 int bcm_fep_bridge_disconnect_bio_async(bcm_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM-FEP bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected - success */
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;

@@ -9,6 +9,7 @@
 #include "physics/bridges/nimcp_physics_hypothalamus_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 
@@ -137,7 +138,7 @@ physics_hypo_bridge_t* physics_hypo_bridge_create(
     const physics_hypo_config_t* config
 ) {
     physics_hypo_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate physics-hypothalamus bridge");
 
     /* Apply configuration */
     if (config) {

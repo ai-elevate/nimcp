@@ -18,6 +18,7 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 #include "core/brain/nimcp_brain.h"
+#include "api/nimcp_api_exception.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "cognitive/introspection/nimcp_introspection.h"

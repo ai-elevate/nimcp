@@ -472,7 +472,7 @@ namespace {
     std::atomic<bool> g_gc_callback_called{false};
     std::atomic<int> g_retry_count{0};
 
-    bool retry_recovery_callback(nimcp_recovery_action_t action, void* user_data) {
+    bool retry_recovery_callback(nimcp_exception_recovery_action_t action, void* user_data) {
         (void)action;
         (void)user_data;
         g_retry_callback_called = true;
@@ -480,7 +480,7 @@ namespace {
         return true;  // Recovery successful
     }
 
-    bool gc_recovery_callback(nimcp_recovery_action_t action, void* user_data) {
+    bool gc_recovery_callback(nimcp_exception_recovery_action_t action, void* user_data) {
         (void)action;
         (void)user_data;
         g_gc_callback_called = true;
@@ -499,21 +499,21 @@ TEST_F(CoreExceptionIntegrationTest, RecoveryCallbackRegistration) {
 
     // Register recovery callbacks
     int result = nimcp_register_recovery_callback(
-        RECOVERY_ACTION_RETRY, retry_recovery_callback, nullptr);
+        EXCEPTION_RECOVERY_RETRY, retry_recovery_callback, nullptr);
     EXPECT_EQ(result, 0);
 
     result = nimcp_register_recovery_callback(
-        RECOVERY_ACTION_GC, gc_recovery_callback, nullptr);
+        EXCEPTION_RECOVERY_GC, gc_recovery_callback, nullptr);
     EXPECT_EQ(result, 0);
 
     // Execute retry recovery
-    bool success = nimcp_execute_recovery_action(RECOVERY_ACTION_RETRY);
+    bool success = nimcp_execute_recovery_action(EXCEPTION_RECOVERY_RETRY);
     EXPECT_TRUE(success);
     EXPECT_TRUE(g_retry_callback_called);
     EXPECT_EQ(g_retry_count, 1);
 
     // Execute GC recovery
-    success = nimcp_execute_recovery_action(RECOVERY_ACTION_GC);
+    success = nimcp_execute_recovery_action(EXCEPTION_RECOVERY_GC);
     EXPECT_TRUE(success);
     EXPECT_TRUE(g_gc_callback_called);
 }
@@ -566,9 +566,9 @@ TEST_F(CoreExceptionIntegrationTest, RecoveryStrategyGeneration) {
     );
     mem_ex->category = EXCEPTION_CATEGORY_MEMORY;
 
-    nimcp_recovery_strategy_t mem_strategy;
+    nimcp_exception_recovery_strategy_t mem_strategy;
     nimcp_exception_get_recovery_strategy(mem_ex, &mem_strategy);
-    EXPECT_EQ(mem_strategy.primary_action, RECOVERY_ACTION_GC);
+    EXPECT_EQ(mem_strategy.primary_action, EXCEPTION_RECOVERY_GC);
 
     nimcp_exception_unref(mem_ex);
 
@@ -581,9 +581,9 @@ TEST_F(CoreExceptionIntegrationTest, RecoveryStrategyGeneration) {
     );
     thread_ex->category = EXCEPTION_CATEGORY_THREADING;
 
-    nimcp_recovery_strategy_t thread_strategy;
+    nimcp_exception_recovery_strategy_t thread_strategy;
     nimcp_exception_get_recovery_strategy(thread_ex, &thread_strategy);
-    EXPECT_EQ(thread_strategy.primary_action, RECOVERY_ACTION_RESTART_THREAD);
+    EXPECT_EQ(thread_strategy.primary_action, EXCEPTION_RECOVERY_RESTART_THREAD);
 
     nimcp_exception_unref(thread_ex);
 
@@ -596,9 +596,9 @@ TEST_F(CoreExceptionIntegrationTest, RecoveryStrategyGeneration) {
     );
     gpu_ex->category = EXCEPTION_CATEGORY_GPU;
 
-    nimcp_recovery_strategy_t gpu_strategy;
+    nimcp_exception_recovery_strategy_t gpu_strategy;
     nimcp_exception_get_recovery_strategy(gpu_ex, &gpu_strategy);
-    EXPECT_EQ(gpu_strategy.primary_action, RECOVERY_ACTION_CLEAR_CACHE);
+    EXPECT_EQ(gpu_strategy.primary_action, EXCEPTION_RECOVERY_CLEAR_CACHE);
 
     nimcp_exception_unref(gpu_ex);
 }
@@ -664,9 +664,9 @@ TEST_F(CoreExceptionIntegrationTest, BrainForwardPassErrorFlow) {
     layer_ex->gradient_norm = NAN;
 
     // Check recovery suggestion
-    nimcp_recovery_action_t action = nimcp_exception_get_suggested_recovery(
+    nimcp_exception_recovery_action_t action = nimcp_exception_get_suggested_recovery(
         (nimcp_exception_t*)layer_ex);
-    EXPECT_EQ(action, RECOVERY_ACTION_ROLLBACK);
+    EXPECT_EQ(action, EXCEPTION_RECOVERY_ROLLBACK);
 
     // Wrap in aggregate for batch processing context
     nimcp_aggregate_exception_t* batch_ex = nimcp_aggregate_exception_create(
@@ -722,9 +722,9 @@ TEST_F(CoreExceptionIntegrationTest, SynapseMemoryAllocationFailure) {
     EXPECT_STREQ(component, "synapse_weights");
 
     // Verify recovery suggestion
-    nimcp_recovery_action_t action = nimcp_exception_get_suggested_recovery(
+    nimcp_exception_recovery_action_t action = nimcp_exception_get_suggested_recovery(
         (nimcp_exception_t*)syn_mem_ex);
-    EXPECT_EQ(action, RECOVERY_ACTION_GC);
+    EXPECT_EQ(action, EXCEPTION_RECOVERY_GC);
 
     nimcp_exception_unref((nimcp_exception_t*)syn_mem_ex);
 }
@@ -835,9 +835,9 @@ TEST_F(CoreExceptionIntegrationTest, FullExceptionLifecycle) {
     EXPECT_TRUE(g_logging_handler_called);
 
     // 8. Get recovery strategy
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)derived, &strategy);
-    EXPECT_EQ(strategy.primary_action, RECOVERY_ACTION_REDUCE_LOAD);
+    EXPECT_EQ(strategy.primary_action, EXCEPTION_RECOVERY_REDUCE_LOAD);
 
     // 9. Present to immune (if available)
     nimcp_exception_present_to_immune((nimcp_exception_t*)derived);

@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <time.h>
 #include <math.h>

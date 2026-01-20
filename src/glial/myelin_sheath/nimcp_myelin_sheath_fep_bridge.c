@@ -6,6 +6,7 @@
 #include "glial/myelin_sheath/nimcp_myelin_sheath_fep_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/validation/nimcp_common.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 
@@ -32,10 +33,7 @@ myelin_sheath_fep_bridge_t* myelin_sheath_fep_create(
 
     myelin_sheath_fep_bridge_t* bridge = (myelin_sheath_fep_bridge_t*)
         nimcp_malloc(sizeof(myelin_sheath_fep_bridge_t));
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("myelin_sheath_fep_create: allocation failed");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "myelin_sheath_fep_create: allocation failed");
 
     memset(bridge, 0, sizeof(myelin_sheath_fep_bridge_t));
     memcpy(&bridge->config, config, sizeof(myelin_sheath_fep_config_t));

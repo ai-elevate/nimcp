@@ -19,6 +19,8 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "INFORMATION"
 
@@ -124,6 +126,8 @@ static float compute_mutual_information(
     uint32_t joint_dim = dim_x + dim_y;
     float* joint_features = (float*)nimcp_malloc(num_samples * joint_dim * sizeof(float));
     if (!joint_features) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_samples * joint_dim * sizeof(float),
+                          "compute_mutual_information: Failed to allocate joint features");
         return 0.0F;
     }
 
@@ -176,12 +180,16 @@ cross_modal_channel_t cross_modal_analyze_channel(
     // Guard: Validate inputs
     if (!source_modality || !dest_modality || !source_features || !dest_features || !config) {
         nimcp_log_error("cross_modal_analyze_channel: NULL parameters");
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "cross_modal_analyze_channel: NULL parameters");
         return channel;
     }
 
     // Guard: Validate dimensions
     if (source_dim == 0 || dest_dim == 0 || num_samples == 0) {
         nimcp_log_error("cross_modal_analyze_channel: Invalid dimensions");
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                    "cross_modal_analyze_channel: Invalid dimensions");
         return channel;
     }
 
@@ -298,6 +306,8 @@ multi_modal_integration_t cross_modal_analyze_integration(
     // Guard: Validate inputs
     if (!features || !dims || !modality_names || !config) {
         nimcp_log_error("cross_modal_analyze_integration: NULL parameters");
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "cross_modal_analyze_integration: NULL parameters");
         return integration;
     }
 
@@ -305,12 +315,16 @@ multi_modal_integration_t cross_modal_analyze_integration(
     if (num_modalities < 2 || num_modalities > 4) {
         nimcp_log_error("cross_modal_analyze_integration: Invalid num_modalities %u (must be 2-4)",
                        num_modalities);
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                    "cross_modal_analyze_integration: Invalid num_modalities (must be 2-4)");
         return integration;
     }
 
     // Guard: Validate samples
     if (num_samples == 0) {
         nimcp_log_error("cross_modal_analyze_integration: num_samples is 0");
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                    "cross_modal_analyze_integration: num_samples is 0");
         return integration;
     }
 
@@ -340,6 +354,8 @@ multi_modal_integration_t cross_modal_analyze_integration(
     float* joint_features = (float*)nimcp_malloc(num_samples * total_dim * sizeof(float));
     if (!joint_features) {
         nimcp_log_error("cross_modal_analyze_integration: malloc failed");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_samples * total_dim * sizeof(float),
+                          "cross_modal_analyze_integration: Failed to allocate joint features");
         return integration;
     }
 
@@ -434,6 +450,8 @@ cross_modal_routing_graph_t* cross_modal_create_routing_graph(
     // Guard: Validate inputs
     if (!modality_names) {
         nimcp_log_error("cross_modal_create_routing_graph: NULL modality_names");
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "cross_modal_create_routing_graph: NULL modality_names");
         return NULL;
     }
 
@@ -441,6 +459,8 @@ cross_modal_routing_graph_t* cross_modal_create_routing_graph(
     if (num_modalities == 0 || num_modalities > CROSS_MODAL_MAX_MODALITIES) {
         nimcp_log_error("cross_modal_create_routing_graph: Invalid num_modalities %u",
                        num_modalities);
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM,
+                    "cross_modal_create_routing_graph: Invalid num_modalities");
         return NULL;
     }
 
@@ -449,6 +469,8 @@ cross_modal_routing_graph_t* cross_modal_create_routing_graph(
         nimcp_calloc(1, sizeof(cross_modal_routing_graph_t));
     if (!graph) {
         nimcp_log_error("cross_modal_create_routing_graph: malloc failed");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(cross_modal_routing_graph_t),
+                          "cross_modal_create_routing_graph: Failed to allocate graph");
         return NULL;
     }
 
@@ -505,6 +527,8 @@ bool cross_modal_update_routing_graph(
             nimcp_malloc(sizeof(cross_modal_channel_t));
         if (!graph->channels[source_id][dest_id]) {
             nimcp_log_error("cross_modal_update_routing_graph: malloc failed");
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(cross_modal_channel_t),
+                              "cross_modal_update_routing_graph: Failed to allocate channel");
             return false;
         }
     }

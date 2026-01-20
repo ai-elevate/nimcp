@@ -10,6 +10,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -110,6 +111,8 @@ static kdtree_node_t* build_recursive(kdtree_build_point_t* points,
     // Create node
     kdtree_node_t* node = (kdtree_node_t*)nimcp_calloc(1, sizeof(kdtree_node_t));
     if (!node) {
+        LOG_ERROR("KDTREE", "Failed to allocate kdtree node");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(kdtree_node_t), "Failed to allocate kdtree node");
         return NULL;
     }
 
@@ -187,6 +190,7 @@ static uint32_t depth_recursive(const kdtree_node_t* node) {
 
 kdtree_t* kdtree_create(void) {
     kdtree_t* tree = (kdtree_t*)nimcp_calloc(1, sizeof(kdtree_t));
+    NIMCP_API_CHECK_ALLOC(tree, "Failed to allocate kdtree structure");
     return tree;
 }
 

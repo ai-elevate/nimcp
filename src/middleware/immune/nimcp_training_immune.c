@@ -13,6 +13,7 @@
 #include "middleware/training/nimcp_perception_training_bridge.h"
 #include "middleware/training/nimcp_cortical_training_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/logging/nimcp_logging.h"
 
 #include <stdlib.h>

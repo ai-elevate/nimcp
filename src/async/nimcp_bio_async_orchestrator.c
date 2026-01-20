@@ -6,6 +6,7 @@
  */
 
 #include "async/nimcp_bio_async_orchestrator.h"
+#include "api/nimcp_api_exception.h"
 #include "async/nimcp_wiring_diagram.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_common.h"

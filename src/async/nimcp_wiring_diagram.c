@@ -12,6 +12,7 @@
  */
 
 #include "async/nimcp_wiring_diagram.h"
+#include "api/nimcp_api_exception.h"
 #include "core/brain/nimcp_brain_kg.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"

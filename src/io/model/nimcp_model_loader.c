@@ -28,6 +28,9 @@
 #include "utils/logging/nimcp_logging.h"
 #include "core/brain/nimcp_brain.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,6 +48,28 @@
 #endif
 
 #define LOG_MODULE "MODEL_LOADER"
+
+/*=============================================================================
+ * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+ *===========================================================================*/
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent for model loading operations */
+static nimcp_health_agent_t* g_model_loader_health_agent = NULL;
+
+void nimcp_model_loader_set_health_agent(nimcp_health_agent_t* agent) {
+    g_model_loader_health_agent = agent;
+}
+
+static inline void model_loader_heartbeat(const char* operation, float progress) {
+    if (g_model_loader_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_model_loader_health_agent, operation, progress);
+    }
+}
 
 //=============================================================================
 // Thread-Local Error State
@@ -777,6 +802,8 @@ nimcp_model_result_t nimcp_model_validate_file(const char* filepath,
     // Open file
     FILE* file = fopen(filepath, "rb");
     if (!file) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, filepath,
+                      "Cannot open model file: %s (errno=%d)", filepath, errno);
         set_error("Cannot open file: %s (errno=%d)", filepath, errno);
         validation->result = NIMCP_MODEL_ERROR_FILE_READ;
         snprintf(validation->error_message, sizeof(validation->error_message),
@@ -848,6 +875,8 @@ nimcp_model_result_t nimcp_model_validate_file(const char* filepath,
 
         uint8_t* data = nimcp_malloc(header.data_size);
         if (!data) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, header.data_size,
+                              "Failed to allocate %u bytes for checksum validation", header.data_size);
             fclose(file);
             set_error("Failed to allocate %u bytes for checksum", header.data_size);
             validation->result = NIMCP_MODEL_ERROR_MEMORY;
@@ -894,6 +923,9 @@ nimcp_model_result_t nimcp_model_load(const char* filepath,
                                       const nimcp_model_load_options_t* options,
                                       nimcp_loaded_model_t** model_out)
 {
+    /* Phase 8: Send heartbeat at start of model loading */
+    model_loader_heartbeat("model_load", 0.0f);
+
     // Use default options if not provided
     nimcp_model_load_options_t opts = options ? *options : nimcp_model_load_options_default();
 
@@ -903,6 +935,9 @@ nimcp_model_result_t nimcp_model_load(const char* filepath,
     }
 
     *model_out = NULL;
+
+    /* Phase 8: Heartbeat after validation */
+    model_loader_heartbeat("model_load_validate", 0.1f);
 
     // First validate the file
     nimcp_model_validation_t validation;
@@ -927,6 +962,8 @@ nimcp_model_result_t nimcp_model_load(const char* filepath,
     // Allocate model structure
     nimcp_loaded_model_t* model = nimcp_calloc(1, sizeof(nimcp_loaded_model_t));
     if (!model) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(nimcp_loaded_model_t),
+                          "Failed to allocate model structure");
         fclose(file);
         set_error("Failed to allocate model structure");
         return NIMCP_MODEL_ERROR_MEMORY;
@@ -1036,6 +1073,8 @@ nimcp_model_result_t nimcp_model_load(const char* filepath,
         // Use LZ4 decompression
         weight_data = nimcp_malloc(model->header.original_size);
         if (!weight_data) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, model->header.original_size,
+                              "Failed to allocate decompression buffer for model weights");
             nimcp_free(compressed_data);
             if (model->metadata) nimcp_free(model->metadata);
             nimcp_free(model->architecture.layer_sizes);
@@ -1055,6 +1094,8 @@ nimcp_model_result_t nimcp_model_load(const char* filepath,
         nimcp_free(compressed_data);
 
         if (decompressed_size < 0 || (size_t)decompressed_size != model->header.original_size) {
+            NIMCP_THROW_IO(NIMCP_ERROR_OPERATION_FAILED, "model_load",
+                          "LZ4 decompression failed for model weights");
             nimcp_free(weight_data);
             if (model->metadata) nimcp_free(model->metadata);
             nimcp_free(model->architecture.layer_sizes);
@@ -1295,6 +1336,8 @@ nimcp_model_result_t nimcp_model_save(const nimcp_loaded_model_t* model,
     // Open file for writing
     FILE* file = fopen(filepath, "wb");
     if (!file) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, filepath,
+                      "Cannot create model file: %s (errno=%d)", filepath, errno);
         set_error("Cannot create file: %s (errno=%d)", filepath, errno);
         return NIMCP_MODEL_ERROR_FILE_WRITE;
     }
@@ -1322,6 +1365,8 @@ nimcp_model_result_t nimcp_model_save(const nimcp_loaded_model_t* model,
     size_t weight_bytes = model->num_weights * sizeof(float);
     uint8_t* weight_data = nimcp_malloc(weight_bytes);
     if (!weight_data) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, weight_bytes,
+                          "Failed to allocate weight data buffer for model save");
         fclose(file);
         return NIMCP_MODEL_ERROR_MEMORY;
     }

@@ -88,7 +88,7 @@ static internal_category_t g_categories[NIMCP_METRICS_MAX_CATEGORIES];
 static size_t g_category_count = 0;
 
 /* Per-action recovery tracking */
-static internal_recovery_t g_recovery[NIMCP_METRICS_RECOVERY_ACTION_COUNT];
+static internal_recovery_t g_recovery[NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT];
 
 /* Adaptive pattern storage */
 static pattern_entry_t* g_patterns = NULL;
@@ -198,7 +198,7 @@ static pattern_entry_t* find_or_create_pattern(const uint8_t* epitope, size_t le
         entry->occupied = true;
         memcpy(entry->pattern.epitope, epitope, len);
         entry->pattern.epitope_len = len;
-        entry->pattern.preferred_action = RECOVERY_ACTION_NONE;
+        entry->pattern.preferred_action = EXCEPTION_RECOVERY_NONE;
         memset(entry->pattern.action_success_rates, 0, sizeof(entry->pattern.action_success_rates));
         memset(entry->pattern.action_attempts, 0, sizeof(entry->pattern.action_attempts));
         entry->pattern.last_success_us = 0;
@@ -232,7 +232,7 @@ static pattern_entry_t* find_or_create_pattern(const uint8_t* epitope, size_t le
         new_entry->occupied = true;
         memcpy(new_entry->pattern.epitope, epitope, len);
         new_entry->pattern.epitope_len = len;
-        new_entry->pattern.preferred_action = RECOVERY_ACTION_NONE;
+        new_entry->pattern.preferred_action = EXCEPTION_RECOVERY_NONE;
         entry->next = new_entry;
         g_pattern_count++;
         return new_entry;
@@ -263,17 +263,17 @@ static void update_rate_ema(internal_category_t* cat, uint64_t now_us) {
 /**
  * @brief Determine best action for pattern based on success rates
  */
-static nimcp_recovery_action_t get_best_action(const nimcp_adaptive_pattern_t* pattern) {
-    if (!pattern) return RECOVERY_ACTION_NONE;
+static nimcp_exception_recovery_action_t get_best_action(const nimcp_adaptive_pattern_t* pattern) {
+    if (!pattern) return EXCEPTION_RECOVERY_NONE;
 
-    nimcp_recovery_action_t best_action = RECOVERY_ACTION_NONE;
+    nimcp_exception_recovery_action_t best_action = EXCEPTION_RECOVERY_NONE;
     float best_rate = -1.0f;
 
-    for (int i = 0; i < NIMCP_METRICS_RECOVERY_ACTION_COUNT; i++) {
+    for (int i = 0; i < NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT; i++) {
         if (pattern->action_attempts[i] >= g_config.min_samples_for_learning) {
             if (pattern->action_success_rates[i] > best_rate) {
                 best_rate = pattern->action_success_rates[i];
-                best_action = (nimcp_recovery_action_t)i;
+                best_action = (nimcp_exception_recovery_action_t)i;
             }
         }
     }
@@ -325,7 +325,7 @@ int nimcp_metrics_init_with_config(const nimcp_metrics_config_t* config) {
     g_category_count = 0;
 
     memset(g_recovery, 0, sizeof(g_recovery));
-    for (int i = 0; i < NIMCP_METRICS_RECOVERY_ACTION_COUNT; i++) {
+    for (int i = 0; i < NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT; i++) {
         g_recovery[i].min_time_us = UINT64_MAX;
     }
 
@@ -397,12 +397,12 @@ void nimcp_metrics_record_exception(nimcp_exception_t* ex) {
 
 void nimcp_metrics_record_recovery(
     nimcp_exception_t* ex,
-    nimcp_recovery_action_t action,
+    nimcp_exception_recovery_action_t action,
     bool success,
     uint64_t duration_us
 ) {
     if (!g_metrics_initialized) return;
-    if (action < 0 || action >= NIMCP_METRICS_RECOVERY_ACTION_COUNT) return;
+    if (action < 0 || action >= NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT) return;
 
     internal_recovery_t* rec = &g_recovery[action];
 
@@ -479,8 +479,8 @@ void nimcp_metrics_get(nimcp_exception_metrics_t* metrics) {
     if (g_metrics_mutex) nimcp_platform_mutex_unlock(g_metrics_mutex);
 
     /* Copy recovery metrics */
-    for (int i = 0; i < NIMCP_METRICS_RECOVERY_ACTION_COUNT; i++) {
-        metrics->recovery[i].action = (nimcp_recovery_action_t)i;
+    for (int i = 0; i < NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT; i++) {
+        metrics->recovery[i].action = (nimcp_exception_recovery_action_t)i;
         metrics->recovery[i].attempts = __atomic_load_n(&g_recovery[i].attempts, __ATOMIC_SEQ_CST);
         metrics->recovery[i].successes = __atomic_load_n(&g_recovery[i].successes, __ATOMIC_SEQ_CST);
         metrics->recovery[i].failures = __atomic_load_n(&g_recovery[i].failures, __ATOMIC_SEQ_CST);
@@ -523,7 +523,7 @@ void nimcp_metrics_reset(void) {
 
     if (g_metrics_mutex) nimcp_platform_mutex_unlock(g_metrics_mutex);
 
-    for (int i = 0; i < NIMCP_METRICS_RECOVERY_ACTION_COUNT; i++) {
+    for (int i = 0; i < NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT; i++) {
         __atomic_store_n(&g_recovery[i].attempts, 0, __ATOMIC_SEQ_CST);
         __atomic_store_n(&g_recovery[i].successes, 0, __ATOMIC_SEQ_CST);
         __atomic_store_n(&g_recovery[i].failures, 0, __ATOMIC_SEQ_CST);
@@ -584,9 +584,9 @@ uint64_t nimcp_metrics_get_count(
     return count;
 }
 
-float nimcp_metrics_get_recovery_rate(nimcp_recovery_action_t action) {
+float nimcp_metrics_get_recovery_rate(nimcp_exception_recovery_action_t action) {
     if (!g_metrics_initialized) return 0.0f;
-    if (action < 0 || action >= NIMCP_METRICS_RECOVERY_ACTION_COUNT) return 0.0f;
+    if (action < 0 || action >= NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT) return 0.0f;
 
     uint64_t attempts = __atomic_load_n(&g_recovery[action].attempts, __ATOMIC_SEQ_CST);
     if (attempts == 0) return 0.0f;
@@ -595,9 +595,9 @@ float nimcp_metrics_get_recovery_rate(nimcp_recovery_action_t action) {
     return (float)successes / (float)attempts;
 }
 
-float nimcp_metrics_get_mttr(nimcp_recovery_action_t action) {
+float nimcp_metrics_get_mttr(nimcp_exception_recovery_action_t action) {
     if (!g_metrics_initialized) return 0.0f;
-    if (action < 0 || action >= NIMCP_METRICS_RECOVERY_ACTION_COUNT) return 0.0f;
+    if (action < 0 || action >= NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT) return 0.0f;
 
     uint64_t attempts = __atomic_load_n(&g_recovery[action].attempts, __ATOMIC_SEQ_CST);
     if (attempts == 0) return 0.0f;
@@ -671,7 +671,7 @@ size_t nimcp_metrics_top_patterns(
             if (entry->occupied) {
                 temp[count] = entry->pattern;
                 uint32_t total = 0;
-                for (int j = 0; j < NIMCP_METRICS_RECOVERY_ACTION_COUNT; j++) {
+                for (int j = 0; j < NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT; j++) {
                     total += entry->pattern.action_attempts[j];
                 }
                 attempt_counts[count] = total;
@@ -765,15 +765,15 @@ void nimcp_adaptive_shutdown(void) {
     LOG_INFO("Adaptive recovery shutdown");
 }
 
-nimcp_recovery_action_t nimcp_adaptive_suggest_action(nimcp_exception_t* ex) {
-    if (!g_adaptive_initialized || !ex) return RECOVERY_ACTION_NONE;
-    if (ex->epitope_len == 0) return RECOVERY_ACTION_NONE;
+nimcp_exception_recovery_action_t nimcp_adaptive_suggest_action(nimcp_exception_t* ex) {
+    if (!g_adaptive_initialized || !ex) return EXCEPTION_RECOVERY_NONE;
+    if (ex->epitope_len == 0) return EXCEPTION_RECOVERY_NONE;
 
     if (g_adaptive_mutex) nimcp_platform_mutex_lock(g_adaptive_mutex);
 
     pattern_entry_t* entry = find_pattern(ex->epitope, ex->epitope_len);
 
-    nimcp_recovery_action_t suggestion = RECOVERY_ACTION_NONE;
+    nimcp_exception_recovery_action_t suggestion = EXCEPTION_RECOVERY_NONE;
     if (entry && entry->pattern.learned) {
         suggestion = entry->pattern.preferred_action;
         __atomic_add_fetch(&g_suggestions_made, 1, __ATOMIC_SEQ_CST);
@@ -786,12 +786,12 @@ nimcp_recovery_action_t nimcp_adaptive_suggest_action(nimcp_exception_t* ex) {
 
 int nimcp_adaptive_record_outcome(
     nimcp_exception_t* ex,
-    nimcp_recovery_action_t action,
+    nimcp_exception_recovery_action_t action,
     bool success
 ) {
     if (!g_adaptive_initialized || !ex) return -1;
     if (ex->epitope_len == 0) return -1;
-    if (action < 0 || action >= NIMCP_METRICS_RECOVERY_ACTION_COUNT) return -1;
+    if (action < 0 || action >= NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT) return -1;
 
     if (g_adaptive_mutex) nimcp_platform_mutex_lock(g_adaptive_mutex);
 
@@ -825,7 +825,7 @@ int nimcp_adaptive_record_outcome(
             memset(pattern->action_attempts, 0, sizeof(pattern->action_attempts));
             pattern->consecutive_failures = 0;
             pattern->learned = false;
-            pattern->preferred_action = RECOVERY_ACTION_NONE;
+            pattern->preferred_action = EXCEPTION_RECOVERY_NONE;
             __atomic_add_fetch(&g_patterns_reset, 1, __ATOMIC_SEQ_CST);
             LOG_WARNING("Adaptive pattern reset due to consecutive failures");
         }
@@ -833,7 +833,7 @@ int nimcp_adaptive_record_outcome(
 
     /* Check if pattern is now learned */
     if (!pattern->learned) {
-        for (int i = 0; i < NIMCP_METRICS_RECOVERY_ACTION_COUNT; i++) {
+        for (int i = 0; i < NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT; i++) {
             if (pattern->action_attempts[i] >= g_config.min_samples_for_learning) {
                 pattern->learned = true;
                 break;
@@ -853,11 +853,11 @@ int nimcp_adaptive_record_outcome(
 
 float nimcp_adaptive_get_confidence(
     nimcp_exception_t* ex,
-    nimcp_recovery_action_t action
+    nimcp_exception_recovery_action_t action
 ) {
     if (!g_adaptive_initialized || !ex) return 0.0f;
     if (ex->epitope_len == 0) return 0.0f;
-    if (action < 0 || action >= NIMCP_METRICS_RECOVERY_ACTION_COUNT) return 0.0f;
+    if (action < 0 || action >= NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT) return 0.0f;
 
     if (g_adaptive_mutex) nimcp_platform_mutex_lock(g_adaptive_mutex);
 
@@ -885,10 +885,10 @@ float nimcp_adaptive_get_confidence(
 int nimcp_adaptive_force_action(
     const uint8_t* epitope,
     size_t len,
-    nimcp_recovery_action_t action
+    nimcp_exception_recovery_action_t action
 ) {
     if (!g_adaptive_initialized || !epitope || len == 0) return -1;
-    if (action < 0 || action >= NIMCP_METRICS_RECOVERY_ACTION_COUNT) return -1;
+    if (action < 0 || action >= NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT) return -1;
 
     if (g_adaptive_mutex) nimcp_platform_mutex_lock(g_adaptive_mutex);
 
@@ -918,7 +918,7 @@ void nimcp_adaptive_reset_pattern(const uint8_t* epitope, size_t len) {
         memset(entry->pattern.action_attempts, 0, sizeof(entry->pattern.action_attempts));
         entry->pattern.consecutive_failures = 0;
         entry->pattern.learned = false;
-        entry->pattern.preferred_action = RECOVERY_ACTION_NONE;
+        entry->pattern.preferred_action = EXCEPTION_RECOVERY_NONE;
         entry->pattern.last_success_us = 0;
         __atomic_add_fetch(&g_patterns_reset, 1, __ATOMIC_SEQ_CST);
     }

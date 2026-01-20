@@ -15,6 +15,9 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/rng/nimcp_rand.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -149,10 +152,17 @@ int cl_default_config(cl_config_t* config) {
 }
 
 cl_ctx_t* cl_create(const cl_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "cl_create: config is NULL");
+        return NULL;
+    }
 
     cl_ctx_t* ctx = nimcp_calloc(1, sizeof(cl_ctx_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(cl_ctx_t),
+                          "cl_create: failed to allocate context");
+        return NULL;
+    }
 
     memcpy(&ctx->config, config, sizeof(cl_config_t));
 
@@ -160,6 +170,8 @@ cl_ctx_t* cl_create(const cl_config_t* config) {
     attr.type = MUTEX_TYPE_NORMAL;
     ctx->mutex = nimcp_mutex_create(&attr);
     if (!ctx->mutex) {
+        NIMCP_THROW_THREADING(NIMCP_ERROR_MUTEX_INIT, 0,
+                             "cl_create: failed to create mutex");
         nimcp_free(ctx);
         return NULL;
     }
@@ -168,6 +180,14 @@ cl_ctx_t* cl_create(const cl_config_t* config) {
     if (config->replay.strategy != CL_REPLAY_NONE) {
         ctx->buffer_size = config->replay.buffer_size;
         ctx->replay_buffer = nimcp_calloc(ctx->buffer_size, sizeof(replay_entry_t));
+        if (!ctx->replay_buffer && ctx->buffer_size > 0) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                              ctx->buffer_size * sizeof(replay_entry_t),
+                              "cl_create: failed to allocate replay buffer");
+            nimcp_mutex_destroy(ctx->mutex);
+            nimcp_free(ctx);
+            return NULL;
+        }
     }
 
     ctx->num_tasks = 0;
@@ -229,16 +249,22 @@ void cl_destroy(cl_ctx_t* ctx) {
 //=============================================================================
 
 int cl_start_task(cl_ctx_t* ctx, uint32_t task_id, const char* task_name) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "cl_start_task: ctx is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
 
     if (ctx->in_task) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "cl_start_task: already in task");
         nimcp_mutex_unlock(ctx->mutex);
         return -1;
     }
 
     if (ctx->num_tasks >= CL_MAX_TASKS) {
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE, "cl_start_task: max tasks (%d) reached",
+                   CL_MAX_TASKS);
         nimcp_mutex_unlock(ctx->mutex);
         return -1;
     }
@@ -259,20 +285,45 @@ int cl_start_task(cl_ctx_t* ctx, uint32_t task_id, const char* task_name) {
         task->fisher = nimcp_calloc(ctx->num_params, sizeof(float*));
         task->optimal_params = nimcp_calloc(ctx->num_params, sizeof(float*));
 
+        if (!task->param_sizes || !task->fisher || !task->optimal_params) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, ctx->num_params * sizeof(float*),
+                              "cl_start_task: failed to allocate task arrays");
+            nimcp_mutex_unlock(ctx->mutex);
+            return -1;
+        }
+
         for (uint32_t p = 0; p < ctx->num_params; p++) {
             size_t size = nimcp_tensor_numel(ctx->params[p]);
             task->param_sizes[p] = size;
             task->fisher[p] = nimcp_calloc(size, sizeof(float));
             task->optimal_params[p] = nimcp_calloc(size, sizeof(float));
+            if (!task->fisher[p] || !task->optimal_params[p]) {
+                NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, size * sizeof(float),
+                                  "cl_start_task: failed to allocate param arrays for param %u", p);
+                nimcp_mutex_unlock(ctx->mutex);
+                return -1;
+            }
         }
 
         /* SI: Initialize omega and delta tracking */
         if (ctx->config.strategy == CL_STRATEGY_SI) {
             task->omega = nimcp_calloc(ctx->num_params, sizeof(float*));
             task->param_delta = nimcp_calloc(ctx->num_params, sizeof(float*));
+            if (!task->omega || !task->param_delta) {
+                NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, ctx->num_params * sizeof(float*),
+                                  "cl_start_task: failed to allocate SI tracking arrays");
+                nimcp_mutex_unlock(ctx->mutex);
+                return -1;
+            }
             for (uint32_t p = 0; p < ctx->num_params; p++) {
                 task->omega[p] = nimcp_calloc(task->param_sizes[p], sizeof(float));
                 task->param_delta[p] = nimcp_calloc(task->param_sizes[p], sizeof(float));
+                if (!task->omega[p] || !task->param_delta[p]) {
+                    NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, task->param_sizes[p] * sizeof(float),
+                                      "cl_start_task: failed to allocate SI arrays for param %u", p);
+                    nimcp_mutex_unlock(ctx->mutex);
+                    return -1;
+                }
             }
         }
     }
@@ -364,7 +415,18 @@ int cl_end_task(cl_ctx_t* ctx) {
 //=============================================================================
 
 int cl_register_params(cl_ctx_t* ctx, nimcp_tensor_t** params, uint32_t num_params) {
-    if (!ctx || !params || num_params == 0) return -1;
+    if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "cl_register_params: ctx is NULL");
+        return -1;
+    }
+    if (!params) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "cl_register_params: params is NULL");
+        return -1;
+    }
+    if (num_params == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "cl_register_params: num_params is 0");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
     ctx->params = params;
@@ -493,7 +555,18 @@ int cl_modify_gradients(cl_ctx_t* ctx, nimcp_tensor_t** gradients, uint32_t num_
 
 int cl_add_to_replay(cl_ctx_t* ctx, const float* input, size_t input_size,
                      const float* target, size_t target_size) {
-    if (!ctx || !input || !ctx->replay_buffer) return -1;
+    if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "cl_add_to_replay: ctx is NULL");
+        return -1;
+    }
+    if (!input) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "cl_add_to_replay: input is NULL");
+        return -1;
+    }
+    if (!ctx->replay_buffer) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "cl_add_to_replay: replay buffer not initialized");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -511,11 +584,25 @@ int cl_add_to_replay(cl_ctx_t* ctx, const float* input, size_t input_size,
     ctx->replay_buffer[idx].input = nimcp_calloc(input_size, sizeof(float));
     ctx->replay_buffer[idx].target = target ? nimcp_calloc(target_size, sizeof(float)) : NULL;
 
-    if (ctx->replay_buffer[idx].input) {
-        memcpy(ctx->replay_buffer[idx].input, input, input_size * sizeof(float));
-        ctx->replay_buffer[idx].input_size = input_size;
+    if (!ctx->replay_buffer[idx].input) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, input_size * sizeof(float),
+                          "cl_add_to_replay: failed to allocate input buffer");
+        nimcp_mutex_unlock(ctx->mutex);
+        return -1;
     }
-    if (ctx->replay_buffer[idx].target && target) {
+
+    memcpy(ctx->replay_buffer[idx].input, input, input_size * sizeof(float));
+    ctx->replay_buffer[idx].input_size = input_size;
+
+    if (target) {
+        if (!ctx->replay_buffer[idx].target) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, target_size * sizeof(float),
+                              "cl_add_to_replay: failed to allocate target buffer");
+            nimcp_free(ctx->replay_buffer[idx].input);
+            ctx->replay_buffer[idx].input = NULL;
+            nimcp_mutex_unlock(ctx->mutex);
+            return -1;
+        }
         memcpy(ctx->replay_buffer[idx].target, target, target_size * sizeof(float));
         ctx->replay_buffer[idx].target_size = target_size;
     }
@@ -551,7 +638,18 @@ int cl_add_to_replay(cl_ctx_t* ctx, const float* input, size_t input_size,
  */
 int cl_sample_replay(cl_ctx_t* ctx, float** inputs, float** targets,
                      uint32_t* task_ids, uint32_t num_samples) {
-    if (!ctx || !inputs || num_samples == 0) return -1;
+    if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "cl_sample_replay: ctx is NULL");
+        return -1;
+    }
+    if (!inputs) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "cl_sample_replay: inputs is NULL");
+        return -1;
+    }
+    if (num_samples == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "cl_sample_replay: num_samples is 0");
+        return -1;
+    }
     if (ctx->buffer_count == 0) return 0;
 
     nimcp_mutex_lock(ctx->mutex);

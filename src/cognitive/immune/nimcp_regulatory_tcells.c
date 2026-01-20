@@ -9,6 +9,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -177,17 +178,11 @@ treg_system_t* treg_create(
     brain_immune_system_t* immune_system)
 {
     /* Guard: validate immune system */
-    if (!immune_system) {
-        NIMCP_LOGGING_ERROR("NULL brain immune system");
-        return NULL;
-    }
+    NIMCP_API_CHECK_NULL_RET_NULL(immune_system, "NULL brain immune system in treg_create");
 
     /* Allocate system */
     treg_system_t* system = (treg_system_t*)nimcp_calloc(1, sizeof(treg_system_t));
-    if (!system) {
-        NIMCP_LOGGING_ERROR("Failed to allocate Treg system");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(system, "Failed to allocate Treg system");
 
     /* Set configuration */
     if (config) {

@@ -14,6 +14,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "utils_fast_recovery"
 
@@ -400,9 +401,7 @@ static fast_recovery_status_t action_trigger_gc(brain_t brain)
 
 fast_recovery_type_t fast_recovery_is_applicable(const fast_recovery_context_t* context)
 {
-    if (!context) {
-        return FAST_RECOVERY_NONE;
-    }
+    NIMCP_API_CHECK_NULL(context, NIMCP_ERROR_NULL_POINTER, "fast_recovery_is_applicable: NULL context");
 
     // Quick flag-based matching (very fast)
     if (context->is_numeric_error) {
@@ -591,6 +590,7 @@ fast_recovery_result_t fast_recovery_execute_with_context(
     fast_recovery_result_t result = {0};
 
     if (!context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fast_recovery_execute_with_context: NULL context");
         result.status = FAST_RECOVERY_NOT_APPLICABLE;
         result.message = "Invalid context";
         return result;
@@ -722,9 +722,7 @@ uint32_t fast_recovery_get_typical_latency_us(fast_recovery_type_t type)
 
 bool fast_recovery_validate_result(const fast_recovery_result_t* result)
 {
-    if (!result) {
-        return false;
-    }
+    NIMCP_API_CHECK_NULL(result, NIMCP_ERROR_NULL_POINTER, "fast_recovery_validate_result: NULL result");
 
     // Validate enum values
     if (result->type >= FAST_RECOVERY_TYPE_COUNT) {

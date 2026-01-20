@@ -12,6 +12,7 @@
  */
 
 #include "integration/adapters/physics/nimcp_hh_dynamics_adapter.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -228,7 +229,7 @@ nimcp_hh_adapter_config_t nimcp_hh_adapter_default_config(void) {
 
 nimcp_hh_adapter_t nimcp_hh_adapter_create(const nimcp_hh_adapter_config_t* config) {
     nimcp_hh_adapter_t adapter = (nimcp_hh_adapter_t)calloc(1, sizeof(struct nimcp_hh_adapter_struct));
-    if (!adapter) return NULL;
+    NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate HH dynamics adapter");
 
     adapter->config = config ? *config : nimcp_hh_adapter_default_config();
 

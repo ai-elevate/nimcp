@@ -47,6 +47,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "api/nimcp_api_exception.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #include <stdlib.h>

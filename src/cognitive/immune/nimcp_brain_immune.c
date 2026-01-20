@@ -23,6 +23,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/fault_tolerance/nimcp_hierarchical_recovery.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>

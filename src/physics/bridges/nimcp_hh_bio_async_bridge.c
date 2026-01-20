@@ -7,6 +7,7 @@
 
 #include "physics/bridges/nimcp_hh_bio_async_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -78,7 +79,11 @@ static float compute_phi(float temperature) {
  * ============================================================================ */
 
 int hh_bio_async_default_config(hh_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        LOG_ERROR("NULL config in hh_bio_async_default_config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config pointer");
+        return -1;
+    }
 
     config->broadcast_interval_ms = HH_BIO_DEFAULT_BROADCAST_INTERVAL_MS;
     config->enable_auto_broadcast = true;
@@ -100,7 +105,7 @@ int hh_bio_async_default_config(hh_bio_async_config_t* config) {
 
 hh_bio_async_bridge_t* hh_bio_async_bridge_create(const hh_bio_async_config_t* config) {
     hh_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(hh_bio_async_bridge_t));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate HH bio-async bridge");
 
     if (config) {
         bridge->config = *config;
@@ -112,6 +117,8 @@ hh_bio_async_bridge_t* hh_bio_async_bridge_create(const hh_bio_async_config_t* c
     bridge->subscriptions = nimcp_calloc(bridge->subscription_capacity,
                                          sizeof(hh_bio_subscription_t));
     if (!bridge->subscriptions) {
+        LOG_ERROR("Failed to allocate HH bio-async subscriptions");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate HH bio-async subscriptions");
         nimcp_free(bridge);
         return NULL;
     }

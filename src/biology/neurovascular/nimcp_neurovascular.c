@@ -6,6 +6,9 @@
  */
 
 #include "biology/neurovascular/nimcp_neurovascular.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>
@@ -210,6 +213,7 @@ nimcp_nvc_error_t nimcp_nvc_init(
     const nimcp_nvc_config_t* config
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Neurovascular system is NULL");
         return NVC_ERR_NULL_PTR;
     }
 
@@ -246,10 +250,12 @@ nimcp_nvc_error_t nimcp_nvc_shutdown(nimcp_nvc_system_t* system) {
 
 nimcp_nvc_error_t nimcp_nvc_reset(nimcp_nvc_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Neurovascular system is NULL in reset");
         return NVC_ERR_NULL_PTR;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "Neurovascular system not initialized");
         return NVC_ERR_NOT_INITIALIZED;
     }
 
@@ -307,14 +313,17 @@ nimcp_nvc_error_t nimcp_nvc_add_unit(
     uint32_t* unit_id
 ) {
     if (!system || !name || !position || !unit_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NVC add_unit: NULL argument");
         return NVC_ERR_NULL_PTR;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "NVC system not initialized in add_unit");
         return NVC_ERR_NOT_INITIALIZED;
     }
 
     if (system->num_units >= NVC_MAX_UNITS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "NVC unit capacity exceeded");
         return NVC_ERR_CAPACITY_EXCEEDED;
     }
 
@@ -545,6 +554,7 @@ nimcp_nvc_error_t nimcp_nvc_generate_fmri(
     /* Generate neural stimulus function */
     float* neural_input = (float*)calloc(n_samples, sizeof(float));
     if (!neural_input) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, n_samples * sizeof(float), "Neural input array allocation failed in fMRI generation");
         return NVC_ERR_NO_MEMORY;
     }
 

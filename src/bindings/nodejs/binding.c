@@ -8,6 +8,8 @@
 #include "nimcp.h"
 #include "utils/metrics/nimcp_metrics.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -62,7 +64,10 @@ static napi_value CreateNeuralNetwork(napi_env env, napi_callback_info info) {
     napi_value this_arg;
 
     status = napi_get_cb_info(env, info, &argc, args, &this_arg, NULL);
-    if (status != napi_ok) return NULL;
+    if (status != napi_ok) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "CreateNeuralNetwork: Failed to get callback info");
+        return NULL;
+    }
 
     // Parse config object
     uint32_t num_inputs = 0;
@@ -103,6 +108,9 @@ static napi_value CreateNeuralNetwork(napi_env env, napi_callback_info info) {
     // Create neural network using unified API
     nimcp_network_t network = nimcp_network_create(num_inputs, num_outputs, num_hidden, learning_rate);
     if (!network) {
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_NOT_INITIALIZED, 0, "nodejs_binding",
+                         "CreateNeuralNetwork: Failed to create network (%u inputs, %u outputs)",
+                         num_inputs, num_outputs);
         napi_throw_error(env, NULL, nimcp_get_error());
         return NULL;
     }
@@ -110,6 +118,8 @@ static napi_value CreateNeuralNetwork(napi_env env, napi_callback_info info) {
     // Wrap the handle
     NetworkWrap* wrap = (NetworkWrap*)malloc(sizeof(NetworkWrap));
     if (!wrap) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(NetworkWrap),
+                          "CreateNeuralNetwork: Failed to allocate NetworkWrap");
         nimcp_network_destroy(network);
         return NULL;
     }
@@ -117,6 +127,7 @@ static napi_value CreateNeuralNetwork(napi_env env, napi_callback_info info) {
 
     status = napi_wrap(env, this_arg, wrap, network_finalize, NULL, NULL);
     if (status != napi_ok) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "CreateNeuralNetwork: Failed to wrap network object");
         free(wrap);
         nimcp_network_destroy(network);
         return NULL;
@@ -133,12 +144,16 @@ static napi_value Forward(napi_env env, napi_callback_info info) {
     napi_value this_arg;
 
     status = napi_get_cb_info(env, info, &argc, args, &this_arg, NULL);
-    if (status != napi_ok) return NULL;
+    if (status != napi_ok) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Forward: Failed to get callback info");
+        return NULL;
+    }
 
     // Unwrap the neural network
     NetworkWrap* wrap;
     status = napi_unwrap(env, this_arg, (void**)&wrap);
     if (status != napi_ok || !wrap || !wrap->network) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "Forward: Invalid neural network object");
         napi_throw_error(env, NULL, "Invalid neural network object");
         return NULL;
     }
@@ -150,6 +165,8 @@ static napi_value Forward(napi_env env, napi_callback_info info) {
     // Allocate and fill input array
     float* inputs = (float*)malloc(num_inputs * sizeof(float));
     if (!inputs) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_inputs * sizeof(float),
+                          "Forward: Failed to allocate memory for inputs");
         napi_throw_error(env, NULL, "Failed to allocate memory for inputs");
         return NULL;
     }
@@ -166,6 +183,8 @@ static napi_value Forward(napi_env env, napi_callback_info info) {
     float* outputs = (float*)malloc(num_outputs * sizeof(float));
     if (!outputs) {
         free(inputs);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_outputs * sizeof(float),
+                          "Forward: Failed to allocate memory for outputs");
         napi_throw_error(env, NULL, "Failed to allocate memory for outputs");
         return NULL;
     }
@@ -177,6 +196,8 @@ static napi_value Forward(napi_env env, napi_callback_info info) {
 
     if (result != NIMCP_OK) {
         free(outputs);
+        NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "nodejs_binding",
+                         "Forward: Network forward pass failed");
         napi_throw_error(env, NULL, nimcp_get_error());
         return NULL;
     }
@@ -203,11 +224,16 @@ static napi_value CreateMetricsCollector(napi_env env, napi_callback_info info) 
     napi_value this_arg;
 
     status = napi_get_cb_info(env, info, &argc, args, &this_arg, NULL);
-    if (status != napi_ok) return NULL;
+    if (status != napi_ok) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "CreateMetricsCollector: Failed to get callback info");
+        return NULL;
+    }
 
     // Create metrics collector
     nimcp_metrics_collector_t collector = nimcp_metrics_create();
     if (!collector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                             "CreateMetricsCollector: Failed to create metrics collector");
         napi_throw_error(env, NULL, "Failed to create metrics collector");
         return NULL;
     }
@@ -227,6 +253,8 @@ static napi_value CreateMetricsCollector(napi_env env, napi_callback_info info) 
                 char* directory = (char*)malloc(str_len + 1);
                 if (!directory) {
                     nimcp_metrics_destroy(collector);
+                    NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, str_len + 1,
+                                      "CreateMetricsCollector: Failed to allocate memory for directory");
                     napi_throw_error(env, NULL, "Failed to allocate memory for directory");
                     return NULL;
                 }
@@ -240,6 +268,8 @@ static napi_value CreateMetricsCollector(napi_env env, napi_callback_info info) 
     // Wrap the handle
     MetricsCollectorWrap* wrap = (MetricsCollectorWrap*)malloc(sizeof(MetricsCollectorWrap));
     if (!wrap) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(MetricsCollectorWrap),
+                          "CreateMetricsCollector: Failed to allocate MetricsCollectorWrap");
         nimcp_metrics_destroy(collector);
         return NULL;
     }
@@ -247,6 +277,8 @@ static napi_value CreateMetricsCollector(napi_env env, napi_callback_info info) 
 
     status = napi_wrap(env, this_arg, wrap, metrics_collector_finalize, NULL, NULL);
     if (status != napi_ok) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED,
+                   "CreateMetricsCollector: Failed to wrap metrics collector object");
         free(wrap);
         nimcp_metrics_destroy(collector);
         return NULL;
@@ -263,12 +295,16 @@ static napi_value RecordCounter(napi_env env, napi_callback_info info) {
     napi_value this_arg;
 
     status = napi_get_cb_info(env, info, &argc, args, &this_arg, NULL);
-    if (status != napi_ok || argc < 2) return NULL;
+    if (status != napi_ok || argc < 2) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "RecordCounter: Invalid arguments");
+        return NULL;
+    }
 
     // Unwrap the metrics collector
     MetricsCollectorWrap* wrap;
     status = napi_unwrap(env, this_arg, (void**)&wrap);
     if (status != napi_ok || !wrap || !wrap->collector) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "RecordCounter: Invalid metrics collector object");
         napi_throw_error(env, NULL, "Invalid metrics collector object");
         return NULL;
     }
@@ -278,6 +314,8 @@ static napi_value RecordCounter(napi_env env, napi_callback_info info) {
     napi_get_value_string_utf8(env, args[0], NULL, 0, &str_len);
     char* name = (char*)malloc(str_len + 1);
     if (!name) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, str_len + 1,
+                          "RecordCounter: Failed to allocate memory for name");
         napi_throw_error(env, NULL, "Failed to allocate memory for name");
         return NULL;
     }
@@ -299,6 +337,7 @@ static napi_value RecordCounter(napi_env env, napi_callback_info info) {
     free(name);
 
     if (!success) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "RecordCounter: Failed to record counter");
         napi_throw_error(env, NULL, "Failed to record counter");
         return NULL;
     }
@@ -314,12 +353,16 @@ static napi_value RecordGauge(napi_env env, napi_callback_info info) {
     napi_value this_arg;
 
     status = napi_get_cb_info(env, info, &argc, args, &this_arg, NULL);
-    if (status != napi_ok || argc < 2) return NULL;
+    if (status != napi_ok || argc < 2) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "RecordGauge: Invalid arguments");
+        return NULL;
+    }
 
     // Unwrap the metrics collector
     MetricsCollectorWrap* wrap;
     status = napi_unwrap(env, this_arg, (void**)&wrap);
     if (status != napi_ok || !wrap || !wrap->collector) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "RecordGauge: Invalid metrics collector object");
         napi_throw_error(env, NULL, "Invalid metrics collector object");
         return NULL;
     }
@@ -329,6 +372,8 @@ static napi_value RecordGauge(napi_env env, napi_callback_info info) {
     napi_get_value_string_utf8(env, args[0], NULL, 0, &str_len);
     char* name = (char*)malloc(str_len + 1);
     if (!name) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, str_len + 1,
+                          "RecordGauge: Failed to allocate memory for name");
         napi_throw_error(env, NULL, "Failed to allocate memory for name");
         return NULL;
     }
@@ -350,6 +395,7 @@ static napi_value RecordGauge(napi_env env, napi_callback_info info) {
     free(name);
 
     if (!success) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "RecordGauge: Failed to record gauge");
         napi_throw_error(env, NULL, "Failed to record gauge");
         return NULL;
     }
@@ -365,12 +411,16 @@ static napi_value RecordTimer(napi_env env, napi_callback_info info) {
     napi_value this_arg;
 
     status = napi_get_cb_info(env, info, &argc, args, &this_arg, NULL);
-    if (status != napi_ok || argc < 2) return NULL;
+    if (status != napi_ok || argc < 2) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "RecordTimer: Invalid arguments");
+        return NULL;
+    }
 
     // Unwrap the metrics collector
     MetricsCollectorWrap* wrap;
     status = napi_unwrap(env, this_arg, (void**)&wrap);
     if (status != napi_ok || !wrap || !wrap->collector) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "RecordTimer: Invalid metrics collector object");
         napi_throw_error(env, NULL, "Invalid metrics collector object");
         return NULL;
     }
@@ -380,6 +430,8 @@ static napi_value RecordTimer(napi_env env, napi_callback_info info) {
     napi_get_value_string_utf8(env, args[0], NULL, 0, &str_len);
     char* name = (char*)malloc(str_len + 1);
     if (!name) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, str_len + 1,
+                          "RecordTimer: Failed to allocate memory for name");
         napi_throw_error(env, NULL, "Failed to allocate memory for name");
         return NULL;
     }
@@ -401,6 +453,7 @@ static napi_value RecordTimer(napi_env env, napi_callback_info info) {
     free(name);
 
     if (!success) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "RecordTimer: Failed to record timer");
         napi_throw_error(env, NULL, "Failed to record timer");
         return NULL;
     }
@@ -414,18 +467,23 @@ static napi_value Flush(napi_env env, napi_callback_info info) {
     napi_value this_arg;
 
     status = napi_get_cb_info(env, info, NULL, NULL, &this_arg, NULL);
-    if (status != napi_ok) return NULL;
+    if (status != napi_ok) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Flush: Failed to get callback info");
+        return NULL;
+    }
 
     // Unwrap the metrics collector
     MetricsCollectorWrap* wrap;
     status = napi_unwrap(env, this_arg, (void**)&wrap);
     if (status != napi_ok || !wrap || !wrap->collector) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "Flush: Invalid metrics collector object");
         napi_throw_error(env, NULL, "Invalid metrics collector object");
         return NULL;
     }
 
     int32_t count = nimcp_metrics_flush(wrap->collector);
     if (count < 0) {
+        NIMCP_THROW_IO(NIMCP_ERROR_IO, NULL, "Flush: Failed to flush metrics");
         napi_throw_error(env, NULL, "Failed to flush metrics");
         return NULL;
     }
@@ -443,12 +501,16 @@ static napi_value ExportTableauCsv(napi_env env, napi_callback_info info) {
     napi_value this_arg;
 
     status = napi_get_cb_info(env, info, &argc, args, &this_arg, NULL);
-    if (status != napi_ok || argc < 1) return NULL;
+    if (status != napi_ok || argc < 1) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "ExportTableauCsv: Invalid arguments");
+        return NULL;
+    }
 
     // Unwrap the metrics collector
     MetricsCollectorWrap* wrap;
     status = napi_unwrap(env, this_arg, (void**)&wrap);
     if (status != napi_ok || !wrap || !wrap->collector) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "ExportTableauCsv: Invalid metrics collector object");
         napi_throw_error(env, NULL, "Invalid metrics collector object");
         return NULL;
     }
@@ -458,18 +520,23 @@ static napi_value ExportTableauCsv(napi_env env, napi_callback_info info) {
     napi_get_value_string_utf8(env, args[0], NULL, 0, &str_len);
     char* filename = (char*)malloc(str_len + 1);
     if (!filename) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, str_len + 1,
+                          "ExportTableauCsv: Failed to allocate memory for filename");
         napi_throw_error(env, NULL, "Failed to allocate memory for filename");
         return NULL;
     }
     napi_get_value_string_utf8(env, args[0], filename, str_len + 1, &str_len);
 
     bool success = nimcp_metrics_export_tableau_csv(wrap->collector, filename);
-    free(filename);
 
     if (!success) {
+        NIMCP_THROW_IO(NIMCP_ERROR_FILE_WRITE, filename,
+                      "ExportTableauCsv: Failed to export to Tableau CSV '%s'", filename);
+        free(filename);
         napi_throw_error(env, NULL, "Failed to export to Tableau CSV");
         return NULL;
     }
+    free(filename);
 
     return this_arg;
 }
@@ -482,12 +549,16 @@ static napi_value ExportPowerBiJson(napi_env env, napi_callback_info info) {
     napi_value this_arg;
 
     status = napi_get_cb_info(env, info, &argc, args, &this_arg, NULL);
-    if (status != napi_ok || argc < 1) return NULL;
+    if (status != napi_ok || argc < 1) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "ExportPowerBiJson: Invalid arguments");
+        return NULL;
+    }
 
     // Unwrap the metrics collector
     MetricsCollectorWrap* wrap;
     status = napi_unwrap(env, this_arg, (void**)&wrap);
     if (status != napi_ok || !wrap || !wrap->collector) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "ExportPowerBiJson: Invalid metrics collector object");
         napi_throw_error(env, NULL, "Invalid metrics collector object");
         return NULL;
     }
@@ -497,18 +568,23 @@ static napi_value ExportPowerBiJson(napi_env env, napi_callback_info info) {
     napi_get_value_string_utf8(env, args[0], NULL, 0, &str_len);
     char* filename = (char*)malloc(str_len + 1);
     if (!filename) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, str_len + 1,
+                          "ExportPowerBiJson: Failed to allocate memory for filename");
         napi_throw_error(env, NULL, "Failed to allocate memory for filename");
         return NULL;
     }
     napi_get_value_string_utf8(env, args[0], filename, str_len + 1, &str_len);
 
     bool success = nimcp_metrics_export_powerbi_json(wrap->collector, filename);
-    free(filename);
 
     if (!success) {
+        NIMCP_THROW_IO(NIMCP_ERROR_FILE_WRITE, filename,
+                      "ExportPowerBiJson: Failed to export to PowerBI JSON '%s'", filename);
+        free(filename);
         napi_throw_error(env, NULL, "Failed to export to PowerBI JSON");
         return NULL;
     }
+    free(filename);
 
     return this_arg;
 }
@@ -519,18 +595,23 @@ static napi_value GetStats(napi_env env, napi_callback_info info) {
     napi_value this_arg;
 
     status = napi_get_cb_info(env, info, NULL, NULL, &this_arg, NULL);
-    if (status != napi_ok) return NULL;
+    if (status != napi_ok) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "GetStats: Failed to get callback info");
+        return NULL;
+    }
 
     // Unwrap the metrics collector
     MetricsCollectorWrap* wrap;
     status = napi_unwrap(env, this_arg, (void**)&wrap);
     if (status != napi_ok || !wrap || !wrap->collector) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "GetStats: Invalid metrics collector object");
         napi_throw_error(env, NULL, "Invalid metrics collector object");
         return NULL;
     }
 
     const char* stats_json = nimcp_metrics_get_stats_json(wrap->collector);
     if (!stats_json) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "GetStats: Failed to get stats");
         napi_throw_error(env, NULL, "Failed to get stats");
         return NULL;
     }
@@ -547,7 +628,12 @@ static napi_value Init(napi_env env, napi_value exports) {
     LOG_MODULE_INFO("bindings.nodejs", "Initializing Node.js bindings for NIMCP");
 
     // Initialize NIMCP library
-    nimcp_init();
+    if (nimcp_init() != NIMCP_OK) {
+        NIMCP_THROW_CRITICAL(NIMCP_ERROR_NOT_INITIALIZED,
+                            "Init: Failed to initialize NIMCP core library");
+        LOG_MODULE_ERROR("bindings.nodejs", "Failed to initialize NIMCP core library");
+        return NULL;
+    }
 
     // Define NeuralNetwork class
     napi_value neural_network_class;

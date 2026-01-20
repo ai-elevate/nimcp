@@ -17,6 +17,7 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
 #include "core/events/nimcp_event_bus.h"
 
 // Bio-async integration

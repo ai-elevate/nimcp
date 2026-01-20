@@ -29,6 +29,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "utils_fault_event_bus"
 

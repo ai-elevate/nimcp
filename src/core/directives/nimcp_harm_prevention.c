@@ -10,6 +10,7 @@
  */
 
 #include "core/directives/nimcp_harm_prevention.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"

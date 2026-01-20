@@ -44,7 +44,7 @@ class NetworkingExceptionIntegrationTest : public ::testing::Test {
 protected:
     static std::atomic<int> handler_call_count;
     static std::atomic<int> recovery_callback_count;
-    static std::atomic<nimcp_recovery_action_t> last_recovery_action;
+    static std::atomic<nimcp_exception_recovery_action_t> last_recovery_action;
     static std::atomic<bool> immune_response_received;
     static std::vector<nimcp_error_t> exception_sequence;
 
@@ -54,7 +54,7 @@ protected:
     void SetUp() override {
         handler_call_count = 0;
         recovery_callback_count = 0;
-        last_recovery_action = RECOVERY_ACTION_NONE;
+        last_recovery_action = EXCEPTION_RECOVERY_NONE;
         immune_response_received = false;
         exception_sequence.clear();
         primary_handler_reg = nullptr;
@@ -102,7 +102,7 @@ protected:
 
     static int test_recovery_callback(
         nimcp_exception_t* ex,
-        nimcp_recovery_action_t action,
+        nimcp_exception_recovery_action_t action,
         void* user_data
     ) {
         (void)ex;
@@ -115,7 +115,7 @@ protected:
 
 std::atomic<int> NetworkingExceptionIntegrationTest::handler_call_count(0);
 std::atomic<int> NetworkingExceptionIntegrationTest::recovery_callback_count(0);
-std::atomic<nimcp_recovery_action_t> NetworkingExceptionIntegrationTest::last_recovery_action(RECOVERY_ACTION_NONE);
+std::atomic<nimcp_exception_recovery_action_t> NetworkingExceptionIntegrationTest::last_recovery_action(EXCEPTION_RECOVERY_NONE);
 std::atomic<bool> NetworkingExceptionIntegrationTest::immune_response_received(false);
 std::vector<nimcp_error_t> NetworkingExceptionIntegrationTest::exception_sequence;
 
@@ -212,10 +212,10 @@ TEST_F(NetworkingExceptionIntegrationTest, ProtocolToImmuneSystemIntegration) {
     // presented_to_immune flag behavior is implementation-specific
 
     // Verify recovery strategy
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(ex, &strategy);
     // Security exceptions should suggest quarantine or validation
-    EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE);
+    EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref(ex);
 }
@@ -300,7 +300,7 @@ TEST_F(NetworkingExceptionIntegrationTest, SwarmCoordinationExceptionRecovery) {
 
     // Register recovery callback for RESTART_COMPONENT action
     nimcp_register_recovery_callback(
-        RECOVERY_ACTION_RESTART_COMPONENT,
+        EXCEPTION_RECOVERY_RESTART_COMPONENT,
         test_recovery_callback,
         nullptr
     );
@@ -320,17 +320,17 @@ TEST_F(NetworkingExceptionIntegrationTest, SwarmCoordinationExceptionRecovery) {
     nimcp_exception_set_context(ex, "consensus_type", "master_election");
 
     // Set suggested recovery
-    ex->suggested_action = RECOVERY_ACTION_RESTART_COMPONENT;
+    ex->suggested_action = EXCEPTION_RECOVERY_RESTART_COMPONENT;
 
     // Execute recovery
     recovery_callback_count = 0;
-    int result = nimcp_execute_recovery(ex, RECOVERY_ACTION_RESTART_COMPONENT);
+    int result = nimcp_execute_recovery(ex, EXCEPTION_RECOVERY_RESTART_COMPONENT);
     EXPECT_EQ(result, 0);
     EXPECT_EQ(recovery_callback_count.load(), 1);
-    EXPECT_EQ(last_recovery_action.load(), RECOVERY_ACTION_RESTART_COMPONENT);
+    EXPECT_EQ(last_recovery_action.load(), EXCEPTION_RECOVERY_RESTART_COMPONENT);
 
     // Unregister callback
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_RESTART_COMPONENT);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RESTART_COMPONENT);
 
     nimcp_exception_unref(ex);
 }
@@ -371,8 +371,8 @@ TEST_F(NetworkingExceptionIntegrationTest, SwarmByzantineFaultException) {
     EXPECT_EQ(ex->severity, EXCEPTION_SEVERITY_CRITICAL);
 
     // Verify quarantine suggested
-    ex->suggested_action = RECOVERY_ACTION_QUARANTINE;
-    EXPECT_EQ(ex->suggested_action, RECOVERY_ACTION_QUARANTINE);
+    ex->suggested_action = EXCEPTION_RECOVERY_QUARANTINE;
+    EXPECT_EQ(ex->suggested_action, EXCEPTION_RECOVERY_QUARANTINE);
 
     nimcp_exception_unref(ex);
 }
@@ -483,12 +483,12 @@ TEST_F(NetworkingExceptionIntegrationTest, RecoveryStrategyForIOExceptions) {
         );
         ASSERT_NE(io_ex, nullptr);
 
-        nimcp_recovery_strategy_t strategy;
+        nimcp_exception_recovery_strategy_t strategy;
         nimcp_exception_get_recovery_strategy((nimcp_exception_t*)io_ex, &strategy);
 
         // I/O exceptions should get some recovery strategy (not NONE)
         // The exact strategy is implementation-specific
-        EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE)
+        EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE)
             << "I/O exception should have a recovery strategy for error code: " << tc.code;
 
         nimcp_exception_unref((nimcp_exception_t*)io_ex);
@@ -506,7 +506,7 @@ TEST_F(NetworkingExceptionIntegrationTest, RecoveryChainExecution) {
     // Primary callback that fails
     auto primary_callback = [](
         nimcp_exception_t* ex,
-        nimcp_recovery_action_t action,
+        nimcp_exception_recovery_action_t action,
         void* user_data
     ) -> int {
         (void)ex;
@@ -519,7 +519,7 @@ TEST_F(NetworkingExceptionIntegrationTest, RecoveryChainExecution) {
     // Fallback callback that succeeds
     auto fallback_callback = [](
         nimcp_exception_t* ex,
-        nimcp_recovery_action_t action,
+        nimcp_exception_recovery_action_t action,
         void* user_data
     ) -> int {
         (void)ex;
@@ -530,8 +530,8 @@ TEST_F(NetworkingExceptionIntegrationTest, RecoveryChainExecution) {
     };
 
     // Register callbacks
-    nimcp_register_recovery_callback(RECOVERY_ACTION_RETRY, primary_callback, nullptr);
-    nimcp_register_recovery_callback(RECOVERY_ACTION_ROLLBACK, fallback_callback, nullptr);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_RETRY, primary_callback, nullptr);
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK, fallback_callback, nullptr);
 
     // Create exception
     nimcp_io_exception_t* io_ex = nimcp_io_exception_create(
@@ -548,18 +548,18 @@ TEST_F(NetworkingExceptionIntegrationTest, RecoveryChainExecution) {
     fallback_calls = 0;
 
     // Execute primary recovery (should fail)
-    int result = nimcp_execute_recovery((nimcp_exception_t*)io_ex, RECOVERY_ACTION_RETRY);
+    int result = nimcp_execute_recovery((nimcp_exception_t*)io_ex, EXCEPTION_RECOVERY_RETRY);
     EXPECT_EQ(result, -1);
     EXPECT_EQ(primary_calls.load(), 1);
 
     // Execute fallback recovery (should succeed)
-    result = nimcp_execute_recovery((nimcp_exception_t*)io_ex, RECOVERY_ACTION_ROLLBACK);
+    result = nimcp_execute_recovery((nimcp_exception_t*)io_ex, EXCEPTION_RECOVERY_ROLLBACK);
     EXPECT_EQ(result, 0);
     EXPECT_EQ(fallback_calls.load(), 1);
 
     // Cleanup
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_RETRY);
-    nimcp_unregister_recovery_callback(RECOVERY_ACTION_ROLLBACK);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_RETRY);
+    nimcp_unregister_recovery_callback(EXCEPTION_RECOVERY_ROLLBACK);
     nimcp_exception_unref((nimcp_exception_t*)io_ex);
 }
 
@@ -601,11 +601,11 @@ TEST_F(NetworkingExceptionIntegrationTest, ImmuneResponseToNetworkAnomaly) {
     // presented_to_immune flag behavior is implementation-specific
 
     // Get recovery strategy
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy(ex, &strategy);
 
     // I/O exceptions should have some recovery strategy
-    EXPECT_NE(strategy.primary_action, RECOVERY_ACTION_NONE);
+    EXPECT_NE(strategy.primary_action, EXCEPTION_RECOVERY_NONE);
 
     nimcp_exception_unref(ex);
 }

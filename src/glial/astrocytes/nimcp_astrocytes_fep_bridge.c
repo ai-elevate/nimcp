@@ -6,6 +6,7 @@
 #include "glial/astrocytes/nimcp_astrocytes_fep_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/validation/nimcp_common.h"
+#include "api/nimcp_api_exception.h"
 #include <string.h>
 #include <math.h>
 
@@ -45,10 +46,7 @@ astrocytes_fep_bridge_t* astrocytes_fep_create(
 
     astrocytes_fep_bridge_t* bridge = (astrocytes_fep_bridge_t*)
         nimcp_malloc(sizeof(astrocytes_fep_bridge_t));
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("astrocytes_fep_create: allocation failed");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "astrocytes_fep_create: allocation failed");
 
     memset(bridge, 0, sizeof(astrocytes_fep_bridge_t));
     memcpy(&bridge->config, config, sizeof(astrocytes_fep_config_t));

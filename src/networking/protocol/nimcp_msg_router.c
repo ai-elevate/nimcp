@@ -9,8 +9,32 @@
 
 #include "networking/protocol/nimcp_msg_router.h"
 #include "utils/memory/nimcp_memory.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
+
+/*=============================================================================
+ * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+ *===========================================================================*/
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent for message router operations */
+static nimcp_health_agent_t* g_msg_router_health_agent = NULL;
+
+void nimcp_msg_router_set_health_agent(nimcp_health_agent_t* agent) {
+    g_msg_router_health_agent = agent;
+}
+
+static inline void msg_router_heartbeat(const char* operation, float progress) {
+    if (g_msg_router_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_msg_router_health_agent, operation, progress);
+    }
+}
 
 /*=============================================================================
  * Internal Structures
@@ -99,7 +123,11 @@ nimcp_msg_router_t* nimcp_msg_router_create(
     const nimcp_msg_router_config_t* config
 ) {
     nimcp_msg_router_t* router = nimcp_malloc(sizeof(nimcp_msg_router_t));
-    if (!router) return NULL;
+    if (!router) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(nimcp_msg_router_t),
+                          "Failed to allocate message router");
+        return NULL;
+    }
 
     memset(router, 0, sizeof(nimcp_msg_router_t));
 
@@ -115,6 +143,10 @@ nimcp_msg_router_t* nimcp_msg_router_create(
         router->queue_capacity = router->config.queue_size;
         router->queue = nimcp_malloc(sizeof(nimcp_queued_msg_t) * router->queue_capacity);
         if (!router->queue) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                              sizeof(nimcp_queued_msg_t) * router->queue_capacity,
+                              "Failed to allocate message queue with capacity %u",
+                              router->queue_capacity);
             nimcp_free(router);
             return NULL;
         }
@@ -177,6 +209,8 @@ int nimcp_msg_router_register(
 
     /* Check capacity */
     if (router->handler_count >= NIMCP_MAX_MSG_HANDLERS) {
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE,
+                   "Message router handler capacity exceeded (max=%d)", NIMCP_MAX_MSG_HANDLERS);
         return -1;
     }
 
@@ -215,6 +249,8 @@ int nimcp_msg_router_register_fast(
 
     /* Check capacity */
     if (router->handler_count >= NIMCP_MAX_MSG_HANDLERS) {
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE,
+                   "Message router fast handler capacity exceeded (max=%d)", NIMCP_MAX_MSG_HANDLERS);
         return -1;
     }
 
@@ -455,7 +491,11 @@ int nimcp_msg_router_queue(
 
     /* Allocate copy of data */
     uint8_t* copy = nimcp_malloc(len);
-    if (!copy) return -1;
+    if (!copy) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, len,
+                          "Failed to allocate buffer for queued message");
+        return -1;
+    }
     memcpy(copy, data, len);
 
     /* Add to queue */
@@ -478,6 +518,9 @@ int nimcp_msg_router_process_queue(
 ) {
     if (!router || !router->queue) return -1;
 
+    /* Phase 8: Send heartbeat at start of queue processing */
+    msg_router_heartbeat("process_queue", 0.0f);
+
     if (max_messages == 0) {
         max_messages = router->queue_count;
     }
@@ -485,6 +528,10 @@ int nimcp_msg_router_process_queue(
     int processed = 0;
 
     while (router->queue_count > 0 && (uint32_t)processed < max_messages) {
+        /* Phase 8: Send progress heartbeat */
+        if (max_messages > 0) {
+            msg_router_heartbeat("process_queue", (float)processed / (float)max_messages);
+        }
         nimcp_queued_msg_t* entry = &router->queue[router->queue_head];
 
         if (entry->valid && entry->data) {

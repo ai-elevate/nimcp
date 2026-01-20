@@ -14,6 +14,7 @@
 #include "cognitive/mirror_neurons/nimcp_mirror_hierarchy.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_unified_memory.h"
@@ -158,10 +159,7 @@ mirror_hierarchy_config_t mirror_hierarchy_get_default_config(void) {
 mirror_hierarchy_t mirror_hierarchy_create(const mirror_hierarchy_config_t* config) {
     LOG_DEBUG("Creating mirror hierarchy system");
     mirror_hierarchy_t hierarchy = (mirror_hierarchy_t)nimcp_calloc(1, sizeof(struct mirror_hierarchy_system));
-    if (!hierarchy) {
-        LOG_ERROR("Failed to allocate mirror hierarchy system");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(hierarchy, "Failed to allocate mirror hierarchy system");
 
     // Copy configuration
     if (config) {

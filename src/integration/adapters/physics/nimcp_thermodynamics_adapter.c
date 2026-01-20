@@ -12,6 +12,7 @@
  */
 
 #include "integration/adapters/physics/nimcp_thermodynamics_adapter.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -258,7 +259,7 @@ nimcp_thermo_adapter_t nimcp_thermo_adapter_create(
 ) {
     nimcp_thermo_adapter_t adapter = (nimcp_thermo_adapter_t)calloc(
         1, sizeof(struct nimcp_thermo_adapter_struct));
-    if (!adapter) return NULL;
+    NIMCP_API_CHECK_ALLOC(adapter, "Failed to allocate thermodynamics adapter");
 
     adapter->config = config ? *config : nimcp_thermo_adapter_default_config();
 

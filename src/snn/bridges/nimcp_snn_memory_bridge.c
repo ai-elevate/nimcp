@@ -11,6 +11,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_messages.h"
+#include "api/nimcp_api_exception.h"
 #include <math.h>
 #include <string.h>
 
@@ -80,14 +81,17 @@ snn_memory_bridge_t* snn_memory_bridge_create(
 ) {
     /* Guard: Validate inputs */
     if (!config || !snn || !working_memory) {
-        NIMCP_LOGGING_ERROR("Null parameters to snn_memory_bridge_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "Null parameters to snn_memory_bridge_create: config=%p, snn=%p, wm=%p",
+                             (void*)config, (void*)snn, (void*)working_memory);
         return NULL;
     }
 
     /* Allocate bridge */
     snn_memory_bridge_t* bridge = nimcp_malloc(sizeof(snn_memory_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate SNN-memory bridge");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_memory_bridge_t),
+                          "Failed to allocate SNN-memory bridge");
         return NULL;
     }
 

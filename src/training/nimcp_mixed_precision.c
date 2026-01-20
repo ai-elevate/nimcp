@@ -14,6 +14,9 @@
 #include "training/nimcp_mixed_precision.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 #include <float.h>
@@ -221,14 +224,22 @@ int amp_validate_config(const amp_config_t* config) {
 //=============================================================================
 
 amp_ctx_t* amp_create(const amp_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "amp_create: config is NULL");
+        return NULL;
+    }
 
     if (amp_validate_config(config) < 0) {
+        NIMCP_THROW(NIMCP_ERROR_CONFIG_INVALID, "amp_create: config validation failed");
         return NULL;
     }
 
     amp_ctx_t* ctx = nimcp_malloc(sizeof(amp_ctx_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(amp_ctx_t),
+                          "amp_create: failed to allocate context");
+        return NULL;
+    }
 
     memset(ctx, 0, sizeof(*ctx));
     memcpy(&ctx->config, config, sizeof(amp_config_t));
@@ -247,6 +258,8 @@ amp_ctx_t* amp_create(const amp_config_t* config) {
     attr.type = MUTEX_TYPE_NORMAL;
     ctx->mutex = nimcp_mutex_create(&attr);
     if (!ctx->mutex) {
+        NIMCP_THROW_THREADING(NIMCP_ERROR_MUTEX_INIT, 0,
+                             "amp_create: failed to create mutex");
         nimcp_free(ctx);
         return NULL;
     }
@@ -491,10 +504,25 @@ float* amp_create_master_weights(amp_ctx_t* ctx,
                                   const void* weights,
                                   size_t count,
                                   amp_dtype_t weight_dtype) {
-    if (!ctx || !weights || count == 0) return NULL;
+    if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "amp_create_master_weights: ctx is NULL");
+        return NULL;
+    }
+    if (!weights) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "amp_create_master_weights: weights is NULL");
+        return NULL;
+    }
+    if (count == 0) {
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "amp_create_master_weights: count is 0");
+        return NULL;
+    }
 
     float* master = nimcp_malloc(count * sizeof(float));
-    if (!master) return NULL;
+    if (!master) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, count * sizeof(float),
+                          "amp_create_master_weights: failed to allocate master weights");
+        return NULL;
+    }
 
     /* Convert to FP32 master weights */
     switch (weight_dtype) {

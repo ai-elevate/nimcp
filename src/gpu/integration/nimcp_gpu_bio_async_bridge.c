@@ -289,7 +289,7 @@ int gpu_bio_bridge_init(
             if (bridge->device_utilization) nimcp_free(bridge->device_utilization);
             if (bridge->device_memory_free) nimcp_free(bridge->device_memory_free);
             bridge_base_cleanup(&bridge->base);
-            return NIMCP_ERROR_OUT_OF_MEMORY;
+            return NIMCP_ERROR_NO_MEMORY;
         }
 
         /* Initialize device state */

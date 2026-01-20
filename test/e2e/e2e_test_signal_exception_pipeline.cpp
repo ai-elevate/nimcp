@@ -50,7 +50,7 @@ protected:
     static std::atomic<int> exceptions_handled;
     static std::atomic<int> immune_presentations;
     static std::atomic<nimcp_error_t> last_error_code;
-    static std::atomic<nimcp_recovery_action_t> last_recovery_action;
+    static std::atomic<nimcp_exception_recovery_action_t> last_recovery_action;
     static std::vector<std::string> exception_log;
     static nimcp_handler_registration_t* handler_registration;
 
@@ -58,7 +58,7 @@ protected:
         exceptions_handled = 0;
         immune_presentations = 0;
         last_error_code = 0;
-        last_recovery_action = RECOVERY_ACTION_NONE;
+        last_recovery_action = EXCEPTION_RECOVERY_NONE;
         exception_log.clear();
 
         nimcp_exception_system_init();
@@ -120,7 +120,7 @@ protected:
 std::atomic<int> SignalExceptionE2ETest::exceptions_handled(0);
 std::atomic<int> SignalExceptionE2ETest::immune_presentations(0);
 std::atomic<nimcp_error_t> SignalExceptionE2ETest::last_error_code(0);
-std::atomic<nimcp_recovery_action_t> SignalExceptionE2ETest::last_recovery_action(RECOVERY_ACTION_NONE);
+std::atomic<nimcp_exception_recovery_action_t> SignalExceptionE2ETest::last_recovery_action(EXCEPTION_RECOVERY_NONE);
 std::vector<std::string> SignalExceptionE2ETest::exception_log;
 nimcp_handler_registration_t* SignalExceptionE2ETest::handler_registration = NULL;
 
@@ -257,11 +257,11 @@ TEST_F(SignalExceptionE2ETest, ImmuneRecoveryDecision) {
     EXPECT_EQ(result, 0);
 
     // Get recovery strategy
-    nimcp_recovery_strategy_t strategy;
+    nimcp_exception_recovery_strategy_t strategy;
     nimcp_exception_get_recovery_strategy((nimcp_exception_t*)ex, &strategy);
 
     // Signal category should recommend emergency save
-    EXPECT_EQ(strategy.primary_action, RECOVERY_ACTION_EMERGENCY_SAVE);
+    EXPECT_EQ(strategy.primary_action, EXCEPTION_RECOVERY_EMERGENCY_SAVE);
 
     // Dispatch to handlers
     nimcp_exception_dispatch((nimcp_exception_t*)ex);

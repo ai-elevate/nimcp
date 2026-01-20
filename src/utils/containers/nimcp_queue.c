@@ -17,6 +17,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "nimcp_queue_internal.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/logging/nimcp_logging.h"
 #include <string.h>
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
@@ -46,16 +47,11 @@ nimcp_result_t nimcp_queue_create(
     const nimcp_queue_config_t* config,
     nimcp_queue_handle_t* queue
 ) {
-    if (!config || !queue) {
-        LOG_ERROR(LOG_MODULE, "nimcp_queue_create: NULL config or queue pointer");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_API_CHECK_NULL(config, NIMCP_INVALID_PARAM, "NULL config in nimcp_queue_create");
+    NIMCP_API_CHECK_NULL(queue, NIMCP_INVALID_PARAM, "NULL queue pointer in nimcp_queue_create");
 
-    if (config->max_size == 0 || config->item_size == 0) {
-        LOG_ERROR(LOG_MODULE, "nimcp_queue_create: Invalid max_size=%zu or item_size=%zu",
-                  config->max_size, config->item_size);
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_API_CHECK(config->max_size > 0, NIMCP_INVALID_PARAM, "Queue max_size must be > 0");
+    NIMCP_API_CHECK(config->item_size > 0, NIMCP_INVALID_PARAM, "Queue item_size must be > 0");
 
     LOG_DEBUG(LOG_MODULE, "Creating queue type=%s, max_size=%zu, item_size=%zu",
               nimcp_queue_type_name(config->type), config->max_size, config->item_size);
@@ -64,6 +60,7 @@ nimcp_result_t nimcp_queue_create(
     struct nimcp_queue* q = nimcp_calloc(1, sizeof(struct nimcp_queue));
     if (!q) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate queue structure");
+        NIMCP_THROW_MEMORY(NIMCP_NO_MEMORY, sizeof(struct nimcp_queue), "Failed to allocate queue structure");
         return NIMCP_NO_MEMORY;
     }
 
@@ -141,9 +138,8 @@ nimcp_result_t nimcp_queue_enqueue(
     const void* item,
     uint32_t timeout_ms
 ) {
-    if (!queue || !item) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_API_CHECK_NULL(queue, NIMCP_INVALID_PARAM, "NULL queue in nimcp_queue_enqueue");
+    NIMCP_API_CHECK_NULL(item, NIMCP_INVALID_PARAM, "NULL item in nimcp_queue_enqueue");
 
     switch (queue->type) {
         case NIMCP_QUEUE_TYPE_BLOCKING:
@@ -162,9 +158,8 @@ nimcp_result_t nimcp_queue_dequeue(
     void* item,
     uint32_t timeout_ms
 ) {
-    if (!queue || !item) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_API_CHECK_NULL(queue, NIMCP_INVALID_PARAM, "NULL queue in nimcp_queue_dequeue");
+    NIMCP_API_CHECK_NULL(item, NIMCP_INVALID_PARAM, "NULL item in nimcp_queue_dequeue");
 
     switch (queue->type) {
         case NIMCP_QUEUE_TYPE_BLOCKING:
@@ -259,9 +254,8 @@ nimcp_result_t nimcp_queue_dequeue_batch(
 //=============================================================================
 
 nimcp_result_t nimcp_queue_peek(nimcp_queue_handle_t queue, void* item) {
-    if (!queue || !item) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_API_CHECK_NULL(queue, NIMCP_INVALID_PARAM, "NULL queue in nimcp_queue_peek");
+    NIMCP_API_CHECK_NULL(item, NIMCP_INVALID_PARAM, "NULL item in nimcp_queue_peek");
 
     switch (queue->type) {
         case NIMCP_QUEUE_TYPE_BLOCKING:
@@ -276,9 +270,7 @@ nimcp_result_t nimcp_queue_peek(nimcp_queue_handle_t queue, void* item) {
 }
 
 nimcp_result_t nimcp_queue_clear(nimcp_queue_handle_t queue) {
-    if (!queue) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_API_CHECK_NULL(queue, NIMCP_INVALID_PARAM, "NULL queue in nimcp_queue_clear");
 
     switch (queue->type) {
         case NIMCP_QUEUE_TYPE_BLOCKING:
@@ -364,9 +356,8 @@ nimcp_result_t nimcp_queue_get_status(
     nimcp_queue_handle_t queue,
     nimcp_queue_status_t* status
 ) {
-    if (!queue || !status) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_API_CHECK_NULL(queue, NIMCP_INVALID_PARAM, "NULL queue in nimcp_queue_get_status");
+    NIMCP_API_CHECK_NULL(status, NIMCP_INVALID_PARAM, "NULL status in nimcp_queue_get_status");
 
     *status = queue->status;
     status->current_size = nimcp_queue_get_size(queue);
@@ -374,9 +365,7 @@ nimcp_result_t nimcp_queue_get_status(
 }
 
 nimcp_result_t nimcp_queue_reset_stats(nimcp_queue_handle_t queue) {
-    if (!queue) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_API_CHECK_NULL(queue, NIMCP_INVALID_PARAM, "NULL queue in nimcp_queue_reset_stats");
 
     // Keep current_size and capacity, reset everything else
     size_t current = queue->status.current_size;
@@ -409,9 +398,7 @@ nimcp_result_t nimcp_queue_set_spin_count(
     nimcp_queue_handle_t queue,
     uint32_t spin_count
 ) {
-    if (!queue) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_API_CHECK_NULL(queue, NIMCP_INVALID_PARAM, "NULL queue in nimcp_queue_set_spin_count");
 
     // Only MPMC uses spin count currently
     // Implementation would update the impl_data

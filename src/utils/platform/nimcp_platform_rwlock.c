@@ -36,6 +36,7 @@
 #include <errno.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 
 /* ========================================================================
  * READ-WRITE LOCK FUNCTIONS
@@ -44,6 +45,8 @@
 int nimcp_platform_rwlock_init(nimcp_platform_rwlock_t* rwlock)
 {
     if (!rwlock) {
+        LOG_ERROR("nimcp_platform_rwlock_init: rwlock pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "RWLock init failed: NULL pointer");
         return EINVAL;
     }
 
@@ -65,6 +68,8 @@ int nimcp_platform_rwlock_init(nimcp_platform_rwlock_t* rwlock)
 int nimcp_platform_rwlock_destroy(nimcp_platform_rwlock_t* rwlock)
 {
     if (!rwlock) {
+        LOG_ERROR("nimcp_platform_rwlock_destroy: rwlock pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "RWLock destroy failed: NULL pointer");
         return EINVAL;
     }
 
@@ -85,6 +90,8 @@ int nimcp_platform_rwlock_destroy(nimcp_platform_rwlock_t* rwlock)
 int nimcp_platform_rwlock_rdlock(nimcp_platform_rwlock_t* rwlock)
 {
     if (!rwlock) {
+        LOG_ERROR("nimcp_platform_rwlock_rdlock: rwlock pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "RWLock rdlock failed: NULL pointer");
         return EINVAL;
     }
 
@@ -105,6 +112,8 @@ int nimcp_platform_rwlock_rdlock(nimcp_platform_rwlock_t* rwlock)
 int nimcp_platform_rwlock_wrlock(nimcp_platform_rwlock_t* rwlock)
 {
     if (!rwlock) {
+        LOG_ERROR("nimcp_platform_rwlock_wrlock: rwlock pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "RWLock wrlock failed: NULL pointer");
         return EINVAL;
     }
 
@@ -125,6 +134,8 @@ int nimcp_platform_rwlock_wrlock(nimcp_platform_rwlock_t* rwlock)
 int nimcp_platform_rwlock_tryrdlock(nimcp_platform_rwlock_t* rwlock)
 {
     if (!rwlock) {
+        LOG_ERROR("nimcp_platform_rwlock_tryrdlock: rwlock pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "RWLock tryrdlock failed: NULL pointer");
         return EINVAL;
     }
 
@@ -146,6 +157,8 @@ int nimcp_platform_rwlock_tryrdlock(nimcp_platform_rwlock_t* rwlock)
 int nimcp_platform_rwlock_trywrlock(nimcp_platform_rwlock_t* rwlock)
 {
     if (!rwlock) {
+        LOG_ERROR("nimcp_platform_rwlock_trywrlock: rwlock pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "RWLock trywrlock failed: NULL pointer");
         return EINVAL;
     }
 
@@ -167,6 +180,8 @@ int nimcp_platform_rwlock_trywrlock(nimcp_platform_rwlock_t* rwlock)
 int nimcp_platform_rwlock_rdunlock(nimcp_platform_rwlock_t* rwlock)
 {
     if (!rwlock) {
+        LOG_ERROR("nimcp_platform_rwlock_rdunlock: rwlock pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "RWLock rdunlock failed: NULL pointer");
         return EINVAL;
     }
 
@@ -187,6 +202,8 @@ int nimcp_platform_rwlock_rdunlock(nimcp_platform_rwlock_t* rwlock)
 int nimcp_platform_rwlock_wrunlock(nimcp_platform_rwlock_t* rwlock)
 {
     if (!rwlock) {
+        LOG_ERROR("nimcp_platform_rwlock_wrunlock: rwlock pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "RWLock wrunlock failed: NULL pointer");
         return EINVAL;
     }
 
@@ -207,6 +224,8 @@ int nimcp_platform_rwlock_wrunlock(nimcp_platform_rwlock_t* rwlock)
 int nimcp_platform_rwlock_unlock(nimcp_platform_rwlock_t* rwlock)
 {
     if (!rwlock) {
+        LOG_ERROR("nimcp_platform_rwlock_unlock: rwlock pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "RWLock unlock failed: NULL pointer");
         return EINVAL;
     }
 

@@ -34,6 +34,7 @@
 #include "async/nimcp_bio_async.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "api/nimcp_api_exception.h"
 
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -160,9 +161,7 @@ astrocyte_calcium_system_t* astrocyte_calcium_system_create(astrocyte_network_t*
 
     astrocyte_calcium_system_t* system = (astrocyte_calcium_system_t*) nimcp_malloc(
         sizeof(astrocyte_calcium_system_t));
-    if (!system) {
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(system, "astrocyte_calcium_system_create: Failed to allocate system");
 
     memset(system, 0, sizeof(astrocyte_calcium_system_t));
 

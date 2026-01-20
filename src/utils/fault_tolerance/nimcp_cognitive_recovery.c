@@ -14,6 +14,7 @@
 #include "utils/fault_tolerance/nimcp_cognitive_recovery.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 
 #define LOG_MODULE "utils_cognitive_recovery"
 

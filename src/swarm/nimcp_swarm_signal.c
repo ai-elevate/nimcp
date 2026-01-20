@@ -17,6 +17,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/encoding/nimcp_positional_encoding.h"
+#include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"

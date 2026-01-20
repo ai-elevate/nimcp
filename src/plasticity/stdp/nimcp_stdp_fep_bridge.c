@@ -4,6 +4,7 @@
  */
 
 #include "plasticity/stdp/nimcp_stdp_fep_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -24,10 +25,7 @@
  * ============================================================================ */
 
 int stdp_fep_bridge_default_config(stdp_fep_config_t* config) {
-    if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config pointer");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(config, -1, "STDP-FEP config is NULL");
 
     config->pe_min_threshold = STDP_FEP_PE_MIN_THRESHOLD;
     config->pe_max_threshold = STDP_FEP_PE_MAX_THRESHOLD;
@@ -51,10 +49,7 @@ int stdp_fep_bridge_default_config(stdp_fep_config_t* config) {
 
 stdp_fep_bridge_t* stdp_fep_bridge_create(const stdp_fep_config_t* config) {
     stdp_fep_bridge_t* bridge = (stdp_fep_bridge_t*)nimcp_malloc(sizeof(stdp_fep_bridge_t));
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate bridge");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "STDP-FEP bridge allocation failed");
 
     memset(bridge, 0, sizeof(stdp_fep_bridge_t));
 
@@ -66,8 +61,9 @@ stdp_fep_bridge_t* stdp_fep_bridge_create(const stdp_fep_config_t* config) {
 
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        LOG_ERROR("STDP-FEP bridge mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "STDP-FEP bridge mutex creation failed");
         return NULL;
     }
 
@@ -114,10 +110,8 @@ void stdp_fep_bridge_destroy(stdp_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int stdp_fep_bridge_connect_fep(stdp_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) {
-        NIMCP_LOGGING_ERROR("NULL bridge or FEP system");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP-FEP bridge is NULL");
+    NIMCP_API_CHECK_NULL(fep, -1, "FEP system is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -130,10 +124,9 @@ int stdp_fep_bridge_connect_fep(stdp_fep_bridge_t* bridge, fep_system_t* fep) {
 int stdp_fep_bridge_connect_stdp(stdp_fep_bridge_t* bridge,
                                    stdp_synapse_t* stdp_synapses,
                                    uint32_t num_synapses) {
-    if (!bridge || !stdp_synapses || num_synapses == 0) {
-        NIMCP_LOGGING_ERROR("Invalid parameters");
-        return -1;
-    }
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP-FEP bridge is NULL");
+    NIMCP_API_CHECK_NULL(stdp_synapses, -1, "STDP synapses array is NULL");
+    NIMCP_API_CHECK(num_synapses > 0, -1, "Number of synapses must be greater than 0");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stdp_system = stdp_synapses;
@@ -145,7 +138,7 @@ int stdp_fep_bridge_connect_stdp(stdp_fep_bridge_t* bridge,
 }
 
 int stdp_fep_bridge_disconnect(stdp_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP-FEP bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -242,7 +235,7 @@ float stdp_fep_get_effective_lr(const stdp_fep_bridge_t* bridge, float base_lr) 
  * ============================================================================ */
 
 int stdp_fep_report_weight_changes(stdp_fep_bridge_t* bridge, float weight_delta) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP-FEP bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.total_weight_delta += weight_delta;
@@ -267,7 +260,7 @@ float stdp_fep_compute_complexity_regularization(const stdp_fep_bridge_t* bridge
  * ============================================================================ */
 
 int stdp_fep_bridge_update(stdp_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP-FEP bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -332,14 +325,16 @@ int stdp_fep_bridge_update(stdp_fep_bridge_t* bridge, uint64_t delta_ms) {
  * ============================================================================ */
 
 int stdp_fep_bridge_get_state(const stdp_fep_bridge_t* bridge, stdp_fep_state_t* state) {
-    if (!bridge || !state) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP-FEP bridge is NULL");
+    NIMCP_API_CHECK_NULL(state, -1, "State output pointer is NULL");
 
     *state = bridge->state;
     return 0;
 }
 
 int stdp_fep_bridge_get_stats(const stdp_fep_bridge_t* bridge, stdp_fep_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP-FEP bridge is NULL");
+    NIMCP_API_CHECK_NULL(stats, -1, "Stats output pointer is NULL");
 
     *stats = bridge->stats;
     return 0;
@@ -350,7 +345,7 @@ int stdp_fep_bridge_get_stats(const stdp_fep_bridge_t* bridge, stdp_fep_stats_t*
  * ============================================================================ */
 
 int stdp_fep_bridge_connect_bio_async(stdp_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP-FEP bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -370,7 +365,8 @@ int stdp_fep_bridge_connect_bio_async(stdp_fep_bridge_t* bridge) {
 }
 
 int stdp_fep_bridge_disconnect_bio_async(stdp_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "STDP-FEP bridge is NULL");
+    if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;

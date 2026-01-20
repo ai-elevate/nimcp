@@ -6,6 +6,7 @@
  */
 
 #include "language/integration/nimcp_language_bio_async_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -130,7 +131,10 @@ language_bio_bridge_t* language_bio_bridge_create(
     const language_bio_bridge_config_t* config
 ) {
     language_bio_bridge_t* bridge = calloc(1, sizeof(language_bio_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_bio_bridge_create: allocation failed");
+        return NULL;
+    }
 
     if (config) {
         bridge->config = *config;

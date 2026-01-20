@@ -8,6 +8,7 @@
  */
 
 #include "plasticity/bcm/nimcp_bcm_pink_noise_bridge.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -59,10 +60,7 @@ bcm_pink_noise_bridge_t* bcm_pink_noise_create(
     const bcm_pink_noise_config_t* config
 ) {
     bcm_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(bcm_pink_noise_bridge_t));
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate BCM pink noise bridge");
-        return NULL;
-    }
+    NIMCP_API_CHECK_ALLOC(bridge, "BCM pink noise bridge allocation failed");
 
     // Apply configuration
     if (config) {
@@ -80,8 +78,9 @@ bcm_pink_noise_bridge_t* bcm_pink_noise_create(
 
     bridge->noise_gen = pink_noise_create(&noise_config);
     if (!bridge->noise_gen) {
-        NIMCP_LOGGING_ERROR("Failed to create pink noise generator for BCM");
         nimcp_free(bridge);
+        LOG_ERROR("Pink noise generator creation failed for BCM");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Pink noise generator creation failed for BCM");
         return NULL;
     }
     bridge->noise_connected = true;
@@ -118,7 +117,7 @@ int bcm_pink_noise_connect_bcm(
     bcm_pink_noise_bridge_t* bridge,
     bcm_params_t* params
 ) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM pink noise bridge is NULL");
 
     bridge->bcm_params = params;
     bridge->bcm_connected = (params != NULL);
@@ -135,7 +134,7 @@ int bcm_pink_noise_connect_bcm(
 }
 
 int bcm_pink_noise_disconnect_bcm(bcm_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM pink noise bridge is NULL");
 
     bridge->bcm_params = NULL;
     bridge->bcm_connected = false;
@@ -147,9 +146,9 @@ int bcm_pink_noise_disconnect_bcm(bcm_pink_noise_bridge_t* bridge) {
 //=============================================================================
 
 int bcm_pink_noise_update(bcm_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM pink noise bridge is NULL");
     if (!bridge->is_enabled) return 0;
-    if (!bridge->noise_gen) return -1;
+    NIMCP_API_CHECK_NULL(bridge->noise_gen, -1, "Pink noise generator is NULL");
 
     // Generate noise samples for each parameter
     if (bridge->config.noise_targets & BCM_NOISE_TARGET_THRESHOLD) {
@@ -237,7 +236,7 @@ int bcm_pink_noise_update_with_activity(
     bcm_pink_noise_bridge_t* bridge,
     float activity
 ) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM pink noise bridge is NULL");
 
     // Update activity tracking
     bridge->current_activity = clamp_value(activity, 0.0f, 1.0f);
@@ -251,7 +250,8 @@ int bcm_pink_noise_apply_to_synapse(
     bcm_pink_noise_bridge_t* bridge,
     bcm_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM pink noise bridge is NULL");
+    NIMCP_API_CHECK_NULL(synapse, -1, "BCM synapse is NULL");
     if (!bridge->is_enabled) return 0;
 
     // Apply noisy threshold to synapse
@@ -285,7 +285,8 @@ int bcm_pink_noise_get_stats(
     const bcm_pink_noise_bridge_t* bridge,
     bcm_pink_noise_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM pink noise bridge is NULL");
+    NIMCP_API_CHECK_NULL(stats, -1, "Stats output pointer is NULL");
 
     memset(stats, 0, sizeof(bcm_pink_noise_stats_t));
     stats->samples_generated = bridge->samples_generated;
@@ -307,7 +308,7 @@ int bcm_pink_noise_set_enabled(
     bcm_pink_noise_bridge_t* bridge,
     bool enabled
 ) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM pink noise bridge is NULL");
     bridge->is_enabled = enabled;
     bridge->config.enabled = enabled;
     NIMCP_LOGGING_DEBUG("BCM pink noise bridge %s",
@@ -316,7 +317,7 @@ int bcm_pink_noise_set_enabled(
 }
 
 int bcm_pink_noise_reset(bcm_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM pink noise bridge is NULL");
 
     // Reset noise samples
     bridge->threshold_noise = 0.0f;
@@ -353,8 +354,8 @@ int bcm_pink_noise_set_amplitude(
     bcm_pink_noise_bridge_t* bridge,
     float amplitude
 ) {
-    if (!bridge) return -1;
-    if (amplitude < 0.0f || amplitude > 1.0f) return -1;
+    NIMCP_API_CHECK_NULL(bridge, -1, "BCM pink noise bridge is NULL");
+    NIMCP_API_CHECK(amplitude >= 0.0f && amplitude <= 1.0f, -1, "Amplitude must be between 0.0 and 1.0");
 
     bridge->config.noise_amplitude = amplitude;
     NIMCP_LOGGING_DEBUG("BCM pink noise amplitude set to %.3f", amplitude);

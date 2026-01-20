@@ -25,6 +25,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -171,7 +173,11 @@ static int generate_click_pulse(pulse_template_t* tmpl,
     if (num_samples < 2) num_samples = 2;
 
     tmpl->samples = nimcp_malloc(num_samples * sizeof(float));
-    if (!tmpl->samples) return ECHOLOCATION_ERROR_NO_MEMORY;
+    if (!tmpl->samples) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_samples * sizeof(float),
+                           "generate_click_pulse: Failed to allocate pulse samples");
+        return ECHOLOCATION_ERROR_NO_MEMORY;
+    }
 
     /* Gaussian envelope modulated sinusoid */
     float center = num_samples / 2.0f;
@@ -201,7 +207,11 @@ static int generate_chirp_pulse(pulse_template_t* tmpl,
     if (num_samples < 2) num_samples = 2;
 
     tmpl->samples = nimcp_malloc(num_samples * sizeof(float));
-    if (!tmpl->samples) return ECHOLOCATION_ERROR_NO_MEMORY;
+    if (!tmpl->samples) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_samples * sizeof(float),
+                           "generate_chirp_pulse: Failed to allocate pulse samples");
+        return ECHOLOCATION_ERROR_NO_MEMORY;
+    }
 
     float chirp_rate = (freq_end - freq_start) / (duration_us * 1e-6f);
 
@@ -325,10 +335,16 @@ static float itd_to_azimuth(float itd, float ear_separation) {
  */
 static echo_environment_map_t* alloc_map(float resolution, uint32_t max_cells) {
     echo_environment_map_t* map = nimcp_calloc(1, sizeof(echo_environment_map_t));
-    if (!map) return NULL;
+    if (!map) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(echo_environment_map_t),
+                           "alloc_map: Failed to allocate environment map");
+        return NULL;
+    }
 
     map->cells = nimcp_calloc(max_cells, sizeof(echo_map_cell_t));
     if (!map->cells) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, max_cells * sizeof(echo_map_cell_t),
+                           "alloc_map: Failed to allocate map cells");
         nimcp_free(map);
         return NULL;
     }
@@ -397,7 +413,11 @@ static echo_map_cell_t* get_or_create_cell(echo_environment_map_t* map,
  * ============================================================================ */
 
 int echolocation_default_config(echolocation_config_t* config) {
-    if (!config) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_default_config: config is NULL");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     /* Pulse settings - bat-like chirp */
     config->pulse_type = ECHO_PULSE_CHIRP;
@@ -437,6 +457,8 @@ echolocation_system_t* echolocation_create(const echolocation_config_t* config) 
     echolocation_system_t* sys = nimcp_calloc(1, sizeof(echolocation_system_t));
     if (!sys) {
         NIMCP_LOGGING_ERROR("Failed to allocate echolocation system");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(echolocation_system_t),
+                           "echolocation_create: Failed to allocate system");
         return NULL;
     }
 
@@ -465,6 +487,7 @@ echolocation_system_t* echolocation_create(const echolocation_config_t* config) 
 
     if (result != ECHOLOCATION_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to generate pulse template");
+        /* Exception already thrown in generate_*_pulse */
         echolocation_destroy(sys);
         return NULL;
     }
@@ -474,6 +497,9 @@ echolocation_system_t* echolocation_create(const echolocation_config_t* config) 
     sys->correlation_buffer = nimcp_calloc(sys->correlation_size, sizeof(float));
     if (!sys->correlation_buffer) {
         NIMCP_LOGGING_ERROR("Failed to allocate correlation buffer");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           sys->correlation_size * sizeof(float),
+                           "echolocation_create: Failed to allocate correlation buffer");
         echolocation_destroy(sys);
         return NULL;
     }
@@ -483,6 +509,9 @@ echolocation_system_t* echolocation_create(const echolocation_config_t* config) 
     sys->window_function = nimcp_malloc(sys->fft_size * sizeof(float));
     if (!sys->window_function) {
         NIMCP_LOGGING_ERROR("Failed to allocate FFT window");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           sys->fft_size * sizeof(float),
+                           "echolocation_create: Failed to allocate FFT window");
         echolocation_destroy(sys);
         return NULL;
     }
@@ -497,6 +526,9 @@ echolocation_system_t* echolocation_create(const echolocation_config_t* config) 
     sys->tracked = nimcp_calloc(sys->max_tracked, sizeof(tracked_object_t));
     if (!sys->tracked) {
         NIMCP_LOGGING_ERROR("Failed to allocate tracking array");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           sys->max_tracked * sizeof(tracked_object_t),
+                           "echolocation_create: Failed to allocate tracking array");
         echolocation_destroy(sys);
         return NULL;
     }
@@ -507,6 +539,7 @@ echolocation_system_t* echolocation_create(const echolocation_config_t* config) 
         sys->map = alloc_map(ECHOLOCATION_MAP_RESOLUTION, ECHOLOCATION_MAX_MAP_CELLS);
         if (!sys->map) {
             NIMCP_LOGGING_ERROR("Failed to allocate environment map");
+            /* Exception already thrown in alloc_map */
             echolocation_destroy(sys);
             return NULL;
         }
@@ -521,6 +554,9 @@ echolocation_system_t* echolocation_create(const echolocation_config_t* config) 
 
         if (!sys->left_buffer || !sys->right_buffer) {
             NIMCP_LOGGING_ERROR("Failed to allocate binaural buffers");
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                               sys->binaural_size * sizeof(float),
+                               "echolocation_create: Failed to allocate binaural buffers");
             echolocation_destroy(sys);
             return NULL;
         }
@@ -530,6 +566,8 @@ echolocation_system_t* echolocation_create(const echolocation_config_t* config) 
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_THREADING(NIMCP_ERROR_THREAD_CREATE,
+                              "echolocation_create: Failed to create mutex");
         echolocation_destroy(sys);
         return NULL;
     }
@@ -574,7 +612,11 @@ void echolocation_destroy(echolocation_system_t* system) {
 }
 
 int echolocation_reset(echolocation_system_t* system) {
-    if (!system) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_reset: system is NULL");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -616,7 +658,11 @@ int echolocation_reset(echolocation_system_t* system) {
 
 int echolocation_set_config(echolocation_system_t* system,
                             const echolocation_config_t* config) {
-    if (!system || !config) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_set_config: NULL parameter");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     system->config = *config;
@@ -628,7 +674,11 @@ int echolocation_set_config(echolocation_system_t* system,
 
 int echolocation_get_config(const echolocation_system_t* system,
                             echolocation_config_t* config) {
-    if (!system || !config) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_get_config: NULL parameter");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     *config = system->config;
     return ECHOLOCATION_SUCCESS;
@@ -636,7 +686,11 @@ int echolocation_get_config(const echolocation_system_t* system,
 
 int echolocation_set_pulse_params(echolocation_system_t* system,
                                   const echo_pulse_params_t* params) {
-    if (!system || !params) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_set_pulse_params: NULL parameter");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -669,7 +723,11 @@ int echolocation_set_pulse_params(echolocation_system_t* system,
 
 int echolocation_set_mode(echolocation_system_t* system,
                           echo_processing_mode_t mode) {
-    if (!system) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_set_mode: system is NULL");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     system->config.mode = mode;
@@ -687,12 +745,16 @@ int echolocation_generate_pulse(echolocation_system_t* system,
                                 uint32_t buffer_size,
                                 uint32_t* num_samples) {
     if (!system || !output_samples || !num_samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_generate_pulse: NULL parameter");
         return ECHOLOCATION_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(system->mutex);
 
     if (system->pulse_template.num_samples > buffer_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+                              "echolocation_generate_pulse: buffer too small");
         nimcp_platform_mutex_unlock(system->mutex);
         return ECHOLOCATION_ERROR_BUFFER_TOO_SMALL;
     }
@@ -716,8 +778,16 @@ int echolocation_generate_pulse(echolocation_system_t* system,
 int echolocation_process_audio(echolocation_system_t* system,
                                const echo_audio_buffer_t* audio,
                                echolocation_output_t* output) {
-    if (!system || !audio || !output) return ECHOLOCATION_ERROR_NULL_POINTER;
-    if (!audio->samples) return ECHOLOCATION_ERROR_NO_SIGNAL;
+    if (!system || !audio || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_process_audio: NULL parameter");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
+    if (!audio->samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "echolocation_process_audio: audio->samples is NULL");
+        return ECHOLOCATION_ERROR_NO_SIGNAL;
+    }
 
     uint64_t start_time = get_time_ms();
 
@@ -801,6 +871,8 @@ int echolocation_detect_echoes(echolocation_system_t* system,
                                uint32_t max_echoes,
                                uint32_t* num_echoes) {
     if (!system || !audio || !echoes || !num_echoes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_detect_echoes: NULL parameter");
         return ECHOLOCATION_ERROR_NULL_POINTER;
     }
 
@@ -846,6 +918,8 @@ int echolocation_detect_echoes(echolocation_system_t* system,
     /* Find peaks */
     uint32_t* peak_indices = nimcp_malloc(max_echoes * sizeof(uint32_t));
     if (!peak_indices) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, max_echoes * sizeof(uint32_t),
+                           "echolocation_detect_echoes: Failed to allocate peak indices");
         nimcp_platform_mutex_unlock(system->mutex);
         return ECHOLOCATION_ERROR_NO_MEMORY;
     }
@@ -952,7 +1026,11 @@ int echolocation_detect_echoes(echolocation_system_t* system,
 int echolocation_analyze_doppler(echolocation_system_t* system,
                                  echo_detection_t* echo,
                                  float* velocity) {
-    if (!system || !echo) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system || !echo) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_analyze_doppler: NULL parameter");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     /* Simple Doppler estimation from spectral shift */
     /* Real implementation would use short-time Fourier transform */
@@ -971,7 +1049,11 @@ int echolocation_classify_material(echolocation_system_t* system,
                                    const echo_detection_t* echo,
                                    echo_material_t* material,
                                    float* confidence) {
-    if (!system || !echo || !material) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system || !echo || !material) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_classify_material: NULL parameter");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     /* Simple material classification based on echo characteristics */
     /* Real implementation would use learned spectral signatures */
@@ -1012,6 +1094,8 @@ int echolocation_cluster_objects(echolocation_system_t* system,
                                  uint32_t max_objects,
                                  uint32_t* num_objects) {
     if (!system || !echoes || !objects || !num_objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_cluster_objects: NULL parameter");
         return ECHOLOCATION_ERROR_NULL_POINTER;
     }
 
@@ -1025,6 +1109,8 @@ int echolocation_cluster_objects(echolocation_system_t* system,
     float cluster_distance = system->config.range_resolution * 5.0f;  /* 5x range resolution */
     bool* clustered = nimcp_calloc(num_echoes, sizeof(bool));
     if (!clustered) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_echoes * sizeof(bool),
+                           "echolocation_cluster_objects: Failed to allocate clustered array");
         nimcp_platform_mutex_unlock(system->mutex);
         return ECHOLOCATION_ERROR_NO_MEMORY;
     }
@@ -1102,7 +1188,11 @@ int echolocation_cluster_objects(echolocation_system_t* system,
 int echolocation_track_objects(echolocation_system_t* system,
                                echo_object_t* objects,
                                uint32_t num_objects) {
-    if (!system || !objects) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system || !objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_track_objects: NULL parameter");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1190,7 +1280,11 @@ int echolocation_track_objects(echolocation_system_t* system,
 int echolocation_echo_to_position(echolocation_system_t* system,
                                   const echo_detection_t* echo,
                                   echo_point3d_t* position) {
-    if (!system || !echo || !position) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system || !echo || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_echo_to_position: NULL parameter");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     /* Spherical to Cartesian conversion */
     float r = echo->range;
@@ -1207,7 +1301,11 @@ int echolocation_echo_to_position(echolocation_system_t* system,
 int echolocation_update_map(echolocation_system_t* system,
                             const echo_object_t* objects,
                             uint32_t num_objects) {
-    if (!system || !objects) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system || !objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_update_map: NULL parameter");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
     if (!system->map) return ECHOLOCATION_SUCCESS;
 
     nimcp_platform_mutex_lock(system->mutex);
@@ -1258,14 +1356,22 @@ int echolocation_update_map(echolocation_system_t* system,
 
 int echolocation_get_map(const echolocation_system_t* system,
                          echo_environment_map_t** map) {
-    if (!system || !map) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system || !map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_get_map: NULL parameter");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     *map = system->map;
     return ECHOLOCATION_SUCCESS;
 }
 
 int echolocation_clear_map(echolocation_system_t* system) {
-    if (!system) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_clear_map: system is NULL");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
     if (!system->map) return ECHOLOCATION_SUCCESS;
 
     nimcp_platform_mutex_lock(system->mutex);
@@ -1279,8 +1385,16 @@ int echolocation_clear_map(echolocation_system_t* system) {
 int echolocation_query_map(const echolocation_system_t* system,
                            echo_point3d_t position,
                            echo_map_cell_t* cell) {
-    if (!system || !cell) return ECHOLOCATION_ERROR_NULL_POINTER;
-    if (!system->map) return ECHOLOCATION_ERROR_NOT_INITIALIZED;
+    if (!system || !cell) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_query_map: NULL parameter");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
+    if (!system->map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED,
+                              "echolocation_query_map: map not initialized");
+        return ECHOLOCATION_ERROR_NOT_INITIALIZED;
+    }
 
     /* Quantize position */
     int32_t gx = (int32_t)(position.x / system->map->resolution);
@@ -1311,7 +1425,11 @@ int echolocation_query_map(const echolocation_system_t* system,
 
 int echolocation_get_state(const echolocation_system_t* system,
                            echolocation_state_t* state) {
-    if (!system || !state) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_get_state: NULL parameter");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     *state = system->state;
     return ECHOLOCATION_SUCCESS;
@@ -1319,14 +1437,22 @@ int echolocation_get_state(const echolocation_system_t* system,
 
 int echolocation_get_stats(const echolocation_system_t* system,
                            echolocation_stats_t* stats) {
-    if (!system || !stats) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_get_stats: NULL parameter");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     *stats = system->stats;
     return ECHOLOCATION_SUCCESS;
 }
 
 int echolocation_reset_stats(echolocation_system_t* system) {
-    if (!system) return ECHOLOCATION_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "echolocation_reset_stats: system is NULL");
+        return ECHOLOCATION_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     memset(&system->stats, 0, sizeof(echolocation_stats_t));
@@ -1342,12 +1468,18 @@ int echolocation_reset_stats(echolocation_system_t* system) {
 echolocation_output_t* echolocation_output_create(uint32_t max_echoes,
                                                   uint32_t max_objects) {
     echolocation_output_t* output = nimcp_calloc(1, sizeof(echolocation_output_t));
-    if (!output) return NULL;
+    if (!output) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(echolocation_output_t),
+                           "echolocation_output_create: Failed to allocate output");
+        return NULL;
+    }
 
     output->echoes = nimcp_calloc(max_echoes, sizeof(echo_detection_t));
     output->objects = nimcp_calloc(max_objects, sizeof(echo_object_t));
 
     if (!output->echoes || !output->objects) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 0,
+                           "echolocation_output_create: Failed to allocate buffers");
         echolocation_output_destroy(output);
         return NULL;
     }

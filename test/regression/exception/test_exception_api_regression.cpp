@@ -170,41 +170,41 @@ TEST_F(ExceptionApiRegressionTest, RecoveryActionEnumValuesNeverChange) {
     // REGRESSION: Recovery action values are used in immune integration
     // and recovery strategy configuration
 
-    EXPECT_EQ(static_cast<int>(RECOVERY_ACTION_NONE), 0)
-        << "RECOVERY_ACTION_NONE must be 0 (no action)";
+    EXPECT_EQ(static_cast<int>(EXCEPTION_RECOVERY_NONE), 0)
+        << "EXCEPTION_RECOVERY_NONE must be 0 (no action)";
 
-    EXPECT_EQ(static_cast<int>(RECOVERY_ACTION_RETRY), 1)
-        << "RECOVERY_ACTION_RETRY must be 1";
+    EXPECT_EQ(static_cast<int>(EXCEPTION_RECOVERY_RETRY), 1)
+        << "EXCEPTION_RECOVERY_RETRY must be 1";
 
-    EXPECT_EQ(static_cast<int>(RECOVERY_ACTION_GC), 2)
-        << "RECOVERY_ACTION_GC must be 2";
+    EXPECT_EQ(static_cast<int>(EXCEPTION_RECOVERY_GC), 2)
+        << "EXCEPTION_RECOVERY_GC must be 2";
 
-    EXPECT_EQ(static_cast<int>(RECOVERY_ACTION_COMPACT), 3)
-        << "RECOVERY_ACTION_COMPACT must be 3";
+    EXPECT_EQ(static_cast<int>(EXCEPTION_RECOVERY_COMPACT), 3)
+        << "EXCEPTION_RECOVERY_COMPACT must be 3";
 
-    EXPECT_EQ(static_cast<int>(RECOVERY_ACTION_ROLLBACK), 4)
-        << "RECOVERY_ACTION_ROLLBACK must be 4";
+    EXPECT_EQ(static_cast<int>(EXCEPTION_RECOVERY_ROLLBACK), 4)
+        << "EXCEPTION_RECOVERY_ROLLBACK must be 4";
 
-    EXPECT_EQ(static_cast<int>(RECOVERY_ACTION_RESTART_THREAD), 5)
-        << "RECOVERY_ACTION_RESTART_THREAD must be 5";
+    EXPECT_EQ(static_cast<int>(EXCEPTION_RECOVERY_RESTART_THREAD), 5)
+        << "EXCEPTION_RECOVERY_RESTART_THREAD must be 5";
 
-    EXPECT_EQ(static_cast<int>(RECOVERY_ACTION_RESTART_COMPONENT), 6)
-        << "RECOVERY_ACTION_RESTART_COMPONENT must be 6";
+    EXPECT_EQ(static_cast<int>(EXCEPTION_RECOVERY_RESTART_COMPONENT), 6)
+        << "EXCEPTION_RECOVERY_RESTART_COMPONENT must be 6";
 
-    EXPECT_EQ(static_cast<int>(RECOVERY_ACTION_QUARANTINE), 7)
-        << "RECOVERY_ACTION_QUARANTINE must be 7";
+    EXPECT_EQ(static_cast<int>(EXCEPTION_RECOVERY_QUARANTINE), 7)
+        << "EXCEPTION_RECOVERY_QUARANTINE must be 7";
 
-    EXPECT_EQ(static_cast<int>(RECOVERY_ACTION_REDUCE_LOAD), 8)
-        << "RECOVERY_ACTION_REDUCE_LOAD must be 8";
+    EXPECT_EQ(static_cast<int>(EXCEPTION_RECOVERY_REDUCE_LOAD), 8)
+        << "EXCEPTION_RECOVERY_REDUCE_LOAD must be 8";
 
-    EXPECT_EQ(static_cast<int>(RECOVERY_ACTION_CLEAR_CACHE), 9)
-        << "RECOVERY_ACTION_CLEAR_CACHE must be 9";
+    EXPECT_EQ(static_cast<int>(EXCEPTION_RECOVERY_CLEAR_CACHE), 9)
+        << "EXCEPTION_RECOVERY_CLEAR_CACHE must be 9";
 
-    EXPECT_EQ(static_cast<int>(RECOVERY_ACTION_EMERGENCY_SAVE), 10)
-        << "RECOVERY_ACTION_EMERGENCY_SAVE must be 10";
+    EXPECT_EQ(static_cast<int>(EXCEPTION_RECOVERY_EMERGENCY_SAVE), 10)
+        << "EXCEPTION_RECOVERY_EMERGENCY_SAVE must be 10";
 
-    EXPECT_EQ(static_cast<int>(RECOVERY_ACTION_GRACEFUL_SHUTDOWN), 11)
-        << "RECOVERY_ACTION_GRACEFUL_SHUTDOWN must be 11";
+    EXPECT_EQ(static_cast<int>(EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN), 11)
+        << "EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN must be 11";
 }
 
 //=============================================================================
@@ -357,18 +357,18 @@ TEST_F(ExceptionApiRegressionTest, TypeToStringStable) {
 TEST_F(ExceptionApiRegressionTest, RecoveryActionToStringStable) {
     // REGRESSION: Recovery action string representations are used in logs
 
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_NONE), "NONE");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_RETRY), "RETRY");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_GC), "GC");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_COMPACT), "COMPACT");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_ROLLBACK), "ROLLBACK");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_RESTART_THREAD), "RESTART_THREAD");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_RESTART_COMPONENT), "RESTART_COMPONENT");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_QUARANTINE), "QUARANTINE");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_REDUCE_LOAD), "REDUCE_LOAD");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_CLEAR_CACHE), "CLEAR_CACHE");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_EMERGENCY_SAVE), "EMERGENCY_SAVE");
-    EXPECT_STREQ(nimcp_recovery_action_to_string(RECOVERY_ACTION_GRACEFUL_SHUTDOWN), "GRACEFUL_SHUTDOWN");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_NONE), "NONE");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_RETRY), "RETRY");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_GC), "GC");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_COMPACT), "COMPACT");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_ROLLBACK), "ROLLBACK");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_RESTART_THREAD), "RESTART_THREAD");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_RESTART_COMPONENT), "RESTART_COMPONENT");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_QUARANTINE), "QUARANTINE");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_REDUCE_LOAD), "REDUCE_LOAD");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_CLEAR_CACHE), "CLEAR_CACHE");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_EMERGENCY_SAVE), "EMERGENCY_SAVE");
+    EXPECT_STREQ(nimcp_exception_recovery_action_to_string(EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN), "GRACEFUL_SHUTDOWN");
 }
 
 //=============================================================================
@@ -753,8 +753,8 @@ TEST_F(ExceptionApiRegressionTest, MetricsConstantsNeverChange) {
     EXPECT_EQ(NIMCP_METRICS_MAX_CONSECUTIVE_FAILURES, 10)
         << "NIMCP_METRICS_MAX_CONSECUTIVE_FAILURES must be 10";
 
-    EXPECT_EQ(NIMCP_METRICS_RECOVERY_ACTION_COUNT, 12)
-        << "NIMCP_METRICS_RECOVERY_ACTION_COUNT must be 12";
+    EXPECT_EQ(NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT, 12)
+        << "NIMCP_METRICS_EXCEPTION_RECOVERY_COUNT must be 12";
 
     EXPECT_EQ(NIMCP_METRICS_MAX_CATEGORIES, 20)
         << "NIMCP_METRICS_MAX_CATEGORIES must be 20";

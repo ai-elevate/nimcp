@@ -10,6 +10,7 @@
  */
 
 #include "core/directives/nimcp_self_preservation.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"

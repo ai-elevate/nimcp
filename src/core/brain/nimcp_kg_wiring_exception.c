@@ -94,23 +94,23 @@ bool kg_wiring_exceptions_enabled(void) {
  * Recovery Action Mapping
  * ============================================================================ */
 
-nimcp_recovery_action_t kg_wiring_get_recovery_action(nimcp_error_t code) {
+nimcp_exception_recovery_action_t kg_wiring_get_recovery_action(nimcp_error_t code) {
     switch (code) {
         /* Memory-related errors -> trigger GC */
         case NIMCP_ERROR_KG_WIRING_CREATE:
         case NIMCP_ERROR_KG_WIRING_WEIGHT_ALLOC:
-            return RECOVERY_ACTION_GC;
+            return EXCEPTION_RECOVERY_GC;
 
         /* Capacity errors -> reduce load */
         case NIMCP_ERROR_KG_WIRING_INPUTS_FULL:
         case NIMCP_ERROR_KG_WIRING_OUTPUTS_FULL:
         case NIMCP_ERROR_KG_WIRING_HANDLERS_FULL:
         case NIMCP_ERROR_KG_WIRING_METADATA_FULL:
-            return RECOVERY_ACTION_REDUCE_LOAD;
+            return EXCEPTION_RECOVERY_REDUCE_LOAD;
 
         /* Validation errors -> rollback */
         case NIMCP_ERROR_KG_WIRING_VALIDATION:
-            return RECOVERY_ACTION_ROLLBACK;
+            return EXCEPTION_RECOVERY_ROLLBACK;
 
         /* Programmer errors -> no recovery, fix the code */
         case NIMCP_ERROR_KG_WIRING_NULL:
@@ -120,7 +120,7 @@ nimcp_recovery_action_t kg_wiring_get_recovery_action(nimcp_error_t code) {
         case NIMCP_ERROR_KG_WIRING_WEIGHT_INVALID:
         case NIMCP_ERROR_KG_WIRING_DUPLICATE:
         default:
-            return RECOVERY_ACTION_NONE;
+            return EXCEPTION_RECOVERY_NONE;
     }
 }
 
@@ -294,10 +294,10 @@ bool kg_wiring_default_exception_handler(
     }
 
     /* Suggest recovery action */
-    nimcp_recovery_action_t action = kg_wiring_get_recovery_action(ex->code);
-    if (action != RECOVERY_ACTION_NONE) {
+    nimcp_exception_recovery_action_t action = kg_wiring_get_recovery_action(ex->code);
+    if (action != EXCEPTION_RECOVERY_NONE) {
         LOG_INFO("[KG_WIRING]   Suggested recovery: %s",
-                 nimcp_recovery_action_to_string(action));
+                 nimcp_exception_recovery_action_to_string(action));
     }
 
     /* Don't mark as handled - let other handlers process too */

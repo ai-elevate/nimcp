@@ -17,6 +17,7 @@
 #include "core/brain/nimcp_brain_processing.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/logging/nimcp_logging.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"

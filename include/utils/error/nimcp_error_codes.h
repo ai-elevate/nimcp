@@ -165,6 +165,7 @@ typedef int32_t nimcp_error_t;
 #endif
 #define NIMCP_ERROR_NETWORK_IO          4008 /**< Network I/O error */
 #define NIMCP_ERROR_SOCKET_ERROR        4009 /**< Socket operation failed */
+#define NIMCP_ERROR_IO                  4010 /**< Generic I/O error */
 
 //=============================================================================
 // Configuration Errors (5000-5999)
@@ -228,8 +229,12 @@ typedef int32_t nimcp_error_t;
 #define NIMCP_ERROR_SECURITY_THREAT         9003 /**< Security threat detected */
 #define NIMCP_ERROR_ACCESS_DENIED           9004 /**< Security access denied */
 #define NIMCP_ERROR_SIGNATURE_INVALID       9005 /**< Signature validation failed */
+#ifndef NIMCP_ERROR_ENCRYPTION_FAILED
 #define NIMCP_ERROR_ENCRYPTION_FAILED       9006 /**< Encryption operation failed */
+#endif
+#ifndef NIMCP_ERROR_DECRYPTION_FAILED
 #define NIMCP_ERROR_DECRYPTION_FAILED       9007 /**< Decryption operation failed */
+#endif
 #define NIMCP_ERROR_CERTIFICATE_INVALID     9008 /**< Certificate validation failed */
 #define NIMCP_ERROR_POLICY_VIOLATION        9009 /**< Security policy violation */
 #define NIMCP_ERROR_QUARANTINE_REQUIRED     9010 /**< Resource requires quarantine */

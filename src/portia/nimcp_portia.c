@@ -292,7 +292,7 @@ nimcp_error_t portia_init(const portia_config_t* config) {
         LOG_ERROR(LOG_MODULE, "Invalid config pointer");
         pthread_mutex_unlock(&g_portia_state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid config pointer in portia_init");
-        return NIMCP_ERROR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Allocate context */
@@ -301,7 +301,7 @@ nimcp_error_t portia_init(const portia_config_t* config) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate Portia context");
         pthread_mutex_unlock(&g_portia_state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate Portia context");
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     ctx->config = cfg;
@@ -603,7 +603,7 @@ nimcp_error_t portia_update(void) {
 nimcp_error_t portia_get_status(portia_status_t* status) {
     if (!bbb_check_pointer(status, "portia_get_status")) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid status pointer in portia_get_status");
-        return NIMCP_ERROR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!portia_is_initialized()) {
@@ -661,7 +661,7 @@ nimcp_error_t portia_set_tier(platform_tier_t tier) {
 
     if (tier >= PLATFORM_TIER_COUNT) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid tier value %d in portia_set_tier", tier);
-        return NIMCP_ERROR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     portia_context_t* ctx = g_portia_ctx;
@@ -832,7 +832,7 @@ nimcp_error_t portia_get_accelerators(
     if (!bbb_check_pointer(out_accelerators, "portia_get_accelerators") ||
         !bbb_check_pointer(out_count, "portia_get_accelerators")) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid pointer in portia_get_accelerators");
-        return NIMCP_ERROR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (!portia_is_initialized()) {
@@ -918,7 +918,7 @@ static nimcp_error_t portia_message_handler(
 
     if (!bbb_check_pointer(msg, "portia_message_handler")) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Invalid message pointer in portia_message_handler");
-        return NIMCP_ERROR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     const bio_message_header_t* header = (const bio_message_header_t*)msg;
@@ -1026,7 +1026,7 @@ static nimcp_error_t portia_tier_manager_create(portia_tier_manager_t** out_mgr,
     portia_tier_manager_t* mgr = nimcp_calloc(1, sizeof(portia_tier_manager_t));
     if (!mgr) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate tier manager");
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     mgr->config = *config;
@@ -1048,7 +1048,7 @@ static void portia_tier_manager_destroy(portia_tier_manager_t* mgr) {
 static nimcp_error_t portia_tier_manager_update(portia_tier_manager_t* mgr, const system_resources_t* resources) {
     if (!mgr || !resources) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL argument in portia_tier_manager_update");
-        return NIMCP_ERROR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Simplified: just detect tier based on current resources */
@@ -1063,7 +1063,7 @@ static nimcp_error_t portia_power_monitor_create(portia_power_monitor_t** out_mo
     portia_power_monitor_t* mon = nimcp_calloc(1, sizeof(portia_power_monitor_t));
     if (!mon) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate power monitor");
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     mon->config = *config;
@@ -1086,7 +1086,7 @@ static void portia_power_monitor_destroy(portia_power_monitor_t* mon) {
 static nimcp_error_t portia_power_monitor_update(portia_power_monitor_t* mon) {
     if (!mon) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL monitor in portia_power_monitor_update");
-        return NIMCP_ERROR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Simplified: assume AC power for now */
@@ -1104,7 +1104,7 @@ static nimcp_error_t portia_resource_tracker_create(portia_resource_tracker_t** 
     portia_resource_tracker_t* tracker = nimcp_calloc(1, sizeof(portia_resource_tracker_t));
     if (!tracker) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate resource tracker");
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     tracker->config = *config;
@@ -1125,7 +1125,7 @@ static void portia_resource_tracker_destroy(portia_resource_tracker_t* tracker) 
 static nimcp_error_t portia_resource_tracker_update(portia_resource_tracker_t* tracker) {
     if (!tracker) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL tracker in portia_resource_tracker_update");
-        return NIMCP_ERROR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_mutex_lock(&tracker->lock);
@@ -1153,7 +1153,7 @@ static nimcp_error_t portia_degradation_controller_create(portia_degradation_con
     portia_degradation_controller_t* ctrl = nimcp_calloc(1, sizeof(portia_degradation_controller_t));
     if (!ctrl) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate degradation controller");
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     ctrl->config = *config;
@@ -1174,7 +1174,7 @@ static void portia_degradation_controller_destroy(portia_degradation_controller_
 static nimcp_error_t portia_degradation_controller_update(portia_degradation_controller_t* ctrl, const portia_status_t* status) {
     if (!ctrl || !status) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL argument in portia_degradation_controller_update");
-        return NIMCP_ERROR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     /* Simplified: maintain current degradation level */
@@ -1186,7 +1186,7 @@ static nimcp_error_t portia_accelerator_detector_create(portia_accelerator_detec
     portia_accelerator_detector_t* det = nimcp_calloc(1, sizeof(portia_accelerator_detector_t));
     if (!det) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate accelerator detector");
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     det->config = *config;
@@ -1208,7 +1208,7 @@ static void portia_accelerator_detector_destroy(portia_accelerator_detector_t* d
 static nimcp_error_t portia_accelerator_detector_scan(portia_accelerator_detector_t* det) {
     if (!det) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL detector in portia_accelerator_detector_scan");
-        return NIMCP_ERROR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_mutex_lock(&det->lock);
@@ -1228,7 +1228,7 @@ static nimcp_error_t portia_sensor_fusion_create(portia_sensor_fusion_t** out_fu
     portia_sensor_fusion_t* fusion = nimcp_calloc(1, sizeof(portia_sensor_fusion_t));
     if (!fusion) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate sensor fusion");
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     fusion->overall_health = 1.0F;
@@ -1251,7 +1251,7 @@ static void portia_sensor_fusion_destroy(portia_sensor_fusion_t* fusion) {
 static nimcp_error_t portia_sensor_fusion_update(portia_sensor_fusion_t* fusion, const portia_status_t* status) {
     if (!fusion || !status) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL argument in portia_sensor_fusion_update");
-        return NIMCP_ERROR_INVALID_ARG;
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_mutex_lock(&fusion->lock);
@@ -1272,7 +1272,7 @@ static nimcp_error_t portia_planning_engine_create(portia_planning_engine_t** ou
     portia_planning_engine_t* planner = nimcp_calloc(1, sizeof(portia_planning_engine_t));
     if (!planner) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate planning engine");
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     planner->current_workload = PORTIA_WORKLOAD_UNKNOWN;
@@ -1295,7 +1295,7 @@ static nimcp_error_t portia_target_classifier_create(portia_target_classifier_t*
     portia_target_classifier_t* classifier = nimcp_calloc(1, sizeof(portia_target_classifier_t));
     if (!classifier) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate target classifier");
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     classifier->classified_workload = PORTIA_WORKLOAD_UNKNOWN;

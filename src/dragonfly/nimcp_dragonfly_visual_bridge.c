@@ -7,6 +7,7 @@
 
 #include "dragonfly/nimcp_dragonfly_visual_bridge.h"
 #include "utils/thread/nimcp_thread.h"
+#include "api/nimcp_api_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -185,12 +186,13 @@ dragonfly_visual_bridge_t* dragonfly_visual_bridge_create(
     }
 
     if (!visual_bridge_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_visual_bridge_create: invalid config");
         return NULL;
     }
 
     dragonfly_visual_bridge_t* bridge =
         (dragonfly_visual_bridge_t*)calloc(1, sizeof(dragonfly_visual_bridge_t));
-    if (!bridge) return NULL;
+    NIMCP_API_CHECK_ALLOC(bridge, "dragonfly_visual_bridge_create: failed to allocate bridge");
 
     bridge->config = *config;
     bridge->dragonfly = dragonfly;
@@ -200,6 +202,7 @@ dragonfly_visual_bridge_t* dragonfly_visual_bridge_create(
     /* Create mutex */
     bridge->mutex = nimcp_mutex_create(NULL);
     if (!bridge->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_visual_bridge_create: failed to create mutex");
         free(bridge);
         return NULL;
     }
@@ -215,7 +218,10 @@ void dragonfly_visual_bridge_destroy(dragonfly_visual_bridge_t* bridge) {
 }
 
 int dragonfly_visual_bridge_reset(dragonfly_visual_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -240,8 +246,18 @@ int dragonfly_visual_bridge_process_frame(
     uint32_t height,
     uint32_t channels
 ) {
-    if (!bridge || !image) return -1;
-    if (width == 0 || height == 0) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_process_frame: bridge is NULL");
+        return -1;
+    }
+    if (!image) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_process_frame: image is NULL");
+        return -1;
+    }
+    if (width == 0 || height == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_visual_bridge_process_frame: invalid dimensions");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -344,7 +360,14 @@ int dragonfly_visual_bridge_process_features(
     uint32_t feature_dim,
     const attention_map_t* attention
 ) {
-    if (!bridge || !features) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_process_features: bridge is NULL");
+        return -1;
+    }
+    if (!features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_process_features: features is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -429,7 +452,14 @@ int dragonfly_visual_bridge_inject_blob(
     dragonfly_visual_bridge_t* bridge,
     const motion_blob_t* blob
 ) {
-    if (!bridge || !blob) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_inject_blob: bridge is NULL");
+        return -1;
+    }
+    if (!blob) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_inject_blob: blob is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -495,7 +525,14 @@ int dragonfly_visual_bridge_get_result(
     const dragonfly_visual_bridge_t* bridge,
     visual_motion_result_t* result
 ) {
-    if (!bridge || !result) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_get_result: bridge is NULL");
+        return -1;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_get_result: result is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_visual_bridge_t*)bridge)->mutex);
     *result = bridge->current_result;
@@ -515,7 +552,18 @@ int dragonfly_visual_bridge_pixel_to_3d(
     float depth_m,
     float position[3]
 ) {
-    if (!bridge || !position || depth_m <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_pixel_to_3d: bridge is NULL");
+        return -1;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_pixel_to_3d: position is NULL");
+        return -1;
+    }
+    if (depth_m <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_visual_bridge_pixel_to_3d: invalid depth");
+        return -1;
+    }
 
     const visual_calibration_t* cal = &bridge->config.calibration;
 
@@ -570,7 +618,14 @@ int dragonfly_visual_bridge_get_stats(
     const dragonfly_visual_bridge_t* bridge,
     visual_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_visual_bridge_t*)bridge)->mutex);
 
@@ -587,7 +642,10 @@ int dragonfly_visual_bridge_get_stats(
 }
 
 int dragonfly_visual_bridge_reset_stats(dragonfly_visual_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -604,8 +662,18 @@ int dragonfly_visual_bridge_set_config(
     dragonfly_visual_bridge_t* bridge,
     const visual_bridge_config_t* config
 ) {
-    if (!bridge || !config) return -1;
-    if (!visual_bridge_validate_config(config)) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_set_config: bridge is NULL");
+        return -1;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_set_config: config is NULL");
+        return -1;
+    }
+    if (!visual_bridge_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_visual_bridge_set_config: invalid config");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->config = *config;
@@ -618,7 +686,14 @@ int dragonfly_visual_bridge_get_config(
     const dragonfly_visual_bridge_t* bridge,
     visual_bridge_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_get_config: bridge is NULL");
+        return -1;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_get_config: config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_visual_bridge_t*)bridge)->mutex);
     *config = bridge->config;
@@ -631,9 +706,22 @@ int dragonfly_visual_bridge_set_calibration(
     dragonfly_visual_bridge_t* bridge,
     const visual_calibration_t* calibration
 ) {
-    if (!bridge || !calibration) return -1;
-    if (calibration->focal_length <= 0.0f) return -1;
-    if (calibration->image_width == 0 || calibration->image_height == 0) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_set_calibration: bridge is NULL");
+        return -1;
+    }
+    if (!calibration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_visual_bridge_set_calibration: calibration is NULL");
+        return -1;
+    }
+    if (calibration->focal_length <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_visual_bridge_set_calibration: invalid focal_length");
+        return -1;
+    }
+    if (calibration->image_width == 0 || calibration->image_height == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_visual_bridge_set_calibration: invalid image dimensions");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->config.calibration = *calibration;

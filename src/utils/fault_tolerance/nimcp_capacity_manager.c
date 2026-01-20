@@ -13,6 +13,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "api/nimcp_api_exception.h"
 
 #include <stdlib.h>
 #include <string.h>

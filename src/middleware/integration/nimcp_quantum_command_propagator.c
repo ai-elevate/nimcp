@@ -18,6 +18,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "middleware/integration/nimcp_shannon_monitor.h"
+#include "api/nimcp_api_exception.h"
 #include "utils/quantum/nimcp_quantum_shannon.h"
 #include "utils/quantum/nimcp_quantum_walk.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"

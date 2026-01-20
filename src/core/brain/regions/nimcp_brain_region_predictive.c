@@ -221,7 +221,7 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
     if (!pred) {
         nimcp_mutex_unlock(&region->lock);
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate predictive extension");
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     // Copy configuration
@@ -239,7 +239,7 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
         nimcp_free(pred);
         nimcp_mutex_unlock(&region->lock);
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate prediction buffers");
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     // Initialize precision weights to 1.0 (unit variance)
@@ -267,7 +267,7 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
             nimcp_free(pred);
             nimcp_mutex_unlock(&region->lock);
             LOG_MODULE_ERROR(LOG_MODULE, "Failed to create predictive hierarchy");
-            return NIMCP_ERROR_INITIALIZATION_FAILED;
+            return NIMCP_ERROR_NOT_INITIALIZED_FAILED;
         }
     }
 
@@ -464,7 +464,7 @@ nimcp_result_t brain_region_predict_lower(brain_region_t* region,
         float* top_level = nimcp_malloc(region->total_neurons / 2 * sizeof(float));
         if (!top_level) {
             nimcp_mutex_unlock(&pred->lock);
-            return NIMCP_ERROR_OUT_OF_MEMORY;
+            return NIMCP_ERROR_NO_MEMORY;
         }
 
         // Get top-level representations
@@ -633,7 +633,7 @@ nimcp_result_t brain_region_hierarchical_step(brain_region_t* region,
     float* current_activity = nimcp_malloc(region->total_neurons * sizeof(float));
     if (!current_activity) {
         nimcp_mutex_unlock(&pred->lock);
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
 
     if (sensory_input && input_size > 0) {
@@ -907,7 +907,7 @@ nimcp_result_t brain_region_connect_predictive(brain_region_t* higher_region,
     if (!new_outputs) {
         nimcp_mutex_unlock(&second->lock);
         nimcp_mutex_unlock(&first->lock);
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
     new_outputs[higher_pred->num_output_regions] = lower_region->id;
     higher_pred->output_region_ids = new_outputs;
@@ -921,7 +921,7 @@ nimcp_result_t brain_region_connect_predictive(brain_region_t* higher_region,
         higher_pred->num_output_regions--;
         nimcp_mutex_unlock(&second->lock);
         nimcp_mutex_unlock(&first->lock);
-        return NIMCP_ERROR_OUT_OF_MEMORY;
+        return NIMCP_ERROR_NO_MEMORY;
     }
     new_inputs[lower_pred->num_input_regions] = higher_region->id;
     lower_pred->input_region_ids = new_inputs;

@@ -14,6 +14,8 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/rng/nimcp_rand.h"
+#include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -173,7 +175,11 @@ static confidence_level_t confidence_to_level(float confidence) {
  */
 static bool init_history_buffer(history_buffer_t* buffer, uint32_t capacity) {
     buffer->buffer = nimcp_calloc(capacity, sizeof(observation_t));
-    if (!buffer->buffer) return false;
+    if (!buffer->buffer) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, capacity * sizeof(observation_t),
+                           "init_history_buffer: Failed to allocate history buffer");
+        return false;
+    }
     buffer->capacity = capacity;
     buffer->head = 0;
     buffer->count = 0;
@@ -215,7 +221,11 @@ static bool add_to_history(history_buffer_t* buffer, const observation_t* obs) {
 
     if (obs->features && obs->feature_count > 0) {
         buffer->buffer[buffer->head].features = nimcp_calloc(obs->feature_count, sizeof(float));
-        if (!buffer->buffer[buffer->head].features) return false;
+        if (!buffer->buffer[buffer->head].features) {
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, obs->feature_count * sizeof(float),
+                               "add_to_history: Failed to copy observation features");
+            return false;
+        }
         memcpy(buffer->buffer[buffer->head].features, obs->features,
                obs->feature_count * sizeof(float));
     }
@@ -249,6 +259,8 @@ static bool init_prediction_model(prediction_model_t* model, uint32_t feature_di
     model->velocity = nimcp_calloc(feature_dim * feature_dim, sizeof(float));
 
     if (!model->weights || !model->bias || !model->velocity) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, feature_dim * feature_dim * sizeof(float),
+                           "init_prediction_model: Failed to allocate model arrays");
         if (model->weights) nimcp_free(model->weights);
         if (model->bias) nimcp_free(model->bias);
         if (model->velocity) nimcp_free(model->velocity);
@@ -395,6 +407,8 @@ precognition_module_t* precognition_create(const precognition_config_t* config) 
     precognition_module_t* module = nimcp_calloc(1, sizeof(precognition_module_t));
     if (!module) {
         LOG_ERROR("[%s] Failed to allocate module", PRECOGNITION_LOG_MODULE);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(precognition_module_t),
+                           "precognition_create: Failed to allocate module");
         return NULL;
     }
 
@@ -408,6 +422,9 @@ precognition_module_t* precognition_create(const precognition_config_t* config) 
     /* Initialize history buffer */
     if (!init_history_buffer(&module->history, module->config.history_length)) {
         LOG_ERROR("[%s] Failed to allocate history buffer", PRECOGNITION_LOG_MODULE);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           module->config.history_length * sizeof(observation_t),
+                           "precognition_create: Failed to allocate history buffer");
         precognition_destroy(module);
         return NULL;
     }
@@ -417,6 +434,9 @@ precognition_module_t* precognition_create(const precognition_config_t* config) 
         float lr = module->config.learning_rate * powf(0.5f, (float)h);
         if (!init_prediction_model(&module->models[h], module->config.state_dim, lr)) {
             LOG_ERROR("[%s] Failed to initialize prediction model %d", PRECOGNITION_LOG_MODULE, h);
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                               module->config.state_dim * module->config.state_dim * sizeof(float),
+                               "precognition_create: Failed to initialize prediction model %d", h);
             precognition_destroy(module);
             return NULL;
         }
@@ -427,6 +447,9 @@ precognition_module_t* precognition_create(const precognition_config_t* config) 
     module->running_variance = nimcp_calloc(module->config.state_dim, sizeof(float));
     if (!module->running_mean || !module->running_variance) {
         LOG_ERROR("[%s] Failed to allocate statistics buffers", PRECOGNITION_LOG_MODULE);
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           module->config.state_dim * sizeof(float) * 2,
+                           "precognition_create: Failed to allocate statistics buffers");
         precognition_destroy(module);
         return NULL;
     }
@@ -479,7 +502,11 @@ void precognition_destroy(precognition_module_t* module) {
 }
 
 bool precognition_reset(precognition_module_t* module) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_reset: NULL module pointer");
+        return false;
+    }
 
     LOG_DEBUG("[%s] Resetting module", PRECOGNITION_LOG_MODULE);
 
@@ -527,6 +554,9 @@ bool precognition_observe(
     const observation_t* observation
 ) {
     if (!module || !observation || !observation->features || observation->feature_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "precognition_observe: Invalid parameters (module=%p, observation=%p)",
+                              (void*)module, (void*)observation);
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -585,6 +615,8 @@ bool precognition_observe_features(
     uint32_t feature_count
 ) {
     if (!module || !features || feature_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "precognition_observe_features: Invalid parameters");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -605,7 +637,11 @@ bool precognition_get_history(
     uint32_t max_count,
     uint32_t* count
 ) {
-    if (!module || !observations || !count) return false;
+    if (!module || !observations || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_get_history: NULL parameter");
+        return false;
+    }
 
     uint32_t to_copy = (max_count < module->history.count) ? max_count : module->history.count;
 
@@ -622,7 +658,11 @@ bool precognition_get_history(
 }
 
 bool precognition_clear_history(precognition_module_t* module) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_clear_history: NULL module pointer");
+        return false;
+    }
 
     for (uint32_t i = 0; i < module->history.count; i++) {
         uint32_t idx = (module->history.head + module->history.capacity - module->history.count + i)
@@ -650,11 +690,17 @@ bool precognition_predict(
     prediction_ensemble_t* ensemble
 ) {
     if (!module || !ensemble || horizon >= HORIZON_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "precognition_predict: Invalid parameters (module=%p, ensemble=%p, horizon=%d)",
+                              (void*)module, (void*)ensemble, (int)horizon);
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
 
     if (module->history.count < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                              "precognition_predict: Insufficient history (%u < 2)",
+                              module->history.count);
         set_error(module, PRECOGNITION_ERROR_INSUFFICIENT_HISTORY);
         return false;
     }
@@ -677,6 +723,9 @@ bool precognition_predict(
     ensemble->trajectories = nimcp_calloc(num_samples, sizeof(future_trajectory_t));
     ensemble->weights = nimcp_calloc(num_samples, sizeof(float));
     if (!ensemble->trajectories || !ensemble->weights) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
+                           num_samples * sizeof(future_trajectory_t),
+                           "precognition_predict: Failed to allocate trajectories");
         precognition_free_ensemble(ensemble);
         set_error(module, PRECOGNITION_ERROR_PREDICTION_FAILED);
         return false;
@@ -834,6 +883,8 @@ bool precognition_predict_steps(
     prediction_ensemble_t* ensemble
 ) {
     if (!module || !ensemble || steps == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "precognition_predict_steps: Invalid parameters");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -856,6 +907,8 @@ bool precognition_predict_most_likely(
     future_trajectory_t* trajectory
 ) {
     if (!module || !trajectory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_predict_most_likely: NULL parameter");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -889,6 +942,8 @@ bool precognition_predict_feature(
     uint32_t* point_count
 ) {
     if (!module || !predictions || !confidence || !point_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_predict_feature: NULL parameter");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -929,6 +984,8 @@ bool precognition_get_distribution(
     predicted_state_t* state
 ) {
     if (!module || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_get_distribution: NULL parameter");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -964,6 +1021,8 @@ bool precognition_event_probability(
     float* probability
 ) {
     if (!module || !probability) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_event_probability: NULL parameter");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1002,6 +1061,8 @@ bool precognition_confidence_interval(
     uint32_t feature_count
 ) {
     if (!module || !lower_bound || !upper_bound || feature_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "precognition_confidence_interval: Invalid parameters");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1044,6 +1105,8 @@ bool precognition_detect_anomaly(
     detected_anomaly_t* anomaly
 ) {
     if (!module || !anomaly) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_detect_anomaly: NULL parameter");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1126,6 +1189,8 @@ bool precognition_predict_anomalies(
     uint32_t* anomaly_count
 ) {
     if (!module || !anomalies || !anomaly_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_predict_anomalies: NULL parameter");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1181,6 +1246,8 @@ bool precognition_check_early_warning(
     early_warning_t* warning
 ) {
     if (!module || !warning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_check_early_warning: NULL parameter");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1239,6 +1306,9 @@ bool precognition_set_anomaly_threshold(
     float z_score_threshold
 ) {
     if (!module || z_score_threshold <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                              "precognition_set_anomaly_threshold: Invalid parameters (module=%p, threshold=%.2f)",
+                              (void*)module, z_score_threshold);
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1253,6 +1323,8 @@ bool precognition_set_anomaly_threshold(
 
 bool precognition_learn_causal_model(precognition_module_t* module) {
     if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_learn_causal_model: NULL module pointer");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1262,6 +1334,9 @@ bool precognition_learn_causal_model(precognition_module_t* module) {
     }
 
     if (module->history.count < 50) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                              "precognition_learn_causal_model: Insufficient history (%u < 50)",
+                              module->history.count);
         set_error(module, PRECOGNITION_ERROR_INSUFFICIENT_HISTORY);
         return false;
     }
@@ -1275,6 +1350,8 @@ bool precognition_learn_causal_model(precognition_module_t* module) {
 
     observation_t* current = get_from_history(&module->history, 0);
     if (!current) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                              "precognition_learn_causal_model: Failed to get current observation");
         module->status = PRECOGNITION_STATUS_IDLE;
         return false;
     }
@@ -1286,6 +1363,8 @@ bool precognition_learn_causal_model(precognition_module_t* module) {
     uint32_t max_links = num_vars * num_vars;
     causal_link_t* links = nimcp_calloc(max_links, sizeof(causal_link_t));
     if (!links) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, max_links * sizeof(causal_link_t),
+                           "precognition_learn_causal_model: Failed to allocate causal links");
         module->status = PRECOGNITION_STATUS_IDLE;
         return false;
     }
@@ -1363,7 +1442,11 @@ bool precognition_get_causal_model(
     const precognition_module_t* module,
     causal_model_t* model
 ) {
-    if (!module || !model) return false;
+    if (!module || !model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_get_causal_model: NULL parameter");
+        return false;
+    }
 
     *model = module->causal_model;
     model->links = NULL;  /* Don't copy pointer */
@@ -1378,6 +1461,8 @@ bool precognition_query_causal_effect(
     float* confidence
 ) {
     if (!module || !strength || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_query_causal_effect: NULL parameter");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1402,6 +1487,8 @@ bool precognition_counterfactual(
     counterfactual_result_t* result
 ) {
     if (!module || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_counterfactual: NULL parameter");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1431,6 +1518,8 @@ bool precognition_counterfactual(
     /* Create modified observation */
     float* modified = nimcp_calloc(current->feature_count, sizeof(float));
     if (!modified) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, current->feature_count * sizeof(float),
+                           "precognition_counterfactual: Failed to allocate modified features");
         precognition_free_ensemble(&result->factual);
         return false;
     }
@@ -1484,6 +1573,8 @@ bool precognition_verify_prediction(
     verification_result_t* result
 ) {
     if (!module || !observation || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_verify_prediction: NULL parameter");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1564,6 +1655,8 @@ bool precognition_learn_from_error(
     const verification_result_t* result
 ) {
     if (!module || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_learn_from_error: NULL parameter");
         set_error(module, PRECOGNITION_ERROR_INVALID_INPUT);
         return false;
     }
@@ -1590,7 +1683,11 @@ bool precognition_get_accuracy(
     float* accuracy,
     float* calibration
 ) {
-    if (!module || !accuracy || !calibration) return false;
+    if (!module || !accuracy || !calibration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_get_accuracy: NULL parameter");
+        return false;
+    }
 
     if (module->stats.verified_predictions == 0) {
         *accuracy = 0.0f;
@@ -1618,7 +1715,11 @@ bool precognition_set_prediction_callback(
     precognition_prediction_callback_t callback,
     void* user_data
 ) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_set_prediction_callback: NULL module pointer");
+        return false;
+    }
     module->prediction_callback = callback;
     module->prediction_user_data = user_data;
     return true;
@@ -1629,7 +1730,11 @@ bool precognition_set_anomaly_callback(
     precognition_anomaly_callback_t callback,
     void* user_data
 ) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_set_anomaly_callback: NULL module pointer");
+        return false;
+    }
     module->anomaly_callback = callback;
     module->anomaly_user_data = user_data;
     return true;
@@ -1640,7 +1745,11 @@ bool precognition_set_warning_callback(
     precognition_warning_callback_t callback,
     void* user_data
 ) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_set_warning_callback: NULL module pointer");
+        return false;
+    }
     module->warning_callback = callback;
     module->warning_user_data = user_data;
     return true;
@@ -1651,7 +1760,11 @@ bool precognition_set_verification_callback(
     precognition_verification_callback_t callback,
     void* user_data
 ) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_set_verification_callback: NULL module pointer");
+        return false;
+    }
     module->verification_callback = callback;
     module->verification_user_data = user_data;
     return true;
@@ -1702,13 +1815,21 @@ const char* precognition_status_string(precognition_status_t status) {
 }
 
 bool precognition_get_stats(const precognition_module_t* module, precognition_stats_t* stats) {
-    if (!module || !stats) return false;
+    if (!module || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_get_stats: NULL parameter");
+        return false;
+    }
     *stats = module->stats;
     return true;
 }
 
 bool precognition_get_config(const precognition_module_t* module, precognition_config_t* config) {
-    if (!module || !config) return false;
+    if (!module || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "precognition_get_config: NULL parameter");
+        return false;
+    }
     *config = module->config;
     return true;
 }
