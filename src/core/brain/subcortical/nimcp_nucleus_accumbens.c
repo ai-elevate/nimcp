@@ -58,7 +58,7 @@ nucleus_accumbens_t* nac_create(const nac_config_t* config) {
 
 void nac_destroy(nucleus_accumbens_t* nac) {
     if (!nac) return;
-    if (nac->mutex) { nimcp_mutex_destroy(nac->mutex); nimcp_free(nac->mutex); }
+    if (nac->mutex) { nimcp_mutex_free(nac->mutex); }
     nimcp_free(nac->core_activity);
     nimcp_free(nac->shell_activity);
     nimcp_free(nac->pit.action_biases);

@@ -402,7 +402,7 @@ void lgss_content_filter_destroy(lgss_content_filter_t* filter) {
 
     /* Destroy mutex */
     if (filter->mutex) {
-        nimcp_mutex_destroy(filter->mutex);
+        nimcp_mutex_free(filter->mutex);
         filter->mutex = NULL;
     }
 

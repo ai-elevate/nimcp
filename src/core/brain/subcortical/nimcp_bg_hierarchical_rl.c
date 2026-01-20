@@ -144,8 +144,7 @@ void bg_hrl_destroy(bg_hrl_system_t* system) {
     if (!system) return;
 
     if (system->mutex) {
-        nimcp_mutex_destroy(system->mutex);
-        nimcp_free(system->mutex);
+        nimcp_mutex_free(system->mutex);
     }
 
     nimcp_free(system->option_stack);

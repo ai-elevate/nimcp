@@ -399,7 +399,7 @@ pr_training_plasticity_t pr_training_plasticity_create(
 
     /* Allocate conversion buffers */
     if (allocate_buffers(tp) != 0) {
-        nimcp_mutex_destroy(tp->mutex);
+        nimcp_mutex_free(tp->mutex);
         nimcp_free(tp);
         return NULL;
     }
@@ -436,7 +436,7 @@ void pr_training_plasticity_destroy(pr_training_plasticity_t tp) {
 
     /* Destroy mutex */
     if (tp->mutex) {
-        nimcp_mutex_destroy(tp->mutex);
+        nimcp_mutex_free(tp->mutex);
     }
 
     nimcp_free(tp);

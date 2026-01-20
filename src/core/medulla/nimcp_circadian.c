@@ -187,7 +187,6 @@ void circadian_destroy(circadian_rhythm_t* rhythm)
     /* Destroy mutex */
     if (rhythm->mutex) {
         nimcp_platform_mutex_destroy(rhythm->mutex);
-        nimcp_free(rhythm->mutex);
     }
 
     nimcp_free(rhythm);

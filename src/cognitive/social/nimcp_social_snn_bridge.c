@@ -168,7 +168,7 @@ social_snn_bridge_t* social_snn_create(const social_snn_config_t* config) {
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -223,7 +223,7 @@ void social_snn_destroy(social_snn_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge->encoding_buffer);

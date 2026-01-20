@@ -192,7 +192,6 @@ synapse_plasticity_bridge_t* synapse_plasticity_create(
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -215,8 +214,7 @@ void synapse_plasticity_destroy(synapse_plasticity_bridge_t* bridge)
 
     /* Free mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

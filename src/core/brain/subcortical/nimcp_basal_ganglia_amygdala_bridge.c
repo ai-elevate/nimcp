@@ -100,7 +100,7 @@ bga_bridge_t* bga_bridge_create(const bga_bridge_config_t* config) {
 void bga_bridge_destroy(bga_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
     if (bridge->modulations) nimcp_free(bridge->modulations);
 
     nimcp_free(bridge);

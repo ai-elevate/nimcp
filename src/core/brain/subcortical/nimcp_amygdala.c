@@ -323,8 +323,7 @@ void amygdala_destroy(amygdala_t* amyg) {
 
     /* Free resources */
     if (amyg->mutex) {
-        nimcp_mutex_destroy(amyg->mutex);
-        nimcp_free(amyg->mutex);
+        nimcp_mutex_free(amyg->mutex);
     }
 
     if (amyg->fear_memories) {

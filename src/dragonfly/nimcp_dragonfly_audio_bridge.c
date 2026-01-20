@@ -202,7 +202,7 @@ void dragonfly_audio_bridge_destroy(dragonfly_audio_bridge_t* bridge) {
     if (!bridge) return;
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     free(bridge);

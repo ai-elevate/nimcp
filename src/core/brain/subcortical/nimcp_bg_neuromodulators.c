@@ -74,8 +74,7 @@ bg_neuromod_system_t* bg_neuromod_create(const bg_neuromod_config_t* config) {
 void bg_neuromod_destroy(bg_neuromod_system_t* system) {
     if (!system) return;
     if (system->mutex) {
-        nimcp_mutex_destroy(system->mutex);
-        nimcp_free(system->mutex);
+        nimcp_mutex_free(system->mutex);
     }
     nimcp_free(system);
 }

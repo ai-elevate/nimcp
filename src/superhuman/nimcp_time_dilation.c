@@ -449,7 +449,6 @@ void time_dilation_destroy(time_dilation_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
-        nimcp_free(system->mutex);
     }
 
     nimcp_free(system);

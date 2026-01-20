@@ -319,7 +319,7 @@ brain_kg_t* brain_kg_create(const brain_kg_config_t* config) {
         kg->msg_index.entry_capacity * sizeof(brain_kg_msg_index_entry_t));
     if (!kg->msg_index.entries) {
         NIMCP_LOGGING_ERROR("Failed to allocate message index");
-        nimcp_mutex_destroy(kg->mutex);
+        nimcp_mutex_free(kg->mutex);
         nimcp_free(kg->edges);
         nimcp_free(kg->nodes);
         nimcp_free(kg);
@@ -352,7 +352,7 @@ void brain_kg_destroy(brain_kg_t* kg) {
     }
 
     if (kg->mutex) {
-        nimcp_mutex_destroy(kg->mutex);
+        nimcp_mutex_free(kg->mutex);
     }
 
     if (kg->edges) {

@@ -136,7 +136,7 @@ portia_swarm_logic_bridge_t* portia_swarm_logic_create(
     bridge->logic_network = neural_logic_create(&logic_config);
     if (!bridge->logic_network) {
         NIMCP_LOGGING_ERROR("Failed to create neural logic network");
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -173,7 +173,7 @@ void portia_swarm_logic_destroy(portia_swarm_logic_bridge_t* bridge) {
 
     // Destroy mutex
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     // Free bridge

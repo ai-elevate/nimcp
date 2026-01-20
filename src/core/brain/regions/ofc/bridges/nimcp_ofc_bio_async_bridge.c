@@ -167,7 +167,7 @@ void ofc_bio_async_bridge_destroy(ofc_bio_async_bridge_t* bridge)
 
     /* Free mutex */
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

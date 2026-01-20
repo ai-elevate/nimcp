@@ -144,7 +144,6 @@ dendritic_pink_noise_bridge_t* dendritic_pink_noise_bridge_create(
         NIMCP_LOGGING_WARN("Failed to allocate mutex, continuing without thread safety");
     } else if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_WARN("Failed to initialize mutex, continuing without thread safety");
-        nimcp_free(bridge->base.mutex);
         bridge->base.mutex = NULL;
     }
 
@@ -168,8 +167,7 @@ void dendritic_pink_noise_bridge_destroy(dendritic_pink_noise_bridge_t* bridge) 
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     /* Free bridge structure */

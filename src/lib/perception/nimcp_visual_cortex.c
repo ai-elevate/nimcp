@@ -1112,8 +1112,8 @@ void visual_cortex_destroy(visual_cortex_t* cortex)
 
     // === Destroy Memory Pool Mutex ===
     if (cortex->memory_pool_mutex) {
-        nimcp_mutex_destroy(cortex->memory_pool_mutex);
-        nimcp_free(cortex->memory_pool_mutex);
+        nimcp_mutex_free(cortex->memory_pool_mutex);
+
     }
 
     // NIMCP 2.7 Phase 8.5: Destroy internal recurrent network

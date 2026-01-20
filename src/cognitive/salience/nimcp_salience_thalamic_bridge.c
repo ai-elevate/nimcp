@@ -61,7 +61,7 @@ salience_thalamic_bridge_t* salience_thalamic_bridge_create(void* salience, thal
 void salience_thalamic_bridge_destroy(salience_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
 }

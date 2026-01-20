@@ -331,8 +331,7 @@ void hemispheric_injury_destroy(hemispheric_injury_system_t* system) {
     }
 
     if (system->mutex) {
-        nimcp_mutex_destroy(system->mutex);
-        nimcp_free(system->mutex);
+        nimcp_mutex_free(system->mutex);
     }
 
     system->initialized = false;

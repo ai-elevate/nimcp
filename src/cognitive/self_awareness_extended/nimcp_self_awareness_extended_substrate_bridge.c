@@ -60,7 +60,6 @@ self_awareness_ext_substrate_bridge_t* self_awareness_ext_substrate_bridge_creat
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for self awareness ext substrate bridge");
-        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -80,7 +79,6 @@ void self_awareness_ext_substrate_bridge_destroy(self_awareness_ext_substrate_br
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

@@ -157,8 +157,7 @@ void bgcb_destroy(bg_cerebellar_coord_t* coord) {
     if (!coord) return;
 
     if (coord->mutex) {
-        nimcp_mutex_destroy(coord->mutex);
-        nimcp_free(coord->mutex);
+        nimcp_mutex_free(coord->mutex);
     }
 
     nimcp_free(coord->motor_output);

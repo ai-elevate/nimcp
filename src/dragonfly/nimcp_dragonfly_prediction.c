@@ -415,7 +415,7 @@ dragonfly_predictor_t* dragonfly_predictor_create(const prediction_config_t* con
 void dragonfly_predictor_destroy(dragonfly_predictor_t* pred) {
     if (!pred) return;
     if (pred->mutex) {
-        nimcp_mutex_destroy(pred->mutex);
+        nimcp_mutex_free(pred->mutex);
     }
     nimcp_free(pred);
 }

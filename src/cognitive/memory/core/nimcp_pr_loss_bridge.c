@@ -262,7 +262,7 @@ pr_loss_bridge_t pr_loss_bridge_create(const pr_loss_config_t* config) {
     bridge->loss_cache_capacity = 256;
     bridge->loss_cache = nimcp_calloc(bridge->loss_cache_capacity, sizeof(float));
     if (!bridge->loss_cache) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -282,7 +282,7 @@ void pr_loss_bridge_destroy(pr_loss_bridge_t bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

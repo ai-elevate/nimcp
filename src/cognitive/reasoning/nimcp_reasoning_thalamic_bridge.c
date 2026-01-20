@@ -55,7 +55,7 @@ reasoning_thalamic_bridge_t* reasoning_thalamic_bridge_create(
 void reasoning_thalamic_bridge_destroy(reasoning_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
 }

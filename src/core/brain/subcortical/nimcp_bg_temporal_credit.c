@@ -155,8 +155,7 @@ void bgtc_destroy(bg_temporal_credit_t* tc) {
     if (!tc) return;
 
     if (tc->mutex) {
-        nimcp_mutex_destroy(tc->mutex);
-        nimcp_free(tc->mutex);
+        nimcp_mutex_free(tc->mutex);
     }
 
     nimcp_free(tc->traces);

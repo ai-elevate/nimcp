@@ -105,7 +105,6 @@ void symbolic_logic_hub_bridge_destroy(symbolic_logic_hub_bridge_t* bridge) {
     /* Free mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

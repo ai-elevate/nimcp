@@ -168,7 +168,7 @@ mental_health_snn_bridge_t* mental_health_snn_create(const mental_health_snn_con
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -223,7 +223,7 @@ void mental_health_snn_destroy(mental_health_snn_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge->encoding_buffer);

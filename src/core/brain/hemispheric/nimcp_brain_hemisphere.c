@@ -184,8 +184,7 @@ void hemisphere_destroy(brain_hemisphere_t* hemisphere) {
 
     // Destroy mutex
     if (hemisphere->mutex) {
-        nimcp_mutex_destroy(hemisphere->mutex);
-        nimcp_free(hemisphere->mutex);
+        nimcp_mutex_free(hemisphere->mutex);
     }
 
     nimcp_free(hemisphere);

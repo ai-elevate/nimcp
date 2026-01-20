@@ -168,7 +168,6 @@ wm_substrate_bridge_t* wm_substrate_bridge_create(
         if (nimcp_platform_mutex_init(bridge->base.mutex, false) == 0) {
         } else {
             NIMCP_LOGGING_WARN("Failed to initialize mutex for WM-substrate bridge");
-            nimcp_free(bridge->base.mutex);
             bridge->base.mutex = NULL;
         }
     } else {
@@ -200,7 +199,6 @@ void wm_substrate_bridge_destroy(wm_substrate_bridge_t* bridge)
      */
     if ((bridge->base.mutex != NULL) && bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
     }
 
     /* WHAT: Free bridge structure

@@ -228,8 +228,7 @@ void hemispheric_brain_destroy(hemispheric_brain_t* brain) {
 
     // Destroy mutex
     if (brain->mutex) {
-        nimcp_mutex_destroy(brain->mutex);
-        nimcp_free(brain->mutex);
+        nimcp_mutex_free(brain->mutex);
     }
 
     nimcp_free(brain);

@@ -204,7 +204,7 @@ meta_ctx_t* meta_create(const meta_config_t* config) {
     if (!ctx->task_buffer) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, ctx->task_buffer_size * sizeof(meta_task_t),
                           "meta_create: failed to allocate task buffer");
-        nimcp_mutex_destroy(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
         nimcp_free(ctx);
         return NULL;
     }
@@ -245,7 +245,7 @@ void meta_destroy(meta_ctx_t* ctx) {
 
     /* Destroy mutex */
     if (ctx->mutex) {
-        nimcp_mutex_destroy(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
     }
 
     nimcp_free(ctx);

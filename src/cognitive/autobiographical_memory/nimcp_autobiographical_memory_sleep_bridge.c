@@ -153,7 +153,7 @@ void autobio_sleep_bridge_destroy(autobio_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
     nimcp_free(bridge);
 }
 

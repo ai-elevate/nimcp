@@ -123,7 +123,7 @@ void hypo_snc_bridge_destroy(hypo_snc_bridge_t* bridge) {
     if (!bridge) return;
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     free(bridge);

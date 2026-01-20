@@ -227,8 +227,7 @@ void swarm_task_queue_destroy(swarm_task_queue_t* queue)
     }
 
     nimcp_mutex_unlock(queue->mutex);
-    nimcp_mutex_destroy(queue->mutex);
-    nimcp_free(queue->mutex);
+    nimcp_mutex_free(queue->mutex);
 
     NIMCP_LOGGING_DEBUG("Destroyed task queue for agent %u", queue->agent_id);
 

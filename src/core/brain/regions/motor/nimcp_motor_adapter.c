@@ -598,8 +598,8 @@ void motor_destroy(motor_adapter_t* adapter) {
     /* Free command queue and its mutex */
     if (adapter->queue_mutex) {
         LOG_DEBUG("[%s] Destroying command queue mutex", MOTOR_LOG_MODULE);
-        nimcp_mutex_destroy(adapter->queue_mutex);
-        nimcp_free(adapter->queue_mutex);
+        nimcp_mutex_free(adapter->queue_mutex);
+
         adapter->queue_mutex = NULL;
     }
     if (adapter->command_queue) {

@@ -122,7 +122,7 @@ omni_logic_bridge_t* omni_logic_bridge_create(const omni_logic_config_t* config)
     bridge->max_rules = OMNI_LOGIC_MAX_RULES;
     bridge->rules = nimcp_calloc(bridge->max_rules, sizeof(omni_logic_rule_t));
     if (!bridge->rules) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -156,7 +156,7 @@ void omni_logic_bridge_destroy(omni_logic_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

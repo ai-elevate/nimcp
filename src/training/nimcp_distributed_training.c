@@ -252,7 +252,7 @@ dist_ctx_t* dist_create(const dist_config_t* config) {
     if (!ctx->world_group) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(dist_group_t),
                           "dist_create: failed to allocate world group");
-        nimcp_mutex_destroy(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
         nimcp_free(ctx);
         return NULL;
     }
@@ -263,7 +263,7 @@ dist_ctx_t* dist_create(const dist_config_t* config) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, config->worker.world_size * sizeof(uint32_t),
                           "dist_create: failed to allocate ranks array");
         nimcp_free(ctx->world_group);
-        nimcp_mutex_destroy(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
         nimcp_free(ctx);
         return NULL;
     }
@@ -375,7 +375,7 @@ void dist_destroy(dist_ctx_t* ctx) {
 
     /* Destroy mutex */
     if (ctx->mutex) {
-        nimcp_mutex_destroy(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
     }
 
     nimcp_free(ctx);

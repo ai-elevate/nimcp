@@ -184,7 +184,7 @@ cl_ctx_t* cl_create(const cl_config_t* config) {
             NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY,
                               ctx->buffer_size * sizeof(replay_entry_t),
                               "cl_create: failed to allocate replay buffer");
-            nimcp_mutex_destroy(ctx->mutex);
+            nimcp_mutex_free(ctx->mutex);
             nimcp_free(ctx);
             return NULL;
         }
@@ -240,7 +240,7 @@ void cl_destroy(cl_ctx_t* ctx) {
         nimcp_free(ctx->replay_buffer);
     }
 
-    if (ctx->mutex) nimcp_mutex_destroy(ctx->mutex);
+    if (ctx->mutex) nimcp_mutex_free(ctx->mutex);
     nimcp_free(ctx);
 }
 

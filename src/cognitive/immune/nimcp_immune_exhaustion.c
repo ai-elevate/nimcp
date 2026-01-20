@@ -579,7 +579,7 @@ void exhaustion_destroy(exhaustion_system_t* system) {
     system->running = false;
 
     if (system->mutex) {
-        nimcp_mutex_destroy(system->mutex);
+        nimcp_mutex_free(system->mutex);
         system->mutex = NULL;
     }
 

@@ -168,7 +168,7 @@ reasoning_snn_bridge_t* reasoning_snn_create(const reasoning_snn_config_t* confi
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -225,7 +225,7 @@ void reasoning_snn_destroy(reasoning_snn_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge->encoding_buffer);

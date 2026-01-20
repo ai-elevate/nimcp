@@ -224,7 +224,7 @@ void tsdn_destroy(tsdn_population_t* pop) {
     if (!pop) return;
 
     if (pop->mutex) {
-        nimcp_mutex_destroy(pop->mutex);
+        nimcp_mutex_free(pop->mutex);
     }
 
     if (pop->elevation_preferred) {

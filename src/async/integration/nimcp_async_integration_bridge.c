@@ -477,7 +477,7 @@ async_integration_t* async_integration_create(
     /* Create task registry */
     bridge->task_registry = task_registry_create(config->max_tasks);
     if (!bridge->task_registry) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -486,7 +486,7 @@ async_integration_t* async_integration_create(
     bridge->promise_registry = promise_registry_create(config->max_promises);
     if (!bridge->promise_registry) {
         task_registry_destroy((task_registry_t*)bridge->task_registry);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -496,7 +496,7 @@ async_integration_t* async_integration_create(
     if (!bridge->future_registry) {
         promise_registry_destroy((promise_registry_t*)bridge->promise_registry);
         task_registry_destroy((task_registry_t*)bridge->task_registry);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -507,7 +507,7 @@ async_integration_t* async_integration_create(
         future_registry_destroy((future_registry_t*)bridge->future_registry);
         promise_registry_destroy((promise_registry_t*)bridge->promise_registry);
         task_registry_destroy((task_registry_t*)bridge->task_registry);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -525,7 +525,7 @@ async_integration_t* async_integration_create(
             future_registry_destroy((future_registry_t*)bridge->future_registry);
             promise_registry_destroy((promise_registry_t*)bridge->promise_registry);
             task_registry_destroy((task_registry_t*)bridge->task_registry);
-            nimcp_mutex_destroy(bridge->mutex);
+            nimcp_mutex_free(bridge->mutex);
             nimcp_free(bridge);
             return NULL;
         }
@@ -575,7 +575,7 @@ void async_integration_destroy(async_integration_t* bridge)
 
     /* Destroy mutex */
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

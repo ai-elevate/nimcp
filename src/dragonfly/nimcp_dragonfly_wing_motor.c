@@ -192,7 +192,7 @@ void dragonfly_wing_motor_destroy(dragonfly_wing_motor_t motor) {
     if (!motor) return;
 
     if (motor->mutex) {
-        nimcp_mutex_destroy(motor->mutex);
+        nimcp_mutex_free(motor->mutex);
     }
 
     nimcp_free(motor);

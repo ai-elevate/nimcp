@@ -284,7 +284,7 @@ void kg_dr_destroy(kg_dr_context_t* dr) {
 
     /* Destroy mutex */
     if (dr->mutex) {
-        nimcp_mutex_destroy(dr->mutex);
+        nimcp_mutex_free(dr->mutex);
     }
 
     nimcp_free(dr);

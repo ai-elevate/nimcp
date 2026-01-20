@@ -323,7 +323,7 @@ void pr_cognitive_bridge_destroy(pr_cognitive_bridge_t bridge) {
     bridge->initialized = false;
 
     nimcp_mutex_unlock(bridge->mutex);
-    nimcp_mutex_destroy(bridge->mutex);
+    nimcp_mutex_free(bridge->mutex);
 
     free(bridge);
 }

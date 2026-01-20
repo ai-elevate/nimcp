@@ -226,7 +226,7 @@ void logic_sleep_bridge_destroy(logic_sleep_bridge_t* bridge)
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     /* Free bridge structure */

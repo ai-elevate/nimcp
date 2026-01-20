@@ -476,7 +476,6 @@ void medulla_destroy(medulla_t medulla) {
     // Destroy mutex
     if (medulla->mutex) {
         nimcp_platform_mutex_destroy(medulla->mutex);
-        nimcp_free(medulla->mutex);
     }
 
     // Free structure

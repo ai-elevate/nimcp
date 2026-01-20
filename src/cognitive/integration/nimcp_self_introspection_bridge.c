@@ -291,7 +291,6 @@ void self_introspection_bridge_destroy(self_introspection_bridge_t* bridge) {
     /* Destroy mutex */
     if (bridge->mutex) {
         nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
     }
 
     bridge->initialized = false;

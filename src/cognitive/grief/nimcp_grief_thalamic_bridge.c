@@ -60,7 +60,7 @@ grief_thalamic_bridge_t* grief_thalamic_bridge_create(void* grief, thalamic_rout
 void grief_thalamic_bridge_destroy(grief_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
 }

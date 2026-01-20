@@ -208,7 +208,7 @@ void biology_destroy(biology_t* bio) {
     if (!bio) return;
 
     if (bio->lock) {
-        nimcp_mutex_destroy(bio->lock);
+        nimcp_mutex_free(bio->lock);
     }
     free(bio);
 }

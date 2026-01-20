@@ -176,7 +176,6 @@ void emotion_executive_bridge_destroy(emotion_executive_bridge_t* bridge) {
     /* Destroy mutex */
     if (bridge->mutex) {
         nimcp_platform_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
         bridge->mutex = NULL;
     }
 

@@ -150,7 +150,7 @@ ethics_plasticity_bridge_t* ethics_plasticity_create(
     bridge->synapses = nimcp_calloc(bridge->synapse_capacity,
                                     sizeof(ethics_plasticity_synapse_t));
     if (!bridge->synapses) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -177,7 +177,7 @@ void ethics_plasticity_destroy(ethics_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
     if (bridge->synapses) nimcp_free(bridge->synapses);
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
 
     nimcp_free(bridge);
 }

@@ -206,7 +206,7 @@ void dragonfly_territory_destroy(dragonfly_territory_t territory) {
     if (!territory) return;
 
     if (territory->mutex) {
-        nimcp_mutex_destroy(territory->mutex);
+        nimcp_mutex_free(territory->mutex);
     }
 
     nimcp_free(territory);

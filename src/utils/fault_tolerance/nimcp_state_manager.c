@@ -123,7 +123,7 @@ void nimcp_state_manager_destroy(nimcp_state_manager_t* manager) {
     if (!manager) return;
 
     if (manager->mutex) {
-        nimcp_mutex_destroy(manager->mutex);
+        nimcp_mutex_free(manager->mutex);
     }
 
     manager->magic = 0;

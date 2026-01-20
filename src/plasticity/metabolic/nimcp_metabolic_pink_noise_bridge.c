@@ -258,7 +258,6 @@ metabolic_pink_noise_bridge_t* metabolic_pink_noise_create(
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->base.mutex);
         pink_noise_destroy(bridge->noise_generator);
         nimcp_free(bridge);
         return NULL;
@@ -281,8 +280,7 @@ void metabolic_pink_noise_destroy(metabolic_pink_noise_bridge_t* bridge) {
 
     // Destroy mutex
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     // Free bridge structure

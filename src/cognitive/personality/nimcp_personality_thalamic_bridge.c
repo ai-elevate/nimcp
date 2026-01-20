@@ -60,7 +60,7 @@ personality_thalamic_bridge_t* personality_thalamic_bridge_create(void* personal
 void personality_thalamic_bridge_destroy(personality_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
 }

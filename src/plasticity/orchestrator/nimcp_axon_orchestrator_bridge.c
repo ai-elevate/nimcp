@@ -214,8 +214,7 @@ void axon_orchestrator_bridge_destroy(axon_orchestrator_bridge_t* bridge) {
 
     /* Free mutex */
     if ((bridge->base.mutex != NULL)) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         bridge->base.mutex = NULL;
     }
 

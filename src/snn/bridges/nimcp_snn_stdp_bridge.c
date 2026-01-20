@@ -142,7 +142,6 @@ void snn_stdp_bridge_destroy(snn_stdp_bridge_t* bridge) {
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
         bridge->base.mutex = NULL;
     }
 

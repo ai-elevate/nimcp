@@ -347,8 +347,7 @@ void hemispheric_immune_destroy(hemispheric_immune_bridge_t* bridge) {
 
     // Destroy mutex
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     bridge->initialized = false;

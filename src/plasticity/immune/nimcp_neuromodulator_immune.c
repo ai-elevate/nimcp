@@ -226,7 +226,6 @@ void neuromod_immune_destroy(neuromod_immune_system_t* system) {
 
     if (system->mutex) {
         pthread_mutex_destroy((pthread_mutex_t*)system->mutex);
-        nimcp_free(system->mutex);
     }
 
     if (system->imbalances) {

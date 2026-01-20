@@ -439,8 +439,7 @@ imagination_reasoning_bridge_t* imagination_reasoning_bridge_create(
 
     bridge->active_scenarios = nimcp_calloc(max_scenarios, sizeof(active_scenario_t));
     if (!bridge->active_scenarios) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -490,8 +489,7 @@ void imagination_reasoning_bridge_destroy(imagination_reasoning_bridge_t* bridge
 
     /* Destroy mutex */
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         bridge->mutex = NULL;
     }
 

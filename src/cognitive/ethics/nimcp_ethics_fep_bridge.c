@@ -45,7 +45,6 @@ void ethics_fep_bridge_destroy(ethics_fep_bridge_t* bridge) {
     if (bridge->base.bio_async_enabled) ethics_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
 }

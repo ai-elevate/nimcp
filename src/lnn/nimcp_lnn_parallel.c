@@ -314,7 +314,7 @@ int lnn_parallel_init(uint32_t n_threads) {
     g_thread_pool = nimcp_pool_create(n_threads);
     if (!g_thread_pool) {
         NIMCP_LOGGING_ERROR("Failed to create thread pool with %u threads", n_threads);
-        nimcp_mutex_destroy(g_parallel_mutex);
+        nimcp_mutex_free(g_parallel_mutex);
         g_parallel_mutex = NULL;
         pthread_mutex_unlock(&g_parallel_state_mutex);
         return LNN_ERROR_THREAD_FAILURE;
@@ -363,7 +363,7 @@ void lnn_parallel_shutdown(void) {
 
     /* Destroy mutex */
     if (g_parallel_mutex) {
-        nimcp_mutex_destroy(g_parallel_mutex);
+        nimcp_mutex_free(g_parallel_mutex);
         g_parallel_mutex = NULL;
     }
 
@@ -449,7 +449,7 @@ lnn_batch_parallel_ctx_t* lnn_batch_parallel_create(
         sizeof(lnn_network_t*) * ctx->n_threads);
     if (!ctx->thread_networks) {
         NIMCP_LOGGING_ERROR("Failed to allocate thread networks");
-        nimcp_mutex_destroy(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
         nimcp_free(ctx);
         return NULL;
     }
@@ -491,7 +491,7 @@ void lnn_batch_parallel_destroy(lnn_batch_parallel_ctx_t* ctx) {
 
     /* Destroy mutex */
     if (ctx->mutex) {
-        nimcp_mutex_destroy(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
     }
 
     nimcp_free(ctx);

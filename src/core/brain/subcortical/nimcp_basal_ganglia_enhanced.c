@@ -212,8 +212,7 @@ void bg_enhanced_destroy(bg_enhanced_t* bge) {
 
     /* Destroy mutex */
     if (bge->mutex) {
-        nimcp_mutex_destroy(bge->mutex);
-        nimcp_free(bge->mutex);
+        nimcp_mutex_free(bge->mutex);
     }
 
     nimcp_free(bge);

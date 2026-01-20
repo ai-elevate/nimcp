@@ -65,7 +65,7 @@ void nimcp_module_recovery_manager_destroy(nimcp_module_recovery_manager_t* mana
     if (!manager) return;
 
     if (manager->mutex) {
-        nimcp_mutex_destroy(manager->mutex);
+        nimcp_mutex_free(manager->mutex);
     }
 
     nimcp_free(manager);

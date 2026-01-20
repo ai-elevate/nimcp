@@ -140,7 +140,6 @@ mirror_hypo_bridge_t* mirror_hypo_create(
         return NULL;
     }
     if (nimcp_mutex_init(bridge->mutex, NULL) != NIMCP_SUCCESS) {
-        nimcp_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -161,8 +160,7 @@ void mirror_hypo_destroy(mirror_hypo_bridge_t* bridge) {
     if (!bridge) return;
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

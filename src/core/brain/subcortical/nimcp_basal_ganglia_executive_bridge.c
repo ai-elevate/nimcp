@@ -84,7 +84,7 @@ bge_bridge_t* bge_bridge_create(const bge_bridge_config_t* config) {
 void bge_bridge_destroy(bge_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
     nimcp_free(bridge);
 }
 

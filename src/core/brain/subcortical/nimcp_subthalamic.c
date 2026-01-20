@@ -144,8 +144,7 @@ void subthalamic_destroy(subthalamic_nucleus_t* stn) {
     if (stn->hyperdirect_buffer) nimcp_free(stn->hyperdirect_buffer);
     if (stn->indirect_buffer) nimcp_free(stn->indirect_buffer);
 
-    nimcp_mutex_destroy(stn->mutex);
-    nimcp_free(stn->mutex);
+    nimcp_mutex_free(stn->mutex);
 
     nimcp_free(stn);
 

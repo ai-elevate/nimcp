@@ -158,7 +158,6 @@ metaplasticity_immune_bridge_t* metaplasticity_immune_bridge_create(
 
     if (nimcp_platform_mutex_init((nimcp_platform_mutex_t*)bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -179,7 +178,6 @@ void metaplasticity_immune_bridge_destroy(metaplasticity_immune_bridge_t* bridge
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge */

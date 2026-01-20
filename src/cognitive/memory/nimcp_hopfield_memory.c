@@ -308,7 +308,7 @@ void hopfield_memory_destroy(hopfield_memory_t* memory) {
         nimcp_free(memory->attention_buffer);
     }
     if (memory->mutex) {
-        nimcp_mutex_destroy(memory->mutex);
+        nimcp_mutex_free(memory->mutex);
     }
 
     nimcp_free(memory);

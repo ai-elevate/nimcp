@@ -218,7 +218,7 @@ void self_other_destroy(self_other_system_t* system) {
     }
 
     if (system->mutex) {
-        nimcp_mutex_destroy(system->mutex);
+        nimcp_mutex_free(system->mutex);
     }
 
     nimcp_free(system);

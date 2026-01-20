@@ -105,8 +105,7 @@ void working_memory_adapter_destroy(working_memory_adapter_t adapter) {
 
     /* Thread safety: Clean up mutex */
     if (adapter->mutex) {
-        nimcp_mutex_destroy(adapter->mutex);
-        nimcp_free(adapter->mutex);
+        nimcp_mutex_free(adapter->mutex);
     }
 
     nimcp_free(adapter);

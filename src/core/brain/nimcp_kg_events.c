@@ -361,7 +361,7 @@ void kg_events_destroy(kg_event_stream_t* stream) {
 
     /* Destroy mutex */
     if (stream->mutex) {
-        nimcp_mutex_destroy(stream->mutex);
+        nimcp_mutex_free(stream->mutex);
     }
 
     nimcp_free(stream);

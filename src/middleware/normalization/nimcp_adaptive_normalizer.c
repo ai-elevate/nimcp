@@ -81,8 +81,7 @@ void adaptive_normalizer_destroy(adaptive_normalizer_t* normalizer) {
 
     /* Thread safety: Clean up mutex */
     if (normalizer->mutex) {
-        nimcp_mutex_destroy(normalizer->mutex);
-        nimcp_free(normalizer->mutex);
+        nimcp_mutex_free(normalizer->mutex);
     }
 
     nimcp_free(normalizer);

@@ -375,7 +375,7 @@ void kg_gc_agent_destroy(kg_gc_agent_t* agent) {
     }
 
     if (agent->mutex) {
-        nimcp_mutex_destroy(agent->mutex);
+        nimcp_mutex_free(agent->mutex);
     }
 
     nimcp_free(agent);

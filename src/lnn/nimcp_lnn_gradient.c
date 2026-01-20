@@ -149,8 +149,7 @@ void lnn_gradient_ctx_destroy(lnn_gradient_ctx_t* ctx) {
 
     // Destroy mutex
     if (ctx->mutex) {
-        nimcp_mutex_destroy((nimcp_mutex_t*)ctx->mutex);
-        nimcp_free(ctx->mutex);
+        nimcp_mutex_free((nimcp_mutex_t*)ctx->mutex);
     }
 
     // Free context

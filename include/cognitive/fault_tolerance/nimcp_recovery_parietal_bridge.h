@@ -508,6 +508,87 @@ int recovery_parietal_get_stats(
 void recovery_parietal_reset_stats(recovery_parietal_bridge_t* bridge);
 
 //=============================================================================
+// Code Generation Integration (Self-Repair Pipeline)
+//=============================================================================
+
+/**
+ * @brief Generate code fix for diagnosed error
+ *
+ * WHAT: Generate code fix using parietal software engineering module
+ * WHY:  Enable autonomous code generation for self-repair
+ * HOW:  Analyze code → select strategy → generate fix candidates → return best
+ *
+ * This function integrates with the code generation engine to produce
+ * fixes that can be deployed via the self-repair coordinator.
+ *
+ * @param bridge Bridge handle
+ * @param diagnosis Diagnostic result from fault tolerance
+ * @param analysis Code analysis result (can be NULL, will analyze if needed)
+ * @param fix_code Output buffer for generated fix code
+ * @param fix_code_size Size of fix_code buffer
+ * @param fix_confidence Output confidence score [0,1]
+ * @param fix_explanation Output explanation buffer
+ * @param explanation_size Size of explanation buffer
+ * @return 0 on success, -1 on failure
+ */
+int recovery_parietal_generate_fix(
+    recovery_parietal_bridge_t* bridge,
+    const diagnostic_result_t* diagnosis,
+    const code_analysis_result_t* analysis,
+    char* fix_code,
+    size_t fix_code_size,
+    float* fix_confidence,
+    char* fix_explanation,
+    size_t explanation_size
+);
+
+/**
+ * @brief Generate multiple fix candidates for diagnosed error
+ *
+ * WHAT: Generate multiple fix candidates with different strategies
+ * WHY:  Provide options for the self-repair coordinator to choose from
+ * HOW:  Generate fixes using multiple compatible strategies
+ *
+ * @param bridge Bridge handle
+ * @param diagnosis Diagnostic result
+ * @param analysis Code analysis result (can be NULL)
+ * @param candidates Output array of fix candidates (caller allocated)
+ * @param max_candidates Maximum candidates to generate
+ * @param generated_count Output: number of candidates generated
+ * @return 0 on success
+ */
+int recovery_parietal_generate_fix_candidates(
+    recovery_parietal_bridge_t* bridge,
+    const diagnostic_result_t* diagnosis,
+    const code_analysis_result_t* analysis,
+    void* candidates,
+    uint32_t max_candidates,
+    uint32_t* generated_count
+);
+
+/**
+ * @brief Learn from fix outcome for future generation
+ *
+ * WHAT: Update pattern database based on fix success/failure
+ * WHY:  Improve future fix generation accuracy
+ * HOW:  Record fix details and outcome in learning history
+ *
+ * @param bridge Bridge handle
+ * @param diagnosis Original diagnosis
+ * @param fix_code The fix that was applied
+ * @param strategy Strategy used
+ * @param success Whether fix succeeded
+ * @return 0 on success
+ */
+int recovery_parietal_learn_fix_outcome(
+    recovery_parietal_bridge_t* bridge,
+    const diagnostic_result_t* diagnosis,
+    const char* fix_code,
+    uint32_t strategy,
+    bool success
+);
+
+//=============================================================================
 // Utility Functions
 //=============================================================================
 

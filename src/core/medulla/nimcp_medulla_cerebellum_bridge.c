@@ -497,7 +497,7 @@ void med_cereb_bridge_destroy(med_cereb_bridge_t bridge) {
     if (!bridge) return;
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

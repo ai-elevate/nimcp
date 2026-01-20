@@ -48,7 +48,7 @@ predictive_immune_thalamic_bridge_t* predictive_immune_thalamic_bridge_create(vo
 void predictive_immune_thalamic_bridge_destroy(predictive_immune_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
 }

@@ -620,8 +620,8 @@ void thalamic_router_destroy(thalamic_router_t* router) {
 
     // Destroy queue mutex
     if (router->queue_mutex) {
-        nimcp_mutex_destroy(router->queue_mutex);
-        nimcp_free(router->queue_mutex);
+        nimcp_mutex_free(router->queue_mutex);
+
         router->queue_mutex = NULL;
     }
 

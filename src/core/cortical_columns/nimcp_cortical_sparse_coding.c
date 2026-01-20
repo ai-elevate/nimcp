@@ -361,7 +361,6 @@ void cortical_sparse_destroy(cortical_sparse_coding_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
-        nimcp_free(system->mutex);
     }
 
     /* Free arrays */

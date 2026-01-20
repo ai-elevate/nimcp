@@ -384,7 +384,7 @@ void hypo_drive_destroy(hypo_drive_system_handle_t* system) {
 
     /* Destroy mutex if owned */
     if (system->mutex && system->mutex_owned) {
-        nimcp_mutex_destroy(system->mutex);
+        nimcp_mutex_free(system->mutex);
         system->mutex = NULL;
     }
 

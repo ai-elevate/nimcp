@@ -598,3 +598,36 @@ gtest_discover_tests(unit_parietal_fep_bridge
         LABELS "unit;cognitive;parietal;fep-bridge"
         TIMEOUT 90
 )
+
+#=============================================================================
+# Code Generation Engine Tests (Self-Repair Integration)
+#=============================================================================
+
+add_executable(unit_parietal_code_generation
+    test_code_generation.cpp
+)
+
+target_link_libraries(unit_parietal_code_generation
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_parietal_code_generation
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_parietal_code_generation PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_parietal_code_generation
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;code-generation;self-repair"
+        TIMEOUT 120
+)

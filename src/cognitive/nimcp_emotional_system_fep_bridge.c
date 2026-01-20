@@ -101,7 +101,7 @@ void emotional_system_fep_destroy(emotional_system_fep_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

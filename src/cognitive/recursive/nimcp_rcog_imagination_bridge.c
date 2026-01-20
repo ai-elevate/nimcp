@@ -107,7 +107,7 @@ void rcog_imagination_bridge_destroy(rcog_imagination_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

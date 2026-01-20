@@ -453,7 +453,7 @@ kg_persistence_t* kg_persistence_create(const kg_persistence_config_t* config) {
     kg_io_default_config(&io_config);
     p->io_dispatcher = kg_io_dispatcher_create(&io_config);
     if (!p->io_dispatcher) {
-        nimcp_mutex_destroy(p->mutex);
+        nimcp_mutex_free(p->mutex);
         nimcp_free(p);
         return NULL;
     }
@@ -461,7 +461,7 @@ kg_persistence_t* kg_persistence_create(const kg_persistence_config_t* config) {
     /* Start I/O dispatcher */
     if (kg_io_dispatcher_start(p->io_dispatcher) != 0) {
         kg_io_dispatcher_destroy(p->io_dispatcher);
-        nimcp_mutex_destroy(p->mutex);
+        nimcp_mutex_free(p->mutex);
         nimcp_free(p);
         return NULL;
     }
@@ -514,7 +514,7 @@ void kg_persistence_destroy(kg_persistence_t* p) {
     /* Destroy HSM handle */
     if (p->hsm) {
         if (p->hsm->mutex) {
-            nimcp_mutex_destroy(p->hsm->mutex);
+            nimcp_mutex_free(p->hsm->mutex);
         }
         nimcp_free(p->hsm);
         p->hsm = NULL;
@@ -531,7 +531,7 @@ void kg_persistence_destroy(kg_persistence_t* p) {
     }
 
     nimcp_mutex_unlock(p->mutex);
-    nimcp_mutex_destroy(p->mutex);
+    nimcp_mutex_free(p->mutex);
 
     nimcp_free(p);
 }

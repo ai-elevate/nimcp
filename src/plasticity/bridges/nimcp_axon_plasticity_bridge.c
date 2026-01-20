@@ -174,7 +174,6 @@ axon_plasticity_bridge_t* axon_plasticity_create(
         return NULL;
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
-        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge->segments);
         nimcp_free(bridge);
         return NULL;
@@ -197,8 +196,7 @@ void axon_plasticity_destroy(axon_plasticity_bridge_t* bridge)
     }
 
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     if (bridge->segments) {

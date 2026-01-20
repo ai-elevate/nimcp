@@ -253,7 +253,6 @@ command_compliance_system_t* command_compliance_create(
 
     if (nimcp_mutex_init(system->mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(system->mutex);
         nimcp_free(system);
         return NULL;
     }
@@ -280,8 +279,7 @@ void command_compliance_destroy(command_compliance_system_t* system) {
 
     /* Destroy mutex */
     if (system->mutex) {
-        nimcp_mutex_destroy(system->mutex);
-        nimcp_free(system->mutex);
+        nimcp_mutex_free(system->mutex);
     }
 
     /* Free system */

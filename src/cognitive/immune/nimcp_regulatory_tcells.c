@@ -259,7 +259,7 @@ void treg_destroy(treg_system_t* system)
 
     /* Destroy mutex */
     if (system->mutex) {
-        nimcp_mutex_destroy(system->mutex);
+        nimcp_mutex_free(system->mutex);
     }
 
     /* Free pools */

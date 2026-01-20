@@ -236,8 +236,7 @@ void hemispheric_glial_destroy(hemispheric_glial_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     // Note: We don't destroy left_glial/right_glial - caller owns them

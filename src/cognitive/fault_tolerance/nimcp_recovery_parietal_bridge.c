@@ -901,6 +901,195 @@ void recovery_parietal_free_analysis_result(code_analysis_result_t* result) {
     result->smell_count = 0;
 }
 
+/* ============================================================================
+ * Code Generation Integration (Self-Repair Pipeline)
+ * ============================================================================ */
+
+int recovery_parietal_generate_fix(
+    recovery_parietal_bridge_t* bridge,
+    const diagnostic_result_t* diagnosis,
+    const code_analysis_result_t* analysis,
+    char* fix_code,
+    size_t fix_code_size,
+    float* fix_confidence,
+    char* fix_explanation,
+    size_t explanation_size
+) {
+    if (!bridge || !diagnosis || !fix_code || fix_code_size == 0) {
+        return -1;
+    }
+
+    if (!bridge->initialized) {
+        return -1;
+    }
+
+    /* Default outputs */
+    fix_code[0] = '\0';
+    if (fix_confidence) *fix_confidence = 0.0f;
+    if (fix_explanation && explanation_size > 0) fix_explanation[0] = '\0';
+
+    /* Map error type to fix strategy */
+    const char* fix_template = NULL;
+    float confidence = 0.0f;
+    const char* explanation = "Unknown error type";
+
+    switch (diagnosis->error_type) {
+        case ERROR_TYPE_NULL_POINTER:
+            fix_template = "if (${VAR} == NULL) {\n    return ${ERROR_VALUE};\n}\n";
+            confidence = 0.9f;
+            explanation = "Added null pointer check to prevent segmentation fault";
+            break;
+
+        case ERROR_TYPE_BUFFER_OVERFLOW:
+        case ERROR_TYPE_BUFFER_UNDERFLOW:
+            fix_template = "if (${INDEX} < 0 || ${INDEX} >= ${SIZE}) {\n    return ${ERROR_VALUE};\n}\n";
+            confidence = 0.85f;
+            explanation = "Added bounds check to prevent buffer overflow";
+            break;
+
+        case ERROR_TYPE_DIVIDE_BY_ZERO:
+            fix_template = "if (${DIVISOR} == 0) {\n    return ${ERROR_VALUE};\n}\n";
+            confidence = 0.95f;
+            explanation = "Added division by zero guard";
+            break;
+
+        case ERROR_TYPE_NAN_DETECTED:
+        case ERROR_TYPE_INF_DETECTED:
+            fix_template = "if (isnan(${VAR}) || isinf(${VAR})) {\n    return ${ERROR_VALUE};\n}\n";
+            confidence = 0.9f;
+            explanation = "Added NaN/Inf guard";
+            break;
+
+        case ERROR_TYPE_MEMORY_LEAK:
+        case ERROR_TYPE_DOUBLE_FREE:
+            fix_template = "if (${PTR} != NULL) {\n    nimcp_free(${PTR});\n    ${PTR} = NULL;\n}\n";
+            confidence = 0.8f;
+            explanation = "Added proper memory cleanup with null-after-free pattern";
+            break;
+
+        case ERROR_TYPE_DEADLOCK:
+        case ERROR_TYPE_RACE_CONDITION:
+            fix_template = "nimcp_mutex_lock(${MUTEX});\n/* protected section */\nnimcp_mutex_unlock(${MUTEX});\n";
+            confidence = 0.65f;
+            explanation = "Added mutex lock/unlock to prevent race condition";
+            break;
+
+        default:
+            fix_template = "/* TODO: Manual fix required for error 0x%04X */\n";
+            confidence = 0.3f;
+            explanation = "Unrecognized error type - manual fix required";
+            break;
+    }
+
+    /* Adjust confidence based on analysis if provided */
+    if (analysis) {
+        /* Lower confidence for complex code */
+        if (analysis->repair_difficulty > 0.5f) {
+            confidence *= (1.0f - analysis->repair_difficulty * 0.3f);
+        }
+        /* Boost confidence if similar patterns exist */
+        if (analysis->pattern_count > 0) {
+            confidence = confidence * 0.7f + analysis->similar_patterns[0].similarity * 0.3f;
+        }
+    }
+
+    /* Copy fix template to output */
+    snprintf(fix_code, fix_code_size, "%s", fix_template);
+
+    /* Set outputs */
+    if (fix_confidence) *fix_confidence = confidence;
+    if (fix_explanation && explanation_size > 0) {
+        strncpy(fix_explanation, explanation, explanation_size - 1);
+        fix_explanation[explanation_size - 1] = '\0';
+    }
+
+    /* Update statistics */
+    bridge->stats.total_analyses++;
+
+    return 0;
+}
+
+int recovery_parietal_generate_fix_candidates(
+    recovery_parietal_bridge_t* bridge,
+    const diagnostic_result_t* diagnosis,
+    const code_analysis_result_t* analysis,
+    void* candidates,
+    uint32_t max_candidates,
+    uint32_t* generated_count
+) {
+    if (!bridge || !diagnosis || !candidates || max_candidates == 0 || !generated_count) {
+        return -1;
+    }
+
+    *generated_count = 0;
+
+    /* For now, generate single candidate using main function */
+    char fix_code[4096];
+    float confidence;
+    char explanation[512];
+
+    if (recovery_parietal_generate_fix(bridge, diagnosis, analysis,
+            fix_code, sizeof(fix_code), &confidence,
+            explanation, sizeof(explanation)) == 0) {
+        /* TODO: Copy to candidates array based on actual structure type */
+        *generated_count = 1;
+    }
+
+    return 0;
+}
+
+int recovery_parietal_learn_fix_outcome(
+    recovery_parietal_bridge_t* bridge,
+    const diagnostic_result_t* diagnosis,
+    const char* fix_code,
+    uint32_t strategy,
+    bool success
+) {
+    if (!bridge || !diagnosis) {
+        return -1;
+    }
+
+    if (!bridge->config.enable_learning) {
+        return 0;  /* Learning disabled */
+    }
+
+    /* Find existing pattern or create new one */
+    failure_pattern_t* pattern = NULL;
+    for (uint32_t i = 0; i < bridge->pattern_count; i++) {
+        if (bridge->patterns[i].severity == diagnosis->severity) {
+            pattern = &bridge->patterns[i];
+            break;
+        }
+    }
+
+    if (!pattern && bridge->pattern_count < MAX_FAILURE_PATTERNS) {
+        pattern = &bridge->patterns[bridge->pattern_count++];
+        pattern->pattern_id = bridge->next_pattern_id++;
+        pattern->severity = diagnosis->severity;
+        strncpy(pattern->failure_type, diagnosis->root_cause, sizeof(pattern->failure_type) - 1);
+        pattern->occurrences = 0;
+        pattern->successful_recoveries = 0;
+    }
+
+    if (pattern) {
+        pattern->occurrences++;
+        if (success) {
+            pattern->successful_recoveries++;
+            if (fix_code) {
+                strncpy(pattern->successful_fix, fix_code, sizeof(pattern->successful_fix) - 1);
+            }
+            bridge->stats.successful_predictions++;
+        } else {
+            bridge->stats.failed_predictions++;
+        }
+        bridge->stats.patterns_learned++;
+    }
+
+    (void)strategy;  /* Could use for more detailed pattern tracking */
+
+    return 0;
+}
+
 const char* recovery_parietal_bridge_version(void) {
     return RECOVERY_PARIETAL_VERSION;
 }

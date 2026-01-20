@@ -69,7 +69,7 @@ void hierarchical_fep_bridge_destroy(hierarchical_fep_bridge_t* bridge) {
         nimcp_free(bridge->hierarchical_effects.level_precisions);
     }
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed hierarchical FEP bridge");

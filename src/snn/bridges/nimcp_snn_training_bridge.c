@@ -122,7 +122,6 @@ void snn_training_bridge_destroy(snn_training_bridge_t* bridge) {
 
     /* Free mutex if allocated */
     if (bridge->base.mutex) {
-        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

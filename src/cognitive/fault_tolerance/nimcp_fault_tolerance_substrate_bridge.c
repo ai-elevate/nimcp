@@ -60,7 +60,6 @@ fault_tolerance_substrate_bridge_t* fault_tolerance_substrate_bridge_create(void
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for fault tolerance substrate bridge");
-        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -80,7 +79,6 @@ void fault_tolerance_substrate_bridge_destroy(fault_tolerance_substrate_bridge_t
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

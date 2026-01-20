@@ -164,7 +164,7 @@ void equation_engine_destroy(equation_engine_t* eq) {
     if (!eq) return;
 
     if (eq->lock) {
-        nimcp_mutex_destroy(eq->lock);
+        nimcp_mutex_free(eq->lock);
     }
 
     free(eq);

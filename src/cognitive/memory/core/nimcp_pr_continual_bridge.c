@@ -329,7 +329,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
 
     bridge->fisher_diag = nimcp_calloc(bridge->fisher_capacity, sizeof(float));
     if (!bridge->fisher_diag) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -337,7 +337,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
     bridge->old_params = nimcp_calloc(bridge->fisher_capacity, sizeof(float));
     if (!bridge->old_params) {
         nimcp_free(bridge->fisher_diag);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -349,7 +349,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
         if (!bridge->fisher_accum) {
             nimcp_free(bridge->old_params);
             nimcp_free(bridge->fisher_diag);
-            nimcp_mutex_destroy(bridge->mutex);
+            nimcp_mutex_free(bridge->mutex);
             nimcp_free(bridge);
             return NULL;
         }
@@ -364,7 +364,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
         if (bridge->fisher_accum) nimcp_free(bridge->fisher_accum);
         nimcp_free(bridge->old_params);
         nimcp_free(bridge->fisher_diag);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -380,7 +380,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
         if (bridge->fisher_accum) nimcp_free(bridge->fisher_accum);
         nimcp_free(bridge->old_params);
         nimcp_free(bridge->fisher_diag);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -421,7 +421,7 @@ void pr_continual_bridge_destroy(pr_continual_bridge_t bridge) {
 
     /* Destroy mutex */
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

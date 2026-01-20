@@ -277,7 +277,7 @@ void omni_ai_destroy(omni_active_inference_t* ai) {
     if (ai->current_obs) nimcp_free(ai->current_obs);
     if (ai->current_belief) nimcp_free(ai->current_belief);
 
-    if (ai->mutex) nimcp_mutex_destroy(ai->mutex);
+    if (ai->mutex) nimcp_mutex_free(ai->mutex);
 
     nimcp_free(ai);
 }

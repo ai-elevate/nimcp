@@ -162,7 +162,7 @@ void software_eng_destroy(software_eng_t* se) {
     if (!se) return;
 
     if (se->lock) {
-        nimcp_mutex_destroy(se->lock);
+        nimcp_mutex_free(se->lock);
     }
     free(se);
 }

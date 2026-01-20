@@ -224,7 +224,7 @@ void tolerance_destroy(tolerance_system_t* system) {
     }
 
     if (system->config.thread_safe && system->mutex) {
-        nimcp_mutex_destroy(system->mutex);
+        nimcp_mutex_free(system->mutex);
     }
 
     if (system->self_patterns) {

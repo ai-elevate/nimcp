@@ -132,7 +132,7 @@ reasoning_plasticity_bridge_t* reasoning_plasticity_create(
     bridge->max_synapses = bridge->config.max_synapses;
     bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(reasoning_plasticity_synapse_t));
     if (!bridge->synapses) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -160,7 +160,7 @@ void reasoning_plasticity_destroy(reasoning_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge->synapses);

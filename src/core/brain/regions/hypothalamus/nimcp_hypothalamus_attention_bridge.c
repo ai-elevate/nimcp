@@ -287,7 +287,7 @@ void hypo_attn_bridge_destroy(hypo_attn_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     free(bridge);

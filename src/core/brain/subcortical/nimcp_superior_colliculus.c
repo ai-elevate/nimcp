@@ -147,8 +147,7 @@ void sc_destroy(superior_colliculus_t* sc) {
     if (!sc) return;
 
     if (sc->mutex) {
-        nimcp_mutex_destroy(sc->mutex);
-        nimcp_free(sc->mutex);
+        nimcp_mutex_free(sc->mutex);
     }
 
     nimcp_free(sc->superficial_map);

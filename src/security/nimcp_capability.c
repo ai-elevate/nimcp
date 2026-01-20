@@ -176,7 +176,7 @@ void nimcp_capability_system_destroy(nimcp_capability_system_t* caps)
 
     // Destroy mutex
     if (caps->mutex) {
-        nimcp_mutex_destroy(caps->mutex);
+        nimcp_mutex_free(caps->mutex);
     }
 
     // Free holder capability arrays

@@ -338,7 +338,7 @@ void dragonfly_multi_target_destroy(dragonfly_multi_target_t mt) {
     if (!mt) return;
 
     if (mt->mutex) {
-        nimcp_mutex_destroy(mt->mutex);
+        nimcp_mutex_free(mt->mutex);
     }
 
     nimcp_free(mt);

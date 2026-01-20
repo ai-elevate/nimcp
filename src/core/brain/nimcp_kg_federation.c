@@ -192,7 +192,7 @@ void kg_federation_destroy(kg_federation_t* fed) {
     kg_sync_filter_cleanup(&fed->config.filter);
 
     if (fed->mutex) {
-        nimcp_mutex_destroy(fed->mutex);
+        nimcp_mutex_free(fed->mutex);
     }
 
     nimcp_free(fed);

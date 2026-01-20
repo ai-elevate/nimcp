@@ -459,7 +459,7 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
 void mental_health_destroy(mental_health_monitor_t* mon) {
     if (!mon) return;
     if (mon->magic != MENTAL_HEALTH_MAGIC) return;
-    if (mon->lock) nimcp_mutex_destroy(mon->lock);
+    if (mon->lock) nimcp_mutex_free(mon->lock);
     mon->magic = 0;
     nimcp_free(mon);
 }

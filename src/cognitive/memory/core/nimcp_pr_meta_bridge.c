@@ -343,7 +343,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
     bridge->task_capacity = bridge->config.max_task_memory;
     bridge->task_memory = nimcp_calloc(bridge->task_capacity, sizeof(pr_meta_task_entry_t));
     if (!bridge->task_memory) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -357,7 +357,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
         if (bridge->task_id_index) nimcp_free(bridge->task_id_index);
         if (bridge->task_slot_index) nimcp_free(bridge->task_slot_index);
         nimcp_free(bridge->task_memory);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -369,7 +369,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
         nimcp_free(bridge->task_slot_index);
         nimcp_free(bridge->task_id_index);
         nimcp_free(bridge->task_memory);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -407,7 +407,7 @@ void pr_meta_bridge_destroy(pr_meta_bridge_t bridge) {
     if (bridge->task_memory) nimcp_free(bridge->task_memory);
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

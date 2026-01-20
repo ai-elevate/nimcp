@@ -209,7 +209,7 @@ void dragonfly_swarm_destroy(dragonfly_swarm_detector_t detector) {
     if (!detector) return;
 
     if (detector->mutex) {
-        nimcp_mutex_destroy(detector->mutex);
+        nimcp_mutex_free(detector->mutex);
     }
 
     nimcp_free(detector);

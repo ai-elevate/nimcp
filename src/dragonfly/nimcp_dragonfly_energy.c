@@ -237,7 +237,7 @@ void dragonfly_energy_destroy(dragonfly_energy_t energy) {
     if (!energy) return;
 
     if (energy->mutex) {
-        nimcp_mutex_destroy(energy->mutex);
+        nimcp_mutex_free(energy->mutex);
     }
 
     nimcp_free(energy);

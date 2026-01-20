@@ -182,7 +182,7 @@ void plasticity_bio_async_bridge_destroy(plasticity_bio_async_bridge_t* bridge) 
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge->subscriptions);

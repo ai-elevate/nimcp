@@ -148,7 +148,7 @@ void omni_occipital_bridge_destroy(omni_occipital_bridge_t* bridge) {
     if (bridge->occipital_effects.v5_pe) nimcp_free(bridge->occipital_effects.v5_pe);
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

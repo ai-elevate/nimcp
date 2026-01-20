@@ -562,7 +562,7 @@ cortical_training_bridge_t* cortical_training_create(
     );
     if (!bridge->fe_history) {
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -575,7 +575,7 @@ cortical_training_bridge_t* cortical_training_create(
     if (!bridge->cortical_effects.precision_weights) {
         NIMCP_LOGGING_ERROR("Failed to allocate precision weights");
         nimcp_free(bridge->fe_history);
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -615,7 +615,7 @@ void cortical_training_destroy(cortical_training_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     /* Free bridge */

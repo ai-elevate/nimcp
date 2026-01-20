@@ -114,7 +114,7 @@ hippocampus_imagination_bridge_t* hippocampus_imagination_bridge_create(
     if (config) {
         if (hippocampus_imagination_validate_config(config) != 0) {
             NIMCP_LOG_ERROR("Invalid bridge configuration");
-            nimcp_mutex_destroy(bridge->base.mutex);
+            nimcp_mutex_free(bridge->base.mutex);
             nimcp_free(bridge);
             return NULL;
         }
@@ -167,7 +167,7 @@ void hippocampus_imagination_bridge_destroy(hippocampus_imagination_bridge_t* br
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

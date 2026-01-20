@@ -240,7 +240,7 @@ void gs_destroy(gs_ctx_t* ctx) {
     nimcp_free(ctx->stats.layer_stats);
 
     if (ctx->mutex) {
-        nimcp_mutex_destroy(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
     }
 
     nimcp_free(ctx);

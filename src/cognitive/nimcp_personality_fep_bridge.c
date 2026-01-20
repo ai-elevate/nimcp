@@ -54,7 +54,7 @@ void personality_fep_bridge_destroy(personality_fep_bridge_t* bridge) {
         personality_fep_bridge_disconnect_bio_async(bridge);
     }
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed personality FEP bridge");

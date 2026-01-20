@@ -346,7 +346,7 @@ void dragonfly_tracker_destroy(dragonfly_tracker_t* tracker) {
     if (!tracker) return;
 
     if (tracker->mutex) {
-        nimcp_mutex_destroy(tracker->mutex);
+        nimcp_mutex_free(tracker->mutex);
     }
 
     nimcp_free(tracker);

@@ -336,7 +336,7 @@ void spatial_reasoning_destroy(spatial_reasoning_t* sr) {
     free(sr->objects);
 
     if (sr->lock) {
-        nimcp_mutex_destroy(sr->lock);
+        nimcp_mutex_free(sr->lock);
     }
 
     free(sr);

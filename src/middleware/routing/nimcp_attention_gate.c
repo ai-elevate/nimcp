@@ -268,8 +268,7 @@ void attention_gate_destroy(attention_gate_t* gate) {
 
     /* Thread safety: Clean up mutex */
     if (gate->mutex) {
-        nimcp_mutex_destroy(gate->mutex);
-        nimcp_free(gate->mutex);
+        nimcp_mutex_free(gate->mutex);
     }
 
     nimcp_free(gate);

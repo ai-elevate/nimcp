@@ -66,7 +66,7 @@ attention_thalamic_bridge_t* attention_thalamic_bridge_create(
 void attention_thalamic_bridge_destroy(attention_thalamic_bridge_t* bridge) {
     if (bridge) {
         if (bridge->base.mutex) {
-            nimcp_mutex_destroy(bridge->base.mutex);
+            nimcp_mutex_free(bridge->base.mutex);
         }
         nimcp_free(bridge);
     }

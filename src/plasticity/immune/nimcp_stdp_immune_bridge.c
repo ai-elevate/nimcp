@@ -208,7 +208,6 @@ void stdp_immune_bridge_destroy(stdp_immune_bridge_t* bridge) {
     /* Destroy mutex */
     if (bridge->base.mutex) {
         pthread_mutex_destroy((pthread_mutex_t*)bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */

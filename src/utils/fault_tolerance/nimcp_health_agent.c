@@ -1214,8 +1214,8 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
     agent->stats_mutex = nimcp_mutex_create(NULL);
     if (!agent->stats_mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to create stats mutex");
-        nimcp_mutex_destroy(agent->state_mutex);
-        nimcp_free(agent->state_mutex);
+        nimcp_mutex_free(agent->state_mutex);
+
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
         return NULL;
@@ -1225,10 +1225,10 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
     agent->stop_cond = nimcp_cond_create();
     if (!agent->stop_cond) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to create stop condition");
-        nimcp_mutex_destroy(agent->stats_mutex);
-        nimcp_free(agent->stats_mutex);
-        nimcp_mutex_destroy(agent->state_mutex);
-        nimcp_free(agent->state_mutex);
+        nimcp_mutex_free(agent->stats_mutex);
+
+        nimcp_mutex_free(agent->state_mutex);
+
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
         return NULL;
@@ -1240,10 +1240,10 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
         nimcp_log(LOG_LEVEL_ERROR, "Failed to create cognitive mutex");
         nimcp_cond_destroy(agent->stop_cond);
         nimcp_free(agent->stop_cond);
-        nimcp_mutex_destroy(agent->stats_mutex);
-        nimcp_free(agent->stats_mutex);
-        nimcp_mutex_destroy(agent->state_mutex);
-        nimcp_free(agent->state_mutex);
+        nimcp_mutex_free(agent->stats_mutex);
+
+        nimcp_mutex_free(agent->state_mutex);
+
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
         return NULL;
@@ -1253,14 +1253,14 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
     agent->modules_mutex = nimcp_mutex_create(NULL);
     if (!agent->modules_mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to create modules mutex");
-        nimcp_mutex_destroy(agent->cognitive_mutex);
-        nimcp_free(agent->cognitive_mutex);
+        nimcp_mutex_free(agent->cognitive_mutex);
+
         nimcp_cond_destroy(agent->stop_cond);
         nimcp_free(agent->stop_cond);
-        nimcp_mutex_destroy(agent->stats_mutex);
-        nimcp_free(agent->stats_mutex);
-        nimcp_mutex_destroy(agent->state_mutex);
-        nimcp_free(agent->state_mutex);
+        nimcp_mutex_free(agent->stats_mutex);
+
+        nimcp_mutex_free(agent->state_mutex);
+
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
         return NULL;
@@ -1270,16 +1270,16 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
     agent->neural_mutex = nimcp_mutex_create(NULL);
     if (!agent->neural_mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to create neural mutex");
-        nimcp_mutex_destroy(agent->modules_mutex);
-        nimcp_free(agent->modules_mutex);
-        nimcp_mutex_destroy(agent->cognitive_mutex);
-        nimcp_free(agent->cognitive_mutex);
+        nimcp_mutex_free(agent->modules_mutex);
+
+        nimcp_mutex_free(agent->cognitive_mutex);
+
         nimcp_cond_destroy(agent->stop_cond);
         nimcp_free(agent->stop_cond);
-        nimcp_mutex_destroy(agent->stats_mutex);
-        nimcp_free(agent->stats_mutex);
-        nimcp_mutex_destroy(agent->state_mutex);
-        nimcp_free(agent->state_mutex);
+        nimcp_mutex_free(agent->stats_mutex);
+
+        nimcp_mutex_free(agent->state_mutex);
+
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
         return NULL;
@@ -1289,18 +1289,18 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
     agent->behavioral_mutex = nimcp_mutex_create(NULL);
     if (!agent->behavioral_mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to create behavioral mutex");
-        nimcp_mutex_destroy(agent->neural_mutex);
-        nimcp_free(agent->neural_mutex);
-        nimcp_mutex_destroy(agent->modules_mutex);
-        nimcp_free(agent->modules_mutex);
-        nimcp_mutex_destroy(agent->cognitive_mutex);
-        nimcp_free(agent->cognitive_mutex);
+        nimcp_mutex_free(agent->neural_mutex);
+
+        nimcp_mutex_free(agent->modules_mutex);
+
+        nimcp_mutex_free(agent->cognitive_mutex);
+
         nimcp_cond_destroy(agent->stop_cond);
         nimcp_free(agent->stop_cond);
-        nimcp_mutex_destroy(agent->stats_mutex);
-        nimcp_free(agent->stats_mutex);
-        nimcp_mutex_destroy(agent->state_mutex);
-        nimcp_free(agent->state_mutex);
+        nimcp_mutex_free(agent->stats_mutex);
+
+        nimcp_mutex_free(agent->state_mutex);
+
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
         return NULL;
@@ -1454,16 +1454,16 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
     agent->consistency_mutex = nimcp_mutex_create(NULL);
     if (!agent->consistency_mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to create consistency mutex");
-        nimcp_mutex_destroy(agent->modules_mutex);
-        nimcp_free(agent->modules_mutex);
-        nimcp_mutex_destroy(agent->cognitive_mutex);
-        nimcp_free(agent->cognitive_mutex);
+        nimcp_mutex_free(agent->modules_mutex);
+
+        nimcp_mutex_free(agent->cognitive_mutex);
+
         nimcp_cond_destroy(agent->stop_cond);
         nimcp_free(agent->stop_cond);
-        nimcp_mutex_destroy(agent->stats_mutex);
-        nimcp_free(agent->stats_mutex);
-        nimcp_mutex_destroy(agent->state_mutex);
-        nimcp_free(agent->state_mutex);
+        nimcp_mutex_free(agent->stats_mutex);
+
+        nimcp_mutex_free(agent->state_mutex);
+
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
         return NULL;
@@ -1521,47 +1521,47 @@ void nimcp_health_agent_destroy(nimcp_health_agent_t* agent) {
     }
 
     if (agent->state_mutex) {
-        nimcp_mutex_destroy(agent->state_mutex);
-        nimcp_free(agent->state_mutex);
+        nimcp_mutex_free(agent->state_mutex);
+
         agent->state_mutex = NULL;
     }
 
     if (agent->stats_mutex) {
-        nimcp_mutex_destroy(agent->stats_mutex);
-        nimcp_free(agent->stats_mutex);
+        nimcp_mutex_free(agent->stats_mutex);
+
         agent->stats_mutex = NULL;
     }
 
     if (agent->cognitive_mutex) {
-        nimcp_mutex_destroy(agent->cognitive_mutex);
-        nimcp_free(agent->cognitive_mutex);
+        nimcp_mutex_free(agent->cognitive_mutex);
+
         agent->cognitive_mutex = NULL;
     }
 
     if (agent->modules_mutex) {
-        nimcp_mutex_destroy(agent->modules_mutex);
-        nimcp_free(agent->modules_mutex);
+        nimcp_mutex_free(agent->modules_mutex);
+
         agent->modules_mutex = NULL;
     }
 
     /* Destroy neural mutex (Phase 5.5: SNN/LNN health monitoring) */
     if (agent->neural_mutex) {
-        nimcp_mutex_destroy(agent->neural_mutex);
-        nimcp_free(agent->neural_mutex);
+        nimcp_mutex_free(agent->neural_mutex);
+
         agent->neural_mutex = NULL;
     }
 
     /* Destroy behavioral mutex (Phase 5.6: Dragonfly/Portia health monitoring) */
     if (agent->behavioral_mutex) {
-        nimcp_mutex_destroy(agent->behavioral_mutex);
-        nimcp_free(agent->behavioral_mutex);
+        nimcp_mutex_free(agent->behavioral_mutex);
+
         agent->behavioral_mutex = NULL;
     }
 
     /* Destroy consistency mutex (Phase 3) */
     if (agent->consistency_mutex) {
-        nimcp_mutex_destroy(agent->consistency_mutex);
-        nimcp_free(agent->consistency_mutex);
+        nimcp_mutex_free(agent->consistency_mutex);
+
         agent->consistency_mutex = NULL;
     }
 

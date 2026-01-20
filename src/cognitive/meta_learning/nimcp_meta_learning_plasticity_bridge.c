@@ -132,7 +132,7 @@ meta_learning_plasticity_bridge_t* meta_learning_plasticity_create(
     bridge->max_synapses = bridge->config.max_synapses;
     bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(meta_learning_plasticity_synapse_t));
     if (!bridge->synapses) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -160,7 +160,7 @@ void meta_learning_plasticity_destroy(meta_learning_plasticity_bridge_t* bridge)
     if (!bridge) return;
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge->synapses);

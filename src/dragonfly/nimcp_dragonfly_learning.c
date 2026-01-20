@@ -366,7 +366,7 @@ void dragonfly_learning_destroy(dragonfly_learning_t learning) {
     if (!learning) return;
 
     if (learning->mutex) {
-        nimcp_mutex_destroy(learning->mutex);
+        nimcp_mutex_free(learning->mutex);
     }
 
     nimcp_free(learning);

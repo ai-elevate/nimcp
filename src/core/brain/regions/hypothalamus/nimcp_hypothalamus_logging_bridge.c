@@ -701,7 +701,7 @@ void hypo_logging_bridge_destroy(hypo_logging_bridge_t* bridge) {
 
     /* Free mutex */
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         bridge->mutex = NULL;
     }
 

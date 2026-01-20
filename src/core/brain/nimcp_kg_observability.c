@@ -291,7 +291,7 @@ void kg_observability_destroy(kg_observability_t* obs) {
 
     /* Destroy mutex */
     if (obs->mutex) {
-        nimcp_mutex_destroy(obs->mutex);
+        nimcp_mutex_free(obs->mutex);
     }
 
     nimcp_free(obs);

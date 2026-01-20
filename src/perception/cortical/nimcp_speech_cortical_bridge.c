@@ -406,8 +406,7 @@ void speech_cortical_bridge_destroy(speech_cortical_bridge_t* bridge)
 
     /* Destroy mutex */
     if ((bridge->base.mutex != NULL)) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         bridge->base.mutex = NULL;
     }
 

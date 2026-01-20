@@ -131,7 +131,7 @@ omni_broca_bridge_t* omni_broca_bridge_create(
     bridge->phon_wm = phon_wm_create(bridge->config.wm_capacity, 64,
                                       bridge->config.wm_decay_rate);
     if (!bridge->phon_wm) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -181,7 +181,7 @@ void omni_broca_bridge_destroy(omni_broca_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

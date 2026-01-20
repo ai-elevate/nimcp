@@ -135,7 +135,38 @@ nimcp_result_t nimcp_mutex_destroy(nimcp_mutex_t* mutex)
         return NIMCP_ERROR_SYSTEM;
     }
 
+    /* NOTE: Do NOT free mutex here - it may be embedded in another struct.
+     * For heap-allocated mutexes (from nimcp_mutex_create), use nimcp_mutex_free(). */
+
     return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Destroy and free a heap-allocated mutex
+ *
+ * WHY FREE:
+ * - For mutexes allocated by nimcp_mutex_create()
+ * - Combines destroy + free in one call
+ * - Do NOT use on embedded mutexes (use nimcp_mutex_destroy instead)
+ *
+ * COMPLEXITY: O(1)
+ * THREAD SAFETY: Caller must ensure no concurrent use
+ *
+ * @param mutex Mutex to destroy and free (must be from nimcp_mutex_create)
+ * @return NIMCP_SUCCESS or error code
+ */
+nimcp_result_t nimcp_mutex_free(nimcp_mutex_t* mutex)
+{
+    if (!mutex) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_result_t result = nimcp_mutex_destroy(mutex);
+
+    /* Free the mutex struct regardless of destroy result */
+    nimcp_free(mutex);
+
+    return result;
 }
 
 /**

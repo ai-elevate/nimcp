@@ -628,7 +628,7 @@ void kg_hierarchy_destroy(kg_hierarchy_t* hier) {
 
     /* Destroy mutex */
     if (hier->mutex) {
-        nimcp_mutex_destroy(hier->mutex);
+        nimcp_mutex_free(hier->mutex);
     }
 
     nimcp_free(hier);

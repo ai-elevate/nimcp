@@ -154,7 +154,7 @@ void knowledge_sleep_bridge_destroy(knowledge_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
     nimcp_free(bridge);
 }
 

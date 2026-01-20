@@ -585,7 +585,7 @@ cognitive_training_bridge_t* cognitive_training_create(
     );
     if (!bridge->loss_history) {
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -618,7 +618,7 @@ void cognitive_training_destroy(cognitive_training_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     /* Free bridge */

@@ -119,7 +119,6 @@ calcium_pink_noise_bridge_t* calcium_pink_noise_bridge_create(
         return NULL;
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
-        nimcp_free(bridge->base.mutex);
         pink_noise_destroy(bridge->noise_gen);
         nimcp_free(bridge);
         LOG_ERROR("Calcium-pink noise bridge mutex initialization failed");
@@ -152,8 +151,7 @@ void calcium_pink_noise_bridge_destroy(calcium_pink_noise_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     /* Free bridge */

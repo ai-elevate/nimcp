@@ -155,7 +155,6 @@ void self_preservation_destroy(self_preservation_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy((nimcp_platform_mutex_t*)system->mutex);
-        nimcp_free(system->mutex);
     }
 
     /* Free system */

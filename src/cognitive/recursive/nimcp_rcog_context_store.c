@@ -409,7 +409,7 @@ void rcog_context_store_destroy(rcog_context_store_t* store)
 
     /* Destroy mutex */
     if (store->mutex) {
-        nimcp_mutex_destroy(store->mutex);
+        nimcp_mutex_free(store->mutex);
     }
 
     nimcp_free(store);

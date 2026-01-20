@@ -188,7 +188,7 @@ void hypo_ibus_destroy(hypo_ibus_t bus) {
     if (!bus) return;
 
     if (bus->mutex) {
-        nimcp_mutex_destroy(bus->mutex);
+        nimcp_mutex_free(bus->mutex);
     }
 
     nimcp_free(bus);

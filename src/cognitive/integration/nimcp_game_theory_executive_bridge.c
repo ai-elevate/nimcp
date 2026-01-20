@@ -381,8 +381,7 @@ void game_theory_executive_bridge_destroy(game_theory_executive_bridge_t* bridge
 
     /* Destroy mutex */
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         bridge->mutex = NULL;
     }
 

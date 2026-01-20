@@ -187,9 +187,17 @@ nimcp_result_t nimcp_mutex_init(nimcp_mutex_t* mutex, const mutex_attr_t* attr);
 nimcp_mutex_t* nimcp_mutex_create(const mutex_attr_t* attr);
 
 /**
- * @brief Destroy mutex
+ * @brief Destroy mutex (does NOT free memory)
+ * @note For embedded mutexes initialized with nimcp_mutex_init()
  */
 nimcp_result_t nimcp_mutex_destroy(nimcp_mutex_t* mutex);
+
+/**
+ * @brief Destroy and free a heap-allocated mutex
+ * @note For mutexes created with nimcp_mutex_create()
+ * @note Do NOT use on embedded mutexes - use nimcp_mutex_destroy() instead
+ */
+nimcp_result_t nimcp_mutex_free(nimcp_mutex_t* mutex);
 
 /**
  * @brief Lock mutex (blocking)

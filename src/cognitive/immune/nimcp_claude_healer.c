@@ -663,7 +663,7 @@ claude_healer_t* claude_healer_create(const claude_healer_config_t* config)
     healer->curl = curl_easy_init();
     if (healer->curl == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to initialize CURL");
-        nimcp_mutex_destroy(healer->mutex);
+        nimcp_mutex_free(healer->mutex);
         nimcp_free(healer->request_timestamps);
         nimcp_free(healer);
         return NULL;
@@ -695,7 +695,7 @@ void claude_healer_destroy(claude_healer_t* healer)
 #endif
 
     if (healer->mutex != NULL) {
-        nimcp_mutex_destroy(healer->mutex);
+        nimcp_mutex_free(healer->mutex);
     }
 
     nimcp_free(healer->request_timestamps);

@@ -407,8 +407,7 @@ void sequence_detector_destroy(sequence_detector_t* detector) {
 
     /* Thread safety: Clean up mutex */
     if (detector->mutex) {
-        nimcp_mutex_destroy(detector->mutex);
-        nimcp_free(detector->mutex);
+        nimcp_mutex_free(detector->mutex);
     }
 
     nimcp_free(detector);

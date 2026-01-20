@@ -288,7 +288,7 @@ void rcog_tool_router_destroy(rcog_tool_router_t* router) {
     }
 
     if (router->mutex) {
-        nimcp_mutex_destroy(router->mutex);
+        nimcp_mutex_free(router->mutex);
     }
 
     nimcp_free(router);

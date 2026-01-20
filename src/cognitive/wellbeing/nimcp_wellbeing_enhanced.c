@@ -969,7 +969,7 @@ void enhanced_wellbeing_destroy(enhanced_wellbeing_system_t* system) {
 
     /* Destroy mutex */
     if (system->mutex) {
-        nimcp_mutex_destroy((nimcp_mutex_t*)system->mutex);
+        nimcp_mutex_free((nimcp_mutex_t*)system->mutex);
     }
 
     /* Free prediction strings */

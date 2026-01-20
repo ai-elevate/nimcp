@@ -165,7 +165,7 @@ void kg_ratelimit_destroy(kg_ratelimiter_t* limiter) {
     }
 
     if (limiter->mutex) {
-        nimcp_mutex_destroy(limiter->mutex);
+        nimcp_mutex_free(limiter->mutex);
     }
 
     nimcp_free(limiter);

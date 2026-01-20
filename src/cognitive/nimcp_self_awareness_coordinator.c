@@ -305,8 +305,7 @@ void sac_destroy(self_awareness_coordinator_t* coord) {
 
     /* Destroy mutex */
     if (coord->mutex) {
-        nimcp_mutex_destroy(coord->mutex);
-        nimcp_free(coord->mutex);
+        nimcp_mutex_free(coord->mutex);
     }
 
     /* Free coordinator */

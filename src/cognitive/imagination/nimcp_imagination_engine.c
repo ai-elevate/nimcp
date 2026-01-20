@@ -401,7 +401,7 @@ void imagination_engine_destroy(imagination_engine_t* engine) {
 
     /* Destroy mutex */
     if (engine->mutex) {
-        nimcp_mutex_destroy(engine->mutex);
+        nimcp_mutex_free(engine->mutex);
     }
 
     free(engine);

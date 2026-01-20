@@ -242,7 +242,7 @@ void lgss_input_validator_destroy(lgss_input_validator_t* validator) {
 
     /* Destroy mutex */
     if (validator->mutex) {
-        nimcp_mutex_destroy(validator->mutex);
+        nimcp_mutex_free(validator->mutex);
         validator->mutex = NULL;
     }
 

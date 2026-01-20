@@ -401,8 +401,7 @@ void snn_network_destroy(snn_network_t* network) {
 
     /* Destroy mutex */
     if (network->mutex) {
-        nimcp_mutex_destroy((nimcp_mutex_t*)network->mutex);
-        nimcp_free(network->mutex);
+        nimcp_mutex_free((nimcp_mutex_t*)network->mutex);
     }
 
     /* Clear and free */

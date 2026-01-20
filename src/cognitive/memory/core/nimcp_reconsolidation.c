@@ -371,7 +371,7 @@ NIMCP_EXPORT void reconsolidation_destroy(reconsolidation_system_t* system) {
     nimcp_mutex_unlock(system->mutex);
 
     // Free resources
-    nimcp_mutex_destroy(system->mutex);
+    nimcp_mutex_free(system->mutex);
     free(system->entry_pool);
     free(system->hash_table);
     free(system->free_indices);

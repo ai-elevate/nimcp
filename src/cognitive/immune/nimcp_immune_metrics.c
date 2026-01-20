@@ -323,7 +323,7 @@ void immune_metrics_destroy(immune_metrics_t* metrics)
     metrics->initialized = false;
     nimcp_mutex_unlock(metrics->mutex);
 
-    nimcp_mutex_destroy(metrics->mutex);
+    nimcp_mutex_free(metrics->mutex);
     nimcp_free(metrics);
 
     LOG_MODULE_INFO(LOG_TAG, "Immune metrics collector destroyed");

@@ -82,7 +82,7 @@ fail:
 void bgt_bridge_destroy(bgt_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
     if (bridge->channels) nimcp_free(bridge->channels);
     if (bridge->bg_output_buffer) nimcp_free(bridge->bg_output_buffer);
     if (bridge->thal_input_buffer) nimcp_free(bridge->thal_input_buffer);

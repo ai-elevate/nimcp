@@ -99,7 +99,7 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
     bridge->agent_states = (mirror_omni_agent_state_t*)nimcp_calloc(
         bridge->agent_states_capacity, sizeof(mirror_omni_agent_state_t));
     if (!bridge->agent_states) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -111,7 +111,7 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
         bridge->action_priors_capacity, sizeof(mirror_omni_action_prior_t));
     if (!bridge->action_priors) {
         nimcp_free(bridge->agent_states);
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -159,7 +159,7 @@ void mirror_omni_bridge_destroy(mirror_omni_bridge_t* bridge) {
 
     /* Cleanup base */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

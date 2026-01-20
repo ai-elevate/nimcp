@@ -257,7 +257,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
     bridge->memory_pool = nimcp_calloc(bridge->config.max_memories,
                                         sizeof(pr_memory_node_t*));
     if (!bridge->memory_pool) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         set_error(NULL, PR_VISUAL_ERROR_ALLOCATION);
         return NULL;
@@ -273,7 +273,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
     bridge->visual_entanglement = entangle_graph_create(&entangle_config);
     if (!bridge->visual_entanglement) {
         nimcp_free(bridge->memory_pool);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         set_error(NULL, PR_VISUAL_ERROR_ALLOCATION);
         return NULL;
@@ -328,7 +328,7 @@ NIMCP_EXPORT void pr_visual_bridge_destroy(pr_visual_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

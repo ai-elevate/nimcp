@@ -116,7 +116,7 @@ void free_energy_bridge_destroy(free_energy_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

@@ -154,7 +154,7 @@ void ofc_destroy(nimcp_ofc_t* ofc) {
 
     /* Clean up */
     if (ofc->mutex) {
-        nimcp_mutex_destroy(ofc->mutex);
+        nimcp_mutex_free(ofc->mutex);
     }
     if (ofc->options) {
         nimcp_free(ofc->options);

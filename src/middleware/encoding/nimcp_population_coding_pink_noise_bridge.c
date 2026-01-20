@@ -128,7 +128,6 @@ population_pink_bridge_t* population_pink_bridge_create(
         return NULL;
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
-        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -145,8 +144,7 @@ population_pink_bridge_t* population_pink_bridge_create(
 
     bridge->global_generator = pink_noise_create(&pink_cfg);
     if (!bridge->global_generator) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -158,8 +156,7 @@ population_pink_bridge_t* population_pink_bridge_create(
         );
         if (!bridge->per_neuron_generators) {
             pink_noise_destroy(bridge->global_generator);
-            nimcp_mutex_destroy(bridge->base.mutex);
-            nimcp_free(bridge->base.mutex);
+            nimcp_mutex_free(bridge->base.mutex);
             nimcp_free(bridge);
             return NULL;
         }
@@ -175,8 +172,7 @@ population_pink_bridge_t* population_pink_bridge_create(
                 }
                 nimcp_free(bridge->per_neuron_generators);
                 pink_noise_destroy(bridge->global_generator);
-                nimcp_mutex_destroy(bridge->base.mutex);
-                nimcp_free(bridge->base.mutex);
+                nimcp_mutex_free(bridge->base.mutex);
                 nimcp_free(bridge);
                 return NULL;
             }
@@ -193,8 +189,7 @@ population_pink_bridge_t* population_pink_bridge_create(
             nimcp_free(bridge->per_neuron_generators);
         }
         pink_noise_destroy(bridge->global_generator);
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -225,8 +220,7 @@ void population_pink_bridge_destroy(population_pink_bridge_t* bridge) {
 
     // Destroy mutex
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

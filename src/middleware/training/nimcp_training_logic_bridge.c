@@ -545,7 +545,7 @@ training_logic_bridge_t* training_logic_create(
     );
     if (!bridge->history) {
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -563,7 +563,7 @@ training_logic_bridge_t* training_logic_create(
     if (!bridge->logic_network) {
         NIMCP_LOGGING_ERROR("Failed to create neural logic network");
         nimcp_free(bridge->history);
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -573,7 +573,7 @@ training_logic_bridge_t* training_logic_create(
         NIMCP_LOGGING_ERROR("Failed to initialize decision gates");
         neural_logic_destroy(bridge->logic_network);
         nimcp_free(bridge->history);
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -614,7 +614,7 @@ void training_logic_destroy(training_logic_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     /* Free bridge */

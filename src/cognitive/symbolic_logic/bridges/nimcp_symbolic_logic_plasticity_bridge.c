@@ -540,8 +540,7 @@ void safety_plasticity_bridge_destroy(safety_plasticity_bridge_t* bridge) {
 
     /* Cleanup */
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     bridge_base_cleanup(&bridge->base);

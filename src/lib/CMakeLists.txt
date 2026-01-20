@@ -537,6 +537,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_failure_prediction.c  # Phase 10: Predictive Coding for Failure Prediction
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_recovery_consolidation.c  # Phase 10: Consolidation for Long-Term Learning
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_emotional_tagging.c  # Phase 10: Emotional Tagging for Critical Failures
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_self_repair.c  # Self-repair coordinator (code gen + VCS + hot-patch orchestration)
     # NOTE: No centralized hub - coordination emerges from distributed event bus (mimics thalamus + white matter tracts)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_emotional_tagging.c  # Phase 10.3: General Emotional Tagging (Russell's circumplex model)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotions/nimcp_emotional_system.c  # Phase 10.2: Integrated Emotional System
@@ -806,6 +807,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_intuition_integrations.c # Phase 6.0: Integration & Extrapolation Framework
     # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_physics_nn.c              # Physics-informed neural network (symplectic, HNN) - NOT YET IMPLEMENTED
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal.c               # Parietal orchestrator with Hamiltonian-Lagrangian NN
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_code_generation.c       # Self-repair code generation engine (FT integration)
 
     # Free Energy Principle - Karl Friston's predictive processing framework
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_free_energy.c  # Core FEP implementation (variational free energy, active inference)
@@ -1575,6 +1577,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/code/nimcp_recompiler.c        # Dynamic recompilation pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/code/nimcp_hot_inject.c        # Hot injection for runtime patching
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/code/nimcp_dwarf_symbols.c     # DWARF debug symbols parser
+
+    # Utils - VCS Integration (Self-repair source code modification)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/vcs/nimcp_vcs_integration.c   # Git integration for autonomous source commits
 
     # Utils - Math (Phase 0.5: Complex Number Support for Neural Phase Coding)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/math/nimcp_complex_math.c  # Complex phasor operations, FFT, PAC detection (SIMD optimized)

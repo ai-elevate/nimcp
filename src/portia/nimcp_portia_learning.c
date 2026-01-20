@@ -238,7 +238,6 @@ portia_learning_state_t* portia_learning_init(const portia_learning_config_t* co
     }
     if (nimcp_platform_mutex_init(state->mutex, false) != 0) {
         LOG_ERROR("Failed to initialize learning mutex");
-        nimcp_free(state->mutex);
         nimcp_free(state->association_table);
         nimcp_free(state->habituation_table);
         nimcp_free(state);

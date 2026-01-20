@@ -144,7 +144,6 @@ consolidation_pink_noise_bridge_t* consolidation_pink_noise_create(
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -163,8 +162,7 @@ void consolidation_pink_noise_destroy(consolidation_pink_noise_bridge_t* bridge)
     }
 
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         bridge->base.mutex = NULL;
     }
 

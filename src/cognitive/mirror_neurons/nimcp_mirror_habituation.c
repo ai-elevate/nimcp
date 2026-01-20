@@ -260,7 +260,7 @@ void habituation_destroy(habituation_system_t* system) {
     }
 
     if (system->mutex) {
-        nimcp_mutex_destroy(system->mutex);
+        nimcp_mutex_free(system->mutex);
     }
 
     nimcp_free(system);

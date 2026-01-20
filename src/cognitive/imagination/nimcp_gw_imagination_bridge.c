@@ -106,7 +106,7 @@ gw_imagination_bridge_t* gw_imagination_bridge_create(
     if (config) {
         if (gw_imagination_validate_config(config) != 0) {
             NIMCP_LOGGING_ERROR("Invalid bridge configuration");
-            nimcp_mutex_destroy(bridge->base.mutex);
+            nimcp_mutex_free(bridge->base.mutex);
             nimcp_free(bridge);
             return NULL;
         }
@@ -155,7 +155,7 @@ void gw_imagination_bridge_destroy(gw_imagination_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

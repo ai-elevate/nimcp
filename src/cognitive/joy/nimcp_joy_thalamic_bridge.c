@@ -60,7 +60,7 @@ joy_thalamic_bridge_t* joy_thalamic_bridge_create(void* joy, thalamic_router_t* 
 void joy_thalamic_bridge_destroy(joy_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
 }

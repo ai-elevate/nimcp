@@ -158,7 +158,7 @@ void dragonfly_ocelli_destroy(dragonfly_ocelli_t ocelli) {
     if (!ocelli) return;
 
     if (ocelli->mutex) {
-        nimcp_mutex_destroy(ocelli->mutex);
+        nimcp_mutex_free(ocelli->mutex);
     }
 
     nimcp_free(ocelli);

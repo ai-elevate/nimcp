@@ -514,7 +514,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
         bridge->difficulty_cache = nimcp_calloc(bridge->cache_capacity,
                                                  sizeof(difficulty_cache_entry_t));
         if (!bridge->difficulty_cache) {
-            nimcp_mutex_destroy(bridge->mutex);
+            nimcp_mutex_free(bridge->mutex);
             nimcp_free(bridge);
             return NULL;
         }
@@ -527,7 +527,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
                                                   sizeof(consolidation_event_t));
     if (!bridge->consolidation_history) {
         if (bridge->difficulty_cache) nimcp_free(bridge->difficulty_cache);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -542,7 +542,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
         if (!bridge->events) {
             nimcp_free(bridge->consolidation_history);
             if (bridge->difficulty_cache) nimcp_free(bridge->difficulty_cache);
-            nimcp_mutex_destroy(bridge->mutex);
+            nimcp_mutex_free(bridge->mutex);
             nimcp_free(bridge);
             return NULL;
         }
@@ -573,7 +573,7 @@ void pr_curriculum_bridge_destroy(pr_curriculum_bridge_t bridge) {
     if (bridge->events) nimcp_free(bridge->events);
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

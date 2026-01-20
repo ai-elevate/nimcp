@@ -62,7 +62,6 @@ void consolidation_fep_bridge_destroy(consolidation_fep_bridge_t* bridge) {
     }
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed consolidation FEP bridge");

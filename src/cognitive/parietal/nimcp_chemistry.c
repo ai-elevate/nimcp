@@ -223,7 +223,7 @@ void chemistry_destroy(chemistry_t* chem) {
     if (!chem) return;
 
     if (chem->lock) {
-        nimcp_mutex_destroy(chem->lock);
+        nimcp_mutex_free(chem->lock);
     }
     free(chem);
 }

@@ -293,7 +293,6 @@ void substrate_destroy(neural_substrate_t* substrate) {
 
     if (substrate->mutex) {
         nimcp_platform_mutex_destroy(substrate->mutex);
-        nimcp_free(substrate->mutex);
     }
 
     nimcp_free(substrate);

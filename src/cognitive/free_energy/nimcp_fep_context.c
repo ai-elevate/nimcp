@@ -188,7 +188,6 @@ void fep_context_destroy(fep_context_system_t* sys) {
 
     if (sys->mutex) {
         nimcp_platform_mutex_destroy(sys->mutex);
-        nimcp_free(sys->mutex);
     }
 
     nimcp_free(sys);

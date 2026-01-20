@@ -237,7 +237,7 @@ void dragonfly_environment_destroy(dragonfly_environment_t env) {
     if (!env) return;
 
     if (env->mutex) {
-        nimcp_mutex_destroy(env->mutex);
+        nimcp_mutex_free(env->mutex);
     }
 
     nimcp_free(env);

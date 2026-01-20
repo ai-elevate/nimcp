@@ -158,7 +158,7 @@ void ensemble_pink_destroy(ensemble_pink_bridge_t* bridge) {
 
     // Destroy mutex
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     // Free bridge

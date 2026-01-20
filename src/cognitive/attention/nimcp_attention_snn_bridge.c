@@ -246,7 +246,7 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_snn_create: failed to create SNN network");
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -372,7 +372,7 @@ void attention_snn_destroy(attention_snn_bridge_t* bridge) {
     if (bridge->attention.top_k_indices) nimcp_free(bridge->attention.top_k_indices);
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

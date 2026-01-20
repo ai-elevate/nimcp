@@ -126,7 +126,6 @@ mirror_immune_integration_t* mirror_immune_create(
         return NULL;
     }
     if (nimcp_mutex_init(integration->mutex, NULL) != NIMCP_SUCCESS) {
-        nimcp_free(integration->mutex);
         nimcp_free(integration);
         return NULL;
     }
@@ -145,8 +144,7 @@ void mirror_immune_destroy(mirror_immune_integration_t* integration) {
     if (!integration) return;
 
     if (integration->mutex) {
-        nimcp_mutex_destroy(integration->mutex);
-        nimcp_free(integration->mutex);
+        nimcp_mutex_free(integration->mutex);
     }
 
     nimcp_free(integration);

@@ -313,9 +313,9 @@ void gpu_health_monitor_destroy(gpu_health_monitor_t* monitor) {
     }
 
     /* Destroy mutexes */
-    if (monitor->callbacks_mutex) nimcp_mutex_destroy(monitor->callbacks_mutex);
-    if (monitor->checkpoints_mutex) nimcp_mutex_destroy(monitor->checkpoints_mutex);
-    if (monitor->state_mutex) nimcp_mutex_destroy(monitor->state_mutex);
+    if (monitor->callbacks_mutex) nimcp_mutex_free(monitor->callbacks_mutex);
+    if (monitor->checkpoints_mutex) nimcp_mutex_free(monitor->checkpoints_mutex);
+    if (monitor->state_mutex) nimcp_mutex_free(monitor->state_mutex);
 
     monitor->magic = 0;
     free(monitor);
@@ -1306,7 +1306,7 @@ void gpu_memory_pool_destroy(gpu_memory_pool_t* pool) {
     if (!validate_pool(pool)) return;
 
     if (pool->pool_mutex) {
-        nimcp_mutex_destroy(pool->pool_mutex);
+        nimcp_mutex_free(pool->pool_mutex);
     }
 
     pool->magic = 0;

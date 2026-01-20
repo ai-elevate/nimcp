@@ -265,7 +265,7 @@ void occipital_gpu_bridge_destroy(occipital_gpu_bridge_t* bridge) {
     /* Unlock and destroy mutex */
     if (bridge->mutex) {
         nimcp_mutex_unlock(bridge->mutex);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     LOG_DEBUG(OCCIPITAL_GPU_LOG_MODULE, "Occipital GPU bridge destroyed");

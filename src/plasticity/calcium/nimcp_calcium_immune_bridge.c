@@ -165,7 +165,6 @@ void calcium_immune_bridge_destroy(calcium_immune_bridge_t* bridge) {
     if (bridge->base.mutex) {
         pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
         pthread_mutex_destroy(mtx);
-        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

@@ -151,7 +151,7 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to create SNN network");
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -266,7 +266,7 @@ void wm_snn_destroy(wm_snn_bridge_t* bridge) {
     if (bridge->slot_states) nimcp_free(bridge->slot_states);
     if (bridge->slot_buffer) nimcp_free(bridge->slot_buffer);
     if (bridge->output_buffer) nimcp_free(bridge->output_buffer);
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
 
     nimcp_free(bridge);
 }

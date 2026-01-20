@@ -373,8 +373,7 @@ void cognitive_hub_destroy(cognitive_integration_hub_t hub) {
 
     /* Destroy mutex */
     if (hub->mutex) {
-        nimcp_mutex_destroy(hub->mutex);
-        nimcp_free(hub->mutex);
+        nimcp_mutex_free(hub->mutex);
     }
 
     /* Free hub structure */

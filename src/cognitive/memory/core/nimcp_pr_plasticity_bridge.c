@@ -298,7 +298,7 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
     bridge->bcm_node_capacity = 256;
     bridge->bcm_nodes = nimcp_calloc(bridge->bcm_node_capacity, sizeof(pr_bcm_node_state_t));
     if (!bridge->bcm_nodes) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -310,7 +310,7 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
         bridge->events = nimcp_calloc(bridge->event_capacity, sizeof(pr_plasticity_event_t));
         if (!bridge->events) {
             nimcp_free(bridge->bcm_nodes);
-            nimcp_mutex_destroy(bridge->mutex);
+            nimcp_mutex_free(bridge->mutex);
             nimcp_free(bridge);
             return NULL;
         }
@@ -347,7 +347,7 @@ void pr_plasticity_bridge_destroy(pr_plasticity_bridge_t bridge) {
     if (bridge->node_activity_history) nimcp_free(bridge->node_activity_history);
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

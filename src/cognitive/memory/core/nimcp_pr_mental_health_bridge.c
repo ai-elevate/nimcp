@@ -377,7 +377,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
     bridge->history_capacity = cfg.retrieval_history_size;
     bridge->history = calloc(bridge->history_capacity, sizeof(pr_mh_retrieval_event_t));
     if (!bridge->history) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         free(bridge);
         return NULL;
     }
@@ -388,7 +388,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
                                          sizeof(pr_mh_rumination_pattern_t));
     if (!bridge->rumination_patterns) {
         free(bridge->history);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         free(bridge);
         return NULL;
     }
@@ -400,7 +400,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
     if (!bridge->intrusion_records) {
         free(bridge->rumination_patterns);
         free(bridge->history);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         free(bridge);
         return NULL;
     }
@@ -457,7 +457,7 @@ void pr_mental_health_bridge_destroy(pr_mental_health_bridge_t bridge) {
     bridge->initialized = false;
 
     nimcp_mutex_unlock(bridge->mutex);
-    nimcp_mutex_destroy(bridge->mutex);
+    nimcp_mutex_free(bridge->mutex);
 
     free(bridge);
 }

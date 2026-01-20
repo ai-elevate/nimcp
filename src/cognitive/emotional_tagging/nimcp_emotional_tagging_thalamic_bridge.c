@@ -55,7 +55,7 @@ emotional_tagging_thalamic_bridge_t* emotional_tagging_thalamic_bridge_create(
 void emotional_tagging_thalamic_bridge_destroy(emotional_tagging_thalamic_bridge_t* bridge) {
     if (bridge) {
         if (bridge->base.mutex) {
-            nimcp_mutex_destroy(bridge->base.mutex);
+            nimcp_mutex_free(bridge->base.mutex);
         }
         nimcp_free(bridge);
     }

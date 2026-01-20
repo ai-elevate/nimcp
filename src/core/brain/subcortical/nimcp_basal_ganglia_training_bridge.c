@@ -92,7 +92,7 @@ void bgtr_bridge_destroy(bgtr_bridge_t* bridge) {
         nimcp_training_free_weights(bridge->training, &bridge->habit_weights);
     }
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
     if (bridge->traces) nimcp_free(bridge->traces);
 
     nimcp_free(bridge);

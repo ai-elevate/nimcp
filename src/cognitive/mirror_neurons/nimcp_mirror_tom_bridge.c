@@ -312,7 +312,7 @@ void mirror_tom_destroy(mirror_tom_bridge_t bridge) {
               bridge->agent_count, bridge->stats.total_observations);
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
     nimcp_free(bridge);
 }

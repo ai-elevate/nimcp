@@ -265,7 +265,7 @@ void rn_destroy(nimcp_red_nucleus_t* rn) {
 
     /* Clean up */
     if (rn->mutex) {
-        nimcp_mutex_destroy(rn->mutex);
+        nimcp_mutex_free(rn->mutex);
     }
     if (rn->command_queue) {
         nimcp_free(rn->command_queue);

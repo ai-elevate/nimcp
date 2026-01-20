@@ -116,8 +116,7 @@ static void queue_destroy(callosum_message_queue_t* queue) {
     }
 
     if (queue->mutex) {
-        nimcp_mutex_destroy(queue->mutex);
-        nimcp_free(queue->mutex);
+        nimcp_mutex_free(queue->mutex);
     }
 
     memset(queue, 0, sizeof(*queue));
@@ -430,8 +429,7 @@ void callosum_destroy(corpus_callosum_t* cc) {
 
     // Destroy mutex
     if (cc->mutex) {
-        nimcp_mutex_destroy(cc->mutex);
-        nimcp_free(cc->mutex);
+        nimcp_mutex_free(cc->mutex);
     }
 
     nimcp_free(cc);

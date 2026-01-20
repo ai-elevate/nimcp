@@ -428,7 +428,7 @@ void astro_sleep_destroy(astro_sleep_bridge_t bridge)
      * HOW:  Platform-agnostic mutex destruction
      */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     /* WHAT: Free bridge structure

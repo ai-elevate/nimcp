@@ -480,7 +480,6 @@ void fep_destroy(fep_system_t* fep) {
     /* Free mutex */
     if (fep->mutex) {
         nimcp_platform_mutex_destroy(fep->mutex);
-        nimcp_free(fep->mutex);
     }
 
     nimcp_free(fep);

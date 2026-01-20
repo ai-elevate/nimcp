@@ -208,7 +208,6 @@ reciprocity_evaluator_t reciprocity_eval_create(const reciprocity_config_t* conf
 
     if (pthread_mutex_init(eval->mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_create: mutex init failed");
-        nimcp_free(eval->mutex);
         nimcp_free(eval);
         return NULL;
     }
@@ -231,7 +230,6 @@ void reciprocity_eval_destroy(reciprocity_evaluator_t evaluator) {
     /* Destroy mutex */
     if (evaluator->mutex) {
         pthread_mutex_destroy(evaluator->mutex);
-        nimcp_free(evaluator->mutex);
     }
 
     /* Free evaluator */

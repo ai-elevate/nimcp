@@ -267,7 +267,7 @@ void dragonfly_parietal_bridge_destroy(dragonfly_parietal_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     free(bridge);

@@ -229,7 +229,6 @@ void visual_immune_bridge_destroy(visual_immune_bridge_t* bridge) {
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */

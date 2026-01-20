@@ -281,7 +281,6 @@ void harm_classifier_destroy(harm_classifier_t* classifier) {
     /* Destroy mutex */
     if (classifier->mutex) {
         nimcp_platform_mutex_destroy(classifier->mutex);
-        nimcp_free(classifier->mutex);
     }
 
     /* Free classifier */

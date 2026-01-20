@@ -477,7 +477,6 @@ void savant_destroy(savant_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
-        nimcp_free(system->mutex);
     }
 
     nimcp_free(system);

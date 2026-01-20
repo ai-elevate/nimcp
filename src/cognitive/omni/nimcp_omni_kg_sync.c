@@ -156,7 +156,7 @@ omni_kg_sync_t* omni_kg_sync_create(brain_kg_t* kg,
     if (!sync->modules || !sync->node_ids) {
         if (sync->modules) nimcp_free(sync->modules);
         if (sync->node_ids) nimcp_free(sync->node_ids);
-        nimcp_mutex_destroy(sync->mutex);
+        nimcp_mutex_free(sync->mutex);
         nimcp_free(sync);
         return NULL;
     }
@@ -173,7 +173,7 @@ void omni_kg_sync_destroy(omni_kg_sync_t* sync) {
     if (sync->node_ids) nimcp_free(sync->node_ids);
 
     if (sync->mutex) {
-        nimcp_mutex_destroy(sync->mutex);
+        nimcp_mutex_free(sync->mutex);
     }
 
     nimcp_free(sync);

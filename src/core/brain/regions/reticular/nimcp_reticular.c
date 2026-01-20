@@ -370,7 +370,7 @@ void reticular_destroy(nimcp_reticular_t* reticular) {
 
     /* Clean up */
     if (reticular->mutex) {
-        nimcp_mutex_destroy(reticular->mutex);
+        nimcp_mutex_free(reticular->mutex);
     }
 
     nimcp_free(reticular);

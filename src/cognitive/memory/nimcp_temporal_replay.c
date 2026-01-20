@@ -342,7 +342,7 @@ void temporal_replay_destroy(temporal_replay_t* replay) {
 #endif
 
     if (replay->mutex) {
-        nimcp_mutex_destroy(replay->mutex);
+        nimcp_mutex_free(replay->mutex);
     }
 
     nimcp_free(replay);

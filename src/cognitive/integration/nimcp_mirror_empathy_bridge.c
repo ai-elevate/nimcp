@@ -451,8 +451,7 @@ mirror_empathy_bridge_t* mirror_empathy_bridge_create(
     bridge->agents = (agent_empathy_state_t*)nimcp_calloc(
         bridge->config.agent_capacity, sizeof(agent_empathy_state_t));
     if (!bridge->agents) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -496,8 +495,7 @@ void mirror_empathy_bridge_destroy(mirror_empathy_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
-        nimcp_free(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         bridge->mutex = NULL;
     }
 

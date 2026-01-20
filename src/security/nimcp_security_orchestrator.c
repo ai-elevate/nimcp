@@ -412,7 +412,7 @@ security_orchestrator_t security_orch_create(const security_orch_config_t* confi
             sizeof(security_event_queue_entry_t)
         );
         if (!orch->event_queue) {
-            nimcp_mutex_destroy(orch->mutex);
+            nimcp_mutex_free(orch->mutex);
             nimcp_free(orch);
             return NULL;
         }
@@ -442,7 +442,7 @@ void security_orch_destroy(security_orchestrator_t orch)
     ORCH_UNLOCK(orch);
 
     /* Destroy mutex */
-    nimcp_mutex_destroy(orch->mutex);
+    nimcp_mutex_free(orch->mutex);
 
     nimcp_free(orch);
 }

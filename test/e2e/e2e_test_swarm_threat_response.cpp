@@ -462,12 +462,9 @@ TEST_F(SwarmThreatResponseE2ETest, ConflictResolutionWorkflow) {
     if (detected_conflicts) {
         nimcp_free(detected_conflicts);
     }
-    if (swarm1) {
-        nimcp_swarm_identity_destroy(swarm1);
-    }
-    if (swarm2) {
-        nimcp_swarm_identity_destroy(swarm2);
-    }
+    /* NOTE: Do NOT destroy swarm1/swarm2 explicitly - they are owned by the
+     * coordinator's swarm_registry which has a destructor that will free them
+     * when the coordinator is destroyed. */
     if (coordinator) {
         nimcp_multi_swarm_destroy(coordinator);
     }

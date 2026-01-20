@@ -502,7 +502,7 @@ void nimcp_rsc_destroy(nimcp_retrosplenial_t* rsc) {
 
     /* Destroy mutex */
     if (rsc->mutex && rsc->mutex_owned) {
-        nimcp_mutex_destroy(rsc->mutex);
+        nimcp_mutex_free(rsc->mutex);
     }
 
     LOG_MODULE_DEBUG(RSC_LOG_MODULE, "RSC destroyed");

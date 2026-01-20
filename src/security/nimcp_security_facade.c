@@ -356,7 +356,7 @@ security_facade_t security_facade_create(const security_facade_config_t* config)
     facade->orchestrator = security_orch_create(&config->orch_config);
     if (!facade->orchestrator) {
         NIMCP_LOG_ERROR(SEC_FACADE_MODULE_NAME, "Failed to create security orchestrator");
-        nimcp_mutex_destroy(facade->mutex);
+        nimcp_mutex_free(facade->mutex);
         nimcp_free(facade);
         return NULL;
     }
@@ -434,7 +434,7 @@ void security_facade_destroy(security_facade_t facade)
     nimcp_mutex_unlock(facade->mutex);
 
     /* Destroy mutex */
-    nimcp_mutex_destroy(facade->mutex);
+    nimcp_mutex_free(facade->mutex);
     facade->mutex = NULL;
 
     /* Free facade structure */

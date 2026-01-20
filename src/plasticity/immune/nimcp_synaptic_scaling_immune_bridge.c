@@ -331,7 +331,6 @@ void synaptic_scaling_immune_bridge_destroy(synaptic_scaling_immune_bridge_t* br
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
     }
 
     /* Free bridge */

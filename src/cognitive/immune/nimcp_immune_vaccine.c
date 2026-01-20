@@ -382,7 +382,7 @@ void vaccine_destroy(vaccine_system_t* system) {
 
     /* Free resources */
     if (system->mutex) {
-        nimcp_mutex_destroy(system->mutex);
+        nimcp_mutex_free(system->mutex);
     }
 
     if (system->schedule) {

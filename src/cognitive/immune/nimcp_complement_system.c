@@ -385,7 +385,7 @@ void complement_destroy(complement_system_t* system) {
                           (unsigned long long)system->stats.macs_formed);
     }
 
-    if (system->mutex) nimcp_mutex_destroy(system->mutex);
+    if (system->mutex) nimcp_mutex_free(system->mutex);
     if (system->c3b_pool) nimcp_free(system->c3b_pool);
     if (system->c5b_pool) nimcp_free(system->c5b_pool);
     if (system->mac_pool) nimcp_free(system->mac_pool);

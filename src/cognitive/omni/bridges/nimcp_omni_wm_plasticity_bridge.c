@@ -758,7 +758,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
 
     /* Allocate buffers */
     if (allocate_stdp_event_buffer(bridge) != NIMCP_SUCCESS) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -766,7 +766,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
 
     if (allocate_spike_seq_buffer(bridge) != NIMCP_SUCCESS) {
         free_stdp_event_buffer(bridge);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -775,7 +775,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
     if (allocate_encoder_deltas(bridge) != NIMCP_SUCCESS) {
         free_spike_seq_buffer(bridge);
         free_stdp_event_buffer(bridge);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -785,7 +785,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
         free_encoder_deltas(bridge);
         free_spike_seq_buffer(bridge);
         free_stdp_event_buffer(bridge);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -819,7 +819,7 @@ void omni_wm_plasticity_bridge_destroy(omni_wm_plasticity_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         bridge->mutex = NULL;
     }
 

@@ -572,7 +572,7 @@ void parietal_destroy(parietal_lobe_t* parietal) {
     free(parietal->pending_requests);
 
     if (parietal->lock) {
-        nimcp_mutex_destroy(parietal->lock);
+        nimcp_mutex_free(parietal->lock);
     }
 
     free(parietal);

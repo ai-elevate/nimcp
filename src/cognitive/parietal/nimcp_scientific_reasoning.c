@@ -198,7 +198,7 @@ void scientific_reasoning_destroy(scientific_reasoning_t* sr) {
     free(sr->hypotheses);
 
     if (sr->lock) {
-        nimcp_mutex_destroy(sr->lock);
+        nimcp_mutex_free(sr->lock);
     }
 
     free(sr);

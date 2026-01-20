@@ -150,7 +150,6 @@ void oligo_immune_destroy(oligo_immune_bridge_t* bridge)
     /* Destroy mutex (created with nimcp_platform_mutex_create) */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

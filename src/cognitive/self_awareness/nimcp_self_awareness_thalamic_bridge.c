@@ -47,7 +47,7 @@ self_awareness_thalamic_bridge_t* self_awareness_thalamic_bridge_create(void* se
 void self_awareness_thalamic_bridge_destroy(self_awareness_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
 }

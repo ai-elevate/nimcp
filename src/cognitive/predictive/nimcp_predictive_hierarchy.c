@@ -355,7 +355,7 @@ void pred_hier_destroy(predictive_hierarchy_t* hier) {
 #endif
 
     if (hier->mutex) {
-        nimcp_mutex_destroy(hier->mutex);
+        nimcp_mutex_free(hier->mutex);
     }
 
     nimcp_free(hier);

@@ -72,7 +72,7 @@ intuition_thalamic_bridge_t* intuition_thalamic_bridge_create(
 void intuition_thalamic_bridge_destroy(intuition_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
 }

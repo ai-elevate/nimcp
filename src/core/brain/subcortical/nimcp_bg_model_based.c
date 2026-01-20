@@ -191,8 +191,7 @@ void bg_mb_destroy(bg_model_based_t* mb) {
     uint32_t na = mb->config.num_actions;
 
     if (mb->mutex) {
-        nimcp_mutex_destroy(mb->mutex);
-        nimcp_free(mb->mutex);
+        nimcp_mutex_free(mb->mutex);
     }
 
     /* Free transition model */

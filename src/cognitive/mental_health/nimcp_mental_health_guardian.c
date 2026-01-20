@@ -904,7 +904,7 @@ void mental_health_guardian_destroy(mental_health_guardian_t* guardian) {
 
     /* Destroy mutex */
     if (guardian->lock) {
-        nimcp_mutex_destroy(guardian->lock);
+        nimcp_mutex_free(guardian->lock);
     }
 
     GUARDIAN_LOG("Mental Health Guardian destroyed (checks=%lu, interventions=%lu)",

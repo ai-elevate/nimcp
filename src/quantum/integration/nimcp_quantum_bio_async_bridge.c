@@ -167,7 +167,7 @@ quantum_bio_async_bridge_t* quantum_bio_async_bridge_create(
     if (!bridge->subscriptions) {
         LOG_ERROR("Failed to allocate subscriptions for quantum bio-async bridge");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate quantum bio-async bridge subscriptions");
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -189,7 +189,7 @@ void quantum_bio_async_bridge_destroy(quantum_bio_async_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge->subscriptions);

@@ -92,7 +92,6 @@ snn_immune_bridge_t* snn_immune_bridge_create(
     if (nimcp_mutex_init((nimcp_mutex_t*)bridge->base.mutex, NULL) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
             "snn_immune_bridge_create: mutex init failed");
-        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -126,8 +125,7 @@ void snn_immune_bridge_destroy(snn_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy((nimcp_mutex_t*)bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free((nimcp_mutex_t*)bridge->base.mutex);
     }
 
     nimcp_free(bridge);

@@ -213,7 +213,7 @@ dragonfly_visual_bridge_t* dragonfly_visual_bridge_create(
 void dragonfly_visual_bridge_destroy(dragonfly_visual_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
     free(bridge);
 }
 

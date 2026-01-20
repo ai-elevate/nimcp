@@ -441,7 +441,7 @@ hypo_orchestrator_t hypo_orch_create(const hypo_orch_config_t* config)
             sizeof(hypo_event_queue_entry_t)
         );
         if (!orch->event_queue) {
-            nimcp_mutex_destroy(orch->mutex);
+            nimcp_mutex_free(orch->mutex);
             nimcp_free(orch);
             return NULL;
         }
@@ -472,7 +472,7 @@ void hypo_orch_destroy(hypo_orchestrator_t orch)
     ORCH_UNLOCK(orch);
 
     /* Destroy mutex */
-    nimcp_mutex_destroy(orch->mutex);
+    nimcp_mutex_free(orch->mutex);
 
     nimcp_free(orch);
 }

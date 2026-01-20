@@ -204,8 +204,7 @@ void nimcp_gt_tom_destroy(nimcp_gt_tom_t ctx) {
 
     // Destroy mutex
     if (ctx->mutex) {
-        nimcp_mutex_destroy(ctx->mutex);
-        nimcp_free(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
     }
 
     nimcp_free(ctx);

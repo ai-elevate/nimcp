@@ -232,8 +232,7 @@ void split_brain_session_destroy(split_brain_session_t* session) {
 
     // Destroy mutex
     if (session->mutex) {
-        nimcp_mutex_destroy(session->mutex);
-        nimcp_free(session->mutex);
+        nimcp_mutex_free(session->mutex);
     }
 
     nimcp_free(session);

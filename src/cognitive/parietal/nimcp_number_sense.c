@@ -229,7 +229,7 @@ void number_sense_destroy(number_sense_t* ns) {
     if (!ns) return;
 
     if (ns->lock) {
-        nimcp_mutex_destroy(ns->lock);
+        nimcp_mutex_free(ns->lock);
     }
 
     free(ns);

@@ -50,7 +50,7 @@ consolidation_thalamic_bridge_t* consolidation_thalamic_bridge_create(void* cons
 void consolidation_thalamic_bridge_destroy(consolidation_thalamic_bridge_t* bridge) {
     if (bridge) {
         if (bridge->base.mutex) {
-            nimcp_mutex_destroy(bridge->base.mutex);
+            nimcp_mutex_free(bridge->base.mutex);
         }
         nimcp_free(bridge);
     }

@@ -479,7 +479,7 @@ void brain_immune_destroy(brain_immune_system_t* system) {
     brain_immune_stop(system);
 
     if (system->mutex) {
-        nimcp_mutex_destroy(system->mutex);
+        nimcp_mutex_free(system->mutex);
     }
 
     nimcp_free(system->antigens);

@@ -107,7 +107,7 @@ jepa_imagination_bridge_t* jepa_imagination_bridge_create(
     if (config) {
         if (jepa_imagination_validate_config(config) != 0) {
             NIMCP_LOG_ERROR("Invalid bridge configuration");
-            nimcp_mutex_destroy(bridge->base.mutex);
+            nimcp_mutex_free(bridge->base.mutex);
             nimcp_free(bridge);
             return NULL;
         }
@@ -168,7 +168,7 @@ void jepa_imagination_bridge_destroy(jepa_imagination_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

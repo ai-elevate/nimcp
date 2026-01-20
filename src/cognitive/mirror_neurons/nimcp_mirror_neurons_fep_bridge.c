@@ -107,7 +107,6 @@ void mirror_neurons_fep_bridge_destroy(mirror_neurons_fep_bridge_t* bridge) {
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

@@ -319,7 +319,7 @@ static int pool_init(kg_io_pool_t* pool, const kg_questdb_config_t* config) {
 
     pool->available = nimcp_cond_create();
     if (!pool->available) {
-        nimcp_mutex_destroy(pool->mutex);
+        nimcp_mutex_free(pool->mutex);
         nimcp_free(pool->connections);
         return -1;
     }
@@ -348,7 +348,7 @@ static void pool_destroy(kg_io_pool_t* pool) {
     }
 
     if (pool->mutex) {
-        nimcp_mutex_destroy(pool->mutex);
+        nimcp_mutex_free(pool->mutex);
     }
 }
 
@@ -764,7 +764,7 @@ void kg_io_dispatcher_destroy(kg_io_dispatcher_t* dispatcher) {
         nimcp_cond_destroy(dispatcher->work_available);
     }
     if (dispatcher->control_mutex) {
-        nimcp_mutex_destroy(dispatcher->control_mutex);
+        nimcp_mutex_free(dispatcher->control_mutex);
     }
 
     nimcp_free(dispatcher);
@@ -1011,7 +1011,7 @@ int kg_io_write_sync(kg_io_dispatcher_t* dispatcher,
     nimcp_cond_t* cond = nimcp_cond_create();
 
     if (!mutex || !cond) {
-        if (mutex) nimcp_mutex_destroy(mutex);
+        if (mutex) nimcp_mutex_free(mutex);
         if (cond) nimcp_cond_destroy(cond);
         return -1;
     }
@@ -1022,7 +1022,7 @@ int kg_io_write_sync(kg_io_dispatcher_t* dispatcher,
     ctx.cond = cond;
 
     if (kg_io_write_async(dispatcher, table, row_data, size, sync_callback, &ctx) != 0) {
-        nimcp_mutex_destroy(mutex);
+        nimcp_mutex_free(mutex);
         nimcp_cond_destroy(cond);
         return -1;
     }
@@ -1036,7 +1036,7 @@ int kg_io_write_sync(kg_io_dispatcher_t* dispatcher,
 
     int result = ctx.result.success ? 0 : -1;
 
-    nimcp_mutex_destroy(mutex);
+    nimcp_mutex_free(mutex);
     nimcp_cond_destroy(cond);
 
     return result;
@@ -1054,7 +1054,7 @@ kg_io_result_t* kg_io_query_sync(kg_io_dispatcher_t* dispatcher,
     nimcp_cond_t* cond = nimcp_cond_create();
 
     if (!mutex || !cond) {
-        if (mutex) nimcp_mutex_destroy(mutex);
+        if (mutex) nimcp_mutex_free(mutex);
         if (cond) nimcp_cond_destroy(cond);
         return NULL;
     }
@@ -1065,7 +1065,7 @@ kg_io_result_t* kg_io_query_sync(kg_io_dispatcher_t* dispatcher,
     ctx.cond = cond;
 
     if (kg_io_query_async(dispatcher, sql, KG_IO_PRIORITY_NORMAL, sync_callback, &ctx) != 0) {
-        nimcp_mutex_destroy(mutex);
+        nimcp_mutex_free(mutex);
         nimcp_cond_destroy(cond);
         return NULL;
     }
@@ -1076,7 +1076,7 @@ kg_io_result_t* kg_io_query_sync(kg_io_dispatcher_t* dispatcher,
     }
     nimcp_mutex_unlock(mutex);
 
-    nimcp_mutex_destroy(mutex);
+    nimcp_mutex_free(mutex);
     nimcp_cond_destroy(cond);
 
     kg_io_result_t* result = nimcp_calloc(1, sizeof(kg_io_result_t));

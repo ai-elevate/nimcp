@@ -180,7 +180,6 @@ cortical_neuromod_system_t* cortical_neuromod_create(
 
     if (nimcp_platform_mutex_init(system->mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(system->mutex);
         if (system->state.per_column_da) {
             nimcp_free(system->state.per_column_da);
         }
@@ -226,7 +225,6 @@ void cortical_neuromod_destroy(cortical_neuromod_system_t* system) {
     /* Destroy mutex */
     if (system->mutex) {
         nimcp_platform_mutex_destroy(system->mutex);
-        nimcp_free(system->mutex);
     }
 
     /* Free system */

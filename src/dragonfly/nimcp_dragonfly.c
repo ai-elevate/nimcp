@@ -242,7 +242,7 @@ void dragonfly_system_destroy(dragonfly_system_t* system) {
     if (system->predictor) dragonfly_predictor_destroy(system->predictor);
     if (system->tracker) dragonfly_tracker_destroy(system->tracker);
     if (system->tsdn) tsdn_destroy(system->tsdn);
-    if (system->mutex) nimcp_mutex_destroy(system->mutex);
+    if (system->mutex) nimcp_mutex_free(system->mutex);
 
     free(system);
 }

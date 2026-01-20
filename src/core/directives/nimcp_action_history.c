@@ -146,7 +146,6 @@ void action_history_destroy(action_history_t* history) {
     /* Destroy mutex */
     if (history->mutex) {
         nimcp_platform_mutex_destroy(history->mutex);
-        nimcp_free(history->mutex);
     }
 
     /* Free circular buffer */

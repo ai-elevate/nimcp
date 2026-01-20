@@ -280,7 +280,7 @@ void hypo_brainstem_bridge_destroy(hypo_brainstem_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     free(bridge);

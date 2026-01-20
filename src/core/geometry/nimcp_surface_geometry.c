@@ -117,7 +117,6 @@ surface_geometry_ctx_t* surface_geometry_create(
         return NULL;
     }
     if (nimcp_mutex_init(ctx->mutex, NULL) != 0) {
-        nimcp_free(ctx->mutex);
         nimcp_free(ctx);
         return NULL;
     }
@@ -128,8 +127,7 @@ surface_geometry_ctx_t* surface_geometry_create(
         SURFACE_MAX_BRANCH_POINTS
     );
     if (!ctx->manifold) {
-        nimcp_mutex_destroy(ctx->mutex);
-        nimcp_free(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
         nimcp_free(ctx);
         return NULL;
     }
@@ -150,8 +148,7 @@ void surface_geometry_destroy(surface_geometry_ctx_t* ctx)
     }
 
     if (ctx->mutex) {
-        nimcp_mutex_destroy(ctx->mutex);
-        nimcp_free(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
     }
 
     nimcp_free(ctx);

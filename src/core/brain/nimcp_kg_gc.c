@@ -265,7 +265,7 @@ kg_gc_context_t* kg_gc_create(brain_kg_t* kg, const kg_gc_config_t* config) {
     /* Allocate orphan queue */
     gc->incremental.orphan_queue = nimcp_calloc(MAX_ORPHAN_BATCH, sizeof(brain_kg_node_id_t));
     if (!gc->incremental.orphan_queue) {
-        nimcp_mutex_destroy(gc->mutex);
+        nimcp_mutex_free(gc->mutex);
         nimcp_free(gc);
         return NULL;
     }
@@ -294,7 +294,7 @@ void kg_gc_destroy(kg_gc_context_t* gc) {
 
     /* Destroy mutex */
     if (gc->mutex) {
-        nimcp_mutex_destroy(gc->mutex);
+        nimcp_mutex_free(gc->mutex);
     }
 
     nimcp_free(gc);

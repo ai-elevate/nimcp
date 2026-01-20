@@ -411,7 +411,7 @@ void pr_immune_bridge_destroy(pr_immune_bridge_t bridge) {
     if (!bridge) return;
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     if (bridge->cleanup_queue) {

@@ -150,7 +150,7 @@ rcog_plasticity_bridge_t* rcog_plasticity_create(
     bridge->max_synapses = bridge->config.max_synapses;
     bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(synapse_entry_t));
     if (!bridge->synapses) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -180,7 +180,7 @@ void rcog_plasticity_destroy(rcog_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge->synapses);

@@ -328,7 +328,7 @@ void math_intuition_destroy(math_intuition_t* mi) {
     if (!mi) return;
 
     if (mi->lock) {
-        nimcp_mutex_destroy(mi->lock);
+        nimcp_mutex_free(mi->lock);
     }
 
     free(mi);

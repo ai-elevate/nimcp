@@ -241,7 +241,6 @@ void astrocyte_plasticity_destroy(astrocyte_plasticity_t astro) {
     /* Destroy mutex using platform-agnostic API */
     if (astro->mutex) {
         nimcp_platform_mutex_destroy(astro->mutex);
-        nimcp_free(astro->mutex);
     }
 
     /* Free states */

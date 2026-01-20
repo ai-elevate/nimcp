@@ -149,7 +149,6 @@ oscillations_pink_noise_bridge_t* oscillations_pink_noise_bridge_create(
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
-        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -168,8 +167,7 @@ oscillations_pink_noise_bridge_t* oscillations_pink_noise_bridge_create(
     bridge->pink_noise_gen = pink_noise_create(&bridge->noise_config);
     if (!bridge->pink_noise_gen) {
         NIMCP_LOGGING_ERROR("Failed to create pink noise generator");
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -223,8 +221,7 @@ void oscillations_pink_noise_bridge_destroy(oscillations_pink_noise_bridge_t* br
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     /* Free structure */

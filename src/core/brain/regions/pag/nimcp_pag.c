@@ -375,7 +375,7 @@ void pag_destroy(nimcp_pag_t* pag) {
 
     /* Clean up */
     if (pag->mutex) {
-        nimcp_mutex_destroy(pag->mutex);
+        nimcp_mutex_free(pag->mutex);
     }
 
     nimcp_free(pag);

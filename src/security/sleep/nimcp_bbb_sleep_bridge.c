@@ -93,7 +93,7 @@ void bbb_sleep_bridge_destroy(bbb_sleep_bridge_t bridge) {
         sleep_unregister_state_callback(bridge->sleep_system,
             bbb_on_sleep_state_change, bridge);
     }
-    if (bridge->base.mutex) nimcp_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
     nimcp_free(bridge);
 }
 

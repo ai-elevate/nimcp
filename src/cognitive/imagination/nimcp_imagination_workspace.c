@@ -340,7 +340,7 @@ void imagination_workspace_destroy(imagination_workspace_t* workspace) {
     if (workspace->temp_audio) nimcp_tensor_destroy(workspace->temp_audio);
 
     /* Destroy mutex */
-    if (workspace->mutex) nimcp_mutex_destroy(workspace->mutex);
+    if (workspace->mutex) nimcp_mutex_free(workspace->mutex);
 
     free(workspace);
 }

@@ -539,6 +539,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/cognitive/fault_tolerance")
     add_subdirectory(regression/cognitive/fault_tolerance)
 endif()
 
+# Root-level Fault Tolerance Integration Tests (self-repair pipeline)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/fault_tolerance")
+    message(STATUS "Adding fault tolerance integration tests (self-repair)...")
+    add_subdirectory(integration/fault_tolerance)
+endif()
+
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/cognitive/reasoning")
     message(STATUS "Adding symbolic logic brain integration unit tests...")
     add_subdirectory(unit/cognitive/reasoning)
@@ -1017,6 +1023,14 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/fault_tolerance")
     message(STATUS "Adding utils fault tolerance regression tests...")
     add_subdirectory(regression/utils/fault_tolerance)
+endif()
+
+# Utils VCS Integration Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/vcs")
+    message(STATUS "Adding utils VCS integration unit tests...")
+    add_subdirectory(unit/utils/vcs)
 endif()
 
 # Utils Exception Handling Tests

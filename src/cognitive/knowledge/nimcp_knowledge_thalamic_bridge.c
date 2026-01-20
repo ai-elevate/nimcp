@@ -60,7 +60,7 @@ knowledge_thalamic_bridge_t* knowledge_thalamic_bridge_create(void* knowledge, t
 void knowledge_thalamic_bridge_destroy(knowledge_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
     nimcp_free(bridge);
 }

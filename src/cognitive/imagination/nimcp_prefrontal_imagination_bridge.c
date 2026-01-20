@@ -116,7 +116,7 @@ prefrontal_imagination_bridge_t* prefrontal_imagination_bridge_create(
     if (config) {
         if (prefrontal_imagination_validate_config(config) != 0) {
             LOG_ERROR("Invalid bridge configuration");
-            nimcp_mutex_destroy(bridge->base.mutex);
+            nimcp_mutex_free(bridge->base.mutex);
             nimcp_free(bridge);
             return NULL;
         }
@@ -179,7 +179,7 @@ void prefrontal_imagination_bridge_destroy(prefrontal_imagination_bridge_t* brid
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

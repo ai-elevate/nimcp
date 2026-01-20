@@ -153,7 +153,7 @@ static void destroy_bio_ctx(lnn_bio_async_ctx_t* ctx) {
 
     /* Destroy mutex */
     if (ctx->mutex) {
-        nimcp_mutex_destroy(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
         ctx->mutex = NULL;
     }
 

@@ -281,7 +281,7 @@ void introspection_substrate_bridge_destroy(introspection_substrate_bridge_t* br
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
         bridge->base.mutex = NULL;
     }
 

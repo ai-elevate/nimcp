@@ -305,8 +305,8 @@ void brain_oscillation_destroy(brain_oscillation_analyzer_t* analyzer)
     }
 
     if (analyzer->buffer_mutex) {
-        nimcp_mutex_destroy(analyzer->buffer_mutex);
-        nimcp_free(analyzer->buffer_mutex);
+        nimcp_mutex_free(analyzer->buffer_mutex);
+
     }
 
     nimcp_free(analyzer);

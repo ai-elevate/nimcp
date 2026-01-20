@@ -195,8 +195,7 @@ void hemispheric_portia_destroy(hemispheric_portia_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
+        nimcp_mutex_free(bridge->base.mutex);
     }
 
     bridge->initialized = false;

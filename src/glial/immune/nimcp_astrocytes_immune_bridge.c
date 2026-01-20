@@ -76,7 +76,6 @@ astro_immune_bridge_t* astro_cell_create(
     bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
-        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -90,7 +89,7 @@ void astro_cell_destroy(astro_immune_bridge_t* bridge)
 {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) astro_cell_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) { nimcp_mutex_destroy(bridge->base.mutex); nimcp_free(bridge->base.mutex); }
+    if (bridge->base.mutex) { nimcp_mutex_free(bridge->base.mutex); }
     nimcp_free(bridge);
 }
 

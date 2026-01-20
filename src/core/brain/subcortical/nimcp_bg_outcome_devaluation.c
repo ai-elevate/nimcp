@@ -129,8 +129,7 @@ void bgod_destroy(bg_outcome_deval_t* deval) {
     if (!deval) return;
 
     if (deval->mutex) {
-        nimcp_mutex_destroy(deval->mutex);
-        nimcp_free(deval->mutex);
+        nimcp_mutex_free(deval->mutex);
     }
 
     nimcp_free(deval->outcomes);

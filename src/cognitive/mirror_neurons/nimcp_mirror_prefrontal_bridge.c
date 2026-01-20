@@ -331,7 +331,7 @@ mirror_prefrontal_bridge_t mirror_prefrontal_bridge_create(
         );
         if (!bridge->sequences) {
             NIMCP_LOGGING_ERROR("Mirror-PFC bridge: Failed to allocate sequence memory");
-            nimcp_mutex_destroy(bridge->mutex);
+            nimcp_mutex_free(bridge->mutex);
             nimcp_free(bridge);
             return NULL;
         }
@@ -365,7 +365,7 @@ void mirror_prefrontal_bridge_destroy(mirror_prefrontal_bridge_t bridge) {
 
     /* Destroy mutex */
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

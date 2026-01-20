@@ -152,8 +152,7 @@ void sint_destroy(striatal_interneurons_t* sint) {
     if (!sint) return;
 
     if (sint->mutex) {
-        nimcp_mutex_destroy(sint->mutex);
-        nimcp_free(sint->mutex);
+        nimcp_mutex_free(sint->mutex);
     }
 
     nimcp_free(sint->fsi_units);

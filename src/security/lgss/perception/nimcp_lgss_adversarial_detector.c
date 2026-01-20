@@ -341,7 +341,7 @@ void lgss_adversarial_detector_destroy(lgss_adversarial_detector_t* detector) {
 
     /* Destroy mutex */
     if (detector->mutex) {
-        nimcp_mutex_destroy(detector->mutex);
+        nimcp_mutex_free(detector->mutex);
         detector->mutex = NULL;
     }
 

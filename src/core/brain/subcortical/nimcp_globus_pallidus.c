@@ -141,8 +141,7 @@ void globus_pallidus_destroy(globus_pallidus_t* gp) {
     nimcp_free(gp->gpe_input);
 
     nimcp_mutex_unlock(gp->mutex);
-    nimcp_mutex_destroy(gp->mutex);
-    nimcp_free(gp->mutex);
+    nimcp_mutex_free(gp->mutex);
 
     nimcp_free(gp);
 

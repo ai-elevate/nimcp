@@ -277,7 +277,7 @@ void adv_destroy(adv_ctx_t* ctx) {
     nimcp_free(ctx->detection.activation_stds);
 
     if (ctx->mutex) {
-        nimcp_mutex_destroy(ctx->mutex);
+        nimcp_mutex_free(ctx->mutex);
     }
 
     nimcp_free(ctx);

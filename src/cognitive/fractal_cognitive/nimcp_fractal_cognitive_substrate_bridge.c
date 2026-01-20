@@ -63,7 +63,6 @@ fractal_cognitive_substrate_bridge_t* fractal_cognitive_substrate_bridge_create(
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for fractal cognitive substrate bridge");
-        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -83,7 +82,6 @@ void fractal_cognitive_substrate_bridge_destroy(fractal_cognitive_substrate_brid
     /* Destroy mutex */
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
-        nimcp_free(bridge->base.mutex);
     }
 
     nimcp_free(bridge);

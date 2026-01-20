@@ -58,10 +58,9 @@ void bridge_base_cleanup(bridge_base_t* base) {
         bridge_base_disconnect_bio_async(base);
     }
 
-    /* Destroy and free mutex */
+    /* Destroy and free mutex (nimcp_mutex_free does both destroy + free) */
     if (base->mutex) {
-        nimcp_mutex_destroy(base->mutex);
-        nimcp_free(base->mutex);
+        nimcp_mutex_free(base->mutex);
         base->mutex = NULL;
     }
 

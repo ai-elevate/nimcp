@@ -217,7 +217,7 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
     bridge->synapse_capacity = WM_PLASTICITY_MAX_SYNAPSES;
     bridge->synapses = nimcp_calloc(bridge->synapse_capacity, sizeof(wm_plasticity_synapse_t));
     if (!bridge->synapses) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -228,7 +228,7 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
     bridge->slot_states = nimcp_calloc(bridge->num_slots, sizeof(wm_slot_plasticity_t));
     if (!bridge->slot_states) {
         nimcp_free(bridge->synapses);
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -267,7 +267,7 @@ void wm_plasticity_destroy(wm_plasticity_bridge_t* bridge) {
     if (bridge->slot_states) nimcp_free(bridge->slot_states);
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
     }
 
     nimcp_free(bridge);

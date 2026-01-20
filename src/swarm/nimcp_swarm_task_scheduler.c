@@ -468,8 +468,7 @@ void swarm_scheduler_destroy(swarm_task_scheduler_t* scheduler)
     }
 
     nimcp_mutex_unlock(scheduler->mutex);
-    nimcp_mutex_destroy(scheduler->mutex);
-    nimcp_free(scheduler->mutex);
+    nimcp_mutex_free(scheduler->mutex);
 
     nimcp_free(scheduler);
 
