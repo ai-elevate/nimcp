@@ -37,6 +37,29 @@
 #include <float.h>
 
 //=============================================================================
+// Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+//=============================================================================
+
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent for microglia operations */
+static nimcp_health_agent_t* g_microglia_health_agent = NULL;
+
+void microglia_set_health_agent(nimcp_health_agent_t* agent) {
+    g_microglia_health_agent = agent;
+}
+
+static inline void microglia_heartbeat(const char* operation, float progress) {
+    if (g_microglia_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_microglia_health_agent, operation, progress);
+    }
+}
+
+//=============================================================================
 // Global Bio-Async Context
 //=============================================================================
 
@@ -1429,6 +1452,9 @@ void microglia_network_step(microglia_network_t* network, uint64_t current_time)
     }
     network->last_step_time = current_time;
 
+    /* Phase 8: Send heartbeat at start of network step */
+    microglia_heartbeat("microglia_network_step", 0.0f);
+
     // Process each microglia
     for (uint32_t i = 0; i < network->num_microglia; i++) {
         microglia_t* mg = network->microglia[i];
@@ -1451,6 +1477,12 @@ void microglia_network_step(microglia_network_t* network, uint64_t current_time)
 
         // 6. Prune weak synapses
         microglia_prune_weak_synapses(mg);
+
+        /* Phase 8: Send heartbeat for progress tracking in large networks */
+        if ((i & 0xFF) == 0 && network->num_microglia > 256) {
+            microglia_heartbeat("microglia_network_step",
+                               (float)(i + 1) / (float)network->num_microglia);
+        }
     }
 
     // Diffuse cytokines between nearby microglia

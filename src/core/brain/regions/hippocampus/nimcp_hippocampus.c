@@ -16,6 +16,35 @@
 #endif
 
 /*=============================================================================
+ * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+ *============================================================================*/
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent for hippocampus operations */
+static nimcp_health_agent_t* g_hippo_health_agent = NULL;
+
+/**
+ * @brief Set health agent for hippocampus heartbeat monitoring
+ * @param agent Health agent instance (NULL to disable)
+ */
+void hippo_set_health_agent(nimcp_health_agent_t* agent) {
+    g_hippo_health_agent = agent;
+}
+
+/**
+ * @brief Internal helper to send heartbeat if agent is connected
+ */
+static inline void hippo_heartbeat(const char* operation, float progress) {
+    if (g_hippo_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_hippo_health_agent, operation, progress);
+    }
+}
+
+/*=============================================================================
  * INTERNAL HELPERS
  *===========================================================================*/
 
@@ -372,6 +401,9 @@ int hippo_reset(nimcp_hippocampus_t* hippo) {
 int hippo_update(nimcp_hippocampus_t* hippo, float dt) {
     if (!hippo) return -1;
 
+    /* Phase 8: Send heartbeat at start of hippocampus update */
+    hippo_heartbeat("hippo_update", 0.0f);
+
     hippo->last_update_time = get_timestamp_ms();
 
     /* Update oscillations */
@@ -439,6 +471,9 @@ int hippo_encode_episode(nimcp_hippocampus_t* hippo,
                           float emotional_arousal,
                           uint32_t* episode_id_out) {
     if (!hippo) return -1;
+
+    /* Phase 8: Send heartbeat at start of episode encoding */
+    hippo_heartbeat("hippo_encode_episode", 0.0f);
 
     /* Validate input - at least 'what' content is required with non-zero dimension */
     if (!what || what_dim == 0) {
@@ -1114,6 +1149,9 @@ int hippo_trigger_replay(nimcp_hippocampus_t* hippo, replay_state_t direction) {
 int hippo_process_replay(nimcp_hippocampus_t* hippo) {
     if (!hippo) return -1;
 
+    /* Phase 8: Send heartbeat at start of replay processing */
+    hippo_heartbeat("hippo_replay", 0.0f);
+
     if (hippo->oscillation_state != OSCILLATION_SHARP_WAVE_RIPPLE) return 0;
 
     /* Strengthen replayed episodes */
@@ -1150,6 +1188,9 @@ const nimcp_ripple_event_t* hippo_get_last_ripple(nimcp_hippocampus_t* hippo) {
 
 int hippo_consolidate_memories(nimcp_hippocampus_t* hippo, float dt) {
     if (!hippo) return -1;
+
+    /* Phase 8: Send heartbeat at start of memory consolidation */
+    hippo_heartbeat("hippo_consolidate", 0.0f);
 
     float consolidation_step = hippo->config.consolidation_rate * dt;
 
@@ -1281,6 +1322,9 @@ int hippo_activate_dg(nimcp_hippocampus_t* hippo,
 
 int hippo_propagate_trisynaptic(nimcp_hippocampus_t* hippo) {
     if (!hippo) return -1;
+
+    /* Phase 8: Send heartbeat at start of trisynaptic propagation */
+    hippo_heartbeat("hippo_trisynaptic", 0.0f);
 
     /* DG -> CA3 (via mossy fibers) */
     float dg_sum = 0.0f;

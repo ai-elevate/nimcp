@@ -24,6 +24,35 @@
 #include <math.h>
 #include <stdlib.h>
 
+/*=============================================================================
+ * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+ *============================================================================*/
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent for SNN network operations */
+static nimcp_health_agent_t* g_snn_network_health_agent = NULL;
+
+/**
+ * @brief Set health agent for SNN network heartbeat monitoring
+ * @param agent Health agent instance (NULL to disable)
+ */
+void snn_network_set_health_agent(nimcp_health_agent_t* agent) {
+    g_snn_network_health_agent = agent;
+}
+
+/**
+ * @brief Internal helper to send heartbeat if agent is connected
+ */
+static inline void snn_network_heartbeat(const char* operation, float progress) {
+    if (g_snn_network_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_snn_network_health_agent, operation, progress);
+    }
+}
+
 //=============================================================================
 // Internal Helper Functions
 //=============================================================================
@@ -442,6 +471,9 @@ int snn_network_step(snn_network_t* network, float dt) {
     if (!network) return SNN_ERROR_NULL_POINTER;
     if (!network->sim) return SNN_ERROR_INVALID_STATE;
 
+    /* Phase 8: Send heartbeat at start of network step */
+    snn_network_heartbeat("snn_step", 0.0f);
+
     float dt_ms = (dt > 0.0f) ? dt : network->config.dt;
     uint64_t dt_us = (uint64_t)(dt_ms * 1000.0f);
 
@@ -609,6 +641,9 @@ int snn_network_forward(snn_network_t* network,
                         uint32_t n_outputs,
                         float duration_ms) {
     if (!network || !inputs || !outputs) return SNN_ERROR_NULL_POINTER;
+
+    /* Phase 8: Send heartbeat at start of forward pass */
+    snn_network_heartbeat("snn_forward", 0.0f);
 
     /* Reset network state */
     int result = snn_network_reset(network);

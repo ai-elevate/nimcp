@@ -22,6 +22,35 @@
 #include <math.h>
 #include <time.h>
 
+/*=============================================================================
+ * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+ *============================================================================*/
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent for LNN network operations */
+static nimcp_health_agent_t* g_lnn_network_health_agent = NULL;
+
+/**
+ * @brief Set health agent for LNN network heartbeat monitoring
+ * @param agent Health agent instance (NULL to disable)
+ */
+void lnn_network_set_health_agent(nimcp_health_agent_t* agent) {
+    g_lnn_network_health_agent = agent;
+}
+
+/**
+ * @brief Internal helper to send heartbeat if agent is connected
+ */
+static inline void lnn_network_heartbeat(const char* operation, float progress) {
+    if (g_lnn_network_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_lnn_network_health_agent, operation, progress);
+    }
+}
+
 // Thread-safe network ID counter
 static nimcp_atomic_uint32_t g_lnn_network_id_counter = {0};
 
@@ -283,6 +312,9 @@ int lnn_network_forward_step(
         NIMCP_LOGGING_ERROR("lnn_network_forward_step: NULL argument");
         return LNN_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Send heartbeat at start of forward step */
+    lnn_network_heartbeat("lnn_forward_step", 0.0f);
 
     // Use default dt if not specified
     if (dt <= 0.0f) {

@@ -410,6 +410,9 @@ int lnn_training_step(
         return LNN_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Send heartbeat at start of training step */
+    lnn_training_heartbeat("lnn_train_step", 0.0f);
+
     uint64_t step_start_ms = nimcp_time_get_ms();
     float loss = 0.0f;
     float grad_norm = 0.0f;

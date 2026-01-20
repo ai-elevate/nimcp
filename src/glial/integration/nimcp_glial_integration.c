@@ -30,6 +30,29 @@
 #define LOG_MODULE "GLIAL_INTEGRATION"
 
 // ============================================================================
+// Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+// ============================================================================
+
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent for glial integration operations */
+static nimcp_health_agent_t* g_glial_integration_health_agent = NULL;
+
+void glial_integration_set_health_agent(nimcp_health_agent_t* agent) {
+    g_glial_integration_health_agent = agent;
+}
+
+static inline void glial_integration_heartbeat(const char* operation, float progress) {
+    if (g_glial_integration_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_glial_integration_health_agent, operation, progress);
+    }
+}
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
@@ -715,6 +738,9 @@ bool glial_integration_should_prune_synapse(glial_integration_t* gi, uint32_t pr
 void glial_integration_step(glial_integration_t* gi, uint64_t timestamp) {
     if (!gi) return;
 
+    /* Phase 8: Send heartbeat at start of integration step */
+    glial_integration_heartbeat("glial_integration_step", 0.0f);
+
     nimcp_mutex_lock(&gi->lock);
 
     // Compute timestep in milliseconds (convert from microseconds)
@@ -732,20 +758,32 @@ void glial_integration_step(glial_integration_t* gi, uint64_t timestamp) {
         neural_network_set_time(gi->network, timestamp);
     }
 
+    /* Phase 8: Send heartbeat after setup (20% progress) */
+    glial_integration_heartbeat("glial_integration_step", 0.2f);
+
     // Step astrocyte network (calcium dynamics, glutamate release)
     if (gi->astrocyte_network && gi->enable_astrocyte_modulation) {
         astrocyte_network_step(gi->astrocyte_network, dt_ms);
     }
+
+    /* Phase 8: Send heartbeat after astrocyte step (40% progress) */
+    glial_integration_heartbeat("glial_integration_step", 0.4f);
 
     // Step oligodendrocyte network (adaptive myelination)
     if (gi->oligodendrocyte_network && gi->enable_oligodendrocyte_myelination) {
         oligodendrocyte_network_step(gi->oligodendrocyte_network, dt_ms);
     }
 
+    /* Phase 8: Send heartbeat after oligodendrocyte step (60% progress) */
+    glial_integration_heartbeat("glial_integration_step", 0.6f);
+
     // Step microglia network (activity scoring, pruning)
     if (gi->microglia_network && gi->enable_microglia_pruning) {
         microglia_network_step(gi->microglia_network, timestamp);
     }
+
+    /* Phase 8: Send heartbeat after microglia step (80% progress) */
+    glial_integration_heartbeat("glial_integration_step", 0.8f);
 
     // Part A2.1: Step spatial neuromodulator diffusion (DA, 5-HT, ACh, NE)
     // PHASE C4.6: Multi-objective optimization integrated here

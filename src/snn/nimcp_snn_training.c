@@ -25,6 +25,35 @@
 #include <math.h>
 #include <stdlib.h>
 
+/*=============================================================================
+ * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+ *============================================================================*/
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent for SNN training operations */
+static nimcp_health_agent_t* g_snn_training_health_agent = NULL;
+
+/**
+ * @brief Set health agent for SNN training heartbeat monitoring
+ * @param agent Health agent instance (NULL to disable)
+ */
+void snn_training_set_health_agent(nimcp_health_agent_t* agent) {
+    g_snn_training_health_agent = agent;
+}
+
+/**
+ * @brief Internal helper to send heartbeat if agent is connected
+ */
+static inline void snn_training_heartbeat(const char* operation, float progress) {
+    if (g_snn_training_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_snn_training_health_agent, operation, progress);
+    }
+}
+
 //=============================================================================
 // Default Configurations
 //=============================================================================
@@ -407,6 +436,9 @@ int snn_surrogate_backward(snn_training_ctx_t* ctx,
     if (!ctx || !output_grad || !membrane_v || !input_grad) {
         return SNN_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Send heartbeat at start of backward pass */
+    snn_training_heartbeat("snn_backward", 0.0f);
 
     for (uint32_t i = 0; i < n_neurons; i++) {
         float surrogate = snn_surrogate_gradient(ctx, membrane_v[i]);

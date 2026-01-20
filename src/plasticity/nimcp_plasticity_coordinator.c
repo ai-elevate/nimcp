@@ -13,6 +13,29 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
+ * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
+ * ============================================================================ */
+
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/* Global health agent for plasticity coordinator operations */
+static nimcp_health_agent_t* g_plasticity_health_agent = NULL;
+
+void plasticity_coordinator_set_health_agent(nimcp_health_agent_t* agent) {
+    g_plasticity_health_agent = agent;
+}
+
+static inline void plasticity_heartbeat(const char* operation, float progress) {
+    if (g_plasticity_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_plasticity_health_agent, operation, progress);
+    }
+}
+
+/* ============================================================================
  * Internal Helper Functions
  * ============================================================================ */
 
@@ -459,6 +482,9 @@ int plasticity_coordinator_update(
     }
     if (dt <= 0.0f) return 0;
 
+    /* Phase 8: Send heartbeat at start of plasticity update */
+    plasticity_heartbeat("plasticity_update", 0.0f);
+
     nimcp_platform_mutex_lock(coordinator->mutex);
 
     uint64_t start_time_us = get_current_time_ms() * 1000;
@@ -516,6 +542,12 @@ int plasticity_coordinator_update(
             coordinator->stats.mechanism_stats[entry->type].total_updates++;
             coordinator->stats.mechanism_stats[entry->type].total_energy_consumed +=
                 entry->energy_cost;
+        }
+
+        /* Phase 8: Send heartbeat for progress tracking in large mechanism sets */
+        if ((i & 0x1F) == 0 && coordinator->mechanism_count > 32) {
+            plasticity_heartbeat("plasticity_update",
+                                (float)(i + 1) / (float)coordinator->mechanism_count);
         }
     }
 
