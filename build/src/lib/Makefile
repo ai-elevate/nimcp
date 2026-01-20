@@ -42089,6 +42089,30 @@ __/utils/fault_tolerance/nimcp_runtime_adaptation.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_runtime_adaptation.c.s
 .PHONY : __/utils/fault_tolerance/nimcp_runtime_adaptation.c.s
 
+__/utils/fault_tolerance/nimcp_state_manager.o: __/utils/fault_tolerance/nimcp_state_manager.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_state_manager.o
+
+# target to build an object file
+__/utils/fault_tolerance/nimcp_state_manager.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_state_manager.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_state_manager.c.o
+
+__/utils/fault_tolerance/nimcp_state_manager.i: __/utils/fault_tolerance/nimcp_state_manager.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_state_manager.i
+
+# target to preprocess a source file
+__/utils/fault_tolerance/nimcp_state_manager.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_state_manager.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_state_manager.c.i
+
+__/utils/fault_tolerance/nimcp_state_manager.s: __/utils/fault_tolerance/nimcp_state_manager.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_state_manager.s
+
+# target to generate assembly for a file
+__/utils/fault_tolerance/nimcp_state_manager.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_state_manager.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_state_manager.c.s
+
 __/utils/gabor/nimcp_gabor.o: __/utils/gabor/nimcp_gabor.c.o
 .PHONY : __/utils/gabor/nimcp_gabor.o
 
@@ -49189,6 +49213,9 @@ help:
 	@echo "... __/utils/fault_tolerance/nimcp_runtime_adaptation.o"
 	@echo "... __/utils/fault_tolerance/nimcp_runtime_adaptation.i"
 	@echo "... __/utils/fault_tolerance/nimcp_runtime_adaptation.s"
+	@echo "... __/utils/fault_tolerance/nimcp_state_manager.o"
+	@echo "... __/utils/fault_tolerance/nimcp_state_manager.i"
+	@echo "... __/utils/fault_tolerance/nimcp_state_manager.s"
 	@echo "... __/utils/gabor/nimcp_gabor.o"
 	@echo "... __/utils/gabor/nimcp_gabor.i"
 	@echo "... __/utils/gabor/nimcp_gabor.s"
