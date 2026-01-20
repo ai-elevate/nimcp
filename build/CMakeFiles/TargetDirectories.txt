@@ -1570,6 +1570,7 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/parietal/CMakeFiles/unit_parietal_fep_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/parietal/CMakeFiles/unit_parietal_code_generation.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/parietal/CMakeFiles/unit_parietal_code_generation_bio_async.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/parietal/CMakeFiles/unit_parietal_training_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/parietal/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/parietal/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/parietal/CMakeFiles/rebuild_cache.dir
@@ -2743,6 +2744,8 @@
 /home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_heartbeat_module_functions.dir
 /home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_state_manager.dir
 /home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_module_recovery.dir
+/home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_stdp_health_metrics.dir
+/home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_plasticity_anomaly_detection.dir
 /home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/utils/fault_tolerance/CMakeFiles/rebuild_cache.dir

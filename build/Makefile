@@ -12873,6 +12873,19 @@ unit_parietal_code_generation_bio_async/fast:
 .PHONY : unit_parietal_code_generation_bio_async/fast
 
 #=============================================================================
+# Target rules for targets named unit_parietal_training_bridge
+
+# Build rule for target.
+unit_parietal_training_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_training_bridge
+.PHONY : unit_parietal_training_bridge
+
+# fast build rule for target.
+unit_parietal_training_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_training_bridge.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_training_bridge.dir/build
+.PHONY : unit_parietal_training_bridge/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_meta_learning_snn_bridge
 
 # Build rule for target.
@@ -18201,6 +18214,32 @@ unit_utils_fault_tolerance_test_module_recovery: cmake_check_build_system
 unit_utils_fault_tolerance_test_module_recovery/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_module_recovery.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_module_recovery.dir/build
 .PHONY : unit_utils_fault_tolerance_test_module_recovery/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_stdp_health_metrics
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_stdp_health_metrics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_stdp_health_metrics
+.PHONY : unit_utils_fault_tolerance_test_stdp_health_metrics
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_stdp_health_metrics/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_stdp_health_metrics.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_stdp_health_metrics.dir/build
+.PHONY : unit_utils_fault_tolerance_test_stdp_health_metrics/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_plasticity_anomaly_detection
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_plasticity_anomaly_detection: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_plasticity_anomaly_detection
+.PHONY : unit_utils_fault_tolerance_test_plasticity_anomaly_detection
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_plasticity_anomaly_detection/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_plasticity_anomaly_detection.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_plasticity_anomaly_detection.dir/build
+.PHONY : unit_utils_fault_tolerance_test_plasticity_anomaly_detection/fast
 
 #=============================================================================
 # Target rules for targets named integration_utils_fault_tolerance_test_async_checkpoint_integration
@@ -32605,6 +32644,7 @@ help:
 	@echo "... unit_parietal_scientific_reasoning"
 	@echo "... unit_parietal_software_engineering"
 	@echo "... unit_parietal_spatial_reasoning"
+	@echo "... unit_parietal_training_bridge"
 	@echo "... unit_perception_bridges_test_cochlea_bridges"
 	@echo "... unit_perception_cortical_test_audio_cortical_bridge"
 	@echo "... unit_perception_cortical_test_speech_cortical_bridge"
@@ -32830,6 +32870,7 @@ help:
 	@echo "... unit_utils_fault_tolerance_test_metrics_aggregator"
 	@echo "... unit_utils_fault_tolerance_test_module_recovery"
 	@echo "... unit_utils_fault_tolerance_test_perception_cortical_health_functions"
+	@echo "... unit_utils_fault_tolerance_test_plasticity_anomaly_detection"
 	@echo "... unit_utils_fault_tolerance_test_predictive_analysis"
 	@echo "... unit_utils_fault_tolerance_test_recovery"
 	@echo "... unit_utils_fault_tolerance_test_recovery_cache"
@@ -32838,6 +32879,7 @@ help:
 	@echo "... unit_utils_fault_tolerance_test_recovery_pool"
 	@echo "... unit_utils_fault_tolerance_test_state_machine"
 	@echo "... unit_utils_fault_tolerance_test_state_manager"
+	@echo "... unit_utils_fault_tolerance_test_stdp_health_metrics"
 	@echo "... unit_utils_fault_tolerance_test_substrate_health_functions"
 	@echo "... unit_utils_fault_tolerance_test_symbolic_logic_health_functions"
 	@echo "... unit_utils_fault_tolerance_test_thalamic_middleware_health_functions"

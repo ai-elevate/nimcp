@@ -717,8 +717,8 @@ int stdp_health_broadcast_status(stdp_health_metrics_t* metrics) {
  * ============================================================================ */
 
 const char* stdp_anomaly_type_name(stdp_anomaly_type_t type) {
-    uint32_t base = type & 0xF0;
-    uint32_t idx = type & 0x0F;
+    uint32_t base = type & 0xFF0;
+    uint32_t idx = type & 0x00F;
 
     if (base == 0x100 && idx < 5) {
         return anomaly_type_names[idx];

@@ -630,21 +630,15 @@ int plasticity_anomaly_detect(plasticity_anomaly_detector_t* detector) {
     return anomalies;
 }
 
-int plasticity_anomaly_submit_metric(
+/* Internal helper - must be called with mutex held */
+static int submit_metric_unlocked(
     plasticity_anomaly_detector_t* detector,
     const char* metric_name,
     float value,
     plasticity_anomaly_category_t category
 ) {
-    if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC || !metric_name) {
-        return -1;
-    }
-
-    nimcp_mutex_lock(detector->mutex);
-
     metric_tracker_t* tracker = find_or_create_tracker(detector, metric_name, category);
     if (!tracker) {
-        nimcp_mutex_unlock(detector->mutex);
         return -1;
     }
 
@@ -656,9 +650,24 @@ int plasticity_anomaly_submit_metric(
         tracker->sample_count++;
     }
 
+    return 0;
+}
+
+int plasticity_anomaly_submit_metric(
+    plasticity_anomaly_detector_t* detector,
+    const char* metric_name,
+    float value,
+    plasticity_anomaly_category_t category
+) {
+    if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC || !metric_name) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(detector->mutex);
+    int result = submit_metric_unlocked(detector, metric_name, value, category);
     nimcp_mutex_unlock(detector->mutex);
 
-    return 0;
+    return result;
 }
 
 int plasticity_anomaly_analyze_weights(
@@ -704,13 +713,13 @@ int plasticity_anomaly_analyze_weights(
         float mean = sum / valid;
         float variance = (sum_sq / valid) - (mean * mean);
 
-        /* Submit metrics */
-        plasticity_anomaly_submit_metric(detector, "weight_mean",
-                                         mean, PLASTICITY_CATEGORY_WEIGHT);
-        plasticity_anomaly_submit_metric(detector, "weight_variance",
-                                         variance, PLASTICITY_CATEGORY_WEIGHT);
-        plasticity_anomaly_submit_metric(detector, "weight_max",
-                                         max_w, PLASTICITY_CATEGORY_WEIGHT);
+        /* Submit metrics (using unlocked version since we hold mutex) */
+        submit_metric_unlocked(detector, "weight_mean",
+                               mean, PLASTICITY_CATEGORY_WEIGHT);
+        submit_metric_unlocked(detector, "weight_variance",
+                               variance, PLASTICITY_CATEGORY_WEIGHT);
+        submit_metric_unlocked(detector, "weight_max",
+                               max_w, PLASTICITY_CATEGORY_WEIGHT);
     }
 
     /* Check for NaN */
@@ -762,8 +771,8 @@ int plasticity_anomaly_analyze_timing(
     }
 
     float mean_delta = sum_delta / count;
-    plasticity_anomaly_submit_metric(detector, "timing_delta",
-                                     mean_delta, PLASTICITY_CATEGORY_TIMING);
+    submit_metric_unlocked(detector, "timing_delta",
+                           mean_delta, PLASTICITY_CATEGORY_TIMING);
 
     nimcp_mutex_unlock(detector->mutex);
 

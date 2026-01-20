@@ -110,3 +110,11 @@ set_tests_properties(unit_utils_fault_tolerance_test_state_manager PROPERTIES TI
 # Module Recovery Tests (Phase 8: System-Wide Health Integration)
 add_fault_tolerance_test(test_module_recovery)
 set_tests_properties(unit_utils_fault_tolerance_test_module_recovery PROPERTIES TIMEOUT 120)
+
+# STDP Health Metrics Tests (Plasticity Health Monitoring)
+add_fault_tolerance_test(test_stdp_health_metrics)
+set_tests_properties(unit_utils_fault_tolerance_test_stdp_health_metrics PROPERTIES TIMEOUT 120)
+
+# Plasticity Anomaly Detection Tests (Plasticity Health Monitoring)
+add_fault_tolerance_test(test_plasticity_anomaly_detection)
+set_tests_properties(unit_utils_fault_tolerance_test_plasticity_anomaly_detection PROPERTIES TIMEOUT 120)
