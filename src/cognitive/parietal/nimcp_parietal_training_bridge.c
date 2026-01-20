@@ -83,6 +83,7 @@ static int apply_weight_update(parietal_training_bridge_t* bridge,
 static float compute_domain_gradient(parietal_training_bridge_t* bridge,
                                      parietal_learning_domain_t domain,
                                      float loss_delta);
+static int flush_batch_unlocked(parietal_training_bridge_t* bridge);
 
 /* ============================================================================
  * Domain Names
@@ -302,7 +303,7 @@ int parietal_training_disconnect(parietal_training_bridge_t* bridge) {
 
     /* Flush any pending updates */
     if (bridge->pending_count > 0) {
-        parietal_training_flush_batch(bridge);
+        flush_batch_unlocked(bridge);
     }
 
     bridge->training = NULL;
@@ -414,7 +415,7 @@ parietal_train_response_t parietal_training_process_signal(
 
             /* Flush if batch is full */
             if (bridge->pending_count >= bridge->config.update_batch_size) {
-                parietal_training_flush_batch(bridge);
+                flush_batch_unlocked(bridge);
             }
         } else {
             /* Apply immediately */
@@ -456,14 +457,11 @@ int parietal_training_update_weights(
     return result;
 }
 
-int parietal_training_flush_batch(parietal_training_bridge_t* bridge) {
-    if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
-        return -1;
-    }
-
+/**
+ * @brief Internal unlocked version of flush_batch - must be called with mutex held
+ */
+static int flush_batch_unlocked(parietal_training_bridge_t* bridge) {
     int updates_applied = 0;
-
-    nimcp_mutex_lock(bridge->mutex);
 
     for (uint32_t i = 0; i < bridge->pending_count; i++) {
         pending_update_t* update = &bridge->pending_updates[i];
@@ -475,6 +473,16 @@ int parietal_training_flush_batch(parietal_training_bridge_t* bridge) {
     bridge->pending_count = 0;
     bridge->stats.batches_processed++;
 
+    return updates_applied;
+}
+
+int parietal_training_flush_batch(parietal_training_bridge_t* bridge) {
+    if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    int updates_applied = flush_batch_unlocked(bridge);
     nimcp_mutex_unlock(bridge->mutex);
 
     return updates_applied;

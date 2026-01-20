@@ -74,10 +74,12 @@ typedef struct nimcp_brain_training_ctx nimcp_brain_training_ctx_t;
 #endif
 
 /* Parietal cortex adapter */
-#ifndef NIMCP_PARIETAL_CORTEX_H
-struct parietal_cortex_adapter;
-typedef struct parietal_cortex_adapter parietal_cortex_adapter_t;
+#ifndef NIMCP_PARIETAL_ADAPTER_H
+struct parietal_adapter;
+typedef struct parietal_adapter parietal_adapter_t;
 #endif
+/* Type alias for compatibility */
+typedef parietal_adapter_t parietal_cortex_adapter_t;
 
 /* Parietal plasticity bridge */
 #ifndef NIMCP_PARIETAL_PLASTICITY_BRIDGE_H
