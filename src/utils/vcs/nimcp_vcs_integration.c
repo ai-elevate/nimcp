@@ -14,6 +14,7 @@
 #include "utils/vcs/nimcp_vcs_integration.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "async/nimcp_bio_router.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -51,6 +52,9 @@ struct vcs_integration {
     /* Thread safety */
     nimcp_mutex_t* mutex;
 
+    /* Bio-async communication */
+    bio_module_context_t bio_ctx;
+
     /* State */
     bool ready;
 };
@@ -66,6 +70,10 @@ static int copy_file(const char* src, const char* dst);
 static int read_file_lines(const char* path, char*** lines, uint32_t* line_count);
 static int write_file_lines(const char* path, char** lines, uint32_t line_count);
 static void free_file_lines(char** lines, uint32_t line_count);
+static nimcp_error_t vcs_handle_bio_message(const void* msg, size_t msg_size,
+                                            nimcp_bio_promise_t response_promise,
+                                            void* user_data);
+static int register_vcs_bio_handlers(vcs_integration_t* vcs);
 
 //=============================================================================
 // Lifecycle Functions
@@ -151,6 +159,20 @@ vcs_integration_t* vcs_create(const vcs_config_t* config) {
     }
 
     vcs->next_commit_id = 1;
+
+    /* Register with bio-async router */
+    if (bio_router_is_initialized()) {
+        bio_module_info_t info = {0};
+        info.module_id = BIO_MODULE_VCS_INTEGRATION;
+        info.module_name = "vcs_integration";
+        info.inbox_capacity = 16;
+        info.user_data = vcs;
+        vcs->bio_ctx = bio_router_register_module(&info);
+        if (vcs->bio_ctx) {
+            register_vcs_bio_handlers(vcs);
+        }
+    }
+
     vcs->ready = true;
 
     return vcs;
@@ -167,6 +189,12 @@ void vcs_destroy(vcs_integration_t* vcs) {
 
     vcs->ready = false;
     vcs->magic = 0;
+
+    /* Unregister from bio-async router */
+    if (vcs->bio_ctx) {
+        bio_router_unregister_module(vcs->bio_ctx);
+        vcs->bio_ctx = NULL;
+    }
 
     if (vcs->commits) {
         nimcp_free(vcs->commits);
@@ -1099,4 +1127,118 @@ static void free_file_lines(char** lines, uint32_t line_count) {
         }
     }
     nimcp_free(lines);
+}
+
+//=============================================================================
+// Bio-Async Communication
+//=============================================================================
+
+/**
+ * @brief Handle incoming bio-async messages
+ */
+static nimcp_error_t vcs_handle_bio_message(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+) {
+    if (!msg || msg_size < sizeof(bio_message_header_t) || !user_data) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    vcs_integration_t* vcs = (vcs_integration_t*)user_data;
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    (void)response_promise;  /* May be NULL for fire-and-forget messages */
+    (void)vcs;  /* Used for future message processing */
+
+    switch (header->type) {
+        case BIO_MSG_VCS_WRITE_FIX:
+            /* Handle write fix request via bio-async */
+            break;
+
+        case BIO_MSG_VCS_COMMIT:
+            /* Handle commit request */
+            break;
+
+        case BIO_MSG_VCS_ROLLBACK:
+            /* Handle rollback request */
+            break;
+
+        case BIO_MSG_VCS_STATUS:
+            /* Handle status query */
+            break;
+
+        default:
+            /* Unknown message type for this module */
+            return NIMCP_ERROR_UNKNOWN;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Register message handlers for VCS integration module
+ */
+static int register_vcs_bio_handlers(vcs_integration_t* vcs) {
+    if (!vcs || !vcs->bio_ctx) {
+        return -1;
+    }
+
+    /* Register handlers for VCS messages */
+    bio_router_register_handler(vcs->bio_ctx, BIO_MSG_VCS_WRITE_FIX,
+                                vcs_handle_bio_message);
+    bio_router_register_handler(vcs->bio_ctx, BIO_MSG_VCS_COMMIT,
+                                vcs_handle_bio_message);
+    bio_router_register_handler(vcs->bio_ctx, BIO_MSG_VCS_ROLLBACK,
+                                vcs_handle_bio_message);
+    bio_router_register_handler(vcs->bio_ctx, BIO_MSG_VCS_STATUS,
+                                vcs_handle_bio_message);
+
+    return 0;
+}
+
+/**
+ * @brief Broadcast commit completion via bio-async
+ */
+int vcs_broadcast_commit(
+    vcs_integration_t* vcs,
+    uint64_t fix_id,
+    const char* commit_hash,
+    bool success
+) {
+    if (!vcs || !vcs->bio_ctx) {
+        return -1;
+    }
+
+    /* Build and send commit notification message */
+    struct {
+        bio_message_header_t header;
+        uint64_t fix_id;
+        uint8_t success;
+        char commit_hash[64];
+    } msg = {0};
+
+    msg.header.type = BIO_MSG_VCS_COMMIT;
+    msg.header.source_module = BIO_MODULE_VCS_INTEGRATION;
+    msg.header.target_module = BIO_MODULE_SELF_REPAIR;  /* Target self-repair coordinator */
+    msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
+    msg.fix_id = fix_id;
+    msg.success = success ? 1 : 0;
+    if (commit_hash) {
+        strncpy(msg.commit_hash, commit_hash, sizeof(msg.commit_hash) - 1);
+    }
+
+    bio_router_send(vcs->bio_ctx, &msg, sizeof(msg), 0);
+    return 0;
+}
+
+/**
+ * @brief Process pending bio-async messages
+ */
+uint32_t vcs_process_messages(vcs_integration_t* vcs, uint32_t max_messages) {
+    if (!vcs || !vcs->bio_ctx) {
+        return 0;
+    }
+    return bio_router_process_inbox(vcs->bio_ctx, max_messages);
 }

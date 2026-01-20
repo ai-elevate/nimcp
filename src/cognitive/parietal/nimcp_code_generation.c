@@ -15,6 +15,7 @@
 #include "cognitive/parietal/nimcp_fix_templates.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "async/nimcp_bio_router.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -67,6 +68,9 @@ struct code_gen_engine {
     /* Thread safety */
     nimcp_mutex_t* mutex;
 
+    /* Bio-async communication */
+    bio_module_context_t bio_ctx;
+
     /* State */
     bool ready;
 };
@@ -117,6 +121,10 @@ static int generate_fix_for_strategy(code_gen_engine_t* engine,
                                      generated_fix_t* fix);
 static void compute_epitope(const code_gen_request_t* request, char* epitope, size_t size);
 static uint64_t get_timestamp_ms(void);
+static nimcp_error_t code_gen_handle_bio_message(const void* msg, size_t msg_size,
+                                                  nimcp_bio_promise_t response_promise,
+                                                  void* user_data);
+static int register_code_gen_bio_handlers(code_gen_engine_t* engine);
 
 //=============================================================================
 // Lifecycle Functions
@@ -202,6 +210,20 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
     }
 
     engine->next_fix_id = 1;
+
+    /* Register with bio-async router */
+    if (bio_router_is_initialized()) {
+        bio_module_info_t info = {0};
+        info.module_id = BIO_MODULE_CODE_GENERATION;
+        info.module_name = "code_generation";
+        info.inbox_capacity = 32;
+        info.user_data = engine;
+        engine->bio_ctx = bio_router_register_module(&info);
+        if (engine->bio_ctx) {
+            register_code_gen_bio_handlers(engine);
+        }
+    }
+
     engine->ready = true;
 
     return engine;
@@ -218,6 +240,12 @@ void code_gen_destroy(code_gen_engine_t* engine) {
 
     engine->ready = false;
     engine->magic = 0;
+
+    /* Unregister from bio-async router */
+    if (engine->bio_ctx) {
+        bio_router_unregister_module(engine->bio_ctx);
+        engine->bio_ctx = NULL;
+    }
 
     engine_cleanup_templates(engine);
 
@@ -1111,4 +1139,110 @@ static uint64_t get_timestamp_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+}
+
+//=============================================================================
+// Bio-Async Communication
+//=============================================================================
+
+/**
+ * @brief Handle incoming bio-async messages
+ */
+static nimcp_error_t code_gen_handle_bio_message(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+) {
+    if (!msg || msg_size < sizeof(bio_message_header_t) || !user_data) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    code_gen_engine_t* engine = (code_gen_engine_t*)user_data;
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    (void)response_promise;  /* May be NULL for fire-and-forget messages */
+    (void)engine;  /* Used for future message processing */
+
+    switch (header->type) {
+        case BIO_MSG_CODE_GEN_REQUEST:
+            /* Handle code generation request via bio-async */
+            break;
+
+        case BIO_MSG_CODE_GEN_VALIDATE:
+            /* Handle validation request */
+            break;
+
+        case BIO_MSG_CODE_GEN_LEARN:
+            /* Handle learning outcome notification */
+            break;
+
+        default:
+            /* Unknown message type for this module */
+            return NIMCP_ERROR_UNKNOWN;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Register message handlers for code generation module
+ */
+static int register_code_gen_bio_handlers(code_gen_engine_t* engine) {
+    if (!engine || !engine->bio_ctx) {
+        return -1;
+    }
+
+    /* Register handlers for code generation messages */
+    bio_router_register_handler(engine->bio_ctx, BIO_MSG_CODE_GEN_REQUEST,
+                                code_gen_handle_bio_message);
+    bio_router_register_handler(engine->bio_ctx, BIO_MSG_CODE_GEN_VALIDATE,
+                                code_gen_handle_bio_message);
+    bio_router_register_handler(engine->bio_ctx, BIO_MSG_CODE_GEN_LEARN,
+                                code_gen_handle_bio_message);
+
+    return 0;
+}
+
+/**
+ * @brief Broadcast code generation result via bio-async
+ */
+int code_gen_broadcast_result(
+    code_gen_engine_t* engine,
+    uint64_t fix_id,
+    bool success,
+    float confidence
+) {
+    if (!engine || !engine->bio_ctx) {
+        return -1;
+    }
+
+    /* Build and send result message */
+    struct {
+        bio_message_header_t header;
+        uint64_t fix_id;
+        uint8_t success;
+        float confidence;
+    } msg = {0};
+
+    msg.header.type = BIO_MSG_CODE_GEN_RESULT;
+    msg.header.source_module = BIO_MODULE_CODE_GENERATION;
+    msg.header.target_module = BIO_MODULE_SELF_REPAIR;  /* Target self-repair coordinator */
+    msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
+    msg.fix_id = fix_id;
+    msg.success = success ? 1 : 0;
+    msg.confidence = confidence;
+
+    bio_router_send(engine->bio_ctx, &msg, sizeof(msg), 0);
+    return 0;
+}
+
+/**
+ * @brief Process pending bio-async messages
+ */
+uint32_t code_gen_process_messages(code_gen_engine_t* engine, uint32_t max_messages) {
+    if (!engine || !engine->bio_ctx) {
+        return 0;
+    }
+    return bio_router_process_inbox(engine->bio_ctx, max_messages);
 }

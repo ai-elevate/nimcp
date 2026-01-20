@@ -642,6 +642,46 @@ const char* code_gen_status_name(fix_status_t status);
  */
 const char* code_gen_version(void);
 
+//=============================================================================
+// Bio-Async Communication Functions
+//=============================================================================
+
+/**
+ * @brief Broadcast code generation result via bio-async
+ *
+ * WHAT: Notify other modules about code generation completion
+ * WHY:  Enable cross-module coordination during repair
+ * HOW:  Send message via bio-router to self-repair coordinator
+ *
+ * @param engine Engine handle
+ * @param fix_id Fix ID
+ * @param success True if generation succeeded
+ * @param confidence Fix confidence score
+ * @return 0 on success, -1 on error
+ */
+int code_gen_broadcast_result(
+    code_gen_engine_t* engine,
+    uint64_t fix_id,
+    bool success,
+    float confidence
+);
+
+/**
+ * @brief Process pending bio-async messages
+ *
+ * WHAT: Process incoming bio-async messages
+ * WHY:  Handle requests from other modules
+ * HOW:  Call bio_router_process_inbox
+ *
+ * @param engine Engine handle
+ * @param max_messages Maximum messages to process
+ * @return Number of messages processed
+ */
+uint32_t code_gen_process_messages(
+    code_gen_engine_t* engine,
+    uint32_t max_messages
+);
+
 #ifdef __cplusplus
 }
 #endif

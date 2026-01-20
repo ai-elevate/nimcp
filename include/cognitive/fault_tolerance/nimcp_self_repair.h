@@ -707,6 +707,66 @@ const char* self_repair_mode_name(self_repair_mode_t mode);
  */
 const char* self_repair_version(void);
 
+//=============================================================================
+// Bio-Async Communication Functions
+//=============================================================================
+
+/**
+ * @brief Broadcast repair stage change via bio-async
+ *
+ * WHAT: Notify other modules about repair stage transitions
+ * WHY:  Enable cross-module coordination during repair
+ * HOW:  Send broadcast message via bio-router
+ *
+ * @param coordinator Coordinator handle
+ * @param repair_id Repair ID
+ * @param old_stage Previous stage
+ * @param new_stage New stage
+ * @return 0 on success, -1 on error
+ */
+int self_repair_broadcast_stage_change(
+    self_repair_coordinator_t* coordinator,
+    uint64_t repair_id,
+    repair_stage_t old_stage,
+    repair_stage_t new_stage
+);
+
+/**
+ * @brief Broadcast repair result via bio-async
+ *
+ * WHAT: Notify other modules about repair completion/failure
+ * WHY:  Enable cross-module awareness of repair outcomes
+ * HOW:  Send broadcast message via bio-router
+ *
+ * @param coordinator Coordinator handle
+ * @param repair_id Repair ID
+ * @param success True if repair succeeded
+ * @param status Final repair status
+ * @return 0 on success, -1 on error
+ */
+int self_repair_broadcast_result(
+    self_repair_coordinator_t* coordinator,
+    uint64_t repair_id,
+    bool success,
+    repair_status_t status
+);
+
+/**
+ * @brief Process pending bio-async messages
+ *
+ * WHAT: Process incoming bio-async messages
+ * WHY:  Handle requests from other modules
+ * HOW:  Call bio_router_process_inbox
+ *
+ * @param coordinator Coordinator handle
+ * @param max_messages Maximum messages to process
+ * @return Number of messages processed
+ */
+uint32_t self_repair_process_messages(
+    self_repair_coordinator_t* coordinator,
+    uint32_t max_messages
+);
+
 #ifdef __cplusplus
 }
 #endif

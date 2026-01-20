@@ -1442,6 +1442,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/async")
     add_subdirectory(regression/async)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/bio_async")
+    message(STATUS "Adding bio-async self-repair regression tests...")
+    add_subdirectory(regression/bio_async)
+endif()
+
 # ============================================================================
 # Plasticity Tests
 # ============================================================================

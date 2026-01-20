@@ -631,3 +631,36 @@ gtest_discover_tests(unit_parietal_code_generation
         LABELS "unit;cognitive;parietal;code-generation;self-repair"
         TIMEOUT 120
 )
+
+#=============================================================================
+# Code Generation Bio-Async Tests
+#=============================================================================
+
+add_executable(unit_parietal_code_generation_bio_async
+    test_code_generation_bio_async.cpp
+)
+
+target_link_libraries(unit_parietal_code_generation_bio_async
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_parietal_code_generation_bio_async
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_parietal_code_generation_bio_async PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_parietal_code_generation_bio_async
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;code-generation;bio-async"
+        TIMEOUT 60
+)

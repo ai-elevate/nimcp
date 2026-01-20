@@ -101,3 +101,7 @@ set_tests_properties(e2e_fault_tolerance_test_heartbeat_module_e2e PROPERTIES TI
 # State Checkpoint Recovery E2E Tests (Phase 8: System-Wide Health Integration)
 add_e2e_fault_tolerance_test(test_state_checkpoint_recovery_e2e)
 set_tests_properties(e2e_fault_tolerance_test_state_checkpoint_recovery_e2e PROPERTIES TIMEOUT 300)
+
+# Self-Repair Bio-Async E2E Tests (Phase 8: Self-Repair Pipeline Bio-Async Integration)
+add_e2e_fault_tolerance_test(test_self_repair_bio_async_e2e)
+set_tests_properties(e2e_fault_tolerance_test_self_repair_bio_async_e2e PROPERTIES TIMEOUT 300)

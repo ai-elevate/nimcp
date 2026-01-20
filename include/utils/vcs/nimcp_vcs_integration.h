@@ -622,6 +622,46 @@ const char* vcs_commit_status_name(commit_status_t status);
  */
 const char* vcs_version(void);
 
+//=============================================================================
+// Bio-Async Communication Functions
+//=============================================================================
+
+/**
+ * @brief Broadcast commit completion via bio-async
+ *
+ * WHAT: Notify other modules about VCS commit completion
+ * WHY:  Enable cross-module coordination during repair
+ * HOW:  Send message via bio-router to self-repair coordinator
+ *
+ * @param vcs VCS integration handle
+ * @param fix_id Fix ID
+ * @param commit_hash Git commit hash (can be NULL if failed)
+ * @param success True if commit succeeded
+ * @return 0 on success, -1 on error
+ */
+int vcs_broadcast_commit(
+    vcs_integration_t* vcs,
+    uint64_t fix_id,
+    const char* commit_hash,
+    bool success
+);
+
+/**
+ * @brief Process pending bio-async messages
+ *
+ * WHAT: Process incoming bio-async messages
+ * WHY:  Handle requests from other modules
+ * HOW:  Call bio_router_process_inbox
+ *
+ * @param vcs VCS integration handle
+ * @param max_messages Maximum messages to process
+ * @return Number of messages processed
+ */
+uint32_t vcs_process_messages(
+    vcs_integration_t* vcs,
+    uint32_t max_messages
+);
+
 #ifdef __cplusplus
 }
 #endif

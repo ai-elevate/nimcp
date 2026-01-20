@@ -1031,6 +1031,25 @@ typedef enum {
     BIO_MSG_WM_PLASTICITY_BRIDGE_ERROR,               /**< Bridge error notification */
     BIO_MSG_WM_PLASTICITY_STATS_UPDATE,               /**< Statistics update */
 
+    /* Self-Repair / Fault Tolerance messages (0x6E00 - 0x6EFF) */
+    BIO_MSG_SELF_REPAIR_REQUEST = 0x6E00,             /**< Initiate self-repair pipeline */
+    BIO_MSG_SELF_REPAIR_RESULT,                       /**< Self-repair outcome notification */
+    BIO_MSG_SELF_REPAIR_STAGE_CHANGE,                 /**< Repair stage transition */
+    BIO_MSG_SELF_REPAIR_ROLLBACK,                     /**< Rollback repair request */
+    BIO_MSG_CODE_GEN_REQUEST = 0x6E10,                /**< Request code fix generation */
+    BIO_MSG_CODE_GEN_RESULT,                          /**< Generated fix result */
+    BIO_MSG_CODE_GEN_VALIDATE,                        /**< Request fix validation */
+    BIO_MSG_CODE_GEN_LEARN,                           /**< Learn from fix outcome */
+    BIO_MSG_VCS_WRITE_FIX = 0x6E20,                   /**< Write fix to source file */
+    BIO_MSG_VCS_COMMIT,                               /**< Commit fix to VCS */
+    BIO_MSG_VCS_ROLLBACK,                             /**< Rollback VCS change */
+    BIO_MSG_VCS_STATUS,                               /**< VCS status query */
+    BIO_MSG_DIAGNOSTIC_REQUEST = 0x6E30,              /**< Request fault diagnosis */
+    BIO_MSG_DIAGNOSTIC_RESULT,                        /**< Diagnostic analysis result */
+    BIO_MSG_HOT_PATCH_APPLY = 0x6E40,                 /**< Apply hot-patch */
+    BIO_MSG_HOT_PATCH_ROLLBACK,                       /**< Rollback hot-patch */
+    BIO_MSG_HOT_PATCH_STATUS,                         /**< Hot-patch status query */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;
@@ -1834,6 +1853,16 @@ typedef enum {
     BIO_MODULE_LGSS_OVERRIDE,                   /**< LGSS override controller */
     BIO_MODULE_LGSS_EXTERNAL,                   /**< LGSS external interface */
     BIO_MODULE_LGSS_BIO_BRIDGE,                 /**< LGSS bio-async bridge */
+
+    /* Fault Tolerance / Self-Repair modules (0x1D00 - 0x1D0F) */
+    BIO_MODULE_SELF_REPAIR = 0x1D00,            /**< Self-repair coordinator */
+    BIO_MODULE_CODE_GENERATION,                 /**< Code generation engine */
+    BIO_MODULE_VCS_INTEGRATION,                 /**< VCS/git integration */
+    BIO_MODULE_HOT_INJECT,                      /**< Hot code injection */
+    BIO_MODULE_RECOMPILER,                      /**< Recompiler validation */
+    BIO_MODULE_CODE_IMMUNE,                     /**< Code immune system */
+    BIO_MODULE_DIAGNOSTICS,                     /**< Fault diagnostics */
+    BIO_MODULE_RECOVERY_BRIDGE,                 /**< Recovery-parietal bridge */
 
     /* Special values (Phase 7: Runtime Message Orchestration) */
     BIO_MODULE_KG_DISPATCH = 0xFFFE, /**< KG-driven dispatch: route to all handlers for message type */

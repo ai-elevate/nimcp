@@ -15,3 +15,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt)
     add_subdirectory(exception)
 endif()
 
+# =============================================================================
+# Bio-Async Regression Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bio_async/CMakeLists.txt)
+    message(STATUS "Adding Bio-Async Regression tests...")
+    add_subdirectory(bio_async)
+endif()
+

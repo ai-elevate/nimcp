@@ -14,6 +14,7 @@
 #include "cognitive/fault_tolerance/nimcp_self_repair.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "async/nimcp_bio_router.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -61,6 +62,9 @@ struct self_repair_coordinator {
     /* Thread safety */
     nimcp_mutex_t* mutex;
 
+    /* Bio-async communication */
+    bio_module_context_t bio_ctx;
+
     /* State */
     bool ready;
 };
@@ -75,6 +79,10 @@ static void notify_stage_change(self_repair_coordinator_t* coord, uint64_t repai
                                 repair_stage_t old_stage, repair_stage_t new_stage);
 static void notify_completion(self_repair_coordinator_t* coord, uint64_t repair_id,
                               const self_repair_result_t* result);
+static nimcp_error_t self_repair_handle_bio_message(const void* msg, size_t msg_size,
+                                                    nimcp_bio_promise_t response_promise,
+                                                    void* user_data);
+static int register_bio_handlers(self_repair_coordinator_t* coord);
 
 //=============================================================================
 // Lifecycle Functions
@@ -173,6 +181,20 @@ self_repair_coordinator_t* self_repair_create_with_deps(
     coord->code_immune = code_immune;
 
     coord->next_repair_id = 1;
+
+    /* Register with bio-async router */
+    if (bio_router_is_initialized()) {
+        bio_module_info_t info = {0};
+        info.module_id = BIO_MODULE_SELF_REPAIR;
+        info.module_name = "self_repair";
+        info.inbox_capacity = 32;
+        info.user_data = coord;
+        coord->bio_ctx = bio_router_register_module(&info);
+        if (coord->bio_ctx) {
+            register_bio_handlers(coord);
+        }
+    }
+
     coord->ready = true;
 
     return coord;
@@ -189,6 +211,12 @@ void self_repair_destroy(self_repair_coordinator_t* coordinator) {
 
     coordinator->ready = false;
     coordinator->magic = 0;
+
+    /* Unregister from bio-async router */
+    if (coordinator->bio_ctx) {
+        bio_router_unregister_module(coordinator->bio_ctx);
+        coordinator->bio_ctx = NULL;
+    }
 
     /* Destroy owned components */
     if (coordinator->owns_code_gen && coordinator->code_gen) {
@@ -1019,4 +1047,144 @@ static void notify_completion(self_repair_coordinator_t* coord, uint64_t repair_
     if (coord->complete_cb) {
         coord->complete_cb(repair_id, result, coord->complete_cb_data);
     }
+}
+
+//=============================================================================
+// Bio-Async Communication
+//=============================================================================
+
+/**
+ * @brief Handle incoming bio-async messages
+ */
+static nimcp_error_t self_repair_handle_bio_message(
+    const void* msg,
+    size_t msg_size,
+    nimcp_bio_promise_t response_promise,
+    void* user_data
+) {
+    if (!msg || msg_size < sizeof(bio_message_header_t) || !user_data) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    self_repair_coordinator_t* coord = (self_repair_coordinator_t*)user_data;
+    const bio_message_header_t* header = (const bio_message_header_t*)msg;
+
+    (void)response_promise;  /* May be NULL for fire-and-forget messages */
+    (void)coord;  /* Used for future message processing */
+
+    switch (header->type) {
+        case BIO_MSG_SELF_REPAIR_REQUEST:
+            /* Handle repair request via bio-async */
+            /* For now, just acknowledge receipt */
+            break;
+
+        case BIO_MSG_SELF_REPAIR_ROLLBACK:
+            /* Handle rollback request */
+            break;
+
+        case BIO_MSG_DIAGNOSTIC_RESULT:
+            /* Received diagnostic result - could auto-trigger repair */
+            break;
+
+        default:
+            /* Unknown message type for this module */
+            return NIMCP_ERROR_UNKNOWN;
+    }
+
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Register message handlers for self-repair module
+ */
+static int register_bio_handlers(self_repair_coordinator_t* coord) {
+    if (!coord || !coord->bio_ctx) {
+        return -1;
+    }
+
+    /* Register handlers for self-repair messages */
+    bio_router_register_handler(coord->bio_ctx, BIO_MSG_SELF_REPAIR_REQUEST,
+                                self_repair_handle_bio_message);
+    bio_router_register_handler(coord->bio_ctx, BIO_MSG_SELF_REPAIR_ROLLBACK,
+                                self_repair_handle_bio_message);
+    bio_router_register_handler(coord->bio_ctx, BIO_MSG_DIAGNOSTIC_RESULT,
+                                self_repair_handle_bio_message);
+
+    return 0;
+}
+
+/**
+ * @brief Broadcast repair stage change via bio-async
+ */
+int self_repair_broadcast_stage_change(
+    self_repair_coordinator_t* coordinator,
+    uint64_t repair_id,
+    repair_stage_t old_stage,
+    repair_stage_t new_stage
+) {
+    if (!coordinator || !coordinator->bio_ctx) {
+        return -1;
+    }
+
+    /* Build and send stage change message */
+    struct {
+        bio_message_header_t header;
+        uint64_t repair_id;
+        uint32_t old_stage;
+        uint32_t new_stage;
+    } msg = {0};
+
+    msg.header.type = BIO_MSG_SELF_REPAIR_STAGE_CHANGE;
+    msg.header.source_module = BIO_MODULE_SELF_REPAIR;
+    msg.header.target_module = BIO_MODULE_ALL;
+    msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
+    msg.repair_id = repair_id;
+    msg.old_stage = old_stage;
+    msg.new_stage = new_stage;
+
+    bio_router_broadcast(coordinator->bio_ctx, &msg, sizeof(msg));
+    return 0;
+}
+
+/**
+ * @brief Broadcast repair result via bio-async
+ */
+int self_repair_broadcast_result(
+    self_repair_coordinator_t* coordinator,
+    uint64_t repair_id,
+    bool success,
+    repair_status_t status
+) {
+    if (!coordinator || !coordinator->bio_ctx) {
+        return -1;
+    }
+
+    /* Build and send result message */
+    struct {
+        bio_message_header_t header;
+        uint64_t repair_id;
+        uint8_t success;
+        uint32_t status;
+    } msg = {0};
+
+    msg.header.type = BIO_MSG_SELF_REPAIR_RESULT;
+    msg.header.source_module = BIO_MODULE_SELF_REPAIR;
+    msg.header.target_module = BIO_MODULE_ALL;
+    msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
+    msg.repair_id = repair_id;
+    msg.success = success ? 1 : 0;
+    msg.status = status;
+
+    bio_router_broadcast(coordinator->bio_ctx, &msg, sizeof(msg));
+    return 0;
+}
+
+/**
+ * @brief Process pending bio-async messages
+ */
+uint32_t self_repair_process_messages(self_repair_coordinator_t* coordinator, uint32_t max_messages) {
+    if (!coordinator || !coordinator->bio_ctx) {
+        return 0;
+    }
+    return bio_router_process_inbox(coordinator->bio_ctx, max_messages);
 }
