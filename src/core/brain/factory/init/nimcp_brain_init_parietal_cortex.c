@@ -418,13 +418,24 @@ bool nimcp_brain_factory_connect_parietal_to_training(brain_t brain) {
      * - Coordinate transform refinement
      * - Reaching accuracy improvement
      * - Attention optimization
+     *
+     * The parietal-training bridge handles:
+     * - Loss-based learning signals for spatial processing
+     * - Gradient routing to plasticity systems
+     * - Reward modulation for skill learning
      */
 
-    /*
-     * TODO: Register with training
-     * nimcp_brain_training_register_module(brain->training_ctx,
-     *     TRAIN_MODULE_PARIETAL, brain->parietal_cortex);
-     */
+    /* Register training event callback for parietal learning signals */
+    nimcp_result_t result = nimcp_brain_training_register_callback(
+        brain->training_ctx,
+        NULL,  /* Will be set when parietal_training_bridge is created */
+        brain->parietal_cortex
+    );
+
+    if (result != NIMCP_SUCCESS) {
+        LOG_WARN(LOG_MODULE, "Failed to register parietal with training: %d", result);
+        /* Non-fatal - parietal can work without training */
+    }
 
     LOG_DEBUG(LOG_MODULE, "Parietal connected to training system");
     return true;

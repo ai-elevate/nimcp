@@ -3425,6 +3425,54 @@ __/cognitive/fault_tolerance/nimcp_fault_working_memory.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_fault_working_memory.c.s
 .PHONY : __/cognitive/fault_tolerance/nimcp_fault_working_memory.c.s
 
+__/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.o: __/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.c.o
+.PHONY : __/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.o
+
+# target to build an object file
+__/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.c.o
+.PHONY : __/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.c.o
+
+__/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.i: __/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.c.i
+.PHONY : __/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.i
+
+# target to preprocess a source file
+__/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.c.i
+.PHONY : __/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.c.i
+
+__/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.s: __/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.c.s
+.PHONY : __/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.c.s
+.PHONY : __/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.c.s
+
+__/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.o: __/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.c.o
+.PHONY : __/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.o
+
+# target to build an object file
+__/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.c.o
+.PHONY : __/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.c.o
+
+__/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.i: __/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.c.i
+.PHONY : __/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.i
+
+# target to preprocess a source file
+__/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.c.i
+.PHONY : __/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.c.i
+
+__/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.s: __/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.c.s
+.PHONY : __/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.c.s
+.PHONY : __/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.c.s
+
 __/cognitive/fault_tolerance/nimcp_metacognition.o: __/cognitive/fault_tolerance/nimcp_metacognition.c.o
 .PHONY : __/cognitive/fault_tolerance/nimcp_metacognition.o
 
@@ -3544,6 +3592,54 @@ __/cognitive/fault_tolerance/nimcp_recovery_parietal_bridge.s: __/cognitive/faul
 __/cognitive/fault_tolerance/nimcp_recovery_parietal_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_recovery_parietal_bridge.c.s
 .PHONY : __/cognitive/fault_tolerance/nimcp_recovery_parietal_bridge.c.s
+
+__/cognitive/fault_tolerance/nimcp_self_repair.o: __/cognitive/fault_tolerance/nimcp_self_repair.c.o
+.PHONY : __/cognitive/fault_tolerance/nimcp_self_repair.o
+
+# target to build an object file
+__/cognitive/fault_tolerance/nimcp_self_repair.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_self_repair.c.o
+.PHONY : __/cognitive/fault_tolerance/nimcp_self_repair.c.o
+
+__/cognitive/fault_tolerance/nimcp_self_repair.i: __/cognitive/fault_tolerance/nimcp_self_repair.c.i
+.PHONY : __/cognitive/fault_tolerance/nimcp_self_repair.i
+
+# target to preprocess a source file
+__/cognitive/fault_tolerance/nimcp_self_repair.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_self_repair.c.i
+.PHONY : __/cognitive/fault_tolerance/nimcp_self_repair.c.i
+
+__/cognitive/fault_tolerance/nimcp_self_repair.s: __/cognitive/fault_tolerance/nimcp_self_repair.c.s
+.PHONY : __/cognitive/fault_tolerance/nimcp_self_repair.s
+
+# target to generate assembly for a file
+__/cognitive/fault_tolerance/nimcp_self_repair.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_self_repair.c.s
+.PHONY : __/cognitive/fault_tolerance/nimcp_self_repair.c.s
+
+__/cognitive/fault_tolerance/nimcp_self_repair_health_notify.o: __/cognitive/fault_tolerance/nimcp_self_repair_health_notify.c.o
+.PHONY : __/cognitive/fault_tolerance/nimcp_self_repair_health_notify.o
+
+# target to build an object file
+__/cognitive/fault_tolerance/nimcp_self_repair_health_notify.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_self_repair_health_notify.c.o
+.PHONY : __/cognitive/fault_tolerance/nimcp_self_repair_health_notify.c.o
+
+__/cognitive/fault_tolerance/nimcp_self_repair_health_notify.i: __/cognitive/fault_tolerance/nimcp_self_repair_health_notify.c.i
+.PHONY : __/cognitive/fault_tolerance/nimcp_self_repair_health_notify.i
+
+# target to preprocess a source file
+__/cognitive/fault_tolerance/nimcp_self_repair_health_notify.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_self_repair_health_notify.c.i
+.PHONY : __/cognitive/fault_tolerance/nimcp_self_repair_health_notify.c.i
+
+__/cognitive/fault_tolerance/nimcp_self_repair_health_notify.s: __/cognitive/fault_tolerance/nimcp_self_repair_health_notify.c.s
+.PHONY : __/cognitive/fault_tolerance/nimcp_self_repair_health_notify.s
+
+# target to generate assembly for a file
+__/cognitive/fault_tolerance/nimcp_self_repair_health_notify.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/fault_tolerance/nimcp_self_repair_health_notify.c.s
+.PHONY : __/cognitive/fault_tolerance/nimcp_self_repair_health_notify.c.s
 
 __/cognitive/fractal_cognitive/nimcp_fractal_cognitive_fep_bridge.o: __/cognitive/fractal_cognitive/nimcp_fractal_cognitive_fep_bridge.c.o
 .PHONY : __/cognitive/fractal_cognitive/nimcp_fractal_cognitive_fep_bridge.o
@@ -5368,6 +5464,30 @@ __/cognitive/immune/nimcp_code_immune.s: __/cognitive/immune/nimcp_code_immune.c
 __/cognitive/immune/nimcp_code_immune.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/immune/nimcp_code_immune.c.s
 .PHONY : __/cognitive/immune/nimcp_code_immune.c.s
+
+__/cognitive/immune/nimcp_code_immune_self_repair.o: __/cognitive/immune/nimcp_code_immune_self_repair.c.o
+.PHONY : __/cognitive/immune/nimcp_code_immune_self_repair.o
+
+# target to build an object file
+__/cognitive/immune/nimcp_code_immune_self_repair.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/immune/nimcp_code_immune_self_repair.c.o
+.PHONY : __/cognitive/immune/nimcp_code_immune_self_repair.c.o
+
+__/cognitive/immune/nimcp_code_immune_self_repair.i: __/cognitive/immune/nimcp_code_immune_self_repair.c.i
+.PHONY : __/cognitive/immune/nimcp_code_immune_self_repair.i
+
+# target to preprocess a source file
+__/cognitive/immune/nimcp_code_immune_self_repair.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/immune/nimcp_code_immune_self_repair.c.i
+.PHONY : __/cognitive/immune/nimcp_code_immune_self_repair.c.i
+
+__/cognitive/immune/nimcp_code_immune_self_repair.s: __/cognitive/immune/nimcp_code_immune_self_repair.c.s
+.PHONY : __/cognitive/immune/nimcp_code_immune_self_repair.s
+
+# target to generate assembly for a file
+__/cognitive/immune/nimcp_code_immune_self_repair.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/immune/nimcp_code_immune_self_repair.c.s
+.PHONY : __/cognitive/immune/nimcp_code_immune_self_repair.c.s
 
 __/cognitive/immune/nimcp_complement_system.o: __/cognitive/immune/nimcp_complement_system.c.o
 .PHONY : __/cognitive/immune/nimcp_complement_system.o
@@ -10865,6 +10985,30 @@ __/cognitive/parietal/nimcp_civil_engineering.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_civil_engineering.c.s
 .PHONY : __/cognitive/parietal/nimcp_civil_engineering.c.s
 
+__/cognitive/parietal/nimcp_code_generation.o: __/cognitive/parietal/nimcp_code_generation.c.o
+.PHONY : __/cognitive/parietal/nimcp_code_generation.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_code_generation.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_code_generation.c.o
+.PHONY : __/cognitive/parietal/nimcp_code_generation.c.o
+
+__/cognitive/parietal/nimcp_code_generation.i: __/cognitive/parietal/nimcp_code_generation.c.i
+.PHONY : __/cognitive/parietal/nimcp_code_generation.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_code_generation.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_code_generation.c.i
+.PHONY : __/cognitive/parietal/nimcp_code_generation.c.i
+
+__/cognitive/parietal/nimcp_code_generation.s: __/cognitive/parietal/nimcp_code_generation.c.s
+.PHONY : __/cognitive/parietal/nimcp_code_generation.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_code_generation.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_code_generation.c.s
+.PHONY : __/cognitive/parietal/nimcp_code_generation.c.s
+
 __/cognitive/parietal/nimcp_conceptual_blending.o: __/cognitive/parietal/nimcp_conceptual_blending.c.o
 .PHONY : __/cognitive/parietal/nimcp_conceptual_blending.o
 
@@ -11344,6 +11488,30 @@ __/cognitive/parietal/nimcp_parietal_snn_bridge.s: __/cognitive/parietal/nimcp_p
 __/cognitive/parietal/nimcp_parietal_snn_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_parietal_snn_bridge.c.s
 .PHONY : __/cognitive/parietal/nimcp_parietal_snn_bridge.c.s
+
+__/cognitive/parietal/nimcp_parietal_training_bridge.o: __/cognitive/parietal/nimcp_parietal_training_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_parietal_training_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_parietal_training_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_parietal_training_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_parietal_training_bridge.c.o
+
+__/cognitive/parietal/nimcp_parietal_training_bridge.i: __/cognitive/parietal/nimcp_parietal_training_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_parietal_training_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_parietal_training_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_parietal_training_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_parietal_training_bridge.c.i
+
+__/cognitive/parietal/nimcp_parietal_training_bridge.s: __/cognitive/parietal/nimcp_parietal_training_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_parietal_training_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_parietal_training_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_parietal_training_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_parietal_training_bridge.c.s
 
 __/cognitive/parietal/nimcp_scientific_reasoning.o: __/cognitive/parietal/nimcp_scientific_reasoning.c.o
 .PHONY : __/cognitive/parietal/nimcp_scientific_reasoning.o
@@ -41921,6 +42089,54 @@ __/utils/fault_tolerance/nimcp_metrics_aggregator.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_metrics_aggregator.c.s
 .PHONY : __/utils/fault_tolerance/nimcp_metrics_aggregator.c.s
 
+__/utils/fault_tolerance/nimcp_module_recovery.o: __/utils/fault_tolerance/nimcp_module_recovery.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_module_recovery.o
+
+# target to build an object file
+__/utils/fault_tolerance/nimcp_module_recovery.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_module_recovery.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_module_recovery.c.o
+
+__/utils/fault_tolerance/nimcp_module_recovery.i: __/utils/fault_tolerance/nimcp_module_recovery.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_module_recovery.i
+
+# target to preprocess a source file
+__/utils/fault_tolerance/nimcp_module_recovery.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_module_recovery.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_module_recovery.c.i
+
+__/utils/fault_tolerance/nimcp_module_recovery.s: __/utils/fault_tolerance/nimcp_module_recovery.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_module_recovery.s
+
+# target to generate assembly for a file
+__/utils/fault_tolerance/nimcp_module_recovery.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_module_recovery.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_module_recovery.c.s
+
+__/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.o: __/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.o
+
+# target to build an object file
+__/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.c.o
+
+__/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.i: __/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.i
+
+# target to preprocess a source file
+__/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.c.i
+
+__/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.s: __/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.s
+
+# target to generate assembly for a file
+__/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.c.s
+
 __/utils/fault_tolerance/nimcp_predictive_analysis.o: __/utils/fault_tolerance/nimcp_predictive_analysis.c.o
 .PHONY : __/utils/fault_tolerance/nimcp_predictive_analysis.o
 
@@ -42112,6 +42328,30 @@ __/utils/fault_tolerance/nimcp_state_manager.s: __/utils/fault_tolerance/nimcp_s
 __/utils/fault_tolerance/nimcp_state_manager.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_state_manager.c.s
 .PHONY : __/utils/fault_tolerance/nimcp_state_manager.c.s
+
+__/utils/fault_tolerance/nimcp_stdp_health_metrics.o: __/utils/fault_tolerance/nimcp_stdp_health_metrics.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_stdp_health_metrics.o
+
+# target to build an object file
+__/utils/fault_tolerance/nimcp_stdp_health_metrics.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_stdp_health_metrics.c.o
+.PHONY : __/utils/fault_tolerance/nimcp_stdp_health_metrics.c.o
+
+__/utils/fault_tolerance/nimcp_stdp_health_metrics.i: __/utils/fault_tolerance/nimcp_stdp_health_metrics.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_stdp_health_metrics.i
+
+# target to preprocess a source file
+__/utils/fault_tolerance/nimcp_stdp_health_metrics.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_stdp_health_metrics.c.i
+.PHONY : __/utils/fault_tolerance/nimcp_stdp_health_metrics.c.i
+
+__/utils/fault_tolerance/nimcp_stdp_health_metrics.s: __/utils/fault_tolerance/nimcp_stdp_health_metrics.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_stdp_health_metrics.s
+
+# target to generate assembly for a file
+__/utils/fault_tolerance/nimcp_stdp_health_metrics.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_stdp_health_metrics.c.s
+.PHONY : __/utils/fault_tolerance/nimcp_stdp_health_metrics.c.s
 
 __/utils/gabor/nimcp_gabor.o: __/utils/gabor/nimcp_gabor.c.o
 .PHONY : __/utils/gabor/nimcp_gabor.o
@@ -43385,6 +43625,30 @@ __/utils/validation/nimcp_validate.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/validation/nimcp_validate.c.s
 .PHONY : __/utils/validation/nimcp_validate.c.s
 
+__/utils/vcs/nimcp_vcs_integration.o: __/utils/vcs/nimcp_vcs_integration.c.o
+.PHONY : __/utils/vcs/nimcp_vcs_integration.o
+
+# target to build an object file
+__/utils/vcs/nimcp_vcs_integration.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/vcs/nimcp_vcs_integration.c.o
+.PHONY : __/utils/vcs/nimcp_vcs_integration.c.o
+
+__/utils/vcs/nimcp_vcs_integration.i: __/utils/vcs/nimcp_vcs_integration.c.i
+.PHONY : __/utils/vcs/nimcp_vcs_integration.i
+
+# target to preprocess a source file
+__/utils/vcs/nimcp_vcs_integration.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/vcs/nimcp_vcs_integration.c.i
+.PHONY : __/utils/vcs/nimcp_vcs_integration.c.i
+
+__/utils/vcs/nimcp_vcs_integration.s: __/utils/vcs/nimcp_vcs_integration.c.s
+.PHONY : __/utils/vcs/nimcp_vcs_integration.s
+
+# target to generate assembly for a file
+__/utils/vcs/nimcp_vcs_integration.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/vcs/nimcp_vcs_integration.c.s
+.PHONY : __/utils/vcs/nimcp_vcs_integration.c.s
+
 cognitive/nimcp_hierarchical.o: cognitive/nimcp_hierarchical.c.o
 .PHONY : cognitive/nimcp_hierarchical.o
 
@@ -44380,6 +44644,12 @@ help:
 	@echo "... __/cognitive/fault_tolerance/nimcp_fault_working_memory.o"
 	@echo "... __/cognitive/fault_tolerance/nimcp_fault_working_memory.i"
 	@echo "... __/cognitive/fault_tolerance/nimcp_fault_working_memory.s"
+	@echo "... __/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.o"
+	@echo "... __/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.i"
+	@echo "... __/cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.s"
+	@echo "... __/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.o"
+	@echo "... __/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.i"
+	@echo "... __/cognitive/fault_tolerance/nimcp_health_self_repair_bridge.s"
 	@echo "... __/cognitive/fault_tolerance/nimcp_metacognition.o"
 	@echo "... __/cognitive/fault_tolerance/nimcp_metacognition.i"
 	@echo "... __/cognitive/fault_tolerance/nimcp_metacognition.s"
@@ -44395,6 +44665,12 @@ help:
 	@echo "... __/cognitive/fault_tolerance/nimcp_recovery_parietal_bridge.o"
 	@echo "... __/cognitive/fault_tolerance/nimcp_recovery_parietal_bridge.i"
 	@echo "... __/cognitive/fault_tolerance/nimcp_recovery_parietal_bridge.s"
+	@echo "... __/cognitive/fault_tolerance/nimcp_self_repair.o"
+	@echo "... __/cognitive/fault_tolerance/nimcp_self_repair.i"
+	@echo "... __/cognitive/fault_tolerance/nimcp_self_repair.s"
+	@echo "... __/cognitive/fault_tolerance/nimcp_self_repair_health_notify.o"
+	@echo "... __/cognitive/fault_tolerance/nimcp_self_repair_health_notify.i"
+	@echo "... __/cognitive/fault_tolerance/nimcp_self_repair_health_notify.s"
 	@echo "... __/cognitive/fractal_cognitive/nimcp_fractal_cognitive_fep_bridge.o"
 	@echo "... __/cognitive/fractal_cognitive/nimcp_fractal_cognitive_fep_bridge.i"
 	@echo "... __/cognitive/fractal_cognitive/nimcp_fractal_cognitive_fep_bridge.s"
@@ -44623,6 +44899,9 @@ help:
 	@echo "... __/cognitive/immune/nimcp_code_immune.o"
 	@echo "... __/cognitive/immune/nimcp_code_immune.i"
 	@echo "... __/cognitive/immune/nimcp_code_immune.s"
+	@echo "... __/cognitive/immune/nimcp_code_immune_self_repair.o"
+	@echo "... __/cognitive/immune/nimcp_code_immune_self_repair.i"
+	@echo "... __/cognitive/immune/nimcp_code_immune_self_repair.s"
 	@echo "... __/cognitive/immune/nimcp_complement_system.o"
 	@echo "... __/cognitive/immune/nimcp_complement_system.i"
 	@echo "... __/cognitive/immune/nimcp_complement_system.s"
@@ -45310,6 +45589,9 @@ help:
 	@echo "... __/cognitive/parietal/nimcp_civil_engineering.o"
 	@echo "... __/cognitive/parietal/nimcp_civil_engineering.i"
 	@echo "... __/cognitive/parietal/nimcp_civil_engineering.s"
+	@echo "... __/cognitive/parietal/nimcp_code_generation.o"
+	@echo "... __/cognitive/parietal/nimcp_code_generation.i"
+	@echo "... __/cognitive/parietal/nimcp_code_generation.s"
 	@echo "... __/cognitive/parietal/nimcp_conceptual_blending.o"
 	@echo "... __/cognitive/parietal/nimcp_conceptual_blending.i"
 	@echo "... __/cognitive/parietal/nimcp_conceptual_blending.s"
@@ -45370,6 +45652,9 @@ help:
 	@echo "... __/cognitive/parietal/nimcp_parietal_snn_bridge.o"
 	@echo "... __/cognitive/parietal/nimcp_parietal_snn_bridge.i"
 	@echo "... __/cognitive/parietal/nimcp_parietal_snn_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_parietal_training_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_parietal_training_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_parietal_training_bridge.s"
 	@echo "... __/cognitive/parietal/nimcp_scientific_reasoning.o"
 	@echo "... __/cognitive/parietal/nimcp_scientific_reasoning.i"
 	@echo "... __/cognitive/parietal/nimcp_scientific_reasoning.s"
@@ -49192,6 +49477,12 @@ help:
 	@echo "... __/utils/fault_tolerance/nimcp_metrics_aggregator.o"
 	@echo "... __/utils/fault_tolerance/nimcp_metrics_aggregator.i"
 	@echo "... __/utils/fault_tolerance/nimcp_metrics_aggregator.s"
+	@echo "... __/utils/fault_tolerance/nimcp_module_recovery.o"
+	@echo "... __/utils/fault_tolerance/nimcp_module_recovery.i"
+	@echo "... __/utils/fault_tolerance/nimcp_module_recovery.s"
+	@echo "... __/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.o"
+	@echo "... __/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.i"
+	@echo "... __/utils/fault_tolerance/nimcp_plasticity_anomaly_detection.s"
 	@echo "... __/utils/fault_tolerance/nimcp_predictive_analysis.o"
 	@echo "... __/utils/fault_tolerance/nimcp_predictive_analysis.i"
 	@echo "... __/utils/fault_tolerance/nimcp_predictive_analysis.s"
@@ -49216,6 +49507,9 @@ help:
 	@echo "... __/utils/fault_tolerance/nimcp_state_manager.o"
 	@echo "... __/utils/fault_tolerance/nimcp_state_manager.i"
 	@echo "... __/utils/fault_tolerance/nimcp_state_manager.s"
+	@echo "... __/utils/fault_tolerance/nimcp_stdp_health_metrics.o"
+	@echo "... __/utils/fault_tolerance/nimcp_stdp_health_metrics.i"
+	@echo "... __/utils/fault_tolerance/nimcp_stdp_health_metrics.s"
 	@echo "... __/utils/gabor/nimcp_gabor.o"
 	@echo "... __/utils/gabor/nimcp_gabor.i"
 	@echo "... __/utils/gabor/nimcp_gabor.s"
@@ -49375,6 +49669,9 @@ help:
 	@echo "... __/utils/validation/nimcp_validate.o"
 	@echo "... __/utils/validation/nimcp_validate.i"
 	@echo "... __/utils/validation/nimcp_validate.s"
+	@echo "... __/utils/vcs/nimcp_vcs_integration.o"
+	@echo "... __/utils/vcs/nimcp_vcs_integration.i"
+	@echo "... __/utils/vcs/nimcp_vcs_integration.s"
 	@echo "... cognitive/nimcp_hierarchical.o"
 	@echo "... cognitive/nimcp_hierarchical.i"
 	@echo "... cognitive/nimcp_hierarchical.s"

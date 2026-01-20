@@ -2317,6 +2317,19 @@ unit_glial_astrocytes_test_astrocyte_comprehensive/fast:
 .PHONY : unit_glial_astrocytes_test_astrocyte_comprehensive/fast
 
 #=============================================================================
+# Target rules for targets named unit_glial_astrocytes_test_astrocyte_state_ops
+
+# Build rule for target.
+unit_glial_astrocytes_test_astrocyte_state_ops: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_glial_astrocytes_test_astrocyte_state_ops
+.PHONY : unit_glial_astrocytes_test_astrocyte_state_ops
+
+# fast build rule for target.
+unit_glial_astrocytes_test_astrocyte_state_ops/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_glial_astrocytes_test_astrocyte_state_ops.dir/build.make test/CMakeFiles/unit_glial_astrocytes_test_astrocyte_state_ops.dir/build
+.PHONY : unit_glial_astrocytes_test_astrocyte_state_ops/fast
+
+#=============================================================================
 # Target rules for targets named unit_glial_astrocytes_test_astrocyte_types_real
 
 # Build rule for target.
@@ -4564,19 +4577,6 @@ integration_core_topology_topology_integration_tests: cmake_check_build_system
 integration_core_topology_topology_integration_tests/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_core_topology_topology_integration_tests.dir/build.make test/CMakeFiles/integration_core_topology_topology_integration_tests.dir/build
 .PHONY : integration_core_topology_topology_integration_tests/fast
-
-#=============================================================================
-# Target rules for targets named integration_fault_tolerance_test_fault_tolerance_integration
-
-# Build rule for target.
-integration_fault_tolerance_test_fault_tolerance_integration: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_fault_tolerance_test_fault_tolerance_integration
-.PHONY : integration_fault_tolerance_test_fault_tolerance_integration
-
-# fast build rule for target.
-integration_fault_tolerance_test_fault_tolerance_integration/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_fault_tolerance_test_fault_tolerance_integration.dir/build.make test/CMakeFiles/integration_fault_tolerance_test_fault_tolerance_integration.dir/build
-.PHONY : integration_fault_tolerance_test_fault_tolerance_integration/fast
 
 #=============================================================================
 # Target rules for targets named integration_information_test_quantum_shannon_integration
@@ -8674,6 +8674,32 @@ e2e_fault_tolerance_test_heartbeat_module_e2e/fast:
 .PHONY : e2e_fault_tolerance_test_heartbeat_module_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_state_checkpoint_recovery_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_state_checkpoint_recovery_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_state_checkpoint_recovery_e2e
+.PHONY : e2e_fault_tolerance_test_state_checkpoint_recovery_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_state_checkpoint_recovery_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_state_checkpoint_recovery_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_state_checkpoint_recovery_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_state_checkpoint_recovery_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_self_repair_bio_async_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_self_repair_bio_async_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_self_repair_bio_async_e2e
+.PHONY : e2e_fault_tolerance_test_self_repair_bio_async_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_self_repair_bio_async_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_self_repair_bio_async_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_self_repair_bio_async_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_self_repair_bio_async_e2e/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_integration
 
 # Build rule for target.
@@ -10715,6 +10741,32 @@ unit_cognitive_fault_tolerance_emotional_tagging/fast:
 .PHONY : unit_cognitive_fault_tolerance_emotional_tagging/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_fault_tolerance_self_repair
+
+# Build rule for target.
+unit_cognitive_fault_tolerance_self_repair: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_fault_tolerance_self_repair
+.PHONY : unit_cognitive_fault_tolerance_self_repair
+
+# fast build rule for target.
+unit_cognitive_fault_tolerance_self_repair/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/fault_tolerance/CMakeFiles/unit_cognitive_fault_tolerance_self_repair.dir/build.make test/unit/cognitive/fault_tolerance/CMakeFiles/unit_cognitive_fault_tolerance_self_repair.dir/build
+.PHONY : unit_cognitive_fault_tolerance_self_repair/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_fault_tolerance_self_repair_bio_async
+
+# Build rule for target.
+unit_cognitive_fault_tolerance_self_repair_bio_async: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_fault_tolerance_self_repair_bio_async
+.PHONY : unit_cognitive_fault_tolerance_self_repair_bio_async
+
+# fast build rule for target.
+unit_cognitive_fault_tolerance_self_repair_bio_async/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/fault_tolerance/CMakeFiles/unit_cognitive_fault_tolerance_self_repair_bio_async.dir/build.make test/unit/cognitive/fault_tolerance/CMakeFiles/unit_cognitive_fault_tolerance_self_repair_bio_async.dir/build
+.PHONY : unit_cognitive_fault_tolerance_self_repair_bio_async/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_fault_tolerance_emotional_tagging
 
 # Build rule for target.
@@ -10739,6 +10791,45 @@ regression_cognitive_fault_tolerance_emotional_tagging: cmake_check_build_system
 regression_cognitive_fault_tolerance_emotional_tagging/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/fault_tolerance/CMakeFiles/regression_cognitive_fault_tolerance_emotional_tagging.dir/build.make test/regression/cognitive/fault_tolerance/CMakeFiles/regression_cognitive_fault_tolerance_emotional_tagging.dir/build
 .PHONY : regression_cognitive_fault_tolerance_emotional_tagging/fast
+
+#=============================================================================
+# Target rules for targets named integration_fault_tolerance
+
+# Build rule for target.
+integration_fault_tolerance: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_fault_tolerance
+.PHONY : integration_fault_tolerance
+
+# fast build rule for target.
+integration_fault_tolerance/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_fault_tolerance.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_fault_tolerance.dir/build
+.PHONY : integration_fault_tolerance/fast
+
+#=============================================================================
+# Target rules for targets named integration_self_repair
+
+# Build rule for target.
+integration_self_repair: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_self_repair
+.PHONY : integration_self_repair
+
+# fast build rule for target.
+integration_self_repair/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_self_repair.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_self_repair.dir/build
+.PHONY : integration_self_repair/fast
+
+#=============================================================================
+# Target rules for targets named integration_self_repair_bio_async
+
+# Build rule for target.
+integration_self_repair_bio_async: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_self_repair_bio_async
+.PHONY : integration_self_repair_bio_async
+
+# fast build rule for target.
+integration_self_repair_bio_async/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_self_repair_bio_async.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_self_repair_bio_async.dir/build
+.PHONY : integration_self_repair_bio_async/fast
 
 #=============================================================================
 # Target rules for targets named test_symbolic_logic_attachment
@@ -12754,6 +12845,32 @@ unit_parietal_fep_bridge: cmake_check_build_system
 unit_parietal_fep_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_fep_bridge.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_fep_bridge.dir/build
 .PHONY : unit_parietal_fep_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_code_generation
+
+# Build rule for target.
+unit_parietal_code_generation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_code_generation
+.PHONY : unit_parietal_code_generation
+
+# fast build rule for target.
+unit_parietal_code_generation/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_code_generation.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_code_generation.dir/build
+.PHONY : unit_parietal_code_generation/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_code_generation_bio_async
+
+# Build rule for target.
+unit_parietal_code_generation_bio_async: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_code_generation_bio_async
+.PHONY : unit_parietal_code_generation_bio_async
+
+# fast build rule for target.
+unit_parietal_code_generation_bio_async/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_code_generation_bio_async.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_code_generation_bio_async.dir/build
+.PHONY : unit_parietal_code_generation_bio_async/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_meta_learning_snn_bridge
@@ -18060,6 +18177,32 @@ unit_utils_fault_tolerance_test_heartbeat_module_functions/fast:
 .PHONY : unit_utils_fault_tolerance_test_heartbeat_module_functions/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_state_manager
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_state_manager: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_state_manager
+.PHONY : unit_utils_fault_tolerance_test_state_manager
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_state_manager/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_state_manager.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_state_manager.dir/build
+.PHONY : unit_utils_fault_tolerance_test_state_manager/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_module_recovery
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_module_recovery: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_module_recovery
+.PHONY : unit_utils_fault_tolerance_test_module_recovery
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_module_recovery/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_module_recovery.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_module_recovery.dir/build
+.PHONY : unit_utils_fault_tolerance_test_module_recovery/fast
+
+#=============================================================================
 # Target rules for targets named integration_utils_fault_tolerance_test_async_checkpoint_integration
 
 # Build rule for target.
@@ -18385,6 +18528,32 @@ integration_utils_fault_tolerance_test_heartbeat_module_integration/fast:
 .PHONY : integration_utils_fault_tolerance_test_heartbeat_module_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_state_manager_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_state_manager_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_state_manager_integration
+.PHONY : integration_utils_fault_tolerance_test_state_manager_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_state_manager_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_state_manager_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_state_manager_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_state_manager_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_module_recovery_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_module_recovery_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_module_recovery_integration
+.PHONY : integration_utils_fault_tolerance_test_module_recovery_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_module_recovery_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_module_recovery_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_module_recovery_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_module_recovery_integration/fast
+
+#=============================================================================
 # Target rules for targets named regression_utils_fault_tolerance_test_checkpoint_format
 
 # Build rule for target.
@@ -18669,6 +18838,58 @@ regression_utils_fault_tolerance_test_heartbeat_module_regression: cmake_check_b
 regression_utils_fault_tolerance_test_heartbeat_module_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_heartbeat_module_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_heartbeat_module_regression.dir/build
 .PHONY : regression_utils_fault_tolerance_test_heartbeat_module_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_state_manager_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_state_manager_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_state_manager_regression
+.PHONY : regression_utils_fault_tolerance_test_state_manager_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_state_manager_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_state_manager_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_state_manager_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_state_manager_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_module_recovery_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_module_recovery_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_module_recovery_regression
+.PHONY : regression_utils_fault_tolerance_test_module_recovery_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_module_recovery_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_module_recovery_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_module_recovery_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_module_recovery_regression/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_vcs_integration
+
+# Build rule for target.
+unit_utils_vcs_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_vcs_integration
+.PHONY : unit_utils_vcs_integration
+
+# fast build rule for target.
+unit_utils_vcs_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/vcs/CMakeFiles/unit_utils_vcs_integration.dir/build.make test/unit/utils/vcs/CMakeFiles/unit_utils_vcs_integration.dir/build
+.PHONY : unit_utils_vcs_integration/fast
+
+#=============================================================================
+# Target rules for targets named unit_utils_vcs_bio_async
+
+# Build rule for target.
+unit_utils_vcs_bio_async: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_vcs_bio_async
+.PHONY : unit_utils_vcs_bio_async
+
+# fast build rule for target.
+unit_utils_vcs_bio_async/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/vcs/CMakeFiles/unit_utils_vcs_bio_async.dir/build.make test/unit/utils/vcs/CMakeFiles/unit_utils_vcs_bio_async.dir/build
+.PHONY : unit_utils_vcs_bio_async/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_exception_test_exception
@@ -20970,6 +21191,19 @@ unit_glial_test_fep_bridges: cmake_check_build_system
 unit_glial_test_fep_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/glial/CMakeFiles/unit_glial_test_fep_bridges.dir/build.make test/unit/glial/CMakeFiles/unit_glial_test_fep_bridges.dir/build
 .PHONY : unit_glial_test_fep_bridges/fast
+
+#=============================================================================
+# Target rules for targets named unit_glial_astrocyte_state_ops
+
+# Build rule for target.
+unit_glial_astrocyte_state_ops: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_glial_astrocyte_state_ops
+.PHONY : unit_glial_astrocyte_state_ops
+
+# fast build rule for target.
+unit_glial_astrocyte_state_ops/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/glial/CMakeFiles/unit_glial_astrocyte_state_ops.dir/build.make test/unit/glial/CMakeFiles/unit_glial_astrocyte_state_ops.dir/build
+.PHONY : unit_glial_astrocyte_state_ops/fast
 
 #=============================================================================
 # Target rules for targets named unit_glial_immune_bridges
@@ -23676,6 +23910,19 @@ regression_async_test_self_assembly/fast:
 .PHONY : regression_async_test_self_assembly/fast
 
 #=============================================================================
+# Target rules for targets named regression_bio_async_self_repair
+
+# Build rule for target.
+regression_bio_async_self_repair: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_bio_async_self_repair
+.PHONY : regression_bio_async_self_repair
+
+# fast build rule for target.
+regression_bio_async_self_repair/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/bio_async/CMakeFiles/regression_bio_async_self_repair.dir/build.make test/regression/bio_async/CMakeFiles/regression_bio_async_self_repair.dir/build
+.PHONY : regression_bio_async_self_repair/fast
+
+#=============================================================================
 # Target rules for targets named test_attention_bioasync
 
 # Build rule for target.
@@ -23856,6 +24103,19 @@ unit_plasticity_stdp_utils_bridge: cmake_check_build_system
 unit_plasticity_stdp_utils_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_stdp_utils_bridge.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_stdp_utils_bridge.dir/build
 .PHONY : unit_plasticity_stdp_utils_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_stdp_state_ops
+
+# Build rule for target.
+unit_plasticity_stdp_state_ops: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_stdp_state_ops
+.PHONY : unit_plasticity_stdp_state_ops
+
+# fast build rule for target.
+unit_plasticity_stdp_state_ops/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/CMakeFiles/unit_plasticity_stdp_state_ops.dir/build.make test/unit/plasticity/CMakeFiles/unit_plasticity_stdp_state_ops.dir/build
+.PHONY : unit_plasticity_stdp_state_ops/fast
 
 #=============================================================================
 # Target rules for targets named unit_plasticity_bcm_sleep_bridge
@@ -30372,6 +30632,8 @@ help:
 	@echo "... e2e_fault_tolerance_test_heartbeat_module_e2e"
 	@echo "... e2e_fault_tolerance_test_perception_cortical_health_e2e"
 	@echo "... e2e_fault_tolerance_test_resilience_stress"
+	@echo "... e2e_fault_tolerance_test_self_repair_bio_async_e2e"
+	@echo "... e2e_fault_tolerance_test_state_checkpoint_recovery_e2e"
 	@echo "... e2e_fault_tolerance_test_substrate_health_e2e"
 	@echo "... e2e_fault_tolerance_test_symbolic_logic_health_e2e"
 	@echo "... e2e_fault_tolerance_test_thalamic_middleware_health_e2e"
@@ -30770,7 +31032,7 @@ help:
 	@echo "... integration_exception_test_handler_chain_integration"
 	@echo "... integration_exception_test_signal_exception_integration"
 	@echo "... integration_executive_cognitive"
-	@echo "... integration_fault_tolerance_test_fault_tolerance_integration"
+	@echo "... integration_fault_tolerance"
 	@echo "... integration_fep_enhanced"
 	@echo "... integration_glial_test_glial_integration"
 	@echo "... integration_glial_test_microglia_brain"
@@ -30929,6 +31191,8 @@ help:
 	@echo "... integration_security_test_security_immune"
 	@echo "... integration_security_test_security_logging"
 	@echo "... integration_security_test_swarm_security"
+	@echo "... integration_self_repair"
+	@echo "... integration_self_repair_bio_async"
 	@echo "... integration_snn_plasticity"
 	@echo "... integration_snn_test_bridge_integration"
 	@echo "... integration_snn_test_integration"
@@ -30968,9 +31232,11 @@ help:
 	@echo "... integration_utils_fault_tolerance_test_health_agent_use_integration"
 	@echo "... integration_utils_fault_tolerance_test_heartbeat_module_integration"
 	@echo "... integration_utils_fault_tolerance_test_lockfree_metrics_integration"
+	@echo "... integration_utils_fault_tolerance_test_module_recovery_integration"
 	@echo "... integration_utils_fault_tolerance_test_perception_cortical_health_integration"
 	@echo "... integration_utils_fault_tolerance_test_recovery_cache_integration"
 	@echo "... integration_utils_fault_tolerance_test_recovery_pool_integration"
+	@echo "... integration_utils_fault_tolerance_test_state_manager_integration"
 	@echo "... integration_utils_fault_tolerance_test_substrate_health_integration"
 	@echo "... integration_utils_fault_tolerance_test_symbolic_logic_health_integration"
 	@echo "... integration_utils_fault_tolerance_test_thalamic_middleware_health_integration"
@@ -31011,6 +31277,7 @@ help:
 	@echo "... regression_async_test_wiring_diagram"
 	@echo "... regression_async_test_wiring_diagram_kg_sync"
 	@echo "... regression_async_test_wiring_diagram_validation"
+	@echo "... regression_bio_async_self_repair"
 	@echo "... regression_biology_neurovascular_test_neurovascular_regression"
 	@echo "... regression_brain_regions_test_cerebellum_backward_compat"
 	@echo "... regression_brain_regions_test_entorhinal_backward_compat"
@@ -31339,9 +31606,11 @@ help:
 	@echo "... regression_utils_fault_tolerance_test_health_agent_use_regression"
 	@echo "... regression_utils_fault_tolerance_test_heartbeat_module_regression"
 	@echo "... regression_utils_fault_tolerance_test_lockfree_metrics_regression"
+	@echo "... regression_utils_fault_tolerance_test_module_recovery_regression"
 	@echo "... regression_utils_fault_tolerance_test_perception_cortical_health_regression"
 	@echo "... regression_utils_fault_tolerance_test_recovery_cache_regression"
 	@echo "... regression_utils_fault_tolerance_test_recovery_pool_regression"
+	@echo "... regression_utils_fault_tolerance_test_state_manager_regression"
 	@echo "... regression_utils_fault_tolerance_test_substrate_health_regression"
 	@echo "... regression_utils_fault_tolerance_test_symbolic_logic_health_regression"
 	@echo "... regression_utils_fault_tolerance_test_thalamic_middleware_health_regression"
@@ -31655,6 +31924,8 @@ help:
 	@echo "... unit_cognitive_explanations_test_explanations_regression"
 	@echo "... unit_cognitive_extrapolation_test_world_model_multimodal"
 	@echo "... unit_cognitive_fault_tolerance_emotional_tagging"
+	@echo "... unit_cognitive_fault_tolerance_self_repair"
+	@echo "... unit_cognitive_fault_tolerance_self_repair_bio_async"
 	@echo "... unit_cognitive_game_theory_test_auction"
 	@echo "... unit_cognitive_game_theory_test_bargaining"
 	@echo "... unit_cognitive_game_theory_test_credit_assignment"
@@ -32082,9 +32353,11 @@ help:
 	@echo "... unit_fep_planning"
 	@echo "... unit_fep_sleep"
 	@echo "... unit_flow_tracker_bio_async"
+	@echo "... unit_glial_astrocyte_state_ops"
 	@echo "... unit_glial_astrocytes_immune_bridge"
 	@echo "... unit_glial_astrocytes_test_astrocyte_calcium"
 	@echo "... unit_glial_astrocytes_test_astrocyte_comprehensive"
+	@echo "... unit_glial_astrocytes_test_astrocyte_state_ops"
 	@echo "... unit_glial_astrocytes_test_astrocyte_types_real"
 	@echo "... unit_glial_astrocytes_test_astrocytes"
 	@echo "... unit_glial_immune_bridges"
@@ -32315,6 +32588,8 @@ help:
 	@echo "... unit_parietal_analogical_reasoning"
 	@echo "... unit_parietal_biology"
 	@echo "... unit_parietal_chemistry"
+	@echo "... unit_parietal_code_generation"
+	@echo "... unit_parietal_code_generation_bio_async"
 	@echo "... unit_parietal_conceptual_blending"
 	@echo "... unit_parietal_counterfactual"
 	@echo "... unit_parietal_equation_manipulation"
@@ -32418,6 +32693,7 @@ help:
 	@echo "... unit_plasticity_second_messengers_test_second_messengers_modules"
 	@echo "... unit_plasticity_stdp_quantum_optimizer"
 	@echo "... unit_plasticity_stdp_sleep_bridge"
+	@echo "... unit_plasticity_stdp_state_ops"
 	@echo "... unit_plasticity_stdp_utils_bridge"
 	@echo "... unit_plasticity_structural"
 	@echo "... unit_plasticity_structural_test_structural_plasticity"
@@ -32552,6 +32828,7 @@ help:
 	@echo "... unit_utils_fault_tolerance_test_hierarchical_recovery"
 	@echo "... unit_utils_fault_tolerance_test_lockfree_metrics"
 	@echo "... unit_utils_fault_tolerance_test_metrics_aggregator"
+	@echo "... unit_utils_fault_tolerance_test_module_recovery"
 	@echo "... unit_utils_fault_tolerance_test_perception_cortical_health_functions"
 	@echo "... unit_utils_fault_tolerance_test_predictive_analysis"
 	@echo "... unit_utils_fault_tolerance_test_recovery"
@@ -32560,6 +32837,7 @@ help:
 	@echo "... unit_utils_fault_tolerance_test_recovery_observability"
 	@echo "... unit_utils_fault_tolerance_test_recovery_pool"
 	@echo "... unit_utils_fault_tolerance_test_state_machine"
+	@echo "... unit_utils_fault_tolerance_test_state_manager"
 	@echo "... unit_utils_fault_tolerance_test_substrate_health_functions"
 	@echo "... unit_utils_fault_tolerance_test_symbolic_logic_health_functions"
 	@echo "... unit_utils_fault_tolerance_test_thalamic_middleware_health_functions"
@@ -32629,6 +32907,8 @@ help:
 	@echo "... unit_utils_thread_unit_utils_thread_test_barrier"
 	@echo "... unit_utils_thread_unit_utils_thread_test_rwlock_extended"
 	@echo "... unit_utils_thread_unit_utils_thread_test_semaphore"
+	@echo "... unit_utils_vcs_bio_async"
+	@echo "... unit_utils_vcs_integration"
 	@echo "... unit_vta_test_adapter"
 	@echo "... unit_vta_test_core"
 	@echo "... unit_vta_test_da_release"

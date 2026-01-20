@@ -1245,6 +1245,7 @@ set(NIMCP_CORE_SOURCES
     # Parietal SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_snn_bridge.c  # SNN integration for parietal
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_plasticity_bridge.c  # Plasticity integration for parietal
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_training_bridge.c  # Training integration for parietal
     # Personality SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_snn_bridge.c  # SNN integration for personality
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality_plasticity_bridge.c  # Plasticity integration for personality
@@ -1634,6 +1635,8 @@ set(NIMCP_CORE_SOURCES
     # ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_fault_event_bus.c             # DEPRECATED: Moved to core/events/nimcp_event_bus.c (promoted to universal)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_lockfree_metrics.c              # Lock-free metrics ring buffer (4x faster)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_health_agent.c                  # Independent health monitor agent
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_stdp_health_metrics.c          # STDP and plasticity health metrics
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_plasticity_anomaly_detection.c # Plasticity anomaly detection patterns
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_capacity_manager.c             # Dynamic capacity management (Phase 5.8)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_metrics_aggregator.c            # Metrics aggregation (P50/P95/P99)
 
