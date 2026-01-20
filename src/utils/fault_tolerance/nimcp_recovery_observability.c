@@ -24,7 +24,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_bbb_helpers.h"
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
@@ -119,7 +119,7 @@ struct ro_context {
     ro_gauge_t* active_recoveries_gauge;
 
     /* Threading */
-    pthread_mutex_t mutex;
+    nimcp_mutex_t mutex;
     bool running;
 
     /* Security integration */
@@ -235,7 +235,7 @@ ro_context_t* ro_create(const ro_config_t* config) {
     ctx->next_recovery_id = 1;
     ctx->start_time_ns = ro_get_time_ns_internal();
 
-    if (pthread_mutex_init(&ctx->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&ctx->mutex, NULL) != 0) {
         LOG_ERROR("RO", "Failed to initialize mutex");
         nimcp_free(ctx);
         return NULL;
@@ -281,7 +281,7 @@ void ro_destroy(ro_context_t* ctx) {
     bbb_audit_log(BBB_AUDIT_INFO, "RO", "DESTROY",
                   "Destroying recovery observability context");
 
-    pthread_mutex_destroy(&ctx->mutex);
+    nimcp_mutex_destroy(&ctx->mutex);
     nimcp_free(ctx);
 
     LOG_INFO("RO", "Destroyed recovery observability context");
@@ -290,10 +290,10 @@ void ro_destroy(ro_context_t* ctx) {
 bool ro_start(ro_context_t* ctx) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     ctx->running = true;
     ctx->start_time_ns = ro_get_time_ns_internal();
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     bbb_audit_log(BBB_AUDIT_INFO, "RO", "START", "Started observability collection");
     LOG_INFO("RO", "Started observability collection");
@@ -304,9 +304,9 @@ bool ro_start(ro_context_t* ctx) {
 bool ro_stop(ro_context_t* ctx) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     ctx->running = false;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     bbb_audit_log(BBB_AUDIT_INFO, "RO", "STOP", "Stopped observability collection");
     LOG_INFO("RO", "Stopped observability collection");
@@ -322,10 +322,10 @@ ro_counter_t* ro_create_counter(ro_context_t* ctx, const char* name,
                                  const ro_label_t* labels, uint32_t label_count) {
     if (!ctx || !name) return NULL;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->counter_count >= RO_MAX_METRICS) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return NULL;
     }
 
@@ -339,7 +339,7 @@ ro_counter_t* ro_create_counter(ro_context_t* ctx, const char* name,
         counter->label_count = copy_count;
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return counter;
 }
@@ -362,10 +362,10 @@ ro_gauge_t* ro_create_gauge(ro_context_t* ctx, const char* name,
                              const ro_label_t* labels, uint32_t label_count) {
     if (!ctx || !name) return NULL;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->gauge_count >= RO_MAX_METRICS) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return NULL;
     }
 
@@ -379,7 +379,7 @@ ro_gauge_t* ro_create_gauge(ro_context_t* ctx, const char* name,
         gauge->label_count = copy_count;
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return gauge;
 }
@@ -413,10 +413,10 @@ ro_histogram_t* ro_create_histogram(ro_context_t* ctx, const char* name,
                                      const ro_label_t* labels, uint32_t label_count) {
     if (!ctx || !name) return NULL;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->histogram_count >= RO_MAX_METRICS) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return NULL;
     }
 
@@ -440,7 +440,7 @@ ro_histogram_t* ro_create_histogram(ro_context_t* ctx, const char* name,
         hist->label_count = lbl_count;
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return hist;
 }
@@ -485,7 +485,7 @@ ro_span_t* ro_start_trace(ro_context_t* ctx, const char* name) {
     if (!ctx || !name) return NULL;
     if (!ctx->config.enable_tracing) return NULL;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->span_count >= RO_MAX_SPANS) {
         /* Wrap around */
@@ -505,7 +505,7 @@ ro_span_t* ro_start_trace(ro_context_t* ctx, const char* name) {
 
     ctx->span_head = (ctx->span_head + 1) % RO_MAX_SPANS;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return span;
 }
@@ -514,7 +514,7 @@ ro_span_t* ro_start_span(ro_context_t* ctx, const ro_span_t* parent, const char*
     if (!ctx || !parent || !name) return NULL;
     if (!ctx->config.enable_tracing) return NULL;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->span_count >= RO_MAX_SPANS) {
         ctx->span_head = (ctx->span_head + 1) % RO_MAX_SPANS;
@@ -534,7 +534,7 @@ ro_span_t* ro_start_span(ro_context_t* ctx, const ro_span_t* parent, const char*
 
     ctx->span_head = (ctx->span_head + 1) % RO_MAX_SPANS;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return span;
 }
@@ -586,7 +586,7 @@ ro_recovery_context_t* ro_start_recovery(ro_context_t* ctx, uint32_t fault_type)
 
     memset(recovery, 0, sizeof(ro_recovery_context_t));
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     recovery->recovery_id = ctx->next_recovery_id++;
     recovery->fault_type = fault_type;
@@ -617,7 +617,7 @@ ro_recovery_context_t* ro_start_recovery(ro_context_t* ctx, uint32_t fault_type)
         ro_counter_inc(ctx->recoveries_total, 1);
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     /* Log event */
     ro_event_t event = {0};
@@ -641,7 +641,7 @@ void ro_end_recovery(ro_context_t* ctx, ro_recovery_context_t* recovery, bool su
 
     uint64_t duration_ms = (recovery->end_time_ns - recovery->start_time_ns) / 1000000ULL;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     /* Record sample for MTTR */
     uint32_t idx = ctx->recovery_sample_head;
@@ -681,7 +681,7 @@ void ro_end_recovery(ro_context_t* ctx, ro_recovery_context_t* recovery, bool su
         ro_gauge_set(ctx->active_recoveries_gauge, (double)ctx->active_recovery_count);
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     /* End span */
     ro_end_span(&recovery->root_span,
@@ -717,10 +717,10 @@ bool ro_get_mttr_stats(ro_context_t* ctx, ro_mttr_stats_t* stats) {
 
     memset(stats, 0, sizeof(ro_mttr_stats_t));
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->recovery_sample_count == 0) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return true;
     }
 
@@ -759,7 +759,7 @@ bool ro_get_mttr_stats(ro_context_t* ctx, ro_mttr_stats_t* stats) {
         stats->mttr_p99_ms = ro_histogram_percentile(ctx->recovery_duration_hist, 0.99);
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -769,7 +769,7 @@ bool ro_get_mtbf_stats(ro_context_t* ctx, ro_mtbf_stats_t* stats) {
 
     memset(stats, 0, sizeof(ro_mtbf_stats_t));
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     uint64_t now = ro_get_time_ns_internal();
     stats->uptime_ms = (now - ctx->start_time_ns) / 1000000ULL;
@@ -806,9 +806,9 @@ bool ro_get_mtbf_stats(ro_context_t* ctx, ro_mtbf_stats_t* stats) {
     /* Calculate availability */
     if (stats->uptime_ms > 0 && stats->total_failures > 0) {
         ro_mttr_stats_t mttr;
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         ro_get_mttr_stats(ctx, &mttr);
-        pthread_mutex_lock(&ctx->mutex);
+        nimcp_mutex_lock(&ctx->mutex);
 
         double downtime = mttr.mttr_ms * stats->total_failures;
         stats->availability = 1.0 - (downtime / stats->uptime_ms);
@@ -817,7 +817,7 @@ bool ro_get_mtbf_stats(ro_context_t* ctx, ro_mtbf_stats_t* stats) {
         stats->availability = 1.0;
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -825,7 +825,7 @@ bool ro_get_mtbf_stats(ro_context_t* ctx, ro_mtbf_stats_t* stats) {
 void ro_record_failure(ro_context_t* ctx, uint32_t node_id, uint32_t fault_type) {
     if (!ctx) return;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     uint64_t now = ro_get_time_ns_internal();
 
@@ -843,7 +843,7 @@ void ro_record_failure(ro_context_t* ctx, uint32_t node_id, uint32_t fault_type)
         ro_counter_inc(ctx->failures_total, 1);
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     /* Log event */
     ro_event_t event = {0};
@@ -865,7 +865,7 @@ bool ro_log_event(ro_context_t* ctx, const ro_event_t* event) {
     if (!ctx || !event) return false;
     if (!ctx->config.enable_events) return true;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ctx->events[ctx->event_head] = *event;
     ctx->event_head = (ctx->event_head + 1) % RO_MAX_EVENTS;
@@ -873,7 +873,7 @@ bool ro_log_event(ro_context_t* ctx, const ro_event_t* event) {
         ctx->event_count++;
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     /* Notify security */
     ro_notify_security(ctx, event);
@@ -884,7 +884,7 @@ bool ro_log_event(ro_context_t* ctx, const ro_event_t* event) {
 uint32_t ro_get_events(ro_context_t* ctx, ro_event_t* events, uint32_t max_events, uint64_t since_timestamp) {
     if (!ctx || !events || max_events == 0) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     uint32_t count = 0;
     uint32_t start = (ctx->event_head + RO_MAX_EVENTS - ctx->event_count) % RO_MAX_EVENTS;
@@ -896,7 +896,7 @@ uint32_t ro_get_events(ro_context_t* ctx, ro_event_t* events, uint32_t max_event
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return count;
 }
@@ -905,7 +905,7 @@ uint32_t ro_get_events_by_type(ro_context_t* ctx, ro_event_type_t type,
                                 ro_event_t* events, uint32_t max_events) {
     if (!ctx || !events || max_events == 0) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     uint32_t count = 0;
     uint32_t start = (ctx->event_head + RO_MAX_EVENTS - ctx->event_count) % RO_MAX_EVENTS;
@@ -917,7 +917,7 @@ uint32_t ro_get_events_by_type(ro_context_t* ctx, ro_event_type_t type,
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return count;
 }
@@ -929,7 +929,7 @@ uint32_t ro_get_events_by_type(ro_context_t* ctx, ro_event_type_t type,
 size_t ro_export_metrics(ro_context_t* ctx, ro_export_format_t format, char* buffer, size_t buffer_size) {
     if (!ctx || !buffer || buffer_size == 0) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     size_t written = 0;
 
@@ -969,7 +969,7 @@ size_t ro_export_metrics(ro_context_t* ctx, ro_export_format_t format, char* buf
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return written;
 }
@@ -977,7 +977,7 @@ size_t ro_export_metrics(ro_context_t* ctx, ro_export_format_t format, char* buf
 size_t ro_export_traces(ro_context_t* ctx, ro_export_format_t format, char* buffer, size_t buffer_size) {
     if (!ctx || !buffer || buffer_size == 0) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     size_t written = 0;
 
@@ -996,7 +996,7 @@ size_t ro_export_traces(ro_context_t* ctx, ro_export_format_t format, char* buff
         written += snprintf(buffer + written, buffer_size - written, "  ]\n}\n");
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return written;
 }
@@ -1005,10 +1005,10 @@ bool ro_register_exporter(ro_context_t* ctx, ro_export_callback_t callback,
                            ro_export_format_t format, void* user_data) {
     if (!ctx || !callback) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->exporter_count >= RO_MAX_EXPORTERS) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
@@ -1018,7 +1018,7 @@ bool ro_register_exporter(ro_context_t* ctx, ro_export_callback_t callback,
     exp->user_data = user_data;
     exp->active = true;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -1026,7 +1026,7 @@ bool ro_register_exporter(ro_context_t* ctx, ro_export_callback_t callback,
 bool ro_flush(ro_context_t* ctx) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     char buffer[4096];
 
@@ -1040,7 +1040,7 @@ bool ro_flush(ro_context_t* ctx) {
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -1066,7 +1066,7 @@ uint64_t ro_timestamp_ns(void) {
 void ro_reset_metrics(ro_context_t* ctx) {
     if (!ctx) return;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     for (uint32_t i = 0; i < ctx->counter_count; i++) {
         ctx->counters[i].value = 0;
@@ -1091,7 +1091,7 @@ void ro_reset_metrics(ro_context_t* ctx) {
     ctx->failure_record_count = 0;
     ctx->failure_record_head = 0;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     LOG_INFO("RO", "Reset all metrics");
 }

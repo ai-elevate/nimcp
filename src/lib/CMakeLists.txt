@@ -1614,6 +1614,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_diagnostics.c                   # Error detection & classification
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_checkpoint.c                    # State persistence & checkpointing
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_state_manager.c                # Phase 8: Module state manager for consistent checkpointing
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_module_recovery.c             # Phase 8: Module-specific recovery actions
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_checkpoint_pool.c              # Phase 0.5: Fast checkpoint pool (CoW + Pool)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_async_checkpoint.c              # Async checkpoint with background thread
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fault_tolerance/nimcp_health_monitor.c                # Runtime health monitoring

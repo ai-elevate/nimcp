@@ -189,6 +189,34 @@ gtest_discover_tests(unit_glial_test_fep_bridges
 )
 
 # ============================================================================
+# Astrocyte State Ops Tests (Phase 8: System-Wide Health Integration)
+# ============================================================================
+add_executable(unit_glial_astrocyte_state_ops
+    astrocytes/test_astrocyte_state_ops.cpp
+)
+target_link_libraries(unit_glial_astrocyte_state_ops
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        pthread
+        m
+)
+target_compile_features(unit_glial_astrocyte_state_ops PRIVATE cxx_std_17)
+target_include_directories(unit_glial_astrocyte_state_ops
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME unit_glial_astrocyte_state_ops
+         COMMAND unit_glial_astrocyte_state_ops)
+set_tests_properties(unit_glial_astrocyte_state_ops
+    PROPERTIES
+        TIMEOUT 120
+        LABELS "unit;glial;astrocyte;state;fault_tolerance"
+)
+
+# ============================================================================
 # Glial-Immune Bridge Tests
 # ============================================================================
 add_subdirectory(immune)

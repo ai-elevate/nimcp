@@ -248,6 +248,37 @@ void stdp_synapse_print_stats(const stdp_synapse_t* synapse);
  */
 void stdp_module_get_stats(uint64_t* total_ltp, uint64_t* total_ltd, uint64_t* total_da_queries);
 
+/* ============================================================================
+ * Phase 8: State Manager Integration for Fault Tolerance
+ * ============================================================================ */
+
+/* Forward declaration for state ops (avoid circular include) */
+struct nimcp_module_state_ops;
+typedef struct nimcp_module_state_ops nimcp_module_state_ops_t;
+
+/**
+ * Get STDP state operations for state manager registration
+ *
+ * Returns a pointer to a static nimcp_module_state_ops_t structure that
+ * provides serialize/deserialize/validate/reset/get_size operations for
+ * STDP synapse state checkpointing and recovery.
+ *
+ * Usage:
+ *   nimcp_state_manager_register(manager, "stdp_synapse",
+ *                                 stdp_get_state_ops(), synapse_ptr);
+ *
+ * @return Pointer to static state ops structure
+ */
+const nimcp_module_state_ops_t* stdp_get_state_ops(void);
+
+/**
+ * Set health agent for STDP operations (Phase 8: Heartbeat)
+ *
+ * @param agent Health agent for heartbeat monitoring
+ */
+struct nimcp_health_agent;
+void stdp_set_health_agent(struct nimcp_health_agent* agent);
+
 #ifdef __cplusplus
 }
 #endif

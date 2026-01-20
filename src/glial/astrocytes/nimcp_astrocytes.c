@@ -10,6 +10,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/fault_tolerance/nimcp_state_manager.h"
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -1358,4 +1359,434 @@ void astrocyte_network_get_stats(astrocyte_network_t* network,
     if (avg_calcium) *avg_calcium = sum_ca / network->num_astrocytes;
     if (max_calcium) *max_calcium = max_ca;
     if (avg_glutamate) *avg_glutamate = sum_glu / network->num_astrocytes;
+}
+
+/* ============================================================================
+ * Phase 8: State Manager Integration for Fault Tolerance
+ * ============================================================================
+ *
+ * WHAT: Enable checkpointing and recovery for astrocyte network state
+ * WHY:  Support system-wide resilience through consistent state management
+ * HOW:  Implement serialize/deserialize/validate/reset/get_size operations
+ *
+ * SERIALIZATION STRATEGY:
+ * - Network parameters (threshold, decay rate, coupling radius)
+ * - Per-astrocyte core state (calcium, IP3, pools, position, homeostatic)
+ * - NOT serialized: spatial index (rebuild), synapse coverage (rebuild),
+ *   gap junction coupling (rebuild), calcium system (separate), mutexes
+ */
+
+/** Magic number for astrocyte network state validation */
+#define ASTROCYTE_NETWORK_STATE_MAGIC 0x41535452  /* "ASTR" */
+
+/** Version for state format compatibility */
+#define ASTROCYTE_NETWORK_STATE_VERSION 1
+
+/**
+ * @brief Serialized astrocyte network state header
+ */
+typedef struct {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t checksum;
+    uint32_t num_astrocytes;
+} astrocyte_network_state_header_t;
+
+/**
+ * @brief Per-astrocyte serialized state (no pointers/topology)
+ */
+typedef struct {
+    uint32_t id;
+    uint32_t type;                      /* astrocyte_type_t as uint32 */
+    float calcium_concentration;
+    float ip3_concentration;
+    float calcium_baseline;
+    uint64_t last_calcium_spike;
+    float glutamate_pool;
+    float d_serine_pool;
+    float atp_level;
+    float position[3];
+    float coverage_radius;
+    float target_activity_level;
+    float scaling_factor;
+    float integral_error;
+} astrocyte_serialized_state_t;
+
+/**
+ * @brief Compute simple checksum for state validation
+ */
+static uint32_t astrocyte_compute_checksum(const uint8_t* data, size_t size) {
+    uint32_t checksum = 0;
+    for (size_t i = 0; i < size; i++) {
+        checksum = (checksum >> 1) | (checksum << 31);
+        checksum ^= data[i];
+    }
+    return checksum;
+}
+
+/**
+ * @brief Get serialized state size for astrocyte network
+ *
+ * @param module_state Pointer to astrocyte_network_t
+ * @return Size in bytes required for serialization
+ */
+size_t astrocyte_network_state_get_size(void* module_state) {
+    if (!module_state) return 0;
+
+    astrocyte_network_t* network = (astrocyte_network_t*)module_state;
+
+    size_t size = sizeof(astrocyte_network_state_header_t);
+
+    /* Network parameters */
+    size += sizeof(float) * 3;  /* calcium_threshold_um, coupling_decay_rate, coupling_radius_um */
+
+    /* Per-astrocyte state */
+    size += network->num_astrocytes * sizeof(astrocyte_serialized_state_t);
+
+    return size;
+}
+
+/**
+ * @brief Serialize astrocyte network state to buffer
+ *
+ * @param module_state Pointer to astrocyte_network_t
+ * @param buffer Output buffer (NULL to query size only)
+ * @param size In: buffer size, Out: bytes written or required
+ * @return 0 on success, -1 on error, -2 if buffer too small
+ */
+int astrocyte_network_state_serialize(void* module_state, uint8_t* buffer, size_t* size) {
+    if (!size) return -1;
+
+    size_t required_size = astrocyte_network_state_get_size(module_state);
+
+    /* Size query mode */
+    if (!buffer) {
+        *size = required_size;
+        return 0;
+    }
+
+    /* Check buffer size */
+    if (*size < required_size) {
+        *size = required_size;
+        return -2;
+    }
+
+    if (!module_state) return -1;
+
+    astrocyte_network_t* network = (astrocyte_network_t*)module_state;
+
+    /* Acquire network lock for consistent read */
+    nimcp_mutex_lock(&network->lock);
+
+    uint8_t* ptr = buffer;
+
+    /* Write header (will update checksum later) */
+    astrocyte_network_state_header_t header = {
+        .magic = ASTROCYTE_NETWORK_STATE_MAGIC,
+        .version = ASTROCYTE_NETWORK_STATE_VERSION,
+        .checksum = 0,
+        .num_astrocytes = network->num_astrocytes
+    };
+    memcpy(ptr, &header, sizeof(header));
+    ptr += sizeof(header);
+
+    /* Network parameters */
+    memcpy(ptr, &network->calcium_threshold_um, sizeof(float)); ptr += sizeof(float);
+    memcpy(ptr, &network->coupling_decay_rate, sizeof(float)); ptr += sizeof(float);
+    memcpy(ptr, &network->coupling_radius_um, sizeof(float)); ptr += sizeof(float);
+
+    /* Per-astrocyte state */
+    for (uint32_t i = 0; i < network->num_astrocytes; i++) {
+        astrocyte_t* astro = network->astrocytes[i];
+        if (!astro) continue;
+
+        nimcp_spinlock_lock(&astro->lock);
+
+        astrocyte_serialized_state_t state = {
+            .id = astro->id,
+            .type = (uint32_t)astro->type,
+            .calcium_concentration = astro->calcium_concentration,
+            .ip3_concentration = astro->ip3_concentration,
+            .calcium_baseline = astro->calcium_baseline,
+            .last_calcium_spike = astro->last_calcium_spike,
+            .glutamate_pool = astro->glutamate_pool,
+            .d_serine_pool = astro->d_serine_pool,
+            .atp_level = astro->atp_level,
+            .position = {astro->position[0], astro->position[1], astro->position[2]},
+            .coverage_radius = astro->coverage_radius,
+            .target_activity_level = astro->target_activity_level,
+            .scaling_factor = astro->scaling_factor,
+            .integral_error = astro->integral_error
+        };
+
+        nimcp_spinlock_unlock(&astro->lock);
+
+        memcpy(ptr, &state, sizeof(state));
+        ptr += sizeof(state);
+    }
+
+    nimcp_mutex_unlock(&network->lock);
+
+    /* Compute and update checksum (over data after header) */
+    uint32_t checksum = astrocyte_compute_checksum(
+        buffer + sizeof(astrocyte_network_state_header_t),
+        required_size - sizeof(astrocyte_network_state_header_t)
+    );
+    memcpy(buffer + offsetof(astrocyte_network_state_header_t, checksum),
+           &checksum, sizeof(uint32_t));
+
+    *size = required_size;
+    LOG_MODULE_DEBUG("ASTROCYTE", "Network state serialized: %zu bytes, %u astrocytes",
+                     required_size, network->num_astrocytes);
+    return 0;
+}
+
+/**
+ * @brief Deserialize astrocyte network state from buffer
+ *
+ * @param module_state Pointer to astrocyte_network_t
+ * @param buffer Input buffer containing serialized state
+ * @param size Size of input buffer
+ * @return 0 on success, negative on error
+ */
+int astrocyte_network_state_deserialize(void* module_state, const uint8_t* buffer, size_t size) {
+    if (!module_state || !buffer) return -1;
+
+    if (size < sizeof(astrocyte_network_state_header_t)) {
+        LOG_MODULE_ERROR("ASTROCYTE", "Deserialize: buffer too small for header");
+        return -1;
+    }
+
+    astrocyte_network_t* network = (astrocyte_network_t*)module_state;
+    const uint8_t* ptr = buffer;
+
+    /* Read and validate header */
+    astrocyte_network_state_header_t header;
+    memcpy(&header, ptr, sizeof(header));
+    ptr += sizeof(header);
+
+    if (header.magic != ASTROCYTE_NETWORK_STATE_MAGIC) {
+        LOG_MODULE_ERROR("ASTROCYTE", "Deserialize: invalid magic (0x%08X)", header.magic);
+        return -1;
+    }
+
+    if (header.version != ASTROCYTE_NETWORK_STATE_VERSION) {
+        LOG_MODULE_ERROR("ASTROCYTE", "Deserialize: version mismatch (%u != %u)",
+                         header.version, ASTROCYTE_NETWORK_STATE_VERSION);
+        return -1;
+    }
+
+    /* Calculate expected size */
+    size_t expected_size = sizeof(astrocyte_network_state_header_t) +
+                           sizeof(float) * 3 +
+                           header.num_astrocytes * sizeof(astrocyte_serialized_state_t);
+
+    if (size < expected_size) {
+        LOG_MODULE_ERROR("ASTROCYTE", "Deserialize: buffer too small (%zu < %zu)",
+                         size, expected_size);
+        return -1;
+    }
+
+    /* Verify checksum */
+    uint32_t computed_checksum = astrocyte_compute_checksum(
+        buffer + sizeof(astrocyte_network_state_header_t),
+        expected_size - sizeof(astrocyte_network_state_header_t)
+    );
+    if (computed_checksum != header.checksum) {
+        LOG_MODULE_ERROR("ASTROCYTE", "Deserialize: checksum mismatch (0x%08X != 0x%08X)",
+                         computed_checksum, header.checksum);
+        return -1;
+    }
+
+    /* Check astrocyte count matches */
+    if (header.num_astrocytes != network->num_astrocytes) {
+        LOG_MODULE_ERROR("ASTROCYTE", "Deserialize: astrocyte count mismatch (%u != %u)",
+                         header.num_astrocytes, network->num_astrocytes);
+        return -1;
+    }
+
+    /* Acquire network lock for consistent write */
+    nimcp_mutex_lock(&network->lock);
+
+    /* Network parameters */
+    memcpy(&network->calcium_threshold_um, ptr, sizeof(float)); ptr += sizeof(float);
+    memcpy(&network->coupling_decay_rate, ptr, sizeof(float)); ptr += sizeof(float);
+    memcpy(&network->coupling_radius_um, ptr, sizeof(float)); ptr += sizeof(float);
+
+    /* Per-astrocyte state */
+    for (uint32_t i = 0; i < network->num_astrocytes; i++) {
+        astrocyte_t* astro = network->astrocytes[i];
+        if (!astro) {
+            ptr += sizeof(astrocyte_serialized_state_t);
+            continue;
+        }
+
+        astrocyte_serialized_state_t state;
+        memcpy(&state, ptr, sizeof(state));
+        ptr += sizeof(state);
+
+        nimcp_spinlock_lock(&astro->lock);
+
+        /* Restore state (ID should match but we don't overwrite) */
+        if (astro->id != state.id) {
+            LOG_MODULE_WARN("ASTROCYTE", "Deserialize: astrocyte ID mismatch at index %u", i);
+        }
+
+        astro->type = (astrocyte_type_t)state.type;
+        astro->calcium_concentration = state.calcium_concentration;
+        astro->ip3_concentration = state.ip3_concentration;
+        astro->calcium_baseline = state.calcium_baseline;
+        astro->last_calcium_spike = state.last_calcium_spike;
+        astro->glutamate_pool = state.glutamate_pool;
+        astro->d_serine_pool = state.d_serine_pool;
+        astro->atp_level = state.atp_level;
+        astro->position[0] = state.position[0];
+        astro->position[1] = state.position[1];
+        astro->position[2] = state.position[2];
+        astro->coverage_radius = state.coverage_radius;
+        astro->target_activity_level = state.target_activity_level;
+        astro->scaling_factor = state.scaling_factor;
+        astro->integral_error = state.integral_error;
+
+        nimcp_spinlock_unlock(&astro->lock);
+    }
+
+    nimcp_mutex_unlock(&network->lock);
+
+    LOG_MODULE_DEBUG("ASTROCYTE", "Network state deserialized: %u astrocytes", header.num_astrocytes);
+    return 0;
+}
+
+/**
+ * @brief Validate astrocyte network state integrity
+ *
+ * @param module_state Pointer to astrocyte_network_t
+ * @return 0 if valid, negative error code if invalid
+ */
+int astrocyte_network_state_validate(void* module_state) {
+    if (!module_state) return -1;
+
+    astrocyte_network_t* network = (astrocyte_network_t*)module_state;
+
+    nimcp_mutex_lock(&network->lock);
+
+    int result = 0;
+
+    /* Validate network parameters */
+    if (network->calcium_threshold_um <= 0.0F ||
+        network->coupling_decay_rate < 0.0F ||
+        network->coupling_radius_um <= 0.0F) {
+        LOG_MODULE_WARN("ASTROCYTE", "Validate: invalid network parameters");
+        result = -1;
+    }
+
+    /* Validate each astrocyte */
+    for (uint32_t i = 0; i < network->num_astrocytes && result == 0; i++) {
+        astrocyte_t* astro = network->astrocytes[i];
+        if (!astro) continue;
+
+        nimcp_spinlock_lock(&astro->lock);
+
+        /* Validate calcium is in reasonable range */
+        if (astro->calcium_concentration < 0.0F ||
+            astro->calcium_concentration > 100.0F ||
+            !isfinite(astro->calcium_concentration)) {
+            LOG_MODULE_WARN("ASTROCYTE", "Validate: invalid calcium at astrocyte %u", i);
+            result = -2;
+        }
+
+        /* Validate IP3 is in reasonable range */
+        if (astro->ip3_concentration < 0.0F ||
+            astro->ip3_concentration > 50.0F ||
+            !isfinite(astro->ip3_concentration)) {
+            LOG_MODULE_WARN("ASTROCYTE", "Validate: invalid IP3 at astrocyte %u", i);
+            result = -3;
+        }
+
+        /* Validate pools are normalized */
+        if (astro->glutamate_pool < 0.0F || astro->glutamate_pool > 1.0F ||
+            astro->d_serine_pool < 0.0F || astro->d_serine_pool > 1.0F ||
+            astro->atp_level < 0.0F || astro->atp_level > 1.0F) {
+            LOG_MODULE_WARN("ASTROCYTE", "Validate: invalid pools at astrocyte %u", i);
+            result = -4;
+        }
+
+        /* Validate homeostatic parameters */
+        if (!isfinite(astro->scaling_factor) || astro->scaling_factor <= 0.0F ||
+            !isfinite(astro->integral_error)) {
+            LOG_MODULE_WARN("ASTROCYTE", "Validate: invalid homeostatic params at astrocyte %u", i);
+            result = -5;
+        }
+
+        nimcp_spinlock_unlock(&astro->lock);
+    }
+
+    nimcp_mutex_unlock(&network->lock);
+
+    if (result == 0) {
+        LOG_MODULE_DEBUG("ASTROCYTE", "Network state validation passed");
+    }
+
+    return result;
+}
+
+/**
+ * @brief Reset astrocyte network state to defaults
+ *
+ * @param module_state Pointer to astrocyte_network_t
+ * @return 0 on success, negative on error
+ */
+int astrocyte_network_state_reset(void* module_state) {
+    if (!module_state) return -1;
+
+    astrocyte_network_t* network = (astrocyte_network_t*)module_state;
+
+    nimcp_mutex_lock(&network->lock);
+
+    /* Reset network parameters to defaults */
+    network->calcium_threshold_um = ASTROCYTE_CALCIUM_WAVE_THRESHOLD_UM;
+    network->coupling_decay_rate = 0.1F;  /* Default decay rate */
+    network->coupling_radius_um = ASTROCYTE_COUPLING_RADIUS_UM;
+
+    /* Reset each astrocyte to baseline */
+    for (uint32_t i = 0; i < network->num_astrocytes; i++) {
+        astrocyte_t* astro = network->astrocytes[i];
+        if (!astro) continue;
+
+        nimcp_spinlock_lock(&astro->lock);
+
+        astro->calcium_concentration = ASTROCYTE_BASELINE_CALCIUM_UM;
+        astro->ip3_concentration = 0.0F;
+        astro->calcium_baseline = ASTROCYTE_BASELINE_CALCIUM_UM;
+        astro->last_calcium_spike = 0;
+        astro->glutamate_pool = 0.5F;
+        astro->d_serine_pool = 0.5F;
+        astro->atp_level = 1.0F;
+        astro->target_activity_level = 1.0F;
+        astro->scaling_factor = 1.0F;
+        astro->integral_error = 0.0F;
+
+        nimcp_spinlock_unlock(&astro->lock);
+    }
+
+    nimcp_mutex_unlock(&network->lock);
+
+    LOG_MODULE_DEBUG("ASTROCYTE", "Network state reset to defaults");
+    return 0;
+}
+
+/**
+ * @brief Get astrocyte network state operations for state manager registration
+ *
+ * @return Pointer to static state ops structure
+ */
+const nimcp_module_state_ops_t* astrocyte_network_get_state_ops(void) {
+    static nimcp_module_state_ops_t ops = {
+        .serialize = astrocyte_network_state_serialize,
+        .deserialize = astrocyte_network_state_deserialize,
+        .validate = astrocyte_network_state_validate,
+        .reset = astrocyte_network_state_reset,
+        .get_size = astrocyte_network_state_get_size
+    };
+    return &ops;
 }

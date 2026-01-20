@@ -106,3 +106,13 @@ set_tests_properties(integration_utils_fault_tolerance_test_world_imagination_he
 add_ft_integration_test(test_heartbeat_module_integration)
 set_tests_properties(integration_utils_fault_tolerance_test_heartbeat_module_integration
                      PROPERTIES TIMEOUT 180)
+
+# State Manager Integration Tests (Phase 8: System-Wide Health Integration)
+add_ft_integration_test(test_state_manager_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_state_manager_integration
+                     PROPERTIES TIMEOUT 180)
+
+# Module Recovery Integration Tests (Phase 8: System-Wide Health Integration)
+add_ft_integration_test(test_module_recovery_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_module_recovery_integration
+                     PROPERTIES TIMEOUT 180)

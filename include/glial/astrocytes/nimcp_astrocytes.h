@@ -829,6 +829,45 @@ nimcp_result_t astrocyte_register_bio_handlers(void);
  */
 void astrocyte_unregister_bio_handlers(void);
 
+//=============================================================================
+// Phase 8: State Manager Integration for Fault Tolerance
+//=============================================================================
+
+/* Forward declaration for state ops (avoid circular include) */
+struct nimcp_module_state_ops;
+typedef struct nimcp_module_state_ops nimcp_module_state_ops_t;
+
+/**
+ * @brief Get astrocyte network state operations for state manager registration
+ *
+ * Returns a pointer to a static nimcp_module_state_ops_t structure that
+ * provides serialize/deserialize/validate/reset/get_size operations for
+ * astrocyte network state checkpointing and recovery.
+ *
+ * Usage:
+ *   nimcp_state_manager_register(manager, "astrocyte_network",
+ *                                 astrocyte_network_get_state_ops(), network_ptr);
+ *
+ * NOTE: Serialization includes network parameters and per-astrocyte core state.
+ * Spatial index and coupling topology are NOT serialized and must be rebuilt
+ * after restore using astrocyte_network_build_spatial_index() and
+ * astrocyte_network_establish_coupling().
+ *
+ * @return Pointer to static state ops structure
+ *
+ * COMPLEXITY: O(1)
+ * THREAD-SAFE: Yes
+ */
+const nimcp_module_state_ops_t* astrocyte_network_get_state_ops(void);
+
+/**
+ * @brief Set health agent for astrocyte operations (Phase 8: Heartbeat)
+ *
+ * @param agent Health agent for heartbeat monitoring
+ */
+struct nimcp_health_agent;
+void astrocyte_set_health_agent(struct nimcp_health_agent* agent);
+
 #ifdef __cplusplus
 }
 #endif

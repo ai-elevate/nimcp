@@ -10,10 +10,10 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
 
 //=============================================================================
 // Internal Structures
@@ -51,7 +51,7 @@ struct bft_context {
     bft_trust_recovery_callback_t trust_recovery_callback;
     void* trust_recovery_user_data;
     bft_stats_t stats;
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
     bool running;
     bool initialized;
 };
@@ -181,7 +181,7 @@ bft_context_t* bft_create(const bft_config_t* config) {
     ctx->identity.has_private_key = true;
     bft_generate_keys(&ctx->identity);
 
-    if (pthread_mutex_init(&ctx->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&ctx->lock, NULL) != 0) {
         LOG_ERROR("BFT", "Failed to initialize mutex");
         nimcp_free(ctx);
         return NULL;
@@ -210,7 +210,7 @@ void bft_destroy(bft_context_t* ctx) {
     memset(&ctx->identity, 0, sizeof(bft_identity_t));
     memset(ctx->peer_keys, 0, sizeof(ctx->peer_keys));
 
-    pthread_mutex_destroy(&ctx->lock);
+    nimcp_mutex_destroy(&ctx->lock);
     nimcp_free(ctx);
 }
 
@@ -254,9 +254,9 @@ bool bft_generate_keys(bft_identity_t* identity) {
 bool bft_set_identity(bft_context_t* ctx, const bft_identity_t* identity) {
     if (!ctx || !identity) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->identity = *identity;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -265,7 +265,7 @@ bool bft_register_peer_key(bft_context_t* ctx, uint32_t node_id, const uint8_t* 
     if (!ctx || !public_key) return false;
     if (ctx->peer_count >= BFT_MAX_NODES) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     ctx->peer_keys[ctx->peer_count].node_id = node_id;
     memcpy(ctx->peer_keys[ctx->peer_count].public_key, public_key, BFT_PUBLIC_KEY_SIZE);
@@ -275,7 +275,7 @@ bool bft_register_peer_key(bft_context_t* ctx, uint32_t node_id, const uint8_t* 
     // Initialize trust
     bft_get_or_create_trust(ctx, node_id);
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_DEBUG("BFT", "Registered peer key for node %u", node_id);
     return true;
@@ -295,12 +295,12 @@ bool bft_submit_request(bft_context_t* ctx, const void* data, size_t data_size, 
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     *sequence = ++ctx->sequence_number;
     ctx->stats.total_messages++;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_DEBUG("BFT", "Submitted request, sequence: %lu", (unsigned long)*sequence);
     return true;
@@ -310,7 +310,7 @@ bool bft_process_message(bft_context_t* ctx, const bft_msg_header_t* header, con
     if (!ctx || !header) return false;
     if (!ctx->running) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Verify signature
     if (ctx->config.enable_signatures) {
@@ -318,7 +318,7 @@ bool bft_process_message(bft_context_t* ctx, const bft_msg_header_t* header, con
             ctx->stats.total_messages++;
             // Report to security
             bft_notify_security(ctx, header->sender_id, BFT_BEHAV_INVALID_SIG);
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             return false;
         }
     }
@@ -351,7 +351,7 @@ bool bft_process_message(bft_context_t* ctx, const bft_msg_header_t* header, con
             break;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return true;
 }
 
@@ -387,10 +387,10 @@ bool bft_verify_signature(bft_context_t* ctx, const bft_msg_header_t* header, co
 bool bft_report_byzantine(bft_context_t* ctx, uint32_t accused_id, bft_behavior_t behavior, const bft_evidence_t* evidence, uint32_t evidence_count) {
     if (!ctx || accused_id == ctx->config.node_id) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     if (ctx->accusation_count >= 32) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return false;
     }
 
@@ -431,7 +431,7 @@ bool bft_report_byzantine(bft_context_t* ctx, uint32_t accused_id, bft_behavior_
     ctx->stats.byzantine_detected++;
     ctx->stats.accusations_processed++;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     // Notify security module
     bft_notify_security(ctx, accused_id, behavior);
@@ -462,7 +462,7 @@ bool bft_process_accusation(bft_context_t* ctx, const bft_accusation_t* accusati
         );
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     ctx->stats.accusations_processed++;
 
@@ -484,18 +484,18 @@ bool bft_process_accusation(bft_context_t* ctx, const bft_accusation_t* accusati
             accuser_trust->trust_score -= ctx->config.trust_decay * 2;
         }
         ctx->stats.false_accusations++;
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return false;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return true;
 }
 
 bool bft_vote_accusation(bft_context_t* ctx, const bft_accusation_t* accusation, bool support) {
     if (!ctx || !accusation) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Find matching accusation
     for (uint32_t i = 0; i < ctx->accusation_count; i++) {
@@ -506,12 +506,12 @@ bool bft_vote_accusation(bft_context_t* ctx, const bft_accusation_t* accusation,
                 ctx->accusations[i].supporting_nodes[ctx->accusations[i].support_count++] = ctx->config.node_id;
             }
 
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -538,27 +538,27 @@ bool bft_check_equivocation(bft_context_t* ctx, const bft_msg_header_t* msg1, co
 bool bft_get_trust_info(bft_context_t* ctx, uint32_t node_id, bft_trust_info_t* trust) {
     if (!ctx || !trust) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     bft_trust_info_t* found = bft_find_trust(ctx, node_id);
     if (found) {
         *trust = *found;
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return true;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
 float bft_update_trust(bft_context_t* ctx, uint32_t node_id, bool correct_behavior) {
     if (!ctx) return 0.0f;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     bft_trust_info_t* trust = bft_get_or_create_trust(ctx, node_id);
     if (!trust) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return 0.0f;
     }
 
@@ -588,7 +588,7 @@ float bft_update_trust(bft_context_t* ctx, uint32_t node_id, bool correct_behavi
 
     float new_trust = trust->trust_score;
     bool is_trusted = (trust->status == BFT_STATUS_TRUSTED);
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     // Invoke trust recovery callback (immune memory formation)
     if (was_probation && is_trusted && ctx->trust_recovery_callback) {
@@ -601,7 +601,7 @@ float bft_update_trust(bft_context_t* ctx, uint32_t node_id, bool correct_behavi
 bool bft_quarantine_node(bft_context_t* ctx, uint32_t node_id, uint64_t duration_ms) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     bft_trust_info_t* trust = bft_get_or_create_trust(ctx, node_id);
     if (trust) {
@@ -611,7 +611,7 @@ bool bft_quarantine_node(bft_context_t* ctx, uint32_t node_id, uint64_t duration
 
         float trust_score = trust->trust_score;
 
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
 
         // Invoke quarantine callback (immune killer T cell coordination)
         if (ctx->quarantine_callback) {
@@ -623,18 +623,18 @@ bool bft_quarantine_node(bft_context_t* ctx, uint32_t node_id, uint64_t duration
         return true;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
 bool bft_is_quarantined(bft_context_t* ctx, uint32_t node_id) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     bft_trust_info_t* trust = bft_find_trust(ctx, node_id);
     if (!trust) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return false;
     }
 
@@ -646,28 +646,28 @@ bool bft_is_quarantined(bft_context_t* ctx, uint32_t node_id) {
         quarantined = false;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return quarantined;
 }
 
 bool bft_release_quarantine(bft_context_t* ctx, uint32_t node_id) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     bft_trust_info_t* trust = bft_find_trust(ctx, node_id);
     if (trust && trust->status == BFT_STATUS_QUARANTINED) {
         trust->status = BFT_STATUS_PROBATION;
         trust->quarantine_until_ms = 0;
 
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
 
         bbb_audit_log(BBB_AUDIT_INFO, "BFT", "RELEASE",
                      "Node %u released from quarantine", node_id);
         return true;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -678,12 +678,12 @@ bool bft_release_quarantine(bft_context_t* ctx, uint32_t node_id) {
 bool bft_request_view_change(bft_context_t* ctx, bft_view_reason_t reason) {
     if (!ctx || !ctx->running) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     ctx->view_number++;
     ctx->stats.view_changes++;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     bbb_audit_log(BBB_AUDIT_WARNING, "BFT", "VIEW_CHANGE",
                  "View change requested: reason=%s, new_view=%lu",
@@ -715,7 +715,7 @@ bool bft_is_leader(bft_context_t* ctx) {
 bool bft_create_checkpoint(bft_context_t* ctx, const uint8_t* state_hash) {
     if (!ctx || !state_hash) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     if (ctx->checkpoint_count >= 16) {
         // Remove oldest
@@ -738,7 +738,7 @@ bool bft_create_checkpoint(bft_context_t* ctx, const uint8_t* state_hash) {
     // Sign checkpoint
     bft_sign(ctx, state_hash, BFT_HASH_SIZE, cp->signatures[0]);
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_DEBUG("BFT", "Created checkpoint at sequence %lu", (unsigned long)cp->sequence_number);
     return true;
@@ -748,7 +748,7 @@ bool bft_get_stable_checkpoint(bft_context_t* ctx, bft_checkpoint_t* checkpoint)
     if (!ctx || !checkpoint) return false;
     if (ctx->checkpoint_count == 0) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Find checkpoint with enough signatures (2f + 1)
     uint32_t required = 2 * ctx->config.max_byzantine + 1;
@@ -756,12 +756,12 @@ bool bft_get_stable_checkpoint(bft_context_t* ctx, bft_checkpoint_t* checkpoint)
     for (int i = ctx->checkpoint_count - 1; i >= 0; i--) {
         if (ctx->checkpoints[i].signatures_count >= required) {
             *checkpoint = ctx->checkpoints[i];
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -780,10 +780,10 @@ bool bft_verify_checkpoint(bft_context_t* ctx, const bft_checkpoint_t* checkpoin
 bool bft_register_consensus_callback(bft_context_t* ctx, bft_consensus_callback_t callback, void* user_data) {
     if (!ctx || !callback) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->consensus_callback = callback;
     ctx->consensus_user_data = user_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -791,10 +791,10 @@ bool bft_register_consensus_callback(bft_context_t* ctx, bft_consensus_callback_
 bool bft_register_byzantine_callback(bft_context_t* ctx, bft_byzantine_callback_t callback, void* user_data) {
     if (!ctx || !callback) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->byzantine_callback = callback;
     ctx->byzantine_user_data = user_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -809,10 +809,10 @@ bool bft_register_byzantine_callback(bft_context_t* ctx, bft_byzantine_callback_
 bool bft_register_accusation_callback(bft_context_t* ctx, bft_accusation_callback_t callback, void* user_data) {
     if (!ctx || !callback) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->accusation_callback = callback;
     ctx->accusation_user_data = user_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -827,10 +827,10 @@ bool bft_register_accusation_callback(bft_context_t* ctx, bft_accusation_callbac
 bool bft_register_quarantine_callback(bft_context_t* ctx, bft_quarantine_callback_t callback, void* user_data) {
     if (!ctx || !callback) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->quarantine_callback = callback;
     ctx->quarantine_user_data = user_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -845,10 +845,10 @@ bool bft_register_quarantine_callback(bft_context_t* ctx, bft_quarantine_callbac
 bool bft_register_trust_recovery_callback(bft_context_t* ctx, bft_trust_recovery_callback_t callback, void* user_data) {
     if (!ctx || !callback) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->trust_recovery_callback = callback;
     ctx->trust_recovery_user_data = user_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -860,7 +860,7 @@ bool bft_register_trust_recovery_callback(bft_context_t* ctx, bft_trust_recovery
 bool bft_get_stats(bft_context_t* ctx, bft_stats_t* stats) {
     if (!ctx || !stats) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     *stats = ctx->stats;
 
@@ -871,22 +871,22 @@ bool bft_get_stats(bft_context_t* ctx, bft_stats_t* stats) {
     }
     stats->cluster_trust_score = (ctx->trust_count > 0) ? (total_trust / ctx->trust_count) : 100.0f;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return true;
 }
 
 void bft_reset_stats(bft_context_t* ctx) {
     if (!ctx) return;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     memset(&ctx->stats, 0, sizeof(bft_stats_t));
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 }
 
 bool bft_is_cluster_healthy(bft_context_t* ctx) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Count healthy nodes
     uint32_t healthy = 0;
@@ -900,7 +900,7 @@ bool bft_is_cluster_healthy(bft_context_t* ctx) {
     // Need at least n - f healthy
     bool result = (healthy >= ctx->config.total_nodes - ctx->config.max_byzantine);
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return result;
 }
 

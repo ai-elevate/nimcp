@@ -11,10 +11,10 @@
 #include "utils/thread/nimcp_thread_pool.h"
 #include "utils/time/nimcp_time.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
 
 //=============================================================================
 // Internal Structures
@@ -36,8 +36,8 @@ struct dft_context {
     dft_event_callback_t callbacks[8];      /**< Event callbacks */
     void* callback_data[8];                 /**< Callback user data */
     uint32_t callback_count;                /**< Number of callbacks */
-    pthread_mutex_t lock;                   /**< Context lock */
-    pthread_t heartbeat_thread;             /**< Heartbeat thread */
+    nimcp_mutex_t lock;                     /**< Context lock */
+    nimcp_thread_t heartbeat_thread;        /**< Heartbeat thread */
     bool running;                           /**< Is running */
     bool initialized;                       /**< Is initialized */
 };
@@ -168,7 +168,7 @@ dft_context_t* dft_create(const dft_config_t* config) {
     ctx->leader_id = config->node_id; // Self is leader initially
 
     // Initialize mutex
-    if (pthread_mutex_init(&ctx->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&ctx->lock, NULL) != 0) {
         LOG_ERROR("DFT", "Failed to initialize mutex");
         nimcp_free(ctx);
         return NULL;
@@ -194,7 +194,7 @@ void dft_destroy(dft_context_t* ctx) {
     }
 
     // Destroy mutex
-    pthread_mutex_destroy(&ctx->lock);
+    nimcp_mutex_destroy(&ctx->lock);
 
     bbb_audit_log(BBB_AUDIT_INFO, "DFT", "DESTROY", "Destroyed DFT context");
 
@@ -218,7 +218,7 @@ bool dft_start(dft_context_t* ctx) {
     ctx->running = true;
 
     // Start heartbeat thread
-    if (pthread_create(&ctx->heartbeat_thread, NULL, dft_heartbeat_thread, ctx) != 0) {
+    if (nimcp_thread_create(&ctx->heartbeat_thread, NULL, dft_heartbeat_thread, ctx) != 0) {
         LOG_ERROR("DFT", "Failed to start heartbeat thread");
         ctx->running = false;
         return false;
@@ -239,7 +239,7 @@ bool dft_stop(dft_context_t* ctx) {
     ctx->running = false;
 
     // Wait for heartbeat thread
-    pthread_join(ctx->heartbeat_thread, NULL);
+    nimcp_thread_join(&ctx->heartbeat_thread, NULL);
 
     dft_emit_event(ctx, DFT_EVENT_NODE_LEFT, &ctx->config.node_id);
     LOG_INFO("DFT", "Stopped DFT for node %u", ctx->config.node_id);
@@ -266,7 +266,7 @@ bool dft_add_peer(dft_context_t* ctx, uint32_t node_id, void* user_data) {
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Add peer
     dft_peer_info_t* peer = &ctx->peers[ctx->peer_count];
@@ -278,7 +278,7 @@ bool dft_add_peer(dft_context_t* ctx, uint32_t node_id, void* user_data) {
     peer->user_data = user_data;
     ctx->peer_count++;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     dft_emit_event(ctx, DFT_EVENT_NODE_JOINED, &node_id);
     LOG_INFO("DFT", "Added peer %u, total peers: %u", node_id, ctx->peer_count);
@@ -289,7 +289,7 @@ bool dft_remove_peer(dft_context_t* ctx, uint32_t node_id) {
     // Guard: Validate context
     if (!ctx || !ctx->initialized) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Find and remove peer
     for (uint32_t i = 0; i < ctx->peer_count; i++) {
@@ -300,7 +300,7 @@ bool dft_remove_peer(dft_context_t* ctx, uint32_t node_id) {
             }
             ctx->peer_count--;
 
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
 
             dft_emit_event(ctx, DFT_EVENT_NODE_LEFT, &node_id);
             LOG_INFO("DFT", "Removed peer %u", node_id);
@@ -308,7 +308,7 @@ bool dft_remove_peer(dft_context_t* ctx, uint32_t node_id) {
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -316,16 +316,16 @@ bool dft_get_peer_info(dft_context_t* ctx, uint32_t node_id, dft_peer_info_t* in
     // Guard: Validate inputs
     if (!ctx || !info) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     dft_peer_info_t* peer = dft_find_peer(ctx, node_id);
     if (peer) {
         *info = *peer;
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return true;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -333,12 +333,12 @@ uint32_t dft_get_all_peers(dft_context_t* ctx, dft_peer_info_t* peers, uint32_t 
     // Guard: Validate inputs
     if (!ctx || !peers || max_peers == 0) return 0;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     uint32_t count = (ctx->peer_count < max_peers) ? ctx->peer_count : max_peers;
     memcpy(peers, ctx->peers, count * sizeof(dft_peer_info_t));
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return count;
 }
 
@@ -358,9 +358,9 @@ uint32_t dft_send_heartbeat(dft_context_t* ctx) {
     uint32_t reached = 0;
     uint64_t now = nimcp_time_get_ms();
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->stats.total_heartbeats_sent++;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     // In a real implementation, this would send network messages
     // For now, we just update stats
@@ -373,7 +373,7 @@ bool dft_receive_heartbeat(dft_context_t* ctx, uint32_t node_id, float health_sc
     // Guard: Validate context
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     dft_peer_info_t* peer = dft_find_peer(ctx, node_id);
     if (peer) {
@@ -387,11 +387,11 @@ bool dft_receive_heartbeat(dft_context_t* ctx, uint32_t node_id, float health_sc
         }
 
         ctx->stats.total_heartbeats_received++;
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return true;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -402,7 +402,7 @@ uint32_t dft_detect_failures(dft_context_t* ctx, dft_failure_detection_t* failur
     uint32_t count = 0;
     uint64_t now = nimcp_time_get_ms();
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     for (uint32_t i = 0; i < ctx->peer_count && count < max_failures; i++) {
         dft_peer_info_t* peer = &ctx->peers[i];
@@ -428,7 +428,7 @@ uint32_t dft_detect_failures(dft_context_t* ctx, dft_failure_detection_t* failur
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return count;
 }
 
@@ -436,7 +436,7 @@ bool dft_report_suspected_failure(dft_context_t* ctx, uint32_t node_id, const ch
     // Guard: Validate inputs
     if (!ctx || !reason) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     dft_peer_info_t* peer = dft_find_peer(ctx, node_id);
     if (peer) {
@@ -451,17 +451,17 @@ bool dft_report_suspected_failure(dft_context_t* ctx, uint32_t node_id, const ch
 
             // Initiate recovery if auto-recovery enabled
             if (ctx->config.enable_auto_recovery) {
-                pthread_mutex_unlock(&ctx->lock);
+                nimcp_mutex_unlock(&ctx->lock);
                 dft_initiate_recovery(ctx, node_id);
                 return true;
             }
         }
 
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return true;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -479,7 +479,7 @@ bool dft_create_checkpoint(dft_context_t* ctx, const void* data, size_t data_siz
         return false;
     }
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Guard: Capacity check
     if (ctx->checkpoint_count >= DFT_MAX_CHECKPOINTS) {
@@ -509,7 +509,7 @@ bool dft_create_checkpoint(dft_context_t* ctx, const void* data, size_t data_siz
     // Copy to output
     *meta = *cp;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     dft_emit_event(ctx, DFT_EVENT_CHECKPOINT_CREATED, meta);
     LOG_INFO("DFT", "Created checkpoint %lu, size: %zu", (unsigned long)cp->checkpoint_id, data_size);
@@ -521,7 +521,7 @@ bool dft_retrieve_checkpoint(dft_context_t* ctx, uint64_t checkpoint_id, void* d
     // Guard: Validate inputs
     if (!ctx || !data_buffer || buffer_size == 0 || !actual_size) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Find checkpoint
     for (uint32_t i = 0; i < ctx->checkpoint_count; i++) {
@@ -530,19 +530,19 @@ bool dft_retrieve_checkpoint(dft_context_t* ctx, uint64_t checkpoint_id, void* d
 
             if (cp->data_size > buffer_size) {
                 *actual_size = cp->data_size;
-                pthread_mutex_unlock(&ctx->lock);
+                nimcp_mutex_unlock(&ctx->lock);
                 return false; // Buffer too small
             }
 
             // In real implementation, would retrieve actual data
             // For now, just report size
             *actual_size = cp->data_size;
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -555,12 +555,12 @@ uint32_t dft_list_checkpoints(dft_context_t* ctx, dft_checkpoint_meta_t* metas, 
     // Guard: Validate inputs
     if (!ctx || !metas || max_count == 0) return 0;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     uint32_t count = (ctx->checkpoint_count < max_count) ? ctx->checkpoint_count : max_count;
     memcpy(metas, ctx->checkpoints, count * sizeof(dft_checkpoint_meta_t));
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return count;
 }
 
@@ -572,18 +572,18 @@ bool dft_initiate_recovery(dft_context_t* ctx, uint32_t node_id) {
     // Guard: Validate context
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     dft_peer_info_t* peer = dft_find_peer(ctx, node_id);
     if (!peer) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return false;
     }
 
     // Mark as recovering
     peer->state = DFT_NODE_RECOVERING;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     dft_emit_event(ctx, DFT_EVENT_RECOVERY_STARTED, &node_id);
     LOG_INFO("DFT", "Initiated recovery for node %u", node_id);
@@ -620,7 +620,7 @@ bool dft_complete_recovery(dft_context_t* ctx, uint32_t node_id, bool success) {
     // Guard: Validate context
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     dft_peer_info_t* peer = dft_find_peer(ctx, node_id);
     if (peer) {
@@ -632,12 +632,12 @@ bool dft_complete_recovery(dft_context_t* ctx, uint32_t node_id, bool success) {
             peer->state = DFT_NODE_FAILED;
         }
 
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         dft_emit_event(ctx, DFT_EVENT_RECOVERY_COMPLETE, &node_id);
         return true;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -648,7 +648,7 @@ bool dft_complete_recovery(dft_context_t* ctx, uint32_t node_id, bool success) {
 bool dft_has_quorum(dft_context_t* ctx) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     uint32_t healthy_count = 1; // Include self
     for (uint32_t i = 0; i < ctx->peer_count; i++) {
@@ -660,7 +660,7 @@ bool dft_has_quorum(dft_context_t* ctx) {
     float ratio = (float)healthy_count / (float)(ctx->peer_count + 1);
     bool has_quorum = (ratio >= ctx->config.quorum_threshold);
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return has_quorum;
 }
 
@@ -673,7 +673,7 @@ bool dft_trigger_election(dft_context_t* ctx) {
     // Guard: Validate context
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Simple leader election: lowest healthy node ID wins
     uint32_t new_leader = ctx->config.node_id;
@@ -690,7 +690,7 @@ bool dft_trigger_election(dft_context_t* ctx) {
         dft_emit_event(ctx, DFT_EVENT_LEADER_ELECTED, &new_leader);
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return true;
 }
 
@@ -705,13 +705,13 @@ bool dft_register_callback(dft_context_t* ctx, dft_event_callback_t callback, vo
     // Guard: Capacity check
     if (ctx->callback_count >= 8) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     ctx->callbacks[ctx->callback_count] = callback;
     ctx->callback_data[ctx->callback_count] = user_data;
     ctx->callback_count++;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return true;
 }
 
@@ -719,7 +719,7 @@ bool dft_unregister_callback(dft_context_t* ctx, dft_event_callback_t callback) 
     // Guard: Validate inputs
     if (!ctx || !callback) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     for (uint32_t i = 0; i < ctx->callback_count; i++) {
         if (ctx->callbacks[i] == callback) {
@@ -729,12 +729,12 @@ bool dft_unregister_callback(dft_context_t* ctx, dft_event_callback_t callback) 
                 ctx->callback_data[j] = ctx->callback_data[j + 1];
             }
             ctx->callback_count--;
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -746,7 +746,7 @@ bool dft_get_stats(dft_context_t* ctx, dft_stats_t* stats) {
     // Guard: Validate inputs
     if (!ctx || !stats) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     *stats = ctx->stats;
 
     // Calculate availability
@@ -756,16 +756,16 @@ bool dft_get_stats(dft_context_t* ctx, dft_stats_t* stats) {
     }
     stats->current_availability = (float)healthy / (float)(ctx->peer_count + 1);
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return true;
 }
 
 void dft_reset_stats(dft_context_t* ctx) {
     if (!ctx) return;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     memset(&ctx->stats, 0, sizeof(dft_stats_t));
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 }
 
 float dft_get_cluster_health(dft_context_t* ctx) {
@@ -773,7 +773,7 @@ float dft_get_cluster_health(dft_context_t* ctx) {
 
     float total_health = 100.0f; // Self
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     for (uint32_t i = 0; i < ctx->peer_count; i++) {
         if (ctx->peers[i].state == DFT_NODE_HEALTHY) {
@@ -783,7 +783,7 @@ float dft_get_cluster_health(dft_context_t* ctx) {
 
     float avg_health = total_health / (float)(ctx->peer_count + 1);
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return avg_health;
 }
 

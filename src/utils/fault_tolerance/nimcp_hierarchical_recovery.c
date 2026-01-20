@@ -11,10 +11,10 @@
 #include "utils/time/nimcp_time.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
 
 //=============================================================================
 // Internal Structures
@@ -48,7 +48,7 @@ struct hr_context {
     hr_recovery_completion_callback_t completion_callback;
     void* completion_user_data;
     hr_stats_t stats;
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
     bool running;
     bool initialized;
 };
@@ -140,7 +140,7 @@ hr_context_t* hr_create(const hr_config_t* config) {
     ctx->self.is_healthy = true;
 
     // Initialize mutex
-    if (pthread_mutex_init(&ctx->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&ctx->lock, NULL) != 0) {
         LOG_ERROR("HR", "Failed to initialize mutex");
         nimcp_free(ctx);
         return NULL;
@@ -162,7 +162,7 @@ void hr_destroy(hr_context_t* ctx) {
         hr_stop(ctx);
     }
 
-    pthread_mutex_destroy(&ctx->lock);
+    nimcp_mutex_destroy(&ctx->lock);
     nimcp_free(ctx);
 }
 
@@ -192,9 +192,9 @@ bool hr_add_child(hr_context_t* ctx, uint32_t child_id, hr_level_t level) {
     if (!ctx || !ctx->initialized) return false;
     if (ctx->self.child_count >= HR_MAX_CHILDREN) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->self.children[ctx->self.child_count++] = child_id;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_DEBUG("HR", "Added child %u at level %s", child_id, hr_level_to_string(level));
     return true;
@@ -203,7 +203,7 @@ bool hr_add_child(hr_context_t* ctx, uint32_t child_id, hr_level_t level) {
 bool hr_remove_child(hr_context_t* ctx, uint32_t child_id) {
     if (!ctx || !ctx->initialized) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     for (uint32_t i = 0; i < ctx->self.child_count; i++) {
         if (ctx->self.children[i] == child_id) {
@@ -211,22 +211,22 @@ bool hr_remove_child(hr_context_t* ctx, uint32_t child_id) {
                 ctx->self.children[j] = ctx->self.children[j + 1];
             }
             ctx->self.child_count--;
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
 bool hr_set_parent(hr_context_t* ctx, uint32_t parent_id) {
     if (!ctx || !ctx->initialized) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->self.parent_id = parent_id;
     ctx->config.parent_id = parent_id;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -234,15 +234,15 @@ bool hr_set_parent(hr_context_t* ctx, uint32_t parent_id) {
 bool hr_get_node_context(hr_context_t* ctx, uint32_t node_id, hr_node_context_t* node_ctx) {
     if (!ctx || !node_ctx) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     if (node_id == ctx->config.node_id) {
         *node_ctx = ctx->self;
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return true;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -260,7 +260,7 @@ hr_result_t hr_submit_recovery(hr_context_t* ctx, const hr_recovery_request_t* r
     uint64_t start_time = nimcp_time_get_ms();
     hr_result_t result = HR_RESULT_FAILED;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Check circuit breaker
     char circuit_name[64];
@@ -273,7 +273,7 @@ hr_result_t hr_submit_recovery(hr_context_t* ctx, const hr_recovery_request_t* r
             response->request_id = request->request_id;
             snprintf(response->message, sizeof(response->message),
                     "Circuit breaker %s is open", circuit_name);
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             return HR_RESULT_CIRCUIT_OPEN;
         }
     }
@@ -282,9 +282,9 @@ hr_result_t hr_submit_recovery(hr_context_t* ctx, const hr_recovery_request_t* r
     hr_level_t level = request->current_level;
 
     if (ctx->handlers[level]) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         result = ctx->handlers[level](request, response, ctx->handler_data[level]);
-        pthread_mutex_lock(&ctx->lock);
+        nimcp_mutex_lock(&ctx->lock);
     } else {
         // Default recovery: simple success
         result = HR_RESULT_SUCCESS;
@@ -308,9 +308,9 @@ hr_result_t hr_submit_recovery(hr_context_t* ctx, const hr_recovery_request_t* r
             escalated.current_level = (hr_level_t)(level + 1);
             escalated.attempt_count++;
 
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             result = hr_submit_recovery(ctx, &escalated, response);
-            pthread_mutex_lock(&ctx->lock);
+            nimcp_mutex_lock(&ctx->lock);
 
             if (result == HR_RESULT_SUCCESS) {
                 result = HR_RESULT_ESCALATED;
@@ -333,7 +333,7 @@ hr_result_t hr_submit_recovery(hr_context_t* ctx, const hr_recovery_request_t* r
         ctx->stats.max_recovery_time_ms = response->duration_ms;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     // Invoke completion callback on successful recovery (immune IL-10 release)
     if ((result == HR_RESULT_SUCCESS || result == HR_RESULT_PARTIAL) && ctx->completion_callback) {
@@ -355,10 +355,10 @@ bool hr_escalate(hr_context_t* ctx, uint32_t request_id, const char* reason) {
 bool hr_register_handler(hr_context_t* ctx, hr_level_t level, hr_recovery_handler_t handler, void* user_data) {
     if (!ctx || !handler || level >= HR_MAX_LEVELS) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->handlers[level] = handler;
     ctx->handler_data[level] = user_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_DEBUG("HR", "Registered handler for level %s", hr_level_to_string(level));
     return true;
@@ -378,10 +378,10 @@ bool hr_register_completion_callback(
 ) {
     if (!ctx || !callback) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->completion_callback = callback;
     ctx->completion_user_data = user_data;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_DEBUG("HR", "Registered recovery completion callback");
     return true;
@@ -395,9 +395,9 @@ bool hr_add_policy(hr_context_t* ctx, const hr_escalation_policy_t* policy) {
     if (!ctx || !policy) return false;
     if (ctx->policy_count >= HR_MAX_POLICIES) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->policies[ctx->policy_count++] = *policy;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_DEBUG("HR", "Added policy: %s", policy->name);
     return true;
@@ -406,7 +406,7 @@ bool hr_add_policy(hr_context_t* ctx, const hr_escalation_policy_t* policy) {
 bool hr_remove_policy(hr_context_t* ctx, const char* policy_name) {
     if (!ctx || !policy_name) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     for (uint32_t i = 0; i < ctx->policy_count; i++) {
         if (strcmp(ctx->policies[i].name, policy_name) == 0) {
@@ -414,29 +414,29 @@ bool hr_remove_policy(hr_context_t* ctx, const char* policy_name) {
                 ctx->policies[j] = ctx->policies[j + 1];
             }
             ctx->policy_count--;
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
 bool hr_set_policy_enabled(hr_context_t* ctx, const char* policy_name, bool enabled) {
     if (!ctx || !policy_name) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     for (uint32_t i = 0; i < ctx->policy_count; i++) {
         if (strcmp(ctx->policies[i].name, policy_name) == 0) {
             ctx->policies[i].enabled = enabled;
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -448,7 +448,7 @@ bool hr_add_circuit_breaker(hr_context_t* ctx, const hr_circuit_config_t* config
     if (!ctx || !config) return false;
     if (ctx->circuit_count >= HR_MAX_CIRCUITS) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     hr_circuit_breaker_t* circuit = &ctx->circuits[ctx->circuit_count++];
     circuit->config = *config;
@@ -457,7 +457,7 @@ bool hr_add_circuit_breaker(hr_context_t* ctx, const hr_circuit_config_t* config
     circuit->success_count = 0;
     circuit->last_state_change_ms = nimcp_time_get_ms();
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_DEBUG("HR", "Added circuit breaker: %s", config->name);
     return true;
@@ -466,27 +466,27 @@ bool hr_add_circuit_breaker(hr_context_t* ctx, const hr_circuit_config_t* config
 bool hr_get_circuit_breaker(hr_context_t* ctx, const char* name, hr_circuit_breaker_t* breaker) {
     if (!ctx || !name || !breaker) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     hr_circuit_breaker_t* circuit = hr_find_circuit(ctx, name);
     if (circuit) {
         *breaker = *circuit;
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return true;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
 hr_circuit_state_t hr_record_circuit_result(hr_context_t* ctx, const char* name, bool success) {
     if (!ctx || !name) return HR_CIRCUIT_CLOSED;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     hr_circuit_breaker_t* circuit = hr_find_circuit(ctx, name);
     if (!circuit) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return HR_CIRCUIT_CLOSED;
     }
 
@@ -524,26 +524,26 @@ hr_circuit_state_t hr_record_circuit_result(hr_context_t* ctx, const char* name,
     }
 
     hr_circuit_state_t state = circuit->state;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return state;
 }
 
 bool hr_circuit_allow(hr_context_t* ctx, const char* name) {
     if (!ctx || !name) return true;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     hr_circuit_breaker_t* circuit = hr_find_circuit(ctx, name);
     bool allowed = hr_circuit_check(circuit);
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return allowed;
 }
 
 bool hr_reset_circuit(hr_context_t* ctx, const char* name) {
     if (!ctx || !name) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     hr_circuit_breaker_t* circuit = hr_find_circuit(ctx, name);
     if (circuit) {
@@ -551,11 +551,11 @@ bool hr_reset_circuit(hr_context_t* ctx, const char* name) {
         circuit->failure_count = 0;
         circuit->success_count = 0;
         circuit->last_state_change_ms = nimcp_time_get_ms();
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return true;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -569,7 +569,7 @@ bool hr_detect_cascade(hr_context_t* ctx, uint32_t failed_node, hr_cascade_info_
     memset(cascade_info, 0, sizeof(hr_cascade_info_t));
 
     // Simple cascade detection: check if multiple children affected
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     uint32_t affected = 0;
     for (uint32_t i = 0; i < ctx->self.child_count; i++) {
@@ -585,7 +585,7 @@ bool hr_detect_cascade(hr_context_t* ctx, uint32_t failed_node, hr_cascade_info_
     cascade_info->estimated_impact = affected * 2; // Rough estimate
     cascade_info->cascade_detected = (cascade_info->cascade_probability > 0.3f);
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return cascade_info->cascade_detected;
 }
@@ -596,9 +596,9 @@ bool hr_prevent_cascade(hr_context_t* ctx, const hr_cascade_info_t* cascade_info
     LOG_INFO("HR", "Applying cascade prevention: %s",
                   hr_cascade_strategy_to_string(cascade_info->strategy));
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->stats.cascades_prevented++;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     bbb_audit_log(BBB_AUDIT_WARNING, "HR", "CASCADE",
                  "Prevented cascade affecting %u nodes", cascade_info->affected_count);
@@ -618,9 +618,9 @@ uint32_t hr_get_cascade_prevention_count(hr_context_t* ctx) {
 bool hr_get_stats(hr_context_t* ctx, hr_stats_t* stats) {
     if (!ctx || !stats) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     *stats = ctx->stats;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -628,20 +628,20 @@ bool hr_get_stats(hr_context_t* ctx, hr_stats_t* stats) {
 void hr_reset_stats(hr_context_t* ctx) {
     if (!ctx) return;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     memset(&ctx->stats, 0, sizeof(hr_stats_t));
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 }
 
 uint64_t hr_get_latency_by_level(hr_context_t* ctx, hr_level_t level) {
     if (!ctx || level >= HR_MAX_LEVELS) return 0;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     uint64_t count = ctx->stats.requests_per_level[level];
     uint64_t latency = (count > 0) ? ctx->stats.avg_recovery_time_ms : 0;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return latency;
 }
 

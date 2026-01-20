@@ -225,6 +225,18 @@ gtest_discover_tests(unit_plasticity_stdp_utils_bridge
     PROPERTIES LABELS "unit;plasticity;stdp;utils;bridge"
     TIMEOUT 60)
 
+# STDP State Ops Tests (Phase 8: System-Wide Health Integration)
+add_executable(unit_plasticity_stdp_state_ops
+    stdp/test_stdp_state_ops.cpp
+)
+target_link_libraries(unit_plasticity_stdp_state_ops
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_plasticity_stdp_state_ops PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_stdp_state_ops
+    PROPERTIES LABELS "unit;plasticity;stdp;state;fault_tolerance"
+    TIMEOUT 120)
+
 # BCM Sleep Bridge Tests
 add_executable(unit_plasticity_bcm_sleep_bridge
     bcm/sleep/test_bcm_sleep_bridge.cpp

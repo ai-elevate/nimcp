@@ -24,7 +24,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_bbb_helpers.h"
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
@@ -102,8 +102,8 @@ struct ce_context {
     bool dry_run;
 
     /* Threading */
-    pthread_mutex_t mutex;
-    pthread_t experiment_thread;
+    nimcp_mutex_t mutex;
+    nimcp_thread_t experiment_thread;
     bool thread_running;
 
     /* Security integration */
@@ -325,7 +325,7 @@ ce_context_t* ce_create(const ce_config_t* config) {
     ctx->next_game_day_id = 1;
     ctx->dry_run = config->enable_dry_run;
 
-    if (pthread_mutex_init(&ctx->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&ctx->mutex, NULL) != 0) {
         LOG_ERROR("CE", "Failed to initialize mutex");
         nimcp_free(ctx);
         return NULL;
@@ -347,14 +347,14 @@ void ce_destroy(ce_context_t* ctx) {
     if (!ctx) return;
 
     /* Stop any running experiments */
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     for (uint32_t i = 0; i < ctx->experiment_count; i++) {
         if (ctx->experiments[i].state == CE_STATE_RUNNING) {
             ctx->experiments[i].state = CE_STATE_ABORTED;
         }
     }
     ctx->thread_running = false;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     /* Rollback active faults */
     for (uint32_t i = 0; i < ctx->active_fault_count; i++) {
@@ -366,7 +366,7 @@ void ce_destroy(ce_context_t* ctx) {
     bbb_audit_log(BBB_AUDIT_INFO, "CE", "DESTROY",
                   "Destroying chaos engineering context");
 
-    pthread_mutex_destroy(&ctx->mutex);
+    nimcp_mutex_destroy(&ctx->mutex);
     nimcp_free(ctx);
 
     LOG_INFO("CE", "Destroyed chaos engineering context");
@@ -379,11 +379,11 @@ void ce_destroy(ce_context_t* ctx) {
 uint32_t ce_create_experiment(ce_context_t* ctx, const char* name, const char* description) {
     if (!ctx || !name) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->experiment_count >= CE_MAX_EXPERIMENTS) {
         LOG_WARNING("CE", "Maximum experiments reached");
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return 0;
     }
 
@@ -403,7 +403,7 @@ uint32_t ce_create_experiment(ce_context_t* ctx, const char* name, const char* d
 
     uint32_t id = exp->experiment_id;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     ce_audit_log("CREATE_EXPERIMENT", id, name);
     LOG_DEBUG("CE", "Created experiment: %s (id=%u)", name, id);
@@ -414,17 +414,17 @@ uint32_t ce_create_experiment(ce_context_t* ctx, const char* name, const char* d
 bool ce_set_fault(ce_context_t* ctx, uint32_t experiment_id, const ce_fault_spec_t* fault) {
     if (!ctx || !fault || experiment_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     exp->fault = *fault;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -432,17 +432,17 @@ bool ce_set_fault(ce_context_t* ctx, uint32_t experiment_id, const ce_fault_spec
 bool ce_set_target(ce_context_t* ctx, uint32_t experiment_id, const ce_target_spec_t* target) {
     if (!ctx || !target || experiment_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     exp->target = *target;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -450,17 +450,17 @@ bool ce_set_target(ce_context_t* ctx, uint32_t experiment_id, const ce_target_sp
 bool ce_add_hypothesis(ce_context_t* ctx, uint32_t experiment_id, const ce_hypothesis_t* hypothesis) {
     if (!ctx || !hypothesis || experiment_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp || exp->hypothesis_count >= CE_MAX_HYPOTHESIS) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     exp->hypotheses[exp->hypothesis_count++] = *hypothesis;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -468,17 +468,17 @@ bool ce_add_hypothesis(ce_context_t* ctx, uint32_t experiment_id, const ce_hypot
 bool ce_add_guardrail(ce_context_t* ctx, uint32_t experiment_id, const ce_guardrail_config_t* guardrail) {
     if (!ctx || !guardrail || experiment_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp || exp->guardrail_count >= 8) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     exp->guardrails[exp->guardrail_count++] = *guardrail;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -486,11 +486,11 @@ bool ce_add_guardrail(ce_context_t* ctx, uint32_t experiment_id, const ce_guardr
 bool ce_add_metric(ce_context_t* ctx, uint32_t experiment_id, const char* metric_name) {
     if (!ctx || !metric_name || experiment_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp || exp->metric_count >= CE_MAX_METRICS) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
@@ -498,7 +498,7 @@ bool ce_add_metric(ce_context_t* ctx, uint32_t experiment_id, const char* metric
             sizeof(exp->metrics[exp->metric_count].name) - 1);
     exp->metric_count++;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -510,24 +510,24 @@ bool ce_add_metric(ce_context_t* ctx, uint32_t experiment_id, const char* metric
 bool ce_start_experiment(ce_context_t* ctx, uint32_t experiment_id) {
     if (!ctx || experiment_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     if (exp->state != CE_STATE_CREATED && exp->state != CE_STATE_READY) {
         LOG_WARNING("CE", "Experiment %u not in startable state", experiment_id);
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     /* Check safety */
     if (!ce_check_guardrails(ctx, exp)) {
         exp->state = CE_STATE_FAILED;
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         ce_audit_log("GUARDRAIL_BLOCKED", experiment_id, "Safety guardrails violated");
         return false;
     }
@@ -536,13 +536,13 @@ bool ce_start_experiment(ce_context_t* ctx, uint32_t experiment_id) {
     exp->state = CE_STATE_RUNNING;
     exp->started_at_ms = ce_get_time_ms();
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     /* Inject fault */
     bool injected = ce_execute_inject(ctx, &exp->fault, &exp->target);
 
     if (injected) {
-        pthread_mutex_lock(&ctx->mutex);
+        nimcp_mutex_lock(&ctx->mutex);
 
         /* Track active fault */
         if (ctx->active_fault_count < 16) {
@@ -554,16 +554,16 @@ bool ce_start_experiment(ce_context_t* ctx, uint32_t experiment_id) {
             af->active = true;
         }
 
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
 
         ce_audit_log("START_EXPERIMENT", experiment_id, exp->name);
         ce_notify_event(ctx, experiment_id, CE_STATE_RUNNING, "Experiment started");
 
         LOG_INFO("CE", "Started experiment: %s (id=%u)", exp->name, experiment_id);
     } else {
-        pthread_mutex_lock(&ctx->mutex);
+        nimcp_mutex_lock(&ctx->mutex);
         exp->state = CE_STATE_FAILED;
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
 
         ce_audit_log("INJECTION_FAILED", experiment_id, "Fault injection failed");
     }
@@ -574,17 +574,17 @@ bool ce_start_experiment(ce_context_t* ctx, uint32_t experiment_id) {
 bool ce_pause_experiment(ce_context_t* ctx, uint32_t experiment_id) {
     if (!ctx || experiment_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp || exp->state != CE_STATE_RUNNING) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     exp->state = CE_STATE_PAUSED;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     /* Rollback fault temporarily */
     ce_execute_rollback(ctx, &exp->fault, &exp->target);
@@ -598,17 +598,17 @@ bool ce_pause_experiment(ce_context_t* ctx, uint32_t experiment_id) {
 bool ce_resume_experiment(ce_context_t* ctx, uint32_t experiment_id) {
     if (!ctx || experiment_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp || exp->state != CE_STATE_PAUSED) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     exp->state = CE_STATE_RUNNING;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     /* Re-inject fault */
     ce_execute_inject(ctx, &exp->fault, &exp->target);
@@ -622,23 +622,23 @@ bool ce_resume_experiment(ce_context_t* ctx, uint32_t experiment_id) {
 bool ce_abort_experiment(ce_context_t* ctx, uint32_t experiment_id, const char* reason) {
     if (!ctx || experiment_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     if (exp->state != CE_STATE_RUNNING && exp->state != CE_STATE_PAUSED) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     exp->state = CE_STATE_ABORTED;
     exp->ended_at_ms = ce_get_time_ms();
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     /* Rollback */
     if (exp->auto_rollback) {
@@ -646,13 +646,13 @@ bool ce_abort_experiment(ce_context_t* ctx, uint32_t experiment_id, const char* 
     }
 
     /* Clear from active faults */
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     for (uint32_t i = 0; i < ctx->active_fault_count; i++) {
         if (ctx->active_faults[i].active) {
             ctx->active_faults[i].active = false;
         }
     }
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     ce_audit_log("ABORT_EXPERIMENT", experiment_id, reason ? reason : "Manual abort");
     ce_notify_event(ctx, experiment_id, CE_STATE_ABORTED, reason ? reason : "Experiment aborted");
@@ -665,12 +665,12 @@ bool ce_abort_experiment(ce_context_t* ctx, uint32_t experiment_id, const char* 
 ce_state_t ce_get_experiment_state(ce_context_t* ctx, uint32_t experiment_id) {
     if (!ctx || experiment_id == 0) return CE_STATE_FAILED;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     ce_state_t state = exp ? exp->state : CE_STATE_FAILED;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return state;
 }
@@ -678,17 +678,17 @@ ce_state_t ce_get_experiment_state(ce_context_t* ctx, uint32_t experiment_id) {
 bool ce_get_experiment(ce_context_t* ctx, uint32_t experiment_id, ce_experiment_t* experiment) {
     if (!ctx || !experiment || experiment_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     *experiment = *exp;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -696,16 +696,16 @@ bool ce_get_experiment(ce_context_t* ctx, uint32_t experiment_id, ce_experiment_
 bool ce_get_result(ce_context_t* ctx, uint32_t experiment_id, ce_result_t* result) {
     if (!ctx || !result || experiment_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     if (exp->state != CE_STATE_COMPLETED && exp->state != CE_STATE_ABORTED) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
@@ -732,7 +732,7 @@ bool ce_get_result(ce_context_t* ctx, uint32_t experiment_id, ce_result_t* resul
              exp->name, result->hypotheses_confirmed, result->hypotheses_refuted,
              (unsigned long)result->duration_ms);
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -889,10 +889,10 @@ bool ce_register_inject_callback(ce_context_t* ctx, ce_fault_type_t fault_type,
                                    ce_inject_callback_t callback, void* user_data) {
     if (!ctx || !callback) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->callback_count >= 32) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
@@ -903,7 +903,7 @@ bool ce_register_inject_callback(ce_context_t* ctx, ce_fault_type_t fault_type,
     entry->user_data = user_data;
     entry->active = true;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -912,20 +912,20 @@ bool ce_register_rollback_callback(ce_context_t* ctx, ce_fault_type_t fault_type
                                      ce_rollback_callback_t callback, void* user_data) {
     if (!ctx || !callback) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     /* Find existing entry for this fault type */
     for (uint32_t i = 0; i < ctx->callback_count; i++) {
         if (ctx->callbacks[i].fault_type == fault_type) {
             ctx->callbacks[i].rollback_callback = callback;
-            pthread_mutex_unlock(&ctx->mutex);
+            nimcp_mutex_unlock(&ctx->mutex);
             return true;
         }
     }
 
     /* Create new entry */
     if (ctx->callback_count >= 32) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
@@ -936,7 +936,7 @@ bool ce_register_rollback_callback(ce_context_t* ctx, ce_fault_type_t fault_type
     entry->user_data = user_data;
     entry->active = true;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -944,10 +944,10 @@ bool ce_register_rollback_callback(ce_context_t* ctx, ce_fault_type_t fault_type
 bool ce_register_event_callback(ce_context_t* ctx, ce_event_callback_t callback, void* user_data) {
     if (!ctx || !callback) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->event_callback_count >= 8) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
@@ -955,7 +955,7 @@ bool ce_register_event_callback(ce_context_t* ctx, ce_event_callback_t callback,
     ctx->event_user_data[ctx->event_callback_count] = user_data;
     ctx->event_callback_count++;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -967,17 +967,17 @@ bool ce_register_event_callback(ce_context_t* ctx, ce_event_callback_t callback,
 bool ce_is_safe_to_run(ce_context_t* ctx, uint32_t experiment_id) {
     if (!ctx || experiment_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     bool safe = ce_check_guardrails(ctx, exp);
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return safe;
 }
@@ -986,12 +986,12 @@ uint32_t ce_validate_experiment(ce_context_t* ctx, uint32_t experiment_id,
                                   char errors[][256], uint32_t max_errors) {
     if (!ctx || !errors || max_errors == 0 || experiment_id == 0) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
         snprintf(errors[0], 256, "Experiment %u not found", experiment_id);
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return 1;
     }
 
@@ -1024,7 +1024,7 @@ uint32_t ce_validate_experiment(ce_context_t* ctx, uint32_t experiment_id,
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return error_count;
 }
@@ -1032,9 +1032,9 @@ uint32_t ce_validate_experiment(ce_context_t* ctx, uint32_t experiment_id,
 void ce_set_dry_run(ce_context_t* ctx, bool enabled) {
     if (!ctx) return;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     ctx->dry_run = enabled;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     LOG_INFO("CE", "Dry run mode %s", enabled ? "enabled" : "disabled");
 }
@@ -1042,9 +1042,9 @@ void ce_set_dry_run(ce_context_t* ctx, bool enabled) {
 bool ce_is_dry_run(ce_context_t* ctx) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     bool dry = ctx->dry_run;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return dry;
 }
@@ -1057,10 +1057,10 @@ uint32_t ce_schedule_game_day(ce_context_t* ctx, const uint32_t* experiment_ids,
                                 uint32_t count, uint64_t start_time_ms) {
     if (!ctx || !experiment_ids || count == 0) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->game_day_count >= 4) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return 0;
     }
 
@@ -1075,7 +1075,7 @@ uint32_t ce_schedule_game_day(ce_context_t* ctx, const uint32_t* experiment_ids,
 
     uint32_t id = gd->game_day_id;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     ce_audit_log("SCHEDULE_GAME_DAY", id, "Scheduled");
     LOG_INFO("CE", "Scheduled game day %u with %u experiments", id, count);
@@ -1086,7 +1086,7 @@ uint32_t ce_schedule_game_day(ce_context_t* ctx, const uint32_t* experiment_ids,
 bool ce_start_game_day(ce_context_t* ctx, uint32_t game_day_id) {
     if (!ctx || game_day_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_game_day_t* gd = NULL;
     for (uint32_t i = 0; i < ctx->game_day_count; i++) {
@@ -1097,14 +1097,14 @@ bool ce_start_game_day(ce_context_t* ctx, uint32_t game_day_id) {
     }
 
     if (!gd || gd->running) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     gd->running = true;
     gd->started_at_ms = ce_get_time_ms();
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     /* Start all experiments */
     for (uint32_t i = 0; i < gd->experiment_count; i++) {
@@ -1120,7 +1120,7 @@ bool ce_start_game_day(ce_context_t* ctx, uint32_t game_day_id) {
 bool ce_abort_game_day(ce_context_t* ctx, uint32_t game_day_id) {
     if (!ctx || game_day_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_game_day_t* gd = NULL;
     for (uint32_t i = 0; i < ctx->game_day_count; i++) {
@@ -1131,21 +1131,21 @@ bool ce_abort_game_day(ce_context_t* ctx, uint32_t game_day_id) {
     }
 
     if (!gd || !gd->running) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     /* Abort all experiments */
     for (uint32_t i = 0; i < gd->experiment_count; i++) {
         ce_abort_experiment(ctx, gd->experiment_ids[i], "Game day aborted");
     }
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     gd->running = false;
     gd->completed = false;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     ce_audit_log("ABORT_GAME_DAY", game_day_id, "Aborted");
     LOG_WARNING("CE", "Aborted game day %u", game_day_id);
@@ -1160,11 +1160,11 @@ bool ce_abort_game_day(ce_context_t* ctx, uint32_t game_day_id) {
 size_t ce_generate_report(ce_context_t* ctx, uint32_t experiment_id, char* buffer, size_t buffer_size) {
     if (!ctx || !buffer || buffer_size == 0 || experiment_id == 0) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return 0;
     }
 
@@ -1195,7 +1195,7 @@ size_t ce_generate_report(ce_context_t* ctx, uint32_t experiment_id, char* buffe
             ce_hypothesis_result_to_string(exp->hypotheses[i].result));
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return written;
 }
@@ -1203,12 +1203,12 @@ size_t ce_generate_report(ce_context_t* ctx, uint32_t experiment_id, char* buffe
 uint32_t ce_list_experiments(ce_context_t* ctx, ce_experiment_t* experiments, uint32_t max_experiments) {
     if (!ctx || !experiments || max_experiments == 0) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     uint32_t count = ctx->experiment_count < max_experiments ? ctx->experiment_count : max_experiments;
     memcpy(experiments, ctx->experiments, count * sizeof(ce_experiment_t));
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return count;
 }

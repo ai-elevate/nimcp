@@ -97,3 +97,7 @@ set_tests_properties(e2e_fault_tolerance_test_exception_flow_e2e PROPERTIES TIME
 # Heartbeat Module E2E Tests (Phase 8: Heartbeat for Long Operations)
 add_e2e_fault_tolerance_test(test_heartbeat_module_e2e)
 set_tests_properties(e2e_fault_tolerance_test_heartbeat_module_e2e PROPERTIES TIMEOUT 300)
+
+# State Checkpoint Recovery E2E Tests (Phase 8: System-Wide Health Integration)
+add_e2e_fault_tolerance_test(test_state_checkpoint_recovery_e2e)
+set_tests_properties(e2e_fault_tolerance_test_state_checkpoint_recovery_e2e PROPERTIES TIMEOUT 300)

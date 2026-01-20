@@ -24,7 +24,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_bbb_helpers.h"
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -102,8 +102,8 @@ struct pa_context {
     pa_stats_t stats;
 
     /* Threading */
-    pthread_mutex_t mutex;
-    pthread_t analysis_thread;
+    nimcp_mutex_t mutex;
+    nimcp_thread_t analysis_thread;
     bool running;
     bool thread_running;
 
@@ -379,7 +379,7 @@ pa_context_t* pa_create(const pa_config_t* config) {
     ctx->config = *config;
     ctx->alert_store.next_alert_id = 1;
 
-    if (pthread_mutex_init(&ctx->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&ctx->mutex, NULL) != 0) {
         LOG_ERROR("PA", "Failed to initialize mutex");
         nimcp_free(ctx);
         return NULL;
@@ -416,7 +416,7 @@ void pa_destroy(pa_context_t* ctx) {
     bbb_audit_log(BBB_AUDIT_INFO, "PA", "DESTROY",
                   "Destroying predictive analysis context");
 
-    pthread_mutex_destroy(&ctx->mutex);
+    nimcp_mutex_destroy(&ctx->mutex);
     nimcp_free(ctx);
 
     LOG_INFO("PA", "Destroyed predictive analysis context");
@@ -425,9 +425,9 @@ void pa_destroy(pa_context_t* ctx) {
 bool pa_start(pa_context_t* ctx) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     ctx->running = true;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     bbb_audit_log(BBB_AUDIT_INFO, "PA", "START", "Started predictive analysis");
     LOG_INFO("PA", "Started predictive analysis");
@@ -438,10 +438,10 @@ bool pa_start(pa_context_t* ctx) {
 bool pa_stop(pa_context_t* ctx) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     ctx->running = false;
     ctx->thread_running = false;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     bbb_audit_log(BBB_AUDIT_INFO, "PA", "STOP", "Stopped predictive analysis");
     LOG_INFO("PA", "Stopped predictive analysis");
@@ -461,7 +461,7 @@ bool pa_add_sample_timed(pa_context_t* ctx, pa_series_type_t series, double valu
     if (!ctx) return false;
     if (series < 0 || series >= PA_MAX_SERIES) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_series_data_t* s = &ctx->series[series];
 
@@ -490,7 +490,7 @@ bool pa_add_sample_timed(pa_context_t* ctx, pa_series_type_t series, double valu
 
     ctx->stats.total_samples++;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -513,9 +513,9 @@ bool pa_get_series_meta(pa_context_t* ctx, pa_series_type_t series, pa_series_me
     if (!ctx || !meta) return false;
     if (series < 0 || series >= PA_MAX_SERIES) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     *meta = ctx->series[series].meta;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -525,7 +525,7 @@ uint32_t pa_get_samples(pa_context_t* ctx, pa_series_type_t series,
     if (!ctx || !samples || count == 0) return 0;
     if (series < 0 || series >= PA_MAX_SERIES) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_series_data_t* s = &ctx->series[series];
     uint32_t to_copy = s->count < count ? s->count : count;
@@ -535,7 +535,7 @@ uint32_t pa_get_samples(pa_context_t* ctx, pa_series_type_t series,
         samples[i] = s->samples[(start + i) % PA_MAX_SAMPLES];
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return to_copy;
 }
@@ -549,7 +549,7 @@ uint32_t pa_detect_anomalies(pa_context_t* ctx, pa_series_type_t series,
     if (!ctx || !anomalies || max_anomalies == 0) return 0;
     if (series < 0 || series >= PA_MAX_SERIES) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_series_data_t* s = &ctx->series[series];
     uint32_t anomaly_count = 0;
@@ -604,7 +604,7 @@ uint32_t pa_detect_anomalies(pa_context_t* ctx, pa_series_type_t series,
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return anomaly_count;
 }
@@ -625,13 +625,13 @@ bool pa_is_anomalous(pa_context_t* ctx, pa_series_type_t series, double value) {
     if (!ctx) return false;
     if (series < 0 || series >= PA_MAX_SERIES) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_series_data_t* s = &ctx->series[series];
     double score;
     bool result = pa_detect_zscore(s, value, ctx->config.anomaly_threshold, &score);
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return result;
 }
@@ -640,13 +640,13 @@ double pa_get_anomaly_score(pa_context_t* ctx, pa_series_type_t series, double v
     if (!ctx) return 0.0;
     if (series < 0 || series >= PA_MAX_SERIES) return 0.0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_series_data_t* s = &ctx->series[series];
     double score = 0.0;
     pa_detect_zscore(s, value, ctx->config.anomaly_threshold, &score);
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return score;
 }
@@ -661,14 +661,14 @@ bool pa_calculate_correlation(pa_context_t* ctx, pa_series_type_t series_a,
     if (series_a < 0 || series_a >= PA_MAX_SERIES) return false;
     if (series_b < 0 || series_b >= PA_MAX_SERIES) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_series_data_t* a = &ctx->series[series_a];
     pa_series_data_t* b = &ctx->series[series_b];
 
     uint32_t n = a->count < b->count ? a->count : b->count;
     if (n < 10) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
@@ -711,7 +711,7 @@ bool pa_calculate_correlation(pa_context_t* ctx, pa_series_type_t series_a,
     correlation->is_causal = false;
     correlation->confidence = (float)fabs(correlation->correlation);
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -739,10 +739,10 @@ uint32_t pa_find_correlations(pa_context_t* ctx, pa_correlation_t* correlations,
 bool pa_build_failure_graph(pa_context_t* ctx) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     /* Note: Do NOT clear edge_count here - edges are added by pa_record_failure_sequence */
     /* This function is called to finalize/validate the graph structure */
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     /* Graph is built from recorded failure sequences */
     return true;
@@ -751,13 +751,13 @@ bool pa_build_failure_graph(pa_context_t* ctx) {
 uint32_t pa_get_failure_edges(pa_context_t* ctx, pa_failure_edge_t* edges, uint32_t max_edges) {
     if (!ctx || !edges || max_edges == 0) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     uint32_t count = ctx->failure_graph.edge_count < max_edges ?
                      ctx->failure_graph.edge_count : max_edges;
     memcpy(edges, ctx->failure_graph.edges, count * sizeof(pa_failure_edge_t));
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return count;
 }
@@ -766,7 +766,7 @@ bool pa_record_failure_sequence(pa_context_t* ctx, const uint32_t* failure_types
                                   uint32_t count, const uint32_t* time_deltas_ms) {
     if (!ctx || !failure_types || count < 2) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     /* Add edges to graph */
     for (uint32_t i = 0; i < count - 1; i++) {
@@ -805,7 +805,7 @@ bool pa_record_failure_sequence(pa_context_t* ctx, const uint32_t* failure_types
                            (float)(edge->occurrence_count + 10);  /* Smooth with prior */
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -826,12 +826,12 @@ bool pa_forecast_with_model(pa_context_t* ctx, pa_series_type_t series,
     if (series < 0 || series >= PA_MAX_SERIES) return false;
     if (horizon > PA_FORECAST_HORIZON) horizon = PA_FORECAST_HORIZON;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_series_data_t* s = &ctx->series[series];
 
     if (s->count < 10) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
@@ -875,7 +875,7 @@ bool pa_forecast_with_model(pa_context_t* ctx, pa_series_type_t series,
     forecast->confidence = s->meta.trend == PA_TREND_STABLE ? 0.8f :
                           s->meta.trend == PA_TREND_VOLATILE ? 0.4f : 0.6f;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -885,12 +885,12 @@ bool pa_time_to_threshold(pa_context_t* ctx, pa_series_type_t series,
     if (!ctx || !time_ms) return false;
     if (series < 0 || series >= PA_MAX_SERIES) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_series_data_t* s = &ctx->series[series];
 
     if (s->count < 10) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
@@ -901,28 +901,28 @@ bool pa_time_to_threshold(pa_context_t* ctx, pa_series_type_t series,
     if ((s->slope > 0 && current >= threshold) ||
         (s->slope < 0 && current <= threshold)) {
         *time_ms = 0;
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return true;
     }
 
     /* Calculate time to threshold */
     if (fabs(s->slope) < 1e-10) {
         /* No trend, won't reach threshold */
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     double delta = threshold - current;
     if ((s->slope > 0 && delta < 0) || (s->slope < 0 && delta > 0)) {
         /* Moving away from threshold */
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     double steps = delta / s->slope;
     *time_ms = (uint64_t)(steps * ctx->config.sample_rate_ms);
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -931,12 +931,12 @@ bool pa_detect_seasonality(pa_context_t* ctx, pa_series_type_t series, pa_season
     if (!ctx || !seasonality) return false;
     if (series < 0 || series >= PA_MAX_SERIES) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_series_data_t* s = &ctx->series[series];
 
     if (s->count < ctx->config.seasonality_period * 2) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
@@ -945,7 +945,7 @@ bool pa_detect_seasonality(pa_context_t* ctx, pa_series_type_t series, pa_season
     seasonality->strength = 0.0f;  /* Would require more complex analysis */
     seasonality->pattern = NULL;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -954,7 +954,7 @@ pa_trend_t pa_get_trend(pa_context_t* ctx, pa_series_type_t series) {
     if (!ctx) return PA_TREND_STABLE;
     if (series < 0 || series >= PA_MAX_SERIES) return PA_TREND_STABLE;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     /* Ensure trend is calculated for current data */
     pa_series_data_t* s = &ctx->series[series];
@@ -963,7 +963,7 @@ pa_trend_t pa_get_trend(pa_context_t* ctx, pa_series_type_t series) {
     }
 
     pa_trend_t trend = s->meta.trend;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return trend;
 }
@@ -975,7 +975,7 @@ pa_trend_t pa_get_trend(pa_context_t* ctx, pa_series_type_t series) {
 uint32_t pa_predict_failures(pa_context_t* ctx, pa_failure_prediction_t* predictions, uint32_t max_predictions) {
     if (!ctx || !predictions || max_predictions == 0) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     uint32_t pred_count = 0;
 
@@ -1042,7 +1042,7 @@ uint32_t pa_predict_failures(pa_context_t* ctx, pa_failure_prediction_t* predict
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return pred_count;
 }
@@ -1086,7 +1086,7 @@ bool pa_predict_failure_type(pa_context_t* ctx, uint32_t failure_type, pa_failur
 bool pa_record_actual_failure(pa_context_t* ctx, uint32_t failure_type, uint64_t timestamp_ms) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     /* Check predictions to update accuracy */
     bool was_predicted = false;
@@ -1108,7 +1108,7 @@ bool pa_record_actual_failure(pa_context_t* ctx, uint32_t failure_type, uint64_t
                                          (float)ctx->stats.predictions_made;
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     bbb_audit_log(BBB_AUDIT_ERROR, "PA", "ACTUAL_FAILURE",
                   "Failure occurred: type=%u, was_predicted=%d", failure_type, was_predicted);
@@ -1123,7 +1123,7 @@ bool pa_record_actual_failure(pa_context_t* ctx, uint32_t failure_type, uint64_t
 uint32_t pa_get_alerts(pa_context_t* ctx, pa_alert_t* alerts, uint32_t max_alerts) {
     if (!ctx || !alerts || max_alerts == 0) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_alert_store_t* store = &ctx->alert_store;
     uint32_t count = store->count < max_alerts ? store->count : max_alerts;
@@ -1133,7 +1133,7 @@ uint32_t pa_get_alerts(pa_context_t* ctx, pa_alert_t* alerts, uint32_t max_alert
         alerts[i] = store->alerts[(start + i) % PA_MAX_ALERTS];
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return count;
 }
@@ -1142,7 +1142,7 @@ uint32_t pa_get_alerts_by_severity(pa_context_t* ctx, pa_alert_severity_t severi
                                     pa_alert_t* alerts, uint32_t max_alerts) {
     if (!ctx || !alerts || max_alerts == 0) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_alert_store_t* store = &ctx->alert_store;
     uint32_t count = 0;
@@ -1155,7 +1155,7 @@ uint32_t pa_get_alerts_by_severity(pa_context_t* ctx, pa_alert_severity_t severi
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return count;
 }
@@ -1163,7 +1163,7 @@ uint32_t pa_get_alerts_by_severity(pa_context_t* ctx, pa_alert_severity_t severi
 bool pa_acknowledge_alert(pa_context_t* ctx, uint32_t alert_id) {
     if (!ctx || alert_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_alert_store_t* store = &ctx->alert_store;
     uint32_t start = (store->head + PA_MAX_ALERTS - store->count) % PA_MAX_ALERTS;
@@ -1172,19 +1172,19 @@ bool pa_acknowledge_alert(pa_context_t* ctx, uint32_t alert_id) {
         pa_alert_t* a = &store->alerts[(start + i) % PA_MAX_ALERTS];
         if (a->alert_id == alert_id) {
             a->acknowledged = true;
-            pthread_mutex_unlock(&ctx->mutex);
+            nimcp_mutex_unlock(&ctx->mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
     return false;
 }
 
 bool pa_suppress_alert(pa_context_t* ctx, uint32_t alert_id, uint64_t duration_ms) {
     if (!ctx || alert_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_alert_store_t* store = &ctx->alert_store;
     uint32_t start = (store->head + PA_MAX_ALERTS - store->count) % PA_MAX_ALERTS;
@@ -1194,12 +1194,12 @@ bool pa_suppress_alert(pa_context_t* ctx, uint32_t alert_id, uint64_t duration_m
         if (a->alert_id == alert_id) {
             a->suppressed = true;
             a->expires_at_ms = pa_get_time_ms() + duration_ms;
-            pthread_mutex_unlock(&ctx->mutex);
+            nimcp_mutex_unlock(&ctx->mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
     return false;
 }
 
@@ -1209,7 +1209,7 @@ uint32_t pa_clear_expired_alerts(pa_context_t* ctx) {
     uint64_t now = pa_get_time_ms();
     uint32_t cleared = 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     pa_alert_store_t* store = &ctx->alert_store;
 
@@ -1223,7 +1223,7 @@ uint32_t pa_clear_expired_alerts(pa_context_t* ctx) {
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return cleared;
 }
@@ -1235,7 +1235,7 @@ uint32_t pa_clear_expired_alerts(pa_context_t* ctx) {
 bool pa_get_stats(pa_context_t* ctx, pa_stats_t* stats) {
     if (!ctx || !stats) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     *stats = ctx->stats;
 
     /* Calculate derived metrics */
@@ -1256,7 +1256,7 @@ bool pa_get_stats(pa_context_t* ctx, pa_stats_t* stats) {
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -1264,17 +1264,17 @@ bool pa_get_stats(pa_context_t* ctx, pa_stats_t* stats) {
 void pa_reset_stats(pa_context_t* ctx) {
     if (!ctx) return;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     memset(&ctx->stats, 0, sizeof(pa_stats_t));
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 }
 
 float pa_get_accuracy(pa_context_t* ctx) {
     if (!ctx) return 0.0f;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     float accuracy = ctx->stats.prediction_accuracy;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return accuracy;
 }

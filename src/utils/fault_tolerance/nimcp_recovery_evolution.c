@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 
 //=============================================================================
 // Internal Structures
@@ -33,7 +33,7 @@ struct re_context {
     float epsilon;
     uint32_t next_strategy_id;
     re_stats_t stats;
-    pthread_mutex_t lock;
+    nimcp_mutex_t lock;
     bool initialized;
 };
 
@@ -173,7 +173,7 @@ re_context_t* re_create(const re_config_t* config) {
     ctx->epsilon = config->epsilon;
     ctx->next_strategy_id = 1;
 
-    if (pthread_mutex_init(&ctx->lock, NULL) != 0) {
+    if (nimcp_mutex_init(&ctx->lock, NULL) != 0) {
         LOG_ERROR("RE", "Failed to initialize mutex");
         nimcp_free(ctx);
         return NULL;
@@ -191,7 +191,7 @@ re_context_t* re_create(const re_config_t* config) {
 
 void re_destroy(re_context_t* ctx) {
     if (!ctx) return;
-    pthread_mutex_destroy(&ctx->lock);
+    nimcp_mutex_destroy(&ctx->lock);
     nimcp_free(ctx);
 }
 
@@ -202,7 +202,7 @@ void re_destroy(re_context_t* ctx) {
 bool re_init_population(re_context_t* ctx) {
     if (!ctx || !ctx->initialized) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Create random initial population
     for (uint32_t i = 0; i < ctx->config.population_size && i < RE_MAX_POPULATION; i++) {
@@ -233,7 +233,7 @@ bool re_init_population(re_context_t* ctx) {
     ctx->population_size = ctx->config.population_size;
     ctx->generation = 0;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_INFO("RE", "Initialized population with %u strategies", ctx->population_size);
     return true;
@@ -243,9 +243,9 @@ bool re_add_strategy(re_context_t* ctx, const re_strategy_t* strategy) {
     if (!ctx || !strategy) return false;
     if (ctx->population_size >= RE_MAX_POPULATION) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     ctx->population[ctx->population_size++] = *strategy;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return true;
 }
@@ -253,7 +253,7 @@ bool re_add_strategy(re_context_t* ctx, const re_strategy_t* strategy) {
 float re_evaluate_fitness(re_context_t* ctx, uint32_t strategy_id, const re_outcome_t* outcome) {
     if (!ctx || !outcome) return 0.0f;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     for (uint32_t i = 0; i < ctx->population_size; i++) {
         if (ctx->population[i].id == strategy_id) {
@@ -275,12 +275,12 @@ float re_evaluate_fitness(re_context_t* ctx, uint32_t strategy_id, const re_outc
 
             ctx->stats.total_evaluations++;
 
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             return strategy->fitness;
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return 0.0f;
 }
 
@@ -288,7 +288,7 @@ bool re_select_parents(re_context_t* ctx, re_strategy_t* parent1, re_strategy_t*
     if (!ctx || !parent1 || !parent2) return false;
     if (ctx->population_size < 2) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     switch (ctx->config.selection) {
         case RE_SELECT_TOURNAMENT: {
@@ -344,14 +344,14 @@ bool re_select_parents(re_context_t* ctx, re_strategy_t* parent1, re_strategy_t*
             break;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return true;
 }
 
 bool re_crossover(re_context_t* ctx, const re_strategy_t* parent1, const re_strategy_t* parent2, re_strategy_t* child) {
     if (!ctx || !parent1 || !parent2 || !child) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     child->id = ctx->next_strategy_id++;
     child->generation = ctx->generation + 1;
@@ -415,7 +415,7 @@ bool re_crossover(re_context_t* ctx, const re_strategy_t* parent1, const re_stra
     }
 
     ctx->stats.total_crossovers++;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return true;
 }
 
@@ -424,7 +424,7 @@ bool re_mutate(re_context_t* ctx, re_strategy_t* strategy) {
 
     bool mutated = false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Mutate genes
     for (uint32_t i = 0; i < strategy->gene_count; i++) {
@@ -457,14 +457,14 @@ bool re_mutate(re_context_t* ctx, re_strategy_t* strategy) {
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return mutated;
 }
 
 uint32_t re_evolve_generation(re_context_t* ctx) {
     if (!ctx || ctx->population_size < 2) return 0;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Sort population by fitness (descending)
     for (uint32_t i = 0; i < ctx->population_size - 1; i++) {
@@ -490,20 +490,20 @@ uint32_t re_evolve_generation(re_context_t* ctx) {
         if (re_random_float() < ctx->config.crossover_rate) {
             // Crossover
             re_strategy_t parent1, parent2, child;
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             re_select_parents(ctx, &parent1, &parent2);
             re_crossover(ctx, &parent1, &parent2, &child);
             re_mutate(ctx, &child);
-            pthread_mutex_lock(&ctx->lock);
+            nimcp_mutex_lock(&ctx->lock);
             new_population[new_count++] = child;
         } else {
             // Direct copy with mutation
             uint32_t idx = re_random_uint(ctx->population_size);
             new_population[new_count] = ctx->population[idx];
             new_population[new_count].id = ctx->next_strategy_id++;
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             re_mutate(ctx, &new_population[new_count]);
-            pthread_mutex_lock(&ctx->lock);
+            nimcp_mutex_lock(&ctx->lock);
             new_count++;
         }
     }
@@ -524,7 +524,7 @@ uint32_t re_evolve_generation(re_context_t* ctx) {
     ctx->stats.worst_fitness = ctx->population[ctx->population_size - 1].fitness;
     ctx->stats.best_strategy_id = ctx->population[0].id;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_INFO("RE", "Evolved to generation %u, best fitness: %.2f", ctx->generation, ctx->stats.best_fitness);
     return ctx->generation;
@@ -533,7 +533,7 @@ uint32_t re_evolve_generation(re_context_t* ctx) {
 bool re_get_best_strategy(re_context_t* ctx, re_strategy_t* strategy) {
     if (!ctx || !strategy || ctx->population_size == 0) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Find best by fitness
     uint32_t best = 0;
@@ -544,24 +544,24 @@ bool re_get_best_strategy(re_context_t* ctx, re_strategy_t* strategy) {
     }
 
     *strategy = ctx->population[best];
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return true;
 }
 
 bool re_get_strategy(re_context_t* ctx, uint32_t strategy_id, re_strategy_t* strategy) {
     if (!ctx || !strategy) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     for (uint32_t i = 0; i < ctx->population_size; i++) {
         if (ctx->population[i].id == strategy_id) {
             *strategy = ctx->population[i];
-            pthread_mutex_unlock(&ctx->lock);
+            nimcp_mutex_unlock(&ctx->lock);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return false;
 }
 
@@ -572,20 +572,20 @@ bool re_get_strategy(re_context_t* ctx, uint32_t strategy_id, re_strategy_t* str
 re_action_t re_select_action(re_context_t* ctx, uint32_t state) {
     if (!ctx) return RE_ACTION_RETRY;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Epsilon-greedy policy
     if (re_random_float() < ctx->epsilon) {
         // Explore: random action
         re_action_t action = (re_action_t)re_random_uint(RE_ACTION_COUNT);
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return action;
     }
 
     // Exploit: best action
     re_q_entry_t* entry = re_get_or_create_q_entry(ctx, state);
     if (!entry) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return RE_ACTION_RETRY;
     }
 
@@ -600,18 +600,18 @@ re_action_t re_select_action(re_context_t* ctx, uint32_t state) {
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return best_action;
 }
 
 float re_update_q(re_context_t* ctx, uint32_t state, re_action_t action, float reward, uint32_t next_state, bool terminal) {
     if (!ctx || action >= RE_ACTION_COUNT) return 0.0f;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     re_q_entry_t* entry = re_get_or_create_q_entry(ctx, state);
     if (!entry) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return 0.0f;
     }
 
@@ -632,30 +632,30 @@ float re_update_q(re_context_t* ctx, uint32_t state, re_action_t action, float r
     float td_error = td_target - entry->q_values[action];
     entry->q_values[action] += ctx->config.learning_rate * td_error;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return entry->q_values[action];
 }
 
 float re_get_q_value(re_context_t* ctx, uint32_t state, re_action_t action) {
     if (!ctx || action >= RE_ACTION_COUNT) return 0.0f;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     re_q_entry_t* entry = re_find_q_entry(ctx, state);
     float q = entry ? entry->q_values[action] : 0.0f;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return q;
 }
 
 re_action_t re_get_best_action(re_context_t* ctx, uint32_t state) {
     if (!ctx) return RE_ACTION_RETRY;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     re_q_entry_t* entry = re_find_q_entry(ctx, state);
     if (!entry) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return RE_ACTION_RETRY;
     }
 
@@ -668,14 +668,14 @@ re_action_t re_get_best_action(re_context_t* ctx, uint32_t state) {
         }
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return best;
 }
 
 float re_decay_epsilon(re_context_t* ctx) {
     if (!ctx) return 0.0f;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     ctx->epsilon *= ctx->config.epsilon_decay;
     if (ctx->epsilon < ctx->config.min_epsilon) {
@@ -683,7 +683,7 @@ float re_decay_epsilon(re_context_t* ctx) {
     }
     ctx->stats.current_epsilon = ctx->epsilon;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return ctx->epsilon;
 }
 
@@ -694,7 +694,7 @@ float re_decay_epsilon(re_context_t* ctx) {
 bool re_store_experience(re_context_t* ctx, const re_experience_t* experience) {
     if (!ctx || !experience) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     ctx->history[ctx->history_head] = *experience;
     ctx->history_head = (ctx->history_head + 1) % RE_MAX_HISTORY;
@@ -702,14 +702,14 @@ bool re_store_experience(re_context_t* ctx, const re_experience_t* experience) {
         ctx->history_size++;
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return true;
 }
 
 uint32_t re_sample_batch(re_context_t* ctx, re_experience_t* batch, uint32_t batch_size) {
     if (!ctx || !batch || batch_size == 0) return 0;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     uint32_t actual_size = (batch_size < ctx->history_size) ? batch_size : ctx->history_size;
 
@@ -719,7 +719,7 @@ uint32_t re_sample_batch(re_context_t* ctx, re_experience_t* batch, uint32_t bat
         batch[i] = ctx->history[idx];
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return actual_size;
 }
 
@@ -747,11 +747,11 @@ float re_learn_from_batch(re_context_t* ctx) {
 size_t re_export_knowledge(re_context_t* ctx, void* buffer, size_t buffer_size) {
     if (!ctx || !buffer) return 0;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     size_t required = sizeof(re_q_entry_t) * ctx->q_table_size + sizeof(uint32_t);
     if (buffer_size < required) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return required;
     }
 
@@ -762,33 +762,33 @@ size_t re_export_knowledge(re_context_t* ctx, void* buffer, size_t buffer_size) 
     // Write Q-table
     memcpy(size_ptr + 1, ctx->q_table, sizeof(re_q_entry_t) * ctx->q_table_size);
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return required;
 }
 
 bool re_import_knowledge(re_context_t* ctx, const void* data, size_t data_size) {
     if (!ctx || !data || data_size < sizeof(uint32_t)) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     const uint32_t* size_ptr = (const uint32_t*)data;
     uint32_t count = *size_ptr;
 
     if (count > RE_MAX_STATES) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return false;
     }
 
     size_t expected = sizeof(re_q_entry_t) * count + sizeof(uint32_t);
     if (data_size < expected) {
-        pthread_mutex_unlock(&ctx->lock);
+        nimcp_mutex_unlock(&ctx->lock);
         return false;
     }
 
     ctx->q_table_size = count;
     memcpy(ctx->q_table, size_ptr + 1, sizeof(re_q_entry_t) * count);
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     bbb_audit_log(BBB_AUDIT_INFO, "RE", "IMPORT", "Imported %u Q-table entries", count);
     return true;
@@ -797,7 +797,7 @@ bool re_import_knowledge(re_context_t* ctx, const void* data, size_t data_size) 
 bool re_transfer_from(re_context_t* ctx, const re_context_t* source_ctx, float transfer_rate) {
     if (!ctx || !source_ctx || transfer_rate <= 0.0f || transfer_rate > 1.0f) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     pthread_mutex_lock((pthread_mutex_t*)&source_ctx->lock);
 
     // Transfer Q-values with blend
@@ -812,7 +812,7 @@ bool re_transfer_from(re_context_t* ctx, const re_context_t* source_ctx, float t
     }
 
     pthread_mutex_unlock((pthread_mutex_t*)&source_ctx->lock);
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     LOG_INFO("RE", "Transferred knowledge with rate %.2f", transfer_rate);
     return true;
@@ -842,14 +842,14 @@ float re_recommend_strategy(re_context_t* ctx, uint32_t fault_type, uint32_t fau
 
     // Confidence based on experience
     float confidence = 0.5f;
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     re_q_entry_t* entry = re_find_q_entry(ctx, state);
     if (entry && entry->visit_count > 10) {
         confidence = 0.9f;
     } else if (entry && entry->visit_count > 3) {
         confidence = 0.7f;
     }
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 
     return confidence;
 }
@@ -873,7 +873,7 @@ uint32_t re_get_action_sequence(re_context_t* ctx, uint32_t fault_type, re_actio
 bool re_get_stats(re_context_t* ctx, re_stats_t* stats) {
     if (!ctx || !stats) return false;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     *stats = ctx->stats;
 
@@ -886,23 +886,23 @@ bool re_get_stats(re_context_t* ctx, re_stats_t* stats) {
     }
     stats->avg_success_rate = (total_used > 0) ? (float)total_succeeded / total_used : 0.0f;
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return true;
 }
 
 void re_reset_stats(re_context_t* ctx) {
     if (!ctx) return;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
     memset(&ctx->stats, 0, sizeof(re_stats_t));
     ctx->stats.current_epsilon = ctx->epsilon;
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 }
 
 float re_get_diversity(re_context_t* ctx) {
     if (!ctx || ctx->population_size < 2) return 0.0f;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     // Calculate fitness variance as diversity metric
     float mean = ctx->stats.avg_fitness;
@@ -916,21 +916,21 @@ float re_get_diversity(re_context_t* ctx) {
 
     float diversity = sqrtf(variance) / (fabsf(mean) + 1.0f);
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
     return diversity;
 }
 
 void re_print_q_table(re_context_t* ctx) {
     if (!ctx) return;
 
-    pthread_mutex_lock(&ctx->lock);
+    nimcp_mutex_lock(&ctx->lock);
 
     LOG_DEBUG("RE", "Q-Table (%u states):", ctx->q_table_size);
     for (uint32_t i = 0; i < ctx->q_table_size && i < 10; i++) {
         LOG_DEBUG("RE", "  State %u: visits=%u", ctx->q_table[i].state_id, ctx->q_table[i].visit_count);
     }
 
-    pthread_mutex_unlock(&ctx->lock);
+    nimcp_mutex_unlock(&ctx->lock);
 }
 
 //=============================================================================

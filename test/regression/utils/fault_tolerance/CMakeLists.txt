@@ -103,3 +103,13 @@ set_tests_properties(regression_utils_fault_tolerance_test_world_imagination_hea
 add_ft_regression_test(test_heartbeat_module_regression)
 set_tests_properties(regression_utils_fault_tolerance_test_heartbeat_module_regression
                      PROPERTIES TIMEOUT 120)
+
+# State Manager Regression Tests (Phase 8: System-Wide Health Integration)
+add_ft_regression_test(test_state_manager_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_state_manager_regression
+                     PROPERTIES TIMEOUT 120)
+
+# Module Recovery Regression Tests (Phase 8: System-Wide Health Integration)
+add_ft_regression_test(test_module_recovery_regression)
+set_tests_properties(regression_utils_fault_tolerance_test_module_recovery_regression
+                     PROPERTIES TIMEOUT 120)

@@ -102,3 +102,11 @@ set_tests_properties(unit_utils_fault_tolerance_test_health_agent_world_imaginat
 # Heartbeat Module Tests (Phase 8: Heartbeat for Long Operations)
 add_fault_tolerance_test(test_heartbeat_module_functions)
 set_tests_properties(unit_utils_fault_tolerance_test_heartbeat_module_functions PROPERTIES TIMEOUT 120)
+
+# State Manager Tests (Phase 8: System-Wide Health Integration)
+add_fault_tolerance_test(test_state_manager)
+set_tests_properties(unit_utils_fault_tolerance_test_state_manager PROPERTIES TIMEOUT 120)
+
+# Module Recovery Tests (Phase 8: System-Wide Health Integration)
+add_fault_tolerance_test(test_module_recovery)
+set_tests_properties(unit_utils_fault_tolerance_test_module_recovery PROPERTIES TIMEOUT 120)

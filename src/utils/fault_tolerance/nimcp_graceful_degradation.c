@@ -24,7 +24,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_bbb_helpers.h"
-#include <pthread.h>
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -92,8 +92,8 @@ struct gd_context {
     gd_stats_t stats;
 
     /* Threading */
-    pthread_mutex_t mutex;
-    pthread_t monitor_thread;
+    nimcp_mutex_t mutex;
+    nimcp_thread_t monitor_thread;
     bool running;
     bool monitor_running;
 
@@ -287,7 +287,7 @@ static void* gd_monitor_thread(void* arg) {
     gd_context_t* ctx = (gd_context_t*)arg;
 
     while (ctx->monitor_running) {
-        pthread_mutex_lock(&ctx->mutex);
+        nimcp_mutex_lock(&ctx->mutex);
 
         if (ctx->config.enable_auto_degradation) {
             gd_evaluate_tier(ctx);
@@ -304,7 +304,7 @@ static void* gd_monitor_thread(void* arg) {
             /* Duration tracking would go here */
         }
 
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
 
         /* Sleep for check interval */
         struct timespec ts;
@@ -356,7 +356,7 @@ gd_context_t* gd_create(const gd_config_t* config) {
     ctx->next_profile_id = 1;
 
     /* Initialize mutex */
-    if (pthread_mutex_init(&ctx->mutex, NULL) != 0) {
+    if (nimcp_mutex_init(&ctx->mutex, NULL) != 0) {
         LOG_ERROR("GD", "Failed to initialize mutex");
         nimcp_free(ctx);
         return NULL;
@@ -405,7 +405,7 @@ void gd_destroy(gd_context_t* ctx) {
                   "Destroying graceful degradation context, final_tier=%s",
                   gd_tier_to_string(ctx->current_tier));
 
-    pthread_mutex_destroy(&ctx->mutex);
+    nimcp_mutex_destroy(&ctx->mutex);
     nimcp_free(ctx);
 
     LOG_INFO("GD", "Destroyed graceful degradation context");
@@ -414,10 +414,10 @@ void gd_destroy(gd_context_t* ctx) {
 bool gd_start(gd_context_t* ctx) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->running) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return true;
     }
 
@@ -426,15 +426,15 @@ bool gd_start(gd_context_t* ctx) {
     ctx->tier_start_time_ms = gd_get_time_ms();
 
     /* Start monitoring thread */
-    if (pthread_create(&ctx->monitor_thread, NULL, gd_monitor_thread, ctx) != 0) {
+    if (nimcp_thread_create(&ctx->monitor_thread, NULL, gd_monitor_thread, ctx) != 0) {
         LOG_ERROR("GD", "Failed to start monitoring thread");
         ctx->running = false;
         ctx->monitor_running = false;
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     bbb_audit_log(BBB_AUDIT_INFO, "GD", "START", "Started degradation monitoring");
     LOG_INFO("GD", "Started graceful degradation monitoring");
@@ -445,22 +445,22 @@ bool gd_start(gd_context_t* ctx) {
 bool gd_stop(gd_context_t* ctx) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (!ctx->running) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return true;
     }
 
     ctx->monitor_running = false;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     /* Wait for thread to finish */
-    pthread_join(ctx->monitor_thread, NULL);
+    nimcp_thread_join(&ctx->monitor_thread, NULL);
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     ctx->running = false;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     bbb_audit_log(BBB_AUDIT_INFO, "GD", "STOP", "Stopped degradation monitoring");
     LOG_INFO("GD", "Stopped graceful degradation monitoring");
@@ -475,11 +475,11 @@ bool gd_stop(gd_context_t* ctx) {
 uint32_t gd_register_feature(gd_context_t* ctx, const gd_feature_t* feature) {
     if (!ctx || !feature) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->feature_count >= GD_MAX_FEATURES) {
         LOG_WARNING("GD", "Maximum features reached");
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return 0;
     }
 
@@ -494,7 +494,7 @@ uint32_t gd_register_feature(gd_context_t* ctx, const gd_feature_t* feature) {
 
     uint32_t id = f->feature_id;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     LOG_DEBUG("GD", "Registered feature: %s (id=%u, priority=%s)",
                     feature->name, id, gd_priority_to_string(feature->priority));
@@ -505,7 +505,7 @@ uint32_t gd_register_feature(gd_context_t* ctx, const gd_feature_t* feature) {
 bool gd_unregister_feature(gd_context_t* ctx, uint32_t feature_id) {
     if (!ctx || feature_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     for (uint32_t i = 0; i < ctx->feature_count; i++) {
         if (ctx->features[i].feature_id == feature_id) {
@@ -514,63 +514,63 @@ bool gd_unregister_feature(gd_context_t* ctx, uint32_t feature_id) {
                 ctx->features[j] = ctx->features[j + 1];
             }
             ctx->feature_count--;
-            pthread_mutex_unlock(&ctx->mutex);
+            nimcp_mutex_unlock(&ctx->mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
     return false;
 }
 
 bool gd_is_feature_enabled(gd_context_t* ctx, uint32_t feature_id) {
     if (!ctx || feature_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     for (uint32_t i = 0; i < ctx->feature_count; i++) {
         if (ctx->features[i].feature_id == feature_id) {
             bool enabled = ctx->features[i].is_enabled;
-            pthread_mutex_unlock(&ctx->mutex);
+            nimcp_mutex_unlock(&ctx->mutex);
             return enabled;
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
     return false;
 }
 
 float gd_get_feature_quality(gd_context_t* ctx, uint32_t feature_id) {
     if (!ctx || feature_id == 0) return 0.0f;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     for (uint32_t i = 0; i < ctx->feature_count; i++) {
         if (ctx->features[i].feature_id == feature_id) {
             float quality = ctx->features[i].current_quality;
-            pthread_mutex_unlock(&ctx->mutex);
+            nimcp_mutex_unlock(&ctx->mutex);
             return quality;
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
     return 0.0f;
 }
 
 bool gd_set_feature_enabled(gd_context_t* ctx, uint32_t feature_id, bool enabled) {
     if (!ctx || feature_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     for (uint32_t i = 0; i < ctx->feature_count; i++) {
         if (ctx->features[i].feature_id == feature_id) {
             ctx->features[i].is_enabled = enabled;
-            pthread_mutex_unlock(&ctx->mutex);
+            nimcp_mutex_unlock(&ctx->mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
     return false;
 }
 
@@ -578,7 +578,7 @@ bool gd_set_feature_quality(gd_context_t* ctx, uint32_t feature_id, float qualit
     if (!ctx || feature_id == 0) return false;
     if (quality < 0.0f || quality > 100.0f) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     for (uint32_t i = 0; i < ctx->feature_count; i++) {
         if (ctx->features[i].feature_id == feature_id) {
@@ -589,12 +589,12 @@ bool gd_set_feature_quality(gd_context_t* ctx, uint32_t feature_id, float qualit
                 ctx->stats.min_quality_reached = quality;
             }
 
-            pthread_mutex_unlock(&ctx->mutex);
+            nimcp_mutex_unlock(&ctx->mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
     return false;
 }
 
@@ -607,12 +607,12 @@ bool gd_update_resource(gd_context_t* ctx, gd_resource_t resource, float usage) 
     if (resource < 0 || resource >= GD_RESOURCE_COUNT) return false;
     if (usage < 0.0f || usage > 100.0f) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ctx->current_usage[resource] = usage;
     ctx->resources[resource].current_usage = usage;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -621,9 +621,9 @@ float gd_get_resource_usage(gd_context_t* ctx, gd_resource_t resource) {
     if (!ctx) return 0.0f;
     if (resource < 0 || resource >= GD_RESOURCE_COUNT) return 0.0f;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     float usage = ctx->current_usage[resource];
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return usage;
 }
@@ -632,9 +632,9 @@ bool gd_set_resource_budget(gd_context_t* ctx, const gd_resource_budget_t* budge
     if (!ctx || !budget) return false;
     if (budget->type < 0 || budget->type >= GD_RESOURCE_COUNT) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     ctx->resources[budget->type] = *budget;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -643,9 +643,9 @@ bool gd_get_resource_budget(gd_context_t* ctx, gd_resource_t resource, gd_resour
     if (!ctx || !budget) return false;
     if (resource < 0 || resource >= GD_RESOURCE_COUNT) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     *budget = ctx->resources[resource];
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -654,9 +654,9 @@ bool gd_is_resource_critical(gd_context_t* ctx, gd_resource_t resource) {
     if (!ctx) return false;
     if (resource < 0 || resource >= GD_RESOURCE_COUNT) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     bool critical = ctx->current_usage[resource] >= ctx->resources[resource].critical_threshold;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return critical;
 }
@@ -668,9 +668,9 @@ bool gd_is_resource_critical(gd_context_t* ctx, gd_resource_t resource) {
 gd_tier_t gd_get_current_tier(gd_context_t* ctx) {
     if (!ctx) return GD_TIER_FULL;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     gd_tier_t tier = ctx->current_tier;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return tier;
 }
@@ -679,12 +679,12 @@ bool gd_set_tier(gd_context_t* ctx, gd_tier_t tier, const char* reason) {
     if (!ctx) return false;
     if (tier < GD_TIER_FULL || tier > GD_TIER_EMERGENCY) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     gd_tier_t old_tier = ctx->current_tier;
 
     if (tier == old_tier) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return true;
     }
 
@@ -718,7 +718,7 @@ bool gd_set_tier(gd_context_t* ctx, gd_tier_t tier, const char* reason) {
     gd_notify_security(ctx, &event);
     gd_invoke_callbacks(ctx, &event);
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     LOG_INFO("GD", "Tier changed: %s -> %s (manual: %s)",
                    gd_tier_to_string(old_tier), gd_tier_to_string(tier),
@@ -799,7 +799,7 @@ bool gd_evaluate_tier(gd_context_t* ctx) {
 uint32_t gd_get_transition_history(gd_context_t* ctx, gd_transition_event_t* events, uint32_t max_events) {
     if (!ctx || !events || max_events == 0) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     uint32_t count = 0;
     uint32_t idx = (ctx->history_head + 64 - ctx->history_count) % 64;
@@ -811,7 +811,7 @@ uint32_t gd_get_transition_history(gd_context_t* ctx, gd_transition_event_t* eve
         idx = (idx + 1) % 64;
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return count;
 }
@@ -823,10 +823,10 @@ uint32_t gd_get_transition_history(gd_context_t* ctx, gd_transition_event_t* eve
 uint32_t gd_create_profile(gd_context_t* ctx, const gd_profile_t* profile) {
     if (!ctx || !profile) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->profile_count >= GD_MAX_PROFILES) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return 0;
     }
 
@@ -838,7 +838,7 @@ uint32_t gd_create_profile(gd_context_t* ctx, const gd_profile_t* profile) {
 
     uint32_t id = p->profile_id;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     LOG_DEBUG("GD", "Created profile: %s (id=%u)", profile->name, id);
 
@@ -848,7 +848,7 @@ uint32_t gd_create_profile(gd_context_t* ctx, const gd_profile_t* profile) {
 bool gd_delete_profile(gd_context_t* ctx, uint32_t profile_id) {
     if (!ctx || profile_id == 0) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     for (uint32_t i = 0; i < ctx->profile_count; i++) {
         if (ctx->profiles[i].profile_id == profile_id) {
@@ -863,19 +863,19 @@ bool gd_delete_profile(gd_context_t* ctx, uint32_t profile_id) {
             }
             ctx->profile_count--;
 
-            pthread_mutex_unlock(&ctx->mutex);
+            nimcp_mutex_unlock(&ctx->mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
     return false;
 }
 
 bool gd_activate_profile(gd_context_t* ctx, uint32_t profile_id) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     /* Find profile */
     for (uint32_t i = 0; i < ctx->profile_count; i++) {
@@ -885,39 +885,39 @@ bool gd_activate_profile(gd_context_t* ctx, uint32_t profile_id) {
             /* Apply profile's current tier */
             gd_tier_t tier = ctx->profiles[i].current_tier;
             if (tier != ctx->current_tier) {
-                pthread_mutex_unlock(&ctx->mutex);
+                nimcp_mutex_unlock(&ctx->mutex);
                 gd_set_tier(ctx, tier, "profile activation");
                 return true;
             }
 
-            pthread_mutex_unlock(&ctx->mutex);
+            nimcp_mutex_unlock(&ctx->mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
     return false;
 }
 
 bool gd_get_active_profile(gd_context_t* ctx, gd_profile_t* profile) {
     if (!ctx || !profile) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->active_profile_id == 0) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
     for (uint32_t i = 0; i < ctx->profile_count; i++) {
         if (ctx->profiles[i].profile_id == ctx->active_profile_id) {
             *profile = ctx->profiles[i];
-            pthread_mutex_unlock(&ctx->mutex);
+            nimcp_mutex_unlock(&ctx->mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
     return false;
 }
 
@@ -929,7 +929,7 @@ bool gd_start_load_shedding(gd_context_t* ctx, float shed_rate, gd_priority_t mi
     if (!ctx) return false;
     if (shed_rate < 0.0f || shed_rate > 100.0f) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     ctx->load_shed.enabled = true;
     ctx->load_shed.shed_rate = shed_rate;
@@ -937,7 +937,7 @@ bool gd_start_load_shedding(gd_context_t* ctx, float shed_rate, gd_priority_t mi
     ctx->load_shed.shed_duration_ms = duration_ms;
     ctx->load_shed.shed_count = 0;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     bbb_audit_log(BBB_AUDIT_WARNING, "GD", "LOAD_SHED",
                   "Started load shedding: rate=%.1f%%, min_priority=%s",
@@ -952,13 +952,13 @@ bool gd_start_load_shedding(gd_context_t* ctx, float shed_rate, gd_priority_t mi
 bool gd_stop_load_shedding(gd_context_t* ctx) {
     if (!ctx) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     uint32_t shed_count = ctx->load_shed.shed_count;
     ctx->load_shed.enabled = false;
     ctx->stats.items_shed += shed_count;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     bbb_audit_log(BBB_AUDIT_INFO, "GD", "LOAD_SHED",
                   "Stopped load shedding, items_shed=%u", shed_count);
@@ -971,17 +971,17 @@ bool gd_stop_load_shedding(gd_context_t* ctx) {
 bool gd_should_accept_request(gd_context_t* ctx, gd_priority_t priority) {
     if (!ctx) return true;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     /* If not shedding, accept all */
     if (!ctx->load_shed.enabled) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return true;
     }
 
     /* Check priority threshold */
     if (priority < ctx->load_shed.min_priority) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return true; /* High priority always accepted */
     }
 
@@ -993,7 +993,7 @@ bool gd_should_accept_request(gd_context_t* ctx, gd_priority_t priority) {
         ctx->load_shed.shed_count++;
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return accept;
 }
@@ -1001,10 +1001,10 @@ bool gd_should_accept_request(gd_context_t* ctx, gd_priority_t priority) {
 bool gd_get_load_shed_status(gd_context_t* ctx, gd_load_shed_config_t* config) {
     if (!ctx || !config) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     *config = ctx->load_shed;
     bool active = ctx->load_shed.enabled;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return active;
 }
@@ -1016,10 +1016,10 @@ bool gd_get_load_shed_status(gd_context_t* ctx, gd_load_shed_config_t* config) {
 bool gd_register_callback(gd_context_t* ctx, gd_tier_callback_t callback, void* user_data) {
     if (!ctx || !callback) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->callback_count >= 8) {
-        pthread_mutex_unlock(&ctx->mutex);
+        nimcp_mutex_unlock(&ctx->mutex);
         return false;
     }
 
@@ -1028,7 +1028,7 @@ bool gd_register_callback(gd_context_t* ctx, gd_tier_callback_t callback, void* 
     ctx->callbacks[ctx->callback_count].active = true;
     ctx->callback_count++;
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -1036,17 +1036,17 @@ bool gd_register_callback(gd_context_t* ctx, gd_tier_callback_t callback, void* 
 bool gd_unregister_callback(gd_context_t* ctx, gd_tier_callback_t callback) {
     if (!ctx || !callback) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
 
     for (uint32_t i = 0; i < ctx->callback_count; i++) {
         if (ctx->callbacks[i].callback == callback) {
             ctx->callbacks[i].active = false;
-            pthread_mutex_unlock(&ctx->mutex);
+            nimcp_mutex_unlock(&ctx->mutex);
             return true;
         }
     }
 
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
     return false;
 }
 
@@ -1057,9 +1057,9 @@ bool gd_unregister_callback(gd_context_t* ctx, gd_tier_callback_t callback) {
 bool gd_get_stats(gd_context_t* ctx, gd_stats_t* stats) {
     if (!ctx || !stats) return false;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     *stats = ctx->stats;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return true;
 }
@@ -1067,21 +1067,21 @@ bool gd_get_stats(gd_context_t* ctx, gd_stats_t* stats) {
 void gd_reset_stats(gd_context_t* ctx) {
     if (!ctx) return;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     memset(&ctx->stats, 0, sizeof(gd_stats_t));
     ctx->stats.lowest_tier_reached = ctx->current_tier;
     ctx->stats.avg_quality = 100.0f;
     ctx->stats.min_quality_reached = 100.0f;
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 }
 
 uint64_t gd_get_time_at_tier(gd_context_t* ctx, gd_tier_t tier) {
     if (!ctx) return 0;
     if (tier < GD_TIER_FULL || tier > GD_TIER_EMERGENCY) return 0;
 
-    pthread_mutex_lock(&ctx->mutex);
+    nimcp_mutex_lock(&ctx->mutex);
     uint64_t time = ctx->stats.time_per_tier_ms[tier];
-    pthread_mutex_unlock(&ctx->mutex);
+    nimcp_mutex_unlock(&ctx->mutex);
 
     return time;
 }

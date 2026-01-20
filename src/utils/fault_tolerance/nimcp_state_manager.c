@@ -154,10 +154,10 @@ int nimcp_state_manager_register_with_priority(
     uint32_t priority
 ) {
     if (!manager || !name || !ops) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -NIMCP_ERROR_NULL_POINTER;
     }
     if (!manager->initialized) {
-        return NIMCP_ERROR_INVALID_STATE;
+        return -NIMCP_ERROR_INVALID_STATE;
     }
 
     nimcp_mutex_lock(manager->mutex);
@@ -167,7 +167,7 @@ int nimcp_state_manager_register_with_priority(
         if (strncmp(manager->modules[i].name, name, NIMCP_STATE_MANAGER_MAX_NAME_LEN) == 0) {
             nimcp_mutex_unlock(manager->mutex);
             LOG_WARN(LOG_MODULE, "Module '%s' already registered", name);
-            return NIMCP_ERROR_ALREADY_EXISTS;
+            return -NIMCP_ERROR_ALREADY_EXISTS;
         }
     }
 
@@ -175,7 +175,7 @@ int nimcp_state_manager_register_with_priority(
     if (manager->module_count >= NIMCP_STATE_MANAGER_MAX_MODULES) {
         nimcp_mutex_unlock(manager->mutex);
         LOG_ERROR(LOG_MODULE, "State manager full, cannot register '%s'", name);
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        return -NIMCP_ERROR_OUT_OF_RANGE;
     }
 
     /* Add module */
@@ -205,7 +205,7 @@ int nimcp_state_manager_unregister(
     const char* name
 ) {
     if (!manager || !name) {
-        return NIMCP_ERROR_NULL_POINTER;
+        return -NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_mutex_lock(manager->mutex);
@@ -221,7 +221,7 @@ int nimcp_state_manager_unregister(
 
     if (found_idx < 0) {
         nimcp_mutex_unlock(manager->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        return -NIMCP_ERROR_NOT_FOUND;
     }
 
     /* Shift remaining modules */
@@ -255,14 +255,14 @@ int nimcp_state_manager_set_enabled(
     const char* name,
     bool enabled
 ) {
-    if (!manager || !name) return NIMCP_ERROR_NULL_POINTER;
+    if (!manager || !name) return -NIMCP_ERROR_NULL_POINTER;
 
     nimcp_mutex_lock(manager->mutex);
 
     nimcp_state_module_entry_t* entry = nimcp_state_manager_find(manager, name);
     if (!entry) {
         nimcp_mutex_unlock(manager->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        return -NIMCP_ERROR_NOT_FOUND;
     }
 
     entry->enabled = enabled;
@@ -281,7 +281,7 @@ int nimcp_state_manager_checkpoint_all(
     uint8_t* buffer,
     size_t* size
 ) {
-    if (!manager || !size) return NIMCP_ERROR_NULL_POINTER;
+    if (!manager || !size) return -NIMCP_ERROR_NULL_POINTER;
 
     nimcp_mutex_lock(manager->mutex);
 
@@ -381,19 +381,19 @@ int nimcp_state_manager_checkpoint_module(
     uint8_t* buffer,
     size_t* size
 ) {
-    if (!manager || !name || !size) return NIMCP_ERROR_NULL_POINTER;
+    if (!manager || !name || !size) return -NIMCP_ERROR_NULL_POINTER;
 
     nimcp_mutex_lock(manager->mutex);
 
     nimcp_state_module_entry_t* entry = nimcp_state_manager_find(manager, name);
     if (!entry) {
         nimcp_mutex_unlock(manager->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        return -NIMCP_ERROR_NOT_FOUND;
     }
 
     if (!entry->ops.serialize) {
         nimcp_mutex_unlock(manager->mutex);
-        return NIMCP_ERROR_NOT_IMPLEMENTED;
+        return -NIMCP_ERROR_NOT_IMPLEMENTED;
     }
 
     int result = entry->ops.serialize(entry->context, buffer, size);
@@ -415,8 +415,8 @@ int nimcp_state_manager_restore_all(
     const uint8_t* buffer,
     size_t size
 ) {
-    if (!manager || !buffer) return NIMCP_ERROR_NULL_POINTER;
-    if (size < sizeof(state_checkpoint_header_t)) return NIMCP_ERROR_INVALID_PARAM;
+    if (!manager || !buffer) return -NIMCP_ERROR_NULL_POINTER;
+    if (size < sizeof(state_checkpoint_header_t)) return -NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(manager->mutex);
 
@@ -425,13 +425,13 @@ int nimcp_state_manager_restore_all(
     if (header->magic != STATE_CHECKPOINT_MAGIC) {
         nimcp_mutex_unlock(manager->mutex);
         LOG_ERROR(LOG_MODULE, "Invalid checkpoint magic");
-        return NIMCP_ERROR_INVALID_STATE;
+        return -NIMCP_ERROR_INVALID_STATE;
     }
 
     if (header->version > STATE_CHECKPOINT_VERSION) {
         nimcp_mutex_unlock(manager->mutex);
         LOG_ERROR(LOG_MODULE, "Unsupported checkpoint version: %u", header->version);
-        return NIMCP_ERROR_INVALID_STATE;
+        return -NIMCP_ERROR_INVALID_STATE;
     }
 
     /* Restore each module */
@@ -490,19 +490,19 @@ int nimcp_state_manager_restore_module(
     const uint8_t* buffer,
     size_t size
 ) {
-    if (!manager || !name || !buffer) return NIMCP_ERROR_NULL_POINTER;
+    if (!manager || !name || !buffer) return -NIMCP_ERROR_NULL_POINTER;
 
     nimcp_mutex_lock(manager->mutex);
 
     nimcp_state_module_entry_t* entry = nimcp_state_manager_find(manager, name);
     if (!entry) {
         nimcp_mutex_unlock(manager->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        return -NIMCP_ERROR_NOT_FOUND;
     }
 
     if (!entry->ops.deserialize) {
         nimcp_mutex_unlock(manager->mutex);
-        return NIMCP_ERROR_NOT_IMPLEMENTED;
+        return -NIMCP_ERROR_NOT_IMPLEMENTED;
     }
 
     int result = entry->ops.deserialize(entry->context, buffer, size);
@@ -520,7 +520,7 @@ int nimcp_state_manager_restore_module(
 //=============================================================================
 
 int nimcp_state_manager_validate_all(nimcp_state_manager_t* manager) {
-    if (!manager) return NIMCP_ERROR_NULL_POINTER;
+    if (!manager) return -NIMCP_ERROR_NULL_POINTER;
 
     nimcp_mutex_lock(manager->mutex);
 
@@ -552,14 +552,14 @@ int nimcp_state_manager_validate_module(
     nimcp_state_manager_t* manager,
     const char* name
 ) {
-    if (!manager || !name) return NIMCP_ERROR_NULL_POINTER;
+    if (!manager || !name) return -NIMCP_ERROR_NULL_POINTER;
 
     nimcp_mutex_lock(manager->mutex);
 
     nimcp_state_module_entry_t* entry = nimcp_state_manager_find(manager, name);
     if (!entry) {
         nimcp_mutex_unlock(manager->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        return -NIMCP_ERROR_NOT_FOUND;
     }
 
     if (!entry->ops.validate) {
@@ -568,6 +568,7 @@ int nimcp_state_manager_validate_module(
     }
 
     int result = entry->ops.validate(entry->context);
+    manager->total_validations++;
     if (result != 0) {
         entry->validation_failures++;
     }
@@ -581,7 +582,7 @@ int nimcp_state_manager_validate_module(
 //=============================================================================
 
 int nimcp_state_manager_reset_all(nimcp_state_manager_t* manager) {
-    if (!manager) return NIMCP_ERROR_NULL_POINTER;
+    if (!manager) return -NIMCP_ERROR_NULL_POINTER;
 
     nimcp_mutex_lock(manager->mutex);
 
@@ -611,19 +612,19 @@ int nimcp_state_manager_reset_module(
     nimcp_state_manager_t* manager,
     const char* name
 ) {
-    if (!manager || !name) return NIMCP_ERROR_NULL_POINTER;
+    if (!manager || !name) return -NIMCP_ERROR_NULL_POINTER;
 
     nimcp_mutex_lock(manager->mutex);
 
     nimcp_state_module_entry_t* entry = nimcp_state_manager_find(manager, name);
     if (!entry) {
         nimcp_mutex_unlock(manager->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        return -NIMCP_ERROR_NOT_FOUND;
     }
 
     if (!entry->ops.reset) {
         nimcp_mutex_unlock(manager->mutex);
-        return NIMCP_ERROR_NOT_IMPLEMENTED;
+        return -NIMCP_ERROR_NOT_IMPLEMENTED;
     }
 
     int result = entry->ops.reset(entry->context);
@@ -633,7 +634,7 @@ int nimcp_state_manager_reset_module(
 }
 
 int nimcp_state_manager_reset_invalid(nimcp_state_manager_t* manager) {
-    if (!manager) return NIMCP_ERROR_NULL_POINTER;
+    if (!manager) return -NIMCP_ERROR_NULL_POINTER;
 
     nimcp_mutex_lock(manager->mutex);
 
@@ -713,7 +714,7 @@ int nimcp_state_manager_get_stats(
     nimcp_state_manager_t* manager,
     nimcp_state_manager_stats_t* stats
 ) {
-    if (!manager || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!manager || !stats) return -NIMCP_ERROR_NULL_POINTER;
 
     nimcp_mutex_lock(manager->mutex);
 
