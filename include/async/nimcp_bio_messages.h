@@ -1050,6 +1050,27 @@ typedef enum {
     BIO_MSG_HOT_PATCH_ROLLBACK,                       /**< Rollback hot-patch */
     BIO_MSG_HOT_PATCH_STATUS,                         /**< Hot-patch status query */
 
+    /* Health Self-Repair Bridge messages (0x6E50-0x6E57) */
+    BIO_MSG_HEALTH_SELF_REPAIR_TRIGGER = 0x6E50,     /**< Health-to-repair trigger */
+    BIO_MSG_HEALTH_SELF_REPAIR_OUTCOME,              /**< Repair outcome notification */
+    BIO_MSG_HEALTH_SELF_REPAIR_STATS,                /**< Bridge statistics update */
+    BIO_MSG_HEALTH_SELF_REPAIR_RATE_LIMIT,           /**< Rate limiting event */
+    BIO_MSG_HEALTH_DIAGNOSTIC_CONVERTED,             /**< Diagnostic conversion complete */
+
+    /* Code Immune Self-Repair Integration messages (0x6E58-0x6E5F) */
+    BIO_MSG_CODE_IMMUNE_REPAIR_TRIGGER = 0x6E58,     /**< Code immune auto-repair trigger */
+    BIO_MSG_CODE_IMMUNE_REPAIR_OUTCOME,              /**< Code immune repair outcome */
+    BIO_MSG_CODE_IMMUNE_PATTERN_LEARNED,             /**< Pattern learned from repair */
+    BIO_MSG_CODE_IMMUNE_B_CELL_UPDATED,              /**< B cell updated from outcome */
+
+    /* Self-Repair Health Escalation messages (0x6E60-0x6E6F) */
+    BIO_MSG_REPAIR_HEALTH_FAILURE = 0x6E60,          /**< Repair failure notification */
+    BIO_MSG_REPAIR_HEALTH_ESCALATE,                  /**< Escalation to health agent */
+    BIO_MSG_REPAIR_HEALTH_ROLLBACK,                  /**< Rollback notification */
+    BIO_MSG_REPAIR_HEALTH_HIGH_RISK,                 /**< High-risk repair notification */
+    BIO_MSG_REPAIR_HEALTH_REPEATED_FAILURE,          /**< Repeated failure escalation */
+    BIO_MSG_REPAIR_HEALTH_INTERVENTION,              /**< Intervention suggestion */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;
@@ -1863,6 +1884,10 @@ typedef enum {
     BIO_MODULE_CODE_IMMUNE,                     /**< Code immune system */
     BIO_MODULE_DIAGNOSTICS,                     /**< Fault diagnostics */
     BIO_MODULE_RECOVERY_BRIDGE,                 /**< Recovery-parietal bridge */
+    BIO_MODULE_HEALTH_SELF_REPAIR_BRIDGE,       /**< Health-to-self-repair bridge */
+    BIO_MODULE_HEALTH_DIAGNOSTIC_BRIDGE,        /**< Health diagnostic converter */
+    BIO_MODULE_CODE_IMMUNE_SELF_REPAIR,         /**< Code immune self-repair integration */
+    BIO_MODULE_SELF_REPAIR_HEALTH_NOTIFY,       /**< Self-repair health notification */
 
     /* Special values (Phase 7: Runtime Message Orchestration) */
     BIO_MODULE_KG_DISPATCH = 0xFFFE, /**< KG-driven dispatch: route to all handlers for message type */

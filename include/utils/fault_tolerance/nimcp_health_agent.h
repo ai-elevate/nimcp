@@ -916,7 +916,7 @@ typedef struct deadlock_detector deadlock_detector_t;
 
 /** Bio-async router - event messaging */
 #ifndef NIMCP_BIO_ROUTER_H
-typedef struct bio_async_router bio_async_router_t;
+typedef struct bio_router_struct* bio_router_t;
 #endif
 
 /** Runtime adaptation - load management */
@@ -1867,7 +1867,7 @@ int nimcp_health_agent_connect_deadlock_detector(
  */
 int nimcp_health_agent_connect_bio_async(
     nimcp_health_agent_t* agent,
-    bio_async_router_t* router,
+    bio_router_t router,
     const health_agent_bio_async_config_t* config
 );
 

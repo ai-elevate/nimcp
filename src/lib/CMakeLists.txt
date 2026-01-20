@@ -538,6 +538,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_recovery_consolidation.c  # Phase 10: Consolidation for Long-Term Learning
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_emotional_tagging.c  # Phase 10: Emotional Tagging for Critical Failures
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_self_repair.c  # Self-repair coordinator (code gen + VCS + hot-patch orchestration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.c  # Health monitoring to diagnostic format conversion
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_health_self_repair_bridge.c  # Health to self-repair automation bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/fault_tolerance/nimcp_self_repair_health_notify.c  # Self-repair health agent notification extension
     # NOTE: No centralized hub - coordination emerges from distributed event bus (mimics thalamus + white matter tracts)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_emotional_tagging.c  # Phase 10.3: General Emotional Tagging (Russell's circumplex model)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotions/nimcp_emotional_system.c  # Phase 10.2: Integrated Emotional System
@@ -647,6 +650,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_heal_bridge.c  # Enhanced Self-Healing Bridge - unified pipeline with sandbox/evolution/chains
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_claude_healer.c  # Claude API Fallback Healer - external AI-assisted code repair
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_metrics.c  # Immune Metrics - Prometheus/JSON export for self-healing observability
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_code_immune_self_repair.c  # Code immune to self-repair pipeline integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_cognitive_meta_controller.c  # Cognitive Meta-Controller - unified arbitrator for cognitive subsystems
     # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune.c  # DISABLED: depends on brain_region_predictive  # Predictive-immune bidirectional integration - DISABLED: depends on nimcp_brain_region_predictive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_pattern_immune.c  # Pattern-immune bidirectional integration

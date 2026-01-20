@@ -406,7 +406,7 @@ struct nimcp_health_agent {
     deadlock_detector_t* deadlock_detector_ptr;
 
     /* Bio-async router */
-    bio_async_router_t* bio_async_router;
+    bio_router_t bio_async_router;
     health_agent_bio_async_config_t bio_async_config;
     uint32_t bio_async_module_id;
     _Atomic uint64_t bio_async_events_published;
@@ -2471,7 +2471,7 @@ int nimcp_health_agent_connect_deadlock_detector(
 
 int nimcp_health_agent_connect_bio_async(
     nimcp_health_agent_t* agent,
-    bio_async_router_t* router,
+    bio_router_t router,
     const health_agent_bio_async_config_t* config
 ) {
     if (!validate_agent(agent)) return -1;
